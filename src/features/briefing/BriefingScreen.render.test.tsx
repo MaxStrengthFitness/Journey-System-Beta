@@ -437,3 +437,74 @@ describe("the pre-session briefing mounts", () => {
     expect("until" in tag).toBe(false);
   });
 });
+
+/* ---------------------------------------------------------------- */
+
+describe("Due an InBody (FileMaker parity, Oct 1 2026)", () => {
+  /** n Completed sessions, one a day, from two days ago backwards: all after a scan 400 days ago. */
+  const after = (n: number) => Array.from({ length: n }, (_, i) => session({ id: `s-${i}`, date: dayKey(-(i + 2)) }));
+  const scanned = (over: Partial<Client> = {}) =>
+    ({
+      ...client,
+      gender: "Female",
+      inbodySummary: { scanCount: 1, firstTestedAt: dayKey(-400), latestTestedAt: dayKey(-400) },
+      ...over,
+    }) as Client;
+
+  function DueScreen({
+    who,
+    list,
+    coverage = "complete",
+    onStart = () => {},
+  }: {
+    who: Client;
+    list: WorkoutSession[];
+    coverage?: "complete" | "partial";
+    onStart?: (...a: any[]) => void;
+  }) {
+    return (
+      <BriefingScreen
+        authTrainer={trainer}
+        client={who}
+        coverage={coverage}
+        targetRoutine={routines[0]}
+        lastSession={null}
+        sessions={list}
+        sessionsAreAll
+        onStart={onStart}
+        onClose={() => {}}
+        machines={machines}
+        routines={routines}
+        trainers={[trainer]}
+      />
+    );
+  }
+
+  it("says one quiet line under Before you start once she is due, and Start still starts", async () => {
+    const onStart = vi.fn();
+    const host = await mount(<DueScreen who={scanned()} list={after(51)} onStart={onStart} />);
+    const line = host.querySelector('[data-testid="briefing-inbody"]');
+    expect(line?.textContent).toBe("Due an InBody: 51 sessions since her last scan");
+    expect(host.querySelector('[aria-label="Before you start"]')?.contains(line!)).toBe(true);
+    // Information, never a gate.
+    expect(line!.querySelector("button")).toBeNull();
+    await click(buttonByText(host, "Start session"));
+    expect(onStart).toHaveBeenCalledTimes(1);
+  });
+
+  it("says nothing before she is due, when it is off for her, or with no scan in Journey for a migrating client", async () => {
+    const early = await mount(<DueScreen who={scanned()} list={after(10)} />);
+    expect(early.querySelector('[data-testid="briefing-inbody"]')).toBeNull();
+
+    const off = await mount(<DueScreen who={scanned({ inbodyEvery: "never" })} list={after(80)} />);
+    expect(off.querySelector('[data-testid="briefing-inbody"]')).toBeNull();
+
+    const migrating = await mount(<DueScreen who={{ ...client, gender: "Female" } as Client} list={after(80)} coverage="partial" />);
+    expect(migrating.querySelector('[data-testid="briefing-inbody"]')).toBeNull();
+  });
+
+  it("follows her own number before the studio's", async () => {
+    const host = await mount(<DueScreen who={scanned({ inbodyEvery: 12 })} list={after(13)} />);
+    expect(host.querySelector('[data-testid="briefing-inbody"]')?.textContent).toBe("Due an InBody: 13 sessions since her last scan");
+  });
+});

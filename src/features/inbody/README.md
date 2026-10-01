@@ -9,6 +9,15 @@ Renewals round, Sep 2026 (Phase 7). The proposal is `OPERATIONS-RENEWALS-PROPOSA
 - **Renewals.** The Renewal Brief says "InBody since Jan 15: muscle up 4.1 lb, body fat down 3 points" — or "no change bigger than the scanner's normal variation". The Renewal card and the pipeline rows add "+4.1 lb muscle" to their one line of proof, and a body-composition change can make an upgrade candidate. All of these read `clients/{id}.inbodySummary` through the nightly snapshot (`proof.inbody`), or through the live snapshot when a single client is open, and every one of them goes through the variation below.
 - **Progress reports.** Finalized and printed reports show a Body Composition table and trend lines, taken from the scans up to the report's date.
 
+## When a scan is due (FileMaker parity, Oct 1 2026)
+
+FileMaker opened a client with "This client is due for an InBody scan, it has been 51 sessions since their last scan". AJ, Oct 1 2026, on how often: *"up to the studio or even that client"*.
+
+- **The number.** The client's own (`clients/{id}.inbodyEvery`: 4 to 200 sessions, or `"never"` for "not for her"), else her HOME studio's `inbodyEverySessions` studio setting (the studio's own on My Studio → Studio → This studio's settings, else Max Strength's default on Admins → Standard → Studio defaults, else the app's 50). A client number out of range is ignored, never bent.
+- **The count** (`due.ts`, the one answer): her Completed sessions in Journey on a studio day AFTER her latest scan's test day (the scan's own day is the visit it was taken at). With no scan in Journey and Journey not holding her whole story (`lib/client-coverage.ts`, her home studio's cutover) it says **"No InBody scan in Journey yet"** and claims no count; with no scan and her whole story it counts from her first session. A count that may be missing sessions — the scan is older than everything Journey holds of a migrating client, or the list is only a page — is a floor ("at least 12"), and a floor past her number is still due. Sessions that haven't loaded count nothing ("Counting her sessions…").
+- **Where it shows.** The briefing's Before you start, one quiet line and only when she is due ("Due an InBody: 51 sessions since her last scan"), never a block on Start; it counts every session the Active Session streams. The InBody card's first line, in every state, with an Edit that sets her own number through the record form (only `inbodyEvery` is written, by the one Save bar). The card counts the page of sessions the profile's journal already streams (40), so past 40 it may say "at least".
+- No rules change: the clients update rule already lets anyone who can edit the client write a field other than `renewal`.
+
 ## What counts as a change (client codex, Sep 2026)
 
 An InBody scan of the same body reads a little differently every time. Before this round every screen called any difference a change, so "+1.2 lb muscle" was proof on the renewals pipeline, made a client an upgrade candidate, and printed green on the progress report the client takes home. A confident wrong number is worse than a missing one.

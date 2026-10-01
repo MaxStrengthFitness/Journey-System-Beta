@@ -196,3 +196,60 @@
     background: var(--cx-surface-2);
   }
 }
+
+/* ---- when a scan is due (FileMaker parity, Oct 1 2026) -------------------
+   One sentence from features/inbody/due.ts, first on the card. Due reads in
+   the warn ink with its quiet fill; anything else stays the muted ink. */
+.ib-due {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--cx-line);
+  border-radius: 12px;
+  background: var(--cx-surface-2);
+}
+
+.ib-due[data-due] {
+  border-color: var(--cx-warn-line);
+  background: var(--cx-warn-fill);
+}
+
+.ib-due__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ib-due__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  flex: 1 1 220px;
+  min-width: 0;
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+  font-weight: 600;
+}
+
+.ib-due__icon {
+  flex: none;
+  margin-top: 3px;
+  color: var(--cx-ink-3);
+}
+
+.ib-due[data-due] .ib-due__icon {
+  color: var(--cx-warn);
+}
+
+.ib-due__source {
+  font-size: var(--cx-fs-12);
+}
+
+.ib-due__edit {
+  display: grid;
+  gap: 10px;
+}

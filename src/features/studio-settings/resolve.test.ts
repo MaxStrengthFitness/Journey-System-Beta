@@ -40,6 +40,21 @@ describe("resolveSetting", () => {
     expect(resolveSetting("deepCleanDays", { studio: null, company: { deepCleanDays: 10 }, studioDoc: {} })).toMatchObject({ value: 10, source: "company" });
   });
 
+  it("answers when an InBody scan is due: the studio's, head office's, or the app's 50 (FileMaker parity, Oct 1 2026)", () => {
+    expect(resolveSetting("inbodyEverySessions", { studio: null, company: null })).toMatchObject({ value: 50, source: "app" });
+    expect(resolveSetting("inbodyEverySessions", { studio: null, company: { inbodyEverySessions: 40 } })).toMatchObject({ value: 40, source: "company" });
+    expect(resolveSetting("inbodyEverySessions", { studio: { inbodyEverySessions: 24 }, company: { inbodyEverySessions: 40 } })).toMatchObject({
+      value: 24,
+      source: "studio",
+    });
+    // Under four sessions, over two hundred, or a fraction: skipped, never bent.
+    expect(resolveSetting("inbodyEverySessions", { studio: { inbodyEverySessions: 2 }, company: { inbodyEverySessions: 300 } })).toMatchObject({
+      value: 50,
+      source: "app",
+    });
+    expect(resolveSetting("inbodyEverySessions", { studio: { inbodyEverySessions: 30.5 }, company: null })).toMatchObject({ value: 50, source: "app" });
+  });
+
   it("lets a weekday be none on purpose", () => {
     expect(resolveSetting("weeklyMaintenanceDay", { studio: { weeklyMaintenanceDay: null }, company: { weeklyMaintenanceDay: 1 } })).toMatchObject({
       value: null,

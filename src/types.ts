@@ -973,6 +973,15 @@ export interface Client {
    * scans themselves are clients/{id}/inbodyScans. See features/inbody.
    */
   inbodySummary?: InBodySummary;
+  /**
+   * How many sessions between this client's InBody scans (FileMaker parity,
+   * Oct 1 2026; AJ: "up to the studio or even that client"). A number (4 to
+   * 200) is her own; "never" is "not for her"; absent or null follows her
+   * home studio's `inbodyEverySessions` setting. Set on Notes & Profile →
+   * Body & Pulse → InBody through the record form; read only through
+   * features/inbody/due.ts.
+   */
+  inbodyEvery?: number | "never" | null;
 }
 
 export interface Machine {

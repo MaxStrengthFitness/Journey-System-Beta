@@ -3116,6 +3116,9 @@ export function WorkoutTrackerView({
             sessions.filter((s) => s.status === "Completed")[0] || null
           }
           sessions={sessions.filter((s) => s.status === "Completed")}
+          /* The client's sessions stream has no limit: every one she has
+             in Journey, so the InBody count is exact (features/inbody/due.ts). */
+          sessionsAreAll
           onStart={(routineType, customMachines, note, checkIn) =>
             startNewSession(
               routineType,

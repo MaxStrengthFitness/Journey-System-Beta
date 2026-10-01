@@ -23,7 +23,7 @@
  * removing follow features/inbody/access.ts, which mirrors firestore.rules.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight, Plus, Scale } from "lucide-react";
 import { auth } from "../../firebase";
 import { studioTodayKey } from "../../lib/studio-time";
@@ -78,9 +78,15 @@ export interface InBodyCardProps {
    * timeline draws the trends, and the card keeps the numbers and the scans.
    */
   showTrends?: boolean;
+  /**
+   * When she is due a scan, and where her own number is set (FileMaker
+   * parity, Oct 1 2026): `InBodyDuePanel`, drawn first on the card by a host
+   * that holds the record form (Body & Pulse).
+   */
+  due?: ReactNode;
 }
 
-export function InBodyCard({ client, authTrainer, inbody, showTrends = true }: InBodyCardProps) {
+export function InBodyCard({ client, authTrainer, inbody, showTrends = true, due }: InBodyCardProps) {
   const today = studioTodayKey();
   // What counts as a change: the client's HOME studio's numbers, wherever
   // the profile is opened (variation.ts).
@@ -115,6 +121,7 @@ export function InBodyCard({ client, authTrainer, inbody, showTrends = true }: I
         ) : null
       }
     >
+      {due}
       {error ? (
         <p className="ib-quiet">{error}</p>
       ) : loading ? (

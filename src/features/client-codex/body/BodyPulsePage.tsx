@@ -54,6 +54,9 @@ import { InBodyCard } from "../../inbody/InBodyCard";
 import type { InBodyScansState } from "../../inbody/useInBodyScans";
 import { useInBodyVariation } from "../../inbody/useInBodyVariation";
 import { hasOwnVariation, variationStudioIdOf } from "../../inbody/variation";
+import { completedSessionDays, inbodyDue } from "../../inbody/due";
+import { InBodyDuePanel } from "../../inbody/InBodyDuePanel";
+import { useStudioSettings } from "../../studio-settings";
 import { useSetupModel } from "../../machine-fit/ui/useSetupModel";
 import { EMPTY_DRAFTS } from "../../machine-fit/ui/setup-draft";
 import { readStoredSpec } from "../../machine-fit/ui/stored-spec";
@@ -150,6 +153,27 @@ export function BodyPulsePage({
   const { activeStudio, studios } = useActiveStudio();
 
   const facts = useMemo(() => buildFacts({ client, formData, pronouns: p, now }), [client, formData, p, now]);
+
+  /* ---- when she is due an InBody (FileMaker parity, Oct 1 2026) ----------
+     Her HOME studio's number (the setting), else her own from the form. The
+     sessions are the page of them the journal already streams, so a full
+     page makes the count a floor ("at least"), never a guess. */
+  const studioSettings = useStudioSettings(variationStudioIdOf(client));
+  const studioEvery = Number(studioSettings.value("inbodyEverySessions"));
+  const due = useMemo(() => {
+    const sessions = journal.recentSessions ?? [];
+    const scans = inbody.scans;
+    const latest = scans.length ? scans[scans.length - 1].testedAt : (client.inbodySummary?.latestTestedAt ?? null);
+    return inbodyDue({
+      latestScanDay: latest,
+      sessionDays: completedSessionDays(sessions),
+      listComplete: journal.loadState?.sessions === "ready" && sessions.length < SESSION_SUMMARY_LIMIT,
+      coverage,
+      studioEvery,
+      clientEvery: formData.inbodyEvery,
+      sessionsRead: journal.loadState?.sessions === "ready",
+    });
+  }, [journal.recentSessions, journal.loadState?.sessions, inbody.scans, client.inbodySummary, coverage, studioEvery, formData.inbodyEvery]);
 
   /* ---- notes: one selection each, from the journal the tab loaded -------- */
   const threads = journal.threads;
@@ -434,7 +458,24 @@ export function BodyPulsePage({
         {/* InBody scans save on their own, not through the Save bar. Over
             time draws the trends, so the card shows none. */}
         <Card host id="body-inbody">
-          <InBodyCard client={client} authTrainer={authTrainer} inbody={inbody} showTrends={false} />
+          <InBodyCard
+            client={client}
+            authTrainer={authTrainer}
+            inbody={inbody}
+            showTrends={false}
+            due={
+              <InBodyDuePanel
+                due={due}
+                possessive={p.possessive}
+                studioEvery={studioEvery}
+                canEdit={canEdit}
+                value={formData.inbodyEvery}
+                onChange={(next) => updateField("inbodyEvery", next)}
+                dirty={isDirty("inbodyEvery")}
+                revision={revision}
+              />
+            }
+          />
         </Card>
       </div>
     </Page>

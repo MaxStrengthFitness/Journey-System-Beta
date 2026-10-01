@@ -636,6 +636,19 @@
 }
 .br__marker--medical, .br__marker--away { border-color: var(--br-critical-border); background: var(--br-critical-fill); color: var(--br-critical); }
 .br__marker--birthday, .br__marker--milestone { border-color: var(--br-hero, var(--br-border)); }
+/* Due an InBody (FileMaker parity, Oct 1 2026): one quiet sentence, the
+   muted ink, never a button and never a block on Start. */
+.br__inbody {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--br-ink-2);
+}
+.br__inbody svg { flex: none; margin-top: 2px; color: var(--br-ink-muted); }
 .br__focus--line { padding-top: 8px; padding-bottom: 8px; gap: 2px; }
 .br__focus--line .br__quote { margin-top: 2px; font-size: 13px; }
 

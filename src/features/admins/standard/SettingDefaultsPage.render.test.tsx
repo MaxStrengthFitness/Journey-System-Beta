@@ -147,7 +147,10 @@ describe("Studio defaults", () => {
       "Relay",
       "Where a client is (Operations → Clients → Journey)",
       "The machines' care (Relay's Floor Map)",
+      // FileMaker parity, Oct 1 2026: when an InBody scan is due.
+      "InBody scans (the briefing and the InBody card)",
     ]);
+    expect(rowOf(el, "inbodyEverySessions")!.textContent).toContain("The app's default is 50.");
     expect(box(el, "quietFloorSessions")!.value).toBe("3");
     expect(box(el, "lapsedDays")!.value).toBe("60");
     expect(box(el, "driftMinDays")!.value).toBe("");

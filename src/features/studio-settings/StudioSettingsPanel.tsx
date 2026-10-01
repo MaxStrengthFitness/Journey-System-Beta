@@ -6,7 +6,7 @@ import { useToast } from "../../contexts/ToastContext";
 import type { Studio } from "../../types";
 import { AdminField, AdminGrid, AdminInput, AdminNotice, AdminPanel, AdminSelect, SaveBar } from "../admin/primitives";
 import { useDirtyForm } from "../admin/useDirtyForm";
-import { GROUP_LABEL, SETTINGS, WEEKDAY_NAMES, type SettingDef, type SettingKey } from "./registry";
+import { GROUP_LABEL, GROUP_ORDER, SETTINGS, WEEKDAY_NAMES, type SettingDef, type SettingKey } from "./registry";
 import { SOURCE_PHRASE, formatSetting, parseSetting, resolveAll, resolveSetting, usable, type SettingValue } from "./resolve";
 import { saveStudioSettings, type SettingsPatch } from "./store";
 import { useStudioSettings } from "./useStudioSettings";
@@ -90,7 +90,7 @@ export function StudioSettingsPanel({ studioId, studio, canEdit }: StudioSetting
     { label: `${studio.name}'s settings` },
   );
 
-  const groups = (["relay", "journey", "care"] as const).map((g) => ({ g, defs: SETTINGS.filter((d) => d.group === g) }));
+  const groups = GROUP_ORDER.map((g) => ({ g, defs: SETTINGS.filter((d) => d.group === g) }));
   const saveDisabled = settings.failed;
 
   return (

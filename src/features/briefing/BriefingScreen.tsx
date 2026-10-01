@@ -62,6 +62,7 @@ import {
   Info,
   Lightbulb,
   Play,
+  Scale,
   Target,
   X,
 } from "lucide-react";
@@ -110,6 +111,10 @@ import { studioTodayKey } from "../../lib/studio-time";
 import { auth } from "../../firebase";
 import { Dial, READINESS_KEYS, READINESS_SCALES, compactReadiness, type Readiness } from "../rating";
 import { carriedRegions, lastRunLabel, lastRunOfRoutine } from "./briefing-facts";
+import { completedSessionDays, inbodyDue, inbodyDueLine } from "../inbody/due";
+import { variationStudioIdOf } from "../inbody/variation";
+import { useStudioSettings } from "../studio-settings";
+import { pronounsOf } from "../client-codex/kit/pronouns";
 import "./briefing.css";
 
 import { clientDisplayName } from "../../lib/client-name";
@@ -144,6 +149,12 @@ export interface BriefingScreenProps {
    * say when THAT routine last ran. Reporting round, Sep 2026.
    */
   sessions?: WorkoutSession[];
+  /**
+   * `sessions` is every Completed session Journey has for her, not a page of
+   * them (the Active Session streams them all). Without it the InBody count
+   * is read as a floor ("at least").
+   */
+  sessionsAreAll?: boolean;
   logs?: ExerciseLog[];
   isIntroSession?: boolean;
   rightControls?: React.ReactNode;
@@ -163,6 +174,7 @@ export function BriefingScreen({
   routines,
   trainers = [],
   sessions = [],
+  sessionsAreAll = false,
   logs = [],
   isIntroSession = false,
   rightControls,
@@ -448,12 +460,34 @@ export function BriefingScreen({
     () => hubMarkers({ client, sessionNumber: (client.sessionCount || 0) + 1, coverage }),
     [client, coverage],
   );
+  /* Due an InBody (FileMaker parity, Oct 1 2026): one quiet line, only when
+     she is due, and never in the way of Start. Her HOME studio's number,
+     else her own (features/inbody/due.ts). */
+  const studioSettings = useStudioSettings(variationStudioIdOf(client));
+  const studioEvery = Number(studioSettings.value("inbodyEverySessions"));
+  const inbodyLine = useMemo(
+    () =>
+      inbodyDueLine(
+        inbodyDue({
+          latestScanDay: client.inbodySummary?.latestTestedAt ?? null,
+          sessionDays: completedSessionDays(sessions),
+          listComplete: sessionsAreAll,
+          coverage,
+          studioEvery,
+          clientEvery: client.inbodyEvery,
+        }),
+        pronounsOf(client).possessive,
+      ),
+    [client, sessions, sessionsAreAll, coverage, studioEvery],
+  );
+
   const beforeCount =
     clientFlags.length +
     notes.critical.length +
     notes.headsUp.length +
     carried.length +
     markers.length +
+    (inbodyLine ? 1 : 0) +
     activeJournalFocuses.length;
   const hasBefore = beforeCount > 0 || renewalPromptDue(client.renewal);
 
@@ -692,6 +726,15 @@ export function BriefingScreen({
                     </span>
                   ))}
                 </div>
+              )}
+
+              {/* Due an InBody (FileMaker parity, Oct 1 2026). Information,
+                  not a gate: Start is never held back by it. */}
+              {inbodyLine && (
+                <p className="br__inbody" data-testid="briefing-inbody">
+                  <Scale className="w-3.5 h-3.5" aria-hidden />
+                  <span>{inbodyLine}</span>
+                </p>
               )}
 
               {/* Renewals round (Sep 2026): only when there's something to know. */}
