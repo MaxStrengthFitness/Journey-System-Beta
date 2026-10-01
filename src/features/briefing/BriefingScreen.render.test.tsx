@@ -496,6 +496,8 @@ describe("the briefing's renewal line follows the auto-renewal mark", () => {
     expect(before(host).textContent).not.toContain("auto-renews");
     // No charge is coming, so nothing flags "Before you start".
     expect(before(host).textContent).toContain("Nothing flagged — clear to go.");
+  });
+});
 
 /* ---------------------------------------------------------------- */
 
