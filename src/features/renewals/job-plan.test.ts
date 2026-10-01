@@ -6,6 +6,7 @@ import {
   pullRank,
   sessionsLoggedSince,
   studioIsLive,
+  sweepsPast,
   unmatchedNames,
 } from "./job-plan";
 import { buildPackageNameIndex, DEFAULT_RENEWAL_SETTINGS } from "./settings";
@@ -79,6 +80,18 @@ describe("pullRank - packages when a sale happens (the cost plan, Part C)", () =
     expect(pullRank({ client: fresh, current: snap({ lastVisitDate: "2026-09-10" }), today: TODAY })).toBeNull();
   });
 
+  it("leaves an Inactive client out of the monthly sweep, however sticky her last visit (Oct 1 2026)", () => {
+    const client = { ...base, mindbodyServicesSyncedAt: "2025-01-01" } as Client;
+    // Her last visit is carried forward night after night: without Inactive she is pulled every month for ever.
+    const gone = snap({ lastVisitDate: "2025-06-01" });
+    expect(pullRank({ client, current: gone, today: TODAY })).toBe(3);
+    expect(pullRank({ client, current: gone, today: TODAY, inactive: true })).toBeNull();
+    expect(pullRank({ client: base, current: gone, today: TODAY, inactive: true })).toBeNull();
+    // A sale event still wakes her.
+    const sold = { ...client, mindbodyCommercialChangedAt: "2026-09-10T15:00:00.000Z" } as Client;
+    expect(pullRank({ client: sold, current: gone, today: TODAY, inactive: true })).toBe(0);
+  });
+
   it("asks Mindbody only about ids it can know", () => {
     expect(mindbodyIdOf({ ...base, id: "100001" })).toBe("100001");
     expect(mindbodyIdOf({ ...base, id: "Xk3pQ9aB2cD4eF6gH8iJ" })).toBeNull();
@@ -98,6 +111,27 @@ describe("pullRank - packages when a sale happens (the cost plan, Part C)", () =
       "2026-12-20",
       "2026-09-12",
     ]);
+  });
+});
+
+describe("sweepsPast - who the Journey calls Inactive tonight (the inactive round, Oct 1 2026)", () => {
+  const quiet = snap({ lastVisitDate: "2026-05-01" });
+  it("passes by a client last night called Inactive by herself, or a leader's mark that still holds", () => {
+    expect(sweepsPast({ stored: { state: "inactive", inactiveKind: "automatic" }, mark: null, current: quiet })).toBe(true);
+    expect(sweepsPast({ stored: { state: "inactive" }, mark: null, current: quiet })).toBe(true);
+    expect(sweepsPast({ stored: null, mark: { day: "2026-06-01" }, current: quiet })).toBe(true);
+    expect(sweepsPast({ stored: { state: "lapsed" }, mark: null, current: quiet })).toBe(false);
+    expect(sweepsPast({ stored: null, mark: null, current: quiet })).toBe(false);
+  });
+
+  it("never passes by a client with a booking ahead: a new booking makes her active again", () => {
+    const booked = snap({ lastVisitDate: "2026-05-01", nextBookingDate: "2026-09-14" });
+    expect(sweepsPast({ stored: { state: "inactive", inactiveKind: "automatic" }, mark: { day: "2026-06-01" }, current: booked })).toBe(false);
+  });
+
+  it("lets a mark go once she has visited since, and a manual state whose mark was taken back", () => {
+    expect(sweepsPast({ stored: null, mark: { day: "2026-04-01" }, current: quiet })).toBe(false);
+    expect(sweepsPast({ stored: { state: "inactive", inactiveKind: "manual" }, mark: null, current: quiet })).toBe(false);
   });
 });
 

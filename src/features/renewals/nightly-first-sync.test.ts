@@ -219,6 +219,41 @@ describe("the nightly job's sync on first booking", () => {
     expect(mb.commercial.mock.calls.map((c) => c[1])).toEqual(["100000003"]);
   });
 
+  it("leaves an Inactive client out of the monthly sweep, and a new booking brings her back (Oct 1 2026)", async () => {
+    // Fay last trained in March; her snapshot carries that visit forward night after night,
+    // and her packages were last read in August: without Inactive, a month-stale pull every month for ever.
+    const fay = {
+      firstName: "Fay",
+      lastName: "Oak",
+      mindbodyClientId: "100000006",
+      homeStudioId: "solon",
+      mindbodyMasterSyncedAt: "2026-03-01T10:00:00.000Z",
+      mindbodyServicesSyncedAt: at("2026-08-01T10:00:00Z"),
+      renewal: { lastVisitDate: "2026-03-01" },
+    };
+    const pulledFay = async (extra: Record<string, Record<string, Record<string, unknown>>>, booked = false) => {
+      mb.commercial.mockClear();
+      const { db, store } = world();
+      store.clients["100000006"] = { ...fay };
+      if (booked) store.schedules.b6 = { clientId: "100000006", studioId: "solon", startTime: at("2026-11-12T14:00:00Z"), status: "Scheduled" };
+      Object.assign(store, extra);
+      const lines: string[] = [];
+      await runRenewals({ db, now: NOW, log: (l) => lines.push(l) });
+      return { pulled: mb.commercial.mock.calls.map((c) => c[1]).includes("100000006"), lines: lines.join("\n") };
+    };
+    // Nothing says she is Inactive: the old sweep.
+    expect((await pulledFay({})).pulled).toBe(true);
+    // Last night's state: Inactive by herself.
+    const auto = await pulledFay({ "studios/solon/clientStates": { "100000006": { state: "inactive", inactiveKind: "automatic" } } });
+    expect(auto.pulled).toBe(false);
+    expect(auto.lines).toContain("1 inactive, left out of the monthly sweep");
+    // A leader's mark.
+    const mark = { clientId: "100000006", reason: "moved", day: "2026-10-15", markedBy: { id: "uid-l", name: "Leader" }, markedAt: at("2026-10-15T14:00:00Z") };
+    expect((await pulledFay({ "studios/solon/inactiveMarks": { "100000006": mark } })).pulled).toBe(false);
+    // She books again: active, and swept as before.
+    expect((await pulledFay({ "studios/solon/inactiveMarks": { "100000006": mark } }, true)).pulled).toBe(true);
+  });
+
   it("counts a client Mindbody does not know as a failure and writes nothing for them", async () => {
     mb.master.mockImplementation(async (_s: string, id: string) =>
       id === "100000002"
