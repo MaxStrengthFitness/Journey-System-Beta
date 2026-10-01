@@ -107,6 +107,12 @@ export interface HubCardProps {
    * "Not synced yet" would be a claim about a list Journey never read.
    */
   rosterFailed?: boolean;
+  /**
+   * In the Unassigned column (hub fixes, Oct 1 2026): the staff name Mindbody
+   * gave, which Journey couldn't match to a trainer ("Westlake Rotation",
+   * "Samuel Lee"). Said whole, on its own line. Absent elsewhere.
+   */
+  staffName?: string | null;
   /** The day summary's spotlight is on and this card doesn't match it. */
   dimmed?: boolean;
   /**
@@ -133,6 +139,7 @@ export function HubCard({
   now = new Date(),
   rosterLoading = false,
   rosterFailed = false,
+  staffName = null,
   dimmed = false,
   wordy = false,
   open = false,
@@ -242,6 +249,11 @@ export function HubCard({
           </span>
         )}
       </div>
+      {staffName && (
+        <span className="hs-card-staff" title="Mindbody's staff name; no Journey trainer matches it">
+          {`Booked with ${staffName}`}
+        </span>
+      )}
 
       <div className="hs-card-meta">
         <span className="hs-card-when">

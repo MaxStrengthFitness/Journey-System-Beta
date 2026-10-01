@@ -26,6 +26,8 @@ import { useHubCriticalNotes } from "../hooks/useHubCriticalNotes";
 // the whole Studio Hub UI in with it and defeat AppContent's lazy import.
 import { useStudioTasks } from "../features/studio-tasks/useStudioTasks";
 import { dayTitle, pickDay, shownDay, stripFrom } from "../features/hub-schedule/hub-day";
+import { UNASSIGNED_ID, planColumns, staffLabel } from "../features/hub-schedule/columns";
+import { staffIdsAt } from "../features/standing-week/check";
 import type { DayReadState } from "../lib/schedule-window";
 import {
   zonedHM,
@@ -143,7 +145,7 @@ export function ClientsView({
    * (homeCutoverOf) - a client cross-training here is judged by when her own
    * studio moved onto Journey, not this one.
    */
-  cutoverStudios?: ReadonlyArray<{ id?: string; journeyCutoverDate?: string | null }>;
+  cutoverStudios?: ReadonlyArray<{ id?: string; journeyCutoverDate?: string | null; mindbodySiteId?: string | number | null }>;
 }) {
   // The card's Past sessions button hands off to the profile only once the
   // move is agreed (see there).
@@ -311,50 +313,13 @@ export function ClientsView({
 
   const now = new Date();
 
-  const isSelfTrainer = (t: { id?: string; fullName?: string }): boolean => {
-    if (!authTrainer) return false;
-    if (t.id && authTrainer.id && String(t.id) === String(authTrainer.id))
-      return true;
-    const a = (t.fullName || "").trim().toLowerCase();
-    const b = (authTrainer.fullName || "").trim().toLowerCase();
-    return !!a && a === b;
-  };
-
   /**
-   * Structural, not `Trainer`: the visible list mixes real trainer documents
-   * with the lightweight stand-ins built for names that appear on the
-   * schedule but have no roster row. Both carry an id and a name, which is
-   * all this reads.
+   * Your own column: by your trainer id only (hub fixes, Oct 1 2026). It
+   * used to fall back to the full name, so a colleague with your name could
+   * take "You".
    */
-  const isTrainerMatch = (
-    s: any,
-    trainer: { id?: string; fullName?: string },
-  ): boolean => {
-    if (!s || !trainer) return false;
-    const sId = s.trainerId || s.staffId || s.StaffId;
-    if (sId && trainer.id && String(sId) === String(trainer.id)) return true;
-
-    const sName = (s.trainerName || s.staffName || s.StaffFirstName || "")
-      .trim()
-      .toLowerCase();
-    const tFull = (trainer.fullName || "").trim().toLowerCase();
-    const tFirst = ((trainer as any).firstName || trainer.fullName || "")
-      .split(" ")[0]
-      .trim()
-      .toLowerCase();
-
-    if (!sName || !tFull) return false;
-    if (sName === tFull) return true;
-    if (tFirst.length >= 2 && sName === tFirst) return true;
-    if (
-      sName.length >= 3 &&
-      tFull.length >= 3 &&
-      (sName.includes(tFull) || tFull.includes(sName))
-    ) {
-      return true;
-    }
-    return false;
-  };
+  const isSelfTrainer = (t: { id?: string }): boolean =>
+    !!authTrainer?.id && !!t.id && String(t.id) === String(authTrainer.id);
 
   /** Minutes since the studio's midnight: where a booking sits on the grid. */
   const studioMinutes = (date: Date): number => {
@@ -536,88 +501,40 @@ export function ClientsView({
     return { next, last };
   };
 
-  const visibleTrainersList = React.useMemo(() => {
-    const activeTrainers = sortedTrainers.filter((t) => {
-      if (t.isVisibleOnCalendar === false) return false;
-
-      const isAssigned =
-        !activeStudioId ||
-        t.primaryHomeStudioId === activeStudioId ||
-        t.accessibleStudioIds?.includes(activeStudioId) ||
-        t.activeGuestStudioIds?.includes(activeStudioId);
-      if (isAssigned) return true;
-
-      const hasSessionToday = todaysSchedules.some(
-        (s) =>
-          (!activeStudioId || !s.studioId || s.studioId === activeStudioId) &&
-          s.trainerName &&
-          t.fullName &&
-          s.trainerName.toLowerCase() === t.fullName.toLowerCase(),
-      );
-      return hasSessionToday;
-    });
-
-    const missingTrainerNames = new Set<string>();
-    todaysSchedules.forEach((s) => {
-      if (activeStudioId && s.studioId && s.studioId !== activeStudioId) return;
-      if (
-        s.trainerName &&
-        !s.trainerName.toLowerCase().includes("select") &&
-        !s.trainerName.toLowerCase().includes("unavailab") &&
-        !activeTrainers.some(
-          (t) =>
-            t.fullName &&
-            t.fullName.toLowerCase() === s.trainerName.toLowerCase(),
-        )
-      ) {
-        missingTrainerNames.add(s.trainerName);
-      }
-    });
-
-    const extraTrainers = Array.from(missingTrainerNames).map((name) => ({
-      id: `virtual-${name}`,
-      fullName: name,
-      firstName: name.split(" ")[0],
-      lastName: name.split(" ").slice(1).join(" "),
-      role: "Trainer" as const,
-      color: "#0EA5E9",
-      initials: name.substring(0, 2).toUpperCase(),
-    }));
-
-    const combined = [...activeTrainers, ...extraTrainers];
-
-    const withSessions = combined.filter((t) =>
-      todaysSchedules.some(
-        (s) =>
-          (!activeStudioId || !s.studioId || s.studioId === activeStudioId) &&
-          s.trainerName &&
-          t.fullName &&
-          s.trainerName.toLowerCase() === t.fullName.toLowerCase() &&
-          !s.clientName?.toLowerCase().includes("unavailab"),
-      ),
-    );
-    const list = withSessions.length > 0 ? withSessions : activeTrainers;
-
-    // Dynamic pinning: whoever is logged in reads their own column first.
-    const meIdx = list.findIndex((t) => isSelfTrainer(t));
-    if (meIdx > 0) {
-      const me = list[meIdx];
-      return [me, ...list.filter((_, i) => i !== meIdx)];
-    }
-    return list;
-  }, [sortedTrainers, activeStudioId, todaysSchedules, authTrainer]);
+  /*
+   * THE COLUMNS (hub fixes, Oct 1 2026; features/hub-schedule/columns.ts).
+   * A booking finds its column by the trainer id, or by the Mindbody staff
+   * id at this studio's site — never by a name, so two Chrises never swap.
+   * A booking with no trainer the Hub knows (a blank or placeholder staff
+   * name, the studio rotation, a staff member Journey couldn't link) goes in
+   * Unassigned, the last column: nothing counted is ever drawn nowhere.
+   */
+  const siteId = (cutoverStudios ?? []).find((s) => s.id === activeStudioId)?.mindbodySiteId ?? null;
+  const staffIds = React.useMemo(() => staffIdsAt(sortedTrainers as any, siteId), [sortedTrainers, siteId]);
+  const columnPlan = React.useMemo(
+    () =>
+      planColumns({
+        trainers: sortedTrainers,
+        bookings: todaysSchedules,
+        studioId: activeStudioId || null,
+        staffIds,
+        selfId: authTrainer?.id ?? null,
+      }),
+    [sortedTrainers, todaysSchedules, activeStudioId, staffIds, authTrainer?.id],
+  );
+  const visibleTrainersList = columnPlan.trainers;
 
   /*
    * THE GRID (calm Hub round, Sep 28 2026): features/hub-schedule/HubGrid.
-   * Each booking goes in ONE column, the first trainer it matches (you are
-   * first), at its own start and end in studio minutes: real lengths, so a
-   * 45-minute consult is drawn as 45 minutes.
+   * Each booking goes in ONE column (above), at its own start and end in
+   * studio minutes: real lengths, so a 45-minute consult is drawn as 45
+   * minutes.
    */
   const gridDayKey = selectedKey;
   const gridBlocks: GridBlock[] = [];
   todaysSchedules.forEach((s, i) => {
-    const column = visibleTrainersList.find((t) => isTrainerMatch(s, t));
-    if (!column) return;
+    const columnId = columnPlan.columnOf[i];
+    if (columnId === null) return;
     const start = safeToDate(s.startTime || s.StartDateTime || s.date);
     if (!start) return;
     const end = safeToDate(s.endTime || s.EndDateTime);
@@ -625,8 +542,8 @@ export function ClientsView({
     let to = end ? studioMinutes(end) : from + 30;
     if (to <= from) to = from + 30;
     gridBlocks.push({
-      key: String(s.id || s.mindbodyAppointmentId || `${column.id}-${from}-${i}`),
-      columnId: String(column.id),
+      key: String(s.id || s.mindbodyAppointmentId || `${columnId}-${from}-${i}`),
+      columnId,
       span: { from, to },
       booking: s,
     });
@@ -642,20 +559,33 @@ export function ClientsView({
   const myColumn = visibleTrainersList.find((t) => isSelfTrainer(t));
   const myColumnId = myColumn ? String(myColumn.id) : null;
   const focusId = focusColumnId(focus, myColumnId);
-  const gridColumns: GridColumn[] = visibleTrainersList.map((t) => {
-    const nickname = ((t as any).nickname || "").trim();
+  // The name they go by, whole (research-hub §6.0), never cut; the full name
+  // when two columns would otherwise read alike (two Chrises, Oct 1 2026).
+  const shortName = (t: Trainer) => ((t as any).nickname || "").trim() || (t.fullName || "").trim().split(" ")[0] || "Trainer";
+  const shortNames = visibleTrainersList.map(shortName);
+  const gridColumns: GridColumn[] = visibleTrainersList.map((t, i) => {
     const id = String(t.id);
     const own = gridBlocks.filter((b) => b.columnId === id && !isStaffBlock(b.booking as any));
+    const alike = shortNames.filter((n) => n.toLowerCase() === shortNames[i].toLowerCase()).length > 1;
     return {
       id,
-      // The name they go by, whole (research-hub §6.0), never cut.
-      name: nickname || (t.fullName || "").trim().split(" ")[0] || "Trainer",
+      name: alike ? (t.fullName || "").trim() || shortNames[i] : shortNames[i],
       initials: ((t as any).initials || t.fullName || "??").substring(0, 2).toUpperCase(),
       isMe: isSelfTrainer(t),
       count: own.length,
       detail: id === focusId ? yourDay({ spans: own.map((b) => b.span), nowMin: gridNowMin }) : null,
     };
   });
+  if (columnPlan.unassigned > 0) {
+    gridColumns.push({
+      id: UNASSIGNED_ID,
+      name: "Unassigned",
+      initials: "?",
+      isMe: false,
+      count: gridBlocks.filter((b) => b.columnId === UNASSIGNED_ID && !isStaffBlock(b.booking as any)).length,
+      detail: null,
+    });
+  }
 
   /*
    * Who's on (AJ's Mindbody screenshots, Keep: "who's working, at a
@@ -698,6 +628,7 @@ export function ClientsView({
         wordy={focusId !== null && block.columnId === focusId}
         rosterLoading={rosterLoading}
         rosterFailed={rosterFailed}
+        staffName={block.columnId === UNASSIGNED_ID ? staffLabel(session.trainerName) : null}
         workoutSession={workoutSession}
         logged={logged}
         noShows={bookingMarks.marks}
@@ -799,7 +730,7 @@ export function ClientsView({
           when,
           time: cardTime(safeToDate(session.startTime || session.StartDateTime || session.date), null),
           name: clientObj ? clientDisplayName(clientObj, session.clientName || "Client") : String(session.clientName || "Reservation").trim(),
-          withText: mine ? "with you" : column ? `with ${column.name}` : null,
+          withText: mine ? "with you" : block.columnId === UNASSIGNED_ID ? (staffLabel(session.trainerName) ? `with ${staffLabel(session.trainerName)}` : null) : column ? `with ${column.name}` : null,
           critical: marks.critical,
           glyphs: marks.glyphs,
           more: marks.more,
@@ -850,7 +781,7 @@ export function ClientsView({
                 title={dayTitle(selectedKey)}
                 sessions={preBookedCount}
                 bookings={bookingsRead}
-                trainers={gridColumns.filter((c) => c.count > 0).length}
+                trainers={gridColumns.filter((c) => c.count > 0 && c.id !== UNASSIGNED_ID).length}
                 chips={chips}
                 spot={activeSpot}
                 spotText={activeSpot ? spotWords(dayMoments.entries, activeSpot) : ""}

@@ -368,6 +368,52 @@ describe("the Hub: the day rolls over", () => {
 });
 
 /* ------------------------------------------------------------------ *
+ * THE COLUMNS (hub fixes, Oct 1 2026): by trainer id only, and an
+ * Unassigned column so nothing counted is drawn nowhere.
+ * ------------------------------------------------------------------ */
+
+describe("the Hub: columns by trainer id", () => {
+  const CHRIS_A = trainer("t-chris-a", "Chris Took");
+  const CHRIS_B = trainer("t-chris-b", "Chris Brandybuck");
+
+  it("never swaps two Chrises: each booking goes to its own trainer id, and both names are whole", () => {
+    const schedules = [
+      { ...book(CHRIS_A, "hamfast", "09:00"), trainerName: "Chris" },
+      { ...book(CHRIS_B, "laura", "09:00"), trainerName: "Chris" },
+    ];
+    const { el } = mount(IO, { schedules, sortedTrainers: [CHRIS_B, CHRIS_A, IO], trainers: [CHRIS_B, CHRIS_A, IO] });
+    const heads = [...el.querySelectorAll(".hs-colhead strong")].map((h) => h.textContent);
+    expect(heads).toEqual(["Chris Brandybuck", "Chris Took"]);
+    const cols = [...el.querySelectorAll<HTMLElement>(".hs-col")];
+    expect(cols[0].textContent).toContain("Laura Grubb");
+    expect(cols[1].textContent).toContain("Hamfast Gamgee");
+  });
+
+  it("puts a booking with a blank or placeholder trainer in Unassigned, counted and drawn", () => {
+    const schedules = [
+      ...SCHEDULES,
+      { ...book(IO, "laura", "13:00"), trainerId: null, trainerName: "" },
+      { ...book(IO, "hamfast", "14:00"), trainerId: null, trainerName: "Samuel Lee" },
+      { ...book(IO, "belladonna", "15:00"), trainerId: null, trainerName: "Select a staff member" },
+    ];
+    const { el } = mount(IO, { schedules });
+    const heads = [...el.querySelectorAll(".hs-colhead strong")].map((h) => h.textContent);
+    expect(heads[heads.length - 1]).toBe("Unassigned");
+    const unassigned = [...el.querySelectorAll<HTMLElement>(".hs-col")].pop()!;
+    expect(unassigned.querySelectorAll(".hs-card")).toHaveLength(3);
+    expect([...unassigned.querySelectorAll(".hs-card-staff")].map((s) => s.textContent)).toEqual(["Booked with Samuel Lee"]);
+    // Counted once each in the day, and the column says how many.
+    expect(el.querySelector(".hd-sum-words")?.textContent).toContain("8 sessions");
+    expect([...el.querySelectorAll(".hs-colhead")].pop()?.querySelector(".hs-colcount")?.textContent).toBe("3 sessions");
+  });
+
+  it("has no Unassigned column when every booking has its trainer", () => {
+    const { el } = mount();
+    expect([...el.querySelectorAll(".hs-colhead strong")].map((h) => h.textContent)).not.toContain("Unassigned");
+  });
+});
+
+/* ------------------------------------------------------------------ *
  * A FAILED READ IS UNKNOWN (hub fixes, Oct 1 2026): never a quiet day,
  * never "Not synced yet" on every card.
  * ------------------------------------------------------------------ */

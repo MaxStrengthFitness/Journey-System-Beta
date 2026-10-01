@@ -256,6 +256,11 @@ const STATES: ReadonlyArray<{ state: string; name: string; means: string }> = [
   { state: "in-session", name: "In session", means: "A Journey session is open for her." },
   { state: "done", name: "Done or not logged", means: "It steps back and goes quiet. “Not logged” says nobody pressed End Session." },
   { state: "unlinked", name: "Not synced yet", means: "No Max Strength profile yet; the next Mindbody sync links it." },
+  {
+    state: "unlinked",
+    name: "Unassigned",
+    means: "The last column: a booking with no trainer Journey can match by id (the studio rotation, a blank, or a Mindbody staff member not linked to a trainer). Its card says Mindbody’s name. Never matched by a name.",
+  },
   { state: "staff", name: "Not a session", means: "Mindbody’s “Unavailable”: lunch, a one-on-one. Never counted." },
   { state: "off", name: "Not working", means: "Outside the trainer’s agreed week, or a day away. Nothing is shaded without an agreed week." },
 ];
@@ -298,7 +303,7 @@ export function KeySheet({ open, onClose }: { open: boolean; onClose: () => void
         <h3 className="hd-key-h">On the grid</h3>
         <ul className="hd-key-list">
           {STATES.map((row) => (
-            <li key={row.state}>
+            <li key={row.name}>
               <span className="hd-swatch" data-state={row.state} aria-hidden />
               <span>
                 <strong>{row.name}.</strong> {row.means}
