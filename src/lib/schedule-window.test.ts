@@ -9,6 +9,8 @@ import {
   mergeSchedules,
   msUntilNextStudioDay,
   rangeToFetch,
+  dayReadState,
+  retryDelayMs,
 } from "./schedule-window";
 import type { ScheduleEntry } from "../types";
 
@@ -228,5 +230,22 @@ describe("constants", () => {
   it("keeps the roster's week and an hour's freshness (the cost plan, Sep 26 2026)", () => {
     expect(WEEK_AHEAD_DAYS).toBe(8);
     expect(SCHEDULE_STALE_MS).toBe(60 * 60 * 1000);
+  });
+});
+
+describe("dayReadState (hub fixes, Oct 1 2026): a failed read is unknown, never a quiet day", () => {
+  const liveKeys = ["2026-09-14", "2026-09-15", "2026-09-16"];
+  const covered = new Map([["2026-09-18", 1]]);
+  it("reads the live days from the listener", () => {
+    expect(dayReadState("2026-09-15", { liveKeys, liveState: "failed", failed: new Map(), covered })).toBe("failed");
+    expect(dayReadState("2026-09-15", { liveKeys, liveState: "ready", failed: new Map([["2026-09-15", 1]]), covered })).toBe("ready");
+  });
+  it("calls a fetched day failed while its last read failed, else ready once covered", () => {
+    expect(dayReadState("2026-09-18", { liveKeys, liveState: "ready", failed: new Map([["2026-09-18", 2]]), covered })).toBe("failed");
+    expect(dayReadState("2026-09-18", { liveKeys, liveState: "ready", failed: new Map(), covered })).toBe("ready");
+    expect(dayReadState("2026-09-20", { liveKeys, liveState: "ready", failed: new Map(), covered })).toBe("loading");
+  });
+  it("opens a failed listener again on the roster's rhythm", () => {
+    expect([0, 1, 2, 3, 4, 9].map(retryDelayMs)).toEqual([15_000, 30_000, 60_000, 120_000, 240_000, 300_000]);
   });
 });

@@ -316,6 +316,49 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ---- a read that failed (hub fixes, Oct 1 2026) ----
+   In place, above the grid: what happened, that it is trying again, and a
+   40px Try again. Plum is the app's caution; crimson stays the triangle's. */
+.hs-notice {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--eq-border);
+  background: var(--eq-warn-fill);
+  color: var(--eq-ink);
+}
+
+.hs-notice-words {
+  flex: 1 1 240px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.hs-notice-btn {
+  flex: none;
+  min-height: 40px;
+  min-width: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 10px;
+  background: var(--eq-surface);
+  color: var(--eq-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.hs-notice-btn:focus-visible {
+  outline: 3px solid var(--eq-focus-ring);
+  outline-offset: 1px;
+}
+
 .hs-empty {
   position: absolute;
   top: 24px;

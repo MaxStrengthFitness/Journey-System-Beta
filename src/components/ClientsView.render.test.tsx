@@ -184,7 +184,7 @@ const SCHEDULES = [
 ];
 const SESSIONS = [{ id: "s-hamfast", clientId: "hamfast", status: "In-Progress", hostedAtStudioId: "westlake", startTime: at("09:01"), date: at("09:01").toISOString(), createdAt: at("09:01") }] as any[];
 
-function mount(viewer: any = IO) {
+function mount(viewer: any = IO, extra: Record<string, unknown> = {}) {
   const calls = { selected: [] as string[], views: [] as string[] };
   host = document.createElement("div");
   document.body.appendChild(host);
@@ -206,6 +206,7 @@ function mount(viewer: any = IO) {
         searchTerm=""
         onSearchTermChange={() => {}}
         cutoverStudios={[{ id: "westlake", journeyCutoverDate: "2026-09-01" }]}
+        {...extra}
       />,
     );
   });
@@ -363,6 +364,58 @@ describe("the Hub: the day rolls over", () => {
     vi.setSystemTime(new Date("2026-09-29T06:10:00-04:00"));
     wake();
     expect(selected(el)).toBe("Wed 30");
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * A FAILED READ IS UNKNOWN (hub fixes, Oct 1 2026): never a quiet day,
+ * never "Not synced yet" on every card.
+ * ------------------------------------------------------------------ */
+
+describe("the Hub: a read that failed", () => {
+  it("says the bookings couldn't be loaded, in place, with Try again; never 'Nobody is booked'", () => {
+    const retries: number[] = [];
+    const { el } = mount(IO, {
+      schedules: [],
+      scheduleDayState: () => "failed",
+      onRetrySchedule: () => retries.push(1),
+    });
+    const notice = el.querySelector<HTMLElement>(".hs-notice");
+    expect(notice?.getAttribute("role")).toBe("alert");
+    expect(notice?.textContent).toContain("Couldn't load today's bookings. Trying again.");
+    expect(el.querySelector(".hs-empty")).toBeNull();
+    expect(el.textContent).not.toContain("Nobody is booked");
+    expect(el.querySelector(".hd-sum-words")?.textContent).toContain("couldn't load the bookings");
+    expect(el.querySelector(".hd-sum-words")?.textContent).not.toContain("nothing booked");
+    act(() => el.querySelector<HTMLButtonElement>(".hs-notice-btn")!.click());
+    expect(retries).toEqual([1]);
+  });
+
+  it("says a quiet day is quiet only once it was read", () => {
+    const loading = mount(IO, { schedules: [], scheduleDayState: () => "loading" });
+    expect(loading.el.querySelector(".hs-empty")?.textContent).toBe("Reading the day\u2019s bookings\u2026");
+    expect(loading.el.querySelector(".hs-notice")).toBeNull();
+    act(() => root?.unmount());
+    host?.remove();
+    const read = mount(IO, { schedules: [], scheduleDayState: () => "ready" });
+    expect(read.el.querySelector(".hs-empty")?.textContent).toBe("Nobody is booked on this day.");
+  });
+
+  it("with the client list unread, says nothing about sync on a card it can't match", () => {
+    const stranger = { ...SCHEDULES[0], id: "b-stranger", clientId: "nobody-we-hold", clientName: "Fredegar Bolger" };
+    const { el } = mount(IO, { schedules: [...SCHEDULES, stranger], rosterFailed: true });
+    const card = cardOf(el, "Fredegar Bolger")!;
+    expect(card.dataset.kind).toBe("unknown");
+    expect(card.textContent).not.toContain("Not synced");
+    expect(el.textContent).not.toContain("Not synced yet");
+    expect([...el.querySelectorAll(".hs-notice")].map((n) => n.textContent)).toContain(
+      "Couldn't load the studio's client list, so some cards can't open a profile yet. Trying again.",
+    );
+    // With the list read, the same booking is honestly "Not synced yet".
+    act(() => root?.unmount());
+    host?.remove();
+    const again = mount(IO, { schedules: [...SCHEDULES, stranger] });
+    expect(cardOf(again.el, "Fredegar Bolger")?.textContent).toContain("Not synced yet");
   });
 });
 

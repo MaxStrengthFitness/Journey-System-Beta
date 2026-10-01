@@ -36,6 +36,10 @@ let store: FakeDoc[] = [];
 let liveHandler: ((snap: { docs: any[] }) => void) | null = null;
 let liveQuery: any = null;
 const getDocsCalls: any[] = [];
+/* Failures a test can turn on (hub fixes, Oct 1 2026). */
+let failLive = false;
+let failFetch = false;
+let liveOpens = 0;
 const unsubscribe = vi.fn();
 
 function constraintsOf(q: any) {
@@ -72,16 +76,18 @@ vi.mock("firebase/firestore", () => ({
   where: (field: string, op: string, value: unknown) => ({ type: "where", field, op, value }),
   orderBy: (field: string, dir: string) => ({ type: "orderBy", field, dir }),
   Timestamp: { fromDate: (d: Date) => ({ __date: d }) },
-  onSnapshot: (q: any, next: any) => {
+  onSnapshot: (q: any, next: any, error?: (e: unknown) => void) => {
     liveQuery = q;
     liveHandler = next;
+    liveOpens += 1;
     // The real SDK delivers the first snapshot asynchronously.
-    setTimeout(() => next(asSnap(matching(q))), 0);
+    setTimeout(() => (failLive ? error?.(new Error("unavailable")) : next(asSnap(matching(q)))), 0);
     return unsubscribe;
   },
   getDocs: async (q: any) => {
     getDocsCalls.push(q);
     await new Promise((r) => setTimeout(r, 0));
+    if (failFetch && q.__collection === "schedules") throw new Error("unavailable");
     if (q.__collection === "clients") return { docs: [] };
     return asSnap(matching(q));
   },
@@ -140,6 +146,9 @@ beforeEach(() => {
   liveHandler = null;
   liveQuery = null;
   getDocsCalls.length = 0;
+  failLive = false;
+  failFetch = false;
+  liveOpens = 0;
   unsubscribe.mockClear();
   latest = null;
 });
@@ -254,6 +263,49 @@ describe("useLiveSchedule mounts with a live window and a fetched week", () => {
     const later = scheduleReads().length - readsAtMount;
     expect(later).toBeGreaterThanOrEqual(10);
     expect(later).toBeLessThanOrEqual(14);
+  });
+
+  it("says a day is unknown when its read failed, never quiet, and tries again (hub fixes, Oct 1 2026)", async () => {
+    failLive = true;
+    failFetch = true;
+    await mount(<Probe studioId="westlake" />);
+    // Before anything answers, today is loading.
+    expect(latest!.dayState("2026-09-15")).toBe("loading");
+    await settle();
+    // Today (live) and Friday (fetched) both failed: unknown, not empty.
+    expect(latest!.dayState("2026-09-15")).toBe("failed");
+    expect(latest!.dayState("2026-09-18")).toBe("failed");
+    // A day nobody asked about is still just loading.
+    expect(latest!.dayState("2026-11-02")).toBe("loading");
+    const opens = liveOpens;
+
+    // The reads come back: the listener is opened again on its own after a
+    // pause, and the week is asked for again.
+    failLive = false;
+    failFetch = false;
+    store = [booking("friday", "2026-09-18T14:00:00Z")];
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(31_000);
+    });
+    await settle();
+    expect(liveOpens).toBeGreaterThan(opens);
+    expect(latest!.dayState("2026-09-15")).toBe("ready");
+    expect(latest!.dayState("2026-09-18")).toBe("ready");
+    expect(latest!.schedules.map((s) => s.id)).toEqual(["friday"]);
+  });
+
+  it("Try again opens the failed listener at once", async () => {
+    failLive = true;
+    await mount(<Probe studioId="westlake" />);
+    await settle();
+    expect(latest!.dayState("2026-09-15")).toBe("failed");
+    failLive = false;
+    await act(async () => {
+      latest!.retry();
+    });
+    expect(latest!.dayState("2026-09-15")).toBe("loading");
+    await settle();
+    expect(latest!.dayState("2026-09-15")).toBe("ready");
   });
 
   it("clears the fetched cache on a studio switch", async () => {

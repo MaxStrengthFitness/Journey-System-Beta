@@ -576,6 +576,8 @@ export default function AppContent({
     refresh: refreshSchedules,
     lastFetchedAt: schedulesFetchedAt,
     isFetching: isFetchingSchedules,
+    dayState: scheduleDayState,
+    retry: retrySchedules,
   } = useLiveSchedule(activeStudioId, isDataReady);
   /**
    * Every client of the studio the iPad is in (a live listener), plus any
@@ -1636,6 +1638,9 @@ export default function AppContent({
                     searchTerm={hubSearchTerm}
                     onSearchTermChange={setHubSearchTerm}
                     rosterLoading={rosterStatus === "loading"}
+                    rosterFailed={rosterStatus === "error"}
+                    scheduleDayState={scheduleDayState}
+                    onRetrySchedule={retrySchedules}
                   />
                 )}
                 {isLearningView && (

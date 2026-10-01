@@ -43,6 +43,7 @@ import { LayerSwitch, type HubLayer } from "../hub-opportunities/LayerSwitch";
 import type { MomentFamily } from "../hub-opportunities/moments-today";
 import type { StripDay, SummaryChip } from "./day-summary";
 import type { HubFocus } from "./focus";
+import type { DayReadState } from "../../lib/schedule-window";
 import "./hub-card.css";
 import "./day-header.css";
 
@@ -153,6 +154,11 @@ export interface DaySummaryProps {
    * the day; absent, no switch.
    */
   focus?: { value: HubFocus; onChange: (next: HubFocus) => void } | null;
+  /**
+   * Whether the day's bookings were read (hub fixes, Oct 1 2026): "nothing
+   * booked" only when they were. Absent: read.
+   */
+  bookings?: DayReadState;
 }
 
 function FocusSwitch({ value, onChange }: { value: HubFocus; onChange: (next: HubFocus) => void }) {
@@ -173,7 +179,7 @@ function FocusSwitch({ value, onChange }: { value: HubFocus; onChange: (next: Hu
   );
 }
 
-export function DaySummary({ title, sessions, trainers, chips, spot, spotText, onSpot, onNext, onAsList, focus = null }: DaySummaryProps) {
+export function DaySummary({ title, sessions, trainers, chips, spot, spotText, onSpot, onNext, onAsList, focus = null, bookings = "ready" }: DaySummaryProps) {
   if (spot) {
     return (
       <div className="hd-sum" data-spot="true" role="status">
@@ -203,7 +209,11 @@ export function DaySummary({ title, sessions, trainers, chips, spot, spotText, o
         <strong>{title}</strong>
         {sessions > 0
           ? ` · ${sessions} ${sessions === 1 ? "session" : "sessions"} · ${trainers} ${trainers === 1 ? "trainer" : "trainers"}`
-          : " · nothing booked"}
+          : bookings === "failed"
+            ? " · couldn't load the bookings"
+            : bookings === "loading"
+              ? " · reading the bookings\u2026"
+              : " · nothing booked"}
       </span>
       {chips.length > 0 && (
         <div className="hd-chips" role="group" aria-label="Light them up on the grid">

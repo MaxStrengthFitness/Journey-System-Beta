@@ -73,9 +73,36 @@ export interface HubGridProps {
    * alike (Focus: Everyone, or you have no column that day).
    */
   focusId?: string | null;
+  /**
+   * What an empty day says. "Nobody is booked on this day." only when the
+   * day's bookings were read (hub fixes, Oct 1 2026): while they load it is
+   * a quieter line, and when the read failed nothing (the notice above the
+   * grid says so) — a failed read is unknown, never a quiet day.
+   */
+  emptyWords?: string | null;
 }
 
-export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, hidden = false, focusId = null }: HubGridProps) {
+export const NOBODY_BOOKED = "Nobody is booked on this day.";
+
+/**
+ * One line above the grid, in place, when the day's bookings couldn't be read
+ * (hub fixes, Oct 1 2026): what happened, that it is trying again, and Try
+ * again (40px). Never a toast that goes away and leaves a quiet-looking day.
+ */
+export function HubNotice({ words, onRetry }: { words: string; onRetry?: () => void }) {
+  return (
+    <div className="hs-notice" role="alert">
+      <span className="hs-notice-words">{words}</span>
+      {onRetry && (
+        <button type="button" className="hs-notice-btn" onClick={onRetry}>
+          Try again
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, hidden = false, focusId = null, emptyWords = NOBODY_BOOKED }: HubGridProps) {
   const [opened, setOpened] = useState<{ day: string; from: ReadonlySet<number> }>({ day: dayKey, from: new Set() });
   const openedFrom = opened.day === dayKey ? opened.from : EMPTY_SET;
 
@@ -227,7 +254,7 @@ export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, 
             </div>
           )}
 
-          {layout.empty && <p className="hs-empty">Nobody is booked on this day.</p>}
+          {layout.empty && emptyWords && <p className="hs-empty">{emptyWords}</p>}
         </div>
       </div>
     </div>

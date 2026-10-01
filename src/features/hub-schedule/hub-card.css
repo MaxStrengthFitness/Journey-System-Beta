@@ -80,6 +80,14 @@
   cursor: progress;
 }
 
+/* The roster's read failed (hub fixes, Oct 1 2026): whether she has a
+   profile is unknown, so the card says nothing about it. Inert. */
+.hs-card[data-kind="unknown"] {
+  background: var(--eq-surface-2);
+  box-shadow: none;
+  cursor: default;
+}
+
 /* Time that isn't a session (Mindbody's "Unavailable": lunch, a one-on-one).
    Never counted, never tapped. */
 .hs-card[data-kind="staff"] {

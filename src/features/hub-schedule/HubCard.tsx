@@ -101,6 +101,12 @@ export interface HubCardProps {
   now?: Date;
   /** The roster is still loading: a booking naming a client we don't hold YET is pending, not "Not synced". */
   rosterLoading?: boolean;
+  /**
+   * The roster's read failed (hub fixes, Oct 1 2026): a booking naming a
+   * client we don't hold is unknown, so the card says nothing about sync —
+   * "Not synced yet" would be a claim about a list Journey never read.
+   */
+  rosterFailed?: boolean;
   /** The day summary's spotlight is on and this card doesn't match it. */
   dimmed?: boolean;
   /**
@@ -126,6 +132,7 @@ export function HubCard({
   noShows = null,
   now = new Date(),
   rosterLoading = false,
+  rosterFailed = false,
   dimmed = false,
   wordy = false,
   open = false,
@@ -165,6 +172,8 @@ export function HubCard({
   const recedes = hubCardRecedes(cardState);
   const isUnlinked = !client;
   const isPending = isUnlinked && rosterLoading && Boolean(booking?.clientId);
+  /* The roster failed: whether she has a profile is unknown, so nothing is said about it. */
+  const isUnknown = isUnlinked && !isPending && rosterFailed && Boolean(booking?.clientId);
   /* A finished slot nobody logged. Only on a linked card: one with no
      profile already says why nothing could be logged. */
   const isNotLogged = cardState === "not-logged" && !isUnlinked;
@@ -180,7 +189,7 @@ export function HubCard({
   // The milestone glyph says the number ("100th"): the corner doesn't repeat it.
   const numberSaid = marks.glyphs.some((g) => g.kind === "milestone");
 
-  const kind = isPending ? "pending" : isUnlinked ? "unlinked" : "client";
+  const kind = isPending ? "pending" : isUnknown ? "unknown" : isUnlinked ? "unlinked" : "client";
   const interactive = kind === "client";
 
   /* The time and her number are never cut: a clipped "#212" reads as "#2",
@@ -205,7 +214,9 @@ export function HubCard({
       tabIndex={interactive ? 0 : -1}
       aria-haspopup={interactive ? "dialog" : undefined}
       title={
-        isUnlinked
+        isUnknown
+          ? `${booking?.clientName || "Reservation"} — couldn't check this client's profile just now.`
+          : isUnlinked
           ? `${booking?.clientName || "Reservation"} — no Max Strength profile yet. It will link itself once the next Mindbody sync creates one.`
           : marks.critical || undefined
       }
@@ -236,6 +247,8 @@ export function HubCard({
         <span className="hs-card-when">
           {isPending ? (
             <span aria-label="Loading this client">{time}</span>
+          ) : isUnknown ? (
+            <span aria-label="Couldn't check this client's profile">{time}</span>
           ) : isUnlinked ? (
             <>
               <CloudOff size={13} aria-label="Not synced to a Max Strength profile yet" />

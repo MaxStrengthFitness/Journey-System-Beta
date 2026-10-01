@@ -26,6 +26,7 @@ import { useHubCriticalNotes } from "../hooks/useHubCriticalNotes";
 // the whole Studio Hub UI in with it and defeat AppContent's lazy import.
 import { useStudioTasks } from "../features/studio-tasks/useStudioTasks";
 import { dayTitle, pickDay, shownDay, stripFrom } from "../features/hub-schedule/hub-day";
+import type { DayReadState } from "../lib/schedule-window";
 import {
   zonedHM,
   studioDayBoundsForKey,
@@ -51,7 +52,7 @@ import { useHubFord } from "../features/hub-opportunities/use-hub-ford";
 import { useHubMarks } from "../features/hub-opportunities/use-hub-marks";
 import { useBookingMarks } from "../features/admin/attention/booking-marks";
 import { HubCard, cardTime } from "../features/hub-schedule/HubCard";
-import { HubGrid, type GridBlock, type GridColumn } from "../features/hub-schedule/HubGrid";
+import { HubGrid, HubNotice, NOBODY_BOOKED, type GridBlock, type GridColumn } from "../features/hub-schedule/HubGrid";
 import { trainerDayFrame, weeksByTrainer } from "../features/hub-schedule/off-hours";
 import type { Span } from "../features/hub-schedule/grid-model";
 import { useStandingWeeks } from "../features/standing-week/useStandingWeeks";
@@ -93,6 +94,9 @@ export function ClientsView({
   authTrainer,
   searchTerm,
   rosterLoading = false,
+  rosterFailed = false,
+  scheduleDayState,
+  onRetrySchedule,
   cutoverStudios,
 }: {
   clients: Client[];
@@ -120,6 +124,20 @@ export function ClientsView({
    * "Not synced" for that beat.
    */
   rosterLoading?: boolean;
+  /**
+   * The studio's client list couldn't be read (useStudioRoster's "error";
+   * hub fixes, Oct 1 2026). A booking whose client isn't in hand is then
+   * unknown: no card says "Not synced yet" about a list nobody read.
+   */
+  rosterFailed?: boolean;
+  /**
+   * What is known about a studio day's bookings (useLiveSchedule's dayState):
+   * the Hub says a day is quiet only when it was read, and says so in place
+   * when the read failed (hub fixes, Oct 1 2026). Absent: read.
+   */
+  scheduleDayState?: (dayKey: string) => DayReadState;
+  /** "Try again" on a failed read (useLiveSchedule's retry). */
+  onRetrySchedule?: () => void;
   /**
    * Every studio's cutover day. Each card reads its CLIENT'S home studio's
    * (homeCutoverOf) - a client cross-training here is judged by when her own
@@ -361,6 +379,14 @@ export function ClientsView({
         getMillis(a.startTime || a.StartDateTime || a.date) -
         getMillis(b.startTime || b.StartDateTime || b.date),
     );
+
+  /*
+   * WHAT IS KNOWN ABOUT THE DAY (hub fixes, Oct 1 2026): a failed read is
+   * unknown, never a quiet day. The grid says "Nobody is booked" only when
+   * the day was read; while it loads it says so; when the read failed, a
+   * line above the grid says so in place, with Try again.
+   */
+  const bookingsRead: DayReadState = scheduleDayState ? scheduleDayState(selectedKey) : "ready";
 
   const preBookedCount = todaysSchedules.filter(
     (s) => !s.clientName?.toLowerCase().includes("unavailab"),
@@ -671,6 +697,7 @@ export function ClientsView({
         dimmed={activeSpot !== null && !(entry && hasFamily(entry, activeSpot))}
         wordy={focusId !== null && block.columnId === focusId}
         rosterLoading={rosterLoading}
+        rosterFailed={rosterFailed}
         workoutSession={workoutSession}
         logged={logged}
         noShows={bookingMarks.marks}
@@ -778,7 +805,7 @@ export function ClientsView({
           more: marks.more,
           moreLabel: marks.moreLabel,
           clientId: clientObj?.id ?? null,
-          pending: !clientObj && rosterLoading && Boolean(session.clientId),
+          pending: !clientObj && (rosterLoading || rosterFailed) && Boolean(session.clientId),
         };
       })
     : [];
@@ -822,6 +849,7 @@ export function ClientsView({
               <DaySummary
                 title={dayTitle(selectedKey)}
                 sessions={preBookedCount}
+                bookings={bookingsRead}
                 trainers={gridColumns.filter((c) => c.count > 0).length}
                 chips={chips}
                 spot={activeSpot}
@@ -890,6 +918,22 @@ export function ClientsView({
               </p>
             )}
 
+            {/* A read that failed, said in place (hub fixes, Oct 1 2026):
+                never a quiet-looking day, never "Not synced" on every card. */}
+            {layer === "schedule" && bookingsRead === "failed" && (
+              <HubNotice
+                words={
+                  gridBlocks.length > 0
+                    ? `Couldn't refresh ${gridDayKey === studioToday ? "today's" : `${dayTitle(gridDayKey)}'s`} bookings, so they may be out of date. Trying again.`
+                    : `Couldn't load ${gridDayKey === studioToday ? "today's" : `${dayTitle(gridDayKey)}'s`} bookings. Trying again.`
+                }
+                onRetry={onRetrySchedule}
+              />
+            )}
+            {layer === "schedule" && rosterFailed && (
+              <HubNotice words="Couldn't load the studio's client list, so some cards can't open a profile yet. Trying again." />
+            )}
+
             {/* Who is due in the next half hour, across the floor (hub cherry
                 round): a row of the schedule's own, under the top. */}
             {nextOpen && (
@@ -913,6 +957,7 @@ export function ClientsView({
               frameOf={frameOf}
               hidden={layer !== "schedule"}
               focusId={focusId}
+              emptyWords={bookingsRead === "ready" ? NOBODY_BOOKED : bookingsRead === "loading" ? "Reading the day\u2019s bookings\u2026" : null}
             />
 
             {/* Opportunities: every client booked on the day on screen, sorted

@@ -14,13 +14,17 @@ import { ScheduleEntry } from "../types";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { startOfStudioDay, endOfStudioDay } from "../lib/studio-time";
 import {
+  FETCH_RETRY_MS,
   SCHEDULE_STALE_MS,
   WEEK_AHEAD_DAYS,
   dayKeysBetween,
+  dayReadState,
   liveWindow,
   mergeSchedules,
   msUntilNextStudioDay,
   rangeToFetch,
+  retryDelayMs,
+  type DayReadState,
 } from "../lib/schedule-window";
 
 /**
@@ -95,6 +99,21 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
    */
   const [dayTick, setDayTick] = useState(0);
 
+  /*
+   * WHAT IS KNOWN (hub fixes, Oct 1 2026). A failed read is unknown, never
+   * empty: the Hub drew a quiet day when the listener failed. `liveState` is
+   * the listener's (it is opened again on the roster's rhythm after a
+   * failure); `failedDaysRef` holds the fetched days whose last read failed,
+   * asked for again after FETCH_RETRY_MS. `dayState(key)` is the answer a
+   * screen reads (schedule-window.ts, dayReadState).
+   */
+  const [liveState, setLiveState] = useState<DayReadState>("loading");
+  const liveFailuresRef = useRef(0);
+  const [liveRetry, setLiveRetry] = useState(0);
+  const failedDaysRef = useRef<Map<string, number>>(new Map());
+  const [fetchFailedAt, setFetchFailedAt] = useState<number | null>(null);
+  const [fetchRetry, setFetchRetry] = useState(0);
+
   /* ---------------- the merged list ---------------- */
 
   const schedules = useMemo(
@@ -118,6 +137,10 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
     cacheRef.current = new Map();
     coverageRef.current = new Map();
     inFlightRangesRef.current = new Set();
+    failedDaysRef.current = new Map();
+    liveFailuresRef.current = 0;
+    setLiveState("loading");
+    setFetchFailedAt(null);
     setCacheVersion((v) => v + 1);
   }, [activeStudioId, isReady]);
 
@@ -178,12 +201,22 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
         }
         for (const key of dayKeysBetween(wanted.from, wanted.to)) {
           coverageRef.current.set(key, fetchedAt);
+          failedDaysRef.current.delete(key);
         }
+        if (failedDaysRef.current.size === 0) setFetchFailedAt(null);
         setLastFetchedAt(fetchedAt);
         setCacheVersion((v) => v + 1);
       } catch (error) {
         // The cache is deliberately kept: a failed read means "unknown", never
-        // "there are no bookings that week".
+        // "there are no bookings that week". The days it covered say so
+        // (dayState: "failed") until a read of them lands, and they are asked
+        // for again shortly (hub fixes, Oct 1 2026).
+        if (cacheRef.current === cacheAtRequest) {
+          const failedAt = Date.now();
+          for (const key of dayKeysBetween(wanted.from, wanted.to)) failedDaysRef.current.set(key, failedAt);
+          setFetchFailedAt(failedAt);
+          setCacheVersion((v) => v + 1);
+        }
         handleFirestoreError(error, OperationType.GET, "schedules");
       } finally {
         inFlightRangesRef.current.delete(rangeKey);
@@ -232,7 +265,15 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
         document.removeEventListener("visibilitychange", onVisible);
       }
     };
-  }, [ensureRange, isReady]);
+    // fetchRetry: a failed week read is asked for again (below).
+  }, [ensureRange, isReady, fetchRetry]);
+
+  /** A failed range read is tried again after FETCH_RETRY_MS (the tick above skips a hidden screen). */
+  useEffect(() => {
+    if (fetchFailedAt === null) return;
+    const t = setTimeout(() => setFetchRetry((n) => n + 1), FETCH_RETRY_MS);
+    return () => clearTimeout(t);
+  }, [fetchFailedAt]);
 
   /* ---------------- the live window ---------------- */
 
@@ -247,6 +288,7 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
     }
 
     let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
     // The three live days, anchored to the studio's day at the time this
     // effect runs; `dayTick` re-runs it just after the studio's midnight.
@@ -275,9 +317,23 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
           (s) => s.status !== "Cancelled",
         );
         setLiveSchedules(activeSchedulesData);
+        liveFailuresRef.current = 0;
+        setLiveState("ready");
       },
       (error) => {
-        handleFirestoreError(error, OperationType.GET, "schedules");
+        if (cancelled) return;
+        // Unknown, never empty: what the listener already delivered is kept,
+        // the live days say "failed", and a listener that errored is closed
+        // for good, so a new one is opened after a pause (hub fixes, Oct 1
+        // 2026). Said once, not on every retry.
+        setLiveState("failed");
+        if (liveFailuresRef.current === 0) handleFirestoreError(error, OperationType.GET, "schedules");
+        else console.warn("useLiveSchedule: the live listener failed again", error);
+        const delay = retryDelayMs(liveFailuresRef.current);
+        liveFailuresRef.current += 1;
+        retryTimer = setTimeout(() => {
+          if (!cancelled) setLiveRetry((t) => t + 1);
+        }, delay);
       },
     );
 
@@ -289,9 +345,40 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
     return () => {
       cancelled = true;
       clearTimeout(dayTimer);
+      if (retryTimer) clearTimeout(retryTimer);
       unsubscribeSchedules();
     };
-  }, [activeStudioId, isReady, dayTick]);
+  }, [activeStudioId, isReady, dayTick, liveRetry]);
 
-  return { schedules, ensureRange, refresh, lastFetchedAt, isFetching };
+  /**
+   * What is known about one studio day's bookings: "ready", "loading" or
+   * "failed" (schedule-window.ts, dayReadState). A screen that would say a
+   * day is quiet asks this first.
+   */
+  const dayState = useCallback(
+    (key: string): DayReadState => {
+      const live = liveWindow(new Date());
+      return dayReadState(key, {
+        liveKeys: dayKeysBetween(live.from, live.to),
+        liveState,
+        failed: failedDaysRef.current,
+        covered: coverageRef.current,
+      });
+    },
+    // cacheVersion is the signal that the refs changed.
+    [liveState, cacheVersion],
+  );
+
+  /** "Try again": opens the live listener again if it failed, and re-reads the week. */
+  const retry = useCallback((): void => {
+    if (liveState === "failed") {
+      liveFailuresRef.current = 0;
+      setLiveState("loading");
+      setLiveRetry((t) => t + 1);
+    }
+    const { from, to } = weekAheadRange();
+    void ensureRange(from, to, true);
+  }, [liveState, ensureRange]);
+
+  return { schedules, ensureRange, refresh, lastFetchedAt, isFetching, dayState, retry };
 }
