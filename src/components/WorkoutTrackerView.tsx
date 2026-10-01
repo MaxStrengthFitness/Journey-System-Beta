@@ -267,7 +267,6 @@ export function WorkoutTrackerView({
   showClientPicker: boolean;
   setShowClientPicker: (v: boolean) => void;
   onStartNewClientOnboarding: (v: string) => void;
-  setClientFormData: (v: any) => void;
   onOpenInfo: (m: Machine) => void;
   authTrainer: Trainer | null;
   isSyncing: boolean;

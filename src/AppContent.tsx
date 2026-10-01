@@ -655,7 +655,6 @@ export default function AppContent({
   );
   const [showNewClientsDialog, setShowNewClientsDialog] = useState(false);
   const [isReorderingTrainers, setIsReorderingTrainers] = useState(false);
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [isIntroSession, setIsIntroSession] = useState(false);
   /**
    * The header's Refresh and the calendar's: asks Mindbody for part of the
@@ -681,8 +680,6 @@ export default function AppContent({
   const {
     startUnassignedSession,
     updateClient,
-    submitClientFormData,
-    updateClientSessions,
     handleDeleteClient,
   } = useClientMutations(
     authTrainer,
@@ -856,77 +853,6 @@ export default function AppContent({
     return studios.find((s) => s.id === activeStudioId)?.name || null;
   }, [activeStudioId, studios]);
 
-  const [clientFormData, setClientFormData] = useState({
-    firstName: "",
-    lastName: "",
-    gender: "Male" as "Male" | "Female" | "Other",
-    heightFeet: "",
-    heightInches: "",
-    weight: "",
-    age: "",
-    occupation: "",
-    phone: "",
-    email: "",
-    address: "",
-    emergencyContactName: "",
-    emergencyContactPhone: "",
-    isActive: true,
-    isRoutineBActive: false,
-    medicalHistory: "",
-    globalNotes: "",
-    remainingSessions: 10,
-    mindbody_name: "",
-  });
-
-  const startEditClient = (client: Client) => {
-    setEditingClient(client);
-
-    // Parse height string (e.g., "5' 10\"")
-    let ft = "";
-    let inc = "";
-    if (client.height) {
-      if (client.height.includes("'")) {
-        const parts = client.height.split("'");
-        ft = parts[0].trim();
-        if (parts[1]) {
-          inc = parts[1].replace('"', "").trim();
-        }
-      } else {
-        // Fallback for old numeric data (assuming inches if > 15)
-        const totalInches = parseInt(client.height);
-        if (!isNaN(totalInches) && totalInches > 15) {
-          ft = Math.floor(totalInches / 12).toString();
-          inc = (totalInches % 12).toString();
-        } else {
-          ft = client.height;
-        }
-      }
-    }
-
-    setClientFormData({
-      firstName: client.firstName,
-      lastName: client.lastName,
-      gender: client.gender,
-      heightFeet: ft,
-      heightInches: inc,
-      height: client.height, // Keep for legacy if needed momentarily
-      weight: client.weight || "",
-      age: client.age?.toString() || "",
-      occupation: client.occupation || "",
-      phone: client.phone || "",
-      email: client.email || "",
-      address: client.address || "",
-      emergencyContactName: client.emergencyContactName || "",
-      emergencyContactPhone: client.emergencyContactPhone || "",
-      isActive: client.isActive,
-      isRoutineBActive: client.isRoutineBActive || false,
-      remainingSessions: client.remainingSessions,
-      medicalHistory: client.medicalHistory || "",
-      globalNotes: client.globalNotes || "",
-    });
-    // setIsAddingClient removed as we use editingClient state or the new modal for creation
-  };
-
   const updateStudio = async (studioId: string, updates: Partial<Studio>) => {
     try {
       await updateDoc(doc(db, "studios", studioId), {
@@ -935,42 +861,6 @@ export default function AppContent({
       });
     } catch (e) {
       console.error(e);
-    }
-  };
-
-  const handleClientSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await submitClientFormData(clientFormData as any, editingClient);
-
-      if (editingClient) {
-        setEditingClient(null);
-      }
-
-      setClientFormData({
-        firstName: "",
-        lastName: "",
-        gender: "Male",
-        heightFeet: "",
-        heightInches: "",
-        height: "",
-        weight: "",
-        age: "",
-        occupation: "",
-        phone: "",
-        email: "",
-        address: "",
-        emergencyContactName: "",
-        emergencyContactPhone: "",
-        isActive: true,
-        isRoutineBActive: false,
-        medicalHistory: "",
-        globalNotes: "",
-        remainingSessions: 10,
-        mindbody_name: "",
-      });
-    } catch (error) {
-      // Error handled by hook
     }
   };
 
@@ -1739,13 +1629,6 @@ export default function AppContent({
                     schedules={schedules}
                     sessions={sessions}
                     sessionsKnown={sessionsKnown}
-                    editingClient={editingClient}
-                    setEditingClient={setEditingClient}
-                    formData={clientFormData}
-                    setFormData={setClientFormData}
-                    onSubmit={handleClientSubmit}
-                    startEdit={startEditClient}
-                    updateSessions={updateClientSessions}
                     onSelectTrainer={(id) => {
                       setSelectedProfileTrainerId(id);
                       setView("trainer-profile");
@@ -1835,7 +1718,6 @@ export default function AppContent({
                     showClientPicker={showClientPicker}
                     setShowClientPicker={setShowClientPicker}
                     onStartNewClientOnboarding={startNewClientOnboarding}
-                    setClientFormData={setClientFormData}
                     onOpenInfo={(m) => {
                       setInfoMachineId(m.id!);
                       setIsEditingMachineInfo(false);

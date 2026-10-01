@@ -203,13 +203,6 @@ function mount(viewer: any = IO) {
         schedules={SCHEDULES}
         sessions={SESSIONS}
         sessionsKnown
-        editingClient={null}
-        setEditingClient={() => {}}
-        formData={{}}
-        setFormData={() => {}}
-        onSubmit={() => {}}
-        startEdit={() => {}}
-        updateSessions={() => {}}
         searchTerm=""
         onSearchTermChange={() => {}}
         cutoverStudios={[{ id: "westlake", journeyCutoverDate: "2026-09-01" }]}

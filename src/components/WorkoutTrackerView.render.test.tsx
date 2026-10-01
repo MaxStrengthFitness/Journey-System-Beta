@@ -365,7 +365,6 @@ function Tracker({ who = client }: { who?: Client } = {}) {
       isSyncing={false}
       setIsSyncing={vi.fn()}
       schedules={[]}
-      setClientFormData={vi.fn()}
       onOpenInfo={vi.fn()}
     />
   );
@@ -711,7 +710,6 @@ describe("the Active Session never draws a blank page (session record, Sep 26 20
         isSyncing={false}
         setIsSyncing={vi.fn()}
         schedules={[]}
-        setClientFormData={vi.fn()}
         onOpenInfo={vi.fn()}
         clientLookup={props.lookup}
         onRetryClient={props.onRetry}
@@ -936,7 +934,6 @@ describe("a session another trainer is running opens read-only, and live (sessio
           isSyncing={false}
           setIsSyncing={vi.fn()}
           schedules={[]}
-          setClientFormData={vi.fn()}
           onOpenInfo={vi.fn()}
         />
       );
