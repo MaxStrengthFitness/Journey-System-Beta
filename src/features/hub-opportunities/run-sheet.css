@@ -18,6 +18,44 @@
   color: var(--eq-ink);
 }
 
+/* One trainer's bookings (hub fixes, Oct 1 2026): whose, and the way back. */
+.ho-trainer {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--eq-border);
+  background: var(--eq-live-fill);
+  color: var(--eq-ink);
+}
+
+.ho-trainer-words {
+  font-size: 15px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.ho-trainer-btn {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 12px;
+  background: var(--eq-surface);
+  color: var(--eq-ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ho-trainer-btn:focus-visible {
+  outline: 3px solid var(--eq-focus-ring);
+  outline-offset: 1px;
+}
+
 .ho-controls {
   flex: none;
   display: flex;

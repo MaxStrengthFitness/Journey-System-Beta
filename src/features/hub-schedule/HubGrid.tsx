@@ -80,6 +80,8 @@ export interface HubGridProps {
    * grid says so) — a failed read is unknown, never a quiet day.
    */
   emptyWords?: string | null;
+  /** A tap on a column's head: that trainer's bookings as a list (Opportunities, narrowed). Absent: the heads are not buttons. */
+  onOpenColumn?: (columnId: string) => void;
 }
 
 export const NOBODY_BOOKED = "Nobody is booked on this day.";
@@ -105,7 +107,7 @@ export function HubNotice({ words, onRetry }: { words: string; onRetry?: () => v
   );
 }
 
-export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, hidden = false, focusId = null, emptyWords = NOBODY_BOOKED }: HubGridProps) {
+export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, hidden = false, focusId = null, emptyWords = NOBODY_BOOKED, onOpenColumn }: HubGridProps) {
   const [opened, setOpened] = useState<{ day: string; from: ReadonlySet<number> }>({ day: dayKey, from: new Set() });
   const openedFrom = opened.day === dayKey ? opened.from : EMPTY_SET;
 
@@ -163,8 +165,20 @@ export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, 
           {columns.map((c) => {
             const frame = frameOf?.(c.id, range) ?? UNKNOWN_FRAME;
             const focus = focusId !== null && c.id === focusId;
+            /* A tap on the head opens that trainer's bookings as a list (hub
+               fixes, Oct 1 2026, AJ approved); the head is then a button,
+               at least 56px tall. */
+            const Head = onOpenColumn ? "button" : "div";
             return (
-              <div key={c.id} className="hs-colhead" data-me={c.isMe ? "true" : "false"} data-focus={focus ? "true" : undefined}>
+              <Head
+                key={c.id}
+                className="hs-colhead"
+                data-me={c.isMe ? "true" : "false"}
+                data-focus={focus ? "true" : undefined}
+                {...(onOpenColumn
+                  ? { type: "button" as const, onClick: () => onOpenColumn(c.id), "aria-label": `${c.name}: see the day's bookings as a list` }
+                  : {})}
+              >
                 <span className="hs-avatar" aria-hidden>
                   {c.initials}
                 </span>
@@ -188,7 +202,7 @@ export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, 
                     )}
                   </span>
                 </span>
-              </div>
+              </Head>
             );
           })}
         </div>

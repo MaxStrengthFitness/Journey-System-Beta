@@ -64,6 +64,25 @@
   background: var(--eq-surface-2);
 }
 
+/* A head that opens that trainer's bookings as a list (hub fixes, Oct 1
+   2026): a button, drawn exactly as the head. At least 56px tall. */
+button.hs-colhead {
+  margin: 0;
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button.hs-colhead:focus-visible {
+  outline: 3px solid var(--eq-focus-ring);
+  outline-offset: -3px;
+}
+
 .hs-colhead[data-me="true"] {
   position: sticky;
   left: var(--hs-axis);

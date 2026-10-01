@@ -189,6 +189,8 @@ export function ClientsView({
   const [peek, setPeek] = useState<{ clientId: string; blockKey: string; day: string; anchor: HTMLElement | null } | null>(null);
   /** Me (your own column, in words) or Everyone (every column alike); remembered on this iPad. */
   const [focus, setFocus] = useState<HubFocus>(() => readFocus());
+  /** A trainer's column head was tapped: Opportunities shows their bookings, for the day it was tapped on. */
+  const [trainerList, setTrainerList] = useState<{ columnId: string; day: string } | null>(null);
   /** Edit session from the peek: the day's logged session, in the Activity Archive's own pop-up. */
   const [editing, setEditing] = useState<{ key: number; clientId: string; homeStudioId?: string; session: HistorySession } | null>(null);
   const trainerFor = React.useMemo(() => trainerLookup(sortedTrainers), [sortedTrainers]);
@@ -761,6 +763,25 @@ export function ClientsView({
       })
     : [];
 
+  /*
+   * ONE TRAINER'S BOOKINGS AS A LIST (hub fixes, Oct 1 2026, AJ approved): a
+   * tap on a column head opens Opportunities narrowed to that column's
+   * bookings on the day on screen — the same entries, never a second engine.
+   * Another day, or the layer switch, shows everyone again.
+   */
+  const listColumn = trainerList && trainerList.day === gridDayKey ? gridColumns.find((c) => c.id === trainerList.columnId) ?? null : null;
+  const trainerFilter = listColumn
+    ? (() => {
+        const own = gridBlocks.filter((b) => b.columnId === listColumn.id && !isStaffBlock(b.booking as any));
+        const keys = new Set(own.map((b) => String((b.booking as any).id ?? b.key)));
+        const clientIds = new Set(own.map((b) => (b.booking as any).clientId).filter(Boolean) as string[]);
+        return {
+          name: listColumn.isMe ? `${listColumn.name} (you)` : listColumn.name,
+          includes: (e: { key: string; clientId: string | null }) => keys.has(e.key) || (!!e.clientId && clientIds.has(e.clientId)),
+        };
+      })()
+    : null;
+
   return (
     <motion.div
       key="clients"
@@ -784,6 +805,8 @@ export function ClientsView({
               layer={layer}
               onLayer={(next) => {
                 setSpot(null);
+                // Going back to Schedule, or opening the list itself, shows everyone.
+                setTrainerList(null);
                 setLayer(next);
               }}
               days={strip}
@@ -811,6 +834,7 @@ export function ClientsView({
                   if (!activeSpot) return;
                   setListRequest({ filter: activeSpot, nonce: Date.now() });
                   setSpot(null);
+                  setTrainerList(null);
                   setLayer("opportunities");
                 }}
                 focus={
@@ -972,6 +996,13 @@ export function ClientsView({
               hidden={layer !== "schedule"}
               focusId={focusId}
               emptyWords={bookingsRead === "ready" ? NOBODY_BOOKED : bookingsRead === "loading" ? "Reading the day\u2019s bookings\u2026" : null}
+              onOpenColumn={(columnId) => {
+                // That trainer's bookings as a list (hub fixes, Oct 1 2026, AJ approved).
+                setSpot(null);
+                setPeek(null);
+                setTrainerList({ columnId, day: gridDayKey });
+                setLayer("opportunities");
+              }}
             />
 
             {/* Opportunities: every client booked on the day on screen, sorted
@@ -985,6 +1016,8 @@ export function ClientsView({
                     day={selectedKey}
                     entries={dayMoments.entries}
                     request={listRequest}
+                    trainer={trainerFilter}
+                    onClearTrainer={() => setTrainerList(null)}
                     onOpenProfile={(id) => onSelectClient(id)}
                     onStartSession={(id) => {
                       // The Hub search card's own path to a session.

@@ -422,6 +422,47 @@ describe("the Hub: columns by trainer id", () => {
 });
 
 /* ------------------------------------------------------------------ *
+ * A TRAINER'S BOOKINGS AS A LIST (hub fixes, Oct 1 2026, AJ approved): a
+ * tap on a column head opens Opportunities narrowed to that trainer.
+ * ------------------------------------------------------------------ */
+
+describe("the Hub: a tap on a trainer's column head", () => {
+  const names = (el: HTMLElement) => [...el.querySelectorAll(".ho-row .ho-name")].map((n) => n.textContent);
+  const waitForList = async (el: HTMLElement) => {
+    for (let i = 0; i < 50 && !el.querySelector(".ho"); i++) {
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 20));
+      });
+    }
+  };
+
+  it("opens Opportunities with that trainer's bookings, says whose, and Show everyone goes back", async () => {
+    const { el } = mount();
+    const damrod = [...el.querySelectorAll<HTMLButtonElement>("button.hs-colhead")].find((h) => h.textContent?.includes("Damrod"))!;
+    expect(damrod.getAttribute("aria-label")).toBe("Damrod: see the day's bookings as a list");
+    await act(async () => damrod.click());
+    await waitForList(el);
+    expect(el.querySelector(".hs-scroll")?.hasAttribute("hidden")).toBe(true);
+    expect(el.querySelector(".ho-trainer-words")?.textContent).toBe("Damrod · 2 bookings");
+    expect(names(el)).toEqual(["Estella Bolger", "Targon Minas"]);
+    await act(async () => el.querySelector<HTMLButtonElement>(".ho-trainer-btn")!.click());
+    expect(el.querySelector(".ho-trainer")).toBeNull();
+    expect(names(el)).toEqual(["Hamfast Gamgee", "Belladonna Took", "Estella Bolger", "Targon Minas", "Laura Grubb"]);
+  });
+
+  it("the layer switch is a way back too: Schedule, then the list shows everyone", async () => {
+    const { el } = mount();
+    await act(async () => [...el.querySelectorAll<HTMLButtonElement>("button.hs-colhead")].find((h) => h.textContent?.includes("Damrod"))!.click());
+    await waitForList(el);
+    await act(async () => [...el.querySelectorAll<HTMLButtonElement>(".hl-btn")].find((b) => b.textContent === "Schedule")!.click());
+    expect(el.querySelector(".hs-scroll")?.hasAttribute("hidden")).toBe(false);
+    await openOpportunities(el);
+    expect(el.querySelector(".ho-trainer")).toBeNull();
+    expect(names(el)).toHaveLength(5);
+  });
+});
+
+/* ------------------------------------------------------------------ *
  * THE PEEK SAYS WHAT HAPPENED (hub fixes, Oct 1 2026; AJ: "if its a
  * logged session i like the idea of switching 'start session' to 'edit
  * session'"), and its main button follows it.

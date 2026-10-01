@@ -115,6 +115,20 @@ describe("the Hub grid", () => {
     expect(mount({ blocks: [] }).querySelector(".hs-empty")?.textContent).toBe("Nobody is booked on this day.");
   });
 
+  it("makes each column head a button that opens that trainer's list, when asked to (hub fixes, Oct 1 2026)", () => {
+    const opened: string[] = [];
+    const el = mount({ onOpenColumn: (id) => opened.push(id) });
+    const heads = [...el.querySelectorAll<HTMLButtonElement>("button.hs-colhead")];
+    expect(heads).toHaveLength(2);
+    expect(heads[0].type).toBe("button");
+    act(() => heads[1].click());
+    expect(opened).toEqual(["t-damrod"]);
+    act(() => root?.unmount());
+    host?.remove();
+    // Without the door, the heads stay plain.
+    expect(mount().querySelectorAll("button.hs-colhead")).toHaveLength(0);
+  });
+
   it("says nothing on an empty day whose bookings weren't read (hub fixes, Oct 1 2026)", () => {
     expect(mount({ blocks: [], emptyWords: null }).querySelector(".hs-empty")).toBeNull();
   });
