@@ -454,17 +454,6 @@ service cloud.firestore {
       return !(key in d) || (d[key] is number && d[key] >= lo && d[key] <= hi);
     }
 
-    /**
-     * studios/{s}/config/renewals. The app cleans every value again when it
-     * reads them (features/renewals/settings.ts), so this only has to keep
-     * out shapes that could never be right.
-     *
-     * packagesRenewAutomatically (Sep 25 2026): whether the studio's packages
-     * renew by themselves - on at the franchise studios, off at the corporate
-     * ones, on by default. Absent means not answered, which the app reads as
-     * on. The whole merged document is checked, so an app that writes this
-     * key needs this rule deployed first.
-     */
     /* THE STUDIO SETTINGS (Sep 28 2026, AJ: "let the admins assign the default
        within the app"; features/studio-settings). One `values` map of plain
        numbers (or null for a weekday's "none"), who saved it (the Auth uid)
@@ -477,6 +466,17 @@ service cloud.firestore {
           && d.updatedBy == request.auth.uid;
     }
 
+    /**
+     * studios/{s}/config/renewals. The app cleans every value again when it
+     * reads them (features/renewals/settings.ts), so this only has to keep
+     * out shapes that could never be right.
+     *
+     * packagesRenewAutomatically (Sep 25 2026): whether the studio's packages
+     * renew by themselves - on at the franchise studios, off at the corporate
+     * ones, on by default. Absent means not answered, which the app reads as
+     * on. The whole merged document is checked, so an app that writes this
+     * key needs this rule deployed first.
+     */
     function renewalSettingsValid(d) {
       return d.keys().hasOnly([
                'conversationAtSessionsLeft', 'chargeWarnDays', 'chargeWarnMinBanked',

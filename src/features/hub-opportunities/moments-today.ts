@@ -60,6 +60,7 @@ import { criticalNotesOn } from "../../lib/hub-critical-notes";
 import { formatStudioTime, studioDateKey, toDate, zonedHM } from "../../lib/studio-time";
 import { SESSION_MILESTONES } from "../admin/overview/moments";
 import { promptText, renewalPromptDue } from "../renewals/conversation";
+import { renewalOf } from "../renewals/auto-renew";
 import { daysBetween, weekdayOf } from "../client-history/model";
 import { bookedWithMe, pastDayWords, type DirectoryRow } from "../client-directory/row";
 import { ASK_ABOUT_LABEL, askAboutFor } from "./get-to-know";
@@ -517,7 +518,9 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
 
     /* ---- Left, and Renew ---- */
     const left = row?.left;
-    const renewal = client.renewal;
+    // With her auto-renewal mark and the lock applied now (auto-renew.ts):
+    // a client marked "not on auto-renewal" gets no before-the-charge talk.
+    const renewal = renewalOf(client);
     const talk = renewalPromptDue(renewal);
     if (talk && renewal) moments.push({ family: "renew", kind: "renew", chip: "Renewal talk", sentence: promptText(renewal) });
     if (left && left.state === "known") {
