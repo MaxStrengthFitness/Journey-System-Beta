@@ -46,6 +46,29 @@ import type { Client, ScheduleEntry } from "../types";
  */
 export const STUDIO_ROSTER_LIMIT = 1500;
 
+/**
+ * THE CUT IS NEVER SILENT (hub fixes, Oct 1 2026). Every iPad watches every
+ * client whose home is the studio, and the listener stops at
+ * STUDIO_ROSTER_LIMIT, in no particular order. Before, the only sign was a
+ * console warning nobody on the floor sees: the Directory just listed
+ * 1,500 of them as though that were all. Now the hook says so (`cut`) and
+ * the Directory says it in words.
+ *
+ * The Hub's cards are not affected: a booked client the listener didn't
+ * hold is read by id as a visitor (visitorIdsToFetch skips only the ids the
+ * listener holds). What a narrower listener would need is written in
+ * features/hub-schedule/README.md ("The roster's scope").
+ */
+export function rosterIsCut(heldByListener: number, limit: number = STUDIO_ROSTER_LIMIT): boolean {
+  return Number.isFinite(heldByListener) && heldByListener >= limit;
+}
+
+/** The Directory's line when the roster was cut. */
+export function rosterCutWords(limit: number = STUDIO_ROSTER_LIMIT): string {
+  const n = limit.toLocaleString("en-US");
+  return `This studio has more than ${n} clients on file, and this list holds ${n} of them. Search by name finds anyone it's missing.`;
+}
+
 /** Most visitor ids read in one pass (Firestore `in` takes 10 per query here). */
 export const VISITOR_FETCH_CAP = 200;
 export const VISITOR_CHUNK = 10;

@@ -43,6 +43,7 @@ import { LayerSwitch, type HubLayer } from "../hub-opportunities/LayerSwitch";
 import type { MomentFamily } from "../hub-opportunities/moments-today";
 import type { StripDay, SummaryChip } from "./day-summary";
 import type { HubFocus } from "./focus";
+import type { DayReadState } from "../../lib/schedule-window";
 import "./hub-card.css";
 import "./day-header.css";
 
@@ -153,6 +154,11 @@ export interface DaySummaryProps {
    * the day; absent, no switch.
    */
   focus?: { value: HubFocus; onChange: (next: HubFocus) => void } | null;
+  /**
+   * Whether the day's bookings were read (hub fixes, Oct 1 2026): "nothing
+   * booked" only when they were. Absent: read.
+   */
+  bookings?: DayReadState;
 }
 
 function FocusSwitch({ value, onChange }: { value: HubFocus; onChange: (next: HubFocus) => void }) {
@@ -173,7 +179,7 @@ function FocusSwitch({ value, onChange }: { value: HubFocus; onChange: (next: Hu
   );
 }
 
-export function DaySummary({ title, sessions, trainers, chips, spot, spotText, onSpot, onNext, onAsList, focus = null }: DaySummaryProps) {
+export function DaySummary({ title, sessions, trainers, chips, spot, spotText, onSpot, onNext, onAsList, focus = null, bookings = "ready" }: DaySummaryProps) {
   if (spot) {
     return (
       <div className="hd-sum" data-spot="true" role="status">
@@ -203,7 +209,11 @@ export function DaySummary({ title, sessions, trainers, chips, spot, spotText, o
         <strong>{title}</strong>
         {sessions > 0
           ? ` · ${sessions} ${sessions === 1 ? "session" : "sessions"} · ${trainers} ${trainers === 1 ? "trainer" : "trainers"}`
-          : " · nothing booked"}
+          : bookings === "failed"
+            ? " · couldn't load the bookings"
+            : bookings === "loading"
+              ? " · reading the bookings\u2026"
+              : " · nothing booked"}
       </span>
       {chips.length > 0 && (
         <div className="hd-chips" role="group" aria-label="Light them up on the grid">
@@ -244,8 +254,18 @@ const MARKS: ReadonlyArray<{ family: MomentFamily; icon: Icon; name: string; mea
 const STATES: ReadonlyArray<{ state: string; name: string; means: string }> = [
   { state: "live", name: "Coming up", means: "Every mark shows until the session is done." },
   { state: "in-session", name: "In session", means: "A Journey session is open for her." },
+  {
+    state: "left-open",
+    name: "Left open",
+    means: "A session was started and has gone quiet for over an hour (the app’s one rule for an unfinished session). Tap it to resume it or close it.",
+  },
   { state: "done", name: "Done or not logged", means: "It steps back and goes quiet. “Not logged” says nobody pressed End Session." },
   { state: "unlinked", name: "Not synced yet", means: "No Max Strength profile yet; the next Mindbody sync links it." },
+  {
+    state: "unlinked",
+    name: "Unassigned",
+    means: "The last column: a booking with no trainer Journey can match by id (the studio rotation, a blank, or a Mindbody staff member not linked to a trainer). Its card says Mindbody’s name. Never matched by a name.",
+  },
   { state: "staff", name: "Not a session", means: "Mindbody’s “Unavailable”: lunch, a one-on-one. Never counted." },
   { state: "off", name: "Not working", means: "Outside the trainer’s agreed week, or a day away. Nothing is shaded without an agreed week." },
 ];
@@ -285,10 +305,14 @@ export function KeySheet({ open, onClose }: { open: boolean; onClose: () => void
             );
           })}
         </ul>
+        <p className="hd-key-note">
+          <strong>#43</strong> in a card’s top-right corner is the session this booking will be, shown only where Journey holds her
+          whole story or someone wrote the rest down. Sessions 1 to 3 are the Welcome mark’s to say.
+        </p>
         <h3 className="hd-key-h">On the grid</h3>
         <ul className="hd-key-list">
           {STATES.map((row) => (
-            <li key={row.state}>
+            <li key={row.name}>
               <span className="hd-swatch" data-state={row.state} aria-hidden />
               <span>
                 <strong>{row.name}.</strong> {row.means}

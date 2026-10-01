@@ -25,6 +25,7 @@
  */
 import { ordinal, type MomentFamily, type MomentKind, type RunSheetEntry } from "../hub-opportunities/moments-today";
 import { ASK_UNREAD_LINE } from "../hub-opportunities/get-to-know";
+import type { HubCardState } from "../../lib/hub-card-state";
 
 export interface PeekLine {
   kind: MomentKind;
@@ -58,9 +59,18 @@ function numberWords(n: number | null): string | null {
   return n === 1 ? "her first session" : `her ${ordinal(n)} session`;
 }
 
-export function peekContent(entry: RunSheetEntry, sessionNumber: number | null = entry.sessionNumber): PeekContent {
+export interface PeekOptions {
+  /**
+   * What the card may leave out when space is short, said here in full
+   * (hub fixes, Oct 1 2026): "new to Journey", a service that isn't the
+   * day's usual one.
+   */
+  extras?: ReadonlyArray<string>;
+}
+
+export function peekContent(entry: RunSheetEntry, sessionNumber: number | null = entry.sessionNumber, opts: PeekOptions = {}): PeekContent {
   const critical = entry.moments.find((m) => m.family === "read-first");
-  const subtitle = [entry.timeText, entry.withText, numberWords(sessionNumber)].filter(Boolean).join(" · ");
+  const subtitle = [entry.timeText, entry.withText, numberWords(sessionNumber), ...(opts.extras ?? [])].filter(Boolean).join(" · ");
   const lines: PeekLine[] = entry.moments
     .filter((m) => m.family !== "read-first")
     .map((m) => ({ kind: m.kind, family: m.family, text: m.sentence }));
@@ -82,4 +92,77 @@ export function peekContent(entry: RunSheetEntry, sessionNumber: number | null =
     facts,
     notes,
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* What happened, and what the peek offers (hub fixes, Oct 1 2026)     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * AJ, Oct 1 2026: "if its a logged session i like the idea of switching
+ * 'start session' to 'edit session' where you can edit the reps or weight or
+ * add a machine or remove one from that days routine".
+ *
+ * The peek says what happened to the booking (the card's own state,
+ * lib/hub-card-state) and its main button follows it. Every button opens
+ * something that already exists; nothing here is a second editor:
+ *
+ *   coming up, or nothing to claim   Start session (as before)
+ *   In session                       Open session — the Active Session decides
+ *                                    by its own rules (resume your own, watch
+ *                                    another trainer's read-only)
+ *   Left open                        Resume or start new — the Active Session's
+ *                                    unfinished-session question; her profile
+ *                                    has Discard
+ *   Logged                           Edit session — the Activity Archive's own
+ *                                    session pop-up, for THAT day's session
+ *   Not logged (over)                Log past session — her Activity Archive,
+ *                                    where the form is (no new door)
+ *   Didn't come                      nothing but Open profile
+ */
+export type PeekActionKind = "start" | "open-session" | "edit" | "log-past";
+
+export interface PeekState {
+  /** "Logged · 7 machines", "Not logged", "Didn't come", "In session", "Left open"; null when coming up. */
+  words: string | null;
+  /** The main button, or null for Open profile alone. */
+  primary: { kind: PeekActionKind; label: string } | null;
+  /** One quiet line about the button, when it needs one. */
+  note: string | null;
+}
+
+export function peekState(
+  state: HubCardState | null | undefined,
+  opts: {
+    /** Machines performed in the day's logged session (`sessionMachineIds`), when the session says. */
+    machines?: number | null;
+    /** The day's logged session is in hand to open. */
+    loggedSessionHeld?: boolean;
+  } = {},
+): PeekState {
+  switch (state) {
+    case "in-session":
+      return { words: "In session", primary: { kind: "open-session", label: "Open session" }, note: null };
+    case "left-open":
+      return {
+        words: "Left open",
+        primary: { kind: "open-session", label: "Resume or start new" },
+        note: "Started and quiet for over an hour. Resume it here, or close it from her profile (Discard).",
+      };
+    case "done": {
+      const n = opts.machines;
+      const words = typeof n === "number" && Number.isFinite(n) && n > 0 ? `Logged · ${n} ${n === 1 ? "machine" : "machines"}` : "Logged";
+      return { words, primary: opts.loggedSessionHeld ? { kind: "edit", label: "Edit session" } : null, note: null };
+    }
+    case "not-logged":
+      return {
+        words: "Not logged",
+        primary: { kind: "log-past", label: "Log past session" },
+        note: "Opens her Activity Archive, where Log past session is.",
+      };
+    case "didnt-come":
+      return { words: "Didn't come", primary: null, note: null };
+    default:
+      return { words: null, primary: { kind: "start", label: "Start session" }, note: null };
+  }
 }

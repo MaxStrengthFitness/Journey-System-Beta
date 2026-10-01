@@ -64,6 +64,25 @@
   background: var(--eq-surface-2);
 }
 
+/* A head that opens that trainer's bookings as a list (hub fixes, Oct 1
+   2026): a button, drawn exactly as the head. At least 56px tall. */
+button.hs-colhead {
+  margin: 0;
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button.hs-colhead:focus-visible {
+  outline: 3px solid var(--eq-focus-ring);
+  outline-offset: -3px;
+}
+
 .hs-colhead[data-me="true"] {
   position: sticky;
   left: var(--hs-axis);
@@ -178,6 +197,13 @@
   color: var(--eq-ink-2);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+/* The day's first label (hub fixes, Oct 1 2026): centred on its line at the
+   very top, its top half sat under the sticky trainer row and "9 AM" was cut
+   in half, upright and on its side. It sits just below its line instead. */
+.hs-tick[data-first="true"] {
+  transform: translateY(2px);
 }
 
 .hs-tick[data-hour="false"] {
@@ -314,6 +340,49 @@
   font-size: 11px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---- a read that failed (hub fixes, Oct 1 2026) ----
+   In place, above the grid: what happened, that it is trying again, and a
+   40px Try again. Plum is the app's caution; crimson stays the triangle's. */
+.hs-notice {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--eq-border);
+  background: var(--eq-warn-fill);
+  color: var(--eq-ink);
+}
+
+.hs-notice-words {
+  flex: 1 1 240px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.hs-notice-btn {
+  flex: none;
+  min-height: 40px;
+  min-width: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 10px;
+  background: var(--eq-surface);
+  color: var(--eq-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.hs-notice-btn:focus-visible {
+  outline: 3px solid var(--eq-focus-ring);
+  outline-offset: 1px;
 }
 
 .hs-empty {

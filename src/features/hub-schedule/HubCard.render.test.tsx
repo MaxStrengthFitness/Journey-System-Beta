@@ -17,6 +17,8 @@
  * quoted, and Mindbody's "Unavailable" is time that isn't a session.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { HubCard } from "./HubCard";
@@ -382,12 +384,55 @@ describe("your own column, in words", () => {
     expect([...theirs.querySelectorAll(".hs-g-word")].map((w) => w.textContent)).toEqual(["100th"]);
   });
 
-  it("keeps the time and her number together, apart from the words that may give way", () => {
+  it("puts her number in the top-right corner, beside the name, and off the time's line (AJ, Oct 1 2026)", () => {
     const c = card(false, []);
-    expect(c.querySelector(".hs-card-when")?.textContent).toBe("3:00 · #264");
+    expect(c.querySelector(".hs-card-when")?.textContent).toBe("3:00");
+    const num = c.querySelector<HTMLElement>(".hs-card-top .hs-card-num");
+    expect(num?.textContent).toBe("#264");
+    expect(num?.getAttribute("aria-label")).toBe("Session 264");
+    // In the same row as the name, after it; the triangle keeps its own slot outside that row.
+    expect(num?.parentElement?.className).toBe("hs-card-head");
+    expect(num?.nextElementSibling?.className).toBe("hs-card-name");
     const late = mount({ hm: "10:00", sessionNumber: 264 });
-    expect(late.card.querySelector(".hs-card-when")?.textContent).toContain("#264");
-    expect(late.card.querySelector(".hs-card-rest")?.textContent).toBe(" · Not logged");
+    expect(late.card.querySelector(".hs-card-num")?.textContent).toBe("#264");
+    expect(late.card.querySelector(".hs-card-when")?.textContent).not.toContain("#");
+  });
+
+  it("never cuts its second line: the state word sits with the time, and the rest shows whole or not at all (hub fixes, Oct 1 2026)", () => {
+    const late = mount({ hm: "10:00", sessionNumber: 264 });
+    // "Not logged" is in the part that never shrinks, beside the time.
+    expect(late.card.querySelector(".hs-card-when")?.textContent).toBe("10:00 · Not logged");
+    expect(late.card.querySelector(".hs-card-when .hs-card-state")?.textContent).toBe("Not logged");
+    expect(late.card.querySelector(".hs-card-rest")).toBeNull();
+    // "New to Journey" is a whole part, never a cut string.
+    const fresh = mount({ hm: "15:00", newToJourney: true });
+    expect([...fresh.card.querySelectorAll(".hs-card-rest .hs-card-part")].map((p) => p.textContent)).toEqual([" · New to Journey"]);
+    // The stylesheet never ellipsises the line: a part that doesn't fit drops whole.
+    const css = readFileSync(resolve(__dirname, "hub-card.css"), "utf8");
+    const rest = css.match(/\.hs-card-rest\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(rest).not.toMatch(/text-overflow/);
+    expect(rest).toMatch(/flex-wrap:\s*wrap/);
+    expect(css.match(/\.hs-card-part\s*\{([^}]*)\}/)?.[1] ?? "").toMatch(/flex:\s*none/);
+    expect(css).not.toMatch(/text-overflow:\s*ellipsis/);
+  });
+
+  it("says 'Left open' on a session gone quiet for an hour, never 'In session' all day (hub fixes, Oct 1 2026)", () => {
+    const left = { ...session("In-Progress", "09:02"), lastHeartbeatAt: at("09:40") } as WorkoutSession;
+    const c = mount({ hm: "09:00", workoutSession: left });
+    expect(c.card.dataset.state).toBe("left-open");
+    expect(c.faded).toBe(true);
+    expect(c.card.querySelector(".hs-card-when .hs-card-state")?.textContent).toBe("Left open");
+    expect(c.text).not.toContain("In session");
+    // Still beating: in session, past its slot too.
+    const running = { ...session("In-Progress", "11:02"), lastHeartbeatAt: at("11:55") } as WorkoutSession;
+    const r = mount({ hm: "11:00", workoutSession: running });
+    expect(r.card.dataset.state).toBe("in-session");
+    expect(r.text).toContain("In session");
+  });
+
+  it("shows no number, and no placeholder, where it may not be quoted", () => {
+    expect(mount({ hm: "15:00", sessionNumber: null }).card.querySelector(".hs-card-num")).toBeNull();
+    expect(mount({ hm: "15:00", sessionNumber: 3 }).card.querySelector(".hs-card-num")).toBeNull();
   });
 });
 

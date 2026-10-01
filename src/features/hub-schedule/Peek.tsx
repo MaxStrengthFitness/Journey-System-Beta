@@ -11,9 +11,9 @@
  * close button or Escape closes it, and the card gets its focus back.
  */
 import { useEffect, useLayoutEffect, useRef, useState, type ComponentType } from "react";
-import { Activity, AlertTriangle, Award, Cake, FileSignature, MessageCircle, Play, RefreshCw, Sparkles, Undo2, UserRound, X } from "lucide-react";
+import { Activity, AlertTriangle, Award, Cake, FileSignature, History, MessageCircle, Pencil, Play, RefreshCw, Sparkles, Undo2, UserRound, X } from "lucide-react";
 import type { MomentKind, RunSheetEntry } from "../hub-opportunities/moments-today";
-import { peekContent } from "./peek-model";
+import { peekContent, peekState, type PeekState } from "./peek-model";
 import "./hub-card.css";
 import "./peek.css";
 
@@ -43,11 +43,24 @@ export interface PeekProps {
   sessionNumber: number | null;
   /** The tapped booking's own time, when it isn't her first of the day. */
   timeText?: string | null;
+  /** What the card may leave out when space is short ("New to Journey", a service), said here in full. */
+  extras?: ReadonlyArray<string>;
   /** The card that was tapped: the peek sits beside it, and gives it focus back. */
   anchor: HTMLElement | null;
   onClose: () => void;
   onOpenProfile: (clientId: string) => void;
+  /** Start session, and Open session / Resume (the Active Session decides by its own rules). */
   onStartSession: (clientId: string) => void;
+  /**
+   * What happened to the booking and the main button that follows it (hub
+   * fixes, Oct 1 2026; peek-model's peekState). Absent: Start session, as
+   * before.
+   */
+  state?: PeekState | null;
+  /** Edit session: the day's logged session in the Activity Archive's own pop-up. */
+  onEditSession?: (clientId: string) => void;
+  /** Log past session: her Activity Archive, where the form is. */
+  onLogPast?: (clientId: string) => void;
 }
 
 type Place = { mode: "center" } | { mode: "beside"; top: number; left: number };
@@ -64,8 +77,19 @@ function besideCard(anchor: HTMLElement | null, height: number): Place {
   return { mode: "beside", top, left };
 }
 
-export function Peek({ entry, sessionNumber, timeText = null, anchor, onClose, onOpenProfile, onStartSession }: PeekProps) {
-  const content = peekContent(timeText ? { ...entry, timeText } : entry, sessionNumber);
+export function Peek({ entry, sessionNumber, timeText = null, extras, anchor, onClose, onOpenProfile, onStartSession, state = null, onEditSession, onLogPast }: PeekProps) {
+  const view = state ?? peekState(null);
+  const primary = view.primary;
+  const runPrimary = (id: string) => {
+    if (!primary) return;
+    if (primary.kind === "edit") onEditSession?.(id);
+    else if (primary.kind === "log-past") onLogPast?.(id);
+    else onStartSession(id);
+  };
+  // A button only where its door exists here.
+  const primaryShown =
+    !!primary && (primary.kind === "edit" ? !!onEditSession : primary.kind === "log-past" ? !!onLogPast : true);
+  const content = peekContent(timeText ? { ...entry, timeText } : entry, sessionNumber, { extras });
   const panel = useRef<HTMLDivElement | null>(null);
   const [place, setPlace] = useState<Place>({ mode: "center" });
 
@@ -115,6 +139,12 @@ export function Peek({ entry, sessionNumber, timeText = null, anchor, onClose, o
               {content.name}
             </h2>
             <p className="hp-sub">{content.subtitle}</p>
+            {/* What happened to the booking (hub fixes, Oct 1 2026): the card's own state, in words. */}
+            {view.words && (
+              <p className="hp-state" data-state={state ? "said" : undefined}>
+                {view.words}
+              </p>
+            )}
           </div>
           <button type="button" className="hp-close" onClick={onClose} aria-label="Close">
             <X size={18} aria-hidden />
@@ -174,12 +204,15 @@ export function Peek({ entry, sessionNumber, timeText = null, anchor, onClose, o
               <UserRound size={18} aria-hidden />
               {"Open profile"}
             </button>
-            <button type="button" className="hp-btn" data-primary="true" onClick={() => onStartSession(id)}>
-              <Play size={18} aria-hidden />
-              {"Start session"}
-            </button>
+            {primaryShown && primary && (
+              <button type="button" className="hp-btn" data-primary="true" onClick={() => runPrimary(id)}>
+                {primary.kind === "edit" ? <Pencil size={18} aria-hidden /> : primary.kind === "log-past" ? <History size={18} aria-hidden /> : <Play size={18} aria-hidden />}
+                {primary.label}
+              </button>
+            )}
           </div>
         )}
+        {id && primaryShown && view.note && <p className="hp-action-note">{view.note}</p>}
       </div>
     </>
   );

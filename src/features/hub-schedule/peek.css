@@ -165,6 +165,22 @@
   color: var(--eq-ink-muted);
 }
 
+/* What happened to the booking (hub fixes, Oct 1 2026): the card's own state, in words. */
+.hp-state {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--eq-ink-2);
+}
+
+/* One quiet line about the main button, when it needs one. */
+.hp-action-note {
+  margin: -4px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--eq-ink-muted);
+}
+
 .hp-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;

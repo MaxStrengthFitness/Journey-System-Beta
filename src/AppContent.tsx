@@ -576,13 +576,15 @@ export default function AppContent({
     refresh: refreshSchedules,
     lastFetchedAt: schedulesFetchedAt,
     isFetching: isFetchingSchedules,
+    dayState: scheduleDayState,
+    retry: retrySchedules,
   } = useLiveSchedule(activeStudioId, isDataReady);
   /**
    * Every client of the studio the iPad is in (a live listener), plus any
    * booked visitor from elsewhere. Replaced the booking-window roster on
    * Sep 16 2026 — see src/lib/studio-roster.ts for what that got wrong.
    */
-  const { clients: rosterClients, status: rosterStatus } = useStudioRoster(
+  const { clients: rosterClients, status: rosterStatus, cut: rosterCut } = useStudioRoster(
     activeStudioId,
     isDataReady,
     schedules,
@@ -655,7 +657,6 @@ export default function AppContent({
   );
   const [showNewClientsDialog, setShowNewClientsDialog] = useState(false);
   const [isReorderingTrainers, setIsReorderingTrainers] = useState(false);
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [isIntroSession, setIsIntroSession] = useState(false);
   /**
    * The header's Refresh and the calendar's: asks Mindbody for part of the
@@ -681,8 +682,6 @@ export default function AppContent({
   const {
     startUnassignedSession,
     updateClient,
-    submitClientFormData,
-    updateClientSessions,
     handleDeleteClient,
   } = useClientMutations(
     authTrainer,
@@ -856,77 +855,6 @@ export default function AppContent({
     return studios.find((s) => s.id === activeStudioId)?.name || null;
   }, [activeStudioId, studios]);
 
-  const [clientFormData, setClientFormData] = useState({
-    firstName: "",
-    lastName: "",
-    gender: "Male" as "Male" | "Female" | "Other",
-    heightFeet: "",
-    heightInches: "",
-    weight: "",
-    age: "",
-    occupation: "",
-    phone: "",
-    email: "",
-    address: "",
-    emergencyContactName: "",
-    emergencyContactPhone: "",
-    isActive: true,
-    isRoutineBActive: false,
-    medicalHistory: "",
-    globalNotes: "",
-    remainingSessions: 10,
-    mindbody_name: "",
-  });
-
-  const startEditClient = (client: Client) => {
-    setEditingClient(client);
-
-    // Parse height string (e.g., "5' 10\"")
-    let ft = "";
-    let inc = "";
-    if (client.height) {
-      if (client.height.includes("'")) {
-        const parts = client.height.split("'");
-        ft = parts[0].trim();
-        if (parts[1]) {
-          inc = parts[1].replace('"', "").trim();
-        }
-      } else {
-        // Fallback for old numeric data (assuming inches if > 15)
-        const totalInches = parseInt(client.height);
-        if (!isNaN(totalInches) && totalInches > 15) {
-          ft = Math.floor(totalInches / 12).toString();
-          inc = (totalInches % 12).toString();
-        } else {
-          ft = client.height;
-        }
-      }
-    }
-
-    setClientFormData({
-      firstName: client.firstName,
-      lastName: client.lastName,
-      gender: client.gender,
-      heightFeet: ft,
-      heightInches: inc,
-      height: client.height, // Keep for legacy if needed momentarily
-      weight: client.weight || "",
-      age: client.age?.toString() || "",
-      occupation: client.occupation || "",
-      phone: client.phone || "",
-      email: client.email || "",
-      address: client.address || "",
-      emergencyContactName: client.emergencyContactName || "",
-      emergencyContactPhone: client.emergencyContactPhone || "",
-      isActive: client.isActive,
-      isRoutineBActive: client.isRoutineBActive || false,
-      remainingSessions: client.remainingSessions,
-      medicalHistory: client.medicalHistory || "",
-      globalNotes: client.globalNotes || "",
-    });
-    // setIsAddingClient removed as we use editingClient state or the new modal for creation
-  };
-
   const updateStudio = async (studioId: string, updates: Partial<Studio>) => {
     try {
       await updateDoc(doc(db, "studios", studioId), {
@@ -935,42 +863,6 @@ export default function AppContent({
       });
     } catch (e) {
       console.error(e);
-    }
-  };
-
-  const handleClientSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await submitClientFormData(clientFormData as any, editingClient);
-
-      if (editingClient) {
-        setEditingClient(null);
-      }
-
-      setClientFormData({
-        firstName: "",
-        lastName: "",
-        gender: "Male",
-        heightFeet: "",
-        heightInches: "",
-        height: "",
-        weight: "",
-        age: "",
-        occupation: "",
-        phone: "",
-        email: "",
-        address: "",
-        emergencyContactName: "",
-        emergencyContactPhone: "",
-        isActive: true,
-        isRoutineBActive: false,
-        medicalHistory: "",
-        globalNotes: "",
-        remainingSessions: 10,
-        mindbody_name: "",
-      });
-    } catch (error) {
-      // Error handled by hook
     }
   };
 
@@ -1381,7 +1273,10 @@ export default function AppContent({
               setCurrentView("clients");
             });
           }}
-          placeholder="Search clients"
+          // "Search", not "Search clients": upright the box is narrow and the
+          // placeholder read "Search clie" (AJ's iPad, Oct 1 2026). The label
+          // says the whole thing; the magnifier says the rest.
+          placeholder="Search"
           aria-label="Search clients"
           {...NAME_SEARCH_PROPS}
           className="h-10 pl-8 pr-8 rounded-lg bg-slate-100/80 dark:bg-slate-800/60 border border-transparent text-sm font-medium text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-1 focus-visible:ring-cyan/60 focus-visible:border-cyan/40 focus-visible:bg-white dark:focus-visible:bg-slate-900"
@@ -1709,6 +1604,7 @@ export default function AppContent({
                     liveAuthTrainer={liveAuthTrainer}
                     uid={user?.uid ?? null}
                     rosterStatus={rosterStatus}
+                    rosterCut={rosterCut}
                     schedules={schedules}
                     schedulesFetchedAt={schedulesFetchedAt}
                     sessions={sessions}
@@ -1730,6 +1626,8 @@ export default function AppContent({
                     }
                     activeStudioId={activeStudioId}
                     cutoverStudios={studios}
+                    machines={machines}
+                    schedulesFetchedAt={schedulesFetchedAt}
                     authTrainer={authTrainer}
                     onSelectClient={(id) => {
                       setSelectedClientId(id);
@@ -1739,13 +1637,6 @@ export default function AppContent({
                     schedules={schedules}
                     sessions={sessions}
                     sessionsKnown={sessionsKnown}
-                    editingClient={editingClient}
-                    setEditingClient={setEditingClient}
-                    formData={clientFormData}
-                    setFormData={setClientFormData}
-                    onSubmit={handleClientSubmit}
-                    startEdit={startEditClient}
-                    updateSessions={updateClientSessions}
                     onSelectTrainer={(id) => {
                       setSelectedProfileTrainerId(id);
                       setView("trainer-profile");
@@ -1753,6 +1644,9 @@ export default function AppContent({
                     searchTerm={hubSearchTerm}
                     onSearchTermChange={setHubSearchTerm}
                     rosterLoading={rosterStatus === "loading"}
+                    rosterFailed={rosterStatus === "error"}
+                    scheduleDayState={scheduleDayState}
+                    onRetrySchedule={retrySchedules}
                   />
                 )}
                 {isLearningView && (
@@ -1835,7 +1729,6 @@ export default function AppContent({
                     showClientPicker={showClientPicker}
                     setShowClientPicker={setShowClientPicker}
                     onStartNewClientOnboarding={startNewClientOnboarding}
-                    setClientFormData={setClientFormData}
                     onOpenInfo={(m) => {
                       setInfoMachineId(m.id!);
                       setIsEditingMachineInfo(false);

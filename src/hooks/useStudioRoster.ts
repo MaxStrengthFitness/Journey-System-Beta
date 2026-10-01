@@ -22,6 +22,7 @@ import {
   isPermissionError,
   isQuotaError,
   mergeRoster,
+  rosterIsCut,
   visitorIdsToFetch,
 } from "../lib/studio-roster";
 
@@ -115,7 +116,7 @@ export function useStudioRoster(
         setStatus("ready");
         if (list.length >= STUDIO_ROSTER_LIMIT) {
           console.warn(
-            `useStudioRoster: ${activeStudioId} has at least ${STUDIO_ROSTER_LIMIT} clients; the roster is truncated. Filter the listener to active clients.`,
+            `useStudioRoster: ${activeStudioId} has at least ${STUDIO_ROSTER_LIMIT} clients; the roster is cut there, and the Directory says so (see features/hub-schedule/README.md, "The roster's scope").`,
           );
         }
       },
@@ -272,5 +273,8 @@ export function useStudioRoster(
     [studioClients, visitorVersion],
   );
 
-  return { clients, status, studioCount: studioClients.length };
+  /** The listener stopped at STUDIO_ROSTER_LIMIT: said on screen, never silent (hub fixes, Oct 1 2026). */
+  const cut = rosterIsCut(studioClients.length);
+
+  return { clients, status, studioCount: studioClients.length, cut };
 }

@@ -23,8 +23,10 @@ This folder is the Hub's Schedule layer: the grid, its cards, the top, the spotl
 | `next-half-hour.ts` | Who is on the Next 30 minutes strip and when it shows: today only, from half an hour before the first booking to the end of the last; never a booking that is over. Pure (hub cherry round) |
 | `NextStrip.tsx` + `next-strip.css` | The Next 30 minutes strip (prefix `hn-`): one quiet row under the top; a tap opens the peek (hub cherry round) |
 | `focus.ts` | Focus: Me or Everyone, remembered on the iPad (local storage, cleared at sign-out); the focus column's id (hub cherry round) |
+| `hub-day.ts` | The Hub's day: the studio's today, the week strip from it, a day picked on purpose or "follow today", the day's title. Pure (hub fixes, Oct 1 2026) |
+| `columns.ts` | Which column a booking goes in: the trainer id, else the Mindbody staff id at this studio's site, else **Unassigned**; never a name. Which trainers have a column. The staff name an Unassigned card may say. Pure (hub fixes) |
 
-`components/ClientsView.tsx` is still the screen: it decides the columns (`visibleTrainersList`) and which booking goes in which (one column each, the first trainer it matches), and hands the grid its cards. `ClientsView.render.test.tsx` mounts it.
+`components/ClientsView.tsx` is still the screen: it asks `columns.ts` for the columns and which booking goes in which, and hands the grid its cards. `ClientsView.render.test.tsx` mounts it.
 
 ## Decisions
 
@@ -33,11 +35,24 @@ This folder is the Hub's Schedule layer: the grid, its cards, the top, the spotl
 - **Get to know** (wave 2 hub, Sep 28 2026): the ✎ "Ask about" from FORD is a blue speech bubble ALONE — no word beside it in anyone's column, your own included, and its label (a screen reader's, the "+N"'s) is only "Something to ask about", so a client's home life is never on the grid. Last in the Key's order: on a card with two other marks it is part of the "+N". Its sentence is in the peek (the last of the lines) and the list; it lights from the day summary's "Get to know" chip ("Showing 2 to ask about on the grid"), and the Key has its row. A finished card drops it with every other mark. When the studio's FORD couldn't be checked, the peek says so quietly at its foot.
 - **All stars** (wave 2 hub, AJ's Hub question 6) never touches the grid: no glyph, no word on a card. The peek says "All star: in 25 of the last 26 weeks, about twice a week." in one sentence under the marks (`.hp-star`, the lines' own ink), only for a client the nightly marks name; the Opportunities list gives her a section on its Sessions sort.
 - **Colour means one thing per channel.** The left edge is the booking's state (coming up, in session, over); the glyph colour is its family (Watch plum, Welcome blue, Celebrate orange, Renew green); crimson is the Critical triangle alone. The Pulse flag moved from rose to plum. The amber clinical-history dot left the card (Hub question 3's default) — the peek and the Opportunities row say it quietly, and the briefing holds the detail.
-- **"No waiver signed"** (AJ, Sep 28: Mindbody's "nw" corner): a plum glyph, a Watch moment, only for a definite "not signed" (`lib/client-waiver.ts`); "not synced yet" says nothing. It never blocks a session (Hub question 9's default).
+- **"No waiver signed"** (AJ, Sep 28: Mindbody's "nw" corner): a plum glyph, a Watch moment, only for a definite "not signed" (`lib/client-waiver.ts`); "not synced yet" says nothing. It never blocks a session (Hub question 9's default). **Only where the studio keeps its waivers in Mindbody at all** (hub fixes, Oct 1 2026: Strongsville's Hub flagged 32 of 32): with no client the Hub holds for the studio signed in Mindbody, "not signed" is unknown and no card is flagged (`waiversKeptInMindbody`, `waiverFlagState`).
 - **Done goes quiet** (AJ, Hub question 2: "once the session is done it should make a lot less noise so trainers can focus on the rest of their day"): a card that is over recedes and drops every mark, the triangle included. Done means logged is unchanged (`lib/hub-card-state.ts`).
 - **"Didn't come"** (Operations room, wave 3, Sep 29 2026): a leader's mark on a booking nobody logged (`studios/{s}/bookingMarks`, `admin/attention/booking-marks.ts`) is read by the Hub with ONE listener for the day on screen (`useBookingMarks` in `ClientsView`, for someone who works at the studio), handed to every card (`noShows`), the Next 30 minutes strip and the day's moments engine. A marked booking recedes with a quiet "Didn't come" (`hubCardState` → `didnt-come`), never "Not logged"; a session logged that day still beats the mark (done means logged); unread or refused marks change nothing. Mindbody's own No-Show, should the sync ever carry it, reads the same.
 - **Names whole** (Hub question 8's default): the name she goes by (`clientDisplayName`), wrapping, never cut; columns at least 156px.
-- **Her number** from #4, and only when it may be quoted (`canQuoteSessionNumber` through the engine); 1–3 are the Welcome glyph's to say; not repeated when the milestone glyph says it; "New to Journey" in its place when her story began before the cutover (AJ, Sep 22).
+- **Her number** from #4, and only when it may be quoted (`canQuoteSessionNumber` through the engine); 1–3 are the Welcome glyph's to say; not repeated when the milestone glyph says it; "New to Journey" in its place when her story began before the cutover (AJ, Sep 22). **In the card's top-right, quietly** (AJ, Oct 1 2026: "i do wish the top right of the card said what session number they were on in a very subtle manner"): 11px, the muted ink, tabular, floated at the right of the name's first line (`cornerNumber`); the Critical triangle keeps its own slot at the far right. A client who started on Journey keeps it as her Mindbody count grows (`visitsBeforeJourney`, lib/prior-history.ts).
+
+### The hub fixes (Oct 1 2026, `docs/rounds/2026-10-01-hub-fixes.md`)
+
+AJ, on the Screen Atlas's list of what looks off on the Hub: "these very much need to be addressed."
+
+- **Today is the studio's day** (`hub-day.ts`): from the minute clock, which also ticks when Journey comes back on screen. Left on today, the Hub moves to the new today at the studio's midnight; a day picked on purpose stays picked. The strip and the title move with it.
+- **A failed read is unknown, never a quiet day** (`useLiveSchedule`'s `dayState`): one plum line above the grid with Try again (40px); "Nobody is booked" only for a day that was read; with the client list unread, no card says "Not synced yet" (kind `unknown`).
+- **Columns by id, never a name** (`columns.ts`): Unassigned holds what no trainer can claim, saying Mindbody's staff name whole; "You" by trainer id; two names that read alike show the full names.
+- **The card's second line is never cut**: "Not logged", "Didn't come" and "Left open" sit with the time; "New to Journey" and a service show whole or not at all, and the peek says them in full (`cardRestWords`).
+- **Left open**: a session gone quiet for an hour (the app's one staleness rule, `isSessionValid`) is never "In session" all day; it recedes with a plum edge.
+- **The peek says what happened** and its button follows it (`peekState`): Edit session opens the Activity Archive's own session pop-up for that day's session (AJ: "switching 'start session' to 'edit session'"); Open session or Resume or start new go to the Active Session; Log past session opens her Activity Archive; Didn't come has no Start.
+- **A tap on a column head** opens Opportunities narrowed to that trainer's bookings (AJ approved), with Show everyone.
+- **The first time label** sits below its line, never half under the trainer row.
 - **The service** only when it isn't the day's usual one (`usualServiceOf`: the name most of the day's bookings carry).
 - **Real lengths.** A booking is drawn from its own start to its own end: a 30-minute session is 64px, a 45-minute consult 97px. Overlaps share the column in lanes.
 - **Folding.** An hour or more with nothing booked in ANY column is one band ("No sessions 1:00 – 2:00 PM"); a tap opens it for the day on screen. Never over a booking; a booking starting where a band ends starts below it.
@@ -61,11 +76,25 @@ The cherry on top adds no read: the focus column, the strip and the switch work 
 
 Wave 2 hub (Sep 28 2026) adds **the studio's FORD, once per studio visit**, for Get to know — ONE collection group query, read by the engine's side (`hub-opportunities/use-hub-ford.ts` over `ford/hub-read.ts`) — and **the nightly marks**, for All stars — ONE document by id (`hub-opportunities/use-hub-marks.ts`, `studios/{s}/watch/hubMarks`), both only for someone who works at the studio (`mayReadWeeks`, asked once in ClientsView as `readsStudio`, the same answer the standing weeks' listener asks).
 
+## The roster's scope (hub fixes, Oct 1 2026)
+
+Every iPad watches every client whose home is the studio (`useStudioRoster`, one listener on `clients where homeStudioId == <studio>`), cut at `STUDIO_ROSTER_LIMIT` (1,500) in no particular order. Until Oct 1 the cut was silent: a console warning. Now the hook says so (`cut`), the Client Directory says it in words (`rosterCutWords`), and a typed name is also asked of Firestore there, so nobody past the cut is out of reach. The Hub's cards don't need the cut lifted: a booked client the listener didn't hold is read by id as a visitor.
+
+The listener's scope was left as it is, on purpose. Narrowing it to "clients who matter to the Hub" (active ones, or those booked in the window) would take clients away from screens that need every one:
+
+- **The Client Directory** lists the studio's clients, inactive ones included (All · Mine · Kaizen · In today, the sorts and the descriptions), and trusts the roster for the current studio.
+- **My Profile → My clients**, **Relay's Since you were in** and **the auto-sync** (`useAutoSync`) read the same list.
+- **The Hub's search** (the header's box) filters the roster before it asks Firestore by name prefix.
+
+What a later fix needs, before a historical import (FileMaker) adds years of former clients with the same `homeStudioId`:
+
+1. A field the listener can filter on that the sync keeps true, e.g. `isActive` or a "seen in the last N months" day the nightly job writes, with the composite index (`homeStudioId`, that field). Production is Enterprise edition, which builds no index by itself.
+2. Every reader above moved to ask for the rest: the Directory's All view and the descriptions by a server query (it already has `useStudiosNameQuery` for names), My clients and Since you were in by their own bounded reads.
+3. The rules unchanged: a narrower query of the same collection proves itself the same way.
+
 ## Out of scope (and why)
 
 - **Surgery or away from dated notes**: not asked for in wave 2. Its FORD half could ride on Get to know's read; the dated notes need a journal read of their own.
-- **"Couldn't load, retrying"** when the schedule read fails: `useLiveSchedule` doesn't say so yet; it needs the hook to expose the failure.
-- **Columns by trainer id only** and an "Unassigned" column (the Screen Atlas): the matching is the old `isTrainerMatch`, unchanged, until the sync's staff ids are checked.
-- **A tap on a column header** opening Opportunities for that trainer, **"+N" opening the row**, **"Show on schedule"** from the list: the list has no trainer filter or scroll target yet.
+- **"+N" opening the row**, **"Show on schedule"** from the list: the list has no scroll target yet. (Done on Oct 1 2026, the hub fixes: "Couldn't load, retrying" when a read fails; columns by trainer id only with an Unassigned column; a tap on a column head opening Opportunities for that trainer.)
 - **Zoom (Day | Close)** from Hub direction B: not asked for in the cherry round.
 - **Words for a Watch or Renew mark in your own column** ("No waiver", "Renewal talk", "Pulse flag", as the blueprint's B drew them): kept a glyph alone, because a client stands at the iPad — a question for AJ.

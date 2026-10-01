@@ -14,29 +14,6 @@ import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { logDocId } from "../lib/exercise-log-id";
 import { studioTodayKey } from "../lib/studio-time";
 
-type ClientFormData = {
-  firstName: string;
-  lastName: string;
-  gender: "Male" | "Female" | "Other";
-  heightFeet: string;
-  heightInches: string;
-  height?: string;
-  weight: string;
-  age: string | number | null;
-  occupation: string;
-  phone: string;
-  email: string;
-  address: string;
-  emergencyContactName: string;
-  emergencyContactPhone: string;
-  isActive: boolean;
-  isRoutineBActive: boolean;
-  medicalHistory: string;
-  globalNotes: string;
-  remainingSessions: number;
-  mindbody_name?: string;
-};
-
 export function useClientMutations(
   authTrainer: Trainer | null,
   activeStudioId: string | null,
@@ -119,68 +96,6 @@ export function useClientMutations(
     }
   };
 
-  const submitClientFormData = async (
-    clientFormData: ClientFormData,
-    editingClient: Client | null
-  ) => {
-    setIsMutating(true);
-    try {
-      const formattedHeight = `${clientFormData.heightFeet || "0"}' ${clientFormData.heightInches || "0"}"`;
-      const submissionData = {
-        ...clientFormData,
-        height: formattedHeight,
-      };
-
-      const { heightFeet, heightInches, ...restFinalData } = submissionData as any;
-      const finalData: any = { ...restFinalData };
-
-      if (finalData.age === "" || finalData.age === undefined) {
-        finalData.age = null;
-      } else if (typeof finalData.age === "string") {
-        const parsed = parseInt(finalData.age, 10);
-        finalData.age = isNaN(parsed) ? null : parsed;
-      }
-
-      Object.keys(finalData).forEach((key) => {
-        if (finalData[key] === undefined) {
-          finalData[key] = null;
-        }
-      });
-
-      if (editingClient) {
-        await updateDoc(doc(db, "clients", editingClient.id!), {
-          ...finalData,
-          updatedAt: serverTimestamp(),
-        });
-      } else {
-        await addDoc(collection(db, "clients"), {
-          ...finalData,
-          createdAt: serverTimestamp(),
-        });
-      }
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, "clients");
-      throw error;
-    } finally {
-      setIsMutating(false);
-    }
-  };
-
-  const updateClientSessions = async (clientId: string, current: number, delta: number) => {
-    setIsMutating(true);
-    try {
-      const newVal = Math.max(0, current + delta);
-      await updateDoc(doc(db, "clients", clientId), {
-        remainingSessions: newVal,
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `clients/${clientId}`);
-      throw error;
-    } finally {
-      setIsMutating(false);
-    }
-  };
-
   const handleDeleteClient = async (clientId: string) => {
     setIsMutating(true);
     try {
@@ -199,8 +114,6 @@ export function useClientMutations(
     isMutating,
     startUnassignedSession,
     updateClient,
-    submitClientFormData,
-    updateClientSessions,
     handleDeleteClient,
   };
 }

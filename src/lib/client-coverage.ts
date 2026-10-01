@@ -36,6 +36,12 @@ export interface CoverageClient {
    * who has never been synced has none, and reads as unknown.
    */
   clientsNumberOfVisitsAtSite?: number;
+  /**
+   * Journey's own count (types.ts). Mindbody's visits include the sessions
+   * Journey logged, so they are taken off before the new-client line is
+   * drawn (prior-history.ts, visitsBeforeJourney; hub fixes, Oct 1 2026).
+   */
+  sessionCount?: number;
 }
 
 /**
@@ -56,6 +62,7 @@ export function coverageOfClient(
         ? studioDayKeyOf(client.firstSessionDate as never)
         : null,
       mindbodyVisits: client.clientsNumberOfVisitsAtSite ?? null,
+      journeySessions: typeof client.sessionCount === "number" ? client.sessionCount : null,
     },
     cutover ?? null,
   );

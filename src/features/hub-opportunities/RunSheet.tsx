@@ -64,6 +64,13 @@ export interface RunSheetProps {
    * "See them as a list" (calm Hub round). A new nonce applies it again.
    */
   request?: { filter: FilterId; nonce: number } | null;
+  /**
+   * One trainer's bookings for the day (hub fixes, Oct 1 2026, AJ approved:
+   * a tap on a trainer's column head). The same entries, narrowed — never a
+   * second engine. A bar says whose they are, with Show everyone.
+   */
+  trainer?: { name: string; includes: (entry: RunSheetEntry) => boolean } | null;
+  onClearTrainer?: () => void;
 }
 
 type Scope = "studio" | "mine";
@@ -194,7 +201,7 @@ function OpenedRow({ entry, onOpenProfile, onStartSession }: { entry: RunSheetEn
   );
 }
 
-export function RunSheet({ day, entries, onOpenProfile, onStartSession, request = null }: RunSheetProps) {
+export function RunSheet({ day, entries, onOpenProfile, onStartSession, request = null, trainer = null, onClearTrainer }: RunSheetProps) {
   const [memory, setMemory] = useState<Remembered>(readMemory);
   const [reversed, setReversed] = useState(false);
   const [openKey, setOpenKey] = useState<string | null>(null);
@@ -207,7 +214,8 @@ export function RunSheet({ day, entries, onOpenProfile, onStartSession, request 
     if (request) setMemory((m) => ({ ...m, filter: request.filter, scope: "studio" }));
   }, [request?.filter, request?.nonce]);
 
-  const scoped = useMemo(() => (memory.scope === "mine" ? entries.filter((e) => e.mine) : entries), [entries, memory.scope]);
+  // One trainer's bookings (a tap on their column head) narrows the same entries, whatever the scope.
+  const scoped = useMemo(() => (trainer ? entries.filter(trainer.includes) : memory.scope === "mine" ? entries.filter((e) => e.mine) : entries), [entries, memory.scope, trainer]);
   const counts = useMemo(() => filterCounts(scoped), [scoped]);
   const mineCount = useMemo(() => entries.filter((e) => e.mine).length, [entries]);
   // A filter whose count fell to zero (a new day) shows everyone rather than nobody.
@@ -228,6 +236,16 @@ export function RunSheet({ day, entries, onOpenProfile, onStartSession, request 
 
   return (
     <div className="ho" data-sort={memory.sort}>
+      {trainer && (
+        <div className="ho-trainer" role="status">
+          <span className="ho-trainer-words">{`${trainer.name} · ${scoped.length} ${scoped.length === 1 ? "booking" : "bookings"}`}</span>
+          {onClearTrainer && (
+            <button type="button" className="ho-trainer-btn" onClick={onClearTrainer}>
+              Show everyone
+            </button>
+          )}
+        </div>
+      )}
       <div className="ho-controls">
         <div className="ho-seg" role="group" aria-label="Sort by">
           {RUN_SORTS.map((s) => (

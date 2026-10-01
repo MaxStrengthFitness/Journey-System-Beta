@@ -2633,6 +2633,24 @@ Nothing to deploy but the push. As a **Life Transformer**, then a **studio leade
 - [ ] Book her in Mindbody (a test client): after the next sync she is Back on the Journey, on the Directory's All, and on the Hub's grid for that day.
 - [ ] The next morning, the nightly job's log on Render: each live studio's line counts "N inactive (N marked by a leader)", and the first look says "N inactive, left out of the monthly sweep".
 
+## Round 49 — The Hub fixes · *Oct 1 2026, branch `oct1/hub-fixes`*
+
+Nothing to deploy but the push. As a **Life Transformer** with sessions today, then a **studio leader**, upright and on its side. `docs/rounds/2026-10-01-hub-fixes.md`. (Round 48 is kept for the inactive-clients round.)
+
+- [ ] Leave the Hub open on today past the studio's midnight (or put the iPad to sleep and wake it the next morning): the day selected, the first day of the week strip and the title above the grid are the new today. Pick a day further on, wake it again after midnight: your pick is kept.
+- [ ] Turn Wi-Fi off and open a day that hasn't been read: a plum line above the grid says the bookings couldn't be loaded and it is trying again, with Try again; the grid never says "Nobody is booked on this day." Wi-Fi back on, Try again: the day loads.
+- [ ] A day with two trainers who share a first name: each has their own column, both full names whole; each booking is under the trainer Mindbody booked it with. A booking with no trainer Journey can match (the studio rotation, or a staff member not linked) is in **Unassigned**, the last column, saying "Booked with {Mindbody's name}". The day's session count matches the cards drawn.
+- [ ] "9 AM" (or whatever the first hour is) at the top of the time column is whole, upright and on its side.
+- [ ] Cards upright on a narrow column: nothing ends in "…". "Not logged" and "Didn't come" are whole beside the time; "New to Journey" is whole or not there (the peek says it).
+- [ ] A client's number sits quietly in the card's top-right ("#43"), never on the time's line; nothing for a client whose number may not be quoted; the red triangle, when there is one, is at the far right beside it. The Key explains "#43".
+- [ ] A client who started on Journey in September and has had six or more sessions still shows her number on the card and in the peek.
+- [ ] The header's search box says "Search" upright, whole. Type a client with many sessions: the results are the Client Directory's rows (Last in · Next · Left, the same words as the Directory), each with Start; a tap opens her profile. No "Previous session: No history".
+- [ ] Strongsville's Hub: no card carries "No waiver signed" and there is no Watch chip for waivers, unless some of its clients have their liability release signed in Mindbody (then only the ones who haven't).
+- [ ] Tap a trainer's name at the top of their column: Opportunities opens with their bookings only and says "{name} · N bookings"; Show everyone shows the studio; Schedule and back to Opportunities shows everyone too.
+- [ ] Start a session and leave it (close the iPad) for over an hour: its card says "Left open", quiet, with a plum edge, not "In session". Tap it: the peek says Left open and offers Resume or start new; her profile has Discard.
+- [ ] Tap a booking that was logged today: the peek says "Logged" (with its machines when the session recorded them) and **Edit session** opens the same session pop-up as Activity Archive; change a weight, Save: the edit stamp says you. A booking marked "didn't come": the peek has Open profile only. A booking over and not logged: Log past session opens her Activity Archive, where the form is.
+- [ ] Only if a studio has more than 1,500 clients on file: its Client Directory has a line saying the list holds 1,500 of them, and typing a name finds anyone it's missing.
+
 ---
 
 ## Findings log

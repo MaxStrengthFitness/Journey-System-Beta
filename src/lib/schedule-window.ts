@@ -174,6 +174,46 @@ export function liveWindow(now: Date): { from: Date; to: Date } {
 }
 
 /**
+ * WHAT IS KNOWN ABOUT ONE DAY'S BOOKINGS (hub fixes, Oct 1 2026).
+ *
+ * A failed read is "unknown", never "empty" (CLAUDE.md, data rules). The Hub
+ * used to draw a quiet day when the read failed — "Nobody is booked on this
+ * day." over a schedule it had never seen. So the hook says, per studio day:
+ *
+ *   ready    read (the live listener answered, or the day was fetched)
+ *   failed   the read that should have brought it failed, and nothing has
+ *            read it since
+ *   loading  not asked yet, or the answer hasn't come
+ *
+ * The live days follow the listener's own state; a fetched day is failed
+ * while its last read failed, else ready once covered.
+ */
+export type DayReadState = "loading" | "ready" | "failed";
+
+export function dayReadState(
+  key: string,
+  input: {
+    liveKeys: readonly string[];
+    liveState: DayReadState;
+    failed: ReadonlySet<string> | ReadonlyMap<string, unknown>;
+    covered: ReadonlySet<string> | ReadonlyMap<string, unknown>;
+  },
+): DayReadState {
+  if (input.liveKeys.includes(key)) return input.liveState;
+  if (input.failed.has(key)) return "failed";
+  if (input.covered.has(key)) return "ready";
+  return "loading";
+}
+
+/** A failed listener is opened again after 15s, 30s, 1m, 2m, then every 5m (the roster's rhythm). */
+export function retryDelayMs(failures: number): number {
+  return Math.min(5 * 60_000, 15_000 * 2 ** Math.max(0, failures));
+}
+
+/** A fetched range that failed is asked for again after this long, while the screen is on. */
+export const FETCH_RETRY_MS = 30_000;
+
+/**
  * Milliseconds until just after the studio's day rolls over — the moment the
  * live window has to move along by a day for an iPad that was left open.
  * The extra second keeps the timer from firing a hair before midnight and

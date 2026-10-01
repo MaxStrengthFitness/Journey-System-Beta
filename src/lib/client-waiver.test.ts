@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Timestamp } from "firebase/firestore";
-import { waiverState } from "./client-waiver";
+import { waiverFlagState, waiverState, waiversKeptInMindbody } from "./client-waiver";
 
 describe("waiverState", () => {
   it("is unknown — not 'not on file' — when the waiver was never synced", () => {
@@ -45,5 +45,21 @@ describe("waiverState", () => {
     expect(waiverState({ isLiabilityReleased: true, liabilityAgreementDate: { seconds: 1553040000 } }).label).toBe(
       "Signed Mar 20, 2019",
     );
+  });
+});
+
+describe("a studio whose waivers aren't kept in Mindbody (hub fixes, Oct 1 2026)", () => {
+  it("knows Mindbody holds the studio's waivers only once it has said 'signed' for someone", () => {
+    expect(waiversKeptInMindbody([{ isLiabilityReleased: false }, { isLiabilityReleased: false }, {}])).toBe(false);
+    expect(waiversKeptInMindbody([{ isLiabilityReleased: false }, { isLiabilityReleased: true }])).toBe(true);
+    expect(waiversKeptInMindbody([])).toBe(false);
+    expect(waiversKeptInMindbody(null)).toBe(false);
+  });
+
+  it("flags 'not signed' only there; elsewhere it is unknown, never a flag on every card", () => {
+    expect(waiverFlagState({ isLiabilityReleased: false }, true).state).toBe("not-signed");
+    expect(waiverFlagState({ isLiabilityReleased: false }, false).state).toBe("unknown");
+    expect(waiverFlagState({ isLiabilityReleased: true }, false).state).toBe("signed");
+    expect(waiverFlagState({}, true).state).toBe("unknown");
   });
 });

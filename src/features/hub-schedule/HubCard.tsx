@@ -33,12 +33,11 @@ import { Activity, AlertTriangle, Award, Cake, Check, CloudOff, FileSignature, M
 import type { Client, WorkoutSession } from "../../types";
 import { isStaffBlock, type BookingMarks, type LoggedSessions } from "../../lib/booking-state";
 import { hubCardRecedes, hubCardState } from "../../lib/hub-card-state";
-import { isDefaultService } from "../../lib/hub-markers";
 import { clientDisplayName } from "../../lib/client-name";
 import { safeToDate } from "../../lib/utils";
 import { zonedHM } from "../../lib/studio-time";
 import type { MomentKind, RunSheetEntry } from "../hub-opportunities/moments-today";
-import { cardMarks } from "./card-marks";
+import { cardMarks, cardRestWords, cornerNumber } from "./card-marks";
 import "./hub-card.css";
 
 /** One shape per kind of mark (the Key's). The Next 30 minutes strip draws with the same. */
@@ -101,6 +100,18 @@ export interface HubCardProps {
   now?: Date;
   /** The roster is still loading: a booking naming a client we don't hold YET is pending, not "Not synced". */
   rosterLoading?: boolean;
+  /**
+   * The roster's read failed (hub fixes, Oct 1 2026): a booking naming a
+   * client we don't hold is unknown, so the card says nothing about sync —
+   * "Not synced yet" would be a claim about a list Journey never read.
+   */
+  rosterFailed?: boolean;
+  /**
+   * In the Unassigned column (hub fixes, Oct 1 2026): the staff name Mindbody
+   * gave, which Journey couldn't match to a trainer ("Westlake Rotation",
+   * "Samuel Lee"). Said whole, on its own line. Absent elsewhere.
+   */
+  staffName?: string | null;
   /** The day summary's spotlight is on and this card doesn't match it. */
   dimmed?: boolean;
   /**
@@ -126,6 +137,8 @@ export function HubCard({
   noShows = null,
   now = new Date(),
   rosterLoading = false,
+  rosterFailed = false,
+  staffName = null,
   dimmed = false,
   wordy = false,
   open = false,
@@ -160,11 +173,13 @@ export function HubCard({
     },
     logged,
     now,
-    { sessionOpen: workoutSession?.status === "In-Progress", marks: noShows },
+    { session: workoutSession, marks: noShows },
   );
   const recedes = hubCardRecedes(cardState);
   const isUnlinked = !client;
   const isPending = isUnlinked && rosterLoading && Boolean(booking?.clientId);
+  /* The roster failed: whether she has a profile is unknown, so nothing is said about it. */
+  const isUnknown = isUnlinked && !isPending && rosterFailed && Boolean(booking?.clientId);
   /* A finished slot nobody logged. Only on a linked card: one with no
      profile already says why nothing could be logged. */
   const isNotLogged = cardState === "not-logged" && !isUnlinked;
@@ -174,23 +189,17 @@ export function HubCard({
 
   const name = client ? clientDisplayName(client, booking?.clientName || "Client") : (booking?.clientName || "Reservation").trim();
   const marks = recedes || isUnlinked ? cardMarks(null) : cardMarks(entry?.moments, undefined, { yours: wordy });
-  const serviceName: string = booking?.serviceName || booking?.sessionType || "";
-  const consult = entry?.moments.some((m) => m.kind === "consult") ?? false;
-  const service = serviceName && serviceName.trim() !== usualService && !isDefaultService(serviceName) && !consult ? serviceName : null;
-  // The milestone glyph says the number ("100th"): the corner doesn't repeat it.
-  const numberSaid = marks.glyphs.some((g) => g.kind === "milestone");
-
-  const kind = isPending ? "pending" : isUnlinked ? "unlinked" : "client";
+  const kind = isPending ? "pending" : isUnknown ? "unknown" : isUnlinked ? "unlinked" : "client";
   const interactive = kind === "client";
 
-  /* The time and her number are never cut: a clipped "#212" reads as "#2",
-     a confident wrong number (hub cherry round — found when your column
-     started saying more). The words after them ("Not logged", "New to
-     Journey", the service) give way first, with an ellipsis. */
-  const numberText = sessionNumber !== null && sessionNumber > 3 && !numberSaid ? `#${sessionNumber}` : null;
-  const restParts: string[] = [];
-  if (!numberText && newToJourney && !recedes) restParts.push("New to Journey");
-  if (service) restParts.push(service);
+  /* Her number, in the card's top-right corner, quietly (AJ, Oct 1 2026: "i
+     do wish the top right of the card said what session number they were
+     on in a very subtle manner"): only where it may be quoted, never on a
+     card with no profile, never a placeholder (card-marks, cornerNumber).
+     It is never cut: a clipped "#212" reads as "#2", a confident wrong
+     number (hub cherry round). */
+  const numberText = isUnlinked ? null : cornerNumber(sessionNumber, marks);
+  const restParts = cardRestWords({ booking, moments: entry?.moments, numberShown: !!numberText, newToJourney, recedes, usualService });
 
   return (
     <div
@@ -205,7 +214,9 @@ export function HubCard({
       tabIndex={interactive ? 0 : -1}
       aria-haspopup={interactive ? "dialog" : undefined}
       title={
-        isUnlinked
+        isUnknown
+          ? `${booking?.clientName || "Reservation"} — couldn't check this client's profile just now.`
+          : isUnlinked
           ? `${booking?.clientName || "Reservation"} — no Max Strength profile yet. It will link itself once the next Mindbody sync creates one.`
           : marks.critical || undefined
       }
@@ -221,7 +232,17 @@ export function HubCard({
       }}
     >
       <div className="hs-card-top">
-        <span className="hs-card-name">{name}</span>
+        {/* Her number floats at the right of the name's first line (first in
+            the source, so it takes that line); the name flows beside it,
+            whole, and is never cut (hub-card.css). */}
+        <span className="hs-card-head">
+          {numberText && (
+            <span className="hs-card-num" aria-label={`Session ${numberText.slice(1)}`}>
+              {numberText}
+            </span>
+          )}
+          <span className="hs-card-name">{name}</span>
+        </span>
         {/* LOUD, and the only red on the grid: read this before the session.
             The words are in the label, whole; the note itself is first on the
             client's briefing and in the peek. */}
@@ -231,11 +252,18 @@ export function HubCard({
           </span>
         )}
       </div>
+      {staffName && (
+        <span className="hs-card-staff" title="Mindbody's staff name; no Journey trainer matches it">
+          {`Booked with ${staffName}`}
+        </span>
+      )}
 
       <div className="hs-card-meta">
         <span className="hs-card-when">
           {isPending ? (
             <span aria-label="Loading this client">{time}</span>
+          ) : isUnknown ? (
+            <span aria-label="Couldn't check this client's profile">{time}</span>
           ) : isUnlinked ? (
             <>
               <CloudOff size={13} aria-label="Not synced to a Max Strength profile yet" />
@@ -252,23 +280,46 @@ export function HubCard({
               {time}
             </>
           )}
-          {!isUnlinked && numberText && ` · ${numberText}`}
+          {/* What happened, beside the time and never cut (hub fixes, Oct 1
+              2026: it was cut to "Didn…"). It never competes with the marks:
+              a card that is over has dropped them. */}
+          {isNotLogged && (
+            <>
+              {" · "}
+              <strong className="hs-card-state" title="No Journey session was completed for this client today">
+                Not logged
+              </strong>
+            </>
+          )}
+          {isDidntCome && (
+            <>
+              {" · "}
+              <strong className="hs-card-state" title="Marked as a no-show">
+                Didn't come
+              </strong>
+            </>
+          )}
+          {/* A session open but gone quiet for an hour (the staleness rule;
+              hub fixes, Oct 1 2026): never "In session" all day. Quiet ink,
+              never the red kaizen mark; the peek offers to resume or close it. */}
+          {cardState === "left-open" && !isUnlinked && (
+            <>
+              {" · "}
+              <strong className="hs-card-state" title="A session was started and not finished, and has gone quiet for over an hour">
+                Left open
+              </strong>
+            </>
+          )}
         </span>
-        {!isUnlinked && (isNotLogged || isDidntCome || restParts.length > 0) && (
+        {/* The rest ("New to Journey", a service) says less when space is
+            short: each part shows WHOLE or not at all, never "New to Jo…"
+            (hub fixes, Oct 1 2026). The peek says them in full. */}
+        {!isUnlinked && restParts.length > 0 && (
           <span className="hs-card-rest">
-            {isNotLogged && (
-              <>
-                {" · "}
-                <strong title="No Journey session was completed for this client today">Not logged</strong>
-              </>
-            )}
-            {isDidntCome && (
-              <>
-                {" · "}
-                <strong title="Marked as a no-show">Didn't come</strong>
-              </>
-            )}
-            {restParts.length > 0 && ` · ${restParts.join(" · ")}`}
+            <span className="hs-card-rest-lead" aria-hidden />
+            {restParts.map((part) => (
+              <span key={part} className="hs-card-part">{` · ${part}`}</span>
+            ))}
           </span>
         )}
 

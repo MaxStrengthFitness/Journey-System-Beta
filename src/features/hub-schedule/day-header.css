@@ -371,6 +371,12 @@
   background: var(--eq-live-fill);
 }
 
+.hd-swatch[data-state="left-open"] {
+  border-left: 4px solid var(--eq-warn);
+  background: var(--eq-surface-2);
+  opacity: 0.62;
+}
+
 .hd-swatch[data-state="done"] {
   background: var(--eq-surface-2);
   opacity: 0.62;
@@ -387,4 +393,12 @@
 
 .hd-swatch[data-state="off"] {
   background: repeating-linear-gradient(135deg, transparent 0 4px, var(--eq-border-strong) 4px 5px);
+}
+
+/* Her number, in words (AJ, Oct 1 2026: the corner's "#43"). */
+.hd-key-note {
+  margin: 14px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--eq-ink-2);
 }

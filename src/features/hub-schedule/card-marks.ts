@@ -20,6 +20,7 @@
  *     little).
  */
 import type { Client, ScheduleEntry } from "../../types";
+import { isDefaultService } from "../../lib/hub-markers";
 import {
   sessionNumberFor,
   type Moment,
@@ -169,6 +170,45 @@ export function bookingSessionNumber(
   const same = entry.booking === booking || (!!booking.id && entry.booking.id === booking.id);
   if (same || !input) return entry.sessionNumber;
   return sessionNumberFor(client, booking, input, true);
+}
+
+/**
+ * HER NUMBER IN THE CORNER (AJ, Oct 1 2026: "i do wish the top right of the
+ * card said what session number they were on in a very subtle manner").
+ * "#43" in the card's top-right, beside the name, in quiet ink — only where
+ * the number may be quoted (`bookingSessionNumber`, through history-claims'
+ * rule), from #4 (1–3 are the Welcome glyph's to say), and not when the
+ * milestone glyph already says it ("100th"). Otherwise nothing: never a
+ * placeholder. It used to ride on the second line after the time.
+ */
+export function cornerNumber(sessionNumber: number | null | undefined, marks: Pick<CardMarks, "glyphs">): string | null {
+  if (typeof sessionNumber !== "number" || !Number.isFinite(sessionNumber) || sessionNumber <= 3) return null;
+  if (marks.glyphs.some((g) => g.kind === "milestone")) return null;
+  return `#${Math.trunc(sessionNumber)}`;
+}
+
+/**
+ * The words after the time that may give way on a narrow card ("New to
+ * Journey", a service that isn't the day's usual one), in order. The card
+ * shows each WHOLE or not at all (hub fixes, Oct 1 2026: "New to Jo…" on
+ * AJ's iPad); the peek says them all, so nothing is only on the card.
+ */
+export function cardRestWords(input: {
+  booking: { serviceName?: string | null; sessionType?: string | null } | null | undefined;
+  moments: ReadonlyArray<Moment> | null | undefined;
+  /** Her number is in the corner: "New to Journey" is said in its place only. */
+  numberShown: boolean;
+  newToJourney: boolean;
+  /** The card is over: it says less. */
+  recedes?: boolean;
+  usualService?: string | null;
+}): string[] {
+  const out: string[] = [];
+  if (!input.numberShown && input.newToJourney && !input.recedes) out.push("New to Journey");
+  const serviceName = (input.booking?.serviceName || input.booking?.sessionType || "").trim();
+  const consult = input.moments?.some((m) => m.kind === "consult") ?? false;
+  if (serviceName && serviceName !== (input.usualService ?? null) && !isDefaultService(serviceName) && !consult) out.push(serviceName);
+  return out;
 }
 
 /**

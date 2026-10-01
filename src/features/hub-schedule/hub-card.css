@@ -64,6 +64,13 @@
   opacity: 0.62;
 }
 
+/* Left open (hub fixes, Oct 1 2026): a session started and gone quiet for an
+   hour. It recedes like any card that is over, and its edge is plum, the
+   app's caution, so it reads apart from "done" — never the red kaizen mark. */
+.hs-card[data-state="left-open"] {
+  border-left-color: var(--eq-warn);
+}
+
 /* No Max Strength profile yet: the next sync links it. Inert. */
 .hs-card[data-kind="unlinked"] {
   border-style: dashed;
@@ -78,6 +85,14 @@
   background: var(--eq-surface-2);
   box-shadow: none;
   cursor: progress;
+}
+
+/* The roster's read failed (hub fixes, Oct 1 2026): whether she has a
+   profile is unknown, so the card says nothing about it. Inert. */
+.hs-card[data-kind="unknown"] {
+  background: var(--eq-surface-2);
+  box-shadow: none;
+  cursor: default;
 }
 
 /* Time that isn't a session (Mindbody's "Unavailable": lunch, a one-on-one).
@@ -102,9 +117,39 @@
   min-width: 0;
 }
 
+/* The name and her number (AJ, Oct 1 2026: the number in the top right "in a
+   very subtle manner"). The number floats at the right of the name's FIRST
+   line and the name flows beside it, whole, wrapping where it must. Tried
+   first: a wrapping row that dropped the number under the name; with a name
+   that already wraps, that made a third line and pushed the time off a
+   half-hour card (checked in a browser harness, Oct 1). The float costs the
+   name's first line the number's width, never a cut and never a lost time.
+   The Critical triangle keeps its own slot outside this block, far right. */
+.hs-card-head {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: block;
+  /* The block's own line box is the name's, or each line grows to the
+     page's line height and a two-line name pushes the time off the card. */
+  font-size: 14px;
+  line-height: 17px;
+}
+
+.hs-card-num {
+  float: right;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 17px;
+  font-variant-numeric: tabular-nums;
+  /* Quiet, but still read at arm's length: the muted ink (5.8:1), not the faint. */
+  color: var(--eq-ink-muted);
+  white-space: nowrap;
+}
+
 /* Whole, wrapping onto a second line: never "Lobelia S…" (research-hub §6.0). */
 .hs-card-name {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   font-size: 14px;
   font-weight: 700;
@@ -117,6 +162,17 @@
 .hs-card[data-kind="unlinked"] .hs-card-name {
   font-weight: 600;
   color: var(--eq-ink-2);
+}
+
+/* In the Unassigned column (hub fixes, Oct 1 2026): Mindbody's staff name,
+   whole and wrapping, never cut. */
+.hs-card-staff {
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 14px;
+  color: var(--eq-ink-muted);
+  overflow-wrap: anywhere;
 }
 
 .hs-card-meta {
@@ -148,20 +204,39 @@
   color: var(--eq-ink-2);
 }
 
-/* The words after them ("Not logged", "New to Journey", a service) give way
-   first, with an ellipsis, when the glyphs need the room. */
+/* The words after them ("New to Journey", a service) give way first when the
+   glyphs need the room — but WHOLE, never cut (hub fixes, Oct 1 2026: AJ's
+   iPad read "11:00 · New to Jo…"). One line high, wrapping: a part that
+   doesn't fit drops to the hidden second line. The zero-width lead is the
+   first item on the line, so even the first part drops rather than overflow
+   (a flex line always takes its first item, fitting or not). The peek says
+   them in full. "Not logged" and "Didn't come" are not here: they sit in
+   .hs-card-when, which never shrinks. */
 .hs-card-rest {
   flex: 1 1 0;
   min-width: 0;
-  /* It begins " · ", so it takes back the row's gap. */
+  /* Each part begins " · ", so it takes back the row's gap. */
   margin-left: -6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  height: 16px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: 12px;
   font-weight: 600;
   line-height: 16px;
   color: var(--eq-ink-muted);
+}
+
+.hs-card-rest-lead {
+  flex: none;
+  width: 0;
+  height: 16px;
+}
+
+.hs-card-part {
+  flex: none;
+  white-space: pre;
 }
 
 .hs-card[data-state="in-session"] .hs-card-when {

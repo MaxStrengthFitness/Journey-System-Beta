@@ -73,9 +73,41 @@ export interface HubGridProps {
    * alike (Focus: Everyone, or you have no column that day).
    */
   focusId?: string | null;
+  /**
+   * What an empty day says. "Nobody is booked on this day." only when the
+   * day's bookings were read (hub fixes, Oct 1 2026): while they load it is
+   * a quieter line, and when the read failed nothing (the notice above the
+   * grid says so) — a failed read is unknown, never a quiet day.
+   */
+  emptyWords?: string | null;
+  /** A tap on a column's head: that trainer's bookings as a list (Opportunities, narrowed). Absent: the heads are not buttons. */
+  onOpenColumn?: (columnId: string) => void;
 }
 
-export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, hidden = false, focusId = null }: HubGridProps) {
+export const NOBODY_BOOKED = "Nobody is booked on this day.";
+
+/** A time label this close to the top of the day would be half under the trainer row: it sits below its line. */
+export const FIRST_TICK_PX = 10;
+
+/**
+ * One line above the grid, in place, when the day's bookings couldn't be read
+ * (hub fixes, Oct 1 2026): what happened, that it is trying again, and Try
+ * again (40px). Never a toast that goes away and leaves a quiet-looking day.
+ */
+export function HubNotice({ words, onRetry }: { words: string; onRetry?: () => void }) {
+  return (
+    <div className="hs-notice" role="alert">
+      <span className="hs-notice-words">{words}</span>
+      {onRetry && (
+        <button type="button" className="hs-notice-btn" onClick={onRetry}>
+          Try again
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, hidden = false, focusId = null, emptyWords = NOBODY_BOOKED, onOpenColumn }: HubGridProps) {
   const [opened, setOpened] = useState<{ day: string; from: ReadonlySet<number> }>({ day: dayKey, from: new Set() });
   const openedFrom = opened.day === dayKey ? opened.from : EMPTY_SET;
 
@@ -133,8 +165,20 @@ export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, 
           {columns.map((c) => {
             const frame = frameOf?.(c.id, range) ?? UNKNOWN_FRAME;
             const focus = focusId !== null && c.id === focusId;
+            /* A tap on the head opens that trainer's bookings as a list (hub
+               fixes, Oct 1 2026, AJ approved); the head is then a button,
+               at least 56px tall. */
+            const Head = onOpenColumn ? "button" : "div";
             return (
-              <div key={c.id} className="hs-colhead" data-me={c.isMe ? "true" : "false"} data-focus={focus ? "true" : undefined}>
+              <Head
+                key={c.id}
+                className="hs-colhead"
+                data-me={c.isMe ? "true" : "false"}
+                data-focus={focus ? "true" : undefined}
+                {...(onOpenColumn
+                  ? { type: "button" as const, onClick: () => onOpenColumn(c.id), "aria-label": `${c.name}: see the day's bookings as a list` }
+                  : {})}
+              >
                 <span className="hs-avatar" aria-hidden>
                   {c.initials}
                 </span>
@@ -158,7 +202,7 @@ export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, 
                     )}
                   </span>
                 </span>
-              </div>
+              </Head>
             );
           })}
         </div>
@@ -168,7 +212,17 @@ export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, 
             {layout.ticks
               .filter((tk) => !tk.edge)
               .map((tk) => (
-                <span key={tk.min} className="hs-tick" data-hour={tk.hour ? "true" : "false"} style={{ top: tk.y }}>
+                <span
+                  key={tk.min}
+                  className="hs-tick"
+                  data-hour={tk.hour ? "true" : "false"}
+                  // The first label sits at the very top of the day: centred on
+                  // its line, its top half would hide under the sticky trainer
+                  // row ("9 AM" cut in half, hub fixes Oct 1 2026), so it sits
+                  // just below its line instead.
+                  data-first={tk.y < FIRST_TICK_PX ? "true" : undefined}
+                  style={{ top: tk.y }}
+                >
                   {tk.hour ? clockWords(tk.min) : `:30`}
                 </span>
               ))}
@@ -227,7 +281,7 @@ export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, 
             </div>
           )}
 
-          {layout.empty && <p className="hs-empty">Nobody is booked on this day.</p>}
+          {layout.empty && emptyWords && <p className="hs-empty">{emptyWords}</p>}
         </div>
       </div>
     </div>

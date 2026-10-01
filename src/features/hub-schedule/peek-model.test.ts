@@ -10,7 +10,7 @@ import { buildDirectoryRows } from "../client-directory/row";
 import { NOW, STUDIOS, TODAY, eastern, makeBooking, makeClient, makeContext } from "../client-directory/fixtures";
 import { momentsToday, type MomentsTodayInput } from "../hub-opportunities/moments-today";
 import type { FordEntry } from "../ford/types";
-import { peekContent } from "./peek-model";
+import { peekContent, peekState } from "./peek-model";
 
 function entryFor(client: Client, schedules: ScheduleEntry[], over: Partial<MomentsTodayInput> = {}) {
   const rows = buildDirectoryRows([client], makeContext({ schedules }));
@@ -68,6 +68,11 @@ describe("the peek", () => {
     expect(peek.notes).toEqual(["Clinical history on file — her briefing has it."]);
   });
 
+  it("says in full what a narrow card may leave out (hub fixes, Oct 1 2026)", () => {
+    const peek = peekContent(entryFor(belladonna, [booking]), null, { extras: ["New to Journey", "InBody Scan"] });
+    expect(peek.subtitle).toBe("4:00 – 4:30 PM · with you · New to Journey · InBody Scan");
+  });
+
   it("gives no number when it may not be quoted", () => {
     const migrating = makeClient({ id: "mentha", firstName: "Mentha", lastName: "Brandybuck", clientsNumberOfVisitsAtSite: 250 });
     const peek = peekContent(entryFor(migrating, [makeBooking({ clientId: "mentha", start: eastern(TODAY, "16:00") })]));
@@ -108,5 +113,31 @@ describe("the peek", () => {
       "Couldn’t check FORD for something to ask about — her FORD page has it.",
       "Clinical history on file — her briefing has it.",
     ]);
+  });
+});
+
+describe("peekState: what happened, and the button that follows it (hub fixes, Oct 1 2026)", () => {
+  it("logged: says so with its machines, and offers Edit session only with the session in hand", () => {
+    expect(peekState("done", { machines: 7, loggedSessionHeld: true })).toEqual({ words: "Logged · 7 machines", primary: { kind: "edit", label: "Edit session" }, note: null });
+    expect(peekState("done", { machines: 1, loggedSessionHeld: true }).words).toBe("Logged · 1 machine");
+    // No machine count on the session: never a guessed number.
+    expect(peekState("done", { machines: null, loggedSessionHeld: true }).words).toBe("Logged");
+    expect(peekState("done", { loggedSessionHeld: false }).primary).toBeNull();
+  });
+  it("in session opens it; left open resumes or starts new, and says where to close it", () => {
+    expect(peekState("in-session").primary).toEqual({ kind: "open-session", label: "Open session" });
+    const left = peekState("left-open");
+    expect(left.words).toBe("Left open");
+    expect(left.primary).toEqual({ kind: "open-session", label: "Resume or start new" });
+    expect(left.note).toContain("Discard");
+  });
+  it("not logged offers Log past session; didn't come offers nothing to start", () => {
+    expect(peekState("not-logged").primary).toEqual({ kind: "log-past", label: "Log past session" });
+    expect(peekState("didnt-come")).toEqual({ words: "Didn't come", primary: null, note: null });
+  });
+  it("coming up, or nothing to claim, is Start session as before", () => {
+    expect(peekState("live")).toEqual({ words: null, primary: { kind: "start", label: "Start session" }, note: null });
+    expect(peekState("past").primary?.kind).toBe("start");
+    expect(peekState(null).primary?.kind).toBe("start");
   });
 });

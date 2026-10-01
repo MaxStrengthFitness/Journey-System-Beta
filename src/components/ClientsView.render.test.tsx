@@ -90,6 +90,14 @@ vi.mock("../features/renewals/useRenewalSettings", async () => {
   const state = { settings: DEFAULT_RENEWAL_SETTINGS, saved: true, ownPackageTable: false, forStudioId: "westlake", loading: false, error: null };
   return { useRenewalSettings: () => state };
 });
+/* Edit session opens the Activity Archive's own pop-up (hub fixes, Oct 1 2026): stood in for, to see what it is handed. */
+vi.mock("../features/client-history/SessionDetailDialog", () => ({
+  SessionDetailDialog: (p: { initialSessions: Array<{ id: string }>; clientId: string; onClose: () => void }) => (
+    <div className="stub-session-dialog" data-client={p.clientId}>
+      {p.initialSessions.map((s) => s.id).join(",")}
+    </div>
+  ),
+}));
 // The screen's entrance animation is not what is under test.
 vi.mock("motion/react", async () => {
   const R = await import("react");
@@ -184,7 +192,7 @@ const SCHEDULES = [
 ];
 const SESSIONS = [{ id: "s-hamfast", clientId: "hamfast", status: "In-Progress", hostedAtStudioId: "westlake", startTime: at("09:01"), date: at("09:01").toISOString(), createdAt: at("09:01") }] as any[];
 
-function mount(viewer: any = IO) {
+function mount(viewer: any = IO, extra: Record<string, unknown> = {}) {
   const calls = { selected: [] as string[], views: [] as string[] };
   host = document.createElement("div");
   document.body.appendChild(host);
@@ -203,16 +211,10 @@ function mount(viewer: any = IO) {
         schedules={SCHEDULES}
         sessions={SESSIONS}
         sessionsKnown
-        editingClient={null}
-        setEditingClient={() => {}}
-        formData={{}}
-        setFormData={() => {}}
-        onSubmit={() => {}}
-        startEdit={() => {}}
-        updateSessions={() => {}}
         searchTerm=""
         onSearchTermChange={() => {}}
         cutoverStudios={[{ id: "westlake", journeyCutoverDate: "2026-09-01" }]}
+        {...extra}
       />,
     );
   });
@@ -236,7 +238,7 @@ describe("the Hub", () => {
     const { el } = mount();
     const slot = cardOf(el, "Targon Minas")!.parentElement as HTMLElement;
     expect(Number(slot.style.height.replace("px", ""))).toBeCloseTo(45 * 2.2 - 2);
-    expect(cardOf(el, "Targon Minas")?.textContent).toContain("10:00 – 10:45 AM");
+    expect(cardOf(el, "Targon Minas")?.textContent).toContain("10:00 \u2013 10:45 AM");
   });
 
   it("hatches a trainer's hours outside the agreed week", () => {
@@ -287,7 +289,7 @@ describe("the Hub", () => {
     const { el } = mount();
     const head = el.querySelector<HTMLElement>('.hs-colhead[data-focus="true"]');
     expect(head?.querySelector("strong")?.textContent).toBe("IorethYou");
-    expect(head?.querySelector(".hs-colcount")?.textContent).toBe("2 sessions · 9:00 – 10:00 AM");
+    expect(head?.querySelector(".hs-colcount")?.textContent).toBe("2 sessions \u00b7 9:00 \u2013 10:00 AM");
     expect(cardOf(el, "Belladonna Took")?.dataset.words).toBe("all");
     // Everyone else's cards keep to the calm Hub's words.
     expect(cardOf(el, "Estella Bolger")?.dataset.words).toBeUndefined();
@@ -336,6 +338,307 @@ describe("the Hub", () => {
   });
 });
 
+/* ------------------------------------------------------------------ *
+ * THE HUB'S DAY (hub fixes, Oct 1 2026): today is the studio's day, and a
+ * Hub left open overnight moves to the new today; a day picked on purpose
+ * stays picked.
+ * ------------------------------------------------------------------ */
+
+describe("the Hub: the day rolls over", () => {
+  const wake = () =>
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+  const selected = (el: HTMLElement) => el.querySelector<HTMLElement>('.hd-day[aria-selected="true"]')?.textContent;
+
+  it("left open overnight on today, shows the new today when the iPad wakes", () => {
+    vi.setSystemTime(at("23:50"));
+    const { el } = mount();
+    expect(selected(el)).toBe("Mon 285");
+    expect(el.querySelectorAll(".hd-day")[0].textContent).toBe("Mon 285");
+    vi.setSystemTime(new Date("2026-09-29T06:10:00-04:00"));
+    wake();
+    expect(selected(el)).toBe("Tue 291");
+    // The strip starts at the new today.
+    expect(el.querySelectorAll(".hd-day")[0].textContent).toBe("Tue 291");
+    expect(el.querySelector(".hd-sum-words strong")?.textContent).toContain("Tuesday");
+  });
+
+  it("keeps a day the trainer picked on purpose", () => {
+    vi.setSystemTime(at("23:50"));
+    const { el } = mount();
+    act(() => el.querySelectorAll<HTMLButtonElement>(".hd-day")[2].click()); // Wednesday
+    expect(selected(el)).toBe("Wed 30");
+    vi.setSystemTime(new Date("2026-09-29T06:10:00-04:00"));
+    wake();
+    expect(selected(el)).toBe("Wed 30");
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * THE COLUMNS (hub fixes, Oct 1 2026): by trainer id only, and an
+ * Unassigned column so nothing counted is drawn nowhere.
+ * ------------------------------------------------------------------ */
+
+describe("the Hub: columns by trainer id", () => {
+  const CHRIS_A = trainer("t-chris-a", "Chris Took");
+  const CHRIS_B = trainer("t-chris-b", "Chris Brandybuck");
+
+  it("never swaps two Chrises: each booking goes to its own trainer id, and both names are whole", () => {
+    const schedules = [
+      { ...book(CHRIS_A, "hamfast", "09:00"), trainerName: "Chris" },
+      { ...book(CHRIS_B, "laura", "09:00"), trainerName: "Chris" },
+    ];
+    const { el } = mount(IO, { schedules, sortedTrainers: [CHRIS_B, CHRIS_A, IO], trainers: [CHRIS_B, CHRIS_A, IO] });
+    const heads = [...el.querySelectorAll(".hs-colhead strong")].map((h) => h.textContent);
+    expect(heads).toEqual(["Chris Brandybuck", "Chris Took"]);
+    const cols = [...el.querySelectorAll<HTMLElement>(".hs-col")];
+    expect(cols[0].textContent).toContain("Laura Grubb");
+    expect(cols[1].textContent).toContain("Hamfast Gamgee");
+  });
+
+  it("puts a booking with a blank or placeholder trainer in Unassigned, counted and drawn", () => {
+    const schedules = [
+      ...SCHEDULES,
+      { ...book(IO, "laura", "13:00"), trainerId: null, trainerName: "" },
+      { ...book(IO, "hamfast", "14:00"), trainerId: null, trainerName: "Samuel Lee" },
+      { ...book(IO, "belladonna", "15:00"), trainerId: null, trainerName: "Select a staff member" },
+    ];
+    const { el } = mount(IO, { schedules });
+    const heads = [...el.querySelectorAll(".hs-colhead strong")].map((h) => h.textContent);
+    expect(heads[heads.length - 1]).toBe("Unassigned");
+    const unassigned = [...el.querySelectorAll<HTMLElement>(".hs-col")].pop()!;
+    expect(unassigned.querySelectorAll(".hs-card")).toHaveLength(3);
+    expect([...unassigned.querySelectorAll(".hs-card-staff")].map((s) => s.textContent)).toEqual(["Booked with Samuel Lee"]);
+    // Counted once each in the day, and the column says how many.
+    expect(el.querySelector(".hd-sum-words")?.textContent).toContain("8 sessions");
+    expect([...el.querySelectorAll(".hs-colhead")].pop()?.querySelector(".hs-colcount")?.textContent).toBe("3 sessions");
+  });
+
+  it("has no Unassigned column when every booking has its trainer", () => {
+    const { el } = mount();
+    expect([...el.querySelectorAll(".hs-colhead strong")].map((h) => h.textContent)).not.toContain("Unassigned");
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * THE HEADER'S SEARCH (hub fixes, Oct 1 2026): the Client Directory's own
+ * rows — Last in · Next · Left in its words — never the old cards that
+ * said "Previous session: No history" for a client with 54 sessions.
+ * ------------------------------------------------------------------ */
+
+describe("the Hub: the header's search", () => {
+  it("draws the Directory's rows, with a Start on each and Open profile on a tap", () => {
+    const veteran = client("bilbo", "Bilbo", "Baggins", 54, { lastSessionDate: "2026-09-21" });
+    const { el, calls } = mount(IO, { searchTerm: "bil", clients: [...CLIENTS, veteran] });
+    expect(el.querySelector(".hs-scroll")).toBeNull();
+    expect(el.textContent).not.toContain("Previous Session");
+    expect(el.textContent).not.toContain("No history");
+    const row = el.querySelector<HTMLElement>('.cd-row[data-client-id="bilbo"]')!;
+    expect(row.querySelector(".cd-name-text")?.textContent).toBe("Bilbo Baggins");
+    // The Directory's three cells, by its own labels.
+    expect([...row.querySelectorAll<HTMLElement>(".cd-cell")].map((c) => c.dataset.col)).toEqual(["Last in", "Next", "Left"]);
+    expect(row.querySelector('.cd-cell[data-col="Last in"] .cd-val')?.textContent).not.toBe("");
+    expect(el.querySelector(".cd-line")?.textContent).toBe("1 client matches \u201cbil\u201d");
+    act(() => row.querySelector<HTMLButtonElement>(".cd-start")!.click());
+    expect(calls.selected).toEqual(["bilbo"]);
+    expect(calls.views).toEqual(["workouts"]);
+    act(() => row.querySelector<HTMLButtonElement>(".cd-open")!.click());
+    expect(calls.selected).toEqual(["bilbo", "bilbo"]);
+  });
+
+  it("says so when nobody matches", async () => {
+    const { el } = mount(IO, { searchTerm: "zzzz" });
+    // The name query Firestore would answer is asked after a pause; nothing comes back here.
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 400));
+    });
+    expect(el.querySelector(".cd-line")?.textContent).toBe("No client matches \u201czzzz\u201d.");
+    expect(el.querySelectorAll(".cd-row")).toHaveLength(0);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * A TRAINER'S BOOKINGS AS A LIST (hub fixes, Oct 1 2026, AJ approved): a
+ * tap on a column head opens Opportunities narrowed to that trainer.
+ * ------------------------------------------------------------------ */
+
+describe("the Hub: a tap on a trainer's column head", () => {
+  const names = (el: HTMLElement) => [...el.querySelectorAll(".ho-row .ho-name")].map((n) => n.textContent);
+  const waitForList = async (el: HTMLElement) => {
+    for (let i = 0; i < 50 && !el.querySelector(".ho"); i++) {
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 20));
+      });
+    }
+  };
+
+  it("opens Opportunities with that trainer's bookings, says whose, and Show everyone goes back", async () => {
+    const { el } = mount();
+    const damrod = [...el.querySelectorAll<HTMLButtonElement>("button.hs-colhead")].find((h) => h.textContent?.includes("Damrod"))!;
+    expect(damrod.getAttribute("aria-label")).toBe("Damrod: see the day's bookings as a list");
+    await act(async () => damrod.click());
+    await waitForList(el);
+    expect(el.querySelector(".hs-scroll")?.hasAttribute("hidden")).toBe(true);
+    expect(el.querySelector(".ho-trainer-words")?.textContent).toBe("Damrod \u00b7 2 bookings");
+    expect(names(el)).toEqual(["Estella Bolger", "Targon Minas"]);
+    await act(async () => el.querySelector<HTMLButtonElement>(".ho-trainer-btn")!.click());
+    expect(el.querySelector(".ho-trainer")).toBeNull();
+    expect(names(el)).toEqual(["Hamfast Gamgee", "Belladonna Took", "Estella Bolger", "Targon Minas", "Laura Grubb"]);
+  });
+
+  it("the layer switch is a way back too: Schedule, then the list shows everyone", async () => {
+    const { el } = mount();
+    await act(async () => [...el.querySelectorAll<HTMLButtonElement>("button.hs-colhead")].find((h) => h.textContent?.includes("Damrod"))!.click());
+    await waitForList(el);
+    await act(async () => [...el.querySelectorAll<HTMLButtonElement>(".hl-btn")].find((b) => b.textContent === "Schedule")!.click());
+    expect(el.querySelector(".hs-scroll")?.hasAttribute("hidden")).toBe(false);
+    await openOpportunities(el);
+    expect(el.querySelector(".ho-trainer")).toBeNull();
+    expect(names(el)).toHaveLength(5);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * THE PEEK SAYS WHAT HAPPENED (hub fixes, Oct 1 2026; AJ: "if its a
+ * logged session i like the idea of switching 'start session' to 'edit
+ * session'"), and its main button follows it.
+ * ------------------------------------------------------------------ */
+
+describe("the Hub: the peek follows what happened", () => {
+  const peekButtons = () => [...document.querySelectorAll<HTMLButtonElement>(".hp-btn")].map((b) => b.textContent);
+
+  it("a logged booking says so, with its machines, and offers Edit session: the Activity Archive's own pop-up for that day's session", async () => {
+    vi.setSystemTime(at("12:00"));
+    const done = { id: "s-laura", clientId: "laura", status: "Completed", hostedAtStudioId: "westlake", startTime: at("11:02"), date: "2026-09-28", createdAt: at("11:02"), sessionMachineIds: ["a", "b", "c", "d", "e", "f", "g"] };
+    const { el, calls } = mount(IO, { sessions: [...SESSIONS, done] });
+    act(() => cardOf(el, "Laura Grubb")!.click());
+    expect(document.querySelector(".hp-state")?.textContent).toBe("Logged \u00b7 7 machines");
+    expect(peekButtons()).toEqual(["Open profile", "Edit session"]);
+    await act(async () => {
+      [...document.querySelectorAll<HTMLButtonElement>(".hp-btn")].find((b) => b.textContent === "Edit session")!.click();
+    });
+    for (let i = 0; i < 50 && !document.querySelector(".stub-session-dialog"); i++) {
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 20));
+      });
+    }
+    const dialog = document.querySelector<HTMLElement>(".stub-session-dialog");
+    expect(dialog?.textContent).toBe("s-laura");
+    expect(dialog?.dataset.client).toBe("laura");
+    expect(calls.views).toEqual([]);
+  });
+
+  it("a session running says In session and opens it; a 'didn't come' offers no Start", () => {
+    const { el } = mount();
+    act(() => cardOf(el, "Hamfast Gamgee")!.click());
+    expect(document.querySelector(".hp-state")?.textContent).toBe("In session");
+    expect(peekButtons()).toEqual(["Open profile", "Open session"]);
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    act(() => root?.unmount());
+    host?.remove();
+    vi.setSystemTime(at("12:00"));
+    marksRead.ids = [SCHEDULES[1].id];
+    const again = mount();
+    act(() => cardOf(again.el, "Belladonna Took")!.click());
+    expect(document.querySelector(".hp-state")?.textContent).toBe("Didn't come");
+    expect(peekButtons()).toEqual(["Open profile"]);
+    marksRead.ids = [];
+  });
+
+  it("a booking over and not logged offers Log past session, on her Activity Archive", () => {
+    vi.setSystemTime(at("12:00"));
+    const { el, calls } = mount();
+    act(() => cardOf(el, "Estella Bolger")!.click());
+    expect(document.querySelector(".hp-state")?.textContent).toBe("Not logged");
+    act(() => [...document.querySelectorAll<HTMLButtonElement>(".hp-btn")].find((b) => b.textContent === "Log past session")!.click());
+    expect(calls.selected).toEqual(["estella"]);
+    expect(calls.views).toEqual(["profile"]);
+  });
+
+  it("a booking coming up still offers Start session", () => {
+    const { el } = mount();
+    act(() => cardOf(el, "Laura Grubb")!.click());
+    expect(document.querySelector(".hp-state")).toBeNull();
+    expect(peekButtons()).toEqual(["Open profile", "Start session"]);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * THE WAIVER (hub fixes, Oct 1 2026): AJ's Strongsville Hub flagged every
+ * card "No waiver signed" (Watch 32). Mindbody's "not signed" flags a card
+ * only where the studio keeps its waivers in Mindbody at all.
+ * ------------------------------------------------------------------ */
+
+describe("the Hub: a studio whose waivers aren't in Mindbody", () => {
+  it("flags no card when no client of the studio is signed in Mindbody", () => {
+    const unsigned = CLIENTS.map((c) => ({ ...c, isLiabilityReleased: false }));
+    const { el } = mount(IO, { clients: unsigned });
+    expect(el.querySelectorAll('.hs-g[data-family="watch"]')).toHaveLength(0);
+    expect([...el.querySelectorAll(".hd-chip")].map((c) => c.textContent).some((t) => t?.startsWith("Watch"))).toBe(false);
+  });
+
+  it("still flags the one who isn't signed where the others are", () => {
+    const { el } = mount();
+    expect(cardOf(el, "Estella Bolger")?.querySelector('.hs-g[data-family="watch"]')?.getAttribute("aria-label")).toBe("No waiver signed");
+    expect(cardOf(el, "Laura Grubb")?.querySelector('.hs-g[data-family="watch"]')).toBeNull();
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * A FAILED READ IS UNKNOWN (hub fixes, Oct 1 2026): never a quiet day,
+ * never "Not synced yet" on every card.
+ * ------------------------------------------------------------------ */
+
+describe("the Hub: a read that failed", () => {
+  it("says the bookings couldn't be loaded, in place, with Try again; never 'Nobody is booked'", () => {
+    const retries: number[] = [];
+    const { el } = mount(IO, {
+      schedules: [],
+      scheduleDayState: () => "failed",
+      onRetrySchedule: () => retries.push(1),
+    });
+    const notice = el.querySelector<HTMLElement>(".hs-notice");
+    expect(notice?.getAttribute("role")).toBe("alert");
+    expect(notice?.textContent).toContain("Couldn't load today's bookings. Trying again.");
+    expect(el.querySelector(".hs-empty")).toBeNull();
+    expect(el.textContent).not.toContain("Nobody is booked");
+    expect(el.querySelector(".hd-sum-words")?.textContent).toContain("couldn't load the bookings");
+    expect(el.querySelector(".hd-sum-words")?.textContent).not.toContain("nothing booked");
+    act(() => el.querySelector<HTMLButtonElement>(".hs-notice-btn")!.click());
+    expect(retries).toEqual([1]);
+  });
+
+  it("says a quiet day is quiet only once it was read", () => {
+    const loading = mount(IO, { schedules: [], scheduleDayState: () => "loading" });
+    expect(loading.el.querySelector(".hs-empty")?.textContent).toBe("Reading the day\u2019s bookings\u2026");
+    expect(loading.el.querySelector(".hs-notice")).toBeNull();
+    act(() => root?.unmount());
+    host?.remove();
+    const read = mount(IO, { schedules: [], scheduleDayState: () => "ready" });
+    expect(read.el.querySelector(".hs-empty")?.textContent).toBe("Nobody is booked on this day.");
+  });
+
+  it("with the client list unread, says nothing about sync on a card it can't match", () => {
+    const stranger = { ...SCHEDULES[0], id: "b-stranger", clientId: "nobody-we-hold", clientName: "Fredegar Bolger" };
+    const { el } = mount(IO, { schedules: [...SCHEDULES, stranger], rosterFailed: true });
+    const card = cardOf(el, "Fredegar Bolger")!;
+    expect(card.dataset.kind).toBe("unknown");
+    expect(card.textContent).not.toContain("Not synced");
+    expect(el.textContent).not.toContain("Not synced yet");
+    expect([...el.querySelectorAll(".hs-notice")].map((n) => n.textContent)).toContain(
+      "Couldn't load the studio's client list, so some cards can't open a profile yet. Trying again.",
+    );
+    // With the list read, the same booking is honestly "Not synced yet".
+    act(() => root?.unmount());
+    host?.remove();
+    const again = mount(IO, { schedules: [...SCHEDULES, stranger] });
+    expect(cardOf(again.el, "Fredegar Bolger")?.textContent).toContain("Not synced yet");
+  });
+});
+
 async function openOpportunities(el: HTMLElement) {
   await act(async () => {
     [...el.querySelectorAll<HTMLButtonElement>(".hl-btn")].find((b) => b.textContent === "Opportunities")!.click();
@@ -367,7 +670,7 @@ describe("the Hub: Get to know", () => {
     occurredAt: new Date("2026-09-01T14:00:00Z"),
     isArchived: false,
   };
-  const SENTENCE = "Ask about: Opening her mathom shop in Michel Delving on Thursday — Thursday, Oct 1 (Occupation, noted Sep 1).";
+  const SENTENCE = "Ask about: Opening her mathom shop in Michel Delving on Thursday \u2014 Thursday, Oct 1 (Occupation, noted Sep 1).";
 
   it("reads the studio's FORD for someone who works there, and for nobody else", () => {
     mount();
@@ -378,7 +681,7 @@ describe("the Hub: Get to know", () => {
     expect(hub.fordCalls[hub.fordCalls.length - 1]).toBeNull();
   });
 
-  it("puts the ✎ alone on her card — FORD's words nowhere on the grid — and lights it from the chips", () => {
+  it("puts the ✎ alone on her card \u2014 FORD's words nowhere on the grid \u2014 and lights it from the chips", () => {
     hub.details = { laura: [MATHOM] };
     const { el } = mount();
     const card = cardOf(el, "Laura Grubb")!;
@@ -401,7 +704,7 @@ describe("the Hub: Get to know", () => {
     });
     await openOpportunities(el);
     const row = el.querySelector<HTMLElement>('.ho-row[data-client-id="laura"]');
-    expect([...row!.querySelectorAll(".ho-chip")].map((c) => c.textContent)).toEqual(["Ask: the shop · Thu"]);
+    expect([...row!.querySelectorAll(".ho-chip")].map((c) => c.textContent)).toEqual(["Ask: the shop \u00b7 Thu"]);
   });
 });
 
@@ -463,7 +766,7 @@ describe("the Hub: All stars", () => {
     });
     const heads = [...el.querySelectorAll(".ho-sechead")].map((h) => h.textContent);
     expect(heads).toContain("All stars (1)");
-    expect(el.querySelector('.ho-row[data-client-id="hamfast"] .ho-sentence')?.textContent).toBe("#331 · in 25 of the last 26 weeks");
+    expect(el.querySelector('.ho-row[data-client-id="hamfast"] .ho-sentence')?.textContent).toBe("#331 \u00b7 in 25 of the last 26 weeks");
   });
 
   it("says nothing when the marks name nobody here", () => {

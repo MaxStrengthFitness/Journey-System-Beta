@@ -12,6 +12,7 @@ import {
   recordImportedSessions,
   statePriorHistory,
   totalSessions,
+  visitsBeforeJourney,
   type PriorHistory,
 } from "./prior-history";
 
@@ -218,6 +219,36 @@ describe("historyCoverage against the studio's cutover", () => {
     // Recorded history wins: a date cannot overrule someone who wrote it down.
     expect(historyCoverage({ priorHistory: base, firstJourneyDay: "2027-11-02" }, CUTOVER)).toBe("partial");
     expect(historyCoverage({ historyIsComplete: true, firstJourneyDay: "2020-01-01" }, CUTOVER)).toBe("complete");
+  });
+});
+
+describe("visitsBeforeJourney (hub fixes, Oct 1 2026): Mindbody's count less Journey's own sessions", () => {
+  const CUTOVER = "2027-09-18";
+  it.each([3, 6, 20])("a client who started on Journey stays complete after %i sessions", (n) => {
+    // Mindbody counts her consultation and every Journey session.
+    expect(historyCoverage({ firstJourneyDay: "2027-11-02", mindbodyVisits: n + 1, journeySessions: n }, CUTOVER)).toBe("complete");
+  });
+
+  it("without Journey's own count (the bug's shape), the same client reads partial from the sixth session", () => {
+    expect(historyCoverage({ firstJourneyDay: "2027-11-02", mindbodyVisits: 7 }, CUTOVER)).toBe("partial");
+  });
+
+  it("keeps a client with visits before Journey partial", () => {
+    expect(historyCoverage({ firstJourneyDay: "2027-11-02", mindbodyVisits: 300, journeySessions: 6 }, CUTOVER)).toBe("partial");
+    expect(visitsBeforeJourney(300, { firstJourneyDay: "2027-11-02", journeySessions: 6 })).toBe(294);
+  });
+
+  it("lets a FileMaker prior record decide, whatever the counts", () => {
+    expect(historyCoverage({ priorHistory: base, firstJourneyDay: "2027-11-02", mindbodyVisits: 7, journeySessions: 6 }, CUTOVER)).toBe("partial");
+  });
+
+  it("takes nothing off without a Journey session, or with Journey's count unknown or nonsense", () => {
+    expect(visitsBeforeJourney(7, { journeySessions: 6 })).toBe(7);
+    expect(visitsBeforeJourney(7, { firstJourneyDay: "2027-11-02", journeySessions: null })).toBe(7);
+    expect(visitsBeforeJourney(7, { firstJourneyDay: "2027-11-02", journeySessions: Number.NaN })).toBe(7);
+    expect(visitsBeforeJourney(7, { firstJourneyDay: "2027-11-02", journeySessions: -3 })).toBe(7);
+    // More Journey sessions than visits (a count Mindbody hasn't refreshed): none before.
+    expect(visitsBeforeJourney(2, { firstJourneyDay: "2027-11-02", journeySessions: 9 })).toBe(0);
   });
 });
 
