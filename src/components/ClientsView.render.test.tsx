@@ -414,6 +414,27 @@ describe("the Hub: columns by trainer id", () => {
 });
 
 /* ------------------------------------------------------------------ *
+ * THE WAIVER (hub fixes, Oct 1 2026): AJ's Strongsville Hub flagged every
+ * card "No waiver signed" (Watch 32). Mindbody's "not signed" flags a card
+ * only where the studio keeps its waivers in Mindbody at all.
+ * ------------------------------------------------------------------ */
+
+describe("the Hub: a studio whose waivers aren't in Mindbody", () => {
+  it("flags no card when no client of the studio is signed in Mindbody", () => {
+    const unsigned = CLIENTS.map((c) => ({ ...c, isLiabilityReleased: false }));
+    const { el } = mount(IO, { clients: unsigned });
+    expect(el.querySelectorAll('.hs-g[data-family="watch"]')).toHaveLength(0);
+    expect([...el.querySelectorAll(".hd-chip")].map((c) => c.textContent).some((t) => t?.startsWith("Watch"))).toBe(false);
+  });
+
+  it("still flags the one who isn't signed where the others are", () => {
+    const { el } = mount();
+    expect(cardOf(el, "Estella Bolger")?.querySelector('.hs-g[data-family="watch"]')?.getAttribute("aria-label")).toBe("No waiver signed");
+    expect(cardOf(el, "Laura Grubb")?.querySelector('.hs-g[data-family="watch"]')).toBeNull();
+  });
+});
+
+/* ------------------------------------------------------------------ *
  * A FAILED READ IS UNKNOWN (hub fixes, Oct 1 2026): never a quiet day,
  * never "Not synced yet" on every card.
  * ------------------------------------------------------------------ */

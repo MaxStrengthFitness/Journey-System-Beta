@@ -20,7 +20,9 @@
  *                card's exact rule; an unread client claims nothing
  *   Watch        no liability waiver signed (Mindbody's "nw", AJ Sep 28 2026:
  *                `waiverState` says "not-signed", never for "not synced
- *                yet"), then the last Pulse's red flags, the same alert state
+ *                yet", and only where the studio's waivers are kept in
+ *                Mindbody at all: `waiverFlagState`, hub fixes Oct 1 2026),
+ *                then the last Pulse's red flags, the same alert state
  *   Welcome      a consultation (the card's rule), sessions 1–3 when the
  *                number may be quoted, first time with this trainer where
  *                Journey holds her whole story, and back after a break
@@ -55,7 +57,7 @@ import { priorHistoryOf, type HistoryCoverage } from "../../lib/prior-history";
 import { canClaimGap, dayAfter, ownedWindow } from "../../lib/history-claims";
 import { bookingState, isStaffBlock, type BookingMarks, type LoggedSessions } from "../../lib/booking-state";
 import { getClientAlertState } from "../../lib/client-alerts";
-import { waiverState } from "../../lib/client-waiver";
+import { waiverFlagState } from "../../lib/client-waiver";
 import { criticalNotesOn } from "../../lib/hub-critical-notes";
 import { formatStudioTime, studioDateKey, toDate, zonedHM } from "../../lib/studio-time";
 import { SESSION_MILESTONES } from "../admin/overview/moments";
@@ -305,6 +307,13 @@ export interface MomentsTodayInput {
   myIds: ReadonlyArray<string>;
   myName?: string | null;
   trainerNameOf?: (trainerId: string) => string | null;
+  /**
+   * Whether the studio keeps its waivers in Mindbody at all
+   * (`waiversKeptInMindbody` over the roster; hub fixes, Oct 1 2026). False:
+   * Mindbody's "not signed" says nothing about the client, and no card is
+   * flagged. Absent: true, as before.
+   */
+  waiversKeptInMindbody?: boolean;
 }
 
 const startOf = (b: ScheduleEntry) => toDate(b.startTime)?.getTime() ?? 0;
@@ -401,7 +410,7 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
       moments.push({ family: "read-first", kind: "critical", chip: "Read first", sentence: `Read first: ${alert.priorityLabel ?? "a priority note"}`, words: alert.priorityLabel ?? "Priority note" });
     }
     // Watch, in the Key's order: the waiver (second only to Read first), then Pulse.
-    if (waiverState(client).state === "not-signed") {
+    if (waiverFlagState(client, input.waiversKeptInMindbody ?? true).state === "not-signed") {
       moments.push({ family: "watch", kind: "waiver", chip: "No waiver signed", sentence: "No liability waiver signed in Mindbody.", words: "No waiver signed" });
     }
     if (alert.hasCheckInRedFlag) {

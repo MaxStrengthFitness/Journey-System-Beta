@@ -37,6 +37,40 @@ export interface WaiverSource {
   liabilityAgreementDate?: unknown;
 }
 
+/**
+ * DOES MINDBODY HOLD THIS STUDIO'S WAIVERS AT ALL? (hub fixes, Oct 1 2026)
+ *
+ * AJ's Strongsville Hub, Oct 1: every card carried "No waiver signed" and the
+ * Watch chip read 32, every booking that day. Journey never writes
+ * `isLiabilityReleased` itself: the only writers are Mindbody's own answer
+ * (Master Sync's `Liability.IsReleased`, the webhook's client.updated). So a
+ * whole day of "false" is Mindbody saying its liability release was never
+ * ticked for anyone, which is what a studio that keeps its waivers on paper
+ * (or anywhere but Mindbody) looks like. Mindbody's "no" means something only
+ * where Mindbody has ever said "yes": with no client of the studio signed in
+ * Mindbody, "not signed" is a fact about where the studio files waivers, not
+ * about the client, and the Hub says nothing (unknown), never a flag on every
+ * card.
+ *
+ * @param clients the clients the screen holds for the studio (the roster).
+ */
+export function waiversKeptInMindbody(clients: Iterable<WaiverSource> | null | undefined): boolean {
+  if (!clients) return false;
+  for (const c of clients) if (c?.isLiabilityReleased === true) return true;
+  return false;
+}
+
+/**
+ * The waiver's state for a screen that FLAGS it (the Hub's Watch mark): as
+ * `waiverState`, except that a "not signed" at a studio whose waivers aren't
+ * kept in Mindbody (`waiversKeptInMindbody`) is unknown.
+ */
+export function waiverFlagState(client: WaiverSource | null | undefined, keptInMindbody: boolean): WaiverState {
+  const state = waiverState(client);
+  if (state.state !== "not-signed" || keptInMindbody) return state;
+  return waiverState(null);
+}
+
 export function waiverState(client: WaiverSource | null | undefined): WaiverState {
   const released = client?.isLiabilityReleased;
 

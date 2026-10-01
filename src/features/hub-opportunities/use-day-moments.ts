@@ -30,6 +30,7 @@ import { studioTodayKey } from "../../lib/studio-time";
 import { useRenewalSettings } from "../renewals/useRenewalSettings";
 import { buildPackageNameIndex } from "../renewals/settings";
 import { buildDirectoryRows, prepareDirectory } from "../client-directory/row";
+import { waiversKeptInMindbody } from "../../lib/client-waiver";
 import { momentsToday, type MomentsTodayInput, type RunSheetEntry } from "./moments-today";
 
 export interface DayMomentsProps {
@@ -135,6 +136,9 @@ export function useDayMoments({
       myIds,
       myName: authTrainer?.fullName ?? null,
       trainerNameOf,
+      // Mindbody's "not signed" flags a card only where the studio keeps its
+      // waivers in Mindbody at all (hub fixes, Oct 1 2026; lib/client-waiver).
+      waiversKeptInMindbody: waiversKeptInMindbody(clients),
     };
     const entries = momentsToday(input);
     const byClientId = new Map<string, RunSheetEntry>();
