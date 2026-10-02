@@ -30,6 +30,7 @@ export function StaleSessionDialog({
   takesOver = false,
   onResume,
   onStartNew,
+  onFinishAsItWas,
 }: {
   open: boolean;
   clientFirstName: string;
@@ -45,6 +46,12 @@ export function StaleSessionDialog({
   takesOver?: boolean;
   onResume: () => void;
   onStartNew: () => void;
+  /**
+   * The third answer (the Atlas answers, Oct 2 2026): finish the old session
+   * under its own day, as it stands, so its real sets count, then carry on
+   * to today's. Absent: only the two answers.
+   */
+  onFinishAsItWas?: () => void;
 }) {
   const started = staleSessionStartedLine(session, todayKey);
   const day = sessionDayWords(session, todayKey) ?? "the day it was started";
@@ -64,12 +71,15 @@ export function StaleSessionDialog({
           </DialogDescription>
           <p className="text-muted-foreground font-medium text-sm leading-relaxed">
             Resume it to carry on in that session: anything you log goes in
-            under {day}.{takesOver ? " Resuming it makes it yours to finish." : ""} Or start a new session: the unfinished one is left
+            under {day}.{takesOver ? " Resuming it makes it yours to finish." : ""}
+            {onFinishAsItWas ? ` Finish it as it was: it is saved under ${day} with what was logged, and its sets count.` : ""} Or start a new session: the unfinished one is left
             exactly as it is, and can be discarded from {clientFirstName}'s
             profile.
           </p>
         </div>
-        <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-bg-dark border-t border-slate-100 dark:border-slate-800">
+        <div
+          className={`p-6 grid grid-cols-1 ${onFinishAsItWas ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-3 bg-white dark:bg-bg-dark border-t border-slate-100 dark:border-slate-800`}
+        >
           <Button
             variant="outline"
             className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-surface-2"
@@ -77,6 +87,15 @@ export function StaleSessionDialog({
           >
             Resume it
           </Button>
+          {onFinishAsItWas && (
+            <Button
+              variant="outline"
+              className="h-auto min-h-14 whitespace-normal rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-surface-2"
+              onClick={onFinishAsItWas}
+            >
+              Finish it as it was
+            </Button>
+          )}
           <Button
             className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-cta-strong text-white hover:brightness-110"
             onClick={onStartNew}

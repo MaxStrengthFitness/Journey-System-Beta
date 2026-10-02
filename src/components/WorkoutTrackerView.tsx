@@ -158,6 +158,7 @@ import {
   myTrainerIds,
   peekLiveSessionId,
   rememberLiveSession,
+  sessionDayWords,
   splitInProgress,
   takeOverPatch,
 } from "../lib/live-session";
@@ -640,6 +641,58 @@ export function WorkoutTrackerView({
      a new session beside it, and the profile keeps showing it with Discard. */
   const leaveStaleSession = () => {
     if (staleSession?.id) setDeclinedStaleId(staleSession.id);
+  };
+
+  /*
+   * ...or chose "Finish it as it was" (the Atlas answers, Oct 2 2026). The
+   * old session is finished under its OWN day, by the trainer who ran it, so
+   * its real sets count: Finish's own writes (completeWorkoutSession) with
+   * `asOfDay`, which counts it as one more session, never moves her last
+   * session day back, and never writes a machine's "last time" or next
+   * weight over a newer one. Its sets are taken as they stand, each read the
+   * way Finish reads it (a set with a count is performed, an untouched
+   * placeholder not reached, a begun set with no count skipped). No Wrap-up:
+   * the client in front of the trainer is today's. The briefing stays, and
+   * Start makes today's session as usual. Fired, never awaited on the floor.
+   */
+  const finishStaleSessionAsItWas = () => {
+    const s = staleSession;
+    if (!s?.id || !selectedClient || !user?.uid) return;
+    const sessionLogs = (Object.values(logs) as ExerciseLog[]).filter((l) => l.sessionId === s.id);
+    const stamped = sessionLogs.map((l) => {
+      const o = outcomeAtFinish(l, null);
+      if (o.outcome === "performed") return l;
+      return { ...l, ...o, ...(o.outcome !== "skipped" ? { skipReason: null } : {}) };
+    });
+    const ranBy = s.trainerId
+      ? ({ id: s.trainerId, fullName: (s as { trainerName?: string }).trainerName || "", initials: s.trainerInitials || "" } as Trainer)
+      : authTrainer;
+    const endedAt = s.lastHeartbeatAt ?? s.startTime ?? null;
+    const name = clientFirstName(selectedClient, "The client");
+    const day = sessionDayWords(s, studioTodayKey()) ?? "the day it was started";
+    setDeclinedStaleId(s.id);
+    setStaleSession(null);
+    completeWorkoutSession(
+      db,
+      s,
+      selectedClient,
+      stamped,
+      "",
+      ranBy,
+      clientMachineSettings,
+      user.uid,
+      endedAt ? { endTime: endedAt } : undefined,
+      { asOfDay: s.date || null },
+    ).then(
+      (r) => {
+        toastInfo(`${name}'s unfinished session from ${day} is finished as it was.`);
+        if (r.totalsSaved === false) toastError(`${name}'s session count didn't update for it.`);
+      },
+      (error) => {
+        console.error("[stale] finishing the old session was refused", error);
+        toastError(`${name}'s unfinished session couldn't be finished. It is still on her profile.`);
+      },
+    );
   };
 
   const [machineTimeElapsed, setMachineTimeElapsed] = useState<number>(0);
@@ -3136,6 +3189,7 @@ export function WorkoutTrackerView({
         takesOver={isAnotherTrainersSession(staleSession, myIds)}
         onResume={resumeStaleSession}
         onStartNew={leaveStaleSession}
+        onFinishAsItWas={finishStaleSessionAsItWas}
       />
     ) : null;
 
