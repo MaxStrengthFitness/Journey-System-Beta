@@ -159,7 +159,7 @@ export function reviewLine(t: WeekTotals, x: ReviewExtras): string {
   if (t.booked === 0) parts.push("Nothing was booked.");
   else if (t.done === null) parts.push(`${plural(t.booked, "session was", "sessions were")} booked; what was logged couldn't be read.`);
   else parts.push(`${t.done} of ${plural(t.booked, "booked session was", "booked sessions were")} logged as done in Journey${t.notLogged ? `, and ${t.notLogged} ${t.notLogged === 1 ? "has" : "have"} no workout logged` : ""}.`);
-  if (t.noShow > 0) parts.push(`${plural(t.noShow, "client", "clients")} didn't come, as a leader marked.`);
+  if (t.noShow > 0) parts.push(`${plural(t.noShow, "late cancel", "late cancels")}, marked by the studio.`);
   if (t.late > 0) parts.push(`${plural(t.late, "cancellation came", "cancellations came")} less than a day before the session.`);
   parts.push(`${plural(x.crossed, "client", "clients")} crossed a line and started slipping; ${plural(x.back, "client", "clients")} booked again after a gap.`);
   if (x.renewals === null) parts.push("The week's renewal outcomes couldn't be read.");
@@ -237,7 +237,7 @@ export function dayLine(d: DayFacts): string {
   if (d.booked === 0 && d.cancelled === 0) return "nothing booked";
   const bits = [d.done === null ? `${d.booked} booked` : d.toCome > 0 ? `${d.booked} booked, ${d.toCome} to come` : `${d.done} of ${d.booked} logged`];
   if (d.notLogged) bits.push(`${d.notLogged} not logged`);
-  if (d.noShow) bits.push(`${d.noShow} didn't come`);
+  if (d.noShow) bits.push(`${d.noShow} late ${d.noShow === 1 ? "cancel" : "cancels"}`);
   if (d.late) bits.push(`${d.late} late cancel${d.late === 1 ? "" : "s"}`);
   return bits.join(" · ");
 }

@@ -509,6 +509,7 @@ function mindbodyBeats(client: StoryClient, tz?: string): StoryBeat[] {
 
 /** The panel's "412 sessions in FileMaker", by where the prior record came from. */
 const PRIOR_ERA_WHERE: Record<PriorHistorySource, string> = {
+  mindbody: "counted from Mindbody",
   filemaker: "in FileMaker",
   paper: "on paper records",
   "trainer-estimate": "by a trainer's estimate",
@@ -521,6 +522,7 @@ const PRIOR_ERA_WHERE: Record<PriorHistorySource, string> = {
  * Journey" would say it twice.
  */
 const PRIOR_SINCE_WHERE: Record<PriorHistorySource, string> = {
+  mindbody: "before Journey (counted from Mindbody)",
   filemaker: "in FileMaker before Journey",
   paper: "on paper records before Journey",
   "trainer-estimate": "before Journey (a trainer's estimate)",
@@ -539,6 +541,7 @@ function storyPrior(client: { priorHistory?: unknown }): PriorHistory | null {
 
 /** Where the detail of those years is, by source. */
 const PRIOR_ERA_DETAIL: Record<PriorHistorySource, string> = {
+  mindbody: "The number is Mindbody's count, confirmed by a trainer; the detail of those years isn't in Journey.",
   filemaker: "The detail of those years lives in FileMaker.",
   paper: "The detail of those years is on paper.",
   "trainer-estimate": "The number is a trainer's estimate, and the detail of those years isn't in Journey.",
@@ -949,6 +952,13 @@ export type StorySinceKind = "client" | "at-least" | "journey";
 export interface StorySince {
   kind: StorySinceKind;
   day: string;
+  /**
+   * The ONE rule of lib/client-since.ts (Oct 2 2026): a day a person set or
+   * confirmed, or a whole story's first session, is confirmed; Mindbody's
+   * first appointment (and anything weaker) is not, and the line says "from
+   * Mindbody" until a trainer confirms it on Account.
+   */
+  confirmed: boolean;
 }
 
 /**
@@ -968,17 +978,22 @@ export function storySince(
   const visit = firstVisitOf(client, tz);
   const firstSession = instantDay(client.firstSessionDate, tz);
 
-  const sure = earliest([
-    // A day a person set (Account, Sep 29 2026) is the surest date there is.
-    asDay(client.firstStudioDay ?? null),
-    asDay(prior?.from ?? null),
-    visit?.authoritative ? visit.day : null,
-    coverage === "complete" && !prior ? firstSession : null,
-  ]);
-  if (sure) return { kind: "client", day: sure };
+  // A day a person set (Account, Sep 29 2026; confirmed there since Oct 2)
+  // is the surest date there is, and outranks every inferred one.
+  const stated = asDay(client.firstStudioDay ?? null);
+  if (stated && (!today || stated <= today)) return { kind: "client", day: stated, confirmed: true };
+
+  // Journey holds her whole story: her first day needs no confirming.
+  const whole = coverage === "complete" && !prior;
+  const personDays = [asDay(prior?.from ?? null), whole ? firstSession : null];
+  const sure = earliest([...personDays, visit?.authoritative ? visit.day : null]);
+  if (sure) {
+    const confirmed = whole || personDays.includes(sure);
+    return { kind: "client", day: sure, confirmed };
+  }
 
   const created = mindbodyDay(client.mindbodyCreatedAt);
-  if (created) return { kind: "client", day: created };
+  if (created) return { kind: "client", day: created, confirmed: false };
 
   const commercial = resolveClientSince({
     mindbodyContracts: client.mindbodyContracts,
@@ -989,11 +1004,11 @@ export function storySince(
     commercial?.source === "commercial" ? mindbodyDay(commercial.date) : null,
     prior ? asDay(prior.through) : null,
   ]);
-  if (atLeast) return { kind: "at-least", day: atLeast };
+  if (atLeast) return { kind: "at-least", day: atLeast, confirmed: false };
 
-  if (firstSession) return { kind: "journey", day: firstSession };
+  if (firstSession) return { kind: "journey", day: firstSession, confirmed: false };
   const made = instantDay(client.createdAt, tz);
-  return made ? { kind: "journey", day: made } : null;
+  return made ? { kind: "journey", day: made, confirmed: false } : null;
 }
 
 /**
@@ -1020,7 +1035,9 @@ export function sinceLine(
     const when = monthYear(since.day);
     parts.push(
       since.kind === "client"
-        ? `With Max Strength since ${when}.`
+        ? since.confirmed
+          ? `With Max Strength since ${when}.`
+          : `With Max Strength since ${when} (from Mindbody).`
         : since.kind === "at-least"
           ? `With Max Strength since at least ${when}.`
           : `In Journey since ${when}.`,

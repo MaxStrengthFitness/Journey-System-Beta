@@ -171,7 +171,7 @@ export function MonthPage({ studio, studios, clients, trainers, authTrainer, onO
         sub={
           [
             "whole years with the studio",
-            anniversaries.guessed > 0 ? `${anniversaries.guessed} ${anniversaries.guessed === 1 ? "is a guess" : "are guesses"} — set the first day on Account` : null,
+            anniversaries.guessed > 0 ? `${anniversaries.guessed} more ${anniversaries.guessed === 1 ? "waits" : "wait"} for a confirmed first day — confirm it on Account` : null,
             anniversaries.noDate > 0 ? `${anniversaries.noDate} with no first day to count from` : null,
           ]
             .filter(Boolean)

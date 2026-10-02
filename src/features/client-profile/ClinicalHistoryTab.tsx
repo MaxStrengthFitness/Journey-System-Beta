@@ -59,7 +59,10 @@ import type {
 } from "../../types";
 import { selectedFlags } from "../clinical-flags/flag-search";
 import { studioTodayKey } from "../../lib/studio-time";
-import { cprTimingCue } from "./cpr-timing";
+import { progressReportDue } from "./cpr-timing";
+import { isEstablishedClient } from "../../lib/history-claims";
+import { earliestKnownDate } from "../../lib/client-since";
+import { priorHistoryOf } from "../../lib/prior-history";
 import { ClientHistoryTab } from "../client-history";
 import { ClinicalReviewTab } from "../clinical-review";
 import { useClientCoverage } from "../../hooks/useClientCoverage";
@@ -82,6 +85,17 @@ export interface ClinicalHistoryTabProps {
   onSelectReport: (id: string) => void;
   onDeleteReport: (report: ProgressReport) => void;
   onNewReport: () => void;
+  /**
+   * The reports above have answered for THIS client (the profile's
+   * `progressReportsStatus === "ready"`). Until then the due cue says nothing:
+   * unknown is never "no report".
+   */
+  reportsReady?: boolean;
+  /**
+   * "No progress reports" for her (Atlas answers, Oct 2 2026): sets or clears
+   * `client.noProgressReports`. Absent for someone who may not edit her.
+   */
+  onSetNoProgressReports?: (off: boolean) => Promise<void> | void;
   /** Jump to Notes & Profile → Body & Pulse, the watch-outs card, where the flags are edited. */
   onEditMedical?: () => void;
   view: ClinicalView;
@@ -109,6 +123,8 @@ export function ClinicalHistoryTab({
   onSelectReport,
   onDeleteReport,
   onNewReport,
+  reportsReady = true,
+  onSetNoProgressReports,
   onEditMedical,
   view,
   onViewChange,
@@ -137,12 +153,31 @@ export function ClinicalHistoryTab({
     [client?.clinicalFlags],
   );
 
-  // Her renewal with her auto-renewal mark applied (auto-renew.ts): the cue
-  // follows the same answer as the profile header.
-  const cprCue = useMemo(
-    () => cprTimingCue(renewalOf(client), progressReports, studioTodayKey()),
-    [client, progressReports],
-  );
+  // The ONE rule the profile's quiet line uses too (cpr-timing.ts,
+  // progressReportDue; Atlas answers, Oct 2 2026): three months after the
+  // last full report, off for her with "No progress reports", stronger when
+  // her renewal is close (her auto-renewal mark applied, auto-renew.ts).
+  const optedOut = client?.noProgressReports === true;
+  const cprCue = useMemo(() => {
+    if (!client || !reportsReady || progressReports.some((r) => r.clientId !== clientId)) return null;
+    return progressReportDue({
+      reports: progressReports,
+      optedOut,
+      renewal: renewalOf(client),
+      established: isEstablishedClient({ earliest: earliestKnownDate(client), prior: priorHistoryOf(client) }, new Date()),
+      today: studioTodayKey(),
+    });
+  }, [client, clientId, progressReports, reportsReady, optedOut]);
+  const [switching, setSwitching] = useState(false);
+  const flipReports = async () => {
+    if (!onSetNoProgressReports) return;
+    setSwitching(true);
+    try {
+      await onSetNoProgressReports(!optedOut);
+    } finally {
+      setSwitching(false);
+    }
+  };
 
   const hasMedicalText = Boolean(
     (client?.medicalHistory || "").trim() || (client?.clinicalNotes || "").trim(),
@@ -249,11 +284,29 @@ export function ClinicalHistoryTab({
       {view === "reports" && (
         <div className="ptab-reports">
           {cprCue && (
-            <div className="ptab-cue" role="note">
+            <div className="ptab-cue" role="note" data-level={cprCue.level}>
               <p>{cprCue.text}</p>
               <button type="button" className="ptab-cue__btn" onClick={onNewReport} disabled={disabled}>
                 Start a progress report
               </button>
+            </div>
+          )}
+          {/* "Not every single client will want a progress report" (AJ, Oct 2 2026). */}
+          {(onSetNoProgressReports || optedOut) && (
+            <div className="ptab-reports-switch">
+              <span>{optedOut ? "Progress reports are off for this client: nothing reminds you." : "Progress reports are reminded every three months."}</span>
+              {onSetNoProgressReports && (
+                <button
+                  type="button"
+                  className="ptab-cue__btn"
+                  data-action="no-progress-reports"
+                  aria-pressed={optedOut}
+                  onClick={() => void flipReports()}
+                  disabled={disabled || switching}
+                >
+                  {optedOut ? "Turn reminders back on" : "No progress reports"}
+                </button>
+              )}
             </div>
           )}
           <ProgressReportArchive

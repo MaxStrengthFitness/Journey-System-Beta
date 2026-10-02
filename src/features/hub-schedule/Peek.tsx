@@ -11,7 +11,8 @@
  * close button or Escape closes it, and the card gets its focus back.
  */
 import { useEffect, useLayoutEffect, useRef, useState, type ComponentType } from "react";
-import { Activity, AlertTriangle, Award, Cake, FileSignature, History, MessageCircle, Pencil, Play, RefreshCw, Sparkles, Undo2, UserRound, X } from "lucide-react";
+import { Activity, AlertTriangle, Award, Cake, CalendarX, FileSignature, History, MessageCircle, Pencil, Play, RefreshCw, Sparkles, Undo2, UserRound, X } from "lucide-react";
+import { LATE_CANCEL_WORDS } from "../../lib/late-cancels";
 import type { MomentKind, RunSheetEntry } from "../hub-opportunities/moments-today";
 import { peekContent, peekState, type PeekState } from "./peek-model";
 import "./hub-card.css";
@@ -61,6 +62,13 @@ export interface PeekProps {
   onEditSession?: (clientId: string) => void;
   /** Log past session: her Activity Archive, where the form is. */
   onLogPast?: (clientId: string) => void;
+  /**
+   * Late cancel · session taken (Oct 2 2026): marks the booking (anyone at
+   * the studio), or takes the mark back (a leader, or whoever made it).
+   * Absent: no button. `busy` while the write is on its way; `error` when it
+   * was refused, said in words.
+   */
+  lateCancel?: { onRun: () => void; busy?: boolean; error?: string | null } | null;
 }
 
 type Place = { mode: "center" } | { mode: "beside"; top: number; left: number };
@@ -77,7 +85,7 @@ function besideCard(anchor: HTMLElement | null, height: number): Place {
   return { mode: "beside", top, left };
 }
 
-export function Peek({ entry, sessionNumber, timeText = null, extras, anchor, onClose, onOpenProfile, onStartSession, state = null, onEditSession, onLogPast }: PeekProps) {
+export function Peek({ entry, sessionNumber, timeText = null, extras, anchor, onClose, onOpenProfile, onStartSession, state = null, onEditSession, onLogPast, lateCancel = null }: PeekProps) {
   const view = state ?? peekState(null);
   const primary = view.primary;
   const runPrimary = (id: string) => {
@@ -213,6 +221,25 @@ export function Peek({ entry, sessionNumber, timeText = null, extras, anchor, on
           </div>
         )}
         {id && primaryShown && view.note && <p className="hp-action-note">{view.note}</p>}
+        {id && lateCancel && view.lateCancel && (
+          <div className="hp-late">
+            <button
+              type="button"
+              className="hp-btn"
+              data-action={view.lateCancel === "mark" ? "late-cancel" : "late-cancel-undo"}
+              disabled={!!lateCancel.busy}
+              onClick={lateCancel.onRun}
+            >
+              {view.lateCancel === "mark" ? <CalendarX size={18} aria-hidden /> : <Undo2 size={18} aria-hidden />}
+              {view.lateCancel === "mark" ? LATE_CANCEL_WORDS : "Undo late cancel"}
+            </button>
+            {lateCancel.error && (
+              <p className="hp-action-note" role="alert">
+                {lateCancel.error}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </>
   );

@@ -4912,7 +4912,7 @@ describe("marks on a time", () => {
         }
       });
 
-      it("lets everyone who works there read the marks, and no one but a leader write one", async () => {
+      it("lets everyone who works there read the marks and mark a late cancel; only a leader changes another's, and the marker or a leader takes it back (Oct 2 2026)", async () => {
         await seedPeople();
         await testEnv.withSecurityRulesDisabled(async (ctx) => {
           await setDoc(doc(ctx.firestore(), "studios", "studioA", "bookingMarks", "b1"), { ...mark("ownerA"), markedAt: new Date() });
@@ -4921,9 +4921,19 @@ describe("marks on a time", () => {
           const db = as(uid);
           await assertSucceeds(getDoc(markRef(db, "studioA", "b1")));
           await assertSucceeds(getDocs(collection(db, "studios", "studioA", "bookingMarks")));
-          await assertFails(setDoc(markRef(db, "studioA", "b2"), mark(uid)));
+          // Anyone at the studio marks a late cancel, signed as themselves...
+          await assertSucceeds(setDoc(markRef(db, "studioA", `b2-${uid}`), mark(uid)));
+          // ...and never as someone else.
+          await assertFails(setDoc(markRef(db, "studioA", `b3-${uid}`), mark("ownerA")));
+          // A leader's mark is the leader's: not changed, not taken back.
+          await assertFails(setDoc(markRef(db, "studioA", "b1"), mark(uid)));
           await assertFails(deleteDoc(markRef(db, "studioA", "b1")));
+          // Their own slip, they take back.
+          await assertSucceeds(deleteDoc(markRef(db, "studioA", `b2-${uid}`)));
         }
+        // A leader takes back anyone's.
+        await assertSucceeds(setDoc(markRef(as("trainerA"), "studioA", "b4"), mark("trainerA")));
+        await assertSucceeds(deleteDoc(markRef(as("leaderA"), "studioA", "b4")));
         for (const uid of ["trainerB", "headB"]) {
           const db = as(uid);
           await assertFails(getDoc(markRef(db, "studioA", "b1")));

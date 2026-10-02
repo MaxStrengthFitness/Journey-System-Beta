@@ -177,16 +177,11 @@ export function reportSessionWords(
     : { total: "Sessions", first: "Since", useFirst: "Use First in Journey", before };
 }
 
-/**
- * The "Report required" banner's sentence. Earlier progress reports may be
- * in FileMaker, so for anyone whose story predates Journey the banner says
- * where it looked.
+/*
+ * The red "Report required" strip and its sentence went on Oct 2 2026: one
+ * quiet line says when a progress report is due, from one rule
+ * (features/client-profile/cpr-timing.ts, `progressReportDue`).
  */
-export function noReportSentence(coverage: HistoryCoverage = "unknown"): string {
-  return coverage === "complete"
-    ? "This client has no progress report on file. Please perform an evaluation."
-    : "No progress report in Journey yet. Please perform an evaluation.";
-}
 
 /** How long a client has been with the studio before a report is expected. */
 export const REPORT_AFTER_MONTHS = 3;

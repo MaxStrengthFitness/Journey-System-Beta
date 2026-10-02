@@ -4,6 +4,38 @@
 client's history.** It is the single assumption most likely to make a screen
 lie.
 
+## Oct 2 2026: no FileMaker — make the app work without it
+
+AJ, Oct 2 2026: **"we need to be smart about this and stop hoping we get the
+filemaker data and start being realistic and going 'well lets just make the
+app work without it'. it will only take a few weeks to start getting real
+data so thats okay."** And: "we dont need to know WHEN people joined journey.
+we just need to know how many sessions they have TOTAL and when was their
+first session."
+
+This overrides the FileMaker sections below wherever they conflict:
+
+- **Total sessions = sessions before Journey + Journey's** (`src/lib/session-total.ts`).
+  Before Journey is guessed from Mindbody's visit count (already stored by the
+  sync; no new Mindbody call), less the sessions Journey logged, and a trainer
+  confirms or corrects it once on Notes & Profile → Account: "About 306 before
+  Journey (from Mindbody)", **Confirm** or **Change**. Confirming writes
+  `client.priorHistory` with source `mindbody`, who confirmed and when.
+- **Until it is confirmed**, the Hub card, the profile header and the briefing
+  show Mindbody's guess as her total ("#312"); the peek and the briefing say
+  "from Mindbody, not yet confirmed". **Milestones** (every 25th on the
+  briefing, the Hub's milestone list, "first session") wait for a confirmed
+  total, or for a client whose whole story is in Journey. Where Mindbody has
+  said nothing, a screen says "#6 in Journey".
+- **Client since = her first appointment** (Mindbody's `firstAppointmentDate`),
+  shown as from Mindbody until a trainer confirms or corrects it; anniversaries
+  wait for a confirmed date (`src/lib/client-since.ts`).
+- **Sessions left and sessions recorded are different numbers and are never
+  mixed.** Left is the contract's (Mindbody). Recorded is visits. "A client
+  could have 42 sessions in their package but only have 40 sessions by the end
+  of their package due to late cancels." Late cancels are tallied beside
+  visits ("40 sessions · 2 late cancels"), never inside them.
+
 ## What is actually happening
 
 Journey is not a fresh start. The original Max Strength studio has been open

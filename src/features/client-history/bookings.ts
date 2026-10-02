@@ -262,7 +262,7 @@ export function bookingLine(mark: BookingMark, year: number, opts: { tz?: string
     return `${dayWithWeekday(mark.day, year)} · ${time} · booked${mark.trainer ? ` with ${mark.trainer}` : ""}`;
   }
   const when = opts.withTime ? `${shortDate(mark.day, year)} · ${time}` : shortDate(mark.day, year);
-  if (mark.kind === "didnt-come") return `${when} · didn't come`;
+  if (mark.kind === "didnt-come") return `${when} · late cancel, session taken`;
   if (mark.kind === "moved") {
     return mark.to ? `${when} · moved to ${dayWithWeekday(mark.to.day, year)}` : `${when} · moved`;
   }

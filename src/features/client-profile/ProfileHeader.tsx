@@ -35,6 +35,7 @@ import { BrandTiles } from "./BrandTiles";
 import { bookedLabel, nextSessionHeadline } from "./next-session-tile";
 import { clientDisplayName, clientInitials, clientLegalName, goesByNickname } from "../../lib/client-name";
 import { sessionCountLabel } from "../../lib/history-claims";
+import { lateCancelCount } from "../../lib/late-cancels";
 import { whoStartedIt } from "../session-record/watch";
 import { contractWords, extraWords, splitSpeaks, type SessionsSplit } from "../client-admin/account";
 
@@ -82,6 +83,12 @@ export interface ProfileHeaderProps {
    * never a 0 standing in for "not counted yet" (Sep 24 2026).
    */
   completedCount: number | null;
+  /**
+   * Her late cancels, tallied BESIDE the count, never inside it (Atlas
+   * answers, Oct 2 2026: "40 sessions · 2 late cancels"). Null or absent
+   * while unknown: nothing is said.
+   */
+  lateCancels?: number | null;
   /**
    * The count may be read as her total (`canQuoteSessionNumber`,
    * lib/client-coverage.ts). When it is only what Journey has seen - a
@@ -273,6 +280,7 @@ export function ProfileHeader({
   sessions,
   scheduledSessions,
   completedCount,
+  lateCancels = null,
   sessionsQuotable = false,
   coverage = "unknown",
   priorLabel,
@@ -667,6 +675,11 @@ export function ProfileHeader({
           {priorLabel && (
             <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {priorLabel}
+            </span>
+          )}
+          {typeof lateCancels === "number" && lateCancels > 0 && (
+            <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground" data-testid="late-cancels">
+              {`\u00b7 ${lateCancelCount(lateCancels)}`}
             </span>
           )}
         </Stat>

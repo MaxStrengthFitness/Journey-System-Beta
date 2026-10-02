@@ -72,14 +72,19 @@ export function canEditPriorHistory(
  * What the door says, or null for no door.
  *
  * With a record it quotes it, so the tile says where its number splits.
- * Without one, only someone who can write it is offered the door: there is
- * nothing to read yet, and "Add" is a promise the rules would break for
- * anyone else.
+ * Without one, Mindbody's GUESS (Atlas answers, Oct 2 2026: the visit count
+ * less Journey's own sessions, `beforeJourneyGuess` in lib/session-total.ts)
+ * is said as one, for everyone: "About 306 before Journey (from Mindbody)",
+ * and the door offers Confirm and Change. With neither, only someone who can
+ * write it is offered the door: there is nothing to read yet, and "Add" is a
+ * promise the rules would break for anyone else.
  */
 export function priorHistoryDoorText(
   prior: PriorHistory | null | undefined,
   canEdit: boolean,
+  guess: number | null = null,
 ): string | null {
+  if (!prior && guess !== null) return `About ${guess} before Journey (from Mindbody)`;
   if (!prior) return canEdit ? "Add sessions before Journey" : null;
   const label = priorHistoryLabel(prior);
   if (label) return label;
@@ -99,11 +104,49 @@ export function priorHistoryDoorText(
  * ClientProfileView.
  */
 export interface PriorHistoryDoorState {
-  /** "412 before Journey · FileMaker", or "Add sessions before Journey". */
+  /** "412 before Journey · FileMaker", "About 306 before Journey (from Mindbody)", or "Add sessions before Journey". */
   text: string;
   /** False: the editor opens read-only, because the rules refuse this person's write. */
   canEdit: boolean;
   onOpen: () => void;
+  /**
+   * Mindbody's guess is waiting to be confirmed, and this person may confirm
+   * it: one tap writes it as the record ("Confirm"); the door itself is
+   * "Change", the editor seeded with the guess. Absent otherwise.
+   */
+  onConfirm?: () => void;
+  /** The confirm is being written. */
+  confirming?: boolean;
+}
+
+/**
+ * THE CONFIRM (Atlas answers, Oct 2 2026). Mindbody's guess, as the
+ * statement a trainer makes by confirming it: the number, from Mindbody,
+ * counted up to the day before her first Journey session (the guess is the
+ * visits Journey can't account for), or up to today when she has none yet.
+ */
+export function confirmGuessStatement(
+  guess: number,
+  firstJourneyDay: string | null,
+  today: string,
+): PriorHistoryStatement {
+  const through = firstJourneyDay && DAY_KEY.test(firstJourneyDay) ? dayBefore(firstJourneyDay) ?? today : today;
+  return {
+    sessions: Math.max(0, Math.trunc(guess)),
+    through: through > today ? today : through,
+    source: "mindbody",
+    note: "Mindbody's visit count, confirmed on the profile.",
+  };
+}
+
+/** The day before a yyyy-mm-dd key, in calendar arithmetic (no time zone). */
+function dayBefore(key: string): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if (!m) return null;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) - 1));
+  if (Number.isNaN(d.getTime())) return null;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 }
 
 /** What the door says to a screen reader, on every door. */
@@ -124,10 +167,18 @@ export interface PriorHistoryDraft {
  * rather than a re-entry. A client with no record starts blank, counted up to
  * today.
  */
-export function draftFromPrior(prior: PriorHistory | null | undefined, today: string): PriorHistoryDraft {
+export function draftFromPrior(
+  prior: PriorHistory | null | undefined,
+  today: string,
+  /** Mindbody's guess, when there is no record: Change starts from it. */
+  guess: number | null = null,
+): PriorHistoryDraft {
+  if (!prior && guess !== null) {
+    return { sessions: String(guess), source: "mindbody", through: today, note: "" };
+  }
   return {
     sessions: prior ? String(prior.sessions) : "",
-    source: prior?.source ?? "filemaker",
+    source: prior?.source ?? "mindbody",
     through: prior?.through ?? today,
     note: prior?.note ?? "",
   };

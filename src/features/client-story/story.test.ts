@@ -658,13 +658,13 @@ describe("buildStory — the other clients", () => {
     // Mindbody saw her first in 2016; Journey's first session was this year.
     // The header's resolveClientSince would say "Client since Sep 2026".
     const client: StoryClient = { firstAppointmentDate: new Date(Date.UTC(2016, 4, 2)), firstSessionDate: noon("2026-09-20") };
-    expect(storySince(client, "partial", TZ)).toEqual({ kind: "client", day: "2016-05-02" });
+    expect(storySince(client, "partial", TZ)).toEqual({ kind: "client", day: "2016-05-02", confirmed: false });
     expect(storyTabHint({ client, coverage: "partial", tz: TZ })).toBe("since 2016");
   });
 
   it("(J) the day a person set on Account is her start, before every inferred date (Sep 29 2026)", () => {
     const client: StoryClient = { firstStudioDay: "2014-09-08", firstAppointmentDate: new Date(Date.UTC(2016, 4, 2)), firstSessionDate: noon("2026-09-20") };
-    expect(storySince(client, "partial", TZ)).toEqual({ kind: "client", day: "2014-09-08" });
+    expect(storySince(client, "partial", TZ)).toEqual({ kind: "client", day: "2014-09-08", confirmed: true });
     expect(storyTabHint({ client, coverage: "partial", tz: TZ })).toBe("since 2014");
   });
 
@@ -673,7 +673,7 @@ describe("buildStory — the other clients", () => {
       priorHistory: { sessions: 200, through: "2026-09-01", source: "paper" },
       mindbodyContracts: { a: { clientContractId: "a", contractName: "96 PIF", status: "Active", startDate: "2026-03-01T00:00:00Z" } },
     };
-    expect(storySince(client, "partial", TZ)).toEqual({ kind: "at-least", day: "2026-03-01" });
+    expect(storySince(client, "partial", TZ)).toEqual({ kind: "at-least", day: "2026-03-01", confirmed: false });
     const era = buildStory(input({ client, coverage: "partial" })).beats.find((b) => b.isEra)!;
     expect(era.text).toBe("Until Sep 2026 · 200 sessions on paper records");
   });
@@ -733,7 +733,7 @@ describe("the years before Journey — every source, and the record's edge cases
       priorHistory: { sessions: 200, through: "2027-12-31", source: "paper" },
       firstSessionDate: noon("2026-10-01"),
     };
-    expect(storySince(client, "partial", TZ, TODAY)).toEqual({ kind: "journey", day: "2026-10-01" });
+    expect(storySince(client, "partial", TZ, TODAY)).toEqual({ kind: "journey", day: "2026-10-01", confirmed: false });
     expect(storyTabHint({ client, coverage: "partial", tz: TZ, today: TODAY })).toBe("in Journey since 2026");
     expect(buildStory(input({ client, coverage: "partial" })).sinceLine).toMatch(/^In Journey since Oct 2026\./);
   });
@@ -780,7 +780,7 @@ describe("firstVisitOf — named for what the date was taken from", () => {
     expect(beat.text).not.toContain("First visit");
     // Only a booking Mindbody returned may be called a Mindbody visit.
     if (basis !== "booking") expect(beat.text).not.toContain("Mindbody visit");
-    expect(storySince(client, "partial", TZ, TODAY)).toEqual({ kind: "at-least", day: "2026-06-03" });
+    expect(storySince(client, "partial", TZ, TODAY)).toEqual({ kind: "at-least", day: "2026-06-03", confirmed: false });
   });
 
   it("(D) a contract-start backfill is a Mindbody date: its UTC day, not the studio's evening before", () => {

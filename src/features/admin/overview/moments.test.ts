@@ -75,11 +75,15 @@ describe("moments — milestones", () => {
     const c = client("a", "Ann", { sessionCount: 99 });
     expect(moments({ delight: [], datedNotes: [], clients: [c], weekEntries: [booking("b1", "a", "2026-09-22")], today: TODAY, tz: TZ }).rows).toHaveLength(0);
   });
-  it("a year with the studio, from a Mindbody-backed first date, booked or not", () => {
-    const c = client("a", "Ann", { firstSessionDate: "2024-09-23" });
+  it("a year with the studio, from a confirmed first date (a whole story in Journey), booked or not", () => {
+    const c = client("a", "Ann", { firstSessionDate: "2024-09-23", historyIsComplete: true });
     const m = moments({ delight: [], datedNotes: [], clients: [c], weekEntries: [], today: TODAY, tz: TZ });
     expect(m.rows[0]).toMatchObject({ kind: "milestone", day: "2026-09-23", sentence: "2 years with the studio." });
     expect(m.rows[0].proof).toContain("Not booked this week.");
+  });
+  it("Mindbody's first appointment waits to be confirmed before it earns an anniversary (Oct 2 2026)", () => {
+    const c = client("a", "Ann", { firstAppointmentDate: "2021-09-23" });
+    expect(moments({ delight: [], datedNotes: [], clients: [c], weekEntries: [], today: TODAY, tz: TZ }).rows).toHaveLength(0);
   });
   it("a first day a person set wins, and the proof says so (Sep 29 2026)", () => {
     const c = client("a", "Ann", { firstStudioDay: "2019-09-23", firstAppointmentDate: "2021-01-05" });

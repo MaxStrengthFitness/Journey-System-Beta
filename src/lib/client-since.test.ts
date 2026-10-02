@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clientSinceLabel, earliestKnownDate, resolveClientSince, statedFirstDay } from "./client-since";
+import { canClaimAnniversary, clientSinceLabel, earliestKnownDate, resolveClientSince, statedFirstDay } from "./client-since";
 
 const ts = (iso: string) => ({ toDate: () => new Date(iso) });
 
@@ -15,18 +15,37 @@ describe("clientSinceLabel", () => {
       firstSessionDate: ts("2026-09-02T15:00:00"),
       firstAppointmentDate: ts("2014-03-01T15:00:00"),
     });
-    expect(label).toEqual({ label: "Client since", value: "Mar 2014", source: "firstAppointment" });
+    // Mindbody's date, not yet confirmed by a trainer (Oct 2 2026): said so.
+    expect(label).toEqual({ label: "Client since", value: "Mar 2014 (from Mindbody)", source: "firstAppointment", confirmed: false });
   });
 
-  it("keeps a genuinely new client's first session", () => {
-    const since = resolveClientSince({
+  it("keeps a genuinely new client's first session, and needs no confirming for a whole story", () => {
+    const newClient = {
       firstSessionDate: ts("2026-09-02T15:00:00"),
       firstAppointmentDate: ts("2026-09-02T18:00:00"),
       mindbodyCreatedAt: ts("2026-09-01T12:00:00"),
-    });
-    // Mindbody made her record the day before: that is the earliest proof.
-    expect(since?.source).toBe("mindbodyCreated");
-    expect(clientSinceLabel({ firstSessionDate: ts("2026-09-02T15:00:00") })?.value).toBe("Sep 2026");
+    };
+    // Her first day is her first appointment or first session, never the day
+    // Mindbody made a record (Oct 2 2026): that is often an enquiry.
+    expect(resolveClientSince(newClient)?.source).toBe("firstSession");
+    const whole = resolveClientSince(newClient, { coverage: "complete" });
+    expect(whole).toMatchObject({ source: "firstSession", confirmed: true });
+    expect(canClaimAnniversary(whole)).toBe(true);
+    expect(clientSinceLabel({ firstSessionDate: ts("2026-09-02T15:00:00") })?.value).toBe("Sep 2026 (from Mindbody)");
+    expect(clientSinceLabel({ firstSessionDate: ts("2026-09-02T15:00:00") }, { coverage: "complete" })?.value).toBe("Sep 2026");
+  });
+
+  it("Mindbody's first appointment is her first day, shown as from Mindbody until a trainer confirms it (Oct 2 2026)", () => {
+    const client = { firstAppointmentDate: ts("2015-03-01T15:00:00"), mindbodyCreatedAt: ts("2013-01-01T12:00:00") };
+    const since = resolveClientSince(client, { coverage: "partial" });
+    expect(since).toMatchObject({ source: "firstAppointment", fromMindbody: true, confirmed: false });
+    expect(canClaimAnniversary(since)).toBe(false);
+    // Confirming writes firstStudioDay: then it is a person's, and anniversaries count.
+    const confirmed = resolveClientSince({ ...client, firstStudioDay: "2015-03-01" }, { coverage: "partial" });
+    expect(confirmed).toMatchObject({ source: "stated", confirmed: true });
+    expect(canClaimAnniversary(confirmed)).toBe(true);
+    // Mindbody's record date only stands in when there is no first appointment.
+    expect(resolveClientSince({ mindbodyCreatedAt: ts("2013-01-01T12:00:00") }, { coverage: "partial" })).toMatchObject({ source: "mindbodyCreated", confirmed: false });
   });
 
   /*
@@ -41,6 +60,7 @@ describe("clientSinceLabel", () => {
         label: "In Journey since",
         value: "Sep 2026",
         source: "firstSession",
+        confirmed: false,
       });
     }
     expect(clientSinceLabel(filemaker, { coverage: "complete" })?.label).toBe("Client since");
@@ -81,7 +101,7 @@ describe("clientSinceLabel", () => {
       expect(since?.date.getMonth()).toBe(8);
       expect(since?.date.getDate()).toBe(8);
     }
-    expect(clientSinceLabel(client, { coverage: "partial" })).toEqual({ label: "Client since", value: "Sep 2014", source: "stated" });
+    expect(clientSinceLabel(client, { coverage: "partial" })).toEqual({ label: "Client since", value: "Sep 2014", source: "stated", confirmed: true });
     expect(statedFirstDay({ firstStudioDay: "2014-02-30" })).toBeNull();
     expect(statedFirstDay({ firstStudioDay: "1980-01-01" })).toBeNull();
     expect(statedFirstDay({ firstStudioDay: "" })).toBeNull();

@@ -796,20 +796,21 @@ export interface PlateauOptions {
 /**
  * One row per machine that appears in the range. Verdict rules, in order:
  *   insufficient  fewer than `minSessions` sessions on the machine
- *   regressing    load down vs the first session in range, or the outcome at
- *                 the current load down since it was first lifted
- *   progressing   load up, OR the outcome at the current load up
- *   plateau       otherwise — same load, outcome flat, for the whole range
+ *   regressing    load down vs the first session in range
+ *   progressing   load up vs the first session in range
+ *   plateau       otherwise — the same load across the range
  *
- * "Outcome" is reps for a normal set and SECONDS for a timed static
- * contraction (a TSC progresses by holding longer, not by more reps). The
- * gain that counts as progress is +2 reps or +10 seconds.
+ * ONLY THE LOAD DECIDES (AJ, Oct 2 2026: "two more reps at the same weight
+ * can be considered progress, but I would not consider that notable
+ * progress. It depends on the CLIENT."). Reps — or SECONDS for a timed
+ * static contraction — at the current load are still measured and said in
+ * words ("reps 6 → 8"), but they never make a machine "progressing" or
+ * "slipping", and a run at one load is a stall whatever the reps did.
  */
 export function detectPlateaus(sets: SetFact[], options: PlateauOptions): MachinePlateau[] {
   const minSessions = options.minSessions ?? RULE_OF_THREE;
   const stallSessions = options.stallSessions ?? 5;
   const outcomeOf = (s: SetFact): number | null => (s.isTSC ? s.seconds : s.reps);
-  const gainFor = (s: SetFact): number => (s.isTSC ? 10 : 2);
   const byMachine = new Map<string, SetFact[]>();
   for (const s of sets) {
     const list = byMachine.get(s.machineId) ?? [];
@@ -845,14 +846,12 @@ export function detectPlateaus(sets: SetFact[], options: PlateauOptions): Machin
     }
 
     let status: PlateauStatus;
-    const gain = last ? gainFor(last) : 2;
     const weightChangePct = first && last && first.weight ? ((last.weight! - first.weight) / first.weight) * 100 : null;
-    const outcomeUp = repsAtCurrentFirst !== null && repsAtCurrentLast !== null && repsAtCurrentLast >= repsAtCurrentFirst + gain;
-    const outcomeDown = repsAtCurrentFirst !== null && repsAtCurrentLast !== null && repsAtCurrentLast <= repsAtCurrentFirst - gain;
-    const stalled = sessionsAtCurrent >= stallSessions && !outcomeUp;
+    // Reps alone never decide the verdict (above): only the load does.
+    const stalled = sessionsAtCurrent >= stallSessions;
     if (series.length < minSessions || !first || !last) status = "insufficient";
-    else if ((weightChangePct !== null && weightChangePct < 0) || outcomeDown) status = "regressing";
-    else if ((weightChangePct !== null && weightChangePct > 0) || outcomeUp) status = "progressing";
+    else if (weightChangePct !== null && weightChangePct < 0) status = "regressing";
+    else if (weightChangePct !== null && weightChangePct > 0) status = "progressing";
     else status = "plateau";
 
     out.push({

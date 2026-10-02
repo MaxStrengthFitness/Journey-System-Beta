@@ -258,7 +258,7 @@ export function HistoryLegend({
           <span className="hist-swatch hist-swatch--glyph" aria-hidden>
             <BookingGlyph kind="didnt-come" />
           </span>{" "}
-          Didn't come
+          Late cancel
         </span>
       )}
       {bookingsStatus === "loading" && (

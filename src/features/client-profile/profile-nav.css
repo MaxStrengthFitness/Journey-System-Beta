@@ -448,6 +448,18 @@
   cursor: pointer;
 }
 .ptab-cue__btn:disabled { opacity: 0.5; cursor: default; }
+/* The per-client "No progress reports" switch (Oct 2 2026): one quiet row. */
+.ptab-reports-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-bottom: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--eq-ink-muted);
+}
+.ptab-reports-switch span { flex: 1 1 240px; }
 
 /* --------------------------------------------------------------------------
    The profile on a phone (Journey Lite, Oct 1 2026).

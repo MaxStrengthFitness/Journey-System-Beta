@@ -25,7 +25,7 @@ The conversation is due at the studio's threshold (10 sessions left by default).
 | `types.ts` | Settings, the snapshot, cycles, conversations |
 | `settings.ts`, `settings-form.ts` | Defaults (the website's prices), cleaning, the package-name index, the settings form |
 | `engine.ts` | **The engine.** `buildRenewalSnapshot()` — pure, the same code in the browser and the nightly job |
-| `attendance.ts` | Bookings and workouts → visit rows; `attendanceSince` (unknown before the first synced booking, not zero). A booking is read through `lib/booking-state.ts` (Sep 24 2026): a visit when Journey logged a session for the client that day; an unlogged past booking is still a visit before its studio's `journeyCutoverDate` (or with none set — FileMaker holds that record), and from the cutover on it is neither a visit nor a miss |
+| `attendance.ts` | Bookings and workouts → visit rows (a late cancel, "Late cancel · session taken", is a no-show row: the pace counts it as a session USED, never a visit; Oct 2 2026); `attendanceSince` (unknown before the first synced booking, not zero). A booking is read through `lib/booking-state.ts` (Sep 24 2026): a visit when Journey logged a session for the client that day; an unlogged past booking is still a visit before its studio's `journeyCutoverDate` (or with none set — FileMaker holds that record), and from the cutover on it is neither a visit nor a miss |
 | `sentences.ts`, `options.ts`, `brief.ts` | Words: chips, situations, pace, proof; the package-options table; the Brief's journey and health lines |
 | `conversation.ts` | The 15-second conversation log and the post-session prompt |
 | `pipeline.ts` | Operations lanes, filters, next steps |
@@ -56,7 +56,7 @@ The conversation is due at the studio's threshold (10 sessions left by default).
 
 ## Decisions
 
-- **Sessions left = sessions on hand (pricing options) + 8 for each payment still to come.** The count is Mindbody's; an estimate says so. Complimentary "Session Comp" sessions count; unmatched pricing options don't, and they show as data gaps.
+- **Sessions left = sessions on hand (pricing options) + 8 for each payment still to come.** The count is Mindbody's; an estimate says so. Complimentary "Session Comp" sessions count; unmatched pricing options don't, and they show as data gaps. **Given sessions hold the conversation off until they are used too** (AJ, Oct 2 2026: "Yes, count them in"): they are in sessions left, and a client whose package is spent but who still holds given sessions is still using sessions, never "ended" (`sessionsOnly` counts them once a package was recognised). The profile header still splits the two: "36 left in contract · +12 extra" (`sessionsSplit`).
 - **Dates are UTC days for Mindbody** (`mindbodyDayKey`) and studio days for everything else.
 - **Sessions left is Mindbody's number as of the last pull, never a count-down** (the cost plan, Sep 26 2026). The nightly job counts down (sessions left at the pull, less the sessions Journey logged since) only to decide WHEN to ask Mindbody again - near the studio's conversation threshold, the morning of a day they train, at most weekly. A screen never shows the count-down.
 - **Pace** is visits a week over the last 8 weeks, rounded to a quarter. It skips away time and never reaches back before the current package or the studio's first synced booking. It needs 21 observed days.

@@ -772,11 +772,11 @@ describe("MembershipSection — the section", () => {
 describe("MembershipSection — her first day at the studio", () => {
   it("says the guess and its source until a person sets the day, then saves the day through the one form", async () => {
     const probe: Probe = {};
-    const host = await mount(<Harness c={client({ firstAppointmentDate: "2020-01-15T15:00:00Z" })} probe={probe} />);
+    const host = await mount(<Harness c={client({ firstAppointmentDate: "2020-01-15T15:00:00Z" })} probe={probe} coverage="partial" />);
     const card = host.querySelector<HTMLElement>('#account-first-day')!;
     expect(card).not.toBeNull();
-    expect(card.textContent).toContain("Not set · the best guess is Jan 15, 2020");
-    expect(card.textContent).toContain("Until it is set, the app goes by the first visit Mindbody has.");
+    expect(card.textContent).toContain("Jan 15, 2020 (from Mindbody, not yet confirmed)");
+    expect(card.textContent).toContain("From her first appointment in Mindbody. Anniversaries wait until a trainer confirms it.");
 
     await click(buttons(host).find((b) => b.getAttribute("aria-label") === "Edit First day at the studio"));
     await typeInto(fieldByLabel(host, "The day she first trained here"), "2014-09-08");
@@ -784,6 +784,21 @@ describe("MembershipSection — her first day at the studio", () => {
     expect(probe.form?.formData.firstStudioDay).toBe("2014-09-08");
     // Where the Save bar says it is.
     expect(probe.form?.where.map((w) => w.label)).toContain("First day at the studio");
+  });
+
+  it("confirms Mindbody's first appointment in one tap, through the one form (Oct 2 2026)", async () => {
+    const probe: Probe = {};
+    const host = await mount(<Harness c={client({ firstAppointmentDate: "2020-01-15T15:00:00Z" })} probe={probe} coverage="partial" />);
+    const confirm = buttons(host).find((b) => b.getAttribute("data-action") === "first-day-confirm");
+    expect(confirm?.textContent).toContain("Confirm Jan 15, 2020");
+    await click(confirm);
+    expect(probe.form?.formData.firstStudioDay).toBe("2020-01-15");
+    expect(probe.form?.isDirty("firstStudioDay")).toBe(true);
+  });
+
+  it("offers no Confirm to someone who may not edit", async () => {
+    const host = await mount(<Harness c={client({ firstAppointmentDate: "2020-01-15T15:00:00Z" })} canEdit={false} coverage="partial" />);
+    expect(buttons(host).find((b) => b.getAttribute("data-action") === "first-day-confirm")).toBeUndefined();
   });
 
   it("shows a set day as set by a person, and reads only for someone who may not edit", async () => {

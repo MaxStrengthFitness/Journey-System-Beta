@@ -30,9 +30,16 @@
  * PURE MODULE — no React, no Firestore.
  */
 
-export type PriorHistorySource = "filemaker" | "paper" | "trainer-estimate" | "other";
+/**
+ * "mindbody" (Oct 2 2026): a trainer CONFIRMED Mindbody's guess — the visit
+ * count less Journey's own sessions (`lib/session-total.ts`). AJ: "stop
+ * hoping we get the filemaker data". The FileMaker export is not coming, so
+ * this is now the usual source.
+ */
+export type PriorHistorySource = "mindbody" | "filemaker" | "paper" | "trainer-estimate" | "other";
 
 export const PRIOR_SOURCE_LABEL: Record<PriorHistorySource, string> = {
+  mindbody: "Mindbody",
   filemaker: "FileMaker",
   paper: "Paper records",
   "trainer-estimate": "Trainer's estimate",
@@ -41,6 +48,7 @@ export const PRIOR_SOURCE_LABEL: Record<PriorHistorySource, string> = {
 
 /** How sure the number is, in the order a trainer would trust it. */
 export const PRIOR_SOURCES: readonly PriorHistorySource[] = [
+  "mindbody",
   "filemaker",
   "paper",
   "trainer-estimate",

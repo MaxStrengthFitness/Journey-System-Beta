@@ -558,6 +558,17 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
   const visitDays = new Set(
     attendance.filter((a) => a.kind === "visit" && a.day <= today).map((a) => a.day),
   );
+  /*
+   * SESSIONS USED, NOT ONLY VISITS (Atlas answers, Oct 2 2026). A late cancel
+   * (a booking marked "Late cancel · session taken", or Mindbody's own
+   * No-Show) takes a session from the package without being a visit: "A
+   * client could have 42 sessions in their package but only have 40 sessions
+   * by the end of their package due to late cancels." So the pace that says
+   * when the package runs out counts them; the last visit, a break and the
+   * proof stay visits only.
+   */
+  const usedDays = new Set(visitDays);
+  for (const a of attendance) if (a.kind === "no-show" && a.day <= today) usedDays.add(a.day);
   const hint =
     typeof input.lastVisitHint === "string" &&
     /^\d{4}-\d{2}-\d{2}$/.test(input.lastVisitHint) &&
@@ -622,9 +633,15 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
   }
 
   const tier: PackageTier | null = current?.tier ?? balance.packageService?.tier ?? null;
-  // No contract running, but package sessions still on hand: paid in full,
-  // or billing already finished and the client is using banked sessions.
-  const sessionsOnly = !current && balance.packageOnHand > 0 && balance.packageService !== null;
+  // No contract running, but sessions still on hand: paid in full, or billing
+  // already finished and the client is using banked sessions. GIVEN sessions
+  // count here too (AJ, Oct 2 2026: "Yes, count them in" — the renewal
+  // conversation waits until the given sessions are used too), so a client
+  // whose package is spent but who still holds her extras is still using
+  // sessions, not "ended". Only for a client the studio's package table
+  // recognised a package for (`packageService`): extras on their own say
+  // nothing about which package she is on.
+  const sessionsOnly = !current && balance.onHand > 0 && balance.packageService !== null;
   const isPif =
     balance.packageService !== null &&
     (balance.packageService.service.count ?? 0) >= balance.packageService.tier.sessions;
@@ -707,7 +724,7 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
     ) {
       // No pricing options on file, but Journey has seen the whole package:
       // the package's sessions minus the visits since it began.
-      const used = Array.from(visitDays).filter((d) => d >= current.start!).length;
+      const used = Array.from(usedDays).filter((d) => d >= current.start!).length;
       sessionsLeft = Math.max(0, tier.sessions - used);
       sessionsLeftSource = "estimate";
     }
@@ -719,7 +736,7 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
 
   /* ---- Pace and projections ---- */
   const pace = computePace({
-    visitDays: Array.from(visitDays),
+    visitDays: Array.from(usedDays),
     today,
     attendanceSince,
     // A renewal starting next week must not blank the pace: only a package

@@ -38,7 +38,9 @@ import type { HubLayer } from "../features/hub-opportunities/LayerSwitch";
 import { useDayMoments } from "../features/hub-opportunities/use-day-moments";
 import { useHubFord } from "../features/hub-opportunities/use-hub-ford";
 import { useHubMarks } from "../features/hub-opportunities/use-hub-marks";
-import { useBookingMarks } from "../features/admin/attention/booking-marks";
+import { markNoShow, takeBackNoShow, useBookingMarks } from "../features/admin/attention/booking-marks";
+import { canManageRenewals } from "../features/renewals/permissions";
+import { mayTakeBackLateCancel } from "../lib/late-cancels";
 import { HubCard, cardTime } from "../features/hub-schedule/HubCard";
 import { usePhone } from "../features/phone/device";
 import { PhoneDayList } from "../features/phone/PhoneDayList";
@@ -194,6 +196,10 @@ export function ClientsView({
   const [trainerList, setTrainerList] = useState<{ columnId: string; day: string } | null>(null);
   /** Edit session from the peek: the day's logged session, in the Activity Archive's own pop-up. */
   const [editing, setEditing] = useState<{ key: number; clientId: string; homeStudioId?: string; session: HistorySession } | null>(null);
+  /* Late cancel · session taken from the peek (Oct 2 2026): the booking being
+     written, and a refusal said in words, keyed by the booking. */
+  const [lateBusy, setLateBusy] = useState<string | null>(null);
+  const [lateError, setLateError] = useState<{ bookingId: string; text: string } | null>(null);
   const trainerFor = React.useMemo(() => trainerLookup(sortedTrainers), [sortedTrainers]);
 
   /*
@@ -889,11 +895,42 @@ export function ClientsView({
                   machines: Array.isArray(loggedSession?.sessionMachineIds) ? loggedSession!.sessionMachineIds!.length : null,
                   loggedSessionHeld: !!loggedSession,
                 });
+                /* LATE CANCEL · SESSION TAKEN (Atlas answers, Oct 2 2026):
+                   anyone at the studio marks a booking nobody logged; a
+                   leader, or whoever marked it, takes it back. The rules
+                   decide in the end; a refusal is said, never swallowed. */
+                const bookingId: string | null = typeof booking.id === "string" && booking.id ? booking.id : null;
+                const lateClientId: string | null = entry.client?.id ?? booking.clientId ?? null;
+                const uid = auth.currentUser?.uid ?? null;
+                const markRow = bookingId ? bookingMarks.rows.find((r) => r.id === bookingId) ?? null : null;
+                const mayUndo = mayTakeBackLateCancel(markRow, uid, canManageRenewals(authTrainer, activeStudioId));
+                const runLate = async () => {
+                  if (!bookingId || !lateClientId || !activeStudioId) return;
+                  setLateBusy(bookingId);
+                  setLateError(null);
+                  try {
+                    if (peekView.lateCancel === "undo") await takeBackNoShow(activeStudioId, bookingId);
+                    else {
+                      const day = studioDateKey(booking.startTime || booking.StartDateTime || booking.date) ?? selectedKey;
+                      await markNoShow(activeStudioId, { id: bookingId, clientId: lateClientId, day }, { name: authTrainer?.fullName ?? "" });
+                    }
+                  } catch (err) {
+                    setLateError({ bookingId, text: err instanceof Error && /sign in/i.test(err.message) ? err.message : "That didn't save. Check the connection, or ask a leader to mark it." });
+                  } finally {
+                    setLateBusy(null);
+                  }
+                };
+                const lateOffer =
+                  bookingId && lateClientId && activeStudioId && bookingMarks.marks &&
+                  (peekView.lateCancel === "mark" || (peekView.lateCancel === "undo" && mayUndo))
+                    ? { onRun: () => void runLate(), busy: lateBusy === bookingId, error: lateError?.bookingId === bookingId ? lateError.text : null }
+                    : null;
                 return (
                   <Peek
                     entry={entry}
                     sessionNumber={peekNumber}
                     state={peekView}
+                    lateCancel={lateOffer}
                     onEditSession={
                       loggedSession
                         ? (id) => {

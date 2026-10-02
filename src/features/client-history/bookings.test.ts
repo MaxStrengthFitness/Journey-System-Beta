@@ -95,7 +95,7 @@ describe("bookingLayer — a leader's \"didn't come\" (Operations wave 3)", () =
     });
     expect(kinds(marks)).toEqual(["didnt-come@2026-09-22"]);
     expect(marks[0].trainer).toBe("Giovanni");
-    expect(bookingLine(marks[0], 2026, { tz: NY })).toBe("Sep 22 · didn't come");
+    expect(bookingLine(marks[0], 2026, { tz: NY })).toBe("Sep 22 · late cancel, session taken");
     expect(bookingLines(marks, 2026, NY)[0].id).toBe("didnt-come:missed:2026-09-22");
   });
 

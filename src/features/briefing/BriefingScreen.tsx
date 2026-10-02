@@ -78,6 +78,7 @@ import {
 } from "../../lib/routine-utils";
 import { hubMarkers } from "../../lib/hub-markers";
 import { briefingMoments } from "../hub-opportunities/briefing-moments";
+import { sessionNumberWords, sessionTotalOf } from "../../lib/session-total";
 import { renewalPromptDue } from "../renewals/conversation";
 import { renewalOf } from "../renewals/auto-renew";
 import { BriefingRenewalLine } from "../renewals/BriefingRenewalLine";
@@ -476,6 +477,15 @@ export function BriefingScreen({
     }));
     return [...own, ...engine];
   }, [client, coverage, todayKey, studios]);
+  /* Her total while it is Mindbody's guess (Atlas answers, Oct 2 2026): the
+     briefing says the number this session will be, and that it is a guess
+     until a trainer confirms it on Account. No milestone is claimed off it
+     (hubMarkers gates those on a confirmed or whole total). */
+  const totals = useMemo(() => sessionTotalOf(client, coverage), [client, coverage]);
+  const guessLine =
+    totals.basis === "mindbody" && totals.total !== null
+      ? `This is session ${sessionNumberWords(totals.total + 1, "mindbody", { explain: true })}.`
+      : null;
   /* Due an InBody (FileMaker parity, Oct 1 2026): one quiet line, only when
      she is due, and never in the way of Start. Her HOME studio's number,
      else her own (features/inbody/due.ts). */
@@ -504,6 +514,7 @@ export function BriefingScreen({
     carried.length +
     markers.length +
     (inbodyLine ? 1 : 0) +
+    (guessLine ? 1 : 0) +
     activeJournalFocuses.length;
   // With her auto-renewal mark applied (auto-renew.ts), as the line below reads it.
   const renewalNow = useMemo(() => renewalOf(client), [client]);
@@ -745,6 +756,12 @@ export function BriefingScreen({
                     </span>
                   ))}
                 </div>
+              )}
+
+              {guessLine && (
+                <p className="br__inbody" data-testid="briefing-session-guess">
+                  <span>{guessLine}</span>
+                </p>
               )}
 
               {/* Due an InBody (FileMaker parity, Oct 1 2026). Information,

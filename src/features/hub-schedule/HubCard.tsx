@@ -294,9 +294,7 @@ export function HubCard({
           {isDidntCome && (
             <>
               {" · "}
-              <strong className="hs-card-state" title="Marked as a no-show">
-                Didn't come
-              </strong>
+              <strong className="hs-card-state">Late cancel</strong>
             </>
           )}
           {/* A session open but gone quiet for an hour (the staleness rule;

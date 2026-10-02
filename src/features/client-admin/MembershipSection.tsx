@@ -45,6 +45,7 @@
 import { useMemo } from "react";
 import {
   CalendarCheck,
+  Check,
   CalendarClock,
   CheckSquare,
   ChevronDown,
@@ -534,18 +535,45 @@ function FirstDayCard({
   const raw = formData.firstStudioDay;
   const value = typeof raw === "string" ? raw : "";
   const view = firstDayView({ ...client, firstStudioDay: value || null }, coverage);
+  const guess = view.guess;
   const read = view.words ? (
     <FactList>
       <Fact label="First day" source="Set by a person; anniversaries count from this day.">
         {view.words}
       </Fact>
     </FactList>
-  ) : (
+  ) : guess?.confirmed ? (
+    // Journey holds her whole story: her first session IS her first day
+    // (Oct 2 2026: "a new client's first Journey session sets it").
     <FactList>
-      <Fact label="First day" source={view.guess ? `Until it is set, the app goes by ${view.guess.from}.` : "The app has no date to go on yet."}>
-        <span className="cadm-missing">{view.guess ? `Not set · the best guess is ${view.guess.words}` : "Not set"}</span>
+      <Fact label="First day" source={`From ${guess.from}; Journey holds ${p.possessive} whole story, so anniversaries count from it.`}>
+        {guess.words}
       </Fact>
     </FactList>
+  ) : (
+    <>
+      <FactList>
+        <Fact
+          label="First day"
+          source={guess ? `From ${guess.from}. Anniversaries wait until a trainer confirms it.` : "The app has no date to go on yet."}
+        >
+          <span className="cadm-missing">{guess ? `${guess.words} (from Mindbody, not yet confirmed)` : "Not set"}</span>
+        </Fact>
+      </FactList>
+      {canEdit && guess?.day ? (
+        // One tap: Mindbody's day becomes the confirmed first day, through
+        // the one form, so the Save bar names it like any other edit.
+        <Btn
+          variant="solid"
+          icon={Check}
+          data-action="first-day-confirm"
+          aria-label={`Confirm ${p.possessive} first day: ${guess.words}`}
+          onClick={() => updateField("firstStudioDay", guess.day)}
+        >
+          Confirm {guess.words}
+        </Btn>
+      ) : null}
+    </>
   );
   return (
     <ReadEdit

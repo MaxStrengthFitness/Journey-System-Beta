@@ -118,7 +118,7 @@ describe("the peek", () => {
 
 describe("peekState: what happened, and the button that follows it (hub fixes, Oct 1 2026)", () => {
   it("logged: says so with its machines, and offers Edit session only with the session in hand", () => {
-    expect(peekState("done", { machines: 7, loggedSessionHeld: true })).toEqual({ words: "Logged · 7 machines", primary: { kind: "edit", label: "Edit session" }, note: null });
+    expect(peekState("done", { machines: 7, loggedSessionHeld: true })).toEqual({ words: "Logged · 7 machines", primary: { kind: "edit", label: "Edit session" }, note: null, lateCancel: null });
     expect(peekState("done", { machines: 1, loggedSessionHeld: true }).words).toBe("Logged · 1 machine");
     // No machine count on the session: never a guessed number.
     expect(peekState("done", { machines: null, loggedSessionHeld: true }).words).toBe("Logged");
@@ -133,10 +133,12 @@ describe("peekState: what happened, and the button that follows it (hub fixes, O
   });
   it("not logged offers Log past session; didn't come offers nothing to start", () => {
     expect(peekState("not-logged").primary).toEqual({ kind: "log-past", label: "Log past session" });
-    expect(peekState("didnt-come")).toEqual({ words: "Didn't come", primary: null, note: null });
+    // Atlas answers, Oct 2 2026: anyone at the studio may mark a late cancel here.
+    expect(peekState("not-logged").lateCancel).toBe("mark");
+    expect(peekState("didnt-come")).toEqual({ words: "Late cancel · session taken", primary: null, note: null, lateCancel: "undo" });
   });
   it("coming up, or nothing to claim, is Start session as before", () => {
-    expect(peekState("live")).toEqual({ words: null, primary: { kind: "start", label: "Start session" }, note: null });
+    expect(peekState("live")).toEqual({ words: null, primary: { kind: "start", label: "Start session" }, note: null, lateCancel: null });
     expect(peekState("past").primary?.kind).toBe("start");
     expect(peekState(null).primary?.kind).toBe("start");
   });

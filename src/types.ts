@@ -970,6 +970,13 @@ export interface Client {
    * Absent means nobody has set it, and the inferred chain answers.
    */
   firstStudioDay?: string | null;
+  /**
+   * "No progress reports" (Atlas answers, Oct 2 2026; AJ: "not every single
+   * client will want a progress report"): the due prompt is off for her
+   * (features/client-profile/cpr-timing.ts, `progressReportDue`). Set and
+   * cleared on Activity Archive → Reports by anyone who may edit her.
+   */
+  noProgressReports?: boolean;
   /** Most recent session date, denormalised for the directory's column. */
   lastSessionDate?: string;
   discoveryNotes?: string;

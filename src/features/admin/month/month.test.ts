@@ -132,7 +132,7 @@ describe("a month's birthdays", () => {
 });
 
 describe("a month's anniversaries", () => {
-  it("counts whole years from the day a person set, and calls a Mindbody date a guess with a nudge to set it", () => {
+  it("counts whole years from the day a person set, and holds a Mindbody date back until it is confirmed (Oct 2 2026)", () => {
     const a = monthAnniversaries(
       [
         client("frodo", "Frodo", { firstStudioDay: "2019-10-06", firstAppointmentDate: "2020-01-15T15:00:00Z" }),
@@ -145,19 +145,16 @@ describe("a month's anniversaries", () => {
       null,
       TZ,
     );
-    expect(a.rows.map((r) => [r.name, r.day, r.badge, r.tone])).toEqual([
-      ["Frodo Took", "2026-10-06", "7 years", "info"],
-      ["Sam Took", "2026-10-20", "2 years", "warn"],
-    ]);
+    // Sam's day is Mindbody's first appointment, not yet confirmed: counted, not celebrated.
+    expect(a.rows.map((r) => [r.name, r.day, r.badge, r.tone])).toEqual([["Frodo Took", "2026-10-06", "7 years", "info"]]);
     expect(a.rows[0].proof).toBe("First day Sun, Oct 6, 2019 — set on their profile.");
-    expect(a.rows[1].proof).toContain("A guess: first seen Sun, Oct 20, 2024 (their first appointment). Set their first day on Account to be sure.");
     expect(a.guessed).toBe(1);
     // Bilbo's only date is Journey's own: no anniversary can be said, and he is counted.
     expect(a.noDate).toBe(1);
   });
 
   it("reads a stated first day as a calendar day, never through the zone", () => {
-    expect(firstDayOf(client("f", "F", { firstStudioDay: "2019-10-06" }), null, TZ)).toEqual({ day: "2019-10-06", source: "stated" });
+    expect(firstDayOf(client("f", "F", { firstStudioDay: "2019-10-06" }), null, TZ)).toEqual({ day: "2019-10-06", source: "stated", confirmed: true });
     expect(firstDayOf(client("f", "F", { firstAppointmentDate: "2019-10-06" }), null, TZ)?.day).toBe("2019-10-06");
   });
 });

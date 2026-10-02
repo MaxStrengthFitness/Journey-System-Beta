@@ -4,6 +4,7 @@ export { useTopTrainer } from "./useTopTrainer";
 /* The door to Sessions before Journey (Sep 24 2026). */
 export {
   canEditPriorHistory,
+  confirmGuessStatement,
   draftFromPrior,
   priorHistoryDoorLabel,
   priorHistoryDoorText,

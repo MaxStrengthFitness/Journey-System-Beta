@@ -74,15 +74,24 @@ vi.mock("../features/hub-opportunities/use-hub-marks", () => ({
   },
 }));
 /* The day's "didn't come" marks (Operations wave 3): which studio and day were asked for, and the marks handed out. */
-const marksRead = vi.hoisted(() => ({ calls: [] as Array<[string | null, string, string]>, ids: [] as string[] }));
+const marksRead = vi.hoisted(() => ({
+  calls: [] as Array<[string | null, string, string]>,
+  ids: [] as string[],
+  /** Late cancels marked from the peek (Oct 2 2026): what markNoShow was handed. */
+  marked: [] as unknown[][],
+}));
 vi.mock("../features/admin/attention/booking-marks", async () => {
   const { bookingMarks } = await import("../lib/booking-state");
   return {
     useBookingMarks: (studioId: string | null, from: string, to: string) => {
       marksRead.calls.push([studioId, from, to]);
-      const rows = marksRead.ids.map((id) => ({ id, noShow: true }));
+      const rows = marksRead.ids.map((id) => ({ id, noShow: true, markedBy: null }));
       return { rows, marks: studioId ? bookingMarks(rows) : null, loading: false, failed: false };
     },
+    markNoShow: async (...args: unknown[]) => {
+      marksRead.marked.push(args);
+    },
+    takeBackNoShow: async () => {},
   };
 });
 vi.mock("../features/renewals/useRenewalSettings", async () => {
@@ -543,7 +552,7 @@ describe("the Hub: the peek follows what happened", () => {
     marksRead.ids = [SCHEDULES[1].id];
     const again = mount();
     act(() => cardOf(again.el, "Belladonna Took")!.click());
-    expect(document.querySelector(".hp-state")?.textContent).toBe("Didn't come");
+    expect(document.querySelector(".hp-state")?.textContent).toBe("Late cancel · session taken");
     expect(peekButtons()).toEqual(["Open profile"]);
     marksRead.ids = [];
   });
@@ -727,17 +736,32 @@ describe("the Hub: \"didn't come\" (Operations wave 3)", () => {
     expect(marksRead.calls[marksRead.calls.length - 1][0]).toBeNull();
   });
 
+  it("a booking nobody logged offers Late cancel \u00b7 session taken to any trainer at the studio, from the peek (Atlas answers, Oct 2 2026)", async () => {
+    vi.setSystemTime(at("12:00"));
+    marksRead.marked = [];
+    const { el } = mount();
+    act(() => cardOf(el, "Belladonna Took")!.click());
+    const btn = document.querySelector<HTMLButtonElement>('[data-action="late-cancel"]');
+    expect(btn?.textContent).toBe("Late cancel \u00b7 session taken");
+    await act(async () => {
+      btn!.click();
+    });
+    expect(marksRead.marked).toHaveLength(1);
+    expect(marksRead.marked[0][0]).toBe("westlake");
+    expect(marksRead.marked[0][1]).toMatchObject({ id: SCHEDULES[1].id, clientId: "belladonna", day: "2026-09-28" });
+  });
+
   it("a marked booking's card says 'Didn't come', never 'Not logged'; an unmarked one still says 'Not logged'", () => {
     vi.setSystemTime(at("12:00")); // every morning slot over
     const bella = SCHEDULES[1].id; // Belladonna, 9:30 with Ioreth, nothing logged
     marksRead.ids = [bella];
     const { el } = mount();
     const marked = cardOf(el, "Belladonna");
-    expect(marked?.textContent).toContain("Didn't come");
+    expect(marked?.textContent).toContain("Late cancel");
     expect(marked?.textContent).not.toContain("Not logged");
     const estella = cardOf(el, "Estella");
     expect(estella?.textContent).toContain("Not logged");
-    expect(estella?.textContent).not.toContain("Didn't come");
+    expect(estella?.textContent).not.toContain("Late cancel");
   });
 });
 

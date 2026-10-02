@@ -167,7 +167,7 @@ export function stallSentence(p: MachinePlateau): string {
       ? p.repsAtCurrentLast > p.repsAtCurrentFirst
         ? `${outcome} ${p.repsAtCurrentFirst} → ${p.repsAtCurrentLast}${unit}`
         : p.repsAtCurrentLast < p.repsAtCurrentFirst
-          ? `${outcome} slipping ${p.repsAtCurrentFirst} → ${p.repsAtCurrentLast}${unit}`
+          ? `${outcome} ${p.repsAtCurrentFirst} → ${p.repsAtCurrentLast}${unit}`
           : "no gain"
       : "no gain";
   const since = shortDate(runStart(p));
@@ -177,9 +177,8 @@ export function stallSentence(p: MachinePlateau): string {
     return `${p.machineName} — ${run}, ${gain}`;
   }
   if (p.status === "plateau" || p.stalled) return `${p.machineName} — ${run}, ${gain}`;
-  // Progressing.
-  if (p.firstWeight !== null && p.firstWeight !== p.lastWeight) return `${p.machineName} — ${p.firstWeight} → ${p.lastWeight} lb over ${p.sessions} sessions, progressing`;
-  return `${p.machineName} — ${p.lastWeight} lb, ${gain} over ${p.sessions} sessions, progressing`;
+  // Progressing: the load went up (only the load counts, AJ Oct 2 2026).
+  return `${p.machineName} — ${p.firstWeight} → ${p.lastWeight} lb over ${p.sessions} sessions, progressing`;
 }
 
 export function plateauInsights(plateaus: MachinePlateau[]): Insight[] {
@@ -203,18 +202,15 @@ export function plateauInsights(plateaus: MachinePlateau[]): Insight[] {
         score: 0.9 + Math.min(0.6, p.sessionsAtCurrentWeight * 0.05),
         machineId: p.machineId,
       });
-    } else if (p.status === "regressing" && p.firstWeight !== null && p.lastWeight !== null) {
-      const dropped = p.lastWeight < p.firstWeight;
+    } else if (p.status === "regressing" && p.firstWeight !== null && p.lastWeight !== null && p.lastWeight < p.firstWeight) {
+      // Only a lower load is "down" (AJ, Oct 2 2026): fewer reps at the same
+      // weight is said in the machine's row, never as a verdict.
       out.push({
         id: `regress:${p.machineId}`,
         kind: "plateau",
         tone: "notable",
-        title: dropped
-          ? `${p.machineName} is down from ${p.firstWeight} to ${p.lastWeight} lb`
-          : `${p.machineName} reps are slipping at ${p.lastWeight} lb`,
-        body: dropped
-          ? `Load fell ${Math.abs(Math.round(p.weightChangePct ?? 0))}% across the range. Check the setup, the pain notes and the recovery pattern before pushing it back up.`
-          : `Reps at the current load went ${p.repsAtCurrentFirst} → ${p.repsAtCurrentLast}. A backslide at the same weight usually means recovery, not strength.`,
+        title: `${p.machineName} is down from ${p.firstWeight} to ${p.lastWeight} lb`,
+        body: `Load fell ${Math.abs(Math.round(p.weightChangePct ?? 0))}% across the range. Check the setup, the pain notes and the recovery pattern before pushing it back up.`,
         evidence: `${p.sessions} sessions in range${p.poorRate !== null ? ` · ${Math.round(p.poorRate * 100)}% poor quality` : ""}`,
         score: 1.1,
         machineId: p.machineId,

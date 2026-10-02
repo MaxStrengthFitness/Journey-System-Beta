@@ -142,7 +142,7 @@ function LastWeek({ studio, studios, clients, trainers, authTrainer, onOpenClien
         sentence={reading ? "Reading last week…" : line}
         rules={[
           "Done means logged: a booking counts as done when Journey logged a session for that client that day. Not logged is never \"didn't happen\".",
-          "Didn't come is a leader's mark on a session nobody logged, made on Today after asking. A session logged later for that day beats it.",
+          "A late cancel is a mark anyone at the studio makes on a session nobody logged: the session is taken, but it is never a visit. A session logged later for that day beats it.",
           "A cancellation less than a day before its session is late (Openings' own rule).",
           "Who crossed a line comes from the Journey: their last visit plus the line. Who moved toward steady needs yesterday's states, which Journey doesn't keep yet.",
           "Written by rules each time the page reads. Never typed by hand.",
@@ -153,7 +153,7 @@ function LastWeek({ studio, studios, clients, trainers, authTrainer, onOpenClien
       <BriefSection id="happened" title="What happened" sub="booked sessions logged as done, by day">
         {week.loading ? <BriefEmpty>Reading last week…</BriefEmpty> : <DayCells days={days} today={j.today} />}
         {logged === null && !sessions.loading && <p className="ops-sec__note">The week's sessions couldn't be read in full, so what was logged is unknown.</p>}
-        {marks.failed && <p className="ops-sec__note">The leaders' "didn't come" marks couldn't be read just now, so a marked session may show as not logged.</p>}
+        {marks.failed && <p className="ops-sec__note">The late cancel marks couldn't be read just now, so a marked session may show as not logged.</p>}
       </BriefSection>
 
       <BriefSection id="clients" title="Clients" sub="how they moved" door={<Door label="Journey" to="journey" onOpen={onOpen} />}>
@@ -259,7 +259,7 @@ function ThisWeek({ studio, onOpenClient }: WeekPageProps) {
         ? `${t.booked} booked this week, ${t.toCome} still to come; what was logged so far couldn't be read.`
         : t.booked - t.toCome === 0
           ? `Nothing booked this week has finished yet. ${t.toCome} still to come.`
-          : `${t.done} of the ${t.booked - t.toCome} booked sessions so far ${t.done === 1 ? "is" : "are"} logged as done${t.notLogged ? `, ${t.notLogged} not logged yet` : ""}${t.noShow ? `, ${t.noShow} didn't come` : ""}. ${t.toCome} still to come this week.`;
+          : `${t.done} of the ${t.booked - t.toCome} booked sessions so far ${t.done === 1 ? "is" : "are"} logged as done${t.notLogged ? `, ${t.notLogged} not logged yet` : ""}${t.noShow ? `, ${t.noShow} late ${t.noShow === 1 ? "cancel" : "cancels"}` : ""}. ${t.toCome} still to come this week.`;
 
   return (
     <AdminScreen>
