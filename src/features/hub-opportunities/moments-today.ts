@@ -395,7 +395,7 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
   // "9:20 \u2013 9:40 AM"; the start keeps its AM/PM only when the slot crosses noon.
   const timeText = `${startText.slice(-2) === endText.slice(-2) ? startText.replace(/ [AP]M$/, "") : startText} \u2013 ${endText}`;
   const state = bookingState(booking, input.logged, input.now, input.tz, input.marks ?? null);
-  const stateText = state === "completed" ? "done" : state === "never-logged" ? "not logged" : state === "no-show" ? "didn't come" : state === "in-progress" ? "now" : null;
+  const stateText = state === "completed" ? "done" : state === "never-logged" ? "not logged" : state === "no-show" ? "late cancel" : state === "in-progress" ? "now" : null;
   const withText = withWords(booking, input, myIdSet);
   const name = client ? clientDisplayName(client, booking.clientName || "Client") : (booking.clientName || "Client").trim();
 

@@ -215,6 +215,18 @@
   color: var(--eq-hero-on);
 }
 
+/* Late cancel · session taken (Oct 2 2026): a whole-width quiet button
+   under the two actions; its words are never cut. */
+.hp-late {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+.hp-late .hp-btn {
+  white-space: normal;
+  text-align: center;
+}
+
 .hp-btn:focus-visible,
 .hp-close:focus-visible {
   outline: 3px solid var(--eq-focus-ring);

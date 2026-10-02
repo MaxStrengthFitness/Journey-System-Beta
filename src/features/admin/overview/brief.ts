@@ -167,7 +167,7 @@ export function bottomLine(i: BottomLineInput): BottomLine {
   else if (i.neverLogged > 0) {
     parts.push(
       `${countWord(i.neverLogged)} of today's finished ${i.neverLogged === 1 ? "sessions has" : "sessions have"} no workout logged yet${
-        i.unloggedInNeeds ? ": ask on the floor, then its trainer logs it or you mark it didn't come" : ""
+        i.unloggedInNeeds ? ": ask on the floor, then its trainer logs it or someone marks it a late cancel" : ""
       }.`,
     );
   }
@@ -187,7 +187,7 @@ export function bottomLine(i: BottomLineInput): BottomLine {
 
   const rules = [
     i.unloggedInNeeds
-      ? `Needs you: ${i.needs} ${i.needs === 1 ? "row" : "rows"} you can clear on this page (acknowledge, take a gesture, review a note, or mark a session nobody logged "didn't come"), and nothing else. A session its trainer logs later clears by itself.`
+      ? `Needs you: ${i.needs} ${i.needs === 1 ? "row" : "rows"} you can clear on this page (acknowledge, take a gesture, review a note, or mark a session nobody logged a late cancel), and nothing else. A session its trainer logs later clears by itself.`
       : `Needs you: ${i.needs} ${i.needs === 1 ? "row" : "rows"} you can clear on this page (acknowledge, take a gesture, review a note), and nothing else. A session nobody logged is its trainer's to log, so it is a door, not a count.`,
     `Catch today: ${i.catchCount === null ? "unknown until today's bookings are read" : `${i.catchCount} ${i.catchCount === 1 ? "client" : "clients"}`} in the studio today with a reason to see them in person: a renewal talk, back after a break, early sessions, a milestone, or leaving with nothing booked.`,
     "An unread schedule, an unread day's logging, a client whose renewal timing is unknown and a nightly record that stopped changing are each named here, never counted as fine.",

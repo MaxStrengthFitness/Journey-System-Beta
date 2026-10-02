@@ -167,7 +167,7 @@ function mount({
       clinical: !!card.querySelector('[aria-label="Clinical history on file"]'),
     },
     notLogged: (card.textContent || "").includes("Not logged"),
-    didntCome: (card.textContent || "").includes("Didn't come"),
+    didntCome: (card.textContent || "").includes("Late cancel"),
     inSession: !!card.querySelector('[aria-label="Session in progress"]'),
     /** The triangle's words, when a Critical note put it there. */
     critical: card.querySelector('.hs-tri[aria-label^="Critical:"]')?.getAttribute("aria-label") ?? null,

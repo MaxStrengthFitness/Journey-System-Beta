@@ -51,7 +51,7 @@ describe("the week's days", () => {
     const logged = loggedSessions([], TZ);
     const d = dayFacts(entries, "2026-09-24", logged, NOW, TZ, bookingMarks([{ id: "b", noShow: true }]));
     expect(d).toMatchObject({ booked: 2, done: 0, notLogged: 1, noShow: 1 });
-    expect(dayLine(d)).toBe("0 of 2 logged · 1 not logged · 1 didn't come");
+    expect(dayLine(d)).toBe("0 of 2 logged · 1 not logged · 1 late cancel");
     expect(totals([d]).noShow).toBe(1);
   });
 });

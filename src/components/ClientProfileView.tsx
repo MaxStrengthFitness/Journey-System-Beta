@@ -20,6 +20,8 @@ import {
 import { db } from "../firebase";
 import { studioHour, formatStudioTime, studioTodayKey, studioDayKeyOf } from "../lib/studio-time";
 import { beforeJourneyGuess, MINDBODY_GUESS_WORDS, sessionTotalOf } from "../lib/session-total";
+import { useClientLateCancels } from "../features/admin/attention/booking-marks";
+import { sessionDayKey } from "../features/client-history/model";
 import {
   PRIOR_SOURCES,
   PRIOR_SOURCE_LABEL,
@@ -502,6 +504,20 @@ export function ClientProfileView({
     [client, completedTotal, clientCoverage],
   );
   const mindbodyGuess = sessionTotals ? beforeJourneyGuess(sessionTotals) : null;
+
+  /*
+   * LATE CANCELS, BESIDE THE VISITS (Atlas answers, Oct 2 2026): "40
+   * sessions · 2 late cancels". Her marks at her home studio, one listener;
+   * a mark on a day Journey holds a completed session for is not counted (a
+   * logged session beats a mark, lib/booking-state). Unknown (loading, or a
+   * read the rules refuse) says nothing, never "none".
+   */
+  const lateCancelRead = useClientLateCancels(recordStudioIdOf(client), clientId);
+  const lateCancels = useMemo(() => {
+    if (!lateCancelRead.rows) return null;
+    const logged = new Set(sessions.filter((s) => s.status === "Completed").map((s) => sessionDayKey(s as never)).filter(Boolean));
+    return lateCancelRead.rows.filter((r) => !r.day || !logged.has(r.day)).length;
+  }, [lateCancelRead.rows, sessions]);
   const headerTotal = sessionTotals?.basis === "mindbody" ? sessionTotals.total : completedTotal;
   const headerPriorLabel =
     sessionTotals?.basis === "mindbody" && mindbodyGuess !== null
@@ -1512,6 +1528,7 @@ export function ClientProfileView({
         sessions={sessions}
         scheduledSessions={scheduledSessions}
         completedCount={headerTotal}
+        lateCancels={lateCancels}
         sessionsQuotable={canQuoteNumber || sessionTotals?.basis === "mindbody"}
         coverage={clientCoverage}
         priorLabel={headerPriorLabel}

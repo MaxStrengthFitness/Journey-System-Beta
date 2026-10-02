@@ -504,6 +504,21 @@ describe("where the numbers come from", () => {
     });
   });
 
+  it("counts a late cancel as a session used in the pace, never as a visit (Atlas answers, Oct 2 2026)", () => {
+    const base = {
+      client: client({ mindbodyServices: { a: service(1, "144 PIF", 40, { count: 144 }) } }),
+      attendanceSince: "2026-07-01",
+    };
+    const visits = visitsAt(1, "2026-07-20");
+    const plain = buildRenewalSnapshot(input({ ...base, attendance: visits }));
+    // The same weeks with a late cancel between each visit: twice the sessions used.
+    const lateCancels: AttendanceRow[] = visits.map((v) => ({ day: addDays(v.day, 3), kind: "no-show" as const })).filter((r) => r.day <= TODAY);
+    const withLate = buildRenewalSnapshot(input({ ...base, attendance: [...visits, ...lateCancels] }));
+    expect(withLate.pacePerWeek!).toBeGreaterThan(plain.pacePerWeek!);
+    // ...and the last VISIT is still the last visit.
+    expect(withLate.lastVisitDate).toBe(plain.lastVisitDate);
+  });
+
   it("flags sessions on a pricing option Mindbody shows as expired", () => {
     const snap = buildRenewalSnapshot(
       input({

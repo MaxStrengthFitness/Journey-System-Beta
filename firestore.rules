@@ -2841,11 +2841,26 @@ service cloud.firestore {
               && d.markedBy.name is string && d.markedBy.name.size() <= 120
               && d.markedAt == request.time;
         }
+        /*
+         * LATE CANCEL · SESSION TAKEN (Atlas answers, Oct 2 2026). AJ: "it
+         * needs to be easy to mark a late cancel in the app", and anyone at
+         * the studio may mark one; "at the end of the day it is up to the
+         * studio and its leaders to make the final call." So: anyone who
+         * works here CREATES a mark (signed as themselves, now); only a
+         * leader CHANGES one; a leader, or the person who made it (a slip of
+         * the finger), takes it back. The document's shape is unchanged
+         * (`noShow: true`), so every mark made before reads the same.
+         */
         allow read: if isAuthenticated() && wave2WorksHere(studioId);
-        allow create, update: if isAuthenticated()
-                              && bookingMarkValid(request.resource.data)
-                              && wave2Leads(studioId);
-        allow delete: if isAuthenticated() && wave2Leads(studioId);
+        allow create: if isAuthenticated()
+                      && bookingMarkValid(request.resource.data)
+                      && wave2WorksHere(studioId);
+        allow update: if isAuthenticated()
+                      && bookingMarkValid(request.resource.data)
+                      && wave2Leads(studioId);
+        allow delete: if isAuthenticated()
+                      && (resource.data.markedBy.id == request.auth.uid
+                          || wave2Leads(studioId));
       }
 
       /*

@@ -162,6 +162,15 @@ describe("ProfileHeader's session count", () => {
     expect(tile(el, "Sessions in Journey")?.textContent).toContain("3");
   });
 
+  it("tallies late cancels beside the count, never inside it, and says nothing while unknown (Oct 2 2026)", () => {
+    const el = mount(props({ completedCount: 40, sessionsQuotable: true, lateCancels: 2 }));
+    const t = tile(el, "Completed sessions");
+    expect(t?.textContent).toContain("40");
+    expect(t?.querySelector('[data-testid="late-cancels"]')?.textContent).toBe("· 2 late cancels");
+    const none = mount(props({ completedCount: 40, sessionsQuotable: true, lateCancels: null }));
+    expect(none.querySelector('[data-testid="late-cancels"]')).toBeNull();
+  });
+
   it("shows a dash, never a zero, while the count is not known", () => {
     const el = mount(props({ completedCount: null, sessionsQuotable: true }));
     const t = tile(el, "Completed sessions");

@@ -559,18 +559,18 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
             marked.length > 0 ? (
               <div className="ops-bluf__chase">
                 <p className="ops-quiet">
-                  Marked didn't come today: {marked.length}. They count as no-shows, never as visits. Marked by mistake? Take it back and the session is
-                  unlogged again.
+                  Marked late cancel today: {marked.length}. A late cancel takes the session but is never a visit. Marked by mistake? Take it back and the
+                  session is unlogged again.
                 </p>
                 <ActionRows
                   rows={marked.map((m) => ({
                     key: `marked:${m.id}`,
                     clientId: m.clientId,
                     name: m.booking?.clientName || clientName(m.clientId ?? ""),
-                    sentence: `${m.booking ? `${formatStudioTime(toDate(m.booking.startTime) ?? now, tz)} with ${m.booking.trainerName || "no trainer named"}` : "Today"} — didn't come.`,
-                    proof: m.markedBy?.name ? `Marked by ${m.markedBy.name}.` : "Marked by a leader.",
+                    sentence: `${m.booking ? `${formatStudioTime(toDate(m.booking.startTime) ?? now, tz)} with ${m.booking.trainerName || "no trainer named"}` : "Today"} — late cancel, session taken.`,
+                    proof: m.markedBy?.name ? `Marked by ${m.markedBy.name}.` : "Marked by someone at the studio.",
                     tone: "info",
-                    badge: "Didn't come",
+                    badge: "Late cancel",
                     actions: (
                       <AdminButton size="sm" variant="ghost" busy={busyKey === `mark:${m.id}`} onClick={() => void takeBack(m.id)}>
                         Take back
@@ -666,13 +666,13 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
                   name: c.clientName,
                   sentence: `${c.at} with ${c.trainerName} — past its slot, nothing logged.`,
                   proof:
-                    "No Journey session for her today. Ask on the floor: if she trained, her trainer logs it on her profile and this row goes by itself; if she didn't come, mark it.",
+                    "No Journey session for her today. Ask on the floor: if she trained, her trainer logs it on her profile and this row goes by itself; if it was a late cancel, mark it (anyone at the studio can, from the Hub too).",
                   tone: "alert",
                   badge: "Not logged",
                   actions:
                     c.bookingId && c.clientId ? (
                       <AdminButton size="sm" busy={busyKey === `mark:${c.bookingId}`} onClick={() => void didntCome(c.bookingId as string, c.clientId as string)}>
-                        Didn't come
+                        Late cancel · session taken
                       </AdminButton>
                     ) : undefined,
                 }))}

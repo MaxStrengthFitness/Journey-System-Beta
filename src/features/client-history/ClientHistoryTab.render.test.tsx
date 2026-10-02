@@ -186,8 +186,8 @@ describe("ClientHistoryTab — a leader's \"didn't come\" on the calendar (Opera
       ]);
     }
     expect(cell("2026-09-22")?.className).toContain("hist-cell--changed");
-    expect(cell("2026-09-22")?.getAttribute("aria-label")).toContain("didn't come");
-    expect(legend()).toContain("Didn't come");
+    expect(cell("2026-09-22")?.getAttribute("aria-label")).toContain("late cancel");
+    expect(legend()).toContain("Late cancel");
     expect(cell("2026-09-29")?.className).toContain("hist-cell--booked");
   });
 
@@ -195,7 +195,7 @@ describe("ClientHistoryTab — a leader's \"didn't come\" on the calendar (Opera
     await render("c1");
     for (const read of readsFor("c1")) await settle(read, answer([booking("quiet", "c1", "2026-09-22")]));
     expect(cell("2026-09-22")?.className).not.toContain("hist-cell--changed");
-    expect(legend()).not.toContain("Didn't come");
+    expect(legend()).not.toContain("Late cancel");
   });
 });
 

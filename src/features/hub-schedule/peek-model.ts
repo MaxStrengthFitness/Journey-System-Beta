@@ -26,6 +26,7 @@
 import { ordinal, type MomentFamily, type MomentKind, type RunSheetEntry } from "../hub-opportunities/moments-today";
 import { ASK_UNREAD_LINE } from "../hub-opportunities/get-to-know";
 import type { HubCardState } from "../../lib/hub-card-state";
+import { LATE_CANCEL_WORDS } from "../../lib/late-cancels";
 import { canClaimMilestone, MINDBODY_GUESS_WORDS, sessionNumberWords, type SessionTotalBasis } from "../../lib/session-total";
 
 export interface PeekLine {
@@ -132,15 +133,26 @@ export function peekContent(entry: RunSheetEntry, sessionNumber: number | null =
  *                                    session pop-up, for THAT day's session
  *   Not logged (over)                Log past session — her Activity Archive,
  *                                    where the form is (no new door)
- *   Didn't come                      nothing but Open profile
+ *   Late cancel · session taken      nothing but Open profile (and Undo,
+ *                                    for a leader or whoever marked it)
+ *
+ * A booking nobody logged also offers "Late cancel · session taken" (Atlas
+ * answers, Oct 2 2026: "it needs to be easy to mark a late cancel in the
+ * app"): anyone at the studio may mark it, here.
  */
 export type PeekActionKind = "start" | "open-session" | "edit" | "log-past";
 
 export interface PeekState {
-  /** "Logged · 7 machines", "Not logged", "Didn't come", "In session", "Left open"; null when coming up. */
+  /** "Logged · 7 machines", "Not logged", "Late cancel · session taken", "In session", "Left open"; null when coming up. */
   words: string | null;
   /** The main button, or null for Open profile alone. */
   primary: { kind: PeekActionKind; label: string } | null;
+  /**
+   * The late cancel the booking may take (Oct 2 2026): "mark" on a booking
+   * nobody logged, "undo" on a marked one. Whether this person may is the
+   * caller's (`mayTakeBackLateCancel`); null for neither.
+   */
+  lateCancel: "mark" | "undo" | null;
   /** One quiet line about the button, when it needs one. */
   note: string | null;
 }
@@ -156,27 +168,29 @@ export function peekState(
 ): PeekState {
   switch (state) {
     case "in-session":
-      return { words: "In session", primary: { kind: "open-session", label: "Open session" }, note: null };
+      return { words: "In session", primary: { kind: "open-session", label: "Open session" }, note: null, lateCancel: null };
     case "left-open":
       return {
         words: "Left open",
         primary: { kind: "open-session", label: "Resume or start new" },
         note: "Started and quiet for over an hour. Resume it here, or close it from her profile (Discard).",
+        lateCancel: null,
       };
     case "done": {
       const n = opts.machines;
       const words = typeof n === "number" && Number.isFinite(n) && n > 0 ? `Logged · ${n} ${n === 1 ? "machine" : "machines"}` : "Logged";
-      return { words, primary: opts.loggedSessionHeld ? { kind: "edit", label: "Edit session" } : null, note: null };
+      return { words, primary: opts.loggedSessionHeld ? { kind: "edit", label: "Edit session" } : null, note: null, lateCancel: null };
     }
     case "not-logged":
       return {
         words: "Not logged",
         primary: { kind: "log-past", label: "Log past session" },
-        note: "Opens her Activity Archive, where Log past session is.",
+        note: "Opens her Activity Archive, where Log past session is. A late cancel takes the session without a visit.",
+        lateCancel: "mark",
       };
     case "didnt-come":
-      return { words: "Didn't come", primary: null, note: null };
+      return { words: LATE_CANCEL_WORDS, primary: null, note: null, lateCancel: "undo" };
     default:
-      return { words: null, primary: { kind: "start", label: "Start session" }, note: null };
+      return { words: null, primary: { kind: "start", label: "Start session" }, note: null, lateCancel: null };
   }
 }

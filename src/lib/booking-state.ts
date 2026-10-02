@@ -28,7 +28,9 @@
  *      logged reads both done. It beats a Mindbody "No-Show", because a
  *      logged session is proof they trained.
  *   3. Mindbody said Completed or No-Show (manual marking there; the sync does
- *      not carry it today, the type allows it) → that. A LEADER'S MARK is the
+ *      not carry it today, the type allows it) → that. A LATE CANCEL (since
+ *      Oct 2 2026 anyone at the studio marks one, "Late cancel · session
+ *      taken", lib/late-cancels.ts; it was a leader's "didn't come") is the
  *      same as Mindbody's No-Show (wave 2, Sep 28 2026; AJ: "all yes"): a
  *      leader who chased a session nobody logged and learned she didn't come
  *      marks it on Operations → Today (`studios/{s}/bookingMarks/{bookingId}`,

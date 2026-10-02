@@ -1,6 +1,15 @@
 /**
- * "DIDN'T COME" — a leader's mark on a booking nobody logged. The Firestore
- * half; what a mark MEANS is lib/booking-state.ts (`bookingMarks`, rule 3).
+ * "LATE CANCEL · SESSION TAKEN" (Atlas answers, Oct 2 2026; until then a
+ * leader's "didn't come") — a mark on a booking nobody logged. The Firestore
+ * half; what a mark MEANS is lib/booking-state.ts (`bookingMarks`, rule 3),
+ * and the words and who may take one back are lib/late-cancels.ts.
+ *
+ * Since Oct 2 2026 ANYONE who works at the studio marks one, from the Hub's
+ * peek as well as Operations → Today (AJ: "it needs to be easy to mark a late
+ * cancel in the app"); a leader changes or undoes one, and the person who
+ * made it may take back their own. The document is unchanged (`noShow:
+ * true`), so every earlier mark reads the same. The history below is the
+ * wave 2 story.
  *
  * Wave 2 of the Operations room (Sep 28 2026; AJ: "all yes"). A booking whose
  * slot is over with no Journey session for her that day is "never logged":
@@ -27,7 +36,7 @@
  * marks — nothing taken as marked, never "none marked" — and `failed` says so.
  */
 import { useEffect, useMemo, useState } from "react";
-import { collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, setDoc, where } from "firebase/firestore";
+import { collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, setDoc, where } from "firebase/firestore";
 import { auth, db } from "../../../firebase";
 import { OperationType, handleFirestoreError } from "../../../lib/firestore-errors";
 import { bookingMarks, type BookingMarks } from "../../../lib/booking-state";
@@ -118,8 +127,37 @@ export function useBookingMarks(studioId: string | null, from: string, to: strin
 }
 
 /**
- * "Didn't come": the booking becomes a no-show. The mark is signed with the
- * Auth uid (the rules pin it); `me.name` is who the page says marked it.
+ * ONE CLIENT'S LATE CANCELS at a studio (Atlas answers, Oct 2 2026), for the
+ * profile's "40 sessions · 2 late cancels". One listener on her marks
+ * (`clientId`, ordered by `day`: the (clientId, day) index in
+ * firestore.indexes.json). `rows` is null while loading and after a failed
+ * read — unknown, never "none". A null studio or client reads nothing.
+ */
+export function useClientLateCancels(studioId: string | null | undefined, clientId: string | null | undefined): { rows: BookingMarkRow[] | null; failed: boolean } {
+  const [state, setState] = useState<{ key: string; rows: BookingMarkRow[] | null; failed: boolean }>({ key: "", rows: null, failed: false });
+  const key = studioId && clientId ? `${studioId}|${clientId}` : "";
+  useEffect(() => {
+    if (!studioId || !clientId) return;
+    const k = `${studioId}|${clientId}`;
+    return onSnapshot(
+      query(collection(db, "studios", studioId, BOOKING_MARKS), where("clientId", "==", clientId), orderBy("day", "asc")),
+      (snap) => setState({ key: k, rows: snap.docs.map((d) => parseMark(d.id, d.data() as Record<string, unknown>)).filter((r) => r.noShow), failed: false }),
+      (err) => {
+        handleFirestoreError(err, OperationType.LIST, BOOKING_MARKS);
+        setState({ key: k, rows: null, failed: true });
+      },
+    );
+  }, [studioId, clientId]);
+  // Another client's answer never stands for this one.
+  return state.key === key && key ? { rows: state.rows, failed: state.failed } : { rows: null, failed: false };
+}
+
+/**
+ * "Late cancel · session taken" (Oct 2 2026; it was a leader's "didn't
+ * come"): the booking becomes a no-show — a session taken, not a visit.
+ * Anyone who works at the studio may mark one (firestore.rules). The mark is
+ * signed with the Auth uid (the rules pin it); `me.name` is who the page
+ * says marked it.
  */
 export async function markNoShow(
   studioId: string,
