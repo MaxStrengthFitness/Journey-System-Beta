@@ -3194,6 +3194,7 @@ export function WorkoutTrackerView({
           authTrainer={authTrainer}
           client={selectedClient}
           coverage={clientCoverage}
+          studios={studios ?? null}
           targetRoutine={targetRoutine}
           lastSession={
             sessions.filter((s) => s.status === "Completed")[0] || null

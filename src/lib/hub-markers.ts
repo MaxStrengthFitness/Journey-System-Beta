@@ -59,8 +59,6 @@ const AWAY_TYPES = new Set<ClientEvent["type"]>(["Vacation", "Snowbird"]);
 /** Marker thresholds — named so the round doc can quote them. */
 export const BIRTHDAY_WINDOW_DAYS = 7;
 export const AWAY_WINDOW_DAYS = 14;
-export const BACK_AFTER_DAYS = 21;
-export const MILESTONE_EVERY = 25;
 
 function shortDay(day: string, today: Date): string {
   const n = daysUntil(day, today);
@@ -103,16 +101,15 @@ export function hubMarkers(params: {
   else if (!numberIsTrustworthy) {
     if (sessionNumber === 1) out.push({ kind: "new-to-journey", label: "New to Journey" });
   } else if (sessionNumber === 1) out.push({ kind: "first", label: "First session" });
-  else if (sessionNumber > 1 && sessionNumber % MILESTONE_EVERY === 0) out.push({ kind: "milestone", label: `Session ${sessionNumber}` });
+  // The milestone and the break are the Hub's engine's since Oct 2 2026 (the
+  // Atlas answers): the briefing takes them from `briefingMoments`
+  // (features/hub-opportunities/briefing-moments.ts), so the card and the
+  // briefing never disagree. This file's "every 25th session" and "21
+  // calendar days" rules are retired.
 
   const bday = daysUntilBirthday(client.dateOfBirth, today);
   if (bday !== null && bday <= BIRTHDAY_WINDOW_DAYS) {
     out.push({ kind: "birthday", label: bday === 0 ? "Birthday today" : bday === 1 ? "Birthday tomorrow" : `Birthday in ${bday} days` });
-  }
-
-  const sinceLast = daysUntil(client.lastSessionDate, today);
-  if (sinceLast !== null && -sinceLast >= BACK_AFTER_DAYS && sessionNumber > 1) {
-    out.push({ kind: "back", label: `Back after ${Math.round(-sinceLast / 7)} wk` });
   }
 
   for (const e of client.events || []) {
