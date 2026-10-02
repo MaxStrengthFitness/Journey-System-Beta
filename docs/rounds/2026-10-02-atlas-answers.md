@@ -118,3 +118,37 @@ AJ, Oct 2: **"we need to be smart about this and stop hoping we get the filemake
 | Permissions | "Lets not focus on permissions at the moment, we can fine tune and lock everything out later i just want to make sure features are working first." | standing |
 | Repository private | Eventually | later |
 | Mindbody's billing allowance | Unsure | open |
+
+## What was built
+
+Five branches on master's `7875a993`, one commit per item, each typechecked on its own, merged on `oct2/atlas-answers`. Each branch's notes say item by item what changed and what was left:
+
+| Branch | Notes | What it holds |
+| --- | --- | --- |
+| `oct2/floor` | [floor.md](2026-10-02-atlas-answers/floor.md) | The Wrap-up's congratulations, next session's weight (`features/next-weight/`), the effort rating and its Deep Dive line, every exit files the Profile note, the renewal flag until handled, floor Pulse counts at once, the briefing on the Hub's engine, Finish it as it was, Skipped: trainer's call, machine notes in her journal, cross-train notes to her home studio |
+| `oct2/history` | [history.md](2026-10-02-atlas-answers/history.md) | Session totals from Mindbody's guess confirmed on Account (`lib/session-total.ts`), client since, late cancels for everyone, progress reports due at three months with a per-client switch, given sessions and the renewal, the Deep Dive on weight only |
+| `oct2/profile` | [profile.md](2026-10-02-atlas-answers/profile.md) | Add Client as a temporary profile, the Existing tab and chart importer hidden, the dead screens deleted, the printed Pulse without scores, Archived notes with Restore, watch-outs saving at once, the studio's floor on the profile and in Programming, "No longer" with a reason, Demo Mode's realm, one Sign out, a studio required on an access request |
+| `oct2/team` | [team.md](2026-10-02-atlas-answers/team.md) | One Mine (`lib/mine.ts`), the Calendar's whole team and FORD dates, identity fields for leaders, a colleague's profile from Team, Operations' top left back to the Hub, Get to know's follow-ups, Take it, franchise owners on a shift, notices' read counts, the time a leader named someone, Team member notes, Trends and Hours in name order, sessions left open on Today and Admins Home |
+| `oct2/machines` | [machines.md](2026-10-02-atlas-answers/machines.md) | A studio's own machine retired never deleted, added machines join the end, one maintenance record, the Academy's names and quick cards, one body figure (already true, now held by a test), removed safety lines struck through with no cap, Waiting for review's count, switching an account off, the bug words |
+
+The integration branch adds one fix of its own: the machine sheet's High importance alert reads the one notes list.
+
+## Not built, and why
+
+- **Mindbody "Unavailable" blocks** (AJ: yes). The schedule pull asks Mindbody for booked appointments only; blocked-off time is a separate endpoint, so it would be a **new Mindbody call on every pull**. That needs AJ's OK under the freshness rules. The four app-side steps are in machines.md, item 10.
+- **Switching an account off at Firebase Auth.** The app refuses a switched-off trainer and the rules stop them switching themselves back on, but their Auth account stays enabled until a Cloud Function disables it (machines.md, item 8).
+- **Discarding an open session from Operations** (team.md, item 13): it deletes sets and touches totals, so it stays in the Active Session's own flow.
+- **Session numbers already stored on old sessions** keep the number they were written with (history.md, item 1).
+- **A late cancel on a booking Mindbody already shows as Cancelled**, and cross-train late cancels in the home studio's tally (history.md, item 3).
+
+## Deploy
+
+`scripts/ship/ship-atlas-answers.ps1`: `-Stage prepare`, then `-Stage golive`. Indexes first (three new: `sessions` status + createdAt, `ford` studioId + followUpAt, `bookingMarks` clientId + day), then the rules, then the push. No Cloud Functions, no Mindbody calls.
+
+## Measured
+
+On `oct2/atlas-answers`, in a worktree on AJ's PC: typecheck **2** (the baseline); `TZ=America/New_York npx vitest run --dir src` **8,749 passing in 636 files**; `npx vite build` clean; `npm run test:rules` **284 passing**; no two files differ only by case.
+
+## The walkthrough
+
+`docs/ops/TESTING-CHECKLIST.md`, Round 51.

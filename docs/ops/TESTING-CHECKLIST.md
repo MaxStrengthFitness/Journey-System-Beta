@@ -2740,3 +2740,25 @@ Screenshot:
 | 45 — Auto-renewal: the studio's answer and the box (Oct 1) | 7 | | |
 | 50 — Journey on a phone (Oct 1) | 10 | | |
 | **Total** | **637** | | |
+
+## Round 51 — The Atlas answers · *Oct 2 2026, branch `oct2/atlas-answers`*
+
+Round document: `docs/rounds/2026-10-02-atlas-answers.md`. On an iPad, upright and on its side:
+
+- [ ] Finish a session. The Wrap-up's title is a plain congratulation. Raise one machine's weight on the next-weight card, lower another. At her next session the Now Bar says "Set for today at the last Wrap-up by …" and loads that weight.
+- [ ] The effort rating: leave it untouched once (it saves As expected), tap it another time.
+- [ ] Type a Profile note on the Wrap-up and leave by the bottom bar. The note is on her Notes, once.
+- [ ] Leave a session open for an hour; Start offers "Finish it as it was". The session lands on its own day.
+- [ ] Take a machine out mid-session: her history says "Skipped: trainer's call".
+- [ ] A long-standing client: Account shows "About N before Journey (from Mindbody)". Confirm it; her Hub card, header and briefing show the total. Confirm her first day.
+- [ ] As a trainer, mark a late cancel from the Hub's peek on an unlogged booking; as a leader, undo it. The header reads "· 1 late cancel" beside the count.
+- [ ] Activity Archive → Reports: the quiet due line, and the "No progress reports" switch.
+- [ ] Add Client makes a temporary profile, which then shows as waiting on My Studio → Team.
+- [ ] Notes: archive one, find it under Archived, Restore it. Watch-outs: "Saved · Undo".
+- [ ] The Journey grid and All Machines at a studio with its own machines.
+- [ ] The Calendar shows the whole team, and the month's Events show birthdays.
+- [ ] Inside Operations, tap the studio name at the top left: back to the Hub.
+- [ ] Relay: open an ask without claiming it, then Take it. Post a notice that asks "I've read it"; the poster sees "N of M have read it"; Mark all read answers it.
+- [ ] My Studio → Machines: "We don't have this" on a studio's own machine retires it; bring it back from Add from MSF.
+- [ ] Admins: the Waiting for review count; Change role → Switch the account off, then sign in as that person (refused).
+- [ ] Operations → Today lists a session left open, with Open the session.
