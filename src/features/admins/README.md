@@ -47,7 +47,7 @@ Every record is written only from this folder (or `features/admin/bugs/` for the
 
 ## Where the review queue mounts
 
-"Waiting for review" (Standard) is the queue AJ asked for on Sep 28: "sharing with all MSF studios should submit to admins first for review, we can review in admin dashboard". `ReviewQueuePage.tsx` hosts `features/machine-db/ShareReviewPanel` (a studio's note, tip or own machine, offered to every studio, shared or not by an administrator). A waiting count for the sidebar and a Home item are not wired yet: they would go the same way as Limbo's (a count in `counts`, an item in `home/needs.ts` with its `condition`), and cost the queue's three collection-group reads on every Admins visit rather than only on the page.
+"Waiting for review" (Standard) is the queue AJ asked for on Sep 28: "sharing with all MSF studios should submit to admins first for review, we can review in admin dashboard". `ReviewQueuePage.tsx` hosts `features/machine-db/ShareReviewPanel` (a studio's note, tip or own machine, offered to every studio, shared or not by an administrator). Since Oct 2 2026 (AJ) it has a count on the sidebar and a line on Home, the same way as Limbo's: `home/useHomeSignals.ts` reads `machine-db/fetch-share-offers.ts` (the page's own read, so the two never disagree), `counts.review` is the sidebar's number, `needs.ts` item `shares` is Home's line with its `condition`, and a decision on the page counts again (`onChanged`). The cost: the queue's three collection-group reads (unindexed, so each scans its group) on every Admins visit and Check again, not only on the page.
 
 ## Not built, and why
 

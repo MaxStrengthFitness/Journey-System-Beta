@@ -10,6 +10,8 @@
  *   bug reports    fetchRecentReports (admin/bugs/fetch-reports.ts)
  *   offers         catalogSubmissions where status == "pending", the
  *                  query Machines → Submitted by studios listens to
+ *   shares         what studios offered every MSF studio (Oct 2 2026):
+ *                  fetchShareOffers, the Waiting for review page's read
  *
  * Each says whether it was read: a read that failed is "failed", which Home
  * says as "couldn't check", never as nothing waiting. No listener, no timer.
@@ -21,6 +23,8 @@ import type { LimboEntry } from "../../../types";
 import { fetchOpenLimboEntries } from "../../../lib/mindbody-limbo";
 import { fetchRecentReports } from "../../admin/bugs/fetch-reports";
 import type { ReportView } from "../../admin/bugs/reportView";
+import { fetchShareOffers } from "../../machine-db/fetch-share-offers";
+import type { ShareOffer } from "../../machine-db/offers";
 
 export type ReadState = "loading" | "ok" | "failed";
 
@@ -32,17 +36,41 @@ export interface PendingOffer {
   submittedAt: number | null;
 }
 
+/** One thing a studio offered every MSF studio, waiting for review (Oct 2 2026). */
+export interface PendingShare {
+  key: string;
+  kind: ShareOffer["kind"];
+  title: string;
+  studioId: string;
+  studioName: string | null;
+  offeredAt: number | null;
+}
+
 export interface HomeSignals {
   limbo: { state: ReadState; entries: LimboEntry[] };
   bugs: { state: ReadState; reports: ReportView[] };
   offers: { state: ReadState; pending: PendingOffer[] };
+  /** Waiting for review: notes, tips and machines offered to every studio. */
+  shares: { state: ReadState; pending: PendingShare[] };
 }
 
 const LOADING: HomeSignals = {
   limbo: { state: "loading", entries: [] },
   bugs: { state: "loading", reports: [] },
   offers: { state: "loading", pending: [] },
+  shares: { state: "loading", pending: [] },
 };
+
+function pendingShareOf(o: ShareOffer): PendingShare {
+  return {
+    key: `${o.kind}:${o.studioId}:${o.docId}`,
+    kind: o.kind,
+    title: o.title,
+    studioId: o.studioId,
+    studioName: o.studioName,
+    offeredAt: millis(o.offeredAt),
+  };
+}
 
 function millis(v: unknown): number | null {
   const d = (v as { toDate?: () => Date })?.toDate?.() ?? (v instanceof Date ? v : null);
@@ -81,6 +109,12 @@ export function useHomeSignals(refreshKey: unknown): HomeSignals {
     fetchPendingOffers().then(
       (pending) => !cancelled && setSignals((s) => ({ ...s, offers: { state: "ok", pending } })),
       () => !cancelled && setSignals((s) => ({ ...s, offers: { state: "failed", pending: [] } })),
+    );
+    // The Waiting for review page's own read (machine-db/fetch-share-offers).
+    fetchShareOffers().then(
+      (offers) =>
+        !cancelled && setSignals((s) => ({ ...s, shares: { state: "ok", pending: offers.map(pendingShareOf) } })),
+      () => !cancelled && setSignals((s) => ({ ...s, shares: { state: "failed", pending: [] } })),
     );
     return () => {
       cancelled = true;

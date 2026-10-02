@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { collectionGroup, getDocs, query, where } from "firebase/firestore";
 import { Share2 } from "lucide-react";
-import { db } from "../../firebase";
+import { fetchShareOffers } from "./fetch-share-offers";
 import { useToast } from "../../contexts/ToastContext";
 import { formatStudioDate } from "../../lib/studio-time";
 import type { Studio, Trainer } from "../../types";
 import { AdminBadge, AdminButton, AdminEmpty, AdminField, AdminNotice, AdminPanel, AdminTextarea } from "../admin/primitives";
 import { useUnsavedChanges } from "../unsaved-changes";
-import { decideOffer, type OfferKind } from "./mutations";
-import { KIND_LABEL, byOldestOffer, offerFrom, type ShareOffer } from "./offers";
+import { decideOffer } from "./mutations";
+import { KIND_LABEL, type ShareOffer } from "./offers";
 import "../admin/admin.css";
 import "./share-review.css";
 
@@ -32,12 +31,6 @@ import "./share-review.css";
  * machines), and only administrators may run them.
  */
 
-const GROUPS: { kind: OfferKind; group: "roster" | "wiki" | "playbook" }[] = [
-  { kind: "machine", group: "roster" },
-  { kind: "note", group: "wiki" },
-  { kind: "tip", group: "playbook" },
-];
-
 type Load = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; offers: ShareOffer[] };
 
 function useShareOffers() {
@@ -45,15 +38,8 @@ function useShareOffers() {
   const reload = useCallback(async () => {
     setLoad({ status: "loading" });
     try {
-      const snaps = await Promise.all(
-        GROUPS.map(({ group }) => getDocs(query(collectionGroup(db, group), where("shareStatus", "==", "pending")))),
-      );
-      const offers = snaps
-        .flatMap((snap, i) =>
-          snap.docs.map((d) => offerFrom(GROUPS[i].kind, d.ref.path, d.id, d.data() as Record<string, unknown>)),
-        )
-        .filter((o): o is ShareOffer => o !== null)
-        .sort(byOldestOffer);
+      // The same read Home's count makes (fetch-share-offers.ts, Oct 2 2026).
+      const offers = await fetchShareOffers();
       setLoad({ status: "ready", offers });
     } catch (err) {
       setLoad({ status: "error", message: err instanceof Error ? err.message : String(err) });
@@ -75,9 +61,11 @@ export interface ShareReviewPanelProps {
   trainers: Trainer[];
   /** The panel's heading; the Admins page that hosts it carries the page's own. */
   title?: string;
+  /** After a decision: the Admins dashboard counts again (its sidebar and Home). */
+  onChanged?: () => void;
 }
 
-export function ShareReviewPanel({ studios, trainers, title = "Waiting for review" }: ShareReviewPanelProps) {
+export function ShareReviewPanel({ studios, trainers, title = "Waiting for review", onChanged }: ShareReviewPanelProps) {
   const { load, reload, remove } = useShareOffers();
   const studioName = useMemo(() => new Map(studios.map((s) => [s.id, s.name])), [studios]);
   const nameOf = useCallback(
@@ -116,7 +104,10 @@ export function ShareReviewPanel({ studios, trainers, title = "Waiting for revie
                 offer={o}
                 studioName={studioName.get(o.studioId) ?? o.studioName ?? "A studio"}
                 offeredBy={nameOf(o.offeredBy)}
-                onDecided={() => remove(o)}
+                onDecided={() => {
+                  remove(o);
+                  onChanged?.();
+                }}
               />
             ))}
           </ul>

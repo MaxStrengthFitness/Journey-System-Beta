@@ -247,6 +247,8 @@ function AdminsShell({
   const counts: Partial<Record<AdminsNavPage, number>> = {
     ...(signals.limbo.state === "ok" && signals.limbo.entries.length ? { limbo: signals.limbo.entries.length } : {}),
     ...(signals.bugs.state === "ok" ? { bugs: signals.bugs.reports.filter((r) => r.status === "open").length || undefined } : {}),
+    // Waiting for review (Oct 2 2026): what studios offered every MSF studio.
+    ...(signals.shares.state === "ok" && signals.shares.pending.length ? { review: signals.shares.pending.length } : {}),
   };
 
   /** Every move between pages asks first: the page it leaves may hold typing. */
@@ -320,7 +322,18 @@ function AdminsShell({
   const setupData = useSetupData(launching, signalsSeq);
   const launches = useMemo(() => overdueSetup(studios, trainers, setupData, new Date(now)), [studios, trainers, setupData, now]);
   const needs = useMemo(
-    () => needItems({ studios, networks, sync: allSync, limbo: signals.limbo, bugs: signals.bugs, offers: signals.offers, launches, now }),
+    () =>
+      needItems({
+        studios,
+        networks,
+        sync: allSync,
+        limbo: signals.limbo,
+        bugs: signals.bugs,
+        offers: signals.offers,
+        shares: signals.shares,
+        launches,
+        now,
+      }),
     [studios, networks, allSync, signals, launches, now],
   );
   const openDoor = (door: NeedDoor) => {
@@ -340,6 +353,7 @@ function AdminsShell({
     if (allSync.every((r) => r.kind !== "checking" && r.kind !== "unknown")) kinds.add("sync-failing");
     if (signals.limbo.state === "ok") kinds.add("limbo");
     if (signals.offers.state === "ok") kinds.add("offers");
+    if (signals.shares.state === "ok") kinds.add("shares");
     if (signals.bugs.state === "ok") kinds.add("bugs");
     if (launches.state === "ok") kinds.add("launch-overdue");
     return kinds;
@@ -569,7 +583,12 @@ function AdminsShell({
                 studios offer to every MSF studio, read by an administrator
                 first (AJ, Sep 28 2026). */}
             {page === "review" && (
-              <ReviewQueuePage studios={studios} trainers={trainers} onOpenMachines={() => go({ page: "machines" })} />
+              <ReviewQueuePage
+                studios={studios}
+                trainers={trainers}
+                onOpenMachines={() => go({ page: "machines" })}
+                onChanged={recount}
+              />
             )}
             {page === "limbo" && <AdminLimboQueue studios={studios} clients={clients} onChanged={recount} />}
             {page === "sync" && (
