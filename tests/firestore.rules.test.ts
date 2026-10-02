@@ -6080,6 +6080,8 @@ describe("oct2 team: a note about a team member", () => {
     await assertSucceeds(setDoc(doc(as("trainerA"), "trainers", "trainerA", "notes", "teamNote"), note));
     await assertFails(getDoc(doc(as("trainerB"), "trainers", "trainerA", "notes", "teamNote")));
     await assertFails(setDoc(doc(as("trainerB"), "trainers", "trainerA", "notes", "teamNote2"), note));
+  });
+});
 
 describe("oct 2: a studio's own machine is retired, never deleted", () => {
   const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
