@@ -13,6 +13,7 @@ import {
   isUpForGrabs,
   jobErrorMessage,
   jobProgress,
+  jobNamedLine,
   jobTimesLine,
   jobTiming,
   peopleLine,
@@ -97,6 +98,7 @@ export function JobSheet({ job, open, onOpenChange, me, canLead, people, onOpenC
     const isOpen = job.status === "open";
     const noteProblem = closeProblem(job, note);
     const times = jobTimesLine(job, [auth.currentUser?.uid, me?.id], todayKey);
+    const named = jobNamedLine(job, [auth.currentUser?.uid, me?.id], todayKey);
 
     return (
       <>
@@ -120,6 +122,7 @@ export function JobSheet({ job, open, onOpenChange, me, canLead, people, onOpenC
             <span className="rk-tag">Posted by {job.createdBy.name}</span>
           </div>
 
+          {named && <p className="tj-sheet__times">{named}</p>}
           {times && <p className="tj-sheet__times">{times}</p>}
 
           {job.detail && <p className="tj-sheet__detail">{job.detail}</p>}

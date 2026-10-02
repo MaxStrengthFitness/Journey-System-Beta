@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Folder, FolderPlus, Pin, Plus, Search, Share2, StickyNote, Users, X } from "lucide-react";
 import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
+import { leadsHere } from "../leads";
 import { isEveryStudioRole } from "../../renewals/permissions";
 import { auth } from "../../../firebase";
 import type { Client, Trainer } from "../../../types";
@@ -102,6 +103,8 @@ export function NotesPanel({ authTrainer, trainers, clients, onOpenClient, inten
   // The Firebase Auth uid: notes live at trainers/{uid}/notes, private by path.
   const uid = auth.currentUser?.uid ?? null;
   const { activeStudioId, activeStudio, availableStudios } = useActiveStudio();
+  // A leader keeps notes about team members (the Atlas answers, Oct 2 2026).
+  const leads = leadsHere(authTrainer, activeStudioId);
   // Relay: "All MSF studios" is offered to the people whose role reaches every studio.
   const networkStudios = useMemo(
     () => (isEveryStudioRole(authTrainer) ? availableStudios.filter((s) => s.id).map((s) => ({ id: s.id!, name: s.name })) : []),
@@ -356,9 +359,10 @@ export function NotesPanel({ authTrainer, trainers, clients, onOpenClient, inten
           </button>
         </div>
 
-        <WriteRow slotsFree={freeSlots} disabled={!uid} onWrite={(type) => startNew(null, undefined, type)} />
+        <WriteRow slotsFree={freeSlots} disabled={!uid} leader={leads} onWrite={(type) => startNew(null, undefined, type)} />
 
         <ShelfNav
+          leader={leads}
           view={view}
           counts={shelfCounts}
           openHunches={hunchesOpen}

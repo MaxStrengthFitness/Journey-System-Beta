@@ -45,7 +45,10 @@ export async function postTeamJob(args: {
   const ref = doc(teamJobsRef(studioId));
   const fields = jobFields(draft, studioId, who(author), machineName);
   const now = serverTimestamp();
-  await setDoc(ref, { ...fields, createdAt: now, updatedAt: now });
+  // Who put each person on it, and when (the Atlas answers, Oct 2 2026).
+  const namedBy: Record<string, { byId: string; byName: string; at: unknown }> = {};
+  for (const a of fields.assignees) namedBy[a.id] = { byId: author.id, byName: who(author).name, at: now };
+  await setDoc(ref, { ...fields, ...(fields.assignees.length ? { namedBy } : {}), createdAt: now, updatedAt: now });
   await Promise.all(
     fields.assignees.map((a) =>
       notify({
@@ -74,13 +77,25 @@ export async function setJobPeople(args: {
 }): Promise<void> {
   const { job, author } = args;
   const assignees = uniqueActors(args.assignees);
+  const before = new Set(job.assigneeIds);
+  const after = new Set(assignees.map((a) => a.id));
+  // Stamp each person ADDED with who put them on it and when, one map key
+  // each, and drop the stamp of anyone taken off (the Atlas answers, Oct 2
+  // 2026: "Put on it by Sam 10:05 AM").
+  const stamps: Record<string, unknown> = {};
+  for (const a of assignees) {
+    if (!before.has(a.id)) stamps[`namedBy.${a.id}`] = { byId: author.id, byName: who(author).name, at: serverTimestamp() };
+  }
+  for (const id of before) {
+    if (!after.has(id)) stamps[`namedBy.${id}`] = deleteField();
+  }
   await updateDoc(teamJobRef(job.studioId, job.id), {
     assignees,
     assigneeIds: assignees.map((a) => a.id),
     openToAll: assignees.length === 0 ? true : args.openToAll,
+    ...stamps,
     updatedAt: serverTimestamp(),
   });
-  const before = new Set(job.assigneeIds);
   await Promise.all(
     assignees
       .filter((a) => !before.has(a.id))

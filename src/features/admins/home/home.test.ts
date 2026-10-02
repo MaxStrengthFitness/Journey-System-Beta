@@ -135,3 +135,22 @@ describe("the network and the standard", () => {
     expect(standardSentence({ loading: false, failed: true, machines: [] }, base().offers)).toBe("The machine catalog couldn't be read just now.");
   });
 });
+
+describe("sessions left open, across every studio (the Atlas answers, Oct 2 2026)", () => {
+  const open = (id: string, studio: string, minutesAgo: number) =>
+    ({ id, hostedAtStudioId: studio, status: "In-Progress", createdAt: now - minutesAgo * 60_000, trainerInitials: "SG" }) as never;
+
+  it("says how many and where, by the Hub's own rule", () => {
+    const { items, more } = needItems({ ...base(), openSessions: { state: "ok", sessions: [open("a", "solon", 120), open("b", "westlake", 300), open("c", "westlake", 600), open("d", "solon", 5)] } });
+    const item = [...items, ...more].find((i) => i.id === "left-open");
+    expect(item?.say).toBe("3 sessions were left open: Solon (1) and Westlake (2).");
+    expect(item?.door).toEqual({ label: "Open All studios", page: "studios" });
+  });
+
+  it("is nothing when every open session is still running, and couldn't-check when the read failed", () => {
+    const calm = needItems({ ...base(), openSessions: { state: "ok", sessions: [open("d", "solon", 5)] } });
+    expect([...calm.items, ...calm.more].some((i) => i.id === "left-open")).toBe(false);
+    const failed = needItems({ ...base(), openSessions: { state: "failed", sessions: [] } });
+    expect([...failed.items, ...failed.more].find((i) => i.id === "unknown")?.say).toContain("the sessions left open");
+  });
+});

@@ -243,9 +243,9 @@ export function hoursTally(
     }
   }
 
-  const rows = [...byTrainer.values()].sort(
-    (a, b) => b.month.sessions - a.month.sessions || a.label.localeCompare(b.label),
-  );
+  // By name, never by volume (the Atlas answers, Oct 2 2026: "name order,
+  // no call-outs").
+  const rows = [...byTrainer.values()].sort((a, b) => a.label.localeCompare(b.label));
 
   return {
     month,

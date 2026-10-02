@@ -65,11 +65,13 @@ export interface TeamSectionProps {
   clients?: Client[];
   trainers?: Trainer[];
   onOpenClient?: (clientId: string) => void;
+  /** Opens a team member's profile (read-only for a colleague: trainer-profile/visibility.ts). */
+  onOpenTrainer?: (trainerId: string) => void;
 }
 
 const NONE: never[] = [];
 
-export function TeamSection({ authTrainer, clients, trainers, onOpenClient }: TeamSectionProps) {
+export function TeamSection({ authTrainer, clients, trainers, onOpenClient, onOpenTrainer }: TeamSectionProps) {
   const { activeStudio, activeStudioId } = useActiveStudio();
   /*
    * The staff roster is read ONCE, here, so the top of Team can say who is
@@ -99,7 +101,7 @@ export function TeamSection({ authTrainer, clients, trainers, onOpenClient }: Te
           <StandingWeeksPanel studio={activeStudio} authTrainer={authTrainer ?? null} trainers={trainers ?? NONE} clients={clients ?? NONE} />
         </div>
       )}
-      <TeamPanel authTrainer={authTrainer} clients={clients} trainers={trainers} onOpenClient={onOpenClient} />
+      <TeamPanel authTrainer={authTrainer} clients={clients} trainers={trainers} onOpenClient={onOpenClient} onOpenTrainer={onOpenTrainer} />
       <StaffPanel authTrainer={authTrainer ?? null} clients={clients ?? NONE} trainers={trainers ?? NONE} roster={roster} />
     </div>
   );

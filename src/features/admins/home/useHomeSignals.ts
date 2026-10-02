@@ -11,13 +11,21 @@
  *   offers         catalogSubmissions where status == "pending", the
  *                  query Machines → Submitted by studios listens to
  *
+ * And one query of its own (the Atlas answers, Oct 2 2026): the sessions
+ * left open across every studio, `status == "In-Progress"` started in the
+ * last 14 days, newest first, at most 200 (fetchOpenSessions). It needs the
+ * (status, createdAt desc) index on `sessions`, added to
+ * firestore.indexes.json; until it is deployed the Enterprise database
+ * answers by scanning. Which of them are LEFT open is the Hub's own rule
+ * (admin/overview/left-open.ts, over isSessionValid).
+ *
  * Each says whether it was read: a read that failed is "failed", which Home
  * says as "couldn't check", never as nothing waiting. No listener, no timer.
  */
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { Timestamp, collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
 import { db } from "../../../firebase";
-import type { LimboEntry } from "../../../types";
+import type { LimboEntry, WorkoutSession } from "../../../types";
 import { fetchOpenLimboEntries } from "../../../lib/mindbody-limbo";
 import { fetchRecentReports } from "../../admin/bugs/fetch-reports";
 import type { ReportView } from "../../admin/bugs/reportView";
@@ -36,13 +44,34 @@ export interface HomeSignals {
   limbo: { state: ReadState; entries: LimboEntry[] };
   bugs: { state: ReadState; reports: ReportView[] };
   offers: { state: ReadState; pending: PendingOffer[] };
+  /** In-Progress sessions started in the last 14 days, every studio (Oct 2 2026). */
+  openSessions: { state: ReadState; sessions: WorkoutSession[] };
 }
 
 const LOADING: HomeSignals = {
   limbo: { state: "loading", entries: [] },
   bugs: { state: "loading", reports: [] },
   offers: { state: "loading", pending: [] },
+  openSessions: { state: "loading", sessions: [] },
 };
+
+/** How far back, and how many, the sessions-left-open read looks. */
+export const OPEN_SESSIONS_DAYS = 14;
+export const OPEN_SESSIONS_CAP = 200;
+
+async function fetchOpenSessions(): Promise<WorkoutSession[]> {
+  const from = Timestamp.fromMillis(Date.now() - OPEN_SESSIONS_DAYS * 86_400_000);
+  const snap = await getDocs(
+    query(
+      collection(db, "sessions"),
+      where("status", "==", "In-Progress"),
+      where("createdAt", ">=", from),
+      orderBy("createdAt", "desc"),
+      limit(OPEN_SESSIONS_CAP),
+    ),
+  );
+  return snap.docs.map((d) => ({ ...(d.data() as WorkoutSession), id: d.id }));
+}
 
 function millis(v: unknown): number | null {
   const d = (v as { toDate?: () => Date })?.toDate?.() ?? (v instanceof Date ? v : null);
@@ -81,6 +110,10 @@ export function useHomeSignals(refreshKey: unknown): HomeSignals {
     fetchPendingOffers().then(
       (pending) => !cancelled && setSignals((s) => ({ ...s, offers: { state: "ok", pending } })),
       () => !cancelled && setSignals((s) => ({ ...s, offers: { state: "failed", pending: [] } })),
+    );
+    fetchOpenSessions().then(
+      (sessions) => !cancelled && setSignals((s) => ({ ...s, openSessions: { state: "ok", sessions } })),
+      () => !cancelled && setSignals((s) => ({ ...s, openSessions: { state: "failed", sessions: [] } })),
     );
     return () => {
       cancelled = true;

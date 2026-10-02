@@ -585,7 +585,7 @@ export function RequestsLane({
                       aria-pressed={Boolean(mine)}
                     >
                       <Sparkles size={12} aria-hidden />
-                      {mine ? "Drop" : r.claimedBy ? "Take over" : "Claim"}
+                      {mine ? "Drop" : r.claimedBy ? "Take over" : "Take it"}
                     </button>
                   )}
 

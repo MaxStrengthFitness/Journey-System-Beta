@@ -58,7 +58,7 @@ describe("the five doors", () => {
     expect(faces.desk).toMatchObject({ label: "Desk work", count: "2 open", sub: "1 client task" });
     expect(faces.help).toMatchObject({ label: "Help a teammate", count: "2 asks", sub: "cover needed", hot: true });
     expect(faces.lead).toMatchObject({ label: "From leadership", count: "1 initiative" });
-    expect(faces.mine).toMatchObject({ label: "Mine", count: "1 with your name", sub: "1 handed to you" });
+    expect(faces.mine).toMatchObject({ label: "My work", count: "1 with your name", sub: "1 handed to you" });
   });
 
   it("deals the best fit first, and leaves out what was passed over", () => {

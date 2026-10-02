@@ -553,6 +553,17 @@ describe("the Board", () => {
     ]);
   });
 
+  it("opening a question to read it claims nothing and rings nobody (the Atlas answers, Oct 2 2026)", async () => {
+    const { h } = await render({
+      requests: [ask("q2", { kind: "question", title: "What helps Nancy's seated dip?", createdBy: MABLUNG, clientId: "c-nancy" })],
+    });
+    await click([...h.querySelectorAll(".rbd-door")].find((d) => d.textContent?.includes("Help a teammate")));
+    await click([...h.querySelectorAll(".rbd-acts .rbd-btn")].find((b) => b.textContent?.trim() === "Answer"));
+    const claimed = writes.updates.filter((u) => u.path === "studios/s1/taskRequests/q2" && JSON.stringify(u.data).includes("claimedBy"));
+    expect(claimed).toEqual([]);
+    expect(writes.adds.filter((a) => a.path.includes("notifications"))).toEqual([]);
+  });
+
   it("says when Close out opens, and previews it early", async () => {
     const { h } = await render();
     const line = h.querySelector(".rsc-line");

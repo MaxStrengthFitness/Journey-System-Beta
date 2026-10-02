@@ -1354,6 +1354,7 @@ export default function AppContent({
       <NotificationBell
         trainerId={authTrainer?.id}
         authTrainer={authTrainer}
+        trainers={trainers}
         className={headerIconClass}
         onNavigate={(view, id, learning, atStudioId) => {
           // A Learning page wins: it names the exact page. The machine-flagged
@@ -1624,7 +1625,11 @@ export default function AppContent({
             <AppHeader
               variant={theme === "light" ? "light" : "dark"}
               studioName={activeStudioName || undefined}
-              onStudioClick={openStudioPicker}
+              // Inside Operations and the Admins dashboard the top left goes
+              // back to the Hub; 'Looking at' is the studio switch there
+              // (the Atlas answers, Oct 2 2026).
+              onStudioClick={appMode === "admin" ? () => switchAppMode("trainer", "clients") : openStudioPicker}
+              studioClickGoesHome={appMode === "admin"}
               rightControls={headerRightControls}
               trainerDropdown={headerTrainerDropdown}
               searchSlot={headerSearchSlot}
@@ -1776,6 +1781,10 @@ export default function AppContent({
                         sessions={sessions}
                         machines={machines}
                         onOpenClientTask={openClientTask}
+                        onOpenTrainer={(id) => {
+                          setSelectedProfileTrainerId(id);
+                          setView("trainer-profile");
+                        }}
                       />
                     );
                   })()}
@@ -1936,6 +1945,12 @@ export default function AppContent({
                     onNavigateProfile={(clientId) => {
                       setSelectedClientId(clientId);
                       setCurrentView("profile");
+                    }}
+                    // A session left open (Oct 2 2026): its client's session on
+                    // the floor, where the Active Session finishes it.
+                    onOpenSession={(clientId) => {
+                      setSelectedClientId(clientId);
+                      switchAppMode("trainer", "workouts");
                     }}
                     // Operations' doors into My Studio (Staff & Roles, Renewals) switch back
                     // to trainer mode, or My Studio opens with Operations' bottom bar.

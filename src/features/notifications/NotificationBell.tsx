@@ -55,11 +55,15 @@ import { useNotifications } from "./useNotifications";
 import { markAllNotificationsRead, markNotificationRead } from "./mutations";
 import {
   markAnnouncementsRead,
+  ackAnnouncement,
+  ackAnnouncements,
   useHubAnnouncements,
 } from "./useHubAnnouncements";
 import type { NotificationKind, TrainerNotification } from "./types";
 import type { HubAnnouncement, Trainer } from "../../types";
 import { learningRefLabel, parseLearningRef } from "../learning/ref";
+import { NoticeReadCount } from "./NoticeReadCount";
+import { auth } from "../../firebase";
 
 const ICON: Record<NotificationKind, typeof Bell> = {
   "task-completed": Check,
@@ -113,6 +117,11 @@ export interface NotificationBellProps {
    */
   onNavigate?: (view: string, id?: string, learning?: unknown, studioId?: string) => void;
   className?: string;
+  /**
+   * The team the app holds, for "9 of 12 have read it" on a notice that asks
+   * (the Atlas answers, Oct 2 2026). Without it the count isn't drawn.
+   */
+  trainers?: Trainer[];
 }
 
 export function NotificationBell({
@@ -120,6 +129,7 @@ export function NotificationBell({
   authTrainer,
   onNavigate,
   className,
+  trainers,
 }: NotificationBellProps) {
   const [open, setOpen] = useState(false);
   const uid = trainerId ?? authTrainer?.id ?? null;
@@ -128,7 +138,28 @@ export function NotificationBell({
     announcements,
     unread: unreadAnnouncements,
     unreadCount: announcementCount,
+    acked,
   } = useHubAnnouncements(authTrainer);
+  const signedInUid = auth.currentUser?.uid ?? null;
+  // "I've read it" in the bell too (the Atlas answers, Oct 2 2026).
+  const asking = announcements.filter((a) => a.asksRead && a.id && !acked.has(a.id));
+  const [acking, setAcking] = useState<string | null>(null);
+  const ackOne = async (id: string) => {
+    setAcking(id);
+    try {
+      await ackAnnouncement(id, authTrainer?.fullName ?? null);
+    } catch (err) {
+      console.warn("[bell] I've read it failed:", err);
+    } finally {
+      setAcking(null);
+    }
+  };
+  // Mark all read marks everything read, a notice that asks included.
+  const markAll = () => {
+    if (uid && unreadCount > 0) markAllNotificationsRead(uid, notifications).catch(() => {});
+    const ids = asking.map((a) => a.id!).filter(Boolean);
+    if (ids.length > 0) void ackAnnouncements(ids, authTrainer?.fullName ?? null).catch(() => {});
+  };
 
   // One badge for both feeds. A trainer looking at the header is asking "is
   // there anything for me", not "which subsystem produced it".
@@ -269,6 +300,32 @@ export function NotificationBell({
                           {a.authorName} · {announcementDate(a.createdAt)} ·{" "}
                           {scopeLabel(a)}
                         </p>
+                        {a.asksRead && a.id && (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            {acked.has(a.id) ? (
+                              <span className="text-[11px] font-bold text-muted-foreground">You said you&rsquo;ve read it.</span>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={acking === a.id}
+                                onClick={() => void ackOne(a.id!)}
+                                className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-border px-3 text-[11px] font-black uppercase tracking-widest text-foreground"
+                              >
+                                <CheckCheck className="w-3.5 h-3.5" />
+                                {acking === a.id ? "Saving\u2026" : "I\u2019ve read it"}
+                              </button>
+                            )}
+                            {trainers && (
+                              <NoticeReadCount
+                                announcement={a}
+                                trainers={trainers}
+                                viewer={authTrainer}
+                                uid={signedInUid}
+                                className="text-[11px] font-bold text-muted-foreground"
+                              />
+                            )}
+                          </div>
+                        )}
                       </li>
                     );
                   })}
@@ -334,13 +391,11 @@ export function NotificationBell({
             )}
           </div>
 
-          {unreadCount > 0 && uid && (
+          {((unreadCount > 0 && uid) || asking.length > 0) && (
             <div className="px-5 py-4 border-t border-border">
               <Button
                 variant="outline"
-                onClick={() =>
-                  markAllNotificationsRead(uid, notifications).catch(() => {})
-                }
+                onClick={markAll}
                 className="w-full h-11 rounded-2xl border-border font-black uppercase text-[10px] tracking-widest gap-2"
               >
                 <CheckCheck className="w-4 h-4" />

@@ -121,6 +121,8 @@ export interface MyStudioViewProps {
   /** The app-wide machine list, the Floor Map's fallback before a roster exists. */
   machines?: Machine[];
   onOpenClientTask?: (clientId: string, action?: ClientTaskAction) => void;
+  /** Opens a team member's profile, read-only as visibility.ts allows (the Atlas answers, Oct 2 2026). */
+  onOpenTrainer?: (trainerId: string) => void;
 }
 
 const NONE: never[] = [];
@@ -134,6 +136,7 @@ export function MyStudioView({
   sessions,
   machines,
   onOpenClientTask,
+  onOpenTrainer,
 }: MyStudioViewProps) {
   const { activeStudio, activeStudioId } = useActiveStudio();
   const canLead = leadsHere(authTrainer, activeStudioId);
@@ -383,7 +386,7 @@ export function MyStudioView({
 
           {shown === "team" && (
             <SectionFrame id="ms-panel" labelledBy="ms-tab-team">
-              <TeamSection authTrainer={authTrainer} clients={clients} trainers={trainers} onOpenClient={openClient} />
+              <TeamSection authTrainer={authTrainer} clients={clients} trainers={trainers} onOpenClient={openClient} onOpenTrainer={onOpenTrainer} />
             </SectionFrame>
           )}
 

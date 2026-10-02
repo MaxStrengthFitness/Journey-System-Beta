@@ -14,6 +14,14 @@ interface AppHeaderProps {
   studioName?: string;
   onStudioClick?: () => void;
   /**
+   * Inside Operations and the Admins dashboard the studio's name and the
+   * logo take you back to the Hub, in trainer mode, rather than opening the
+   * studio picker (the Atlas answers, Oct 2 2026): "if you tap the top left
+   * like a studio name or icon it should just take you back to the hub".
+   * 'Looking at' stays the only studio switch in there.
+   */
+  studioClickGoesHome?: boolean;
+  /**
    * The header's icon cluster. Every screen passes the app shell's controls
    * (refresh, theme, feedback, notifications, settings), so there is no
    * fallback: a header with no controls should look empty rather than grow
@@ -35,6 +43,7 @@ export function AppHeader({
   trainerInitials,
   studioName,
   onStudioClick,
+  studioClickGoesHome = false,
   rightControls,
   trainerDropdown,
   searchSlot,
@@ -54,11 +63,22 @@ export function AppHeader({
           CLIPS instead of truncating — which is how the end of a name went
           missing with no ellipsis to say it had. */}
       <div className="flex items-center gap-3 min-w-0">
-        <MaxStrengthLogo
-          size="md"
-          showText={false}
-          className={cn("shrink-0", isLight ? "text-ink-l1" : "text-white")}
-        />
+        {studioClickGoesHome && onStudioClick ? (
+          <button
+            type="button"
+            onClick={onStudioClick}
+            aria-label="Back to the Hub"
+            className="shrink-0 min-h-10 min-w-10 grid place-items-center hover:opacity-75 cursor-pointer"
+          >
+            <MaxStrengthLogo size="md" showText={false} className={cn("shrink-0", isLight ? "text-ink-l1" : "text-white")} />
+          </button>
+        ) : (
+          <MaxStrengthLogo
+            size="md"
+            showText={false}
+            className={cn("shrink-0", isLight ? "text-ink-l1" : "text-white")}
+          />
+        )}
         <button
           onClick={onStudioClick}
           // This control SWITCHES STUDIOS. A half-rendered name is genuinely
@@ -66,9 +86,11 @@ export function AppHeader({
           // full one has to stay recoverable.
           title={name || undefined}
           aria-label={
-            onStudioClick
-              ? name ? `Studio: ${name}. Change studio.` : "Choose a studio"
-              : name ? `Studio: ${name}` : "Studio"
+            onStudioClick && studioClickGoesHome
+              ? name ? `Studio: ${name}. Back to the Hub.` : "Back to the Hub"
+              : onStudioClick
+                ? name ? `Studio: ${name}. Change studio.` : "Choose a studio"
+                : name ? `Studio: ${name}` : "Studio"
           }
           className={cn(
             // ch, not px: the cap scales with the font so it holds across the

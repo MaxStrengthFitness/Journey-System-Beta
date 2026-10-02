@@ -33,6 +33,8 @@ export interface PeekLine {
   kind: MomentKind;
   family: MomentFamily;
   text: string;
+  /** Said at Note loudness: a small line (Get to know, Oct 2 2026). */
+  note?: boolean;
 }
 
 export interface PeekFact {
@@ -88,7 +90,7 @@ export function peekContent(entry: RunSheetEntry, sessionNumber: number | null =
   const subtitle = [entry.timeText, entry.withText, numberWords(sessionNumber, entry.sessionBasis ?? "confirmed", entry.journeyNumber ?? null), ...(opts.extras ?? [])].filter(Boolean).join(" · ");
   const lines: PeekLine[] = entry.moments
     .filter((m) => m.family !== "read-first")
-    .map((m) => ({ kind: m.kind, family: m.family, text: m.sentence }));
+    .map((m) => ({ kind: m.kind, family: m.family, text: m.sentence, ...(m.loudness === "standard" ? { note: true } : {}) }));
   const f = entry.facts;
   const facts: PeekFact[] = [
     { label: "Last in", text: f.lastSeen.sentence, muted: f.lastSeen.unknown },

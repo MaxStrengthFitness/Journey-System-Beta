@@ -10,29 +10,32 @@
  * (Sep 28 2026) the tab is the Tracker, sorted by when (relay/tracker.ts);
  * this file keeps the Follow-ups, whose clients are "yours", and Growth.
  *
- * "Their clients" has no single field. Three signals, any of which counts:
- * the nightly renewal snapshot's coachIds (coached in the last 60 days),
- * the trainerTally (sessions per trainer), and topTrainerId.
+ * "Their clients" is the one Mine every screen asks (src/lib/mine.ts, Oct 2
+ * 2026): booked with you, or coached by you in the last 60 days. Relay holds
+ * no bookings, so here it is the second half: the nightly record's coachIds,
+ * under any of the trainer's ids (`myTrainerIds`).
  */
 import type { Client } from "../../../types";
 import { daysUntilBirthday } from "../../../lib/hub-markers";
 import { clientDisplayName } from "../../../lib/client-name";
 import { fordSummaryOf } from "../../ford/ford-rollup";
 import type { TaskRow } from "../../studio-tasks/types";
+import { isMine, type MineClient } from "../../../lib/mine";
 
 export const GROWTH_CATEGORY = "growth";
 export const FOLLOW_UP_DAYS = 14;
 
-export function isMyClient(c: Client, trainerId: string | null): boolean {
-  if (!trainerId) return false;
-  const snapshot = (c as { renewal?: { coachIds?: string[] } }).renewal;
-  if (snapshot?.coachIds?.includes(trainerId)) return true;
-  if ((c.trainerTally?.[trainerId] ?? 0) > 0) return true;
-  return c.topTrainerId === trainerId;
+type MyIds = string | null | readonly (string | null | undefined)[];
+
+/** Yours by the one rule (src/lib/mine.ts), under any of your ids. */
+export function isMyClient(c: Client, myIds: MyIds): boolean {
+  const list: readonly (string | null | undefined)[] = Array.isArray(myIds) ? myIds : [myIds as string | null];
+  const ids = list.filter((id): id is string => typeof id === "string" && !!id);
+  return isMine(c as MineClient, ids);
 }
 
-export function myClients(clients: Client[], trainerId: string | null): Client[] {
-  return clients.filter((c) => c.id && c.isActive !== false && isMyClient(c, trainerId));
+export function myClients(clients: Client[], myIds: MyIds): Client[] {
+  return clients.filter((c) => c.id && c.isActive !== false && isMyClient(c, myIds));
 }
 
 export interface FollowUp {
@@ -64,7 +67,7 @@ function daysBetweenKeys(a: string, b: string): number {
  * days, soonest first. A client with both shows twice — they are different
  * conversations.
  */
-export function followUps(clients: Client[], trainerId: string | null, todayKey: string, within = FOLLOW_UP_DAYS): FollowUp[] {
+export function followUps(clients: Client[], trainerId: MyIds, todayKey: string, within = FOLLOW_UP_DAYS): FollowUp[] {
   const today = new Date(`${todayKey}T12:00:00`);
   const out: FollowUp[] = [];
   for (const c of myClients(clients, trainerId)) {

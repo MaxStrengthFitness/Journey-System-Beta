@@ -97,6 +97,7 @@ describe("the peek", () => {
       kind: "ask-about",
       family: "get-to-know",
       text: "Ask about: Her grandson's wedding in Hobbiton on Saturday — Saturday, Oct 3 (Family, noted Sep 15).",
+      note: true,
     });
   });
 

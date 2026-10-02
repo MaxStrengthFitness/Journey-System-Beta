@@ -41,6 +41,7 @@ import {
   HUNCH_SLOTS,
   NOTE_FIELD_MAX,
   NOTE_TYPES,
+  LEADER_NOTE_TYPES,
   type Hunch,
   type HunchEvidence,
   type NoteDraft,
@@ -65,6 +66,7 @@ export const TYPE_ICON: Record<NoteType, LucideIcon> = {
   research: BookMarked,
   trend: Lightbulb,
   personal: Sprout,
+  team: Users,
 };
 
 const SHELF_ICON: Record<ShelfId, LucideIcon> = {
@@ -74,6 +76,7 @@ const SHELF_ICON: Record<ShelfId, LucideIcon> = {
   research: BookMarked,
   trends: Lightbulb,
   personal: Sprout,
+  team: Users,
 };
 
 const sameView = (a: NotesView, b: NotesView) =>
@@ -83,15 +86,27 @@ const sameView = (a: NotesView, b: NotesView) =>
  * Write: the six types, three short lines each
  * ------------------------------------------------------------------ */
 
-export function WriteRow({ slotsFree, onWrite, disabled = false }: { slotsFree: number; onWrite: (type: NoteType) => void; disabled?: boolean }) {
+export function WriteRow({
+  slotsFree,
+  onWrite,
+  disabled = false,
+  leader = false,
+}: {
+  slotsFree: number;
+  onWrite: (type: NoteType) => void;
+  disabled?: boolean;
+  /** Leads the studio: a note about a team member is offered too (Oct 2 2026). */
+  leader?: boolean;
+}) {
+  const types = NOTE_TYPES.filter((t) => leader || !LEADER_NOTE_TYPES.includes(t));
   return (
     <div className="jn-write" role="group" aria-label="Write in your journal">
       <p className="jn-write__h">
         <Plus size={14} aria-hidden />
-        Write <span className="jn-write__sub">six kinds, three short lines each</span>
+        Write <span className="jn-write__sub">{`${types.length === 7 ? "seven" : "six"} kinds, three short lines each`}</span>
       </p>
       <div className="jn-write__row">
-        {NOTE_TYPES.map((type) => {
+        {types.map((type) => {
           const t = NOTE_TEMPLATES[type];
           const Icon = TYPE_ICON[type];
           const full = type === "trend" && slotsFree === 0;
@@ -123,6 +138,7 @@ export function ShelfNav({
   dayLogs,
   studioShelf,
   onView,
+  leader = false,
 }: {
   view: NotesView;
   counts: Record<ShelfId, number>;
@@ -132,6 +148,8 @@ export function ShelfNav({
   /** How many entries on the Studio shelf, once read; null while unknown. */
   studioShelf: number | null;
   onView: (view: NotesView) => void;
+  /** Leads the studio: the Team shelf shows (and for anyone who already has notes on it). */
+  leader?: boolean;
 }) {
   const chip = (key: string, target: NotesView, label: string, Icon: LucideIcon, n: number | null, sub?: string) => (
     <button key={key} type="button" className="pn__view jn-shelf" aria-pressed={sameView(view, target)} onClick={() => onView(target)}>
@@ -143,7 +161,7 @@ export function ShelfNav({
   );
   return (
     <nav className="pn__views jn-shelves" aria-label="Shelves">
-      {SHELVES.map((s) =>
+      {SHELVES.filter((s) => s.id !== "team" || leader || counts.team > 0).map((s) =>
         chip(
           s.id,
           { kind: "shelf", shelf: s.id },
@@ -173,6 +191,7 @@ export function TemplateEditor({
   onHunch,
   disabled,
   problem,
+  teamNames = [],
 }: {
   noteId: string;
   draft: NoteDraft;
@@ -180,6 +199,8 @@ export function TemplateEditor({
   onHunch: (hunch: NonNullable<NoteDraft["hunch"]>) => void;
   disabled: boolean;
   problem?: string;
+  /** The team's names, in name order, for a Team member note's Who (Oct 2 2026). */
+  teamNames?: readonly string[];
 }) {
   const type = draft.noteType;
   if (!type) return null;
@@ -243,7 +264,25 @@ export function TemplateEditor({
           </div>
         </>
       ) : (
-        t.fields.map((f) => (
+        t.fields.map((f) =>
+          type === "team" && f.key === "who" ? (
+            <label key={f.key} className="jn-field">
+              <span className="jn-field__l">{f.label}</span>
+              <select
+                className="jn-ta"
+                value={draft.fields?.who ?? ""}
+                disabled={disabled}
+                onChange={(e) => onFields({ ...(draft.fields ?? {}), who: e.target.value })}
+              >
+                <option value="">{f.placeholder}</option>
+                {[...new Set([...(draft.fields?.who ? [draft.fields.who] : []), ...teamNames])].map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
           <label key={f.key} className="jn-field">
             <span className="jn-field__l">{f.label}</span>
             <textarea
@@ -256,7 +295,8 @@ export function TemplateEditor({
               onChange={(e) => onFields({ ...(draft.fields ?? {}), [f.key]: e.target.value })}
             />
           </label>
-        ))
+          ),
+        )
       )}
       {problem && <p className="ne__problem">{problem}</p>}
       <p className="jn-private">

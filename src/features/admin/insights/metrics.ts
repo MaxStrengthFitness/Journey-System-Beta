@@ -226,7 +226,8 @@ export function trainerMetrics(
     };
   });
 
-  return rows.sort((a, b) => b.sessions - a.sessions || a.label.localeCompare(b.label));
+  // By name, never by volume (the Atlas answers, Oct 2 2026).
+  return rows.sort((a, b) => a.label.localeCompare(b.label));
 }
 
 /* ------------------------------------------------------------------ *
@@ -377,50 +378,17 @@ export function observations(
     });
   }
 
-  for (const t of trainers) {
-    if (!t.enoughToJudge) continue;
-    if (t.completionRate < LOW_COMPLETION_RATE && t.unclosed >= 3) {
-      out.push({
-        id: `trainer-completion-${t.trainerKey}`,
-        tone: "watch",
-        text: `${t.label} left ${t.unclosed} of ${t.sessions} sessions open.`,
-        action: "Usually a workflow habit rather than a lapse — worth asking how they end a session.",
-      });
-    }
-  }
-
-  // ── load ─────────────────────────────────────────────────────────
-  const heaviest = trainers[0];
-  if (
-    heaviest &&
-    trainers.length > 1 &&
-    heaviest.loadShare > LOPSIDED_LOAD_SHARE
-  ) {
-    out.push({
-      id: "load-lopsided",
-      tone: "watch",
-      text: `${heaviest.label} ran ${pct(heaviest.loadShare)} of all sessions — ${heaviest.sessions} of ${summary.sessions}, across ${trainers.length} trainers.`,
-      action: "A rota question rather than a performance one, but it is a single point of failure.",
-    });
-  }
+  // ── no call-outs about a person ──────────────────────────────────
+  // Recognition, never ranking (the Atlas answers, Oct 2 2026: Trends and
+  // Hours list trainers in name order, with no call-outs). The lines that
+  // named one trainer — who left sessions open, who ran most of the floor,
+  // who used few machines — are gone; the studio-wide lines stay, and each
+  // trainer's figures are in the table, by name.
+  void trainers;
 
   // ── what gets written down ───────────────────────────────────────
   // Nothing here, on purpose. Notes are not a compliance figure and no
   // trainer is named for not writing them (the anti-blocker rule).
-
-  // ── variety ──────────────────────────────────────────────────────
-  const narrow = trainers.filter(
-    (t) => t.enoughToJudge && t.machineVariety > 0 && t.machineVariety <= 6,
-  );
-  for (const t of narrow) {
-    out.push({
-      id: `trainer-narrow-${t.trainerKey}`,
-      tone: "neutral",
-      text: `${t.label} used ${t.machineVariety} different machines across ${t.sessions} sessions.`,
-      action:
-        "Could be a specialism, could be a rut. Worth a look at whether their clients are getting full coverage.",
-    });
-  }
 
   // ── retention ────────────────────────────────────────────────────
   if (retention && retention.eligible >= 10) {

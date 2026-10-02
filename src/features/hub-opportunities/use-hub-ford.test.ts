@@ -112,8 +112,9 @@ describe("one read per studio visit", () => {
 describe("the window, at the studio's midnights", () => {
   it("asks between Eastern midnights, whatever the iPad's zone", () => {
     const w = hubFordWindow("2026-09-28");
-    expect(w.datedFrom.toISOString()).toBe("2026-09-27T04:00:00.000Z");
+    expect(w.datedFrom.toISOString()).toBe("2026-09-20T04:00:00.000Z");
     expect(w.datedUntil.toISOString()).toBe("2026-10-12T04:00:00.000Z");
     expect(w.notedFrom.toISOString()).toBe("2026-09-14T04:00:00.000Z");
+    expect(w.followUpFrom?.toISOString()).toBe("2026-07-30T04:00:00.000Z");
   });
 });

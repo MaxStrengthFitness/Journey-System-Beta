@@ -29,6 +29,8 @@
  *
  * Out of scope: surgery or away from dated notes, "Show on schedule".
  */
+import { mineDefinition, myLabel } from "../../lib/mine";
+import { IMPORTANCE_META } from "../../types/journal";
 import React, { useEffect, useMemo, useState } from "react";
 import { Activity, AlertTriangle, Award, Cake, ChevronDown, ChevronRight, FileSignature, MessageCircle, RefreshCw, Sparkles, Undo2 } from "lucide-react";
 import { formatStudioTime } from "../../lib/studio-time";
@@ -132,7 +134,7 @@ function Chip({ m }: { m: Moment }) {
   );
 }
 
-function Slot({ title, lines, empty }: { title: string; lines: Array<{ key: string; text: string; muted?: boolean }>; empty: string }) {
+function Slot({ title, lines, empty }: { title: string; lines: Array<{ key: string; text: string; muted?: boolean; note?: boolean }>; empty: string }) {
   return (
     <div className="ho-slot">
       <h4 className="ho-slot-title">{title}</h4>
@@ -141,7 +143,8 @@ function Slot({ title, lines, empty }: { title: string; lines: Array<{ key: stri
           <li className="ho-slot-empty">{empty}</li>
         ) : (
           lines.map((l) => (
-            <li key={l.key} className={l.muted ? "ho-slot-empty" : undefined}>
+            <li key={l.key} className={l.muted ? "ho-slot-empty" : l.note ? "ho-slot-note" : undefined}>
+              {l.note && <span className="ho-loud">{IMPORTANCE_META.standard.short}</span>}
               {l.text}
             </li>
           ))
@@ -160,10 +163,11 @@ function OpenedRow({ entry, onOpenProfile, onStartSession }: { entry: RunSheetEn
     { key: "last", text: f.lastSeen.sentence, muted: f.lastSeen.unknown },
     { key: "left", text: f.left.sentence, muted: f.left.unknown },
   ];
-  type Line = { key: string; text: string; muted?: boolean };
+  type Line = { key: string; text: string; muted?: boolean; note?: boolean };
   const say: Line[] = entry.moments
     .filter((m) => m.family === "welcome" || m.family === "celebrate" || m.family === "renew" || m.family === "get-to-know")
-    .map((m) => ({ key: m.kind, text: m.sentence }));
+    // Get to know is offered at Note loudness: a small line (Oct 2 2026).
+    .map((m) => ({ key: m.kind, text: m.sentence, note: m.loudness === "standard" }));
   // Her FORD couldn't be checked: never "Nothing special today" on a guess.
   if (entry.askUnknown) {
     say.push({ key: "ford-unread", text: ASK_UNREAD_LINE, muted: true });
@@ -259,7 +263,7 @@ export function RunSheet({ day, entries, onOpenProfile, onStartSession, request 
             {`Studio ${entries.length}`}
           </button>
           <button type="button" className="ho-seg-btn" aria-pressed={memory.scope === "mine"} onClick={() => setMemory((m) => ({ ...m, scope: "mine" }))}>
-            {`Mine ${mineCount}`}
+            {`${myLabel("clients")} ${mineCount}`}
           </button>
         </div>
       </div>
@@ -274,7 +278,7 @@ export function RunSheet({ day, entries, onOpenProfile, onStartSession, request 
 
       <p className="ho-line">
         {`${sortMeta.label}: ${reversed ? "reversed" : sortMeta.words}. `}
-        {memory.scope === "mine" ? "Mine: booked with you today, or coached by you in the last 60 days. " : ""}
+        {memory.scope === "mine" ? `${mineDefinition("clients")} ` : ""}
         {unreadCritical > 0 ? `Couldn\u2019t check ${unreadCritical === 1 ? "one client\u2019s" : `${unreadCritical} clients\u2019`} critical notes \u2014 their briefings show them. ` : ""}
         {unreadFord > 0 ? `Couldn\u2019t check FORD for ${unreadFord === 1 ? "one client" : `${unreadFord} clients`}, so something to ask about may be missing.` : ""}
       </p>

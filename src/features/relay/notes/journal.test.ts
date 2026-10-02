@@ -35,13 +35,17 @@ const ev = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `e${i}`, at
 
 describe("the six types", () => {
   it("are AJ's, each with three short lines and a shelf", () => {
-    expect(NOTE_TYPES.map((t) => NOTE_TEMPLATES[t].label)).toEqual(["Client", "Machine", "Protocol", "Research", "Trend", "Personal"]);
+    expect(NOTE_TYPES.map((t) => NOTE_TEMPLATES[t].label)).toEqual(["Client", "Machine", "Protocol", "Research", "Trend", "Personal", "Team member"]);
     expect(NOTE_TEMPLATES.client.fields.map((f) => f.label)).toEqual(["Who", "What I noticed", "What I'll do next time"]);
     expect(NOTE_TEMPLATES.machine.fields.map((f) => f.label)).toEqual(["Machine", "What I noticed", "Setting or cue"]);
     expect(NOTE_TEMPLATES.protocol.fields.map((f) => f.label)).toEqual(["When", "Steps", "Why"]);
     expect(NOTE_TEMPLATES.research.fields.map((f) => f.label)).toEqual(["Source", "The claim", "What I'll try"]);
     expect(NOTE_TEMPLATES.trend.fields.map((f) => f.label)).toEqual(["What I think", "How I'll know", "Evidence so far"]);
     expect(NOTE_TEMPLATES.personal.fields.map((f) => f.label)).toEqual(["What?", "So what?", "Now what?"]);
+    // A leader's note about a team member (the Atlas answers, Oct 2 2026): never shared.
+    expect(NOTE_TEMPLATES.team.fields.map((f) => f.label)).toEqual(["Who", "What happened", "What I'll do"]);
+    expect(NOTE_TEMPLATES.team.shares).toEqual({ record: false, colleagues: false, studioShelf: false });
+    expect(shelfOf({ noteType: "team", kind: "note", clientIds: [] })).toBe("team");
   });
 
   it("say where each may go (q8's default): personal never, machine and protocol to the Studio shelf, client onto the record", () => {

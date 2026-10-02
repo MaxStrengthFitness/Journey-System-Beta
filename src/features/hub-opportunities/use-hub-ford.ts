@@ -77,7 +77,12 @@ const visitKey = (studioId: string, today: string) => `${studioId}|${today}`;
 export function hubFordWindow(today: string): HubFordWindow {
   const w = askReadWindow(today);
   const midnight = (day: string) => studioDayBoundsForKey(day).start;
-  return { datedFrom: midnight(w.datedFrom), datedUntil: midnight(w.datedUntil), notedFrom: midnight(w.notedFrom) };
+  return {
+    datedFrom: midnight(w.datedFrom),
+    datedUntil: midnight(w.datedUntil),
+    notedFrom: midnight(w.notedFrom),
+    followUpFrom: midnight(w.followUpFrom),
+  };
 }
 
 /** The answer held for this visit, or null. */

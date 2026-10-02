@@ -5894,3 +5894,166 @@ describe("catalog wave 3: a machine's change log", () => {
     await assertFails(deleteDoc(ref));
   });
 });
+
+/* OCT 2 2026 (the Atlas answers, team branch): Get to know reads a "Follow up
+   next time" question too. The Hub's one FORD read gains a fourth branch,
+   followUpAt since sixty days back, still inside the studio. Kept in its own
+   block so other branches' rules edits merge cleanly. */
+describe("oct2 team: the Hub's FORD read with follow-ups", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      const base = { pillar: "family", body: "A detail", isPinned: false, eventDate: null, recurrence: "none", occurredAt: new Date("2026-06-01T14:00:00Z"), authorId: "trainerA", isArchived: false };
+      await setDoc(doc(db, "clients", "clientFuA", "ford", "asked"), { ...base, clientId: "clientFuA", studioId: "studioA", followUp: "How did it go?", followUpAt: new Date("2026-09-20T14:00:00Z") });
+      await setDoc(doc(db, "clients", "clientFuA", "ford", "quiet"), { ...base, clientId: "clientFuA", studioId: "studioA" });
+      await setDoc(doc(db, "clients", "clientFuB", "ford", "elsewhere"), { ...base, clientId: "clientFuB", studioId: "studioB", followUp: "And?", followUpAt: new Date("2026-09-20T14:00:00Z") });
+    });
+  });
+
+  async function readWithFollowUps(db: ReturnType<typeof as>, studioId: string) {
+    const { and, or } = await import("firebase/firestore");
+    return query(
+      collectionGroup(db, "ford"),
+      and(
+        where("studioId", "==", studioId),
+        or(
+          where("recurrence", "==", "annual"),
+          and(where("eventDate", ">=", new Date("2026-09-20T04:00:00Z")), where("eventDate", "<", new Date("2026-10-12T04:00:00Z"))),
+          where("occurredAt", ">=", new Date("2026-09-14T04:00:00Z")),
+          where("followUpAt", ">=", new Date("2026-07-30T04:00:00Z")),
+        ),
+      ),
+      limit(1000),
+    );
+  }
+
+  it("lets the studio's trainer read the follow-ups, and only the studio's", async () => {
+    const snap = await assertSucceeds(getDocs(await readWithFollowUps(as("trainerA"), "studioA")));
+    expect(snap.docs.map((d) => d.id)).toEqual(["asked"]);
+  });
+
+  it("refuses it to a trainer at another studio", async () => {
+    await assertFails(getDocs(await readWithFollowUps(as("trainerB"), "studioA")));
+  });
+});
+
+/* OCT 2 2026 (the Atlas answers, team branch): franchise owners name people,
+   assign and add studio tasks on their studios' shifts, as they post team
+   jobs (teamJobLeaderAllowed). Kept in its own block so other branches'
+   rules edits merge cleanly. */
+describe("oct2 team: franchise owners on a studio's shift", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "trainers", "franchiseOct2"), {
+        fullName: "Frances Owner",
+        initials: "FO",
+        role: "Owner",
+        primaryHomeStudioId: "studioB",
+        accessibleStudioIds: ["studioB"],
+        ownedStudioIds: ["studioA", "studioB"],
+      });
+      await setDoc(doc(db, "studios", "studioA", "taskInstances", "inst1"), { templateId: "tpl1", status: "open", localDate: "2026-10-02" });
+    });
+  });
+
+  const template = { title: "Wipe the leg press", cadence: "daily", category: "cleaning", createdAt: new Date() };
+  const assignee = { assignedTo: { id: "trainerA", name: "Trainer A" }, assignedBy: { id: "franchiseOct2", name: "Frances Owner" }, assignedAt: new Date() };
+
+  it("lets a franchise owner add a studio task and name someone on one", async () => {
+    const db = as("franchiseOct2");
+    await assertSucceeds(setDoc(doc(db, "studios", "studioA", "taskTemplates", "tplOwner"), template));
+    await assertSucceeds(updateDoc(doc(db, "studios", "studioA", "taskInstances", "inst1"), assignee));
+    await assertSucceeds(setDoc(doc(db, "studios", "studioA", "taskInstances", "inst2"), { templateId: "tpl1", status: "open", localDate: "2026-10-02", ...assignee }));
+  });
+
+  it("still refuses a trainer naming someone or adding a studio task", async () => {
+    const db = as("trainerA");
+    await assertFails(setDoc(doc(db, "studios", "studioA", "taskTemplates", "tplTrainer"), template));
+    await assertFails(updateDoc(doc(db, "studios", "studioA", "taskInstances", "inst1"), assignee));
+    // Ticking it off stays open to the floor.
+    await assertSucceeds(updateDoc(doc(db, "studios", "studioA", "taskInstances", "inst1"), { status: "done" }));
+  });
+});
+
+/* OCT 2 2026 (the Atlas answers, team branch): who has read a notice. A
+   reader writes their own hub_announcements/{id}/acks/{uid}; the poster, the
+   studio's leaders, franchise owners and administrators read them. Kept in
+   its own block so other branches' rules edits merge cleanly. */
+describe("oct2 team: who has read a notice", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "trainers", "leadAckA"), {
+        fullName: "Lead A",
+        initials: "LA",
+        role: "StudioLeader",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA"],
+      });
+      await setDoc(doc(db, "hub_announcements", "noticeA"), {
+        title: "Read the new waiver",
+        shortContent: "Please read it",
+        longContent: "",
+        authorId: "posterA",
+        authorName: "Poster",
+        studioId: "studioA",
+        targetScope: "studio",
+        targetId: "studioA",
+        isActive: true,
+        priority: "medium",
+        asksRead: true,
+        createdAt: new Date(),
+      });
+      await setDoc(doc(db, "hub_announcements", "noticeA", "acks", "trainerB"), { at: new Date(), name: "Trainer B" });
+    });
+  });
+
+  it("lets a reader write their own answer, stamped with the server's time, and nobody else's", async () => {
+    const db = as("trainerA");
+    await assertSucceeds(setDoc(doc(db, "hub_announcements", "noticeA", "acks", "trainerA"), { at: serverTimestamp(), name: "Trainer A" }));
+    await assertFails(setDoc(doc(db, "hub_announcements", "noticeA", "acks", "trainerB"), { at: serverTimestamp(), name: "Trainer B" }));
+    await assertFails(setDoc(doc(db, "hub_announcements", "noticeA", "acks", "trainerA"), { at: new Date("2020-01-01"), name: "Trainer A" }));
+    await assertFails(setDoc(doc(db, "hub_announcements", "noticeA", "acks", "trainerA"), { at: serverTimestamp(), name: "Trainer A", extra: 1 }));
+    await assertFails(deleteDoc(doc(db, "hub_announcements", "noticeA", "acks", "trainerB")));
+  });
+
+  it("lets the poster and the studio's leaders count them, and not a trainer", async () => {
+    await assertSucceeds(getDocs(collection(as("posterA"), "hub_announcements", "noticeA", "acks")));
+    await assertSucceeds(getDocs(collection(as("leadAckA"), "hub_announcements", "noticeA", "acks")));
+    await assertFails(getDocs(collection(as("trainerA"), "hub_announcements", "noticeA", "acks")));
+  });
+});
+
+/* OCT 2 2026 (the Atlas answers, team branch): a leader's Journal note about
+   a team member is an ordinary private note with noteType 'team'. Its own
+   block so other branches' rules edits merge cleanly. */
+describe("oct2 team: a note about a team member", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+  const note = {
+    title: "Sam: late twice",
+    body: "",
+    kind: "note",
+    folderId: null,
+    clientIds: [],
+    clientNames: {},
+    pinned: false,
+    sharedWith: null,
+    noteType: "team",
+    fields: { who: "Sam Gamgee", what: "Late twice this week", next: "Talk on Friday" },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  it("saves on the author's own path, and nobody else reads it", async () => {
+    await assertSucceeds(setDoc(doc(as("trainerA"), "trainers", "trainerA", "notes", "teamNote"), note));
+    await assertFails(getDoc(doc(as("trainerB"), "trainers", "trainerA", "notes", "teamNote")));
+    await assertFails(setDoc(doc(as("trainerB"), "trainers", "trainerA", "notes", "teamNote2"), note));
+  });
+});

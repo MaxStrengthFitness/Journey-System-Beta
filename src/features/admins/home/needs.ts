@@ -30,6 +30,8 @@ import type { AdminsPage } from "../nav";
 import type { PendingOffer, ReadState } from "./useHomeSignals";
 import type { OverdueRead } from "./overdue-setup";
 import { dayLabel } from "../studios/stages";
+import type { WorkoutSession } from "../../../types";
+import { leftOpenSessions } from "../../admin/overview/left-open";
 
 export type NeedTone = "watch" | "unknown" | "live";
 
@@ -66,6 +68,8 @@ export interface NeedInputs {
   offers: { state: ReadState; pending: readonly PendingOffer[] };
   /** The studios opening whose setup checklist has an item past its due day (overdue-setup.ts). */
   launches: OverdueRead;
+  /** In-Progress sessions across every studio (Oct 2 2026); absent: not asked. */
+  openSessions?: { state: ReadState; sessions: readonly WorkoutSession[] };
   now: number;
 }
 
@@ -251,6 +255,33 @@ export function needItems(input: NeedInputs): { items: NeedItem[]; more: NeedIte
     }
   }
 
+  // 6b. Sessions left open, across every studio (the Atlas answers, Oct 2
+  // 2026): the Hub's own staleness rule. Each studio's leaders see theirs on
+  // Operations → Today, with a door to finish it.
+  if (input.openSessions?.state === "ok") {
+    const rows = leftOpenSessions(input.openSessions.sessions as WorkoutSession[], input.now);
+    if (rows.length > 0) {
+      const byStudio = new Map<string, number>();
+      for (const r of rows) byStudio.set(r.studioId, (byStudio.get(r.studioId) ?? 0) + 1);
+      const studioName = (id: string) => input.studios.find((s) => s.id === id)?.name ?? "a studio";
+      const where = [...byStudio.entries()]
+        .map(([id, n]) => ({ name: studioName(id), n }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(({ name, n }) => `${name} (${n})`);
+      const only = byStudio.size === 1 ? [...byStudio.keys()][0] : null;
+      out.push({
+        id: "left-open",
+        kind: "Sessions left open",
+        tone: "watch",
+        say: rows.length === 1 ? `A session was left open at ${studioName(rows[0].studioId)}.` : `${rows.length} sessions were left open: ${names(where)}.`,
+        proof: "Still In-Progress with no sign of life for an hour or more, in the last 14 days. Each studio's leaders see theirs on Operations \u2192 Today, with a door to finish it.",
+        door: only ? { label: `Open ${studioName(only)}`, page: "studio", studioId: only } : { label: "Open All studios", page: "studios" },
+        clears: "Clears itself when each is finished or started again.",
+        condition: rows.map((r) => r.id).sort().join(","),
+      });
+    }
+  }
+
   // 7. What couldn't be read.
   const unknownSync = input.sync.filter((r) => r.kind === "unknown").map((r) => `${r.name}'s sync`);
   const unknownReads = [
@@ -259,6 +290,7 @@ export function needItems(input: NeedInputs): { items: NeedItem[]; more: NeedIte
     ...(input.limbo.state === "failed" ? ["Limbo"] : []),
     ...(input.offers.state === "failed" ? ["the machines offered to the catalog"] : []),
     ...(input.bugs.state === "failed" ? ["the bug reports"] : []),
+    ...(input.openSessions?.state === "failed" ? ["the sessions left open"] : []),
   ];
   if (unknownReads.length) {
     out.push({

@@ -43,6 +43,7 @@ import {
   type TrainerNote,
 } from "./types";
 import { NAME_SEARCH_PROPS } from "../../../lib/name-search-input";
+import { whoWorksHere } from "../../../lib/who-works-here";
 
 /**
  * ONE NOTE, OPEN — title, kind, the clients it is about, the body, and Share.
@@ -278,6 +279,15 @@ export function NoteEditor({
     Boolean(draft.teamShare) && draft.clientIds.length > 0,
   );
   const colleagues = useMemo(() => peopleAtStudio(trainers, shareStudioId, uid), [trainers, shareStudioId, uid]);
+  // Who a Team member note may be about: the studio's team, in name order (Oct 2 2026).
+  const teamNames = useMemo(
+    () =>
+      whoWorksHere(trainers, activeStudioId)
+        .map((t) => (t.fullName ?? "").trim())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b)),
+    [trainers, activeStudioId],
+  );
   const canShareHere = writesForStudioPerRules(authTrainer, activeStudioId);
 
   /** Saves the draft — or `override`, when a caller has just changed it. */
@@ -741,6 +751,7 @@ export function NoteEditor({
               problem={problemFor("type")}
               onFields={(fields) => edit({ fields })}
               onHunch={(hunch) => edit({ hunch })}
+              teamNames={teamNames}
             />
           )}
           {draft.noteType === "trend" && saved?.hunch && (

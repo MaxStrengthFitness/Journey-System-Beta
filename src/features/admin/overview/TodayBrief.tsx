@@ -58,6 +58,7 @@ import { isStaffBlock } from "../../../lib/booking-state";
 import { canManageRenewals } from "../../renewals/permissions";
 import { markNoShow, takeBackNoShow, useBookingMarks } from "../attention/booking-marks";
 import { myTrainerIds } from "../../../lib/live-session";
+import { LEFT_OPEN_HINT, leftOpenHeading, leftOpenSessions } from "./left-open";
 import { formatStudioDate, formatStudioTime, toDate } from "../../../lib/studio-time";
 import { useDelightQueue } from "../../ford/useClientFord";
 import { setGestureStatus } from "../../ford/ford-write";
@@ -133,9 +134,11 @@ export interface TodayBriefProps {
   onOpenMyStudio?: () => void;
   /** What Needs you counts, for the menu's badge; null while it is still being read. */
   onNeedsCount?: (count: number | null) => void;
+  /** Opens a client's session on the floor, to finish one left open (the Atlas answers, Oct 2 2026). */
+  onOpenSession?: (clientId: string) => void;
 }
 
-export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me, authTrainer, trainers, machines, clients, onNavigateProfile, onOpen, onOpenMyStudio, onNeedsCount }: TodayBriefProps) {
+export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me, authTrainer, trainers, machines, clients, onNavigateProfile, onOpen, onOpenMyStudio, onNeedsCount, onOpenSession }: TodayBriefProps) {
   const studioId = studio.id as string;
   const tz = studio.timezone || undefined;
   // Pressing Today while on it: the page has no views of its own any more (the
@@ -228,7 +231,13 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
   const needsPartial = otherPartial || unloggedUnknown;
   // Still reading (not failed): say so in those words.
   const unloggedStillReading = !otherPartial && canMark && neverLogged === null && !marks.failed && (week.loading || logged.loading || marks.loading);
-  const needsCount = painPending.pending.length + unowned.length + review.length + unlogged.length;
+  // Sessions left open (the Atlas answers, Oct 2 2026): the Hub's own staleness rule over the
+  // last 14 days this page already reads. No new query.
+  const leftOpen = useMemo(
+    () => leftOpenSessions(recent.sessions, now.getTime(), { trainerNameOf: (id) => trainers.find((t) => t.id === id || t.authUid === id)?.fullName ?? null, tz }),
+    [recent.sessions, now, trainers, tz],
+  );
+  const needsCount = painPending.pending.length + unowned.length + review.length + unlogged.length + leftOpen.length;
   useEffect(() => {
     onNeedsCount?.(needsLoading ? null : needsCount);
   }, [onNeedsCount, needsLoading, needsCount]);
@@ -698,6 +707,27 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
               onOpenClient={onNavigateProfile}
               empty=""
             />
+            {leftOpen.length > 0 && (
+              <ActionRows
+                rows={leftOpen.map((r) => ({
+                  key: `left-open:${r.id}`,
+                  clientId: r.clientId,
+                  name: r.clientName,
+                  sentence: `${leftOpenHeading(1)} \u2014 ${r.detail}.`,
+                  proof: LEFT_OPEN_HINT,
+                  tone: "warn",
+                  badge: "Left open",
+                  actions:
+                    r.clientId && onOpenSession ? (
+                      <AdminButton size="sm" onClick={() => onOpenSession(r.clientId as string)}>
+                        Open the session
+                      </AdminButton>
+                    ) : undefined,
+                }))}
+                onOpenClient={onNavigateProfile}
+                empty=""
+              />
+            )}
             {review.length > 0 && (
               <div className="ops-sec__foot">
                 <span className="ops-quiet">

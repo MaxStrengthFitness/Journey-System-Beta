@@ -53,9 +53,11 @@ export interface OverviewPageProps {
   onOpenMyStudio?: () => void;
   /** What Needs you counts, for the menu's badge; null while unknown. */
   onNeedsCount?: (count: number | null) => void;
+  /** Opens a client's session on the floor, to finish one left open (Oct 2 2026). */
+  onOpenSession?: (clientId: string) => void;
 }
 
-export function OverviewPage({ homeSignal = 0, authTrainer, studios, trainers, machines, clients, activeStudioId, onNavigateProfile, onOpen, networks = [], onOpenMyStudio, onNeedsCount }: OverviewPageProps) {
+export function OverviewPage({ homeSignal = 0, authTrainer, studios, trainers, machines, clients, activeStudioId, onNavigateProfile, onOpen, networks = [], onOpenMyStudio, onNeedsCount, onOpenSession }: OverviewPageProps) {
   const ops = useOperationsScope();
   const now = useMinuteClock();
 
@@ -109,6 +111,7 @@ export function OverviewPage({ homeSignal = 0, authTrainer, studios, trainers, m
       onOpen={onOpen}
       onOpenMyStudio={onOpenMyStudio}
       onNeedsCount={onNeedsCount}
+      onOpenSession={onOpenSession}
     />
   );
 }

@@ -107,7 +107,7 @@ export function RelayStrip({
           All
         </button>
         <button type="button" className="rls__chip" aria-pressed={filter === "mine"} onClick={() => setFilter("mine")}>
-          Mine
+          My work
         </button>
       </div>
       <ul className="rls__days">

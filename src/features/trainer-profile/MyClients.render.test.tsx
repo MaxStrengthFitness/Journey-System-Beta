@@ -97,14 +97,15 @@ describe("My clients", () => {
     expect(rows[1].querySelector("svg[aria-label='On your Kaizen Roster']")).toBeNull();
     // The two groups.
     expect([...el.querySelectorAll(".tp-mc__group")].map((g) => text(g))).toEqual([
-      "Coached lately · the last 60 days",
-      "Also trained with you",
+      "Coached by you in the last 60 days",
+      "Trained with you before",
     ]);
     // Never a since date, never all time; the migration line and what it counts.
     expect(el.textContent).not.toMatch(/since|all time/i);
     expect(el.textContent).toContain("Westlake is still moving off FileMaker, so older sessions may be missing.");
     expect(el.textContent).toContain("Clients whose home is another studio aren't listed");
-    expect(text(el.querySelector(".tp-card__count"))).toBe("3 clients");
+    // Counted as yours: only the two coached in the last 60 days (one Mine, Oct 2 2026).
+    expect(text(el.querySelector(".tp-card__count"))).toBe("2 clients");
   });
 
   it("opens the client on a tap", async () => {

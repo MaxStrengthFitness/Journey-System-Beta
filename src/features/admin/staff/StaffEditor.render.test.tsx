@@ -110,4 +110,45 @@ describe("StaffEditor", () => {
     expect(el.textContent).not.toContain("already has an account");
     expect(buttons(el).some((b) => b.includes("Approve and create the account"))).toBe(true);
   });
+
+  it("lets a leader keep a person's full name, email and Mindbody Staff ID, writing only what changed (Oct 2 2026)", async () => {
+    const row = buildStaffRoster({
+      trainers: [
+        {
+          id: "uid-sam",
+          authUid: "uid-sam",
+          fullName: "Sam Lee",
+          email: "sam@example.com",
+          initials: "SL",
+          role: "LifeTransformer",
+          primaryHomeStudioId: "westlake",
+          accessibleStudioIds: ["westlake"],
+          systemStatus: "active",
+        } as never,
+      ],
+      mindbodyStaff: [],
+      requests: [],
+      studioId: "westlake",
+    }).find((r) => r.trainer?.id === "uid-sam")!;
+    const el = await mount(row);
+    const field = (label: string) =>
+      [...el.querySelectorAll(".adm-field")].find((f) => f.querySelector("label")?.textContent?.startsWith(label))?.querySelector("input") as HTMLInputElement;
+    const type = async (input: HTMLInputElement, value: string) => {
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    };
+    expect(field("Full name").value).toBe("Sam Lee");
+    expect(field("Email").value).toBe("sam@example.com");
+    await type(field("Full name"), "Samantha Lee");
+    await type(field("Mindbody Staff ID"), "100000123");
+    await act(async () => {
+      [...el.querySelectorAll("button")].find((b) => b.textContent?.includes("Save access"))!.click();
+    });
+    expect(writes).toHaveLength(1);
+    expect(writes[0].path).toBe("trainers/uid-sam");
+    expect(writes[0].data).toMatchObject({ fullName: "Samantha Lee", mindbodyStaffId: "100000123", mindbodyLinked: true });
+    expect(writes[0].data).not.toHaveProperty("email");
+  });
 });

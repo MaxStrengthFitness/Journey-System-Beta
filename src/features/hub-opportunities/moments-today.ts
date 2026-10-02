@@ -48,6 +48,7 @@
  * Critical notes, FORD details and nightly marks, and the directory's rows
  * for the facts (last in, left).
  */
+import { isMine } from "../../lib/mine";
 import type { Client, ScheduleEntry } from "../../types";
 import type { JournalEntry } from "../../types/journal";
 import type { FordEntry } from "../ford/types";
@@ -101,6 +102,11 @@ export interface Moment {
    * gives them to its triangle and glyphs as their label.
    */
   words?: string;
+  /**
+   * Said at this Loudness: Get to know is a small line at Note loudness
+   * (the Atlas answers, Oct 2 2026), never a Heads up.
+   */
+  loudness?: "standard";
 }
 
 /**
@@ -592,13 +598,14 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
         askUnknown = true;
       } else {
         const ask = askAboutFor(details, input.day, input.tz);
-        if (ask) moments.push({ family: "get-to-know", kind: "ask-about", chip: ask.chip, sentence: ask.sentence, words: ASK_ABOUT_LABEL });
+        if (ask) moments.push({ family: "get-to-know", kind: "ask-about", chip: ask.chip, sentence: ask.sentence, words: ASK_ABOUT_LABEL, loudness: ask.loudness });
       }
     }
   }
 
   moments.sort((a, b) => FAMILY_ORDER[a.family] - FAMILY_ORDER[b.family]);
-  const mine = bookings.some((b) => bookedWithMe(b, { myIdSet, myName: input.myName ?? null })) || (!!client?.renewal?.coachIds?.some((id) => myIdSet.has(id)));
+  // One Mine everywhere (src/lib/mine.ts): booked with you that day, or coached by you in the last 60 days.
+  const mine = isMine(client, myIdSet, { bookedWithMe: bookings.some((b) => bookedWithMe(b, { myIdSet, myName: input.myName ?? null })) });
 
   return {
     key: booking.id ?? `${clientId}:${start}`,

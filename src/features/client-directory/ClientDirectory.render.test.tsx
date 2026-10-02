@@ -239,7 +239,7 @@ describe("ClientDirectory", () => {
     expect(m.selected).toEqual(["nk"]);
   });
 
-  it("In today lists today's bookings with Start, and Mine says what it means", async () => {
+  it("In today lists today's bookings with Start, and My clients says what it means", async () => {
     const m = await mount();
     const chip = (label: string) => [...m.host.querySelectorAll<HTMLButtonElement>(".cd-chip")].find((b) => b.textContent?.startsWith(label));
     expect(chip("In today")?.textContent).toBe("In today1");
@@ -249,8 +249,8 @@ describe("ClientDirectory", () => {
     expect(m.started).toEqual(["zp"]);
     expect(m.selected).toEqual([]);
 
-    await click(chip("Mine"));
-    expect(m.host.textContent).toContain("Mine: clients you\u2019ve coached");
+    await click(chip("My clients"));
+    expect(m.host.textContent).toContain("My clients: booked with you, or coached by you in the last 60 days.");
     expect(rowIds(m.host)).toEqual(["zp"]);
   });
 

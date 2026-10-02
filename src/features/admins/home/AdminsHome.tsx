@@ -25,7 +25,7 @@
  * again" reads those documents again. Nothing asks Mindbody anything.
  */
 import { useState, type ReactNode } from "react";
-import { Bug, CircleHelp, GitPullRequest, Inbox, Network, RefreshCw, Rocket, Settings2, Undo2 } from "lucide-react";
+import { Bug, CircleHelp, Clock3, GitPullRequest, Inbox, Network, RefreshCw, Rocket, Settings2, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatStudioDate, formatStudioTime } from "../../../lib/studio-time";
 import { AdminButton, AdminInput, AdminNotice, AdminPanel, AdminScreen } from "../../admin/primitives";
@@ -44,6 +44,7 @@ const ICON: Record<string, ReactNode> = {
   limbo: <Inbox aria-hidden="true" />,
   offers: <GitPullRequest aria-hidden="true" />,
   bugs: <Bug aria-hidden="true" />,
+  "left-open": <Clock3 aria-hidden="true" />,
   unknown: <CircleHelp aria-hidden="true" />,
 };
 

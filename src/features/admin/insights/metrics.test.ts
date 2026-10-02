@@ -177,6 +177,14 @@ describe("median", () => {
 });
 
 describe("trainerMetrics", () => {
+  it("lists trainers by name, never by how much they trained (Oct 2 2026)", () => {
+    const rows = trainerMetrics(
+      [session({ trainerId: "z" }), session({ trainerId: "z" }), session({ trainerId: "z" }), session({ trainerId: "a" })],
+      { z: "Zelda Price", a: "Ana Cruz" },
+    );
+    expect(rows.map((r) => r.label)).toEqual(["Ana Cruz", "Zelda Price"]);
+  });
+
   it("splits sessions by trainer and counts distinct clients", () => {
     const rows = trainerMetrics([
       session({ trainerId: "a", clientId: "c1" }),
@@ -362,15 +370,14 @@ describe("observations", () => {
     expect(build(sessions).some((o) => o.id === "studio-completion")).toBe(false);
   });
 
-  it("calls out a lopsided floor, but only with more than one trainer", () => {
+  it("calls out no trainer by name: not the floor's load, not sessions left open, not few machines (Oct 2 2026)", () => {
     const lopsided = [
-      ...run(30, { trainerId: "a", notes: "n" }),
+      ...run(30, { trainerId: "a", notes: "n", status: "In-Progress" }),
       ...run(5, { trainerId: "b", notes: "n" }),
     ];
-    expect(build(lopsided).some((o) => o.id === "load-lopsided")).toBe(true);
-
-    const solo = run(30, { trainerId: "a", notes: "n" });
-    expect(build(solo).some((o) => o.id === "load-lopsided")).toBe(false);
+    const ids = build(lopsided).map((o) => o.id);
+    expect(ids).not.toContain("load-lopsided");
+    expect(ids.some((id) => id.startsWith("trainer-"))).toBe(false);
   });
 
   it("never names a trainer for not writing notes, and never nags the studio about note rates", () => {

@@ -72,11 +72,18 @@ export interface TeamPanelProps {
   clients?: Client[];
   trainers?: Trainer[];
   onOpenClient?: (clientId: string) => void;
+  /**
+   * Opens a person's profile (the Atlas answers, Oct 2 2026: "A colleague's
+   * profile — open from My Studio -> Team"). What it shows a colleague is
+   * trainer-profile/visibility.ts's: no contact details, no Mindbody link,
+   * and their agreed week read-only.
+   */
+  onOpenTrainer?: (trainerId: string) => void;
 }
 
 const DAYS = 7;
 
-export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: TeamPanelProps) {
+export function TeamPanel({ authTrainer, clients, trainers, onOpenClient, onOpenTrainer }: TeamPanelProps) {
   const { activeStudioId, activeStudio } = useActiveStudio();
   const studioId = activeStudioId ?? null;
   const studioName = activeStudio?.name ?? "this studio";
@@ -232,6 +239,7 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
                     kudos={kudosByPerson.get(r.person.id) ?? 0}
                     isMe={r.person.id === author?.id}
                     onOpenJob={setOpenJobId}
+                    onOpenProfile={onOpenTrainer ? () => onOpenTrainer(r.person.id) : undefined}
                     onPostFor={() =>
                       relay
                         ? relay.openCapture({ destination: "someone", someoneForm: "job", people: [r.person], openToAll: false })
@@ -334,6 +342,7 @@ function PersonCard({
   isMe,
   onOpenJob,
   onPostFor,
+  onOpenProfile,
 }: {
   record: PersonRecord;
   role?: string;
@@ -342,6 +351,7 @@ function PersonCard({
   isMe: boolean;
   onOpenJob: (jobId: string) => void;
   onPostFor: () => void;
+  onOpenProfile?: () => void;
 }) {
   const first = record.person.name.split(" ")[0] || record.person.name;
   return (
@@ -368,8 +378,13 @@ function PersonCard({
           </li>
         ))}
       </ul>
-      {(record.jobs.overdue.length > 0 || !isMe) && (
+      {(record.jobs.overdue.length > 0 || !isMe || onOpenProfile) && (
         <footer className="tm-card__foot">
+          {onOpenProfile && (
+            <button type="button" className="tj-open" onClick={onOpenProfile}>
+              {isMe ? "Your profile" : `${first}\u2019s profile`}
+            </button>
+          )}
           {record.jobs.overdue.slice(0, 2).map((j) => (
             <button key={j.jobId} type="button" className="tj-open" onClick={() => onOpenJob(j.jobId)}>
               Open “{j.title}”

@@ -372,16 +372,20 @@ describe("Get to know: the ✎ Ask about from FORD (wave 2 hub)", () => {
       chip: "Ask: the recital · Thu",
       sentence: "Ask about: Her granddaughter's recital on Thursday — Thursday, Oct 1 (Family, noted Sep 10).",
       words: "Something to ask about",
+      loudness: "standard",
     });
     expect(entry.askUnknown).toBe(false);
     expect(filterCounts([entry])["get-to-know"]).toBe(1);
   });
 
-  it("is asked about the booking's day: the day after the recital, nothing", () => {
+  it("is asked about the booking's day: the day after the recital, how it went; ten days after, nothing", () => {
     const client = makeClient({ id: "r" });
     const byClient = fordFor({ r: [fordDetail("r")] });
     const friday = run([client], [makeBooking({ clientId: "r", start: eastern("2026-10-02", "09:00") })], { day: "2026-10-02", fordFor: byClient });
-    expect(kinds(friday[0])).not.toContain("ask-about");
+    expect(kinds(friday[0])).toContain("ask-about");
+    expect(friday[0].moments.find((m) => m.kind === "ask-about")?.sentence).toMatch(/^Ask how it went: /);
+    const later = run([client], [makeBooking({ clientId: "r", start: eastern("2026-10-11", "09:00") })], { day: "2026-10-11", fordFor: byClient });
+    expect(kinds(later[0])).not.toContain("ask-about");
   });
 
   it("an unknown FORD says so on the entry and claims nothing; with no read at all, nothing either way", () => {

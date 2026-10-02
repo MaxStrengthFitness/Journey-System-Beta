@@ -4,6 +4,7 @@ import {
   claimEntries,
   closeProblem,
   jobTimesLine,
+  jobNamedLine,
   whenWords,
   contributors,
   dayWords,
@@ -334,5 +335,41 @@ describe("when a job was taken and when it was finished (Relay's third wave)", (
     expect(jobTimesLine(job(), [], TODAY)).toBeNull();
     expect(jobTimesLine(job({ claims: { "u-priya": { name: "Priya Shah" } } }), [], TODAY)).toBe("Claimed by Priya");
     expect(jobTimesLine(job({ status: "done", completedBy: null }), [], TODAY)).toBe("Done");
+  });
+});
+
+describe("who put them on it, and when (the Atlas answers, Oct 2 2026)", () => {
+  const at = (iso: string) => ({ toMillis: () => new Date(iso).getTime() });
+  it("says Put on it by Sam 10:05 AM, and reads the reader as you", () => {
+    const named = job({
+      assignees: [PRIYA],
+      namedBy: { [PRIYA.id]: { byId: AJ.id, byName: AJ.name, at: at("2026-09-16T10:05:00-04:00") } },
+    });
+    expect(jobNamedLine(named, [], TODAY)).toBe("Put on it by AJ 10:05 AM");
+    expect(jobNamedLine(named, [AJ.id], TODAY)).toBe("Put on it by you 10:05 AM");
+  });
+
+  it("names the people when they were put on it at different times, and skips anyone with no stamp", () => {
+    const two = job({
+      assignees: [PRIYA, MARCUS, AJ],
+      namedBy: {
+        [PRIYA.id]: { byId: AJ.id, byName: AJ.name, at: at("2026-09-16T10:05:00-04:00") },
+        [MARCUS.id]: { byId: AJ.id, byName: AJ.name, at: at("2026-09-15T11:20:00-04:00") },
+      },
+    });
+    expect(jobNamedLine(two, [MARCUS.id], TODAY)).toBe("you put on it by AJ Yesterday, 11:20 AM \u00b7 Priya put on it by AJ 10:05 AM");
+    expect(jobNamedLine(job({ assignees: [PRIYA] }), [], TODAY)).toBeNull();
+  });
+
+  it("reads the stamps back from the document", () => {
+    const j = jobFromDoc("j1", "s1", {
+      title: "Deep clean",
+      status: "open",
+      assignees: [PRIYA],
+      namedBy: { [PRIYA.id]: { byId: AJ.id, byName: AJ.name, at: 5 }, junk: { nope: true } },
+      parts: {},
+      createdBy: AJ,
+    });
+    expect(j.namedBy).toEqual({ [PRIYA.id]: { byId: AJ.id, byName: AJ.name, at: 5 } });
   });
 });

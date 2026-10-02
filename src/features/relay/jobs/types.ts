@@ -98,6 +98,15 @@ export interface TeamJob {
    */
   claims?: Record<string, JobClaim>;
 
+  /**
+   * Who put each named person on it, and when (the Atlas answers, Oct 2
+   * 2026: "The time posted is very helpful"): keyed by the named person's
+   * id, written by the leader's post or change of people, one key per person
+   * added and removed with them. "Put on it by Sam 10:05 AM". Optional:
+   * older jobs, and people named before, have none.
+   */
+  namedBy?: Record<string, JobNaming>;
+
   /** Studio-local 'YYYY-MM-DD', or null for "whenever". */
   /** Relay (Sep 2026): about how long, for Next up's gap fitting. Optional. */
   estMinutes?: number;
@@ -120,6 +129,14 @@ export interface TeamJob {
   createdBy: TaskAuthor;
   createdAt?: unknown;
   updatedAt?: unknown;
+}
+
+export interface JobNaming {
+  /** The leader's trainer id and full name. */
+  byId: string;
+  byName: string;
+  /** The server's time. */
+  at: unknown;
 }
 
 /** What the composer hands to the mutations. */

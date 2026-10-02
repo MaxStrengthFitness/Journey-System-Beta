@@ -128,7 +128,7 @@ export function ShiftStrip({
           ownership the data never had. It becomes "Mine" only when the caller
           has actually filtered to this trainer's rows.
         */}
-        <h2 className="sh__strip-title">{mineOnly ? "Mine today" : "Today's shift"}</h2>
+        <h2 className="sh__strip-title">{mineOnly ? "My shift today" : "Today's shift"}</h2>
         <span
           className="sh__strip-count tabular"
           // The count is the honest headline. A studio at 2 of 21 should see

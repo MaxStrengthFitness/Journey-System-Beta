@@ -1658,7 +1658,8 @@ service cloud.firestore {
     match /trainers/{trainerId}/notes/{noteId} {
       function journalFieldsValid(d) {
         return (!('noteType' in d) || d.noteType == null
-                  || d.noteType in ['client', 'machine', 'protocol', 'research', 'trend', 'personal'])
+                  // 'team': a leader's note about a team member (Oct 2 2026).
+                  || d.noteType in ['client', 'machine', 'protocol', 'research', 'trend', 'personal', 'team'])
             && (!('fields' in d) || d.fields == null || (d.fields is map && d.fields.size() <= 3))
             && (!('hunch' in d) || d.hunch == null
                 || (d.hunch is map
@@ -2997,8 +2998,12 @@ service cloud.firestore {
       // box re-opens it, which keeps the audit trail rather than erasing it.
       match /taskTemplates/{templateId} {
         allow read: if isAuthenticated();
+        // Oct 2 2026 (the Atlas answers): franchise owners add studio tasks
+        // on any of their studios' shifts, as they post team jobs. The team
+        // jobs' resolve-once answer (teamJobLeaderAllowed: administrators,
+        // franchise owners, trainerLeads), which relay/leads.ts mirrors.
         allow create, update, delete:
-          if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
+          if teamJobLeaderAllowed(studioId);
       }
 
       /*
@@ -3040,8 +3045,8 @@ service cloud.firestore {
                       && (
                            !('assignedTo' in request.resource.data)
                         || request.resource.data.assignedTo == null
-                        || isSuperAdmin()
-                        || isStudioOwnerOrHeadTrainer(studioId)
+                        // Oct 2 2026: franchise owners name people too.
+                        || teamJobLeaderAllowed(studioId)
                       );
 
         allow update: if isAuthenticated()
@@ -3050,8 +3055,8 @@ service cloud.firestore {
                            !request.resource.data.diff(resource.data)
                               .affectedKeys()
                               .hasAny(['assignedTo', 'assignedBy', 'assignedAt'])
-                        || isSuperAdmin()
-                        || isStudioOwnerOrHeadTrainer(studioId)
+                        // Oct 2 2026: franchise owners name people too.
+                        || teamJobLeaderAllowed(studioId)
                       );
 
         allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
@@ -3667,6 +3672,33 @@ service cloud.firestore {
       allow update: if isAuthenticated() && hubAnnouncementUpdateAllowed();
       allow delete: if isSuperAdmin() || isFranchiseOwner() || 
                     (resource.data.studioId != null && isStudioOwnerOrHeadTrainer(resource.data.studioId));
+    }
+
+    /* WHO HAS READ A NOTICE (the Atlas answers, Oct 2 2026). A person's "I've
+       read it" on a notice that asks is ALSO written here, by that person
+       alone, so the poster and the studio's leaders can see "9 of 12 have
+       read it" (src/features/admin/announcements/read-count.ts). Nobody is
+       pinged. The poster, administrators, franchise owners and the leaders
+       of the notice's studio read it; the reader writes only their own,
+       stamped with the server's time; nobody deletes one. The caller is
+       resolved once (getRole, callerTrainer) to stay inside the budget. */
+    function announcementAcksReadable(announcementId) {
+      let r = getRole();
+      let a = get(/databases/$(database)/documents/hub_announcements/$(announcementId)).data;
+      return roleIsSuper(r) || roleIsFranchise(r)
+          || a.get('authorId', '') == request.auth.uid
+          || trainerLeads(r, callerTrainer(), a.get('targetId', a.get('studioId', '')));
+    }
+
+    match /hub_announcements/{announcementId}/acks/{uid} {
+      allow read: if isAuthenticated() && announcementAcksReadable(announcementId);
+      allow create, update: if isAuthenticated() && request.auth.uid == uid
+                    && request.resource.data.keys().hasOnly(['at', 'name'])
+                    && request.resource.data.at == request.time
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() <= 80
+                    && exists(/databases/$(database)/documents/hub_announcements/$(announcementId));
+      allow delete: if false;
     }
 
     // CATALOG SUBMISSIONS (My Studio round, Sep 2026). A studio's leaders

@@ -41,7 +41,8 @@ afterEach(() => {
   mounted = [];
 });
 
-const studioButton = (host: HTMLElement) => host.querySelector("header button") as HTMLButtonElement;
+const studioButton = (host: HTMLElement) =>
+  (host.querySelector('header button[aria-label^="Studio"], header button[aria-label="Choose a studio"]') ?? host.querySelector("header button")) as HTMLButtonElement;
 
 describe("AppHeader — the studio's name", () => {
   it("shows the studio it is given, in both looks", () => {
@@ -61,6 +62,17 @@ describe("AppHeader — the studio's name", () => {
     expect(studioButton(plain).textContent).toBe("");
     expect(studioButton(plain).getAttribute("aria-label")).toBe("Studio");
     expect(plain.textContent).not.toMatch(/solon/i);
+  });
+
+  it("inside Operations, the name and the logo go back to the Hub (Oct 2 2026)", () => {
+    let went = 0;
+    const host = mount(<AppHeader variant="light" studioName="Westlake" onStudioClick={() => (went += 1)} studioClickGoesHome />);
+    expect(studioButton(host).getAttribute("aria-label")).toBe("Studio: Westlake. Back to the Hub.");
+    const logo = host.querySelector<HTMLButtonElement>('button[aria-label="Back to the Hub"]')!;
+    expect(logo).not.toBeNull();
+    act(() => logo.click());
+    act(() => studioButton(host).click());
+    expect(went).toBe(2);
   });
 
   it("treats a blank name as no name", () => {

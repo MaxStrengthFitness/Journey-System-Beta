@@ -5,7 +5,9 @@ import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
 import { useStudioMachines } from "../../../hooks/useStudioMachines";
 import { homeCutoverOf } from "../../../lib/client-coverage";
 import { ROLE_LABELS, type UserRole } from "../../../types";
-import { ackAnnouncement, useHubAnnouncements } from "../../notifications/useHubAnnouncements";
+import { ackAnnouncement, ackAnnouncements, useHubAnnouncements } from "../../notifications/useHubAnnouncements";
+import { NoticeReadCount } from "../../notifications/NoticeReadCount";
+import type { HubAnnouncement } from "../../../types";
 import type { TaskRequest } from "../../studio-tasks/requests";
 import type { TaskRow } from "../../studio-tasks/types";
 import type { PlaybookEntry } from "../../studio-tasks/playbook";
@@ -62,7 +64,7 @@ export function SinceYouWereIn({ rows, jobs, resolved, playbook }: SinceYouWereI
   const ack = async (id: string) => {
     setAcking(id);
     try {
-      await ackAnnouncement(id);
+      await ackAnnouncement(id, relay.authTrainer?.fullName ?? null);
       tapNotice(relay.studioId, `ann:${id}`);
       setTick((t) => t + 1);
     } catch (err) {
@@ -177,9 +179,28 @@ export function SinceYouWereIn({ rows, jobs, resolved, playbook }: SinceYouWereI
         tapNotice(relay.studioId, key);
         setTick((t) => t + 1);
       }}
-      onMarkAll={last.markAllRead}
+      onMarkAll={() => {
+        last.markAllRead();
+        // Mark all read marks EVERYTHING read (the Atlas answers, Oct 2
+        // 2026): a notice that asks gets this person's "I've read it" too.
+        const asking = notices.flatMap((n) => (n.kind === "announcement" && n.ack.state === "asking" ? [n.announcement.id] : []));
+        if (asking.length > 0) {
+          void ackAnnouncements(asking, relay.authTrainer?.fullName ?? null)
+            .then(() => setTick((t) => t + 1))
+            .catch((err) => console.warn("[relay] Mark all read couldn't say I've read it:", err));
+        }
+      }}
       onAck={(id) => void ack(id)}
       acking={acking}
+      renderReadCount={(a) => (
+        <NoticeReadCount
+          announcement={a as HubAnnouncement}
+          trainers={relay.trainers}
+          viewer={relay.authTrainer}
+          uid={relay.uid}
+          className="rsy__acked"
+        />
+      )}
     />
   );
 }
@@ -200,6 +221,7 @@ export function SinceBoard({
   onMarkAll,
   onAck,
   acking = null,
+  renderReadCount,
 }: {
   notices: SinceNotice[];
   newCount: number;
@@ -214,6 +236,8 @@ export function SinceBoard({
   onAck?: (announcementId: string) => void;
   /** The notice whose "I've read it" is on its way. */
   acking?: string | null;
+  /** "9 of 12 have read it" for the poster and the studio's leaders (Oct 2 2026). */
+  renderReadCount?: (announcement: Extract<SinceNotice, { kind: "announcement" }>["announcement"]) => ReactNode;
 }) {
   const since = typeof seenAt === "number" ? whenWords(seenAt, todayKey) : seenAt === null ? "this week" : null;
   return (
@@ -253,6 +277,7 @@ export function SinceBoard({
                 </button>
               )}
               {n.kind === "announcement" && n.ack.state === "acked" && <span className="rsy__acked">{ackWords(n.ack, todayKey)}</span>}
+              {n.kind === "announcement" && n.announcement.asksRead && renderReadCount?.(n.announcement)}
             </li>
           ))}
         </ul>

@@ -398,7 +398,7 @@ export function StudioHubView({
       onClick={() => setMineOnly((v) => !v)}
     >
       {mineOnly ? <UserRound size={14} /> : <Users size={14} />}
-      {mineOnly ? "Mine" : "Everyone"}
+      {mineOnly ? "My work" : "Everyone"}
     </button>
   );
 
