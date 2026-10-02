@@ -258,6 +258,7 @@ export function LearningView({
             onClearJump={() => setAcademyJump(null)}
             canManagePages={canWritePages}
             author={author}
+            catalogMachines={machines}
             onOpenMachine={(machineId) =>
               through(() => {
                 setCatalogJump(machineId);

@@ -14,7 +14,7 @@ import {
   useAcademyOverviews,
   useAcademyScripts,
 } from "../academy/useAcademyContent";
-import { buildAcademyMachines, whatItHas } from "../academy/academy-machines";
+import { buildAcademyMachines, catalogNamesOf, whatItHas } from "../academy/academy-machines";
 import { CATEGORY_LABEL, abbr, categoryOf } from "../routine-builder/academy";
 import type { LearningRef } from "./ref";
 import type { LearningSearchEntry, LearningSearchGroupKey } from "./search";
@@ -96,9 +96,12 @@ export function useLearningEntries({
   const glossary = useAcademyGlossary(enabled);
   const { pages } = useStudioWiki(includeStudioPages ? studioId : null);
 
+  // The Academy's machines under the Catalog's names (Oct 2 2026): one name
+  // per machine across Learning, from the catalog documents already read here.
+  const catalogNames = useMemo(() => catalogNamesOf(msfCatalog), [msfCatalog]);
   const academyMachines = useMemo(
-    () => buildAcademyMachines(cards, scripts, overviews),
-    [cards, scripts, overviews],
+    () => buildAcademyMachines(cards, scripts, overviews, catalogNames),
+    [cards, scripts, overviews, catalogNames],
   );
 
   const entries = useMemo<LearningSearchEntry[]>(() => {

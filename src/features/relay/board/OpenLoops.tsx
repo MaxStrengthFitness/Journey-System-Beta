@@ -24,8 +24,13 @@ import { useMachineCare } from "./machine-care-store";
  * nobody picked up, a machine somebody flagged and a job past its day are
  * the standard the studio holds itself to.
  *
- * One list for machine flags. The Floor Map's flag (machineCare) and a
- * problem reported on the shift list (a flagged task row) are two systems
+ * ONE MAINTENANCE RECORD (AJ, Oct 2 2026). A problem reported on a machine
+ * row of the shift list now flags the machine in its care record
+ * (useTaskActions.closeWithNote), so every machine flag here is the Floor
+ * Map's, and clearing it there clears it here and in the Catalog.
+ * shiftListReports lists only duties with no machine. The history below:
+ * the Floor Map's flag (machineCare) and a
+ * problem reported on the shift list (a flagged task row) were two systems
  * until the one maintenance log is built (overlap 5, decided Sep 26); Team
  * used to show them under two headings, so they share this one. A shift-list
  * report is listed from Team's seven days, one row per machine, and not at

@@ -1,4 +1,5 @@
 import { MACHINE_DATABASE } from "../../data/machine-database";
+import { MACHINE_DEFINITIONS } from "../../data/machine-definitions";
 import { CANONICAL_TO_DB_KEY } from "../catalog/machine-identity";
 import type { MachineScript, OverviewsFile, QuickCard } from "./types";
 
@@ -27,8 +28,9 @@ import type { MachineScript, OverviewsFile, QuickCard } from "./types";
  * "Abs", "Lumbar". The first cut of the index rendered those verbatim, so the
  * screen literally offered a row called "Pd".
  *
- * So the display name comes from MACHINE_DATABASE via CANONICAL_TO_DB_KEY —
- * the app's own canonical name, the same string the Catalog shows. Two tabs
+ * So the display name is the Catalog's own (since Oct 2 2026: the live
+ * catalog's, else MACHINE_DEFINITIONS'; MACHINE_DATABASE only as the last
+ * resort — see `machineName`), the same string the Catalog shows. Two tabs
  * naming one machine two different ways is exactly the class of bug
  * catalog/anatomy.ts was written to end. Using CANONICAL_TO_DB_KEY also
  * inherits its resolution of the contested neck id for free: m-neck resolves
@@ -74,8 +76,35 @@ export interface AcademyMachine {
   workout: string | null;
 }
 
-/** The app's canonical display name for a machine id, or null. */
-export function machineName(machineId: string): string | null {
+/**
+ * THE CATALOG'S NAME (Oct 2 2026, AJ: the Academy uses the Catalog's machine
+ * names, one name per machine across Learning). The Academy used to name a
+ * machine from MACHINE_DATABASE ("Pec Fly", "Low Back", "Seated Tricep")
+ * while the Catalog, two taps away, said "CHEST/PEC FLY", "LUMBAR" and
+ * "TRICEP EXTENSION". Now the Academy says what the Catalog says: the live
+ * catalog's name when the caller has it (`catalogNames`, from the catalog
+ * documents Learning already holds), else the standard's own
+ * (MACHINE_DEFINITIONS, the catalog's seed), and MACHINE_DATABASE only for a
+ * machine neither knows.
+ */
+export type CatalogNames = ReadonlyMap<string, string>;
+
+/** The catalog's names by machine id, from any list of catalog machines. */
+export function catalogNamesOf(machines: readonly { id?: string; name?: string }[] | null | undefined): CatalogNames {
+  const out = new Map<string, string>();
+  for (const m of machines ?? []) {
+    const name = (m.name ?? "").trim();
+    if (m.id && name && !out.has(m.id)) out.set(m.id, name);
+  }
+  return out;
+}
+
+/** The Catalog's display name for a machine id, or null. */
+export function machineName(machineId: string, catalogNames?: CatalogNames): string | null {
+  const live = catalogNames?.get(machineId);
+  if (live) return live;
+  const standard = MACHINE_DEFINITIONS[machineId]?.name;
+  if (standard) return standard;
   const dbKey = CANONICAL_TO_DB_KEY[machineId];
   if (!dbKey) return null;
   return MACHINE_DATABASE[dbKey]?.name ?? null;
@@ -169,6 +198,8 @@ export function buildAcademyMachines(
   cards: QuickCard[] | null,
   scripts: MachineScript[] | null,
   overviews: OverviewsFile["overviews"] | null,
+  /** The live catalog's names (catalogNamesOf), so a name an administrator changed reads the same here. */
+  catalogNames?: CatalogNames,
 ): AcademyMachine[] {
   const safeCards = cards ?? [];
   const safeScripts = scripts ?? [];
@@ -203,7 +234,7 @@ export function buildAcademyMachines(
       // the app's database has never heard of is still a machine the Academy
       // documents, and the reader should see a name.
       name:
-        machineName(machineId) ??
+        machineName(machineId, catalogNames) ??
         (card ? cardTitle(card) : null) ??
         (script ? scriptTitle(script) : null) ??
         machineId,

@@ -1,15 +1,17 @@
 import { useState, useEffect } from "react";
-import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
 import {
   doc,
   getDoc,
   collection,
   getDocs,
+  onSnapshot,
   query,
   where,
   setDoc,
   updateDoc,
 } from "firebase/firestore";
+import { SWITCHED_OFF_SENTENCE, isSwitchedOff } from "../features/sign-out/account-off";
 import { auth, db } from "../firebase";
 import { Trainer, Studio, FranchiseNetwork } from "../types";
 import {
@@ -28,6 +30,31 @@ export function useAuthInitialization() {
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [networks, setNetworks] = useState<FranchiseNetwork[]>([]);
   const [tokenRole, setTokenRole] = useState<string | null>(null);
+  /** Why the last sign-in was turned away (a switched-off account), for the sign-in screen. */
+  const [signInRefusal, setSignInRefusal] = useState<string | null>(null);
+
+  /**
+   * While signed in, watch the person's own trainer record (one document), so
+   * an account switched off by an administrator signs them out at once rather
+   * than at their next sign-in (Oct 2 2026). A failed read changes nothing.
+   */
+  const watchedTrainerId = authTrainer?.id && authTrainer.id !== "owner-temp" ? authTrainer.id : null;
+  useEffect(() => {
+    if (!watchedTrainerId) return;
+    const unsub = onSnapshot(
+      doc(db, "trainers", watchedTrainerId),
+      (snap) => {
+        if (!snap.exists() || !isSwitchedOff(snap.data() as { isActive?: boolean })) return;
+        setSignInRefusal(SWITCHED_OFF_SENTENCE);
+        endPersonalSession({ local: localStorage, session: sessionStorage });
+        setAuthTrainer(null);
+        setUser(null);
+        void signOut(auth).catch((err) => console.warn("Could not sign a switched-off account out.", err));
+      },
+      (err) => console.warn("Could not watch the signed-in trainer's record.", err),
+    );
+    return unsub;
+  }, [watchedTrainerId]);
 
   useEffect(() => {
     /* Whose sign-in the app last saw: undefined until Firebase first answers. */
@@ -210,6 +237,27 @@ export function useAuthInitialization() {
             }
           }
 
+          /**
+           * SWITCHED OFF (Oct 2 2026). A former trainer's account an
+           * administrator switched off is refused here, at the door: signed
+           * straight out, with a sentence on the sign-in screen that says why.
+           * See features/sign-out/account-off.ts.
+           */
+          if (isSwitchedOff(trainerData)) {
+            setSignInRefusal(SWITCHED_OFF_SENTENCE);
+            setAuthTrainer(null);
+            try {
+              await signOut(auth);
+            } catch (err) {
+              console.warn("Could not sign a switched-off account out.", err);
+            }
+            // Never the Request Access screen for them: they are refused, not new.
+            setUser(null);
+            setIsAuthReady(true);
+            return;
+          }
+          if (trainerData) setSignInRefusal(null);
+
           setAuthTrainer(trainerData);
 
           /**
@@ -298,5 +346,6 @@ export function useAuthInitialization() {
     setNetworks,
     tokenRole,
     setTokenRole,
+    signInRefusal,
   };
 }

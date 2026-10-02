@@ -114,6 +114,40 @@ describe("what needs you", () => {
   });
 });
 
+describe("waiting for review on Home (Oct 2 2026)", () => {
+  const share = (key: string, title: string, days: number) => ({
+    key,
+    kind: "note" as const,
+    title,
+    studioId: "solon",
+    studioName: "Solon",
+    offeredAt: now - days * 86_400_000,
+  });
+
+  it("says what studios offered every MSF studio, the oldest first, with its door", () => {
+    const one = needItems({ ...base(), shares: { state: "ok", pending: [share("note:solon:a", "Leg press seat", 2)] } });
+    const item = [...one.items, ...one.more].find((i) => i.id === "shares")!;
+    expect(item.say).toBe("Solon offered a note on a machine to every MSF studio: “Leg press seat”.");
+    expect(item.proof).toBe("Nothing reaches another studio until an administrator shares it (waiting 2 days).");
+    expect(item.door).toEqual({ label: "Open Waiting for review", page: "review" });
+
+    const two = needItems({
+      ...base(),
+      shares: { state: "ok", pending: [share("note:solon:a", "Leg press seat", 2), share("tip:solon:b", "Cue", 0)] },
+    });
+    const both = [...two.items, ...two.more].find((i) => i.id === "shares")!;
+    expect(both.say).toBe("2 things studios offered every MSF studio wait for review.");
+  });
+
+  it("says nothing when nothing waits, and “Couldn't check” when it couldn't be read", () => {
+    const none = needItems({ ...base(), shares: { state: "ok", pending: [] } });
+    expect([...none.items, ...none.more].some((i) => i.id === "shares")).toBe(false);
+    const failed = needItems({ ...base(), shares: { state: "failed", pending: [] } });
+    const unknown = [...failed.items, ...failed.more].find((i) => i.id === "unknown")!;
+    expect(unknown.say).toContain("what is waiting for review");
+  });
+});
+
 describe("the network and the standard", () => {
   it("says where every studio stands and how the pulls go, in one sentence", () => {
     expect(networkSentence(studios, [], syncRows(studios, leases, now), nowDate)).toBe(

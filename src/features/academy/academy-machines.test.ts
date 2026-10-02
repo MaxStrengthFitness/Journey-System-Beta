@@ -5,12 +5,14 @@ import overviewsFile from "./content/overviews.json";
 import {
   buildAcademyMachines,
   buildAliasIndex,
+  catalogNamesOf,
   cardTitle,
   machineName,
   scriptTitle,
   whatItHas,
 } from "./academy-machines";
 import type { CardsFile, OverviewsFile, ScriptsFile } from "./types";
+import { MACHINE_DEFINITIONS } from "../../data/machine-definitions";
 
 /**
  * Run against the REAL corpus, not fixtures.
@@ -44,20 +46,22 @@ describe("the corpus itself", () => {
 });
 
 describe("machineName", () => {
-  it("gives the app's canonical name, not the Academy's", () => {
-    expect(machineName("m-chest-fly")).toBe("Pec Fly");
-    expect(machineName("m-pulldown")).toBe("Torso Arm");
-    expect(machineName("m-lumbar")).toBe("Low Back");
+  // Oct 2 2026 (AJ): the Academy uses the Catalog's names, one name per
+  // machine across Learning. It said "Pec Fly", "Torso Arm" and "Low Back"
+  // (MACHINE_DATABASE) beside a Catalog that said otherwise.
+  it("gives the Catalog's name, not the Academy's or the old database's", () => {
+    expect(machineName("m-chest-fly")).toBe(MACHINE_DEFINITIONS["m-chest-fly"].name);
+    expect(machineName("m-pulldown")).toBe(MACHINE_DEFINITIONS["m-pulldown"].name);
+    expect(machineName("m-lumbar")).toBe(MACHINE_DEFINITIONS["m-lumbar"].name);
+    expect(machineName("m-neck")).toBe(MACHINE_DEFINITIONS["m-neck"].name);
   });
 
-  /*
-   * m-neck is contested between two database entries. CANONICAL_TO_DB_KEY
-   * resolves it to cervical_extension — the one whose safety copy says NEVER
-   * take to failure. If this ever returns "4-Way Neck", the Academy has
-   * started showing the weaker warning.
-   */
-  it("resolves the contested neck id to the Cervical Extension", () => {
-    expect(machineName("m-neck")).toBe("Cervical Extension");
+  it("takes the live catalog's name first, so an administrator's rename reads the same here", () => {
+    const names = catalogNamesOf([{ id: "m-chest-fly", name: "Chest Fly" }, { id: "m-x", name: " " }]);
+    expect(machineName("m-chest-fly", names)).toBe("Chest Fly");
+    expect(machineName("m-pulldown", names)).toBe(MACHINE_DEFINITIONS["m-pulldown"].name);
+    const rows = buildAcademyMachines(cards, scripts, null, names);
+    expect(rows.find((r) => r.machineId === "m-chest-fly")?.name).toBe("Chest Fly");
   });
 
   it("returns null rather than guessing for an unknown id", () => {

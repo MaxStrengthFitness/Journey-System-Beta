@@ -317,6 +317,7 @@ function main() {
       abbr,
       machineId: CARD_TO_MACHINE[abbr] ?? null,
       title: qrg.title,
+      ...(qrg.intro ? { intro: qrg.intro } : {}),
       sections: qrg.sections,
       words: countWords(qrg.sections.flatMap((s) => s.items).join(" ")),
     });

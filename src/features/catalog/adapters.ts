@@ -27,7 +27,7 @@ import {
 import { resolveMachineAnatomy } from "./anatomy";
 import { CANONICAL_TO_DB_KEY, canonicalMachineId } from "./machine-identity";
 import type { OutOfService } from "./out-of-service";
-import type { CatalogMachine, CatalogRosterStatus } from "./types";
+import type { CatalogMachine, CatalogRosterStatus, RemovedSafetyShown } from "./types";
 
 /**
  * MACHINE_DATABASE's entry for a machine, via the id table rather than the
@@ -175,6 +175,28 @@ export function fromLegacyMachine(
 }
 
 /**
+ * The removal records on a resolved copy, as the page shows them. Only a
+ * record with its line and a reason: resolve-machine already drops one that
+ * names a line the catalog no longer has.
+ */
+export function removedSafetyOf(machine: Pick<ResolvedMachine, "removedSafety">): Pick<CatalogMachine, "removedSafety"> {
+  const shown: RemovedSafetyShown[] = [];
+  for (const r of machine.removedSafety ?? []) {
+    const line = typeof r?.line === "string" ? r.line.trim() : "";
+    const reason = typeof r?.reason === "string" ? r.reason.trim() : "";
+    if (!line || !reason) continue;
+    shown.push({
+      field: String(r.field ?? ""),
+      line,
+      reason,
+      by: typeof r.by?.name === "string" ? r.by.name.trim() : "",
+      at: typeof r.at === "string" ? r.at : "",
+    });
+  }
+  return shown.length ? { removedSafety: shown } : {};
+}
+
+/**
  * The roster path: what THIS studio actually has, including equipment the
  * shared catalog has never heard of.
  *
@@ -257,6 +279,10 @@ export function fromResolvedMachine(
     execution: firstOf(machine.execution?.loadUpProtocol, db?.execution) ?? "",
     executionCues:
       firstOf(machine.execution?.keyCues, db?.executionCues) ?? [],
+
+    // The catalog's safety lines this copy does without, with the studio's
+    // reasons: shown crossed out on the unit's page, never hidden (Oct 2 2026).
+    ...removedSafetyOf(machine),
 
     // The roster's own studioNotes is the MANAGER's note; the trainer-writable
     // one lives in machineNotes and wins. See features/catalog/mutations.ts.

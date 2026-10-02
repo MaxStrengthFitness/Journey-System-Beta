@@ -39,6 +39,9 @@ import { notifyTaskAssignment, notifyTaskCompletion } from "./notify";
 import { taskLocationOf } from "./types";
 import type { PlannedInstance, TaskLocation, TaskRow } from "./types";
 import type { ShiftGroup } from "./board";
+import { auth } from "../../firebase";
+import { checklistFlagFor } from "../relay/board/machine-care";
+import { flagMachine } from "../relay/board/machine-care-store";
 
 export interface UseTaskActionsArgs {
   author: TaskAuthor | null;
@@ -338,12 +341,33 @@ export function useTaskActions({
             note,
             flagged,
           });
+          // ONE MAINTENANCE RECORD (Oct 2 2026): a problem on a machine row
+          // flags the machine itself, in the care record the Floor Map, Team
+          // and the Catalog all read. Signed with the Auth uid, which the
+          // rules pin. The row is already closed; a flag that can't be saved
+          // says so rather than undoing it.
+          const mirror = checklistFlagFor(row, note, flagged);
+          const uid = auth.currentUser?.uid;
+          if (mirror && uid && activeStudioId) {
+            try {
+              await flagMachine({
+                studioId: activeStudioId,
+                machineId: mirror.machineId,
+                machineName: mirror.machineName,
+                note: mirror.note,
+                author: { id: uid, name: (author?.name ?? "").trim().slice(0, 80) || "A trainer" },
+              });
+            } catch (err) {
+              console.error("Flagging the machine failed:", err);
+              toastError(`Marked done, but ${mirror.machineName} couldn't be flagged on the Floor Map. Flag it there.`);
+            }
+          }
           await notifyTaskCompletion({ row, author, studioId: activeStudioId });
         },
         flagged ? "Marked done and flagged." : "Marked done.",
       );
     },
-    [activeStudioId, author, run],
+    [activeStudioId, author, run, toastError],
   );
 
   return {

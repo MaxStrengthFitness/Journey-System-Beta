@@ -27,7 +27,7 @@ import { findOrphans, hasOrphans } from "../../admin/studios/registry";
 import { limboGroups } from "../../admin/limbo/limbo-groups";
 import type { SyncRow } from "../machinery/sync-check";
 import type { AdminsPage } from "../nav";
-import type { PendingOffer, ReadState } from "./useHomeSignals";
+import type { PendingOffer, PendingShare, ReadState } from "./useHomeSignals";
 import type { OverdueRead } from "./overdue-setup";
 import { dayLabel } from "../studios/stages";
 import type { WorkoutSession } from "../../../types";
@@ -66,6 +66,8 @@ export interface NeedInputs {
   limbo: { state: ReadState; entries: readonly LimboEntry[] };
   bugs: { state: ReadState; reports: readonly ReportView[] };
   offers: { state: ReadState; pending: readonly PendingOffer[] };
+  /** Waiting for review: what studios offered every MSF studio (Oct 2 2026). Absent: not read. */
+  shares?: { state: ReadState; pending: readonly PendingShare[] };
   /** The studios opening whose setup checklist has an item past its due day (overdue-setup.ts). */
   launches: OverdueRead;
   /** In-Progress sessions across every studio (Oct 2 2026); absent: not asked. */
@@ -236,6 +238,31 @@ export function needItems(input: NeedInputs): { items: NeedItem[]; more: NeedIte
     });
   }
 
+  // 5b. What studios offered every MSF studio, waiting for review (Oct 2 2026).
+  if (input.shares?.state === "ok" && input.shares.pending.length > 0) {
+    const pending = input.shares.pending;
+    const first = pending[0];
+    const from = first.studioName || "a studio";
+    const waiting = waitingWords(first.offeredAt, input.now);
+    const what = first.kind === "machine" ? "its own machine" : first.kind === "note" ? "a note on a machine" : "a tip";
+    out.push({
+      id: "shares",
+      kind: "Waiting for review",
+      tone: "live",
+      say:
+        pending.length === 1
+          ? `${from} offered ${what} to every MSF studio: “${first.title}”.`
+          : `${pending.length} things studios offered every MSF studio wait for review.`,
+      proof:
+        pending.length === 1
+          ? `Nothing reaches another studio until an administrator shares it${waiting ? ` (${waiting})` : ""}.`
+          : `The oldest is “${first.title}”, from ${from}${waiting ? `, ${waiting}` : ""}.`,
+      door: { label: "Open Waiting for review", page: "review" },
+      clears: "Clears itself when each is shared or not.",
+      condition: pending.map((p) => p.key).sort().join(","),
+    });
+  }
+
   // 6. Bug reports nobody has looked at.
   if (input.bugs.state === "ok") {
     const fresh = input.bugs.reports.filter((r) => r.status === "open");
@@ -289,6 +316,7 @@ export function needItems(input: NeedInputs): { items: NeedItem[]; more: NeedIte
     ...input.launches.unread.map((name) => `${name}'s setup checklist`),
     ...(input.limbo.state === "failed" ? ["Limbo"] : []),
     ...(input.offers.state === "failed" ? ["the machines offered to the catalog"] : []),
+    ...(input.shares?.state === "failed" ? ["what is waiting for review"] : []),
     ...(input.bugs.state === "failed" ? ["the bug reports"] : []),
     ...(input.openSessions?.state === "failed" ? ["the sessions left open"] : []),
   ];

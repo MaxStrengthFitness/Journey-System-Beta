@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_WIPE_AFTER_SESSIONS, deepSentence, groupFloor, heatOf, wantsWipeSentence, wearOf, weeklyMaintenanceLine, wipeSentence, type MachineCare } from "./machine-care";
+import { DEFAULT_WIPE_AFTER_SESSIONS, checklistFlagFor, deepSentence, groupFloor, heatOf, wantsWipeSentence, wearOf, weeklyMaintenanceLine, wipeSentence, type MachineCare } from "./machine-care";
 
 const NOW = Date.parse("2026-09-16T18:00:00Z");
 const ago = (min: number) => NOW - min * 60_000;
@@ -107,5 +107,26 @@ describe("the studio's own cleaning log (Sep 28 2026)", () => {
     expect(weeklyMaintenanceLine(1, "2026-09-28")).toBe("Weekly maintenance today: Monday is this studio's day for it.");
     expect(weeklyMaintenanceLine(3, "2026-09-28")).toBeNull();
     expect(weeklyMaintenanceLine(null, "2026-09-28")).toBeNull();
+  });
+});
+
+describe("one maintenance record: a checklist problem flags the machine (Oct 2 2026)", () => {
+  it("flags a machine row closed with a problem, in the trainer's words", () => {
+    expect(checklistFlagFor({ machineId: "m-leg-press", machineName: "Leg Press", title: "Machine check" }, " Cable frayed ", true)).toEqual({
+      machineId: "m-leg-press",
+      machineName: "Leg Press",
+      note: "Cable frayed",
+    });
+  });
+
+  it("says which duty found it when no note was written", () => {
+    expect(checklistFlagFor({ machineId: "m-lumbar", title: "Weekly machine check" }, "", true)?.note).toBe(
+      "A problem found on the Weekly machine check.",
+    );
+  });
+
+  it("flags nothing for a row closed clean or a duty with no machine", () => {
+    expect(checklistFlagFor({ machineId: "m-leg-press" }, "fine", false)).toBeNull();
+    expect(checklistFlagFor({ title: "Front desk" }, "Door sticks", true)).toBeNull();
   });
 });

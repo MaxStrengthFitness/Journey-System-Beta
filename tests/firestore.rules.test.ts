@@ -5364,7 +5364,7 @@ describe("marks on a time", () => {
       await assertSucceeds(updateDoc(entry, { overrides: {} }));
     });
 
-    it("holds a copy to ten removed safety lines, each checked, inside the rules' budget", async () => {
+    it("checks the first ten removed safety lines' reasons, inside the rules' budget", async () => {
       await seedCodexPeople();
       const entry = doc(as("ownerA"), "studios", "studioA", "roster", "m-leg-press");
       const ten = Array.from({ length: 10 }, (_, i) =>
@@ -5372,7 +5372,8 @@ describe("marks on a time", () => {
       );
       // The fullest write the app makes, by a studio owner with no role on the token.
       await assertSucceeds(updateDoc(entry, { modelId: "mm-hoist-roc-it-leg-press", overrides: { removedSafety: ten } }));
-      await assertFails(updateDoc(entry, { overrides: { removedSafety: [...ten, removal("ownerA", { line: "Warning 10" })] } }));
+      // No count limit since Oct 2 2026 (AJ): an eleventh is not refused for being the eleventh.
+      await assertSucceeds(updateDoc(entry, { overrides: { removedSafety: [...ten, removal("ownerA", { line: "Warning 10" })] } }));
       // The tenth place is checked too.
       await assertFails(
         updateDoc(entry, { overrides: { removedSafety: [...ten.slice(0, 9), removal("ownerA", { line: "Warning 9", reason: "" })] } }),
@@ -6079,5 +6080,82 @@ describe("oct2 team: a note about a team member", () => {
     await assertSucceeds(setDoc(doc(as("trainerA"), "trainers", "trainerA", "notes", "teamNote"), note));
     await assertFails(getDoc(doc(as("trainerB"), "trainers", "trainerA", "notes", "teamNote")));
     await assertFails(setDoc(doc(as("trainerB"), "trainers", "trainerA", "notes", "teamNote2"), note));
+
+describe("oct 2: a studio's own machine is retired, never deleted", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+  async function seed() {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "trainers", "adminR1"), {
+        fullName: "adminR1", initials: "XX", role: "Admin", primaryHomeStudioId: "studioB", accessibleStudioIds: ["studioB"],
+      });
+      await setDoc(doc(db, "studios", "studioA", "roster", "sm-studioA-bench"), {
+        machineId: "sm-studioA-bench", studioId: "studioA", source: "custom", status: "active",
+        definition: { name: "Bench" },
+      });
+      await setDoc(doc(db, "studios", "studioA", "roster", "m-leg-press"), {
+        machineId: "m-leg-press", studioId: "studioA", source: "catalog", basedOn: "m-leg-press", status: "active",
+      });
+    });
+  }
+
+  it("refuses deleting the studio's own machine, even for an administrator, and lets a leader switch it off and on", async () => {
+    await seed();
+    await assertFails(deleteDoc(doc(as("ownerA"), "studios", "studioA", "roster", "sm-studioA-bench")));
+    await assertFails(deleteDoc(doc(as("adminR1"), "studios", "studioA", "roster", "sm-studioA-bench")));
+    await assertSucceeds(
+      updateDoc(doc(as("ownerA"), "studios", "studioA", "roster", "sm-studioA-bench"), {
+        status: "inactive",
+        updatedAt: serverTimestamp(),
+        updatedBy: "ownerA",
+      }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(as("ownerA"), "studios", "studioA", "roster", "sm-studioA-bench"), { status: "active" }),
+    );
+  });
+
+  it("still lets a leader delete a copy of an MSF machine, and never a trainer", async () => {
+    await seed();
+    await assertFails(deleteDoc(doc(as("trainerA"), "studios", "studioA", "roster", "m-leg-press")));
+    await assertSucceeds(deleteDoc(doc(as("ownerA"), "studios", "studioA", "roster", "m-leg-press")));
+  });
+});
+
+describe("oct 2: switching a former trainer's account off", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+  async function seed() {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "trainers", "adminR8"), {
+        fullName: "adminR8", initials: "XX", role: "Admin", primaryHomeStudioId: "studioB", accessibleStudioIds: ["studioB"],
+      });
+    });
+  }
+
+  it("lets an administrator switch an account off and back on", async () => {
+    await seed();
+    const ref = doc(as("adminR8"), "trainers", "trainerA");
+    await assertSucceeds(
+      updateDoc(ref, {
+        isActive: false,
+        switchedOffAt: "2026-10-02T15:00:00.000Z",
+        switchedOffBy: { uid: "adminR8", name: "adminR8" },
+      }),
+    );
+    await assertSucceeds(updateDoc(ref, { isActive: true, switchedOffAt: deleteField(), switchedOffBy: deleteField() }));
+  });
+
+  it("never lets a trainer switch their own account off or back on; their profile edits are as before", async () => {
+    await seed();
+    const own = doc(as("trainerA"), "trainers", "trainerA");
+    await assertSucceeds(updateDoc(own, { fullName: "Trainer A, still here" }));
+    await assertFails(updateDoc(own, { isActive: false }));
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), "trainers", "trainerA"), { isActive: false, switchedOffAt: "2026-10-02T15:00:00.000Z" });
+    });
+    await assertFails(updateDoc(own, { isActive: true }));
+    await assertFails(updateDoc(own, { switchedOffAt: deleteField() }));
   });
 });

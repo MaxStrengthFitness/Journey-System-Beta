@@ -53,6 +53,19 @@ export const STATUS_LABEL: Record<ReportStatus, string> = {
   "wont-fix": "Won't fix",
 };
 
+/**
+ * A reporter's reports counted in those same words (Oct 2 2026, AJ: Settings
+ * uses the Admins words): "1 new · 2 fixed", in the triage order, statuses
+ * with none left out. An unknown stored status counts as New, as the row does.
+ */
+export function statusCountsLine(statuses: readonly (string | null | undefined)[]): string {
+  const n: Record<ReportStatus, number> = { open: 0, investigating: 0, fixed: 0, "wont-fix": 0 };
+  for (const s of statuses) n[(s && s in STATUS_LABEL ? s : "open") as ReportStatus] += 1;
+  return STATUS_ORDER.filter((s) => n[s] > 0)
+    .map((s) => `${n[s]} ${STATUS_LABEL[s].charAt(0).toLowerCase()}${STATUS_LABEL[s].slice(1)}`)
+    .join(" · ");
+}
+
 /** The order a triage list wants: unhandled first, closed last. */
 export const STATUS_ORDER: ReportStatus[] = [
   "open",

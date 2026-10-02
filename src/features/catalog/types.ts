@@ -15,6 +15,20 @@ import type { OutOfService } from "./out-of-service";
 
 export type CatalogRosterStatus = "active" | "inactive" | "maintenance";
 
+/** One of Max Strength's safety lines a studio's copy does without, as its page shows it. */
+export interface RemovedSafetyShown {
+  /** The list it was on: "clinicalWarnings", "contraindicatedFor", "stopRules"... */
+  field: string;
+  /** The line's words as the catalog has them. */
+  line: string;
+  /** The studio's reason. */
+  reason: string;
+  /** Who took it off, by name as it read then; "" when unknown. */
+  by: string;
+  /** ISO time it came off; "" when unknown. */
+  at: string;
+}
+
 export interface CatalogMachine {
   /** Canonical id — see machine-identity.ts. */
   id: string;
@@ -88,6 +102,15 @@ export interface CatalogMachine {
   setupCues: string[];
   execution: string;
   executionCues: string[];
+
+  /**
+   * Max Strength's safety lines this studio's copy does without, each with
+   * the studio's reason (the Sep 21 rule; `removedSafety` on the resolved
+   * machine). The unit's page shows them crossed out and faded, never
+   * hidden (AJ, Oct 2 2026: "Just cross it out or make it faded").
+   * Absent on a machine with none, and on the MSF standard itself.
+   */
+  removedSafety?: RemovedSafetyShown[];
 
   /** Studio-scoped, from studios/{id}/machineNotes. Empty until one is written. */
   studioNotes: string;

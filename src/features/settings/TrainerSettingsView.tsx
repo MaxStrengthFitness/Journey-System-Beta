@@ -49,7 +49,7 @@ import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { ROLE_LABELS, type Studio, type Trainer } from "../../types";
 import { mayOpenOperations } from "../admin/operations-access";
-import { STATUS_LABEL, type ReportStatus } from "../admin/bugs/reportView";
+import { STATUS_LABEL, statusCountsLine, type ReportStatus } from "../admin/bugs/reportView";
 import { replyLine, replyOf } from "../admin/bugs/bug-reply";
 import { whoWorksHere } from "../../lib/who-works-here";
 import { useFeedback, useMyFeedback, FEEDBACK_KIND_SHORT } from "../feedback";
@@ -193,7 +193,8 @@ export function TrainerSettingsView({
         ) : counts.total > 0 && (
           <>
             <p className="stg-label">
-              Your reports · {counts.open} open · {counts.resolved} closed
+              {/* In Admins' words, as each row is (Oct 2 2026). */}
+              Your reports · {statusCountsLine(reports.map((r) => r.status))}
             </p>
             <ul className="stg-reports">
               {reports.slice(0, 3).map((r) => {

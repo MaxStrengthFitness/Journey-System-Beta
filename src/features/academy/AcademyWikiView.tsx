@@ -60,6 +60,7 @@ import {
 } from "./useAcademyContent";
 import {
   buildAcademyMachines,
+  catalogNamesOf,
   whatItHas,
   type AcademyMachine,
 } from "./academy-machines";
@@ -214,6 +215,12 @@ export interface AcademyWikiViewProps {
   /** Studio leaders and above may author pages. Overlays are open to everyone. */
   canManagePages?: boolean;
   author?: { id: string; name: string } | null;
+  /**
+   * The MSF catalog's machines (the list Learning's Catalog reads), so each
+   * machine here carries the Catalog's name (Oct 2 2026). Absent, the
+   * standard's own names stand in.
+   */
+  catalogMachines?: readonly { id?: string; name?: string }[];
 }
 
 export function AcademyWikiView({
@@ -222,6 +229,7 @@ export function AcademyWikiView({
   onOpenMachine,
   canManagePages,
   author,
+  catalogMachines,
 }: AcademyWikiViewProps) {
   const { activeStudioId, activeStudio } = useActiveStudio();
   const { error: toastError, success: toastSuccess } = useToast();
@@ -261,9 +269,11 @@ export function AcademyWikiView({
 
   /* ── the machine join ──────────────────────────────────────────── */
 
+  // Under the Catalog's names (Oct 2 2026): one name per machine across Learning.
+  const catalogNames = useMemo(() => catalogNamesOf(catalogMachines), [catalogMachines]);
   const machines = useMemo(
-    () => buildAcademyMachines(cards, scripts, overviews),
-    [cards, scripts, overviews],
+    () => buildAcademyMachines(cards, scripts, overviews, catalogNames),
+    [cards, scripts, overviews, catalogNames],
   );
 
   /** Reverse lookups, so an open document knows which machine it is about. */
@@ -952,7 +962,7 @@ export function AcademyWikiView({
             /* The app's canonical name, never card.title — ten of the
                eighteen are abbreviations. See academy-machines.ts. */
             title={entry?.name ?? card.abbr}
-            lede="Written to be read standing at the machine. The deep dive has the full write-up."
+            lede={card.intro ?? "Written to be read standing at the machine. The deep dive has the full write-up."}
             aside={
               <Infobox title="At a glance">
                 <InfoboxGroup label="This card">
@@ -974,8 +984,13 @@ export function AcademyWikiView({
                 title={s.heading}
                 icon={<ClipboardList size={13} aria-hidden />}
               >
+                {/* The card's six sections (Oct 2 2026), each with the
+                    parts it heads inside ("Load Up", "Eccentric Phase"). */}
                 <WikiBlocks
-                  blocks={s.items.map((text) => ({ kind: "bullet", text }))}
+                  blocks={s.items.map((text, i) => ({
+                    kind: s.subheads?.includes(i) ? "subheading" : "bullet",
+                    text,
+                  }))}
                   renderText={renderText}
                 />
               </WikiSection>

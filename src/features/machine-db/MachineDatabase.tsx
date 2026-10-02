@@ -127,6 +127,7 @@ export function MachineDatabase({
       rosterEntries.map((r) => ({
         machineId: r.machineId,
         status: r.status,
+        order: typeof r.order === "number" ? r.order : null,
         adoptedFrom: (r as { adoptedFrom?: RosterEntryLite["adoptedFrom"] }).adoptedFrom ?? null,
       })),
     [rosterEntries],

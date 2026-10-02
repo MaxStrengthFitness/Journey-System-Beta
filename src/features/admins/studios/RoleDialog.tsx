@@ -12,8 +12,9 @@
  */
 import { useEffect, useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
-import { UserCog, X } from "lucide-react";
-import { db } from "../../../firebase";
+import { UserCog, UserX, X } from "lucide-react";
+import { auth, db } from "../../../firebase";
+import { isSwitchedOff, switchOffConsequences, switchOffPatch, switchedOffWhat } from "../../sign-out/account-off";
 import type { Trainer, UserRole } from "../../../types";
 import { AdminButton, AdminField, AdminNotice, AdminSelect } from "../../admin/primitives";
 import { logActivity } from "../activity/log-activity";
@@ -53,6 +54,37 @@ function RoleDialogOpen({ person, studioId, studioName, byName, onClose, onSaved
 
   const name = person.fullName || "This person";
   const changed = role !== (person.role ?? "");
+  // Not your own (you would lock yourself out), and not one already off.
+  const canSwitchOff = person.id !== auth.currentUser?.uid && !isSwitchedOff(person);
+
+  // Switching a former trainer's account off (Oct 2 2026): its own step,
+  // asked once more before it is written.
+  const [askingOff, setAskingOff] = useState(false);
+  const switchOff = async () => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) {
+      setError("Sign in again before switching an account off.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await updateDoc(doc(db, "trainers", person.id), switchOffPatch({ uid, name: byName }, new Date().toISOString()));
+      await logActivity({
+        kind: "assisted-change",
+        what: switchedOffWhat(name, true),
+        studioId,
+        before: { Account: "On" },
+        after: { Account: "Switched off" },
+        byName,
+      });
+      await onSaved?.();
+      onClose();
+    } catch (err) {
+      setError(`Couldn't switch the account off: ${err instanceof Error ? err.message : String(err)}`);
+      setBusy(false);
+    }
+  };
 
   const save = async () => {
     if (!changed) return;
@@ -98,6 +130,41 @@ function RoleDialogOpen({ person, studioId, studioName, byName, onClose, onSaved
                 <li key={line}>{line}</li>
               ))}
             </ul>
+          ) : null}
+          {/* A former trainer (Oct 2 2026, AJ): switch the account off rather
+              than change the role. Never on your own account. */}
+          {canSwitchOff ? (
+            <div className="hq-held" role="group" aria-label={`Switch ${name}'s account off`}>
+              <p className="hq-held__text">
+                No longer works for Max Strength? Switch the account off: Journey refuses them, and their past sessions
+                keep their name.
+              </p>
+              {askingOff ? (
+                <>
+                  <ul className="adm-dialog__text hq-consequences">
+                    {switchOffConsequences(name).map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                  <div className="flex flex-wrap gap-2">
+                    <AdminButton variant="ghost" onClick={() => setAskingOff(false)} disabled={busy}>
+                      Keep it on
+                    </AdminButton>
+                    <AdminButton variant="danger" onClick={() => void switchOff()} busy={busy}>
+                      <UserX className="w-3.5 h-3.5" aria-hidden="true" />
+                      Switch the account off
+                    </AdminButton>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <AdminButton onClick={() => setAskingOff(true)} disabled={busy}>
+                    <UserX className="w-3.5 h-3.5" aria-hidden="true" />
+                    Switch the account off…
+                  </AdminButton>
+                </div>
+              )}
+            </div>
           ) : null}
           {error ? <AdminNotice tone="alert">{error}</AdminNotice> : null}
         </div>

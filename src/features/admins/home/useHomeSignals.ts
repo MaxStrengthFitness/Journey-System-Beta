@@ -10,6 +10,8 @@
  *   bug reports    fetchRecentReports (admin/bugs/fetch-reports.ts)
  *   offers         catalogSubmissions where status == "pending", the
  *                  query Machines → Submitted by studios listens to
+ *   shares         what studios offered every MSF studio (Oct 2 2026):
+ *                  fetchShareOffers, the Waiting for review page's read
  *
  * And one query of its own (the Atlas answers, Oct 2 2026): the sessions
  * left open across every studio, `status == "In-Progress"` started in the
@@ -29,6 +31,8 @@ import type { LimboEntry, WorkoutSession } from "../../../types";
 import { fetchOpenLimboEntries } from "../../../lib/mindbody-limbo";
 import { fetchRecentReports } from "../../admin/bugs/fetch-reports";
 import type { ReportView } from "../../admin/bugs/reportView";
+import { fetchShareOffers } from "../../machine-db/fetch-share-offers";
+import type { ShareOffer } from "../../machine-db/offers";
 
 export type ReadState = "loading" | "ok" | "failed";
 
@@ -40,12 +44,24 @@ export interface PendingOffer {
   submittedAt: number | null;
 }
 
+/** One thing a studio offered every MSF studio, waiting for review (Oct 2 2026). */
+export interface PendingShare {
+  key: string;
+  kind: ShareOffer["kind"];
+  title: string;
+  studioId: string;
+  studioName: string | null;
+  offeredAt: number | null;
+}
+
 export interface HomeSignals {
   limbo: { state: ReadState; entries: LimboEntry[] };
   bugs: { state: ReadState; reports: ReportView[] };
   offers: { state: ReadState; pending: PendingOffer[] };
   /** In-Progress sessions started in the last 14 days, every studio (Oct 2 2026). */
   openSessions: { state: ReadState; sessions: WorkoutSession[] };
+  /** Waiting for review: notes, tips and machines offered to every studio. */
+  shares: { state: ReadState; pending: PendingShare[] };
 }
 
 const LOADING: HomeSignals = {
@@ -53,7 +69,19 @@ const LOADING: HomeSignals = {
   bugs: { state: "loading", reports: [] },
   offers: { state: "loading", pending: [] },
   openSessions: { state: "loading", sessions: [] },
+  shares: { state: "loading", pending: [] },
 };
+
+function pendingShareOf(o: ShareOffer): PendingShare {
+  return {
+    key: `${o.kind}:${o.studioId}:${o.docId}`,
+    kind: o.kind,
+    title: o.title,
+    studioId: o.studioId,
+    studioName: o.studioName,
+    offeredAt: millis(o.offeredAt),
+  };
+}
 
 /** How far back, and how many, the sessions-left-open read looks. */
 export const OPEN_SESSIONS_DAYS = 14;
@@ -114,6 +142,12 @@ export function useHomeSignals(refreshKey: unknown): HomeSignals {
     fetchOpenSessions().then(
       (sessions) => !cancelled && setSignals((s) => ({ ...s, openSessions: { state: "ok", sessions } })),
       () => !cancelled && setSignals((s) => ({ ...s, openSessions: { state: "failed", sessions: [] } })),
+    );
+    // The Waiting for review page's own read (machine-db/fetch-share-offers).
+    fetchShareOffers().then(
+      (offers) =>
+        !cancelled && setSignals((s) => ({ ...s, shares: { state: "ok", pending: offers.map(pendingShareOf) } })),
+      () => !cancelled && setSignals((s) => ({ ...s, shares: { state: "failed", pending: [] } })),
     );
     return () => {
       cancelled = true;

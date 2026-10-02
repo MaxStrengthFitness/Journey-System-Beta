@@ -103,6 +103,41 @@ async function mount(ui: React.ReactNode) {
   });
 }
 
+describe("a safety line this unit does without (Oct 2 2026)", () => {
+  const withRemovals: CatalogMachine = {
+    ...chestPress,
+    clinicalWarnings: ["Keep the wrists neutral."],
+    removedSafety: [
+      { field: "clinicalWarnings", line: "Stop if the shoulder pinches.", reason: "Our unit has a shoulder guard.", by: "Bergil", at: "2026-10-01T14:00:00.000Z" },
+      { field: "contraindicatedFor", line: "Recent rotator cuff repair", reason: "Our physio clears each one.", by: "", at: "" },
+      { field: "stopRules", line: "Stop at the first twinge.", reason: "Covered by our own stop rule.", by: "Bergil", at: "" },
+    ],
+  };
+
+  it("shows each one crossed out with the studio's reason, in its own list or in a block of its own, never hidden", async () => {
+    await mount(<Page machine={withRemovals} onOpenMachine={() => {}} />);
+    const lines = [...host.querySelectorAll("[data-testid='removed-safety-line']")];
+    expect(lines).toHaveLength(3);
+    for (const l of lines) expect(l.querySelector("s.mcat-removed__line")).not.toBeNull();
+    // In Clinical warnings, beside the lines still in force.
+    const warnings = host.querySelector(".wk__warnings")!;
+    expect(warnings.querySelector("s")?.textContent).toBe("Stop if the shoulder pinches.");
+    expect(warnings.textContent).toContain("Taken off this unit: Our unit has a shoulder guard. (Bergil, Oct 1, 2026)");
+    // In Contraindicated for, though the list has nothing else in it.
+    expect(host.querySelector("#contraindications")?.textContent).toContain("Recent rotator cuff repair");
+    // A list the page doesn't draw gets the block, named by its list.
+    const block = host.querySelector(".mcat-removed")!;
+    expect(block.textContent).toContain("Stop rule");
+    expect(block.textContent).toContain("Stop at the first twinge.");
+  });
+
+  it("draws nothing extra on a machine with none", async () => {
+    await mount(<Page onOpenMachine={() => {}} />);
+    expect(host.querySelector("[data-testid='removed-safety-line']")).toBeNull();
+    expect(host.querySelector(".mcat-removed")).toBeNull();
+  });
+});
+
 describe("a machine page, mounted", () => {
   it("draws the page, its warnings on the page and never folded", async () => {
     await mount(<Page onOpenMachine={() => {}} />);

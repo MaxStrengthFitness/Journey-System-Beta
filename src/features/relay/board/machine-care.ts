@@ -61,6 +61,34 @@ export interface MachineCare {
   updatedAt?: unknown;
 }
 
+/**
+ * ONE MAINTENANCE RECORD (AJ, Oct 2 2026: "the checklist's problems flag a
+ * machine too"). A machine row on the shift checklist closed with a problem
+ * also flags the machine in its care record (studios/{s}/machineCare), so
+ * Relay's Floor Map, My Studio → Team's Open loops and the Catalog read one
+ * answer to "is this machine flagged". The checklist row keeps its own
+ * `flagged` as the day's record of the duty; the FLAG is the care record's,
+ * and clearing it on the Floor Map clears it everywhere.
+ *
+ * What the flag says: the trainer's note, or, when they wrote none, which
+ * duty found it. Null when the row is not about a machine or not flagged.
+ */
+export function checklistFlagFor(
+  row: { machineId?: string; title?: string; machineName?: string },
+  note: string,
+  flagged: boolean,
+): { machineId: string; machineName: string; note: string } | null {
+  if (!flagged || !row.machineId) return null;
+  const said = note.trim();
+  const duty = (row.title ?? "").trim();
+  const text = said || (duty ? `A problem found on the ${duty}.` : "A problem found on the shift checklist.");
+  return {
+    machineId: row.machineId,
+    machineName: (row.machineName ?? "").trim() || row.machineId,
+    note: text.slice(0, FLAG_NOTE_MAX),
+  };
+}
+
 /** The app's defaults, from the studio settings' registry (the studio's own or head office's win). */
 export const DEFAULT_DEEP_CLEAN_DAYS = SETTING_BY_KEY.deepCleanDays.appDefault ?? 14;
 export const DEFAULT_WIPE_AFTER_SESSIONS = SETTING_BY_KEY.wipeAfterSessions.appDefault ?? 4;

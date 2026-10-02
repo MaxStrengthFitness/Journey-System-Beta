@@ -276,6 +276,7 @@ export default function AppContent({
   setNetworks,
   handleLogout,
   tokenRole,
+  signInRefusal = null,
 }: {
   user: FirebaseUser;
   authTrainer: Trainer;
@@ -288,6 +289,8 @@ export default function AppContent({
   setNetworks: (n: FranchiseNetwork[]) => void;
   handleLogout: () => Promise<void>;
   tokenRole: string | null;
+  /** Why the last sign-in was turned away: a switched-off account (Oct 2 2026). */
+  signInRefusal?: string | null;
 }) {
   const { success: toastSuccess, info: toastInfo } = useToast();
   const { theme } = useTheme();
@@ -1104,7 +1107,7 @@ export default function AppContent({
     return (
       <LoginScreen
         isLoggingIn={isLoggingIn}
-        loginError={loginError}
+        loginError={loginError ?? signInRefusal}
         onLogin={handleLogin}
       />
     );

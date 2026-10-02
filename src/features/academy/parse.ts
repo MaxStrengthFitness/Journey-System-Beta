@@ -225,10 +225,61 @@ export const QRG_SECTIONS = [
   "Notes",
 ] as const;
 
+export interface QuickReferenceSection {
+  /** One of QRG_SECTIONS, always in that spelling. */
+  heading: (typeof QRG_SECTIONS)[number];
+  /** The section's lines, in order. */
+  items: string[];
+  /**
+   * Which items are a sub-heading inside the section ("Load Up", "Eccentric
+   * Phase", "Seat Position", "TSC Protocol:"), by index. Absent when none.
+   */
+  subheads?: number[];
+}
+
 export interface QuickReference {
   title: string;
-  /** Section heading -> its lines, in order. */
-  sections: { heading: string; items: string[] }[];
+  /** The line before the first section (the standard "abbreviated version" sentence), if any. */
+  intro?: string;
+  /** The card's sections, only the six it is written to, in their order. */
+  sections: QuickReferenceSection[];
+}
+
+/**
+ * How each of the six sections is spelled across the eighteen cards (Oct 2
+ * 2026: "the quick cards rebuilt to their six real sections"). Matched on the
+ * whole line, case aside and a trailing colon dropped: "Target Muscles:",
+ * "Posture / Get Set", "Setup Considerations", "Execution & Turnarounds",
+ * "NOTES:". The Torso Rotation card heads its setup "Setup" and its
+ * execution "Execution".
+ */
+const QRG_SECTION_SPELLINGS: readonly [(typeof QRG_SECTIONS)[number], RegExp][] = [
+  ["Target Muscles", /^target muscles?$/i],
+  ["Synergists", /^synergists?$/i],
+  ["Considerations for Setup", /^(considerations for set ?-?up|set ?-?up considerations|set ?-?up)$/i],
+  ["Posture / Get Set", /^posture\s*\/\s*get set$/i],
+  ["Execution, Instruction, and Turnarounds", /^execution(,? instruction,? and turnarounds| ?& ?turnarounds)?$/i],
+  ["Notes", /^notes$/i],
+];
+
+/** Words a heading may hold that are not capitalised: "Concentric Phase / Upper Turnaround". */
+const HEADING_JOINERS = new Set(["and", "of", "the", "for", "to", "&", "/", "-", "–", "—", "+"]);
+
+/**
+ * A sub-heading inside a section: a short line that ends in a colon ("LOAD
+ * UP:", "Example verbiage:"), or a short line of capitalised words ("Load
+ * Up", "Eccentric Phase", "Seat Position"). A short line in sentence case
+ * ("One continuous pace throughout", "Hands on handles for balance—not for
+ * anchoring") is a line of the card, not a heading: this is what the first
+ * parse got wrong, turning half of every card into headings.
+ */
+function isQrgSubhead(bare: string): boolean {
+  if (bare.length > 50) return false;
+  if (/:$/.test(bare)) return true;
+  if (/[.!?,;=“”"]/.test(bare)) return false;
+  const words = bare.split(/\s+/).filter(Boolean);
+  if (words.length === 0 || words.length > 5) return false;
+  return words.every((w) => HEADING_JOINERS.has(w.toLowerCase()) || /^[A-Z0-9(]/.test(w));
 }
 
 export function parseQuickReference(raw: string, fallbackTitle: string): QuickReference {
@@ -238,31 +289,45 @@ export function parseQuickReference(raw: string, fallbackTitle: string): QuickRe
     .filter(Boolean);
 
   const title = lines[0] ?? fallbackTitle;
-  const sections: QuickReference["sections"] = [];
-  let current: { heading: string; items: string[] } | null = null;
+  const sections: QuickReferenceSection[] = [];
+  const intro: string[] = [];
+  let current: QuickReferenceSection | null = null;
+  // Where we are among the six: a section opens once, and only after the
+  // ones before it, so an "Execution" sub-heading inside Execution, or a
+  // "Notes" line inside another section's list, stays where it is.
+  let reached = -1;
 
   for (const line of lines.slice(1)) {
     if (isNoise(line)) continue;
+    const bulleted = BULLET_PREFIX.test(line);
     const bare = line.replace(BULLET_PREFIX, "").trim();
-    const isSection =
-      !BULLET_PREFIX.test(line) &&
-      bare.length <= MAX_HEADING_CHARS &&
-      !/[.!?,]$/.test(bare);
-    if (isSection) {
-      current = { heading: bare, items: [] };
-      sections.push(current);
-      continue;
+    if (!bulleted) {
+      const key = bare.replace(/:\s*$/, "").trim();
+      const at = QRG_SECTION_SPELLINGS.findIndex(([, re]) => re.test(key));
+      if (at > reached) {
+        reached = at;
+        current = { heading: QRG_SECTION_SPELLINGS[at][0], items: [] };
+        sections.push(current);
+        continue;
+      }
     }
     if (!current) {
-      // The standard preamble sentence, before any heading. Kept under a
-      // heading of its own rather than dropped, so nothing goes missing.
-      current = { heading: "About this card", items: [] };
-      sections.push(current);
+      // The standard preamble sentence, before any section. Kept, never dropped.
+      intro.push(bare);
+      continue;
+    }
+    // Muscles are short capitalised lines; in the two muscle sections every
+    // line is a muscle, never a heading.
+    const muscles = current.heading === "Target Muscles" || current.heading === "Synergists";
+    if (!bulleted && !muscles && isQrgSubhead(bare)) {
+      (current.subheads ??= []).push(current.items.length);
+      current.items.push(bare.replace(/:\s*$/, "").trim());
+      continue;
     }
     current.items.push(bare);
   }
 
-  return { title, sections };
+  return { title, ...(intro.length ? { intro: intro.join(" ") } : {}), sections };
 }
 
 /* ------------------------------------------------------------------ *

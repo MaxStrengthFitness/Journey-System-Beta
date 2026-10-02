@@ -138,6 +138,26 @@ describe("planAdoption", () => {
     });
   });
 
+  it("puts a machine added from the Catalog at the end of a walking order the studio keeps (Oct 2 2026)", () => {
+    const roster = [
+      { machineId: "m-leg-press", status: "active", order: 1 },
+      { machineId: "m-lumbar", status: "active", order: 4 },
+    ];
+    expect(planAdoption(byKey("m-pulldown"), { ...ctx, roster })).toMatchObject({
+      ok: true,
+      entry: { source: "catalog", order: 5 },
+    });
+    // No order kept: it takes the standard's place, so nothing is written.
+    expect(planAdoption(byKey("m-pulldown"), ctx).ok && planAdoption(byKey("m-pulldown"), ctx).entry).not.toHaveProperty("order");
+    // Switched back on, it joins the end too, not its old place.
+    const off = [...roster, { machineId: "m-pulldown", status: "inactive", order: 40 }];
+    expect(planAdoption(byKey("m-pulldown"), { ...ctx, roster: off })).toMatchObject({
+      ok: true,
+      reactivates: true,
+      entry: { status: "active", order: 5 },
+    });
+  });
+
   it("copies a studio's machine under this studio's own id, keeping its lineage and its origin", () => {
     const plan = planAdoption(byKey("solon/sm-solon-sled"), { ...ctx, takenIds: new Set(["sm-westlake-sled-push"]) });
     expect(plan.ok && plan.machineId).toBe("sm-westlake-sled-push-2");

@@ -25,6 +25,7 @@ export default function App() {
     setNetworks,
     tokenRole,
     setTokenRole,
+    signInRefusal,
   } = useAuthInitialization();
 
   const handleLogout = async () => {
@@ -101,6 +102,7 @@ export default function App() {
             setNetworks={setNetworks}
             handleLogout={handleLogout}
             tokenRole={tokenRole}
+            signInRefusal={signInRefusal}
           />
           </UnsavedChangesProvider>
         </ActiveStudioProvider>

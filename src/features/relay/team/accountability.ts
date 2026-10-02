@@ -389,7 +389,11 @@ export interface ShiftReport {
  */
 export function shiftListReports(
   instances: readonly (TaskInstance | null | undefined)[],
-  floorMapFlagged: ReadonlySet<string> = new Set(),
+  /**
+   * The machines the Floor Map flags. Kept for callers; since the one
+   * maintenance record (Oct 2 2026) no machine row is a report here at all.
+   */
+  _floorMapFlagged: ReadonlySet<string> = new Set(),
 ): ShiftReport[] {
   const latestById = new Map<string, TaskInstance>();
   for (const i of instances) if (i?.id) latestById.set(i.id, i);
@@ -405,7 +409,14 @@ export function shiftListReports(
   const byKey = new Map<string, ShiftReport>();
   for (const i of rows) {
     if (!i.flagged || i.status !== "done") continue;
-    if (i.machineId && floorMapFlagged.has(i.machineId)) continue;
+    // ONE MAINTENANCE RECORD (Oct 2 2026): a problem on a MACHINE row flags
+    // the machine in its care record when it is reported
+    // (useTaskActions.closeWithNote, machine-care.ts checklistFlagFor), and
+    // Open loops lists that flag as a Flagged machine. So a machine row is
+    // never a report of its own here: a flag cleared on the Floor Map is
+    // cleared on Team too, and the two can't disagree. Only a duty with no
+    // machine is a shift-list report.
+    if (i.machineId) continue;
     const clean = lastClean.get(dutyKey(i));
     if (clean && clean > i.localDate) continue;
     const key = i.machineId || i.id;

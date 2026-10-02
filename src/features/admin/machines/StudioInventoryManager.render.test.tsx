@@ -296,11 +296,18 @@ describe("the floor editor's list is the floor", () => {
     ]);
   });
 
-  it("removes the studio's own machine rather than switching it off", async () => {
+  it("retires the studio's own machine rather than deleting it (AJ, Oct 2 2026), so past sessions keep its name", async () => {
     const el = await mount();
     await act(async () => byText(rowOf(el, LONG_NAME)!, "We don't have this")!.click());
     await settle();
-    expect(writes).toEqual([{ kind: "delete", path: "studios/solon/roster/c-sled" }]);
+    expect(writes).toEqual([
+      {
+        kind: "update",
+        path: "studios/solon/roster/c-sled",
+        data: { status: "inactive", outOfService: "__delete__", updatedAt: "now", updatedBy: "leader" },
+      },
+    ]);
+    expect(writes.some((w) => w.kind === "delete")).toBe(false);
   });
 
   it("opens the editor in place of the list, and New machine opens it on a new machine", async () => {

@@ -285,86 +285,57 @@ describe("teamRecord — people and order", () => {
   });
 });
 
-describe("shiftListReports — the shift list's machine reports on Open loops", () => {
+describe("shiftListReports — the shift list's reports on Open loops", () => {
   const flagged = (over: Partial<TaskInstance>) => inst({ templateId: "check", status: "done", flagged: true, ...over });
 
-  it("keeps a report from earlier in the week, not only today's (they used to drop off at midnight)", () => {
-    const reports = shiftListReports([flagged({ id: "a", machineId: "leg-press", localDate: "2026-09-14", note: "Cable frayed", completedBy: DANA })]);
-    expect(reports).toEqual([
-      { key: "leg-press", machineId: "leg-press", templateId: "check", dateKey: "2026-09-14", note: "Cable frayed", by: DANA },
-    ]);
-  });
-
-  it("lists a machine once, with its latest report, whichever duties flagged it", () => {
+  it("never lists a machine row: its problem flagged the machine's care record, the one maintenance record (Oct 2 2026)", () => {
     const reports = shiftListReports([
-      flagged({ id: "a", machineId: "leg-press", localDate: "2026-09-13", note: "Squeak" }),
-      flagged({ id: "b", machineId: "leg-press", localDate: "2026-09-15", templateId: "wipe", note: "Pad torn" }),
-      flagged({ id: "c", machineId: "chest", localDate: "2026-09-14" }),
+      flagged({ id: "a", machineId: "leg-press", localDate: "2026-09-14", note: "Cable frayed", completedBy: DANA }),
+      flagged({ id: "b", machineId: "chest", localDate: "2026-09-15", templateId: "wipe", note: "Pad torn" }),
     ]);
-    expect(reports.map((r) => [r.key, r.note ?? null, r.dateKey])).toEqual([
-      ["leg-press", "Pad torn", "2026-09-15"],
-      ["chest", null, "2026-09-14"],
-    ]);
+    expect(reports).toEqual([]);
   });
 
-  it("leaves out a machine the Floor Map already flags, an unflagged row and a private task", () => {
-    const reports = shiftListReports(
-      [
-        flagged({ id: "a", machineId: "leg-press" }),
-        inst({ id: "b", machineId: "chest", status: "done" }),
-        flagged({ id: "c", machineId: "row", scope: "personal" }),
-      ],
-      new Set(["leg-press"]),
-    );
+  it("keeps a report from earlier in the week, not only today's (they used to drop off at midnight)", () => {
+    const reports = shiftListReports([flagged({ id: "a", templateId: "close", localDate: "2026-09-14", note: "Door sticks", completedBy: DANA })]);
+    expect(reports).toEqual([{ key: "a", templateId: "close", dateKey: "2026-09-14", note: "Door sticks", by: DANA }]);
+  });
+
+  it("leaves out an unflagged row and a private task", () => {
+    const reports = shiftListReports([
+      inst({ id: "b", templateId: "close", status: "done" }),
+      flagged({ id: "c", templateId: "close", scope: "personal" }),
+    ]);
     expect(reports).toEqual([]);
   });
 
   it("takes the later copy of the same row, so today's live row wins over the week's read", () => {
-    const week = flagged({ id: "today-row", machineId: "leg-press", localDate: TODAY });
+    const week = flagged({ id: "today-row", templateId: "close", localDate: TODAY });
     const live = { ...week, flagged: false };
     expect(shiftListReports([week, live])).toEqual([]);
     expect(shiftListReports([live, week])).toHaveLength(1);
   });
 
-  it("closes a report when the same check on the same machine was done clean on a later day", () => {
+  it("closes a report when the same duty was done clean on a later day", () => {
     const reports = shiftListReports([
-      flagged({ id: "mon", machineId: "leg-press", localDate: "2026-09-14", note: "Cable frayed", completedBy: DANA }),
-      inst({ id: "tue", templateId: "check", machineId: "leg-press", localDate: "2026-09-15", status: "done", completedBy: PRIYA }),
+      flagged({ id: "mon", templateId: "close", localDate: "2026-09-14", note: "Door sticks", completedBy: DANA }),
+      inst({ id: "tue", templateId: "close", localDate: "2026-09-15", status: "done", completedBy: PRIYA }),
     ]);
     expect(reports).toEqual([]);
   });
 
-  it("keeps a report that a clean check of ANOTHER duty, another machine or an earlier day does not answer", () => {
-    const reports = shiftListReports([
-      flagged({ id: "tue", machineId: "leg-press", localDate: "2026-09-15", note: "Cable frayed" }),
-      inst({ id: "wipe", templateId: "wipe", machineId: "leg-press", localDate: "2026-09-16", status: "done" }),
-      inst({ id: "chest", templateId: "check", machineId: "chest", localDate: "2026-09-16", status: "done" }),
-      inst({ id: "mon", templateId: "check", machineId: "leg-press", localDate: "2026-09-14", status: "done" }),
-    ]);
-    expect(reports.map((r) => [r.key, r.note])).toEqual([["leg-press", "Cable frayed"]]);
-  });
-
-  it("lists the machine's earlier report on another duty once the later one is closed clean", () => {
-    const reports = shiftListReports([
-      flagged({ id: "a", machineId: "leg-press", localDate: "2026-09-13", templateId: "wipe", note: "Pad torn" }),
-      flagged({ id: "b", machineId: "leg-press", localDate: "2026-09-14", note: "Squeak" }),
-      inst({ id: "c", templateId: "check", machineId: "leg-press", localDate: "2026-09-15", status: "done" }),
-    ]);
-    expect(reports.map((r) => [r.key, r.note, r.dateKey])).toEqual([["leg-press", "Pad torn", "2026-09-13"]]);
-  });
-
   it("does not list a skipped row or a reopened one, even when the document still says flagged", () => {
     const reports = shiftListReports([
-      flagged({ id: "skipped", machineId: "leg-press", status: "skipped", note: "Out of order" }),
+      flagged({ id: "skipped", templateId: "close", status: "skipped", note: "Out of order" }),
       // Reopening writes status "open" and completedBy null, and leaves `flagged` as it was.
-      flagged({ id: "reopened", machineId: "chest", status: "open", completedBy: null, note: "Squeak" }),
+      flagged({ id: "reopened", templateId: "open-up", status: "open", completedBy: null, note: "Squeak" }),
     ]);
     expect(reports).toEqual([]);
   });
 
   it("carries the row's own title, so a report still reads after its template is deleted", () => {
-    const [report] = shiftListReports([flagged({ id: "a", machineId: "gone", title: "Weekly machine check" })]);
-    expect(report.title).toBe("Weekly machine check");
+    const [report] = shiftListReports([flagged({ id: "a", templateId: "gone", title: "Weekly front desk check" })]);
+    expect(report.title).toBe("Weekly front desk check");
   });
 
   it("lists a flagged row with no machine by itself", () => {

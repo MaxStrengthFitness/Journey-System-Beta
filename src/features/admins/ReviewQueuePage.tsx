@@ -20,10 +20,13 @@ export function ReviewQueuePage({
   studios,
   trainers,
   onOpenMachines,
+  onChanged,
 }: {
   studios: Pick<Studio, "id" | "name">[];
   trainers: Trainer[];
   onOpenMachines?: () => void;
+  /** A decision was made: the sidebar's count and Home read again. */
+  onChanged?: () => void;
 }) {
   return (
     <AdminScreen>
@@ -32,7 +35,7 @@ export function ReviewQueuePage({
         title="Waiting for review"
         subtitle="What studios share with every MSF studio, read by an administrator before other studios see it."
       />
-      <ShareReviewPanel studios={studios} trainers={trainers} title="Offered to every studio" />
+      <ShareReviewPanel studios={studios} trainers={trainers} title="Offered to every studio" onChanged={onChanged} />
       <div className="hq-held" role="note">
         <p className="hq-held__text">
           Machines a studio offers to the MSF catalog, to become the standard itself, are decided under The MSF

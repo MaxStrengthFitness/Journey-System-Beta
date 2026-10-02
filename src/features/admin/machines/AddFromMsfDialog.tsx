@@ -67,8 +67,8 @@ export function AddFromMsfDialog({
         <div className="adm-dialog__body">
           <h3 className="adm-dialog__title">Add from MSF</h3>
           <p className="adm-dialog__text">
-            MSF machines that aren&apos;t on {studioName}&apos;s floor. A machine you add follows the MSF standard until you set it
-            up for {studioName}.
+            MSF machines that aren&apos;t on {studioName}&apos;s floor, and the machines {studioName} took off it. A machine you
+            add follows the MSF standard until you set it up for {studioName}, and joins the end of your walking order.
           </p>
           {nothing ? (
             <AdminEmpty title={`Every MSF machine is on ${studioName}'s floor`}>
