@@ -46,15 +46,21 @@ export interface AddableFromMsf {
   standard: Addable[];
   /** Everything else active in the catalog, not on this floor. */
   others: Addable[];
-  /** Machines this studio switched off (catalog copies); adding one puts it back. */
+  /**
+   * Machines this studio switched off: copies of MSF machines, and (since Oct
+   * 2 2026) its own machines it took off the floor, which are retired rather
+   * than deleted. Adding one puts it back, with its set-up.
+   */
   switchedOff: Addable[];
 }
 
 /**
  * What "Add from MSF" offers: the catalog's active machines that are not on
- * this floor. A retired catalog machine is never offered (it can't be added
- * to a floor); a studio's own machine is never here (it is on the floor, or
- * it was removed).
+ * this floor, and every machine this studio switched off. A retired catalog
+ * machine is never offered as new (it can't be added to a floor). A studio's
+ * own machine is here only once it was taken off the floor: since Oct 2 2026
+ * (AJ: removing a studio's own machine always retires it) it stays on the
+ * roster, switched off, and this is how it is brought back.
  */
 export function addableFromMsf(input: {
   machines: readonly ResolvedMachine[];
@@ -68,7 +74,11 @@ export function addableFromMsf(input: {
     const entry = rostered.get(m.machineId);
     const onTheFloor = entry && m.rosterStatus !== "inactive";
     if (onTheFloor) continue;
-    if (m.source !== "catalog") continue;
+    if (m.source !== "catalog") {
+      // A studio's own machine, taken off the floor: it can come back.
+      if (entry) out.switchedOff.push({ machineId: m.machineId, name: m.name, switchedOff: true });
+      continue;
+    }
     const c = catalogById.get(m.machineId);
     if (!c || c.status !== "active") continue;
     const item: Addable = { machineId: m.machineId, name: m.name, switchedOff: Boolean(entry) };
@@ -84,9 +94,13 @@ export function addableFromMsf(input: {
  * when the studio keeps an order of its own (any entry on the roster carries
  * `order`), so it joins the end of the walk and moves nobody else; null when
  * the studio keeps none, so it takes its place in the MSF standard order like
- * every other machine on that floor.
+ * every other machine on that floor. Asked by both ways onto a floor: the
+ * floor editor's Add from MSF and a Catalog page's "Add to {studio}'s floor"
+ * (machine-db's planAdoption, since Oct 2 2026).
  */
-export function orderForNewMachine(rosterEntries: readonly StudioMachineRosterEntry[]): number | null {
+export function orderForNewMachine(
+  rosterEntries: readonly { status?: string; order?: number | null }[],
+): number | null {
   let max: number | null = null;
   for (const e of rosterEntries) {
     if (e.status === "inactive") continue;

@@ -5884,3 +5884,45 @@ describe("catalog wave 3: a machine's change log", () => {
     await assertFails(deleteDoc(ref));
   });
 });
+
+describe("oct 2: a studio's own machine is retired, never deleted", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+  async function seed() {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "trainers", "adminR1"), {
+        fullName: "adminR1", initials: "XX", role: "Admin", primaryHomeStudioId: "studioB", accessibleStudioIds: ["studioB"],
+      });
+      await setDoc(doc(db, "studios", "studioA", "roster", "sm-studioA-bench"), {
+        machineId: "sm-studioA-bench", studioId: "studioA", source: "custom", status: "active",
+        definition: { name: "Bench" },
+      });
+      await setDoc(doc(db, "studios", "studioA", "roster", "m-leg-press"), {
+        machineId: "m-leg-press", studioId: "studioA", source: "catalog", basedOn: "m-leg-press", status: "active",
+      });
+    });
+  }
+
+  it("refuses deleting the studio's own machine, even for an administrator, and lets a leader switch it off and on", async () => {
+    await seed();
+    await assertFails(deleteDoc(doc(as("ownerA"), "studios", "studioA", "roster", "sm-studioA-bench")));
+    await assertFails(deleteDoc(doc(as("adminR1"), "studios", "studioA", "roster", "sm-studioA-bench")));
+    await assertSucceeds(
+      updateDoc(doc(as("ownerA"), "studios", "studioA", "roster", "sm-studioA-bench"), {
+        status: "inactive",
+        updatedAt: serverTimestamp(),
+        updatedBy: "ownerA",
+      }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(as("ownerA"), "studios", "studioA", "roster", "sm-studioA-bench"), { status: "active" }),
+    );
+  });
+
+  it("still lets a leader delete a copy of an MSF machine, and never a trainer", async () => {
+    await seed();
+    await assertFails(deleteDoc(doc(as("trainerA"), "studios", "studioA", "roster", "m-leg-press")));
+    await assertSucceeds(deleteDoc(doc(as("ownerA"), "studios", "studioA", "roster", "m-leg-press")));
+  });
+});

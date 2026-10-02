@@ -49,7 +49,16 @@ describe("Add from MSF", () => {
     expect(a.switchedOff).toEqual([{ machineId: "m-lumbar", name: "M-LUMBAR", switchedOff: true }]);
   });
 
-  it("never offers a retired machine, one already on the floor, or a studio's own", () => {
+  it("offers back a studio's own machine it took off the floor (retired, never deleted: AJ, Oct 2 2026)", () => {
+    const a = addableFromMsf({
+      machines: [...machines, resolved("sm-solon-bench", { source: "custom", rosterStatus: "inactive" })],
+      rosterEntries: [...rosterEntries, entry("sm-solon-bench", { source: "custom", status: "inactive" })],
+      catalog: cat,
+    });
+    expect(a.switchedOff.map((x) => x.machineId)).toEqual(["m-lumbar", "sm-solon-bench"]);
+  });
+
+  it("never offers a retired machine, one already on the floor, or a studio's own on the floor", () => {
     const a = addableFromMsf({ machines, rosterEntries, catalog: cat });
     const all = [...a.standard, ...a.others, ...a.switchedOff].map((x) => x.machineId);
     expect(all).not.toContain("m-old");

@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  deleteDoc,
   deleteField,
   doc,
   serverTimestamp,
@@ -261,7 +260,12 @@ export function StudioInventoryManager({
   const floorName = studioName ?? "this studio";
 
   /**
-   * Take a machine off the floor (switched off), keeping its local set-up.
+   * Take a machine off the floor (switched off, "retired"), keeping its local
+   * set-up. The same for a studio's OWN machine as for a copy of an MSF one
+   * (AJ, Oct 2 2026: removing a studio's own machine always retires it, never
+   * deletes it): past sessions keep its name because the entry is still
+   * there, and Add from MSF → "Switched off at {studio}" brings it back.
+   * Nothing on this screen deletes a roster entry any more.
    * The entry is already there, so only its status changes, as a path with
    * updateDoc: what the machine IS (`source`, `basedOn`) is written when an
    * entry is created and never by an edit (docs/KNOWN-TRAPS.md, the Local
@@ -277,6 +281,9 @@ export function StudioInventoryManager({
         updatedAt: serverTimestamp(),
         updatedBy: auth.currentUser?.uid ?? null,
       });
+      toastSuccess(
+        `${byId[machineId]?.name ?? "The machine"} is off ${floorName}'s floor. Past sessions keep its name, and Add from MSF puts it back.`,
+      );
     } catch (err) {
       console.error(err);
       toastError("Could not update the roster. Studio leads and admins only.");
@@ -312,19 +319,6 @@ export function StudioInventoryManager({
     } catch (err) {
       console.error(err);
       toastError("Could not add it. Studio leads and admins only.");
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  /** Remove entirely — only safe for equipment never used in a session. */
-  const removeFromRoster = async (machineId: string) => {
-    setBusy(machineId);
-    try {
-      await deleteDoc(doc(db, "studios", studioId, "roster", machineId));
-    } catch (err) {
-      console.error(err);
-      toastError("Could not remove that machine.");
     } finally {
       setBusy(null);
     }
@@ -748,11 +742,7 @@ export function StudioInventoryManager({
                     <AdminButton
                       variant="ghost" size="sm"
                       busy={busy === m.machineId}
-                      onClick={() =>
-                        m.source === "custom"
-                          ? removeFromRoster(m.machineId)
-                          : switchOff(m.machineId)
-                      }
+                      onClick={() => void switchOff(m.machineId)}
                     >
                       {busy !== m.machineId && "We don't have this"}
                     </AdminButton>

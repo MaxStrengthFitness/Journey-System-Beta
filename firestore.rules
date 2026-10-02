@@ -2609,8 +2609,13 @@ service cloud.firestore {
              && rosterOutOfServiceOk()
              && (isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId))
              && rosterWriteValid(studioId);
+        // OCT 2 2026 (AJ): a studio's OWN machine is never deleted. Taking
+        // it off the floor retires it (status 'inactive'): past sessions
+        // keep its name and it can be brought back. A field check on the
+        // stored entry, asked first so a refusal reads nothing.
         allow delete:
-          if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
+          if resource.data.get('source', '') != 'custom'
+             && (isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId));
       }
 
       // STUDIO MACHINE NOTES — the floor's own notes about its equipment
