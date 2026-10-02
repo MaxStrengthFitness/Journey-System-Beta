@@ -49,6 +49,7 @@ import {
   searchMachines,
 } from "../catalog/grouping";
 import type { CatalogMachine, GroupingMode } from "../catalog/types";
+import { orderForNewMachine } from "../admin/machines/floor-editor";
 import { studioMachineId, type AdoptedFrom, type MachineDefinition } from "../../types/machines";
 
 /** A studio's own machine that its leaders listed in the database. */
@@ -242,6 +243,8 @@ export type AdoptionPlan =
 export interface RosterEntryLite {
   machineId: string;
   status?: string;
+  /** The walking order the studio set, when it keeps one. */
+  order?: number | null;
   adoptedFrom?: { studioId: string; machineId: string } | null;
 }
 
@@ -301,15 +304,22 @@ export function planAdoption(
   }
   if (e.retired) return { ok: false, reason: "Retired from the MSF catalog, so it can't be added to a floor." };
 
+  // A studio that keeps its own walking order gets the machine at the END of
+  // it (AJ, Oct 2 2026: a machine added to a floor joins the end), the same
+  // rule as the floor editor's Add from MSF; one that keeps none places it by
+  // the MSF standard order, as every other machine there.
+  const order = orderForNewMachine(ctx.roster ?? []);
+  const place = order !== null ? { order } : {};
+
   const existing = existingRosterEntry(e, ctx.studioId, ctx.roster ?? []);
-  if (existing) return { ok: true, machineId: existing, entry: { status: "active" }, reactivates: true };
+  if (existing) return { ok: true, machineId: existing, entry: { status: "active", ...place }, reactivates: true };
 
   if (e.origin === "msf") {
     const id = e.machine.id;
     return {
       ok: true,
       machineId: id,
-      entry: { machineId: id, studioId: ctx.studioId, source: "catalog", basedOn: id, status: "active" },
+      entry: { machineId: id, studioId: ctx.studioId, source: "catalog", basedOn: id, status: "active", ...place },
     };
   }
 
@@ -329,6 +339,7 @@ export function planAdoption(
       definition: src.definition,
       adoptedFrom: { studioId: src.studioId, machineId: src.machineId, studioName: src.studioName },
       status: "active",
+      ...place,
     },
   };
 }
