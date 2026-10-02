@@ -18,6 +18,7 @@ import {
   type JobAbout,
   type JobClaim,
   type JobDraft,
+  type JobNaming,
   type JobPart,
   type JobStatus,
   type TeamJob,
@@ -225,6 +226,12 @@ export function jobFromDoc(id: string, studioId: string, d: Record<string, unkno
       at: c.at,
     };
   }
+  const namedBy: Record<string, JobNaming> = {};
+  const rawNamed = data.namedBy && typeof data.namedBy === "object" ? (data.namedBy as Record<string, Record<string, unknown>>) : {};
+  for (const [personId, n] of Object.entries(rawNamed)) {
+    if (!n || typeof n !== "object" || typeof n.byId !== "string") continue;
+    namedBy[personId] = { byId: n.byId, byName: str(n.byName, 80) || "A leader", at: n.at };
+  }
   const assignees = uniqueActors(Array.isArray(data.assignees) ? (data.assignees as TaskAuthor[]) : []);
   const status: JobStatus = data.status === "done" || data.status === "cancelled" ? data.status : "open";
   return {
@@ -239,6 +246,7 @@ export function jobFromDoc(id: string, studioId: string, d: Record<string, unkno
     openToAll: assignees.length === 0 ? true : data.openToAll === true,
     parts,
     ...(Object.keys(claims).length ? { claims } : {}),
+    ...(Object.keys(namedBy).length ? { namedBy } : {}),
     dueOn: typeof data.dueOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(data.dueOn) ? data.dueOn : null,
     requiresNote: data.requiresNote === true,
     notifyOnDone: data.notifyOnDone !== false,
@@ -440,6 +448,37 @@ export function jobTimesLine(
   if (claimWords.length === 0 && !doneWords) return null;
   if (claimWords.length === 0) return cap(doneWords!);
   return `Claimed by ${claimWords.join(", ")}${doneWords ? ` · ${doneWords}` : ""}`;
+}
+
+/**
+ * Who put the named people on it, and when (the Atlas answers, Oct 2 2026):
+ * "Put on it by Sam 10:05 AM", or, with several people named at different
+ * times, "Ana put on it by Sam 10:05 AM · Bo by Sam 11:20 AM". Only people
+ * still named and with a stamp; `me` reads "you". Null when there is none.
+ */
+export function jobNamedLine(
+  job: Pick<TeamJob, "assignees" | "namedBy">,
+  me: (string | null | undefined)[],
+  todayKey: string,
+): string | null {
+  const mine = new Set(me.filter(Boolean) as string[]);
+  const first = (name: string) => name.split(" ")[0] || name;
+  const groups = new Map<string, { by: string; at: number | null; people: string[] }>();
+  for (const a of job.assignees) {
+    const n = job.namedBy?.[a.id];
+    if (!n) continue;
+    const at = millisOf(n.at);
+    const key = `${n.byId}|${at ?? "pending"}`;
+    const by = mine.has(n.byId) ? "you" : first(n.byName);
+    const g = groups.get(key) ?? { by, at, people: [] };
+    g.people.push(mine.has(a.id) ? "you" : first(a.name));
+    groups.set(key, g);
+  }
+  if (groups.size === 0) return null;
+  const list = [...groups.values()].sort((x, y) => (x.at ?? Number.MAX_SAFE_INTEGER) - (y.at ?? Number.MAX_SAFE_INTEGER));
+  const when = (g: { at: number | null }) => (g.at === null ? "" : ` ${whenWords(g.at, todayKey)}`);
+  if (list.length === 1 && list[0].people.length === job.assignees.length) return `Put on it by ${list[0].by}${when(list[0])}`;
+  return list.map((g) => `${g.people.join(", ")} put on it by ${g.by}${when(g)}`).join(" \u00b7 ");
 }
 
 export function jobErrorMessage(err: unknown): string {
