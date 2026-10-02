@@ -51,6 +51,7 @@ import type { Client } from "../../types";
 import { clientDisplayName } from "../../lib/client-name";
 import { tallyFieldKey } from "../../lib/client-rollups";
 import { SHORT_MONTHS } from "../admin/hours/hours";
+import { coachedByMeLately, type MineClient } from "../../lib/mine";
 
 /** How many rows show before "Show all". AJ's to change. */
 export const MY_CLIENTS_SHOWN = 12;
@@ -88,9 +89,8 @@ export function sessionsWithYou(c: Pick<Client, "trainerTally">, ids: readonly s
 
 /** In the nightly renewal snapshot's coached-in-the-last-60-days list, under any of your ids. */
 export function coachedLately(c: Client, ids: readonly string[]): boolean {
-  const coachIds = (c as { renewal?: { coachIds?: unknown } }).renewal?.coachIds;
-  if (!Array.isArray(coachIds)) return false;
-  return ids.some((id) => id && coachIds.includes(id));
+  // One Mine everywhere (src/lib/mine.ts): coached by you in the last 60 days.
+  return coachedByMeLately(c as MineClient, ids);
 }
 
 const DAY = /^(\d{4})-(\d{2})-(\d{2})/;

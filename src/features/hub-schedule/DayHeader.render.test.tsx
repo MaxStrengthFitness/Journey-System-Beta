@@ -135,7 +135,7 @@ describe("the day in words, the chips and the spotlight", () => {
     const { el } = summary({ focus: { value: "me", onChange: (f) => picked.push(f) } });
     const seg = el.querySelector('[role="group"][aria-label="Focus"]');
     expect([...seg!.querySelectorAll("button")].map((b) => [b.textContent, b.getAttribute("aria-pressed")])).toEqual([
-      ["Me", "true"],
+      ["My day", "true"],
       ["Everyone", "false"],
     ]);
     act(() => btn(el, "Everyone")!.click());

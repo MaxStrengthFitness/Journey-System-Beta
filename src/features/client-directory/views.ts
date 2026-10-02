@@ -6,18 +6,15 @@
  * TRAINER sit above the list as chips with live counts. Leaders' lenses
  * (not in lately, running low) stay in Operations.
  *
- * MINE has no single field, so it is said in one line under the chips:
- * Relay's rule for "their clients" (`isMyClient`: the nightly record's
- * coachIds — coached in the last 60 days — or any session the trainer has
- * logged in Journey, or her top trainer), plus the nightly record's
- * primaryTrainerId (most visits in the last 90 days), plus anyone booked
- * with them in the bookings the app holds, plus their Kaizen Roster. The
- * research asked for "trained by me in the last 90 days"; the data can say
- * 60 days, or ever in Journey, but not exactly 90 — so the line says what it
- * is. The window is one of AJ's open questions.
+ * MINE is the one rule every screen asks (src/lib/mine.ts, the Atlas answers,
+ * Oct 2 2026): booked with you (in the bookings the app holds, the next
+ * eight days), or coached by you in the last 60 days (the nightly record's
+ * coachIds). Labelled "My clients", and said in one line under the chips.
+ * The Kaizen Roster has its own chip; a top trainer or a session long ago no
+ * longer makes a client yours.
  */
 import type { Client } from "../../types";
-import { isMyClient } from "../relay/board/mine";
+import { isMine as isMineByRule, mineDefinition } from "../../lib/mine";
 import type { DirectoryRow } from "./row";
 import { isSortKey, type SortDir, type SortSpec } from "./buckets";
 import { daysBetween } from "../client-history/model";
@@ -27,26 +24,18 @@ export type ViewId = "all" | "mine" | "kaizen" | "today";
 
 export const VIEWS: ReadonlyArray<{ id: ViewId; label: string }> = [
   { id: "all", label: "All" },
-  { id: "mine", label: "Mine" },
+  { id: "mine", label: "My clients" },
   { id: "kaizen", label: "Kaizen" },
   { id: "today", label: "In today" },
 ];
 
-export const MINE_DEFINITION =
-  "Mine: clients you\u2019ve coached (the nightly record\u2019s last 60 days, or any session you\u2019ve logged in Journey), anyone booked with you in the next 8 days, and your Kaizen Roster.";
+export const MINE_DEFINITION = mineDefinition("clients");
 
 export const TODAY_DEFINITION = "In today: everyone booked at this studio today, earliest first. Start opens the session.";
 
 /** Is this client one of the signed-in trainer's? See the header for the rule. */
-export function isMine(row: Pick<DirectoryRow, "client" | "bookedWithMe" | "kaizen">, myIds: ReadonlyArray<string>): boolean {
-  if (row.bookedWithMe || row.kaizen) return true;
-  const client = row.client as Client;
-  for (const id of myIds) {
-    if (!id) continue;
-    if (isMyClient(client, id)) return true;
-    if (client.renewal?.primaryTrainerId === id) return true;
-  }
-  return false;
+export function isMine(row: Pick<DirectoryRow, "client" | "bookedWithMe">, myIds: ReadonlyArray<string>): boolean {
+  return isMineByRule(row.client as Client, myIds, { bookedWithMe: row.bookedWithMe });
 }
 
 export function inView(row: DirectoryRow, view: ViewId, myIds: ReadonlyArray<string>): boolean {

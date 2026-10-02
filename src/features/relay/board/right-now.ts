@@ -140,7 +140,7 @@ export function rightNow(input: RightNowInput): RightNow {
   const { now, load } = input;
 
   if (now.phase === "closed") {
-    return { door: "mine", sentence: `${input.studioName} is closed now. Your own list is under Mine.` };
+    return { door: "mine", sentence: `${input.studioName} is closed now. Your own list is under My work.` };
   }
 
   if (input.coverAsk) {

@@ -389,7 +389,7 @@ export function Board({
             studioId: relay.studioId,
             link: { view: "studio-tasks", id: "mine" },
           });
-        toastSuccess(`${face.name.split(" ")[0]} has it. It's under Mine for them.`);
+        toastSuccess(`${face.name.split(" ")[0]} has it. It's under My work for them.`);
         offerUndo(`${face.name.split(" ")[0]} has it.`, () =>
           relay.studioId ? setRequestFor({ studioId: relay.studioId, requestId: item.request.id, person: null }) : undefined,
         );

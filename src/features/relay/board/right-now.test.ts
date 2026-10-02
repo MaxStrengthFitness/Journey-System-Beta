@@ -129,7 +129,7 @@ describe("Right now", () => {
 
   it("sends a closed studio's trainer to their own list", () => {
     const r = rightNow(base({ now: nowContext([], at("21:30"), TODAY) }));
-    expect(r).toEqual({ door: "mine", sentence: "Westlake is closed now. Your own list is under Mine." });
+    expect(r).toEqual({ door: "mine", sentence: "Westlake is closed now. Your own list is under My work." });
   });
 });
 

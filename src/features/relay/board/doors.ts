@@ -44,7 +44,7 @@ export const DOOR_LABEL: Record<DoorId, string> = {
   desk: "Desk work",
   help: "Help a teammate",
   lead: "From leadership",
-  mine: "Mine",
+  mine: "My work",
 };
 
 /** An initiative from leadership, dealt on its own door. */

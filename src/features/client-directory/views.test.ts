@@ -30,24 +30,25 @@ describe("Inactive (Oct 1 2026)", () => {
   });
 });
 
-describe("Mine", () => {
-  it("counts coached, logged, top trainer, primary trainer, booked with me and Kaizen", () => {
+describe("My clients", () => {
+  it("is booked with me or coached by me in the last 60 days, and nothing else (one Mine, Oct 2 2026)", () => {
     const ctx = makeContext({
       schedules: [makeBooking({ clientId: "booked", start: eastern("2026-09-29", "09:00"), trainerId: "t-me" })],
       kaizen: [{ clientId: "kz", clientName: "x", reason: "Form", addedAt: null, addedByTrainerId: "t-me" }],
     });
-    const mine = [
-      makeClient({ id: "coached", renewal: { coachIds: ["t-me"] } as never }),
+    const mine = [makeClient({ id: "coached", renewal: { coachIds: ["t-me"] } as never }), makeClient({ id: "booked" })].map((c) =>
+      buildDirectoryRow(c, ctx),
+    );
+    for (const row of mine) expect(isMine(row, ME), row.id).toBe(true);
+    const notMine = [
       makeClient({ id: "logged", trainerTally: { "uid-me": 3 } }),
       makeClient({ id: "top", topTrainerId: "t-me" }),
       makeClient({ id: "primary", renewal: { coachIds: [], primaryTrainerId: "t-me" } as never }),
-      makeClient({ id: "booked" }),
       makeClient({ id: "kz" }),
+      makeClient({ id: "other", trainerTally: { "t-mike": 9 } }),
     ].map((c) => buildDirectoryRow(c, ctx));
-    for (const row of mine) expect(isMine(row, ME), row.id).toBe(true);
-    const other = buildDirectoryRow(makeClient({ id: "other", trainerTally: { "t-mike": 9 } }), ctx);
-    expect(isMine(other, ME)).toBe(false);
-    expect(viewCounts([...mine, other], ME)).toEqual({ all: 7, mine: 6, kaizen: 1, today: 0 });
+    for (const row of notMine) expect(isMine(row, ME), row.id).toBe(false);
+    expect(viewCounts([...mine, ...notMine], ME)).toEqual({ all: 7, mine: 2, kaizen: 1, today: 0 });
   });
 
   it("In today is anyone with a booking today", () => {

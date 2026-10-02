@@ -29,6 +29,7 @@
  *
  * Out of scope: surgery or away from dated notes, "Show on schedule".
  */
+import { mineDefinition, myLabel } from "../../lib/mine";
 import React, { useEffect, useMemo, useState } from "react";
 import { Activity, AlertTriangle, Award, Cake, ChevronDown, ChevronRight, FileSignature, MessageCircle, RefreshCw, Sparkles, Undo2 } from "lucide-react";
 import { formatStudioTime } from "../../lib/studio-time";
@@ -259,7 +260,7 @@ export function RunSheet({ day, entries, onOpenProfile, onStartSession, request 
             {`Studio ${entries.length}`}
           </button>
           <button type="button" className="ho-seg-btn" aria-pressed={memory.scope === "mine"} onClick={() => setMemory((m) => ({ ...m, scope: "mine" }))}>
-            {`Mine ${mineCount}`}
+            {`${myLabel("clients")} ${mineCount}`}
           </button>
         </div>
       </div>
@@ -274,7 +275,7 @@ export function RunSheet({ day, entries, onOpenProfile, onStartSession, request 
 
       <p className="ho-line">
         {`${sortMeta.label}: ${reversed ? "reversed" : sortMeta.words}. `}
-        {memory.scope === "mine" ? "Mine: booked with you today, or coached by you in the last 60 days. " : ""}
+        {memory.scope === "mine" ? `${mineDefinition("clients")} ` : ""}
         {unreadCritical > 0 ? `Couldn\u2019t check ${unreadCritical === 1 ? "one client\u2019s" : `${unreadCritical} clients\u2019`} critical notes \u2014 their briefings show them. ` : ""}
         {unreadFord > 0 ? `Couldn\u2019t check FORD for ${unreadFord === 1 ? "one client" : `${unreadFord} clients`}, so something to ask about may be missing.` : ""}
       </p>

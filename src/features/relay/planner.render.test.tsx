@@ -195,7 +195,7 @@ describe("My Studio", () => {
     // Right now won't guess how busy the floor is from a list with nothing on it.
     expect(h.querySelector(".rbd-lens")?.textContent).toContain("Relay isn't saying how busy the floor is");
     const doors = [...h.querySelectorAll(".rbd-door .rbd-door__label")].map((d) => d.textContent);
-    expect(doors).toEqual(["Floor work", "Desk work", "Help a teammate", "From leadership", "Mine"]);
+    expect(doors).toEqual(["Floor work", "Desk work", "Help a teammate", "From leadership", "My work"]);
     expect(h.textContent).toContain("Dealt to you");
     expect(h.textContent).toContain("Nothing waiting on the floor.");
     // Behind Floor work: the shift rings, the floor map and the team jobs, unchanged.
@@ -219,7 +219,7 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("No initiatives from the studio's leaders right now.");
     await click(door("Desk work"));
     expect(h.textContent).toContain("Behind Desk work");
-    await click(door("Mine"));
+    await click(door("My work"));
     expect(h.textContent).toContain("Nothing on the board has your name on it right now.");
     await click([...h.querySelectorAll("button")].find((b) => b.textContent?.includes("Back to Relay's pick")));
     expect(h.textContent).toContain("Behind Floor work");

@@ -75,6 +75,11 @@ export function MyClients({
   const cantRead = !readable;
 
   const shown = showAll ? rows : rows.slice(0, MY_CLIENTS_SHOWN);
+  // One Mine everywhere (src/lib/mine.ts): yours are the clients you coached
+  // in the last 60 days (My Profile holds no bookings, so "booked with you"
+  // is the Hub's and the Directory's half). Everyone else you have trained
+  // stays below, as trained before, never counted as yours.
+  const mineCount = rows.filter((r) => r.coachedLately).length;
   const lately = shown.filter((r) => r.coachedLately);
   const others = shown.filter((r) => !r.coachedLately);
   const migrating = myClientsCutoverLine(studioName, cutover, today);
@@ -85,9 +90,9 @@ export function MyClients({
         <h2 className="tp-card__title" id="my-clients-title">
           My clients
         </h2>
-        {!cantRead && rows.length > 0 && (
+        {!cantRead && mineCount > 0 && (
           <span className="tp-card__count">
-            {rows.length} {rows.length === 1 ? "client" : "clients"}
+            {mineCount} {mineCount === 1 ? "client" : "clients"}
           </span>
         )}
       </div>
@@ -106,11 +111,11 @@ export function MyClients({
         </div>
       ) : (
         <div className="tp-rows">
-          {lately.length > 0 && <p className="tp-mc__group">Coached lately · the last 60 days</p>}
+          {lately.length > 0 && <p className="tp-mc__group">Coached by you in the last 60 days</p>}
           {lately.map((row) => (
             <ClientRow key={row.clientId} row={row} onOpen={onSelectClient} />
           ))}
-          {others.length > 0 && lately.length > 0 && <p className="tp-mc__group">Also trained with you</p>}
+          {others.length > 0 && <p className="tp-mc__group">Trained with you before</p>}
           {others.map((row) => (
             <ClientRow key={row.clientId} row={row} onOpen={onSelectClient} />
           ))}

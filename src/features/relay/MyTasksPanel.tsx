@@ -34,6 +34,7 @@ import { formatStudioDate, studioDateKey } from "../../lib/studio-time";
 import { leadsHere } from "./leads";
 import { useRelayMaybe } from "./board/RelayContext";
 import { followUps as followUpsOf } from "./board/mine";
+import { myTrainerIds } from "../../lib/live-session";
 import { useStudioRequests } from "../studio-tasks/useStudioRequests";
 import { setRequestFor, type TaskRequest } from "../studio-tasks/requests";
 import { answerAskWithTrail, claimAskWithTrail, hasTrail, journalAuthorOf } from "../studio-tasks/question-trail";
@@ -141,9 +142,11 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
 
   const todayKey = studioDateKey(new Date()) ?? "";
   const hours = shiftHoursOf(activeStudio?.shiftHours ?? null);
+  // Your clients by the one Mine (src/lib/mine.ts), under every id you go by.
+  const myIds = useMemo(() => myTrainerIds(authTrainer, ownerId), [authTrainer, ownerId]);
   const followUps = useMemo(
-    () => (relay ? followUpsOf(clients ?? [], trainerId, todayKey) : []),
-    [relay, clients, trainerId, todayKey],
+    () => (relay ? followUpsOf(clients ?? [], myIds, todayKey) : []),
+    [relay, clients, myIds, todayKey],
   );
   // The cases this trainer owns (Relay's third wave): by the Auth uid, which
   // is what the case's owner.id holds and what the rules pin.
@@ -549,7 +552,7 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
         {t.followUps.length + t.cases.length > 0 &&
           section(
             "rtk-followups",
-            "Follow-ups",
+            "My follow-ups",
             Gift,
             t.followUps.length + t.cases.length,
             [...t.cases.map(caseRow), ...t.followUps.map((f) => (

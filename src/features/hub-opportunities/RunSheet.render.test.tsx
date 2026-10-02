@@ -150,9 +150,9 @@ describe("RunSheet", () => {
     expect(rows(host)).toEqual(["ruth"]);
   });
 
-  it("Mine is booked with me today", async () => {
+  it("My clients is booked with me today", async () => {
     const { host } = await mount();
-    await click(button(host, ".ho-seg-btn", "Mine"));
+    await click(button(host, ".ho-seg-btn", "My clients"));
     expect(rows(host)).toEqual(["ruth"]);
   });
 

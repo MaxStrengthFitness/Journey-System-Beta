@@ -412,7 +412,7 @@ describe("the Tracker", () => {
     state.cases = [stored("c-odo", "Odo Proudfoot", "2026-10-01", "Ask about the knee"), stored("c-hugo", "Hugo Bracegirdle", "2026-09-27")];
     await render();
     const followUps = inSection("rtk-followups");
-    expect(followUps?.textContent).toContain("Follow-ups");
+    expect(followUps?.textContent).toContain("My follow-ups");
     const rows = [...(followUps?.querySelectorAll(".pl__task") ?? [])].map((li) => li.textContent ?? "");
     expect(rows[0]).toContain("Hugo Bracegirdle");
     expect(rows[0]).toContain("Overdue — was due yesterday · No next step yet — add one");

@@ -298,7 +298,7 @@ describe("the Hub", () => {
   it("Focus: Everyone makes every column alike, and the iPad remembers it", () => {
     const { el } = mount();
     const focusBtn = (label: string) => [...el.querySelectorAll<HTMLButtonElement>('[aria-label="Focus"] button')].find((b) => b.textContent === label)!;
-    expect(focusBtn("Me").getAttribute("aria-pressed")).toBe("true");
+    expect(focusBtn("My day").getAttribute("aria-pressed")).toBe("true");
     act(() => focusBtn("Everyone").click());
     expect(el.querySelectorAll('[data-focus="true"]')).toHaveLength(0);
     expect(cardOf(el, "Belladonna Took")?.dataset.words).toBeUndefined();

@@ -48,6 +48,7 @@
  * Critical notes, FORD details and nightly marks, and the directory's rows
  * for the facts (last in, left).
  */
+import { isMine } from "../../lib/mine";
 import type { Client, ScheduleEntry } from "../../types";
 import type { JournalEntry } from "../../types/journal";
 import type { FordEntry } from "../ford/types";
@@ -568,7 +569,8 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
   }
 
   moments.sort((a, b) => FAMILY_ORDER[a.family] - FAMILY_ORDER[b.family]);
-  const mine = bookings.some((b) => bookedWithMe(b, { myIdSet, myName: input.myName ?? null })) || (!!client?.renewal?.coachIds?.some((id) => myIdSet.has(id)));
+  // One Mine everywhere (src/lib/mine.ts): booked with you that day, or coached by you in the last 60 days.
+  const mine = isMine(client, myIdSet, { bookedWithMe: bookings.some((b) => bookedWithMe(b, { myIdSet, myName: input.myName ?? null })) });
 
   return {
     key: booking.id ?? `${clientId}:${start}`,

@@ -169,7 +169,7 @@ function FocusSwitch({ value, onChange }: { value: HubFocus; onChange: (next: Hu
       </span>
       <div className="hd-seg" role="group" aria-label="Focus">
         <button type="button" className="hd-seg-btn" aria-pressed={value === "me"} onClick={() => onChange("me")}>
-          Me
+          My day
         </button>
         <button type="button" className="hd-seg-btn" aria-pressed={value === "everyone"} onClick={() => onChange("everyone")}>
           Everyone
