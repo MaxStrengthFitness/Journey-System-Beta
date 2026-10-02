@@ -1776,6 +1776,10 @@ export default function AppContent({
                         sessions={sessions}
                         machines={machines}
                         onOpenClientTask={openClientTask}
+                        onOpenTrainer={(id) => {
+                          setSelectedProfileTrainerId(id);
+                          setView("trainer-profile");
+                        }}
                       />
                     );
                   })()}
