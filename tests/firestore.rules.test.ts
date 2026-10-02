@@ -5969,3 +5969,54 @@ describe("oct2 team: franchise owners on a studio's shift", () => {
     await assertSucceeds(updateDoc(doc(db, "studios", "studioA", "taskInstances", "inst1"), { status: "done" }));
   });
 });
+
+/* OCT 2 2026 (the Atlas answers, team branch): who has read a notice. A
+   reader writes their own hub_announcements/{id}/acks/{uid}; the poster, the
+   studio's leaders, franchise owners and administrators read them. Kept in
+   its own block so other branches' rules edits merge cleanly. */
+describe("oct2 team: who has read a notice", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "trainers", "leadAckA"), {
+        fullName: "Lead A",
+        initials: "LA",
+        role: "StudioLeader",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA"],
+      });
+      await setDoc(doc(db, "hub_announcements", "noticeA"), {
+        title: "Read the new waiver",
+        shortContent: "Please read it",
+        longContent: "",
+        authorId: "posterA",
+        authorName: "Poster",
+        studioId: "studioA",
+        targetScope: "studio",
+        targetId: "studioA",
+        isActive: true,
+        priority: "medium",
+        asksRead: true,
+        createdAt: new Date(),
+      });
+      await setDoc(doc(db, "hub_announcements", "noticeA", "acks", "trainerB"), { at: new Date(), name: "Trainer B" });
+    });
+  });
+
+  it("lets a reader write their own answer, stamped with the server's time, and nobody else's", async () => {
+    const db = as("trainerA");
+    await assertSucceeds(setDoc(doc(db, "hub_announcements", "noticeA", "acks", "trainerA"), { at: serverTimestamp(), name: "Trainer A" }));
+    await assertFails(setDoc(doc(db, "hub_announcements", "noticeA", "acks", "trainerB"), { at: serverTimestamp(), name: "Trainer B" }));
+    await assertFails(setDoc(doc(db, "hub_announcements", "noticeA", "acks", "trainerA"), { at: new Date("2020-01-01"), name: "Trainer A" }));
+    await assertFails(setDoc(doc(db, "hub_announcements", "noticeA", "acks", "trainerA"), { at: serverTimestamp(), name: "Trainer A", extra: 1 }));
+    await assertFails(deleteDoc(doc(db, "hub_announcements", "noticeA", "acks", "trainerB")));
+  });
+
+  it("lets the poster and the studio's leaders count them, and not a trainer", async () => {
+    await assertSucceeds(getDocs(collection(as("posterA"), "hub_announcements", "noticeA", "acks")));
+    await assertSucceeds(getDocs(collection(as("leadAckA"), "hub_announcements", "noticeA", "acks")));
+    await assertFails(getDocs(collection(as("trainerA"), "hub_announcements", "noticeA", "acks")));
+  });
+});

@@ -1354,6 +1354,7 @@ export default function AppContent({
       <NotificationBell
         trainerId={authTrainer?.id}
         authTrainer={authTrainer}
+        trainers={trainers}
         className={headerIconClass}
         onNavigate={(view, id, learning, atStudioId) => {
           // A Learning page wins: it names the exact page. The machine-flagged

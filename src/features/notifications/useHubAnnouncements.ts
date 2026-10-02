@@ -44,6 +44,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { auth, db } from "../../firebase";
 import type { HubAnnouncement, Trainer } from "../../types";
@@ -149,19 +150,62 @@ export function useHubAnnouncements(
 
 /**
  * "I've read it" (Relay's third wave, Sep 29 2026; Relay q7): this person
- * says they have read a notice that asked. One merge write of one map key
- * on their own announcementReads/{uid}, stamped with the server's time.
- * Private: the poster never counts these, and nobody is pinged. A failed
- * write leaves the notice asking, the safe direction to fail.
+ * says they have read a notice that asked. One merge write on their own
+ * announcementReads/{uid}, stamped with the server's time. A failed write
+ * leaves the notice asking, the safe direction to fail. Nobody is pinged.
+ *
+ * Since the Atlas answers (Oct 2 2026) the answer is ALSO written to the
+ * notice's own small record, `hub_announcements/{id}/acks/{uid}`, so the
+ * poster and the studio's leaders can see "9 of 12 have read it"
+ * (admin/announcements/read-count.ts). That write is separate and caught:
+ * the person's own answer never waits on it, and a refusal (the rule not
+ * deployed yet) costs only the count.
  */
-export async function ackAnnouncement(announcementId: string): Promise<void> {
+export async function ackAnnouncements(announcementIds: readonly string[], readerName?: string | null): Promise<void> {
   const readerId = auth.currentUser?.uid;
-  if (!readerId || !announcementId) return;
-  await setDoc(
-    doc(db, "announcementReads", readerId),
-    { acks: { [announcementId]: serverTimestamp() }, updatedAt: serverTimestamp() },
-    { merge: true },
-  );
+  const ids = announcementIds.filter(Boolean);
+  if (!readerId || ids.length === 0) return;
+  const acks: Record<string, unknown> = {};
+  for (const id of ids) acks[id] = serverTimestamp();
+  await setDoc(doc(db, "announcementReads", readerId), { acks, updatedAt: serverTimestamp() }, { merge: true });
+  try {
+    const batch = writeBatch(db);
+    for (const id of ids) {
+      batch.set(doc(db, "hub_announcements", id, "acks", readerId), { at: serverTimestamp(), name: (readerName ?? "").trim().slice(0, 80) });
+    }
+    await batch.commit();
+  } catch (err) {
+    console.warn("[notices] the read count didn't take this answer:", err);
+  }
+}
+
+export async function ackAnnouncement(announcementId: string, readerName?: string | null): Promise<void> {
+  await ackAnnouncements([announcementId], readerName);
+}
+
+/**
+ * Who has said "I've read it" on one notice (the Atlas answers, Oct 2 2026):
+ * the uids in `hub_announcements/{id}/acks`. One listener, opened only for
+ * someone allowed to see the count (`maySeeReadCount`) on a notice that
+ * asks; null while it loads or after it failed (unknown, never zero).
+ */
+export type AnnouncementAcks = { status: "loading" } | { status: "failed" } | { status: "ready"; ids: ReadonlySet<string> };
+
+export function useAnnouncementAcks(announcementId: string | null | undefined, enabled: boolean): AnnouncementAcks {
+  const [state, setState] = useState<{ key: string; acks: AnnouncementAcks } | null>(null);
+  const key = enabled && announcementId ? announcementId : null;
+  useEffect(() => {
+    if (!key) return;
+    return onSnapshot(
+      collection(db, "hub_announcements", key, "acks"),
+      (snap) => setState({ key, acks: { status: "ready", ids: new Set(snap.docs.map((d) => d.id)) } }),
+      (err) => {
+        console.warn("[notices] couldn't read who has read it:", err);
+        setState({ key, acks: { status: "failed" } });
+      },
+    );
+  }, [key]);
+  return state && state.key === key ? state.acks : { status: "loading" };
 }
 
 /**

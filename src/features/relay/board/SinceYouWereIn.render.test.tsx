@@ -56,6 +56,12 @@ vi.mock("../../notifications/useHubAnnouncements", () => ({
     if (fake.ackFails) throw new Error("unavailable");
     fake.acks.push(id);
   },
+  // Mark all read says "I've read it" on every notice that asks (Oct 2 2026).
+  ackAnnouncements: async (ids: string[]) => {
+    if (fake.ackFails) throw new Error("unavailable");
+    fake.acks.push(...ids);
+  },
+  useAnnouncementAcks: () => ({ status: "ready", ids: new Set<string>() }),
 }));
 
 import { SinceYouWereIn } from "./SinceYouWereIn";
@@ -188,6 +194,17 @@ describe("Since you were in", () => {
     expect(text()).toContain("You said you'd read it · today at 2:12 PM");
     expect(button(/I've read it/)).toBeUndefined();
     expect(text()).toContain("1 new");
+  });
+
+  it("Mark all read says I've read it on every notice that asks (the Atlas answers, Oct 2 2026)", async () => {
+    fake.announcements = [
+      { id: "asks-1", title: "Read the new closing checklist", authorId: GLORFINDEL.id, createdAt: Date.parse("2026-09-20T13:02:00Z"), asksRead: true },
+      { id: "asks-2", title: "New waiver wording", authorId: GLORFINDEL.id, createdAt: Date.parse("2026-09-21T13:02:00Z"), asksRead: true },
+      { id: "plain", title: "Holiday hours", authorId: GLORFINDEL.id, createdAt: Date.parse("2026-09-22T13:02:00Z") },
+    ];
+    await render();
+    await act(async () => button(/Mark all read/)!.click());
+    expect([...fake.acks].sort()).toEqual(["asks-1", "asks-2"]);
   });
 
   it("leaves a notice asking when I've read it couldn't be saved", async () => {
