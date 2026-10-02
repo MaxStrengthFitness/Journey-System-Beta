@@ -206,7 +206,7 @@ client that carries a `subjective` block — found with the existing
 | `scoring.ts` | Pure functions. `summarize()` is the entry point. |
 | `scoring.test.ts` | Pins the thresholds. `npx vitest run src/features/subjective-report`. |
 | `SubjectiveStep.tsx` | The five cards the panel mounts one at a time (the all-at-once form went on Oct 2 2026: no door reached it) (`CategoryCard`, `ProteinCard`, `HydrationCard`, `PainMapCard`, `StressCard`). |
-| `SubjectiveDashboard.tsx` | Coach dashboard + the client-copy variant (read-only; the Progress Report shows it as the Pulse snapshot). |
+| `SubjectiveDashboard.tsx` | Coach dashboard + the client-copy variant (read-only; the Progress Report shows it as the Pulse snapshot). The client copy is sentences only since Oct 2 2026 (AJ): the 0–96 overall and the coloured topic scores never print, whatever `includeCategoryScores` says; each comparable topic says which way it moved. |
 | `ui.tsx` | The small controls. `ScaleInput` and `Range10` are the Dial (§6). |
 | `subjective-report.css` | Scoped styles; light on `:root`, dark on `.dark`. Also the panel chrome (`.sra-*`), the quick-log (`.pq*`) and client mode (`.pcm*`). |
 | `PulseQuickLog.tsx` | Update Pulse: one area, one Dial, Done — the floor entry point (with `PulseQuickLogDialog`). |

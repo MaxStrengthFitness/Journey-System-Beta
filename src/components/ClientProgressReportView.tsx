@@ -1429,8 +1429,8 @@ export function ClientProgressReportView({
             {/* 3b. THE PULSE (client copy). An older report prints the Pulse
                 it saved; a report from the reporting round on prints the
                 client's most recent finalized Pulse as a dated snapshot.
-                Either way only what the Pulse's own client-copy switches
-                allow (SubjectiveClientCopy honours them), and nothing at
+                Either way sentences only (Oct 2 2026: no 0-96 score and no
+                coloured topic scores, SubjectiveClientCopy), and nothing at
                 all when there is no Pulse or nothing was answered. */}
             {(() => {
               const printed = report.subjective
