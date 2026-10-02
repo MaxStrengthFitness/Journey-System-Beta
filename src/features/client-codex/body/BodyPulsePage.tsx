@@ -86,7 +86,8 @@ import "./body.css";
 
 export interface BodyPulsePageProps {
   client: Client;
-  form: Pick<RecordForm, "formData" | "updateField" | "isDirty" | "revision">;
+  form: Pick<RecordForm, "formData" | "updateField" | "isDirty" | "revision"> &
+    Partial<Pick<RecordForm, "saveFieldNow">>;
   /** May change the client record (codexAccess().canEdit). */
   canEdit: boolean;
   /** May read FORD (the Pulse stress row's "also shown on FORD"). */
@@ -142,7 +143,7 @@ export function BodyPulsePage({
   onOpenReports,
 }: BodyPulsePageProps) {
   const now = useMemo(() => dayKeyDate(today) ?? new Date(), [today]);
-  const { formData, updateField, isDirty, revision } = form;
+  const { formData, updateField, isDirty, revision, saveFieldNow } = form;
 
   // The client's ONE Pulse draft: the read grid and the editor show the same answers.
   const draft = useCheckInDraft({ client, trainer: authTrainer, machines });
@@ -420,6 +421,7 @@ export function BodyPulsePage({
             dirty={isDirty("clinicalFlags", "medicalHistory", "clinicalNotes")}
             revision={revision}
             updateField={updateField}
+            saveNow={saveFieldNow}
             onOpenMachine={onOpenMachine}
           />
         </div>

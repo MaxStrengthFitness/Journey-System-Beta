@@ -68,6 +68,13 @@ export interface RecordForm {
   save: () => Promise<boolean>;
   /** Put every field back to the record. */
   discard: () => void;
+  /**
+   * Write ONE field now, past the Save bar (Oct 2 2026: clinical flags and
+   * medical history "save at once", like notes — one small write each). The
+   * form takes the value and the field is not left unsaved. True when it
+   * saved; a refusal keeps nothing staged and says so. Never throws.
+   */
+  saveFieldNow: (key: RecordFormKey, value: unknown) => Promise<boolean>;
 }
 
 interface FormState {
@@ -184,6 +191,38 @@ export function useRecordForm({
     }
   }, [toastSuccess, toastError]);
 
+  const saveFieldNow = useCallback(
+    async (key: RecordFormKey, value: unknown): Promise<boolean> => {
+      const id = clientRef.current?.id;
+      if (!id || !canEditRef.current || !isRecordFormKey(key)) return false;
+      try {
+        await updateDoc(
+          doc(db, "clients", id),
+          savePayload([key], { [key]: value } as RecordFormData, trainerRef.current),
+        );
+        // The form holds the saved value and the field is clean, so the Save
+        // bar never lists it; the next snapshot of the record agrees.
+        setStored((prev) => {
+          const next = new Set(prev.dirty);
+          next.delete(key);
+          return { ...prev, formData: { ...prev.formData, [key]: value }, dirty: next };
+        });
+        return true;
+      } catch (err) {
+        console.error("[client codex] saving one field failed", err);
+        const denied = (err as { code?: unknown } | null)?.code === "permission-denied";
+        const where = homeRef.current ? homeRef.current : "the client's home studio";
+        toastError(
+          denied
+            ? `Couldn't save. Nothing was changed. This record can only be changed at ${where}.`
+            : "Couldn't save. Nothing was changed. Check your connection and try again.",
+        );
+        return false;
+      }
+    },
+    [toastError],
+  );
+
   const discard = useCallback(() => {
     const c = clientRef.current;
     setStored((prev) => ({ seededFrom: c, formData: seedForm(c), dirty: NOTHING_DIRTY, revision: prev.revision + 1 }));
@@ -206,7 +245,8 @@ export function useRecordForm({
       isDirty: (...keys: RecordFormKey[]) => keys.some((k) => dirty.has(k)),
       save,
       discard,
+      saveFieldNow,
     }),
-    [formData, dirty, where, isSaving, revision, updateField, client, save, discard],
+    [formData, dirty, where, isSaving, revision, updateField, client, save, discard, saveFieldNow],
   );
 }

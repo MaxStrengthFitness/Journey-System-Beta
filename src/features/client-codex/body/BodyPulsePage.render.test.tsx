@@ -31,6 +31,7 @@ const fake = vi.hoisted(() => ({
   gets: [] as string[],
   listeners: [] as string[],
   progressReports: [] as Array<Record<string, unknown>>,
+  updates: [] as Array<{ path: string; data: Record<string, unknown> }>,
 }));
 
 vi.mock("../../../firebase", () => ({ db: { __fake: true }, auth: { currentUser: { uid: "uid-ann" } } }));
@@ -90,7 +91,9 @@ vi.mock("firebase/firestore", async (importOriginal) => {
       return { id: "x", exists: () => false, data: () => undefined };
     },
     addDoc: async () => ({ id: "new" }),
-    updateDoc: async () => {},
+    updateDoc: async (r: { path: string }, data: Record<string, unknown>) => {
+      fake.updates.push({ path: r.path, data });
+    },
     serverTimestamp: () => ({ __server: true }),
   };
 });
@@ -488,6 +491,38 @@ describe("Body & Pulse — watch-outs (they replaced BodyWatchOuts)", () => {
     // Without the floor (the app-wide list only) the same flag names nothing.
     const bare = await mount({ client: carol({ clinicalFlags: ["spine-ddd"], medicalHistory: "" }) });
     expect(bare.querySelector("#body-watchouts")!.textContent).toContain("names no machine on this floor");
+  });
+
+  it("saves a flag and the medical history the moment they change, with an Undo (Oct 2 2026)", async () => {
+    fake.updates.length = 0;
+    const host = await mount();
+    const card = host.querySelector("#body-watchouts")!;
+    await click(buttonIn(card, "Edit"));
+    // Taking a flag off writes at once: only clinicalFlags (and who), never the whole client.
+    await click(card.querySelector('[aria-label^="Remove "]'));
+    expect(fake.updates).toHaveLength(1);
+    expect(fake.updates[0].path).toBe("clients/c1");
+    expect(Object.keys(fake.updates[0].data).sort()).toEqual(["clinicalFlags", "lastUpdatedBy"]);
+    expect(fake.updates[0].data.clinicalFlags).toHaveLength(1);
+    expect(card.textContent).toContain("Saved: clinical flags.");
+    await click(buttonIn(card, "Undo"));
+    expect(fake.updates).toHaveLength(2);
+    expect(fake.updates[1].data.clinicalFlags).toEqual(["gen-knee", "gen-blood-pressure"]);
+
+    // The medical history is written when the box is left.
+    const box = Array.from(card.querySelectorAll("textarea"))[0] as HTMLTextAreaElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(box, "R total knee replacement Mar 2024. L hip OK.");
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(fake.updates).toHaveLength(2);
+    await act(async () => {
+      box.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    });
+    await settle();
+    expect(fake.updates).toHaveLength(3);
+    expect(fake.updates[2].data).toMatchObject({ medicalHistory: "R total knee replacement Mar 2024. L hip OK." });
+    expect(card.textContent).toContain("Saved: medical history.");
   });
 
   it("says No watch-outs on file when there are none, and offers to set them only to an editor", async () => {
