@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   DIAL_VALUES,
   DOSE_SCALE,
+  EFFORT_SCALE,
   FREQUENCY_SCALE,
   INTENSITY_SCALE,
   MASTERY_SCALE,
   READINESS_KEYS,
+  scaleTone,
   READINESS_SCALES,
   REGION_SCALE,
   TEN_POINTS,
@@ -40,6 +42,7 @@ describe("the Dial's shape", () => {
       ...Object.values(READINESS_SCALES),
       REGION_SCALE,
       DOSE_SCALE,
+      EFFORT_SCALE,
       FREQUENCY_SCALE,
       INTENSITY_SCALE,
       MASTERY_SCALE,
@@ -60,6 +63,16 @@ describe("the Dial's shape", () => {
 
   it("the Pulse uses the reference document's frequency words, verbatim", () => {
     expect(FREQUENCY_SCALE.words).toEqual(["Not at all", "Rarely", "Sometimes", "Often", "Nearly always"]);
+  });
+
+  it("the effort rating's words run worst to best, rest on As expected, and are never green or red (Oct 2 2026)", () => {
+    expect(EFFORT_SCALE.words).toEqual(["Left some in the tank", "Held back a bit", "As expected", "Pushed hard", "Gave everything"]);
+    expect(EFFORT_SCALE.mode).toBe("relative");
+    // Untouched SAVES "As expected" (AJ's call), so the screen says so.
+    expect(EFFORT_SCALE.untouched).toBe("As expected");
+    for (const v of DIAL_VALUES) expect(scaleTone(EFFORT_SCALE, v)).toBe("neutral");
+    // Every other scale keeps its urgency colours.
+    expect(scaleTone(DOSE_SCALE, 2)).toBe("ok-strong");
   });
 
   it("left is always worse: intensity runs Worst → None", () => {

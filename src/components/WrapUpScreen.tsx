@@ -20,7 +20,7 @@ import { FordSweep } from "../features/ford/FordSweep";
 import { useClientFord } from "../features/ford/useClientFord";
 import { NoteSweep, discardUnfiledEntry, fileUnfiledEntry, isUnfiled } from "../features/client-notes";
 import { isNextTrainerNote, type NextTrainerNoteMark } from "../features/client-notes/note-catalog";
-import { Dial, DOSE_SCALE, Loudness } from "../features/rating";
+import { Dial, EFFORT_SCALE, Loudness } from "../features/rating";
 import type { SessionNoteDraft } from "../features/client-notes/session-draft";
 import { ArrowLeft, CalendarCheck2, CalendarClock, CalendarSearch, CalendarX2, Check, HeartPulse, MessageSquareText, Star } from "lucide-react";
 import {
@@ -83,12 +83,13 @@ import { NextWeightCard, type SaveNextWeight } from "../features/next-weight/Nex
  *   3. NEXT — are they booked? (Openings round, Sep 27 2026: the card listens
  *      for her own bookings from the server, at any studio on the same
  *      Mindbody, and never says a plain "Nothing booked yet"; see NEXT
- *      below.) Then the door to Times with room, and how the session
- *      landed — the dose Dial
- *      (reporting round, Sep 2026: Wiped out · Drained · Just right · Had
- *      more · Barely worked, the trainer's own judgement, saved the moment it
- *      is tapped as `sessions.dose`; untouched is "not judged", never a
- *      default) — the Profile note (the closing note until Sep 27) with its
+ *      below.) Then the door to Times with room, and how hard she worked —
+ *      the effort Dial (the Atlas answers, Oct 2 2026; it replaced the dose
+ *      Dial): Left some in the tank · Held back a bit · As expected · Pushed
+ *      hard · Gave everything, one rating for the whole workout, saved the
+ *      moment it is tapped as `sessions.effort`. AJ's call: untouched SAVES
+ *      "As expected", stored as 0 with `effortDefaulted: true` when the
+ *      trainer leaves, so a reader can tell it from a tap — the Profile note (the closing note until Sep 27) with its
  *      Loudness (Note · Heads up · Critical, default Note: at Note it stays
  *      on the profile and never reaches the next briefing; Heads up and
  *      Critical may carry a "matters until" day so the note leaves the
@@ -155,7 +156,7 @@ import { NextWeightCard, type SaveNextWeight } from "../features/next-weight/Nex
  * client reads it. The door to Times with room sits INSIDE that line, after
  * the sentence, so its arriving (the Openings reads answer a second or more
  * after the screen opens) moves nothing the trainer is reaching for below:
- * the unsaved note's Save note / Drop it, the dose Dial. It is quiet (a text
+ * the unsaved note's Save note / Drop it, the effort Dial. It is quiet (a text
  * button) on every Wrap-up with something to offer, prominent (the plum line
  * and a bordered button) only when the server confirmed nothing is booked,
  * both 44px tall, and absent before the studio has anything to offer
@@ -259,11 +260,12 @@ export interface WrapUpScreenProps {
   schedules?: ScheduleEntry[];
   authTrainer: Trainer | null;
   /**
-   * Writes `sessions.dose` the moment it is tapped; `null` clears it (stores
-   * nothing). Resolving to `false` means the write failed: the Dial then
-   * never says "Saved".
+   * Writes `sessions.effort` the moment it is tapped (`defaulted` false), and
+   * once on the way out when nobody tapped: 0 with `defaulted` true ("As
+   * expected", AJ's call). Clearing a tap writes the default back. Resolving
+   * to `false` means the write failed: the Dial then never says "Saved".
    */
-  onDose: (dose: DialValue | null) => void | boolean | Promise<void | boolean>;
+  onEffort: (effort: DialValue, defaulted: boolean) => void | boolean | Promise<void | boolean>;
   /**
    * Sets the weight the next session loads on one machine (features/next-weight).
    * Resolving to `false` means the write failed. Without it there is no card.
@@ -399,7 +401,7 @@ export function WrapUpScreen({
   journey,
   schedules = [],
   authTrainer,
-  onDose,
+  onEffort,
   onNextWeight,
   onLeave,
   unsavedDraft = null,
@@ -414,8 +416,11 @@ export function WrapUpScreen({
   coverage = "unknown",
 }: WrapUpScreenProps) {
   const { theme } = useTheme();
-  const [dose, setDose] = useState<DialValue | null>(null);
-  const [doseSaved, setDoseSaved] = useState(false);
+  const [effort, setEffort] = useState<DialValue | null>(null);
+  const [effortSaved, setEffortSaved] = useState(false);
+  // Whether the effort has been written yet: untouched, the way out writes
+  // the default once.
+  const effortWrittenRef = useRef(false);
   const [notes, setNotes] = useState("");
   const [importance, setImportance] = useState<JournalImportance>("standard");
   const [effectiveUntil, setEffectiveUntil] = useState("");
@@ -524,6 +529,7 @@ export function WrapUpScreen({
     // Filing, not losing: the navigation onLeave ends with must not ask.
     unsaved.release();
     setLeaving(true);
+    fileEffortDefault();
     const { notes: noteContent, importance: loud, effectiveUntil: until } = notesRef.current;
     void onLeave({
       noteContent,
@@ -542,14 +548,40 @@ export function WrapUpScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const pickDose = (v: DialValue | null) => {
-    setDose(v);
-    setDoseSaved(false);
-    Promise.resolve(onDose(v)).then(
-      (ok) => setDoseSaved(ok !== false),
-      () => setDoseSaved(false),
+  /* The effort rating. A tap writes it plainly; tapping the chosen position
+     again clears it back to the untouched default, which is written as the
+     default (0, defaulted) so nothing a trainer took back is left standing. */
+  const onEffortRef = useRef(onEffort);
+  onEffortRef.current = onEffort;
+  const pickEffort = (v: DialValue | null) => {
+    setEffort(v);
+    setEffortSaved(false);
+    effortWrittenRef.current = true;
+    Promise.resolve(v === null ? onEffort(0, true) : onEffort(v, false)).then(
+      (ok) => setEffortSaved(v !== null && ok !== false),
+      () => setEffortSaved(false),
     );
   };
+  /** Untouched on the way out: "As expected", marked as the default. Once. */
+  const fileEffortDefault = () => {
+    if (effortWrittenRef.current) return;
+    effortWrittenRef.current = true;
+    Promise.resolve(onEffortRef.current(0, true)).catch(() => undefined);
+  };
+  // Every way out that unmounts the screen without Back to Hub (the bottom
+  // bar, the header, a sign-out) still files the default.
+  // The check waits a tick, so React's development double mount (StrictMode
+  // runs every effect's cleanup once and mounts again) is not a way out.
+  const aliveRef = useRef(false);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+      setTimeout(() => {
+        if (!aliveRef.current) fileEffortDefault();
+      }, 0);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* --- today ------------------------------------------------------------ */
   const performed = useMemo(() => performedOnly(logs), [logs]);
@@ -845,21 +877,34 @@ export function WrapUpScreen({
               </div>
             )}
 
-            <div className="text-[11px] text-ink-d3 font-semibold mt-1">How did it land · profile note · Pulse</div>
+            <div className="text-[11px] text-ink-d3 font-semibold mt-1">Effort · profile note · Pulse</div>
 
-            {/* The dose Dial — the trainer's own judgement, saved as it is
-                tapped. It follows the app theme like the rest of the screen,
-                as it does everywhere else the Dial is drawn. */}
-            <div className="flex flex-col gap-2" data-testid="dose-card">
+            {/* The effort Dial (Oct 2 2026; it replaced the dose Dial) — one
+                rating for the whole workout, the trainer's own judgement,
+                saved as it is tapped. Neutral: no position is green or red.
+                Untouched, it saves "As expected" on the way out. */}
+            <div className="flex flex-col gap-2" data-testid="effort-card">
               <div className="flex items-baseline justify-between">
-                <span className="text-[14px] font-bold text-ink-d1">How did it land?</span>
-                {doseSaved && dose !== null && (
+                <span className="text-[14px] font-bold text-ink-d1">Effort</span>
+                {effortSaved && effort !== null && (
                   <span className="text-[11px] text-(--eq-ok) font-bold flex items-center gap-1">
                     <Check size={12} strokeWidth={3} /> Saved
                   </span>
                 )}
               </div>
-              <Dial scale={DOSE_SCALE} value={dose} onChange={pickDose} ask="Your read" sub={`Judged by you — nothing to ask ${clientFirstName(client)}`} data-testid="dose-dial" />
+              <Dial
+                scale={EFFORT_SCALE}
+                value={effort}
+                onChange={pickEffort}
+                ask={clientFirstName(client) ? `How hard did ${clientFirstName(client)} work today?` : EFFORT_SCALE.ask}
+                sub="The whole workout, judged by you"
+                data-testid="effort-dial"
+              />
+              {effort === null && (
+                <span className="text-[11px] text-ink-d3" data-testid="effort-default-hint">
+                  Left untouched, it saves As expected.
+                </span>
+              )}
             </div>
 
             <textarea

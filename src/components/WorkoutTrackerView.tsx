@@ -2124,12 +2124,18 @@ export function WorkoutTrackerView({
     }
   };
 
-  /** The dose Dial writes the moment it is tapped — no save button. A cleared
-      dial stores nothing (`deleteField`): untouched is "not judged", never 0. */
-  const savePostSessionDose = async (dose: DialValue | null): Promise<boolean> => {
-    if (!postSession?.session.id) return false;
+  /** The effort Dial writes the moment it is tapped — no save button (Oct 2
+      2026; it replaced the dose Dial). The untouched default is 0 with
+      `effortDefaulted: true` (AJ's call), so a reader can tell it from a tap;
+      a tap drops the marker. The legacy `dose` is no longer written. */
+  const savePostSessionEffort = async (effort: DialValue, defaulted: boolean): Promise<boolean> => {
+    const id = postSession?.session.id;
+    if (!id) return false;
     try {
-      await updateDoc(doc(db, "sessions", postSession.session.id), { dose: dose === null ? deleteField() : dose });
+      await updateDoc(doc(db, "sessions", id), {
+        effort,
+        effortDefaulted: defaulted ? true : deleteField(),
+      });
       return true;
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, "sessions");
@@ -2996,7 +3002,7 @@ export function WorkoutTrackerView({
         journey={postSession.journey}
         schedules={schedules}
         authTrainer={authTrainer}
-        onDose={savePostSessionDose}
+        onEffort={savePostSessionEffort}
         onNextWeight={savePostSessionNextWeight}
         onLeave={leavePostSession}
         unsavedDraft={postSession.draft}

@@ -156,6 +156,15 @@ export function ClinicalDashboard({
             <AttendancePanel rhythm={report.rhythm} />
           </Section>
 
+          {/* ---- 5b. effort, lately (Oct 2 2026): the Wrap-up's effort
+                rating read as one sentence, with a named minimum sample.
+                Her latest workouts, whatever the range: "lately" is now. */}
+          <Section title="Effort, lately" sub="how hard she worked, as her trainers rated it on the Wrap-up · untouched ratings never count">
+            <div className="cr-card" data-testid="effort-trend" data-status={report.effort.status}>
+              <p className={report.effort.status === "not-enough" ? "cr-card__sub" : "cr-card__title"}>{report.effort.sentence}</p>
+            </div>
+          </Section>
+
           {/* ---- 6. pain & incidents + Pulse ---- */}
           <Section title="Pain & incidents, and the Pulse" sub="what hurt and when, beside what the client says in her Pulse">
             <PainPulsePanel pain={report.pain} pulse={report.pulse} />

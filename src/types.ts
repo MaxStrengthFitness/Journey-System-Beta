@@ -1232,8 +1232,20 @@ export interface WorkoutSession {
    * How the session landed, judged by the trainer on the Dial (reporting
    * round, Sep 2026): Wiped out · Drained · Just right · Had more · Barely
    * worked. Goldilocks — the centre is the right dose. Absent = not judged.
+   * No longer written since Oct 2 2026 (the effort rating replaced it on the
+   * Wrap-up); still read where it was, through `doseOf`.
    */
   dose?: DialValue;
+  /**
+   * How hard she worked, the whole workout, on the effort Dial (the Atlas
+   * answers, Oct 2 2026): Left some in the tank · Held back a bit · As
+   * expected · Pushed hard · Gave everything. Written on the Wrap-up; a
+   * Wrap-up left untouched stores 0 with `effortDefaulted: true` (AJ's call).
+   * Read through `effortOf` (features/rating/session-reads.ts).
+   */
+  effort?: DialValue;
+  /** True when `effort` is the untouched default, not a trainer's tap. */
+  effortDefaulted?: boolean;
   preSessionCheckIn?: PreSessionCheckIn;
   postFeel?: {
     physical: 1 | 2 | 3 | 4 | 5;

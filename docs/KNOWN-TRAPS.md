@@ -222,6 +222,8 @@ beta-prep trim moved the traps out of `CLAUDE.md`. It is kept word for word.
 
 ## Ratings, notes and Pulse - the Dial and Loudness
 
+- **The effort rating is the ONE Dial whose untouched value is stored** (the Atlas answers, Oct 2 2026; AJ's call). The Wrap-up writes `sessions.effort = 0` with `effortDefaulted: true` once, on any way out, when nobody tapped; a tap writes the value and deletes the marker. Every reader goes through `effortOf` (`rating/session-reads.ts`) and must treat a default as "nobody judged" for any decline or "not enough data" count — `clinical-review/effort-trend.ts` never counts one. The legacy `dose` is no longer written but is still read where it was (`doseOf`); never read `dose` as effort. `EFFORT_SCALE` is `neutral`: `scaleTone` draws every position in the selection colour, never green or red.
+
 - **The reporting round (Sep 16) — read `docs/rounds/2026-09-16-reporting-round.md` and `src/features/rating/scales.ts` before touching anything a trainer rates or notes.** The load-bearing parts:
   - **The Dial's centre is where we expect them, and an untouched dial is `null` ("not asked"), never 0.** Storing 0 by default would let the Deep Dive find a client slept normally on nights nobody asked about. `compactReadiness` leaves untapped keys out of the write; a cleared post-session dose writes `deleteField()`. An explicit centre tap IS stored.
   - **Left is always worse, even for pain** — `INTENSITY_SCALE` runs Worst → None and `absoluteToTen` reverses it for the stored 10-is-worst. Never reorder a scale's words to numeric order.

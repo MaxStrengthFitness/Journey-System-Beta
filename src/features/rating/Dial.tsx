@@ -18,7 +18,7 @@
  * a layout effect. `Dial.render.test.tsx` mounts it.
  */
 import type { DialScale, DialValue } from "./scales";
-import { DIAL_VALUES, dialTone, dialWord } from "./scales";
+import { DIAL_VALUES, dialWord, scaleTone } from "./scales";
 import "./rating.css";
 
 export interface DialProps {
@@ -72,7 +72,7 @@ export function Dial({
           {sub ? <small>{sub}</small> : null}
         </span>
         {!hideWord && (
-          <span className="rt__word" data-tone={chosen === null ? undefined : dialTone(chosen)} aria-live="polite">
+          <span className="rt__word" data-tone={chosen === null ? undefined : scaleTone(scale, chosen)} aria-live="polite">
             {dialWord(scale, chosen)}
           </span>
         )}
@@ -90,7 +90,7 @@ export function Dial({
               aria-label={`${scale.words[v + 2]}${on ? " — tap again to clear" : ""}`}
               className={["rt__seg", v === 0 ? "rt__seg--centre" : ""].filter(Boolean).join(" ")}
               data-pos={v}
-              data-tone={dialTone(v)}
+              data-tone={scaleTone(scale, v)}
               disabled={disabled}
               onClick={() => onChange(on ? null : v)}
             />

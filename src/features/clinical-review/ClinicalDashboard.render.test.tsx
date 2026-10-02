@@ -103,6 +103,7 @@ describe("ClinicalDashboard (Kaizen Deep Dive)", () => {
       "Progression stalls",
       "Readiness vs output",
       "Attendance rhythm",
+      "Effort, lately",
       "Pain & incidents, and the Pulse",
       "Time under tension",
       "Where form breaks",
@@ -117,6 +118,33 @@ describe("ClinicalDashboard (Kaizen Deep Dive)", () => {
     expect(text).toContain("Pulse history unavailable");
     // A level under three sessions shows "needs 3", not a number.
     expect(text).toContain("needs 3");
+    // Effort, lately (Oct 2 2026): no session carries the effort rating yet,
+    // so the sample says so in words — the legacy dose is never read as effort.
+    expect(host.querySelector('[data-testid="effort-trend"]')!.textContent).toMatch(/^Not enough data yet: 0 of the 6 rated workouts/);
+  });
+
+  it("says when her effort has been lower lately, from the Wrap-up's ratings", async () => {
+    const { sessions, logs } = synthetic();
+    const efforts = [1, 0, 1, 0, 0, 1, 0, -1, -1, 0, -2];
+    const rated = sessions.map((s, i) =>
+      i < sessions.length - efforts.length ? s : ({ ...s, effort: efforts[i - (sessions.length - efforts.length)] } as WorkoutSession),
+    );
+    const report = buildReport({
+      client,
+      machines: [{ id: "leg-press", name: "Leg Press" } as any, { id: "chest", name: "Chest Press" } as any],
+      trainers: [],
+      sessions: rated,
+      logs,
+      incidents: [],
+      pulseHistory: null,
+      range: { preset: "custom", from: day(0), to: day(40) },
+    });
+    const host = await mount(
+      <ClinicalDashboard report={report} clientName="Judy Kaizen" presets={RANGE_PRESETS} onPreset={() => {}} onRegenerate={() => {}} />,
+    );
+    const panel = host.querySelector('[data-testid="effort-trend"]')!;
+    expect(panel.getAttribute("data-status")).toBe("declining");
+    expect(panel.textContent).toContain("Judy's effort has been lower lately");
   });
 });
 

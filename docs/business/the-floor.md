@@ -166,8 +166,26 @@ Wrap-up says so and lets the trainer finish it or drop it.
 
 ## The Wrap-up
 
-The screen after Finish walks the client out: today against last time, the
-dose Dial, the Profile note, Pulse and, when it's time, the renewal line. The
+The screen after Finish walks the client out: a plain congratulation picked
+for the session, today against last time, the next session's weights, the
+effort Dial, the Profile note, Pulse and, when it's time, the renewal line.
+
+**The Atlas answers, Oct 2 2026.** The title is one of a few generic
+congratulations (AJ: "a few generic 'congratulations' messages that it
+randomly picks"), never a judgement of the session. **The next session's
+weights**: one row per machine she performed, starting at today's weight, with
+− / + in two pounds and the number to type; whatever the trainer sets is what
+the next session loads, by any trainer at any studio, and the Now Bar says
+who set it ("Set for today at the last Wrap-up by Sam."). It is spent once a
+session logs the machine (`src/features/next-weight/`). The app still never
+suggests a weight, and the old advice line under the dose ("room to add a
+little next time") is gone. **The effort Dial** replaced the dose Dial: one
+rating for the whole workout, Left some in the tank · Held back a bit · As
+expected · Pushed hard · Gave everything, neutral (no green, no red). AJ's
+call: left untouched it saves "As expected", marked `effortDefaulted` so the
+Deep Dive's "Effort, lately" never counts a default toward a decline.
+
+The
 End Session box is the Note for the next trainer, for the next briefing; it
 comes back in the Wrap-up's To-file tray so it can also be filed to the
 profile, and it is never discarded there (AJ, Sep 27 2026: "Ideally the end
