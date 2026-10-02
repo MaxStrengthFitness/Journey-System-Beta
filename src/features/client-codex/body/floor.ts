@@ -43,6 +43,7 @@ import { toDate, studioDateKey } from "../../../lib/studio-time";
 import { threadCardMeta } from "../../client-notes/record-selectors";
 import type { NoteThread } from "../../client-notes/threads";
 import { dayWords } from "./pulse-read";
+import { machineNoteWords } from "../../equipment/machine-notes";
 
 export type HerNote =
   | {
@@ -95,10 +96,23 @@ function millisOf(v: unknown): number {
   return d ? d.getTime() : 0;
 }
 
-/** Her machine notes the team marked important, newest first. */
-function importantMachineNotes(setting: ClientMachineSetting | undefined, now: Date): HerNote[] {
+/**
+ * Her OLD-LIST machine notes the team marked important, newest first. Since
+ * Oct 2 2026 a machine note lives in her journal only (the threads above
+ * carry it); the old `machineNotes` list is read for data written before,
+ * and an item whose journal copy is already among the threads is that same
+ * note, so it is not drawn twice (features/equipment/machine-notes.ts).
+ */
+function importantMachineNotes(
+  setting: ClientMachineSetting | undefined,
+  now: Date,
+  threads: readonly NoteThread[] = [],
+  machineName = "",
+): HerNote[] {
+  const inJournal = new Set(threads.map((t) => machineNoteWords(t.root.body ?? "", machineName).toLowerCase()));
   return (setting?.machineNotes ?? [])
     .filter((n): n is MachineNote => !!n && n.isImportant === true && (n.content ?? "").trim() !== "")
+    .filter((n) => !inJournal.has(machineNoteWords(n.content, machineName).toLowerCase()))
     .slice()
     .sort((a, b) => millisOf(b.timestamp) - millisOf(a.timestamp))
     .map((n, i) => {
@@ -178,7 +192,7 @@ export function floorRows({
       body: (t.root.body ?? "").trim(),
       meta: threadCardMeta(t, today),
     }));
-    const hers = [...threads, ...importantMachineNotes(clientSettings[id], now)];
+    const hers = [...threads, ...importantMachineNotes(clientSettings[id], now, byMachine.get(id) ?? [], machine.name || "")];
     const academy = academyParts(bodyTypeOf(id), band);
     const prescribedIn = prescribed.get(id) ?? [];
     if (prescribedIn.length > 0 && hers.length === 0 && academy.length === 0) {

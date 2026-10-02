@@ -221,6 +221,8 @@ import { sessionLinkOf } from "../features/client-notes/session-link";
 import { clientDisplayName, clientFirstName } from "../lib/client-name";
 import { isNextWeightLive, nextWeightMark, nextWeightSourceLine } from "../features/next-weight/next-weight";
 import { saveNextWeight } from "../features/next-weight/store";
+import { machineNotesFor } from "../features/equipment/machine-notes";
+import { useMachineJournal } from "../features/equipment/useMachineJournal";
 import { PerformanceEntryDialog } from "../features/tracker/PerformanceEntryDialog";
 import { ExerciseHistoryDialog } from "../features/tracker/ExerciseHistoryDialog";
 import { ClientSelectionDialog } from "../features/tracker/ClientSelectionDialog";
@@ -890,6 +892,10 @@ export function WorkoutTrackerView({
     [selectedClient?.clinicalFlags, flagJournal.criticalEntries, flagJournal.headsUpEntries, floorMachines],
   );
   const flags = useMemo(() => sessionFlags(flagSources), [flagSources]);
+  /* Her journal's notes that name a machine, for the grid's note marks (one
+     list since Oct 2 2026; the same query as the journal above, so one
+     listener). */
+  const machineJournal = useMachineJournal(selectedClient?.id ?? null);
   const draftSessionRef = React.useRef<string | null>(null);
   useEffect(() => {
     const id = currentSession?.id ?? null;
@@ -2702,7 +2708,14 @@ export function WorkoutTrackerView({
             lastWeight = set.weight;
           }
         }
-        const notes = setting?.machineNotes || [];
+        // One list (Oct 2 2026): her journal's notes on the machine plus the
+        // old list's (features/equipment/machine-notes.ts).
+        const notes = machineNotesFor({
+          machineId: machine.id!,
+          machineName: machine.name,
+          legacy: setting?.machineNotes,
+          journal: machineJournal,
+        });
         // Where today's weight came from, when a trainer set it at the last
         // Wrap-up and no session has logged the machine since (next-weight).
         const nextMark = setting?.nextWeight;
@@ -2744,6 +2757,7 @@ export function WorkoutTrackerView({
     shownSession,
     gridHistory,
     selectedClient?.currentMachineMetrics,
+    machineJournal,
   ]);
 
   const gridSections = useMemo<GridSection[]>(() => {

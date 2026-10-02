@@ -1,7 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, Trash2, TriangleAlert } from "lucide-react";
 import { addMachineNote, deleteMachineNote, type JournalContext, type MutationAuthor } from "./mutations";
 import type { EquipmentMachine } from "./types";
+import type { JournalEntry } from "../../types/journal";
+import { archiveJournalEntries } from "../../hooks/useClientJournal";
+import { machineNotesFor } from "./machine-notes";
+import { useMachineJournal } from "./useMachineJournal";
 
 /**
  * Machine-specific notes (box 11) — the things that are not settings.
@@ -38,6 +42,13 @@ export interface MachineNotesProps {
    * to reach the next trainer.
    */
   flagLabel?: string;
+  /**
+   * Her journal, when the host already holds it (the Active Session). Left
+   * out, the card reads her journal's machine notes itself
+   * (useMachineJournal). Since Oct 2 2026 the card shows ONE list: her
+   * journal's notes on this machine plus the old list's (machine-notes.ts).
+   */
+  journalEntries?: readonly JournalEntry[] | null;
 }
 
 export function MachineNotes({
@@ -48,7 +59,13 @@ export function MachineNotes({
   onSaved,
   onError,
   flagLabel = "Flag as important (maintenance or safety)",
+  journalEntries,
 }: MachineNotesProps) {
+  const herJournal = useMachineJournal(clientId, journalEntries);
+  const notes = useMemo(
+    () => machineNotesFor({ machineId: machine.id, machineName: machine.name, legacy: machine.notes, journal: herJournal }),
+    [machine.id, machine.name, machine.notes, herJournal],
+  );
   const [draft, setDraft] = useState("");
   const [isMaintenance, setIsMaintenance] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -96,6 +113,13 @@ export function MachineNotes({
     if (!author || !noteId) return;
     setBusy(true);
     try {
+      // A journal note is archived there (it stays in the journal's
+      // history); an old-list note is taken off the old list.
+      const journalId = notes.find((n) => n.id === noteId)?.journalEntryId;
+      if (journalId) {
+        await archiveJournalEntries([journalId]);
+        return;
+      }
       await deleteMachineNote({
         clientId,
         machineId: machine.id,
@@ -115,20 +139,18 @@ export function MachineNotes({
     <section className="eq-card">
       <header className="eq-card__head">
         <h3 className="eq-card__title">
-          Notes{machine.notes.length > 0 ? ` (${machine.notes.length})` : ""}
+          Notes{notes.length > 0 ? ` (${notes.length})` : ""}
         </h3>
       </header>
 
       <div className="eq-card__body">
-        {machine.notes.length === 0 ? (
+        {notes.length === 0 ? (
           <p className="eq-field__help">
             No notes yet. Anything you add here also files into this client's journal.
           </p>
         ) : (
           <div>
-            {[...machine.notes]
-              .sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)))
-              .map((n) => (
+            {notes.map((n) => (
                 <article key={n.id} className={`eq-note ${n.isImportant ? "eq-note--flag" : ""}`}>
                   <p className="eq-note__body">{n.content}</p>
                   <div className="eq-note__meta">
