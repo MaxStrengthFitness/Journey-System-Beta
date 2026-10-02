@@ -9,6 +9,8 @@ import type { Client, ClientMachineSetting, Machine } from "../../types";
 import { toEquipmentMachines } from "./adapters";
 import { SettingsCard } from "./SettingsCard";
 import { MachineNotes } from "./MachineNotes";
+import { machineNotesFor } from "./machine-notes";
+import { useMachineJournal } from "./useMachineJournal";
 import { SetupGuide } from "./SetupGuide";
 import { ChangeHistory } from "./ChangeHistory";
 import type { JournalContext, MutationAuthor } from "./mutations";
@@ -141,9 +143,16 @@ export function MachineSheet({
     [client, activeStudioId, activeStudio, sessionId, sessionLink?.sessionNumber, sessionLink?.sessionDay],
   );
 
+  /* The alert reads the ONE list the notes card shows (Oct 2 2026,
+     machine-notes.ts): her journal's notes on this machine, then old-list
+     notes with no journal copy. Same query as the card, so one listener. */
+  const herJournal = useMachineJournal(clientId);
   const alerts = useMemo(
-    () => (equipment?.notes || []).filter((n) => n.isImportant),
-    [equipment],
+    () =>
+      equipment
+        ? machineNotesFor({ machineId: equipment.id, machineName: equipment.name, legacy: equipment.notes, journal: herJournal }).filter((n) => n.isImportant)
+        : [],
+    [equipment, herJournal],
   );
 
   const announce = (message: string) => {
