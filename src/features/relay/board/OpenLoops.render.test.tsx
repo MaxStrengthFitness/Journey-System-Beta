@@ -61,17 +61,22 @@ afterEach(() => {
 });
 
 describe("OpenLoops", () => {
-  it("lists yesterday's shift-list report today, once per machine, with its day", async () => {
+  it("lists yesterday's shift-list report on a duty with no machine today, with its day", async () => {
     const el = await mount([
-      report({ id: "a", machineId: "leg-press", localDate: "2026-09-13", note: "Squeak" }),
-      report({ id: "b", machineId: "leg-press", localDate: "2026-09-15", note: "Cable frayed", completedBy: { id: "t-d", name: "Dana Ortiz" } }),
+      report({ id: "b", templateId: "close", title: "Close the studio", localDate: "2026-09-15", note: "Door sticks", completedBy: { id: "t-d", name: "Dana Ortiz" } }),
     ]);
     const loops = [...el.querySelectorAll(".tc__loop")].map((li) => li.textContent);
     expect(loops).toHaveLength(1);
     expect(loops[0]).toContain("Reported on the shift list");
-    expect(loops[0]).toContain("Leg Press");
-    expect(loops[0]).toContain("Cable frayed — Dana, yesterday");
+    expect(loops[0]).toContain("Close the studio");
+    expect(loops[0]).toContain("Door sticks — Dana, yesterday");
     expect(el.textContent).toContain("1 to close");
+  });
+
+  it("lists a machine's problem only as the Floor Map's flag, the one maintenance record (Oct 2 2026)", async () => {
+    // A machine row closed with a problem, whose flag was since cleared on the Floor Map: nothing to close.
+    const el = await mount([report({ id: "b", machineId: "leg-press", note: "Cable frayed" })]);
+    expect(el.textContent).toContain("nothing hanging");
   });
 
   it("does not list a report twice for a machine the Floor Map already flags", async () => {
