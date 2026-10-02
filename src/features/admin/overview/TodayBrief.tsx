@@ -1012,7 +1012,15 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
 
       {footer}
 
-      {reviewOpen && <ReviewNotesDialog open onOpenChange={setReviewOpen} rows={review} onOpenClient={onNavigateProfile} />}
+      {reviewOpen && (
+        <ReviewNotesDialog
+          open
+          onOpenChange={setReviewOpen}
+          rows={review}
+          onOpenClient={onNavigateProfile}
+          author={uid ? { id: uid, fullName: authTrainer.fullName || authTrainer.initials || "", initials: authTrainer.initials || "" } : null}
+        />
+      )}
       {huddleInput && (
         <BriefHuddle
           studioId={studioId}

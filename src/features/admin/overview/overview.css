@@ -176,6 +176,31 @@
   gap: 8px;
 }
 .adm-ov__row-main .adm-ov__row-btn { flex: 1; }
+/* "No longer": the optional one-line reason, under the row (Oct 2 2026). */
+.adm-ov__why {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 12px 10px;
+}
+.adm-ov__why-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--adm-ink-2);
+}
+.adm-ov__why-input {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--adm-border-strong);
+  border-radius: 10px;
+  background: var(--adm-surface);
+  color: var(--adm-ink);
+  font: inherit;
+}
+.adm-ov__why-input:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+}
+
 .adm-ov__row-actions {
   display: flex;
   align-items: center;

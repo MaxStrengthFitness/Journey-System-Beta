@@ -7,12 +7,20 @@
  * not silently drop." Two answers per note: Still matters (stamps
  * reviewedAt, the clock restarts) or No longer matters (resolves it, as
  * the Notes catalog does). The name opens the client.
+ *
+ * "No longer" asks for an optional one-line reason first (Oct 2 2026, AJ: "A
+ * one-line reason, optional"): written on the note's thread as an update, so
+ * the next trainer sees why it closed (client-notes/thread-write.ts,
+ * `closeThreadNoLongerMatters`). Leaving it blank closes the note as before.
  */
 import { useState } from "react";
+import type { JournalAuthor } from "../../../hooks/useClientJournal";
+import { closeThreadNoLongerMatters } from "../../client-notes/thread-write";
+import { useUnsavedChanges } from "../../unsaved-changes";
 import { NotebookPen } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "../../../contexts/ToastContext";
-import { resolveJournalEntry, reviewJournalEntry } from "../../../hooks/useClientJournal";
+import { reviewJournalEntry } from "../../../hooks/useClientJournal";
 import { AdminBadge, AdminButton, AdminEmpty } from "../primitives";
 import type { ReviewRow } from "./questions";
 
@@ -21,20 +29,30 @@ export interface ReviewNotesDialogProps {
   onOpenChange: (open: boolean) => void;
   rows: ReviewRow[];
   onOpenClient?: (clientId: string) => void;
+  /** Who writes the reason (the Auth uid, which the journal rule pins). Null: no reason is asked. */
+  author?: JournalAuthor | null;
 }
 
-export function ReviewNotesDialog({ open, onOpenChange, rows, onOpenClient }: ReviewNotesDialogProps) {
+export function ReviewNotesDialog({ open, onOpenChange, rows, onOpenClient, author = null }: ReviewNotesDialogProps) {
   const { success: toastSuccess, error: toastError } = useToast();
   const [busy, setBusy] = useState<string | null>(null);
   // Answered rows leave the list at once; the next read of the page confirms.
   const [done, setDone] = useState<Set<string>>(new Set());
   const pending = rows.filter((r) => !done.has(r.entryId));
+  // The row whose "No longer" is asking why, and the reason typed so far.
+  const [asking, setAsking] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+  useUnsavedChanges(asking !== null && reason.trim() !== "", "A note's reason");
 
   const answer = async (row: ReviewRow, stillMatters: boolean) => {
     setBusy(row.entryId);
     try {
       if (stillMatters) await reviewJournalEntry(row.entryId);
-      else await resolveJournalEntry(row.entryId, true);
+      else await closeThreadNoLongerMatters(row.root, author, asking === row.entryId ? reason : null);
+      if (asking === row.entryId) {
+        setAsking(null);
+        setReason("");
+      }
       setDone((prev) => new Set(prev).add(row.entryId));
       toastSuccess(stillMatters ? "Kept — it comes up again in 60 days." : "Marked as no longer mattering.");
     } catch {
@@ -76,11 +94,47 @@ export function ReviewNotesDialog({ open, onOpenChange, rows, onOpenClient }: Re
                     <AdminButton size="sm" variant="primary" busy={busy === r.entryId} onClick={() => void answer(r, true)}>
                       Still matters
                     </AdminButton>
-                    <AdminButton size="sm" variant="ghost" busy={busy === r.entryId} onClick={() => void answer(r, false)}>
+                    <AdminButton
+                      size="sm"
+                      variant="ghost"
+                      busy={busy === r.entryId}
+                      onClick={() => {
+                        if (!author) return void answer(r, false);
+                        setAsking(r.entryId);
+                        setReason("");
+                      }}
+                    >
                       No longer
                     </AdminButton>
                   </div>
                 </div>
+                {asking === r.entryId ? (
+                  <div className="adm-ov__why">
+                    <label className="adm-ov__why-label" htmlFor={`why-${r.entryId}`}>
+                      Why it no longer matters (optional, one line, written on the note)
+                    </label>
+                    <input
+                      id={`why-${r.entryId}`}
+                      className="adm-ov__why-input"
+                      type="text"
+                      maxLength={200}
+                      value={reason}
+                      placeholder="She moved to mornings."
+                      onChange={(e) => setReason(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void answer(r, false);
+                      }}
+                    />
+                    <div className="adm-ov__row-actions">
+                      <AdminButton size="sm" variant="primary" busy={busy === r.entryId} onClick={() => void answer(r, false)}>
+                        Close the note
+                      </AdminButton>
+                      <AdminButton size="sm" variant="ghost" onClick={() => setAsking(null)}>
+                        Cancel
+                      </AdminButton>
+                    </div>
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>
