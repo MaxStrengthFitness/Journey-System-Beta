@@ -14,6 +14,7 @@ import { ChangeHistory } from "./ChangeHistory";
 import type { JournalContext, MutationAuthor } from "./mutations";
 import type { HistoryCoverage } from "../../lib/prior-history";
 import { noMachineHistoryBody, noMachineHistoryLine } from "../../lib/history-claims";
+import { sessionNoteStudioId } from "../client-notes/note-studio";
 
 /**
  * THE MACHINE SHEET — one place, mid-session, for everything about one
@@ -126,16 +127,18 @@ export function MachineSheet({
   }, [machine, clientSettings, catalogById, activeStudio]);
 
   /* Notes written from here file as "in_session", so the Journal can say
-     where a note came from without the trainer having to type it. */
+     where a note came from without the trainer having to type it. They
+     belong to her HOME studio, wherever the session is (the Atlas answers,
+     Oct 2 2026; client-notes/note-studio.ts). */
   const journal: JournalContext = useMemo(
     () => ({
-      studioId: activeStudioId || activeStudio?.id || "",
+      studioId: sessionNoteStudioId(client, activeStudioId || activeStudio?.id),
       origin: "in_session",
       sessionId: sessionId ?? null,
       sessionNumber: sessionId ? (sessionLink?.sessionNumber ?? null) : null,
       sessionDay: sessionId ? (sessionLink?.sessionDay ?? null) : null,
     }),
-    [activeStudioId, activeStudio, sessionId, sessionLink?.sessionNumber, sessionLink?.sessionDay],
+    [client, activeStudioId, activeStudio, sessionId, sessionLink?.sessionNumber, sessionLink?.sessionDay],
   );
 
   const alerts = useMemo(

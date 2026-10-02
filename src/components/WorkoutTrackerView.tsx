@@ -223,6 +223,7 @@ import { isNextWeightLive, nextWeightMark, nextWeightSourceLine } from "../featu
 import { saveNextWeight } from "../features/next-weight/store";
 import { machineNotesFor } from "../features/equipment/machine-notes";
 import { useMachineJournal } from "../features/equipment/useMachineJournal";
+import { sessionNoteStudioId } from "../features/client-notes/note-studio";
 import { PerformanceEntryDialog } from "../features/tracker/PerformanceEntryDialog";
 import { ExerciseHistoryDialog } from "../features/tracker/ExerciseHistoryDialog";
 import { ClientSelectionDialog } from "../features/tracker/ClientSelectionDialog";
@@ -1546,7 +1547,8 @@ export function WorkoutTrackerView({
         try {
           await createJournalEntry(
             clientId,
-            currentStudioId || clientHomeStudioId || "",
+            // Her home studio's note, wherever the session is (Oct 2 2026).
+            clientHomeStudioId || currentStudioId || "",
             { id: user.uid, initials, fullName: authTrainer?.fullName || initials },
             {
               kind: "general",
@@ -2103,7 +2105,7 @@ export function WorkoutTrackerView({
       if (nextTrainerNote) {
         createJournalEntry(
           selectedClient.id,
-          contextActiveStudioId || authTrainer?.primaryHomeStudioId || selectedClient.homeStudioId || "",
+          sessionNoteStudioId(selectedClient, contextActiveStudioId || authTrainer?.primaryHomeStudioId),
           { id: user.uid, initials: authTrainer?.initials || "", fullName: authTrainer?.fullName || "" },
           {
             kind: "general",
@@ -2275,7 +2277,7 @@ export function WorkoutTrackerView({
     await noteOrSay(
       createJournalEntry(
         snap.client.id,
-        contextActiveStudioId || authTrainer?.primaryHomeStudioId || snap.client.homeStudioId || "",
+        sessionNoteStudioId(snap.client, contextActiveStudioId || authTrainer?.primaryHomeStudioId),
         { id: user.uid, initials: authTrainer?.initials || "", fullName: authTrainer?.fullName || "" },
         {
           kind: kind || "general",
@@ -2318,7 +2320,7 @@ export function WorkoutTrackerView({
       await noteOrSay(
         createJournalEntry(
           snap.client.id,
-          contextActiveStudioId || authTrainer?.primaryHomeStudioId || snap.client.homeStudioId || "",
+          sessionNoteStudioId(snap.client, contextActiveStudioId || authTrainer?.primaryHomeStudioId),
           { id: user.uid, initials: authTrainer?.initials || "", fullName: authTrainer?.fullName || "" },
           {
             kind: "general",
