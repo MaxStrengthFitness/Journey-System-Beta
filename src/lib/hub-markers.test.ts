@@ -6,12 +6,13 @@ const today = new Date(2026, 8, 13); // Sep 13 2026
 describe("hubMarkers", () => {
   const complete = "complete" as const;
 
-  it("names the first session, a consultation, and a milestone", () => {
+  it("names the first session and a consultation; the milestone is the Hub engine's now (Oct 2 2026)", () => {
     expect(hubMarkers({ client: {} as any, sessionNumber: 1, coverage: complete, today })).toEqual([{ kind: "first", label: "First session" }]);
     expect(hubMarkers({ client: {} as any, sessionNumber: 3, serviceName: "Consultation", today })[0]).toEqual({ kind: "consult", label: "Consultation" });
     expect(hubMarkers({ client: { requiresConsultation: true, consultationCompleted: false } as any, sessionNumber: 1, today })[0].kind).toBe("consult");
-    expect(hubMarkers({ client: {} as any, sessionNumber: 100, coverage: complete, today })).toEqual([{ kind: "milestone", label: "Session 100" }]);
-    expect(hubMarkers({ client: {} as any, sessionNumber: 52, coverage: complete, today })).toEqual([]);
+    // No "every 25th" rule of its own: briefing-moments.ts asks the engine.
+    expect(hubMarkers({ client: {} as any, sessionNumber: 100, coverage: complete, today })).toEqual([]);
+    expect(hubMarkers({ client: {} as any, sessionNumber: 25, coverage: complete, today })).toEqual([]);
   });
 
   /*
@@ -37,10 +38,11 @@ describe("hubMarkers", () => {
 
     it("trusts the count again once somebody records what came before", () => {
       // priorHistory present means a person stated the total, and the
-      // reconciler folds it into sessionCount - so the number is hers again.
+      // reconciler folds it into sessionCount - so the number is hers again:
+      // no "New to Journey" on her first Journey session.
       const recorded = { priorHistory: { sessions: 312, through: "2026-08-31", source: "filemaker" } } as any;
-      expect(hubMarkers({ client: recorded, sessionNumber: 325, coverage: "partial", today })).toEqual([
-        { kind: "milestone", label: "Session 325" },
+      expect(hubMarkers({ client: recorded, sessionNumber: 1, coverage: "partial", today })).toEqual([
+        { kind: "first", label: "First session" },
       ]);
     });
 
@@ -52,11 +54,8 @@ describe("hubMarkers", () => {
       ]);
     });
 
-    it("still lets a consultation win, and still says she is back", () => {
+    it("still lets a consultation win", () => {
       expect(hubMarkers({ client: {} as any, sessionNumber: 1, serviceName: "Consultation", coverage: "unknown", today })[0].kind).toBe("consult");
-      expect(hubMarkers({ client: { lastSessionDate: "2026-08-16" } as any, sessionNumber: 40, coverage: "unknown", today })).toEqual([
-        { kind: "back", label: "Back after 4 wk" },
-      ]);
     });
   });
 
@@ -68,9 +67,8 @@ describe("hubMarkers", () => {
     expect(hubMarkers({ client: { dateOfBirth: "1961-09-14" } as any, sessionNumber: 40, today })).toEqual([{ kind: "birthday", label: "Birthday tomorrow" }]);
   });
 
-  it("notices someone back after three weeks, but not a brand-new client", () => {
-    expect(hubMarkers({ client: { lastSessionDate: "2026-08-16" } as any, sessionNumber: 40, today })).toEqual([{ kind: "back", label: "Back after 4 wk" }]);
-    expect(hubMarkers({ client: { lastSessionDate: "2026-09-10" } as any, sessionNumber: 40, today })).toEqual([]);
+  it("leaves the break to the Hub engine: no 21-calendar-day rule of its own (Oct 2 2026)", () => {
+    expect(hubMarkers({ client: { lastSessionDate: "2026-08-16" } as any, sessionNumber: 40, today })).toEqual([]);
   });
 
   it("reads upcoming and ongoing breaks, and upcoming medical events, from the client's events", () => {

@@ -93,6 +93,12 @@ export interface DialScale {
    * absolute dials say nothing is chosen.
    */
   untouched: string;
+  /**
+   * Draw every position in the same neutral selection colour, never red,
+   * plum or green (the effort rating: neither end is "good" or "bad" for the
+   * client, it is what happened). Absent means coloured by urgency.
+   */
+  neutral?: boolean;
 }
 
 /* ------------------------------------------------------------------ *
@@ -157,6 +163,32 @@ export const DOSE_SCALE: DialScale = {
   ask: "How did the session land?",
   words: ["Wiped out", "Drained", "Just right", "Had more", "Barely worked"],
   untouched: "Not judged",
+};
+
+/**
+ * THE EFFORT RATING — how hard she worked, the whole workout (the Atlas
+ * answers, Oct 2 2026). It replaces the dose Dial on the Wrap-up. AJ:
+ * "judging where in the 'goldilocks zone' the client total effort given. did
+ * they leave some in the tank? default is right in the middle ... or did that
+ * client PUSH HARD that day". Relative: the centre is what we expect of HER.
+ *
+ * THE ONE EXCEPTION TO "untouched is not asked": AJ decided untouched saves
+ * "As expected". The Wrap-up stores 0 with `effortDefaulted: true` when the
+ * trainer leaves without tapping, so a reader can always tell a default from
+ * a judgement; a tap stores the value plainly. Readers never count a default
+ * toward a decline (clinical-review/effort-trend.ts). Stored as
+ * `sessions.effort`; the legacy `dose` is still read where it was.
+ *
+ * Neutral: no position is green or red — pushing hard is not "better" than
+ * holding back on a day she needed to.
+ */
+export const EFFORT_SCALE: DialScale = {
+  id: "effort",
+  mode: "relative",
+  ask: "How hard did she work today?",
+  words: ["Left some in the tank", "Held back a bit", "As expected", "Pushed hard", "Gave everything"],
+  untouched: "As expected",
+  neutral: true,
 };
 
 export const READINESS_KEYS = ["sleep", "energy", "recovery", "stress"] as const;
@@ -321,7 +353,12 @@ export function isBelowCentre(v: DialValue | null | undefined): boolean {
  * `alert` and `warn` are the equipment tokens' names; `live` is the brand
  * blue the centre sits on; `ok` is the green the right side earns.
  */
-export type DialTone = "alert" | "warn" | "live" | "ok" | "ok-strong";
+export type DialTone = "alert" | "warn" | "live" | "ok" | "ok-strong" | "neutral";
+
+/** The tone a position draws in on this scale: urgency, or neutral for a `neutral` scale. */
+export function scaleTone(scale: DialScale, v: DialValue): DialTone {
+  return scale.neutral ? "neutral" : dialTone(v);
+}
 
 export function dialTone(v: DialValue): DialTone {
   switch (v) {

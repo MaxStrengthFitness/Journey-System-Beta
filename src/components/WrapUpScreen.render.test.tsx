@@ -177,11 +177,12 @@ vi.mock("firebase/firestore", async (importOriginal) => {
 
 import { WrapUpScreen } from "./WrapUpScreen";
 import { AppBottomBar } from "./AppBottomBar";
-import { DOSE_SCALE } from "../features/rating";
+import { EFFORT_SCALE } from "../features/rating";
 import { UnsavedChangesProvider, useGuardedState } from "../features/unsaved-changes";
 import { forgetPersonalMemory } from "../features/sign-out/memory";
 import { PAT, PAT_WEEK, SAM, SAM_TUESDAYS, WESTLAKE, foldFixture } from "../features/openings/ui/test-shell";
 import { OFFER_FOOT } from "../features/openings/present";
+import { congratulation } from "../lib/post-session";
 import type { Client, Studio, View, WorkoutSession } from "../types";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -239,7 +240,15 @@ const client = { id: "c1", homeStudioId: "s1", firstName: "Judy", lastName: "Cli
 const session = { id: "sess1", clientId: "c1", status: "Completed", sessionNumber: 12 } as WorkoutSession;
 const trainer = { id: "t-doc", fullName: "Jane Coach", initials: "JC", role: "LifeTransformer" } as any;
 
-function Screen({ onDose = vi.fn(), onLeave = vi.fn() }: { onDose?: (v: any) => void; onLeave?: (c: any) => void }) {
+function Screen({
+  onEffort = vi.fn(),
+  onLeave = vi.fn(),
+  onFile,
+}: {
+  onEffort?: (v: any, d: boolean) => void;
+  onLeave?: (c: any) => void;
+  onFile?: (c: any) => void;
+}) {
   return (
     <WrapUpScreen
       client={client}
@@ -249,41 +258,81 @@ function Screen({ onDose = vi.fn(), onLeave = vi.fn() }: { onDose?: (v: any) => 
       journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
       schedules={[]}
       authTrainer={trainer}
-      onDose={onDose}
+      onEffort={onEffort}
       onLeave={onLeave}
+      onFile={onFile}
       machines={[{ id: "m1", name: "Leg Press" } as any]}
     />
   );
 }
 
 describe("the post-session screen mounts", () => {
-  it("draws the dose Dial with the five DOSE words and saves the moment Just right is tapped", async () => {
-    const onDose = vi.fn();
-    const host = await mount(<Screen onDose={onDose} />);
-    const dial = host.querySelector('[data-testid="dose-dial"]')!;
+  it("draws the effort Dial with its five words, neutral, and saves the moment Pushed hard is tapped (Oct 2 2026)", async () => {
+    const onEffort = vi.fn();
+    const host = await mount(<Screen onEffort={onEffort} />);
+    expect(host.querySelector('[data-testid="dose-dial"]')).toBeNull();
+    const dial = host.querySelector('[data-testid="effort-dial"]')!;
     expect(dial).toBeTruthy();
     // It follows the app theme (Sep 27 2026): nothing pins it dark, so on the
     // light theme it is not a dark slab with white words on a white card.
-    expect(host.querySelector('[data-testid="dose-card"]')!.className.split(/\s+/)).not.toContain("dark");
-    expect(host.querySelector('[data-testid="dose-card"]')!.hasAttribute("data-theme")).toBe(false);
+    expect(host.querySelector('[data-testid="effort-card"]')!.className.split(/\s+/)).not.toContain("dark");
+    expect(host.querySelector('[data-testid="effort-card"]')!.hasAttribute("data-theme")).toBe(false);
+    expect(dial.textContent).toContain("How hard did Judy work today?");
 
     const radios = Array.from(dial.querySelectorAll('[role="radio"]'));
     expect(radios).toHaveLength(5);
-    expect(radios.map((r) => r.getAttribute("aria-label"))).toEqual([...DOSE_SCALE.words]);
+    expect(radios.map((r) => r.getAttribute("aria-label"))).toEqual([...EFFORT_SCALE.words]);
+    // No green, no red: every position is the neutral tone.
+    expect(radios.every((r) => r.getAttribute("data-tone") === "neutral")).toBe(true);
     expect(radios.every((r) => r.getAttribute("aria-checked") === "false")).toBe(true);
-    expect(dial.textContent).toContain("Not judged");
-    expect(host.querySelector('[data-testid="dose-sentence"]')).toBeNull();
+    // Untouched says what it will save.
+    expect(dial.textContent).toContain("As expected");
+    expect(host.querySelector('[data-testid="effort-default-hint"]')!.textContent).toBe("Left untouched, it saves As expected.");
+    expect(onEffort).not.toHaveBeenCalled();
 
-    await click(radios[2]);
-    expect(onDose).toHaveBeenCalledWith(0);
-    expect(radios[2].getAttribute("aria-checked")).toBe("true");
-    expect(host.querySelector('[data-testid="dose-sentence"]')!.textContent).toBe("Judy left just right.");
-    expect(host.querySelector('[data-testid="dose-card"]')!.textContent).toContain("Saved");
-
-    // Tapping it again clears back to "not judged" — and that is a write too.
-    await click(radios[2]);
-    expect(onDose).toHaveBeenLastCalledWith(null);
+    await click(radios[3]);
+    expect(onEffort).toHaveBeenCalledWith(1, false);
+    expect(radios[3].getAttribute("aria-checked")).toBe("true");
+    // No advice under it (Oct 2 2026): the app never suggests a weight.
     expect(host.querySelector('[data-testid="dose-sentence"]')).toBeNull();
+    expect(host.textContent).not.toMatch(/next time/i);
+    expect(host.querySelector('[data-testid="effort-card"]')!.textContent).toContain("Saved");
+
+    // Tapping it again takes the tap back: the default is written in its place.
+    await click(radios[3]);
+    expect(onEffort).toHaveBeenLastCalledWith(0, true);
+    expect(host.querySelector('[data-testid="effort-default-hint"]')).toBeTruthy();
+  });
+
+  it("saves As expected, marked as the default, once, when the trainer leaves without tapping", async () => {
+    const onEffort = vi.fn();
+    const onLeave = vi.fn();
+    const host = await mount(<Screen onEffort={onEffort} onLeave={onLeave} />);
+    await click(buttonByText(host, "Back to Hub"));
+    expect(onEffort).toHaveBeenCalledTimes(1);
+    expect(onEffort).toHaveBeenCalledWith(0, true);
+    expect(onLeave).toHaveBeenCalledTimes(1);
+  });
+
+  it("writes no default over a tap when the trainer leaves", async () => {
+    const onEffort = vi.fn();
+    const host = await mount(<Screen onEffort={onEffort} />);
+    const radios = Array.from(host.querySelector('[data-testid="effort-dial"]')!.querySelectorAll('[role="radio"]'));
+    await click(radios[0]);
+    await click(buttonByText(host, "Back to Hub"));
+    expect(onEffort.mock.calls).toEqual([[-2, false]]);
+  });
+
+  it("saves the default when the screen goes without Back to Hub (the bottom bar, the header)", async () => {
+    const onEffort = vi.fn();
+    const host = await mount(<Screen onEffort={onEffort} />);
+    void host;
+    const m = mounted.pop()!;
+    await act(async () => m.root.unmount());
+    m.host.remove();
+    await settle();
+    expect(onEffort).toHaveBeenCalledTimes(1);
+    expect(onEffort).toHaveBeenCalledWith(0, true);
   });
 
   it("offers the profile note's Loudness with Note checked, and Matters until behind Heads up", async () => {
@@ -320,6 +369,10 @@ describe("the post-session screen mounts", () => {
     const host = await mount(<Screen />);
     expect(host.textContent).toContain("Wrap-up · session saved");
     expect(host.textContent).not.toContain("Session complete");
+    // A plain congratulation picked for this session (Oct 2 2026), never a
+    // judgement of how she did.
+    expect(host.querySelector("h1")!.textContent).toBe(congratulation("sess1", "Judy"));
+    expect(host.textContent).not.toContain("strong work");
     expect(host.querySelector('textarea[aria-label="Profile note"]')!.getAttribute("placeholder")).toBe(
       "Profile note — anything for Judy's record. It files when you leave this screen.",
     );
@@ -347,7 +400,7 @@ describe("the post-session screen mounts", () => {
     const host = await mount(<Screen />);
     expect(host.textContent).not.toMatch(/assessment/i);
     expect(host.textContent).not.toMatch(/priority/i);
-    expect(host.textContent).toContain("How did it land · profile note · Pulse");
+    expect(host.textContent).toContain("Effort · profile note · Pulse");
     expect(host.querySelector('[data-testid="pulse-stub"]')).toBeNull();
     await click(buttonByText(host, "Update Pulse"));
     expect(host.querySelector('[data-testid="pulse-stub"]')).toBeTruthy();
@@ -440,7 +493,7 @@ describe("the Note for the next trainer in the Wrap-up's To-file tray", () => {
         journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
         schedules={[]}
         authTrainer={trainer}
-        onDose={vi.fn()}
+        onEffort={vi.fn()}
         onLeave={vi.fn()}
         nextTrainerNote={note}
         machines={[{ id: "m1", name: "Leg Press" } as any]}
@@ -537,7 +590,7 @@ describe("the post-session screen and a client's history", () => {
         journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
         schedules={[]}
         authTrainer={trainer}
-        onDose={vi.fn()}
+        onEffort={vi.fn()}
         onLeave={vi.fn()}
         machines={[{ id: "m1", name: "Leg Press" } as any]}
       />
@@ -575,14 +628,17 @@ describe("the post-session screen and a client's history", () => {
 });
 
 /*
- * UNSAVED CHANGES (Sep 24 2026). The Profile note is filed when the trainer
- * leaves by Back to Hub, but the bottom bar stays live on this screen and
- * used to unmount it with the note unfiled. Mounted with the provider and the
- * real bottom bar, wired the way AppContent wires them: onLeave files, then
- * sets the view through the same guarded setter the bar uses.
+ * EVERY WAY OUT FILES (the Atlas answers, Oct 2 2026; it was the unsaved-
+ * changes question from Sep 24). The bottom bar stays live on this screen;
+ * leaving by it files the typed Profile note as the screen goes, exactly once,
+ * and asks nothing. Locking the iPad files it and stays. Mounted with the
+ * provider and the real bottom bar, wired the way AppContent wires them:
+ * onLeave files, then sets the view through the same guarded setter the bar
+ * uses; onFile files without leaving.
  */
-describe("the profile note is unsaved work until Back to Hub files it", () => {
+describe("every way out of the Wrap-up files the typed profile note, once", () => {
   const filed: unknown[] = [];
+  const filedOnTheWay: unknown[] = [];
 
   function Host() {
     const [view, setView] = useGuardedState<View>("workouts");
@@ -590,6 +646,7 @@ describe("the profile note is unsaved work until Back to Hub files it", () => {
       <div data-testid="app" data-view={view}>
         {view === "workouts" && (
           <Screen
+            onFile={(profileNote: unknown) => filedOnTheWay.push(profileNote)}
             onLeave={(profileNote: unknown) => {
               // In the SAME tap, the strictest case: the screen has not
               // re-rendered since Back to Hub was pressed, so only its own
@@ -630,40 +687,76 @@ describe("the profile note is unsaved work until Back to Hub files it", () => {
 
   beforeEach(() => {
     filed.length = 0;
+    filedOnTheWay.length = 0;
   });
 
-  it("lets the bottom bar straight through while no note is typed", async () => {
+  const setHidden = (hidden: boolean) => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => (hidden ? "hidden" : "visible") });
+    document.dispatchEvent(new Event("visibilitychange"));
+  };
+  afterEach(() => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+  });
+
+  it("lets the bottom bar straight through while no note is typed, and files nothing", async () => {
     const host = await mount(withProvider(<Host />));
     await click(hub(host));
+    await settle();
     expect(question()).toBeNull();
     expect(viewOf(host)).toBe("clients");
+    expect(filedOnTheWay).toHaveLength(0);
   });
 
-  it("asks before the bottom bar leaves with a typed profile note, and keeps it on Keep editing", async () => {
+  it("files a typed profile note when the bottom bar leaves, without asking, exactly once", async () => {
     const host = await mount(withProvider(<Host />));
     await typeNote(host, "Shoulder tender on chest press");
     await click(hub(host));
-    expect(question()!.textContent).toContain(
-      "You have unsaved changes to the profile note. Leave without saving?",
-    );
-    await click(document.querySelector('[data-action="keep-editing"]'));
-    expect(viewOf(host)).toBe("workouts");
-    expect((host.querySelector('textarea[aria-label="Profile note"]') as HTMLTextAreaElement).value).toBe(
-      "Shoulder tender on chest press",
-    );
+    await settle();
+    expect(question()).toBeNull();
+    expect(viewOf(host)).toBe("clients");
+    expect(filedOnTheWay).toEqual([expect.objectContaining({ noteContent: "Shoulder tender on chest press", importance: "standard" })]);
     expect(filed).toHaveLength(0);
   });
 
-  it("files the note by Back to Hub and goes, without asking about the note it is filing", async () => {
+  it("files the note by Back to Hub and goes, once, without asking", async () => {
     const host = await mount(withProvider(<Host />));
     await typeNote(host, "Shoulder tender on chest press");
     await click(buttonByText(host, "Back to Hub"));
     await settle();
+    await settle();
     expect(question()).toBeNull();
     expect(viewOf(host)).toBe("clients");
-    expect(filed).toEqual([
-      expect.objectContaining({ noteContent: "Shoulder tender on chest press" }),
-    ]);
+    expect(filed).toEqual([expect.objectContaining({ noteContent: "Shoulder tender on chest press" })]);
+    // The unmount that follows Back to Hub files nothing a second time.
+    expect(filedOnTheWay).toHaveLength(0);
+  });
+
+  it("files it when the iPad is locked, stays, and never files the same words twice", async () => {
+    const host = await mount(withProvider(<Host />));
+    await typeNote(host, "Shoulder tender on chest press");
+    await act(async () => setHidden(true));
+    expect(filedOnTheWay).toEqual([expect.objectContaining({ noteContent: "Shoulder tender on chest press" })]);
+    expect(viewOf(host)).toBe("workouts");
+    await act(async () => setHidden(false));
+    expect((host.querySelector('textarea[aria-label="Profile note"]') as HTMLTextAreaElement).value).toBe("");
+    expect(host.querySelector('[data-testid="profile-note-filed"]')).toBeTruthy();
+    // Hidden again with nothing new typed: nothing more is filed.
+    await act(async () => setHidden(true));
+    await act(async () => setHidden(false));
+    expect(filedOnTheWay).toHaveLength(1);
+    // Leaving now files nothing more either.
+    await click(buttonByText(host, "Back to Hub"));
+    await settle();
+    expect(filed).toEqual([expect.objectContaining({ noteContent: "" })]);
+  });
+
+  it("files it when a sign-out asks every screen to send now", async () => {
+    const host = await mount(withProvider(<Host />));
+    await typeNote(host, "Ask about the knee");
+    await act(async () => {
+      window.dispatchEvent(new Event("journey:send-sets-now"));
+    });
+    expect(filedOnTheWay).toEqual([expect.objectContaining({ noteContent: "Ask about the knee" })]);
   });
 });
 
@@ -702,7 +795,7 @@ describe("the packages card (consultation round, Sep 2026)", () => {
         journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
         schedules={[]}
         authTrainer={trainer}
-        onDose={vi.fn()}
+        onEffort={vi.fn()}
         onLeave={vi.fn()}
         coverage={coverage}
         machines={[]}
@@ -798,7 +891,7 @@ describe("the post-session screen's small honesty fixes (packages round)", () =>
         journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
         schedules={[]}
         authTrainer={trainer}
-        onDose={vi.fn()}
+        onEffort={vi.fn()}
         onLeave={vi.fn()}
         machines={[]}
       />,
@@ -808,13 +901,13 @@ describe("the post-session screen's small honesty fixes (packages round)", () =>
     expect(name.className).not.toContain("truncate");
   });
 
-  it("never says Saved when the dose write failed", async () => {
-    const onDose = vi.fn(async () => false);
-    const host = await mount(<Screen onDose={onDose} />);
-    const radios = Array.from(host.querySelector('[data-testid="dose-dial"]')!.querySelectorAll('[role="radio"]'));
+  it("never says Saved when the effort write failed", async () => {
+    const onEffort = vi.fn(async () => false);
+    const host = await mount(<Screen onEffort={onEffort} />);
+    const radios = Array.from(host.querySelector('[data-testid="effort-dial"]')!.querySelectorAll('[role="radio"]'));
     await click(radios[2]);
-    expect(onDose).toHaveBeenCalledWith(0);
-    expect(host.querySelector('[data-testid="dose-card"]')!.textContent).not.toContain("Saved");
+    expect(onEffort).toHaveBeenCalledWith(0, false);
+    expect(host.querySelector('[data-testid="effort-card"]')!.textContent).not.toContain("Saved");
   });
 });
 
@@ -838,7 +931,7 @@ describe("the Wrap-up follows the theme, and keeps its confetti", () => {
         journey={{ enough: true, pct: 21, machines: 4, since: "2026-07-01", byGroup: [{ group: "Lower Body", pct: 26, machines: 2 }, { group: "Upper Body", pct: 14, machines: 2 }], standout: null } as any}
         schedules={[]}
         authTrainer={trainer}
-        onDose={vi.fn()}
+        onEffort={vi.fn()}
         onLeave={vi.fn()}
         unsavedDraft={{ body: "Mentioned her daughter's wedding", category: null } as any}
         machines={[{ id: "m1", name: "Leg Press", anatomicalRegion: "Lower Body" } as any]}
@@ -935,7 +1028,7 @@ describe("the Wrap-up follows the theme, and keeps its confetti", () => {
         journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
         schedules={[]}
         authTrainer={trainer}
-        onDose={vi.fn()}
+        onEffort={vi.fn()}
         onLeave={vi.fn()}
         machines={machines as any}
       />,
@@ -972,7 +1065,7 @@ describe("the post-session screen says where the session is saved (session recor
       journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
       schedules={[]}
       authTrainer={trainer}
-      onDose={vi.fn()}
+      onEffort={vi.fn()}
       onLeave={vi.fn()}
       savedOnThisIpad={savedOnThisIpad}
       machines={[{ id: "m1", name: "Leg Press" } as any]}
@@ -1072,7 +1165,7 @@ describe("Next: her next booking, and the door to Times with room", () => {
         journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
         schedules={schedules as any}
         authTrainer={SAM}
-        onDose={vi.fn()}
+        onEffort={vi.fn()}
         onLeave={vi.fn()}
         machines={[{ id: "m1", name: "Leg Press" } as any]}
       />
@@ -1190,7 +1283,7 @@ describe("Next: her next booking, and the door to Times with room", () => {
     /** The Next card's rows down to the dose card, by what they are. */
     const rowsAboveDose = (host: HTMLElement) => {
       const rows = Array.from(nextLine(host).parentElement!.children);
-      const dose = rows.findIndex((el) => el.getAttribute("data-testid") === "dose-card");
+      const dose = rows.findIndex((el) => el.getAttribute("data-testid") === "effort-card");
       expect(dose).toBeGreaterThan(0);
       return rows.slice(0, dose).map((el) => `${el.tagName}:${el.getAttribute("data-testid") ?? ""}`);
     };
@@ -1279,7 +1372,7 @@ describe("the renewal prompt follows the auto-renewal mark", () => {
         journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
         schedules={[]}
         authTrainer={trainer}
-        onDose={vi.fn()}
+        onEffort={vi.fn()}
         onLeave={vi.fn()}
         machines={[]}
       />

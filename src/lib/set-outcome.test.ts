@@ -12,8 +12,24 @@ import {
   outcomeOf,
   performedOnly,
   skipReasonOf,
+  takenOutForToday,
+  TAKEN_OUT_OUTCOME,
   unreachedMachineIds,
 } from "./set-outcome";
+
+describe("a machine taken out for today (Oct 2 2026)", () => {
+  const today = ["m1", "m2"];
+  it("is the trainer's call when its placeholder was never touched", () => {
+    expect(takenOutForToday({ machineId: "m3", weight: "100" } as any, today)).toBe(true);
+    expect(TAKEN_OUT_OUTCOME).toEqual({ outcome: "skipped", skipReason: "trainers_call" });
+    expect(skipReasonOf({ ...TAKEN_OUT_OUTCOME })).toBe("trainers_call");
+  });
+  it("leaves a machine still in today's sequence, a worked set, and an outcome already given alone", () => {
+    expect(takenOutForToday({ machineId: "m1", weight: "100" } as any, today)).toBe(false);
+    expect(takenOutForToday({ machineId: "m3", weight: "100", reps: "8" } as any, today)).toBe(false);
+    expect(takenOutForToday({ machineId: "m3", outcome: "skipped", skipReason: "pain_injury" } as any, today)).toBe(false);
+  });
+});
 
 describe("set outcome — the four states", () => {
   it("names exactly four outcomes, and only performed counts", () => {

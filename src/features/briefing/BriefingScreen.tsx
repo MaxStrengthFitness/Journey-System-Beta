@@ -77,6 +77,7 @@ import {
   matchesRoutineLetter,
 } from "../../lib/routine-utils";
 import { hubMarkers } from "../../lib/hub-markers";
+import { briefingMoments } from "../hub-opportunities/briefing-moments";
 import { renewalPromptDue } from "../renewals/conversation";
 import { renewalOf } from "../renewals/auto-renew";
 import { BriefingRenewalLine } from "../renewals/BriefingRenewalLine";
@@ -131,6 +132,11 @@ export interface BriefingScreenProps {
    * Defaults to the cautious answer.
    */
   coverage?: HistoryCoverage;
+  /**
+   * Every studio the app streams: her home studio's cutover, which the Hub's
+   * engine needs before it may call a gap "a break" (briefing-moments.ts).
+   */
+  studios?: ReadonlyArray<{ id?: string; name?: string; journeyCutoverDate?: string | null }> | null;
   authTrainer: Trainer | null;
   client: Client;
   targetRoutine: Routine | null;
@@ -183,6 +189,7 @@ export function BriefingScreen({
   trainerDropdown,
   onStudioClick,
   coverage = "unknown",
+  studios = null,
 }: BriefingScreenProps) {
   // The header follows the app theme now that the page below it does.
   // Mirrors AppContent's own call so the two can never disagree.
@@ -459,10 +466,16 @@ export function BriefingScreen({
 
   /* Everything that belongs under "Before you start", counted once so the
      heading can say how many things there are. */
-  const markers = useMemo(
-    () => hubMarkers({ client, sessionNumber: (client.sessionCount || 0) + 1, coverage }),
-    [client, coverage],
-  );
+  // The milestone and the break come from the Hub's one engine (the Atlas
+  // answers, Oct 2 2026), so the briefing and the Hub card never disagree.
+  const markers = useMemo(() => {
+    const own = hubMarkers({ client, sessionNumber: (client.sessionCount || 0) + 1, coverage });
+    const engine = briefingMoments({ client, today: todayKey, now: new Date(), studios }).map((m) => ({
+      kind: m.kind as "milestone" | "back",
+      label: m.chip,
+    }));
+    return [...own, ...engine];
+  }, [client, coverage, todayKey, studios]);
   /* Due an InBody (FileMaker parity, Oct 1 2026): one quiet line, only when
      she is due, and never in the way of Start. Her HOME studio's number,
      else her own (features/inbody/due.ts). */
@@ -721,8 +734,9 @@ export function BriefingScreen({
               )}
 
               {/* Upcoming events and milestones, the same markers the Hub card
-                  shows (lib/hub-markers.ts): a break starting Saturday, surgery
-                  on the 25th, a birthday, session 100. */}
+                  shows (lib/hub-markers.ts, and the milestone and the break from
+                  the Hub engine, briefing-moments.ts): a break starting Saturday, surgery
+                  on the 25th, a birthday, the 100th. */}
               {markers.length > 0 && (
                 <div className="br__markers">
                   {markers.map((m) => (

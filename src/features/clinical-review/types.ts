@@ -89,6 +89,11 @@ export interface SessionFact {
   readiness: SessionReadinessFact;
   /** How the session landed (Wiped out … Barely worked); legacy `clientFeel` converted. `null` = not judged. */
   dose: DialValue | null;
+  /**
+   * How hard she worked, the effort Dial (Oct 2 2026), and whether it was the
+   * Wrap-up's untouched default. `null` on every session before it existed.
+   */
+  effort?: { value: DialValue; defaulted: boolean } | null;
   /** Every body region tapped, with its Dial (Pain · Stiff · As usual · Better · Recovered). */
   regionDials: RegionDial[];
 

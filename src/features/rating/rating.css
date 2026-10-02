@@ -78,6 +78,7 @@
 .rt__word[data-tone="alert"] { color: var(--eq-alert); }
 .rt__word[data-tone="warn"] { color: var(--eq-warn); }
 .rt__word[data-tone="live"] { color: var(--eq-live-text); }
+.rt__word[data-tone="neutral"] { color: var(--eq-ink); }
 .rt__word[data-tone="ok"],
 .rt__word[data-tone="ok-strong"] { color: var(--eq-ok); }
 
@@ -149,6 +150,13 @@
   background: var(--eq-warn-fill);
   border-color: var(--eq-warn);
   color: var(--eq-warn);
+}
+/* A neutral scale (the effort rating): every position chosen in the same
+   selection colour, so no end reads as good or bad. */
+.rt__seg[aria-checked="true"][data-tone="neutral"] {
+  background: var(--eq-live-fill);
+  border-color: var(--eq-live);
+  color: var(--eq-live-text);
 }
 .rt__seg[aria-checked="true"][data-tone="alert"] {
   background: var(--eq-alert);

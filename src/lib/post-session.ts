@@ -10,7 +10,6 @@
  * "sentences, not scores" rule in CLAUDE.md).
  */
 
-import type { DialValue } from "../types";
 import { isPerformedLog, outcomeOf, type SetOutcome } from "./set-outcome";
 import { newMachinesPhrase } from "./history-claims";
 import type { HistoryCoverage } from "./prior-history";
@@ -419,31 +418,45 @@ function formatShortDay(iso: string): string {
 }
 
 /* ------------------------------------------------------------------ *
- * The dose — how the session landed (reporting round, Sep 2026)
+ * The Wrap-up's title: a plain congratulation (the Atlas answers, Oct 2 2026)
  * ------------------------------------------------------------------ */
 
 /**
- * One sentence for the Dial's position under "How did it land?", read the
- * moment it is tapped. Factual and short: the Dial is the trainer's own
- * judgement, so the sentence repeats it in words and, at the two ends,
- * says what it means for next time. `null` when nothing was judged — an
- * untouched dial is "not asked", never "just right".
+ * AJ, Oct 2 2026: "a few generic 'congratulations' messages that it randomly
+ * picks". They replace "{name}, strong work." / "good work.", which judged the
+ * session from the stars. None of these makes a claim about how she did: the
+ * client reads this title, and the screen below it says what happened.
+ * `{name}` is her first name.
  */
-export function doseSentence(dose: DialValue | null | undefined, firstName: string): string | null {
-  if (dose === null || dose === undefined) return null;
-  const who = firstName || "The client";
-  switch (dose) {
-    case -2:
-      return `${who} left wiped out — worth a lighter start next time.`;
-    case -1:
-      return `${who} left drained — ease off a touch next time.`;
-    case 0:
-      return `${who} left just right.`;
-    case 1:
-      return `${who} had more in the tank — room to add a little next time.`;
-    case 2:
-      return `Today barely worked ${who} — plenty of room to add next time.`;
-    default:
-      return null;
+export const CONGRATULATIONS: readonly string[] = [
+  "Well done, {name}.",
+  "Nicely done, {name}.",
+  "Congratulations, {name}.",
+  "That's a wrap, {name}.",
+  "Another one done, {name}.",
+  "Thanks for the work today, {name}.",
+];
+
+/** The same words without a name, for a client with no first name on file. */
+const WITHOUT_NAME = ["Well done.", "Nicely done.", "Congratulations.", "That's a wrap.", "Another one done.", "Thanks for the work today."];
+
+/** A small stable hash (FNV-1a), so the pick never changes on a re-render. */
+function stableHash(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
   }
+  return h >>> 0;
+}
+
+/**
+ * One congratulation, picked "at random" but seeded by the session, so the
+ * same session always says the same thing (a re-render, coming back to the
+ * screen) and different sessions vary.
+ */
+export function congratulation(seed: string, firstName: string): string {
+  const i = stableHash(seed || "wrap-up") % CONGRATULATIONS.length;
+  const name = (firstName || "").trim();
+  return name ? CONGRATULATIONS[i].replace("{name}", name) : WITHOUT_NAME[i];
 }

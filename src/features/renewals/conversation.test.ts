@@ -56,6 +56,22 @@ describe("conversations", () => {
     );
   });
 
+  it("never clears an ask for a leader: a talk without the tick leaves the flag out of the write (Oct 2 2026)", () => {
+    const { touch, cycle } = conversationWrites({
+      draft: { leaning: "leaning-yes", concerns: [], interestedIn: null, note: "", needsLeader: false },
+      clientId: "c1",
+      clientName: "Mary Smith",
+      cycleKey: "9001",
+      snapshot: null,
+      authorId: "uid-sam",
+      authorName: "Sam Lee",
+    });
+    // The merge keeps whatever the cycle holds; only a leader clears it.
+    expect(cycle).not.toHaveProperty("needsLeader");
+    // The touch still says this talk did not ask.
+    expect(touch.needsLeader).toBe(false);
+  });
+
   it("reads 'talking' once someone has logged a conversation", () => {
     expect(effectiveStage(null)).toBe("not-started");
     expect(effectiveStage({ lastTouchAt: new Date() })).toBe("talking");

@@ -52,6 +52,8 @@ The conversation is due at the studio's threshold (10 sessions left by default).
 
 **A cycle is checked as a whole document.** A leader's write must fit `renewalCycleKeys()` in `firestore.rules`. Every field the job writes (`outcome`, `outcomeBy`, `outcomeAt`, `nextCycleKey`, `nextPackageKey`, `closedOn`, `primaryTrainerId`) is on that list. A new job field must go there too, or leaders are locked out of that cycle.
 
+**An ask for a leader stays until a leader marks it handled** (the Atlas answers, Oct 2 2026). A trainer's conversation writes `needsLeader` only to raise it (`conversationWrites` leaves it out otherwise, so the merge keeps it on); only the brief's "Mark the follow-up handled" (`updateCycleAsLeader`) clears it. Each touch still records whether that talk asked.
+
 ## Decisions
 
 - **Sessions left = sessions on hand (pricing options) + 8 for each payment still to come.** The count is Mindbody's; an estimate says so. Complimentary "Session Comp" sessions count; unmatched pricing options don't, and they show as data gaps.

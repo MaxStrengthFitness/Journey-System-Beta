@@ -27,6 +27,18 @@ export function doseOf(s: Pick<WorkoutSession, "dose" | "clientFeel"> | null | u
   return dialFromClientFeel(s.clientFeel);
 }
 
+/**
+ * How hard she worked (the effort Dial, Oct 2 2026), and whether it was the
+ * untouched default rather than a tap. Null when the session has no effort
+ * (every session before the effort rating, and one whose Wrap-up never ran).
+ */
+export function effortOf(
+  s: Pick<WorkoutSession, "effort" | "effortDefaulted"> | null | undefined,
+): { value: DialValue; defaulted: boolean } | null {
+  if (!s || !isDialValue(s.effort)) return null;
+  return { value: s.effort, defaulted: s.effortDefaulted === true };
+}
+
 /** One readiness dial, with its legacy fallback. Recovery has no legacy field. */
 export function readinessDial(check: PreSessionCheckIn | null | undefined, key: ReadinessKey): DialValue | null {
   if (!check) return null;

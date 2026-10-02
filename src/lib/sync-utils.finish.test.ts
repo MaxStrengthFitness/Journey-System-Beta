@@ -27,6 +27,7 @@ vi.mock("firebase/firestore", () => ({
   collection: (_db: unknown, ...parts: string[]) => ({ path: parts.join("/") }),
   serverTimestamp: () => ({ __server: true }),
   increment: (n: number) => ({ __increment: n }),
+  deleteField: () => ({ __delete: true }),
   writeBatch: () => ({
     update: (ref: { path: string }, data: Record<string, unknown>) =>
       calls.batchWrites.push({ op: "update", path: ref.path, data }),
@@ -99,6 +100,10 @@ describe("completeWorkoutSession", () => {
     expect(paths).toContain("sessions/sess1");
     expect(paths).toContain("exerciseLogs/sess1_m1");
     expect(paths).toContain("clientMachineSettings/c1_m1");
+    // A weight set for this session at the last Wrap-up is used up once the
+    // machine is logged (features/next-weight, Oct 2 2026).
+    const setting = calls.batchWrites.find((w) => w.path === "clientMachineSettings/c1_m1")!;
+    expect(setting.data.nextWeight).toEqual({ __delete: true });
     expect(paths.some((p) => p.startsWith("clients/"))).toBe(false);
   });
 
@@ -113,6 +118,33 @@ describe("completeWorkoutSession", () => {
     });
     expect(Object.keys(calls.updateDocs[0].data)).toContain("currentMachineMetrics.m1");
     expect(r.totalsSaved).toBe(true);
+  });
+
+  it("finishes an unfinished session under its own day, never over what she did since (Oct 2 2026)", async () => {
+    const later = {
+      ...client,
+      lastSessionDate: "2026-09-28",
+      currentMachineMetrics: { m1: { weight: "190", lastPerformedDate: new Date("2026-09-28T15:00:00Z") } },
+    };
+    await completeWorkoutSession({} as never, session, later, logs, "", trainer, {}, "uid-t1", undefined, { asOfDay: "2026-09-24" });
+    const totals = calls.updateDocs[0].data;
+    // One more session, never renumbering her count back to 41.
+    expect(totals.sessionCount).toEqual({ __increment: 1 });
+    // Her last-session day only moves forward.
+    expect(totals).not.toHaveProperty("lastSessionDate");
+    // m1 was done since: left alone. m2 was not: written, on the session's own day.
+    expect(totals).not.toHaveProperty("currentMachineMetrics.m1");
+    expect((totals["currentMachineMetrics.m2"] as any).lastPerformedDate).toBeInstanceOf(Date);
+    const paths = calls.batchWrites.map((w) => w.path);
+    expect(paths).not.toContain("clientMachineSettings/c1_m1");
+    expect(paths).toContain("clientMachineSettings/c1_m2");
+  });
+
+  it("moves her last-session day to the old session's day when nothing came after", async () => {
+    await completeWorkoutSession({} as never, session, { ...client, lastSessionDate: "2026-09-20" }, logs, "", trainer, {}, "uid-t1", undefined, {
+      asOfDay: "2026-09-24",
+    });
+    expect(calls.updateDocs[0].data.lastSessionDate).toBe("2026-09-24");
   });
 
   it("keeps the session when the totals are refused, and says so instead of throwing", async () => {

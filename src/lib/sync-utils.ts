@@ -101,10 +101,10 @@ export function mapMindbodySessions(sessions: any[], trainers: Trainer[]): Parti
   });
 }
 
-import { Firestore, writeBatch, doc, collection, serverTimestamp, increment, updateDoc, type DocumentReference } from 'firebase/firestore';
+import { Firestore, writeBatch, doc, collection, serverTimestamp, increment, updateDoc, deleteField, type DocumentReference } from 'firebase/firestore';
 import { invalidateSessionCount } from './session-count-cache';
 import { completedSessionRollup } from './client-rollups';
-import { studioTodayKey } from "./studio-time";
+import { studioDateKey, studioTodayKey } from "./studio-time";
 import { isPerformedLog } from './set-outcome';
 
 /**
@@ -160,6 +160,15 @@ export async function completeWorkoutSession(
   userId: string,
   /** Extra fields for the session document — the booking match and lateness (lib/session-timing.ts). */
   sessionExtras?: Record<string, unknown>,
+  /**
+   * Finishing a session nobody finished, under its OWN day (the Atlas answers,
+   * Oct 2 2026: "Finish it as it was"). With `asOfDay` the session counts as
+   * one more completed session (never renumbering her count), her last-session
+   * day moves only forward, and a machine's "last time" and next weight are
+   * written only where nothing newer is on file — a session finished days
+   * late must never overwrite what she did since.
+   */
+  options?: { asOfDay?: string | null },
 ): Promise<{ totalsSaved: boolean | null }> {
   if (!currentSession?.id) return { totalsSaved: null };
   const batch = writeBatch(db);
@@ -290,11 +299,22 @@ export async function completeWorkoutSession(
     invalidateSessionCount(selectedClient.id);
 
     const clientRef = doc(db, 'clients', selectedClient.id);
+    const asOfDay = options?.asOfDay || null;
     const clientUpdates: any = {
       completedSessions: increment(1),
-      sessionCount: currentSession.sessionNumber || increment(1),
-      lastSessionDate: studioTodayKey(),
+      sessionCount: asOfDay ? increment(1) : currentSession.sessionNumber || increment(1),
       updatedAt: serverTimestamp()
+    };
+    if (!asOfDay) clientUpdates.lastSessionDate = studioTodayKey();
+    else if (!(typeof selectedClient.lastSessionDate === 'string' && selectedClient.lastSessionDate > asOfDay)) {
+      clientUpdates.lastSessionDate = asOfDay;
+    }
+    /** A machine whose "last time" on file is from a later day than the session being finished. */
+    const newerOnFile = (machineId: string): boolean => {
+      if (!asOfDay) return false;
+      const metric = selectedClient.currentMachineMetrics?.[machineId];
+      const day = metric?.lastPerformedDate ? studioDateKey(metric.lastPerformedDate) : null;
+      return !!day && day > asOfDay;
     };
 
     if (roundedSessionReps > 0) {
@@ -306,6 +326,8 @@ export async function completeWorkoutSession(
 
     performedLogs.forEach(logObj => {
       const log = logObj as any;
+      // Finishing an old session: never over what she has done since.
+      if (newerOnFile(log.machineId)) return;
       if (log.weight || log.reps || log.seconds) {
         const key = `currentMachineMetrics.${log.machineId}`;
         clientUpdates[key] = cleanData({
@@ -317,7 +339,8 @@ export async function completeWorkoutSession(
           totalTimeUnderLoad: log.totalTimeUnderLoad,
           averageTimePerRep: log.averageTimePerRep,
           settings: log.machineSettings || {},
-          lastPerformedDate: serverTimestamp(),
+          // Its own day when finished late (noon, so the studio day holds).
+          lastPerformedDate: asOfDay ? new Date(`${asOfDay}T12:00:00`) : serverTimestamp(),
           lastPerformedSessionNumber: currentSession.sessionNumber,
           lastSessionId: currentSession.id
         });
@@ -335,6 +358,9 @@ export async function completeWorkoutSession(
             settings: currentSettingsObj?.settings || {},
             updatedBy: userId,
             currentWeight: Number(log.weight),
+            // A weight set for this session at the last Wrap-up is used up now
+            // that the machine is logged (features/next-weight).
+            nextWeight: deleteField(),
             updatedAt: serverTimestamp()
           };
 

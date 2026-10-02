@@ -140,6 +140,8 @@ import { useRenewalSettings } from "../features/renewals/useRenewalSettings";
 import { buildPackageNameIndex } from "../features/renewals/settings";
 import { sessionsSplit } from "../features/client-admin/account";
 import { recordStudioIdOf } from "../features/client-codex/access";
+import { hasImportantMachineNote } from "../features/equipment/machine-notes";
+import { useMachineJournal } from "../features/equipment/useMachineJournal";
 
 /** Sessions per Firestore page for the profile's history (see the Journey tab). */
 /* Fifty at a time (audit, Sep 13): "Older really needs to show us their
@@ -1047,6 +1049,10 @@ export function ClientProfileView({
     [routines],
   );
 
+  /* Her journal's notes that name a machine: the grid's note mark reads the
+     one list (Oct 2 2026, features/equipment/machine-notes.ts). The same
+     query as the record's journal, so one listener. */
+  const machineJournal = useMachineJournal(client.id ?? null);
   const journeyGridRows = useMemo(() => {
     const ordered = [...machines].sort(
       (a, b) =>
@@ -1088,9 +1094,12 @@ export function ClientProfileView({
           settingLabels: entries.length
             ? Object.fromEntries(entries.map(([k, , full]) => [k, full]))
             : undefined,
-          alert: !!clientSettings[machine.id!]?.machineNotes?.some(
-            (n) => n.isImportant,
-          ),
+          alert: hasImportantMachineNote({
+            machineId: machine.id!,
+            machineName: machine.name,
+            legacy: clientSettings[machine.id!]?.machineNotes,
+            journal: machineJournal,
+          }),
         },
       };
     });
@@ -1101,6 +1110,7 @@ export function ClientProfileView({
     studioFloorById,
     studios,
     activeStudioId,
+    machineJournal,
   ]);
 
   /**

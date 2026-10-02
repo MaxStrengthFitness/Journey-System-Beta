@@ -45,6 +45,8 @@ import {
 } from "../lib/utils";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { MachineSettingsDashboardModal } from "./MachineSettingsDashboardModal";
+import { hasImportantMachineNote } from "../features/equipment/machine-notes";
+import { useMachineJournal } from "../features/equipment/useMachineJournal";
 
 interface WorkoutChartGridProps {
   clientId: string;
@@ -116,6 +118,8 @@ export function WorkoutChartGrid({
   const [machineSearchQuery, setMachineSearchQuery] = useState("");
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // Her machine notes are one list since Oct 2 2026 (her journal plus the old list).
+  const machineJournal = useMachineJournal(clientId);
 
   const client = clients.find((c) => c.id === clientId);
   if (!client) return null;
@@ -583,9 +587,12 @@ export function WorkoutChartGrid({
                             <Star className="w-2.5 h-2.5 ml-1 fill-amber-400 text-amber-500 inline shrink-0" />
                           )}
                         </span>
-                        {clientSettings
-                          .find((s) => s.machineId === machine.id)
-                          ?.machineNotes?.some((n) => n.isImportant) && (
+                        {hasImportantMachineNote({
+                          machineId: machine.id!,
+                          machineName: machine.name,
+                          legacy: clientSettings.find((s) => s.machineId === machine.id)?.machineNotes,
+                          journal: machineJournal,
+                        }) && (
                           <AlertCircle className="w-3 h-3 text-red-500 shrink-0 inline" />
                         )}
                       </div>

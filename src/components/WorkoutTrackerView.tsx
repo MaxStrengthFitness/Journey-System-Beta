@@ -148,7 +148,7 @@ import {
   hasRequiredCount,
   findIncompleteLogs,
 } from "../lib/log-validation";
-import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL, isBegunLog } from "../lib/set-outcome";
+import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL, isBegunLog, takenOutForToday, TAKEN_OUT_OUTCOME } from "../lib/set-outcome";
 import { canQuoteSessionNumber, coverageOfClient, homeCutoverOf } from "../lib/client-coverage";
 import { sessionNumberTag } from "../lib/history-claims";
 import { sessionTimingFields, toEpochMs } from "../lib/session-timing";
@@ -158,6 +158,7 @@ import {
   myTrainerIds,
   peekLiveSessionId,
   rememberLiveSession,
+  sessionDayWords,
   splitInProgress,
   takeOverPatch,
 } from "../lib/live-session";
@@ -218,6 +219,11 @@ import { studioTodayKey } from "../lib/studio-time";
 import { sessionLinkOf } from "../features/client-notes/session-link";
 
 import { clientDisplayName, clientFirstName } from "../lib/client-name";
+import { isNextWeightLive, nextWeightMark, nextWeightSourceLine } from "../features/next-weight/next-weight";
+import { saveNextWeight } from "../features/next-weight/store";
+import { machineNotesFor } from "../features/equipment/machine-notes";
+import { useMachineJournal } from "../features/equipment/useMachineJournal";
+import { sessionNoteStudioId } from "../features/client-notes/note-studio";
 import { PerformanceEntryDialog } from "../features/tracker/PerformanceEntryDialog";
 import { ExerciseHistoryDialog } from "../features/tracker/ExerciseHistoryDialog";
 import { ClientSelectionDialog } from "../features/tracker/ClientSelectionDialog";
@@ -640,6 +646,58 @@ export function WorkoutTrackerView({
     if (staleSession?.id) setDeclinedStaleId(staleSession.id);
   };
 
+  /*
+   * ...or chose "Finish it as it was" (the Atlas answers, Oct 2 2026). The
+   * old session is finished under its OWN day, by the trainer who ran it, so
+   * its real sets count: Finish's own writes (completeWorkoutSession) with
+   * `asOfDay`, which counts it as one more session, never moves her last
+   * session day back, and never writes a machine's "last time" or next
+   * weight over a newer one. Its sets are taken as they stand, each read the
+   * way Finish reads it (a set with a count is performed, an untouched
+   * placeholder not reached, a begun set with no count skipped). No Wrap-up:
+   * the client in front of the trainer is today's. The briefing stays, and
+   * Start makes today's session as usual. Fired, never awaited on the floor.
+   */
+  const finishStaleSessionAsItWas = () => {
+    const s = staleSession;
+    if (!s?.id || !selectedClient || !user?.uid) return;
+    const sessionLogs = (Object.values(logs) as ExerciseLog[]).filter((l) => l.sessionId === s.id);
+    const stamped = sessionLogs.map((l) => {
+      const o = outcomeAtFinish(l, null);
+      if (o.outcome === "performed") return l;
+      return { ...l, ...o, ...(o.outcome !== "skipped" ? { skipReason: null } : {}) };
+    });
+    const ranBy = s.trainerId
+      ? ({ id: s.trainerId, fullName: (s as { trainerName?: string }).trainerName || "", initials: s.trainerInitials || "" } as Trainer)
+      : authTrainer;
+    const endedAt = s.lastHeartbeatAt ?? s.startTime ?? null;
+    const name = clientFirstName(selectedClient, "The client");
+    const day = sessionDayWords(s, studioTodayKey()) ?? "the day it was started";
+    setDeclinedStaleId(s.id);
+    setStaleSession(null);
+    completeWorkoutSession(
+      db,
+      s,
+      selectedClient,
+      stamped,
+      "",
+      ranBy,
+      clientMachineSettings,
+      user.uid,
+      endedAt ? { endTime: endedAt } : undefined,
+      { asOfDay: s.date || null },
+    ).then(
+      (r) => {
+        toastInfo(`${name}'s unfinished session from ${day} is finished as it was.`);
+        if (r.totalsSaved === false) toastError(`${name}'s session count didn't update for it.`);
+      },
+      (error) => {
+        console.error("[stale] finishing the old session was refused", error);
+        toastError(`${name}'s unfinished session couldn't be finished. It is still on her profile.`);
+      },
+    );
+  };
+
   const [machineTimeElapsed, setMachineTimeElapsed] = useState<number>(0);
 
   useEffect(() => {
@@ -835,6 +893,10 @@ export function WorkoutTrackerView({
     [selectedClient?.clinicalFlags, flagJournal.criticalEntries, flagJournal.headsUpEntries, floorMachines],
   );
   const flags = useMemo(() => sessionFlags(flagSources), [flagSources]);
+  /* Her journal's notes that name a machine, for the grid's note marks (one
+     list since Oct 2 2026; the same query as the journal above, so one
+     listener). */
+  const machineJournal = useMachineJournal(selectedClient?.id ?? null);
   const draftSessionRef = React.useRef<string | null>(null);
   useEffect(() => {
     const id = currentSession?.id ?? null;
@@ -1485,7 +1547,8 @@ export function WorkoutTrackerView({
         try {
           await createJournalEntry(
             clientId,
-            currentStudioId || clientHomeStudioId || "",
+            // Her home studio's note, wherever the session is (Oct 2 2026).
+            clientHomeStudioId || currentStudioId || "",
             { id: user.uid, initials, fullName: authTrainer?.fullName || initials },
             {
               kind: "general",
@@ -1917,6 +1980,9 @@ export function WorkoutTrackerView({
          stamped not reached. A set that was begun without a count takes the
          trainer's End Session answer, skipped (reason unknown) by default. */
       const stamped = sessionLogs.map((l) => {
+        // Taken out for today on the reorder sheet: the trainer's call, not
+        // "not reached" (the Atlas answers, Oct 2 2026; set-outcome.ts).
+        if (takenOutForToday(l, activeMachineIds)) return { ...l, ...TAKEN_OUT_OUTCOME };
         const chosen = l.machineId ? endChoices[l.machineId] ?? null : null;
         let o = outcomeAtFinish(l, chosen === "not_reached" ? null : chosen);
         if (o.outcome === "performed") return l;
@@ -2039,7 +2105,7 @@ export function WorkoutTrackerView({
       if (nextTrainerNote) {
         createJournalEntry(
           selectedClient.id,
-          contextActiveStudioId || authTrainer?.primaryHomeStudioId || selectedClient.homeStudioId || "",
+          sessionNoteStudioId(selectedClient, contextActiveStudioId || authTrainer?.primaryHomeStudioId),
           { id: user.uid, initials: authTrainer?.initials || "", fullName: authTrainer?.fullName || "" },
           {
             kind: "general",
@@ -2122,18 +2188,61 @@ export function WorkoutTrackerView({
     }
   };
 
-  /** The dose Dial writes the moment it is tapped — no save button. A cleared
-      dial stores nothing (`deleteField`): untouched is "not judged", never 0. */
-  const savePostSessionDose = async (dose: DialValue | null): Promise<boolean> => {
-    if (!postSession?.session.id) return false;
+  /** The effort Dial writes the moment it is tapped — no save button (Oct 2
+      2026; it replaced the dose Dial). The untouched default is 0 with
+      `effortDefaulted: true` (AJ's call), so a reader can tell it from a tap;
+      a tap drops the marker. The legacy `dose` is no longer written. */
+  const savePostSessionEffort = async (effort: DialValue, defaulted: boolean): Promise<boolean> => {
+    const id = postSession?.session.id;
+    if (!id) return false;
     try {
-      await updateDoc(doc(db, "sessions", postSession.session.id), { dose: dose === null ? deleteField() : dose });
+      await updateDoc(doc(db, "sessions", id), {
+        effort,
+        effortDefaulted: defaulted ? true : deleteField(),
+      });
       return true;
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, "sessions");
       // The Dial must not say "Saved" over a write that failed.
       return false;
     }
+  };
+
+  /**
+   * The next session's weight, set on the Wrap-up (the Atlas answers, Oct 2
+   * 2026): written onto her settings document for that machine, which every
+   * session start reads, with the mark of who set it. Fired, never awaited
+   * on the floor; a refusal is said in a toast and the Wrap-up says it isn't
+   * saved.
+   */
+  const savePostSessionNextWeight = (machineId: string, weight: number, today: number | null): Promise<boolean> => {
+    const s = postSession?.session;
+    const c = postSession?.client;
+    if (!s?.id || !c?.id) return Promise.resolve(false);
+    const uid = user?.uid || "";
+    const mark = nextWeightMark({
+      weight,
+      today,
+      sessionId: s.id,
+      setById: uid,
+      setByName: authTrainer?.fullName || "",
+      now: new Date(),
+    });
+    return saveNextWeight({
+      clientId: c.id,
+      machineId,
+      homeStudioId: c.homeStudioId || (c as any).studioId || null,
+      weight,
+      mark,
+      updatedBy: uid,
+    }).then(
+      () => true,
+      (error) => {
+        console.error("[wrap-up] next session's weight not saved", error);
+        toastError("The next session's weight didn't save. Check the connection, then set it again.");
+        return false;
+      },
+    );
   };
 
   /**
@@ -2168,7 +2277,7 @@ export function WorkoutTrackerView({
     await noteOrSay(
       createJournalEntry(
         snap.client.id,
-        contextActiveStudioId || authTrainer?.primaryHomeStudioId || snap.client.homeStudioId || "",
+        sessionNoteStudioId(snap.client, contextActiveStudioId || authTrainer?.primaryHomeStudioId),
         { id: user.uid, initials: authTrainer?.initials || "", fullName: authTrainer?.fullName || "" },
         {
           kind: kind || "general",
@@ -2187,18 +2296,31 @@ export function WorkoutTrackerView({
   };
   const dropSessionDraft = () => setPostSession((s) => (s ? { ...s, draft: null } : s));
 
-  /** Leaving the Wrap-up files its Profile note, if any, and goes home. */
-  const leavePostSession = async (profileNote?: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => {
+  /**
+   * Files what the Wrap-up holds — the Profile note, and a mid-session draft
+   * nobody saved or dropped — WITHOUT leaving (the Atlas answers, Oct 2 2026:
+   * every way out files a typed Profile note exactly once). The Wrap-up calls
+   * it when it goes by any other way than Back to Hub (the bottom bar, the
+   * header, a sign-out) and when the iPad is locked or the page hidden; Back
+   * to Hub files through `leavePostSession`, which calls this. The Wrap-up
+   * hands each typed note over once; the draft is filed once per session.
+   */
+  const draftFiledForRef = useRef<string | null>(null);
+  const filePostSessionNotes = async (profileNote?: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => {
     const snap = postSession;
     // A draft the trainer neither saved nor dropped is filed, unfiled, on the
     // way out. The To-file tray exists for exactly this; losing it does not.
-    if (snap?.draft && hasDraftText(snap.draft)) await fileSessionDraft(snap.draft.body);
+    const draftKey = snap?.session.id ?? null;
+    if (snap?.draft && hasDraftText(snap.draft) && draftFiledForRef.current !== draftKey) {
+      draftFiledForRef.current = draftKey;
+      await fileSessionDraft(snap.draft.body);
+    }
     const body = profileNote?.noteContent.trim() ?? "";
     if (snap && body && user?.uid) {
       await noteOrSay(
         createJournalEntry(
           snap.client.id,
-          contextActiveStudioId || authTrainer?.primaryHomeStudioId || snap.client.homeStudioId || "",
+          sessionNoteStudioId(snap.client, contextActiveStudioId || authTrainer?.primaryHomeStudioId),
           { id: user.uid, initials: authTrainer?.initials || "", fullName: authTrainer?.fullName || "" },
           {
             kind: "general",
@@ -2216,6 +2338,11 @@ export function WorkoutTrackerView({
         "Session saved. The profile note could not be saved — add it from Notes & Profile → Notes.",
       );
     }
+  };
+
+  /** Leaving the Wrap-up by Back to Hub files its Profile note, if any, and goes home. */
+  const leavePostSession = async (profileNote?: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => {
+    await filePostSessionNotes(profileNote);
     setPostSession(null);
     setIsPostSessionMode(false);
     setSelectedClientId(null);
@@ -2583,9 +2710,27 @@ export function WorkoutTrackerView({
             lastWeight = set.weight;
           }
         }
-        const notes = setting?.machineNotes || [];
+        // One list (Oct 2 2026): her journal's notes on the machine plus the
+        // old list's (features/equipment/machine-notes.ts).
+        const notes = machineNotesFor({
+          machineId: machine.id!,
+          machineName: machine.name,
+          legacy: setting?.machineNotes,
+          journal: machineJournal,
+        });
+        // Where today's weight came from, when a trainer set it at the last
+        // Wrap-up and no session has logged the machine since (next-weight).
+        const nextMark = setting?.nextWeight;
+        const weightSource = isNextWeightLive(
+          nextMark,
+          selectedClient?.currentMachineMetrics?.[machine.id!]?.lastSessionId,
+          setting?.currentWeight,
+        )
+          ? (nextWeightSourceLine(nextMark) ?? undefined)
+          : undefined;
         return {
           ...row,
+          weightSource,
           prescribedWeight:
             setting?.currentWeight ?? lastWeight ?? setting?.startingWeight,
           machine: {
@@ -2613,6 +2758,8 @@ export function WorkoutTrackerView({
     studioFloorById,
     shownSession,
     gridHistory,
+    selectedClient?.currentMachineMetrics,
+    machineJournal,
   ]);
 
   const gridSections = useMemo<GridSection[]>(() => {
@@ -2945,8 +3092,10 @@ export function WorkoutTrackerView({
         journey={postSession.journey}
         schedules={schedules}
         authTrainer={authTrainer}
-        onDose={savePostSessionDose}
+        onEffort={savePostSessionEffort}
+        onNextWeight={savePostSessionNextWeight}
         onLeave={leavePostSession}
+        onFile={filePostSessionNotes}
         unsavedDraft={postSession.draft}
         onSaveDraft={fileSessionDraft}
         onDropDraft={dropSessionDraft}
@@ -3059,6 +3208,7 @@ export function WorkoutTrackerView({
         takesOver={isAnotherTrainersSession(staleSession, myIds)}
         onResume={resumeStaleSession}
         onStartNew={leaveStaleSession}
+        onFinishAsItWas={finishStaleSessionAsItWas}
       />
     ) : null;
 
@@ -3117,6 +3267,7 @@ export function WorkoutTrackerView({
           authTrainer={authTrainer}
           client={selectedClient}
           coverage={clientCoverage}
+          studios={studios ?? null}
           targetRoutine={targetRoutine}
           lastSession={
             sessions.filter((s) => s.status === "Completed")[0] || null

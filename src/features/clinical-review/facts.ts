@@ -11,6 +11,7 @@
 
 import type { ClinicalIncident, DialValue, ExerciseLog, WorkoutSession } from "../../types";
 import { isPerformedLog } from "../../lib/set-outcome";
+import { effortOf } from "../rating/session-reads";
 import {
   dialFromClientFeel,
   dialFromEnergyLevel,
@@ -381,6 +382,7 @@ export function buildFacts(
       isCrossTrain: !!s.isCrossTrain,
       readiness: readinessOf(c),
       dose: doseOf(s),
+      effort: effortOf(s),
       regionDials,
       sleep: sleepOf(c),
       stress: stressOf(c),

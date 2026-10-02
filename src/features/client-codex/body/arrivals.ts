@@ -35,7 +35,7 @@
  * record the door"), never counted as unasked. An empty Journey history is
  * "no detail here", never "this never happened" (the migration rule).
  *
- * The app describes; the trainer decides: `doseSentence` (lib/post-session)
+ * The app describes; the trainer decides: the old `doseSentence` (lib/post-session, removed Oct 2 2026)
  * is deliberately NOT used — its "next time" clauses are progression talk.
  *
  * Pure: no React, no Firestore. arrivals.test.ts (TZ=America/New_York).

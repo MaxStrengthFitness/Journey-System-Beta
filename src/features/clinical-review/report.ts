@@ -28,6 +28,7 @@ import {
 } from "./analytics";
 import { pulseTrend } from "./pulse-trend";
 import { coverageInsights, correlationInsights, formInsights, plateauInsights, rankInsights, rhythmInsights } from "./insights";
+import { effortTrend, type EffortTrend } from "./effort-trend";
 import type {
   AttendanceRhythm,
   Correlation,
@@ -82,6 +83,8 @@ export interface Report {
   rhythm: AttendanceRhythm;
   pain: PainTimeline;
   pulse: PulseTrend;
+  /** Effort, lately: the effort rating read as one sentence (effort-trend.ts). */
+  effort: EffortTrend;
   insights: Insight[];
   /** Everything, not just the top eight — the "all findings" drawer. */
   allInsights: Insight[];
@@ -212,6 +215,7 @@ export function buildReport(input: ReportInput): Report {
     rhythm,
     pain,
     pulse,
+    effort: effortTrend(all.facts, firstName),
     insights: rankInsights(allInsights, 8),
     allInsights: rankInsights(allInsights, 100),
     machineName,

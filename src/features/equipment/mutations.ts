@@ -375,6 +375,36 @@ export async function addMachineNote({
     isImportant: isMaintenance,
   };
 
+  /*
+   * ONE LIST (the Atlas answers, Oct 2 2026): the note lives in her journal
+   * only, carrying `machineId`, and every reader takes
+   * `machineNotesFor` (machine-notes.ts), which reads the journal plus the old
+   * `machineNotes` list for data written before. The journal write is awaited
+   * and its failure thrown, so the sheet keeps the words rather than saying
+   * "saved" over a note that went nowhere. Only a host that gives no journal
+   * context (no studio to file it under) still writes the old list.
+   */
+  if (journal) {
+    const id = await createJournalEntry(
+      clientId,
+      journal.studioId,
+      { id: author.id, initials: author.initials || "??", fullName: author.fullName },
+      {
+        kind: "equipment",
+        category: null,
+        body: isMaintenance ? `${machineName} — maintenance: ${body}` : `${machineName} — ${body}`,
+        importance: isMaintenance ? "critical" : "standard",
+        machineId,
+        focusId: null,
+        sessionId: journal.sessionId ?? null,
+        sessionNumber: journal.sessionNumber ?? null,
+        sessionDay: journal.sessionDay ?? null,
+        origin: journal.origin,
+      },
+    );
+    return { ...note, id: id ? `journal:${id}` : note.id };
+  }
+
   await setDoc(
     doc(db, "clientMachineSettings", `${clientId}_${machineId}`),
     {
@@ -386,16 +416,6 @@ export async function addMachineNote({
     },
     { merge: true },
   );
-
-  await fileToJournal(
-    clientId,
-    author,
-    journal,
-    isMaintenance ? `${machineName} — maintenance: ${body}` : `${machineName} — ${body}`,
-    machineId,
-    isMaintenance ? "critical" : "standard",
-  );
-
   return note;
 }
 

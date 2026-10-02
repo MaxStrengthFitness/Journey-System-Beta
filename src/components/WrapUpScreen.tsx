@@ -20,7 +20,7 @@ import { FordSweep } from "../features/ford/FordSweep";
 import { useClientFord } from "../features/ford/useClientFord";
 import { NoteSweep, discardUnfiledEntry, fileUnfiledEntry, isUnfiled } from "../features/client-notes";
 import { isNextTrainerNote, type NextTrainerNoteMark } from "../features/client-notes/note-catalog";
-import { Dial, DOSE_SCALE, Loudness } from "../features/rating";
+import { Dial, EFFORT_SCALE, Loudness } from "../features/rating";
 import type { SessionNoteDraft } from "../features/client-notes/session-draft";
 import { ArrowLeft, CalendarCheck2, CalendarClock, CalendarSearch, CalendarX2, Check, HeartPulse, MessageSquareText, Star } from "lucide-react";
 import {
@@ -30,11 +30,11 @@ import {
   renewalPromptDue,
 } from "../features/renewals";
 import { getBroadMuscleGroup } from "../lib/clinical-review-utils";
-import { useUnsavedChanges } from "../features/unsaved-changes";
+import { SEND_SETS_NOW_EVENT } from "../features/session-record/sign-out-check";
 import { performedOnly, SKIP_REASON_SHORT } from "../lib/set-outcome";
 import { studioTodayKey } from "../lib/studio-time";
 import {
-  doseSentence,
+  congratulation,
   journeySentence,
   nextBookingAnswer,
   nextBookingFor,
@@ -61,6 +61,7 @@ import { bookedWeekdays } from "../features/packages/booked-days";
 import { DOOR_BUTTON, sheetTitle } from "../features/packages/package-copy";
 import { PackagesSheet } from "../features/packages/PackagesSheet";
 import { useTheme } from "./ThemeProvider";
+import { NextWeightCard, type SaveNextWeight } from "../features/next-weight/NextWeightCard";
 /**
  * THE WRAP-UP — the post-session screen (rebuilt in the tracker round, Sep 2026).
  *
@@ -82,12 +83,13 @@ import { useTheme } from "./ThemeProvider";
  *   3. NEXT — are they booked? (Openings round, Sep 27 2026: the card listens
  *      for her own bookings from the server, at any studio on the same
  *      Mindbody, and never says a plain "Nothing booked yet"; see NEXT
- *      below.) Then the door to Times with room, and how the session
- *      landed — the dose Dial
- *      (reporting round, Sep 2026: Wiped out · Drained · Just right · Had
- *      more · Barely worked, the trainer's own judgement, saved the moment it
- *      is tapped as `sessions.dose`; untouched is "not judged", never a
- *      default) — the Profile note (the closing note until Sep 27) with its
+ *      below.) Then the door to Times with room, and how hard she worked —
+ *      the effort Dial (the Atlas answers, Oct 2 2026; it replaced the dose
+ *      Dial): Left some in the tank · Held back a bit · As expected · Pushed
+ *      hard · Gave everything, one rating for the whole workout, saved the
+ *      moment it is tapped as `sessions.effort`. AJ's call: untouched SAVES
+ *      "As expected", stored as 0 with `effortDefaulted: true` when the
+ *      trainer leaves, so a reader can tell it from a tap — the Profile note (the closing note until Sep 27) with its
  *      Loudness (Note · Heads up · Critical, default Note: at Note it stays
  *      on the profile and never reaches the next briefing; Heads up and
  *      Critical may carry a "matters until" day so the note leaves the
@@ -154,7 +156,7 @@ import { useTheme } from "./ThemeProvider";
  * client reads it. The door to Times with room sits INSIDE that line, after
  * the sentence, so its arriving (the Openings reads answer a second or more
  * after the screen opens) moves nothing the trainer is reaching for below:
- * the unsaved note's Save note / Drop it, the dose Dial. It is quiet (a text
+ * the unsaved note's Save note / Drop it, the effort Dial. It is quiet (a text
  * button) on every Wrap-up with something to offer, prominent (the plum line
  * and a bordered button) only when the server confirmed nothing is booked,
  * both 44px tall, and absent before the studio has anything to offer
@@ -258,13 +260,26 @@ export interface WrapUpScreenProps {
   schedules?: ScheduleEntry[];
   authTrainer: Trainer | null;
   /**
-   * Writes `sessions.dose` the moment it is tapped; `null` clears it (stores
-   * nothing). Resolving to `false` means the write failed: the Dial then
-   * never says "Saved".
+   * Writes `sessions.effort` the moment it is tapped (`defaulted` false), and
+   * once on the way out when nobody tapped: 0 with `defaulted` true ("As
+   * expected", AJ's call). Clearing a tap writes the default back. Resolving
+   * to `false` means the write failed: the Dial then never says "Saved".
    */
-  onDose: (dose: DialValue | null) => void | boolean | Promise<void | boolean>;
+  onEffort: (effort: DialValue, defaulted: boolean) => void | boolean | Promise<void | boolean>;
+  /**
+   * Sets the weight the next session loads on one machine (features/next-weight).
+   * Resolving to `false` means the write failed. Without it there is no card.
+   */
+  onNextWeight?: SaveNextWeight;
   /** Leaves the screen; the Profile note (if any) is filed on the way out with its Loudness and "until" day. */
   onLeave: (profileNote: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => void | Promise<void>;
+  /**
+   * Files the Profile note (and, through the host, a waiting mid-session
+   * draft) WITHOUT leaving: when the screen goes by any way but Back to Hub,
+   * when the iPad is locked or the page hidden, and on a sign-out. Each typed
+   * note is handed over once (the Atlas answers, Oct 2 2026).
+   */
+  onFile?: (profileNote: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => void | Promise<void>;
   /**
    * A note the trainer started mid-session and never saved (fluidity round,
    * Sep 2026). The screen says so and offers to finish it or drop it; a
@@ -393,8 +408,10 @@ export function WrapUpScreen({
   journey,
   schedules = [],
   authTrainer,
-  onDose,
+  onEffort,
+  onNextWeight,
   onLeave,
+  onFile,
   unsavedDraft = null,
   onSaveDraft,
   onDropDraft,
@@ -407,8 +424,11 @@ export function WrapUpScreen({
   coverage = "unknown",
 }: WrapUpScreenProps) {
   const { theme } = useTheme();
-  const [dose, setDose] = useState<DialValue | null>(null);
-  const [doseSaved, setDoseSaved] = useState(false);
+  const [effort, setEffort] = useState<DialValue | null>(null);
+  const [effortSaved, setEffortSaved] = useState(false);
+  // Whether the effort has been written yet: untouched, the way out writes
+  // the default once.
+  const effortWrittenRef = useRef(false);
   const [notes, setNotes] = useState("");
   const [importance, setImportance] = useState<JournalImportance>("standard");
   const [effectiveUntil, setEffectiveUntil] = useState("");
@@ -471,24 +491,23 @@ export function WrapUpScreen({
   );
 
   /*
-   * UNSAVED CHANGES (Sep 24 2026). The Profile note is filed when the trainer
-   * leaves by "Back to Hub" — but the bottom bar and the header stay live on
-   * this screen, and leaving through THEM unmounted it with the note unfiled.
-   * So a typed Profile note, or an unfinished mid-session note still waiting
-   * here, is unsaved work, and those exits ask first. "Back to Hub" is not
-   * asked about: it files both, and `leave` releases the screen before it
-   * navigates.
+   * EVERY WAY OUT FILES (the Atlas answers, Oct 2 2026). Until then only
+   * "Back to Hub" filed the Profile note; the bottom bar and the header asked
+   * first (the unsaved-changes question, Sep 24 2026), and locking the iPad
+   * filed it by navigating away. AJ: every exit saves it. So:
+   *   - Back to Hub files through `onLeave` and goes home, as before;
+   *   - any other way the screen goes (the bottom bar, the header, a studio
+   *     switch, a sign-out) files through `onFile` as it unmounts — nothing
+   *     asks, because nothing is lost;
+   *   - the iPad locked or the page hidden files through `onFile` and STAYS:
+   *     the box empties and says it was saved, so coming back and typing
+   *     more is a new note, never the same note twice;
+   *   - a sign-out files when it raises SEND_SETS_NOW_EVENT, before the
+   *     person is gone (a write after sign-out is made as nobody).
+   * A typed note is handed over exactly once: the ref is emptied the moment
+   * it is.
    */
-  const profileNoteTyped = notes.trim() !== "";
-  const draftWaiting = !!unsavedDraft && draftText.trim() !== "";
-  const unsaved = useUnsavedChanges(
-    !leaving && (profileNoteTyped || draftWaiting),
-    profileNoteTyped && draftWaiting
-      ? "the profile note and the unfinished note"
-      : profileNoteTyped
-        ? "the profile note"
-        : "the unfinished note",
-  );
+  const [noteFiledHere, setNoteFiledHere] = useState(false);
 
   /* The confetti: a short burst as the screen opens, a little over a second,
      then quiet. AJ kept it (Sep 27 2026, asked in the Sep 21 audit and again
@@ -510,39 +529,113 @@ export function WrapUpScreen({
      closing the tab. Keep the latest text in a ref so an unload can read it. */
   const notesRef = useRef({ notes, importance, effectiveUntil });
   notesRef.current = { notes, importance, effectiveUntil };
+  const draftWaitingRef = useRef(false);
+  draftWaitingRef.current = !!unsavedDraft && draftText.trim() !== "";
+  const onFileRef = useRef(onFile);
+  onFileRef.current = onFile;
   const leftRef = useRef(false);
-  const leave = () => {
-    if (leftRef.current) return;
-    leftRef.current = true;
-    // Filing, not losing: the navigation onLeave ends with must not ask.
-    unsaved.release();
-    setLeaving(true);
+
+  /** The Profile note as the host files it, from what is typed right now. */
+  const profileNoteNow = () => {
     const { notes: noteContent, importance: loud, effectiveUntil: until } = notesRef.current;
-    void onLeave({
+    return {
       noteContent,
       importance: loud,
       // End of the studio day, as the composer writes it — never a raw
       // date-only string, which would be UTC midnight (CLAUDE.md).
       effectiveUntil: loud !== "standard" && until ? new Date(`${until}T23:59:59`) : null,
-    });
+    };
   };
+
+  /**
+   * Files what is here without leaving: the typed Profile note (once — the
+   * ref is emptied as it is handed over) and, through the host, a waiting
+   * draft. True when something was handed over.
+   */
+  const fileWithoutLeaving = (): boolean => {
+    if (leftRef.current || !onFileRef.current) return false;
+    const note = profileNoteNow();
+    const typed = note.noteContent.trim() !== "";
+    if (!typed && !draftWaitingRef.current) return false;
+    notesRef.current = { ...notesRef.current, notes: "" };
+    void onFileRef.current(typed ? note : { ...note, noteContent: "" });
+    return typed;
+  };
+
+  const leave = () => {
+    if (leftRef.current) return;
+    leftRef.current = true;
+    setLeaving(true);
+    fileEffortDefault();
+    const note = profileNoteNow();
+    notesRef.current = { ...notesRef.current, notes: "" };
+    void onLeave(note);
+  };
+
   useEffect(() => {
+    // Locked or hidden: file and stay. The box empties and says so.
     const onHide = () => {
-      if (document.visibilityState === "hidden" && notesRef.current.notes.trim() && !leftRef.current) leave();
+      if (document.visibilityState !== "hidden") return;
+      fileEffortDefault();
+      if (fileWithoutLeaving()) {
+        setNotes("");
+        setNoteFiledHere(true);
+      }
+    };
+    // A sign-out asks every screen to send now, while the person is signed in.
+    const onSignOut = () => {
+      fileEffortDefault();
+      if (fileWithoutLeaving()) {
+        setNotes("");
+        setNoteFiledHere(true);
+      }
     };
     document.addEventListener("visibilitychange", onHide);
-    return () => document.removeEventListener("visibilitychange", onHide);
+    window.addEventListener(SEND_SETS_NOW_EVENT, onSignOut);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener(SEND_SETS_NOW_EVENT, onSignOut);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const pickDose = (v: DialValue | null) => {
-    setDose(v);
-    setDoseSaved(false);
-    Promise.resolve(onDose(v)).then(
-      (ok) => setDoseSaved(ok !== false),
-      () => setDoseSaved(false),
+  /* The effort rating. A tap writes it plainly; tapping the chosen position
+     again clears it back to the untouched default, which is written as the
+     default (0, defaulted) so nothing a trainer took back is left standing. */
+  const onEffortRef = useRef(onEffort);
+  onEffortRef.current = onEffort;
+  const pickEffort = (v: DialValue | null) => {
+    setEffort(v);
+    setEffortSaved(false);
+    effortWrittenRef.current = true;
+    Promise.resolve(v === null ? onEffort(0, true) : onEffort(v, false)).then(
+      (ok) => setEffortSaved(v !== null && ok !== false),
+      () => setEffortSaved(false),
     );
   };
+  /** Untouched on the way out: "As expected", marked as the default. Once. */
+  const fileEffortDefault = () => {
+    if (effortWrittenRef.current) return;
+    effortWrittenRef.current = true;
+    Promise.resolve(onEffortRef.current(0, true)).catch(() => undefined);
+  };
+  // Every way out that unmounts the screen without Back to Hub (the bottom
+  // bar, the header, a studio switch) still files the Profile note and the
+  // effort's default. The check waits a tick, so React's development double
+  // mount (StrictMode runs every effect's cleanup once and mounts again) is
+  // not a way out.
+  const aliveRef = useRef(false);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+      setTimeout(() => {
+        if (aliveRef.current) return;
+        fileEffortDefault();
+        fileWithoutLeaving();
+      }, 0);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* --- today ------------------------------------------------------------ */
   const performed = useMemo(() => performedOnly(logs), [logs]);
@@ -570,7 +663,6 @@ export function WrapUpScreen({
   // "session #12" only through the Hub card's gate: the client reads this
   // screen, and Journey's own count would tell a twelve-year client "#4".
   const sessionTag = sessionNumberTag(session.sessionNumber, canQuoteSessionNumber(client, coverage));
-  const maxSets = performed.filter((l) => (l.repQuality || 0) >= 3).length;
 
   /* --- next ------------------------------------------------------------- */
   // Openings' reads for the door (the summary by id, the standing weeks, the
@@ -643,7 +735,7 @@ export function WrapUpScreen({
           <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="px-6 pt-4 pb-1">
             <Kicker>{savedOnThisIpad ? "Wrap-up · session saved on this iPad" : "Wrap-up · session saved"}</Kicker>
             <h1 className="font-display font-extrabold italic text-ink-d1 text-[30px] uppercase tracking-[0.01em] leading-none mt-2 mb-2 break-words">
-              {clientFirstName(client)}, {maxSets > 0 ? "strong work." : "good work."}
+              {congratulation(session.id ?? `${client.id}-${todayKey}`, clientFirstName(client))}
             </h1>
             {savedOnThisIpad && (
               <p className="text-ink-d2 text-[14px] mb-1" role="status">
@@ -689,6 +781,16 @@ export function WrapUpScreen({
               </div>
             )}
           </Card>
+
+          {/* 1b · the next session's weights (the Atlas answers, Oct 2 2026):
+                 the trainer sets what the next session loads, up or down; the
+                 app never suggests one. Silent when nothing was performed. */}
+          {onNextWeight && lines.some((l) => l.outcome === "performed" && l.weight !== null) && (
+            <Card delay={0.08}>
+              <Kicker>Next session's weights</Kicker>
+              <NextWeightCard lines={lines} onSave={onNextWeight} />
+            </Card>
+          )}
 
           {/* 2 · the journey */}
           <Card delay={0.12}>
@@ -829,25 +931,33 @@ export function WrapUpScreen({
               </div>
             )}
 
-            <div className="text-[11px] text-ink-d3 font-semibold mt-1">How did it land · profile note · Pulse</div>
+            <div className="text-[11px] text-ink-d3 font-semibold mt-1">Effort · profile note · Pulse</div>
 
-            {/* The dose Dial — the trainer's own judgement, saved as it is
-                tapped. It follows the app theme like the rest of the screen,
-                as it does everywhere else the Dial is drawn. */}
-            <div className="flex flex-col gap-2" data-testid="dose-card">
+            {/* The effort Dial (Oct 2 2026; it replaced the dose Dial) — one
+                rating for the whole workout, the trainer's own judgement,
+                saved as it is tapped. Neutral: no position is green or red.
+                Untouched, it saves "As expected" on the way out. */}
+            <div className="flex flex-col gap-2" data-testid="effort-card">
               <div className="flex items-baseline justify-between">
-                <span className="text-[14px] font-bold text-ink-d1">How did it land?</span>
-                {doseSaved && dose !== null && (
+                <span className="text-[14px] font-bold text-ink-d1">Effort</span>
+                {effortSaved && effort !== null && (
                   <span className="text-[11px] text-(--eq-ok) font-bold flex items-center gap-1">
                     <Check size={12} strokeWidth={3} /> Saved
                   </span>
                 )}
               </div>
-              <Dial scale={DOSE_SCALE} value={dose} onChange={pickDose} ask="Your read" sub={`Judged by you — nothing to ask ${clientFirstName(client)}`} data-testid="dose-dial" />
-              {doseSentence(dose, clientFirstName(client)) && (
-                <p className="text-[12px] text-ink-d2" data-testid="dose-sentence" aria-live="polite">
-                  {doseSentence(dose, clientFirstName(client))}
-                </p>
+              <Dial
+                scale={EFFORT_SCALE}
+                value={effort}
+                onChange={pickEffort}
+                ask={clientFirstName(client) ? `How hard did ${clientFirstName(client)} work today?` : EFFORT_SCALE.ask}
+                sub="The whole workout, judged by you"
+                data-testid="effort-dial"
+              />
+              {effort === null && (
+                <span className="text-[11px] text-ink-d3" data-testid="effort-default-hint">
+                  Left untouched, it saves As expected.
+                </span>
               )}
             </div>
 
@@ -855,9 +965,17 @@ export function WrapUpScreen({
               className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[14px] text-ink-d1 placeholder:text-ink-d3 placeholder:italic resize-none outline-none focus:border-(--eq-focus-ring) transition-colors"
               placeholder={`Profile note — anything for ${clientFirstName(client)}'s record. It files when you leave this screen.`}
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e) => {
+                setNotes(e.target.value);
+                setNoteFiledHere(false);
+              }}
               aria-label="Profile note"
             />
+            {noteFiledHere && (
+              <span className="text-[11px] text-(--eq-ok) font-bold flex items-center gap-1" role="status" data-testid="profile-note-filed">
+                <Check size={12} strokeWidth={3} /> Profile note saved. Anything you type now is a new note.
+              </span>
+            )}
             {/* The Profile note is the one that goes only to the client's
                 profile (voice-review round, Sep 27 2026): at Note it stays on the
                 record and the next trainer's briefing never shows it. The

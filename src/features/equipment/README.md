@@ -339,3 +339,7 @@ only because the full-screen `WorkoutChartGrid` still uses it.
   It covers only the sessions the profile has loaded, and its sentence says so.
 - In the window the pane's own title and "‹ Machines" back button are hidden
   — the window's header names the machine and closes it.
+
+## Notes about her on one machine: one list (Oct 2 2026)
+
+AJ (the Atlas answers): notes about her on one machine live in her journal and show on the machine sheet. A new machine note is a journal entry carrying `machineId` and nothing else (`addMachineNote`; only a host with no journal context still writes the old `clientMachineSettings.machineNotes` list). Every reader takes `machine-notes.ts` (`machineNotesFor`, `hasImportantMachineNote`): her journal's notes on that machine, not archived, plus the old list's items with no journal copy, so a double-written note shows once and archiving its journal copy takes it off the sheet. `useMachineJournal` reads her journal with the same query `useClientJournal` streams (one shared listener, the existing index). Removing a journal note archives it. Programming → Setup's bulk save still writes its note to the old list (an atomic batch), which the one list reads.

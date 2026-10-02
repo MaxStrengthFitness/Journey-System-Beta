@@ -1232,8 +1232,20 @@ export interface WorkoutSession {
    * How the session landed, judged by the trainer on the Dial (reporting
    * round, Sep 2026): Wiped out · Drained · Just right · Had more · Barely
    * worked. Goldilocks — the centre is the right dose. Absent = not judged.
+   * No longer written since Oct 2 2026 (the effort rating replaced it on the
+   * Wrap-up); still read where it was, through `doseOf`.
    */
   dose?: DialValue;
+  /**
+   * How hard she worked, the whole workout, on the effort Dial (the Atlas
+   * answers, Oct 2 2026): Left some in the tank · Held back a bit · As
+   * expected · Pushed hard · Gave everything. Written on the Wrap-up; a
+   * Wrap-up left untouched stores 0 with `effortDefaulted: true` (AJ's call).
+   * Read through `effortOf` (features/rating/session-reads.ts).
+   */
+  effort?: DialValue;
+  /** True when `effort` is the untouched default, not a trainer's tap. */
+  effortDefaulted?: boolean;
   preSessionCheckIn?: PreSessionCheckIn;
   postFeel?: {
     physical: 1 | 2 | 3 | 4 | 5;
@@ -1403,6 +1415,22 @@ export interface SettingsHistoryEntry {
   reason?: string;
 }
 
+/** Who set the next session's weight on the Wrap-up (src/features/next-weight/next-weight.ts). */
+export interface NextWeightMark {
+  /** The weight the next session loads, lb. */
+  weight: number;
+  /** What she lifted that day, lb. */
+  fromWeight: number | null;
+  /** The session whose Wrap-up set it. */
+  sessionId: string;
+  /** ISO time it was set. */
+  setAt: string;
+  /** The Auth uid of whoever set it. */
+  setById: string;
+  /** Their name, as the app shows it. */
+  setByName: string;
+}
+
 export interface ClientMachineSetting {
   studioId?: string;
   id?: string;
@@ -1417,6 +1445,13 @@ export interface ClientMachineSetting {
   startingWeight?: number;
   startingWeightDate?: any;
   currentWeight?: number;
+  /**
+   * The next session's weight as a trainer set it on the Wrap-up (the Atlas
+   * answers, Oct 2 2026): who, when and at which session. `currentWeight`
+   * holds the weight itself; this says where it came from, and is spent once
+   * a session logs the machine (src/features/next-weight/).
+   */
+  nextWeight?: NextWeightMark;
   /**
    * Where each saved value came from, keyed like `settings` (machine fit
    * round, Sep 2026). "typed" by a trainer, "suggested" and accepted, or

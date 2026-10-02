@@ -78,6 +78,12 @@ export interface JourneyRow {
   startingWeightDate?: string;
   /** The prescribed weight from clientMachineSettings.currentWeight. Pre-fills Today. */
   prescribedWeight?: number;
+  /**
+   * Where the prescribed weight came from, when a trainer set it at the last
+   * Wrap-up ("Set for today at the last Wrap-up by Sam."). Absent otherwise:
+   * last session's weight needs no explaining (features/next-weight).
+   */
+  weightSource?: string;
 }
 
 /**
