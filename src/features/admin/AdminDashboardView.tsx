@@ -62,9 +62,6 @@ interface Props {
    * next booking; the Overview reads its own week.
    */
   schedules?: ScheduleEntry[];
-  newClientsCount?: number;
-  onShowNewClients?: () => void;
-  onUpdateStudio?: (id: string, updates: Partial<Studio>) => Promise<void>;
   onUpdateClient?: (id: string, updates: Partial<Client>) => Promise<void>;
   /** The client's full profile, in the app. Operations opens a client inside itself first. */
   onNavigateProfile?: (clientId: string) => void;
@@ -184,9 +181,6 @@ function OperationsShell({
   sessions = [],
   machines = [],
   schedules = [],
-  newClientsCount = 0,
-  onShowNewClients,
-  onUpdateStudio,
   onUpdateClient,
   onNavigateProfile,
   onReorderTrainers,
@@ -195,9 +189,6 @@ function OperationsShell({
   // under "All my studios").
   activeStudioId: appStudioId,
 }: Props) {
-  void newClientsCount;
-  void onShowNewClients;
-  void onUpdateStudio;
   void onUpdateClient;
   // The system tools moved to the Admins dashboard (features/admins); the
   // callback stays on the props so AppContent's call site needs no change.

@@ -322,8 +322,8 @@ no reason, no `settingHistory`, no journal entry. It now opens
 `ClientMachineWindow`: the MachineSheet frame (centred, 88dvh, fixed header,
 40px close, body scrolls) around **this** tab's `MachineDetailPanel`, built
 for the one machine with `toEquipmentMachines`. Same cards, same writes
-(`mutations.ts`, journalled with origin `"profile"`). The modal file stays
-only because the full-screen `WorkoutChartGrid` still uses it.
+(`mutations.ts`, journalled with origin `"profile"`). The modal file went
+with the full-screen chart that last used it (Oct 2 2026: neither had a door).
 
 - **Cost.** Nothing until the first open; from then the body stays mounted, so
   the catalog listener is opened once per profile, not once per tap. Usage

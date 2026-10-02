@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { LoadingMark } from "./LoadingMark";
-import { createPortal } from "react-dom";
 import {
   collection,
   onSnapshot,
@@ -86,7 +85,6 @@ import {
   Studio,
 } from "../types";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
-import { WorkoutChartGrid } from "./WorkoutChartGrid";
 import { useToast } from "../contexts/ToastContext";
 import { runMasterSync } from "../lib/mindbody-master-sync";
 import { mindbodyIdOf } from "../lib/mindbody-id";
@@ -155,7 +153,6 @@ export function ClientProfileView({
   machines,
   authTrainer,
   trainers,
-  onDelete,
   onSelectReport,
   onNewReport,
   setView,
@@ -172,7 +169,6 @@ export function ClientProfileView({
   machines: Machine[];
   authTrainer?: Trainer | null;
   trainers: Trainer[];
-  onDelete: (id: string) => void;
   onSelectReport: (id: string) => void;
   /** Start a NEW progress report for this client — never reopen the last one. */
   onNewReport: () => void;
@@ -261,7 +257,6 @@ export function ClientProfileView({
   >(null);
   const [toggleBReason, setToggleBReason] = useState<string>("");
   const [isSavingToggle, setIsSavingToggle] = useState(false);
-  const [showFullChart, setShowFullChart] = useState(false);
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
   const [lastVisibleSession, setLastVisibleSession] = useState<any>(null);
   const [hasMoreSessions, setHasMoreSessions] = useState(true);
@@ -629,7 +624,6 @@ export function ClientProfileView({
     return sessionsSplit(client, buildPackageNameIndex(renewalSettings.settings));
   }, [client, renewalSettings.loading, renewalSettings.error, renewalSettings.forStudioId, renewalSettings.settings]);
 
-  const [isDeleting, setIsDeleting] = useState(false);
   /** The machine open in the one machine window (Journey grid, Routine A / B rows). */
   const [machineWindowId, setMachineWindowId] = useState<string | null>(null);
 
@@ -1886,76 +1880,6 @@ export function ClientProfileView({
                 "Discard Session"
               )}
             </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {showFullChart &&
-        clientId &&
-        createPortal(
-          <WorkoutChartGrid
-            clientId={clientId}
-            clients={clients}
-            machines={machines}
-            routines={routines}
-            onBack={() => setShowFullChart(false)}
-            user={user}
-            preloadedSessions={sessions}
-            preloadedLogs={allLogs}
-            onLoadMoreHistory={handleLoadMoreHistory}
-            studios={studios}
-            activeStudioId={activeStudioId}
-          />,
-          document.body,
-        )}
-
-      <Dialog open={isDeleting} onOpenChange={setIsDeleting}>
-        <DialogContent
-          showCloseButton={false}
-          className="rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-2xl p-0 overflow-hidden max-w-sm bg-card text-foreground"
-        >
-          <div className="bg-red-600 p-8 flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center animate-pulse">
-              <AlertCircle className="w-8 h-8" />
-            </div>
-            <div className="text-center">
-              <h2 className="text-2xl font-bold uppercase italic tracking-tighter leading-none">
-                Confirm Deletion
-              </h2>
-              <p className="text-[11px] font-medium uppercase tracking-wide opacity-70 mt-2">
-                This action is permanent
-              </p>
-            </div>
-          </div>
-          <div className="p-8 space-y-6 text-center bg-card">
-            <p className="text-sm font-medium text-muted-foreground leading-relaxed">
-              Are you absolutely sure you want to delete{" "}
-              <span className="font-bold text-foreground">
-                {" "}
-                {client.firstName} {client.lastName}'s
-              </span>{" "}
-              profile? All historical session data and machine settings will be
-              lost.
-            </p>
-            <div className="flex flex-col gap-3">
-              <Button
-                variant="destructive"
-                className="h-14 rounded-full font-bold uppercase italic tracking-widest text-xs shadow-xl shadow-red-200"
-                onClick={() => {
-                  if (client.id) onDelete(client.id);
-                  setIsDeleting(false);
-                }}
-              >
-                Delete Everything
-              </Button>
-              <Button
-                variant="ghost"
-                className="h-12 rounded-full font-bold text-muted-foreground"
-                onClick={() => setIsDeleting(false)}
-              >
-                Go Back
-              </Button>
-            </div>
           </div>
         </DialogContent>
       </Dialog>

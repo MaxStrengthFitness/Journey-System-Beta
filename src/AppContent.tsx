@@ -13,21 +13,12 @@ import React, {
   Suspense,
 } from "react";
 import {
-  Users,
-  Plus,
-  AlertCircle,
   AlertTriangle,
   LogOut,
   UserCircle,
-  ChevronRight,
-  MessageSquare,
-  StickyNote,
   Settings,
   GripVertical,
-  Play,
   Lock,
-  Edit3,
-  TrendingUp,
   ChevronDown,
   ChevronUp,
   Building2,
@@ -42,9 +33,7 @@ import { AnimatePresence } from "motion/react";
 import {
   collection,
   updateDoc,
-  deleteDoc,
   doc,
-  serverTimestamp,
   getDocs,
   getDoc,
   waitForPendingWrites,
@@ -62,11 +51,9 @@ import {
   Trainer,
   Client,
   View,
-  Machine,
   Studio,
   FranchiseNetwork,
 } from "./types";
-import { OperationType, handleFirestoreError } from "./lib/firestore-errors";
 import { isSessionValid } from "./lib/utils";
 import { coverageOfClient, homeCutoverOf } from "./lib/client-coverage";
 import { LoadingArea } from "./components/LoadingMark";
@@ -236,8 +223,6 @@ const isReturnableView = (view: string) => RETURNABLE_VIEWS.has(view);
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -255,7 +240,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DEFAULT_MACHINES, getMachineImageUrl } from "./data/default-machines";
+import { DEFAULT_MACHINES } from "./data/default-machines";
 
 // Shown in the content area while a lazy view downloads on first visit.
 const ViewLoader = () => <LoadingArea label="" />;
@@ -662,7 +647,6 @@ export default function AppContent({
       ),
     [selectedClientDoc, rosterClients],
   );
-  const [showNewClientsDialog, setShowNewClientsDialog] = useState(false);
   const [isReorderingTrainers, setIsReorderingTrainers] = useState(false);
   const [isIntroSession, setIsIntroSession] = useState(false);
   /**
@@ -689,7 +673,6 @@ export default function AppContent({
   const {
     startUnassignedSession,
     updateClient,
-    handleDeleteClient,
   } = useClientMutations(
     authTrainer,
     activeStudioId,
@@ -733,18 +716,6 @@ export default function AppContent({
   useEffect(() => {
     if (currentView !== "clients") setHubSearchTerm("");
   }, [currentView]);
-
-  const newClientsThisMonth = useMemo(() => {
-    return clients.filter((c) => {
-      if (!c.createdAt) return false;
-      const createdAt = c.createdAt?.toDate?.() || new Date(c.createdAt);
-      const now = new Date();
-      return (
-        createdAt.getMonth() === now.getMonth() &&
-        createdAt.getFullYear() === now.getFullYear()
-      );
-    });
-  }, [clients]);
 
   const sortedTrainers = useMemo(() => {
     return [...trainers].sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -862,32 +833,7 @@ export default function AppContent({
     return studios.find((s) => s.id === activeStudioId)?.name || null;
   }, [activeStudioId, studios]);
 
-  const updateStudio = async (studioId: string, updates: Partial<Studio>) => {
-    try {
-      await updateDoc(doc(db, "studios", studioId), {
-        ...updates,
-        updatedAt: serverTimestamp(),
-      });
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const [showClientPicker, setShowClientPicker] = useState(false);
-  const [infoMachineId, setInfoMachineId] = useState<string | null>(null);
-  const [isEditingMachineInfo, setIsEditingMachineInfo] = useState(false);
-  const [machineInfoDraft, setMachineInfoDraft] = useState<Partial<Machine>>(
-    {},
-  );
-
-  const infoMachine = machines.find((m) => m.id === infoMachineId);
-
-  useEffect(() => {
-    if (infoMachine) {
-      setMachineInfoDraft(infoMachine);
-    }
-  }, [infoMachine]);
-
   // Trainer Session Persistence
   useEffect(() => {
     // Check for view override in URL (for emergency admin access)
@@ -1788,10 +1734,7 @@ export default function AppContent({
                     showClientPicker={showClientPicker}
                     setShowClientPicker={setShowClientPicker}
                     onStartNewClientOnboarding={startNewClientOnboarding}
-                    onOpenInfo={(m) => {
-                      setInfoMachineId(m.id!);
-                      setIsEditingMachineInfo(false);
-                    }}
+                    onOpenInfo={() => {}}
                     authTrainer={authTrainer}
                     isSyncing={isSyncing}
                     setIsSyncing={setIsSyncing}
@@ -1819,7 +1762,6 @@ export default function AppContent({
                     machines={machines}
                     authTrainer={authTrainer}
                     trainers={trainers}
-                    onDelete={handleDeleteClient}
                     // Asked before the report is chosen, not only before the
                     // screen changes: chosen and then refused, the filed
                     // report would stay selected for the next visit.
@@ -1923,9 +1865,6 @@ export default function AppContent({
                     sessions={sessions}
                     machines={machines}
                     schedules={schedules}
-                    newClientsCount={newClientsThisMonth.length}
-                    onShowNewClients={() => setShowNewClientsDialog(true)}
-                    onUpdateStudio={updateStudio}
                     onUpdateClient={updateClient}
                     activeStudioId={activeStudioId}
                     onReorderTrainers={() => setIsReorderingTrainers(true)}
@@ -2051,522 +1990,6 @@ export default function AppContent({
             onSwitchMode={switchAppMode}
           />
         </div>
-
-        {/* Machine Information Deep Dive Dialog */}
-        <Dialog
-          open={!!infoMachineId}
-          onOpenChange={(open) => !open && setInfoMachineId(null)}
-        >
-          <DialogContent className="max-w-3xl sm:max-w-3xl max-h-[90dvh] overflow-y-auto rounded-[32px] p-0 border-none shadow-2xl dark:shadow-none">
-            {infoMachine && (
-              <>
-                <DialogHeader className="p-8 bg-white dark:bg-bg-dark border-b relative">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-xl text-primary shadow-sm dark:shadow-none">
-                      {infoMachine.order}
-                    </div>
-                    <div>
-                      <DialogTitle className="text-3xl font-black uppercase italic tracking-tighter">
-                        {infoMachine.fullName || infoMachine.name}
-                      </DialogTitle>
-                      <DialogDescription className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                        Deep Dive & Operational Guidelines
-                      </DialogDescription>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-6 right-6 h-10 w-10 rounded-xl"
-                    onClick={() =>
-                      setIsEditingMachineInfo(!isEditingMachineInfo)
-                    }
-                  >
-                    <Edit3 className="w-5 h-5" />
-                  </Button>
-                </DialogHeader>
-
-                <div className="p-8 space-y-8">
-                  {isEditingMachineInfo ? (
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-                            Target Muscles
-                          </Label>
-                          <Input
-                            value={machineInfoDraft.targetMuscles || ""}
-                            onChange={(e) =>
-                              setMachineInfoDraft({
-                                ...machineInfoDraft,
-                                targetMuscles: e.target.value,
-                              })
-                            }
-                            placeholder="e.g. Chest, Triceps"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-                            Form Video URL
-                          </Label>
-                          <Input
-                            value={machineInfoDraft.formVideoUrl || ""}
-                            onChange={(e) =>
-                              setMachineInfoDraft({
-                                ...machineInfoDraft,
-                                formVideoUrl: e.target.value,
-                              })
-                            }
-                            placeholder="Youtube/Vimeo Link"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-                          Standard Machine Settings (Tips)
-                        </Label>
-                        <Textarea
-                          value={machineInfoDraft.settings || ""}
-                          onChange={(e) =>
-                            setMachineInfoDraft({
-                              ...machineInfoDraft,
-                              settings: e.target.value,
-                            })
-                          }
-                          placeholder="Recommended starting points for different heights/sizes..."
-                          className="min-h-20"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-                          Cueing Tips (Trainer to Trainer)
-                        </Label>
-                        <Textarea
-                          value={machineInfoDraft.cueingTips || ""}
-                          onChange={(e) =>
-                            setMachineInfoDraft({
-                              ...machineInfoDraft,
-                              cueingTips: e.target.value,
-                            })
-                          }
-                          placeholder="Pointers for better client form..."
-                          className="min-h-25"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-                          Deep Dive Notes
-                        </Label>
-                        <Textarea
-                          value={machineInfoDraft.deepDiveNotes || ""}
-                          onChange={(e) =>
-                            setMachineInfoDraft({
-                              ...machineInfoDraft,
-                              deepDiveNotes: e.target.value,
-                            })
-                          }
-                          placeholder="History, benefits, or complex cues..."
-                          className="min-h-37.5"
-                        />
-                      </div>
-
-                      <div className="flex gap-3">
-                        <Button
-                          className="flex-1 h-12 rounded-xl font-black uppercase italic tracking-widest"
-                          onClick={async () => {
-                            try {
-                              await updateDoc(
-                                doc(db, "machines", infoMachine.id!),
-                                {
-                                  ...machineInfoDraft,
-                                  updatedAt: serverTimestamp(),
-                                },
-                              );
-                              setIsEditingMachineInfo(false);
-                            } catch (err) {
-                              handleFirestoreError(
-                                err,
-                                OperationType.UPDATE,
-                                "machines",
-                              );
-                            }
-                          }}
-                        >
-                          Save Information
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="h-12 px-6 rounded-xl"
-                          onClick={() => setIsEditingMachineInfo(false)}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-8">
-                      {/* Visual & Core Info Header */}
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div className="aspect-video bg-muted rounded-2xl overflow-hidden relative flex items-center justify-center border border-border group">
-                          {infoMachine.imageUrl ? (
-                            <img
-                              src={infoMachine.imageUrl}
-                              className="w-full h-full object-cover brightness-100 transition-all duration-500"
-                              referrerPolicy="no-referrer"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src =
-                                  "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80";
-                              }}
-                            />
-                          ) : (
-                            // Unsplash default photo mechanism for robust mockups
-                            <img
-                              src={getMachineImageUrl(infoMachine.id)}
-                              className="w-full h-full object-cover brightness-100 transition-all duration-500"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src =
-                                  "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=800&q=80";
-                              }}
-                            />
-                          )}
-                          <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end z-10">
-                            <div>
-                              <p className="text-[11px] font-bold uppercase tracking-widest text-orange-500 mb-1">
-                                Targeted Muscles
-                              </p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {/*
-                                  `targetMuscles` is a string on some machine
-                                  records and an array on others, and calling
-                                  .split on the array shape threw a TypeError
-                                  that took the whole dialog down. Normalised
-                                  here rather than at the source because both
-                                  shapes are already in Firestore.
-                                */}
-                                {(Array.isArray(infoMachine.targetMuscles)
-                                  ? infoMachine.targetMuscles
-                                  : (infoMachine.targetMuscles ?? "").split(","))
-                                  .filter((m) => m.trim())
-                                  .map((m) => (
-                                    <Badge
-                                      key={m}
-                                      className="bg-primary/90 text-primary-foreground border-none font-medium uppercase text-[11px] px-2 py-0.5"
-                                    >
-                                      {m.trim()}
-                                    </Badge>
-                                  )) || (
-                                  <Badge className="bg-primary/90 text-primary-foreground border-none font-medium uppercase text-[11px] px-2 py-0.5">
-                                    Primary Target Area
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4 flex flex-col justify-center">
-                          <div className="bg-primary/5 rounded-2xl p-6 border border-primary/10">
-                            <h3 className="text-sm font-bold uppercase tracking-tight text-primary mb-2">
-                              Resource Actions
-                            </h3>
-                            <div className="space-y-3">
-                              <Button className="w-full justify-start h-12 rounded-xl bg-background border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all">
-                                <Play className="w-4 h-4 mr-3" />
-                                <span className="font-bold text-[11px] uppercase tracking-widest">
-                                  View Form Guide Video
-                                </span>
-                              </Button>
-                              <Button
-                                variant="outline"
-                                className="w-full justify-start h-12 rounded-xl font-bold text-[11px] uppercase tracking-widest text-secondary hover:bg-secondary hover:text-secondary-foreground transition-all"
-                              >
-                                <MessageSquare className="w-4 h-4 mr-3" />
-                                Send Resource to Client
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Machine Insights Section (Orange Application) */}
-                      <div className="bg-action/5 border border-action/20 rounded-2xl p-6 md:p-8">
-                        <h3 className="text-xl font-bold uppercase tracking-tight text-action mb-6 flex items-center gap-2">
-                          <TrendingUp className="w-6 h-6" />
-                          Machine Insights & Demographics
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                          {/* Demographic 1 */}
-                          <div className="space-y-4">
-                            <div className="flex justify-between items-end">
-                              <div>
-                                <p className="text-[12px] font-bold text-secondary">
-                                  Age 20-30
-                                </p>
-                                <p className="text-[11px] font-medium text-secondary/60 uppercase tracking-widest">
-                                  Female | Beginner
-                                </p>
-                              </div>
-                            </div>
-                            <div className="space-y-3">
-                              <div>
-                                <div className="flex justify-between text-[11px] font-bold text-secondary mb-1">
-                                  <span>Average Weight (45 lbs)</span>
-                                  <span className="text-action">SD ±5</span>
-                                </div>
-                                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                  <div className="h-full bg-action w-[45%]" />
-                                </div>
-                              </div>
-                              <div>
-                                <div className="flex justify-between text-[11px] font-bold text-secondary mb-1">
-                                  <span>Average Reps (12)</span>
-                                  <span className="text-action">SD ±2</span>
-                                </div>
-                                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                  <div className="h-full bg-action/60 w-[60%]" />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          {/* Demographic 2 */}
-                          <div className="space-y-4">
-                            <div className="flex justify-between items-end">
-                              <div>
-                                <p className="text-[12px] font-bold text-secondary">
-                                  Age 30-40
-                                </p>
-                                <p className="text-[11px] font-medium text-secondary/60 uppercase tracking-widest">
-                                  Male | Advanced
-                                </p>
-                              </div>
-                            </div>
-                            <div className="space-y-3">
-                              <div>
-                                <div className="flex justify-between text-[11px] font-bold text-secondary mb-1">
-                                  <span>Average Weight (120 lbs)</span>
-                                  <span className="text-primary">SD ±15</span>
-                                </div>
-                                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                  <div className="h-full bg-primary w-[85%]" />
-                                </div>
-                              </div>
-                              <div>
-                                <div className="flex justify-between text-[11px] font-bold text-secondary mb-1">
-                                  <span>Average Reps (8)</span>
-                                  <span className="text-primary">SD ±1.5</span>
-                                </div>
-                                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                  <div className="h-full bg-primary/60 w-[40%]" />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* Trainer Cues and Tips */}
-                        <div className="space-y-4">
-                          <h4 className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-primary mb-4">
-                            <Users className="w-4 h-4" />
-                            Trainer Cues & Tips
-                          </h4>
-
-                          <div className="space-y-3">
-                            {/* Simulated Collapsible Cards */}
-                            <div className="border border-border rounded-xl p-4 hover:bg-white dark:bg-bg-dark transition-colors cursor-pointer group">
-                              <div className="flex justify-between items-center">
-                                <p className="text-[12px] font-bold text-secondary">
-                                  Marina's Cue
-                                </p>
-                                <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                              </div>
-                              <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
-                                "Keep your chest proud and drive through the
-                                mid-foot rather than the toes."
-                              </p>
-                            </div>
-                            <div className="border border-border rounded-xl p-4 hover:bg-white dark:bg-bg-dark transition-colors cursor-pointer group">
-                              <div className="flex justify-between items-center">
-                                <p className="text-[12px] font-bold text-secondary">
-                                  Christian's Cue
-                                </p>
-                                <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                              </div>
-                              <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
-                                "Imagine retracting your shoulder blades
-                                completely before pulling the weight down."
-                              </p>
-                            </div>
-                            <div className="border border-border rounded-xl p-4 hover:bg-white dark:bg-bg-dark transition-colors cursor-pointer group">
-                              <div className="flex justify-between items-center">
-                                <p className="text-[12px] font-bold text-secondary">
-                                  Austin's Cue
-                                </p>
-                                <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                              </div>
-                              <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
-                                "Focus on the eccentric phase; count to three as
-                                you release the tension."
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Common Mistakes & Setup */}
-                        <div className="space-y-4">
-                          <h4 className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-secondary mb-4">
-                            <AlertCircle className="w-4 h-4" />
-                            Critical Setup Deviations
-                          </h4>
-                          <div className="bg-white dark:bg-bg-dark rounded-2xl p-6 border border-border">
-                            <ul className="space-y-4">
-                              <li className="space-y-2">
-                                <div className="flex justify-between">
-                                  <p className="text-[11px] font-bold text-secondary">
-                                    Seat Too High
-                                  </p>
-                                  <span className="text-[11px] font-bold text-action">
-                                    High Risk
-                                  </span>
-                                </div>
-                                <div className="h-1.5 bg-background rounded-full overflow-hidden">
-                                  <div className="h-full bg-action w-[75%]" />
-                                </div>
-                                <p className="text-[11px] text-muted-foreground">
-                                  Places extreme stress on the lower back during
-                                  extension.
-                                </p>
-                              </li>
-                              <li className="space-y-2">
-                                <div className="flex justify-between">
-                                  <p className="text-[11px] font-bold text-secondary">
-                                    Incomplete Range of Motion
-                                  </p>
-                                  <span className="text-[11px] font-bold text-amber-500">
-                                    Medium Risk
-                                  </span>
-                                </div>
-                                <div className="h-1.5 bg-background rounded-full overflow-hidden">
-                                  <div className="h-full bg-amber-500 w-[45%]" />
-                                </div>
-                                <p className="text-[11px] text-muted-foreground">
-                                  Failing to fully lock out or fully stretch at
-                                  the bottom.
-                                </p>
-                              </li>
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Deep Dive Notes */}
-                      <div className="space-y-4">
-                        <h4 className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-secondary mb-2">
-                          <StickyNote className="w-4 h-4" />
-                          Deep Dive Notes
-                        </h4>
-                        <div className="p-4 bg-background border border-border rounded-xl min-h-25">
-                          <p className="text-[11px] leading-relaxed text-muted-foreground">
-                            {infoMachine.deepDiveNotes ||
-                              "Enter detailed clinical observations and biomechanical notes here..."}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Log Session Action */}
-                      <div className="pt-4 border-t border-border flex justify-end">
-                        <Button className="bg-action hover:bg-action/90 text-action-foreground font-bold uppercase tracking-widest text-[11px] h-12 px-8 rounded-xl shadow-lg shadow-action/20">
-                          <Plus className="w-4 h-4 mr-2" />
-                          Log Session / Add Data Points
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
-
-        {/* New Clients Dialog */}
-        <Dialog
-          open={showNewClientsDialog}
-          onOpenChange={setShowNewClientsDialog}
-        >
-          <DialogContent className="max-w-2xl sm:max-w-2xl rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
-            <DialogHeader className="p-8 bg-primary/5 border-b border-primary/10">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-primary/10 rounded-2xl">
-                  <Users className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <DialogTitle className="text-2xl font-black uppercase italic tracking-tighter">
-                    New Clients Dashboard
-                  </DialogTitle>
-                  <DialogDescription className="text-[11px] font-black uppercase tracking-widest text-primary/60">
-                    Registered in{" "}
-                    {new Date().toLocaleDateString([], {
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
-            <div className="p-6 max-h-[60dvh] overflow-y-auto">
-              {newClientsThisMonth.length > 0 ? (
-                <div className="grid gap-3">
-                  {newClientsThisMonth.map((client) => (
-                    <div
-                      key={client.id}
-                      onClick={() => {
-                        setSelectedClientId(client.id!);
-                        setCurrentView("profile");
-                        setShowNewClientsDialog(false);
-                      }}
-                      className="flex items-center justify-between p-4 bg-white dark:bg-bg-dark rounded-2xl border border-transparent hover:border-primary/20 hover:bg-white transition-all cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center font-black text-primary border shadow-sm dark:shadow-none group-hover:scale-110 transition-transform">
-                          {(client.firstName || "?")[0] || "?"}
-                          {(client.lastName || "")[0] || ""}
-                        </div>
-                        <div>
-                          <p className="font-black uppercase tracking-tight text-sm">
-                            {client.firstName} {client.lastName}
-                          </p>
-                          <p className="text-[11px] font-bold text-muted-foreground uppercase">
-                            {client.occupation || "No occupation listed"}
-                          </p>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-20 text-center">
-                  <Users className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
-                  <p className="text-xs font-black uppercase text-muted-foreground">
-                    No new clients registered this month.
-                  </p>
-                </div>
-              )}
-            </div>
-            <DialogFooter className="p-6 bg-white dark:bg-bg-dark border-t">
-              <Button
-                onClick={() => setShowNewClientsDialog(false)}
-                className="rounded-xl font-bold uppercase tracking-widest w-full h-12"
-              >
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         {/* Trainer Reordering Dialog */}
         <Dialog
