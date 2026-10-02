@@ -316,7 +316,7 @@
 
 .ops-tabs {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr)); /* six pages since Month (Sep 29 2026); five left Setup alone on a second row */
   border-bottom: 1px solid var(--adm-border);
 }
 
@@ -1716,4 +1716,72 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 4px 8px;
+}
+
+/* ---------- On a phone (Journey Lite, Oct 1 2026) -----------------------
+   A phone is under 600px wide (src/features/phone/device.ts, PHONE_QUERY).
+   Only what was wrong at 390 and 360 changes; the iPad never reads these.
+   - The six destinations sit in one row: the five-column grid put Setup
+     alone on a second line.
+   - A destination's pages share the row equally, and a long label ("This
+     week so far") wraps inside its own button instead of pushing "Week
+     ahead" onto a line of its own.
+   - The freshness line keeps its clock beside the words it belongs to.
+   - The Journey's seven stops are two to a row, so "Settling in" and each
+     caption read as words rather than one word a line. */
+@media (max-width: 599px) {
+  .ops-tabs {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .ops-tab {
+    padding: 6px 2px;
+  }
+
+  .ops-tab .ops-badge {
+    right: 4%;
+  }
+
+  .ops-subs {
+    display: block;
+  }
+
+  .ops-seg {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .ops-seg button {
+    padding: 4px 6px;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .ops-fresh__line {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+  }
+
+  .ops-fresh__line svg {
+    margin-top: 1px;
+  }
+
+  .ops-fresh__line > span {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .ops-fresh__unknown {
+    flex: none;
+  }
+
+  .ops-line-strip__stops {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ops-stop {
+    min-height: 72px;
+  }
 }

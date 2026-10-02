@@ -664,3 +664,21 @@
     display: none;
   }
 }
+
+/* ==========================================================================
+   Journey on a phone (Journey Lite, Oct 1 2026): no zoom on a tap.
+   iOS Safari zooms the whole page into any text field under 16px the moment
+   it is tapped, and leaves it zoomed; the app's fields are 14px. Pinch zoom
+   stays allowed (home-screen.test.ts refuses maximum-scale), so the fix is
+   the fields: on a phone with a touch screen every one is 16px. Unlayered
+   and important because the fields' own sizes live in feature stylesheets
+   and Tailwind utilities alike; it never applies to an iPad (wider than
+   599px, and taller than 499px).
+   ========================================================================== */
+@media (max-width: 599px) and (pointer: coarse), (max-height: 499px) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

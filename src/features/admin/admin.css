@@ -2029,3 +2029,38 @@
   gap: 6px;
   margin-top: 8px;
 }
+
+/* ---------- On a phone (Journey Lite, Oct 1 2026) ---------------------
+   A phone is under 600px wide (src/features/phone/device.ts). The iPad
+   never reads these.
+   - A trainer-by-week table (Hours, Insights' By trainer) is wider than a
+     phone. It still scrolls inside its own panel, never the page, but the
+     trainer's name stays put on the left and wraps rather than running on,
+     so every number keeps the name it belongs to.
+   - A row whose name and meta are spans (Staff & roles) gets them one under
+     the other, as AdminRow's divs already are; inline, the meta ran into
+     the name ("Eowyn Rohanno email"). */
+@media (max-width: 599px) {
+  .adm-ins-table thead th:first-child,
+  .adm-ins-table tbody th,
+  .adm-ins-table tfoot th {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    min-width: 7.5rem;
+    max-width: 9.5rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    background: var(--adm-surface);
+    box-shadow: 1px 0 0 var(--adm-border);
+  }
+
+  .adm-ins-table tfoot .adm-hrs-total th {
+    background: var(--adm-surface-2);
+  }
+
+  span.adm-row__name,
+  span.adm-row__meta {
+    display: block;
+  }
+}
