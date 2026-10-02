@@ -53,7 +53,7 @@ afterEach(() => {
 });
 
 const saveButton = (el: HTMLElement) =>
-  [...el.querySelectorAll("button")].find((b) => b.textContent?.includes("Create Contact"))! as HTMLButtonElement;
+  [...el.querySelectorAll("button")].find((b) => b.textContent?.includes("Create Temporary Profile"))! as HTMLButtonElement;
 
 describe("CreateClientModal", () => {
   it("starts the home studio on this iPad's studio and saves only what was answered", async () => {
@@ -93,7 +93,32 @@ describe("CreateClientModal", () => {
       expect(invented in written).toBe(false);
     }
     expect(Object.values(written)).not.toContain(undefined);
-    expect(onClientCreated).toHaveBeenCalledWith("new-client", false);
+    expect(onClientCreated).toHaveBeenCalledWith("new-client");
+  });
+
+  it("makes a temporary profile any trainer can start, with no Existing tab and no chart importer (Oct 2 2026)", async () => {
+    const el = mount(
+      <CreateClientModal
+        clients={[]}
+        studios={studios}
+        activeStudioId="westlake"
+        initialName="Walk In"
+        authorId="trainer-7"
+        onClose={() => {}}
+        onClientCreated={() => {}}
+      />,
+    );
+    expect(el.textContent).not.toContain("Existing Client");
+    expect(el.textContent).not.toContain("Chart Importer");
+    expect(el.textContent).toContain("temporary profile");
+    await act(async () => saveButton(el).click());
+    const written = addDoc.mock.calls[0][1] as Record<string, unknown>;
+    expect(written).toMatchObject({
+      provisional: true,
+      provisionalBy: "trainer-7",
+      provisionalReason: "New client, not in Mindbody yet",
+    });
+    expect(typeof written.provisionalSince).toBe("string");
   });
 
   it("will not save with no studio, and says why", async () => {

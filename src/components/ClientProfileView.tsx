@@ -140,6 +140,7 @@ import { useRenewalSettings } from "../features/renewals/useRenewalSettings";
 import { buildPackageNameIndex } from "../features/renewals/settings";
 import { sessionsSplit } from "../features/client-admin/account";
 import { recordStudioIdOf } from "../features/client-codex/access";
+import { isSuperAdminRole } from "../features/admin/franchise/scope";
 
 /** Sessions per Firestore page for the profile's history (see the Journey tab). */
 /* Fifty at a time (audit, Sep 13): "Older really needs to show us their
@@ -1135,10 +1136,14 @@ export function ClientProfileView({
     () => ({
       onOpenPlanner: () => setView("studio-tasks"),
       onOpenReports: () => nav.go({ tab: "clinical", view: "reports" }),
-      onOpenMigrationHub: () => {
-        nav.setTab("journey");
-        window.dispatchEvent(new CustomEvent("open-bulk-import"));
-      },
+      // The chart importer (OCR) is administrators' only since Oct 2 2026:
+      // Journey no longer waits on FileMaker, so a trainer is not offered it.
+      onOpenMigrationHub: isSuperAdminRole(authTrainer?.role)
+        ? () => {
+            nav.setTab("journey");
+            window.dispatchEvent(new CustomEvent("open-bulk-import"));
+          }
+        : undefined,
       onOpenMachine: openMachineWindow,
       onOpenSetup: () => nav.go({ tab: "programming", view: "setup" }),
       priorHistoryDoor,
@@ -1146,7 +1151,7 @@ export function ClientProfileView({
     }),
     // nav's callbacks are stable (useCallback with no deps in useProfileNav).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [setView, openMachineWindow, nav.go, nav.setTab, priorHistoryDoor, splitOfSessions],
+    [setView, openMachineWindow, nav.go, nav.setTab, priorHistoryDoor, splitOfSessions, authTrainer?.role],
   );
   // What Programming already holds, for Body & Pulse's floor (her notes per
   // machine, and machine fit's "clients built like her") — no read of its own.

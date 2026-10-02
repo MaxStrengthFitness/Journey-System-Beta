@@ -1238,15 +1238,11 @@ export default function AppContent({
         studios={studios}
         activeStudioId={activeStudioId}
         initialName={newClientOnboardingName}
-        onClientCreated={async (clientId, routeToImporter) => {
+        authorId={authTrainer.id}
+        onClientCreated={async (clientId) => {
           setSelectedClientId(clientId);
           setNewClientOnboardingName(null);
-
-          if (routeToImporter) {
-            setCurrentView("chart-importer");
-          } else {
-            setCurrentView("profile");
-          }
+          setCurrentView("profile");
         }}
         onClose={() => {
           setNewClientOnboardingName(null);

@@ -2,13 +2,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  UserPlus,
-  Loader2,
-  CheckCircle2,
-  FileUp,
-  AlertTriangle,
-} from "lucide-react";
+import { UserPlus, Loader2, AlertTriangle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
@@ -16,17 +10,29 @@ import { db } from "../firebase";
 import { Client, Studio } from "../types";
 import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
 import { canSaveNewClient, newClientPayload } from "../lib/consultation-answers";
-import { cn } from "@/lib/utils";
 import { studiosInRealm } from "../features/demo-mode/access";
+import {
+  ADD_CLIENT_REASONS,
+  provisionalStamp,
+} from "../features/admin/provisional/provisional";
 
-// Reusing Select component since it's already implemented in other files or can be imported.
-// If it's not imported here, we'll do native select.
+/*
+ * Add Client is a TEMPORARY PROFILE (Oct 2 2026). AJ: "Add Client makes a
+ * temporary profile any trainer can start (run a session when Mindbody is
+ * down or for a walk-in, attached to her Mindbody record later by the
+ * existing merge)". It writes the same marker the Team panel's temporary
+ * profiles carry (features/admin/provisional), so she is listed as waiting on
+ * My Studio -> Team and the one merge (ReconcileDialog) moves her sessions
+ * onto her real record once Mindbody has her. The "Existing client" tab and
+ * its route to the legacy chart importer are gone: Journey no longer waits on
+ * FileMaker.
+ */
 
 interface CreateClientModalProps {
   clients: Client[];
   initialName?: string;
   onClose: () => void;
-  onClientCreated: (clientId: string, routeToImporter?: boolean) => void;
+  onClientCreated: (clientId: string) => void;
   studios: Studio[];
   /**
    * The studio this iPad is working in. The home studio starts on it and can
@@ -34,6 +40,8 @@ interface CreateClientModalProps {
    * for everyone below super admin.
    */
   activeStudioId?: string | null;
+  /** Trainer document id of whoever is adding her (the marker's provisionalBy). */
+  authorId?: string;
 }
 
 export function CreateClientModal({
@@ -43,6 +51,7 @@ export function CreateClientModal({
   onClientCreated,
   studios,
   activeStudioId = null,
+  authorId = "",
 }: CreateClientModalProps) {
   const nameParts = initialName.trim().split(" ");
   const [firstName, setFirstName] = useState(nameParts[0] || "");
@@ -56,10 +65,7 @@ export function CreateClientModal({
   const [homeStudioId, setHomeStudioId] = useState<string>(activeStudioId || "");
   const [discoveryNotes, setDiscoveryNotes] = useState("");
 
-  const [activeTab, setActiveTab] = useState<"prospect" | "existing">(
-    "prospect",
-  );
-  const [routeToImporter, setRouteToImporter] = useState(true);
+  const [reason, setReason] = useState<string>(ADD_CLIENT_REASONS[0]);
 
   // Submission & Validation States
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -92,7 +98,7 @@ export function CreateClientModal({
       // Only what was answered: no placeholder height, no invented package,
       // no blank fields (lib/consultation-answers.ts).
       const clientData = newClientPayload({
-        kind: activeTab,
+        kind: "prospect",
         firstName,
         lastName,
         phone,
@@ -105,11 +111,12 @@ export function CreateClientModal({
 
       const docRef = await addDoc(collection(db, "clients"), {
         ...clientData,
+        ...provisionalStamp({ reason, authorId }),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
 
-      onClientCreated(docRef.id, activeTab === "existing" && routeToImporter);
+      onClientCreated(docRef.id);
       onClose();
     } catch (e) {
       handleFirestoreError(e, OperationType.CREATE, "clients");
@@ -153,7 +160,7 @@ export function CreateClientModal({
                     className="flex-1 border-border text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                     onClick={() => {
                       if (duplicateWarning.id) {
-                        onClientCreated(duplicateWarning.id, false);
+                        onClientCreated(duplicateWarning.id);
                       }
                       onClose();
                     }}
@@ -172,31 +179,15 @@ export function CreateClientModal({
           </div>
         )}
 
-        <div className="p-8 pb-4 shrink-0 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700/50 w-full shadow-md dark:shadow-2xl">
-            <button
-              onClick={() => setActiveTab("prospect")}
-              className={cn(
-                "flex-1 py-4 text-sm md:text-base font-black uppercase tracking-widest rounded-xl transition-all duration-300 cursor-pointer",
-                activeTab === "prospect"
-                  ? "bg-[#F06C22] text-white shadow-[0_0_20px_rgba(240,108,34,0.3)]"
-                  : "text-slate-500 hover:text-slate-800 dark:hover:text-white",
-              )}
-            >
-              New Prospect
-            </button>
-            <button
-              onClick={() => setActiveTab("existing")}
-              className={cn(
-                "flex-1 py-4 text-sm md:text-base font-black uppercase tracking-widest rounded-xl transition-all duration-300 cursor-pointer",
-                activeTab === "existing"
-                  ? "bg-[#F06C22] text-white shadow-[0_0_20px_rgba(240,108,34,0.3)]"
-                  : "text-slate-500 hover:text-slate-800 dark:hover:text-white",
-              )}
-            >
-              Existing Client
-            </button>
-          </div>
+        <div className="p-8 pb-4 shrink-0 border-b border-slate-200 dark:border-slate-800 space-y-2">
+          <h2 className="text-xl font-black text-foreground tracking-tight">
+            Add a client
+          </h2>
+          <p className="text-sm font-medium text-muted-foreground leading-relaxed">
+            A temporary profile, for a walk-in or when Mindbody is down. Run her
+            sessions on it as usual. Once Mindbody has her, a leader joins it to
+            her real record on My Studio → Team and her sessions move across.
+          </p>
         </div>
 
         <CardContent className="flex-1 p-8 space-y-8 overflow-y-auto custom-scrollbar bg-card">
@@ -336,52 +327,22 @@ export function CreateClientModal({
             </div>
           </div>
 
-          {/* Migration Tools (Existing Only) */}
-          {activeTab === "existing" && (
-            <div className="space-y-4">
-              <h3 className="text-xs font-black uppercase tracking-widest text-[#F06C22] border-b border-slate-200 dark:border-slate-800 pb-2">
-                Migration Protocol
-              </h3>
-              <div
-                className={cn(
-                  "flex items-center gap-4 p-5 rounded-[24px] border transition-all cursor-pointer",
-                  routeToImporter
-                    ? "bg-slate-50 dark:bg-slate-800 border-[#F06C22]/50 shadow-[0_0_20px_rgba(240,108,34,0.1)]"
-                    : "bg-card border-slate-200 dark:border-slate-850 hover:border-slate-300 dark:hover:border-slate-750",
-                )}
-                onClick={() => setRouteToImporter(!routeToImporter)}
-              >
-                <div
-                  className={cn(
-                    "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all shrink-0",
-                    routeToImporter
-                      ? "bg-[#F06C22] border-[#F06C22]"
-                      : "border-slate-400 dark:border-slate-600",
-                  )}
-                >
-                  {routeToImporter && (
-                    <CheckCircle2 className="w-4 h-4 text-foreground" />
-                  )}
-                </div>
-                <div className="flex flex-col">
-                  <p
-                    className={cn(
-                      "text-[15px] font-black uppercase tracking-tight",
-                      routeToImporter
-                        ? "text-[#F06C22]"
-                        : "text-slate-700 dark:text-slate-300",
-                    )}
-                  >
-                    Route to Legacy Chart Importer
-                  </p>
-                  <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">
-                    Send immediately to historical data ingestion after
-                    creation.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">
+              Why a temporary profile
+            </Label>
+            <select
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="w-full h-12 bg-slate-50 dark:bg-slate-800 border border-border text-foreground focus:border-[#F06C22] focus:ring-0 rounded-xl font-bold px-3"
+            >
+              {ADD_CLIENT_REASONS.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </div>
         </CardContent>
 
         <div className="p-6 bg-card border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center gap-4 shrink-0 z-50 mt-auto">
@@ -401,14 +362,8 @@ export function CreateClientModal({
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <span className="flex items-center justify-center gap-2">
-                {activeTab === "prospect" ? (
-                  <UserPlus className="w-4 h-4" />
-                ) : (
-                  <FileUp className="w-4 h-4" />
-                )}
-                {activeTab === "prospect"
-                  ? "Create Contact & Proceed to Stage 2"
-                  : "Initialize Migration Profile"}
+                <UserPlus className="w-4 h-4" />
+                Create Temporary Profile
               </span>
             )}
           </Button>

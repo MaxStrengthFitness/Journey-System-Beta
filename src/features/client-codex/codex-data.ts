@@ -343,7 +343,7 @@ export interface CodexHosts {
   onOpenPlanner: () => void;
   onOpenReports: () => void;
   /** The Migration Hub (OCR import). Switches to Journey, where imports land. */
-  onOpenMigrationHub: () => void;
+  onOpenMigrationHub?: () => void;
   onOpenMachine?: (machineId: string) => void;
   onOpenSetup?: () => void;
   /**

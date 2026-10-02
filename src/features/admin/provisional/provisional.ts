@@ -92,6 +92,34 @@ export function validateMint(
   return null;
 }
 
+/**
+ * The marker alone, for a client made somewhere other than the Team panel:
+ * Add Client (Oct 2 2026, AJ: "Add Client makes a temporary profile any
+ * trainer can start"). Same four fields, so the Team panel lists it as
+ * waiting and the one merge moves her sessions once Mindbody has her.
+ */
+export function provisionalStamp(input: {
+  reason: string;
+  authorId: string;
+  now?: Date;
+}): ProvisionalFields {
+  return stamp({
+    firstName: "",
+    lastName: "",
+    studioId: "",
+    reason: input.reason,
+    author: { id: input.authorId, name: "" },
+    now: input.now,
+  });
+}
+
+/** The reasons Add Client offers: a walk-in, or Mindbody out of reach. */
+export const ADD_CLIENT_REASONS = [
+  "New client, not in Mindbody yet",
+  "Mindbody is down",
+  "Something else",
+] as const;
+
 function stamp(input: MintInput): ProvisionalFields {
   return {
     provisional: true,
