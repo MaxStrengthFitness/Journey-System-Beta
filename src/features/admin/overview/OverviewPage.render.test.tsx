@@ -47,7 +47,7 @@ const writes: Array<{ op: string; path: string; data?: unknown }> = [];
  * live listener's server answer, delivered when a test says so. `quiet`
  * empties the sessions, incidents and notes.
  */
-const failures = vi.hoisted(() => ({ liveSessions: false, weekCacheOnly: false, quiet: false, serverLater: [] as Array<() => void>, marks: [] as Array<Record<string, unknown>> }));
+const failures = vi.hoisted(() => ({ liveSessions: false, weekCacheOnly: false, quiet: false, leftOpen: false, serverLater: [] as Array<() => void>, marks: [] as Array<Record<string, unknown>> }));
 
 vi.mock("firebase/firestore", () => {
   const ref = (...parts: unknown[]) => {
@@ -96,6 +96,10 @@ vi.mock("firebase/firestore", () => {
         { trainerId: "t1", trainerInitials: "AJ", status: "Completed", date: dayKey(0), hostedAtStudioId: "solon", clientId: "c2" },
         // Fay trained today and has nothing booked: leaving with nothing booked.
         { trainerId: "t1", trainerInitials: "AJ", status: "Completed", date: dayKey(0), hostedAtStudioId: "solon", clientId: "c6" },
+        // A session left open since yesterday (Oct 2 2026), only when a test asks.
+        ...(failures.leftOpen
+          ? [{ id: "open1", trainerId: "t1", trainerInitials: "AJ", status: "In-Progress", date: dayKey(1), hostedAtStudioId: "solon", clientId: "c3", clientName: "Cy Cole", createdAt: daysAgo(1), sessionMachineIds: ["m1", "m2"] }]
+          : []),
       ]);
     if (path === "schedules")
       return snap([
@@ -251,6 +255,7 @@ afterEach(() => {
   failures.liveSessions = false;
   failures.weekCacheOnly = false;
   failures.quiet = false;
+  failures.leftOpen = false;
   failures.serverLater.length = 0;
   failures.marks = [];
   NOW = MONDAY;
@@ -258,7 +263,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-async function mount(onOpen: (t: string) => void = () => {}, extra: { studio?: Studio; onOpenMyStudio?: () => void; clients?: Client[]; onNeedsCount?: (n: number | null) => void } = {}) {
+async function mount(onOpen: (t: string) => void = () => {}, extra: { studio?: Studio; onOpenMyStudio?: () => void; clients?: Client[]; onNeedsCount?: (n: number | null) => void; onOpenSession?: (id: string) => void } = {}) {
   vi.useFakeTimers({ shouldAdvanceTime: true, now: NOW });
   host = document.createElement("div");
   document.body.appendChild(host);
@@ -277,6 +282,7 @@ async function mount(onOpen: (t: string) => void = () => {}, extra: { studio?: S
           onOpen={(t) => onOpen(t)}
           onOpenMyStudio={extra.onOpenMyStudio}
           onNeedsCount={extra.onNeedsCount}
+          onOpenSession={extra.onOpenSession}
         />
       </StrictMode>,
     );
@@ -367,6 +373,18 @@ describe("Today, the brief", () => {
     const acks = writes.filter((w) => w.path.startsWith("studios/solon/acknowledgements/"));
     expect(acks.map((w) => w.path).sort()).toEqual(["studios/solon/acknowledgements/incident:i1", "studios/solon/acknowledgements/note:j1", `studios/solon/acknowledgements/pain:c1:${dayKey(1)}`]);
     expect(acks.every((w) => (w.data as { acknowledgedBy: string }).acknowledgedBy === "lead")).toBe(true);
+  });
+
+  it("Needs you lists a session left open, by the Hub's rule, with a door to finish it (the Atlas answers, Oct 2 2026)", async () => {
+    failures.leftOpen = true;
+    const opened: string[] = [];
+    const el = await mount(() => {}, { onOpenSession: (id) => opened.push(id) });
+    const needs = section(el, "needs");
+    expect(needs.textContent).toContain("Cy Cole");
+    expect(needs.textContent).toContain("A session was left open \u2014 Started by AJ");
+    expect(needs.textContent).toContain("2 machines logged");
+    await click(buttonByText(needs, "Open the session"));
+    expect(opened).toEqual(["c3"]);
   });
 
   it("Catch today names who is in with a reason, in the order they're in, and who trained with nothing booked", async () => {

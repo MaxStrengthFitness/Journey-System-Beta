@@ -68,6 +68,8 @@ interface Props {
   onUpdateClient?: (id: string, updates: Partial<Client>) => Promise<void>;
   /** The client's full profile, in the app. Operations opens a client inside itself first. */
   onNavigateProfile?: (clientId: string) => void;
+  /** A client's session on the floor, in trainer mode: Today's sessions left open (Oct 2 2026). */
+  onOpenSession?: (clientId: string) => void;
   /**
    * The studio the admin is currently working in. Data & Reports and Alerts
    * both act on ONE studio, so they need it explicitly rather than inferring
@@ -189,6 +191,7 @@ function OperationsShell({
   onUpdateStudio,
   onUpdateClient,
   onNavigateProfile,
+  onOpenSession,
   onReorderTrainers,
   onOpenStudioTasks,
   // The studio the APP is in: where My Studio opens (ops.studioId is null
@@ -357,6 +360,7 @@ function OperationsShell({
             // page remembers the section first, as Staff & Roles does for Team.
             onOpenMyStudio={onOpenStudioTasks}
             onNeedsCount={setNeedsCount}
+            onOpenSession={onOpenSession}
           />
         );
       case "week":

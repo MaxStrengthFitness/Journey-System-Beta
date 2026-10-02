@@ -320,7 +320,7 @@ function AdminsShell({
   const setupData = useSetupData(launching, signalsSeq);
   const launches = useMemo(() => overdueSetup(studios, trainers, setupData, new Date(now)), [studios, trainers, setupData, now]);
   const needs = useMemo(
-    () => needItems({ studios, networks, sync: allSync, limbo: signals.limbo, bugs: signals.bugs, offers: signals.offers, launches, now }),
+    () => needItems({ studios, networks, sync: allSync, limbo: signals.limbo, bugs: signals.bugs, offers: signals.offers, openSessions: signals.openSessions, launches, now }),
     [studios, networks, allSync, signals, launches, now],
   );
   const openDoor = (door: NeedDoor) => {
@@ -341,6 +341,7 @@ function AdminsShell({
     if (signals.limbo.state === "ok") kinds.add("limbo");
     if (signals.offers.state === "ok") kinds.add("offers");
     if (signals.bugs.state === "ok") kinds.add("bugs");
+    if (signals.openSessions.state === "ok") kinds.add("left-open");
     if (launches.state === "ok") kinds.add("launch-overdue");
     return kinds;
   }, [allSync, signals, launches]);

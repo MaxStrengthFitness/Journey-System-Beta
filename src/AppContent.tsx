@@ -1946,6 +1946,12 @@ export default function AppContent({
                       setSelectedClientId(clientId);
                       setCurrentView("profile");
                     }}
+                    // A session left open (Oct 2 2026): its client's session on
+                    // the floor, where the Active Session finishes it.
+                    onOpenSession={(clientId) => {
+                      setSelectedClientId(clientId);
+                      switchAppMode("trainer", "workouts");
+                    }}
                     // Operations' doors into My Studio (Staff & Roles, Renewals) switch back
                     // to trainer mode, or My Studio opens with Operations' bottom bar.
                     onOpenStudioTasks={() => switchAppMode("trainer", "studio-tasks")}
