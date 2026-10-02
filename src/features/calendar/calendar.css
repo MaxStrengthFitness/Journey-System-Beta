@@ -290,10 +290,13 @@
   font-size: 10px;
   font-weight: 700;
   color: var(--cal-ink-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* A client's name is never cut (FORD dates, Oct 2 2026): the title wraps. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  align-items: flex-start;
 }
+.cal-day__event i { margin-top: 4px; }
+.cal-day__event--more { font-weight: 600; }
 .cal-day__event i {
   flex: 0 0 auto;
   width: 5px;

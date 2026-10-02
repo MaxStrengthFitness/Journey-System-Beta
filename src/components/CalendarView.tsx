@@ -17,6 +17,13 @@ import {
   type CalendarSession,
   type TrainerRef,
 } from "../features/calendar";
+import { fordCalendarEvents, type CalendarClient } from "../features/calendar/ford-events";
+import { useCalendarFord } from "../features/calendar/useCalendarFord";
+
+/** The local calendar day of a Date the calendar built at local noon. */
+function localDayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 /**
  * CALENDAR — shell.
@@ -95,7 +102,6 @@ export function CalendarView({
   schedules,
   trainers,
   authTrainer,
-  isAdmin,
   activeStudioId,
   onSelectClient,
   setView,
@@ -105,7 +111,8 @@ export function CalendarView({
   schedules: ScheduleEntry[];
   trainers: Trainer[];
   authTrainer: Trainer | null;
-  isAdmin: boolean;
+  /** No longer narrows anything: everyone sees the whole team (Oct 2 2026). Kept for the call site. */
+  isAdmin?: boolean;
   activeStudioId?: string;
   onSelectClient?: (id: string) => void;
   onStartNewClientOnboarding?: (name: string) => void;
@@ -116,9 +123,9 @@ export function CalendarView({
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [selectedDate, setSelectedDate] = useState(() => new Date());
-  const [selectedTrainerId, setSelectedTrainerId] = useState<string>(
-    isAdmin ? "all" : authTrainer?.id || "all",
-  );
+  // Everyone sees the whole team (the Atlas answers, Oct 2 2026): the
+  // calendar opens on the entire team and anyone may pick any trainer.
+  const [selectedTrainerId, setSelectedTrainerId] = useState<string>("all");
 
   /* ---------------- the schedule window ---------------- */
 
@@ -288,27 +295,29 @@ export function CalendarView({
     return out;
   }, [schedules, resolveTrainerId, selectedTrainerId]);
 
-  const events = useMemo<CalendarEvent[]>(() => {
-    const out: CalendarEvent[] = [];
-    (clients || []).forEach((c) => {
-      if (!Array.isArray(c?.events)) return;
-      c.events.forEach((e: any, i: number) => {
-        const date = parseDayString(e.date);
-        if (!date) return;
-        out.push({
-          id: String(e.id || `${c.id}-${i}`),
-          title: e.title || e.type || "Event",
-          clientId: c.id,
-          clientName: `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim(),
-          date,
-          endDate: parseDayString(e.endDate) || undefined,
-          priority: e.priority,
-          type: e.type,
-        });
-      });
-    });
-    return out;
-  }, [clients]);
+  /**
+   * Events are clients' FORD dates (the Atlas answers, Oct 2 2026): every
+   * client's birthday, every year, and each dated FORD detail on the days on
+   * screen (features/calendar/ford-events.ts). The frozen `client.events`
+   * list is no longer read. One read of the studio's FORD per month on
+   * screen, only while Month shows events.
+   */
+  const monthRange = useMemo(() => {
+    const r = visibleRange("month", selectedDate);
+    return { from: localDayKey(r.from), to: localDayKey(r.to) };
+  }, [selectedDate]);
+  const ford = useCalendarFord(activeStudioId ?? null, monthRange.from, monthRange.to, viewMode === "month" && filterMode !== "sessions");
+  const events = useMemo<CalendarEvent[]>(
+    () =>
+      fordCalendarEvents({
+        details: ford.details,
+        clients: (clients ?? []) as CalendarClient[],
+        studioId: activeStudioId ?? null,
+        from: monthRange.from,
+        to: monthRange.to,
+      }),
+    [ford.details, clients, activeStudioId, monthRange.from, monthRange.to],
+  );
 
   const shownSessions = filterMode === "events" ? [] : sessions;
   const shownEvents = filterMode === "sessions" ? [] : events;
@@ -442,11 +451,9 @@ export function CalendarView({
           <select
             value={selectedTrainerId}
             onChange={(e) => setSelectedTrainerId(e.target.value)}
-            disabled={!isAdmin && !!authTrainer?.id}
           >
             <option value="all">Entire team</option>
             {visibleTrainers
-              .filter((t) => isAdmin || t.id === authTrainer?.id)
               .map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.fullName}
@@ -488,6 +495,12 @@ export function CalendarView({
         to={visibleRange(viewMode, selectedDate).to}
         onOpenPlanner={setView ? () => setView("studio-tasks") : undefined}
       />
+
+      {viewMode === "month" && filterMode !== "sessions" && ford.status === "failed" && (
+        <p className="cal-refresh__note" role="status">
+          {"Couldn\u2019t read the studio\u2019s FORD dates just now, so only birthdays show."}
+        </p>
+      )}
 
       {viewMode === "month" && (
         <MonthView

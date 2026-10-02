@@ -69,6 +69,7 @@ const DayBox = memo(function DayBox({
               {e.title}
             </span>
           ))}
+          {cell.events.length > 2 && <span className="cal-day__event cal-day__event--more">{`+${cell.events.length - 2} more`}</span>}
         </span>
       )}
 

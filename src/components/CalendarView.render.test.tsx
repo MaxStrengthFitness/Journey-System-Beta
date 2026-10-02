@@ -14,6 +14,8 @@ import { visibleRange } from "../features/calendar";
 
 // The Relay layer reads studio tasks from Firestore; not what is tested here.
 vi.mock("../features/relay/board/RelayStrip", () => ({ RelayStrip: () => null }));
+// The FORD read behind Events (ford-events.test.ts covers what it becomes).
+vi.mock("../features/calendar/useCalendarFord", () => ({ useCalendarFord: () => ({ status: "ready", details: [] }) }));
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
