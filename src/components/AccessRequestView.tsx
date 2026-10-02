@@ -18,6 +18,18 @@ import { collection, addDoc, doc, setDoc, serverTimestamp } from "firebase/fires
 import { db } from "../firebase";
 import { Button } from "@/components/ui/button";
 import { Studio, Trainer } from "../types";
+import { studiosInRealm } from "../features/demo-mode/access";
+
+/**
+ * Why a request can't be sent yet, or null when its studio is in order
+ * (Oct 2 2026: a request must name its studio).
+ */
+export function accessRequestStudioProblem(studioId: string, studiosOffered: number): string | null {
+  if (studioId.trim()) return null;
+  return studiosOffered > 0
+    ? "Choose your studio. Your request goes to its leaders."
+    : "The list of studios didn't load, so the request can't name yours yet. Check your connection and try again.";
+}
 
 interface AccessRequestViewProps {
   authenticatedUser?: any; // Google User if logged in
@@ -46,6 +58,9 @@ export default function AccessRequestView({
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const isAutoAssigned = false; // Everyone must go through admin approval now
+  // The studios a request may name: never Demo Mode, which is a practice
+  // studio and has no leaders to let anyone in (the realm rule).
+  const requestStudios = studiosInRealm(studios, null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +70,14 @@ export default function AccessRequestView({
     }
     if (isAutoAssigned && !selectedStudioId) {
       setSubmitError("Please select your Home Studio to continue.");
+      return;
+    }
+    // A request names its studio (Oct 2 2026, AJ: "Require a studio"; "Not
+    // sure yet" is gone): it lands with that studio's leaders on My Studio ->
+    // Team, and one with no studio landed with nobody.
+    const studioProblem = accessRequestStudioProblem(selectedStudioId, requestStudios.length);
+    if (studioProblem) {
+      setSubmitError(studioProblem);
       return;
     }
 
@@ -92,7 +115,7 @@ export default function AccessRequestView({
           email: email.trim().toLowerCase(),
           phone: phone.trim(),
           roleRequested,
-          requestedStudioId: selectedStudioId || null,
+          requestedStudioId: selectedStudioId,
           reason: reason.trim(),
           status: "Pending",
           userId: authenticatedUser?.uid || null,
@@ -309,7 +332,7 @@ export default function AccessRequestView({
 
                   {/* Which studio (My Studio round, Sep 2026): the request lands
                       with that studio's leaders under My Studio → Team. */}
-                  {studios.length > 0 && (
+                  {requestStudios.length > 0 && (
                     <div className="space-y-1.5">
                       <label className="text-slate-400 text-[11px] font-bold uppercase tracking-wider block">
                         Which studio?
@@ -321,8 +344,8 @@ export default function AccessRequestView({
                           onChange={(e) => setSelectedStudioId(e.target.value)}
                           className="w-full bg-[#1b1c1e] text-white pl-12 pr-4 py-3.5 rounded-xl border border-slate-800 focus:outline-none focus:border-action transition-colors text-sm appearance-none cursor-pointer"
                         >
-                          <option value="">Not sure yet</option>
-                          {studios.map((studio) => (
+                          <option value="" disabled>Choose your studio</option>
+                          {requestStudios.map((studio) => (
                             <option key={studio.id} value={studio.id}>{studio.name}</option>
                           ))}
                         </select>
