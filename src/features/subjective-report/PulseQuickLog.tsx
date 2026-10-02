@@ -11,7 +11,8 @@
  *   2. Tap a Dial — the area's three statements on the frequency words, and
  *      one note in the client's words. Answering ONE statement is enough:
  *      the living rule carries the others forward from last time.
- *   3. Done — nothing to save. The draft autosaves through the same hook the
+ *   3. Done — the round is saved and counts at once (Oct 2 2026; see
+ *      "COUNTS AT ONCE" below). Before that the draft autosaves through the same hook the
  *      full Pulse uses (`useCheckInDraft`), so this IS the record, and the
  *      change log records who and when exactly as it does there.
  *
@@ -23,7 +24,7 @@
  * it in `PulseQuickLogDialog` below. Same words, same bar, same order in
  * both: what (the area) → the words (statements) → how much (the Dial).
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, Check, HeartPulse, X } from "lucide-react";
 import type { Client, Machine, Trainer } from "../../types";
@@ -78,6 +79,43 @@ export function PulseQuickLog({ client, trainer, machines, onOpenFull, onDone, c
     [draft.history, draft.assessment.changeLog, draft.sections, draft.savedAt],
   );
 
+  /*
+   * COUNTS AT ONCE (the Atlas answers, Oct 2 2026). An answer given here used
+   * to sit in the open draft until somebody saved a round on Body & Pulse, so
+   * the Overview, the Hub's Pulse flag, the progress report and the renewal
+   * brief (which read `clients.subjectiveSnapshot` and Finalized reports)
+   * never saw it. Now Done saves the round — the same `finalize` Body &
+   * Pulse's "Save this round" calls — and so does leaving this screen any
+   * other way (the dialog's X, the sheet switching) after an answer here. The
+   * living rule already makes a part-answered round honest: an area not asked
+   * carries forward, and a part-answered area has no colour. Fired, never
+   * awaited on the floor.
+   */
+  const touchedRef = useRef(false);
+  const finalizeRef = useRef(draft.finalize);
+  finalizeRef.current = draft.finalize;
+  const countNow = () => {
+    if (!touchedRef.current) {
+      void draft.saveNow();
+      return;
+    }
+    touchedRef.current = false;
+    void finalizeRef.current();
+  };
+  const countNowRef = useRef(countNow);
+  countNowRef.current = countNow;
+  // The check waits a tick, so React's development double mount is not a way out.
+  const aliveRef = useRef(false);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+      setTimeout(() => {
+        if (!aliveRef.current && touchedRef.current) countNowRef.current();
+      }, 0);
+    };
+  }, []);
+
   const area: SubjectiveCategoryDef | null = areaKey ? (SUBJECTIVE_CATEGORIES.find((c) => c.key === areaKey) ?? null) : null;
   const first = clientFirstName(client);
 
@@ -130,11 +168,13 @@ export function PulseQuickLog({ client, trainer, machines, onOpenFull, onDone, c
     );
   }
 
-  const setAnswer = (id: string, ten: number | null) =>
+  const setAnswer = (id: string, ten: number | null) => {
+    touchedRef.current = true;
     draft.update({
       ...draft.assessment,
       answers: { ...draft.assessment.answers, [id]: { ...(draft.assessment.answers[id] ?? {}), value: ten } },
     });
+  };
 
   return (
     <div className={`pq ${compact ? "pq--compact" : ""}`} data-testid="pulse-quick-log-area">
@@ -172,12 +212,13 @@ export function PulseQuickLog({ client, trainer, machines, onOpenFull, onDone, c
           style={{ minHeight: 44 }}
           placeholder="Anything worth remembering next time…"
           value={draft.assessment.categoryNotes[area.key] ?? ""}
-          onChange={(e) =>
+          onChange={(e) => {
+            touchedRef.current = true;
             draft.update({
               ...draft.assessment,
               categoryNotes: { ...draft.assessment.categoryNotes, [area.key]: e.target.value },
-            })
-          }
+            });
+          }}
         />
       </label>
 
@@ -185,7 +226,7 @@ export function PulseQuickLog({ client, trainer, machines, onOpenFull, onDone, c
         type="button"
         className="pq__done"
         onClick={() => {
-          void draft.saveNow();
+          countNow();
           setAreaKey(null);
           onDone?.();
         }}

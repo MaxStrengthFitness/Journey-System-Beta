@@ -383,11 +383,16 @@ export function useCheckInDraft(opts: {
   const firstOpenSection = sections.find((s) => !s.isDone)?.id ?? null;
 
   const finalize = useCallback(async () => {
-    if (!draftId || !client) return false;
+    // A draft still waiting on its first write has no id yet (the quick log's
+    // Done can come within the debounce, Oct 2 2026): send it first, then read
+    // the id the write gave it.
+    if (!client || (!draftIdRef.current && !pending.current && !inFlight.current)) return false;
     setFinalizing(true);
     try {
       if (timer.current) window.clearTimeout(timer.current);
-      if (pending.current) await flush();
+      await flush();
+      const draftId = draftIdRef.current;
+      if (!draftId) return false;
       const current = assessmentRef.current;
       const stored = await finalizeCheckIn({ draftId, client, assessment: current, previous });
 

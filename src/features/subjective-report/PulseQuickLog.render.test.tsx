@@ -160,5 +160,40 @@ describe("PulseQuickLog", () => {
     expect(written.subjective.answers.sleepRecovery_1.value).toBe(8);
     expect(written.subjective.answers.sleepRecovery_2).toBeUndefined();
     expect(written.status).toBe("Draft");
+
+    // Counts at once (Oct 2 2026): Done saves the round, as Body & Pulse's
+    // "Save this round" does — Finalized, and the client's snapshot stamped,
+    // which is what the Overview, the Hub flag and the renewal brief read.
+    const final = updateDocCalls.find((c) => c.path === "progressReports/new-draft" && c.data.status === "Finalized");
+    expect(final).toBeTruthy();
+    expect(final!.data.subjective.answers.sleepRecovery_1.value).toBe(8);
+    expect(updateDocCalls.find((c) => c.path === "clients/judy")?.data.subjectiveSnapshot).toBeTruthy();
+  });
+
+  it("saves the round when the quick log is closed after an answer, without Done", async () => {
+    const host = await mount(<PulseQuickLog client={client} trainer={trainer} machines={[]} />);
+    const sleepTile = Array.from(host.querySelectorAll<HTMLButtonElement>(".pq__tile")).find((t) => t.textContent?.includes("Sleep & Recovery"))!;
+    await act(async () => sleepTile.click());
+    const dial = host.querySelectorAll('[data-scale="frequency"]')[0];
+    await act(async () => dial.querySelectorAll<HTMLButtonElement>('[role="radio"]')[1].click());
+    const m = mounted.pop()!;
+    await act(async () => m.root.unmount());
+    m.host.remove();
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(updateDocCalls.some((c) => c.path === "progressReports/new-draft" && c.data.status === "Finalized")).toBe(true);
+  });
+
+  it("saves no round when nothing was answered", async () => {
+    const host = await mount(<PulseQuickLog client={client} trainer={trainer} machines={[]} />);
+    const sleepTile = Array.from(host.querySelectorAll<HTMLButtonElement>(".pq__tile")).find((t) => t.textContent?.includes("Sleep & Recovery"))!;
+    await act(async () => sleepTile.click());
+    await act(async () => host.querySelector<HTMLButtonElement>(".pq__done")!.click());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 5));
+    });
+    expect(updateDocCalls.some((c) => c.data?.status === "Finalized")).toBe(false);
+    expect(addDocCalls).toHaveLength(0);
   });
 });
