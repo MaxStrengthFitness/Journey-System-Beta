@@ -402,3 +402,21 @@
   line-height: 1.45;
   color: var(--eq-ink-2);
 }
+
+/* ---- on a phone (Journey Lite, Oct 1 2026) ----
+   The layers and the two doors keep one line: the doors are their icons
+   (each keeps its whole name for a screen reader, and Tasks its count).
+   Under the week, Me | Everyone takes a line of its own, the width of the
+   phone, because on a phone it decides the whole list; the chips scroll on
+   the line under it. */
+@container (max-width: 520px) {
+  .hd { gap: 8px; padding: 8px 12px; }
+  .hd-btn { padding: 0 10px; }
+  .hd-btn-word { display: none; }
+}
+@container (max-width: 520px) {
+  .hd-sum[data-focus-switch="true"] .hd-focus { order: -1; flex: 1 0 100%; margin-left: 0; }
+  .hd-sum[data-focus-switch="true"] .hd-seg { flex: 1 1 auto; }
+  .hd-sum[data-focus-switch="true"] .hd-seg-btn { flex: 1 1 0; }
+  .hd-sum[data-focus-switch="true"] .hd-chips { flex: 1 0 100%; }
+}

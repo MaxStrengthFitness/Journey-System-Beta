@@ -120,13 +120,13 @@ export function DayHeader({ layer, onLayer, days, selected, onSelectDay, openTas
         {onOpenTasks && (
           <button type="button" className="hd-btn" onClick={onOpenTasks} aria-label={openTasks ? `Tasks: ${openTasks} open. Opens Relay` : "Tasks. Opens Relay"}>
             <ListChecks size={16} aria-hidden />
-            {"Tasks"}
+            <span className="hd-btn-word">{"Tasks"}</span>
             {openTasks ? <strong>{openTasks}</strong> : null}
           </button>
         )}
-        <button type="button" className="hd-btn" onClick={onOpenKey}>
+        <button type="button" className="hd-btn" onClick={onOpenKey} aria-label="Key: what the marks mean">
           <KeyRound size={16} aria-hidden />
-          {"Key"}
+          <span className="hd-btn-word">{"Key"}</span>
         </button>
       </div>
     </div>

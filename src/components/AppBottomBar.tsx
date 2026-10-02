@@ -103,7 +103,9 @@ export function AppBottomBar({
             active={currentView === "workouts"}
             onClick={onResumeSession}
             icon={<PlayCircle className="w-5 h-5" />}
-            label={liveSessionTabLabel(liveSession)}
+            // "Session", not "Session · Frodo": five tabs leave no room for
+            // her name, and a name is never cut short.
+            label="Session"
             activeColor="text-orange-500"
             activeBg="bg-orange-500/10 dark:bg-orange-600/10"
             activeIndicator="bg-orange-500 dark:bg-orange-600"
