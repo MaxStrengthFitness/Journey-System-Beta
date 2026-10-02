@@ -1,0 +1,461 @@
+/* ==========================================================================
+   Journey on a phone (Journey Lite, Oct 1 2026). Prefix ph-.
+   Colour comes from equipment.tokens.css and, for the rep-quality marks
+   only, journey-grid.tokens.css (the gold star and the red kaizen are the
+   grid's own, and the red is reserved for rep quality). No hex below.
+   Type is the app's scale: 11 / 12 / 14 / 17 / 30. Nothing tappable under
+   40px; a machine's name wraps, never cut.
+   ========================================================================== */
+@import "../equipment/equipment.tokens.css";
+@import "../journey-grid/journey-grid.tokens.css";
+
+/* ---- the session, one card per machine ---------------------------------- */
+
+.ph-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 8px 12px 24px;
+  background: var(--eq-bg);
+  color: var(--eq-ink);
+}
+
+.ph-stage__note {
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-2);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ph-stage__empty {
+  margin: 24px 0;
+  text-align: center;
+  color: var(--eq-ink-muted);
+  font-size: 14px;
+}
+
+.ph-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ph-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--eq-border);
+  border-left: 4px solid var(--eq-border-strong);
+  border-radius: var(--eq-radius);
+  background: var(--eq-surface);
+  scroll-margin: 12px;
+}
+.ph-card.is-logged { border-left-color: var(--eq-ok); }
+.ph-card.is-in-hand {
+  border-color: var(--eq-live);
+  border-left-color: var(--eq-live);
+  box-shadow: 0 2px 10px var(--eq-shadow);
+}
+
+.ph-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.ph-card__order {
+  flex: none;
+  min-width: 28px;
+  height: 28px;
+  margin-top: 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-2);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.ph-card.is-in-hand .ph-card__order {
+  background: var(--eq-live);
+  color: var(--eq-live-on);
+}
+.ph-card__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--eq-ink);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.ph-card__name > span { min-width: 0; }
+.ph-card__alert { flex: none; color: var(--jg-q-poor); }
+.ph-card__chev { flex: none; margin-left: auto; color: var(--eq-ink-faint); }
+
+.ph-card__settings {
+  margin: -4px 0 0 36px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--eq-ink-2);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.ph-card__settings abbr {
+  text-decoration: none;
+  color: var(--eq-ink-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ph-card__outcome {
+  margin: 0;
+  color: var(--eq-ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ---- the last five times ------------------------------------------------ */
+
+.ph-past {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+.ph-past--none {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-muted);
+  font-size: 12px;
+}
+.ph-past__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 4px 2px 5px;
+  border-radius: 8px;
+  background: var(--eq-surface-2);
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+}
+/* Five cells line up from the right: the newest is always the last column. */
+.ph-past__cell:first-child:nth-last-child(1) { grid-column: 5; }
+.ph-past__cell:first-child:nth-last-child(2) { grid-column: 4; }
+.ph-past__cell:first-child:nth-last-child(3) { grid-column: 3; }
+.ph-past__cell:first-child:nth-last-child(4) { grid-column: 2; }
+.ph-past__date {
+  color: var(--eq-ink-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.ph-past__weight {
+  color: var(--eq-ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+.ph-past__count {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--eq-ink-2);
+  font-size: 12px;
+}
+.ph-past__cell--practice .ph-past__weight,
+.ph-past__cell--practice .ph-past__count,
+.ph-past__cell--skipped .ph-past__weight,
+.ph-past__cell--skipped .ph-past__count { color: var(--eq-ink-faint); }
+.ph-past__cell:last-child { box-shadow: inset 0 0 0 1px var(--eq-border-strong); }
+.ph-q--3 { color: var(--jg-q-star); }
+.ph-q--1 { color: var(--jg-q-poor); }
+
+/* ---- today -------------------------------------------------------------- */
+
+.ph-today {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+.ph-weight {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--eq-surface);
+}
+.ph-step {
+  flex: none;
+  width: 44px;
+  min-height: 48px;
+  border: 0;
+  background: var(--eq-surface-2);
+  color: var(--eq-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.ph-step:active { background: var(--eq-surface-3); }
+.ph-step:disabled, .ph-weight__input:disabled { opacity: 0.45; }
+.ph-weight__box {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 4px;
+}
+.ph-weight__input {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  border: 0;
+  background: transparent;
+  color: var(--eq-ink);
+  text-align: right;
+  font: inherit;
+  /* 17px and up keeps iOS from zooming the page when the box is tapped. */
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+.ph-weight__unit {
+  flex: none;
+  color: var(--eq-ink-muted);
+  font-size: 12px;
+  align-self: center;
+}
+
+.ph-count {
+  flex: none;
+  width: 92px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 12px;
+  background: var(--eq-surface);
+}
+.ph-sides { flex: none; display: flex; gap: 6px; }
+.ph-sides .ph-count { width: 72px; }
+.ph-count__label {
+  flex: none;
+  color: var(--eq-ink-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ph-count__input {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  border: 0;
+  background: transparent;
+  color: var(--eq-ink);
+  text-align: right;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+.ph-count__input::placeholder { color: var(--eq-ink-faint); font-weight: 600; }
+.ph-count:focus-within,
+.ph-weight:focus-within { border-color: var(--eq-focus-ring); box-shadow: 0 0 0 1px var(--eq-focus-ring); }
+
+/* ---- marks and outcomes ------------------------------------------------- */
+
+.ph-marks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.ph-marks__sp { flex: 1 1 0; }
+.ph-mark {
+  width: 44px;
+  height: 40px;
+  border: 1px solid var(--eq-border);
+  border-radius: 10px;
+  background: var(--eq-surface);
+  color: var(--eq-ink-faint);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.ph-mark:disabled { opacity: 0.4; cursor: default; }
+.ph-mark--3.is-on { color: var(--jg-q-star); border-color: var(--jg-q-max-edge); background: var(--jg-q-max-fill); }
+.ph-mark--1.is-on { color: var(--jg-q-poor); border-color: var(--jg-q-poor); background: var(--jg-q-poor-fill); }
+
+.ph-chip {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--eq-border);
+  border-radius: 999px;
+  background: var(--eq-surface);
+  color: var(--eq-ink-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ph-chip.is-on {
+  border-color: var(--eq-live);
+  background: var(--eq-live-fill);
+  color: var(--eq-live-text);
+}
+.ph-chip:disabled { opacity: 0.45; cursor: default; }
+
+.ph-card__next {
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--eq-live);
+  color: var(--eq-live-on);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.ph-card__next:disabled {
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-muted);
+  cursor: default;
+}
+
+.ph-stage__reorder {
+  margin: 12px auto 0;
+  min-height: 44px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px dashed var(--eq-border-strong);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--eq-ink-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ---- the Hub's day as a list -------------------------------------------- */
+
+.ph-day {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 8px 12px 24px;
+  background: var(--eq-bg);
+  color: var(--eq-ink);
+}
+.ph-day[hidden] { display: none; }
+.ph-day__empty {
+  margin: 32px 0;
+  text-align: center;
+  color: var(--eq-ink-muted);
+  font-size: 14px;
+}
+.ph-day__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ph-day__now {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--eq-hero-text);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.ph-day__now::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--eq-hero);
+}
+.ph-day__row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+.ph-day__time {
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--eq-ink);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ph-day__time small {
+  color: var(--eq-ink-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.ph-day__card {
+  /* The Hub's own card, given the height a list row needs rather than the
+     grid's minutes. It fills this box as it fills a grid slot. */
+  display: flex;
+  min-height: 72px;
+  min-width: 0;
+}
+.ph-day__with {
+  margin: 2px 0 0;
+  color: var(--eq-ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.ph-day__cell { display: flex; flex-direction: column; min-width: 0; }

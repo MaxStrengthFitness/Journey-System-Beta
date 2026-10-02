@@ -117,6 +117,7 @@ import { variationStudioIdOf } from "../inbody/variation";
 import { useStudioSettings } from "../studio-settings";
 import { pronounsOf } from "../client-codex/kit/pronouns";
 import "./briefing.css";
+import { usePhone } from "../phone/device";
 
 import { clientDisplayName } from "../../lib/client-name";
 
@@ -279,6 +280,7 @@ export function BriefingScreen({
     setIsAdjusting(true);
   };
 
+  const isPhone = usePhone();
   const handleStart = () => {
     const checkIn: PreSessionCheckIn = {};
     // Only the dials that were tapped; nothing when none were.
@@ -931,6 +933,14 @@ export function BriefingScreen({
             {/* 6. One loud action, sticky to the bottom of the page rather
                 than a fixed footer that has to know the nav bar's height. */}
             <div className="br__cta-bar">
+              {/* Journey Lite (Oct 1 2026): a phone may run a session, and
+                  is told once, here, that it isn't the way (AJ: "it is not
+                  advised to run a session on your phone"). Never a gate. */}
+              {isPhone && (
+                <p className="br__phone-note" role="note">
+                  Sessions are meant to be run on the iPad. On a phone you get the short version: the routine, the weights and the reps.
+                </p>
+              )}
               <button type="button" onClick={handleStart} className="br__cta">
                 <Play className="w-5 h-5" fill="currentColor" aria-hidden />
                 Start session

@@ -149,7 +149,7 @@ const PAYS_AN_INSET: Record<string, { uses: number; reason: string }> = {
   "index.css": { uses: 15, reason: "defines the safe-area utilities and the status band" },
   "features/home-screen/StatusBarStrip.tsx": { uses: 1, reason: "the shell's top inset, for every screen in the shell" },
   "features/home-screen/safe-area.ts": { uses: 2, reason: "reads the insets as numbers, for select lists and menus" },
-  "components/AppBottomBar.tsx": { uses: 2, reason: "the shell's bottom inset, on every signed-in screen (two bars)" },
+  "components/AppBottomBar.tsx": { uses: 3, reason: "the shell's bottom inset, on every signed-in screen (three bars: trainer, Operations, phone)" },
   "components/ui/sheet.tsx": { uses: 7, reason: "every Sheet: portalled over the shell, pays the edges it touches, and its close button" },
   "features/routine-builder/routine-builder.css": { uses: 1, reason: "the builder's sheets run the full height, so they start below the status bar" },
   "components/WorkoutTrackerView.tsx": { uses: 2, reason: "the Pulse slide-over: full height, over the bottom bar" },

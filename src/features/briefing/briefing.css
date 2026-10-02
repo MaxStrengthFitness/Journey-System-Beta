@@ -572,6 +572,14 @@
   .br__cta-bar { background: var(--br-bg); }
 }
 
+.br__phone-note {
+  margin: 0 0 8px;
+  color: var(--br-ink-2);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+}
+
 .br__cta {
   width: 100%;
   min-height: 60px;

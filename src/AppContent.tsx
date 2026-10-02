@@ -34,7 +34,10 @@ import {
   Search,
   RefreshCw,
   X,
+  Calendar as CalendarIcon,
+  GraduationCap,
 } from "lucide-react";
+import { usePhone } from "./features/phone/device";
 import { AnimatePresence } from "motion/react";
 import {
   collection,
@@ -404,6 +407,10 @@ export default function AppContent({
    * See features/admin/operations-access.ts.
    */
   const canOpenOperations = mayOpenOperations(authTrainer, activeStudioId);
+  /* Journey on a phone (Journey Lite, Oct 1 2026): the same app, laid out
+     for a phone. The shell's part is the bottom bar and a header with room
+     for the studio's name (features/phone/README.md). */
+  const isPhone = usePhone();
   const place = useGuardedPlace({
     operations: canOpenOperations,
     admins: isAdmin,
@@ -1322,6 +1329,10 @@ export default function AppContent({
 
   const headerRightControls = (
     <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+      {/* On a phone the header keeps the bell (and the reminders that ring
+          it); Refresh, the theme, feedback and Settings are in the avatar
+          menu, so the studio's name keeps its room. */}
+      {!isPhone && (
       <Button
         variant="ghost"
         size="icon"
@@ -1335,8 +1346,9 @@ export default function AppContent({
           className={`w-5 h-5 sm:w-6 sm:h-6 ${isRefreshingSchedule ? "animate-spin" : ""}`}
         />
       </Button>
-      <ThemeToggle className={headerIconClass} />
-      <FeedbackButton className={headerIconClass} />
+      )}
+      {!isPhone && <ThemeToggle className={headerIconClass} />}
+      {!isPhone && <FeedbackButton className={headerIconClass} />}
       {/* Rings the bell when one of your own Planner reminders comes due. */}
       <PlannerReminders authTrainer={authTrainer ?? null} />
       <NotificationBell
@@ -1381,6 +1393,7 @@ export default function AppContent({
           });
         }}
       />
+      {!isPhone && (
       <Button
         variant="ghost"
         size="icon"
@@ -1391,6 +1404,7 @@ export default function AppContent({
       >
         <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
       </Button>
+      )}
     </div>
   );
 
@@ -1408,7 +1422,7 @@ export default function AppContent({
   // test the screen itself is held to (see useGuardedPlace, near the top).
   const headerTrainerDropdown = authTrainer ? (
     <DropdownMenu open={trainerMenuOpen} onOpenChange={setTrainerMenuOpen}>
-      <DropdownMenuTrigger className="w-8 h-8 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-primary text-primary-foreground shrink-0">
+      <DropdownMenuTrigger aria-label="Your menu" className="w-10 h-10 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-primary text-primary-foreground shrink-0">
         {authTrainer.initials}
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -1452,6 +1466,53 @@ export default function AppContent({
                 )}
               </div>
             </div>
+          )}
+          {isPhone && (
+            <>
+              {/* On a phone the bottom bar is Schedule · Operations · Clients
+                  · My Studio (Journey Lite, Oct 1 2026); the rest of the app
+                  is here, with the header buttons the phone has no room for. */}
+              <DropdownMenuItem
+                onClick={() => menuNavigate(() => switchAppMode("trainer", lastLearningView))}
+                className="rounded-xl flex items-center gap-3 p-3 min-h-11 font-bold uppercase text-[11px] tracking-widest cursor-pointer"
+              >
+                <GraduationCap className="w-4 h-4 text-sky-500" />
+                Learning
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => menuNavigate(() => switchAppMode("trainer", "calendar"))}
+                className="rounded-xl flex items-center gap-3 p-3 min-h-11 font-bold uppercase text-[11px] tracking-widest cursor-pointer"
+              >
+                <CalendarIcon className="w-4 h-4 text-sky-500" />
+                Calendar
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => menuNavigate(() => setCurrentView("trainer-hub"))}
+                className="rounded-xl flex items-center gap-3 p-3 min-h-11 font-bold uppercase text-[11px] tracking-widest cursor-pointer"
+              >
+                <Settings className="w-4 h-4 text-slate-500" />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={isRefreshingSchedule}
+                onClick={() => {
+                  setTrainerMenuOpen(false);
+                  void handleRefreshSchedule();
+                }}
+                className="rounded-xl flex items-center gap-3 p-3 min-h-11 font-bold uppercase text-[11px] tracking-widest cursor-pointer"
+              >
+                <RefreshCw className={`w-4 h-4 text-slate-500 ${isRefreshingSchedule ? "animate-spin" : ""}`} />
+                {isRefreshingSchedule ? "Syncing schedule…" : "Refresh schedule"}
+              </DropdownMenuItem>
+              <div className="flex items-center gap-2 px-3 py-1">
+                <ThemeToggle className={headerIconClass} />
+                <FeedbackButton className={headerIconClass} />
+                <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Theme · Feedback
+                </span>
+              </div>
+              <DropdownMenuSeparator className="my-2 bg-slate-700" />
+            </>
           )}
           <DropdownMenuLabel className="font-black uppercase text-[11px] tracking-widest px-3 py-2 text-muted-foreground">
             Active Profile
@@ -1987,6 +2048,9 @@ export default function AppContent({
             lastLearningView={lastLearningView}
             onNavigate={setCurrentView}
             onResumeSession={() => void resumeLiveSession()}
+            phone={isPhone}
+            canOpenOperations={canOpenOperations}
+            onSwitchMode={switchAppMode}
           />
         </div>
 

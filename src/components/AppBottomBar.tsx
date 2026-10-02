@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
+import type { AppMode } from "../features/admin/operations-access";
 import type { View } from "../types";
 import { liveSessionTabLabel, type LiveSessionLike } from "../lib/live-session";
 import { NavButton } from "./NavButton";
@@ -32,6 +33,9 @@ export function AppBottomBar({
   lastLearningView,
   onNavigate,
   onResumeSession,
+  phone = false,
+  canOpenOperations = false,
+  onSwitchMode,
 }: {
   appMode: "trainer" | "admin";
   currentView: View;
@@ -43,11 +47,78 @@ export function AppBottomBar({
   lastLearningView: "learning" | "machine-anatomy" | "academy";
   onNavigate: (view: View) => void;
   onResumeSession: () => void;
+  /**
+   * On a phone (Journey Lite, Oct 1 2026) the bar leads with the schedule
+   * and Operations: Schedule · Operations · Clients · My Studio, and Session
+   * while one is running. Learning and Calendar are in the avatar menu.
+   */
+  phone?: boolean;
+  /** `mayOpenOperations`: whether the phone bar offers Operations. */
+  canOpenOperations?: boolean;
+  /** Changes mode and screen in one guarded step (AppContent's switchAppMode). */
+  onSwitchMode?: (mode: AppMode, view: View) => void;
 }) {
   const isLearningView =
     currentView === "learning" ||
     currentView === "machine-anatomy" ||
     currentView === "academy";
+
+  if (phone) {
+    const go = (mode: AppMode, view: View) => {
+      if (mode === appMode) onNavigate(view);
+      else if (onSwitchMode) onSwitchMode(mode, view);
+      else onNavigate(view);
+    };
+    const opsOn = appMode === "admin";
+    return (
+      <nav
+        aria-label="Journey"
+        className="flex-none bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-1 min-h-14 pb-safe flex items-center justify-around z-30"
+      >
+        <NavButton
+          active={!opsOn && currentView === "clients"}
+          onClick={() => go("trainer", "clients")}
+          icon={<Calendar className="w-5 h-5" />}
+          label="Schedule"
+        />
+        {canOpenOperations && (
+          <NavButton
+            active={opsOn}
+            onClick={() => go("admin", currentView === "admins-dashboard" ? "admins-dashboard" : "admin-dashboard")}
+            icon={<LayoutDashboard className="w-5 h-5" />}
+            label="Operations"
+            activeColor="text-orange-500"
+            activeBg="bg-orange-500/10 dark:bg-orange-600/10"
+            activeIndicator="bg-orange-500 dark:bg-orange-600"
+          />
+        )}
+        <NavButton
+          active={!opsOn && ["profile", "progress-report", "client-directory"].includes(currentView)}
+          onClick={() => go("trainer", hasClient ? "profile" : "client-directory")}
+          icon={<Users className="w-5 h-5" />}
+          label="Clients"
+        />
+        {liveSession && (
+          <NavButton
+            active={currentView === "workouts"}
+            onClick={onResumeSession}
+            icon={<PlayCircle className="w-5 h-5" />}
+            label={liveSessionTabLabel(liveSession)}
+            activeColor="text-orange-500"
+            activeBg="bg-orange-500/10 dark:bg-orange-600/10"
+            activeIndicator="bg-orange-500 dark:bg-orange-600"
+            attention={currentView !== "workouts"}
+          />
+        )}
+        <NavButton
+          active={!opsOn && currentView === "studio-tasks"}
+          onClick={() => go("trainer", "studio-tasks")}
+          icon={<Building2 className="w-5 h-5" />}
+          label="My Studio"
+        />
+      </nav>
+    );
+  }
 
   return appMode === "trainer" ? (
     <nav className="flex-none bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-safe flex items-center justify-around z-30">

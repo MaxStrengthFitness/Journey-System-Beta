@@ -2391,6 +2391,11 @@ div.jg-today { cursor: default; }
   .jg-sbar__progress { display: none; }
   .jg-sbar__finish { padding: 0 12px; }
   .jg-sbar__end { margin-left: 4px; padding-left: 6px; }
+  /* Journey Lite (Oct 1 2026): on a phone the name takes the first line,
+     whole, and the clock, Notes, Pulse and Finish the second. One line left
+     the name about thirty pixels. */
+  .jg-sbar { flex-wrap: wrap; row-gap: 6px; padding: 6px 8px; }
+  .jg-sbar__client { flex: 1 0 100%; }
 }
 
 /* ==========================================================================

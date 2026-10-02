@@ -182,6 +182,8 @@ import {
   type TodayLine,
 } from "../lib/post-session";
 import { NOW_BAR_SIDE_QUERY, useMediaQuery } from "../hooks/useMediaQuery";
+import { usePhone } from "../features/phone/device";
+import { PhoneSessionStage } from "../features/phone/PhoneSessionStage";
 import { traineeLevelOf } from "../lib/progression-cue";
 import { createJournalEntry, useClientJournal } from "../hooks/useClientJournal";
 import { flagLineOf, machineFlags, sessionFlags } from "../features/journey-grid/session-flags";
@@ -873,6 +875,8 @@ export function WorkoutTrackerView({
    */
   const [isOrderSheetOpen, setIsOrderSheetOpen] = useState(false);
   const nowBarSide = useMediaQuery(NOW_BAR_SIDE_QUERY);
+  /* A phone draws the live session as cards (features/phone). */
+  const isPhone = usePhone();
 
   /**
    * Every mid-session change to the machine list lands here, and lands
@@ -3811,6 +3815,25 @@ export function WorkoutTrackerView({
           column on the RIGHT, under the right thumb, and the grid takes the
           full height — the old bar stretched across 1180px of width and
           left the grid eight rows tall ("a foot-long hotdog"). */}
+      {/* ON A PHONE (Journey Lite, Oct 1 2026): the same session, drawn as
+          one card per machine with its last five times. Every write is the
+          grid's own handleGridLiveChange and the card in hand is the Now
+          Bar's machine, so Finish, the clocks and the Wrap-up are unchanged
+          (features/phone/README.md). */}
+      {isPhone && gridLive ? (
+        <PhoneSessionStage
+          rows={gridSections[0]?.rows ?? []}
+          history={gridHistory}
+          values={gridLiveValues}
+          focusId={gridFocusMachineId ?? null}
+          onFocus={(id) => setFocusMachineOverride(id)}
+          onChange={handleGridLiveChange}
+          onCommit={flushAllLogWrites}
+          onOpenMachine={(id) => setSheetMachineId(id)}
+          onReorder={() => setIsOrderSheetOpen(true)}
+          step={2}
+        />
+      ) : (
       <div className={`jg-stage ${nowBarSide ? "jg-stage--side" : ""}`}>
       <div className="jg-stage__main">
         {/* The rail used to open with the word ROUTINE, then a bare
@@ -3956,6 +3979,7 @@ export function WorkoutTrackerView({
         />
       )}
       </div>
+      )}
 
       {currentSession && (
         <RoutineOrderSheet

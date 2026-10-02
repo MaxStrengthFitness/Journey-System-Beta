@@ -40,6 +40,8 @@ import { useHubFord } from "../features/hub-opportunities/use-hub-ford";
 import { useHubMarks } from "../features/hub-opportunities/use-hub-marks";
 import { useBookingMarks } from "../features/admin/attention/booking-marks";
 import { HubCard, cardTime } from "../features/hub-schedule/HubCard";
+import { usePhone } from "../features/phone/device";
+import { PhoneDayList } from "../features/phone/PhoneDayList";
 import { HubGrid, HubNotice, NOBODY_BOOKED, type GridBlock, type GridColumn } from "../features/hub-schedule/HubGrid";
 import { trainerDayFrame, weeksByTrainer } from "../features/hub-schedule/off-hours";
 import type { Span } from "../features/hub-schedule/grid-model";
@@ -186,6 +188,8 @@ export function ClientsView({
   const [peek, setPeek] = useState<{ clientId: string; blockKey: string; day: string; anchor: HTMLElement | null } | null>(null);
   /** Me (your own column, in words) or Everyone (every column alike); remembered on this iPad. */
   const [focus, setFocus] = useState<HubFocus>(() => readFocus());
+  /* A phone draws the day as a list (Journey Lite, features/phone). */
+  const isPhone = usePhone();
   /** A trainer's column head was tapped: Opportunities shows their bookings, for the day it was tapped on. */
   const [trainerList, setTrainerList] = useState<{ columnId: string; day: string } | null>(null);
   /** Edit session from the peek: the day's logged session, in the Activity Archive's own pop-up. */
@@ -724,7 +728,7 @@ export function ClientsView({
     if (!spot || spotKeys.length === 0) return;
     const key = spotKeys[spot.next % spotKeys.length];
     setSpot({ ...spot, next: spot.next + 1 });
-    const el = Array.from(document.querySelectorAll<HTMLElement>(".hs-slot")).find((s) => s.dataset.blockKey === key);
+    const el = Array.from(document.querySelectorAll<HTMLElement>(".hs-slot, .ph-day__row")).find((s) => s.dataset.blockKey === key);
     el?.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
   };
 
@@ -997,6 +1001,24 @@ export function ClientsView({
 
             {/* The day's schedule (calm Hub round): Mindbody's layout, calmer.
                 The grid stays mounted under Opportunities, only hidden. */}
+            {/* On a phone (Journey Lite, Oct 1 2026): the same blocks and the
+                same cards, one booking under the next (features/phone). */}
+            {isPhone ? (
+              <PhoneDayList
+                blocks={gridBlocks.map((b) => ({ ...b, staff: isStaffBlock(b.booking as any) }))}
+                columnOrder={gridColumns.map((c) => c.id)}
+                mineOnly={focusId}
+                nowMin={gridNowMin}
+                renderCard={(b) => renderCard(b)}
+                withWords={(b) => {
+                  if (focusId !== null || b.columnId === UNASSIGNED_ID) return null;
+                  const column = gridColumns.find((c) => c.id === b.columnId);
+                  return column ? (column.isMe ? "with you" : `with ${column.name}`) : null;
+                }}
+                emptyWords={bookingsRead === "ready" ? NOBODY_BOOKED : bookingsRead === "loading" ? "Reading the day’s bookings…" : null}
+                hidden={layer !== "schedule"}
+              />
+            ) : (
             <HubGrid
               dayKey={gridDayKey}
               columns={gridColumns}
@@ -1015,6 +1037,7 @@ export function ClientsView({
                 setLayer("opportunities");
               }}
             />
+            )}
 
             {/* Opportunities: every client booked on the day on screen, sorted
                 by what matters today (features/hub-opportunities). It reads
