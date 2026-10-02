@@ -52,7 +52,7 @@ are trusted"). A change reaches that studio's floor only. Taking one of Max
 Strength's safety lines off needs a **reason** (at least 3 characters): the editor
 asks for it in place (`editor/safety-removal.tsx`), the record carries who and
 when (`overrides.removedSafety`), and a removal without one is refused by
-`scopeOverrides` and by firestore.rules (`removedSafetyValid`, at most 10).
+`scopeOverrides` and by firestore.rules (`removedSafetyValid`, which checks the first 10 places). **No count limit** since Oct 2 2026 (AJ), and **a removed line is shown, crossed out and faded with the reason, on that unit's Catalog page** (`catalog/MachineArticle.tsx`, `RemovedLines`), never hidden.
 Head office sees every studio's differences, and every reason, in **Compare**
 (`compare/`, a catalog machine's Compare button; administrators only). A safety
 list on a copy is stored as the studio's additions only; `execution` and

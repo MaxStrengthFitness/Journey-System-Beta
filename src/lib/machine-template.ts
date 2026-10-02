@@ -220,8 +220,14 @@ export function canEdit(_scope: EditScope, _field: MachineDefinitionField): bool
   return true;
 }
 
-/** The most catalog safety lines one copy may do without (the rules hold the same number). */
-export const MAX_REMOVED_SAFETY = 10;
+/**
+ * How many removal records firestore.rules checks place by place (a rule
+ * cannot loop). NOT a limit: since Oct 2 2026 (AJ: "Im not sure if there
+ * needs to be a limit here") a copy may do without any number of the
+ * catalog's safety lines, each with a reason, and this gate checks every
+ * one. The rules hold the same number; change them together.
+ */
+export const RULES_CHECKED_REMOVALS = 10;
 /** The longest reason a removal may carry (the rules hold the same number). */
 export const MAX_REMOVAL_REASON = 300;
 
@@ -336,8 +342,8 @@ export function unexplainedRemovals(
  *                     · REFUSES the write (RemovedSafetyError) when a
  *                       catalog safety line is missing with no removal
  *                       record carrying a reason;
- *                     · keeps only the removal records that apply, at most
- *                       MAX_REMOVED_SAFETY, each reason at most
+ *                     · keeps only the removal records that apply, any
+ *                       number (no limit since Oct 2 2026), each reason at most
  *                       MAX_REMOVAL_REASON characters;
  *                     · stores a safety list as the studio's ADDITIONS only,
  *                       so a line head office later takes out of the catalog
@@ -382,12 +388,8 @@ export function scopeOverrides(
       (l) => l.field === r.field && l.line.toLowerCase() === r.line.toLowerCase(),
     ),
   );
-  if (records.length > MAX_REMOVED_SAFETY) {
-    throw new RemovedSafetyError(
-      records,
-      `At most ${MAX_REMOVED_SAFETY} of Max Strength's safety lines can come off one machine. Put some back, or talk to head office about the standard itself.`,
-    );
-  }
+  // No count limit (Oct 2 2026): every line that comes off carries a reason,
+  // checked above, however many there are.
   const tooLong = records.find((r) => r.reason.length > MAX_REMOVAL_REASON);
   if (tooLong) {
     throw new RemovedSafetyError(

@@ -39,7 +39,7 @@ import { presetLine, type FlagLine, type Preset } from "./floor-index";
 import { modelName, type MachineModel } from "./models";
 import { floorNameHidesMovement, movementOf } from "./names";
 import { outOfServiceLineOf } from "./out-of-service";
-import type { CatalogMachine } from "./types";
+import type { CatalogMachine, RemovedSafetyShown } from "./types";
 
 /** A line Find opened this page on: which part of the page, and the sentence. */
 export interface FoundOnPage {
@@ -347,7 +347,22 @@ export function MachineArticle({
         </section>
       )}
 
-      <ClinicalWarnings warnings={machine.clinicalWarnings} />
+      <ClinicalWarnings
+        warnings={machine.clinicalWarnings}
+        removed={removedOn(machine, "clinicalWarnings")}
+      />
+
+      {/* The catalog's other safety lines this unit does without (stop
+          rules, watch-outs, sequencing, alignment checkpoints): crossed out
+          and faded with the studio's reason, never hidden (Oct 2 2026). */}
+      {removedElsewhere(machine).length > 0 && (
+        <section className="mcat-removed" aria-labelledby="mcat-removed-head">
+          <h2 className="mcat-removed__head" id="mcat-removed-head">
+            Max Strength&apos;s safety lines this unit does without
+          </h2>
+          <RemovedLines lines={removedElsewhere(machine)} withList />
+        </section>
+      )}
 
       {hasSetup && (
         <WikiSection id="setup" title="Setup" icon={<Wrench size={13} aria-hidden />}>
@@ -363,15 +378,17 @@ export function MachineArticle({
         </WikiSection>
       )}
 
-      {machine.contraindicatedFor.length > 0 && (
+      {(machine.contraindicatedFor.length > 0 || removedOn(machine, "contraindicatedFor").length > 0) && (
         /* On the page, not folded. This is who should NOT be on the machine;
-           it belongs with the warnings, not with the tools. */
+           it belongs with the warnings, not with the tools. A line the studio
+           took off its copy stays, crossed out, with the studio's reason. */
         <WikiSection
           id="contraindications"
           title="Contraindicated for"
           icon={<Users size={13} aria-hidden />}
         >
-          <WikiCues items={machine.contraindicatedFor} />
+          {machine.contraindicatedFor.length > 0 && <WikiCues items={machine.contraindicatedFor} />}
+          <RemovedLines lines={removedOn(machine, "contraindicatedFor")} />
         </WikiSection>
       )}
 
@@ -510,9 +527,65 @@ const MAX_VISIBLE = 4;
  * count. The FIRST ones are never hidden, so the trade is "some warnings need
  * a tap" rather than "the warning section needs a tap".
  */
-function ClinicalWarnings({ warnings }: { warnings: string[] }) {
+/* ── a safety line a studio took off its copy (Oct 2 2026) ─────────── */
+
+/** The lists the page draws as lists of their own; the rest share one block. */
+const DRAWN_IN_PLACE = new Set(["clinicalWarnings", "contraindicatedFor"]);
+
+const SAFETY_LIST_NAME: Record<string, string> = {
+  clinicalWarnings: "Clinical warning",
+  contraindicatedFor: "Contraindicated for",
+  sequencingContraindications: "Sequencing",
+  alignmentCheckpoints: "Alignment checkpoint",
+  stopRules: "Stop rule",
+  watchOuts: "Watch-out",
+};
+
+function removedOn(machine: CatalogMachine, field: string): RemovedSafetyShown[] {
+  return (machine.removedSafety ?? []).filter((r) => r.field === field);
+}
+
+function removedElsewhere(machine: CatalogMachine): RemovedSafetyShown[] {
+  return (machine.removedSafety ?? []).filter((r) => !DRAWN_IN_PLACE.has(r.field));
+}
+
+/** "4 Oct 2026", from an ISO time; "" when it can't be read. */
+function removedWhen(at: string): string {
+  const t = Date.parse(at);
+  if (!Number.isFinite(t)) return "";
+  return new Date(t).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric", timeZone: "America/New_York" });
+}
+
+/**
+ * Max Strength's line, struck through in the faded ink, and under it the
+ * studio's reason and who took it off. Shown, never hidden: a trainer reading
+ * this unit sees what the standard says and why this floor does otherwise.
+ */
+export function RemovedLines({ lines, withList = false }: { lines: RemovedSafetyShown[]; withList?: boolean }) {
+  if (lines.length === 0) return null;
+  return (
+    <ul className="mcat-removed__list">
+      {lines.map((r) => {
+        const when = removedWhen(r.at);
+        const who = [r.by, when].filter(Boolean).join(", ");
+        return (
+          <li key={`${r.field}|${r.line}`} className="mcat-removed__item" data-testid="removed-safety-line">
+            {withList && <span className="mcat-removed__list-name">{SAFETY_LIST_NAME[r.field] ?? "Safety line"}</span>}
+            <s className="mcat-removed__line">{r.line}</s>
+            <span className="mcat-removed__why">
+              Taken off this unit: {r.reason}
+              {who ? ` (${who})` : ""}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function ClinicalWarnings({ warnings, removed = [] }: { warnings: string[]; removed?: RemovedSafetyShown[] }) {
   const [expanded, setExpanded] = useState(false);
-  if (warnings.length === 0) return null;
+  if (warnings.length === 0 && removed.length === 0) return null;
 
   const visible = expanded ? warnings : warnings.slice(0, MAX_VISIBLE);
   const hidden = warnings.length - visible.length;
@@ -546,6 +619,9 @@ function ClinicalWarnings({ warnings }: { warnings: string[] }) {
           Show fewer
         </button>
       )}
+      {/* Never folded away with the rest: a line this unit does without is
+          the one a trainer most needs to see is missing. */}
+      <RemovedLines lines={removed} />
     </section>
   );
 }

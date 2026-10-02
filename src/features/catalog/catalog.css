@@ -19,6 +19,7 @@
                       .mcat-flag*   Relay's flag on the unit (R2)
                       .mcat-oos*    out of service, why and who (wave 2)
                       .mcat-ntf*    the Academy's never-to-failure rule (R2)
+                      .mcat-removed* a safety line this unit does without (Oct 2)
      MovementModels   .mcat-models* a movement's models (wave 2, R4)
      MachineChangeLog .mcat-changes* what changed on the standard (wave 3)
      CatalogLenses    .mcat-lens*   the three ways in (R3)
@@ -567,6 +568,60 @@
 .mcat-oos__where {
   font-size: 12px;
   color: var(--wk-ink-2);
+}
+
+/* ── A safety line this unit does without (Oct 2 2026) ──────────────────
+   Max Strength's words, struck through in the muted ink (faded, still
+   readable: never the faint ink, which is for icons), and the studio's reason
+   under them. Inside Clinical warnings and Contraindicated for, and in a
+   block of its own for the lists the page doesn't draw. */
+.mcat-removed {
+  margin: 0 0 0.625rem;
+  padding: 0.625rem 0.875rem;
+  border: 1px dashed var(--wk-border);
+  border-radius: var(--wk-radius);
+}
+.mcat-removed__head {
+  margin: 0 0 0.375rem;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wk-ink-muted);
+}
+.mcat-removed__list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.mcat-removed__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  max-width: var(--wk-measure);
+}
+.mcat-removed__list-name {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wk-ink-muted);
+}
+.mcat-removed__line {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--wk-ink-muted);
+  text-decoration: line-through;
+  overflow-wrap: anywhere;
+}
+.mcat-removed__why {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--wk-ink-2);
+  overflow-wrap: anywhere;
 }
 
 /* ── A movement's models (wave 2, Catalog R4) ────────────────────────────

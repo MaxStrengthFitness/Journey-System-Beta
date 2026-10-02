@@ -5330,7 +5330,7 @@ describe("marks on a time", () => {
       await assertSucceeds(updateDoc(entry, { overrides: {} }));
     });
 
-    it("holds a copy to ten removed safety lines, each checked, inside the rules' budget", async () => {
+    it("checks the first ten removed safety lines' reasons, inside the rules' budget", async () => {
       await seedCodexPeople();
       const entry = doc(as("ownerA"), "studios", "studioA", "roster", "m-leg-press");
       const ten = Array.from({ length: 10 }, (_, i) =>
@@ -5338,7 +5338,8 @@ describe("marks on a time", () => {
       );
       // The fullest write the app makes, by a studio owner with no role on the token.
       await assertSucceeds(updateDoc(entry, { modelId: "mm-hoist-roc-it-leg-press", overrides: { removedSafety: ten } }));
-      await assertFails(updateDoc(entry, { overrides: { removedSafety: [...ten, removal("ownerA", { line: "Warning 10" })] } }));
+      // No count limit since Oct 2 2026 (AJ): an eleventh is not refused for being the eleventh.
+      await assertSucceeds(updateDoc(entry, { overrides: { removedSafety: [...ten, removal("ownerA", { line: "Warning 10" })] } }));
       // The tenth place is checked too.
       await assertFails(
         updateDoc(entry, { overrides: { removedSafety: [...ten.slice(0, 9), removal("ownerA", { line: "Warning 9", reason: "" })] } }),

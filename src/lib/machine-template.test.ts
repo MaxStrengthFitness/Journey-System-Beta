@@ -8,7 +8,7 @@ import {
   CODEX_METHOD_FIELDS,
   DEFINITION_KEYS,
   MAX_REMOVAL_REASON,
-  MAX_REMOVED_SAFETY,
+  RULES_CHECKED_REMOVALS,
   METHOD_DEFINITION_FIELDS,
   RemovedSafetyError,
   SAFETY_RECORD_FIELDS,
@@ -329,13 +329,14 @@ describe("removing a safety line from a copy (the Sep 21 rule)", () => {
     expect(out.removedSafety?.map((r) => r.field)).toEqual(["alignmentCheckpoints", "stopRules"]);
   });
 
-  it(`takes at most ${MAX_REMOVED_SAFETY} of the catalog's lines off one machine`, () => {
-    const many = Array.from({ length: MAX_REMOVED_SAFETY + 1 }, (_, i) => `Warning ${i}`);
+  it("has no limit on how many of the catalog's lines come off, each still with a reason (Oct 2 2026)", () => {
+    const many = Array.from({ length: RULES_CHECKED_REMOVALS + 5 }, (_, i) => `Warning ${i}`);
     const std = { clinicalWarnings: many };
     const draft = { clinicalWarnings: [], removedSafety: many.map((l) => noBelt(l)) };
-    expect(() => scopeOverrides("studio", draft, std)).toThrow(`At most ${MAX_REMOVED_SAFETY}`);
-    const fine = { clinicalWarnings: [many[0]], removedSafety: many.slice(1).map((l) => noBelt(l)) };
-    expect(scopeOverrides("studio", fine, std).removedSafety).toHaveLength(MAX_REMOVED_SAFETY);
+    expect(scopeOverrides("studio", draft, std).removedSafety).toHaveLength(many.length);
+    // The last one, past every place the rules check, still needs its reason.
+    const lastUnexplained = { clinicalWarnings: [], removedSafety: many.slice(0, -1).map((l) => noBelt(l)) };
+    expect(() => scopeOverrides("studio", lastUnexplained, std)).toThrow(RemovedSafetyError);
   });
 
   it("names what is missing from a whole draft", () => {
@@ -353,15 +354,15 @@ describe("removing a safety line from a copy (the Sep 21 rule)", () => {
 
   // The rules hold the same numbers (firestore.rules, "WAVE 2 CODEX:
   // removedSafetyValid"). Change them together.
-  it("agrees with firestore.rules on the cap and the reason's length", () => {
+  it("agrees with firestore.rules on the places checked, no cap, and the reason's length", () => {
     const here = dirname(fileURLToPath(import.meta.url));
     const rules = readFileSync(join(here, "..", "..", "firestore.rules"), "utf8");
     const start = rules.indexOf("function removedSafetyValid");
     expect(start).toBeGreaterThan(0);
     const body = rules.slice(start, rules.indexOf("\n    }", start));
-    expect(body).toContain(`l.size() <= ${MAX_REMOVED_SAFETY}`);
-    // One place per possible record, no more.
-    expect((body.match(/removedLineValid\(l\[\d+\]\)/g) ?? []).length).toBe(MAX_REMOVED_SAFETY);
+    // No count limit since Oct 2 2026.
+    expect(body).not.toMatch(/l\.size\(\) <=/);
+    expect((body.match(/removedLineValid\(l\[\d+\]\)/g) ?? []).length).toBe(RULES_CHECKED_REMOVALS);
     const line = rules.slice(rules.indexOf("function removedLineValid"), rules.indexOf("function removedSafetyValid"));
     expect(line).toContain(`trim().size() >= ${MIN_REMOVAL_REASON}`);
     expect(line).toContain(`size() <= ${MAX_REMOVAL_REASON}`);
