@@ -61,7 +61,7 @@ import {
 } from "../renewals/sentences";
 import { mindbodyDayKey } from "../renewals/engine";
 import { isAutoRenewMark, liveMindbodyFlag, lockSaysNothingBills, markFor, renewalOf } from "../renewals/auto-renew";
-import { formatStudioDate } from "../../lib/studio-time";
+import { formatStudioDate, studioDayKeyOf } from "../../lib/studio-time";
 import { mindbodyIdOf } from "../../lib/mindbody-id";
 import { clientLegalName } from "../../lib/client-name";
 import { waiverState } from "../../lib/client-waiver";
@@ -182,18 +182,33 @@ export interface FirstDayView {
   day: string | null;
   /** "Mar 3, 2019", or null. */
   words: string | null;
-  /** With no day set: what the app infers today, or null when it can infer nothing. */
-  guess: { words: string; from: string } | null;
+  /**
+   * With no day set: what the app infers today, or null when it can infer
+   * nothing. `day` is that guess as a calendar day when a trainer may CONFIRM
+   * it in one tap (Oct 2 2026: Mindbody's first appointment, or Mindbody's
+   * record, shown "from Mindbody" until confirmed); null when it is only a
+   * Journey date, which is never offered as her first day.
+   */
+  guess: { words: string; from: string; day: string | null; confirmed: boolean } | null;
 }
 
 const GUESS_WORDS: Record<ClientSinceSource, string> = {
   stated: "set on the profile",
   firstSession: "the first session Journey recorded",
-  firstAppointment: "the first visit Mindbody has",
+  firstAppointment: "her first appointment in Mindbody",
   mindbodyCreated: "the day Mindbody made the record",
   commercial: "the first package on file",
   journey: "the day Journey first saw the record",
 };
+
+/** The guess as a calendar day: a Mindbody date on Mindbody's (UTC) calendar, a Journey one on the studio's. */
+function guessDay(source: ClientSinceSource, raw: unknown, date: Date): string | null {
+  if (typeof raw === "string" && /^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+  if (source === "firstAppointment" || source === "mindbodyCreated" || source === "commercial") {
+    return mindbodyDayKey(raw as never) ?? studioDayKeyOf(date);
+  }
+  return studioDayKeyOf(date);
+}
 
 export function firstDayView(
   client: Pick<Client, "firstStudioDay" | "firstSessionDate" | "firstAppointmentDate" | "mindbodyCreatedAt" | "createdAt" | "mindbodyContracts" | "mindbodyMemberships" | "priorHistory">,
@@ -207,7 +222,16 @@ export function firstDayView(
   const since = resolveClientSince(client, { coverage });
   if (!since) return { day: null, words: null, guess: null };
   const words = since.date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  return { day: null, words: null, guess: { words, from: GUESS_WORDS[since.source] } };
+  const raw =
+    since.source === "firstAppointment"
+      ? client.firstAppointmentDate
+      : since.source === "mindbodyCreated"
+        ? client.mindbodyCreatedAt
+        : since.source === "firstSession"
+          ? client.firstSessionDate
+          : null;
+  const day = since.fromMindbody && since.source !== "commercial" ? guessDay(since.source, raw, since.date) : null;
+  return { day: null, words: null, guess: { words, from: GUESS_WORDS[since.source], day, confirmed: since.confirmed } };
 }
 
 /* ------------------------------------------------------------------ */

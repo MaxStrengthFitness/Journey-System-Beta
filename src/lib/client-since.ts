@@ -82,6 +82,14 @@ export interface ClientSince {
    * either one "Client since".
    */
   fromMindbody: boolean;
+  /**
+   * A person confirmed it (`firstStudioDay`, set or confirmed on Account), or
+   * Journey holds her whole story so her first session IS her first day
+   * (AJ, Oct 2 2026: "a new client's first Journey session sets it"). False
+   * for Mindbody's date until a trainer confirms it: it is shown "from
+   * Mindbody", and no anniversary is claimed off it.
+   */
+  confirmed: boolean;
 }
 
 /** Narrow structural type so this stays testable without the full Client. */
@@ -140,7 +148,13 @@ export function statedFirstDay(client: Pick<ClientSinceInput, "firstStudioDay"> 
 }
 
 /**
- * Best available start date, with provenance.
+ * Best available start date, with provenance — and whether it is CONFIRMED.
+ *
+ * Oct 2 2026 (the Atlas answers, no FileMaker): her first day is Mindbody's
+ * first appointment, shown "from Mindbody" until a trainer confirms or
+ * corrects it on Account (which sets `firstStudioDay`); a client whose whole
+ * story is in Journey needs no confirming. Mindbody's created date is only a
+ * fallback now. The history below is how it got here.
  *
  * Three dates are proof she was here - the first session recorded in
  * Journey, Mindbody's first visit, Mindbody's created date - and the
@@ -173,15 +187,25 @@ export function resolveClientSince(
   // at noon so the date trap (a date-only string read as UTC is the previous
   // evening in Ohio) can't move it.
   const stated = statedFirstDay(client);
-  if (stated) return { date: stated, source: "stated", fromMindbody: true };
+  if (stated) return { date: stated, source: "stated", fromMindbody: true, confirmed: true };
 
   const sessionProves =
     !history || (history.coverage === "complete" && !priorHistoryOf(client));
+  // Journey holds her whole story, and the caller said so: her first day
+  // needs no confirming (a new client's first Journey session sets it).
+  const whole = !!history && sessionProves;
 
+  /*
+   * HER FIRST DAY IS HER FIRST APPOINTMENT (AJ, Oct 2 2026: "we just need to
+   * know how many sessions they have TOTAL and when was their first
+   * session"). Mindbody's `firstAppointmentDate`, already on every synced
+   * client — or, for a whole story, Journey's first session when that is
+   * earlier. The day Mindbody made her record is a fallback only: a record
+   * is often made for an enquiry long before anyone trains.
+   */
   const candidates: Array<[ClientSinceSource, any]> = [
     ["firstSession", sessionProves ? client.firstSessionDate : null],
     ["firstAppointment", client.firstAppointmentDate],
-    ["mindbodyCreated", client.mindbodyCreatedAt],
   ];
 
   let proven: ClientSince | null = null;
@@ -190,26 +214,31 @@ export function resolveClientSince(
     if (!d || Number.isNaN(d.getTime()) || d.getFullYear() < 1990) continue;
     // Strictly earlier: on a tie the order above decides.
     if (!proven || d.getTime() < proven.date.getTime()) {
-      proven = { date: d, source, fromMindbody: true };
+      proven = { date: d, source, fromMindbody: true, confirmed: whole };
     }
   }
   if (proven) return proven;
 
+  const created = toDate(client.mindbodyCreatedAt);
+  if (created && !Number.isNaN(created.getTime()) && created.getFullYear() >= 1990) {
+    return { date: created, source: "mindbodyCreated", fromMindbody: true, confirmed: false };
+  }
+
   const commercial = earliestCommercialDate(client);
   if (commercial) {
-    return { date: commercial, source: "commercial", fromMindbody: true };
+    return { date: commercial, source: "commercial", fromMindbody: true, confirmed: false };
   }
 
   if (!sessionProves) {
     const first = toDate(client.firstSessionDate);
     if (first && !Number.isNaN(first.getTime()) && first.getFullYear() >= 1990) {
-      return { date: first, source: "firstSession", fromMindbody: false };
+      return { date: first, source: "firstSession", fromMindbody: false, confirmed: false };
     }
   }
 
-  const created = toDate(client.createdAt);
-  if (created && !Number.isNaN(created.getTime())) {
-    return { date: created, source: "journey", fromMindbody: false };
+  const made = toDate(client.createdAt);
+  if (made && !Number.isNaN(made.getTime())) {
+    return { date: made, source: "journey", fromMindbody: false, confirmed: false };
   }
 
   return null;
@@ -256,12 +285,24 @@ const MONTHS = [
 export function clientSinceLabel(
   client: ClientSinceInput | null | undefined,
   history?: ClientSinceHistory,
-): { label: string; value: string; source: ClientSinceSource } | null {
+): { label: string; value: string; source: ClientSinceSource; confirmed: boolean } | null {
   const since = resolveClientSince(client, history);
   if (!since) return null;
+  const month = `${MONTHS[since.date.getMonth()]} ${since.date.getFullYear()}`;
   return {
     label: since.fromMindbody ? "Client since" : "In Journey since",
-    value: `${MONTHS[since.date.getMonth()]} ${since.date.getFullYear()}`,
+    // Mindbody's date until a trainer confirms it on Account (Oct 2 2026).
+    value: since.fromMindbody && !since.confirmed ? `${month} (from Mindbody)` : month,
     source: since.source,
+    confirmed: since.confirmed,
   };
+}
+
+/**
+ * May a screen celebrate a whole year with the studio off this date? Only a
+ * CONFIRMED first day (AJ, Oct 2 2026: anniversaries wait for a confirmed
+ * date) — set or confirmed by a person, or a whole story Journey holds.
+ */
+export function canClaimAnniversary(since: ClientSince | null | undefined): boolean {
+  return !!since && since.fromMindbody && since.confirmed;
 }

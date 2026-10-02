@@ -178,15 +178,15 @@ describe("Operations → Month", () => {
     expect(renewals).toContain("1 nobody has talked to yet");
     expect(names(el, "birthdays")).toEqual(["Rosie Cotton"]);
     expect(section(el, "birthdays").textContent).toContain("Turns 70");
-    expect(names(el, "anniversaries")).toEqual(["Sam Gamgee", "Rosie Cotton"]);
+    // Rosie's is Mindbody's date, not yet confirmed: counted, not listed (Oct 2 2026).
+    expect(names(el, "anniversaries")).toEqual(["Sam Gamgee"]);
     const anniversaries = section(el, "anniversaries").textContent ?? "";
     expect(anniversaries).toContain("7 years with the studio on Tue, Oct 6.");
     expect(anniversaries).toContain("set on their profile");
-    expect(anniversaries).toContain("A guess: first seen Sun, Oct 20, 2024");
-    expect(anniversaries).toContain("1 is a guess — set the first day on Account");
+    expect(anniversaries).toContain("1 more waits for a confirmed first day — confirm it on Account");
     // MIA is as of today whichever month is open.
     expect(section(el, "mia").textContent).toContain("as of today");
-    expect(el.textContent).toContain("October will have 2 renewals, 1 birthday and 2 anniversaries.");
+    expect(el.textContent).toContain("October will have 2 renewals, 1 birthday and 1 anniversary.");
     await press(button(el, "This month"));
     expect(el.textContent).toContain("September 2026");
   });

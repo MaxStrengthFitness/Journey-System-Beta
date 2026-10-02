@@ -274,7 +274,11 @@ export function monthBirthdays(clients: readonly Client[], month: string): Month
 
 export interface MonthAnniversaries {
   rows: MonthRow[];
-  /** Rows whose day is inferred (Mindbody's, not set by a person): worth setting. */
+  /**
+   * Clients whose anniversary falls this month by Mindbody's date, which no
+   * one has confirmed yet: NOT listed (AJ, Oct 2 2026: anniversaries wait for
+   * a confirmed date), only counted, with a nudge to confirm it on Account.
+   */
   guessed: number;
   /** Active clients with no date that proves when they started: no anniversary can be said. */
   noDate: number;
@@ -292,13 +296,13 @@ const SINCE_FIELD: Partial<Record<ClientSinceSource, string>> = {
  * date trap: read as UTC it is the previous evening in Ohio); an instant is
  * read in the studio's zone.
  */
-export function firstDayOf(client: Client, cutover: string | null | undefined, tz?: string): { day: string; source: ClientSinceSource } | null {
+export function firstDayOf(client: Client, cutover: string | null | undefined, tz?: string): { day: string; source: ClientSinceSource; confirmed: boolean } | null {
   const since = resolveClientSince(client, { coverage: historyCoverage(client, cutover ?? null) });
   if (!since || !since.fromMindbody) return null;
   const field = SINCE_FIELD[since.source];
   const raw = field ? (client as unknown as Record<string, unknown>)[field] : undefined;
   const day = typeof raw === "string" && /^\d{4}-\d{2}-\d{2}/.test(raw) ? raw.slice(0, 10) : studioDateKey(since.date, tz);
-  return day ? { day, source: since.source } : null;
+  return day ? { day, source: since.source, confirmed: since.confirmed } : null;
 }
 
 export function monthAnniversaries(clients: readonly Client[], month: string, cutover: string | null | undefined, tz?: string): MonthAnniversaries {
@@ -318,7 +322,12 @@ export function monthAnniversaries(clients: readonly Client[], month: string, cu
     if (years < 1) continue;
     const day = dayInMonth(month, Number(first.day.slice(8, 10)));
     const stated = first.source === "stated";
-    if (!stated) guessed += 1;
+    // Anniversaries wait for a confirmed date (AJ, Oct 2 2026): Mindbody's
+    // first appointment is counted as waiting, never celebrated.
+    if (!first.confirmed) {
+      guessed += 1;
+      continue;
+    }
     rows.push({
       key: `years:${c.id}`,
       clientId: c.id,
@@ -327,9 +336,9 @@ export function monthAnniversaries(clients: readonly Client[], month: string, cu
       sentence: `${years} ${years === 1 ? "year" : "years"} with the studio on ${dayWords(day)}.`,
       proof: stated
         ? `First day ${dayWords(first.day)}, ${first.day.slice(0, 4)} — set on their profile.`
-        : `A guess: first seen ${dayWords(first.day)}, ${first.day.slice(0, 4)} (${SINCE_SOURCE_WORDS[first.source] ?? "Mindbody's record"}). Set their first day on Account to be sure.`,
+        : `First day ${dayWords(first.day)}, ${first.day.slice(0, 4)} (${SINCE_SOURCE_WORDS[first.source] ?? "Mindbody's record"}) — Journey holds their whole story.`,
       badge: `${years} ${years === 1 ? "year" : "years"}`,
-      tone: stated ? "info" : "warn",
+      tone: "info",
     });
   }
   rows.sort((a, b) => a.day.localeCompare(b.day) || a.name.localeCompare(b.name));

@@ -24,8 +24,9 @@
 import type { Client, ScheduleEntry } from "../../../types";
 import type { JournalEntry } from "../../../types/journal";
 import { clientDisplayName } from "../../../lib/client-name";
-import { resolveClientSince } from "../../../lib/client-since";
+import { canClaimAnniversary, resolveClientSince } from "../../../lib/client-since";
 import { historyCoverage } from "../../../lib/prior-history";
+import { canClaimMilestone, sessionTotalOf } from "../../../lib/session-total";
 import { formatStudioTime, studioDateKey, toDate } from "../../../lib/studio-time";
 import { addDays } from "../../client-history/model";
 import { describeWindow, nextOccurrence } from "../../client-notes/mattering";
@@ -164,10 +165,13 @@ export function moments(input: MomentsInput): MomentsSummary {
     if (!client) continue;
     bookings.sort((a, b) => (toDate(a.startTime)?.getTime() ?? 0) - (toDate(b.startTime)?.getTime() ?? 0));
 
-    // Session milestones: only when the total may be quoted.
+    // Session milestones: only off a total a person confirmed or a whole
+    // story (lib/session-total.ts; Atlas answers, Oct 2 2026), never off
+    // Mindbody's guess or Journey's own count for a migrating client.
     const coverage = historyCoverage(client, input.cutover ?? null);
-    const count = typeof client.sessionCount === "number" && Number.isFinite(client.sessionCount) ? client.sessionCount : null;
-    if (coverage !== "unknown" && count !== null) {
+    const totals = sessionTotalOf(client, coverage);
+    const count = totals.total;
+    if (canClaimMilestone(totals.basis) && count !== null) {
       bookings.forEach((b, i) => {
         const nth = count + i + 1;
         if (!SESSION_MILESTONES.includes(nth)) return;
@@ -191,8 +195,9 @@ export function moments(input: MomentsInput): MomentsSummary {
   /* ---- a whole year with the studio: every active client, booked this week or not ---- */
   for (const client of input.clients) {
     if (!client.id || client.isActive === false) continue;
-    const since = resolveClientSince(client);
-    if (!since || !since.fromMindbody) continue;
+    // Only a confirmed first day earns an anniversary (AJ, Oct 2 2026).
+    const since = resolveClientSince(client, { coverage: historyCoverage(client, input.cutover ?? null) });
+    if (!canClaimAnniversary(since) || !since) continue;
     // A date-only string is a calendar day (the date trap: read as UTC it is
     // the previous evening in Ohio), so the day is taken from the text when
     // the record holds one; an instant is read in the studio's zone.
