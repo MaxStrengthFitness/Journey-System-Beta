@@ -18,7 +18,6 @@ import {
   UserCircle,
   Settings,
   GripVertical,
-  Lock,
   ChevronDown,
   ChevronUp,
   Building2,
@@ -410,7 +409,7 @@ export default function AppContent({
    * Leave without saving?" before it is torn down. Guarding the setters
    * themselves reaches every button that sets them, however many props down.
    * `guardLeave` covers the navigations that are not these two pieces of
-   * state: a studio switch, sign-out, Switch Trainer, new-client onboarding.
+   * state: a studio switch, sign-out, new-client onboarding.
    * See features/unsaved-changes/README.md.
    *
    * The screen is ALSO held to who may open it (useGuardedPlace, above), and
@@ -1014,8 +1013,8 @@ export default function AppContent({
         provider = new GoogleAuthProvider();
         // Always ask which account. On a shared iPad the browser can still
         // hold the last trainer's Google session, and without this Google may
-        // sign the next person straight back in as them — Switch Trainer
-        // would switch nobody. Microsoft already asks (below).
+        // sign the next person straight back in as them — Sign out
+        // would hand the iPad to nobody. Microsoft already asks (below).
         provider.setCustomParameters({ prompt: "select_account" });
       } else {
         provider = new OAuthProvider("microsoft.com");
@@ -1476,28 +1475,6 @@ export default function AppContent({
         <DropdownMenuSeparator className="my-2 bg-slate-700" />
 
         <DropdownMenuGroup>
-          {/*
-            SWITCH TRAINER hands this iPad to the next person (sign-out round,
-            Sep 24 2026). It used to clear the trainer profile and leave the
-            Google or Microsoft sign-in in place, which the app reads as "signed
-            in, but not a trainer": a dead end on "not registered as an
-            authorized trainer". It was left from the facility-account days,
-            when one sign-in served the studio and trainers switched with a
-            PIN. PINs are gone and everyone signs in as themselves, so switching
-            trainer IS signing out: the next person gets the sign-in screen
-            with an account chooser, this iPad keeps its pinned studio, and
-            nothing of the last person is left on screen (features/sign-out).
-            For now it is the same as Log Out Facility; whether to merge the two
-            or make the second one also un-pin the iPad is AJ's call.
-          */}
-          <DropdownMenuItem
-            onClick={() => menuNavigate(() => void logOut())}
-            className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest text-orange-500 hover:bg-orange-500/10 dark:bg-orange-600/10 focus:bg-orange-500/10 focus:text-orange-500 cursor-pointer"
-          >
-            <Lock className="w-4 h-4" />
-            Switch Trainer
-          </DropdownMenuItem>
-
           <DropdownMenuItem
             onClick={() => menuNavigate(openStudioPicker)}
             className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900"
@@ -1506,12 +1483,22 @@ export default function AppContent({
             Switch Studio
           </DropdownMenuItem>
 
+          {/*
+            SIGN OUT (Oct 2 2026, AJ: Switch Trainer and Log Out Facility
+            become one "Sign out"). Both already did the same thing since the
+            sign-out round (Sep 24 2026): everyone signs in as themselves, so
+            handing the iPad to the next person IS signing out. The next
+            person gets the sign-in screen with an account chooser, this iPad
+            stays pinned to its studio, and nothing of the last person is
+            left on screen (features/sign-out). Unsaved typing, an open
+            session or sets still sending are asked about first (logOut).
+          */}
           <DropdownMenuItem
             onClick={() => menuNavigate(() => void logOut())}
             className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest text-rose-500 hover:bg-rose-500/10 focus:bg-rose-500/10 focus:text-rose-500 cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
-            Log Out Facility
+            Sign out
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

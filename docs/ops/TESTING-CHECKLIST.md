@@ -1045,7 +1045,7 @@ signed AJ out of his own session — this is the only place it gets checked.
 
 - [ ] **A leader on Operations signs out; a trainer signs in and lands on the
   Hub.** As the leader: open a client's profile, then switch to Operations,
-  then Log Out Facility. Sign in as the trainer. They see the Hub, the
+  then Sign out. Sign in as the trainer. They see the Hub, the
   trainer bottom bar (Hub · Client · Start Session · Learning · My Studio ·
   Calendar), and no Operations anywhere. *If it fails:* the trainer lands on
   Operations or on the leader's client — the keyed tree in `App.tsx`
@@ -1063,13 +1063,13 @@ signed AJ out of his own session — this is the only place it gets checked.
   resume the session: the words are still there (they belong to the session,
   not the person).
 
-**Switch Trainer**
+**Sign out (Switch Trainer and Log Out Facility became one, Oct 2 2026)**
 
-- [ ] **Switch Trainer goes to the sign-in screen,** not to "is not
+- [ ] **The trainer menu has one Sign out,** and it goes to the sign-in screen, not to "is not
   registered as an authorized trainer". *If it fails:* the old
   `handleTrainerLock` is back.
-- [ ] **Google asks which account.** Tap Sign in with Google after Switch
-  Trainer: the account chooser appears, rather than signing the last person
+- [ ] **Google asks which account.** Tap Sign in with Google after Sign
+  out: the account chooser appears, rather than signing the last person
   straight back in.
 
 **The Operations gate**
