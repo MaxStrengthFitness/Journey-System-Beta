@@ -436,6 +436,74 @@ describe("where the numbers come from", () => {
     expect(snap.dataGaps.join(" ")).toContain('"10 Pack" (6 sessions)');
   });
 
+  describe("given (comp) sessions count toward the renewal (AJ, Oct 2 2026: \"Yes, count them in\")", () => {
+    it("holds the conversation while the given sessions keep her above the threshold", () => {
+      // 6 left in the contract alone would be due (threshold 10); +12 given is 18.
+      const snap = buildRenewalSnapshot(
+        input({
+          client: client({
+            mindbodyServices: {
+              a: service(1, "144 PIF", 6, { count: 144 }),
+              b: service(2, "Session Comp", 12, { count: 12 }),
+            },
+          }),
+          attendance: visitsAt(2, "2026-06-01"),
+        }),
+      );
+      expect(snap.sessionsLeft).toBe(18);
+      expect(snap.conversationDue).toBe(false);
+    });
+
+    it("comes due once the package and the given sessions together are at the threshold", () => {
+      const snap = buildRenewalSnapshot(
+        input({
+          client: client({
+            mindbodyServices: {
+              a: service(1, "144 PIF", 4, { count: 144 }),
+              b: service(2, "Session Comp", 3, { count: 3 }),
+            },
+          }),
+          attendance: visitsAt(2, "2026-06-01"),
+        }),
+      );
+      expect(snap.sessionsLeft).toBe(7);
+      expect(snap.conversationDue).toBe(true);
+    });
+
+    it("is not 'ended' while she still holds given sessions after her package is spent", () => {
+      const snap = buildRenewalSnapshot(
+        input({
+          client: client({
+            mindbodyServices: {
+              a: service(1, "144 PIF", 0, { count: 144 }),
+              b: service(2, "Session Comp", 12, { count: 12 }),
+            },
+          }),
+          attendance: visitsAt(2, "2026-06-01"),
+        }),
+      );
+      expect(snap.situation).not.toBe("ended");
+      expect(snap.situation).not.toBe("lapsed");
+      expect(snap.sessionsLeft).toBe(12);
+      expect(snap.conversationDue).toBe(false);
+    });
+
+    it("still ends when the package and the given sessions are both used", () => {
+      const snap = buildRenewalSnapshot(
+        input({
+          client: client({
+            mindbodyServices: {
+              a: service(1, "144 PIF", 0, { count: 144 }),
+              b: service(2, "Session Comp", 0, { count: 12 }),
+            },
+          }),
+          attendance: visitsAt(2, "2026-06-01"),
+        }),
+      );
+      expect(["ended", "lapsed"]).toContain(snap.situation);
+    });
+  });
+
   it("flags sessions on a pricing option Mindbody shows as expired", () => {
     const snap = buildRenewalSnapshot(
       input({

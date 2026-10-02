@@ -622,9 +622,15 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
   }
 
   const tier: PackageTier | null = current?.tier ?? balance.packageService?.tier ?? null;
-  // No contract running, but package sessions still on hand: paid in full,
-  // or billing already finished and the client is using banked sessions.
-  const sessionsOnly = !current && balance.packageOnHand > 0 && balance.packageService !== null;
+  // No contract running, but sessions still on hand: paid in full, or billing
+  // already finished and the client is using banked sessions. GIVEN sessions
+  // count here too (AJ, Oct 2 2026: "Yes, count them in" — the renewal
+  // conversation waits until the given sessions are used too), so a client
+  // whose package is spent but who still holds her extras is still using
+  // sessions, not "ended". Only for a client the studio's package table
+  // recognised a package for (`packageService`): extras on their own say
+  // nothing about which package she is on.
+  const sessionsOnly = !current && balance.onHand > 0 && balance.packageService !== null;
   const isPif =
     balance.packageService !== null &&
     (balance.packageService.service.count ?? 0) >= balance.packageService.tier.sessions;

@@ -54,7 +54,7 @@ The conversation is due at the studio's threshold (10 sessions left by default).
 
 ## Decisions
 
-- **Sessions left = sessions on hand (pricing options) + 8 for each payment still to come.** The count is Mindbody's; an estimate says so. Complimentary "Session Comp" sessions count; unmatched pricing options don't, and they show as data gaps.
+- **Sessions left = sessions on hand (pricing options) + 8 for each payment still to come.** The count is Mindbody's; an estimate says so. Complimentary "Session Comp" sessions count; unmatched pricing options don't, and they show as data gaps. **Given sessions hold the conversation off until they are used too** (AJ, Oct 2 2026: "Yes, count them in"): they are in sessions left, and a client whose package is spent but who still holds given sessions is still using sessions, never "ended" (`sessionsOnly` counts them once a package was recognised). The profile header still splits the two: "36 left in contract · +12 extra" (`sessionsSplit`).
 - **Dates are UTC days for Mindbody** (`mindbodyDayKey`) and studio days for everything else.
 - **Sessions left is Mindbody's number as of the last pull, never a count-down** (the cost plan, Sep 26 2026). The nightly job counts down (sessions left at the pull, less the sessions Journey logged since) only to decide WHEN to ask Mindbody again - near the studio's conversation threshold, the morning of a day they train, at most weekly. A screen never shows the count-down.
 - **Pace** is visits a week over the last 8 weeks, rounded to a quarter. It skips away time and never reaches back before the current package or the studio's first synced booking. It needs 21 observed days.
