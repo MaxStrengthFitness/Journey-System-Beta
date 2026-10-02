@@ -12,7 +12,6 @@ import {
   newMachinesPhrase,
   noMachineHistoryBody,
   noMachineHistoryLine,
-  noReportSentence,
   ownedWindow,
   reportSessionWords,
   sessionCountLabel,
@@ -137,11 +136,6 @@ describe("the start of the record, and 'all'", () => {
     expect(reportSessionWords("partial", prior({ importedCount: 12 })).before).toBe("400 before Journey");
     expect(reportSessionWords("complete", prior({ importedCount: 412 })).before).toBeNull();
     expect(reportSessionWords("unknown").before).toBeNull();
-  });
-
-  it("does not say a report is missing when it may be in FileMaker", () => {
-    expect(noReportSentence("complete")).toContain("no progress report on file");
-    for (const c of NOT_COMPLETE) expect(noReportSentence(c)).toBe("No progress report in Journey yet. Please perform an evaluation.");
   });
 });
 

@@ -54,7 +54,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { QuickNoteDialog } from "../features/client-notes/QuickNoteDialog";
 import { Textarea } from "@/components/ui/textarea";
 import { getCompletedSessionCount } from "../lib/session-count-cache";
-import { isEstablishedClient, noReportSentence } from "../lib/history-claims";
+import { isEstablishedClient } from "../lib/history-claims";
+import { progressReportDue } from "../features/client-profile/cpr-timing";
 import { earliestKnownDate } from "../lib/client-since";
 import {
   ClinicalHistoryTab,
@@ -1291,8 +1292,11 @@ export function ClientProfileView({
   // below only loads on two — so on the Journey (where the profile opens) the
   // banner used to read an empty list and say "no progress report on file"
   // for clients with several. One read per client answers the banner; until
-  // it lands (or if it fails) the banner says nothing.
-  const [reportProbe, setReportProbe] = useState<{ clientId: string; latest: ProgressReport | null } | null>(null);
+  // it lands (or if it fails) the banner says nothing. Since Oct 2 2026 it
+  // reads the newest 20, because the line counts from the last FULL report
+  // and a Pulse round or a draft may be newer (features/client-profile
+  // cpr-timing.ts, progressReportDue).
+  const [reportProbe, setReportProbe] = useState<{ clientId: string; reports: ProgressReport[] } | null>(null);
   useEffect(() => {
     if (!clientId || hasQuotaError || !user) return;
     let live = true;
@@ -1301,13 +1305,12 @@ export function ClientProfileView({
         collection(db, "progressReports"),
         where("clientId", "==", clientId),
         orderBy("createdAt", "desc"),
-        limit(1),
+        limit(20),
       ),
     )
       .then((snap) => {
         if (!live) return;
-        const d = snap.docs[0];
-        setReportProbe({ clientId, latest: d ? ({ id: d.id, ...d.data() } as ProgressReport) : null });
+        setReportProbe({ clientId, reports: snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ProgressReport) });
       })
       .catch((err) => console.warn("[report banner] latest report read failed", err));
     return () => {
@@ -1415,95 +1418,49 @@ export function ClientProfileView({
           );
         }
 
-        // The live shelf when it is loaded for this client, else the probe;
-        // neither yet means unknown, and unknown shows nothing.
-        const latestReport =
-          progressReports.find((r) => r.clientId === clientId) ??
-          (reportProbe?.clientId === clientId ? reportProbe.latest : undefined);
-        if (latestReport === undefined) return null;
-
-        if (latestReport === null) {
-          // Only once the client has been with the studio three months -
+        /*
+         * ONE QUIET LINE (Atlas answers, Oct 2 2026) in place of the red
+         * strip: due three months after the last FULL report, off for a
+         * client with "No progress reports", and said more strongly when her
+         * renewal conversation is close — the Activity Archive's Reports cue
+         * asks the same function (`progressReportDue`). The live shelf when
+         * it is loaded for this client, else the probe; neither yet means
+         * unknown, and unknown shows nothing.
+         */
+        const liveReports =
+          progressReportsStatus === "ready" && !progressReports.some((r) => r.clientId !== clientId)
+            ? progressReports
+            : null;
+        const reportList = liveReports ?? (reportProbe?.clientId === clientId ? reportProbe.reports : null);
+        const reportDue = progressReportDue({
+          reports: reportList,
+          optedOut: client.noProgressReports === true,
+          renewal: renewalOf(client),
+          // A first report is expected once she has been here three months -
           // judged from the oldest date on the record, or a prior record,
-          // never from the day Journey met them: that made every migrating
-          // client look new (lib/history-claims.ts, Sep 24 2026).
-          if (
-            !isEstablishedClient(
-              { earliest: earliestKnownDate(client), prior: priorHistory },
-              new Date(),
-            )
-          ) {
-            return null;
-          }
-
-          return (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-            >
-              <div className="bg-red-500/10 border-2 border-red-500/20 rounded-3xl p-4 flex items-center gap-4 text-red-600">
-                <AlertCircle className="w-6 h-6 shrink-0" />
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-tight">
-                    Report Required
-                  </p>
-                  <p className="text-[11px] font-bold opacity-80">
-                    {noReportSentence(clientCoverage)}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  className="ml-auto text-[11px] font-medium uppercase hover:bg-red-500/10"
-                  onClick={onNewReport}
-                >
-                  Start Now
-                </Button>
-              </div>
-            </motion.div>
-          );
-        }
-
-        const lastDate = new Date(parseSessionDate(latestReport.date));
-        const nextDueDate = new Date(lastDate);
-        nextDueDate.setMonth(nextDueDate.getMonth() + 3);
-
-        const today = new Date();
-        const diffTime = nextDueDate.getTime() - today.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays <= 21) {
-          const isOverdue = diffDays < 0;
-          return (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-            >
-              <div
-                className={`${isOverdue ? "bg-red-500/10 border-red-200 text-red-600" : "bg-amber-500/10 border-amber-200 text-amber-600"} border-2 rounded-3xl p-4 flex items-center gap-4`}
-              >
-                <AlertCircle className="w-6 h-6 shrink-0" />
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-tight">
-                    {isOverdue ? "Progress report overdue" : "Progress report due soon"}
-                  </p>
-                  <p className="text-[11px] font-bold opacity-80">
-                    {isOverdue
-                      ? `The 3-month progress report was due ${nextDueDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })} (${-diffDays} day${diffDays === -1 ? "" : "s"} ago).`
-                      : `The next progress report is due ${nextDueDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })} (in ${diffDays} day${diffDays === 1 ? "" : "s"}).`}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  className={`ml-auto text-[11px] font-medium uppercase ${isOverdue ? "hover:bg-red-500/10" : "hover:bg-amber-500/10"}`}
-                  onClick={onNewReport}
-                >
-                  Schedule Report
-                </Button>
-              </div>
-            </motion.div>
-          );
-        }
-        return null;
+          // never from the day Journey met her (lib/history-claims.ts).
+          established: isEstablishedClient({ earliest: earliestKnownDate(client), prior: priorHistory }, new Date()),
+          today: studioTodayKey(),
+        });
+        if (!reportDue) return null;
+        return (
+          <div
+            className={cn(
+              "flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border px-3 py-1.5 text-[12.5px] font-semibold",
+              reportDue.level === "renewal"
+                ? "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300"
+                : "border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300",
+            )}
+            role="note"
+            data-testid="report-due-line"
+            data-level={reportDue.level}
+          >
+            <span className="min-w-0 flex-1">{reportDue.text}</span>
+            <Button variant="ghost" className="min-h-10 text-[12px] font-bold" onClick={onNewReport}>
+              Start a progress report
+            </Button>
+          </div>
+        );
       })()}
 
       {/* Header (Sep 2026 redesign) — identity, four facts, one action.
@@ -1869,6 +1826,18 @@ export function ClientProfileView({
               onSelectReport={onSelectReport}
               onDeleteReport={setReportToDelete}
               onNewReport={onNewReport}
+              reportsReady={progressReportsStatus === "ready"}
+              onSetNoProgressReports={
+                canEditPrior && clientId
+                  ? async (off: boolean) => {
+                      try {
+                        await updateDoc(doc(db, "clients", clientId), { noProgressReports: off, updatedAt: serverTimestamp() });
+                      } catch (error) {
+                        handleFirestoreError(error, OperationType.UPDATE, `clients/${clientId}`);
+                      }
+                    }
+                  : undefined
+              }
               onEditMedical={() => nav.openRecord("body", "body-watchouts")}
               view={nav.clinicalView}
               onViewChange={nav.setClinicalView}

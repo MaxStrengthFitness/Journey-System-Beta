@@ -1,5 +1,17 @@
 # Client Profile — redesign spec and UX critique
 
+> **Oct 2 2026 — the Atlas answers.** Above the header, one quiet line says
+> when a progress report is due (`cpr-timing.ts`, `progressReportDue`: three
+> months after the last FULL report — a Pulse round or a draft never resets
+> it; off for a client with "No progress reports", the switch on Activity
+> Archive → Reports, `client.noProgressReports`; said more strongly when her
+> renewal conversation is close). The Reports cue reads the same function.
+> The red "Report required" strip is gone. The header's count is her total
+> (`lib/session-total.ts`: Mindbody's guess until a trainer confirms it on
+> Account, said "from Mindbody, not yet confirmed"), with late cancels beside
+> it, never inside it ("· 2 late cancels", `lib/late-cancels.ts`). "Client
+> since" is her first appointment, "(from Mindbody)" until confirmed.
+
 > **Sep 15 2026 — the profile is FOUR tabs.** Section 9 at the bottom of this
 > document is the current navigation model and supersedes every reference to
 > seven tabs below. Sections 1–8 are the Sep 5 redesign and are still the
