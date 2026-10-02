@@ -146,7 +146,7 @@ describe("the asks lane and the open-questions trail", () => {
 
   it("writes a take-over onto her record", async () => {
     await render();
-    await click(button("Claim"));
+    await click(button("Take it"));
     expect(state.updates[0]).toMatchObject({ path: "studios/s1/taskRequests/q1", data: { claimedBy: BEREGOND } });
     expect(journal()[0].data).toMatchObject({ body: "Beregond took it on.", authorId: "uid-beregond", threadId: "root-1" });
   });
@@ -167,7 +167,7 @@ describe("the asks lane and the open-questions trail", () => {
     state.open = [ask("h1", { kind: "help", title: "A hand now at the Leg Press", createdBy: MABLUNG })];
     await render();
     expect(document.querySelector(".stq__item-client")).toBeNull();
-    await click(button("Claim"));
+    await click(button("Take it"));
     expect(journal()).toEqual([]);
   });
 });

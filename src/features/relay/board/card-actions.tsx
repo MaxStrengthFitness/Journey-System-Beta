@@ -24,7 +24,10 @@ import type { BoardItem } from "./doors";
  *               tick, and your name goes on it (an advisory claim: anyone may
  *               still tick); a client task opens the client's flow; an ask is
  *               claimed and opens with a Done at its foot; a team job opens
- *               its sheet. Whatever you take rides in the header's Tracking
+ *               its sheet. A question's button is Answer, which only OPENS
+ *               it: opening an ask to read it never claims it and never rings
+ *               the asker (the Atlas answers, Oct 2 2026) — the panel's own
+ *               Take it does. Whatever you take rides in the header's Tracking
  *               chip until it is done (tracked.ts). An initiative is
  *               everyone's, so it is never claimed: Take it shows the
  *               initiative's card, where "Log mine" is.
@@ -115,17 +118,23 @@ export function useCardActions({ actions, author, onOpenJob, onOpenClientTask, o
     [relay, author, uid, writerName, writerInitials, toastSuccess, toastError],
   );
 
+  /**
+   * Opens an ask to read it. Only an explicit Take it claims (the Atlas
+   * answers, Oct 2 2026): `claim` is true for the card's own Take it / I can,
+   * and the panel's foot offers Take it for anyone who opened it to read.
+   */
   const openAsk = useCallback(
-    (r: TaskRequest) => {
-      void claimAsk(r);
+    (r: TaskRequest, claim = false) => {
+      if (claim) void claimAsk(r);
+      const mineAlready = claim || (author ? r.claimedBy?.id === author.id : false);
       relay.openPanel({
         kicker: r.kind === "question" ? "A question for the team" : r.forId ? "Handed to you" : "An ask on the board",
         title: r.title,
         body: <AskDetail request={r} />,
-        foot: <AskFoot request={r} onClose={closeAsk} />,
+        foot: <AskFoot request={r} onClose={closeAsk} onTake={mineAlready || !author ? undefined : () => claimAsk(r)} />,
       });
     },
-    [claimAsk, closeAsk, relay],
+    [claimAsk, closeAsk, relay, author],
   );
 
   const openGroup = useCallback(
@@ -170,7 +179,8 @@ export function useCardActions({ actions, author, onOpenJob, onOpenClientTask, o
           return;
         }
         case "ask":
-          return openAsk(item.request);
+          // Take it and I can are explicit; a question's Answer only opens it.
+          return openAsk(item.request, item.request.kind !== "question");
         case "job":
           return onOpenJob(item.job);
       }
@@ -248,12 +258,40 @@ export function AskDetail({ request: r }: { request: TaskRequest }) {
  * the answer (a question closed with no words says so on her record, so the
  * button waits for the answer here; Done elsewhere still closes it).
  */
-export function AskFoot({ request, onClose }: { request: TaskRequest; onClose: (r: TaskRequest, note: string) => Promise<void> }) {
+export function AskFoot({
+  request,
+  onClose,
+  onTake,
+}: {
+  request: TaskRequest;
+  onClose: (r: TaskRequest, note: string) => Promise<void>;
+  /** Claims it: offered when it was opened to read and isn't yours yet (Oct 2 2026). */
+  onTake?: () => Promise<void> | void;
+}) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [taken, setTaken] = useState(false);
   const question = request.kind === "question";
   return (
     <div className="nu__foot">
+      {onTake && !taken && (
+        <button
+          type="button"
+          className="pl__btn"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await onTake();
+              setTaken(true);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Take it
+        </button>
+      )}
       {question ? (
         <textarea
           className="rk-textarea"
