@@ -447,3 +447,47 @@ export function doseSentence(dose: DialValue | null | undefined, firstName: stri
       return null;
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * The Wrap-up's title: a plain congratulation (the Atlas answers, Oct 2 2026)
+ * ------------------------------------------------------------------ */
+
+/**
+ * AJ, Oct 2 2026: "a few generic 'congratulations' messages that it randomly
+ * picks". They replace "{name}, strong work." / "good work.", which judged the
+ * session from the stars. None of these makes a claim about how she did: the
+ * client reads this title, and the screen below it says what happened.
+ * `{name}` is her first name.
+ */
+export const CONGRATULATIONS: readonly string[] = [
+  "Well done, {name}.",
+  "Nicely done, {name}.",
+  "Congratulations, {name}.",
+  "That's a wrap, {name}.",
+  "Another one done, {name}.",
+  "Thanks for the work today, {name}.",
+];
+
+/** The same words without a name, for a client with no first name on file. */
+const WITHOUT_NAME = ["Well done.", "Nicely done.", "Congratulations.", "That's a wrap.", "Another one done.", "Thanks for the work today."];
+
+/** A small stable hash (FNV-1a), so the pick never changes on a re-render. */
+function stableHash(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h >>> 0;
+}
+
+/**
+ * One congratulation, picked "at random" but seeded by the session, so the
+ * same session always says the same thing (a re-render, coming back to the
+ * screen) and different sessions vary.
+ */
+export function congratulation(seed: string, firstName: string): string {
+  const i = stableHash(seed || "wrap-up") % CONGRATULATIONS.length;
+  const name = (firstName || "").trim();
+  return name ? CONGRATULATIONS[i].replace("{name}", name) : WITHOUT_NAME[i];
+}

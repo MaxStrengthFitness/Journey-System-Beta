@@ -182,6 +182,7 @@ import { UnsavedChangesProvider, useGuardedState } from "../features/unsaved-cha
 import { forgetPersonalMemory } from "../features/sign-out/memory";
 import { PAT, PAT_WEEK, SAM, SAM_TUESDAYS, WESTLAKE, foldFixture } from "../features/openings/ui/test-shell";
 import { OFFER_FOOT } from "../features/openings/present";
+import { congratulation } from "../lib/post-session";
 import type { Client, Studio, View, WorkoutSession } from "../types";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -320,6 +321,10 @@ describe("the post-session screen mounts", () => {
     const host = await mount(<Screen />);
     expect(host.textContent).toContain("Wrap-up · session saved");
     expect(host.textContent).not.toContain("Session complete");
+    // A plain congratulation picked for this session (Oct 2 2026), never a
+    // judgement of how she did.
+    expect(host.querySelector("h1")!.textContent).toBe(congratulation("sess1", "Judy"));
+    expect(host.textContent).not.toContain("strong work");
     expect(host.querySelector('textarea[aria-label="Profile note"]')!.getAttribute("placeholder")).toBe(
       "Profile note — anything for Judy's record. It files when you leave this screen.",
     );

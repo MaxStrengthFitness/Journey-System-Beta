@@ -34,6 +34,7 @@ import { useUnsavedChanges } from "../features/unsaved-changes";
 import { performedOnly, SKIP_REASON_SHORT } from "../lib/set-outcome";
 import { studioTodayKey } from "../lib/studio-time";
 import {
+  congratulation,
   doseSentence,
   journeySentence,
   nextBookingAnswer,
@@ -570,7 +571,6 @@ export function WrapUpScreen({
   // "session #12" only through the Hub card's gate: the client reads this
   // screen, and Journey's own count would tell a twelve-year client "#4".
   const sessionTag = sessionNumberTag(session.sessionNumber, canQuoteSessionNumber(client, coverage));
-  const maxSets = performed.filter((l) => (l.repQuality || 0) >= 3).length;
 
   /* --- next ------------------------------------------------------------- */
   // Openings' reads for the door (the summary by id, the standing weeks, the
@@ -643,7 +643,7 @@ export function WrapUpScreen({
           <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="px-6 pt-4 pb-1">
             <Kicker>{savedOnThisIpad ? "Wrap-up · session saved on this iPad" : "Wrap-up · session saved"}</Kicker>
             <h1 className="font-display font-extrabold italic text-ink-d1 text-[30px] uppercase tracking-[0.01em] leading-none mt-2 mb-2 break-words">
-              {clientFirstName(client)}, {maxSets > 0 ? "strong work." : "good work."}
+              {congratulation(session.id ?? `${client.id}-${todayKey}`, clientFirstName(client))}
             </h1>
             {savedOnThisIpad && (
               <p className="text-ink-d2 text-[14px] mb-1" role="status">

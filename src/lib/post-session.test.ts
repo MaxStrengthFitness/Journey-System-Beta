@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   ANOTHER_STUDIO,
+  CONGRATULATIONS,
+  congratulation,
   doseSentence,
   formatNextBooking,
   journeySentence,
@@ -294,5 +296,31 @@ describe("doseSentence", () => {
 
   it("falls back to 'The client' without a first name", () => {
     expect(doseSentence(0, "")).toBe("The client left just right.");
+  });
+});
+
+describe("congratulation (the Wrap-up's title, Oct 2 2026)", () => {
+  it("is stable for one session and uses her first name", () => {
+    const a = congratulation("sess-123", "Judy");
+    expect(congratulation("sess-123", "Judy")).toBe(a);
+    expect(a).toContain("Judy");
+  });
+
+  it("varies between sessions, across every message", () => {
+    const seen = new Set<string>();
+    for (let i = 0; i < 200; i++) seen.add(congratulation(`sess-${i}`, "Judy"));
+    expect(seen.size).toBe(CONGRATULATIONS.length);
+  });
+
+  it("makes no claim about how she did", () => {
+    for (const m of CONGRATULATIONS) expect(m).not.toMatch(/strong|best|great|record|harder|progress/i);
+  });
+
+  it("reads without a name", () => {
+    for (let i = 0; i < 20; i++) {
+      const t = congratulation(`s${i}`, "");
+      expect(t).not.toContain("{name}");
+      expect(t).not.toMatch(/,\s*\./);
+    }
   });
 });
