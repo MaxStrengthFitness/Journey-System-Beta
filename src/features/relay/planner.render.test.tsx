@@ -13,7 +13,7 @@
  * that throws on empty data, a component that assumed a field the database
  * doesn't have yet.
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
@@ -173,6 +173,18 @@ afterEach(() => {
 });
 
 describe("My Studio", () => {
+  // The Board speaks the hour (mid-shift, or "closed now" after hours), so
+  // the test holds the clock at a Thursday mid-morning, Eastern. On the real
+  // clock it failed every evening (found Oct 1 2026, at 11:30 pm). Only Date
+  // is faked: the settle timers stay real.
+  beforeAll(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-01T14:30:00Z"));
+  });
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+
   it("mounts on the Board: Right now, the five doors, the dealt card, Just now, and Floor work's lanes behind its door", async () => {
     const h = await mount(lead);
     expect(h.textContent).toContain("My Studio");

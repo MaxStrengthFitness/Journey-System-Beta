@@ -1,6 +1,6 @@
 # Proposal — Journey Lite on a phone
 
-*Sep 29 2026. A proposal, not built. AJ: "i want to possibly look into a mobile view run that is a Lite version of the app, not really meant to run sessions on but more to view all the information and data and also look at your own schedule for the day."*
+*Sep 29 2026. **Built Oct 1 2026: `2026-10-01-journey-lite.md`.** The proposal as written on Sep 29, with AJ's Oct 1 direction below it. AJ: "i want to possibly look into a mobile view run that is a Lite version of the app, not really meant to run sessions on but more to view all the information and data and also look at your own schedule for the day."*
 
 ## AJ's direction, Oct 1 2026
 

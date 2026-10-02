@@ -2651,6 +2651,22 @@ Nothing to deploy but the push. As a **Life Transformer** with sessions today, t
 - [ ] Tap a booking that was logged today: the peek says "Logged" (with its machines when the session recorded them) and **Edit session** opens the same session pop-up as Activity Archive; change a weight, Save: the edit stamp says you. A booking marked "didn't come": the peek has Open profile only. A booking over and not logged: Log past session opens her Activity Archive, where the form is.
 - [ ] Only if a studio has more than 1,500 clients on file: its Client Directory has a line saying the list holds 1,500 of them, and typing a name finds anyone it's missing.
 
+
+## Round 50 — Journey on a phone (Journey Lite) · *Oct 1 2026, branch `lite/phone`*
+
+Nothing to deploy but the push. On a **phone** (Journey in Safari, then Add to Home Screen), as a **Life Transformer** and then a **studio leader**, upright and on its side; then one look on the iPad to see nothing moved. `docs/rounds/2026-10-01-journey-lite.md`.
+
+- [ ] The bottom bar says Schedule · Operations · Clients · My Studio (a trainer without Operations sees three). Each opens its screen; from Operations, Schedule goes back to the Hub. Learning, Calendar, Settings and Refresh schedule are in the avatar menu.
+- [ ] The header: the logo, the studio's name whole, the bell and the avatar; nothing off the right edge.
+- [ ] Schedule: the day is one list in time order with the Hub's own cards; Me shows only yours, Everyone shows "with {name}" under each time; today has a Now line; a tap opens the peek and Start session works from it. The week strip changes the day.
+- [ ] Tap into any text box (a note, a search, Operations' Announcements): the page does not zoom in.
+- [ ] Start a session on the phone: the briefing says sessions are meant for the iPad, and Start still works. Each machine is a card with its last five times side by side; the weight is filled in, the reps box shows last time's number in grey and is empty. Enter reps, tap the star, Next: the next card is the one in hand. Finish: the Wrap-up opens, and on the iPad the session shows in her Activity Archive with the weights and reps you entered.
+- [ ] Operations: the six tabs in one row; Today, Week, Month, Clients → Journey and Team read without the page sliding sideways.
+- [ ] A client: the name whole at the top, Start session with its words, the four tabs whole; the Journey tab shows five sessions across.
+- [ ] Clients (the Directory): each client a card with Last in · Next · Left.
+- [ ] My Studio: Relay's Ask, + and Tracking all on screen; Team's staff panels sit below Team, never over it.
+- [ ] On the iPad, upright and on its side: the Hub grid, a session's grid and Now Bar, and Operations look as they did, except Operations' six tabs now share one row upright.
+
 ---
 
 ## Findings log
@@ -2722,4 +2738,5 @@ Screenshot:
 | 43 — The Machine Catalog, wave 3 (Sep 29) | 5 | | |
 | 44 — The Relay room, third wave (Sep 29) | 3 | | |
 | 45 — Auto-renewal: the studio's answer and the box (Oct 1) | 7 | | |
-| **Total** | **627** | | |
+| 50 — Journey on a phone (Oct 1) | 10 | | |
+| **Total** | **637** | | |
