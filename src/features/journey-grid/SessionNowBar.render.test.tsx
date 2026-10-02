@@ -109,6 +109,22 @@ describe("SessionNowBar commit", () => {
     expect(onCommit).toHaveBeenCalledWith("torso_rotation");
   });
 
+  it("says who set today's weight at the last Wrap-up, and nothing when nobody did (Oct 2 2026)", () => {
+    const el = mount({ onChange: vi.fn() });
+    expect(el.querySelector('[data-testid="weight-source"]')).toBeNull();
+    act(() => root!.unmount());
+    host!.remove();
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    act(() => {
+      root!.render(
+        <SessionNowBar row={{ ...row, weightSource: "Set for today at the last Wrap-up by Sam." }} history={[]} onChange={vi.fn()} />,
+      );
+    });
+    expect(host.querySelector('[data-testid="weight-source"]')!.textContent).toBe("Set for today at the last Wrap-up by Sam.");
+  });
+
   it("still mounts and types without an onCommit", () => {
     const onChange = vi.fn();
     const el = mount({ onChange });

@@ -27,6 +27,7 @@ vi.mock("firebase/firestore", () => ({
   collection: (_db: unknown, ...parts: string[]) => ({ path: parts.join("/") }),
   serverTimestamp: () => ({ __server: true }),
   increment: (n: number) => ({ __increment: n }),
+  deleteField: () => ({ __delete: true }),
   writeBatch: () => ({
     update: (ref: { path: string }, data: Record<string, unknown>) =>
       calls.batchWrites.push({ op: "update", path: ref.path, data }),
@@ -99,6 +100,10 @@ describe("completeWorkoutSession", () => {
     expect(paths).toContain("sessions/sess1");
     expect(paths).toContain("exerciseLogs/sess1_m1");
     expect(paths).toContain("clientMachineSettings/c1_m1");
+    // A weight set for this session at the last Wrap-up is used up once the
+    // machine is logged (features/next-weight, Oct 2 2026).
+    const setting = calls.batchWrites.find((w) => w.path === "clientMachineSettings/c1_m1")!;
+    expect(setting.data.nextWeight).toEqual({ __delete: true });
     expect(paths.some((p) => p.startsWith("clients/"))).toBe(false);
   });
 

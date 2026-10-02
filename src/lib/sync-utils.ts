@@ -101,7 +101,7 @@ export function mapMindbodySessions(sessions: any[], trainers: Trainer[]): Parti
   });
 }
 
-import { Firestore, writeBatch, doc, collection, serverTimestamp, increment, updateDoc, type DocumentReference } from 'firebase/firestore';
+import { Firestore, writeBatch, doc, collection, serverTimestamp, increment, updateDoc, deleteField, type DocumentReference } from 'firebase/firestore';
 import { invalidateSessionCount } from './session-count-cache';
 import { completedSessionRollup } from './client-rollups';
 import { studioTodayKey } from "./studio-time";
@@ -335,6 +335,9 @@ export async function completeWorkoutSession(
             settings: currentSettingsObj?.settings || {},
             updatedBy: userId,
             currentWeight: Number(log.weight),
+            // A weight set for this session at the last Wrap-up is used up now
+            // that the machine is logged (features/next-weight).
+            nextWeight: deleteField(),
             updatedAt: serverTimestamp()
           };
 

@@ -536,6 +536,12 @@ function SessionNowBarImpl({
                 </>
               )}
             </span>
+            {/* Today's weight was set at the last Wrap-up: say who set it. */}
+            {row?.weightSource ? (
+              <span className="jg-nb__readout" data-testid="weight-source">
+                {row.weightSource}
+              </span>
+            ) : null}
             {onMachineSeconds != null && onMachineSeconds > 0 ? (
               <span className="jg-nb__readout" title="Time this machine has been the current machine, session pauses excluded">
                 On machine {onMachineSeconds >= 60 ? formatSeconds(onMachineSeconds) : `${onMachineSeconds}s`}

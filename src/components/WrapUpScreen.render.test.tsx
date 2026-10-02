@@ -278,7 +278,9 @@ describe("the post-session screen mounts", () => {
     await click(radios[2]);
     expect(onDose).toHaveBeenCalledWith(0);
     expect(radios[2].getAttribute("aria-checked")).toBe("true");
-    expect(host.querySelector('[data-testid="dose-sentence"]')!.textContent).toBe("Judy left just right.");
+    // No advice under it (Oct 2 2026): the app never suggests a weight.
+    expect(host.querySelector('[data-testid="dose-sentence"]')).toBeNull();
+    expect(host.textContent).not.toMatch(/next time/i);
     expect(host.querySelector('[data-testid="dose-card"]')!.textContent).toContain("Saved");
 
     // Tapping it again clears back to "not judged" — and that is a write too.

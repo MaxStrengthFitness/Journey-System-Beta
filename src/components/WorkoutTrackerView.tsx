@@ -218,6 +218,8 @@ import { studioTodayKey } from "../lib/studio-time";
 import { sessionLinkOf } from "../features/client-notes/session-link";
 
 import { clientDisplayName, clientFirstName } from "../lib/client-name";
+import { isNextWeightLive, nextWeightMark, nextWeightSourceLine } from "../features/next-weight/next-weight";
+import { saveNextWeight } from "../features/next-weight/store";
 import { PerformanceEntryDialog } from "../features/tracker/PerformanceEntryDialog";
 import { ExerciseHistoryDialog } from "../features/tracker/ExerciseHistoryDialog";
 import { ClientSelectionDialog } from "../features/tracker/ClientSelectionDialog";
@@ -2137,6 +2139,43 @@ export function WorkoutTrackerView({
   };
 
   /**
+   * The next session's weight, set on the Wrap-up (the Atlas answers, Oct 2
+   * 2026): written onto her settings document for that machine, which every
+   * session start reads, with the mark of who set it. Fired, never awaited
+   * on the floor; a refusal is said in a toast and the Wrap-up says it isn't
+   * saved.
+   */
+  const savePostSessionNextWeight = (machineId: string, weight: number, today: number | null): Promise<boolean> => {
+    const s = postSession?.session;
+    const c = postSession?.client;
+    if (!s?.id || !c?.id) return Promise.resolve(false);
+    const uid = user?.uid || "";
+    const mark = nextWeightMark({
+      weight,
+      today,
+      sessionId: s.id,
+      setById: uid,
+      setByName: authTrainer?.fullName || "",
+      now: new Date(),
+    });
+    return saveNextWeight({
+      clientId: c.id,
+      machineId,
+      homeStudioId: c.homeStudioId || (c as any).studioId || null,
+      weight,
+      mark,
+      updatedBy: uid,
+    }).then(
+      () => true,
+      (error) => {
+        console.error("[wrap-up] next session's weight not saved", error);
+        toastError("The next session's weight didn't save. Check the connection, then set it again.");
+        return false;
+      },
+    );
+  };
+
+  /**
    * A note written from the post-session screen: the write is on this iPad at
    * once, so the screen waits only a moment for the database's answer and never
    * while offline (features/session-record/finish-wait.ts). A refusal, now or
@@ -2584,8 +2623,19 @@ export function WorkoutTrackerView({
           }
         }
         const notes = setting?.machineNotes || [];
+        // Where today's weight came from, when a trainer set it at the last
+        // Wrap-up and no session has logged the machine since (next-weight).
+        const nextMark = setting?.nextWeight;
+        const weightSource = isNextWeightLive(
+          nextMark,
+          selectedClient?.currentMachineMetrics?.[machine.id!]?.lastSessionId,
+          setting?.currentWeight,
+        )
+          ? (nextWeightSourceLine(nextMark) ?? undefined)
+          : undefined;
         return {
           ...row,
+          weightSource,
           prescribedWeight:
             setting?.currentWeight ?? lastWeight ?? setting?.startingWeight,
           machine: {
@@ -2613,6 +2663,7 @@ export function WorkoutTrackerView({
     studioFloorById,
     shownSession,
     gridHistory,
+    selectedClient?.currentMachineMetrics,
   ]);
 
   const gridSections = useMemo<GridSection[]>(() => {
@@ -2946,6 +2997,7 @@ export function WorkoutTrackerView({
         schedules={schedules}
         authTrainer={authTrainer}
         onDose={savePostSessionDose}
+        onNextWeight={savePostSessionNextWeight}
         onLeave={leavePostSession}
         unsavedDraft={postSession.draft}
         onSaveDraft={fileSessionDraft}

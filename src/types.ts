@@ -1403,6 +1403,22 @@ export interface SettingsHistoryEntry {
   reason?: string;
 }
 
+/** Who set the next session's weight on the Wrap-up (src/features/next-weight/next-weight.ts). */
+export interface NextWeightMark {
+  /** The weight the next session loads, lb. */
+  weight: number;
+  /** What she lifted that day, lb. */
+  fromWeight: number | null;
+  /** The session whose Wrap-up set it. */
+  sessionId: string;
+  /** ISO time it was set. */
+  setAt: string;
+  /** The Auth uid of whoever set it. */
+  setById: string;
+  /** Their name, as the app shows it. */
+  setByName: string;
+}
+
 export interface ClientMachineSetting {
   studioId?: string;
   id?: string;
@@ -1417,6 +1433,13 @@ export interface ClientMachineSetting {
   startingWeight?: number;
   startingWeightDate?: any;
   currentWeight?: number;
+  /**
+   * The next session's weight as a trainer set it on the Wrap-up (the Atlas
+   * answers, Oct 2 2026): who, when and at which session. `currentWeight`
+   * holds the weight itself; this says where it came from, and is spent once
+   * a session logs the machine (src/features/next-weight/).
+   */
+  nextWeight?: NextWeightMark;
   /**
    * Where each saved value came from, keyed like `settings` (machine fit
    * round, Sep 2026). "typed" by a trainer, "suggested" and accepted, or

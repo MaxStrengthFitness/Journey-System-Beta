@@ -35,7 +35,6 @@ import { performedOnly, SKIP_REASON_SHORT } from "../lib/set-outcome";
 import { studioTodayKey } from "../lib/studio-time";
 import {
   congratulation,
-  doseSentence,
   journeySentence,
   nextBookingAnswer,
   nextBookingFor,
@@ -62,6 +61,7 @@ import { bookedWeekdays } from "../features/packages/booked-days";
 import { DOOR_BUTTON, sheetTitle } from "../features/packages/package-copy";
 import { PackagesSheet } from "../features/packages/PackagesSheet";
 import { useTheme } from "./ThemeProvider";
+import { NextWeightCard, type SaveNextWeight } from "../features/next-weight/NextWeightCard";
 /**
  * THE WRAP-UP — the post-session screen (rebuilt in the tracker round, Sep 2026).
  *
@@ -264,6 +264,11 @@ export interface WrapUpScreenProps {
    * never says "Saved".
    */
   onDose: (dose: DialValue | null) => void | boolean | Promise<void | boolean>;
+  /**
+   * Sets the weight the next session loads on one machine (features/next-weight).
+   * Resolving to `false` means the write failed. Without it there is no card.
+   */
+  onNextWeight?: SaveNextWeight;
   /** Leaves the screen; the Profile note (if any) is filed on the way out with its Loudness and "until" day. */
   onLeave: (profileNote: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => void | Promise<void>;
   /**
@@ -395,6 +400,7 @@ export function WrapUpScreen({
   schedules = [],
   authTrainer,
   onDose,
+  onNextWeight,
   onLeave,
   unsavedDraft = null,
   onSaveDraft,
@@ -690,6 +696,16 @@ export function WrapUpScreen({
             )}
           </Card>
 
+          {/* 1b · the next session's weights (the Atlas answers, Oct 2 2026):
+                 the trainer sets what the next session loads, up or down; the
+                 app never suggests one. Silent when nothing was performed. */}
+          {onNextWeight && lines.some((l) => l.outcome === "performed" && l.weight !== null) && (
+            <Card delay={0.08}>
+              <Kicker>Next session's weights</Kicker>
+              <NextWeightCard lines={lines} onSave={onNextWeight} />
+            </Card>
+          )}
+
           {/* 2 · the journey */}
           <Card delay={0.12}>
             <Kicker>The journey</Kicker>
@@ -844,11 +860,6 @@ export function WrapUpScreen({
                 )}
               </div>
               <Dial scale={DOSE_SCALE} value={dose} onChange={pickDose} ask="Your read" sub={`Judged by you — nothing to ask ${clientFirstName(client)}`} data-testid="dose-dial" />
-              {doseSentence(dose, clientFirstName(client)) && (
-                <p className="text-[12px] text-ink-d2" data-testid="dose-sentence" aria-live="polite">
-                  {doseSentence(dose, clientFirstName(client))}
-                </p>
-              )}
             </div>
 
             <textarea
