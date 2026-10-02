@@ -282,6 +282,29 @@ describe("a studio's page", () => {
     expect(changed).toHaveBeenCalledWith("trainers");
   });
 
+  it("switches a former trainer's account off from Change role, asking first, and records it (Oct 2 2026)", async () => {
+    const changed = vi.fn();
+    const el = await mount(page({ onRefresh: changed }));
+    await click(button(el, "Team"));
+    await click(el.querySelector('[aria-label="Change role: Beregond"]'));
+    const dialog = document.querySelector<HTMLElement>('[role="alertdialog"][aria-label="Change Beregond\'s role"]')!;
+    await click(button(dialog, "Switch the account off…"));
+    expect(dialog.textContent).toContain("Beregond is signed out and can't open Journey again, on any iPad.");
+    expect(writes).toEqual([]);
+    await click(button(dialog, "Switch the account off"));
+    expect(writes[0]).toMatchObject({
+      op: "update",
+      path: "trainers/ber",
+      data: { isActive: false, switchedOffBy: { uid: "adm", name: "Ada Admin" } },
+    });
+    expect(writes[1]).toMatchObject({
+      op: "add",
+      path: "activity",
+      data: { studioId: "westlake", kind: "assisted-change", after: { Account: "Switched off" } },
+    });
+    expect(changed).toHaveBeenCalledWith("trainers");
+  });
+
   it("asks before a tab change loses a half-typed detail", async () => {
     const el = await mount(<UnsavedChangesProvider>{page()}</UnsavedChangesProvider>);
     await typeInto(el.querySelector<HTMLInputElement>("#studio-name"), "Westlake North");

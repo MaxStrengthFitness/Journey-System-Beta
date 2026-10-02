@@ -48,3 +48,14 @@ beat before the profile, and a Microsoft account from outside the company is
 signed in and straight back out by the sign-in screen, which then says why.
 Keying on the bare uid would remount the sign-in screen between the two and
 lose that sentence.
+
+**A switched-off account (Oct 2 2026).** `account-off.ts`: an administrator
+switches a former trainer's account off from Change role on a studio's Team
+(Admins dashboard), which marks `trainers/{id}.isActive` false, signed and
+dated. `useAuthInitialization` refuses that record at sign-in (signed straight
+out, with `SWITCHED_OFF_SENTENCE` on the sign-in screen) and watches the
+signed-in person's own record, so a switch-off signs them out at once. Their
+past sessions keep their name, and the studio's Team lists them under
+"Accounts switched off" with Switch back on. The rules stop a trainer writing
+their own `isActive`; the Firebase Auth user itself stays enabled until a
+Cloud Function turns it off (the file's header says what that needs).

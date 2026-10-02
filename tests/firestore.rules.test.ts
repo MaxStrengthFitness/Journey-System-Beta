@@ -5927,3 +5927,40 @@ describe("oct 2: a studio's own machine is retired, never deleted", () => {
     await assertSucceeds(deleteDoc(doc(as("ownerA"), "studios", "studioA", "roster", "m-leg-press")));
   });
 });
+
+describe("oct 2: switching a former trainer's account off", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+  async function seed() {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "trainers", "adminR8"), {
+        fullName: "adminR8", initials: "XX", role: "Admin", primaryHomeStudioId: "studioB", accessibleStudioIds: ["studioB"],
+      });
+    });
+  }
+
+  it("lets an administrator switch an account off and back on", async () => {
+    await seed();
+    const ref = doc(as("adminR8"), "trainers", "trainerA");
+    await assertSucceeds(
+      updateDoc(ref, {
+        isActive: false,
+        switchedOffAt: "2026-10-02T15:00:00.000Z",
+        switchedOffBy: { uid: "adminR8", name: "adminR8" },
+      }),
+    );
+    await assertSucceeds(updateDoc(ref, { isActive: true, switchedOffAt: deleteField(), switchedOffBy: deleteField() }));
+  });
+
+  it("never lets a trainer switch their own account off or back on; their profile edits are as before", async () => {
+    await seed();
+    const own = doc(as("trainerA"), "trainers", "trainerA");
+    await assertSucceeds(updateDoc(own, { fullName: "Trainer A, still here" }));
+    await assertFails(updateDoc(own, { isActive: false }));
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), "trainers", "trainerA"), { isActive: false, switchedOffAt: "2026-10-02T15:00:00.000Z" });
+    });
+    await assertFails(updateDoc(own, { isActive: true }));
+    await assertFails(updateDoc(own, { switchedOffAt: deleteField() }));
+  });
+});

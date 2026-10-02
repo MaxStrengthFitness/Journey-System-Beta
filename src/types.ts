@@ -320,6 +320,15 @@ export interface Trainer {
   claimedFromId?: string | null;
   claimedAt?: string;
   authUid?: string;
+  /**
+   * SWITCHED OFF (Oct 2 2026): a former trainer's account, switched off by an
+   * administrator from Change role. `false` = Journey refuses them at sign-in
+   * and signs them out; absent or true = on. The record stays, so their past
+   * sessions keep their name. See features/sign-out/account-off.ts.
+   */
+  isActive?: boolean;
+  switchedOffAt?: string;
+  switchedOffBy?: { uid: string; name: string };
   /* ------------------------------------------------------------------ *
    * TEMPORARY PROFILES (Sep 2026)
    *

@@ -909,7 +909,10 @@ service cloud.firestore {
     function writesAccessFields() {
       return request.resource.data.diff(resource.data).affectedKeys()
         .hasAny(['role', 'ownedStudioIds', 'accessibleStudioIds', 'activeGuestStudioIds', 'primaryHomeStudioId',
-                 'managedStudioIds']);
+                 'managedStudioIds',
+                 // OCT 2 2026: a switched-off account (features/sign-out/
+                 // account-off.ts) can't switch itself back on.
+                 'isActive', 'switchedOffAt', 'switchedOffBy']);
     }
 
     /* A role change a caller may make (My Studio round, Sep 2026): none, the

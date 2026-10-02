@@ -21,10 +21,14 @@
  * home studio is never taken away here; the dialog says what to do instead.
  */
 import { useMemo, useState } from "react";
-import { Users } from "lucide-react";
+import { deleteField, doc, updateDoc } from "firebase/firestore";
+import { UserX, Users } from "lucide-react";
+import { db } from "../../../firebase";
 import type { Client, Studio, Trainer } from "../../../types";
 import { whoWorksHere } from "../../../lib/who-works-here";
-import { AdminButton, AdminEmpty, AdminPanel } from "../../admin/primitives";
+import { AdminButton, AdminEmpty, AdminNotice, AdminPanel } from "../../admin/primitives";
+import { isSwitchedOff, switchedOffWhat } from "../../sign-out/account-off";
+import { logActivity } from "../activity/log-activity";
 import { ProvisionalPanel } from "../../admin/provisional/ProvisionalPanel";
 import { HqRow, HqRows, HqStatus } from "../kit";
 import { roleLabel } from "./role-change";
@@ -59,6 +63,42 @@ export function StudioTeam({
   );
   const owners = useMemo(() => trainers.filter((t) => (t.ownedStudioIds ?? []).includes(studioId)), [trainers, studioId]);
   const isMe = (t: Trainer) => t.id === authTrainer.id;
+  // Former trainers whose accounts were switched off here (Oct 2 2026): off
+  // every team list (who-works-here.ts), so listed here to be switched back on.
+  const switchedOff = useMemo(
+    () =>
+      trainers
+        .filter((t) => isSwitchedOff(t) && !t.supersededByUid)
+        .filter((t) => t.primaryHomeStudioId === studioId || (t.accessibleStudioIds ?? []).includes(studioId))
+        .sort((a, b) => (a.fullName || "").localeCompare(b.fullName || "")),
+    [trainers, studioId],
+  );
+  const [switchingOn, setSwitchingOn] = useState<string | null>(null);
+  const [switchOnError, setSwitchOnError] = useState<string | null>(null);
+  const switchOn = async (t: Trainer) => {
+    setSwitchingOn(t.id);
+    setSwitchOnError(null);
+    try {
+      await updateDoc(doc(db, "trainers", t.id), {
+        isActive: true,
+        switchedOffAt: deleteField(),
+        switchedOffBy: deleteField(),
+      });
+      await logActivity({
+        kind: "assisted-change",
+        what: switchedOffWhat(t.fullName || "", false),
+        studioId,
+        before: { Account: "Switched off" },
+        after: { Account: "On" },
+        byName: authTrainer.fullName,
+      });
+      await onRolesChanged?.();
+    } catch (err) {
+      setSwitchOnError(`Couldn't switch ${t.fullName || "the account"} back on: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setSwitchingOn(null);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -116,6 +156,47 @@ export function StudioTeam({
           </HqRows>
         )}
       </AdminPanel>
+      {switchedOff.length > 0 ? (
+        <AdminPanel
+          title="Accounts switched off"
+          icon={<UserX className="w-3.5 h-3.5" />}
+          subtitle="Former trainers. Journey refuses them; their past sessions keep their name."
+          flush
+        >
+          <HqRows label={`Accounts switched off at ${studio.name}`}>
+            {switchedOff.map((t) => (
+              <HqRow
+                key={t.id}
+                name={t.fullName || "Unnamed person"}
+                context={roleLabel(t.role)}
+                say={
+                  <HqStatus tone="idle">
+                    {t.switchedOffBy?.name
+                      ? `Switched off by ${t.switchedOffBy.name}${t.switchedOffAt ? `, ${t.switchedOffAt.slice(0, 10)}` : ""}`
+                      : "Switched off"}
+                  </HqStatus>
+                }
+                action={
+                  <AdminButton
+                    size="sm"
+                    busy={switchingOn === t.id}
+                    disabled={switchingOn !== null}
+                    onClick={() => void switchOn(t)}
+                    aria-label={`Switch ${t.fullName || "this person"}'s account back on`}
+                  >
+                    Switch back on
+                  </AdminButton>
+                }
+              />
+            ))}
+          </HqRows>
+          {switchOnError ? (
+            <div className="p-3">
+              <AdminNotice tone="alert">{switchOnError}</AdminNotice>
+            </div>
+          ) : null}
+        </AdminPanel>
+      ) : null}
       <ProvisionalPanel studio={studio} clients={clients} trainers={trainers} authTrainer={authTrainer} onCreated={onCreated} />
       <RoleDialog
         person={changing}
