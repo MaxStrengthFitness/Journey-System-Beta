@@ -381,3 +381,13 @@ describe("reportAsText", () => {
     expect(text).not.toContain("Recent errors");
   });
 });
+
+describe("statusCountsLine (Oct 2 2026: the reporter's count in Admins' words)", () => {
+  it("counts each status in the words Admins uses, in triage order, leaving out the empty ones", async () => {
+    const { statusCountsLine } = await import("./reportView");
+    expect(statusCountsLine(["fixed", "open", "fixed", "wont-fix"])).toBe("1 new · 2 fixed · 1 won't fix");
+    expect(statusCountsLine(["investigating"])).toBe("1 looking into it");
+    // A status this build doesn't know reads as New, as its row does.
+    expect(statusCountsLine(["triaged", null])).toBe("2 new");
+  });
+});

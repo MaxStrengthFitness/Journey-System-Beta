@@ -114,7 +114,8 @@ describe("Trainer Settings", () => {
       { id: "f3", description: "A second theme", status: "wont-fix" },
     ];
     await mount(person({}));
-    expect(host.textContent).toContain("Your reports · 1 open · 2 closed");
+    // The count too, in Admins' words (Oct 2 2026): never "open" and "closed".
+    expect(host.textContent).toContain("Your reports · 1 looking into it · 1 fixed · 1 won't fix");
     const statuses = [...host.querySelectorAll(".stg-status")].map((s) => [s.textContent, s.className]);
     expect(statuses).toEqual([
       ["Fixed", "stg-status stg-status--ok"],
