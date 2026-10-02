@@ -5884,3 +5884,47 @@ describe("catalog wave 3: a machine's change log", () => {
     await assertFails(deleteDoc(ref));
   });
 });
+
+/* OCT 2 2026 (the Atlas answers, team branch): Get to know reads a "Follow up
+   next time" question too. The Hub's one FORD read gains a fourth branch,
+   followUpAt since sixty days back, still inside the studio. Kept in its own
+   block so other branches' rules edits merge cleanly. */
+describe("oct2 team: the Hub's FORD read with follow-ups", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      const base = { pillar: "family", body: "A detail", isPinned: false, eventDate: null, recurrence: "none", occurredAt: new Date("2026-06-01T14:00:00Z"), authorId: "trainerA", isArchived: false };
+      await setDoc(doc(db, "clients", "clientFuA", "ford", "asked"), { ...base, clientId: "clientFuA", studioId: "studioA", followUp: "How did it go?", followUpAt: new Date("2026-09-20T14:00:00Z") });
+      await setDoc(doc(db, "clients", "clientFuA", "ford", "quiet"), { ...base, clientId: "clientFuA", studioId: "studioA" });
+      await setDoc(doc(db, "clients", "clientFuB", "ford", "elsewhere"), { ...base, clientId: "clientFuB", studioId: "studioB", followUp: "And?", followUpAt: new Date("2026-09-20T14:00:00Z") });
+    });
+  });
+
+  async function readWithFollowUps(db: ReturnType<typeof as>, studioId: string) {
+    const { and, or } = await import("firebase/firestore");
+    return query(
+      collectionGroup(db, "ford"),
+      and(
+        where("studioId", "==", studioId),
+        or(
+          where("recurrence", "==", "annual"),
+          and(where("eventDate", ">=", new Date("2026-09-20T04:00:00Z")), where("eventDate", "<", new Date("2026-10-12T04:00:00Z"))),
+          where("occurredAt", ">=", new Date("2026-09-14T04:00:00Z")),
+          where("followUpAt", ">=", new Date("2026-07-30T04:00:00Z")),
+        ),
+      ),
+      limit(1000),
+    );
+  }
+
+  it("lets the studio's trainer read the follow-ups, and only the studio's", async () => {
+    const snap = await assertSucceeds(getDocs(await readWithFollowUps(as("trainerA"), "studioA")));
+    expect(snap.docs.map((d) => d.id)).toEqual(["asked"]);
+  });
+
+  it("refuses it to a trainer at another studio", async () => {
+    await assertFails(getDocs(await readWithFollowUps(as("trainerB"), "studioA")));
+  });
+});

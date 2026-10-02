@@ -58,6 +58,7 @@ describe("what comes up, on the booking's day", () => {
       entryId: recital.id,
       clientId: "hamfast",
       reason: "dated",
+      loudness: "standard",
       onDay: "2026-10-03",
       chip: "Ask: the recital · Sat",
       sentence: "Ask about: His granddaughter's piano recital on Saturday — Saturday, Oct 3 (Family, noted Sep 10).",
@@ -85,9 +86,11 @@ describe("what comes up, on the booking's day", () => {
     expect(askAboutFor([anniversary], "2026-10-01")?.chip).toBe("Ask: the anniversary · today");
   });
 
-  it("is asked about the day on screen: Thursday sees Saturday's recital; the Monday after, it has passed", () => {
+  it("is asked about the day on screen: Thursday sees Saturday's recital; the Monday after, how it went; a week on, nothing", () => {
     expect(askAboutFor([recital], "2026-10-01")?.reason).toBe("dated");
-    expect(askAboutFor([recital], "2026-10-05")).toBeNull();
+    expect(askAboutFor([recital], "2026-10-05")?.reason).toBe("after");
+    expect(askAboutFor([recital], "2026-10-10")?.reason).toBe("after");
+    expect(askAboutFor([recital], "2026-10-11")).toBeNull();
   });
 });
 
@@ -131,22 +134,48 @@ describe("an annual day, from its digits", () => {
   });
 });
 
-describe("AJ's two open questions keep the design's defaults (wave 2 hub)", () => {
-  it("a dated detail that has just happened does not count", () => {
+describe("AJ's two answers: both count, at Note loudness (the Atlas answers, Oct 2 2026)", () => {
+  it("a dated detail that has just happened: ask how it went", () => {
     // The recital was Saturday; noted weeks ago, so it isn't news either.
     const lastSaturday = detail({ clientId: "c", body: "Granddaughter's recital", subject: "the recital", eventDate: eastern("2026-09-26"), occurredAt: eastern("2026-09-01", "09:00") });
-    expect(askAboutFor([lastSaturday], MONDAY)).toBeNull();
+    expect(askAboutFor([lastSaturday], MONDAY)).toMatchObject({
+      reason: "after",
+      loudness: "standard",
+      onDay: "2026-09-26",
+      chip: "Ask how it went: the recital",
+      sentence: "Ask how it went: Granddaughter's recital \u2014 Saturday, Sep 26 (Family).",
+    });
+    // An anniversary last week counts too; one eight days back does not.
+    const anniversary = detail({ clientId: "c", body: "Anniversary dinner", eventDate: eastern("2015-09-23"), recurrence: "annual" });
+    expect(askAboutFor([anniversary], MONDAY)?.reason).toBe("after");
+    expect(askAboutFor([anniversary], "2026-10-01")).toBeNull();
   });
 
-  it("a Follow up next time question does not count on its own", () => {
+  it("a Follow up next time question counts, in the trainer's words", () => {
     const followUp = detail({
       clientId: "c",
       body: "New walking boots",
       occurredAt: eastern("2026-08-02", "09:00"),
       followUp: "How did the boots do on the long walk?",
       followUpAt: eastern("2026-09-27", "09:00"),
+      followUpBy: "Jess Moreno",
     });
-    expect(askAboutFor([followUp], MONDAY)).toBeNull();
+    expect(askAboutFor([followUp], MONDAY)).toMatchObject({
+      reason: "follow-up",
+      loudness: "standard",
+      chip: "Follow up: New walking boots",
+      sentence: "Follow up: How did the boots do on the long walk? (New walking boots; Family, from Jess Moreno)",
+    });
+    // An asked question (null) is nothing.
+    expect(askAboutFor([{ ...followUp, followUp: null }], MONDAY)).toBeNull();
+  });
+
+  it("one per client: a day coming up first, then a follow-up, then one that just happened", () => {
+    const coming = detail({ clientId: "c", body: "Trip to Rome", eventDate: eastern("2026-10-02") });
+    const asked = detail({ clientId: "c", body: "Knee brace", followUp: "Did the brace help?", followUpAt: eastern("2026-09-20", "09:00") });
+    const past = detail({ clientId: "c", body: "Son's game", eventDate: eastern("2026-09-26") });
+    expect(askAboutFor([past, asked, coming], MONDAY)?.entryId).toBe(coming.id);
+    expect(askAboutFor([past, asked], MONDAY)?.entryId).toBe(asked.id);
   });
 });
 
@@ -164,7 +193,7 @@ describe("the Hub's one FORD read (wave 2 hub)", () => {
 
   it("covers every day on the strip at once: a week of days for each, two weeks of news, a day of slack", () => {
     expect(HUB_STRIP_DAYS).toBe(7);
-    expect(askReadWindow(MONDAY)).toEqual({ datedFrom: "2026-09-27", datedUntil: "2026-10-12", notedFrom: "2026-09-14" });
+    expect(askReadWindow(MONDAY)).toEqual({ datedFrom: "2026-09-20", datedUntil: "2026-10-12", notedFrom: "2026-09-14", followUpFrom: "2026-07-30" });
   });
 
   it("holds everything the rule could pick on any strip day — the read never hides an answer", () => {

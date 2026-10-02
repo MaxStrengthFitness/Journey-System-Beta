@@ -165,11 +165,14 @@ export function Peek({ entry, sessionNumber, timeText = null, extras, anchor, on
             {content.lines.map((l) => {
               const I = GLYPH[l.kind];
               return (
-                <li key={l.kind}>
+                <li key={l.kind} className={l.note ? "hp-line--note" : undefined}>
                   <span className="hs-g" data-family={l.family} aria-hidden>
                     <I size={13} strokeWidth={2.4} aria-hidden />
                   </span>
-                  <span>{l.text}</span>
+                  <span>
+                    {l.note && <span className="hp-loud">{"Note"}</span>}
+                    {l.text}
+                  </span>
                 </li>
               );
             })}

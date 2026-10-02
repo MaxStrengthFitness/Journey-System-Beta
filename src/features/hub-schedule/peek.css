@@ -118,6 +118,21 @@
   line-height: 1.4;
   color: var(--eq-ink-2);
 }
+/* Get to know at Note loudness (Oct 2 2026): a small line with the Note word. */
+.hp-lines li.hp-line--note {
+  font-size: 13px;
+}
+.hp-loud {
+  display: inline-block;
+  margin-inline-end: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--eq-ink-muted);
+  color: var(--eq-ink-muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+}
 
 /* All stars (wave 2 hub): one sentence, in the ink of the lines above it —
    a fact about her rhythm, not a mark, so no glyph and no colour of its own. */

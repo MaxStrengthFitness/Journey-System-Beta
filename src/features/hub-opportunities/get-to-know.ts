@@ -28,11 +28,18 @@
  * about"), and the chip and the sentence live in the list and the peek,
  * which a trainer opens on purpose.
  *
- * AJ's two open questions keep the design's defaults (wave 2 hub, Sep 28
- * 2026): a dated detail that has just happened does not count ("How was the
- * recital?" waits for the "new" reason, if it was noted lately), and a
- * "Follow up next time" question does not count (it is the FORD page's Ask
- * next, and the briefing's to take up).
+ * AJ answered his two open questions (the Atlas answers, Oct 2 2026): both
+ * count, "a small loudness note that offers the information to the trainer
+ * to use or follow up on in order to show we care and listen":
+ *
+ *   - JUST HAPPENED: a dated detail whose day was in the week before the
+ *     booking's day ("How did the recital go?"), an annual one included;
+ *   - FOLLOW UP: a detail carrying a "Follow up next time" question
+ *     (`followUp`), the question in the trainer's words.
+ *
+ * Each is offered at Note loudness (`loudness: "standard"`): a small line,
+ * never a Heads up. One per client still: a day coming up first, then a
+ * follow-up question, then one that just happened, then news.
  *
  * WIRED (wave 2 hub, Sep 28 2026; AJ: "all yes" to "one read of the studio's
  * FORD details for the Hub"). The Hub reads the studio's FORD once per
@@ -54,6 +61,10 @@ export const ASK_DATED_DAYS = 7;
 export const ASK_NEW_DAYS = 14;
 /** The days on the Hub's strip: today and the six after it (ClientsView's carousel). */
 export const HUB_STRIP_DAYS = 7;
+/** A dated detail is worth asking "how did it go?" about for this many days after its day (Oct 2 2026). */
+export const ASK_AFTER_DAYS = 7;
+/** A "Follow up next time" question set within this many days is read for the Hub (Oct 2 2026). */
+export const ASK_FOLLOW_UP_DAYS = 60;
 
 /**
  * The mark's label on the grid (a card's glyph, its "+N", the Next 30
@@ -72,8 +83,14 @@ export interface AskAbout {
   /** The FORD detail it came from. */
   entryId: string;
   clientId: string;
-  /** "dated": its day comes round within the week; "new": noted in the last two weeks. */
-  reason: "dated" | "new";
+  /**
+   * "dated": its day comes round within the week; "after": its day was in the
+   * week before ("how did it go?"); "follow-up": a Follow up next time
+   * question; "new": noted in the last two weeks.
+   */
+  reason: AskReason;
+  /** Offered at Note loudness: a small line, never a Heads up (Oct 2 2026). */
+  loudness: "standard";
   /** The studio day the detail points at, when dated (its next occurrence for an annual one). */
   onDay: string | null;
   /** A few words for the list's chip: "Ask: Ethan · Sat", "Ask: the garden". */
@@ -122,15 +139,33 @@ function askable(e: FordEntry, day: string, tz?: string): boolean {
   return typeof e.body === "string" && e.body.trim().length > 0;
 }
 
+export type AskReason = "dated" | "after" | "follow-up" | "new";
+
+/** The question a detail asks to be followed up, or null. */
+function followUpOf(e: FordEntry): string | null {
+  const q = typeof e.followUp === "string" ? e.followUp.trim() : "";
+  return q ? q : null;
+}
+
 /** Why a detail comes up on the day, or null. */
-function reasonOn(e: FordEntry, day: string, tz?: string): { reason: "dated" | "new"; onDay: string | null; noted: string | null } | null {
+function reasonOn(e: FordEntry, day: string, tz?: string): { reason: AskReason; onDay: string | null; noted: string | null } | null {
   const noted = studioDayKeyOf(e.occurredAt ?? e.createdAt ?? null, tz);
   const stored = studioDayKeyOf(e.eventDate ?? null, tz);
   if (stored) {
-    const onDay = e.recurrence === "annual" ? nextAnnualDay(stored, day) : stored;
+    const annual = e.recurrence === "annual";
+    const onDay = annual ? nextAnnualDay(stored, day) : stored;
     if (onDay) {
       const ahead = daysBetween(day, onDay);
       if (ahead >= 0 && ahead < ASK_DATED_DAYS) return { reason: "dated", onDay, noted };
+    }
+  }
+  if (followUpOf(e)) return { reason: "follow-up", onDay: null, noted };
+  if (stored) {
+    // Just happened: its day (this year's, for an annual one) in the week before.
+    const lastDay = e.recurrence === "annual" ? nextAnnualDay(stored, addDays(day, -ASK_AFTER_DAYS)) : stored;
+    if (lastDay) {
+      const since = daysBetween(lastDay, day);
+      if (since >= 1 && since <= ASK_AFTER_DAYS) return { reason: "after", onDay: lastDay, noted };
     }
   }
   if (noted) {
@@ -153,9 +188,20 @@ function chipWhat(e: FordEntry, body: string): string {
   return parts.length > 3 ? `${parts.slice(0, 3).join(" ")}…` : parts.join(" ");
 }
 
-function words(e: FordEntry, why: { reason: "dated" | "new"; onDay: string | null; noted: string | null }, day: string): { chip: string; sentence: string } {
+function words(e: FordEntry, why: { reason: AskReason; onDay: string | null; noted: string | null }, day: string): { chip: string; sentence: string } {
   const body = e.body.trim().replace(/[.!]+$/, "");
   const what = chipWhat(e, body);
+  if (why.reason === "follow-up") {
+    const q = (followUpOf(e) ?? "").replace(/\s+/g, " ");
+    const by = typeof e.followUpBy === "string" && e.followUpBy.trim() ? `from ${e.followUpBy.trim()}` : null;
+    const proof = [pillarLabel(e.pillar), by].filter(Boolean).join(", ");
+    return { chip: `Follow up: ${what}`, sentence: `Follow up: ${q}${/[?.!]$/.test(q) ? "" : "?"} (${body}${proof ? `; ${proof}` : ""})` };
+  }
+  if (why.reason === "after" && why.onDay) {
+    const was = `${WEEKDAY_LONG[weekdayOf(why.onDay)]}, ${monthDay(why.onDay)}`;
+    const proof = pillarLabel(e.pillar);
+    return { chip: `Ask how it went: ${what}`, sentence: `Ask how it went: ${body} \u2014 ${was}${proof ? ` (${proof})` : ""}.` };
+  }
   const when = why.onDay ? (why.onDay === day ? "today" : WEEKDAY[weekdayOf(why.onDay)]) : null;
   const chip = `Ask: ${what}${when ? ` · ${when}` : ""}`;
   const whenLong = why.onDay ? (why.onDay === day ? "today" : `${WEEKDAY_LONG[weekdayOf(why.onDay)]}, ${monthDay(why.onDay)}`) : null;
@@ -173,10 +219,14 @@ export function askAboutFor(details: ReadonlyArray<FordEntry>, day: string, tz?:
     .filter((c): c is { e: FordEntry; why: NonNullable<ReturnType<typeof reasonOn>> } => c.why !== null);
   if (candidates.length === 0) return null;
   const dated = candidates.filter((c) => c.why.reason === "dated").sort((a, b) => (a.why.onDay ?? "").localeCompare(b.why.onDay ?? ""));
+  const asked = candidates
+    .filter((c) => c.why.reason === "follow-up")
+    .sort((a, b) => (studioDayKeyOf(b.e.followUpAt ?? null, tz) ?? "").localeCompare(studioDayKeyOf(a.e.followUpAt ?? null, tz) ?? ""));
+  const after = candidates.filter((c) => c.why.reason === "after").sort((a, b) => (b.why.onDay ?? "").localeCompare(a.why.onDay ?? ""));
   const fresh = candidates.filter((c) => c.why.reason === "new").sort((a, b) => (b.why.noted ?? "").localeCompare(a.why.noted ?? ""));
-  const pick = dated[0] ?? fresh[0];
+  const pick = dated[0] ?? asked[0] ?? after[0] ?? fresh[0];
   const { chip, sentence } = words(pick.e, pick.why, day);
-  return { entryId: pick.e.id, clientId: pick.e.clientId, reason: pick.why.reason, onDay: pick.why.onDay, chip, sentence };
+  return { entryId: pick.e.id, clientId: pick.e.clientId, reason: pick.why.reason, loudness: "standard", onDay: pick.why.onDay, chip, sentence };
 }
 
 /**
@@ -231,13 +281,18 @@ export function askDatedWindow(day: string): { from: string; to: string } {
  *     midnight and the rule reads it on the studio's day;
  *   - `notedFrom`: noted in the two weeks up to any strip day, from
  *     today - 13, with a day of slack;
+ *   - `datedFrom` reaches a week further back, for a day that just
+ *     happened; `followUpFrom`: a Follow up next time question set in the
+ *     last 60 days (Oct 2 2026; its own index, studioId + followUpAt);
  *   - an annual day comes round every year, so the read holds every one,
  *     whatever year it was stored in (the query's `recurrence` branch).
  */
-export function askReadWindow(today: string): { datedFrom: string; datedUntil: string; notedFrom: string } {
+export function askReadWindow(today: string): { datedFrom: string; datedUntil: string; notedFrom: string; followUpFrom: string } {
   const lastDated = addDays(today, HUB_STRIP_DAYS - 1 + ASK_DATED_DAYS - 1);
   return {
-    datedFrom: addDays(today, -1),
+    // A week back too, for "how did it go?" on today's bookings (Oct 2 2026).
+    datedFrom: addDays(today, -1 - ASK_AFTER_DAYS),
+    followUpFrom: addDays(today, -ASK_FOLLOW_UP_DAYS),
     datedUntil: addDays(lastDated, 2),
     notedFrom: addDays(today, -(ASK_NEW_DAYS - 1) - 1),
   };

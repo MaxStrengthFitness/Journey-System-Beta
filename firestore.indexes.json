@@ -653,6 +653,20 @@
       ]
     },
     {
+      "collectionGroup": "ford",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "studioId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "followUpAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "activity",
       "queryScope": "COLLECTION",
       "fields": [

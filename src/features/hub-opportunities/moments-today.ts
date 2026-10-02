@@ -101,6 +101,11 @@ export interface Moment {
    * gives them to its triangle and glyphs as their label.
    */
   words?: string;
+  /**
+   * Said at this Loudness: Get to know is a small line at Note loudness
+   * (the Atlas answers, Oct 2 2026), never a Heads up.
+   */
+  loudness?: "standard";
 }
 
 /**
@@ -563,7 +568,7 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
         askUnknown = true;
       } else {
         const ask = askAboutFor(details, input.day, input.tz);
-        if (ask) moments.push({ family: "get-to-know", kind: "ask-about", chip: ask.chip, sentence: ask.sentence, words: ASK_ABOUT_LABEL });
+        if (ask) moments.push({ family: "get-to-know", kind: "ask-about", chip: ask.chip, sentence: ask.sentence, words: ASK_ABOUT_LABEL, loudness: ask.loudness });
       }
     }
   }

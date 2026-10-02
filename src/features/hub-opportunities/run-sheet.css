@@ -326,6 +326,24 @@
   color: var(--eq-ink-muted);
 }
 
+/* Get to know at Note loudness (the Atlas answers, Oct 2 2026): a small,
+   quiet line with the Note word, never a Heads up. */
+.ho-slot-note {
+  font-size: 13px;
+  color: var(--eq-ink-2);
+}
+.ho-loud {
+  display: inline-block;
+  margin-inline-end: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--eq-ink-muted);
+  color: var(--eq-ink-muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
 .ho-actions {
   display: flex;
   flex-wrap: wrap;

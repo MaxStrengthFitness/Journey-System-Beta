@@ -698,7 +698,8 @@ describe("the Hub: Get to know", () => {
     hub.details = { laura: [MATHOM] };
     const { el } = mount();
     act(() => cardOf(el, "Laura Grubb")!.click());
-    expect([...document.querySelectorAll(".hp-lines li")].map((l) => l.textContent)).toEqual([SENTENCE]);
+    // At Note loudness: the Note word, then the sentence (the Atlas answers, Oct 2 2026).
+    expect([...document.querySelectorAll(".hp-lines li")].map((l) => l.textContent)).toEqual([`Note${SENTENCE}`]);
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     });

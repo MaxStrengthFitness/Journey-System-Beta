@@ -15,6 +15,7 @@
  *        recurrence == "annual"                   a birthday or an anniversary, whatever year it was stored in
  *     OR datedFrom <= eventDate < datedUntil      a one-off day inside the strip's two weeks
  *     OR occurredAt >= notedFrom                  noted in the last two weeks
+ *     OR followUpAt >= followUpFrom               a Follow up next time question (Oct 2 2026)
  *   )
  *
  * So it never reads the studio's whole FORD — a standing fact from last year
@@ -22,7 +23,8 @@
  *
  * INDEXES. Each branch has its own (firestore.indexes.json, collection group
  * `ford`): studioId + recurrence and studioId + occurredAt, added with this
- * read; studioId + eventDate, which was there. The database is the
+ * read; studioId + eventDate, which was there; studioId + followUpAt, added
+ * with the follow-up branch (the Atlas answers, Oct 2 2026). The database is the
  * Enterprise edition, which builds no index by itself.
  *
  * RULES. No change. The ford block already lets the people who work at the
@@ -53,6 +55,8 @@ export interface HubFordWindow {
   /** Left out. */
   datedUntil: Date;
   notedFrom: Date;
+  /** A Follow up next time question set since then. Absent: not asked for (the Calendar's read). */
+  followUpFrom?: Date;
 }
 
 export type HubFordRead =
@@ -71,6 +75,7 @@ export function hubFordQuery(studioId: string, window: HubFordWindow) {
         where("recurrence", "==", "annual"),
         and(where("eventDate", ">=", window.datedFrom), where("eventDate", "<", window.datedUntil)),
         where("occurredAt", ">=", window.notedFrom),
+        ...(window.followUpFrom ? [where("followUpAt", ">=", window.followUpFrom)] : []),
       ),
     ),
     limit(HUB_FORD_GUARD),

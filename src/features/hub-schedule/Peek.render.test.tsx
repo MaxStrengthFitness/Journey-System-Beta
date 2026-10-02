@@ -144,7 +144,7 @@ describe("the peek", () => {
     const lines = [...el.querySelectorAll(".hp-lines li")];
     expect(lines.map((l) => l.textContent)).toEqual([
       "No liability waiver signed in Mindbody.",
-      "Ask about: Judging the Bywater harvest fair on Friday — Friday, Oct 2 (Recreation, noted Sep 20).",
+      "NoteAsk about: Judging the Bywater harvest fair on Friday — Friday, Oct 2 (Recreation, noted Sep 20).",
     ]);
     expect(lines[1].querySelector(".hs-g")?.getAttribute("data-family")).toBe("get-to-know");
   });
