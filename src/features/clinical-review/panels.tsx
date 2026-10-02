@@ -204,7 +204,7 @@ export function StallPanel({ plateaus }: { plateaus: MachinePlateau[] }) {
 
 const StallRow = memo(function StallRow({ p }: { p: MachinePlateau }) {
   const pill = p.status === "plateau" ? "plateau" : p.status === "regressing" ? "regressing" : "stalled";
-  const pillLabel = p.status === "plateau" ? "Same load all range" : p.status === "regressing" ? "Slipping" : `Stalled ${p.sessionsAtCurrentWeight} sessions`;
+  const pillLabel = p.status === "plateau" ? "Same load all range" : p.status === "regressing" ? "Load down" : `Stalled ${p.sessionsAtCurrentWeight} sessions`;
   return (
     <li className="cr-card cr-stall">
       <div className="cr-stall__text">

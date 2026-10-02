@@ -482,8 +482,35 @@ describe("detectPlateaus", () => {
     });
     expect(detectPlateaus([mk(0, 100), mk(1, 100), mk(2, 96), mk(3, 96)], names)[0].status).toBe("regressing");
     expect(detectPlateaus([mk(0, 100), mk(1, 100)], names)[0].status).toBe("insufficient");
-    // Same load but +2 reps counts as progress.
-    expect(detectPlateaus([mk(0, 100, 6), mk(1, 100, 7), mk(2, 100, 8), mk(3, 100, 8)], names)[0].status).toBe("progressing");
+    // Reps alone never decide it (AJ, Oct 2 2026: "two more reps at the same
+    // weight can be considered progress, but I would not consider that
+    // notable progress"): more reps or fewer at one load is a plateau, and
+    // the reps are still measured for the words.
+    const more = detectPlateaus([mk(0, 100, 6), mk(1, 100, 7), mk(2, 100, 8), mk(3, 100, 8)], names)[0];
+    expect(more.status).toBe("plateau");
+    expect([more.repsAtCurrentFirst, more.repsAtCurrentLast]).toEqual([6, 8]);
+    expect(detectPlateaus([mk(0, 100, 10), mk(1, 100, 9), mk(2, 100, 8), mk(3, 100, 7)], names)[0].status).toBe("plateau");
+    // Only the load goes up for "progressing".
+    expect(detectPlateaus([mk(0, 100, 8), mk(1, 100, 8), mk(2, 102, 6), mk(3, 102, 6)], names)[0].status).toBe("progressing");
+  });
+
+  it("says reps at one load in plain words, never as slipping or progressing", () => {
+    const mk = (i: number, w: number, reps: number) => ({
+      sessionId: `s${i}`,
+      date: day(i * 3),
+      dayMs: i,
+      machineId: "m",
+      weight: w,
+      reps,
+      seconds: null,
+      isTSC: false,
+      quality: 2 as const,
+      tutSeconds: null,
+    });
+    const down = detectPlateaus([mk(0, 100, 10), mk(1, 100, 9), mk(2, 100, 8), mk(3, 100, 7)], names);
+    expect(stallSentence(down[0])).not.toMatch(/slipping|progressing/);
+    expect(stallSentence(down[0])).toMatch(/reps 10 → 7/);
+    expect(plateauInsights(down).some((i) => /slipping/.test(i.title))).toBe(false);
   });
 });
 
