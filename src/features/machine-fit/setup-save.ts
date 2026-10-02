@@ -12,7 +12,11 @@
  *      is a copy (scripts/rebuild-machine-fit.ts can always rebuild it), and
  *      the rules may refuse it for a trainer covering at a studio that is not
  *      the client's home. The set-up is already saved by then.
- *   3. One journal entry. Caught, like every other equipment journal sync.
+ *   3. One journal entry for the Save, and one per machine note typed
+ *      (Oct 2 2026: a note about her on one machine lives in her journal,
+ *      carrying the machineId, so the machine sheet and the Notes page read
+ *      one list; it no longer goes on the document's old `machineNotes`).
+ *      Caught, like every other equipment journal sync.
  *
  * Same documents, same fields and the same audit rows as the Settings card
  * and the Equipment tab write (equipment/mutations.ts) — a machine set up
@@ -45,8 +49,12 @@ export interface CommitSetupArgs {
   reason: string;
   /** True in quick-entry mode: values are copied from the FileMaker chart. */
   legacy: boolean;
-  /** machineId → the notes already on the document, so a new one is appended rather than replacing them. */
-  existingNotes: Record<string, MachineNote[] | undefined>;
+  /**
+   * machineId → the notes already on the document. Kept for callers; since
+   * Oct 2 2026 a note typed here goes to her journal, so the old list is no
+   * longer appended to.
+   */
+  existingNotes?: Record<string, MachineNote[] | undefined>;
   /** machineId → the reviews already on the document (fitAcks), carried onto the rewritten index row. */
   existingAcks?: Record<string, Record<string, { value?: unknown } | undefined> | null | undefined>;
   origin?: JournalOrigin;
@@ -65,7 +73,6 @@ export async function commitSetupSave({
   plan,
   reason,
   legacy,
-  existingNotes,
   existingAcks = {},
   origin = "profile",
 }: CommitSetupArgs): Promise<CommitSetupResult> {
@@ -120,19 +127,6 @@ export async function commitSetupSave({
         newValue: `Current: ${entry.weight.current}`,
         reason: legacy ? "Copied from the FileMaker chart" : "Weight update",
       });
-    }
-
-    if (entry.note) {
-      const note: MachineNote = {
-        id: `${now.getTime()}-${entry.machineId}`,
-        content: legacy ? `From the FileMaker chart: ${entry.note}` : entry.note,
-        authorId: author.id,
-        authorName: author.fullName,
-        timestamp: iso,
-        isImportant: false,
-      };
-      data.machineNotes = [...(existingNotes[entry.machineId] ?? []), note];
-      fields.push("machineNotes");
     }
 
     batch.set(ref, data, { mergeFields: fields });
@@ -190,6 +184,31 @@ export async function commitSetupSave({
       );
     } catch (err) {
       console.error("[machine fit] journal sync failed", err);
+    }
+  }
+
+  // 3b. Each machine's note, in her journal with its machine (the one list).
+  for (const entry of plan.entries) {
+    const text = (entry.note ?? "").trim();
+    if (!text) continue;
+    try {
+      await createJournalEntry(
+        clientId,
+        activeStudioId || homeStudioId || "",
+        { id: author.id, initials: author.initials || "??", fullName: author.fullName },
+        {
+          kind: "equipment",
+          category: null,
+          body: legacy ? `From the FileMaker chart: ${text}` : text,
+          importance: "standard",
+          machineId: entry.machineId,
+          focusId: null,
+          sessionId: null,
+          origin,
+        },
+      );
+    } catch (err) {
+      console.error("[machine fit] machine note journal write failed", err);
     }
   }
 

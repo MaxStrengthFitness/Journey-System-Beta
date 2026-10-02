@@ -119,6 +119,14 @@
   min-width: 0;
 }
 
+/* Watch-outs save at once (Oct 2 2026): what was saved, and its Undo. */
+.bp-saved {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
 /* Build's three boxes: side by side when the CARD has room for them (it is
    a third of the row in landscape and half of it in portrait), else stacked. */
 .bp-edit__grid {

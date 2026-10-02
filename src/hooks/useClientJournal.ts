@@ -322,6 +322,29 @@ export async function archiveJournalEntries(entryIds: readonly string[]): Promis
 }
 
 /**
+ * Restore archived entries in ONE batch (Oct 2 2026: the Notes page's
+ * Archived view). The mirror of `archiveJournalEntries`: writes `isArchived`
+ * false and `updatedAt`, nothing else, so the same update rule allows it.
+ */
+export async function unarchiveJournalEntries(entryIds: readonly string[]): Promise<void> {
+  const ids = Array.from(new Set(entryIds.filter((id) => typeof id === "string" && id.trim())));
+  if (ids.length === 0) return;
+  try {
+    const batch = writeBatch(db);
+    for (const id of ids) {
+      batch.update(doc(db, "journalEntries", id), {
+        isArchived: false,
+        updatedAt: serverTimestamp(),
+      });
+    }
+    await batch.commit();
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, "journalEntries");
+    throw err;
+  }
+}
+
+/**
  * "Still matters" on the 60-day review (Operations → Overview): stamps the
  * note as looked at, which restarts its review clock. See
  * features/client-notes/mattering.ts, needsReview.
@@ -974,6 +997,11 @@ export interface UseClientJournalResult {
    * typechecks; the hook always returns it. Read it as `threads ?? []`.
    */
   threads?: NoteThread[];
+  /**
+   * Archived threads, for the Notes page's Archived view (Oct 2 2026).
+   * Optional on the TYPE only, like `threads`; read it as `archivedThreads ?? []`.
+   */
+  archivedThreads?: NoteThread[];
   focuses: ClientFocus[];
   criticalEntries: JournalEntry[];
   /**
@@ -1311,6 +1339,16 @@ export function useClientJournal({
    */
   const entries = useMemo(() => withoutThreadUpdates(allEntries), [allEntries]);
   const threads = useMemo(() => assembleThreads(allEntries), [allEntries]);
+  /**
+   * ARCHIVED threads (Oct 2 2026, AJ: archiving is "open to all, with an
+   * Archived view and Restore"). The stream already reads them (it is the
+   * same load), so the Notes page's Archived view costs no read. Grouped by
+   * the same one rule; an archived thread is archived whole, root and updates.
+   */
+  const archivedThreads = useMemo(
+    () => assembleThreads(native.filter((e) => e.isArchived)),
+    [native],
+  );
 
   const focuses = useMemo(() => {
     // Precedence: a real clientFocuses doc beats a legacy focusRecord, which
@@ -1383,6 +1421,7 @@ export function useClientJournal({
   return {
     entries,
     threads,
+    archivedThreads,
     focuses,
     criticalEntries,
     headsUpEntries,

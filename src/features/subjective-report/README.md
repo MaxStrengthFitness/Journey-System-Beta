@@ -5,7 +5,7 @@ Subjective Report, Sep 2026. Lives at `progressReports/{id}.subjective` —
 as a resumable draft the record's panel keeps open, and as finalized rounds.
 
 This folder is the data model, the question bank and the scoring. The form
-(`SubjectiveStep`), the panel's cards, client mode, the quick-log and the
+(the cards in `SubjectiveStep.tsx`), client mode, the quick-log and the
 coach dashboard (`SubjectiveDashboard`) sit beside them.
 
 ---
@@ -205,8 +205,8 @@ client that carries a `subjective` block — found with the existing
 | `questions.ts` | Every string and number from the document, plus enhancement labels. |
 | `scoring.ts` | Pure functions. `summarize()` is the entry point. |
 | `scoring.test.ts` | Pins the thresholds. `npx vitest run src/features/subjective-report`. |
-| `SubjectiveStep.tsx` | The whole form at once, plus the five cards the panel mounts one at a time (`CategoryCard`, `ProteinCard`, `HydrationCard`, `PainMapCard`, `StressCard`). |
-| `SubjectiveDashboard.tsx` | Coach dashboard + the client-copy variant (read-only; the Progress Report shows it as the Pulse snapshot). |
+| `SubjectiveStep.tsx` | The five cards the panel mounts one at a time (the all-at-once form went on Oct 2 2026: no door reached it) (`CategoryCard`, `ProteinCard`, `HydrationCard`, `PainMapCard`, `StressCard`). |
+| `SubjectiveDashboard.tsx` | Coach dashboard + the client-copy variant (read-only; the Progress Report shows it as the Pulse snapshot). The client copy is sentences only since Oct 2 2026 (AJ): the 0–96 overall and the coloured topic scores never print, whatever `includeCategoryScores` says; each comparable topic says which way it moved. |
 | `ui.tsx` | The small controls. `ScaleInput` and `Range10` are the Dial (§6). |
 | `subjective-report.css` | Scoped styles; light on `:root`, dark on `.dark`. Also the panel chrome (`.sra-*`), the quick-log (`.pq*`) and client mode (`.pcm*`). |
 | `PulseQuickLog.tsx` | Update Pulse: one area, one Dial, Done — the floor entry point (with `PulseQuickLogDialog`). |
@@ -404,9 +404,9 @@ is 48. "Save assessment" is now "Save this round".
 `PulseQuickLog` / `PulseQuickLogDialog` are what the floor opens (briefing,
 note sheet, post-session): pick an area → its statements on the Dial → Done,
 with "Open full Pulse" as the escape hatch for the lists. `QuickCheckInDialog`
-(the whole form as a sheet, saved as one finalized round) stays for the
-flows that still want it, retitled Pulse and running on the same rebuilt
-`SubjectiveStep`.
+(the whole form as a sheet) was retired in the reporting round, and the
+all-at-once `SubjectiveStep` form it ran on had no door left and was deleted
+on Oct 2 2026; the cards it was built from remain.
 
 ### 6.7 Tests
 

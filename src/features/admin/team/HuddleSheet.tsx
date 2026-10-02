@@ -49,7 +49,7 @@ export function BriefHuddle({
   onClose: () => void;
 }) {
   const recognised = useHuddleLines(studioId, today);
-  const { announcements } = useHubAnnouncements(authTrainer);
+  const { announcements } = useHubAnnouncements(authTrainer, studioId);
   const items = useMemo(
     () =>
       huddleAgenda({

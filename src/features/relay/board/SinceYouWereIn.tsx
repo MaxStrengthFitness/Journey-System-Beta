@@ -59,7 +59,7 @@ const firstName = (name: string) => name.trim().split(/\s+/)[0] || name;
 export function SinceYouWereIn({ rows, jobs, resolved, playbook }: SinceYouWereInProps) {
   const relay = useRelay();
   const { studios } = useActiveStudio();
-  const { announcements, acked } = useHubAnnouncements(relay.authTrainer);
+  const { announcements, acked } = useHubAnnouncements(relay.authTrainer, relay.studioId);
   const [acking, setAcking] = useState<string | null>(null);
   const ack = async (id: string) => {
     setAcking(id);

@@ -206,6 +206,30 @@ describe("Firestore Security Rules", () => {
     await assertFails(p);
   });
 
+  // Add Client is a temporary profile any trainer can start (Oct 2 2026).
+  const temporaryClient = (studioId: string) => ({
+    firstName: "Walk",
+    lastName: "In",
+    isActive: true,
+    remainingSessions: 0,
+    homeStudioId: studioId,
+    requiresConsultation: true,
+    provisional: true,
+    provisionalSince: "2026-10-02T14:00:00.000Z",
+    provisionalBy: "trainerB",
+    provisionalReason: "New client, not in Mindbody yet",
+  });
+
+  it("lets a Life Transformer start a temporary profile at their own studio", async () => {
+    const db = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertSucceeds(addDoc(collection(db, "clients"), temporaryClient("studioB")));
+  });
+
+  it("refuses a temporary profile at a studio the trainer does not work at", async () => {
+    const db = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(addDoc(collection(db, "clients"), temporaryClient("studioA")));
+  });
+
   // Cross-studio client tests
   it("denies trainerB from reading clientA if no cross-studio approval exists", async () => {
     // Client A is in studioA

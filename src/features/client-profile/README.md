@@ -344,7 +344,7 @@ same order, and the literal `grid-cols-4` equal to the number of tabs).
 | `profile-nav.ts` | the model — `ProfileLocation`, the reducer, the legacy map, the one-time handoff (`openProfileAt` / `takeStoredLocation`: a client always opens on Journey unless another screen hands off a location once), and (client codex, Sep 2026) the record's pages, the anchor registry and `SECTION_TO_PAGE`. Pure, tested in `profile-nav.test.ts` |
 | `useProfileNav.ts` | the reducer plus the handoff read on mount and the default-segment context |
 | `ProfileSubnav.tsx` | the one sub-toggle all three consolidated tabs use, and the two sticky measurements; `wrap`, `idPrefix` and `flagTone` for the codex's seven pages |
-| `ProgrammingTab.tsx` | shell — Routine A / Routine B / All Machines / Setup |
+| `ProgrammingTab.tsx` | shell — Routine A / Routine B / All Machines / Setup. All Machines, Setup and their counts read THIS studio's floor in the studio's order (`floorMachines`, the profile's `studioFloorOf`; Oct 2 2026), and so do the Journey grid's rows, which also keep any machine she has history on that the floor no longer has (`floorWithHistoryMachines`, `lib/floor-machines.ts`) |
 | `ClinicalHistoryTab.tsx` | shell — Calendar / Sessions / Deep Dive (view id `trends`) / Reports, and the clinical strip (its "Edit in Body & Pulse" opens the watch-outs card) |
 | `useProgressReports.ts` | the profile's one progress-reports listener (newest 50) and whether it answered for THIS client — the banner, the Archive's shelf and the codex's Pulse history all read it. Render test: `useProgressReports.render.test.tsx` |
 | `features/client-codex/` | Notes & Profile — the codex shell (`ClientCodex`) and its seven pages. Read its README |

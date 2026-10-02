@@ -8,6 +8,7 @@
  * could not be loaded rather than pretending nobody shared anything.
  */
 
+import { isDemoStudioId } from "../demo-mode/is-demo";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { collectionGroup, limit, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../firebase";
@@ -50,11 +51,18 @@ export interface SharedMachinesState {
   error: string | null;
 }
 
-/** Every studio machine listed in the database. One listener, while the database is open. */
-export function useSharedMachines(enabled: boolean): SharedMachinesState {
-  const [state, setState] = useState<SharedMachinesState>({ machines: [], loading: enabled, error: null });
+/**
+ * Every studio machine listed in the database. One listener, while the database is open.
+ *
+ * THE REALM RULE (Oct 2 2026, AJ: Demo Mode sees no other studio's shared
+ * machines): with `studioId` Demo Mode, nothing is read at all; anywhere
+ * else, a machine Demo Mode shared never shows.
+ */
+export function useSharedMachines(enabled: boolean, studioId?: string | null): SharedMachinesState {
+  const on = enabled && !isDemoStudioId(studioId ?? null);
+  const [state, setState] = useState<SharedMachinesState>({ machines: [], loading: on, error: null });
   useEffect(() => {
-    if (!enabled) {
+    if (!on) {
       setState({ machines: [], loading: false, error: null });
       return;
     }
@@ -66,7 +74,7 @@ export function useSharedMachines(enabled: boolean): SharedMachinesState {
         for (const d of snap.docs) {
           const data = d.data() as Partial<RosterEntryCustom> & { sharedStudioName?: string };
           const studioId = studioFromPath(d.ref as never);
-          if (!studioId || data.source !== "custom" || !data.definition?.name) continue;
+          if (!studioId || isDemoStudioId(studioId) || data.source !== "custom" || !data.definition?.name) continue;
           const entry = { ...data, machineId: d.id, studioId, status: data.status ?? "active" } as RosterEntryCustom;
           const resolved = resolveMachine(entry);
           if (!resolved) continue;
@@ -87,7 +95,7 @@ export function useSharedMachines(enabled: boolean): SharedMachinesState {
         setState({ machines: [], loading: false, error: "Couldn't load the machines studios have shared." });
       },
     );
-  }, [enabled]);
+  }, [on]);
   const nameOf = useStudioNameOf();
   return useMemo(
     () => ({

@@ -49,6 +49,7 @@ import {
 import { auth, db } from "../../firebase";
 import type { HubAnnouncement, Trainer } from "../../types";
 import {
+  announcementsInRealm,
   unreadFor,
   visibleAnnouncements,
 } from "../admin/announcements/audience";
@@ -77,6 +78,8 @@ const millisOf = (v: unknown): number | null => {
 
 export function useHubAnnouncements(
   trainer: Trainer | null | undefined,
+  /** The studio this iPad is in: the realm rule picks the notices by it (Oct 2 2026). */
+  activeStudioId: string | null = null,
 ): UseHubAnnouncementsResult {
   const [all, setAll] = useState<HubAnnouncement[]>([]);
 
@@ -107,9 +110,11 @@ export function useHubAnnouncements(
    * not the next second - which is the right trade: a timer ticking every
    * minute to retire a 24-hour message would re-render the header forever.
    */
+  // The realm rule: inside Demo Mode, Demo Mode's notices only; outside it,
+  // never one addressed only to Demo Mode (announcementsInRealm).
   const announcements = useMemo(
-    () => visibleAnnouncements(all, trainer, Date.now()),
-    [all, trainer],
+    () => announcementsInRealm(visibleAnnouncements(all, trainer, Date.now()), activeStudioId),
+    [all, trainer, activeStudioId],
   );
 
   /* This person's read-marks (the cost plan, Sep 26 2026, D5): one document

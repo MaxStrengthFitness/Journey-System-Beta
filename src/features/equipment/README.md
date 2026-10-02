@@ -166,8 +166,6 @@ ClientProfileView                                  (existing, one line changes)
         │   └── NoteRow × n
         └── ChangeHistory                          settingHistory, newest first
 
-SetupPromptDialog                                  used by WorkoutTrackerView
-└── (SetupGuide + SettingsEditor)                  same components, in a Dialog
 ```
 
 ### 3.1 Files
@@ -189,7 +187,6 @@ SetupPromptDialog                                  used by WorkoutTrackerView
 | `MachineNotes.tsx` | Notes list + composer |
 | `NoteIndicator.tsx` | The three-state icon |
 | `ChangeHistory.tsx` | `machines/{id}/settingHistory` for this client |
-| `SetupPromptDialog.tsx` | In-session prompt (phase 6) |
 | `MachineUsageCard.tsx` | First / times / last performed + progression (§3.7) |
 | `useMachineStats.ts` | Reads `client.machineStats`; one-time history backfill |
 | `ClientMachineWindow.tsx` | The profile's one machine window (§3.8) |
@@ -265,14 +262,11 @@ trainer having to say.
 
 ### 3.5 In-session prompt (phase 6)
 
-`WorkoutTrackerView` already knows both halves of the condition: it holds
-`clientMachineSettings` and it knows which machine the trainer just opened
-(`editingWeightMachineId`). When that machine has no settings, no weights and no
-prior log — genuinely "Not Performed" — `SetupPromptDialog` opens *before* the
-performance entry HUD, showing the setup guide and the ghosted settings editor.
-Saving drops the trainer straight into the HUD; "Skip" does the same without
-writing. It fires once per machine per session (`promptedRef`), so dismissing it
-does not turn into a loop.
+Retired. `SetupPromptDialog` opened before the old performance entry pop-up
+on a machine with nothing recorded; when that pop-up lost its trigger the
+prompt died with it, and both files were deleted on Oct 2 2026. The machine
+sheet's own first-time section (`firstTime`, "Nothing recorded on this
+machine" unless her whole story is in Journey) does the job now.
 
 ### 3.6 Deliberately left for later
 
@@ -322,8 +316,8 @@ no reason, no `settingHistory`, no journal entry. It now opens
 `ClientMachineWindow`: the MachineSheet frame (centred, 88dvh, fixed header,
 40px close, body scrolls) around **this** tab's `MachineDetailPanel`, built
 for the one machine with `toEquipmentMachines`. Same cards, same writes
-(`mutations.ts`, journalled with origin `"profile"`). The modal file stays
-only because the full-screen `WorkoutChartGrid` still uses it.
+(`mutations.ts`, journalled with origin `"profile"`). The modal file went
+with the full-screen chart that last used it (Oct 2 2026: neither had a door).
 
 - **Cost.** Nothing until the first open; from then the body stays mounted, so
   the catalog listener is opened once per profile, not once per tap. Usage

@@ -29,6 +29,7 @@
 import type { JournalEntry, JournalOrigin } from "../../types/journal";
 import {
   archiveJournalEntries,
+  unarchiveJournalEntries,
   createJournalEntry,
   resolveJournalEntry,
   type JournalAuthor,
@@ -109,6 +110,30 @@ export function closeThread(rootId: string): Promise<void> {
   return resolveJournalEntry(rootId, true);
 }
 
+/**
+ * "No longer matters", with an optional one-line reason (Oct 2 2026, AJ: "A
+ * one-line reason, optional"). The reason is written on the thread first, as
+ * an ordinary update ("No longer matters: she moved to mornings."), so the
+ * next trainer reading the thread sees why it closed; then the root is
+ * stamped closed. A blank reason closes it with nothing added. The reason is
+ * kept to one line: newlines become spaces.
+ */
+export async function closeThreadNoLongerMatters(
+  root: Pick<JournalEntry, "id" | "clientId" | "studioId" | "kind" | "category" | "machineId">,
+  author: JournalAuthor | null,
+  reason?: string | null,
+): Promise<void> {
+  const line = noLongerMattersLine(reason);
+  if (line && author) await addThreadUpdate(root, author, line);
+  await closeThread(root.id);
+}
+
+/** The update a reason becomes, or null for no reason. */
+export function noLongerMattersLine(reason?: string | null): string | null {
+  const one = (reason ?? "").replace(/\s+/g, " ").trim();
+  return one ? `No longer matters: ${one}` : null;
+}
+
 /** It flared again. The same thread picks up where it left off. */
 export function reopenThread(rootId: string): Promise<void> {
   return resolveJournalEntry(rootId, false);
@@ -121,6 +146,18 @@ export function reopenThread(rootId: string): Promise<void> {
  * document would refuse the whole batch.
  */
 export function archiveThread(thread: Pick<NoteThread, "root" | "updates">): Promise<void> {
-  const ids = [thread.root, ...thread.updates].filter((e) => e?.id && !e.isLegacy).map((e) => e.id);
-  return archiveJournalEntries(ids);
+  return archiveJournalEntries(writableIds(thread));
+}
+
+/**
+ * Restore an archived thread (Oct 2 2026, the Notes page's Archived view):
+ * the root and every update come back together, so nothing is lost and no
+ * update returns as a stray note. Anyone may restore, as anyone may archive.
+ */
+export function unarchiveThread(thread: Pick<NoteThread, "root" | "updates">): Promise<void> {
+  return unarchiveJournalEntries(writableIds(thread));
+}
+
+function writableIds(thread: Pick<NoteThread, "root" | "updates">): string[] {
+  return [thread.root, ...thread.updates].filter((e) => e?.id && !e.isLegacy).map((e) => e.id);
 }

@@ -3,7 +3,6 @@ import {
   collection,
   addDoc,
   updateDoc,
-  deleteDoc,
   doc,
   setDoc,
   serverTimestamp,
@@ -96,24 +95,11 @@ export function useClientMutations(
     }
   };
 
-  const handleDeleteClient = async (clientId: string) => {
-    setIsMutating(true);
-    try {
-      await deleteDoc(doc(db, "clients", clientId));
-      setSelectedClientId(null);
-      setCurrentView("clients");
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `clients/${clientId}`);
-      throw error;
-    } finally {
-      setIsMutating(false);
-    }
-  };
-
+  // No client delete (Oct 2 2026): Mindbody owns people, and the dialog that
+  // offered one had no door. A client who leaves goes inactive in Mindbody.
   return {
     isMutating,
     startUnassignedSession,
     updateClient,
-    handleDeleteClient,
   };
 }

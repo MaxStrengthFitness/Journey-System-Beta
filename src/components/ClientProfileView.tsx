@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { LoadingMark } from "./LoadingMark";
-import { createPortal } from "react-dom";
 import {
   collection,
   onSnapshot,
@@ -90,7 +89,6 @@ import {
   Studio,
 } from "../types";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
-import { WorkoutChartGrid } from "./WorkoutChartGrid";
 import { useToast } from "../contexts/ToastContext";
 import { runMasterSync } from "../lib/mindbody-master-sync";
 import { mindbodyIdOf } from "../lib/mindbody-id";
@@ -113,7 +111,7 @@ import {
 } from "../lib/utils";
 import { useActiveSessionCheck } from "../hooks/useActiveSessionCheck";
 import { useStudioMachines } from "../hooks/useStudioMachines";
-import { studioFloorOf } from "../lib/floor-machines";
+import { floorWithHistoryMachines, studioFloorOf } from "../lib/floor-machines";
 import { resolveMachineOrder } from "../data/machine-display-order";
 import {
   RecentJourneyView,
@@ -147,6 +145,7 @@ import { sessionsSplit } from "../features/client-admin/account";
 import { recordStudioIdOf } from "../features/client-codex/access";
 import { hasImportantMachineNote } from "../features/equipment/machine-notes";
 import { useMachineJournal } from "../features/equipment/useMachineJournal";
+import { isSuperAdminRole } from "../features/admin/franchise/scope";
 
 /** Sessions per Firestore page for the profile's history (see the Journey tab). */
 /* Fifty at a time (audit, Sep 13): "Older really needs to show us their
@@ -161,7 +160,6 @@ export function ClientProfileView({
   machines,
   authTrainer,
   trainers,
-  onDelete,
   onSelectReport,
   onNewReport,
   setView,
@@ -178,7 +176,6 @@ export function ClientProfileView({
   machines: Machine[];
   authTrainer?: Trainer | null;
   trainers: Trainer[];
-  onDelete: (id: string) => void;
   onSelectReport: (id: string) => void;
   /** Start a NEW progress report for this client — never reopen the last one. */
   onNewReport: () => void;
@@ -267,7 +264,6 @@ export function ClientProfileView({
   >(null);
   const [toggleBReason, setToggleBReason] = useState<string>("");
   const [isSavingToggle, setIsSavingToggle] = useState(false);
-  const [showFullChart, setShowFullChart] = useState(false);
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
   const [lastVisibleSession, setLastVisibleSession] = useState<any>(null);
   const [hasMoreSessions, setHasMoreSessions] = useState(true);
@@ -314,6 +310,12 @@ export function ClientProfileView({
   // The studio's floor for the codex's Watch-outs: its own machines and their
   // lineage, which the app-wide `machines` list has neither of.
   const codexFloor = useMemo(() => studioFloorOf(studioFloor, machines ?? []), [studioFloor, machines]);
+  // The machine window opens any machine the grid lists: the floor's own
+  // version first (its name and dials), then every other machine by id.
+  const machineWindowMachines = useMemo(
+    () => floorWithHistoryMachines(codexFloor, machines ?? [], (machines ?? []).map((m) => m.id ?? "")),
+    [codexFloor, machines],
+  );
 
   // Discard Session (round: In-Progress dropdown) — lets a trainer scrap
   // someone else's abandoned/stuck in-progress session right from the
@@ -669,7 +671,6 @@ export function ClientProfileView({
     return sessionsSplit(client, buildPackageNameIndex(renewalSettings.settings));
   }, [client, renewalSettings.loading, renewalSettings.error, renewalSettings.forStudioId, renewalSettings.settings]);
 
-  const [isDeleting, setIsDeleting] = useState(false);
   /** The machine open in the one machine window (Journey grid, Routine A / B rows). */
   const [machineWindowId, setMachineWindowId] = useState<string | null>(null);
 
@@ -1129,7 +1130,10 @@ export function ClientProfileView({
      query as the record's journal, so one listener. */
   const machineJournal = useMachineJournal(client.id ?? null);
   const journeyGridRows = useMemo(() => {
-    const ordered = [...machines].sort(
+    // THIS studio's floor, its own machines included, the same list the
+    // Active Session draws (Oct 2 2026) - not the company catalog - then any
+    // machine she has history on that the floor no longer has.
+    const floor = [...codexFloor].sort(
       (a, b) =>
         resolveMachineOrder(
           a.id,
@@ -1141,6 +1145,11 @@ export function ClientProfileView({
           b.order,
           b.id ? studioFloorById[b.id]?.order : undefined,
         ),
+    );
+    const ordered = floorWithHistoryMachines(
+      floor,
+      machines,
+      allLogs.map((l) => l.machineId),
     );
     const currentStudio = studios?.find((st) => st.id === activeStudioId);
     // Marker 7: the Big Five star is gone from the grid. Every machine in
@@ -1180,6 +1189,7 @@ export function ClientProfileView({
     });
   }, [
     machines,
+    codexFloor,
     allLogs,
     clientSettings,
     studioFloorById,
@@ -1220,10 +1230,14 @@ export function ClientProfileView({
     () => ({
       onOpenPlanner: () => setView("studio-tasks"),
       onOpenReports: () => nav.go({ tab: "clinical", view: "reports" }),
-      onOpenMigrationHub: () => {
-        nav.setTab("journey");
-        window.dispatchEvent(new CustomEvent("open-bulk-import"));
-      },
+      // The chart importer (OCR) is administrators' only since Oct 2 2026:
+      // Journey no longer waits on FileMaker, so a trainer is not offered it.
+      onOpenMigrationHub: isSuperAdminRole(authTrainer?.role)
+        ? () => {
+            nav.setTab("journey");
+            window.dispatchEvent(new CustomEvent("open-bulk-import"));
+          }
+        : undefined,
       onOpenMachine: openMachineWindow,
       onOpenSetup: () => nav.go({ tab: "programming", view: "setup" }),
       priorHistoryDoor,
@@ -1231,7 +1245,7 @@ export function ClientProfileView({
     }),
     // nav's callbacks are stable (useCallback with no deps in useProfileNav).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [setView, openMachineWindow, nav.go, nav.setTab, priorHistoryDoor, splitOfSessions],
+    [setView, openMachineWindow, nav.go, nav.setTab, priorHistoryDoor, splitOfSessions, authTrainer?.role],
   );
   // What Programming already holds, for Body & Pulse's floor (her notes per
   // machine, and machine fit's "clients built like her") — no read of its own.
@@ -1667,6 +1681,7 @@ export function ClientProfileView({
             clientId={clientId || ""}
             routines={routines}
             machines={machines}
+            floorMachines={codexFloor}
             clientSettings={clientSettings}
             clientBodyWeight={parseInt(client?.weight || "150", 10)}
             allLogs={allLogs}
@@ -1939,83 +1954,13 @@ export function ClientProfileView({
         </DialogContent>
       </Dialog>
 
-      {showFullChart &&
-        clientId &&
-        createPortal(
-          <WorkoutChartGrid
-            clientId={clientId}
-            clients={clients}
-            machines={machines}
-            routines={routines}
-            onBack={() => setShowFullChart(false)}
-            user={user}
-            preloadedSessions={sessions}
-            preloadedLogs={allLogs}
-            onLoadMoreHistory={handleLoadMoreHistory}
-            studios={studios}
-            activeStudioId={activeStudioId}
-          />,
-          document.body,
-        )}
-
-      <Dialog open={isDeleting} onOpenChange={setIsDeleting}>
-        <DialogContent
-          showCloseButton={false}
-          className="rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-2xl p-0 overflow-hidden max-w-sm bg-card text-foreground"
-        >
-          <div className="bg-red-600 p-8 flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center animate-pulse">
-              <AlertCircle className="w-8 h-8" />
-            </div>
-            <div className="text-center">
-              <h2 className="text-2xl font-bold uppercase italic tracking-tighter leading-none">
-                Confirm Deletion
-              </h2>
-              <p className="text-[11px] font-medium uppercase tracking-wide opacity-70 mt-2">
-                This action is permanent
-              </p>
-            </div>
-          </div>
-          <div className="p-8 space-y-6 text-center bg-card">
-            <p className="text-sm font-medium text-muted-foreground leading-relaxed">
-              Are you absolutely sure you want to delete{" "}
-              <span className="font-bold text-foreground">
-                {" "}
-                {client.firstName} {client.lastName}'s
-              </span>{" "}
-              profile? All historical session data and machine settings will be
-              lost.
-            </p>
-            <div className="flex flex-col gap-3">
-              <Button
-                variant="destructive"
-                className="h-14 rounded-full font-bold uppercase italic tracking-widest text-xs shadow-xl shadow-red-200"
-                onClick={() => {
-                  if (client.id) onDelete(client.id);
-                  setIsDeleting(false);
-                }}
-              >
-                Delete Everything
-              </Button>
-              <Button
-                variant="ghost"
-                className="h-12 rounded-full font-bold text-muted-foreground"
-                onClick={() => setIsDeleting(false)}
-              >
-                Go Back
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <ClientMachineWindow
         open={!!machineWindowId}
         onClose={closeMachineWindow}
         clientId={clientId || ""}
         client={client}
         machineId={machineWindowId}
-        machines={machines}
+        machines={machineWindowMachines}
         clientSettings={clientSettings}
         allLogs={allLogs}
         sessions={sessions}

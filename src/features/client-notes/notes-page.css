@@ -867,3 +867,14 @@
     transition: none;
   }
 }
+
+/* The Archived view (Oct 2 2026): each archived thread's row, then Restore. */
+.nx-archived {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.nx-archived__acts {
+  display: flex;
+  justify-content: flex-end;
+}

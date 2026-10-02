@@ -43,6 +43,12 @@ describe("networkItems", () => {
     expect(out.map((i) => i.id)).toEqual(["n", "t-new", "t-old"]);
   });
 
+  it("keeps Demo Mode in its realm: nothing from other studios inside it, nothing from it outside (Oct 2 2026)", () => {
+    const items = [tip("real", "solon", 1), tip("practice", "demo-studio", 2)];
+    expect(networkItems(items, "demo-studio")).toEqual([]);
+    expect(networkItems(items, "westlake").map((i) => i.id)).toEqual(["real"]);
+  });
+
   it("names the studios it came from", () => {
     expect(studiosLine([tip("1", "Solon", 1)])).toBe("From Solon");
     expect(studiosLine([tip("1", "Solon", 1), tip("2", "Westlake", 1)])).toBe("From Solon and Westlake");

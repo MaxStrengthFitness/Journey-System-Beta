@@ -115,7 +115,6 @@ import {
 } from "../lib/utils";
 import { toFloorMachines, isPerSideMachine } from "../lib/floor-machines";
 import { completeWorkoutSession } from "../lib/sync-utils";
-import { getLatestTargetWeight } from "../lib/historical-utils";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -126,7 +125,6 @@ import {
 } from "@/components/ui/dialog";
 
 import { useActiveStudio } from "../contexts/ActiveStudioContext";
-import { SetupPromptDialog } from "../features/equipment";
 import { useStudioMachines } from "../hooks/useStudioMachines";
 import { resolveMachineOrder } from "../data/machine-display-order";
 import {
@@ -224,8 +222,6 @@ import { saveNextWeight } from "../features/next-weight/store";
 import { machineNotesFor } from "../features/equipment/machine-notes";
 import { useMachineJournal } from "../features/equipment/useMachineJournal";
 import { sessionNoteStudioId } from "../features/client-notes/note-studio";
-import { PerformanceEntryDialog } from "../features/tracker/PerformanceEntryDialog";
-import { ExerciseHistoryDialog } from "../features/tracker/ExerciseHistoryDialog";
 import { ClientSelectionDialog } from "../features/tracker/ClientSelectionDialog";
 type RoutineType = "A" | "B" | "Free";
 
@@ -250,8 +246,6 @@ export function WorkoutTrackerView({
   user,
   setView,
   setSelectedClientId,
-  showClientPicker,
-  setShowClientPicker,
   onStartNewClientOnboarding,
   authTrainer,
   isSyncing,
@@ -272,10 +266,7 @@ export function WorkoutTrackerView({
   user: FirebaseUser;
   setView: (v: View, data?: { isIntroSession?: boolean }) => void;
   setSelectedClientId: (id: string | null) => void;
-  showClientPicker: boolean;
-  setShowClientPicker: (v: boolean) => void;
   onStartNewClientOnboarding: (v: string) => void;
-  onOpenInfo: (m: Machine) => void;
   authTrainer: Trainer | null;
   isSyncing: boolean;
   setIsSyncing: (v: boolean) => void;
@@ -427,47 +418,6 @@ export function WorkoutTrackerView({
   // The 90-day assessment, opened mid-session. See the panel at the bottom
   // of this file for why it is a slide-over and not a screen.
   const [isShowingAssessment, setIsShowingAssessment] = useState(false);
-  const [editingWeightMachineId, setEditingWeightMachineId] = useState<
-    string | null
-  >(null);
-
-  // ── In-session setup prompt ──────────────────────────────────────────
-  // A machine this client has never performed needs a setup, not an empty
-  // weight field. When the trainer opens one, show the guide first.
-  //
-  // `setupPromptedRef` makes it fire ONCE per machine per mount: dismissing
-  // the prompt must not turn into a loop every time the HUD is reopened, and a
-  // trainer who chose "Skip for now" has already answered the question.
-  const [setupPromptMachineId, setSetupPromptMachineId] = useState<
-    string | null
-  >(null);
-  const setupPromptedRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    const machineId = editingWeightMachineId;
-    if (!machineId || setupPromptedRef.current.has(machineId)) return;
-
-    const preset = clientMachineSettings[machineId];
-    const hasSettings = Boolean(
-      preset?.settings && Object.keys(preset.settings).length > 0,
-    );
-    const hasWeights =
-      preset?.startingWeight != null || preset?.currentWeight != null;
-    // Log keys are `${sessionId}_${machineId}` with an optional `_Left`/`_Right`
-    // suffix, so match on the machine id as a whole segment rather than a
-    // substring — "leg_press" must not match "leg_press_unilateral".
-    const hasHistory = Object.keys(logs).some((k) => {
-      const rest = k.slice(k.indexOf("_") + 1);
-      return rest === machineId || rest.startsWith(`${machineId}_`);
-    });
-
-    if (hasSettings || hasWeights || hasHistory) return;
-
-    setupPromptedRef.current.add(machineId);
-    setSetupPromptMachineId(machineId);
-  }, [editingWeightMachineId, clientMachineSettings, logs]);
-  const [isStaticHoldOverride, setIsStaticHoldOverride] = useState(false);
-  const [historyMachineId, setHistoryMachineId] = useState<string | null>(null);
   const [showAllMachines, setShowAllMachines] = useState(false);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
   const [isPreSessionMode, setIsPreSessionMode] = useState(false);
@@ -2348,9 +2298,6 @@ export function WorkoutTrackerView({
     setSelectedClientId(null);
     setView("clients");
   };
-  const [editingWeightSide, setEditingWeightSide] = useState<
-    "Left" | "Right" | undefined
-  >(undefined);
 
   const updateLog = (
     sessionId: string,
@@ -3450,182 +3397,6 @@ export function WorkoutTrackerView({
       {currentSession && (
         <SendStatusStrip online={sendState.online} unsentForMs={sendState.unsentForMs} />
       )}
-      {/* Machine Performance Entry Dialog */}
-      {editingWeightMachineId &&
-        currentSession &&
-        (() => {
-          const theMachine = floorMachines.find(
-            (m) => m.id === editingWeightMachineId,
-          )!;
-          const isTorso = theMachine.name
-            .toLowerCase()
-            .includes("torso rotation");
-
-          let sideToUse = editingWeightSide;
-          if (isTorso) sideToUse = undefined; // We handle both sides in the dialog
-
-          const keyL = `${currentSession.id}_${editingWeightMachineId}_Left`;
-          const keyR = `${currentSession.id}_${editingWeightMachineId}_Right`;
-          const keyDef = `${currentSession.id}_${editingWeightMachineId}${sideToUse ? "_" + sideToUse : ""}`;
-
-          const logL = isTorso ? logs[keyL] : logs[keyDef];
-          const logR = isTorso ? logs[keyR] : undefined;
-
-          let currentWeight =
-            (isTorso ? logL?.weight || logR?.weight : logL?.weight) || "0";
-          const clientId = currentSession.clientId || selectedClient?.id;
-          if (currentWeight === "0" && clientId) {
-            currentWeight = getLatestTargetWeight(
-              clientId,
-              editingWeightMachineId,
-              sessions,
-              Object.values(logs),
-              sideToUse,
-            );
-          }
-
-          const currentRepsLeft = logL
-            ? logL?.isStaticHold
-              ? logL.seconds || ""
-              : logL?.reps || ""
-            : "";
-          const currentRepsRightStr = logR
-            ? logR?.isStaticHold
-              ? logR.seconds || ""
-              : logR?.reps || ""
-            : "";
-
-          return (
-            <PerformanceEntryDialog
-              machine={theMachine}
-              side={sideToUse}
-              isTorsoFull={isTorso}
-              machineSettings={clientMachineSettings[editingWeightMachineId]}
-              currentWeight={currentWeight}
-              currentReps={currentRepsLeft}
-              currentRepsRight={isTorso ? currentRepsRightStr : undefined}
-              currentQuality={logL?.repQuality || 0}
-              pastMachineLogs={sessions
-                .filter((s) =>
-                  currentSession ? s.id !== currentSession.id : true,
-                )
-                .map((s) => {
-                  const log =
-                    logs[
-                      `${s.id}_${editingWeightMachineId}${isTorso ? "_Left" : sideToUse ? "_" + sideToUse : ""}`
-                    ] || logs[`${s.id}_${editingWeightMachineId}`];
-                  return log && log.weight ? { log, session: s } : null;
-                })
-                .filter(
-                  (x): x is { log: ExerciseLog; session: WorkoutSession } =>
-                    Boolean(x),
-                )
-                .slice(0, 3)}
-              isStaticHold={isStaticHoldOverride || logL?.isStaticHold}
-              onClose={() => {
-                setEditingWeightMachineId(null);
-                setEditingWeightSide(undefined);
-                setIsStaticHoldOverride(false);
-              }}
-              onSave={async (
-                weight,
-                repsOrSeconds,
-                quality,
-                isHold,
-                side,
-                repsRightStr,
-              ) => {
-                /**
-                 * `isStaticHold` and `isTSC` both mean "this set is timed", and
-                 * hasRequiredCount treats them as an OR. Writing only one of
-                 * them leaves the other stuck true, so a set switched back to
-                 * reps is still judged as a hold — with `seconds` just zeroed —
-                 * and can never satisfy the finish guard. They move together.
-                 *
-                 * One combined write per side rather than five sequential ones:
-                 * updateLogMultiple also stamps a session heartbeat, so the old
-                 * version fired five Firestore writes per set saved (ten for a
-                 * torso rotation).
-                 */
-                const performanceFields = (
-                  hold: boolean,
-                  count: string,
-                ): Partial<ExerciseLog> => ({
-                  weight,
-                  // The dialog's `quality` is a plain number (0 = none yet);
-                  // the stored field is 1 | 2 | 3. canSave already refuses 0,
-                  // so anything reaching here is a real rating.
-                  repQuality: quality as ExerciseLog["repQuality"],
-                  isStaticHold: hold,
-                  isTSC: hold,
-                  seconds: hold ? count : "0",
-                  reps: hold ? "0" : count,
-                });
-
-                if (isTorso) {
-                  // Both sides share the weight and quality, each keeps its own count.
-                  updateLogMultiple(
-                    currentSession.id!,
-                    editingWeightMachineId,
-                    performanceFields(isHold, repsOrSeconds),
-                    "Left",
-                  );
-                  updateLogMultiple(
-                    currentSession.id!,
-                    editingWeightMachineId,
-                    performanceFields(isHold, repsRightStr || "0"),
-                    "Right",
-                  );
-                } else {
-                  updateLogMultiple(
-                    currentSession.id!,
-                    editingWeightMachineId,
-                    performanceFields(isHold, repsOrSeconds),
-                    side,
-                  );
-                }
-
-                setEditingWeightMachineId(null);
-                setEditingWeightSide(undefined);
-                // Must be cleared here too, not only in onClose: a stale `true`
-                // opens the next machine's dialog in hold mode, storing its rep
-                // count as `seconds` with reps "0".
-                setIsStaticHoldOverride(false);
-              }}
-            />
-          );
-        })()}
-
-      {/* First-time setup prompt — opens over the Entry HUD when the trainer
-          reaches a machine this client has never performed. Same SettingsCard
-          and SetupGuide the Equipment tab uses, so the ghosting rules and the
-          journal sync behave identically; only `origin` differs. */}
-      {setupPromptMachineId && (
-        <SetupPromptDialog
-          open
-          coverage={clientCoverage}
-          machine={floorMachines.find((m) => m.id === setupPromptMachineId) || null}
-          clientId={clientId || ""}
-          clientSettings={clientMachineSettings}
-          author={
-            authTrainer
-              ? {
-                  // The Auth uid: the journalEntries rule pins authorId to it,
-                  // and it differs from authTrainer.id on older accounts.
-                  id: user.uid,
-                  fullName:
-                    authTrainer.fullName || authTrainer.initials || "Unknown",
-                  initials: authTrainer.initials,
-                }
-              : null
-          }
-          sessionId={currentSession?.id || null}
-          sessionLink={sessionLinkOf(currentSession, studioTodayKey())}
-          onClose={() => setSetupPromptMachineId(null)}
-          onError={toastError}
-          clientHomeStudioId={selectedClient?.homeStudioId ?? null}
-        />
-      )}
 
       {/* THE MACHINE SHEET. One target, one sheet.
 
@@ -3680,29 +3451,6 @@ export function WorkoutTrackerView({
         onClose={() => setSheetMachineId(null)}
         onError={toastError}
       />
-
-      {/* Exercise History Dialog */}
-      {historyMachineId && clientId && (
-        <ExerciseHistoryDialog
-          clientId={clientId}
-          machine={floorMachines.find((m) => m.id === historyMachineId)!}
-          onClose={() => setHistoryMachineId(null)}
-          user={user}
-        />
-      )}
-
-      {/* Machine Details Modal */}
-      {showClientPicker && (
-        <ClientSelectionDialog
-          clients={clients}
-          onSelect={(id) => {
-            setSelectedClientId(id);
-            setShowClientPicker(false);
-            setView("workouts");
-          }}
-          onClose={() => setShowClientPicker(false)}
-        />
-      )}
 
       {/* Client Selection Dialog (for assigning) */}
       <ClientSelectionDialog

@@ -89,7 +89,7 @@ export function useLearningEntries({
   // A floor with nothing on it (no roster, and no app list passed in) falls
   // back to the catalog, so a picker is never left with no machines at all.
   const catalog = onFloor && (floor.length > 0 || floorLoading) ? floor : msf;
-  const { machines: shared } = useSharedMachines(enabled);
+  const { machines: shared } = useSharedMachines(enabled, studioId);
   const cards = useAcademyCards(enabled);
   const scripts = useAcademyScripts(enabled);
   const overviews = useAcademyOverviews(enabled);

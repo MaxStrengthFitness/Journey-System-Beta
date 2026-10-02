@@ -1,8 +1,9 @@
 /**
- * The Pulse form, whole: the eight topics, protein, hydration, the pain map,
- * the stress anchors and the client-copy switches. The living panel
- * (components/journal/ClientCheckInPanel) mounts the cards one at a time;
- * `SubjectiveStep` is the all-at-once form the Pulse dialog still uses.
+ * The Pulse's cards: the eight topics, protein, hydration, the pain map and
+ * the stress anchors. The living panel (components/journal/ClientCheckInPanel)
+ * mounts them one at a time. The all-at-once form that used to live here
+ * (`SubjectiveStep`, with its client-copy switches) had no door and went on
+ * Oct 2 2026; the file keeps its name so history stays easy to follow.
  *
  * Reporting round (Sep 2026): every statement is answered on the Dial with
  * the document's five frequency words (ui.tsx → ScaleInput), pain and stress
@@ -12,7 +13,7 @@
  *
  * Layout: eight category cards (two columns in landscape), then protein and
  * hydration side by side, then the pain map and stress anchors full width,
- * then what goes on the client's copy. Every card carries a one-line
+ * each card with a one-line
  * "what to fill in and why" for the trainer; those lines never print.
  *
  * State: this component owns nothing. `value` in, `onChange(next)` out, and
@@ -36,7 +37,6 @@ import {
   CENTERLINE_REGIONS,
   HYDRATION_SOURCE_LABELS,
   LEGACY_CATEGORY_MAX,
-  LEGACY_OVERALL_MAX,
   PAIN_FREQUENCY_LABELS,
   PAIN_TYPE_LABELS,
   PROTEIN_G_PER_LB_HIGH,
@@ -45,16 +45,13 @@ import {
   PROTEIN_QUESTION,
   PROTEIN_SOURCE_SUGGESTIONS,
   STRESS_CATEGORY_LABELS,
-  SUBJECTIVE_CATEGORIES,
   TRAINING_IMPACT_LABELS,
 } from "./questions";
 import {
-  answeredCount,
   defaultHydrationTarget,
   newId,
   scoreCategory,
   scoreHydration,
-  scoreOverall,
   scoreProtein,
   type PreviousAssessmentRef,
 } from "./scoring";
@@ -68,156 +65,10 @@ import {
   ScaleInput,
   Seg,
   Stepper,
-  Switch,
   fmtDate,
   intensityWord,
 } from "./ui";
 import { useJournalSuggestions } from "./useJournalSuggestions";
-
-export interface SubjectiveStepProps {
-  value: SubjectiveAssessment;
-  onChange: (next: SubjectiveAssessment) => void;
-  previous: PreviousAssessmentRef | null;
-  machines: { id?: string; name: string }[];
-  clientId: string | undefined;
-  clientFirstName: string;
-  bodyWeightLbs: number | null;
-}
-
-export function SubjectiveStep({
-  value,
-  onChange,
-  previous,
-  machines,
-  clientId,
-  clientFirstName,
-  bodyWeightLbs,
-}: SubjectiveStepProps) {
-  const patch = (p: Partial<SubjectiveAssessment>) => onChange({ ...value, ...p });
-
-  const categoryScores = useMemo(
-    () => SUBJECTIVE_CATEGORIES.map((c) => scoreCategory(c.key, value.answers, value.scaleVersion)),
-    [value.answers, value.scaleVersion],
-  );
-  const overall = useMemo(() => scoreOverall(categoryScores), [categoryScores]);
-  const answered = answeredCount(value);
-
-  return (
-    <div className="sr">
-      {/* ---- header strip: where we are, and the live overall ---- */}
-      <div className="sr-tiles">
-        <div className="sr-tile">
-          <span className="sr-tile__label">Answered</span>
-          <span className="sr-tile__value">
-            {answered}
-            <small>/ 24</small>
-          </span>
-          <span className="sr-tile__sub">8 topics × 3 statements</span>
-        </div>
-        <div className={`sr-tile${overall.status ? ` sr-tile--${overall.status}` : ""}`}>
-          <span className="sr-tile__label">Overall score</span>
-          <span className="sr-tile__value">
-            {overall.legacyScore ?? "—"}
-            <small>/ {LEGACY_OVERALL_MAX}</small>
-          </span>
-          <span className="sr-tile__sub">
-            {overall.isComplete ? "Green 72–96 · Yellow 48–71 · Red 0–47" : "Scores once all 24 are answered"}
-          </span>
-        </div>
-        <div className="sr-tile">
-          <span className="sr-tile__label">Compared with</span>
-          <span className="sr-tile__value" style={{ fontSize: 18 }}>
-            {previous ? fmtDate(previous.date) : "First Pulse"}
-          </span>
-          <span className="sr-tile__sub">{previous ? "Changes shown per topic" : "No previous Pulse on file"}</span>
-        </div>
-        <div className="sr-tile">
-          <span className="sr-tile__label">Pulse date</span>
-          <input
-            type="date"
-            className="sr-input"
-            aria-label="Pulse date"
-            value={value.completedAt ?? ""}
-            onChange={(e) => patch({ completedAt: e.target.value || null })}
-          />
-        </div>
-      </div>
-
-      <p className="sr-card__help sr-no-print">
-        Read each statement to {clientFirstName} and tap the word that fits — Not at all, Rarely,
-        Sometimes, Often or Nearly always. Tap the same word again to clear it. Anything untouched is
-        “not asked”, and the topic note keeps what they said, in their words.
-      </p>
-
-      {/* ---- the eight categories ---- */}
-      <div className="sr-grid">
-        {SUBJECTIVE_CATEGORIES.map((def, i) => (
-          <CategoryCard
-            key={def.key}
-            def={def}
-            value={value}
-            onChange={onChange}
-            score={categoryScores[i]}
-            previousScore={
-              previous ? scoreCategory(def.key, previous.assessment.answers, previous.assessment.scaleVersion) : null
-            }
-          />
-        ))}
-      </div>
-
-      {/* ---- protein + hydration ---- */}
-      <div className="sr-grid">
-        <ProteinCard value={value} onChange={onChange} bodyWeightLbs={bodyWeightLbs} />
-        <HydrationCard value={value} onChange={onChange} bodyWeightLbs={bodyWeightLbs} />
-      </div>
-
-      {/* ---- pain map ---- */}
-      <PainMapCard value={value} onChange={onChange} previous={previous} machines={machines} clientId={clientId} />
-
-      {/* ---- stress anchors ---- */}
-      <StressCard value={value} onChange={onChange} clientFirstName={clientFirstName} />
-
-      {/* ---- client copy ---- */}
-      <Card
-        title="What goes on the client's copy"
-        help="The coach dashboard always shows everything. These switches only control the printed / emailed copy. Stress anchors are off by default — they are coaching context, and clients rarely want them on paper."
-      >
-        {(
-          [
-            ["includeCategoryScores", "Topic scores", "The eight Green / Yellow / Red tiles and the overall score"],
-            ["includeProteinHydration", "Protein & hydration", "Targets and how often they are hit"],
-            ["includePainMap", "Pain map", "The specific areas and how they are trending"],
-            ["includeStressAnchors", "Stress anchors", "What is going on in their life right now"],
-          ] as const
-        ).map(([key, label, sub]) => (
-          <div className="sr-toggle" key={key}>
-            <div>
-              <div className="sr-toggle__label">{label}</div>
-              <div className="sr-toggle__sub">{sub}</div>
-            </div>
-            <Switch
-              on={value.clientCopy[key]}
-              ariaLabel={`Include ${label} on the client copy`}
-              onChange={(on) => patch({ clientCopy: { ...value.clientCopy, [key]: on } })}
-            />
-          </div>
-        ))}
-        <div>
-          <label className="sr-label" htmlFor="sr-coach-summary">
-            Your summary of the Pulse (prints on the client copy)
-          </label>
-          <textarea
-            id="sr-coach-summary"
-            className="sr-textarea"
-            placeholder={`Two or three sentences ${clientFirstName} will read: what has clearly improved, and the one thing to work on next.`}
-            value={value.coachSummary ?? ""}
-            onChange={(e) => patch({ coachSummary: e.target.value })}
-          />
-        </div>
-      </Card>
-    </div>
-  );
-}
 
 /* ====================================================================== *
  * Category card

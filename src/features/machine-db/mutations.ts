@@ -26,6 +26,7 @@
  * Nothing is ever copied anywhere: the studio's own document is marked.
  */
 
+import { isDemoStudioId } from "../demo-mode/is-demo";
 import { deleteField, doc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../../firebase";
 import type { AdoptionPlan } from "./database";
@@ -53,6 +54,7 @@ export async function setMachineOffer(
   on: boolean,
   studioName: string,
 ): Promise<void> {
+  refuseDemoOffer(studioId, on);
   const by = uid();
   await updateDoc(
     doc(db, "studios", studioId, "roster", machineId),
@@ -67,6 +69,16 @@ export async function setMachineOffer(
         }
       : { shared: false, shareStatus: deleteField(), updatedAt: serverTimestamp(), updatedBy: by },
   );
+}
+
+/**
+ * The realm rule (Oct 2 2026, AJ): no offer made from Demo Mode reaches head
+ * office's review. Taking an offer back is always allowed.
+ */
+function refuseDemoOffer(studioId: string, on: boolean): void {
+  if (on && isDemoStudioId(studioId)) {
+    throw new Error("Demo Mode is a practice studio: nothing offered here goes to head office.");
+  }
 }
 
 export interface ShareWhere {
@@ -89,11 +101,13 @@ function offerFields(on: boolean, where: ShareWhere) {
 
 /** Offers (or takes back) this studio's note on a machine. */
 export async function setNoteOffer(studioId: string, docId: string, on: boolean, where: ShareWhere): Promise<void> {
+  refuseDemoOffer(studioId, on);
   await updateDoc(doc(db, "studios", studioId, "wiki", docId), offerFields(on, where));
 }
 
 /** Offers (or takes back) a playbook tip. */
 export async function setTipOffer(studioId: string, entryId: string, on: boolean, where: ShareWhere): Promise<void> {
+  refuseDemoOffer(studioId, on);
   await updateDoc(doc(db, "studios", studioId, "playbook", entryId), offerFields(on, where));
 }
 

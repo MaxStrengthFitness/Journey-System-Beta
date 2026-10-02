@@ -8,9 +8,9 @@
  *    map trend and the stress anchors. Shown while editing (live) and on the
  *    finalized report on screen. Never prints.
  *
- *  - <SubjectiveClientCopy>  the CLIENT view. Honours the client-copy
- *    switches, leads with the win, names one thing to work on, and is laid
- *    out for paper.
+ *  - <SubjectiveClientCopy>  the CLIENT view. Leads with the win, names one
+ *    thing to work on, and is laid out for paper. Sentences only (Oct 2
+ *    2026): no 0-96 overall and no coloured topic scores ever print.
  *
  * Both take the raw assessment and recompute; the cached `summary` on the
  * report is not trusted for rendering.
@@ -413,6 +413,13 @@ function Sparkline({ points }: { points: { date: string; score: number }[] }) {
  * Client copy
  * ====================================================================== */
 
+/** One topic's movement since last time, for the client's copy. Words, never points. */
+export function topicMoveSentence(title: string, change: number): string {
+  if (change > 0) return `${title}: better than last time.`;
+  if (change < 0) return `${title}: harder than last time.`;
+  return `${title}: about the same as last time.`;
+}
+
 export function SubjectiveClientCopy({
   assessment,
   previous,
@@ -428,6 +435,7 @@ export function SubjectiveClientCopy({
   const copy = assessment.clientCopy;
   const machineName = (id: string) => machines?.find((m) => m.id === id)?.name ?? id;
   const activePain = s.pain.trends.filter((t) => t.point.status !== "resolved");
+  const moved = s.categories.filter((c) => c.changeLegacy !== null);
 
   return (
     <div className="sr sr-client">
@@ -443,9 +451,7 @@ export function SubjectiveClientCopy({
             </span>
             <span className="sr-tile__sub">
               {s.largestImprovement ? (
-                <>
-                  up <Delta value={s.largestImprovement.changeLegacy} /> since {fmtDate(previous?.date)}
-                </>
+                `better since ${fmtDate(previous?.date)}`
               ) : (
                 "your strongest area right now"
               )}
@@ -461,42 +467,24 @@ export function SubjectiveClientCopy({
         </div>
       )}
 
-      {copy.includeCategoryScores && (
-        <>
-          <div className="sr-ragrid">
-            {s.categories.map((c) => (
-              <div key={c.key} className={`sr-ragrid__cell${c.status ? ` sr-ragrid__cell--${c.status}` : ""}`}>
-                <span className="sr-ragrid__title">{c.title}</span>
-                <span className="sr-ragrid__score">
-                  {c.legacyScore ?? "—"}
-                  <small> / {LEGACY_CATEGORY_MAX}</small>
-                </span>
-                <span className="sr-ragrid__delta">
-                  {c.changeLegacy === null ? (
-                    <span className="sr-hint">{c.status ? RAG_LABEL[c.status] : ""}</span>
-                  ) : (
-                    <>
-                      <Delta value={c.changeLegacy} /> <span className="sr-hint">since last time</span>
-                    </>
-                  )}
-                </span>
-              </div>
+      {/* Sentences only (AJ, Oct 2 2026: printed Pulse scores, "Sentences
+          only"). The 0-96 overall and the coloured topic scores never print,
+          whatever an old Pulse's client-copy switch says; each topic that can
+          be compared says which way it moved, in words. */}
+      {previous && moved.length > 0 && (
+        <div className="sr-card">
+          <h3 className="sr-card__title">How each area has moved since {fmtDate(previous.date)}</h3>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, lineHeight: 1.6 }}>
+            {moved.map((c) => (
+              <li key={c.key}>{topicMoveSentence(c.title, c.changeLegacy as number)}</li>
             ))}
-          </div>
-          <div className={`sr-tile${s.overall.status ? ` sr-tile--${s.overall.status}` : ""}`}>
-            <span className="sr-tile__label">Overall — how life is going</span>
-            <span className="sr-tile__value">
-              {s.overall.legacyScore ?? "—"}
-              <small>/ {LEGACY_OVERALL_MAX}</small>
-            </span>
-            <span className="sr-tile__sub">Green 72–96 · Yellow 48–71 · Red 0–47</span>
-          </div>
-        </>
+          </ul>
+        </div>
       )}
 
       {copy.includeProteinHydration && (
         <div className="sr-tiles" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-          <div className={`sr-tile${s.protein.status ? ` sr-tile--${s.protein.status}` : ""}`}>
+          <div className="sr-tile">
             <span className="sr-tile__label">Protein</span>
             <span className="sr-tile__value">
               {assessment.protein.daysPerWeekOnTarget ?? "—"}
@@ -506,7 +494,7 @@ export function SubjectiveClientCopy({
               {s.protein.targetG ? `Your target: about ${s.protein.targetG} g a day (${s.protein.targetLowG}–${s.protein.targetHighG} g)` : "Target to be set"}
             </span>
           </div>
-          <div className={`sr-tile${s.hydration.status ? ` sr-tile--${s.hydration.status}` : ""}`}>
+          <div className="sr-tile">
             <span className="sr-tile__label">Hydration</span>
             <span className="sr-tile__value">
               {assessment.hydration.typicalPerDay ?? "—"}
@@ -573,7 +561,7 @@ export function SubjectiveClientCopy({
         </div>
       )}
 
-      {!copy.includeCategoryScores && !copy.includeProteinHydration && !copy.includePainMap && !assessment.coachSummary && (
+      {!(previous && moved.length > 0) && !copy.includeProteinHydration && !copy.includePainMap && !assessment.coachSummary && (
         <div className="sr-empty">{clientFirstName}'s Pulse is on file for the coaching team.</div>
       )}
     </div>

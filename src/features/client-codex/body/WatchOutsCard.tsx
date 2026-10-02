@@ -16,10 +16,19 @@
  * here), High (plum) and modify (blue — it changes the set-up), most serious
  * first.
  *
- * Every field writes through the shell's ONE form (`updateField`); Done only
- * closes the editor, and the Save bar saves ("Body & Pulse · Watch-outs").
+ * SAVED AT ONCE (Oct 2 2026, AJ: clinical flags and medical history "save at
+ * once", like notes; each change is one small write). With `saveNow` (the
+ * shell's `saveFieldNow`) a flag picked or taken off is written the moment it
+ * changes, and each text field when the trainer leaves it (or taps Done);
+ * the line under the editor says what was saved, with an Undo that writes
+ * the value before it back. Text being typed is registered with the
+ * unsaved-changes guard until it is written. The contraindications field
+ * saves the same way, so the one editor never mixes two kinds of save.
+ * Without `saveNow` (an older caller) every field goes through the shell's
+ * ONE form (`updateField`) and the Save bar, as before.
  */
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useUnsavedChanges } from "../../unsaved-changes";
 import { ChevronRight, ShieldAlert } from "lucide-react";
 import type { Client, Machine } from "../../../types";
 import { ClinicalFlagPicker } from "../../clinical-flags/ClinicalFlagPicker";
@@ -53,6 +62,8 @@ export interface WatchOutsCardProps {
   /** The record form's revision; a save or a discard closes the editor. */
   revision: number;
   updateField: (key: keyof Client, value: unknown) => void;
+  /** Write one field now (the record form's `saveFieldNow`). Left out: the Save bar saves. */
+  saveNow?: (key: "clinicalFlags" | "medicalHistory" | "clinicalNotes", value: unknown) => Promise<boolean>;
   onOpenMachine?: (machineId: string) => void;
   className?: string;
 }
@@ -66,10 +77,17 @@ export function WatchOutsCard({
   dirty,
   revision,
   updateField,
+  saveNow,
   onOpenMachine,
   className,
 }: WatchOutsCardProps) {
   const { open, toggle, setOpen } = useReadEdit({ canEdit, revision });
+  const live = useLiveSave({ open, medicalHistory, clinicalNotes, flagIds, saveNow });
+  const toggleEditor = () => {
+    // Done writes any text still being typed before the editor closes.
+    if (open && saveNow) void live.flush();
+    toggle();
+  };
   const flags = useMemo(() => selectedFlags(flagIds), [flagIds]);
   const groups = useMemo(() => watchOutGroups(flagIds, floorMachines), [flagIds, floorMachines]);
   const history = medicalHistory.trim();
@@ -86,27 +104,45 @@ export function WatchOutsCard({
         eyebrow="Watch-outs"
         icon={ShieldAlert}
         meta={dirty && !open ? <Chip tone="live">Unsaved</Chip> : null}
-        actions={canEdit ? <EditButton open={open} onToggle={toggle} label="Watch-outs" /> : null}
+        actions={canEdit ? <EditButton open={open} onToggle={toggleEditor} label="Watch-outs" /> : null}
       />
 
       {open ? (
         <div className="bp-edit">
-          <ClinicalFlagPicker value={[...(flagIds ?? [])]} onChange={(next) => updateField("clinicalFlags", next)} />
+          <ClinicalFlagPicker
+            value={[...(flagIds ?? [])]}
+            onChange={(next) => (saveNow ? void live.saveFlags(next) : updateField("clinicalFlags", next))}
+          />
           <TextArea
             label="Medical history"
-            value={medicalHistory}
-            onChange={(v) => updateField("medicalHistory", v)}
+            value={saveNow ? live.history : medicalHistory}
+            onChange={(v) => (saveNow ? live.setHistory(v) : updateField("medicalHistory", v))}
+            onBlur={saveNow ? () => void live.saveText("medicalHistory") : undefined}
             rows={7}
             placeholder="Surgeries, chronic conditions, anything a new coach must read before loading them."
           />
           <TextArea
             label="Contraindications & constraints"
-            value={clinicalNotes}
-            onChange={(v) => updateField("clinicalNotes", v)}
+            value={saveNow ? live.notes : clinicalNotes}
+            onChange={(v) => (saveNow ? live.setNotes(v) : updateField("clinicalNotes", v))}
+            onBlur={saveNow ? () => void live.saveText("clinicalNotes") : undefined}
             rows={5}
             placeholder="What the load has to work around. Specific movements, ranges or machines to avoid."
           />
-          <Meta>Nothing is saved until you tap Save changes on the bar at the bottom.</Meta>
+          {saveNow ? (
+            live.last ? (
+              <div className="bp-saved" role="status">
+                <Meta>{`Saved: ${live.last.label}.`}</Meta>
+                <button type="button" className="cx-btn" onClick={() => void live.undo()}>
+                  Undo
+                </button>
+              </div>
+            ) : (
+              <Meta>Each change saves as you make it; the text saves when you leave the box.</Meta>
+            )
+          ) : (
+            <Meta>Nothing is saved until you tap Save changes on the bar at the bottom.</Meta>
+          )}
         </div>
       ) : nothing ? (
         <EmptyLine action={canEdit ? { label: "Set them", onClick: () => setOpen(true) } : undefined}>
@@ -171,4 +207,96 @@ export function WatchOutsCard({
       )}
     </section>
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* Saving at once                                                       */
+/* ------------------------------------------------------------------ */
+
+type LiveKey = "clinicalFlags" | "medicalHistory" | "clinicalNotes";
+
+const LIVE_LABEL: Record<LiveKey, string> = {
+  clinicalFlags: "clinical flags",
+  medicalHistory: "medical history",
+  clinicalNotes: "contraindications & constraints",
+};
+
+/**
+ * The editor's save-at-once state: the two text drafts (seeded from the
+ * record each time the editor opens), the last change written, and Undo.
+ */
+function useLiveSave({
+  open,
+  medicalHistory,
+  clinicalNotes,
+  flagIds,
+  saveNow,
+}: {
+  open: boolean;
+  medicalHistory: string;
+  clinicalNotes: string;
+  flagIds: readonly string[] | null | undefined;
+  saveNow?: (key: LiveKey, value: unknown) => Promise<boolean>;
+}) {
+  const [history, setHistory] = useState(medicalHistory);
+  const [notes, setNotes] = useState(clinicalNotes);
+  const [last, setLast] = useState<{ key: LiveKey; previous: unknown; label: string } | null>(null);
+  const saved = useRef({ medicalHistory, clinicalNotes });
+
+  // Opening the editor starts from the record as it is now.
+  useEffect(() => {
+    if (!open) return;
+    setHistory(medicalHistory);
+    setNotes(clinicalNotes);
+    saved.current = { medicalHistory, clinicalNotes };
+    setLast(null);
+    // Only on opening: a snapshot while typing must not overwrite the draft.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const typing = !!saveNow && open && (history !== saved.current.medicalHistory || notes !== saved.current.clinicalNotes);
+  useUnsavedChanges(typing, "Watch-outs");
+
+  const write = async (key: LiveKey, value: unknown, previous: unknown) => {
+    if (!saveNow) return false;
+    const ok = await saveNow(key, value);
+    if (ok) setLast({ key, previous, label: LIVE_LABEL[key] });
+    return ok;
+  };
+
+  const saveText = async (key: "medicalHistory" | "clinicalNotes") => {
+    const value = key === "medicalHistory" ? history : notes;
+    const previous = saved.current[key];
+    if (value === previous) return true;
+    const ok = await write(key, value, previous);
+    if (ok) saved.current = { ...saved.current, [key]: value };
+    return ok;
+  };
+
+  return {
+    history,
+    notes,
+    setHistory,
+    setNotes,
+    last,
+    saveText,
+    saveFlags: (next: string[]) => write("clinicalFlags", next, [...(flagIds ?? [])]),
+    flush: async () => {
+      await saveText("medicalHistory");
+      await saveText("clinicalNotes");
+    },
+    undo: async () => {
+      if (!last || !saveNow) return;
+      const ok = await saveNow(last.key, last.previous);
+      if (!ok) return;
+      if (last.key === "medicalHistory") {
+        setHistory(String(last.previous ?? ""));
+        saved.current = { ...saved.current, medicalHistory: String(last.previous ?? "") };
+      } else if (last.key === "clinicalNotes") {
+        setNotes(String(last.previous ?? ""));
+        saved.current = { ...saved.current, clinicalNotes: String(last.previous ?? "") };
+      }
+      setLast(null);
+    },
+  };
 }

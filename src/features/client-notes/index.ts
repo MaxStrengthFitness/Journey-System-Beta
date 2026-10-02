@@ -10,7 +10,7 @@ export * from "./note-catalog";
 export { NoteSweep } from "./NoteSweep";
 export { fileUnfiledEntry, discardUnfiledEntry } from "./file-unfiled";
 export * from "./threads";
-export { addThreadUpdate, archiveThread, closeThread, reopenThread } from "./thread-write";
+export { addThreadUpdate, archiveThread, closeThread, reopenThread, unarchiveThread, closeThreadNoLongerMatters, noLongerMattersLine } from "./thread-write";
 export { NoteThreadCard } from "./NoteThreadCard";
 // The Notes page of the record (client codex): the page, its catalog, a row.
 export { NotesPage, type NotesPageProps } from "./NotesPage";

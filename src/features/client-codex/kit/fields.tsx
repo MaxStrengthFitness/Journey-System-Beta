@@ -101,10 +101,13 @@ export function TextArea({
   onChange,
   rows = 3,
   maxLength,
+  onBlur,
 }: FieldBase & {
   value: string | null | undefined;
   onChange: (next: string) => void;
   rows?: number;
+  /** Leaving the field (the Watch-outs card saves its text here, Oct 2 2026). */
+  onBlur?: () => void;
   maxLength?: number;
 }) {
   const id = useId();
@@ -124,6 +127,7 @@ export function TextArea({
         maxLength={maxLength}
         aria-describedby={hint ? hintId : undefined}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
       />
       {hint ? (
         <span className="cx-field__hint" id={hintId}>

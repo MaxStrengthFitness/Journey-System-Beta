@@ -1,3 +1,4 @@
+import { isDemoStudioId } from "../demo-mode/is-demo";
 import { Building2, Check, Globe } from "lucide-react";
 import { WikiBlocks, WikiSection } from "../wiki";
 import { whenLabel } from "../wiki/studio-wiki";
@@ -26,7 +27,8 @@ export function NetworkNotes({
   ownStudioId: string | null;
   machineName: string;
 }) {
-  const { items, loading, error } = useNetworkNotes(lineageKey);
+  // Inside Demo Mode nothing is read (the realm rule, Oct 2 2026).
+  const { items, loading, error } = useNetworkNotes(isDemoStudioId(ownStudioId) ? null : lineageKey);
   const shown = networkItems(items, ownStudioId);
 
   if (loading) return null;

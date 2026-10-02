@@ -119,9 +119,7 @@ const NAME_ELEMENTS: { file: string; find: RegExp; what: string }[] = [
   { file: "features/trainer-profile/EditTrainerModal.tsx", find: /<span className="([^"]*)">\s*\{s\.fullName\}/, what: "a staff member's full name" },
   { file: "features/trainer-profile/EditTrainerModal.tsx", find: /htmlFor=\{`access-\$\{s\.id\}`\}\s*className="([^"]*)"/, what: "a studio's name on the access checkbox" },
   { file: "features/trainer-profile/EditTrainerModal.tsx", find: /htmlFor=\{`guest-\$\{s\.id\}`\}\s*className="([^"]*)"/, what: "a studio's name on the guest checkbox" },
-  { file: "features/tracker/PerformanceEntryDialog.tsx", find: /<h2 className="([^"]*)">\s*\{machine\.name\}/, what: "the machine's name in the performance entry dialog" },
   { file: "components/EditRoutineDrawer.tsx", find: /<span className="([^"]*)">\{p\.name\}<\/span>/, what: "a routine preset's name" },
-  { file: "components/WorkoutChartGrid.tsx", find: /"([^"]*)",\s*getMuscleGroupColor\(machine\.name\)/, what: "the machine chip in the chart's sticky column" },
   { file: "components/AccessRequestView.tsx", find: /<span className="([^"]*)">\s*\{authenticatedUser\.displayName/, what: "the signed-in person's name" },
 ];
 

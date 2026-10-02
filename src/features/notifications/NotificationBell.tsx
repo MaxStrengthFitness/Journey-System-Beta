@@ -122,6 +122,8 @@ export interface NotificationBellProps {
    * (the Atlas answers, Oct 2 2026). Without it the count isn't drawn.
    */
   trainers?: Trainer[];
+  /** The studio this iPad is in: inside Demo Mode the bell shows Demo Mode's notices only (Oct 2 2026). */
+  activeStudioId?: string | null;
 }
 
 export function NotificationBell({
@@ -130,6 +132,7 @@ export function NotificationBell({
   onNavigate,
   className,
   trainers,
+  activeStudioId = null,
 }: NotificationBellProps) {
   const [open, setOpen] = useState(false);
   const uid = trainerId ?? authTrainer?.id ?? null;
@@ -139,7 +142,7 @@ export function NotificationBell({
     unread: unreadAnnouncements,
     unreadCount: announcementCount,
     acked,
-  } = useHubAnnouncements(authTrainer);
+  } = useHubAnnouncements(authTrainer, activeStudioId);
   const signedInUid = auth.currentUser?.uid ?? null;
   // "I've read it" in the bell too (the Atlas answers, Oct 2 2026).
   const asking = announcements.filter((a) => a.asksRead && a.id && !acked.has(a.id));

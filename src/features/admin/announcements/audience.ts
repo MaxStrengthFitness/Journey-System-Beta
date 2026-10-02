@@ -54,6 +54,7 @@
 
 import type { HubAnnouncement, Studio, Trainer } from "../../../types";
 import type { StoredLearningRef } from "../../learning/ref";
+import { isDemoStudioId } from "../../demo-mode/is-demo";
 
 /** How long a notice stays live. The three the composers have always offered. */
 export type Lifespan = "24h" | "1w" | "1m";
@@ -324,6 +325,27 @@ export function visibleAnnouncements<
     })
     .filter((a) => isTargeted(a, trainer))
     .sort((a, b) => millis(b.createdAt) - millis(a.createdAt));
+}
+
+/**
+ * THE REALM RULE on the reading side (Oct 2 2026; `features/demo-mode/
+ * access.ts`): from inside Demo Mode the bell shows only notices addressed to
+ * Demo Mode; from anywhere else, never one addressed only to it. The composer
+ * already kept the two apart (`announcementReach`, Oct 1); the bell still
+ * read every notice the person's real studios reached while they practised.
+ */
+export function announcementsInRealm<
+  T extends { studioId?: string | null; targetId?: string | null; targetStudioIds?: string[] },
+>(list: T[], activeStudioId: string | null | undefined): T[] {
+  const inDemo = isDemoStudioId(activeStudioId ?? null);
+  return list.filter((a) => demoOnly(a) === inDemo);
+}
+
+function demoOnly(a: { studioId?: string | null; targetId?: string | null; targetStudioIds?: string[] }): boolean {
+  const ids = [a.studioId, a.targetId, ...(a.targetStudioIds ?? [])].filter(
+    (id): id is string => typeof id === "string" && id.length > 0 && id !== "all",
+  );
+  return ids.length > 0 && ids.every((id) => isDemoStudioId(id));
 }
 
 /**

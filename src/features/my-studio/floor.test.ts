@@ -63,6 +63,13 @@ describe("buildSubmission — only a studio's own machine can be offered", () =>
     definition: def("Sled"),
   } as unknown as StudioMachineRosterEntry & { definition: MachineDefinition };
 
+  it("never sends an offer from Demo Mode to head office (Oct 2 2026)", () => {
+    const r = buildSubmission({ studioId: "demo-studio", studioName: "Demo Mode", entry: own, author, note: "" });
+    expect(r.ok).toBe(false);
+    if (r.ok !== false) return;
+    expect(r.reason).toContain("practice studio");
+  });
+
   it("builds a pending submission carrying the definition, the lineage and the note", () => {
     const r = buildSubmission({ studioId: "solon", studioName: "Solon", entry: own, author, note: "  Everyone loves it. " });
     expect(r.ok).toBe(true);

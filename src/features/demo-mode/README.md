@@ -167,6 +167,33 @@ would never have caught them. Both drop demo rows in their pure aggregator:
   studio's index, and its cells are k-anonymous at five clients, which six
   demo clients at one height would be enough to form.
 
+## The realm, closed (Oct 2 2026)
+
+AJ: Demo Mode's search, Add Client and announcements see "practice studio
+only"; shared machines, "no to both: Demo sees only itself, and no offer from
+it reaches head office". Checked and closed:
+
+- **Search** — the Hub's and the header's both query `queryStudioIds`
+  (`lib/tenancy.ts`, Oct 1), which names Demo Mode alone inside it.
+- **Add Client** — the home studio offered is `studiosInRealm` (Oct 1); the
+  client is a temporary profile like any other since Oct 2.
+- **Announcements** — the composer's audience was already Demo Mode alone
+  (`announcementReach`, Oct 1). The bell, Relay's Since you were in and the
+  huddle READ every notice the person's real studios reached; they now pass
+  the iPad's studio to `useHubAnnouncements`, and `announcementsInRealm`
+  (`admin/announcements/audience.ts`) keeps only Demo Mode's notices inside it
+  and never a notice addressed only to Demo Mode outside it.
+- **Other studios' shared machines, notes and tips** — `useSharedMachines`
+  takes the studio and reads nothing inside Demo Mode (and drops Demo Mode's
+  own outside it); `NetworkNotes` / `networkItems` the same. That covers My
+  Studio → Machines, All MSF machines, the Catalog page's From other MSF
+  studios and Learning's search.
+- **Offers to head office** — inside Demo Mode the Catalog draws no Offer
+  switch, `setMachineOffer` / `setNoteOffer` / `setTipOffer` refuse an offer,
+  `buildSubmission` refuses a catalog submission, and the two review queues
+  (`offerFrom`, `SubmissionsQueue`) drop anything from Demo Mode. App-side
+  only: the rules were not tightened (AJ, Oct 2: features first).
+
 ## How a weight actually moves
 
 Round: **realistic demo loads, Sep 20 2026** (`docs/rounds/2026-09-20-demo-loads.md`).

@@ -241,6 +241,8 @@ export interface ReviewRow {
   authorName: string;
   /** How many days it has mattered. */
   days: number;
+  /** What an update on its thread inherits ("No longer matters: why", Oct 2 2026). */
+  root: Pick<JournalEntry, "id" | "clientId" | "studioId" | "kind" | "category" | "machineId">;
 }
 
 /**
@@ -261,6 +263,14 @@ export function notesToReview(entries: JournalEntry[], clients: Client[], today:
       body: (e.body ?? "").trim(),
       authorName: e.authorName ?? "",
       days: daysMattering(e, today, tz) ?? 0,
+      root: {
+        id: e.id,
+        clientId: e.clientId,
+        studioId: e.studioId,
+        kind: e.kind,
+        category: e.category ?? null,
+        machineId: e.machineId ?? null,
+      },
     });
   }
   rows.sort((a, b) => b.days - a.days || a.name.localeCompare(b.name));
