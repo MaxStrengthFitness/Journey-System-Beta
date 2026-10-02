@@ -15,6 +15,11 @@
  *   grantStudioId     when set, the "Can manage My Studio" switch for that
  *                     studio (Trainer.managedStudioIds).
  *
+ * WHO THEY ARE (the Atlas answers, Oct 2 2026): a person's full name, email
+ * and Mindbody Staff ID are a leader's to keep, here, not the trainer's own
+ * Edit profile. Shown for anyone with an account; a save writes only the ones
+ * that changed, and a Staff ID marks the Mindbody link.
+ *
  * Every write is to trainers/{uid}: setDoc at the AUTH UID on approval,
  * never addDoc (a random id is a profile its owner cannot write), and
  * updateDoc with only the fields on this form otherwise.
@@ -28,6 +33,7 @@ import type { Studio, UserRole } from "../../../types";
 import { ROLE_LABELS } from "../../../types";
 import { useToast } from "../../../contexts/ToastContext";
 import { OperationType, handleFirestoreError } from "../../../lib/firestore-errors";
+import { generateSearchTokens } from "@/lib/utils";
 import {
   AdminBadge,
   AdminButton,
@@ -96,6 +102,9 @@ export function StaffEditor({
   const [managesHere, setManagesHere] = useState(
     Boolean(grantStudioId && row.trainer?.managedStudioIds?.includes(grantStudioId)),
   );
+  const [fullName, setFullName] = useState(row.trainer?.fullName ?? "");
+  const [email, setEmail] = useState(row.trainer?.email ?? "");
+  const [staffId, setStaffId] = useState(String(row.trainer?.mindbodyStaffId ?? ""));
   const [busy, setBusy] = useState(false);
   const [confirmApprove, setConfirmApprove] = useState(false);
 
@@ -105,6 +114,9 @@ export function StaffEditor({
     setInitials(row.initials ?? initialsFrom(row.name));
     setOnCalendar(row.trainer?.isVisibleOnCalendar ?? true);
     setManagesHere(Boolean(grantStudioId && row.trainer?.managedStudioIds?.includes(grantStudioId)));
+    setFullName(row.trainer?.fullName ?? "");
+    setEmail(row.trainer?.email ?? "");
+    setStaffId(String(row.trainer?.mindbodyStaffId ?? ""));
   }, [row, activeStudioId, lockHomeStudio, grantStudioId]);
 
   // A role this caller may not hand out is shown, not offered: the select
@@ -187,6 +199,19 @@ export function StaffEditor({
         initials: initials.trim().toUpperCase(),
       };
       if (!roleLocked && role !== t.role) patch.role = role;
+      // Who they are: only what changed (a blank name is never written).
+      const name = fullName.trim().replace(/\s+/g, " ");
+      if (name && name !== (t.fullName ?? "")) {
+        patch.fullName = name;
+        patch.searchTokens = generateSearchTokens(name);
+      }
+      const mail = email.trim().toLowerCase();
+      if (mail !== (t.email ?? "").trim().toLowerCase()) patch.email = mail;
+      const sid = staffId.trim();
+      if (sid !== String(t.mindbodyStaffId ?? "").trim()) {
+        patch.mindbodyStaffId = sid;
+        patch.mindbodyLinked = sid.length > 0;
+      }
       if (!lockHomeStudio && homeStudioId && homeStudioId !== t.primaryHomeStudioId) {
         patch.primaryHomeStudioId = homeStudioId;
       }
@@ -320,6 +345,24 @@ export function StaffEditor({
                     ))}
                   </AdminSelect>
                 </AdminField>
+              )}
+              {row.trainer && (
+                <>
+                  <AdminField label="Full name">
+                    <AdminInput value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="First and last name" />
+                  </AdminField>
+                  <AdminField label="Email" hint="The address they sign in with.">
+                    <AdminInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" />
+                  </AdminField>
+                  <AdminField label="Mindbody Staff ID" hint="Links them to their Mindbody bookings. Blank: not linked.">
+                    <AdminInput
+                      inputMode="numeric"
+                      value={staffId}
+                      onChange={(e) => setStaffId(e.target.value.replace(/[^0-9]/g, ""))}
+                      placeholder="e.g. 100000123"
+                    />
+                  </AdminField>
+                </>
               )}
               <AdminField label="Initials" hint="Shown on the schedule and session grid.">
                 <AdminInput value={initials} maxLength={4} onChange={(e) => setInitials(e.target.value)} />

@@ -246,24 +246,29 @@ export function EditTrainerModal({
   };
 
   const handleSave = async () => {
-    if (!fullName || !initials || (isAdminMode && !primaryHomeStudioId)) {
+    if ((isAdminMode && !fullName) || !initials || (isAdminMode && !primaryHomeStudioId)) {
       toastError("Validation Error: Missing required fields.");
       return;
     }
 
     setSaving(true);
     try {
-      const searchTokens = generateSearchTokens(fullName);
-
+      // A trainer's own profile no longer writes their full name, email or
+      // Mindbody link (the Atlas answers, Oct 2 2026): leaders keep those on
+      // My Studio -> Team. Only the admin form sends them.
       const payload: Partial<Trainer> = {
-        fullName: fullName.trim(),
+        ...(isAdminMode
+          ? {
+              fullName: fullName.trim(),
+              email: email.trim(),
+              mindbodyLinked,
+              mindbodyStaffId: mindbodyStaffId.trim() || "",
+              searchTokens: generateSearchTokens(fullName),
+            }
+          : {}),
         nickname: nickname.trim(),
         initials: initials.trim(),
-        email: email.trim(),
         brandColor,
-        mindbodyLinked,
-        mindbodyStaffId: mindbodyStaffId.trim() || "",
-        searchTokens,
         bio: bio.trim(),
         certifications: certifications.map((c) => c.trim()).filter(Boolean),
         photoUrl: photoUrl || null,
@@ -329,6 +334,7 @@ export function EditTrainerModal({
         <div className="space-y-6 py-4">
           {/* Identity Fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {isAdminMode && (
             <div className="space-y-2">
               <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
                 <UserIcon className="w-3 h-3 text-indigo-500" />
@@ -353,6 +359,7 @@ export function EditTrainerModal({
                 placeholder="e.g. Amanda Jones"
               />
             </div>
+            )}
 
             <div className="space-y-2">
               <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
@@ -368,6 +375,7 @@ export function EditTrainerModal({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {isAdminMode && (
             <div className="space-y-2">
               <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
                 <Mail className="w-3 h-3 text-indigo-500" />
@@ -381,6 +389,7 @@ export function EditTrainerModal({
                 placeholder="trainer@example.com"
               />
             </div>
+            )}
 
             <div className="space-y-2">
               <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest">
@@ -507,6 +516,7 @@ export function EditTrainerModal({
               </div>
             </div>
 
+            {isAdminMode && (
             <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div className="space-y-0.5">
                 <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
@@ -521,6 +531,7 @@ export function EditTrainerModal({
                 onCheckedChange={setMindbodyLinked}
               />
             </div>
+            )}
           </div>
 
           {/*
@@ -577,7 +588,8 @@ export function EditTrainerModal({
             </div>
           </div>
 
-          {/* Mindbody Staff ID for API sync */}
+          {/* Mindbody Staff ID for API sync: leaders only (Oct 2 2026). */}
+          {isAdminMode ? (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
@@ -665,6 +677,11 @@ export function EditTrainerModal({
               API schedule sync.
             </p>
           </div>
+          ) : (
+            <p className="text-[11px] text-muted-foreground font-bold" data-testid="leader-fields-note">
+              Full name, email and the Mindbody Staff ID are kept by the studio&rsquo;s leaders, on My Studio &rarr; Team.
+            </p>
+          )}
 
           {isAdminMode && (
             <>
@@ -870,7 +887,7 @@ export function EditTrainerModal({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={saving || !fullName || !initials}
+            disabled={saving || (isAdminMode && !fullName) || !initials}
             className="bg-[#F06C22] hover:bg-[#d95b16] text-white font-black uppercase text-xs h-12 rounded-xl transition-all shadow-[0_0_20px_rgba(240,108,34,0.3)] min-w-37.5"
           >
             {saving ? "Saving Changes..." : "Save Trainer Profile"}
