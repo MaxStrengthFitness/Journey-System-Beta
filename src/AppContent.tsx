@@ -1624,7 +1624,11 @@ export default function AppContent({
             <AppHeader
               variant={theme === "light" ? "light" : "dark"}
               studioName={activeStudioName || undefined}
-              onStudioClick={openStudioPicker}
+              // Inside Operations and the Admins dashboard the top left goes
+              // back to the Hub; 'Looking at' is the studio switch there
+              // (the Atlas answers, Oct 2 2026).
+              onStudioClick={appMode === "admin" ? () => switchAppMode("trainer", "clients") : openStudioPicker}
+              studioClickGoesHome={appMode === "admin"}
               rightControls={headerRightControls}
               trainerDropdown={headerTrainerDropdown}
               searchSlot={headerSearchSlot}
