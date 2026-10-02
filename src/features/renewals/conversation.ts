@@ -115,7 +115,15 @@ export function conversationWrites(params: {
   authorName: string;
 }): {
   touch: Omit<RenewalTouch, "at">;
-  cycle: Omit<RenewalCycle, "lastTouchAt" | "touchCount" | "stage" | "leadTrainerId">;
+  /**
+   * `needsLeader` is written only to RAISE the flag (the Atlas answers, Oct 2
+   * 2026: "stays until a leader marks it handled"). A later conversation
+   * logged without the tick leaves it out, so the merge keeps the flag on;
+   * only a leader's "Mark the follow-up handled" (`updateCycleAsLeader`)
+   * clears it. Until then a talk without the tick wrote `false` and quietly
+   * took the ask off every leader's list.
+   */
+  cycle: Omit<RenewalCycle, "lastTouchAt" | "touchCount" | "stage" | "leadTrainerId" | "needsLeader"> & { needsLeader?: true };
 } {
   const { draft, clientId, clientName, cycleKey, snapshot, authorId, authorName } = params;
   const concerns = Array.from(new Set(draft.concerns)).filter((c) => CONCERNS.some((x) => x.key === c));
@@ -141,7 +149,7 @@ export function conversationWrites(params: {
       latestLeaning: leaning,
       latestConcerns: concerns,
       latestInterestedIn: draft.interestedIn,
-      needsLeader: draft.needsLeader,
+      ...(draft.needsLeader ? { needsLeader: true as const } : {}),
       lastTouchBy: authorId,
       lastTouchByName: authorName,
     },
