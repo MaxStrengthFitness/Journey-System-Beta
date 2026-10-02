@@ -53,7 +53,15 @@ export interface QuickCard {
   /** The app's canonical machine id, so the Catalog can link to it. */
   machineId: string | null;
   title: string;
-  sections: { heading: string; items: string[] }[];
+  /** The line before the first section, when the card has one. */
+  intro?: string;
+  /**
+   * The card's own six sections (Oct 2 2026): Target Muscles, Synergists,
+   * Considerations for Setup, Posture / Get Set, Execution, Instruction, and
+   * Turnarounds, Notes — only the ones the card has, in that order.
+   * `subheads` are the indices of the items that head a part inside one.
+   */
+  sections: { heading: string; items: string[]; subheads?: number[] }[];
   words: number;
 }
 

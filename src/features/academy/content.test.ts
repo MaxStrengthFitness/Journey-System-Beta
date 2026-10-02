@@ -123,6 +123,25 @@ describe("the per-machine cards", () => {
     expect(headings).toContain("Posture / Get Set");
   });
 
+  it("has only the six sections the cards are written to, never a stray line as a heading (Oct 2 2026)", () => {
+    const six = [
+      "Target Muscles",
+      "Synergists",
+      "Considerations for Setup",
+      "Posture / Get Set",
+      "Execution, Instruction, and Turnarounds",
+      "Notes",
+    ];
+    for (const c of cards.cards) {
+      const headings = c.sections.map((s) => s.heading);
+      expect(headings.every((h) => six.includes(h))).toBe(true);
+      // In the order they are written, each once.
+      expect(headings).toEqual(six.filter((h) => headings.includes(h)));
+      expect(headings).toContain("Target Muscles");
+      expect(headings).toContain("Execution, Instruction, and Turnarounds");
+    }
+  });
+
   it("did not swallow the setup detail into one blob", () => {
     const lp = cards.cards.find((c) => c.abbr === "LP");
     const setup = lp!.sections.find((s) => s.heading === "Considerations for Setup");

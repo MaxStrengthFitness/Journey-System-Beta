@@ -175,11 +175,51 @@ describe("parseQuickReference", () => {
     const qrg = parseQuickReference(card, "f");
     expect(qrg.title).toBe("LP – Quick Reference Guide");
     expect(qrg.sections.map((s) => s.heading)).toEqual([
-      "About this card",
       "Target Muscles",
       "Synergists",
       "Considerations for Setup",
     ]);
+  });
+
+  it("rebuilds a card to its six sections, however each is spelled, with the parts inside them (Oct 2 2026)", () => {
+    const qrg = parseQuickReference(
+      [
+        "Bi – Quick Reference Guide",
+        "Target Muscles:",
+        "Biceps Brachii (Biceps) – Elbow flexion",
+        "Synergists:",
+        "Wrist Flexors (Forearms) – Wrist stabilizer",
+        "Setup Considerations:",
+        "Seat height is the primary setup consideration",
+        "Posture / Get Set",
+        "Hands on handles for balance—not for anchoring",
+        "Execution & Turnarounds:",
+        "LOAD UP:",
+        "Cue gradual pressure into the pad",
+        "Eccentric Phase",
+        "One continuous pace throughout",
+        "Execution",
+        "Reps three and beyond include a squeeze",
+        "NOTES:",
+        "Watch for pinch points",
+      ].join("\n"),
+      "f",
+    );
+    expect(qrg.sections.map((s) => s.heading)).toEqual([
+      "Target Muscles",
+      "Synergists",
+      "Considerations for Setup",
+      "Posture / Get Set",
+      "Execution, Instruction, and Turnarounds",
+      "Notes",
+    ]);
+    const exec = qrg.sections[4];
+    // Short capitalised lines and lines ending in a colon head a part; a short
+    // line in sentence case is a line of the card. A second "Execution" inside
+    // the section is a part of it, not a seventh section.
+    expect(exec.subheads?.map((i) => exec.items[i])).toEqual(["LOAD UP", "Eccentric Phase", "Execution"]);
+    expect(exec.items).toContain("One continuous pace throughout");
+    expect(qrg.sections[3].subheads).toBeUndefined();
   });
 
   it("puts the items under their own heading", () => {
@@ -193,7 +233,7 @@ describe("parseQuickReference", () => {
 
   it("does not drop the preamble that sits before any heading", () => {
     const qrg = parseQuickReference(card, "f");
-    expect(qrg.sections[0].items[0]).toContain("abbreviated version");
+    expect(qrg.intro).toContain("abbreviated version");
   });
 });
 
