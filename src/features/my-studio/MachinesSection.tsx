@@ -118,7 +118,7 @@ export function MachinesSection({ authTrainer }: MachinesSectionProps) {
   const { settingsByMachineId } = useStudioMachineSettings(studioId);
   const { notesByMachineId } = useStudioMachineNotes(studioId);
   const { events: upkeepEvents } = useStudioUpkeep(studioId);
-  const shared = useSharedMachines(true);
+  const shared = useSharedMachines(true, studioId);
   const todayKey = studioDateKey(new Date()) ?? "";
 
   const gaps = useMemo(

@@ -10,6 +10,7 @@
  * filled in (the same rule as the credit on a shared item, hooks.ts).
  */
 
+import { isDemoStudioId } from "../demo-mode/is-demo";
 import type { OfferKind } from "./mutations";
 
 export interface ShareOffer {
@@ -73,7 +74,8 @@ function noteLines(blocks: unknown): string[] {
 export function offerFrom(kind: OfferKind, path: string, docId: string, data: Record<string, unknown>): ShareOffer | null {
   if (data.shareStatus !== "pending" || data.shared === true) return null;
   const studioId = studioIdFromPath(path);
-  if (!studioId) return null;
+  // Never an offer from Demo Mode (the realm rule, Oct 2 2026).
+  if (!studioId || isDemoStudioId(studioId)) return null;
   if (kind === "machine") {
     const def = (data.definition ?? {}) as Record<string, unknown>;
     return {

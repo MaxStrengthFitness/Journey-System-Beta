@@ -113,6 +113,8 @@ export interface NotificationBellProps {
    */
   onNavigate?: (view: string, id?: string, learning?: unknown, studioId?: string) => void;
   className?: string;
+  /** The studio this iPad is in: inside Demo Mode the bell shows Demo Mode's notices only (Oct 2 2026). */
+  activeStudioId?: string | null;
 }
 
 export function NotificationBell({
@@ -120,6 +122,7 @@ export function NotificationBell({
   authTrainer,
   onNavigate,
   className,
+  activeStudioId = null,
 }: NotificationBellProps) {
   const [open, setOpen] = useState(false);
   const uid = trainerId ?? authTrainer?.id ?? null;
@@ -128,7 +131,7 @@ export function NotificationBell({
     announcements,
     unread: unreadAnnouncements,
     unreadCount: announcementCount,
-  } = useHubAnnouncements(authTrainer);
+  } = useHubAnnouncements(authTrainer, activeStudioId);
 
   // One badge for both feeds. A trainer looking at the header is asking "is
   // there anything for me", not "which subsystem produced it".

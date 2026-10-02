@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { HubAnnouncement, Trainer } from "../../../types";
 import {
   EMPTY_DRAFT,
+  announcementsInRealm,
   SHORT_CONTENT_MAX,
   announcementBody,
   audienceLabel,
@@ -633,5 +634,20 @@ describe("asking everyone to say they've read it (Relay's third wave)", () => {
     expect("asksRead" in announcementBody(base, author, [], "24h", new Date("2026-09-29T12:00:00Z"))).toBe(false);
     expect(announcementBody({ ...base, asksRead: false }, author, [], "24h", new Date("2026-09-29T12:00:00Z")).asksRead).toBeUndefined();
     expect(announcementBody({ ...base, asksRead: true }, author, [], "24h", new Date("2026-09-29T12:00:00Z")).asksRead).toBe(true);
+  });
+});
+
+describe("announcementsInRealm (the bell's realm rule, Oct 2 2026)", () => {
+  const real = { id: "r", studioId: "solon" };
+  const everyone = { id: "u", studioId: "all" };
+  const listed = { id: "l", studioId: "all", targetStudioIds: ["solon", "westlake"] };
+  const demo = { id: "d", studioId: "demo-studio", targetStudioIds: ["demo-studio"] };
+
+  it("inside Demo Mode shows only Demo Mode's notices", () => {
+    expect(announcementsInRealm([real, everyone, listed, demo], "demo-studio").map((a) => a.id)).toEqual(["d"]);
+  });
+
+  it("outside Demo Mode never shows a notice addressed only to it", () => {
+    expect(announcementsInRealm([real, everyone, listed, demo], "solon").map((a) => a.id)).toEqual(["r", "u", "l"]);
   });
 });

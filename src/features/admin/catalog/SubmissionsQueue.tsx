@@ -32,6 +32,7 @@
  *
  * Nothing here contacts anyone; the studio sees the outcome on its floor.
  */
+import { isDemoStudioId } from "../../demo-mode/is-demo";
 import { useEffect, useMemo, useState } from "react";
 import { BookOpen, Check, Inbox, X } from "lucide-react";
 import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
@@ -72,6 +73,8 @@ export function SubmissionsQueue({ onReview }: { onReview: (submission: Submissi
         setPending(
           snap.docs
             .map((d) => ({ ...(d.data() as CatalogSubmissionDoc & { submittedAt?: unknown }), id: d.id }) as Submission)
+            // Never an offer from Demo Mode (the realm rule, Oct 2 2026).
+            .filter((sub) => !isDemoStudioId(sub.studioId))
             .sort((a, b) => millis(a.submittedAt) - millis(b.submittedAt)),
         );
         setFailed(false);

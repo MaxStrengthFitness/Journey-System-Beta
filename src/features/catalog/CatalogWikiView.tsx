@@ -1,3 +1,4 @@
+import { isDemoStudioId } from "../demo-mode/is-demo";
 import { useEffect, useMemo, useState } from "react";
 import { Building2 } from "lucide-react";
 import type { Machine, Trainer } from "../../types";
@@ -219,6 +220,9 @@ export function CatalogWikiView({
   onOpenFloorEditor,
 }: CatalogWikiViewProps) {
   const { activeStudioId, activeStudio, isAdmin } = useActiveStudio();
+  // Demo Mode offers nothing to head office and reads no other studio's
+  // shares (the realm rule, Oct 2 2026).
+  const inDemo = isDemoStudioId(activeStudioId ?? null);
   const {
     machines: catalogMachines,
     source: floorSource,
@@ -630,7 +634,7 @@ export function CatalogWikiView({
                 entries={playbookHits.map((h) => h.entry)}
                 currentUserId={authTrainer?.id ?? null}
                 renderAction={(entry) =>
-                  activeStudioId && canShareTip(entry.authorId) ? (
+                  activeStudioId && !inDemo && canShareTip(entry.authorId) ? (
                     <ShareToggle
                       item={entry}
                       busy={sharing === `t:${entry.id}`}
@@ -670,7 +674,7 @@ export function CatalogWikiView({
               overlay={overlay}
               author={author}
               headerAction={
-                overlay && author && activeStudioId ? (
+                overlay && author && activeStudioId && !inDemo ? (
                   <ShareToggle
                     item={overlay}
                     busy={sharing === `n:${overlay.id}`}
@@ -710,7 +714,7 @@ export function CatalogWikiView({
           notice={
             // A machine this studio made: its leaders can list it in the
             // database. A copy of another studio's is listed by its original.
-            selected.isStudioCustom && !selected.adoptedFrom && canManageFloor && activeStudioId ? (
+            selected.isStudioCustom && !selected.adoptedFrom && canManageFloor && activeStudioId && !inDemo ? (
               <section className="mdb-adopt" aria-label="Share this machine">
                 <p className="mdb-adopt__line">
                   <Building2 size={14} aria-hidden />

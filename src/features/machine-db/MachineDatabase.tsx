@@ -117,7 +117,7 @@ export function MachineDatabase({
   const [pendingGroup, setPendingGroup] = useState<string | null>(null);
   const { isOpen, setOpen } = useSectionState();
 
-  const { machines: shared, error: sharedError, loading: sharedLoading } = useSharedMachines(true);
+  const { machines: shared, error: sharedError, loading: sharedLoading } = useSharedMachines(true, studioId);
   // Every id on the roster, whatever its status, so a copy never collides.
   const { rosterEntries, loading: rosterLoading } = useStudioMachines(studioId, { includeInactive: true });
   const takenIds = useMemo(() => new Set(rosterEntries.map((e) => e.machineId)), [rosterEntries]);

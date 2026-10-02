@@ -17,6 +17,7 @@
  * PURE MODULE — no React, no Firestore.
  */
 
+import { isDemoStudioId } from "../demo-mode/is-demo";
 import type { WikiBlock } from "../wiki/studio-wiki";
 
 export interface NetworkTip {
@@ -131,10 +132,13 @@ function millis(v: unknown): number {
  * newest first, and never so many that the section becomes the page.
  */
 export function networkItems(items: NetworkItem[], ownStudioId: string | null, limit = 24): NetworkItem[] {
+  // The realm rule (Oct 2 2026): inside Demo Mode no other studio's notes or
+  // tips; outside it, never Demo Mode's.
+  if (isDemoStudioId(ownStudioId)) return [];
   const seen = new Set<string>();
   const others = items.filter((i) => {
     const key = `${i.kind}:${i.studioId}:${i.id}`;
-    if (seen.has(key) || i.studioId === ownStudioId) return false;
+    if (seen.has(key) || i.studioId === ownStudioId || isDemoStudioId(i.studioId)) return false;
     seen.add(key);
     return true;
   });

@@ -22,6 +22,7 @@
  * PURE MODULE — no React, no Firestore.
  */
 
+import { isDemoStudioId } from "../demo-mode/is-demo";
 import type { MachineCatalogEntry, MachineDefinition, StudioMachineRosterEntry } from "../../types/machines";
 import { canonicalMachineId } from "../catalog/machine-identity";
 import { isStandardSetMachine } from "../admin/studios/registry";
@@ -150,6 +151,11 @@ export function buildSubmission(
   input: SubmissionInput,
 ): { ok: true; doc: CatalogSubmissionDoc } | { ok: false; reason: string } {
   const { entry } = input;
+  // The realm rule (Oct 2 2026, AJ): no offer made from Demo Mode reaches
+  // head office's review.
+  if (isDemoStudioId(input.studioId)) {
+    return { ok: false, reason: "Demo Mode is a practice studio: nothing offered here goes to head office." };
+  }
   if (entry.source !== "custom") {
     return { ok: false, reason: "This is an MSF catalog machine already." };
   }

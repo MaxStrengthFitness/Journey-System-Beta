@@ -14,6 +14,12 @@ describe("studioIdFromPath", () => {
 });
 
 describe("offerFrom", () => {
+  it("never lists an offer from Demo Mode for head office (Oct 2 2026)", () => {
+    expect(
+      offerFrom("tip", "studios/demo-studio/playbook/tip1", "tip1", { shareStatus: "pending", title: "x", worked: "y" }),
+    ).toBeNull();
+  });
+
   it("reads a tip whole, credited to the studio its path names", () => {
     const o = offerFrom("tip", "studios/westlake/playbook/tip1", "tip1", {
       studioId: "solon", // what the writer filled in: never trusted for credit
