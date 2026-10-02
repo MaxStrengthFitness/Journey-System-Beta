@@ -358,14 +358,11 @@ function Tracker({ who = client }: { who?: Client } = {}) {
       user={{ uid: "uid-coach", email: "coach@maxstrengthfitness.com" } as any}
       setView={vi.fn()}
       setSelectedClientId={vi.fn()}
-      showClientPicker={false}
-      setShowClientPicker={vi.fn()}
       onStartNewClientOnboarding={vi.fn()}
       authTrainer={trainer}
       isSyncing={false}
       setIsSyncing={vi.fn()}
       schedules={[]}
-      onOpenInfo={vi.fn()}
     />
   );
 }
@@ -703,14 +700,11 @@ describe("the Active Session never draws a blank page (session record, Sep 26 20
         user={{ uid: "uid-coach", email: "coach@maxstrengthfitness.com" } as any}
         setView={props.setView}
         setSelectedClientId={vi.fn()}
-        showClientPicker={false}
-        setShowClientPicker={vi.fn()}
         onStartNewClientOnboarding={vi.fn()}
         authTrainer={trainer}
         isSyncing={false}
         setIsSyncing={vi.fn()}
         schedules={[]}
-        onOpenInfo={vi.fn()}
         clientLookup={props.lookup}
         onRetryClient={props.onRetry}
       />
@@ -927,14 +921,11 @@ describe("a session another trainer is running opens read-only, and live (sessio
           user={{ uid: "uid-coach", email: "coach@maxstrengthfitness.com" } as any}
           setView={vi.fn()}
           setSelectedClientId={vi.fn()}
-          showClientPicker={false}
-          setShowClientPicker={vi.fn()}
           onStartNewClientOnboarding={vi.fn()}
           authTrainer={trainer}
           isSyncing={false}
           setIsSyncing={vi.fn()}
           schedules={[]}
-          onOpenInfo={vi.fn()}
         />
       );
     }

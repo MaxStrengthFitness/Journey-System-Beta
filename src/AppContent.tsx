@@ -833,7 +833,6 @@ export default function AppContent({
     return studios.find((s) => s.id === activeStudioId)?.name || null;
   }, [activeStudioId, studios]);
 
-  const [showClientPicker, setShowClientPicker] = useState(false);
   // Trainer Session Persistence
   useEffect(() => {
     // Check for view override in URL (for emergency admin access)
@@ -1731,10 +1730,7 @@ export default function AppContent({
                     user={user}
                     setView={setView}
                     setSelectedClientId={setSelectedClientId}
-                    showClientPicker={showClientPicker}
-                    setShowClientPicker={setShowClientPicker}
                     onStartNewClientOnboarding={startNewClientOnboarding}
-                    onOpenInfo={() => {}}
                     authTrainer={authTrainer}
                     isSyncing={isSyncing}
                     setIsSyncing={setIsSyncing}

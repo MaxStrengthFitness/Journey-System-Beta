@@ -15,7 +15,7 @@ New code goes here.
 | Folder | What it is | Read first |
 | --- | --- | --- |
 | `briefing/` | The pre-session briefing, the first of the tracker's three screens | `README.md` |
-| `tracker/` | Pieces of the Active Session screen that have been pulled out of `components/WorkoutTrackerView.tsx` (the three dialogs, so far) | `PerformanceEntryDialog.tsx` |
+| `tracker/` | Pieces of the Active Session screen that have been pulled out of `components/WorkoutTrackerView.tsx` (the Assign picker and the stale-session question) | `ClientSelectionDialog.tsx` |
 | `journey-grid/` | The sticky grid of machines by sessions: the tracker's grid and the profile's Journey tab | `README.md` |
 | `rating/` | The Dial and Loudness: the ONE rating control and the ONE loudness control | `scales.ts` |
 | `subjective-report/` | Pulse, the living assessment (code and Firestore still say check-in / subjective) | `README.md` |

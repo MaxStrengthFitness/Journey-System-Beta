@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /**
- * The machine sheet and the set-up prompt, MOUNTED, for the one sentence
- * each says about a machine the client has nothing recorded on (Sep 24
- * 2026, lib/history-claims.ts).
+ * The machine sheet, MOUNTED, for the one sentence it says about a machine
+ * the client has nothing recorded on (Sep 24 2026, lib/history-claims.ts).
+ * The set-up prompt that said it too had no door and went on Oct 2 2026.
  *
  * Machine history is not coming across from FileMaker, so every machine of
  * a client with twelve years behind her arrives empty. Both screens used to
@@ -50,7 +50,6 @@ vi.mock("../../contexts/ToastContext", () => ({
 vi.mock("../../hooks/useClientJournal", () => ({ createJournalEntry: async () => undefined }));
 
 import { MachineSheet } from "./MachineSheet";
-import { SetupPromptDialog } from "./SetupPromptDialog";
 
 const g = globalThis as unknown as Record<string, unknown>;
 const hadRO = "ResizeObserver" in g;
@@ -97,17 +96,6 @@ const sheet = (coverage?: HistoryCoverage) => (
   />
 );
 
-const prompt = (coverage?: HistoryCoverage) => (
-  <SetupPromptDialog
-    open
-    coverage={coverage}
-    machine={machine}
-    clientId="judy"
-    clientSettings={{}}
-    author={null}
-    onClose={() => {}}
-  />
-);
 
 describe("the machine sheet, on a machine with nothing recorded", () => {
   it("tells a client whose whole story is in Journey it is her first time", async () => {
@@ -128,26 +116,6 @@ describe("the machine sheet, on a machine with nothing recorded", () => {
       expect(banner?.textContent).toContain("Journey has no sets for Judy on this machine");
       expect(banner?.textContent).toContain("save the settings so the next trainer has them");
       expect(document.body.textContent).not.toMatch(/first time/i);
-      await act(async () => root.unmount());
-      document.body.innerHTML = "";
-    }
-  });
-});
-
-describe("the set-up prompt", () => {
-  it("promises a first set only to a client whose whole story is in Journey", async () => {
-    const root = await mount(prompt("complete"));
-    expect(document.querySelector(".eq-prompt__kicker")?.textContent).toBe("First time on this machine");
-    expect(document.querySelector(".eq-prompt__sub")?.textContent).toContain("before the first set");
-    await act(async () => root.unmount());
-  });
-
-  it("says nothing is recorded for everyone else", async () => {
-    for (const coverage of ["partial", "unknown", undefined] as const) {
-      const root = await mount(prompt(coverage));
-      expect(document.querySelector(".eq-prompt__kicker")?.textContent).toBe("Nothing recorded on this machine");
-      expect(document.querySelector(".eq-prompt__sub")?.textContent).toContain("No settings are saved here for this client yet.");
-      expect(document.body.textContent).not.toMatch(/first time|first set/i);
       await act(async () => root.unmount());
       document.body.innerHTML = "";
     }

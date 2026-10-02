@@ -1,9 +1,9 @@
 /**
- * The tracker's "who are we training?" picker, shown when the Active Session
- * tab is opened with no client selected.
+ * The tracker's client picker: who receives an open session's sets.
  *
  * Moved out of components/WorkoutTrackerView.tsx, unchanged, in the beta-prep
- * trim (Sep 17 2026). See PerformanceEntryDialog.tsx for why.
+ * trim (Sep 17 2026). Today it is the open session's Assign picker; the
+ * no-client picker it also was had no door and went on Oct 2 2026.
  */
 import { useState } from "react";
 import { Search, Users, ChevronRight } from "lucide-react";
