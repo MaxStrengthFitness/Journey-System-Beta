@@ -2232,12 +2232,25 @@ export function WorkoutTrackerView({
   };
   const dropSessionDraft = () => setPostSession((s) => (s ? { ...s, draft: null } : s));
 
-  /** Leaving the Wrap-up files its Profile note, if any, and goes home. */
-  const leavePostSession = async (profileNote?: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => {
+  /**
+   * Files what the Wrap-up holds — the Profile note, and a mid-session draft
+   * nobody saved or dropped — WITHOUT leaving (the Atlas answers, Oct 2 2026:
+   * every way out files a typed Profile note exactly once). The Wrap-up calls
+   * it when it goes by any other way than Back to Hub (the bottom bar, the
+   * header, a sign-out) and when the iPad is locked or the page hidden; Back
+   * to Hub files through `leavePostSession`, which calls this. The Wrap-up
+   * hands each typed note over once; the draft is filed once per session.
+   */
+  const draftFiledForRef = useRef<string | null>(null);
+  const filePostSessionNotes = async (profileNote?: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => {
     const snap = postSession;
     // A draft the trainer neither saved nor dropped is filed, unfiled, on the
     // way out. The To-file tray exists for exactly this; losing it does not.
-    if (snap?.draft && hasDraftText(snap.draft)) await fileSessionDraft(snap.draft.body);
+    const draftKey = snap?.session.id ?? null;
+    if (snap?.draft && hasDraftText(snap.draft) && draftFiledForRef.current !== draftKey) {
+      draftFiledForRef.current = draftKey;
+      await fileSessionDraft(snap.draft.body);
+    }
     const body = profileNote?.noteContent.trim() ?? "";
     if (snap && body && user?.uid) {
       await noteOrSay(
@@ -2261,6 +2274,11 @@ export function WorkoutTrackerView({
         "Session saved. The profile note could not be saved — add it from Notes & Profile → Notes.",
       );
     }
+  };
+
+  /** Leaving the Wrap-up by Back to Hub files its Profile note, if any, and goes home. */
+  const leavePostSession = async (profileNote?: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => {
+    await filePostSessionNotes(profileNote);
     setPostSession(null);
     setIsPostSessionMode(false);
     setSelectedClientId(null);
@@ -3005,6 +3023,7 @@ export function WorkoutTrackerView({
         onEffort={savePostSessionEffort}
         onNextWeight={savePostSessionNextWeight}
         onLeave={leavePostSession}
+        onFile={filePostSessionNotes}
         unsavedDraft={postSession.draft}
         onSaveDraft={fileSessionDraft}
         onDropDraft={dropSessionDraft}

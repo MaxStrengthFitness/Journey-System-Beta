@@ -240,7 +240,15 @@ const client = { id: "c1", homeStudioId: "s1", firstName: "Judy", lastName: "Cli
 const session = { id: "sess1", clientId: "c1", status: "Completed", sessionNumber: 12 } as WorkoutSession;
 const trainer = { id: "t-doc", fullName: "Jane Coach", initials: "JC", role: "LifeTransformer" } as any;
 
-function Screen({ onEffort = vi.fn(), onLeave = vi.fn() }: { onEffort?: (v: any, d: boolean) => void; onLeave?: (c: any) => void }) {
+function Screen({
+  onEffort = vi.fn(),
+  onLeave = vi.fn(),
+  onFile,
+}: {
+  onEffort?: (v: any, d: boolean) => void;
+  onLeave?: (c: any) => void;
+  onFile?: (c: any) => void;
+}) {
   return (
     <WrapUpScreen
       client={client}
@@ -252,6 +260,7 @@ function Screen({ onEffort = vi.fn(), onLeave = vi.fn() }: { onEffort?: (v: any,
       authTrainer={trainer}
       onEffort={onEffort}
       onLeave={onLeave}
+      onFile={onFile}
       machines={[{ id: "m1", name: "Leg Press" } as any]}
     />
   );
@@ -619,14 +628,17 @@ describe("the post-session screen and a client's history", () => {
 });
 
 /*
- * UNSAVED CHANGES (Sep 24 2026). The Profile note is filed when the trainer
- * leaves by Back to Hub, but the bottom bar stays live on this screen and
- * used to unmount it with the note unfiled. Mounted with the provider and the
- * real bottom bar, wired the way AppContent wires them: onLeave files, then
- * sets the view through the same guarded setter the bar uses.
+ * EVERY WAY OUT FILES (the Atlas answers, Oct 2 2026; it was the unsaved-
+ * changes question from Sep 24). The bottom bar stays live on this screen;
+ * leaving by it files the typed Profile note as the screen goes, exactly once,
+ * and asks nothing. Locking the iPad files it and stays. Mounted with the
+ * provider and the real bottom bar, wired the way AppContent wires them:
+ * onLeave files, then sets the view through the same guarded setter the bar
+ * uses; onFile files without leaving.
  */
-describe("the profile note is unsaved work until Back to Hub files it", () => {
+describe("every way out of the Wrap-up files the typed profile note, once", () => {
   const filed: unknown[] = [];
+  const filedOnTheWay: unknown[] = [];
 
   function Host() {
     const [view, setView] = useGuardedState<View>("workouts");
@@ -634,6 +646,7 @@ describe("the profile note is unsaved work until Back to Hub files it", () => {
       <div data-testid="app" data-view={view}>
         {view === "workouts" && (
           <Screen
+            onFile={(profileNote: unknown) => filedOnTheWay.push(profileNote)}
             onLeave={(profileNote: unknown) => {
               // In the SAME tap, the strictest case: the screen has not
               // re-rendered since Back to Hub was pressed, so only its own
@@ -674,40 +687,76 @@ describe("the profile note is unsaved work until Back to Hub files it", () => {
 
   beforeEach(() => {
     filed.length = 0;
+    filedOnTheWay.length = 0;
   });
 
-  it("lets the bottom bar straight through while no note is typed", async () => {
+  const setHidden = (hidden: boolean) => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => (hidden ? "hidden" : "visible") });
+    document.dispatchEvent(new Event("visibilitychange"));
+  };
+  afterEach(() => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+  });
+
+  it("lets the bottom bar straight through while no note is typed, and files nothing", async () => {
     const host = await mount(withProvider(<Host />));
     await click(hub(host));
+    await settle();
     expect(question()).toBeNull();
     expect(viewOf(host)).toBe("clients");
+    expect(filedOnTheWay).toHaveLength(0);
   });
 
-  it("asks before the bottom bar leaves with a typed profile note, and keeps it on Keep editing", async () => {
+  it("files a typed profile note when the bottom bar leaves, without asking, exactly once", async () => {
     const host = await mount(withProvider(<Host />));
     await typeNote(host, "Shoulder tender on chest press");
     await click(hub(host));
-    expect(question()!.textContent).toContain(
-      "You have unsaved changes to the profile note. Leave without saving?",
-    );
-    await click(document.querySelector('[data-action="keep-editing"]'));
-    expect(viewOf(host)).toBe("workouts");
-    expect((host.querySelector('textarea[aria-label="Profile note"]') as HTMLTextAreaElement).value).toBe(
-      "Shoulder tender on chest press",
-    );
+    await settle();
+    expect(question()).toBeNull();
+    expect(viewOf(host)).toBe("clients");
+    expect(filedOnTheWay).toEqual([expect.objectContaining({ noteContent: "Shoulder tender on chest press", importance: "standard" })]);
     expect(filed).toHaveLength(0);
   });
 
-  it("files the note by Back to Hub and goes, without asking about the note it is filing", async () => {
+  it("files the note by Back to Hub and goes, once, without asking", async () => {
     const host = await mount(withProvider(<Host />));
     await typeNote(host, "Shoulder tender on chest press");
     await click(buttonByText(host, "Back to Hub"));
     await settle();
+    await settle();
     expect(question()).toBeNull();
     expect(viewOf(host)).toBe("clients");
-    expect(filed).toEqual([
-      expect.objectContaining({ noteContent: "Shoulder tender on chest press" }),
-    ]);
+    expect(filed).toEqual([expect.objectContaining({ noteContent: "Shoulder tender on chest press" })]);
+    // The unmount that follows Back to Hub files nothing a second time.
+    expect(filedOnTheWay).toHaveLength(0);
+  });
+
+  it("files it when the iPad is locked, stays, and never files the same words twice", async () => {
+    const host = await mount(withProvider(<Host />));
+    await typeNote(host, "Shoulder tender on chest press");
+    await act(async () => setHidden(true));
+    expect(filedOnTheWay).toEqual([expect.objectContaining({ noteContent: "Shoulder tender on chest press" })]);
+    expect(viewOf(host)).toBe("workouts");
+    await act(async () => setHidden(false));
+    expect((host.querySelector('textarea[aria-label="Profile note"]') as HTMLTextAreaElement).value).toBe("");
+    expect(host.querySelector('[data-testid="profile-note-filed"]')).toBeTruthy();
+    // Hidden again with nothing new typed: nothing more is filed.
+    await act(async () => setHidden(true));
+    await act(async () => setHidden(false));
+    expect(filedOnTheWay).toHaveLength(1);
+    // Leaving now files nothing more either.
+    await click(buttonByText(host, "Back to Hub"));
+    await settle();
+    expect(filed).toEqual([expect.objectContaining({ noteContent: "" })]);
+  });
+
+  it("files it when a sign-out asks every screen to send now", async () => {
+    const host = await mount(withProvider(<Host />));
+    await typeNote(host, "Ask about the knee");
+    await act(async () => {
+      window.dispatchEvent(new Event("journey:send-sets-now"));
+    });
+    expect(filedOnTheWay).toEqual([expect.objectContaining({ noteContent: "Ask about the knee" })]);
   });
 });
 

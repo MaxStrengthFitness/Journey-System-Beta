@@ -30,7 +30,7 @@ import {
   renewalPromptDue,
 } from "../features/renewals";
 import { getBroadMuscleGroup } from "../lib/clinical-review-utils";
-import { useUnsavedChanges } from "../features/unsaved-changes";
+import { SEND_SETS_NOW_EVENT } from "../features/session-record/sign-out-check";
 import { performedOnly, SKIP_REASON_SHORT } from "../lib/set-outcome";
 import { studioTodayKey } from "../lib/studio-time";
 import {
@@ -274,6 +274,13 @@ export interface WrapUpScreenProps {
   /** Leaves the screen; the Profile note (if any) is filed on the way out with its Loudness and "until" day. */
   onLeave: (profileNote: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => void | Promise<void>;
   /**
+   * Files the Profile note (and, through the host, a waiting mid-session
+   * draft) WITHOUT leaving: when the screen goes by any way but Back to Hub,
+   * when the iPad is locked or the page hidden, and on a sign-out. Each typed
+   * note is handed over once (the Atlas answers, Oct 2 2026).
+   */
+  onFile?: (profileNote: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => void | Promise<void>;
+  /**
    * A note the trainer started mid-session and never saved (fluidity round,
    * Sep 2026). The screen says so and offers to finish it or drop it; a
    * draft still here on leave is filed by the host, never lost.
@@ -404,6 +411,7 @@ export function WrapUpScreen({
   onEffort,
   onNextWeight,
   onLeave,
+  onFile,
   unsavedDraft = null,
   onSaveDraft,
   onDropDraft,
@@ -483,24 +491,23 @@ export function WrapUpScreen({
   );
 
   /*
-   * UNSAVED CHANGES (Sep 24 2026). The Profile note is filed when the trainer
-   * leaves by "Back to Hub" — but the bottom bar and the header stay live on
-   * this screen, and leaving through THEM unmounted it with the note unfiled.
-   * So a typed Profile note, or an unfinished mid-session note still waiting
-   * here, is unsaved work, and those exits ask first. "Back to Hub" is not
-   * asked about: it files both, and `leave` releases the screen before it
-   * navigates.
+   * EVERY WAY OUT FILES (the Atlas answers, Oct 2 2026). Until then only
+   * "Back to Hub" filed the Profile note; the bottom bar and the header asked
+   * first (the unsaved-changes question, Sep 24 2026), and locking the iPad
+   * filed it by navigating away. AJ: every exit saves it. So:
+   *   - Back to Hub files through `onLeave` and goes home, as before;
+   *   - any other way the screen goes (the bottom bar, the header, a studio
+   *     switch, a sign-out) files through `onFile` as it unmounts — nothing
+   *     asks, because nothing is lost;
+   *   - the iPad locked or the page hidden files through `onFile` and STAYS:
+   *     the box empties and says it was saved, so coming back and typing
+   *     more is a new note, never the same note twice;
+   *   - a sign-out files when it raises SEND_SETS_NOW_EVENT, before the
+   *     person is gone (a write after sign-out is made as nobody).
+   * A typed note is handed over exactly once: the ref is emptied the moment
+   * it is.
    */
-  const profileNoteTyped = notes.trim() !== "";
-  const draftWaiting = !!unsavedDraft && draftText.trim() !== "";
-  const unsaved = useUnsavedChanges(
-    !leaving && (profileNoteTyped || draftWaiting),
-    profileNoteTyped && draftWaiting
-      ? "the profile note and the unfinished note"
-      : profileNoteTyped
-        ? "the profile note"
-        : "the unfinished note",
-  );
+  const [noteFiledHere, setNoteFiledHere] = useState(false);
 
   /* The confetti: a short burst as the screen opens, a little over a second,
      then quiet. AJ kept it (Sep 27 2026, asked in the Sep 21 audit and again
@@ -522,29 +529,73 @@ export function WrapUpScreen({
      closing the tab. Keep the latest text in a ref so an unload can read it. */
   const notesRef = useRef({ notes, importance, effectiveUntil });
   notesRef.current = { notes, importance, effectiveUntil };
+  const draftWaitingRef = useRef(false);
+  draftWaitingRef.current = !!unsavedDraft && draftText.trim() !== "";
+  const onFileRef = useRef(onFile);
+  onFileRef.current = onFile;
   const leftRef = useRef(false);
-  const leave = () => {
-    if (leftRef.current) return;
-    leftRef.current = true;
-    // Filing, not losing: the navigation onLeave ends with must not ask.
-    unsaved.release();
-    setLeaving(true);
-    fileEffortDefault();
+
+  /** The Profile note as the host files it, from what is typed right now. */
+  const profileNoteNow = () => {
     const { notes: noteContent, importance: loud, effectiveUntil: until } = notesRef.current;
-    void onLeave({
+    return {
       noteContent,
       importance: loud,
       // End of the studio day, as the composer writes it — never a raw
       // date-only string, which would be UTC midnight (CLAUDE.md).
       effectiveUntil: loud !== "standard" && until ? new Date(`${until}T23:59:59`) : null,
-    });
+    };
   };
+
+  /**
+   * Files what is here without leaving: the typed Profile note (once — the
+   * ref is emptied as it is handed over) and, through the host, a waiting
+   * draft. True when something was handed over.
+   */
+  const fileWithoutLeaving = (): boolean => {
+    if (leftRef.current || !onFileRef.current) return false;
+    const note = profileNoteNow();
+    const typed = note.noteContent.trim() !== "";
+    if (!typed && !draftWaitingRef.current) return false;
+    notesRef.current = { ...notesRef.current, notes: "" };
+    void onFileRef.current(typed ? note : { ...note, noteContent: "" });
+    return typed;
+  };
+
+  const leave = () => {
+    if (leftRef.current) return;
+    leftRef.current = true;
+    setLeaving(true);
+    fileEffortDefault();
+    const note = profileNoteNow();
+    notesRef.current = { ...notesRef.current, notes: "" };
+    void onLeave(note);
+  };
+
   useEffect(() => {
+    // Locked or hidden: file and stay. The box empties and says so.
     const onHide = () => {
-      if (document.visibilityState === "hidden" && notesRef.current.notes.trim() && !leftRef.current) leave();
+      if (document.visibilityState !== "hidden") return;
+      fileEffortDefault();
+      if (fileWithoutLeaving()) {
+        setNotes("");
+        setNoteFiledHere(true);
+      }
+    };
+    // A sign-out asks every screen to send now, while the person is signed in.
+    const onSignOut = () => {
+      fileEffortDefault();
+      if (fileWithoutLeaving()) {
+        setNotes("");
+        setNoteFiledHere(true);
+      }
     };
     document.addEventListener("visibilitychange", onHide);
-    return () => document.removeEventListener("visibilitychange", onHide);
+    window.addEventListener(SEND_SETS_NOW_EVENT, onSignOut);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener(SEND_SETS_NOW_EVENT, onSignOut);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -569,16 +620,19 @@ export function WrapUpScreen({
     Promise.resolve(onEffortRef.current(0, true)).catch(() => undefined);
   };
   // Every way out that unmounts the screen without Back to Hub (the bottom
-  // bar, the header, a sign-out) still files the default.
-  // The check waits a tick, so React's development double mount (StrictMode
-  // runs every effect's cleanup once and mounts again) is not a way out.
+  // bar, the header, a studio switch) still files the Profile note and the
+  // effort's default. The check waits a tick, so React's development double
+  // mount (StrictMode runs every effect's cleanup once and mounts again) is
+  // not a way out.
   const aliveRef = useRef(false);
   useEffect(() => {
     aliveRef.current = true;
     return () => {
       aliveRef.current = false;
       setTimeout(() => {
-        if (!aliveRef.current) fileEffortDefault();
+        if (aliveRef.current) return;
+        fileEffortDefault();
+        fileWithoutLeaving();
       }, 0);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -911,9 +965,17 @@ export function WrapUpScreen({
               className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[14px] text-ink-d1 placeholder:text-ink-d3 placeholder:italic resize-none outline-none focus:border-(--eq-focus-ring) transition-colors"
               placeholder={`Profile note — anything for ${clientFirstName(client)}'s record. It files when you leave this screen.`}
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e) => {
+                setNotes(e.target.value);
+                setNoteFiledHere(false);
+              }}
               aria-label="Profile note"
             />
+            {noteFiledHere && (
+              <span className="text-[11px] text-(--eq-ok) font-bold flex items-center gap-1" role="status" data-testid="profile-note-filed">
+                <Check size={12} strokeWidth={3} /> Profile note saved. Anything you type now is a new note.
+              </span>
+            )}
             {/* The Profile note is the one that goes only to the client's
                 profile (voice-review round, Sep 27 2026): at Note it stays on the
                 record and the next trainer's briefing never shows it. The
