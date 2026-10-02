@@ -13,6 +13,7 @@
  *   Trend      What I think · How I'll know · Evidence    nowhere until its sample is met; then
  *              so far (a hunch)                           written up for the Studio shelf
  *   Personal   What? · So what? · Now what?               never
+ *   Team       Who · What happened · What I'll do         never (leaders only; Oct 2 2026)
  *
  * (q8's default: personal notes and day logs never; machine and protocol
  * notes to the Studio shelf; client notes onto that client's record.)
@@ -52,7 +53,7 @@ import {
   type TrainerNote,
 } from "./types";
 
-export type ShelfId = "clients" | "machines" | "protocol" | "research" | "trends" | "personal";
+export type ShelfId = "clients" | "machines" | "protocol" | "research" | "trends" | "personal" | "team";
 
 export interface TemplateField {
   key: string;
@@ -153,6 +154,21 @@ export const NOTE_TEMPLATES: Record<NoteType, NoteTemplate> = {
     kind: "note",
     shares: { record: false, colleagues: false, studioShelf: false },
   },
+  // A leader's own record about someone on the team (the Atlas answers,
+  // Oct 2 2026). Private to its author, like every note here; never shared.
+  team: {
+    type: "team",
+    label: "Team member",
+    fields: [
+      { key: "who", label: "Who", placeholder: "Pick someone on the team" },
+      { key: "what", label: "What happened", placeholder: "What you saw, said or agreed" },
+      { key: "next", label: "What I'll do", placeholder: "The follow-up, and when" },
+    ],
+    shelf: "team",
+    vis: "Only you. A leader's own record about a team member; never shared.",
+    kind: "note",
+    shares: { record: false, colleagues: false, studioShelf: false },
+  },
 };
 
 export const SHELVES: readonly { id: ShelfId; label: string }[] = [
@@ -162,6 +178,7 @@ export const SHELVES: readonly { id: ShelfId; label: string }[] = [
   { id: "research", label: "Research" },
   { id: "trends", label: "Trends · hunches" },
   { id: "personal", label: "Personal" },
+  { id: "team", label: "Team" },
 ];
 
 const TYPE_OF_SHELF: Record<ShelfId, NoteType> = {
@@ -171,6 +188,7 @@ const TYPE_OF_SHELF: Record<ShelfId, NoteType> = {
   research: "research",
   trends: "trend",
   personal: "personal",
+  team: "team",
 };
 
 export function isNoteType(v: unknown): v is NoteType {

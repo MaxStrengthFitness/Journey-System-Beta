@@ -1658,7 +1658,8 @@ service cloud.firestore {
     match /trainers/{trainerId}/notes/{noteId} {
       function journalFieldsValid(d) {
         return (!('noteType' in d) || d.noteType == null
-                  || d.noteType in ['client', 'machine', 'protocol', 'research', 'trend', 'personal'])
+                  // 'team': a leader's note about a team member (Oct 2 2026).
+                  || d.noteType in ['client', 'machine', 'protocol', 'research', 'trend', 'personal', 'team'])
             && (!('fields' in d) || d.fields == null || (d.fields is map && d.fields.size() <= 3))
             && (!('hunch' in d) || d.hunch == null
                 || (d.hunch is map

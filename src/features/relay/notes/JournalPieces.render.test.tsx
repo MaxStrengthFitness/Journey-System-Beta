@@ -67,6 +67,15 @@ describe("the Journal's pieces", () => {
     expect(onWrite).toHaveBeenCalledWith("machine");
   });
 
+  it("offers a leader a seventh kind, a note about a team member, and nobody else (Oct 2 2026)", async () => {
+    const onWrite = vi.fn();
+    const h = await render(<WriteRow slotsFree={3} onWrite={onWrite} leader />);
+    expect(h.querySelectorAll(".jn-type")).toHaveLength(7);
+    expect(h.textContent).toContain("seven kinds");
+    await act(async () => button("Team member")!.click());
+    expect(onWrite).toHaveBeenCalledWith("team");
+  });
+
   it("a hunch says how far it has got, takes evidence about a client, and can be retired", async () => {
     const onAdd = vi.fn(async (_entry: { text: string; clientId: string | null }) => true);
     const onRetire = vi.fn();

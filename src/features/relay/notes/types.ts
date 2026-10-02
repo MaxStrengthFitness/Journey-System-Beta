@@ -84,9 +84,17 @@ export interface NoteLogEntry {
  * ------------------------------------------------------------------ */
 
 /** A journal entry's type: AJ's six ("machines, clients, protocol, research, trends, personal"). */
-export type NoteType = "client" | "machine" | "protocol" | "research" | "trend" | "personal";
+export type NoteType = "client" | "machine" | "protocol" | "research" | "trend" | "personal" | "team";
 
-export const NOTE_TYPES: NoteType[] = ["client", "machine", "protocol", "research", "trend", "personal"];
+export const NOTE_TYPES: NoteType[] = ["client", "machine", "protocol", "research", "trend", "personal", "team"];
+
+/**
+ * A note about a team member (the Atlas answers, Oct 2 2026; AJ: "leaders
+ * should have the ability to track the studio trainers and have records and
+ * notes about them"). Offered to the people who lead the studio; private to
+ * its author like every Journal note, and never shared.
+ */
+export const LEADER_NOTE_TYPES: readonly NoteType[] = ["team"];
 
 /** A typed note's three template answers, keyed by the template's own keys (./journal.ts). */
 export type NoteFields = Partial<Record<string, string>>;

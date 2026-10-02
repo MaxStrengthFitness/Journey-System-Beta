@@ -6020,3 +6020,30 @@ describe("oct2 team: who has read a notice", () => {
     await assertFails(getDocs(collection(as("trainerA"), "hub_announcements", "noticeA", "acks")));
   });
 });
+
+/* OCT 2 2026 (the Atlas answers, team branch): a leader's Journal note about
+   a team member is an ordinary private note with noteType 'team'. Its own
+   block so other branches' rules edits merge cleanly. */
+describe("oct2 team: a note about a team member", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+  const note = {
+    title: "Sam: late twice",
+    body: "",
+    kind: "note",
+    folderId: null,
+    clientIds: [],
+    clientNames: {},
+    pinned: false,
+    sharedWith: null,
+    noteType: "team",
+    fields: { who: "Sam Gamgee", what: "Late twice this week", next: "Talk on Friday" },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  it("saves on the author's own path, and nobody else reads it", async () => {
+    await assertSucceeds(setDoc(doc(as("trainerA"), "trainers", "trainerA", "notes", "teamNote"), note));
+    await assertFails(getDoc(doc(as("trainerB"), "trainers", "trainerA", "notes", "teamNote")));
+    await assertFails(setDoc(doc(as("trainerB"), "trainers", "trainerA", "notes", "teamNote2"), note));
+  });
+});
