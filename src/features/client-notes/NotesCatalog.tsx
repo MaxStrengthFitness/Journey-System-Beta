@@ -19,6 +19,11 @@
  *   RESOLVED   folded to its count, with "Show the N resolved notes", then
  *              month by month — chronology is how last winter's thread is
  *              found.
+ *   ARCHIVED   (Oct 2 2026, AJ: archiving is "open to all, with an Archived
+ *              view and Restore") folded to its count; each archived thread
+ *              reads in full, read-only, and anyone may Restore it. Nothing
+ *              archived is lost. Not filtered by the chips: it is the place
+ *              to look for a note that has left every other screen.
  *
  * A CRITICAL NOTE IS DRAWN ONCE, in Open. "Critical & pinned" used to repeat
  * it at the top, so it was never filtered away; now, when a chip or a search
@@ -32,6 +37,8 @@
  * out.
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useToast } from "../../contexts/ToastContext";
+import { unarchiveThread } from "./thread-write";
 import { ChevronRight, Search, X } from "lucide-react";
 import type { Machine } from "../../types";
 import type { JournalEntry } from "../../types/journal";
@@ -59,6 +66,8 @@ import "./notes-page.css";
 export interface NotesCatalogProps {
   /** The threads the page lists: `notesOnRecord(...).listed`. */
   threads: readonly NoteThread[];
+  /** Archived threads (the journal's `archivedThreads`), for the Archived view. */
+  archivedThreads?: readonly NoteThread[];
   machines: Machine[];
   /** Who is writing. Null makes every thread read-only. */
   author: JournalAuthor | null;
@@ -102,6 +111,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 
 export function NotesCatalog({
   threads,
+  archivedThreads = [],
   machines,
   author,
   today,
@@ -123,6 +133,20 @@ export function NotesCatalog({
   onOpenSession,
 }: NotesCatalogProps) {
   const [filter, setFilter] = useState<CatalogFilter>(EMPTY_FILTER);
+  const [showArchived, setShowArchived] = useState(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+  const { success: toastSuccess, error: toastError } = useToast();
+  const restore = async (thread: NoteThread) => {
+    setRestoringId(thread.id);
+    try {
+      await unarchiveThread(thread);
+      toastSuccess("Restored. It is back on her notes.");
+    } catch {
+      toastError("Could not restore that note. Check your connection and try again.");
+    } finally {
+      setRestoringId(null);
+    }
+  };
   // One standing or resolved row open at a time.
   const [expandedId, setExpandedId] = useState<string | null>(null);
   // An element to bring into view after the render that draws it.
@@ -328,6 +352,59 @@ export function NotesCatalog({
       />
     ));
 
+  // The Archived view is drawn whatever the other zones hold: a client whose
+  // every note was archived still has somewhere to find them.
+  const archivedZone = archivedThreads.length > 0 ? (
+    <section className="nx-zone" aria-label="Archived notes">
+      {zoneHead(
+        "Archived",
+        archivedThreads.length,
+        "Off every screen, kept in full. Anyone may restore one.",
+        <button
+          type="button"
+          className="nt-btn nt-btn--quiet nx-zone-h__toggle"
+          aria-expanded={showArchived}
+          aria-controls="notes-archived-list"
+          onClick={() => setShowArchived(!showArchived)}
+        >
+          {showArchived ? "Hide" : "Show"} the {plural(archivedThreads.length, "archived note")}
+        </button>,
+        "notes-archived",
+      )}
+      {showArchived ? (
+        <div className="nx-rows" id="notes-archived-list" data-testid="zone-archived">
+          {archivedThreads.map((t) => (
+            <div key={t.id} className="nx-archived">
+              <ThreadRow
+                thread={t}
+                zone="resolved"
+                machines={machines}
+                today={today}
+                expanded={expandedId === t.id}
+                onToggle={() => setExpandedId((cur) => (cur === t.id ? null : t.id))}
+                author={null}
+                sessionLabelOf={sessionLabelOf}
+                onOpenSession={onOpenSession}
+              />
+              {author ? (
+                <div className="nx-archived__acts">
+                  <button
+                    type="button"
+                    className="nt-btn"
+                    disabled={restoringId === t.id}
+                    onClick={() => void restore(t)}
+                  >
+                    Restore
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  ) : null;
+
   let body: ReactNode;
   if (isLoading) {
     body = <LoadingArea label="Loading notes" />;
@@ -436,6 +513,7 @@ export function NotesCatalog({
             ) : null}
           </section>
         ) : null}
+
       </>
     );
   }
@@ -456,6 +534,7 @@ export function NotesCatalog({
         />
       ) : null}
       {body}
+      {isLoading ? null : archivedZone}
     </div>
   );
 }

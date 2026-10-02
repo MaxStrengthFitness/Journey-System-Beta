@@ -225,7 +225,7 @@ export function NoteThreadCard({
     try {
       await archiveThread(thread);
       setMenu("closed");
-      toastSuccess("Archived. It has left every screen.");
+      toastSuccess("Archived. It has left every screen; Restore it from Archived on her Notes.");
     } catch {
       toastError("Could not archive that note. Check your connection and try again.");
     } finally {

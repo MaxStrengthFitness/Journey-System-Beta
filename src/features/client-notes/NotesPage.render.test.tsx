@@ -39,6 +39,7 @@ const fake = vi.hoisted(() => ({
   sets: [] as { path: string; data: any }[],
   updates: [] as { path: string; data: any }[],
   gets: [] as string[],
+  batched: [] as { path: string; data: any }[],
 }));
 
 vi.mock("firebase/firestore", async (importOriginal) => {
@@ -63,7 +64,14 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     updateDoc: async (ref: any, data: any) => {
       fake.updates.push({ path: ref.__path, data });
     },
-    writeBatch: () => ({ update() {}, set() {}, delete() {}, commit: async () => {} }),
+    writeBatch: () => ({
+      update(ref: any, data: any) {
+        fake.batched.push({ path: ref.__path, data });
+      },
+      set() {},
+      delete() {},
+      commit: async () => {},
+    }),
     deleteField: () => ({ __delete: true }),
     serverTimestamp: () => ({ __server: true }),
     // A session the tab's stream doesn't hold, read once on the tap that opens it.
@@ -662,5 +670,37 @@ describe("Notes — the session a note was written in, and one machine's notes (
     expect(text).toContain("Right knee: stop at 90°");
     expect(text).not.toContain("Fan on, no music.");
     expect(text).not.toContain("Likes the fan on high.");
+  });
+});
+
+describe("the Archived view (Oct 2 2026: archiving is open to all, with an Archived view and Restore)", () => {
+  const gone = entry({ id: "gone", kind: "preference", body: "Prefers the 7am slot.", isArchived: true });
+  const goneU = entry({ id: "gone-u", threadId: "gone", body: "Now 8am.", isArchived: true });
+
+  it("keeps archived notes, folded, and anyone may restore one whole", async () => {
+    fake.batched.length = 0;
+    const archivedThreads = assembleThreads([gone, goneU]);
+    const host = await mount(propsFor(ALL, { journal: journalOf(ALL, { archivedThreads }) }));
+    expect(host.textContent).toContain("Archived · 1");
+    expect(zone(host, "archived")).toBeNull();
+    await click(buttonIn(host, "Show the 1 archived note"));
+    const archived = zone(host, "archived")!;
+    expect(archived.textContent).toContain("Prefers the 7am slot.");
+    await click(buttonIn(archived, "Restore"));
+    expect(fake.batched.map((b) => b.path).sort()).toEqual(["journalEntries/gone", "journalEntries/gone-u"]);
+    expect(fake.batched.every((b) => b.data.isArchived === false)).toBe(true);
+  });
+
+  it("shows the Archived view even when every note was archived", async () => {
+    const archivedThreads = assembleThreads([gone]);
+    const host = await mount(propsFor([], { journal: journalOf([], { archivedThreads }) }));
+    expect(host.textContent).toContain("Archived · 1");
+  });
+
+  it("offers no Restore to a reader who cannot write", async () => {
+    const archivedThreads = assembleThreads([gone]);
+    const host = await mount(propsFor(ALL, { author: null, journal: journalOf(ALL, { archivedThreads }) }));
+    await click(buttonIn(host, "Show the 1 archived note"));
+    expect(buttonIn(zone(host, "archived")!, "Restore")).toBeUndefined();
   });
 });

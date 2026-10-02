@@ -380,6 +380,7 @@ export function NotesPage({
 
       <NotesCatalog
         threads={record.listed}
+        archivedThreads={journal.archivedThreads ?? []}
         machines={machines}
         author={author}
         today={today}

@@ -29,6 +29,7 @@
 import type { JournalEntry, JournalOrigin } from "../../types/journal";
 import {
   archiveJournalEntries,
+  unarchiveJournalEntries,
   createJournalEntry,
   resolveJournalEntry,
   type JournalAuthor,
@@ -121,6 +122,18 @@ export function reopenThread(rootId: string): Promise<void> {
  * document would refuse the whole batch.
  */
 export function archiveThread(thread: Pick<NoteThread, "root" | "updates">): Promise<void> {
-  const ids = [thread.root, ...thread.updates].filter((e) => e?.id && !e.isLegacy).map((e) => e.id);
-  return archiveJournalEntries(ids);
+  return archiveJournalEntries(writableIds(thread));
+}
+
+/**
+ * Restore an archived thread (Oct 2 2026, the Notes page's Archived view):
+ * the root and every update come back together, so nothing is lost and no
+ * update returns as a stray note. Anyone may restore, as anyone may archive.
+ */
+export function unarchiveThread(thread: Pick<NoteThread, "root" | "updates">): Promise<void> {
+  return unarchiveJournalEntries(writableIds(thread));
+}
+
+function writableIds(thread: Pick<NoteThread, "root" | "updates">): string[] {
+  return [thread.root, ...thread.updates].filter((e) => e?.id && !e.isLegacy).map((e) => e.id);
 }
