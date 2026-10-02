@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toFloorMachines, dialLabelsOf, isPerSideMachine, studioFloorOf } from "./floor-machines";
+import { toFloorMachines, dialLabelsOf, isPerSideMachine, studioFloorOf, floorWithHistoryMachines } from "./floor-machines";
 import type { Machine } from "../types";
 import type { ResolvedMachine } from "../types/machines";
 
@@ -190,5 +190,26 @@ describe("isPerSideMachine", () => {
   it("is false for everything else", () => {
     expect(isPerSideMachine({ id: "m-leg-press", name: "LEG PRESS" })).toBe(false);
     expect(isPerSideMachine({})).toBe(false);
+  });
+});
+
+describe("floorWithHistoryMachines (the profile's Journey grid rows, Oct 2 2026)", () => {
+  const m = (id: string, name: string, order: number) => ({ id, name, order }) as Machine;
+  const floor = [m("leg", "Leg Press", 1), m("sm-solon-row", "Our Row", 2)];
+  const appWide = [m("chest", "Chest Press", 3), m("leg", "Leg Press (catalog)", 1), m("neck", "Neck", 0)];
+
+  it("is the studio's floor, in its order, when she has no history off it", () => {
+    expect(floorWithHistoryMachines(floor, appWide, ["leg"]).map((x) => x.id)).toEqual(["leg", "sm-solon-row"]);
+  });
+
+  it("keeps a machine she trained on that the floor no longer has, after the floor", () => {
+    const rows = floorWithHistoryMachines(floor, appWide, ["chest", "neck", "leg", "chest"]);
+    expect(rows.map((x) => x.id)).toEqual(["leg", "sm-solon-row", "neck", "chest"]);
+    // The floor's own version wins for a machine on it.
+    expect(rows[0].name).toBe("Leg Press");
+  });
+
+  it("never drops history on a machine no list knows", () => {
+    expect(floorWithHistoryMachines(floor, appWide, ["gone"]).map((x) => x.name)).toEqual(["Leg Press", "Our Row", "gone"]);
   });
 });

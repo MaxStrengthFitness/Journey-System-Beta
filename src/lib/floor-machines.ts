@@ -122,6 +122,33 @@ export function studioFloorOf(
 }
 
 /**
+ * The profile's Journey grid rows (Oct 2 2026, AJ: "This studio's floor, its
+ * own machines included"): the studio's floor in its own order, the same list
+ * the Active Session draws, and after it every machine she has history on
+ * that the floor no longer has, so her sets on it are never hidden. A machine
+ * off the floor is taken from the app-wide list; one that list has never
+ * heard of keeps its id as its name rather than vanishing.
+ */
+export function floorWithHistoryMachines(
+  floor: readonly Machine[],
+  machines: readonly Machine[],
+  historyMachineIds: Iterable<string>,
+): Machine[] {
+  const onFloor = new Set(floor.map((m) => m.id).filter(Boolean) as string[]);
+  const legacyById = new Map<string, Machine>();
+  for (const m of machines) if (m.id) legacyById.set(m.id, m);
+  const extra: Machine[] = [];
+  const seen = new Set<string>();
+  for (const id of historyMachineIds) {
+    if (!id || onFloor.has(id) || seen.has(id)) continue;
+    seen.add(id);
+    extra.push(legacyById.get(id) ?? ({ id, name: id, order: Number.MAX_SAFE_INTEGER } as Machine));
+  }
+  extra.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.name || "").localeCompare(b.name || ""));
+  return [...floor, ...extra];
+}
+
+/**
  * True when this machine logs a Left and a Right set.
  *
  * It used to be `name.includes("torso rotation")` inline in the tracker,

@@ -107,7 +107,7 @@ import {
 } from "../lib/utils";
 import { useActiveSessionCheck } from "../hooks/useActiveSessionCheck";
 import { useStudioMachines } from "../hooks/useStudioMachines";
-import { studioFloorOf } from "../lib/floor-machines";
+import { floorWithHistoryMachines, studioFloorOf } from "../lib/floor-machines";
 import { resolveMachineOrder } from "../data/machine-display-order";
 import {
   RecentJourneyView,
@@ -303,6 +303,12 @@ export function ClientProfileView({
   // The studio's floor for the codex's Watch-outs: its own machines and their
   // lineage, which the app-wide `machines` list has neither of.
   const codexFloor = useMemo(() => studioFloorOf(studioFloor, machines ?? []), [studioFloor, machines]);
+  // The machine window opens any machine the grid lists: the floor's own
+  // version first (its name and dials), then every other machine by id.
+  const machineWindowMachines = useMemo(
+    () => floorWithHistoryMachines(codexFloor, machines ?? [], (machines ?? []).map((m) => m.id ?? "")),
+    [codexFloor, machines],
+  );
 
   // Discard Session (round: In-Progress dropdown) — lets a trainer scrap
   // someone else's abandoned/stuck in-progress session right from the
@@ -1043,7 +1049,10 @@ export function ClientProfileView({
   );
 
   const journeyGridRows = useMemo(() => {
-    const ordered = [...machines].sort(
+    // THIS studio's floor, its own machines included, the same list the
+    // Active Session draws (Oct 2 2026) - not the company catalog - then any
+    // machine she has history on that the floor no longer has.
+    const floor = [...codexFloor].sort(
       (a, b) =>
         resolveMachineOrder(
           a.id,
@@ -1055,6 +1064,11 @@ export function ClientProfileView({
           b.order,
           b.id ? studioFloorById[b.id]?.order : undefined,
         ),
+    );
+    const ordered = floorWithHistoryMachines(
+      floor,
+      machines,
+      allLogs.map((l) => l.machineId),
     );
     const currentStudio = studios?.find((st) => st.id === activeStudioId);
     // Marker 7: the Big Five star is gone from the grid. Every machine in
@@ -1091,6 +1105,7 @@ export function ClientProfileView({
     });
   }, [
     machines,
+    codexFloor,
     allLogs,
     clientSettings,
     studioFloorById,
@@ -1624,6 +1639,7 @@ export function ClientProfileView({
             clientId={clientId || ""}
             routines={routines}
             machines={machines}
+            floorMachines={codexFloor}
             clientSettings={clientSettings}
             clientBodyWeight={parseInt(client?.weight || "150", 10)}
             allLogs={allLogs}
@@ -1890,7 +1906,7 @@ export function ClientProfileView({
         clientId={clientId || ""}
         client={client}
         machineId={machineWindowId}
-        machines={machines}
+        machines={machineWindowMachines}
         clientSettings={clientSettings}
         allLogs={allLogs}
         sessions={sessions}

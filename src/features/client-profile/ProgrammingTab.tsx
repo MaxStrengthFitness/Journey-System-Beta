@@ -71,6 +71,14 @@ export interface ProgrammingTabProps {
   clientId: string;
   routines: Routine[];
   machines: Machine[];
+  /**
+   * THIS studio's floor, its own machines included, in the studio's order
+   * (Oct 2 2026, AJ: before beta; "the standard list is to help new studios
+   * adopt and study material for the machines"). All Machines, Setup and
+   * their counts read it; the routines keep `machines`, so a routine machine
+   * the floor no longer has still has its name. Left out: `machines`.
+   */
+  floorMachines?: Machine[];
   clientSettings: Record<string, ClientMachineSetting>;
   clientBodyWeight?: number;
   allLogs: ExerciseLog[];
@@ -106,6 +114,7 @@ export function ProgrammingTab({
   clientId,
   routines,
   machines,
+  floorMachines,
   clientSettings,
   clientBodyWeight,
   allLogs,
@@ -171,9 +180,10 @@ export function ProgrammingTab({
     coverage: historyCoverage,
   });
 
+  const floor = floorMachines ?? machines;
   const coverage = useMemo(
-    () => rosterCoverage(machines, client, historyCoverage),
-    [machines, client, historyCoverage],
+    () => rosterCoverage(floor, client, historyCoverage),
+    [floor, client, historyCoverage],
   );
   const prescribedWatch = useMemo(() => {
     const ids = new Set<string>();
@@ -193,11 +203,11 @@ export function ProgrammingTab({
     const prescribedIds = new Set<string>();
     for (const r of [...model.rowsA, ...(isBActive ? model.rowsB : [])]) prescribedIds.add(r.machineId);
     return {
-      total: machines.length,
-      done: machines.filter((m) => has(m.id)).length,
+      total: floor.length,
+      done: floor.filter((m) => has(m.id)).length,
       prescribedMissing: [...prescribedIds].filter((id) => !has(id)).length,
     };
-  }, [machines, clientSettings, model, isBActive]);
+  }, [floor, clientSettings, model, isBActive]);
 
   const items = useMemo<SubnavItem<ProgrammingView>[]>(
     () => [
@@ -340,7 +350,7 @@ export function ProgrammingTab({
         <EquipmentTab
           client={client}
           clientId={clientId}
-          machines={machines}
+          machines={floor}
           clientSettings={clientSettings}
           clientBodyWeight={clientBodyWeight}
           allLogs={allLogs}
@@ -359,7 +369,7 @@ export function ProgrammingTab({
           <SetupView
             client={client}
             clientId={clientId}
-            machines={machines}
+            machines={floor}
             clientSettings={clientSettings}
             routines={routines}
             isBActive={isBActive}
