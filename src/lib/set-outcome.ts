@@ -228,6 +228,25 @@ export function unreachedMachineIds(
   return out;
 }
 
+/**
+ * A machine the trainer took out of today's sequence (the reorder sheet's
+ * remove; the Atlas answers, Oct 2 2026): its untouched placeholder is
+ * "Skipped: trainer's call", never "Not reached" — nobody ran out of time on
+ * it, the trainer decided. Only an untouched placeholder: a set worked on,
+ * or one with an outcome already, keeps what it says.
+ */
+export function takenOutForToday(
+  log: OutcomeLog & { machineId?: string | null },
+  todaysSequence: readonly string[],
+): boolean {
+  if (!log?.machineId || todaysSequence.includes(log.machineId)) return false;
+  if (isOutcome(log.outcome)) return false;
+  return !isBegunLog(log);
+}
+
+/** The outcome Finish stamps on a machine taken out for today. */
+export const TAKEN_OUT_OUTCOME = { outcome: "skipped" as const, skipReason: "trainers_call" as const };
+
 /** Marks a CSV / FileMaker row: a count makes it performed, anything else is a skip we cannot explain. */
 export function importedOutcome(row: OutcomeLog): { outcome: SetOutcome; skipReason?: SkipReason } {
   return hasEffort(row) ? { outcome: "performed" } : { outcome: "skipped", skipReason: "unknown" };

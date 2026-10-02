@@ -148,7 +148,7 @@ import {
   hasRequiredCount,
   findIncompleteLogs,
 } from "../lib/log-validation";
-import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL, isBegunLog } from "../lib/set-outcome";
+import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL, isBegunLog, takenOutForToday, TAKEN_OUT_OUTCOME } from "../lib/set-outcome";
 import { canQuoteSessionNumber, coverageOfClient, homeCutoverOf } from "../lib/client-coverage";
 import { sessionNumberTag } from "../lib/history-claims";
 import { sessionTimingFields, toEpochMs } from "../lib/session-timing";
@@ -1972,6 +1972,9 @@ export function WorkoutTrackerView({
          stamped not reached. A set that was begun without a count takes the
          trainer's End Session answer, skipped (reason unknown) by default. */
       const stamped = sessionLogs.map((l) => {
+        // Taken out for today on the reorder sheet: the trainer's call, not
+        // "not reached" (the Atlas answers, Oct 2 2026; set-outcome.ts).
+        if (takenOutForToday(l, activeMachineIds)) return { ...l, ...TAKEN_OUT_OUTCOME };
         const chosen = l.machineId ? endChoices[l.machineId] ?? null : null;
         let o = outcomeAtFinish(l, chosen === "not_reached" ? null : chosen);
         if (o.outcome === "performed") return l;
