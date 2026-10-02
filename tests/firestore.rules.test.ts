@@ -5928,3 +5928,44 @@ describe("oct2 team: the Hub's FORD read with follow-ups", () => {
     await assertFails(getDocs(await readWithFollowUps(as("trainerB"), "studioA")));
   });
 });
+
+/* OCT 2 2026 (the Atlas answers, team branch): franchise owners name people,
+   assign and add studio tasks on their studios' shifts, as they post team
+   jobs (teamJobLeaderAllowed). Kept in its own block so other branches'
+   rules edits merge cleanly. */
+describe("oct2 team: franchise owners on a studio's shift", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "trainers", "franchiseOct2"), {
+        fullName: "Frances Owner",
+        initials: "FO",
+        role: "Owner",
+        primaryHomeStudioId: "studioB",
+        accessibleStudioIds: ["studioB"],
+        ownedStudioIds: ["studioA", "studioB"],
+      });
+      await setDoc(doc(db, "studios", "studioA", "taskInstances", "inst1"), { templateId: "tpl1", status: "open", localDate: "2026-10-02" });
+    });
+  });
+
+  const template = { title: "Wipe the leg press", cadence: "daily", category: "cleaning", createdAt: new Date() };
+  const assignee = { assignedTo: { id: "trainerA", name: "Trainer A" }, assignedBy: { id: "franchiseOct2", name: "Frances Owner" }, assignedAt: new Date() };
+
+  it("lets a franchise owner add a studio task and name someone on one", async () => {
+    const db = as("franchiseOct2");
+    await assertSucceeds(setDoc(doc(db, "studios", "studioA", "taskTemplates", "tplOwner"), template));
+    await assertSucceeds(updateDoc(doc(db, "studios", "studioA", "taskInstances", "inst1"), assignee));
+    await assertSucceeds(setDoc(doc(db, "studios", "studioA", "taskInstances", "inst2"), { templateId: "tpl1", status: "open", localDate: "2026-10-02", ...assignee }));
+  });
+
+  it("still refuses a trainer naming someone or adding a studio task", async () => {
+    const db = as("trainerA");
+    await assertFails(setDoc(doc(db, "studios", "studioA", "taskTemplates", "tplTrainer"), template));
+    await assertFails(updateDoc(doc(db, "studios", "studioA", "taskInstances", "inst1"), assignee));
+    // Ticking it off stays open to the floor.
+    await assertSucceeds(updateDoc(doc(db, "studios", "studioA", "taskInstances", "inst1"), { status: "done" }));
+  });
+});

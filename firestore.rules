@@ -2982,8 +2982,12 @@ service cloud.firestore {
       // box re-opens it, which keeps the audit trail rather than erasing it.
       match /taskTemplates/{templateId} {
         allow read: if isAuthenticated();
+        // Oct 2 2026 (the Atlas answers): franchise owners add studio tasks
+        // on any of their studios' shifts, as they post team jobs. The team
+        // jobs' resolve-once answer (teamJobLeaderAllowed: administrators,
+        // franchise owners, trainerLeads), which relay/leads.ts mirrors.
         allow create, update, delete:
-          if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
+          if teamJobLeaderAllowed(studioId);
       }
 
       /*
@@ -3025,8 +3029,8 @@ service cloud.firestore {
                       && (
                            !('assignedTo' in request.resource.data)
                         || request.resource.data.assignedTo == null
-                        || isSuperAdmin()
-                        || isStudioOwnerOrHeadTrainer(studioId)
+                        // Oct 2 2026: franchise owners name people too.
+                        || teamJobLeaderAllowed(studioId)
                       );
 
         allow update: if isAuthenticated()
@@ -3035,8 +3039,8 @@ service cloud.firestore {
                            !request.resource.data.diff(resource.data)
                               .affectedKeys()
                               .hasAny(['assignedTo', 'assignedBy', 'assignedAt'])
-                        || isSuperAdmin()
-                        || isStudioOwnerOrHeadTrainer(studioId)
+                        // Oct 2 2026: franchise owners name people too.
+                        || teamJobLeaderAllowed(studioId)
                       );
 
         allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
