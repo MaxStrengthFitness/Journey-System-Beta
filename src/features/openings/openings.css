@@ -235,6 +235,11 @@
   .op-grid[data-day="5"] [data-wd]:not([data-wd="5"]),
   .op-grid[data-day="6"] [data-wd]:not([data-wd="6"]) { display: none; }
 }
+/* A phone (Journey Lite, Oct 2026): at 360px the sixth day, Saturday,
+   wrapped onto a line of its own. The six share the row instead. */
+@media (max-width: 599px) {
+  .op-days > .op-chip { flex: 1 1 0; min-width: 40px; padding: 0 4px; }
+}
 
 /* ------------------------------------------------------------------ *
  * Next 7 days: one line per day and half-hour, a tap shows who

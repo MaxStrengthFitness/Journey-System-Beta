@@ -302,6 +302,20 @@
      layout (two rows, or a bar that scrolls). */
   .psub-shell[data-wrap] .psub__meta { display: block; }
 }
+@media (max-width: 599px) {
+  /* That layout (Journey Lite, Oct 1 2026): on a phone the seven pages sit
+     in two rows of four, each segment about 80px wide, so "Overview" and
+     "Account" fit whole and the two-word labels break at the space. */
+  .psub-shell[data-wrap] .psub {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .psub-shell[data-wrap] .psub__btn {
+    padding: 6px 2px;
+  }
+  .psub-shell[data-wrap] .psub__label {
+    letter-spacing: 0.01em;
+  }
+}
 
 /* --------------------------------------------------------------------------
    Tab shells: the persistent strip a consolidated tab puts above its toggle.
@@ -434,3 +448,48 @@
   cursor: pointer;
 }
 .ptab-cue__btn:disabled { opacity: 0.5; cursor: default; }
+
+/* --------------------------------------------------------------------------
+   The profile on a phone (Journey Lite, Oct 1 2026).
+
+   Phone widths only: nothing here reaches an iPad (744pt and up). The header
+   (ProfileHeader's cp-head hooks) puts its actions on their own row under
+   the name, because identity + four actions on one 360-390px row left the
+   name a zero-width column that broke one letter per line. The profile's
+   four tabs (cp-tabs) keep their four equal columns and their 40px height;
+   a label takes a second line instead of an ellipsis.
+   -------------------------------------------------------------------------- */
+@media (max-width: 599px) {
+  .cp-head {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "id" "cta" "strip";
+  }
+  .cp-head__cta {
+    justify-self: stretch;
+    min-width: 0;
+  }
+  /* Start session takes the rest of the row, and says so in words. */
+  .cp-head__start {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .cp-head__startlabel { display: flex; }
+  /* "12 left · 12-Month Package" wraps rather than ending in an ellipsis. */
+  .cp-head__strip .truncate {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+  }
+  /* Programming's and the Archive's four segments: "All machines" breaks at
+     its space, not inside "machines". */
+  .psub__btn { padding: 0 3px; }
+  .psub__label { letter-spacing: 0.02em; }
+  .cp-tab.truncate {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+  }
+}

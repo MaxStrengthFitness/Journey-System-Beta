@@ -1571,13 +1571,13 @@ export function ClientProfileView({
             chosen tab with data-active, never data-state). */}
         <div className="mb-2 w-full">
           <div className="w-full pb-0.5">
-            <TabsList className="bg-slate-100 dark:bg-slate-800/60 p-1 grid grid-cols-4 w-full h-12! rounded-xl gap-1">
+            <TabsList className="cp-tabs bg-slate-100 dark:bg-slate-800/60 p-1 grid grid-cols-4 w-full h-12! rounded-xl gap-1">
               {PROFILE_TABS.map((tab) => (
                 <TabsTrigger
                   key={tab.id}
                   value={tab.id}
                   title={tab.blurb}
-                  className="relative w-full h-10! px-1 sm:px-2 font-display italic text-[11px] sm:text-[13px] font-bold uppercase tracking-wide sm:tracking-widest text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-all text-center cursor-pointer select-none rounded-lg truncate flex items-center justify-center"
+                  className="cp-tab relative w-full h-10! px-1 sm:px-2 font-display italic text-[11px] sm:text-[13px] font-bold uppercase tracking-wide sm:tracking-widest text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-all text-center cursor-pointer select-none rounded-lg truncate flex items-center justify-center"
                 >
                   {tab.label}
                 </TabsTrigger>

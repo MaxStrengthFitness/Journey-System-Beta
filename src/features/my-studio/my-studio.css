@@ -314,6 +314,39 @@
   .ms > .msh--relay > .msh__plus-wrap { grid-area: plus; }
 }
 
+/* A phone (Journey Lite, Oct 2026; features/phone/device.ts). Upright the
+   iPad's first row (section, tabs, Ask, +) is about 560px and ran off a
+   390px screen, taking Ask, + and Tracking with it. On a phone: the section,
+   Ask and + on the first row; Relay's three tabs across the second, sharing
+   it equally; the time and Tracking on the third. The other sections keep one
+   row, with the studio and the day wrapping in what is left between. */
+@media (max-width: 599px) {
+  .msh {
+    flex-wrap: nowrap;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+  }
+  .msh__where { flex: 1 1 0; }
+  .msh__ask { padding: 0 14px; }
+
+  .ms > .msh--relay {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "sect . ask plus"
+      "tabs tabs tabs tabs"
+      "now now track track";
+    padding: 0.375rem 0.75rem 0.5rem;
+  }
+  .ms > .msh--relay > .msh__tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ms > .msh--relay .msh__tab { justify-content: center; padding: 0 6px; }
+  .ms > .msh--relay > .msh__ask { justify-self: end; }
+  .ms > .msh--relay > .msh__now { padding-right: 0; }
+  .ms > .msh--relay .msh__track { max-width: 11rem; padding: 4px 10px; }
+  /* The popovers hang inside the screen: the section menu from the left
+     edge, Tracking and + from the right, never wider than the phone. */
+  .msh__pop { max-width: calc(100vw - 1.5rem); }
+}
+
 /* A section body that scrolls as one page (the Team panel brings .st__scroll
    of its own; Machines and Studio use this). */
 .ms__page {
@@ -450,6 +483,21 @@
   flex-direction: column;
   gap: 1rem;
   padding: 0 1rem 6rem;
+}
+
+/* TeamPanel's scroller is also a .touch-pane, whose utility gives it the
+   screen's height; unwound here, that height stayed, and the staff panels
+   were painted over the last half of Team, on a phone and on an upright
+   iPad alike (found in the Journey Lite round, Oct 1 2026). It is as tall as
+   what it holds. */
+.ms__team .st__scroll { height: auto; }
+
+/* A phone (Journey Lite, Oct 2026). */
+@media (max-width: 599px) {
+  .ms__staff { padding: 0 0.75rem 6rem; }
+  /* A panel's search or badge goes under its title and sentence rather than
+     squeezing them into a column a few words wide. */
+  .ms .adm-panel__head { flex-wrap: wrap; }
 }
 
 /* The standing weeks, first on Team (voice-review round, Sep 27 2026). */

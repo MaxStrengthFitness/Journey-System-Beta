@@ -2649,3 +2649,96 @@ div.jg-today { cursor: default; }
    instead of ending in an ellipsis (their own rules say so since Sep 29
    2026; this was an override until then), and each sits in a row that
    grows: min-height, never height. */
+
+/* ==========================================================================
+   The profile's Journey tab on a phone (Journey Lite, Oct 1 2026)
+
+   Phone widths only, and only the profile's grid (.jg-view--journey, which
+   the Active Session never renders). AJ: a client's history has to show "at
+   least 5 sessions at a time" to mean anything. With the iPad's sticky rails
+   (150px machine + 92px Highest + 26px Older) a 390px phone had room for one
+   session column. Here the machine column narrows (names wrap, rows grow),
+   Highest scrolls with the timeline instead of riding beside the names (it
+   is the leftmost column, reached by scrolling back), and each session
+   column is a fifth of what is left, so the newest five are on screen when
+   the grid opens on the newest session. The timeline still scrolls inside
+   the grid; the page never scrolls sideways.
+   ========================================================================== */
+@media (max-width: 599px) {
+  .jg-view--journey .jg-scroller { container-type: inline-size; }
+  .jg-view--journey .jg {
+    --jg-col-machine: 104px !important;
+    --lite-older: 0px;
+    --lite-stat: 0px;
+  }
+  .jg-view--journey .jg[data-older="true"] { --lite-older: var(--jg-col-older); }
+  .jg-view--journey .jg[data-stats="true"] { --lite-stat: var(--jg-col-stat); }
+  /* A fifth of the width beside the sticky rails; wider when there are fewer
+     sessions than fill the row, so the newest still meets the right edge.
+     Fixed tracks, not minmax(..., 1fr): in a max-content grid 1fr grows to
+     the widest cell ("116 ▲2") and pushed the fifth session off screen. */
+  .jg-view--journey .jg-grid {
+    --jg-col-session: max(
+      34px,
+      calc((100cqw - var(--jg-col-machine) - var(--lite-older)) / 5),
+      calc((100cqw - var(--jg-col-machine) - var(--lite-older) - var(--lite-stat)) / var(--jg-cols))
+    );
+    grid-template-columns:
+      var(--jg-col-machine)
+      var(--jg-track-stat)
+      var(--jg-track-older)
+      repeat(var(--jg-cols), var(--jg-col-session))
+      var(--jg-track-live);
+  }
+  .jg-view--journey .jg-stat,
+  .jg-view--journey .jg-stat-head {
+    position: relative;
+    left: auto;
+    box-shadow: none;
+  }
+  .jg-view--journey .jg-stat-head { position: sticky; top: 0; }
+  .jg-view--journey .jg[data-stats="true"] .jg-head--older,
+  .jg-view--journey .jg[data-stats="true"] .jg-cell.jg-cell--older {
+    left: var(--jg-col-machine);
+  }
+  .jg-view--journey .jg[data-stats="true"] .jg-scroller {
+    scroll-padding-left: var(--jg-col-machine);
+  }
+  .jg-view--journey .jg[data-stats="true"][data-older="true"] .jg-scroller {
+    scroll-padding-left: calc(var(--jg-col-machine) + var(--jg-col-older));
+  }
+  /* The machine column hands its edge back once Highest no longer rides it. */
+  .jg-view--journey .jg[data-stats="true"][data-older="false"] .jg-machine,
+  .jg-view--journey .jg[data-stats="true"][data-older="false"] .jg-corner {
+    border-right-color: var(--jg-border-strong);
+    box-shadow: 8px 0 12px -8px var(--jg-sticky-shadow);
+  }
+  .jg-view--journey .jg-corner { padding: 0 8px; }
+  .jg-view--journey .jg-corner__title { font-size: 12px; letter-spacing: 0.04em; }
+  .jg-view--journey .jg-machine__btn { padding: 4px 2px 4px 6px; }
+  .jg-view--journey .jg-machine__name { font-size: 12px; }
+  .jg-view--journey .jg-row .jg-machine__name { padding-right: 14px; }
+  .jg-view--journey .jg-machine__label { hyphens: auto; }
+  /* A cell is a fifth of the row: the load change and a long time-under-
+     load wrap onto their own line rather than spilling into the next day. */
+  .jg-view--journey .jg-cell { padding: 4px 2px; text-align: center; }
+  .jg-view--journey .jg-cell__r { white-space: normal; }
+  .jg-view--journey .jg-head__d { font-size: 12px; letter-spacing: 0; }
+  /* The filter: four equal segments across the width, labels on two lines. */
+  .jg-view--journey .jg-seg {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+    border-radius: 14px;
+  }
+  .jg-view--journey .jg-seg__btn {
+    height: auto;
+    min-height: 40px;
+    padding: 2px 4px;
+    border-radius: 11px;
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    line-height: 1.1;
+    white-space: normal;
+  }
+}

@@ -308,6 +308,17 @@
   .cal-day { min-height: 74px; padding: 5px; }
   .cal-day__total b { font-size: 16px; }
 }
+/* A phone (Journey Lite, Oct 2026): a day is about 44px wide, and the date
+   and the day's count, side by side, ran into each other ("1 6 s"). The
+   count goes under the date, without its "ses" (the day's label says
+   sessions), and the trainers' chips sit closer. */
+@media (max-width: 599px) {
+  .cal-day { padding: 4px; gap: 3px; }
+  .cal-day__top { flex-direction: column; align-items: flex-start; gap: 3px; }
+  .cal-day__total { margin-left: 0; }
+  .cal-day__total span { display: none; }
+  .cal-day__who { gap: 4px; }
+}
 
 /* ---------- WEEK ------------------------------------------------------ *
    Not a grid of bookings. A studio manager opening the week asks three

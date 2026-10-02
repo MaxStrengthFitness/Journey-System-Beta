@@ -1327,3 +1327,15 @@
 .lps-card__row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .lps-card__row .hsd-qbtns { flex: 1 1 14rem; min-width: 12rem; }
 .lps-card .lps-warn { margin-top: 0; }
+
+/* Journey Lite (Oct 1 2026), phone widths only: a stat tile's sub-line
+   ("still going · since Sep 7") wraps in the half-width tile instead of
+   ending in an ellipsis. */
+@media (max-width: 599px) {
+  .hist-stat__sub {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+  }
+}

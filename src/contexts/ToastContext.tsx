@@ -93,7 +93,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       value={{ toast: addToast, success, error, warning, info }}
     >
       {children}
-      <div className="fixed bottom-6 right-6 z-9999 flex flex-col gap-3 w-full max-w-sm pointer-events-none">
+      {/* On a phone (under 640px) the toasts sit inside the screen's edges and above the bottom bar (Journey Lite, Oct 1 2026); 384px from the right edge started off a 390px screen. */}
+      <div className="fixed bottom-20 left-3 right-3 sm:left-auto sm:bottom-6 sm:right-6 z-9999 flex flex-col gap-3 sm:w-full max-w-sm pointer-events-none">
         <AnimatePresence>
           {toasts.map((t) => {
             let bgColor = "bg-slate-900/90 border-slate-800 text-slate-100";

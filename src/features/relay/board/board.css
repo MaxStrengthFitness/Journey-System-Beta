@@ -145,6 +145,13 @@
 @container rbd (max-width: 34rem) {
   .rbd-doors { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+/* A phone (Journey Lite, Oct 2026): three across left a door about 110px
+   wide, and "From leadership" broke inside its words. Two across, and the
+   fifth door takes the whole row rather than sitting alone in a half. */
+@container rbd (max-width: 26rem) {
+  .rbd-doors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rbd-door:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
 
 .rbd-door {
   position: relative;

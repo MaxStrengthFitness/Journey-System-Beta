@@ -586,3 +586,51 @@
     margin: 0 24px 20px;
   }
 }
+
+/* ---- a phone (Journey Lite, Oct 1 2026) ----
+   Phone widths only. Four columns need ~410px beside the margins, so at
+   360-390px the name column was squeezed to nothing and broke one letter per
+   line. On a phone each row is a small card instead: the avatar, the name
+   across the rest of the first line, and Last in · Next · Left side by side
+   under it, each saying what it is. The column heads go (the Sort menu above
+   the list is the same choice), so the section heads stick to the top. */
+@media (max-width: 599px) {
+  .cd { --cd-head-h: 0px; }
+  .cd-head { padding: 12px 12px 8px; }
+  .cd-scroll { margin: 0 12px 12px; }
+  .cd-colhead { display: none; }
+  .cd-grid.cd-row {
+    grid-template-columns: 40px repeat(3, minmax(0, 1fr));
+    column-gap: 8px;
+    row-gap: 8px;
+    align-items: start;
+    padding: 0 12px;
+  }
+  .cd-row .cd-gutter { grid-column: 1; grid-row: 2; }
+  .cd-row .cd-avatar { grid-column: 1; grid-row: 1; }
+  .cd-row .cd-client { grid-column: 2 / -1; grid-row: 1; align-self: center; }
+  .cd-row > .cd-cell:not(.cd-x) { grid-row: 2; font-size: 14px; }
+  .cd-row > .cd-cell[data-col="Last in"] { grid-column: 2; }
+  .cd-row > .cd-cell[data-col="Next"] { grid-column: 3; }
+  .cd-row > .cd-cell[data-col="Left"] { grid-column: 4; }
+  .cd-row > .cd-cell::before {
+    content: attr(data-col);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--eq-ink-muted);
+  }
+  .cd-row > .cd-cell .cd-sub { font-size: 12px; }
+  /* A third of the row: a word breaks only when it is wider than that, and
+     the (i) goes under the value rather than squeezing it. */
+  .cd-row > .cd-cell { overflow-wrap: break-word; }
+  .cd-row .cd-why { flex-wrap: wrap; margin: 0; gap: 2px 6px; }
+  /* In today's Start: under the facts, at the right. */
+  .cd-row > div:last-child:not(.cd-cell):not(.cd-client):not(.cd-avatar):not(.cd-gutter) {
+    grid-column: 2 / -1;
+    grid-row: 3;
+    justify-self: end;
+  }
+  .cd-row > div:last-child:not(.cd-cell):not(.cd-client):not(.cd-avatar):not(.cd-gutter):empty { display: none; }
+}

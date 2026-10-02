@@ -346,7 +346,8 @@ export function ProfileHeader({
   return (
     <header
       className={cn(
-        "bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800/60 pb-2.5 mb-3 pt-1",
+        // cp-head*: hooks for the phone layout only (profile-nav.css, Journey Lite).
+        "cp-head bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800/60 pb-2.5 mb-3 pt-1",
         // Portrait (a 13" iPad is 1024px — Tailwind's lg): identity + action on
         // row one, the four facts on row two. Landscape (1366px — xl): one
         // band — identity, facts, action — which hands the Journey grid ~90px
@@ -410,7 +411,7 @@ export function ProfileHeader({
       </div>
 
       {/* ---------- the action. Hero orange appears nowhere else in the header. ---------- */}
-      <div className="[grid-area:cta] justify-self-end flex items-center gap-2">
+      <div className="cp-head__cta [grid-area:cta] justify-self-end flex items-center gap-2">
         {/*
           Kaizen Roster toggle. Deliberately quiet and deliberately BLUE: the
           red kaizen mark means "this rep needs work" in the session grid, and
@@ -529,7 +530,7 @@ export function ProfileHeader({
             onClick={onStartSession}
             disabled={isCheckingActiveSession}
             className={cn(
-              "group relative shrink-0 inline-flex items-center gap-3 h-12 xl:h-[52px] pl-1.5 pr-3 sm:pr-5 rounded-2xl text-white",
+              "cp-head__start group relative shrink-0 inline-flex items-center gap-3 h-12 xl:h-[52px] pl-1.5 pr-3 sm:pr-5 rounded-2xl text-white",
               "bg-[linear-gradient(135deg,#ef5302_0%,#f36d21_100%)] ring-1 ring-white/25 ring-inset",
               "shadow-[0_14px_34px_-14px_rgba(239,83,2,.85)] hover:shadow-[0_18px_40px_-14px_rgba(239,83,2,.95)] hover:brightness-[1.04]",
               "active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-wait",
@@ -539,7 +540,7 @@ export function ProfileHeader({
             <span className="grid place-items-center w-9 h-9 xl:w-10 xl:h-10 rounded-xl bg-white/20 group-hover:bg-white/25 transition-colors">
               <Play className="w-4 h-4 xl:w-[18px] xl:h-[18px] fill-current translate-x-px" />
             </span>
-            <span className="hidden sm:flex flex-col items-start leading-none">
+            <span className="cp-head__startlabel hidden sm:flex flex-col items-start leading-none">
               <span className="font-display italic uppercase tracking-wider text-base xl:text-lg">
                 {isCheckingActiveSession ? "Checking…" : "Start session"}
               </span>
@@ -552,7 +553,7 @@ export function ProfileHeader({
       </div>
 
       {/* ---------- the four facts, hairline-divided ---------- */}
-      <div className="[grid-area:strip] min-w-0 grid grid-cols-2 md:grid-cols-4 gap-px bg-slate-200 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+      <div className="cp-head__strip [grid-area:strip] min-w-0 grid grid-cols-2 md:grid-cols-4 gap-px bg-slate-200 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
         {/* Tap for everyone who has trained this client and how often
             (tracker round, Sep 2026 — "a feature we tried to get working"). */}
         <Stat

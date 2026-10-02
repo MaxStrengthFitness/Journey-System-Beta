@@ -480,6 +480,10 @@
    put the authoring surface on the screen built for the opposite job. */
 
 .stm__actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.25rem; }
+/* The starter buttons sat on the panel's very edge, the last row touching
+   its border, at every width (found in the Journey Lite round, Oct 1 2026).
+   They take the panel's inset. */
+.stm__actions { padding: 0 0.875rem 0.875rem; }
 
 .stm__preset { display: inline-flex; align-items: center; gap: 0.3rem;
   min-height: 40px; padding: 0 0.7rem; border: 1px dashed var(--st-border-strong);
