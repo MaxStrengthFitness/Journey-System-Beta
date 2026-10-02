@@ -981,6 +981,7 @@ export const STATUS_TEXT: Record<ContractTermRow["status"], string> = {
 
 /** The era tile's "412 sessions in FileMaker", by where the prior record came from. */
 const ERA_WHERE: Record<PriorHistorySource, string> = {
+  mindbody: "counted from Mindbody",
   filemaker: "in FileMaker",
   paper: "on paper records",
   "trainer-estimate": "by a trainer's estimate",

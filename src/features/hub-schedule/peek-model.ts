@@ -26,6 +26,7 @@
 import { ordinal, type MomentFamily, type MomentKind, type RunSheetEntry } from "../hub-opportunities/moments-today";
 import { ASK_UNREAD_LINE } from "../hub-opportunities/get-to-know";
 import type { HubCardState } from "../../lib/hub-card-state";
+import { canClaimMilestone, MINDBODY_GUESS_WORDS, sessionNumberWords, type SessionTotalBasis } from "../../lib/session-total";
 
 export interface PeekLine {
   kind: MomentKind;
@@ -54,9 +55,22 @@ export interface PeekContent {
   notes: string[];
 }
 
-function numberWords(n: number | null): string | null {
-  if (n === null || n < 1) return null;
-  return n === 1 ? "her first session" : `her ${ordinal(n)} session`;
+/**
+ * Her number, in words, for the trainer who opened the peek (Atlas answers,
+ * Oct 2 2026): "her 312th session · from Mindbody, not yet confirmed" while
+ * the total is Mindbody's guess, "her first session" only off a total a
+ * person confirmed or Journey holds whole, and "#6 in Journey" when there is
+ * no total to say at all.
+ */
+export function numberWords(
+  n: number | null,
+  basis: SessionTotalBasis | null = "confirmed",
+  journeyNumber: number | null = null,
+): string | null {
+  if (n === null || n < 1) return basis === "journey-only" ? sessionNumberWords(journeyNumber, "journey-only") : null;
+  if (n === 1 && canClaimMilestone(basis)) return "her first session";
+  const words = `her ${ordinal(n)} session`;
+  return basis === "mindbody" ? `${words} \u00b7 ${MINDBODY_GUESS_WORDS}` : words;
 }
 
 export interface PeekOptions {
@@ -70,7 +84,7 @@ export interface PeekOptions {
 
 export function peekContent(entry: RunSheetEntry, sessionNumber: number | null = entry.sessionNumber, opts: PeekOptions = {}): PeekContent {
   const critical = entry.moments.find((m) => m.family === "read-first");
-  const subtitle = [entry.timeText, entry.withText, numberWords(sessionNumber), ...(opts.extras ?? [])].filter(Boolean).join(" · ");
+  const subtitle = [entry.timeText, entry.withText, numberWords(sessionNumber, entry.sessionBasis ?? "confirmed", entry.journeyNumber ?? null), ...(opts.extras ?? [])].filter(Boolean).join(" · ");
   const lines: PeekLine[] = entry.moments
     .filter((m) => m.family !== "read-first")
     .map((m) => ({ kind: m.kind, family: m.family, text: m.sentence }));

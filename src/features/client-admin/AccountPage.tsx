@@ -43,7 +43,7 @@
  * for it on Account and did not find it.
  */
 import type { ReactNode } from "react";
-import { ChevronRight, Pencil } from "lucide-react";
+import { Check, ChevronRight, Pencil } from "lucide-react";
 import type { Client, Studio } from "../../types";
 import type { HistoryCoverage } from "../../lib/prior-history";
 import type { FordEntry } from "../ford/types";
@@ -127,15 +127,44 @@ export function AccountPage({
   const showNotes = isMindbodyLinked(client) || !!client.mindbodyNotes?.trim();
 
   // The one door: the profile's words, rule and editor, drawn here only.
+  // While the number is Mindbody's guess (Atlas answers, Oct 2 2026) it is
+  // said as one, with Confirm (one tap writes it) and Change (the editor,
+  // seeded with the guess).
   const door = priorHistoryDoor ? (
-    <Btn
-      iconEnd={priorHistoryDoor.canEdit ? Pencil : ChevronRight}
-      aria-label={priorHistoryDoorLabel(priorHistoryDoor)}
-      data-action="prior-history"
-      onClick={priorHistoryDoor.onOpen}
-    >
-      {priorHistoryDoor.text}
-    </Btn>
+    priorHistoryDoor.onConfirm ? (
+      <>
+        <span className="cadm-prior-guess" data-testid="prior-history-guess">
+          {priorHistoryDoor.text}
+        </span>
+        <Btn
+          variant="solid"
+          icon={Check}
+          data-action="prior-history-confirm"
+          aria-label={`Confirm: ${priorHistoryDoor.text}`}
+          disabled={priorHistoryDoor.confirming}
+          onClick={priorHistoryDoor.onConfirm}
+        >
+          {priorHistoryDoor.confirming ? "Confirming\u2026" : "Confirm"}
+        </Btn>
+        <Btn
+          iconEnd={Pencil}
+          data-action="prior-history"
+          aria-label={`Change sessions before Journey: ${priorHistoryDoor.text}`}
+          onClick={priorHistoryDoor.onOpen}
+        >
+          Change
+        </Btn>
+      </>
+    ) : (
+      <Btn
+        iconEnd={priorHistoryDoor.canEdit ? Pencil : ChevronRight}
+        aria-label={priorHistoryDoorLabel(priorHistoryDoor)}
+        data-action="prior-history"
+        onClick={priorHistoryDoor.onOpen}
+      >
+        {priorHistoryDoor.text}
+      </Btn>
+    )
   ) : null;
 
   return (

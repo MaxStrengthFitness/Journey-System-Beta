@@ -569,3 +569,38 @@ describe("Due an InBody (FileMaker parity, Oct 1 2026)", () => {
     expect(host.querySelector('[data-testid="briefing-inbody"]')?.textContent).toBe("Due an InBody: 13 sessions since her last scan");
   });
 });
+
+describe("her total while it is Mindbody's guess (Atlas answers, Oct 2 2026)", () => {
+  function Screen({ who, coverage }: { who: Client; coverage: "complete" | "partial" }) {
+    return (
+      <BriefingScreen
+        authTrainer={trainer}
+        client={who}
+        coverage={coverage}
+        targetRoutine={routines[0]}
+        lastSession={null}
+        sessions={[]}
+        onStart={() => {}}
+        onClose={() => {}}
+        machines={machines}
+        routines={routines}
+        trainers={[trainer]}
+      />
+    );
+  }
+
+  it("says the session number from Mindbody and that it is not yet confirmed, with no milestone off it", async () => {
+    const host = await mount(
+      <Screen who={{ ...client, sessionCount: 6, clientsNumberOfVisitsAtSite: 299, firstSessionDate: "2026-09-20" } as Client} coverage="partial" />,
+    );
+    expect(host.querySelector('[data-testid="briefing-session-guess"]')?.textContent).toBe(
+      "This is session #300 · from Mindbody, not yet confirmed.",
+    );
+    expect(host.textContent).not.toContain("Session 300");
+  });
+
+  it("says nothing extra once the total is whole or confirmed", async () => {
+    const host = await mount(<Screen who={{ ...client, sessionCount: 6 } as Client} coverage="complete" />);
+    expect(host.querySelector('[data-testid="briefing-session-guess"]')).toBeNull();
+  });
+});

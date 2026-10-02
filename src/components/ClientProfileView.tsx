@@ -18,7 +18,8 @@ import {
   startAfter,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { studioHour, formatStudioTime, studioTodayKey } from "../lib/studio-time";
+import { studioHour, formatStudioTime, studioTodayKey, studioDayKeyOf } from "../lib/studio-time";
+import { beforeJourneyGuess, MINDBODY_GUESS_WORDS, sessionTotalOf } from "../lib/session-total";
 import {
   PRIOR_SOURCES,
   PRIOR_SOURCE_LABEL,
@@ -120,6 +121,7 @@ import { EditRoutineDrawer } from "./EditRoutineDrawer";
 import {
   ProfileHeader,
   canEditPriorHistory,
+  confirmGuessStatement,
   draftFromPrior,
   priorHistoryDoorText,
   readPriorHistoryDraft,
@@ -486,6 +488,26 @@ export function ClientProfileView({
   const completedTotal: number | null =
     totalSessions(journeyCompletedCount, priorHistory) ?? client?.sessionCount ?? null;
 
+  /*
+   * HER TOTAL, AND HOW SURE IT IS (Atlas answers, Oct 2 2026). Sessions
+   * before Journey + Journey's: confirmed (a prior record), whole (Journey
+   * holds her story), or — until a trainer confirms it on Account —
+   * Mindbody's guess, which the header shows as her total with the words
+   * "from Mindbody, not yet confirmed" under it (lib/session-total.ts).
+   * `completedTotal` is what the reconciler counts, so the guess is added on
+   * top of it here and is never written into `sessionCount`.
+   */
+  const sessionTotals = useMemo(
+    () => (client ? sessionTotalOf({ ...client, sessionCount: completedTotal }, clientCoverage) : null),
+    [client, completedTotal, clientCoverage],
+  );
+  const mindbodyGuess = sessionTotals ? beforeJourneyGuess(sessionTotals) : null;
+  const headerTotal = sessionTotals?.basis === "mindbody" ? sessionTotals.total : completedTotal;
+  const headerPriorLabel =
+    sessionTotals?.basis === "mindbody" && mindbodyGuess !== null
+      ? `${mindbodyGuess} before Journey \u00b7 ${MINDBODY_GUESS_WORDS}`
+      : priorLabel;
+
   useEffect(() => {
     if (!clientId) return;
     let cancelled = false;
@@ -641,7 +663,7 @@ export function ClientProfileView({
    * features/client-profile/prior-history-door.ts.
    */
   const canEditPrior = canEditPriorHistory(liveAuthTrainer, client);
-  const priorDoorText = priorHistoryDoorText(priorHistory, canEditPrior);
+  const priorDoorText = priorHistoryDoorText(priorHistory, canEditPrior, mindbodyGuess);
   const priorReading = readPriorHistoryDraft(
     { sessions: sessionCountInput, source: priorSource, through: priorThrough, note: priorNote },
     studioTodayKey(),
@@ -655,7 +677,7 @@ export function ClientProfileView({
    */
   const openSessionCountEditor = (open: boolean) => {
     if (open) {
-      const draft = draftFromPrior(priorHistory, studioTodayKey());
+      const draft = draftFromPrior(priorHistory, studioTodayKey(), mindbodyGuess);
       setSessionCountInput(draft.sessions);
       setPriorSource(draft.source);
       setPriorThrough(draft.through);
@@ -673,12 +695,48 @@ export function ClientProfileView({
    */
   const openPriorEditor = useRef(openSessionCountEditor);
   openPriorEditor.current = openSessionCountEditor;
+  /*
+   * CONFIRM (Atlas answers, Oct 2 2026): one tap writes Mindbody's guess as
+   * the record — who and when, as every prior record is stamped — and the
+   * total stops being a guess everywhere. Read through a ref at the tap, like
+   * the editor, so a door handed down in a memo never writes an older guess.
+   */
+  const [confirmingGuess, setConfirmingGuess] = useState(false);
+  const confirmGuess = async () => {
+    if (!clientId || !canEditPrior || priorHistory || mindbodyGuess === null) return;
+    setConfirmingGuess(true);
+    try {
+      const firstDay = client?.firstSessionDate ? studioDayKeyOf(client.firstSessionDate as never) : null;
+      await updateDoc(doc(db, "clients", clientId), {
+        priorHistory: {
+          ...statePriorHistory(null, confirmGuessStatement(mindbodyGuess, firstDay, studioTodayKey()), {
+            id: authTrainer?.id,
+            name: authTrainer?.fullName,
+          }),
+          recordedAt: serverTimestamp(),
+        },
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `clients/${clientId}`);
+    } finally {
+      setConfirmingGuess(false);
+    }
+  };
+  const confirmGuessRef = useRef(confirmGuess);
+  confirmGuessRef.current = confirmGuess;
+  const canConfirmGuess = canEditPrior && !priorHistory && mindbodyGuess !== null;
   const priorHistoryDoor = useMemo(
     () =>
       priorDoorText
-        ? { text: priorDoorText, canEdit: canEditPrior, onOpen: () => openPriorEditor.current(true) }
+        ? {
+            text: priorDoorText,
+            canEdit: canEditPrior,
+            onOpen: () => openPriorEditor.current(true),
+            ...(canConfirmGuess ? { onConfirm: () => void confirmGuessRef.current(), confirming: confirmingGuess } : {}),
+          }
         : null,
-    [priorDoorText, canEditPrior],
+    [priorDoorText, canEditPrior, canConfirmGuess, confirmingGuess],
   );
 
   /**
@@ -1453,10 +1511,10 @@ export function ClientProfileView({
         studioName={studios?.find((s) => s.id === client.homeStudioId)?.name}
         sessions={sessions}
         scheduledSessions={scheduledSessions}
-        completedCount={completedTotal}
-        sessionsQuotable={canQuoteNumber}
+        completedCount={headerTotal}
+        sessionsQuotable={canQuoteNumber || sessionTotals?.basis === "mindbody"}
         coverage={clientCoverage}
-        priorLabel={priorLabel}
+        priorLabel={headerPriorLabel}
         sessionsSplit={splitOfSessions}
         topTrainer={topTrainer}
         trainers={trainers}

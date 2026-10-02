@@ -52,7 +52,8 @@ import type { Client, ScheduleEntry } from "../../types";
 import type { JournalEntry } from "../../types/journal";
 import type { FordEntry } from "../ford/types";
 import { clientDisplayName } from "../../lib/client-name";
-import { canQuoteSessionNumber, homeCutoverOf } from "../../lib/client-coverage";
+import { homeCutoverOf } from "../../lib/client-coverage";
+import { canClaimMilestone, sessionNumberWords, sessionTotalOf, totalIsSayable, type SessionTotalBasis } from "../../lib/session-total";
 import { priorHistoryOf, type HistoryCoverage } from "../../lib/prior-history";
 import { canClaimGap, dayAfter, ownedWindow } from "../../lib/history-claims";
 import { bookingState, isStaffBlock, type BookingMarks, type LoggedSessions } from "../../lib/booking-state";
@@ -257,8 +258,23 @@ export interface RunSheetEntry {
    * missing, so nothing may say "nothing special".
    */
   askUnknown: boolean;
-  /** The session number this booking will be, when it may be quoted. */
+  /**
+   * The session number this booking will be, from her TOTAL (before Journey
+   * plus Journey's, lib/session-total.ts) — confirmed, whole, or Mindbody's
+   * guess (`sessionBasis` says which). Null when no total can be said.
+   */
   sessionNumber: number | null;
+  /**
+   * Where her total's "before Journey" comes from (`sessionTotalOf`), or null
+   * with no client. "mindbody": the number is a guess, said as "from
+   * Mindbody, not yet confirmed" where a trainer opens it (the peek), and no
+   * milestone is claimed off it.
+   */
+  sessionBasis: SessionTotalBasis | null;
+  /** With no total at all ("journey-only"): Journey's own number for this booking, said "#6 in Journey". */
+  journeyNumber: number | null;
+  /** Her total so far that `sessionNumber` counts on from, so a second booking that day is numbered the same way. */
+  sessionTotal: number | null;
   /**
    * The nightly marks name her an all star (wave 2 hub): her weeks, her pace
    * and the sentence the peek and the opened row say. Null for everyone
@@ -343,10 +359,11 @@ export function sessionNumberFor(
   client: Client,
   booking: ScheduleEntry,
   input: MomentsTodayInput,
-  quotable: boolean,
+  /** Her count so far: her total (`sessionTotalOf(...).total`), or Journey's own for "#6 in Journey". Null: no number. */
+  base: number | null,
 ): number | null {
-  const count = typeof client.sessionCount === "number" && Number.isFinite(client.sessionCount) ? Math.trunc(client.sessionCount) : null;
-  if (!quotable || count === null) return null;
+  const count = typeof base === "number" && Number.isFinite(base) ? Math.trunc(base) : null;
+  if (count === null) return null;
   const day = studioDateKey(booking.startTime, input.tz);
   if (day && day === input.today && client.id && input.logged?.has(client.id, day)) return count;
   const nowMs = input.now.getTime();
@@ -394,12 +411,19 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
   let criticalUnknown = false;
   let askUnknown = false;
   let sessionNumber: number | null = null;
+  let sessionBasis: SessionTotalBasis | null = null;
+  let journeyNumber: number | null = null;
+  let sessionTotal: number | null = null;
   let allStar: RunSheetEntry["allStar"] = null;
   let clinicalOnFile = false;
 
   if (client && clientId) {
     const coverage = coverageOf(row);
-    const quotable = canQuoteSessionNumber(client, coverage);
+    // Her total (lib/session-total.ts): confirmed, whole, or Mindbody's
+    // guess. Milestones and "first session" only off a confirmed or whole one.
+    const totals = sessionTotalOf(client, coverage);
+    sessionBasis = totals.basis;
+    const claim = canClaimMilestone(totals.basis);
 
     /* ---- Read first and Watch: the card's own alert state ---- */
     const notes = input.criticalFor(clientId);
@@ -418,17 +442,23 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
     }
 
     /* ---- sessions ---- */
-    sessionNumber = sessionNumberFor(client, booking, input, quotable);
+    sessionTotal = totalIsSayable(totals) ? totals.total : null;
+    sessionNumber = sessionNumberFor(client, booking, input, sessionTotal);
+    journeyNumber = totals.basis === "journey-only" ? sessionNumberFor(client, booking, input, totals.journey) : null;
     const isToday = input.day === input.today;
-    const milestone = sessionNumber !== null && SESSION_MILESTONES.includes(sessionNumber);
+    const milestone = claim && sessionNumber !== null && SESSION_MILESTONES.includes(sessionNumber);
     if (sessionNumber !== null) {
       const n = sessionNumber;
+      const early = claim && n <= 3;
       facts.sessions = {
-        sentence: milestone ? `${ordinal(n)} session${isToday ? " today" : ""}` : n <= 3 ? sessionWords(n) : `#${n}`,
-        bucket: milestone ? "milestone" : n <= 3 ? "new" : n < 50 ? "building" : "regulars",
+        sentence: milestone ? `${ordinal(n)} session${isToday ? " today" : ""}` : early ? sessionWords(n) : (sessionNumberWords(n, totals.basis, { explain: true }) ?? `#${n}`),
+        bucket: milestone ? "milestone" : early ? "new" : n < 50 ? "building" : "regulars",
         unknown: false,
         value: n,
       };
+    } else if (journeyNumber !== null) {
+      // No total to say: Journey's own number, and it says so ("#6 in Journey").
+      facts.sessions = unknownFact(sessionNumberWords(journeyNumber, "journey-only") ?? "Total not recorded yet");
     }
 
     /* ---- All stars: the nightly marks' word, never counted here ---- */
@@ -453,7 +483,7 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
     /* ---- Welcome ---- */
     const consult = /consult/i.test(booking.serviceName || "") || (!!client.requiresConsultation && !client.consultationCompleted);
     if (consult) moments.push({ family: "welcome", kind: "consult", chip: "Consultation", sentence: "A consultation." });
-    if (!consult && sessionNumber !== null && sessionNumber <= 3) {
+    if (!consult && claim && sessionNumber !== null && sessionNumber <= 3) {
       moments.push({ family: "welcome", kind: "early-session", chip: sessionWords(sessionNumber), sentence: `Her ${sessionNumber === 1 ? "first" : ordinal(sessionNumber)} session.` });
     }
     // First time with this trainer: only when Journey holds her whole story,
@@ -587,6 +617,9 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
     criticalUnknown,
     askUnknown,
     sessionNumber,
+    sessionBasis,
+    journeyNumber,
+    sessionTotal,
     allStar,
     clinicalOnFile,
   };

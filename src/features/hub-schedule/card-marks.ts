@@ -169,7 +169,7 @@ export function bookingSessionNumber(
   if (!entry || !client || entry.sessionNumber === null) return null;
   const same = entry.booking === booking || (!!booking.id && entry.booking.id === booking.id);
   if (same || !input) return entry.sessionNumber;
-  return sessionNumberFor(client, booking, input, true);
+  return sessionNumberFor(client, booking, input, entry.sessionTotal ?? null);
 }
 
 /**

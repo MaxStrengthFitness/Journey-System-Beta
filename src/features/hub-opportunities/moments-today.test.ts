@@ -98,11 +98,29 @@ describe("milestones: Operations' one list, only when the total may be quoted", 
     expect(entries[0].stateText).toBe("done");
   });
 
-  it("a migrating client is never numbered: no milestone, no New, Can't tell yet", () => {
+  it("a migrating client is numbered from Mindbody's guess, but no milestone is claimed off it (Atlas answers, Oct 2 2026)", () => {
+    // 400 visits before Journey (no Journey session yet) + 99 = 499 so far: this booking is the 500th.
     const entries = run([makeClient({ id: "m", sessionCount: 99, clientsNumberOfVisitsAtSite: 400 })], [makeBooking({ clientId: "m", start: today("16:00") })]);
-    expect(entries[0].sessionNumber).toBeNull();
+    expect(entries[0].sessionNumber).toBe(500);
+    expect(entries[0].sessionBasis).toBe("mindbody");
     expect(kinds(entries[0])).toEqual([]);
-    expect(entries[0].facts.sessions).toMatchObject({ unknown: true, sentence: "Total not recorded yet" });
+    expect(entries[0].facts.sessions).toMatchObject({ unknown: false, sentence: "#500 \u00b7 from Mindbody, not yet confirmed" });
+  });
+
+  it("with no guess at all, only Journey's own number, and it says so: #6 in Journey", () => {
+    const entries = run([makeClient({ id: "j", sessionCount: 5 })], [makeBooking({ clientId: "j", start: today("16:00") })]);
+    expect(entries[0].sessionNumber).toBeNull();
+    expect(entries[0].sessionBasis).toBe("journey-only");
+    expect(entries[0].journeyNumber).toBe(6);
+    expect(entries[0].facts.sessions).toMatchObject({ unknown: true, sentence: "#6 in Journey" });
+  });
+
+  it("once a trainer confirms the before-Journey count, the milestone is claimed", () => {
+    const prior = { sessions: 450, through: "2026-09-01", source: "mindbody" as const };
+    const entries = run([makeClient({ id: "c", sessionCount: 499, priorHistory: prior } as Partial<Client> & { id: string })], [makeBooking({ clientId: "c", start: today("16:00") })]);
+    expect(entries[0].sessionNumber).toBe(500);
+    expect(entries[0].sessionBasis).toBe("confirmed");
+    expect(kinds(entries[0])).toContain("milestone");
   });
 });
 
@@ -413,7 +431,7 @@ describe("All stars: the nightly marks' word on the Sessions sort (wave 2 hub)",
   });
 
   it("stands where her total can't be quoted: the job's claim is about the 26 weeks Journey holds", () => {
-    const [entry] = run([makeClient({ id: "m", sessionCount: 99, clientsNumberOfVisitsAtSite: 400 })], [makeBooking({ clientId: "m", start: today("15:00") })], {
+    const [entry] = run([makeClient({ id: "m", sessionCount: 99 })], [makeBooking({ clientId: "m", start: today("15:00") })], {
       allStarOf: allStarOf("m"),
     });
     expect(entry.sessionNumber).toBeNull();

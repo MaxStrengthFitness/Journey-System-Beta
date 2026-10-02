@@ -66,6 +66,16 @@
   color: var(--cx-ink-3);
 }
 
+/* Sessions before Journey while it is Mindbody's guess (Oct 2 2026): the
+   words beside Confirm and Change, whole, never cut. */
+.cadm-prior-guess {
+  align-self: center;
+  color: var(--cx-ink-2);
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
 /* ---- the ID card ------------------------------------------------------- */
 
 /* "Her first name  [Set a nickname]" — the button drops under the words

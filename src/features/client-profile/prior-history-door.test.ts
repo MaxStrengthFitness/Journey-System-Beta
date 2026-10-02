@@ -3,6 +3,7 @@ import type { Trainer } from "../../types";
 import { recordImportedSessions, type PriorHistory } from "../../lib/prior-history";
 import {
   canEditPriorHistory,
+  confirmGuessStatement,
   draftFromPrior,
   priorHistoryDoorLabel,
   priorHistoryDoorText,
@@ -108,8 +109,14 @@ describe("the editor's form", () => {
     });
   });
 
-  it("opens blank, counted up to today, for a client with no record", () => {
-    expect(draftFromPrior(null, today)).toEqual({ sessions: "", source: "filemaker", through: today, note: "" });
+  it("opens blank, counted up to today, for a client with no record (Mindbody first: no FileMaker is coming)", () => {
+    expect(draftFromPrior(null, today)).toEqual({ sessions: "", source: "mindbody", through: today, note: "" });
+  });
+
+  it("Change starts from Mindbody's guess when there is no record", () => {
+    expect(draftFromPrior(null, today, 306)).toEqual({ sessions: "306", source: "mindbody", through: today, note: "" });
+    // A record wins over the guess.
+    expect(draftFromPrior(record, today, 306).sessions).toBe("412");
   });
 
   it("reads a whole number as a statement", () => {
@@ -179,5 +186,26 @@ describe("priorHistoryDoorLabel - what every door says to a screen reader", () =
     expect(priorHistoryDoorLabel({ text: "None before Journey", canEdit: false })).toBe(
       "Sessions before Journey: None before Journey. Open to read.",
     );
+  });
+});
+
+describe("Mindbody's guess, confirmed once (Atlas answers, Oct 2 2026)", () => {
+  it("is said as a guess to everyone, before anyone confirms it", () => {
+    expect(priorHistoryDoorText(null, true, 306)).toBe("About 306 before Journey (from Mindbody)");
+    expect(priorHistoryDoorText(null, false, 306)).toBe("About 306 before Journey (from Mindbody)");
+    // A record outranks the guess.
+    expect(priorHistoryDoorText(record, true, 306)).toBe("412 before Journey \u00b7 FileMaker");
+  });
+
+  it("confirming writes the guess, from Mindbody, through the day before her first Journey session", () => {
+    expect(confirmGuessStatement(306, "2026-09-20", "2026-10-02")).toEqual({
+      sessions: 306,
+      through: "2026-09-19",
+      source: "mindbody",
+      note: "Mindbody's visit count, confirmed on the profile.",
+    });
+    expect(confirmGuessStatement(306, "2026-03-01", "2026-10-02").through).toBe("2026-02-28");
+    // No Journey session yet: counted up to today.
+    expect(confirmGuessStatement(40, null, "2026-10-02").through).toBe("2026-10-02");
   });
 });

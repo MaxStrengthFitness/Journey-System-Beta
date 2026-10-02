@@ -509,6 +509,7 @@ function mindbodyBeats(client: StoryClient, tz?: string): StoryBeat[] {
 
 /** The panel's "412 sessions in FileMaker", by where the prior record came from. */
 const PRIOR_ERA_WHERE: Record<PriorHistorySource, string> = {
+  mindbody: "counted from Mindbody",
   filemaker: "in FileMaker",
   paper: "on paper records",
   "trainer-estimate": "by a trainer's estimate",
@@ -521,6 +522,7 @@ const PRIOR_ERA_WHERE: Record<PriorHistorySource, string> = {
  * Journey" would say it twice.
  */
 const PRIOR_SINCE_WHERE: Record<PriorHistorySource, string> = {
+  mindbody: "before Journey (counted from Mindbody)",
   filemaker: "in FileMaker before Journey",
   paper: "on paper records before Journey",
   "trainer-estimate": "before Journey (a trainer's estimate)",
@@ -539,6 +541,7 @@ function storyPrior(client: { priorHistory?: unknown }): PriorHistory | null {
 
 /** Where the detail of those years is, by source. */
 const PRIOR_ERA_DETAIL: Record<PriorHistorySource, string> = {
+  mindbody: "The number is Mindbody's count, confirmed by a trainer; the detail of those years isn't in Journey.",
   filemaker: "The detail of those years lives in FileMaker.",
   paper: "The detail of those years is on paper.",
   "trainer-estimate": "The number is a trainer's estimate, and the detail of those years isn't in Journey.",
