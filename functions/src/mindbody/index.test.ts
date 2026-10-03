@@ -1066,6 +1066,87 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
         { merge: true },
       );
     });
+
+    it("17a. a new client on a shared site is placed by Mindbody's homeLocation, not parked", async () => {
+      studioDocs = [...sharedSite];
+
+      const rawBody = createValidEnvelope({
+        eventData: { siteId: 99999, clientId: 12345, homeLocation: 2 },
+      });
+      await handleMindbodyWebhook(deps, {
+        rawBody,
+        signatureHeader: signForTest(rawBody, mockSecret),
+      });
+
+      const [client] = writesTo("clients");
+      expect(client.data.homeStudioId).toBe("studio-solon");
+      expect(writesTo("mindbodyLimbo")).toHaveLength(0);
+    });
+
+    it("17b. homeLocation never moves a client who already has a home studio", async () => {
+      studioDocs = [...sharedSite];
+      existingDocs["clients/12345"] = { homeStudioId: "studio-westlake" };
+
+      const rawBody = createValidEnvelope({
+        eventData: { siteId: 99999, clientId: 12345, homeLocation: 2 },
+      });
+      await handleMindbodyWebhook(deps, {
+        rawBody,
+        signatureHeader: signForTest(rawBody, mockSecret),
+      });
+
+      for (const w of writesTo("clients")) {
+        expect(w.data.homeStudioId).not.toBe("studio-solon");
+      }
+      expect(writesTo("mindbodyLimbo")).toHaveLength(0);
+    });
+
+    it("17c. a homeLocation no studio owns still parks the new client in Limbo", async () => {
+      studioDocs = [...sharedSite];
+
+      const rawBody = createValidEnvelope({
+        eventData: { siteId: 99999, clientId: 12345, homeLocation: 7 },
+      });
+      await handleMindbodyWebhook(deps, {
+        rawBody,
+        signatureHeader: signForTest(rawBody, mockSecret),
+      });
+
+      expect(writesTo("clients")[0].data.homeStudioId).toBeNull();
+      const [parked] = writesTo("mindbodyLimbo");
+      expect(parked.data).toMatchObject({ kind: "client", resolvedAt: null });
+    });
+  });
+
+  describe("Mindbody's developer sandbox (site -99)", () => {
+    it("is acknowledged and writes nothing: no ledger row, no Limbo, no record", async () => {
+      const rawBody = JSON.stringify({
+        messageId: "sandbox-msg-1",
+        eventId: "appointmentBooking.cancelled",
+        eventData: { siteId: -99, appointmentId: 100046502 },
+      });
+      const response = await handleMindbodyWebhook(deps, {
+        rawBody,
+        signatureHeader: signForTest(rawBody, mockSecret),
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(tryRecordEvent).not.toHaveBeenCalled();
+      expect(writes).toHaveLength(0);
+    });
+
+    it("an unsigned sandbox event is still refused", async () => {
+      const rawBody = JSON.stringify({
+        messageId: "sandbox-msg-2",
+        eventId: "client.updated",
+        eventData: { siteId: "-99", clientId: 1 },
+      });
+      const response = await handleMindbodyWebhook(deps, {
+        rawBody,
+        signatureHeader: "bad",
+      });
+      expect(response.statusCode).toBe(401);
+    });
   });
 
   describe("saleClientIds (the cost plan)", () => {

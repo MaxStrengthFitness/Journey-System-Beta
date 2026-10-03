@@ -97,6 +97,25 @@ export type StudioResolution = {
   timeZone?: string;
 };
 
+/**
+ * Mindbody's public developer sandbox. Any developer can make bookings there,
+ * and the subscription has been sending its events since Sep 24 2026: 114
+ * nameless cancellations parked in Limbo before this. No studio is ever on it.
+ */
+export const MINDBODY_SANDBOX_SITE_ID = "-99";
+
+/** A client event's `homeLocation`: a number, a string, or `{ id }`. */
+export function homeLocationOf(
+  payload: Record<string, unknown>,
+): string | number | undefined {
+  const raw = payload.homeLocation ?? payload.HomeLocation;
+  const v =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>).id : raw;
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim()) return v.trim();
+  return undefined;
+}
+
 async function resolveStudio(
   firestore: Firestore,
   siteId: string | number,
@@ -390,6 +409,17 @@ export async function handleMindbodyWebhook(
 
   if (typeof eventId !== "string" || !eventId.trim()) {
     return { statusCode: 400 };
+  }
+
+  // The sandbox is acknowledged and dropped before anything is written: a 200
+  // so Mindbody does not retry it, and no ledger row, Limbo item or record.
+  const envelopeData = parsed.eventData as Record<string, unknown> | undefined;
+  const envelopeSite = envelopeData?.siteId ?? parsed.siteId;
+  if (
+    (typeof envelopeSite === "string" || typeof envelopeSite === "number") &&
+    String(envelopeSite).trim() === MINDBODY_SANDBOX_SITE_ID
+  ) {
+    return { statusCode: 200 };
   }
 
   // 2. Idempotency Check
@@ -808,7 +838,21 @@ export async function handleMindbodyWebhook(
           const hasHome = !!(
             known?.exists && (known.data() as Record<string, unknown> | undefined)?.homeStudioId
           );
-          if (!hasHome) await recordLimboEvent(deps.firestore, {
+          // Client events carry no locationId, but they do carry the client's
+          // Mindbody `homeLocation` (the front desk's choice: 3, 4, 5 on the
+          // shared site). It places a client who has NO home studio yet, when
+          // it names exactly one studio's location; it never moves an
+          // established client (Limbo cleanup, Oct 2 2026: 33 real clients sat
+          // in Limbo with their homeLocation unread).
+          const homeLocation = homeLocationOf(payloadData);
+          const byHome =
+            !hasHome && homeLocation !== undefined
+              ? await resolveStudio(deps.firestore, siteId, homeLocation)
+              : null;
+          if (byHome?.studioId) {
+            studioId = byHome.studioId;
+            enrichment.homeStudioId = byHome.studioId;
+          } else if (!hasHome) await recordLimboEvent(deps.firestore, {
             eventId,
             eventType,
             kind: "client",
