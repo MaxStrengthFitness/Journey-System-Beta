@@ -3299,3 +3299,39 @@ div.jg-today { cursor: default; }
 .jg-look .jg[data-dense="line"] .jg-cell__r { display: block; }
 .jg-look .jg-cell__r:not(:has(.jg-tut))::after,
 .jg-look .jg-today__r:not(:has(.jg-tut)):not(:has(.jg-today__dot))::after { content: "\00a0reps"; }
+
+/* --------------------------------------------------------------------------
+   The Now bar, quieter (AJ, Oct 3 2026: "everything in the green box is
+   very large, the text feels like clutter ... move that to the top right of
+   the box maybe in a faint gray"). Last · Best and the time on the machine
+   sit at the head's right in faint grey on every width; the name and the
+   settings come down a size; every control stays at least 40px tall.
+   -------------------------------------------------------------------------- */
+.jg-nb { gap: 6px 12px; padding: 8px 12px 10px; }
+.jg-nb__name { font-size: 17px; }
+.jg-nb__ord { width: 20px; height: 20px; font-size: 11px; }
+.jg-nb__chip { height: 32px; min-width: 38px; padding: 0 7px; }
+.jg-nb__chip span { font-size: 14px; }
+.jg-nb__chip b { font-size: 8px; }
+.jg-nb__expect { align-items: flex-end; text-align: right; gap: 1px; color: var(--jg-ink-faint); font-size: 11px; font-weight: 600; }
+.jg-nb__expect em { color: var(--jg-ink-muted); font-weight: 700; }
+.jg-nb__readouts { display: inline-flex; gap: 8px; }
+.jg-nb__readout { font-size: 10.5px; color: var(--jg-ink-faint); }
+@media (max-width: 899px) {
+  .jg-nb--bar .jg-nb__head .jg-nb__sp { display: block; order: 3; }
+  .jg-nb--bar .jg-nb__settings { flex: 0 1 auto; }
+  .jg-nb--bar .jg-nb__expect { order: 4; flex: none; align-items: flex-end; text-align: right; margin-left: auto; }
+}
+.jg-nb__sbtn,
+.jg-nb__out,
+.jg-nb__unit,
+.jg-nb__qbtn,
+.jg-nb__obtn { height: 40px; }
+.jg-nb__weight { font-size: 22px; }
+.jg-nb--bar .jg-nb__next { min-height: 42px; }
+@media (max-width: 899px) {
+  .jg-nb--bar .jg-nb__next { min-height: 42px; }
+}
+/* The load's climb since her start (Oct 3 2026): green, the one colour on
+   this line. A drop or no change says nothing. */
+.jg-nb__gain { margin-left: 6px; font-weight: 800; color: var(--jg-pf-gain); }

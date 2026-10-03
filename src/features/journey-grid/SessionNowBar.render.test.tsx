@@ -158,3 +158,30 @@ describe("SessionNowBar's Blood flow (Oct 3 2026)", () => {
     host?.remove();
   });
 });
+
+describe("SessionNowBar's start and gain (Oct 3 2026)", () => {
+  it("says where she started and the load's climb in place of Last and Best", () => {
+    const sessions = [
+      { id: "a", sessionNumber: 1, date: "2026-08-01", trainerInitials: "AJ" },
+      { id: "b", sessionNumber: 2, date: "2026-09-01", trainerInitials: "AJ" },
+    ];
+    const grown: JourneyRow = {
+      ...row,
+      sets: {
+        a: { sessionId: "a", outcome: "performed", weight: 100, reps: 10, quality: 2 },
+        b: { sessionId: "b", outcome: "performed", weight: 125, reps: 9, quality: 2 },
+      },
+    };
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    act(() => root!.render(<SessionNowBar row={grown} history={sessions} onChange={() => {}} coverage="complete" />));
+    expect(host.querySelector('[data-testid="nb-start"]')?.textContent).toContain("Started 100 lb");
+    expect(host.querySelector('[data-testid="nb-gain"]')?.textContent).toBe("+25%");
+    expect(host.textContent).not.toContain("Best");
+    act(() => root!.render(<SessionNowBar row={grown} history={sessions} onChange={() => {}} coverage="partial" />));
+    expect(host.querySelector('[data-testid="nb-start"]')?.textContent).toContain("First in Journey 100 lb");
+    act(() => root?.unmount());
+    host.remove();
+  });
+});

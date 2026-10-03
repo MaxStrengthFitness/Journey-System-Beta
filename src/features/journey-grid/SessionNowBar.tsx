@@ -345,7 +345,17 @@ function SessionNowBarImpl({
     const last = sets[sets.length - 1];
     const stats = computeRowStats(row, history);
     const best = stats.mostReps ?? stats.high;
-    return { last, best: best?.set };
+    /* Where she started on this machine and how far the load has come (AJ,
+       Oct 3 2026: "show the starting weight and then next to that a green %
+       increase"). Performed sets only; the start is the row's recorded
+       starting weight, else her first set here. */
+    const start = row.startingWeight ?? sets[0]?.weight;
+    const now = last?.weight;
+    const gain =
+      typeof start === "number" && start > 0 && typeof now === "number"
+        ? Math.round(((now - start) / start) * 100)
+        : null;
+    return { last, best: best?.set, start: typeof start === "number" && start > 0 ? start : null, gain };
   }, [row, history]);
   /* The ghost in the count field: what she did last time, in grey, so the
      eye can stay at the bottom of the iPad instead of climbing the chart.
@@ -522,41 +532,36 @@ function SessionNowBarImpl({
 
         {expect && (
           <span className="jg-nb__expect">
-            <span className="jg-nb__expectline">
-              {expect.last ? (
-                <>
-                  Last{" "}
-                  <em>
-                    {expect.last.weight} &times;{" "}
-                    {expect.last.isTSC ? formatSeconds(expect.last.seconds ?? 0) : expect.last.reps}
-                  </em>
-                  {(expect.last.quality === 1 || expect.last.quality === 3) && (
-                    <span className={`jg-nb__mark jg-nb__mark--q${expect.last.quality}`}>
-                      <QualityMark quality={expect.last.quality} size={11} />
-                    </span>
-                  )}
-                </>
-              ) : (
-                <>{noMachineHistoryLine(coverage)}</>
-              )}
-              {expect.best && !expect.best.isTSC && (
-                <>
-                  {" · Best "}
-                  <em>
-                    {expect.best.weight} &times; {expect.best.reps}
-                  </em>
-                </>
-              )}
-            </span>
-            {/* Today's weight was set at the last Wrap-up: say who set it. */}
-            {row?.weightSource ? (
-              <span className="jg-nb__readout" data-testid="weight-source">
-                {row.weightSource}
+            {/* No "Last · Best" here (AJ, Oct 3 2026: "the last isn't really
+                needed, or even best"): the grid's row says both. */}
+            {expect.start !== null && (
+              <span className="jg-nb__expectline" data-testid="nb-start">
+                {/* Journey's first weight is her start only when Journey holds
+                    her whole story (docs/business/migration-and-prior-history.md). */}
+                {coverage === "complete" ? "Started" : "First in Journey"} <em>{expect.start} lb</em>
+                {expect.gain !== null && expect.gain > 0 && (
+                  <span className="jg-nb__gain" data-testid="nb-gain">
+                    +{expect.gain}%
+                  </span>
+                )}
               </span>
-            ) : null}
-            {onMachineSeconds != null && onMachineSeconds > 0 ? (
-              <span className="jg-nb__readout" title="Time this machine has been the current machine, session pauses excluded">
-                On machine {onMachineSeconds >= 60 ? formatSeconds(onMachineSeconds) : `${onMachineSeconds}s`}
+            )}
+            {/* One faint line at the box's top right with the history above
+                it (AJ, Oct 3 2026: "move that somewhere not invasive ... the
+                top right of the box maybe in a faint gray"). Today's weight
+                set at the last Wrap-up says who set it. */}
+            {row?.weightSource || (onMachineSeconds != null && onMachineSeconds > 0) ? (
+              <span className="jg-nb__readouts">
+                {row?.weightSource ? (
+                  <span className="jg-nb__readout" data-testid="weight-source">
+                    {row.weightSource}
+                  </span>
+                ) : null}
+                {onMachineSeconds != null && onMachineSeconds > 0 ? (
+                  <span className="jg-nb__readout" title="Time this machine has been the current machine, session pauses excluded">
+                    On machine {onMachineSeconds >= 60 ? formatSeconds(onMachineSeconds) : `${onMachineSeconds}s`}
+                  </span>
+                ) : null}
               </span>
             ) : null}
           </span>

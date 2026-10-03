@@ -138,6 +138,7 @@
   --jg-pf-skip-bg:       #eef1f4;
   --jg-pf-flow:          #7b3fb8;
   --jg-pf-flow-bg:       #f1e7fb;
+  --jg-pf-gain:          #15803d;   /* the load climbing since her start (Now bar) */
   --jg-radius:         10px;
   --jg-radius-sm:      6px;
   --jg-font:           "Geist Variable", "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -227,6 +228,7 @@
   --jg-pf-skip-bg:       #1a2129;
   --jg-pf-flow:          #c58cf0;
   --jg-pf-flow-bg:       #2a1d3a;
+  --jg-pf-gain:          #4ade80;   /* the load climbing since her start (Now bar) */
 
   /* The profile's neutrals are a LIGHT retune only. In dark they are the
      grid's own values, so the profile looks exactly as it did.            */
@@ -293,6 +295,7 @@
     --jg-pf-skip-bg:       #1a2129;
     --jg-pf-flow:          #c58cf0;
     --jg-pf-flow-bg:       #2a1d3a;
+    --jg-pf-gain:          #4ade80;   /* the load climbing since her start (Now bar) */
     --jg-pf-bg:            var(--jg-bg);
     --jg-pf-surface-2:     var(--jg-surface-2);
     --jg-pf-surface-3:     var(--jg-surface-3);
