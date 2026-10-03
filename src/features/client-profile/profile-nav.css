@@ -480,8 +480,7 @@
       "back avatar name name"
       "back avatar meta meta"
       "tools tools tools start"
-      "card card card card"
-      "facts facts facts facts";
+      "strip strip strip strip";
   }
   .cp-head__name { font-size: 24px; }
   .cp-head [data-slot="avatar"] { width: 48px; height: 48px; }
