@@ -415,13 +415,17 @@ describe("the Hub: columns by trainer id", () => {
     ];
     const { el } = mount(IO, { schedules });
     const heads = [...el.querySelectorAll(".hs-colhead strong")].map((h) => h.textContent);
-    expect(heads[heads.length - 1]).toBe("Unassigned");
-    const unassigned = [...el.querySelectorAll<HTMLElement>(".hs-col")].pop()!;
+    // Straight after the signed-in trainer's own column, or first when they
+    // have none (AJ, Oct 3 2026: "Trainer logged in > Unassigned > ...").
+    const at = heads.indexOf("Unassigned");
+    expect(at).toBeGreaterThanOrEqual(0);
+    expect(at).toBeLessThanOrEqual(1);
+    const unassigned = [...el.querySelectorAll<HTMLElement>(".hs-col")][at];
     expect(unassigned.querySelectorAll(".hs-card")).toHaveLength(3);
     expect([...unassigned.querySelectorAll(".hs-card-staff")].map((s) => s.textContent)).toEqual(["Booked with Samuel Lee"]);
     // Counted once each in the day, and the column says how many.
     expect(el.querySelector(".hd-sum-words")?.textContent).toContain("8 sessions");
-    expect([...el.querySelectorAll(".hs-colhead")].pop()?.querySelector(".hs-colcount")?.textContent).toBe("3 sessions");
+    expect([...el.querySelectorAll(".hs-colhead")][at]?.querySelector(".hs-colcount")?.textContent).toBe("3 sessions");
   });
 
   it("has no Unassigned column when every booking has its trainer", () => {
