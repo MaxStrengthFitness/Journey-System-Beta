@@ -7,7 +7,7 @@
  *
  *   import type { WorkoutSession, ExerciseLog, Machine, ClientMachineSetting } from "../../types";
  */
-import { outcomeOf, skipReasonOf, type SetOutcome } from "../../lib/set-outcome";
+import { outcomeOf, skipReasonOf, type SetOutcome, isBloodFlow } from "../../lib/set-outcome";
 import type { JourneyMachine, JourneyRow, JourneySession, JourneySet, MovementGroup, RepQuality } from "./types";
 
 export interface SessionLike {
@@ -29,6 +29,8 @@ export interface LogLike {
   side?: "Left" | "Right";
   /** Written by the tracker since the floor round; older logs infer it (set-outcome.ts). */
   outcome?: SetOutcome | null;
+  /** A practice set done for blood flow (Oct 3 2026). */
+  bloodFlow?: boolean | null;
   skipReason?: string | null;
 }
 
@@ -110,6 +112,7 @@ export function toJourneySet(log: LogLike): JourneySet | null {
     sessionId: log.sessionId,
     outcome,
     skipReason: skipReasonOf(log) ?? undefined,
+    ...(isBloodFlow(log) ? { bloodFlow: true } : {}),
     weight: weight ?? 0,
     reps: isTSC ? undefined : num(log.reps),
     seconds: isTSC ? num(log.seconds) : undefined,

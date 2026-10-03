@@ -6,8 +6,7 @@ import {
   PICKABLE_SKIP_REASONS,
   SKIP_REASON_LABEL,
   SKIP_REASON_SHORT,
-  type SkipReason,
-} from "../../lib/set-outcome";
+  type SkipReason, BLOOD_FLOW_GLOSS, BLOOD_FLOW_LABEL } from "../../lib/set-outcome";
 import type { TraineeLevel } from "../routine-builder/academy";
 import type { JourneyRow, JourneySession, LiveSet, RepQuality } from "./types";
 import { computeRowStats, formatSeconds, orderedSets } from "./stats";
@@ -397,7 +396,14 @@ function SessionNowBarImpl({
   const togglePractice = () => {
     if (!machine) return;
     setSkipOpen(false);
-    onChange(machine.id, v.outcome === "practice" ? { outcome: null } : { outcome: "practice" });
+    onChange(machine.id, v.outcome === "practice" ? { outcome: null, bloodFlow: null } : { outcome: "practice", bloodFlow: null });
+  };
+  /* Blood flow: a practice set with its own name (AJ, Oct 3 2026, "beside
+     Practice / Skipped"). Recorded, never counted, like practice. */
+  const toggleBloodFlow = () => {
+    if (!machine) return;
+    setSkipOpen(false);
+    onChange(machine.id, v.outcome === "practice" && v.bloodFlow ? { outcome: null, bloodFlow: null } : { outcome: "practice", bloodFlow: true });
   };
   const pickSkip = (reason: SkipReason, note: string | null) => {
     if (!machine) return;
@@ -407,7 +413,7 @@ function SessionNowBarImpl({
   };
   const clearOutcome = () => {
     if (!machine) return;
-    onChange(machine.id, { outcome: null, skipReason: null, skipNote: null });
+    onChange(machine.id, { outcome: null, bloodFlow: null, skipReason: null, skipNote: null });
   };
 
   if (!machine) {
@@ -466,7 +472,9 @@ function SessionNowBarImpl({
     <div className={`jg-nb__out jg-nb__out--${v.outcome} is-outcome`}>
       <span className="jg-nb__outlbl">
         {v.outcome === "practice"
-          ? "Practice"
+          ? v.bloodFlow
+            ? BLOOD_FLOW_LABEL
+            : "Practice"
           : `Skipped${
               SKIP_REASON_SHORT[v.skipReason ?? "unknown"] ? " · " + SKIP_REASON_SHORT[v.skipReason ?? "unknown"] : ""
             }`}
@@ -475,7 +483,11 @@ function SessionNowBarImpl({
         type="button"
         className="jg-nb__outclear"
         onClick={clearOutcome}
-        aria-label={v.outcome === "practice" ? "Undo practice — enter reps instead" : "Undo skip — enter reps instead"}
+        aria-label={
+          v.outcome === "practice"
+            ? `Undo ${v.bloodFlow ? "blood flow" : "practice"} — enter reps instead`
+            : "Undo skip — enter reps instead"
+        }
       >
         <X size={14} strokeWidth={2.75} />
       </button>
@@ -661,6 +673,14 @@ function SessionNowBarImpl({
                   onClick={togglePractice}
                 >
                   Practice
+                </button>
+                <button
+                  type="button"
+                  className="jg-nb__obtn"
+                  aria-label={`${BLOOD_FLOW_LABEL}: ${BLOOD_FLOW_GLOSS}`}
+                  onClick={toggleBloodFlow}
+                >
+                  {BLOOD_FLOW_LABEL}
                 </button>
                 <button
                   type="button"

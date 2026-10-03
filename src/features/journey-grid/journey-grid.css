@@ -3054,3 +3054,74 @@ div.jg-today { cursor: default; }
   box-shadow: inset 0 0 0 1.5px var(--jg-pf-now-edge);
 }
 .jg-view--journey .jg-row > .jg-cell:last-child .jg-cell__w { color: var(--jg-pf-now-ink); }
+
+/* --------------------------------------------------------------------------
+   Practice, Blood flow and Skipped on the rail (AJ, Oct 3 2026: "a small
+   bubble with the icon indicating which one it was"; he chose icon
+   bubbles). On the profile's chart they are a round bubble on the line,
+   the numbers or the reason a tap away (RailBubble.tsx). The Active
+   Session keeps its own cells, so the bubble is hidden everywhere else.
+   -------------------------------------------------------------------------- */
+.jg-bubble-wrap { display: none; }
+.jg-view--journey .jg-bubble-wrap { display: grid; place-items: center; position: relative; z-index: 2; }
+.jg-view--journey .jg-cell--practice .jg-cell__w,
+.jg-view--journey .jg-cell--practice .jg-cell__r,
+.jg-view--journey .jg-cell--practice .jg-cell__mark,
+.jg-view--journey .jg-cell--practice::after,
+.jg-view--journey .jg-cell--skipped .jg-cell__skip { display: none; }
+/* no tile under a bubble */
+.jg-view--journey .jg-cell.jg-cell--practice::before { display: none; }
+.jg-view--journey .jg-row[data-band="1"] .jg-cell--practice::after { display: block; }
+
+.jg-bubble {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.jg-bubble__dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.jg-bubble--practice .jg-bubble__dot { color: var(--jg-pf-practice); background: var(--jg-pf-practice-bg); box-shadow: inset 0 0 0 1.5px var(--jg-pf-practice); }
+.jg-bubble--skip .jg-bubble__dot { color: var(--jg-pf-skip); background: var(--jg-pf-skip-bg); box-shadow: inset 0 0 0 1.5px var(--jg-pf-skip); }
+.jg-bubble--flow .jg-bubble__dot { color: var(--jg-pf-flow); background: var(--jg-pf-flow-bg); box-shadow: inset 0 0 0 1.5px var(--jg-pf-flow); }
+.jg-bubble[aria-expanded="true"] .jg-bubble__dot { transform: scale(1.08); }
+.jg-bubble__tip {
+  position: absolute;
+  bottom: calc(100% - 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--jg-ink);
+  background: var(--jg-surface-2);
+  border: 1px solid var(--jg-border-strong);
+  border-radius: 8px;
+  padding: 4px 8px;
+  box-shadow: 0 6px 18px -6px var(--jg-sticky-shadow);
+  pointer-events: none;
+}
+/* On the newest day the caption opens leftward, inside the chart. */
+.jg-view--journey .jg-row > .jg-cell:last-child .jg-bubble__tip { left: auto; right: 0; transform: none; }
+.jg-legend__swatch--flow { display: inline-grid; place-items: center; color: var(--jg-pf-flow, #9b5fd0); }
+/* On the profile the key draws Practice and Skipped as the rail draws them. */
+.jg-view--journey .jg-legend__swatch--practice,
+.jg-view--journey .jg-legend__swatch--skipped,
+.jg-view--journey .jg-legend__swatch--flow {
+  width: 16px; height: 16px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 9px; font-weight: 800;
+}
+.jg-view--journey .jg-legend__swatch--practice { color: var(--jg-pf-practice); background: var(--jg-pf-practice-bg); box-shadow: inset 0 0 0 1px var(--jg-pf-practice); }
+.jg-view--journey .jg-legend__swatch--skipped { color: var(--jg-pf-skip); background: var(--jg-pf-skip-bg); box-shadow: inset 0 0 0 1px var(--jg-pf-skip); }
+.jg-view--journey .jg-legend__swatch--flow { background: var(--jg-pf-flow-bg); box-shadow: inset 0 0 0 1px var(--jg-pf-flow); }

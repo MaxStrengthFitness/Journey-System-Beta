@@ -92,6 +92,16 @@ export function QualityLegend({
         Practice
         <i className="jg-legend__gloss">recorded, not counted</i>
       </span>
+      {/* Blood flow, a practice set with its own name (Oct 3 2026). */}
+      <span className="jg-legend__item">
+        <span className="jg-legend__swatch jg-legend__swatch--flow" aria-hidden="true">
+          <svg width="10" height="10" viewBox="0 0 16 16">
+            <path d="M8 1.5C8 1.5 3 7 3 10a5 5 0 0 0 10 0C13 7 8 1.5 8 1.5z" fill="currentColor" />
+          </svg>
+        </span>
+        Blood flow
+        <i className="jg-legend__gloss">recorded, not counted</i>
+      </span>
       <span className="jg-legend__item">
         <span className="jg-legend__swatch jg-legend__swatch--skipped" aria-hidden="true">
           &#8856;

@@ -135,3 +135,26 @@ describe("SessionNowBar commit", () => {
     expect(onChange).toHaveBeenLastCalledWith("leg_press", { reps: 9 });
   });
 });
+
+describe("SessionNowBar's Blood flow (Oct 3 2026)", () => {
+  it("offers Blood flow beside Practice and Skip, and marks the set as a blood flow practice set", () => {
+    const changes: Partial<LiveSet>[] = [];
+    const el = mount({ onChange: (_id, p) => changes.push(p) });
+    const btn = [...el.querySelectorAll("button")].find((b) => b.textContent === "Blood flow")!;
+    expect(btn).toBeTruthy();
+    act(() => btn.click());
+    expect(changes.at(-1)).toEqual({ outcome: "practice", bloodFlow: true });
+    act(() => root?.unmount());
+    host?.remove();
+  });
+
+  it("Practice clears a blood flow mark", () => {
+    const changes: Partial<LiveSet>[] = [];
+    const el = mount({ onChange: (_id, p) => changes.push(p) });
+    const btn = [...el.querySelectorAll("button")].find((b) => b.textContent === "Practice")!;
+    act(() => btn.click());
+    expect(changes.at(-1)).toEqual({ outcome: "practice", bloodFlow: null });
+    act(() => root?.unmount());
+    host?.remove();
+  });
+});

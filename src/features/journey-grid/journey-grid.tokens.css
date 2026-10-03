@@ -130,6 +130,14 @@
   --jg-pf-now-tile:      #fde6d8;
   --jg-pf-now-edge:      #ef5302;
   --jg-pf-now-ink:       #7a2a06;
+  /* The rail's bubbles (Oct 3 2026): practice, skipped, blood flow. Blood
+     flow is violet because red is kept for rep quality. */
+  --jg-pf-practice:      #4f6f8c;
+  --jg-pf-practice-bg:   #e6eef5;
+  --jg-pf-skip:          #6b7884;
+  --jg-pf-skip-bg:       #eef1f4;
+  --jg-pf-flow:          #7b3fb8;
+  --jg-pf-flow-bg:       #f1e7fb;
   --jg-radius:         10px;
   --jg-radius-sm:      6px;
   --jg-font:           "Geist Variable", "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -213,6 +221,12 @@
   --jg-pf-now-tile:      #3a2216;
   --jg-pf-now-edge:      #f36d21;
   --jg-pf-now-ink:       #ffd2b8;
+  --jg-pf-practice:      #9fb4c7;
+  --jg-pf-practice-bg:   #1d2a36;
+  --jg-pf-skip:          #8a96a2;
+  --jg-pf-skip-bg:       #1a2129;
+  --jg-pf-flow:          #c58cf0;
+  --jg-pf-flow-bg:       #2a1d3a;
 
   /* The profile's neutrals are a LIGHT retune only. In dark they are the
      grid's own values, so the profile looks exactly as it did.            */
@@ -273,6 +287,12 @@
     --jg-pf-now-tile:      #3a2216;
     --jg-pf-now-edge:      #f36d21;
     --jg-pf-now-ink:       #ffd2b8;
+    --jg-pf-practice:      #9fb4c7;
+    --jg-pf-practice-bg:   #1d2a36;
+    --jg-pf-skip:          #8a96a2;
+    --jg-pf-skip-bg:       #1a2129;
+    --jg-pf-flow:          #c58cf0;
+    --jg-pf-flow-bg:       #2a1d3a;
     --jg-pf-bg:            var(--jg-bg);
     --jg-pf-surface-2:     var(--jg-surface-2);
     --jg-pf-surface-3:     var(--jg-surface-3);

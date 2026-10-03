@@ -2757,6 +2757,7 @@ export function WorkoutTrackerView({
           qualityR: (R?.repQuality as RepQuality | undefined) ?? null,
           // The outcome is per machine, written on both sides alike.
           outcome: L?.outcome ?? R?.outcome ?? null,
+          bloodFlow: L?.bloodFlow ?? R?.bloodFlow ?? null,
           skipReason: L?.skipReason ?? R?.skipReason ?? null,
         };
       } else {
@@ -2769,6 +2770,7 @@ export function WorkoutTrackerView({
           isTSC: !!(log.isTSC || log.isStaticHold),
           quality: (log.repQuality as RepQuality | undefined) ?? null,
           outcome: log.outcome ?? null,
+          bloodFlow: log.bloodFlow ?? null,
           skipReason: log.skipReason ?? null,
         };
       }
@@ -2916,6 +2918,8 @@ export function WorkoutTrackerView({
     if (patch.outcome !== undefined) {
       const o: Partial<ExerciseLog> = {
         outcome: patch.outcome,
+        // Blood flow rides on a practice set; any other outcome clears it.
+        bloodFlow: patch.outcome === "practice" && patch.bloodFlow === true ? true : null,
         skipReason: patch.outcome === "skipped" ? patch.skipReason ?? "other" : null,
         skipNote: patch.outcome === "skipped" ? patch.skipNote ?? null : null,
         machineEndedAt: patch.outcome ? Date.now() : null,

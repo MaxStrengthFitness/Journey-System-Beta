@@ -1387,6 +1387,8 @@ export interface ExerciseLog {
    * no count means skipped: unknown) is applied everywhere the same way.
    */
   outcome?: SetOutcome | null;
+  /** A practice set done for blood flow (Oct 3 2026, lib/set-outcome.ts isBloodFlow). */
+  bloodFlow?: boolean | null;
   /** Why the machine was skipped. Only meaningful when outcome is "skipped". */
   skipReason?: SkipReason | null;
   /** Free text behind a skip — "Left knee, tender since Tuesday". */

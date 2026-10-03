@@ -6,9 +6,13 @@
  *
  *   performed    a standard set to failure. The ONLY outcome that counts
  *                toward averages, progression, rollups and rep-quality tallies.
- *   practice     the client got on the machine for form, blood flow or
- *                recovery. Load, reps and time are recorded for history and
+ *   practice     the client got on the machine for form or recovery. Load, reps and time are recorded for history and
  *                can be linked to the pain map, but they never move an average.
+ *                A practice set may say WHY it was done: `bloodFlow: true`
+ *                is a blood flow set (AJ, Oct 3 2026: "like practice, own
+ *                name"). It stays `practice`, so every reader keeps it out of
+ *                the averages without learning a new word; the screens that
+ *                name a set ask `isBloodFlow`.
  *   skipped      explicitly bypassed today, for a reason the trainer picks.
  *                Over time the reasons are data of their own.
  *   not_reached  the session ran out of time first. Never asked of the
@@ -42,7 +46,7 @@ export const OUTCOME_LABEL: Record<SetOutcome, string> = {
 /** One line for a legend or an aria label. */
 export const OUTCOME_GLOSS: Record<SetOutcome, string> = {
   performed: "a set to failure — counts toward progression",
-  practice: "form, blood flow or recovery — recorded, not counted",
+  practice: "form or recovery — recorded, not counted",
   skipped: "bypassed today for a reason",
   not_reached: "the session ran out of time first",
 };
@@ -75,6 +79,18 @@ export const SKIP_REASON_LABEL: Record<SkipReason, string> = {
   unknown: "Unknown",
 };
 
+/** Blood flow's name and its one line, beside Practice's (Oct 3 2026). */
+export const BLOOD_FLOW_LABEL = "Blood flow";
+// AJ, Oct 3 2026: "practice can be for form, whereas blood flow could be
+// from the client not feeling like their muscle or joint is up to par ...
+// we might just do a light set for blood flow".
+export const BLOOD_FLOW_GLOSS = "a light set when a muscle or joint isn't up to par \u2014 recorded, not counted";
+
+/** Is this log a blood flow set? Only a practice set can be one. */
+export function isBloodFlow(log: Pick<OutcomeLog, "outcome" | "bloodFlow" | "reps" | "seconds"> | null | undefined): boolean {
+  return !!log && log.bloodFlow === true && outcomeOf(log) === "practice";
+}
+
 /** The reasons a trainer can pick on the floor — `unknown` is history's word, not theirs. */
 export const PICKABLE_SKIP_REASONS: readonly SkipReason[] = SKIP_REASONS.filter((r) => r !== "unknown");
 
@@ -96,6 +112,8 @@ export const SKIP_REASON_SHORT: Record<SkipReason, string> = {
 export interface OutcomeLog {
   outcome?: SetOutcome | null;
   skipReason?: SkipReason | string | null;
+  /** A practice set done for blood flow (Oct 3 2026). Meaningless on any other outcome. */
+  bloodFlow?: boolean | null;
   reps?: string | number | null;
   seconds?: string | number | null;
   /** Legacy aliases some imported logs carry instead of reps / seconds. */

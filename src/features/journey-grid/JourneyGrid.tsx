@@ -847,11 +847,11 @@ export function JourneyGrid({
     const fits = () => el.scrollWidth - el.clientWidth <= 1;
     let start: { x: number; y: number } | null = null;
     const onTouchStart = (e: TouchEvent) => {
-      const t = e.touches[0];
+      const t = e.touches?.[0];
       start = t ? { x: t.clientX, y: t.clientY } : null;
     };
     const onTouchMove = (e: TouchEvent) => {
-      const t = e.touches[0];
+      const t = e.touches?.[0];
       if (!start || !t || !fits()) return;
       if (isOlderGesture(t.clientX - start.x, t.clientY - start.y)) {
         start = null;

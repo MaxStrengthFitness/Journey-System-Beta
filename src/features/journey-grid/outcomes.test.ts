@@ -120,3 +120,26 @@ describe("Highest weight: heaviest, then more reps, then most recent", () => {
     expect(high?.session.id).toBe("b");
   });
 });
+
+describe("Blood flow (Oct 3 2026): a practice set with its own name", () => {
+  const flow = { sessionId: "s2", machineId: "lp", weight: "20", reps: "15", outcome: "practice" as const, bloodFlow: true };
+
+  it("draws as a practice set that says it was for blood flow", () => {
+    const set = toJourneySet(flow);
+    expect(set?.outcome).toBe("practice");
+    expect(set?.bloodFlow).toBe(true);
+    expect(set?.weight).toBe(20);
+    expect(toJourneySet(logs[1])?.bloodFlow).toBeUndefined();
+  });
+
+  it("never counts toward a best, a lowest or a start", () => {
+    const [row] = toJourneyRows([{ id: "lp", name: "Leg Press" }] as never, [logs[0], flow, logs[2]], {});
+    const stats = computeRowStats(row, sessions);
+    expect(stats.low?.set.weight).toBe(100);
+    expect(orderedSets(row, sessions).map((s) => s.weight)).toEqual([100, 104]);
+  });
+
+  it("a blood flow mark on anything but a practice set means nothing", () => {
+    expect(toJourneySet({ sessionId: "s1", machineId: "lp", weight: "100", reps: "10", bloodFlow: true })?.bloodFlow).toBeUndefined();
+  });
+});

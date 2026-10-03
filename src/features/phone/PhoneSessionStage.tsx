@@ -156,6 +156,7 @@ function MachineCard({
   const weight = todayWeight(value, row);
   const logged = cardLogged(value);
   const outcome = value?.outcome ?? null;
+  const bloodFlow = outcome === "practice" && value?.bloodFlow === true;
   const settings = machine.settings ? Object.entries(machine.settings) : [];
   const ghost = seconds
     ? last?.isTSC && typeof last.seconds === "number"
@@ -201,7 +202,7 @@ function MachineCard({
 
       {outcome === "practice" || outcome === "skipped" ? (
         <p className="ph-card__outcome">
-          {outcome === "practice" ? "Practice set · not counted" : "Skipped today"}
+          {outcome === "practice" ? (bloodFlow ? "Blood flow set · not counted" : "Practice set · not counted") : "Skipped today"}
         </p>
       ) : null}
 
@@ -289,11 +290,23 @@ function MachineCard({
         <span className="ph-marks__sp" />
         <button
           type="button"
-          className={`ph-chip${outcome === "practice" ? " is-on" : ""}`}
-          aria-pressed={outcome === "practice"}
-          onClick={() => onChange({ outcome: outcome === "practice" ? null : "practice" })}
+          className={`ph-chip${outcome === "practice" && !bloodFlow ? " is-on" : ""}`}
+          aria-pressed={outcome === "practice" && !bloodFlow}
+          onClick={() =>
+            onChange(outcome === "practice" && !bloodFlow ? { outcome: null, bloodFlow: null } : { outcome: "practice", bloodFlow: null })
+          }
         >
           Practice
+        </button>
+        {/* Blood flow: a light set when a muscle or joint isn't up to par,
+            recorded and never counted, like practice (AJ, Oct 3 2026). */}
+        <button
+          type="button"
+          className={`ph-chip${bloodFlow ? " is-on" : ""}`}
+          aria-pressed={bloodFlow}
+          onClick={() => onChange(bloodFlow ? { outcome: null, bloodFlow: null } : { outcome: "practice", bloodFlow: true })}
+        >
+          Blood flow
         </button>
         <button
           type="button"

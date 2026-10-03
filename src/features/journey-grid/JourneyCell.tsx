@@ -1,8 +1,9 @@
 import { memo } from "react";
-import { OUTCOME_GLOSS, SKIP_REASON_LABEL, SKIP_REASON_SHORT } from "../../lib/set-outcome";
+import { BLOOD_FLOW_GLOSS, BLOOD_FLOW_LABEL, OUTCOME_GLOSS, SKIP_REASON_LABEL, SKIP_REASON_SHORT } from "../../lib/set-outcome";
 import type { JourneySet, JourneySession } from "./types";
 import { formatSeconds, formatLongDate, QUALITY_LABEL, loadDelta, trendVsPrevious, type Trend } from "./stats";
 import { QualityMark } from "./QualityMark";
+import { RailBubble } from "./RailBubble";
 
 interface JourneyCellProps {
   session: JourneySession;
@@ -62,6 +63,7 @@ function JourneyCellImpl({ session, machineName, set, previous, isLatest, isSpot
     !set ? "jg-cell--none" : "",
     performed ? `jg-cell--q${set.quality}` : "",
     set && set.outcome === "practice" ? "jg-cell--practice" : "",
+    set && set.outcome === "practice" && set.bloodFlow ? "jg-cell--flow" : "",
     set && set.outcome === "skipped" ? "jg-cell--skipped" : "",
     set && set.outcome === "not_reached" ? "jg-cell--nr" : "",
     delta !== null && delta > 0 ? "is-gain" : "",
@@ -108,6 +110,7 @@ function JourneyCellImpl({ session, machineName, set, previous, isLatest, isSpot
           <span className="jg-cell__skip-glyph">⊘</span>
           {why && <span className="jg-cell__skip-why">{why}</span>}
         </span>
+        <RailBubble kind="skip" caption={`Skipped · ${SKIP_REASON_LABEL[reason]}`} />
       </div>
     );
   }
@@ -121,15 +124,23 @@ function JourneyCellImpl({ session, machineName, set, previous, isLatest, isSpot
       <div
         className={cls}
         role="gridcell"
-        aria-label={`${machineName}, ${when}: practice set, ${set.weight} lb, ${effort} — ${OUTCOME_GLOSS.practice}`}
+        aria-label={
+          set.bloodFlow
+            ? `${machineName}, ${when}: blood flow set, ${set.weight} lb, ${effort} — ${BLOOD_FLOW_GLOSS}`
+            : `${machineName}, ${when}: practice set, ${set.weight} lb, ${effort} — ${OUTCOME_GLOSS.practice}`
+        }
       >
         <span className="jg-cell__w">{set.weight}</span>
         <span className="jg-cell__r" aria-hidden="true">
           {set.isTSC ? <span className="jg-tut">⏱ {formatSeconds(set.seconds ?? 0)}</span> : <>{set.reps ?? "—"}</>}
         </span>
         <span className="jg-cell__mark jg-cell__mark--practice" aria-hidden="true">
-          P
+          {set.bloodFlow ? "BF" : "P"}
         </span>
+        <RailBubble
+          kind={set.bloodFlow ? "flow" : "practice"}
+          caption={`${set.bloodFlow ? BLOOD_FLOW_LABEL : "Practice"} · ${set.weight} lb · ${effort}`}
+        />
       </div>
     );
   }

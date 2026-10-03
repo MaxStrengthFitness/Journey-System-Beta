@@ -35,6 +35,8 @@ export interface JourneySet {
   outcome: SetOutcome;
   /** Only when `outcome` is `skipped`. */
   skipReason?: SkipReason;
+  /** A practice set done for blood flow (Oct 3 2026). */
+  bloodFlow?: boolean;
   /** Load in lb. 0 when the set has none (skipped, not reached). */
   weight: number;
   /** Reps to failure — absent when the set was a timed static contraction. */
@@ -105,6 +107,8 @@ export interface LiveSet {
    * buttons were used. The tracker writes it onto the log as `outcome`.
    */
   outcome?: SetOutcome | null;
+  /** With `outcome: "practice"`: it was a blood flow set (Oct 3 2026). */
+  bloodFlow?: boolean | null;
   skipReason?: SkipReason | null;
   /** "Left knee, tender since Tuesday" — the body area behind a pain skip. */
   skipNote?: string | null;
