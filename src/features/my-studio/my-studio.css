@@ -18,10 +18,11 @@
  * ------------------------------------------------------------------ *
  * My Studio's masthead, Relay's tabs and the Now Bar were three bars, about a
  * quarter of an upright iPad before any work. They are one: the section (its
- * menu holds the five), Relay's tabs, the time, Tracking, Ask and +. One row
- * on a landscape iPad; upright, the time and Tracking take a second row. It is
- * MyStudioView's, so its rules are here, in the stylesheet MyStudioView and
- * StudioHeader import (the masthead's portrait rule lived here too). */
+ * menu holds the five), Relay's tabs, the day, what's new, Ask and +, in one
+ * row (the Relay Board rebuild, Oct 3 2026: the time and Tracking went; AJ:
+ * "lets clean the top header up"). Under it on Relay, the sub-bar the Board
+ * fills with the parts of the day (.msh-sub). It is MyStudioView's, so its
+ * rules are here, in the stylesheet MyStudioView and StudioHeader import. */
 
 .msh {
   flex: none;
@@ -38,7 +39,6 @@
 }
 
 .msh__sect-wrap,
-.msh__track-wrap,
 .msh__plus-wrap {
   position: relative;
   flex: none;
@@ -90,7 +90,7 @@
 }
 .msh__sect-name svg { flex: none; color: var(--st-ink-muted); }
 
-/* A popover under its button: the sections, Tracking, the + menu. */
+/* A popover under its button: the sections, the + menu, what's new. */
 .msh__pop {
   position: absolute;
   z-index: 30;
@@ -106,7 +106,6 @@
   background: var(--st-surface);
   box-shadow: 0 10px 30px var(--st-shadow);
 }
-.msh__track-wrap > .msh__pop,
 .msh__plus-wrap > .msh__pop { left: auto; right: 0; }
 .msh__pop-item {
   display: flex;
@@ -180,71 +179,21 @@
 }
 .msh__tab:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 
-/* The time: the shift, the minutes free and the next session, a tap to unfold
-   the day strip. It wraps before it cuts a client's name. */
-.msh__now {
-  flex: 1 1 16rem;
+/* The day, quiet, beside the tabs; what's new and the two buttons at the end. */
+.msh__day {
+  flex: 1 1 auto;
   min-width: 0;
-  min-height: 44px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: "a chev" "b chev";
-  align-items: center;
-  gap: 2px 8px;
-  padding: 4px 8px 4px 12px;
-  border: 0;
-  border-left: 1px solid var(--st-border);
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.msh__now:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; border-radius: 8px; }
-.msh__now-a { grid-area: a; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
-.msh__now-b { grid-area: b; font-size: 14px; font-weight: 700; color: var(--st-ink-2); overflow-wrap: anywhere; }
-.msh__now-chev { grid-area: chev; display: inline-flex; color: var(--st-ink-muted); }
-.msh__phase {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  padding-left: 4px;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--st-ink-2);
   white-space: nowrap;
 }
-.msh__phase-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--st-ink-faint); }
-.msh__phase--opening .msh__phase-dot { background: var(--st-hero); }
-.msh__phase--mid .msh__phase-dot { background: var(--st-done); }
-.msh__phase--closing .msh__phase-dot { background: var(--st-flag); }
-.msh__gap { font-size: 14px; font-weight: 800; color: var(--st-ink); }
-
-/* Tracking: dashed while nothing is taken, filled in the dealt card's orange
-   once something is. The job's name wraps; it is never cut. */
-.msh__track {
+.msh__news {
+  flex: none;
   display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  max-width: 22rem;
-  padding: 4px 14px 4px 12px;
-  border: 1px dashed var(--st-border-strong);
-  border-radius: 12px;
-  background: transparent;
-  color: var(--st-ink-muted);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  text-align: left;
-  cursor: pointer;
 }
-.msh__track svg { flex: none; }
-.msh__track:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
-.msh__track--on { border-style: solid; border-color: var(--st-hero); background: var(--st-hero-fill); color: var(--st-ink); }
-.msh__track--on svg { color: var(--st-hero-text); }
-.msh__track-text { min-width: 0; overflow-wrap: anywhere; }
+.msh__news:empty { display: none; }
 
 /* Ask the team: the bar's one solid button. + is its quiet neighbour. */
 .msh__ask {
@@ -292,34 +241,13 @@
   overflow-wrap: anywhere;
 }
 
-/* Upright: the section, the tabs, Ask and + on the first row; the time and
-   Tracking on the second. At 744px (an iPad mini) the first row is about
-   600px, so nothing is squeezed. */
-@media (max-width: 899px) {
-  .ms > .msh--relay {
-    display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
-    grid-template-areas:
-      "sect tabs . ask plus"
-      "now now now track track";
-    row-gap: 0.375rem;
-    column-gap: 0.5rem;
-    padding: 0.5rem 0.875rem 0.625rem;
-  }
-  .ms > .msh--relay > .msh__sect-wrap { grid-area: sect; }
-  .ms > .msh--relay > .msh__tabs { grid-area: tabs; }
-  .ms > .msh--relay > .msh__now { grid-area: now; border-left: 0; padding-left: 4px; }
-  .ms > .msh--relay > .msh__track-wrap { grid-area: track; justify-self: end; }
-  .ms > .msh--relay > .msh__ask { grid-area: ask; }
-  .ms > .msh--relay > .msh__plus-wrap { grid-area: plus; }
-}
+/* The sub-bar under it on Relay: the Board's parts of the day, the
+   Tracker's lists. Empty (the Journal), it takes no room. */
+.msh-sub:empty { display: none; }
 
-/* A phone (Journey Lite, Oct 2026; features/phone/device.ts). Upright the
-   iPad's first row (section, tabs, Ask, +) is about 560px and ran off a
-   390px screen, taking Ask, + and Tracking with it. On a phone: the section,
-   Ask and + on the first row; Relay's three tabs across the second, sharing
-   it equally; the time and Tracking on the third. The other sections keep one
-   row, with the studio and the day wrapping in what is left between. */
+/* A phone (Journey Lite, Oct 2026; features/phone/device.ts): the section,
+   what's new, Ask and + on the first row; Relay's three tabs across the
+   second, sharing it equally. The day is the phone's own clock's. */
 @media (max-width: 599px) {
   .msh {
     flex-wrap: nowrap;
@@ -330,20 +258,24 @@
   .msh__ask { padding: 0 14px; }
 
   .ms > .msh--relay {
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
     grid-template-areas:
-      "sect . ask plus"
-      "tabs tabs tabs tabs"
-      "now now track track";
+      "sect . news ask plus"
+      "tabs tabs tabs tabs tabs";
+    row-gap: 0.375rem;
+    column-gap: 0.375rem;
     padding: 0.375rem 0.75rem 0.5rem;
   }
-  .ms > .msh--relay > .msh__tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ms > .msh--relay > .msh__sect-wrap { grid-area: sect; }
+  .ms > .msh--relay > .msh__tabs { grid-area: tabs; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ms > .msh--relay .msh__tab { justify-content: center; padding: 0 6px; }
-  .ms > .msh--relay > .msh__ask { justify-self: end; }
-  .ms > .msh--relay > .msh__now { padding-right: 0; }
-  .ms > .msh--relay .msh__track { max-width: 11rem; padding: 4px 10px; }
+  .ms > .msh--relay > .msh__day { display: none; }
+  .ms > .msh--relay > .msh__news { grid-area: news; }
+  .ms > .msh--relay > .msh__ask { grid-area: ask; }
+  .ms > .msh--relay > .msh__plus-wrap { grid-area: plus; }
   /* The popovers hang inside the screen: the section menu from the left
-     edge, Tracking and + from the right, never wider than the phone. */
+     edge, + from the right, never wider than the phone. */
   .msh__pop { max-width: calc(100vw - 1.5rem); }
 }
 

@@ -191,7 +191,6 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("Relay");
     // The teammates line is "Just now" (it was "Pulse", the living assessment's name, until Sep 27 2026).
     expect(h.textContent).toContain("Just now");
-    expect(h.textContent).toContain("No sessions on your schedule");
     // Right now won't guess how busy the floor is from a list with nothing on it.
     expect(h.querySelector(".rbd-lens")?.textContent).toContain("Relay isn't saying how busy the floor is");
     const doors = [...h.querySelectorAll(".rbd-door .rbd-door__label")].map((d) => d.textContent);
@@ -225,23 +224,20 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("Behind Floor work");
   });
 
-  it("unfolds the day strip from the gap meter", async () => {
+  it("has one header: the section and its menu, Relay's tabs, the day, Ask and +, and the bar the Board fills under it (Oct 3 2026)", async () => {
     const h = await mount(lead);
-    await click(h.querySelector('[aria-controls="relay-daystrip"]'));
-    expect(h.textContent).toContain("The whole day is a gap");
-  });
-
-  it("has one header: the section and its menu, Relay's tabs, the time, Tracking, Ask and + (Relay room, Sep 28 2026)", async () => {
-    const h = await mount(lead);
-    // One bar, not three: no masthead, no second row of Relay tabs, no Now Bar.
+    // One bar, not three: no masthead, no Now Bar; under it only the sub-bar the Board fills.
     expect(h.querySelectorAll("header.msh")).toHaveLength(1);
     expect(h.querySelector(".pl__mast")).toBeNull();
-    expect(h.querySelector(".pl__subbar")).toBeNull();
+    expect(h.querySelectorAll(".pl__subbar")).toHaveLength(1);
     expect(h.querySelector(".rnb")).toBeNull();
     expect(currentSection()).toBe("Relay");
     expect(await sectionNames()).toEqual(["Relay", "Openings", "Machines", "Team", "Studio"]);
     expect([...h.querySelectorAll('[role="tablist"][aria-label="Relay"] [role="tab"]')].map((t) => t.textContent)).toEqual(["Board", "Tracker", "Journal"]);
-    expect(h.querySelector(".msh__track")?.textContent).toBe("Tracking: nothing yet");
+    // The time button and Tracking went in the Relay Board rebuild (AJ, Oct 3 2026: "Drop both").
+    expect(h.querySelector(".msh__now")).toBeNull();
+    expect(h.querySelector(".msh__track")).toBeNull();
+    expect(h.querySelector(".msh__day")?.textContent).toBeTruthy();
     // "Just now" is a still list on the Board, with nothing ticking.
     expect(h.querySelector(".rjn")?.textContent).toContain("Quiet so far today.");
     // A leader's + holds the studio task and the team job beside their own things.

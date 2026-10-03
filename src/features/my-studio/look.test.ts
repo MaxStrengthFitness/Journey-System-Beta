@@ -135,10 +135,7 @@ const NAME_CLASSES = [
   "ini__name", // a trainer, in the initiative roll-up
   "rjn__line", // Just now: a teammate's name and what they did (the Now Bar's ticker until Sep 28 2026)
   "rjn__who",
-  "msh__now-b", // the header's next session: a client's whole name
-  "msh__track-text", // the header's Tracking chip: the job's name
   "msh__pop-text", // a section or an item in the header's menus
-  "ds__name", // a client on the opened day strip's list
   "stq__reacted", // who replied to an ask
   "tm-card__name", // a person's card on Team
   "tj-card__title", // a team job
@@ -257,7 +254,6 @@ const TAP_CLASSES = [
   "rak-tile", // the Ask sheet's six tiles
   "rak-when", // its day and time
   "rbd-ask", // Ask the team, behind Help a teammate
-  "ds__cover", // I need cover, on the day strip
   "sh__client-ask", // Ask the team about this client
   "ne__suggest-use",
   "rls__chip",
@@ -276,8 +272,6 @@ const TAP_CLASSES = [
   // The one header (Relay room, Sep 28 2026): 44px, as a bar's controls are.
   "msh__sect",
   "msh__tab",
-  "msh__now",
-  "msh__track",
   "msh__ask",
   "msh__plus",
   "msh__pop-item",
@@ -350,7 +344,6 @@ const BUTTON_CLASSES = [
   "pl__btn",
   "msh__ask",
   "msh__tab",
-  "msh__track",
   "msh__pop-item",
   "rbd-btn",
   "rbd-part",
@@ -360,7 +353,6 @@ const BUTTON_CLASSES = [
   "rsc-btn",
   "rak-tile",
   "rbd-ask",
-  "ds__cover",
   "sh__client-ask",
   "tj-open",
   "tj-done__toggle",
