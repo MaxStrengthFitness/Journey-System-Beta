@@ -24,7 +24,6 @@ import { sessionDayKey } from "../features/client-history/model";
 import {
   PRIOR_SOURCES,
   PRIOR_SOURCE_LABEL,
-  priorHistoryLabel,
   priorHistoryOf,
   priorUncounted,
   statePriorHistory,
@@ -436,7 +435,6 @@ export function ClientProfileView({
    * one; see docs/business/migration-and-prior-history.md.
    */
   const priorHistory = useMemo(() => priorHistoryOf(client), [client]);
-  const priorLabel = priorHistoryLabel(priorHistory);
   /* A primitive, so the reconciler's deps are stable across snapshot churn. */
   const priorOffset = priorUncounted(priorHistory);
 
@@ -524,10 +522,6 @@ export function ClientProfileView({
     return lateCancelRead.rows.filter((r) => !r.day || !logged.has(r.day)).length;
   }, [lateCancelRead.rows, sessions]);
   const headerTotal = sessionTotals?.basis === "mindbody" ? sessionTotals.total : completedTotal;
-  // Mindbody's guess is a grey check beside the words, not "from Mindbody,
-  // not yet confirmed" (AJ, Oct 2 2026: "clean up the wordy look").
-  const headerPriorIsGuess = sessionTotals?.basis === "mindbody" && mindbodyGuess !== null;
-  const headerPriorLabel = headerPriorIsGuess ? `${mindbodyGuess} before Journey` : priorLabel;
 
   useEffect(() => {
     if (!clientId) return;
@@ -1512,8 +1506,6 @@ export function ClientProfileView({
         lateCancels={lateCancels}
         sessionsQuotable={canQuoteNumber || sessionTotals?.basis === "mindbody"}
         coverage={clientCoverage}
-        priorLabel={headerPriorLabel}
-        priorConfirmed={!headerPriorIsGuess}
         sessionsSplit={splitOfSessions}
         topTrainer={topTrainer}
         trainers={trainers}

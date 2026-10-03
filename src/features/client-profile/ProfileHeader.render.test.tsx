@@ -107,75 +107,69 @@ describe("ProfileHeader", () => {
 });
 
 /*
- * Sessions before Journey is added and edited on Notes & Profile -> Account,
- * and only there (AJ, Sep 26 2026: "take this off the header of the profile,
- * leave it in the profile section"). The header keeps the count as words.
+ * The sessions box (AJ, Oct 2 2026: "this box just needs to show Sessions
+ * Completed, Sessions Remaining ... make sure its condensed"). Sessions
+ * before Journey and the package's name are on Notes & Profile -> Account.
  */
-describe("ProfileHeader — Sessions before Journey", () => {
-  it("offers no door on the header: no Add button, no edit", () => {
-    const el = mount(props({ completedCount: 461 }));
-    expect(el.querySelector('button[aria-label^="Sessions before Journey"]')).toBeNull();
-    expect(el.textContent).not.toContain("Add sessions before Journey");
+describe("ProfileHeader's sessions box", () => {
+  const box = (el: HTMLElement) => el.querySelector<HTMLElement>('[data-testid="sessions-tile"]')!;
+  const text = (el: HTMLElement, id: string) => el.querySelector(`[data-testid="${id}"]`)?.textContent ?? null;
+  const pif = {
+    label: "PIF",
+    remaining: 36,
+    total: null,
+    source: "mindbody-membership",
+    asOf: null,
+    fromMindbody: true,
+    autoRenews: null,
+  } as ProfileHeaderProps["pkg"];
+
+  it("says Completed and Remaining, and nothing about before Journey or the package's name", () => {
+    const el = mount(props({ completedCount: 413, sessionsQuotable: true, pkg: pif }));
+    expect(box(el).textContent).toContain("done");
+    expect(box(el).textContent).toContain("left");
+    expect(text(el, "sessions-completed")).toBe("413");
+    expect(text(el, "sessions-remaining")).toBe("36");
+    expect(el.textContent).not.toContain("before Journey");
+    expect(el.textContent).not.toContain("PIF");
   });
 
-  it("still says how many came before Journey, as plain words", () => {
-    const el = mount(props({ completedCount: 461, priorLabel: "412 before Journey · FileMaker" }));
-    expect(el.textContent).toContain("412 before Journey · FileMaker");
-    expect(el.querySelector('button[aria-label^="Sessions before Journey"]')).toBeNull();
-  });
-
-  it("keeps the tile's renewal tap one button, as it was before the door", () => {
-    const onRenewal = vi.fn();
-    const el = mount(
-      props({
-        priorLabel: "412 before Journey · FileMaker",
-        renewal: { text: "9 left · auto-renews Nov 14", tone: "ok", attention: false, onOpen: onRenewal },
-      }),
-    );
-    expect(el.querySelectorAll("button button")).toHaveLength(0);
-    const renewal = el.querySelector<HTMLButtonElement>('button[aria-label^="Renewal:"]')!;
-    act(() => renewal.click());
-    expect(onRenewal).toHaveBeenCalledTimes(1);
-  });
-});
-
-/*
- * The completed-session tile (Sep 24 2026). A migrating client's count is
- * only what Journey has seen, and a count that has not landed is unknown -
- * the tile used to print "Completed sessions 0" for both.
- */
-describe("ProfileHeader's session count", () => {
-  const tile = (el: HTMLElement, label: string) =>
-    [...el.querySelectorAll("*")].find((n) => n.children.length === 0 && n.textContent === label)?.closest("div, button");
-
-  it("calls the count her completed sessions when it may be quoted as her total", () => {
-    const el = mount(props({ completedCount: 413, sessionsQuotable: true, priorLabel: "412 before Journey · FileMaker" }));
-    expect(el.textContent).toContain("Completed sessions");
-    expect(el.textContent).toContain("413");
-    expect(el.textContent).toContain("412 before Journey · FileMaker");
-  });
-
-  it("calls it Journey's count when nobody has recorded what came before", () => {
+  it("calls the count Journey's when nobody has recorded what came before", () => {
     const el = mount(props({ completedCount: 3 }));
-    expect(el.textContent).toContain("Sessions in Journey");
-    expect(el.textContent).not.toContain("Completed sessions");
-    expect(tile(el, "Sessions in Journey")?.textContent).toContain("3");
+    expect(box(el).textContent).toContain("in Journey");
+    expect(box(el).textContent).not.toContain("done");
+  });
+
+  it("takes Remaining from the contract and puts the extras beside it, never in it", () => {
+    const el = mount(props({ pkg: pif, sessionsSplit: { contract: 36, hasContract: true, perPayment: false, extra: 12, other: 0 } }));
+    expect(text(el, "sessions-remaining")).toBe("36");
+    expect(text(el, "sessions-extra")).toBe("+12");
+    const none = mount(props({ pkg: pif, sessionsSplit: { contract: 5, hasContract: true, perPayment: true, extra: 0, other: 0 } }));
+    expect(text(none, "sessions-remaining")).toBe("5");
+    expect(none.querySelector('[data-testid="sessions-extra"]')).toBeNull();
+  });
+
+  it("shows a dash, never a zero, while a count is not known", () => {
+    const el = mount(props({ completedCount: null, sessionsQuotable: true }));
+    expect(text(el, "sessions-completed")).toBe("—");
+    expect(text(el, "sessions-remaining")).toBe("—");
   });
 
   it("tallies late cancels beside the count, never inside it, and says nothing while unknown (Oct 2 2026)", () => {
     const el = mount(props({ completedCount: 40, sessionsQuotable: true, lateCancels: 2 }));
-    const t = tile(el, "Completed sessions");
-    expect(t?.textContent).toContain("40");
-    expect(t?.querySelector('[data-testid="late-cancels"]')?.textContent).toBe("· 2 late cancels");
+    expect(text(el, "sessions-completed")).toBe("40");
+    expect(text(el, "late-cancels")).toBe("· 2 late cancels");
     const none = mount(props({ completedCount: 40, sessionsQuotable: true, lateCancels: null }));
     expect(none.querySelector('[data-testid="late-cancels"]')).toBeNull();
   });
 
-  it("shows a dash, never a zero, while the count is not known", () => {
-    const el = mount(props({ completedCount: null, sessionsQuotable: true }));
-    const t = tile(el, "Completed sessions");
-    expect(t?.textContent).toContain("—");
-    expect(t?.textContent).not.toMatch(/\b0\b/);
+  it("keeps the renewal tap one button", () => {
+    const onRenewal = vi.fn();
+    const el = mount(props({ renewal: { text: "9 left · auto-renews Nov 14", tone: "ok", attention: false, onOpen: onRenewal } }));
+    expect(el.querySelectorAll("button button")).toHaveLength(0);
+    const renewal = el.querySelector<HTMLButtonElement>('button[aria-label^="Renewal:"]')!;
+    act(() => renewal.click());
+    expect(onRenewal).toHaveBeenCalledTimes(1);
   });
 
   /*
@@ -198,81 +192,6 @@ describe("ProfileHeader's session count", () => {
 
     const brandNew = mount(props({ client: filemaker, coverage: "complete" }));
     expect(brandNew.textContent).toContain("Client since Sep 2026");
-  });
-});
-
-/*
- * With no renewal snapshot and no count, the package pill used to read
- * "Auto-renews" whenever autopay was active. Auto-renew is on at some studios
- * and not at others (AJ, Sep 24 2026), so only Mindbody's own flag may say it;
- * otherwise the pill is the package name alone.
- */
-describe("ProfileHeader's package pill", () => {
-  const monthly = (autoRenews: boolean | null) =>
-    ({
-      label: "12-Month Autopay",
-      remaining: null,
-      total: null,
-      source: "mindbody-contract",
-      asOf: null,
-      fromMindbody: true,
-      autoRenews,
-    }) as ProfileHeaderProps["pkg"];
-  const pill = (el: HTMLElement) => el.querySelector('[title="Synced from Mindbody"]')?.textContent;
-
-  it("says Auto-renews when Mindbody's flag says so", () => {
-    expect(pill(mount(props({ pkg: monthly(true) })))).toBe("Auto-renews · 12-Month Autopay");
-  });
-
-  it("names the package and claims nothing when Mindbody hasn't said, or says it won't", () => {
-    for (const autoRenews of [null, false]) {
-      const el = mount(props({ pkg: monthly(autoRenews) }));
-      expect(pill(el)).toBe("12-Month Autopay");
-      expect(el.textContent).not.toContain("Auto-renews");
-      act(() => root?.unmount());
-      host?.remove();
-    }
-  });
-});
-
-/*
- * Left in the contract, and extra (AJ, Sep 26 2026). Judy Daus's tile read
- * "36 LEFT · PIF" while Account read "48 on hand": her paid-in-full option's
- * 36 and a Session Comp's 12. The profile now works the split out once and the
- * tile prints the pair — two pills that wrap, so neither count is cut off.
- */
-describe("ProfileHeader's sessions left: in the contract, and extra", () => {
-  const pif = {
-    label: "PIF",
-    remaining: 36,
-    total: null,
-    source: "mindbody-membership",
-    asOf: null,
-    fromMindbody: true,
-    autoRenews: null,
-  } as ProfileHeaderProps["pkg"];
-  const pills = (el: HTMLElement) =>
-    [...el.querySelectorAll('[title="From her Mindbody pricing options"]')].map((p) => p.textContent);
-
-  it("prints what is left in the contract and the extra sessions, in place of the Mindbody pill", () => {
-    const el = mount(
-      props({ pkg: pif, sessionsSplit: { contract: 36, hasContract: true, perPayment: false, extra: 12, other: 0 } }),
-    );
-    expect(pills(el)).toEqual(["36 left in contract", "+12 extra"]);
-    expect(el.querySelector('[title="Synced from Mindbody"]')).toBeNull();
-    // The two pills wrap rather than truncate.
-    expect(el.querySelector('[title="From her Mindbody pricing options"]')?.className).not.toContain("truncate");
-  });
-
-  it("says on hand for a contract that comes a payment at a time, and names no extras she does not have", () => {
-    const el = mount(props({ pkg: pif, sessionsSplit: { contract: 5, hasContract: true, perPayment: true, extra: 0, other: 0 } }));
-    expect(pills(el)).toEqual(["5 on hand in contract"]);
-  });
-
-  it("keeps the Mindbody pill until the split is known", () => {
-    const el = mount(props({ pkg: pif, sessionsSplit: null }));
-    expect(pills(el)).toEqual([]);
-    expect(el.querySelector('[title="Synced from Mindbody"]')?.textContent).toBe("36 left · PIF");
   });
 });
 
@@ -336,17 +255,10 @@ describe("ProfileHeader's running-session menu", () => {
 });
 
 describe("ProfileHeader's checks (Oct 2 2026)", () => {
-  it("marks a guessed first day and a guessed count with a grey check, not words", () => {
-    const host = mount(
-      props({
-        client: { ...client, firstAppointmentDate: "2020-01-15T15:00:00Z" } as unknown as Client,
-        priorLabel: "54 before Journey",
-        priorConfirmed: false,
-      }),
-    );
+  it("marks a guessed first day with a grey check, not words", () => {
+    const host = mount(props({ client: { ...client, firstAppointmentDate: "2020-01-15T15:00:00Z" } as unknown as Client }));
     expect(host.textContent).not.toContain("(from Mindbody)");
     expect(host.querySelector('[data-testid="since-check"]')?.getAttribute("data-confirmed")).toBe("no");
-    expect(host.querySelector('[data-testid="prior-check"]')?.getAttribute("data-confirmed")).toBe("no");
   });
 
   it("turns the first day's check green once a person has set it", () => {

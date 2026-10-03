@@ -104,20 +104,6 @@ export interface ProfileHeaderProps {
    * the same words as the Story beneath. Absent reads as "unknown".
    */
   coverage?: HistoryCoverage;
-  /**
-   * "412 before Journey · FileMaker", when there is history Journey cannot
-   * see. The split is not a footnote: it is what stops a two-month trend
-   * being read as a twelve-year client's whole story. Plain words, not a
-   * door: Sessions before Journey is added and edited on Notes & Profile →
-   * Account, and only there (AJ, Sep 26 2026: "take this off the header of
-   * the profile, leave it in the profile section").
-   */
-  priorLabel?: string | null;
-  /**
-   * False while `priorLabel` is Mindbody's guess: the grey check says so
-   * where the words "from Mindbody, not yet confirmed" used to (Oct 2 2026).
-   */
-  priorConfirmed?: boolean;
   topTrainer: TopTrainerState;
   /** Everyone on the studio's list, to name the trainers in the tally. */
   trainers?: Trainer[];
@@ -302,6 +288,78 @@ function ConfirmedCheck({ confirmed, what, testId }: { confirmed: boolean; what:
   );
 }
 
+/**
+ * The header's sessions box: Completed and Remaining, side by side at the
+ * same size (AJ, Oct 2 2026). A count that is not known is a dash, never 0.
+ * Late cancels sit under the count when there are any, never inside it.
+ */
+function SessionsTile({
+  completedLabel,
+  completed,
+  lateCancels,
+  remaining,
+  extra,
+  renewal,
+}: {
+  completedLabel: string;
+  completed: number | null;
+  lateCancels: number | null;
+  remaining: number | null;
+  extra: number;
+  renewal?: RenewalTileState;
+}) {
+  const Tag = renewal ? "button" : "div";
+  return (
+    <Tag
+      {...(renewal
+        ? { type: "button" as const, onClick: renewal.onOpen, "aria-label": `Renewal: ${renewal.text}. Open the renewal card.` }
+        : {})}
+      data-testid="sessions-tile"
+      className={cn(
+        "relative min-w-0 bg-white dark:bg-slate-950 px-3 xl:px-2.5 py-2 flex flex-col justify-center gap-1 text-left",
+        renewal && "min-h-10 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors",
+      )}
+    >
+      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
+        Sessions
+        {renewal?.attention && <span className={cn("w-1.5 h-1.5 rounded-full bg-current shrink-0", RENEWAL_TONE[renewal.tone])} aria-hidden="true" />}
+      </span>
+      {/* "93 done / 93 left +1": two short words, the numbers do the talking
+          (AJ, Oct 2 2026: "i just dont like how long each word is"). Side by
+          side where the tile is wide, stacked where it is not. */}
+      <span className="flex items-baseline flex-wrap gap-x-4 gap-y-1 leading-none">
+        <span className="inline-flex items-baseline gap-1 whitespace-nowrap">
+          <span className="text-[22px] font-black leading-none text-[#F06C22] tabular-nums min-w-[2.2ch] text-right" data-testid="sessions-completed">
+            {completed === null ? "—" : completed}
+          </span>
+          <span className="text-[11px] font-semibold text-muted-foreground">{completedLabel}</span>
+        </span>
+        <span className="inline-flex items-baseline gap-1 whitespace-nowrap">
+          <span className="text-[22px] font-black leading-none text-slate-900 dark:text-slate-50 tabular-nums min-w-[2.2ch] text-right" data-testid="sessions-remaining">
+            {remaining === null ? "—" : remaining}
+          </span>
+          <span className="text-[11px] font-semibold text-muted-foreground">left</span>
+          {extra > 0 && (
+            <span
+              className="ml-0.5 rounded px-1 py-0.5 text-[10px] font-bold leading-none text-[#0a548b] bg-[#0a548b]/10 dark:text-[#8cc4f2] dark:bg-[#5198d8]/15"
+              title={`${extra} extra, given on top of the contract`}
+              aria-label={`plus ${extra} extra`}
+              data-testid="sessions-extra"
+            >
+              +{extra}
+            </span>
+          )}
+        </span>
+      </span>
+      {typeof lateCancels === "number" && lateCancels > 0 && (
+        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none" data-testid="late-cancels">
+          {`· ${lateCancelCount(lateCancels)}`}
+        </span>
+      )}
+    </Tag>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 
 export function ProfileHeader({
@@ -313,8 +371,6 @@ export function ProfileHeader({
   lateCancels = null,
   sessionsQuotable = false,
   coverage = "unknown",
-  priorLabel,
-  priorConfirmed = true,
   topTrainer,
   trainers = [],
   pkg,
@@ -368,7 +424,14 @@ export function ProfileHeader({
   const nextLabel = nextSessionHeadline(nextDay, nextTime);
 
   /* ---- package ---- */
-  const remaining = remainingLabel(pkg);
+  // Remaining: what is left in her contract when the split knows it (the
+  // extras beside it, never in it - AJ, Sep 26 2026), else the package's
+  // own count, else unknown.
+  const remainingCount: number | null = splitSpeaks(sessionsSplit)
+    ? sessionsSplit.hasContract
+      ? sessionsSplit.contract
+      : null
+    : pkg.remaining;
   const since = clientSinceLabel(client, { coverage });
   // The badge promises medical detail, so it fires on medical detail — not on
   // a general note (client-profile audit: high-visibility alerts).
@@ -663,75 +726,19 @@ export function ProfileHeader({
           )}
         </Stat>
 
-        {/* Marker 6: the package used to be "46" shouting next to "of 96 in
-            package" whispering, so the ratio never registered. Now the two
-            numbers are one fraction at comparable weight, and the tile's
-            bottom edge carries a gauge — how much of the package is spent
-            is legible without reading a digit. */}
-        {/* "52 of 96 — I don't know where the 96 comes from; it needs to be
-            removed" (audit, Sep 13). The count stands alone; what is left on
-            the CONTRACT is the sub-line, from the renewal snapshot. */}
-        <Stat
-          label={sessionCountLabel(sessionsQuotable)}
-          onClick={renewal?.onOpen}
-          ariaLabel={renewal ? `Renewal: ${renewal.text}. Open the renewal card.` : undefined}
-          sub={
-            renewal ? (
-              // Renewals round: the package tile speaks for the renewal, and a
-              // tap opens the Renewal card (both clocks, conversations).
-              <span className={cn("inline-flex items-center gap-1.5 min-w-0 max-w-full text-[11px] font-bold", RENEWAL_TONE[renewal.tone])}>
-                {renewal.attention && <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" aria-hidden="true" />}
-                <span className="truncate">{renewal.text}</span>
-              </span>
-            ) : splitSpeaks(sessionsSplit) ? (
-              // Left in the contract, and what she was given on top: two
-              // pills that wrap rather than truncate, so neither count is
-              // ever cut off in a narrow tile (AJ, Sep 26 2026).
-              <span className="inline-flex flex-wrap items-center gap-1 min-w-0 max-w-full">
-                {[contractWords(sessionsSplit), extraWords(sessionsSplit)]
-                  .filter((w): w is string => !!w)
-                  .map((w) => (
-                    <span
-                      key={w}
-                      className="inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[#0a548b]/10 text-[#0a548b] dark:bg-[#5198d8]/15 dark:text-[#8cc4f2]"
-                      title="From her Mindbody pricing options"
-                    >
-                      {w}
-                    </span>
-                  ))}
-              </span>
-            ) : pkg.source === "none" ? undefined : (
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider min-w-0 max-w-full",
-                  pkg.fromMindbody
-                    ? "bg-[#0a548b]/10 text-[#0a548b] dark:bg-[#5198d8]/15 dark:text-[#8cc4f2]"
-                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
-                )}
-                title={pkg.fromMindbody ? "Synced from Mindbody" : "Entered in this app"}
-              >
-                {pkg.fromMindbody && <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80 shrink-0" aria-hidden="true" />}
-                {/* Count first: when the tile is narrow the package NAME is what truncates. */}
-                <span className="truncate">{[remaining, pkg.label].filter(Boolean).join(" · ")}</span>
-              </span>
-            )
-          }
-        >
-          <span className="text-2xl font-black leading-none text-[#F06C22] tabular-nums">
-            {completedCount === null ? "—" : completedCount}
-          </span>
-          {priorLabel && (
-            <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              {priorLabel}
-              <ConfirmedCheck confirmed={priorConfirmed} what="her sessions before Journey" testId="prior-check" />
-            </span>
-          )}
-          {typeof lateCancels === "number" && lateCancels > 0 && (
-            <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground" data-testid="late-cancels">
-              {`\u00b7 ${lateCancelCount(lateCancels)}`}
-            </span>
-          )}
-        </Stat>
+        {/* Completed · Remaining (AJ, Oct 2 2026: "this box just needs to
+            show Sessions Completed, Sessions Remaining ... make sure its
+            condensed"). Two numbers side by side, the same size. Sessions
+            before Journey are on Notes & Profile -> Account, and the package
+            by name on the same page. */}
+        <SessionsTile
+          completedLabel={sessionsQuotable ? "done" : "in Journey"}
+          completed={completedCount}
+          lateCancels={lateCancels}
+          remaining={remainingCount}
+          extra={sessionsSplit?.extra ?? 0}
+          renewal={renewal}
+        />
       </div>
 
       {/* Its own row under the tiles. It used to sit in `[grid-area:strip]`
