@@ -2851,3 +2851,11 @@ div.jg-today { cursor: default; }
 .jg-view--journey .jg-machine,
 .jg-view--journey .jg-head,
 .jg-view--journey .jg-corner { border-bottom-color: var(--jg-border-strong); }
+
+/* No up/down marks on the profile's chart (AJ, Oct 2 2026: "very
+   cluttery ... it's very easy for a trainer just to use basic math skills
+   to understand if the weight went up or down"). The numbers alone; the
+   cell's spoken label still says the change. The Active Session keeps
+   them. */
+.jg-view--journey .jg-delta,
+.jg-view--journey .jg-trend { display: none; }
