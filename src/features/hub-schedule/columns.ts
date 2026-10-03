@@ -161,3 +161,22 @@ export function planColumns<T extends ColumnTrainer>(input: {
   const placed = columnOf.map((c) => (c === null || c === UNASSIGNED_ID || shown.has(c) ? c : null));
   return { trainers: list, unassigned, columnOf: placed };
 }
+
+/**
+ * THE ORDER OF THE DAY'S COLUMNS (AJ, Oct 3 2026: "it should always show
+ * that day's sessions first, prioritizing the trainer logged in if they have
+ * sessions, but if not always show the trainer with sessions first"). A day
+ * whose bookings were all on the studio rotation listed six empty trainers
+ * and put the one column with sessions, Unassigned, last.
+ *
+ *   1. yours, when it has sessions;
+ *   2. every other column with sessions, Unassigned included, in the order
+ *      they came;
+ *   3. the empty columns, yours first among them.
+ */
+export function orderColumnsBySessions<C extends { id: string; isMe: boolean; count: number }>(cols: readonly C[]): C[] {
+  const busy = cols.filter((c) => c.count > 0);
+  const empty = cols.filter((c) => c.count === 0);
+  const meFirst = (list: C[]) => [...list.filter((c) => c.isMe), ...list.filter((c) => !c.isMe)];
+  return [...meFirst(busy), ...meFirst(empty)];
+}

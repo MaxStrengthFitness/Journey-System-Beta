@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { UNASSIGNED_ID, columnIdOf, planColumns, staffLabel, worksHereOnCalendar } from "./columns";
+import { UNASSIGNED_ID, columnIdOf, orderColumnsBySessions, planColumns, staffLabel, worksHereOnCalendar } from "./columns";
 
 const t = (id: string, extra: Record<string, unknown> = {}) => ({ id, primaryHomeStudioId: "westlake", ...extra });
 const CHRIS_A = t("t-chris-a");
@@ -101,5 +101,19 @@ describe("the day's columns", () => {
     expect(worksHereOnCalendar(t("a", { accessibleStudioIds: ["solon"], primaryHomeStudioId: "x" }), "solon")).toBe(true);
     expect(worksHereOnCalendar(t("a", { activeGuestStudioIds: ["solon"], primaryHomeStudioId: "x" }), "solon")).toBe(true);
     expect(worksHereOnCalendar(t("a"), "solon")).toBe(false);
+  });
+});
+
+describe("orderColumnsBySessions (Oct 3 2026)", () => {
+  const col = (id: string, count: number, isMe = false) => ({ id, count, isMe });
+
+  it("puts the columns with sessions first, Unassigned included", () => {
+    const order = orderColumnsBySessions([col("a", 0), col("b", 0), col("me", 0, true), col(UNASSIGNED_ID, 11)]);
+    expect(order.map((c) => c.id)).toEqual([UNASSIGNED_ID, "me", "a", "b"]);
+  });
+
+  it("puts yours first when you have sessions", () => {
+    const order = orderColumnsBySessions([col("a", 3), col("me", 2, true), col("b", 0), col(UNASSIGNED_ID, 1)]);
+    expect(order.map((c) => c.id)).toEqual(["me", "a", UNASSIGNED_ID, "b"]);
   });
 });

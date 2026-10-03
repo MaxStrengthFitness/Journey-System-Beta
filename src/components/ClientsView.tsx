@@ -19,7 +19,7 @@ import { useHubCriticalNotes } from "../hooks/useHubCriticalNotes";
 // the whole Studio Hub UI in with it and defeat AppContent's lazy import.
 import { useStudioTasks } from "../features/studio-tasks/useStudioTasks";
 import { dayTitle, pickDay, shownDay, stripFrom } from "../features/hub-schedule/hub-day";
-import { UNASSIGNED_ID, planColumns, staffLabel } from "../features/hub-schedule/columns";
+import { UNASSIGNED_ID, orderColumnsBySessions, planColumns, staffLabel } from "../features/hub-schedule/columns";
 import { staffIdsAt } from "../features/standing-week/check";
 import type { DayReadState } from "../lib/schedule-window";
 import {
@@ -606,7 +606,7 @@ export function ClientsView({
   // when two columns would otherwise read alike (two Chrises, Oct 1 2026).
   const shortName = (t: Trainer) => ((t as any).nickname || "").trim() || (t.fullName || "").trim().split(" ")[0] || "Trainer";
   const shortNames = visibleTrainersList.map(shortName);
-  const gridColumns: GridColumn[] = visibleTrainersList.map((t, i) => {
+  const plannedColumns: GridColumn[] = visibleTrainersList.map((t, i) => {
     const id = String(t.id);
     const own = gridBlocks.filter((b) => b.columnId === id && !isStaffBlock(b.booking as any));
     const alike = shortNames.filter((n) => n.toLowerCase() === shortNames[i].toLowerCase()).length > 1;
@@ -620,7 +620,7 @@ export function ClientsView({
     };
   });
   if (columnPlan.unassigned > 0) {
-    gridColumns.push({
+    plannedColumns.push({
       id: UNASSIGNED_ID,
       name: "Unassigned",
       initials: "?",
@@ -629,6 +629,9 @@ export function ClientsView({
       detail: null,
     });
   }
+  // The day's sessions first: yours when you have some, then every column
+  // with sessions, Unassigned included, then the empty ones (Oct 3 2026).
+  const gridColumns = orderColumnsBySessions(plannedColumns);
 
   /*
    * Who's on (AJ's Mindbody screenshots, Keep: "who's working, at a
