@@ -126,8 +126,8 @@ describe("ProfileHeader's sessions box", () => {
 
   it("says Completed and Remaining, and nothing about before Journey or the package's name", () => {
     const el = mount(props({ completedCount: 413, sessionsQuotable: true, pkg: pif }));
-    expect(box(el).textContent).toContain("done");
-    expect(box(el).textContent).toContain("left");
+    expect(box(el).textContent).toContain("Done");
+    expect(box(el).textContent).toContain("Left");
     expect(text(el, "sessions-completed")).toBe("413");
     expect(text(el, "sessions-remaining")).toBe("36");
     expect(el.textContent).not.toContain("before Journey");
@@ -136,14 +136,14 @@ describe("ProfileHeader's sessions box", () => {
 
   it("calls the count Journey's when nobody has recorded what came before", () => {
     const el = mount(props({ completedCount: 3 }));
-    expect(box(el).textContent).toContain("in Journey");
-    expect(box(el).textContent).not.toContain("done");
+    expect(box(el).textContent).toContain("In Journey");
+    expect(box(el).textContent).not.toContain("Done");
   });
 
-  it("takes Remaining from the contract and puts the extras beside it, never in it", () => {
+  it("takes Left from the contract, and does not show the extras (Oct 2 2026)", () => {
     const el = mount(props({ pkg: pif, sessionsSplit: { contract: 36, hasContract: true, perPayment: false, extra: 12, other: 0 } }));
     expect(text(el, "sessions-remaining")).toBe("36");
-    expect(text(el, "sessions-extra")).toBe("+12");
+    expect(el.querySelector('[data-testid="sessions-extra"]')).toBeNull();
     const none = mount(props({ pkg: pif, sessionsSplit: { contract: 5, hasContract: true, perPayment: true, extra: 0, other: 0 } }));
     expect(text(none, "sessions-remaining")).toBe("5");
     expect(none.querySelector('[data-testid="sessions-extra"]')).toBeNull();

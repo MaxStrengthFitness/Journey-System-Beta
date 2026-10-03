@@ -226,14 +226,18 @@ export function ClinicalHistoryTab({
       {
         id: "reports",
         label: "Reports",
-        meta:
-          progressReports.length === 0
+        // A report due marks the segment too (AJ, Oct 2 2026: the reminder
+        // left the top of the profile for a dot on this tab).
+        meta: cprCue
+          ? "due"
+          : progressReports.length === 0
             ? "none yet"
             : `${progressReports.length} on file`,
-        flag: progressReports.some((r) => r.status === "Draft"),
+        flag: !!cprCue || progressReports.some((r) => r.status === "Draft"),
+        flagTone: cprCue && !progressReports.some((r) => r.status === "Draft") ? "warn" : undefined,
       },
     ],
-    [progressReports, trendsSeen],
+    [progressReports, trendsSeen, cprCue],
   );
 
   const onHistory = view === "calendar" || view === "sessions";
@@ -247,6 +251,18 @@ export function ClinicalHistoryTab({
         onChange={onViewChange}
         context={strip}
       />
+
+      {/* The reminder, said on arrival whichever view the Archive opens on
+          (AJ, Oct 2 2026: "when you go into there it's going to tell you
+          that the progress report is due"). Reports says it itself. */}
+      {cprCue && view !== "reports" && (
+        <div className="ptab-cue" role="note" data-level={cprCue.level} data-testid="archive-report-cue">
+          <p>{cprCue.text}</p>
+          <button type="button" className="ptab-cue__btn" onClick={onNewReport} disabled={disabled}>
+            Start a progress report
+          </button>
+        </div>
+      )}
 
       {/* Calendar and Sessions are ONE mount. They read the same session
           history, and unmounting between them would re-run the listener every

@@ -22,7 +22,7 @@ import { BadgeCheck, ChevronLeft, Clock, Eye, History, NotebookPen, Play, Refres
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn, parseSessionDate } from "../../lib/utils";
-import { formatStudioTime, toDate, zonedYMD } from "../../lib/studio-time";
+import { formatStudioTime, studioDayKeyOf, toDate, zonedYMD } from "../../lib/studio-time";
 import { clientSinceLabel } from "../../lib/client-since";
 import type { HistoryCoverage } from "../../lib/prior-history";
 import type { Client, ScheduleEntry, WorkoutSession } from "../../types";
@@ -32,6 +32,8 @@ import type { TopTrainerState } from "./useTopTrainer";
 import { tallyRows } from "../../lib/client-rollups";
 import type { Trainer } from "../../types";
 import { BrandTiles } from "./BrandTiles";
+import { headerContractWords, headerRenewalWords } from "./header-renewal";
+import { renewalOf } from "../renewals/auto-renew";
 import { bookedLabel, nextSessionHeadline } from "./next-session-tile";
 import { clientDisplayName, clientInitials, clientLegalName, goesByNickname } from "../../lib/client-name";
 import { sessionCountLabel } from "../../lib/history-claims";
@@ -289,26 +291,28 @@ function ConfirmedCheck({ confirmed, what, testId }: { confirmed: boolean; what:
 }
 
 /**
- * The header's sessions box: Completed and Remaining, side by side at the
- * same size (AJ, Oct 2 2026). A count that is not known is a dash, never 0.
- * Late cancels sit under the count when there are any, never inside it.
+ * The header's sessions box: two numbers, DONE and LEFT, side by side under
+ * a hairline split (AJ, Oct 2 2026: "a sleeker looking design of sessions
+ * done and sessions remaining ... we don't need to show the additional
+ * sessions plus one"). A count that is not known is a dash, never 0. Late
+ * cancels sit under the count when there are any, never inside it.
  */
 function SessionsTile({
   completedLabel,
   completed,
   lateCancels,
   remaining,
-  extra,
   renewal,
 }: {
   completedLabel: string;
   completed: number | null;
   lateCancels: number | null;
   remaining: number | null;
-  extra: number;
   renewal?: RenewalTileState;
 }) {
   const Tag = renewal ? "button" : "div";
+  const caption = "text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none";
+  const number = "text-[26px] font-black leading-none tabular-nums";
   return (
     <Tag
       {...(renewal
@@ -316,46 +320,30 @@ function SessionsTile({
         : {})}
       data-testid="sessions-tile"
       className={cn(
-        "relative min-w-0 bg-white dark:bg-slate-950 px-3 xl:px-2.5 py-2 flex flex-col justify-center gap-1 text-left",
+        "relative min-w-0 bg-white dark:bg-slate-950 px-3 xl:px-2.5 py-2 grid grid-cols-2 items-center text-left",
         renewal && "min-h-10 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors",
       )}
     >
-      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
-        Sessions
-        {renewal?.attention && <span className={cn("w-1.5 h-1.5 rounded-full bg-current shrink-0", RENEWAL_TONE[renewal.tone])} aria-hidden="true" />}
-      </span>
-      {/* "93 done / 93 left +1": two short words, the numbers do the talking
-          (AJ, Oct 2 2026: "i just dont like how long each word is"). Side by
-          side where the tile is wide, stacked where it is not. */}
-      <span className="flex items-baseline flex-wrap gap-x-4 gap-y-1 leading-none">
-        <span className="inline-flex items-baseline gap-1 whitespace-nowrap">
-          <span className="text-[22px] font-black leading-none text-[#F06C22] tabular-nums min-w-[2.2ch] text-right" data-testid="sessions-completed">
-            {completed === null ? "—" : completed}
-          </span>
-          <span className="text-[11px] font-semibold text-muted-foreground">{completedLabel}</span>
+      <span className="min-w-0 flex flex-col gap-1.5 pr-3">
+        <span className={caption}>{completedLabel}</span>
+        <span className={cn(number, "text-[#F06C22]")} data-testid="sessions-completed">
+          {completed === null ? "—" : completed}
         </span>
-        <span className="inline-flex items-baseline gap-1 whitespace-nowrap">
-          <span className="text-[22px] font-black leading-none text-slate-900 dark:text-slate-50 tabular-nums min-w-[2.2ch] text-right" data-testid="sessions-remaining">
-            {remaining === null ? "—" : remaining}
+        {typeof lateCancels === "number" && lateCancels > 0 && (
+          <span className="text-[10px] font-semibold text-muted-foreground leading-none" data-testid="late-cancels">
+            {`· ${lateCancelCount(lateCancels)}`}
           </span>
-          <span className="text-[11px] font-semibold text-muted-foreground">left</span>
-          {extra > 0 && (
-            <span
-              className="ml-0.5 rounded px-1 py-0.5 text-[10px] font-bold leading-none text-[#0a548b] bg-[#0a548b]/10 dark:text-[#8cc4f2] dark:bg-[#5198d8]/15"
-              title={`${extra} extra, given on top of the contract`}
-              aria-label={`plus ${extra} extra`}
-              data-testid="sessions-extra"
-            >
-              +{extra}
-            </span>
-          )}
+        )}
+      </span>
+      <span className="min-w-0 flex flex-col gap-1.5 pl-3 border-l border-slate-200 dark:border-slate-800">
+        <span className={cn(caption, "flex items-center gap-1.5")}>
+          Left
+          {renewal?.attention && <span className={cn("w-1.5 h-1.5 rounded-full bg-current shrink-0", RENEWAL_TONE[renewal.tone])} aria-hidden="true" />}
+        </span>
+        <span className={cn(number, "text-slate-900 dark:text-slate-50")} data-testid="sessions-remaining">
+          {remaining === null ? "—" : remaining}
         </span>
       </span>
-      {typeof lateCancels === "number" && lateCancels > 0 && (
-        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none" data-testid="late-cancels">
-          {`· ${lateCancelCount(lateCancels)}`}
-        </span>
-      )}
     </Tag>
   );
 }
@@ -433,6 +421,10 @@ export function ProfileHeader({
       : null
     : pkg.remaining;
   const since = clientSinceLabel(client, { coverage });
+  const renewalSnapshot = renewalOf(client);
+  const renewalWords = renewalSnapshot
+    ? headerRenewalWords(renewalSnapshot)
+    : headerContractWords(client, studioDayKeyOf(new Date()) ?? "");
   // The badge promises medical detail, so it fires on medical detail — not on
   // a general note (client-profile audit: high-visibility alerts).
   const hasFlags = !!(
@@ -499,28 +491,40 @@ export function ProfileHeader({
         {displayName}
       </h1>
 
-      <div className="cp-head__meta [grid-area:meta] self-start min-w-0 xl:max-w-[240px] 2xl:max-w-[320px] flex items-center gap-2 flex-wrap">
-        <BrandTiles size={6} gap={2} />
-        {/* Wraps, never an ellipsis: the studio is a name too ("Demo Mode").
-            Sentence case and a normal letter-spacing: the old capitals at
-            0.14em took twice the width and pushed it onto five lines. */}
-        <span className="min-w-0 flex-1 text-[12px] font-semibold leading-snug text-muted-foreground [overflow-wrap:break-word]">
-          <span>{studioName}</span>
-          {since && (
-            <span className="xl:hidden 2xl:inline">
-              {studioName ? " · " : ""}
-              {since.label} {since.month}
-              <ConfirmedCheck confirmed={since.confirmed} what="her first day" testId="since-check" />
+      <div className="cp-head__meta [grid-area:meta] self-start min-w-0 xl:max-w-[240px] 2xl:max-w-[320px] flex flex-col gap-0.5">
+        {/* Line 1: the studio. Line 2: since and the renewal (AJ, Oct 2
+            2026: "the client's name, the studio, and then we'll read client
+            since ... right after that, a renews on"). Both wrap, never an
+            ellipsis: the studio is a name too ("Demo Mode"). */}
+        <div className="flex items-center gap-2 min-w-0 flex-wrap">
+          <BrandTiles size={6} gap={2} />
+          <span className="min-w-0 flex-1 text-[12px] font-semibold leading-snug text-muted-foreground [overflow-wrap:break-word]">
+            {studioName}
+            {(client.experienceLevel || client.trainingPedigree) && (
+              <span className="xl:hidden 2xl:inline"> · {client.experienceLevel || client.trainingPedigree}</span>
+            )}
+          </span>
+          {hasFlags && (
+            <span className="hidden sm:inline-flex xl:hidden 2xl:inline-flex items-center gap-1.5 rounded px-2 py-0.5 border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+              <AlertTriangle className="w-3 h-3" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">Clinical notes</span>
             </span>
           )}
-          {(client.experienceLevel || client.trainingPedigree) && (
-            <span className="xl:hidden 2xl:inline"> · {client.experienceLevel || client.trainingPedigree}</span>
-          )}
-        </span>
-        {hasFlags && (
-          <span className="hidden sm:inline-flex xl:hidden 2xl:inline-flex items-center gap-1.5 rounded px-2 py-0.5 border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
-            <AlertTriangle className="w-3 h-3" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Clinical notes</span>
+        </div>
+        {(since || renewalWords) && (
+          <span className="xl:hidden 2xl:block min-w-0 text-[12px] font-medium leading-snug text-muted-foreground [overflow-wrap:break-word]" data-testid="since-line">
+            {since && (
+              <span className="whitespace-nowrap">
+                {since.label} {since.month}
+                <ConfirmedCheck confirmed={since.confirmed} what="her first day" testId="since-check" />
+              </span>
+            )}
+            {since && renewalWords ? " · " : ""}
+            {renewalWords && (
+              <span className="whitespace-nowrap" data-testid="renewal-line">
+                {renewalWords}
+              </span>
+            )}
           </span>
         )}
       </div>
@@ -683,7 +687,8 @@ export function ProfileHeader({
           sub={
             topTrainer.top
               ? topTrainer.source === "tally"
-                ? `${topTrainer.top.sessions} of ${topTrainer.top.total} sessions${trainerRows.length > 1 ? ` · ${trainerRows.length} trainers` : ""}`
+                ? // Their own count only; the tap lists everyone (AJ, Oct 2 2026).
+                  `${topTrainer.top.sessions} session${topTrainer.top.sessions === 1 ? "" : "s"}`
                 : topTrainer.backfilling
                   ? "Counting full history…"
                   : "From recent sessions"
@@ -732,11 +737,10 @@ export function ProfileHeader({
             before Journey are on Notes & Profile -> Account, and the package
             by name on the same page. */}
         <SessionsTile
-          completedLabel={sessionsQuotable ? "done" : "in Journey"}
+          completedLabel={sessionsQuotable ? "Done" : "In Journey"}
           completed={completedCount}
           lateCancels={lateCancels}
           remaining={remainingCount}
-          extra={sessionsSplit?.extra ?? 0}
           renewal={renewal}
         />
       </div>

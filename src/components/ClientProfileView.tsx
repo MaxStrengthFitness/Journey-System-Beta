@@ -1405,6 +1405,34 @@ export function ClientProfileView({
     );
   }
 
+  /*
+   * The progress report's reminder. It was ONE QUIET LINE at the top
+   * (Atlas answers, Oct 2 2026) in place of the red
+   * strip: due three months after the last FULL report, off for a
+   * client with "No progress reports", and said more strongly when her
+   * renewal conversation is close — the Activity Archive's Reports cue
+   * asks the same function (`progressReportDue`). The live shelf when
+   * it is loaded for this client, else the probe; neither yet means
+   * unknown, and unknown shows nothing. Since AJ's walk the same day
+   * ("it should just put a highlight over the activity archive") it is a
+   * dot on that tab, and the Archive's Reports cue says the words.
+   */
+  const liveReports =
+    progressReportsStatus === "ready" && !progressReports.some((r) => r.clientId !== clientId)
+      ? progressReports
+      : null;
+  const reportList = liveReports ?? (reportProbe?.clientId === clientId ? reportProbe.reports : null);
+  const reportDue = progressReportDue({
+    reports: reportList,
+    optedOut: client.noProgressReports === true,
+    renewal: renewalOf(client),
+    // A first report is expected once she has been here three months -
+    // judged from the oldest date on the record, or a prior record,
+    // never from the day Journey met her (lib/history-claims.ts).
+    established: isEstablishedClient({ earliest: earliestKnownDate(client), prior: priorHistory }, new Date()),
+    today: studioTodayKey(),
+  });
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -1436,49 +1464,9 @@ export function ClientProfileView({
           );
         }
 
-        /*
-         * ONE QUIET LINE (Atlas answers, Oct 2 2026) in place of the red
-         * strip: due three months after the last FULL report, off for a
-         * client with "No progress reports", and said more strongly when her
-         * renewal conversation is close — the Activity Archive's Reports cue
-         * asks the same function (`progressReportDue`). The live shelf when
-         * it is loaded for this client, else the probe; neither yet means
-         * unknown, and unknown shows nothing.
-         */
-        const liveReports =
-          progressReportsStatus === "ready" && !progressReports.some((r) => r.clientId !== clientId)
-            ? progressReports
-            : null;
-        const reportList = liveReports ?? (reportProbe?.clientId === clientId ? reportProbe.reports : null);
-        const reportDue = progressReportDue({
-          reports: reportList,
-          optedOut: client.noProgressReports === true,
-          renewal: renewalOf(client),
-          // A first report is expected once she has been here three months -
-          // judged from the oldest date on the record, or a prior record,
-          // never from the day Journey met her (lib/history-claims.ts).
-          established: isEstablishedClient({ earliest: earliestKnownDate(client), prior: priorHistory }, new Date()),
-          today: studioTodayKey(),
-        });
-        if (!reportDue) return null;
-        return (
-          <div
-            className={cn(
-              "flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border px-3 py-1.5 text-[12.5px] font-semibold",
-              reportDue.level === "renewal"
-                ? "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300"
-                : "border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300",
-            )}
-            role="note"
-            data-testid="report-due-line"
-            data-level={reportDue.level}
-          >
-            <span className="min-w-0 flex-1">{reportDue.text}</span>
-            <Button variant="ghost" className="min-h-10 text-[12px] font-bold" onClick={onNewReport}>
-              Start a progress report
-            </Button>
-          </div>
-        );
+        // The progress report's reminder is a dot on the Activity Archive
+        // tab now, not a line at the top (AJ, Oct 2 2026).
+        return null;
       })()}
 
       {/* Header (Sep 2026 redesign) — identity, four facts, one action.
@@ -1629,6 +1617,29 @@ export function ClientProfileView({
                   className="cp-tab relative w-full h-10! px-1 sm:px-2 font-display italic text-[11px] sm:text-[13px] font-bold uppercase tracking-wide sm:tracking-widest text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-all text-center cursor-pointer select-none rounded-lg truncate flex items-center justify-center"
                 >
                   {tab.label}
+                  {tab.id === "clinical" && reportDue && (
+                    <span
+                      data-testid="archive-report-dot"
+                      data-level={reportDue.level}
+                      role="img"
+                      aria-label={reportDue.text}
+                      title={reportDue.text}
+                      className="absolute top-1.5 right-2 flex h-2.5 w-2.5"
+                    >
+                      <span
+                        className={cn(
+                          "absolute inline-flex h-full w-full rounded-full opacity-60 motion-safe:animate-ping",
+                          reportDue.level === "renewal" ? "bg-amber-400" : "bg-sky-400",
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          "relative inline-flex h-2.5 w-2.5 rounded-full",
+                          reportDue.level === "renewal" ? "bg-amber-500" : "bg-sky-500",
+                        )}
+                      />
+                    </span>
+                  )}
                 </TabsTrigger>
               ))}
             </TabsList>
