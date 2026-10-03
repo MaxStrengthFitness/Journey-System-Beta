@@ -105,3 +105,30 @@ here.
 ## Ship
 
 Nothing to deploy but the push. Tests: see the counts in CLAUDE.md.
+
+## Also on this branch (the same review, after the front door)
+
+- **No Operations door on the greeting** (AJ: "leaders will still go through
+  the hub screen first and switch to operations from there"); kept only when
+  no studio exists yet. "Practice", the American spelling, everywhere the
+  front door and Demo Mode say it.
+- **The Hub's time rail** (AJ picked B of three looks, `harness/hub-axis.html`):
+  a line down the axis, a dot at each hour, a ring at each half hour, each
+  half hour named ("9:30"), blue up to now with the orange stop at now. A
+  lone trainer's column stops at 420px; the rest of the row says "Nobody else
+  is booked on this day" (`hub-schedule/README.md`).
+- **Waivers.** AJ: "a lot of these clients have their waivers signed, can we
+  triple check". Production, read only: Mindbody's liability release says
+  signed for 2 of Strongsville's 139 clients, 1 of Willoughby's 244, 1 of
+  Solon's 131 and none of westlake's 287, read by that morning's Master
+  Sync. The studios file waivers elsewhere, and two stray "yes" answers had
+  switched the Oct 1 guard off, so all ten of Strongsville's clients that day
+  were flagged. `waiversKeptInMindbody` now needs at least five signed and at
+  least half of Mindbody's answers. The profile says Mindbody's "not signed"
+  as "Not in Mindbody", never in warning colours (`waiverProfileState`).
+- **The family chips in the top row** on an upright iPad, beside Schedule |
+  Opportunities (AJ drew the arrow); the line under the top only when it
+  holds the spotlight or Focus.
+
+Tests: 8,791 in 641 files, typecheck 2, build clean. Nothing to deploy but
+the push.
