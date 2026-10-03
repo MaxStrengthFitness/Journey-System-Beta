@@ -1202,3 +1202,52 @@
 }
 .eq-watch-chip[data-tone="alert"] { color: var(--eq-alert); background: var(--eq-alert-fill); }
 .eq-watch-chip[data-tone="caution"] { color: var(--eq-warn); background: var(--eq-warn-fill); }
+
+/* The floor's note on this machine, at the machine (notes round, Oct 3
+   2026; FloorNoteCard.tsx). Read-only: it is the studio's, not the
+   client's. Neutral, under the watch-outs; a Relay flag reads first. */
+.eq-floornote {
+  border: 1px solid var(--eq-border);
+  background: var(--eq-surface-2);
+  border-radius: var(--eq-radius);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.eq-floornote__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--eq-ink-muted);
+}
+.eq-floornote__text,
+.eq-floornote__flag {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--eq-ink);
+  white-space: pre-wrap;
+}
+.eq-floornote__flag b { color: var(--eq-warn); }
+.eq-floornote i,
+.eq-floornote__failed {
+  font-style: normal;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--eq-ink-muted);
+}
+.eq-floornote__failed { margin: 0; }
+
+/* Under a client's machine note: a fault with the unit is the floor's (Oct 3 2026). */
+.eq-composer__whose {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--eq-ink-muted);
+}

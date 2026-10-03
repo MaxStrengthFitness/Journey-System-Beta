@@ -183,9 +183,18 @@ export function MachineNotes({
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Machine issue, sticky seat, client form cue…"
+            placeholder="About her on this machine — a cue, a pad she needs, where she feels it…"
             aria-label="New machine note"
+            aria-describedby="machine-note-whose"
           />
+          {/* A note here is HERS (notes round, Oct 3 2026): it files to her
+              record and her briefing. A fault with the unit is the floor's,
+              and filed here it reached one client's briefing and nobody
+              else. */}
+          <p className="eq-composer__whose" id="machine-note-whose">
+            Something wrong with the machine itself — a sticky seat, a pin that jams? That&rsquo;s the floor&rsquo;s, not
+            hers: flag it on My Studio → Relay so it&rsquo;s fixed for everyone.
+          </p>
           <div className="eq-composer__row">
             <label className="eq-check">
               <input

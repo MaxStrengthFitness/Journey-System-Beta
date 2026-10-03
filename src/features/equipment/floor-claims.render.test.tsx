@@ -33,6 +33,8 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     limit: () => ({}),
     onSnapshot: () => () => {},
     getDocs: async () => ({ docs: [], empty: true }),
+    // The floor's note on the machine (Oct 3 2026): none here.
+    getDoc: async () => ({ exists: () => false, data: () => undefined }),
     addDoc: async () => ({ id: "x" }),
     setDoc: async () => undefined,
     updateDoc: async () => undefined,

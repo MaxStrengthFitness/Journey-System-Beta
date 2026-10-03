@@ -12,6 +12,7 @@ import { MachineNotes } from "./MachineNotes";
 import { machineNotesFor } from "./machine-notes";
 import { useMachineJournal } from "./useMachineJournal";
 import { SetupGuide } from "./SetupGuide";
+import { FloorNoteCard } from "./FloorNoteCard";
 import { ChangeHistory } from "./ChangeHistory";
 import type { JournalContext, MutationAuthor } from "./mutations";
 import type { HistoryCoverage } from "../../lib/prior-history";
@@ -228,6 +229,11 @@ export function MachineSheet({
             {/* Clinical watch-outs the studio's matrix names for this
                 machine — one line each, only when the client has one. */}
             <WatchOutCard watchOuts={machineWatchOuts(client?.clinicalFlags, equipment)} compact />
+
+            {/* The floor's own note on this unit and a Relay flag, read once
+                (notes round, Oct 3 2026): what the studio knows about the
+                machine in this building, at the moment it is set up. */}
+            <FloorNoteCard studioId={activeStudioId ?? null} studioName={activeStudio?.name ?? null} machineId={equipment.id ?? null} />
 
             {flash && (
               <p className="eq-sheet__flash" role="status">
