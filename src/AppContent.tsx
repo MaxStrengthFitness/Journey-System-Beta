@@ -1127,6 +1127,7 @@ export default function AppContent({
         authenticatedUser={user}
         studios={studios}
         onTrainerCreated={setAuthTrainer}
+        onCheckAgain={retryLookup}
         onLogout={handleLogout}
       />
     );
@@ -1180,6 +1181,7 @@ export default function AppContent({
         onTrainerCreated={(t) => {
           setAuthTrainer(t);
         }}
+        onCheckAgain={retryLookup}
         onLogout={handleLogout}
       />
     );

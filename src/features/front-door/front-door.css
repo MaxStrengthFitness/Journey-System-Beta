@@ -338,7 +338,10 @@
   overflow-wrap: anywhere;
 }
 .fd-tile small { font-weight: 400; font-size: 13px; color: var(--fd-muted); margin-top: 2px; }
-.fd-tile[aria-checked="true"] { border-color: var(--fd-action); box-shadow: inset 0 0 0 1px var(--fd-action); }
+.fd-tile[aria-checked="true"],
+.fd-tile:has(input:checked) { border-color: var(--fd-action); box-shadow: inset 0 0 0 1px var(--fd-action); }
+.fd .fd-tile:has(input:focus-visible) { outline: 3px solid var(--fd-focus); outline-offset: 3px; }
+.fd-row__name--who { display: block; font-size: 16px; }
 .fd-field { display: block; margin-top: 20px; }
 .fd-field__label { display: block; font-size: 15px; font-weight: 600; color: var(--fd-ink-2); margin-bottom: 8px; }
 .fd-field__label small { font-weight: 400; color: var(--fd-muted); }
