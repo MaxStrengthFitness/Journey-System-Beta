@@ -20,8 +20,10 @@
  *   • Not a Critical note: those are already the pain row's ("Critical
  *     note: …"), and one note is never two rows.
  *   • SEEN is the existing acknowledgement (studios/{s}/acknowledgements,
- *     key `note:{id}` — attention.ts), which lives beside the studio, never
- *     on the client's record. It takes the row off this list and nothing
+ *     key `note:team:{id}` — attention.ts), which lives beside the studio,
+ *     never on the client's record. Its own key, not the Critical row's
+ *     `note:{id}`: a note a leader has Seen and a trainer later raises to
+ *     Critical comes up again, as Critical. It takes the row off this list and nothing
  *     else: the note stays on her record and on the next trainers' briefing,
  *     because a knee is not healed because a leader read about it.
  *
@@ -93,7 +95,7 @@ export function teamNotesQuestion(input: {
         .join(" "),
       tone: noteCategoryOf(e) === "incident" ? "alert" : "warn",
       badge: noteCategoryOf(e) === "retention" ? "Retention" : noteCategoryOf(e) === "incident" ? "Incident" : "Health",
-      ackKeys: [ackKey("note", e.id)],
+      ackKeys: [ackKey("note", `team:${e.id}`)],
       entryId: e.id,
       writtenMs: written.getTime(),
     });

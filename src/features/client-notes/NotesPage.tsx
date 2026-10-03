@@ -310,6 +310,8 @@ export function NotesPage({
     [record.listed, criticalIdSet, headsUpIdSet, machines, today, said, pageLines, isLoading, readFailed],
   );
   const lens = lenses.find((l) => l.id === askId) ?? lenses[0];
+  const lensShowsNotes = useRef(lens.showsNotes);
+  lensShowsNotes.current = lens.showsNotes;
   // Resolved notes wait at the bottom with a way back under every question:
   // when this question's answer holds none, the line that leads to them is
   // the page's Resolved anchor, drawn once.
@@ -376,8 +378,9 @@ export function NotesPage({
       }
     }
     handled.current = intent.key;
-    // Resolved is under every note: a door to it leaves the question.
-    if (req.kind === "resolved") setAskId("all");
+    // Resolved is under every note: a door to it leaves the question. So does
+    // a door to one note while the question draws none (Her time here).
+    if (req.kind === "resolved" || !lensShowsNotes.current) setAskId("all");
     setCatalogIntent({ key: intent.key, request: req });
   }, [intent, isLoading, record.unfiled, openComposer]);
 

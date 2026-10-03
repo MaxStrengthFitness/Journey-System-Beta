@@ -62,7 +62,7 @@ describe("from the team's notes — what a leader can't afford to miss (Oct 3 20
     expect(q.rows[0]).toMatchObject({
       name: "Ruth Ames",
       tone: "alert",
-      ackKeys: ["note:i"],
+      ackKeys: ["note:team:i"],
       sentence: "Incident from Jess, 2026-10-02: Knee sore after the move.",
     });
     expect(q.rows[0].proof).toContain("Left knee.");
@@ -104,7 +104,9 @@ describe("from the team's notes — what a leader can't afford to miss (Oct 3 20
 
   it("Seen is the acknowledgement: it takes the row off the list and nothing else", () => {
     const q = teamNotesQuestion({ entries: [entry({ id: "a" }), entry({ id: "b" })], clients, today: TODAY });
-    const { pending, acknowledged } = pendingAcks(q.rows, new Set(["note:a"]));
+    const { pending, acknowledged } = pendingAcks(q.rows, new Set(["note:team:a"]));
+    // The Critical row's own key does not clear a team note, and the other way round.
+    expect(pendingAcks(q.rows, new Set(["note:a", "note:b"])).acknowledged).toBe(0);
     expect(pending.map((r) => r.entryId)).toEqual(["b"]);
     expect(acknowledged).toBe(1);
   });

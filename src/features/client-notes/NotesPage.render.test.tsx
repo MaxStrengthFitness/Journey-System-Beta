@@ -791,6 +791,35 @@ describe("NotesPage — the questions at the top", () => {
     expect(host.textContent).toContain("Count her into the turnaround.");
   });
 
+  it("never carries a chip from one question into another, unseen (the review, Oct 3 2026)", async () => {
+    const host = await mount(propsFor(ALL, { initialAsk: "health" }));
+    await click(host.querySelector('[data-testid="pick-incident"]'));
+    expect(host.querySelector("#thread-crit")).toBeNull();
+    await click(host.querySelector('[data-testid="ask-now"]'));
+    // Right now has no chips: the Heads up and the Critical note are both there.
+    expect(host.querySelector("#thread-crit")).not.toBeNull();
+    expect(host.querySelector("#thread-hu")).not.toBeNull();
+    await click(host.querySelector('[data-testid="ask-health"]'));
+    expect(host.querySelector('[data-testid="pick-incident"]')!.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("goes to every note when a door asks for one while the question draws none", async () => {
+    const props = propsFor(ALL, { initialAsk: "story" });
+    const host = await mount(props);
+    expect(host.querySelector('[data-testid="notes-catalog"]')).toBeNull();
+    await rerender(host, { ...props, intent: { key: 7, request: { kind: "thread", threadId: "eq1" } } });
+    await settle();
+    expect(host.querySelector('[data-testid="ask-all"]')!.getAttribute("aria-pressed")).toBe("true");
+    expect(host.querySelector("#thread-eq1")).not.toBeNull();
+  });
+
+  it("never claims 'nothing' off a partly failed read", async () => {
+    const host = await mount(propsFor([coach1], { initialAsk: "staying", notesState: "failed" }));
+    const empty = host.querySelector('[data-testid="ask-empty"]')!;
+    expect(empty.textContent).toContain("Nothing among the notes that loaded answers this.");
+    expect(empty.textContent).not.toContain("No retention notes yet");
+  });
+
   it("leaves the question when a door asks for a note it doesn't hold", async () => {
     const props = propsFor(ALL, { initialAsk: "now" });
     const host = await mount(props);

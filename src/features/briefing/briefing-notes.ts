@@ -87,21 +87,32 @@ export function briefingNotes(
  * backdrop is real but stable, so it is never read out with the news and
  * never counted in "Before you start" — one folded line under it, a tap away.
  *
- * Health and Incident threads in the Standing zone (an "always" note at
- * plain loudness, not closed), most recently touched first. A loud one is
- * already above, read out with the news; a closed one is history.
+ * Her Health threads, and Incidents that name a part of the body (a lost
+ * phone is not health context), that are simply true: an "always" note at
+ * plain loudness, or a Heads up with no window that has been read out at
+ * its four sessions and gone quiet — "on blood thinners" filed at Heads up
+ * is news for four sessions and then the backdrop, never gone (the review
+ * of the notes round, Oct 3 2026). Not closed, not one the briefing is
+ * reading out above (`live`: its Critical and Heads-up ids), most recently
+ * touched first.
  */
 export function standingHealth(
   threads: readonly NoteThread[] | null | undefined,
   today: string,
   tz?: string,
+  live: ReadonlySet<string> = new Set(),
 ): NoteThread[] {
   const out: NoteThread[] = [];
   for (const t of threads ?? []) {
-    if (t.root.isArchived) continue;
+    const root = t.root;
+    if (root.isArchived || root.resolvedAt || live.has(t.id)) continue;
     const cat = threadCategoryOf(t);
-    if (cat !== "health" && cat !== "incident") continue;
-    if (zoneOf(t, today, tz) !== "standing") continue;
+    const bodily = cat === "health" || (cat === "incident" && (root.bodyParts?.length ?? 0) > 0);
+    if (!bodily) continue;
+    const zone = zoneOf(t, today, tz);
+    const quietHeadsUp =
+      zone === "open" && root.importance === "elevated" && !root.effectiveFrom && !root.effectiveUntil;
+    if (zone !== "standing" && !quietHeadsUp) continue;
     out.push(t);
   }
   return out.sort((a, b) => (b.lastActivityAt?.getTime() ?? 0) - (a.lastActivityAt?.getTime() ?? 0));

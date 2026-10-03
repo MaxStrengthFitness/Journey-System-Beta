@@ -480,7 +480,14 @@ export function BriefingScreen({
   /* Known, not news (notes round, Oct 3 2026; briefing-notes.ts): her Health
      and Incident notes that are simply true — an old knee, osteoporosis —
      folded under the news, never counted in "Before you start". */
-  const standing = useMemo(() => standingHealth(journal.threads, todayKey), [journal.threads, todayKey]);
+  const liveIds = useMemo(
+    () => new Set([...criticalEntries, ...headsUpEntries].map((e) => e.id)),
+    [criticalEntries, headsUpEntries],
+  );
+  const standing = useMemo(
+    () => standingHealth(journal.threads, todayKey, undefined, liveIds),
+    [journal.threads, todayKey, liveIds],
+  );
 
   /* Everything that belongs under "Before you start", counted once so the
      heading can say how many things there are. */

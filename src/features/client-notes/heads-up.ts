@@ -67,6 +67,16 @@ export function sessionStartMs(session: SessionStartFields): number | null {
   return null;
 }
 
+/**
+ * The starts that count toward a Heads up's four: every session but one
+ * still running, which has not heard it yet — it counts at Finish, so a note
+ * read at the briefing of her fourth session stays on the session's flags
+ * for the whole twenty minutes (the review of the notes round, Oct 3 2026).
+ */
+export function countedSessionStarts(sessions: readonly (SessionStartFields & { status?: unknown })[]): number[] {
+  return sessionStarts(sessions.filter((s) => s.status !== "In-Progress"));
+}
+
 /** Every readable start, oldest first. */
 export function sessionStarts(sessions: readonly SessionStartFields[]): number[] {
   const out: number[] = [];

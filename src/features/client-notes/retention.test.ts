@@ -65,6 +65,13 @@ describe("retention conversations are notes (AJ's answer 1A, Oct 3 2026)", () =>
     expect(openRetentionThread(retentionThreads([old]))).toBeNull();
   });
 
+  it("never lets an update stand in for a root it lost to a capped read (the review, Oct 3 2026)", () => {
+    // The newest notes held this update but not its (closed, older) root.
+    const orphan = e({ id: "late-u", threadId: "gone-root", occurredAt: new Date(2026, 8, 25) });
+    expect(retentionThreads([orphan])).toEqual([]);
+    expect(openRetentionThread(retentionThreads([orphan]))).toBeNull();
+  });
+
   it("adds a conversation to the open thread, so the story reads in one place", async () => {
     const threads = retentionThreads([e({ id: "cur" })]);
     const id = await writeRetentionConversation({

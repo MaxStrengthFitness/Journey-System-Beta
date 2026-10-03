@@ -77,7 +77,7 @@ import {
   HEADS_UP_FALLBACK_DAYS as HEADS_UP_WINDOW_DAYS,
   HEADS_UP_SESSIONS,
   isHeadsUpLive,
-  sessionStarts,
+  countedSessionStarts,
   type HeadsUpContext,
 } from "../features/client-notes/heads-up";
 
@@ -1404,8 +1404,11 @@ export function useClientJournal({
    * update is how a trainer keeps a Heads up on the briefing.
    */
   const sessionsReady = loadFor.sessions === "ready";
+  // A session still running has not heard it yet: counted at Finish, so a
+  // note read at the briefing of her fourth session stays on the session's
+  // flags for the whole twenty minutes (the review, Oct 3 2026).
   const headsUpStarts = useMemo(
-    () => (sessionsReady ? sessionStarts(legacySessions) : null),
+    () => (sessionsReady ? countedSessionStarts(legacySessions) : null),
     [sessionsReady, legacySessions],
   );
   const latestUpdateByThread = useMemo(() => {

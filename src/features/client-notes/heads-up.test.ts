@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   HEADS_UP_SESSIONS,
+  countedSessionStarts,
   headsUpCount,
   headsUpCountFrom,
   headsUpStanding,
@@ -108,6 +109,19 @@ describe("a Heads up is read out at four of her sessions (AJ, Oct 3 2026)", () =
 
   it("a note with no readable date is not live", () => {
     expect(isHeadsUpLive(headsUp(at(1), { occurredAt: null, createdAt: null }), NOW, { sessionStarts: [] })).toBe(false);
+  });
+});
+
+describe("countedSessionStarts — the session still running is not yet one of the four (the review, Oct 3 2026)", () => {
+  it("leaves out a session in progress, so a note read at the briefing stays on the session's flags until Finish", () => {
+    const note = headsUp(at(20));
+    const done = [18, 15, 12].map((d) => ({ status: "Completed", startTime: at(d) }));
+    const running = { status: "In-Progress", startTime: at(0, 9) };
+    const starts = countedSessionStarts([...done, running]);
+    expect(starts).toHaveLength(3);
+    expect(isHeadsUpLive(note, NOW, { sessionStarts: starts })).toBe(true);
+    // Once it is finished, it counts.
+    expect(isHeadsUpLive(note, NOW, { sessionStarts: countedSessionStarts([...done, { ...running, status: "Completed" }]) })).toBe(false);
   });
 });
 

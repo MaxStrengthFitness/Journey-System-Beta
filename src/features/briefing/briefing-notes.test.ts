@@ -106,16 +106,27 @@ describe("standingHealth — known, not news (Oct 3 2026)", () => {
       ...over,
     }) as JournalEntry;
 
-  it("keeps Health and Incident notes that are simply true, and nothing loud, closed or about coaching", () => {
+  it("keeps Health notes, and Incidents on the body, that are simply true — and nothing closed, dated or about coaching", () => {
     const threads = assembleThreads([
       e({ id: "knee" }),
-      e({ id: "fall", kind: "incident", occurredAt: new Date(2026, 8, 1, 12) }),
-      e({ id: "loud", importance: "elevated" }),
+      e({ id: "fall", kind: "incident", bodyParts: [{ part: "hip", side: "left" }], occurredAt: new Date(2026, 8, 1, 12) }),
+      e({ id: "phone", kind: "incident", occurredAt: new Date(2026, 8, 2, 12) }),
       e({ id: "closed", resolvedAt: new Date(2026, 8, 2) }),
       e({ id: "dated", effectiveFrom: new Date(2026, 9, 1), effectiveUntil: new Date(2026, 9, 9, 23) }),
       e({ id: "cue", kind: "coaching" }),
     ]);
     expect(standingHealth(threads, "2026-10-03").map((t) => t.id)).toEqual(["fall", "knee"]);
     expect(standingHealth(undefined, "2026-10-03")).toEqual([]);
+  });
+
+  it("takes a Health Heads up once it has gone quiet, never while the briefing still reads it out (the review, Oct 3 2026)", () => {
+    const threads = assembleThreads([
+      e({ id: "thinners", category: "Medication", importance: "elevated", occurredAt: new Date(2026, 6, 1, 12) }),
+      e({ id: "fresh", category: "Injury", importance: "elevated", occurredAt: new Date(2026, 9, 2, 12) }),
+      e({ id: "crit", importance: "critical" }),
+    ]);
+    // "fresh" is still being read out, "crit" is Critical (above, with the news); "thinners" went quiet.
+    const live = new Set(["fresh", "crit"]);
+    expect(standingHealth(threads, "2026-10-03", undefined, live).map((t) => t.id)).toEqual(["thinners"]);
   });
 });

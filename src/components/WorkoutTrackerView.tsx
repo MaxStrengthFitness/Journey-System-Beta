@@ -2113,7 +2113,8 @@ export function WorkoutTrackerView({
          list. From the final log only, so a skip undone before Finish
          writes nothing. Outside the batch like every journal write; a
          failure is said, never a reason to hold Finish. */
-      for (const pain of painSkipNotes(finalLogs, (id) => floorMachines.find((m) => m.id === id)?.name || "")) {
+      // Not when another iPad finished it: that iPad filed its own (the review, Oct 3 2026).
+      for (const pain of alreadyFinished ? [] : painSkipNotes(finalLogs, (id) => floorMachines.find((m) => m.id === id)?.name || "")) {
         createJournalEntry(
           selectedClient.id,
           sessionNoteStudioId(selectedClient, contextActiveStudioId || authTrainer?.primaryHomeStudioId),

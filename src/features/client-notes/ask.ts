@@ -102,14 +102,18 @@ const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
 const inCategories = (t: NoteThread, cats: readonly NoteCategory[]) => cats.includes(threadCategoryOf(t));
 
-/** The day a thread last moved: its newest entry written or dated. */
+/**
+ * The day a thread last moved: its newest entry, by when it was WRITTEN
+ * (else its date). A date ahead — a surgery in three months — is the
+ * window's business (the month-ahead horizon), never "recent" news.
+ */
 function lastDayOf(t: NoteThread, tz?: string): string | null {
   let best = 0;
   for (const e of t.entries) {
-    const ms = Math.max(
-      toDate(e.createdAt as Parameters<typeof toDate>[0])?.getTime() ?? 0,
-      toDate(e.occurredAt as Parameters<typeof toDate>[0])?.getTime() ?? 0,
-    );
+    const ms =
+      toDate(e.createdAt as Parameters<typeof toDate>[0])?.getTime() ??
+      toDate(e.occurredAt as Parameters<typeof toDate>[0])?.getTime() ??
+      0;
     if (ms > best) best = ms;
   }
   return best ? studioDateKey(new Date(best), tz) : null;

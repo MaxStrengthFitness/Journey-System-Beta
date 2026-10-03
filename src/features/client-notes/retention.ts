@@ -25,10 +25,16 @@ import { DEFAULT_IMPORTANCE } from "./note-catalog";
 import { addThreadUpdate } from "./thread-write";
 import { assembleThreads, type NoteThread } from "./threads";
 
-/** Her Retention threads, newest first, from any list of her journal entries (roots and updates). */
+/**
+ * Her Retention threads, newest first, from any list of her journal entries
+ * (roots and updates). A thread whose root was not in the list (an old
+ * thread past a capped read) is left out rather than an update standing in
+ * for its root: a conversation added to it would hang off an update, which
+ * no screen draws, and a closed story could look open.
+ */
 export function retentionThreads(entries: readonly JournalEntry[]): NoteThread[] {
   const mine = entries.filter((e) => e.kind === "retention" && !e.isArchived);
-  return assembleThreads(mine).sort(
+  return assembleThreads(mine).filter((t) => !t.root.threadId).sort(
     (a, b) => (b.lastActivityAt?.getTime() ?? 0) - (a.lastActivityAt?.getTime() ?? 0),
   );
 }

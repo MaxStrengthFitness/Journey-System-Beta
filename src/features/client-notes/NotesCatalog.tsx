@@ -171,7 +171,22 @@ export function NotesCatalog({
   // A question answers with its own threads; every one of them is still a
   // thread on her record, and the critical line below still reads them all.
   const shown = useMemo(() => (lens ? threads.filter((t) => lens.threadIds.has(t.id)) : threads), [threads, lens]);
-  const catalog = useMemo(() => buildCatalog(shown, filter, today), [shown, filter, today]);
+  // A chip picked under another question never carries over unseen: a
+  // question answers with only the chips it offers, and a new question starts
+  // with none picked (the review of the notes round, Oct 3 2026).
+  const lensId = lens?.id ?? "all";
+  useEffect(() => {
+    setFilter((f) => (f.category ? { ...f, category: null } : f));
+  }, [lensId]);
+  const offered = !lens || lens.categories === null ? null : lens.categories;
+  const effective = useMemo(
+    () =>
+      lens && (offered === null || (filter.category && !offered.includes(filter.category)))
+        ? { ...filter, category: null }
+        : filter,
+    [lens, offered, filter],
+  );
+  const catalog = useMemo(() => buildCatalog(shown, effective, today), [shown, effective, today]);
   const [open, standing, resolved] = catalog.zones;
   const keptIds = useMemo(
     () => new Set(catalog.zones.flatMap((z) => z.items.map((t) => t.id))),
@@ -180,7 +195,7 @@ export function NotesCatalog({
   const criticalIds = useMemo(() => new Set(criticalEntries.map((e) => e.id)), [criticalEntries]);
   const headsUpIds = useMemo(() => new Set(headsUpEntries.map((e) => e.id)), [headsUpEntries]);
 
-  const filtered = !!filter.category || !!filter.search.trim() || !!filter.machineId || !!lens;
+  const filtered = !!effective.category || !!filter.search.trim() || !!filter.machineId || !!lens;
   // The machines she has notes about: the machine filter's choices (Oct 1 2026).
   const noteMachines = useMemo(() => machinesWithNotes(shown, machines), [shown, machines]);
   const hidden = useMemo(
@@ -451,7 +466,9 @@ export function NotesCatalog({
     // Nothing answers this question: say so in its own words, and the way to every note.
     body = (
       <div className="nx-empty" data-testid="ask-empty">
-        <p className="nx-empty__text">{lens.empty}</p>
+        <p className="nx-empty__text">
+          {readFailed ? "Nothing among the notes that loaded answers this. Some couldn't be read, so there may be more." : lens.empty}
+        </p>
         {onLeaveLens ? (
           <div className="nx-empty__acts">
             <button type="button" className="nt-btn" onClick={onLeaveLens}>
