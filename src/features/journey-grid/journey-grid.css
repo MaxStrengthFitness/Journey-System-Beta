@@ -2859,3 +2859,17 @@ div.jg-today { cursor: default; }
    them. */
 .jg-view--journey .jg-delta,
 .jg-view--journey .jg-trend { display: none; }
+
+/* Bigger type for the profile's chart on an iPad (AJ, Oct 2 2026: "the
+   boxes just feel a little bit too thin with the size of all the text").
+   The phone keeps its own sizes (Journey Lite, above). */
+@media (min-width: 600px) {
+  .jg-view--journey .jg {
+    --jg-w-size: 17px;
+    --jg-r-size: 12px;
+  }
+  .jg-view--journey .jg-cell__w { top: 4px; left: 6px; }
+  .jg-view--journey .jg-cell__r { bottom: 3px; right: 6px; }
+  .jg-view--journey .jg[data-settings="menu"] .jg-machine__name { font-size: 13.5px; }
+  .jg-view--journey .jg-head__n { font-size: 11px; }
+}

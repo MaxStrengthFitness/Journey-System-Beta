@@ -933,18 +933,21 @@ export function JourneyGrid({
         const availWPage =
           el.clientWidth - MACHINE_W - (showStats ? STAT_W : 0) - (hasOlderColumn ? OLDER_W : 0);
         const wantPage = Math.max(10, Math.min(targetColumns, Math.max(1, cols)));
-        const colWPage = Math.max(56, Math.min(84, Math.floor(availWPage / wantPage)));
+        // 66px at the least (AJ, Oct 2 2026: "the boxes just feel a little
+        // bit too thin"): fewer sessions across, each one readable.
+        const colWPage = Math.max(66, Math.min(84, Math.floor(availWPage / wantPage)));
         // Every machine on screen without scrolling, where it can be done
         // (AJ, Oct 2 2026: "every machine with no scroll is very important").
         // The rows share the height left under the grid's top, between 28px
         // (the weight and the reps still clear each other, one in each
         // corner) and the 38px they had; below 28 the page scrolls instead.
+        // Since AJ's "too thin" (same day): 32 to 40px.
         // Measured from the top of the page, so a profile opened scrolled
         // down sizes the same as one opened at the top.
         const top = el.getBoundingClientRect().top + window.scrollY;
         const availHPage = window.innerHeight - Math.max(0, top) - viewportReserve - HEAD_H - 2;
         const rowHPage =
-          rowCount > 0 ? Math.max(28, Math.min(38, Math.floor((availHPage - dividerCount * 30) / rowCount))) : 38;
+          rowCount > 0 ? Math.max(32, Math.min(40, Math.floor((availHPage - dividerCount * 30) / rowCount))) : 40;
         setFitVars((prev) =>
           prev && prev.rowH === rowHPage && prev.colW === colWPage && prev.dense === false
             ? prev
