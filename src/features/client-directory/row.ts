@@ -52,6 +52,7 @@ import { formatStudioTime, studioDateKey, studioDayKeyOf, toDate } from "../../l
 import { WEEK_AHEAD_DAYS } from "../../lib/schedule-window";
 import { isStaffBlock } from "../../lib/booking-state";
 import { ageAndBirthday, sessionsSplit } from "../client-admin/account";
+import { resolveContractTier } from "../client-admin/contract";
 import type { PackageNameIndex } from "../renewals/settings";
 import type { RenewalSnapshot } from "../renewals/types";
 import { addDays, daysBetween, sessionDayKey, weekdayOf } from "../client-history/model";
@@ -356,9 +357,11 @@ export interface DirectoryRow {
    * nightly snapshot's `focusDate`, the day the package effectively ends,
    * which Operations -> Month and the renewals pipeline sort by too; with no
    * snapshot yet, the end of the contract Mindbody says is billing her.
-   * "renewed": the next package is already signed.
+   * "renewed": the next package is already signed. "paid": paid in full (or
+   * banked sessions) with no date worked out: it ends when her sessions run
+   * out, so it has no day of its own (AJ, Oct 3 2026: "These are paid in full").
    */
-  renews: { state: "known" | "renewed" | "none" | "unknown"; day: string | null; text: string; sub: string | null; reason: string | null };
+  renews: { state: "known" | "renewed" | "paid" | "none" | "unknown"; day: string | null; text: string; sub: string | null; reason: string | null };
   /** Her booking today (the first not yet over, else the last), for In today and Start. */
   today: { at: number; end: number; text: string; with: string | null; over: boolean } | null;
   /** Booked with the signed-in trainer in the held bookings. */
@@ -661,6 +664,23 @@ function shortDay(ymd: string, today: string): string {
   return `${MONTH_SHORT[m - 1]} ${d}${ymd.slice(0, 4) === today.slice(0, 4) ? "" : `, ${ymd.slice(0, 4)}`}`;
 }
 
+/**
+ * Paid in full or banked sessions, by the profile's one answer
+ * (`resolveContractTier`: a trainer's mark on The package first, then the
+ * renewal snapshot, then Mindbody's contract and pricing option names).
+ */
+function paidInFull(client: Client): DirectoryRow["renews"] | null {
+  const tier = resolveContractTier(client);
+  if (tier.payment !== "pif" && tier.payment !== "sessions-only") return null;
+  return {
+    state: "paid",
+    day: null,
+    text: tier.payment === "pif" ? "Paid in full" : "Sessions only",
+    sub: "ends when sessions run out",
+    reason: null,
+  };
+}
+
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 
 function renewsOf(client: Client, today: string): DirectoryRow["renews"] {
@@ -687,7 +707,7 @@ function renewsOf(client: Client, today: string): DirectoryRow["renews"] {
             : `Runs out${est}`;
       return { state: "known", day, text: shortDay(day, today), sub, reason: null };
     }
-    return { state: "none", day: null, text: "No end date", sub: null, reason: "No end date on file for her package." };
+    return paidInFull(client) ?? { state: "none", day: null, text: "No end date", sub: null, reason: "No end date on file for her package." };
   }
   // No snapshot yet: the latest active contract Mindbody is billing.
   let best: string | null = null;
@@ -698,7 +718,16 @@ function renewsOf(client: Client, today: string): DirectoryRow["renews"] {
     if (end && end >= today && (!best || end > best)) best = end;
   }
   if (best) return { state: "known", day: best, text: shortDay(best, today), sub: "Contract ends", reason: null };
-  return { state: "unknown", day: null, text: "Unknown", sub: null, reason: "No renewal worked out for her yet, and no contract billing her in Mindbody with an end date." };
+  return (
+    paidInFull(client) ?? {
+      state: "unknown",
+      day: null,
+      text: "Unknown",
+      sub: null,
+      reason:
+        "No renewal worked out for her yet, and no contract billing her in Mindbody with an end date. If she paid in full, mark it on her profile: Notes & Profile \u2192 Account \u2192 The package.",
+    }
+  );
 }
 
 /* ---- today ---- */

@@ -145,8 +145,9 @@ function renewsBucket(row: DirectoryRow, ctx: BucketContext): Bucket {
     return known("later", "Later", 5);
   }
   if (r.state === "renewed") return tail("renewed", "Already renewed", 1);
-  if (r.state === "none") return tail("none", "No end date", 2);
-  return tail("unknown", "Unknown", 3);
+  if (r.state === "paid") return tail("paid", "Paid in full · ends when sessions run out", 2);
+  if (r.state === "none") return tail("none", "No end date", 3);
+  return tail("unknown", "Unknown", 4);
 }
 
 function totalBucket(row: DirectoryRow): Bucket {
@@ -251,7 +252,8 @@ function valueOf(row: DirectoryRow, key: SortKey): number | string | null {
     case "left":
       return row.left.value;
     case "renews":
-      return row.renews.day;
+      // Paid in full has no day: it ends when her sessions run out, so fewest left first.
+      return row.renews.state === "paid" ? row.left.value : row.renews.day;
     case "total":
       return row.total.value;
     case "age":

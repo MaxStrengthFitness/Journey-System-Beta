@@ -189,12 +189,14 @@ describe("renewal sections (Oct 3 2026)", () => {
       renewRow("gap", snap({ situation: "unknown" })),
       renewRow("nil", snap({})),
       renewRow("none", undefined),
+      renewRow("pif", undefined, { contractTierOverride: { term: 12, payment: "pif", setAt: "2026-09-01" } }),
     ];
     expect(sectionRows(rows, { key: "renews", dir: "asc" }, B).map((s) => s.label)).toEqual([
       "Already ended",
       "Next 2 weeks",
       "Later",
       "Already renewed",
+      "Paid in full · ends when sessions run out",
       "No end date",
       "Unknown",
     ]);
