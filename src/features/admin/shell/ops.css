@@ -1785,3 +1785,18 @@
     min-height: 72px;
   }
 }
+
+/* Conversations about staying, on a client's case (notes round, Oct 3 2026). */
+.ops-convo {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+.ops-convo__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}

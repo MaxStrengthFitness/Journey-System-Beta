@@ -830,9 +830,18 @@ function pulseBeats(history: AssessmentHistory, p: Pronouns, tz?: string): Story
 const PROFILE_FIELD_PREFIX = "legacy:profile:";
 
 /**
- * A critical note, or an injury, opened — and closed, when someone closed
- * it. The words are the root's, verbatim (the page folds a long one). Only
- * the ROOT is read: its loudness and `resolvedAt` are the thread's.
+ * A critical note, a Health note, an Incident or a Retention conversation,
+ * opened — and closed, when someone closed it. The words are the root's,
+ * verbatim (the page folds a long one). Only the ROOT is read for loudness
+ * and `resolvedAt`: they are the thread's.
+ *
+ * Notes round (Oct 3 2026): incidents and retention joined health here, so
+ * her time here reads as the chronology of what mattered (AJ: the whole
+ * client's journey "where we can see their timeline where the notes need to
+ * be kind of put into there as well"). A Retention thread is a conversation,
+ * so EVERY entry on it is a moment — each time someone talked with her about
+ * staying — filed with the milestones beside her renewals; an incident sits
+ * with the body.
  */
 function noteBeats(threads: readonly NoteThread[], today: string, tz?: string): StoryBeat[] {
   const out: StoryBeat[] = [];
@@ -840,33 +849,53 @@ function noteBeats(threads: readonly NoteThread[], today: string, tz?: string): 
     const root = t.root;
     if (!root || t.id.startsWith(PROFILE_FIELD_PREFIX) || root.isArchived) continue;
     const critical = root.importance === "critical";
-    if (!critical && noteCategoryOf(root) !== "health") continue;
+    const category = noteCategoryOf(root);
+    const retention = category === "retention";
+    if (!critical && category !== "health" && category !== "incident" && !retention) continue;
     const body = tidy(root.body);
     if (!body) continue;
     const label = critical ? "Critical note" : `${noteCardLabel(root)} note`;
+    const kind: StoryKind = retention ? "milestone" : "body";
     const door = noteDoor(t.id);
     const opened = instantDay(root.occurredAt, tz);
     if (opened) {
       out.push({
         key: `note-open:${t.id}`,
         day: opened,
-        kind: "body",
+        kind,
         source: "note",
         text: body,
-        sourceLine: joinDots([label, whoOf(root), updateCountLabel(t)]),
+        sourceLine: joinDots([label, whoOf(root), retention ? null : updateCountLabel(t)]),
         door,
       });
+    }
+    // Each later conversation about staying is a moment of its own.
+    if (retention) {
+      for (const u of t.updates) {
+        const said = tidy(u.body);
+        const day = instantDay(u.occurredAt, tz);
+        if (!said || !day) continue;
+        out.push({
+          key: `note-update:${u.id}`,
+          day,
+          kind,
+          source: "note",
+          text: said,
+          sourceLine: joinDots(["Retention conversation", whoOf(u)]),
+          door,
+        });
+      }
     }
     const closed = root.resolvedAt ? instantDay(root.resolvedAt, tz) : null;
     if (closed) {
       out.push({
         key: `note-close:${t.id}`,
         day: closed,
-        kind: "body",
         source: "note",
         text: `Closed: ${body}`,
         sourceLine: joinDots([label, opened ? `opened ${shortDay(opened, today)}` : null]),
         door,
+        kind,
       });
     }
   }

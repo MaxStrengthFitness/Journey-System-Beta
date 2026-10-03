@@ -419,6 +419,27 @@ describe("buildStory — (A) a migrated client", () => {
     expect(closed.sourceLine).toBe("Health note · opened Oct 1, 2026");
   });
 
+  it("puts incidents with the body and every retention conversation with the milestones (Oct 3 2026)", () => {
+    const threads = assembleThreads([
+      entry({ id: "fall", kind: "incident", body: "Slipped stepping off the leg press.", occurredAt: noon("2027-02-01") }),
+      entry({ id: "stay", kind: "retention", body: "Not sure about renewing in May.", occurredAt: noon("2027-02-10"), authorName: "Jess Moreno" }),
+      entry({ id: "stay-u", kind: "retention", threadId: "stay", body: "Renewed for six months.", occurredAt: noon("2027-02-20"), authorName: "Lee Leader" }),
+      entry({ id: "cue", kind: "coaching", body: "Count her in.", occurredAt: noon("2027-02-05") }),
+    ]);
+    const beats = buildStory(input({ client: carol, coverage: "partial", totals: { total: 461, journey: 49, before: 412 }, notes: ready(threads) })).beats;
+    const fall = beats.find((b) => b.key === "note-open:fall")!;
+    expect(fall).toMatchObject({ kind: "body", text: "Slipped stepping off the leg press." });
+    expect(fall.sourceLine).toContain("Incident note");
+    const opened = beats.find((b) => b.key === "note-open:stay")!;
+    expect(opened).toMatchObject({ kind: "milestone", text: "Not sure about renewing in May." });
+    expect(opened.sourceLine).toBe("Retention note · Jess");
+    const said = beats.find((b) => b.key === "note-update:stay-u")!;
+    expect(said).toMatchObject({ kind: "milestone", text: "Renewed for six months.", day: "2027-02-20" });
+    expect(said.sourceLine).toBe("Retention conversation · Lee");
+    // Coaching is not a moment of her time here.
+    expect(beats.some((b) => b.key === "note-open:cue")).toBe(false);
+  });
+
   it("draws FORD moments and gestures done — never a standing fact, an archived or unfiled detail, an import or the one line", () => {
     const beats = carolStory().beats.filter((b) => b.source === "ford");
     expect(beats.map((b) => b.key)).toEqual(["ford-done:camino", "ford:moment"]);

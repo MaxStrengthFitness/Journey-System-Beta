@@ -34,6 +34,7 @@ import { caseOf } from "./case";
 import { caseRights, ownerChoices } from "./case-form";
 import { useClientCase } from "./case-store";
 import { CaseForm } from "./CaseForm";
+import { RetentionConversations } from "./RetentionConversations";
 import { InactiveMarkPanel } from "./InactiveMark";
 import type { InactiveMark } from "./inactive";
 import type { JourneyEntry } from "./journey-list";
@@ -182,6 +183,15 @@ export function JourneyCase({ entry, studioId, today, me, tz, trainers = [], aut
       {casesFailed && !leads && own.failed && <p className="ops-quiet">Her stored case couldn't be read on this iPad, so the case above is worked out by the rules.</p>}
       {authTrainer && !own.loading && (
         <CaseForm studioId={studioId} clientId={entry.id} clientName={entry.row.name.display} stored={stored} view={c} rights={rights} choices={choices} />
+      )}
+      {/* What was said, on her record for the whole team (notes round, Oct 3 2026; AJ's answer 1A). */}
+      {authTrainer && (
+        <RetentionConversations
+          clientId={entry.id}
+          homeStudioId={(entry.client as Client | undefined)?.homeStudioId || studioId}
+          firstName={entry.row.name.display.split(/\s+/)[0] || "her"}
+          author={me.id ? { id: me.id, initials: (authTrainer.initials || "").toUpperCase(), fullName: authTrainer.fullName || me.name } : null}
+        />
       )}
       {(c.open || entry.watch !== "watching") && (
         <div className="ops-case__acts">
