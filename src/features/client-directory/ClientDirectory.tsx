@@ -109,12 +109,13 @@ export interface ClientDirectoryProps {
 }
 
 type Scope = "studio" | "all";
-const EXTRA_COLUMNS: ExtraColumn[] = ["total", "age", "height"];
+const EXTRA_COLUMNS: ExtraColumn[] = ["renews", "total", "age", "height"];
 const COLUMN_WORDS: Record<string, string> = {
   client: "Client",
   lastIn: "Last in",
   next: "Next",
   left: "Left",
+  renews: "Renewal",
   total: "Total",
   age: "Age",
   height: "Height",
@@ -190,6 +191,8 @@ function sortedLead(row: DirectoryRow, key: SortKey, wide: Set<ExtraColumn>): st
       return wide.has("height") ? null : row.height.inches === null ? null : row.height.text;
     case "total":
       return wide.has("total") ? null : row.total.value === null ? null : `${row.total.text} sessions`;
+    case "renews":
+      return wide.has("renews") ? null : row.renews.day ? `${row.renews.sub ?? "Renews"} ${row.renews.text}` : null;
     case "since":
       return row.since.year === null ? null : `Since ${row.since.text}`;
     case "time":
@@ -387,6 +390,7 @@ export function ClientDirectory({
   const cols = [...base, tailCol].filter(Boolean).join(" ");
   const colsWide = [
     ...base,
+    wide.has("renews") ? "minmax(96px, 112px)" : null,
     wide.has("total") ? "72px" : null,
     wide.has("age") ? "52px" : null,
     wide.has("height") ? "64px" : null,
@@ -585,6 +589,7 @@ export function ClientDirectory({
             {colHead("lastIn", "lastIn")}
             {colHead("next", "next")}
             {colHead("left", "left")}
+            {wide.has("renews") && colHead("renews", "renews", true)}
             {wide.has("total") && colHead("total", "total", true)}
             {wide.has("age") && colHead("age", "age", true)}
             {wide.has("height") && colHead("height", "height", true)}

@@ -53,6 +53,7 @@ import { WEEK_AHEAD_DAYS } from "../../lib/schedule-window";
 import { isStaffBlock } from "../../lib/booking-state";
 import { ageAndBirthday, sessionsSplit } from "../client-admin/account";
 import type { PackageNameIndex } from "../renewals/settings";
+import type { RenewalSnapshot } from "../renewals/types";
 import { addDays, daysBetween, sessionDayKey, weekdayOf } from "../client-history/model";
 import { parseHeightInches } from "../machine-trends/trends";
 
@@ -349,6 +350,15 @@ export interface DirectoryRow {
     reason: string | null;
   };
   since: { year: number | null; at: number | null; text: string; label: string | null };
+  /**
+   * When her package or contract comes up for renewal (AJ, Oct 3 2026: "can
+   * we also filter by renewal date for their contract?"). The day is the
+   * nightly snapshot's `focusDate`, the day the package effectively ends,
+   * which Operations -> Month and the renewals pipeline sort by too; with no
+   * snapshot yet, the end of the contract Mindbody says is billing her.
+   * "renewed": the next package is already signed.
+   */
+  renews: { state: "known" | "renewed" | "none" | "unknown"; day: string | null; text: string; sub: string | null; reason: string | null };
   /** Her booking today (the first not yet over, else the last), for In today and Start. */
   today: { at: number; end: number; text: string; with: string | null; over: boolean } | null;
   /** Booked with the signed-in trainer in the held bookings. */
@@ -643,6 +653,54 @@ function sinceOf(client: Client, coverage: HistoryCoverage): DirectoryRow["since
   return { year: since.date.getFullYear(), at: since.date.getTime(), text: `${MONTH_SHORT[since.date.getMonth()]} ${since.date.getFullYear()}`, label: "Client since" };
 }
 
+/* ---- renews ---- */
+
+function shortDay(ymd: string, today: string): string {
+  const m = Number(ymd.slice(5, 7));
+  const d = Number(ymd.slice(8, 10));
+  return `${MONTH_SHORT[m - 1]} ${d}${ymd.slice(0, 4) === today.slice(0, 4) ? "" : `, ${ymd.slice(0, 4)}`}`;
+}
+
+const YMD = /^\d{4}-\d{2}-\d{2}$/;
+
+function renewsOf(client: Client, today: string): DirectoryRow["renews"] {
+  const s = client.renewal as RenewalSnapshot | undefined;
+  if (s) {
+    if (s.renewalOnBooks && YMD.test(s.renewalOnBooks.startsOn)) {
+      return { state: "renewed", day: s.renewalOnBooks.startsOn, text: "Renewed", sub: `next starts ${shortDay(s.renewalOnBooks.startsOn, today)}`, reason: null };
+    }
+    if (s.situation === "unknown") {
+      return { state: "unknown", day: null, text: "Unknown", sub: null, reason: s.dataGaps?.[0] ?? "Not enough Mindbody data to work out her renewal." };
+    }
+    const day = s.focusDate;
+    if (day && YMD.test(day)) {
+      const est = s.chargeDateSource === "estimate" || (s.paymentMode !== "monthly" && !!s.runOutDate) ? " (est.)" : "";
+      const sub =
+        day < today
+          ? "Ended"
+          : s.paymentMode === "monthly"
+            ? s.autoRenews === true
+              ? `Renews${est}`
+              : s.autoRenews === false
+                ? `Billing ends${est}`
+                : `Payments finish${est}`
+            : `Runs out${est}`;
+      return { state: "known", day, text: shortDay(day, today), sub, reason: null };
+    }
+    return { state: "none", day: null, text: "No end date", sub: null, reason: "No end date on file for her package." };
+  }
+  // No snapshot yet: the latest active contract Mindbody is billing.
+  let best: string | null = null;
+  for (const raw of Object.values(client.mindbodyContracts ?? {})) {
+    const c = raw as { status?: unknown; autopayStatus?: unknown; endDate?: unknown } | null;
+    if (!c || c.status !== "Active" || c.autopayStatus !== "Active") continue;
+    const end = studioDayKeyOf(c.endDate as never);
+    if (end && end >= today && (!best || end > best)) best = end;
+  }
+  if (best) return { state: "known", day: best, text: shortDay(best, today), sub: "Contract ends", reason: null };
+  return { state: "unknown", day: null, text: "Unknown", sub: null, reason: "No renewal worked out for her yet, and no contract billing her in Mindbody with an end date." };
+}
+
 /* ---- today ---- */
 
 function todayOf(client: Client, ctx: DirectoryContext): DirectoryRow["today"] {
@@ -688,6 +746,7 @@ export function buildDirectoryRow(client: Client, ctx: DirectoryContext): Direct
     left: leftOf(client, ctx),
     total: totalOf(client, coverage),
     since: sinceOf(client, coverage),
+    renews: renewsOf(client, ctx.today),
     today: todayOf(client, ctx),
     bookedWithMe: (ctx.bookingsByClient?.get(id) ?? []).some((b) => bookedWithMe(b, ctx)),
   };

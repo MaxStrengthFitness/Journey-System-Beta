@@ -13,7 +13,7 @@ import { SORTS, type SortDir, type SortKey, type SortSpec } from "./buckets";
 
 const GROUPS: ReadonlyArray<{ title: string; keys: SortKey[] }> = [
   { title: "Visits", keys: ["time", "lastIn", "next", "since"] },
-  { title: "Sessions", keys: ["left", "total"] },
+  { title: "Sessions and package", keys: ["left", "renews", "total"] },
   { title: "The person", keys: ["name", "lastName", "age", "height"] },
 ];
 
