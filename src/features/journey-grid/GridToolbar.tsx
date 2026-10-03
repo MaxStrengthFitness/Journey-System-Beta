@@ -77,7 +77,7 @@ export function QualityLegend({
         {QUALITY_MARK_LABEL[1].name}
         <i className="jg-legend__gloss">{QUALITY_MARK_LABEL[1].gloss}</i>
       </span>
-      <span className="jg-legend__item">
+      <span className="jg-legend__item jg-legend__item--done">
         <span className="jg-legend__swatch jg-legend__swatch--q2" aria-hidden="true" />
         {QUALITY_MARK_LABEL[2].name}
       </span>

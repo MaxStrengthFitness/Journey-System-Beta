@@ -2788,3 +2788,66 @@ div.jg-today { cursor: default; }
   color: var(--jg-ink-muted);
   white-space: nowrap;
 }
+
+/* --------------------------------------------------------------------------
+   The profile's Journey chart, calmer (AJ, Oct 2 2026). The profile only:
+   the Active Session's grid keeps its fills.
+
+   - Each box reads like a FileMaker cell: the weight top-left, the reps
+     bottom-right ("weight over reps, have the weight on the top left and
+     reps on the bottom right"), and clear lines between boxes ("it's just
+     hard to tell the cells apart").
+   - Quieter marks: no fills, no hatch, no coloured edge. Max strength and
+     Needs improvement keep their corner mark (the star and the kaizen, two
+     shapes, so a colour-blind trainer still tells them apart), shown at
+     every density because the mark is now the only sign. Completed is a
+     plain box, and the key drops its swatch.
+   -------------------------------------------------------------------------- */
+.jg-view--journey .jg-cell {
+  display: block;
+  padding: 0;
+  border-left: 0;
+  border-right-color: var(--jg-border-strong);
+  border-bottom-color: var(--jg-border-strong);
+}
+/* One number in each corner, so a short row never stacks them into each
+   other: the weight top-left, the reps bottom-right. */
+.jg-view--journey .jg-cell__w {
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  line-height: 1;
+  white-space: nowrap;           /* "120 ▲10" stays on its line */
+}
+.jg-view--journey .jg-cell__w .jg-delta { font-size: 9.5px; margin-left: 1px; }
+.jg-view--journey .jg-cell__r {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  line-height: 1;
+}
+.jg-view--journey .jg-cell__empty,
+.jg-view--journey .jg-cell__skip {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.jg-view--journey .jg-cell--q1,
+.jg-view--journey .jg-cell--q2,
+.jg-view--journey .jg-cell--q3 {
+  background-color: var(--jg-surface);
+  background-image: none;
+  border-left-color: transparent;
+}
+.jg-view--journey .jg-cell--q1::before { display: none; }
+.jg-view--journey .jg[data-dense="line"] .jg-cell__mark { display: block; }
+.jg-view--journey .jg-cell__mark { top: 2px; right: 3px; }
+.jg-view--journey .jg-legend__swatch--q1,
+.jg-view--journey .jg-legend__swatch--q3,
+.jg-view--journey .jg-legend__item--done { display: none; }
+/* The machine column's lines match, so the rows read straight across. */
+.jg-view--journey .jg-machine,
+.jg-view--journey .jg-head,
+.jg-view--journey .jg-corner { border-bottom-color: var(--jg-border-strong); }
