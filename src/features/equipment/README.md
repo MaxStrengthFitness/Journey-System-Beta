@@ -337,3 +337,17 @@ with the full-screen chart that last used it (Oct 2 2026: neither had a door).
 ## Notes about her on one machine: one list (Oct 2 2026)
 
 AJ (the Atlas answers): notes about her on one machine live in her journal and show on the machine sheet. A new machine note is a journal entry carrying `machineId` and nothing else (`addMachineNote`; only a host with no journal context still writes the old `clientMachineSettings.machineNotes` list). Every reader takes `machine-notes.ts` (`machineNotesFor`, `hasImportantMachineNote`): her journal's notes on that machine, not archived, plus the old list's items with no journal copy, so a double-written note shows once and archiving its journal copy takes it off the sheet. `useMachineJournal` reads her journal with the same query `useClientJournal` streams (one shared listener, the existing index). Removing a journal note archives it. Programming → Setup's bulk save still writes its note to the old list (an atomic batch), which the one list reads.
+
+## The floor's note on this machine, in the session (Oct 3 2026)
+
+`FloorNoteCard.tsx`, on the session's machine sheet under the watch-outs. A
+studio's own knowledge of the unit in its building (`studios/{s}/machineNotes/
+{machineId}`, written on the Catalog and My Studio → Machines) and a Relay flag
+(`studios/{s}/machineCare/{machineId}.flag`) never reached the moment they are
+for — the trainer at that machine with a client. The sheet now reads both, once,
+when it opens (two documents, no listener, no index) and draws them read-only:
+the flag first, then the floor's note, signed and dated; nothing when there is
+nothing; a failed read is said. The client's own machine note says whose it is
+("About her on this machine"), and that a fault with the unit is the floor's:
+flag it on Relay so it's fixed for everyone. `docs/rounds/2026-10-03-client-notes.md`
+(the second half, machines) is the round.

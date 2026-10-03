@@ -25,7 +25,7 @@ refresher, and it has to say what is NEW.
    the global goal in one line.
 2. **Before you start** — everything that still matters and nothing stale,
    counted in the heading: clinical flags · Critical journal entries · **Heads
-   ups** (elevated notes inside their "until" day or three weeks) · **body
+   ups** (elevated notes inside their "until" day, or not yet read out at four of her sessions — `client-notes/heads-up.ts`, Oct 3 2026) · **body
    regions carried over** from the last session while their "matters until"
    day has not passed · upcoming events (the Hub markers) · the renewal line ·
    active coaching focuses. When there is nothing: "Nothing flagged — clear
@@ -54,7 +54,11 @@ contraindication is a thing that must not happen in the next ninety minutes.
   trainer can see it). Old sessions are read through `features/rating/scales.ts`.
 - **Heads ups** come from `useClientJournal().headsUpEntries`
   (`isHeadsUpLive`, `HEADS_UP_WINDOW_DAYS = 21`): elevated, unresolved, and
-  either inside their `effectiveUntil` day or written in the last three weeks.
+  either inside their `effectiveUntil` day or not yet heard at four of her
+  sessions since their newest word (three weeks only while her sessions are
+  unknown). Under the news, one folded line: **her standing health context**
+  (`standingHealth`, Oct 3 2026) — Health and Incident notes that are simply
+  true, never counted in "Before you start", a tap from read.
   Drawn under the Critical strip and quieter — the warn edge, no fill wash.
 - **Carried-over regions** are `carriedRegions(lastSession, studioTodayKey())`
   in `briefing-facts.ts`: any `bodyStates` tag on the LAST session whose
