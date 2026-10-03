@@ -99,12 +99,12 @@ describe("RecentJourneyView (the profile's Journey tab)", () => {
     expect(host.textContent).not.toContain("Latest");
     // The key itself is still there.
     expect(host.textContent).toContain("Skipped");
-    // ...and keys the two marks that used to go unexplained: the lone dot
-    // (not reached) and the dashed ring round the set the stat quotes.
+    // ...and keys the lone dot (not reached). No stats column since Oct 2
+    // 2026 (the machine's story is a tap), so no dashed "stat" ring to key.
     expect(host.querySelector(".jg-legend__swatch--nr")).not.toBeNull();
     expect(host.textContent).toContain("Not reached");
-    expect(host.querySelector(".jg-legend__swatch--stat-hit")).not.toBeNull();
-    expect(host.textContent).toContain("The set the stat quotes");
+    expect(host.querySelector(".jg-legend__swatch--stat-hit")).toBeNull();
+    expect(host.querySelector(".jg-stat-head")).toBeNull();
     expect(host.querySelector(".jg")?.getAttribute("data-autoload")).toBe("true");
     await act(async () => root.unmount());
   });
@@ -115,26 +115,24 @@ describe("RecentJourneyView (the profile's Journey tab)", () => {
       <RecentJourneyView sessions={sessions} rows={rowsFor(sessions)} layout="page" resetKey="judy" coverage="complete" />,
     );
     expect(columns(host)).toBe(14);
-    expect(host.querySelector(".jg-older__label")?.textContent).toBe("Older");
 
     await scrollToOldest(host);
     // 14 + 7 would be 21; only 20 exist.
     expect(columns(host)).toBe(20);
-    expect(host.querySelector(".jg-older__label")?.textContent).toBe("Start of history");
-    expect(host.querySelector<HTMLButtonElement>(".jg-older__btn")?.disabled).toBe(true);
     await act(async () => root.unmount());
   });
 
-  it("calls the oldest session the start of Journey, not of her history, short of complete", async () => {
-    // A migration client: her history did not begin when Journey first saw her.
+  it("draws no Older strip, so it claims no start of her history (Oct 2 2026)", async () => {
+    // A migration client: her history did not begin when Journey first saw
+    // her, and the grid no longer says where anything starts.
     for (const coverage of ["partial", "unknown", undefined] as const) {
       const sessions = sessionsOf(20);
       const { host, root } = await mount(
         <RecentJourneyView sessions={sessions} rows={rowsFor(sessions)} layout="page" resetKey="judy" coverage={coverage} />,
       );
       await scrollToOldest(host);
-      expect(host.querySelector(".jg-older__label")?.textContent).toBe("Start of Journey");
-      expect(host.querySelector(".jg-older__btn")?.getAttribute("aria-label")).toContain("not recorded here");
+      expect(host.querySelector(".jg-older__label")).toBeNull();
+      expect(host.querySelector(".jg-cell--older")).toBeNull();
       expect(host.textContent).not.toContain("Start of history");
       await act(async () => root.unmount());
     }
@@ -195,12 +193,12 @@ describe("RecentJourneyView (the profile's Journey tab)", () => {
     await act(async () => root.unmount());
   });
 
-  it("says Loading… on the rail and does not cover the grid while a page loads", async () => {
+  it("says it is loading older sessions, and does not cover the grid while a page loads", async () => {
     const sessions = sessionsOf(14);
     const { host, root } = await mount(
       <RecentJourneyView sessions={sessions} rows={rowsFor(sessions)} layout="page" resetKey="judy" hasMoreOnServer loadingMore />,
     );
-    expect(host.querySelector(".jg-older__label")?.textContent).toBe("Loading…");
+    expect(host.querySelector('[data-testid="loading-older"]')?.textContent).toBe("Loading older sessions…");
     expect(host.querySelector(".jg-view__loading")).toBeNull();
     await act(async () => root.unmount());
   });
@@ -228,19 +226,6 @@ describe("RecentJourneyView (the profile's Journey tab)", () => {
     await act(async () => root.unmount());
   });
 
-  it("the rail itself is a tap target while there is more", async () => {
-    const sessions = sessionsOf(30);
-    const { host, root } = await mount(
-      <RecentJourneyView sessions={sessions} rows={rowsFor(sessions)} layout="page" resetKey="judy" />,
-    );
-    const strip = host.querySelector<HTMLElement>(".jg-cell--older.is-tappable")!;
-    expect(strip).not.toBeNull();
-    await act(async () => {
-      strip.click();
-    });
-    expect(columns(host)).toBe(21);
-    await act(async () => root.unmount());
-  });
 });
 
 describe("the Active Session's grid is unchanged", () => {

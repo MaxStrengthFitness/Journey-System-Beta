@@ -54,6 +54,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { getCompletedSessionCount } from "../lib/session-count-cache";
 import { isEstablishedClient } from "../lib/history-claims";
 import { progressReportDue } from "../features/client-profile/cpr-timing";
+import { machineStory } from "../features/journey-grid/machine-story";
+import { MachineStoryCard } from "../features/journey-grid/MachineStoryCard";
 import { earliestKnownDate } from "../lib/client-since";
 import {
   ClinicalHistoryTab,
@@ -1192,6 +1194,13 @@ export function ClientProfileView({
     machineJournal,
   ]);
 
+  // The tapped machine's story, the stats the grid no longer carries
+  // (AJ, Oct 2 2026: "only when you tap").
+  const machineStoryLines = useMemo(() => {
+    const row = machineWindowId ? journeyGridRows.find((r) => r.machine.id === machineWindowId) : null;
+    return row ? machineStory(row, journeyGridSessions) : [];
+  }, [machineWindowId, journeyGridRows, journeyGridSessions]);
+
   /**
    * Tapping a machine — its name on the Journey grid, or its row in Routine
    * A / B — opens the one machine window: the same detail Programming → All
@@ -1971,6 +1980,11 @@ export function ClientProfileView({
         authTrainer={authTrainer}
         activeStudioId={activeStudioId}
         coverage={clientCoverage}
+        top={
+          machineStoryLines.length > 0 ? (
+            <MachineStoryCard lines={machineStoryLines} partial={hasMoreSessions} />
+          ) : null
+        }
       />
 
       <Dialog

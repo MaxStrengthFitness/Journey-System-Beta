@@ -127,6 +127,12 @@ export interface JourneyGridProps {
    */
   corner?: ReactNode;
   /**
+   * The sticky "Older" strip at the left of the sessions. False keeps the
+   * older pages loading as the trainer scrolls back, with no strip: the
+   * profile gave the room back to the sessions (AJ, Oct 2 2026).
+   */
+  olderRail?: boolean;
+  /**
    * "fixed" (default, Active Session): the tuned density — 44px rows, 84px
    * columns — and the grid scrolls when it overflows.
    * "auto" (Recent Journey): the grid measures the height and width it has
@@ -557,6 +563,7 @@ export function JourneyGrid({
   viewportReserve = 112,
   title = "Equipment",
   corner,
+  olderRail = true,
   fit = "fixed",
   settingsDisplay = "inline",
   targetColumns = 14,
@@ -898,7 +905,7 @@ export function JourneyGrid({
     };
   }, [layout, viewportReserve]);
 
-  const hasOlderColumn = !!onLoadOlder;
+  const hasOlderColumn = !!onLoadOlder && olderRail;
   // The Older rail is its own fixed 26px track (see --jg-track-older), so it
   // is no longer counted among the session columns.
   const cols = sessions.length;

@@ -271,8 +271,15 @@ export function RecentJourneyView({
             and 21 machines on screen. No "Latest session" key: the profile
             grid does not frame its newest column. */}
         <div className="jg-toolbar__legend">
-          <QualityLegend compact showLatest={false} showStatHit />
+          <QualityLegend compact showLatest={false} />
         </div>
+        {/* The Older strip said this; with the strip gone (Oct 2 2026) the
+            key's line does, so scrolling back never looks stuck. */}
+        {loadingMore && (
+          <span className="jg-toolbar__loading" role="status" data-testid="loading-older">
+            Loading older sessions{"…"}
+          </span>
+        )}
       </GridToolbar>
 
       {/* The brand loading mark, never empty cells: a whole-area wait while
@@ -319,6 +326,11 @@ export function RecentJourneyView({
         viewportReserve={viewportReserve}
         title="Equipment"
         corner={corner}
+        /* The stats and the Older strip left the profile's grid (AJ, Oct 2
+           2026: "it's just in the way"): the stats are the machine's story,
+           a tap on its name; older sessions still load as you scroll back. */
+        showStats={false}
+        olderRail={false}
         fit="auto"
         settingsDisplay="menu"
         targetColumns={initialVisible}

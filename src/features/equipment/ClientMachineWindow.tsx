@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useMachineCatalog } from "../../hooks/useMachineCatalog";
@@ -64,6 +64,11 @@ export interface ClientMachineWindowProps {
    * default.
    */
   coverage?: HistoryCoverage;
+  /**
+   * Drawn under the window's header, above the machine's cards: the
+   * profile's Journey tab puts the machine's story here (Oct 2 2026).
+   */
+  top?: ReactNode;
 }
 
 const NO_SETTINGS: Record<string, ClientMachineSetting> = {};
@@ -93,6 +98,7 @@ function WindowBody({
   authTrainer,
   activeStudioId,
   coverage = "unknown",
+  top,
 }: ClientMachineWindowProps) {
   const { byId: catalogById } = useMachineCatalog();
   const { activeStudio } = useActiveStudio();
@@ -163,6 +169,8 @@ function WindowBody({
                 <X size={18} strokeWidth={2.5} />
               </button>
             </header>
+
+            {top}
 
             <MachineDetailPanel
               machine={equipment}
