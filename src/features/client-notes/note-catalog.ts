@@ -89,6 +89,8 @@ export interface NoteCategoryMeta {
   id: NoteCategory;
   /** Chip and tile label. */
   label: string;
+  /** The note box's choice and its Save button ("Save as Coaching"): short, so six fit in two rows. */
+  short: string;
   /** Shelf heading, where it differs from the label. */
   shelf: string;
   /** One line under the chip / on the empty shelf. */
@@ -115,6 +117,7 @@ export const NOTE_CATEGORIES: readonly NoteCategoryMeta[] = [
   {
     id: "coaching",
     label: "Coaching & equipment",
+    short: "Coaching",
     shelf: "Coaching & equipment",
     blurb: "How to run the session — a cue, one of the 4 P's, set-up or machine know-how.",
     icon: "Target",
@@ -125,6 +128,7 @@ export const NOTE_CATEGORIES: readonly NoteCategoryMeta[] = [
   {
     id: "health",
     label: "Health",
+    short: "Health",
     shelf: "Health",
     blurb: "An injury or pain, surgery, medication, a diagnosis, or care outside the studio.",
     icon: "Stethoscope",
@@ -135,6 +139,7 @@ export const NOTE_CATEGORIES: readonly NoteCategoryMeta[] = [
   {
     id: "incident",
     label: "Incident",
+    short: "Incident",
     shelf: "Incidents",
     blurb: "Something happened in the room — from a lost phone to a fall.",
     icon: "AlertTriangle",
@@ -145,6 +150,7 @@ export const NOTE_CATEGORIES: readonly NoteCategoryMeta[] = [
   {
     id: "retention",
     label: "Retention",
+    short: "Retention",
     shelf: "Retention",
     blurb: "Renewing, the package, staying or leaving — what was said, and by whom.",
     icon: "Handshake",
@@ -155,6 +161,7 @@ export const NOTE_CATEGORIES: readonly NoteCategoryMeta[] = [
   {
     id: "ford",
     label: "FORD / Life",
+    short: "FORD",
     shelf: "FORD / Life",
     blurb: "Family, occupation, recreation, dreams — a trip or an event coming up. Kept in FORD.",
     icon: "Heart",
@@ -165,6 +172,7 @@ export const NOTE_CATEGORIES: readonly NoteCategoryMeta[] = [
   {
     id: "preference",
     label: "Preference",
+    short: "Preference",
     shelf: "Preferences & other",
     blurb: "How they like things done — music, fan, pace of talk — and anything else.",
     icon: "ThumbsUp",
@@ -175,6 +183,7 @@ export const NOTE_CATEGORIES: readonly NoteCategoryMeta[] = [
   {
     id: "admin",
     label: "Admin",
+    short: "Admin",
     shelf: "Admin · Mindbody & intake",
     blurb: "Imported from Mindbody, the intake and the profile. Read-only.",
     icon: "ClipboardList",

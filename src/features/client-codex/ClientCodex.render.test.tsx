@@ -781,7 +781,7 @@ describe("ClientCodex — the Notes page", () => {
     await click(buttonIn(panel(host, "notes"), "Write a note…"));
     const composer = panel(host, "notes").querySelector('[data-testid="note-composer"]')!;
     await typeInto(composer.querySelector("textarea"), "Grandson graduates in May");
-    await click(buttonIn(composer, "FORD / Life"));
+    await click(composer.querySelector('button[aria-label="FORD / Life"]'));
     await click(buttonIn(composer, "Save to FORD"));
     const adds = fake.writes.filter((w) => w.op === "add");
     expect(adds.map((w) => w.path)).toEqual(["clients/c1/ford"]);
@@ -796,9 +796,9 @@ describe("ClientCodex — the Notes page", () => {
     expect(notes.querySelector(".nx-door")?.getAttribute("aria-label")).toBe("Life, in FORD");
     await click(buttonIn(notes, "Write a note…"));
     const composer = notes.querySelector('[data-testid="note-composer"]')!;
-    await click(buttonIn(composer, "FORD / Life"));
+    await click(composer.querySelector('button[aria-label="FORD / Life"]'));
     expect(buttonIn(composer, "Save to FORD")).toBeUndefined();
-    await click(buttonIn(composer, "FORD / Life"));
+    await click(composer.querySelector('button[aria-label="FORD / Life"]'));
     await typeInto(composer.querySelector("textarea"), "Visiting from Solon this month");
     await click(buttonIn(composer, "Save — file later"));
     const adds = fake.writes.filter((w) => w.op === "add");
@@ -950,7 +950,7 @@ describe("ClientCodex — the intake matcher (phase 17)", () => {
     const notes = panel(host, "notes");
     await click(buttonIn(notes, "Write a note…"));
     const composer = notes.querySelector('[data-testid="note-composer"]')!;
-    await click(buttonIn(composer, "FORD / Life"));
+    await click(composer.querySelector('button[aria-label="FORD / Life"]'));
     expect(buttonIn(composer, "Save to FORD")).toBeUndefined();
     // They CAN read FORD (Open FORD works for them), so the hand-off says
     // adding isn't offered — never that only the home studio can read it.

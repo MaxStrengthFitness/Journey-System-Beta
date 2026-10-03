@@ -374,3 +374,125 @@ textarea.nc-input { resize: vertical; }
 }
 .nc-matters__check input { width: 20px; height: 20px; accent-color: var(--eq-live); }
 .nc-matters[data-compact="true"] .nc-matters__row { gap: 0.4rem 0.5rem; }
+
+/* ------------------------------------------------------------------ */
+/* THE NOTE BOX, QUIET BY DEFAULT (notes round, second pass, Oct 3)    */
+/* ------------------------------------------------------------------ */
+/* One row of choices, the words, one row of detail chips, the save.
+   Every control is a real button of at least 40px; nothing is cut. */
+
+.nq { gap: 0.625rem; }
+
+.nq-file {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.nq-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.nq-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 40px;
+  padding: 0 0.875rem;
+  border-radius: 999px;
+  border: 1px solid var(--eq-border);
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-2);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.nq-cat:focus-visible,
+.nq-chip:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
+.nq-cat[aria-pressed="true"] {
+  border-color: var(--eq-live);
+  background: var(--eq-live-fill);
+  color: var(--eq-live-text);
+  box-shadow: inset 0 0 0 1px var(--eq-live);
+}
+/* The one the words suggest: marked, not chosen. */
+.nq-cat[data-suggested="true"] {
+  border-style: dashed;
+  border-color: var(--eq-live);
+  color: var(--eq-live-text);
+}
+
+.nq-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--eq-ink-muted);
+}
+
+.nq-words {
+  width: 100%;
+  min-height: 92px;
+  resize: vertical;
+  padding: 0.75rem 0.875rem;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-bg);
+  color: var(--eq-ink);
+  font-family: inherit;
+  font-size: 17px;
+  line-height: 1.45;
+}
+.nq-words::placeholder { color: var(--eq-ink-muted); }
+.nq-words:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 1px; }
+
+.nq-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+/* A detail: its value, and a chevron. Dashed until it says something. */
+.nq-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 40px;
+  padding: 0 0.75rem;
+  border-radius: 10px;
+  border: 1px dashed var(--eq-border-strong);
+  background: transparent;
+  color: var(--eq-ink-muted);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.nq-chip--set {
+  border-style: solid;
+  border-color: var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  color: var(--eq-ink);
+}
+.nq-chip[aria-expanded="true"],
+.nq-chip[aria-pressed="true"] {
+  border-style: solid;
+  border-color: var(--eq-live);
+  color: var(--eq-live-text);
+  background: var(--eq-live-fill);
+}
+.nq-chip__chev { flex: none; opacity: 0.7; }
+.nq-chip[aria-expanded="true"] .nq-chip__chev { transform: rotate(180deg); }
+
+/* The open detail, under the row. */
+.nq-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border);
+  background: var(--eq-surface-2);
+}

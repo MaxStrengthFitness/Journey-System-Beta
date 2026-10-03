@@ -582,7 +582,7 @@ describe("NotesPage — empty, failed and large", () => {
     const host = await mount(propsFor(ALL, { fordWritable: false }));
     await click(buttonIn(host, "Write a note…"));
     const composer = host.querySelector('[data-testid="note-composer"]')!;
-    await click(buttonIn(composer, "FORD / Life"));
+    await click(composer.querySelector('button[aria-label="FORD / Life"]'));
     expect(buttonIn(composer, "Save to FORD")).toBeUndefined();
     expect(composer.textContent).toContain("Personal details are kept in FORD, which only the client’s home studio can read.");
   });
@@ -591,7 +591,7 @@ describe("NotesPage — empty, failed and large", () => {
     const host = await mount(propsFor(ALL, { fordWritable: false, fordReadable: true }));
     await click(buttonIn(host, "Write a note…"));
     const composer = host.querySelector('[data-testid="note-composer"]')!;
-    await click(buttonIn(composer, "FORD / Life"));
+    await click(composer.querySelector('button[aria-label="FORD / Life"]'));
     expect(buttonIn(composer, "Save to FORD")).toBeUndefined();
     expect(composer.textContent).toContain(
       "Personal details are kept in FORD. Only a trainer at the client’s home studio can add to it, so saving there isn’t offered here.",

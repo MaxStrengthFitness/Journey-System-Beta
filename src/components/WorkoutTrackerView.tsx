@@ -198,6 +198,7 @@ import {
 } from "../features/client-notes/note-catalog";
 import { NoteCategoryChips } from "../features/client-notes/NoteCategoryChips";
 import { painSkipNotes } from "../features/client-notes/pain-notes";
+import { suggestFiling } from "../features/client-notes/suggest";
 import {
   clearSessionDraft,
   hasDraftText,
@@ -2279,7 +2280,11 @@ export function WorkoutTrackerView({
     const d = snap.draft;
     // The same answer the composer writes (note-catalog's storedNoteOf), so a
     // draft filed on the way out is the note it would have been.
-    const stored = storedNoteOf(d?.category ?? null, d?.flavour ?? null, d?.bodyParts ?? null);
+    // Where the box said it would go: the trainer's pick, else what the words
+    // suggested ("Save as Health"), never FORD by suggestion (suggest.ts).
+    const suggestion = d?.category ? null : suggestFiling(body, { inSession: true });
+    const draftCategory = d?.category ?? (suggestion && suggestion.category !== "ford" ? suggestion.category : null);
+    const stored = storedNoteOf(draftCategory, d?.flavour ?? null, d?.bodyParts ?? null);
     await noteOrSay(
       createJournalEntry(
         snap.client.id,

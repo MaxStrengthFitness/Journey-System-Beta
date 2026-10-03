@@ -153,6 +153,11 @@ function typeInto(el: Element | null | undefined, value: string) {
 
 const buttonByText = (root: ParentNode, text: string) =>
   Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.trim().includes(text));
+/** A choice in the note box, by its full name (the pill shows its short one). */
+const choice = (root: ParentNode, label: string) =>
+  root.querySelector<HTMLButtonElement>(`[role="group"][aria-label="What kind of note?"] button[aria-label="${label}"]`);
+/** Open one of the note box's details (the quiet box, Oct 3 2026). */
+const detail = (root: ParentNode, id: string) => root.querySelector(`[data-testid="note-detail-${id}"]`);
 
 let seq = 0;
 function entry(over: Partial<JournalEntry>): JournalEntry {
@@ -340,8 +345,10 @@ describe("the Notes page mounts", () => {
 
   it("writes a note with the category chosen first", async () => {
     const { composer } = await mountComposer();
-    const chips = Array.from(composer.querySelectorAll(".nc-chips")[0].querySelectorAll("button"));
-    expect(chips.map((b) => b.textContent)).toEqual([
+    const chips = Array.from(composer.querySelector('[role="group"][aria-label="What kind of note?"]')!.querySelectorAll("button"));
+    // Short words, so six fit in two rows; the full name is the button's label.
+    expect(chips.map((b) => b.textContent)).toEqual(["Coaching", "Health", "Incident", "Retention", "FORD", "Preference"]);
+    expect(chips.map((b) => b.getAttribute("aria-label"))).toEqual([
       "Coaching & equipment",
       "Health",
       "Incident",
@@ -349,15 +356,20 @@ describe("the Notes page mounts", () => {
       "FORD / Life",
       "Preference",
     ]);
-    // Nothing pre-selected, and the record says what that means.
+    // Nothing pre-selected, and the box says how it works.
     expect(chips.every((b) => b.getAttribute("aria-pressed") === "false")).toBe(true);
-    expect(composer.textContent).toContain("Pick a category, or save and file it later.");
+    expect(composer.querySelector('[data-testid="note-file-hint"]')!.textContent).toContain("Pick where it goes, or just type");
     expect(buttonByText(composer, "Save — file later")).toBeTruthy();
+    // Quiet by default: no loudness, no window, no flavours, no body map on screen.
+    expect(composer.querySelector('[role="radiogroup"][aria-label="How loud? (optional)"]')).toBeNull();
+    expect(composer.querySelector('[data-testid="body-part-picker"]')).toBeNull();
 
-    await click(buttonByText(composer, "Health"));
+    await click(choice(composer, "Health"));
     // Health reaches the studio's leaders, and says so.
-    expect(composer.querySelector('[data-testid="note-for-leaders"]')!.textContent).toContain("Operations");
-    // Health starts as Heads up (the shared Loudness control), which reveals the mattering picker.
+    expect(composer.querySelector('[data-testid="note-file-hint"]')!.textContent).toContain("Leaders see it on Today.");
+    // Health starts as Heads up: the loudness chip says so, and opens the shared Loudness control.
+    expect(detail(composer, "loud")!.textContent).toContain("Heads up · next 4 sessions");
+    await click(detail(composer, "loud"));
     const loud = composer.querySelector('[role="radiogroup"][aria-label="How loud? (optional)"]')!;
     expect(Array.from(loud.querySelectorAll("button")).map((b) => b.textContent)).toEqual(["Note", "Heads up", "Critical"]);
     expect(loud.querySelector('[aria-checked="true"]')!.textContent).toBe("Heads up");
@@ -367,7 +379,11 @@ describe("the Notes page mounts", () => {
     expect(when.querySelector('[aria-pressed="true"]')!.textContent).toBe("Always");
     expect(composer.querySelector('input[aria-label="Starts mattering on"]')).toBeTruthy();
     await typeInto(composer.querySelector("textarea"), "Sore right shoulder since Tuesday");
-    // The optional second tap and the body map, in AJ's fixed order.
+    // The words already said Injury and the right shoulder: the chips say so.
+    expect(detail(composer, "kind")!.textContent).toContain("Injury");
+    expect(detail(composer, "body")!.textContent).toContain("Right shoulder");
+    // The optional second tap and the body map, in AJ's fixed order, a tap away.
+    await click(detail(composer, "kind"));
     const kinds = composer.querySelector('[role="group"][aria-label="What kind of health note"]')!;
     expect(Array.from(kinds.querySelectorAll("button")).map((b) => b.textContent)).toEqual([
       "Injury or pain",
@@ -376,7 +392,8 @@ describe("the Notes page mounts", () => {
       "Diagnosis",
       "Care outside the studio",
     ]);
-    await click(buttonByText(kinds, "Injury or pain"));
+    expect(kinds.querySelector('[aria-pressed="true"]')!.textContent).toBe("Injury or pain");
+    await click(detail(composer, "body"));
     const parts = composer.querySelector('[role="group"][aria-label="Where on the body"]')!;
     expect(Array.from(parts.querySelectorAll("button")).map((b) => b.textContent)).toEqual([
       "Neck",
@@ -393,9 +410,10 @@ describe("the Notes page mounts", () => {
       "Wrist",
       "Hand",
     ]);
-    await click(buttonByText(parts, "Shoulder"));
-    await click(buttonByText(composer.querySelector('[role="group"][aria-label="Which shoulder"]')!, "Right"));
-    await click(buttonByText(composer, "Save health"));
+    // The words' own part is already picked, with its side.
+    expect(parts.querySelector('[aria-pressed="true"]')!.textContent).toBe("Shoulder");
+    expect(composer.querySelector('[role="group"][aria-label="Which shoulder"] [aria-pressed="true"]')!.textContent).toBe("Right");
+    await click(buttonByText(composer, "Save as Health"));
 
     expect(writes).toHaveLength(1);
     expect(writes[0].path).toBe("journalEntries");
@@ -414,9 +432,28 @@ describe("the Notes page mounts", () => {
     expect(buttonByText(composer, "Save — file later")).toBeTruthy();
   });
 
+  it("suggests where a note goes from its words, says so on Save, and the trainer's pick always wins (Oct 3 2026)", async () => {
+    const { composer } = await mountComposer();
+    await typeInto(composer.querySelector("textarea"), "Started Ozempic last month");
+    // Marked, not chosen; named on the button; why, in one line.
+    expect(choice(composer, "Health")!.getAttribute("data-suggested")).toBe("true");
+    expect(choice(composer, "Health")!.getAttribute("aria-pressed")).toBe("false");
+    expect(composer.querySelector('[data-testid="note-file-hint"]')!.textContent).toContain("Suggested from “ozempic”: Health · Medication");
+    expect(detail(composer, "kind")!.textContent).toContain("Medication");
+    // A pick replaces the suggestion; un-picking brings it back.
+    await click(choice(composer, "Preference"));
+    expect(buttonByText(composer, "Save as Preference")).toBeTruthy();
+    expect(composer.querySelector('[data-suggested="true"]')).toBeNull();
+    await click(choice(composer, "Preference"));
+    await click(buttonByText(composer, "Save as Health"));
+    expect(writes[0].data).toMatchObject({ kind: "injury", category: "Medication", importance: "elevated" });
+  });
+
   it("saves an untagged note as general — capture now, file later", async () => {
     const { composer } = await mountComposer();
-    await typeInto(composer.querySelector("textarea"), "Said her hip felt odd on the way in");
+    // Words that say nothing about where it goes: no suggestion, file later.
+    await typeInto(composer.querySelector("textarea"), "Great energy today, chatting the whole time");
+    expect(composer.querySelector('[data-suggested="true"]')).toBeNull();
     // No "Matters until" while it is a plain Note.
     expect(composer.querySelector('input[aria-label="Matters until"]')).toBeNull();
     await click(buttonByText(composer, "Save — file later"));
@@ -427,15 +464,16 @@ describe("the Notes page mounts", () => {
       importance: "standard",
       machineId: null,
       effectiveUntil: null,
-      body: "Said her hip felt odd on the way in",
+      body: "Great energy today, chatting the whole time",
     });
     expect(isUnfiled({ kind: "general", isLegacy: undefined })).toBe(true);
   });
 
   it("offers the mattering picker for any Heads up, of any category, and writes a range's end as end of day", async () => {
     const { composer } = await mountComposer();
-    await click(buttonByText(composer, "Preference"));
+    await click(choice(composer, "Preference"));
     await typeInto(composer.querySelector("textarea"), "On a trip — no sessions");
+    await click(detail(composer, "loud"));
     // A plain note has no picker — only the offer to pin it to a date.
     expect(composer.querySelector('[role="group"][aria-label="When does this matter"]')).toBeNull();
     expect(buttonByText(composer, "Pin to a date (a birthday, an anniversary)")).toBeTruthy();
@@ -449,7 +487,8 @@ describe("the Notes page mounts", () => {
     expect(until).toBeTruthy();
     expect(composer.textContent).toContain("After the last day it stops showing on the briefing.");
     await typeInto(until, "2026-09-20");
-    await click(buttonByText(composer, "Save preference"));
+    expect(detail(composer, "loud")!.textContent).toContain("Heads up · until Sep 20");
+    await click(buttonByText(composer, "Save as Preference"));
 
     expect(writes[0].data).toMatchObject({ kind: "preference", importance: "elevated", repeat: null, effectiveFrom: null });
     const stored = writes[0].data.effectiveUntil.toDate() as Date;
@@ -458,8 +497,9 @@ describe("the Notes page mounts", () => {
 
   it("pins a plain note to one day, every year — a birthday", async () => {
     const { composer } = await mountComposer();
-    await click(buttonByText(composer, "Preference"));
+    await click(choice(composer, "Preference"));
     await typeInto(composer.querySelector("textarea"), "Birthday — brings the good coffee");
+    await click(detail(composer, "loud"));
     await click(buttonByText(composer, "Pin to a date (a birthday, an anniversary)"));
     const on = composer.querySelector('input[aria-label="Only matters on"]');
     expect(on).toBeTruthy();
@@ -467,7 +507,7 @@ describe("the Notes page mounts", () => {
     const every = composer.querySelector('input[type="checkbox"]') as HTMLInputElement;
     every.click();
     await new Promise((r) => setTimeout(r, 0));
-    await click(buttonByText(composer, "Save preference"));
+    await click(buttonByText(composer, "Save as Preference"));
 
     expect(writes[0].data).toMatchObject({ kind: "preference", importance: "standard", repeat: "yearly" });
     const from = writes[0].data.effectiveFrom.toDate() as Date;
@@ -478,40 +518,44 @@ describe("the Notes page mounts", () => {
 
   it("starts Health, Incident and Retention at Heads up, and keeps the trainer's loudness once touched", async () => {
     const { composer } = await mountComposer();
-    await click(buttonByText(composer, "Incident"));
-    const loud = composer.querySelector('[role="radiogroup"][aria-label="How loud? (optional)"]')!;
+    await click(choice(composer, "Incident"));
     // Since Oct 3 2026 an incident starts at Heads up: it runs from a lost phone to a fall.
-    expect(loud.querySelector('[aria-checked="true"]')!.textContent).toBe("Heads up");
-    await click(buttonByText(composer, "Retention"));
+    expect(detail(composer, "loud")!.textContent).toBe("Heads up · next 4 sessions");
+    await click(choice(composer, "Retention"));
+    expect(detail(composer, "loud")!.textContent).toBe("Heads up · next 4 sessions");
+    await click(detail(composer, "loud"));
+    const loud = composer.querySelector('[role="radiogroup"][aria-label="How loud? (optional)"]')!;
     expect(loud.querySelector('[aria-checked="true"]')!.textContent).toBe("Heads up");
     await click(buttonByText(loud, "Note"));
-    await click(buttonByText(composer, "Health"));
-    expect(loud.querySelector('[aria-checked="true"]')!.textContent).toBe("Note");
+    await click(choice(composer, "Health"));
+    expect(detail(composer, "loud")!.textContent).toBe("Note");
   });
 
   it("files a cue with its P, and set-up as an equipment note", async () => {
     const { composer } = await mountComposer();
-    await click(buttonByText(composer, "Coaching & equipment"));
+    await click(choice(composer, "Coaching & equipment"));
     await typeInto(composer.querySelector("textarea"), "Cue the exhale");
+    await click(detail(composer, "kind"));
     await click(buttonByText(composer.querySelector('[aria-label="Which P, or set-up"]')!, "Pace"));
     // Coaching & equipment never asks where on the body.
-    expect(composer.querySelector('[data-testid="body-part-picker"]')).toBeNull();
-    await click(buttonByText(composer, "Save coaching & equipment"));
+    expect(detail(composer, "body")).toBeNull();
+    await click(buttonByText(composer, "Save as Coaching"));
     expect(writes[0].data).toMatchObject({ kind: "coaching", category: "Pace", importance: "standard" });
     expect(writes[0].data.bodyParts).toBeUndefined();
 
-    await click(buttonByText(composer, "Coaching & equipment"));
+    await click(choice(composer, "Coaching & equipment"));
     await typeInto(composer.querySelector("textarea"), "Extra pad behind the back");
+    await click(detail(composer, "kind"));
     await click(buttonByText(composer.querySelector('[aria-label="Which P, or set-up"]')!, "Set-up & equipment"));
-    await click(buttonByText(composer, "Save coaching & equipment"));
+    await click(buttonByText(composer, "Save as Coaching"));
     expect(writes[1].data).toMatchObject({ kind: "equipment", category: null });
   });
 
   it("writes a retention note for the whole team", async () => {
     const { composer } = await mountComposer();
-    await click(buttonByText(composer, "Retention"));
+    await click(choice(composer, "Retention"));
     await typeInto(composer.querySelector("textarea"), "Not sure about renewing in May");
-    await click(buttonByText(composer, "Save retention"));
+    await click(buttonByText(composer, "Save as Retention"));
     expect(writes[0].data).toMatchObject({ kind: "retention", category: null, importance: "elevated" });
   });
 
@@ -521,7 +565,10 @@ describe("the Notes page mounts", () => {
     // Typed first, as a note, then the trainer realises it is about her life.
     const box = composer.querySelector("textarea") as HTMLTextAreaElement;
     await typeInto(box, "Grandson graduates in May");
-    await click(buttonByText(composer, "FORD / Life"));
+    // The words sound like her life: FORD is marked, never filed by itself.
+    expect(choice(composer, "FORD / Life")!.getAttribute("data-suggested")).toBe("true");
+    expect(buttonByText(composer, "Save — file later")).toBeTruthy();
+    await click(choice(composer, "FORD / Life"));
 
     // The SAME box, still holding the words; no second capture component.
     expect(composer.querySelector("textarea")).toBe(box);
@@ -555,18 +602,18 @@ describe("the Notes page mounts", () => {
   it("goes back to a note with the words intact, files under a letter, and refuses more than FORD holds", async () => {
     const { composer } = await mountComposer();
     const box = composer.querySelector("textarea") as HTMLTextAreaElement;
-    await click(buttonByText(composer, "FORD / Life"));
+    await click(choice(composer, "FORD / Life"));
     await typeInto(box, "x".repeat(2001));
     expect(composer.textContent).toContain("FORD details hold up to 2,000 characters — this one is 2,001.");
     expect((buttonByText(composer, "Save to FORD") as HTMLButtonElement).disabled).toBe(true);
 
     // A second tap is a note again, words and all — a note holds 5,000.
-    await click(buttonByText(composer, "FORD / Life"));
+    await click(choice(composer, "FORD / Life"));
     expect(composer.getAttribute("data-mode")).toBe("note");
     expect(box.value).toHaveLength(2001);
-    expect(composer.querySelector('[role="radiogroup"][aria-label="How loud? (optional)"]')).not.toBeNull();
+    expect(detail(composer, "loud")).not.toBeNull();
 
-    await click(buttonByText(composer, "FORD / Life"));
+    await click(choice(composer, "FORD / Life"));
     await typeInto(box, "Plays pickleball Tuesdays");
     await click(buttonByText(composer.querySelector('[aria-label="File under (optional)"]')!, "Recreation"));
     await click(buttonByText(composer, "Save to FORD"));
@@ -581,7 +628,7 @@ describe("the Notes page mounts", () => {
       const { host, composer } = await mountComposer();
       const box = composer.querySelector("textarea") as HTMLTextAreaElement;
       await typeInto(box, "Grandson graduates in May");
-      await click(buttonByText(composer, "FORD / Life"));
+      await click(choice(composer, "FORD / Life"));
       refuse.nextAdd = true;
       await click(buttonByText(composer, "Save to FORD"));
       expect(writes).toHaveLength(0);
@@ -604,7 +651,7 @@ describe("the Notes page mounts", () => {
     const olderRecord = { id: "c1", studioId: "solon", firstName: "Judy", lastName: "Client" } as unknown as Client;
     const { composer } = await mountComposer({ who: olderRecord });
     await typeInto(composer.querySelector("textarea"), "Walks the dog every morning");
-    await click(buttonByText(composer, "FORD / Life"));
+    await click(choice(composer, "FORD / Life"));
     await click(buttonByText(composer, "Save to FORD"));
     expect(writes.map((w) => w.path)).toEqual(["clients/c1/ford"]);
     expect(writes[0].data).toMatchObject({ clientId: "c1", studioId: "solon" });
@@ -620,7 +667,7 @@ describe("the quick note's FORD hand-off", () => {
     // The dialog renders in a portal on document.body.
     const composer = document.body.querySelector('[data-testid="note-composer"]')!;
     expect(composer).toBeTruthy();
-    await click(buttonByText(composer, "FORD / Life"));
+    await click(choice(composer, "FORD / Life"));
     // In place, as on the Notes page: the note box is the capture.
     expect(composer.querySelector(".ford-capture")).toBeNull();
     await typeInto(composer.querySelector("textarea"), "Daughter starts college in the fall");
@@ -636,12 +683,12 @@ describe("the quick note's FORD hand-off", () => {
     const visitor = { ...trainer, primaryHomeStudioId: "strongsville" };
     await mount(<QuickNoteDialog open onOpenChange={() => {}} client={client} machines={[]} authTrainer={visitor} />);
     const composer = document.body.querySelector('[data-testid="note-composer"]')!;
-    await click(buttonByText(composer, "FORD / Life"));
+    await click(choice(composer, "FORD / Life"));
     expect(buttonByText(composer, "Save to FORD")).toBeUndefined();
     // The database refuses them FORD altogether, so that is what it says.
     expect(composer.textContent).toContain("Personal details are kept in FORD, which only the client’s home studio can read.");
     // Their note still saves: notes are not FORD.
-    await click(buttonByText(composer, "FORD / Life"));
+    await click(choice(composer, "FORD / Life"));
     await typeInto(composer.querySelector("textarea"), "Asked about the Saturday times");
     await click(buttonByText(composer, "Save — file later"));
     expect(writes.map((w) => w.path)).toEqual(["journalEntries"]);
@@ -653,7 +700,7 @@ describe("the quick note's FORD hand-off", () => {
     const admin = { ...trainer, role: "Admin", primaryHomeStudioId: "strongsville" };
     await mount(<QuickNoteDialog open onOpenChange={() => {}} client={client} machines={[]} authTrainer={admin} />);
     const composer = document.body.querySelector('[data-testid="note-composer"]')!;
-    await click(buttonByText(composer, "FORD / Life"));
+    await click(choice(composer, "FORD / Life"));
     expect(buttonByText(composer, "Save to FORD")).toBeUndefined();
     // They may READ FORD, so the hand-off says adding isn't offered — not
     // the cross-train sentence, which would be false for them.
@@ -674,7 +721,8 @@ describe("the quick note's FORD hand-off", () => {
       const box = composer.querySelector("textarea") as HTMLTextAreaElement;
       await typeInto(box, "Mentioned her knee on the stairs");
       refuse.nextAdd = true;
-      await click(buttonByText(composer, "Save — file later"));
+      // A knee is about her body: the box suggests Health, and says so on the button.
+      await click(buttonByText(composer, "Save as Health"));
       expect(writes).toHaveLength(0);
       expect(box.value).toBe("Mentioned her knee on the stairs");
       expect(composer.querySelector('[role="alert"]')?.textContent).toContain("Not saved — still here");
@@ -791,10 +839,10 @@ describe("the Active Session notes sheet mounts", () => {
     );
     const composer = host.querySelector('[data-testid="note-composer"]')!;
     expect(composer).toBeTruthy();
-    expect(buttonByText(composer, "Health")).toBeTruthy();
+    expect(choice(composer, "Health")).toBeTruthy();
     expect(buttonByText(composer, "Admin")).toBeUndefined();
 
-    await click(buttonByText(composer, "FORD / Life"));
+    await click(choice(composer, "FORD / Life"));
     expect(host.querySelector('[data-testid="note-composer"]')).toBeNull();
     expect(host.querySelector(".ford-capture")).toBeTruthy();
     expect(host.textContent).toContain("Remember this");
@@ -862,17 +910,25 @@ describe("the Active Session notes sheet mounts", () => {
       />,
     );
     const composer = host.querySelector('[data-testid="note-composer"]')!;
-    expect(composer.querySelector(".rt--compact")).toBeTruthy();
-    expect(composer.textContent).toContain("Pick one so it reaches the right people. Or save it now and file it at the end.");
+    expect(composer.textContent).toContain("Untagged notes come back at the end.");
     expect(buttonByText(composer, "About Leg Press")).toBeTruthy();
+    await click(detail(composer, "loud"));
+    expect(composer.querySelector(".rt--compact")).toBeTruthy();
+    await click(detail(composer, "loud"));
+    // A seat in a session is set-up: suggested from the words, filed about the machine on screen.
     await typeInto(composer.querySelector("textarea"), "Seat one notch higher next time");
-    await click(buttonByText(composer, "Save — file later"));
+    expect(composer.querySelector('[data-testid="note-file-hint"]')!.textContent).toContain("Suggested from “seat”: Coaching · Set-up");
+    await click(buttonByText(composer, "Save as Coaching"));
     expect(writes[0].data).toMatchObject({
-      kind: "general",
+      kind: "equipment",
       category: null,
       machineId: "m1",
       origin: "in_session",
       sessionId: "sess1",
     });
+    // Words that say nothing about where it goes still save, to file later, about the machine.
+    await typeInto(composer.querySelector("textarea"), "Great energy today");
+    await click(buttonByText(composer, "Save — file later"));
+    expect(writes[1].data).toMatchObject({ kind: "general", category: null, machineId: "m1" });
   });
 });
