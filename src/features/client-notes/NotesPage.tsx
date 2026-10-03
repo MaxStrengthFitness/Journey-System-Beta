@@ -288,7 +288,8 @@ export function NotesPage({
    * door into one thread (the critical line, the Overview) asks the catalog,
    * which goes back to every note when the question leaves that thread out. */
   const [askId, setAskId] = useState<AskId>(initialAsk);
-  const said = pronouns ?? pronounsFromPossessive(possessive);
+  // Stable across renders, so the questions are worked out only when the notes change.
+  const said = useMemo(() => pronouns ?? pronounsFromPossessive(possessive), [pronouns, possessive]);
   const criticalIdSet = useMemo(() => new Set(journal.criticalEntries.map((e) => e.id)), [journal.criticalEntries]);
   const headsUpIdSet = useMemo(
     () => new Set((journal.headsUpEntries ?? []).map((e) => e.id)),
