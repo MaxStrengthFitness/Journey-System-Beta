@@ -1,45 +1,52 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import {
-  Building2,
-  ChevronLeft,
-  ChevronDown,
-  MapPin,
-  CheckCircle2,
-  Lock,
-  ArrowRight,
-  Loader2,
-  Pin,
-  PinOff,
-  Users,
-  UserCog,
-  Shield,
-  Home,
-  FlaskConical,
-} from "lucide-react";
-import { Studio, FranchiseNetwork, Trainer } from "../types";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { MaxStrengthLogo } from "./MaxStrengthLogo";
+/**
+ * THE GREETING AND THE STUDIO PICKER: the last two rooms of the front door
+ * (Oct 3 2026, direction A; features/front-door/README.md).
+ *
+ * After a sign-in, someone with a studio to go to (the one this iPad is set
+ * to, else their home studio, else their only one) is GREETED rather than
+ * asked: their name, today at that studio (your next client, the studio's
+ * sessions, the open team jobs: useTodayGlance), and one orange button. Other
+ * studios are small buttons underneath. AJ, Oct 3 2026: one studio gets "a
+ * greeting"; leaders go "through the same as trainers because honestly they
+ * will probably want to look at the daily schedule", so Operations is a link
+ * at the foot, not a fork in the road.
+ *
+ * iPads change hands at the start of the day, so whose iPad it is sits at the
+ * top of every screen here, with the way out ("Not you? Sign out").
+ *
+ * The PICKER ("Where are you today?") is for someone with no studio to greet
+ * them with, for "All my studios", and for Change studio from inside the app:
+ * the first studio is a full card with today, the rest are rows with their
+ * counts, then Demo Mode, then the studios you don't work at (ask for access).
+ *
+ * Going in, the M and the X part and the A opens like a door (under a
+ * second; at once when the iPad asks for less motion).
+ */
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { addDoc, collection, getDocs, query, serverTimestamp, where } from "firebase/firestore";
 import { auth, db } from "../firebase";
-import {
-  collection,
-  addDoc,
-  serverTimestamp,
-  query,
-  where,
-  getDocs,
-} from "firebase/firestore";
+import { Studio, FranchiseNetwork, Trainer } from "../types";
 import { useToast } from "../contexts/ToastContext";
-import { isStudioLeader } from "../lib/permissions";
 import { getStudioClientCount } from "../lib/studio-roster-count";
-import { getDefaultStudioId, setDefaultStudioId } from "../lib/default-studio";
+import { getDefaultStudioId, rememberDeviceStudio, setDefaultStudioId } from "../lib/default-studio";
 import { releaseUiScrollLock } from "../lib/scroll-lock";
+import { formatStudioDate, studioHour } from "../lib/studio-time";
 import { canEnterDemo, splitOutDemo } from "../features/demo-mode/access";
 import { isDemoStudioId } from "../features/demo-mode/is-demo";
 import { SetUpDemoCard } from "../features/demo-mode/SetUpDemoCard";
 import { DEMO_STUDIO_TAGLINE } from "../features/demo-mode/constants";
 import { studioAccessRequest } from "../features/admin/staff/studio-access-request";
+import { mayOpenOperations } from "../features/admin/operations-access";
+import {
+  ArrowIcon,
+  FrontDoorPane,
+  Tiles,
+  WhoChip,
+  greetingFor,
+  prefersReducedMotion,
+} from "../features/front-door/kit";
+import { glanceLines } from "../features/front-door/today-glance";
+import { useTodayGlance } from "../features/front-door/useTodayGlance";
 
 interface StudioSelectionViewProps {
   studios: Studio[];
@@ -48,250 +55,36 @@ interface StudioSelectionViewProps {
   authTrainer?: Trainer;
   onSelectTrainer: (trainer: Trainer, studioId: string) => void;
   onGoToAdmin?: () => void;
+  /** Signs out when no studio is open yet; otherwise back to the studio. */
   onBack: () => void;
+  /** Signs the person out (the "Not you?" chip), whichever way they came. */
+  onSignOut?: () => void;
+  /** Straight after a sign-in: greet them with their studio when there is one. */
+  greet?: boolean;
+  /** The studio already open, when this is Change studio from inside the app. */
+  currentStudioId?: string | null;
 }
 
 /**
  * Ceiling on how many studios get a roster count on this screen.
  *
- * hasAccessToStudio returns true for EVERY studio when the signed-in user is an
- * Admin, Founder or Overseer -- so on a large franchise "Your studios" is the
- * whole estate, and an uncapped Promise.all would fire one aggregation query
- * per studio on the login screen. The cache's dedupe and TTL bound how OFTEN
- * counts are fetched; only this bounds how MANY at once. Cards past the cap
- * show "-" for clients, which the card already renders for "not known".
- *
- * The first N are the ones a trainer actually looks at: `mine` is sorted home
- * studio, then pinned, then alphabetically, before this slice is taken.
+ * Administrators can enter EVERY studio, so on a large franchise "your
+ * studios" is the whole estate, and an uncapped Promise.all would fire one
+ * aggregation per studio here. The first N are the ones a trainer looks at:
+ * home first, then this iPad's, then by name. Rows past the cap say the team
+ * size alone.
  */
 const MAX_COUNTED_STUDIOS = 12;
+/** How many other studios the greeting offers as buttons before "All my studios". */
+const GREETING_OTHERS = 4;
+/** How long the door takes to open, in ms. */
+const DOOR_MS = 650;
 
-type StudioStats = {
-  /** Active clients whose home studio this is. Null = not known yet. */
-  clients: number | null;
-  /** Trainers who can work here. Derived locally, costs nothing. */
-  team: number;
-};
-
-/**
- * One studio. Extracted because the previous version rendered this markup
- * twice — once for networked studios and once for independents — and the two
- * copies had already started to drift.
- */
-function StudioCard({
-  studio,
-  networkName,
-  hasAccess,
-  isHome,
-  isPinned,
-  isRequested,
-  isRequesting,
-  stats,
-  onEnter,
-  onTogglePin,
-  onRequestAccess,
-  isDemo = false,
-}: {
-  studio: Studio;
-  networkName?: string;
-  hasAccess: boolean;
-  /**
-   * Demo Mode. Same card, four differences — the icon, no pin (nobody should
-   * land in a practice studio every morning by accident), a sentence where
-   * the roster counts go, and its own wording on the button.
-   */
-  isDemo?: boolean;
-  isHome: boolean;
-  isPinned: boolean;
-  isRequested: boolean;
-  isRequesting: boolean;
-  stats?: StudioStats;
-  onEnter: () => void;
-  onTogglePin: () => void;
-  onRequestAccess: () => void;
-}) {
-  return (
-    <div
-      className={cn(
-        "bg-bg-dark-2 border rounded-[28px] p-6 shadow-xl flex flex-col relative overflow-hidden transition-colors",
-        /* Dashed, so it reads as "not one of your locations" before anyone
-           has read a word of it. */
-        isDemo
-          ? "border-dashed border-ink-d3/50 hover:border-ink-d3"
-          : hasAccess
-            ? "border-div-d hover:border-action/50"
-            : "border-div-d/70",
-      )}
-    >
-      <div
-        className={cn(
-          "absolute top-0 left-0 w-full h-1",
-          isDemo
-            ? "bg-linear-to-r from-ink-d3/50 to-transparent"
-            : isPinned
-              ? "bg-action"
-              : hasAccess
-                ? "bg-linear-to-r from-action/40 to-transparent"
-                : "bg-linear-to-r from-ink-d3/30 to-transparent",
-        )}
-      />
-
-      <div className="flex items-start justify-between mb-4 gap-2">
-        <span
-          className={cn(
-            "w-8 h-8 rounded-lg flex items-center justify-center border shrink-0",
-            hasAccess
-              ? "bg-bg-dark-3 border-div-d text-ink-d3"
-              : "bg-bg-dark-3 border-div-d text-ink-d3",
-          )}
-        >
-          {isDemo ? (
-            <FlaskConical className="w-4 h-4" />
-          ) : hasAccess ? (
-            <Building2 className="w-4 h-4" />
-          ) : (
-            <Lock className="w-3.5 h-3.5" />
-          )}
-        </span>
-
-        <div className="flex items-center gap-1.5 flex-wrap justify-end">
-          {isHome && (
-            <span className="text-[10px] font-black uppercase tracking-widest bg-action/10 text-action px-2 py-0.5 rounded-full border border-action/20 flex items-center gap-1">
-              <Home className="w-2.5 h-2.5" /> Home
-            </span>
-          )}
-          {/* Pinning is only meaningful for a studio you can actually enter —
-              and never for Demo Mode, which nobody should open into by
-              default on a Monday morning. */}
-          {hasAccess && !isDemo && (
-            <button
-              type="button"
-              onClick={onTogglePin}
-              aria-pressed={isPinned}
-              title={
-                isPinned
-                  ? "Entered automatically at login on this device. Click to stop."
-                  : "Enter this studio automatically at login on this device."
-              }
-              className={cn(
-                "h-7 px-2 rounded-full border flex items-center gap-1 text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer",
-                isPinned
-                  ? "bg-action border-action text-white hover:bg-action/85"
-                  : "bg-transparent border-div-d text-ink-d3 hover:text-ink-d1 hover:border-ink-d3",
-              )}
-            >
-              {isPinned ? (
-                <>
-                  <Pin className="w-3 h-3" /> Default
-                </>
-              ) : (
-                <>
-                  <PinOff className="w-3 h-3" /> Set default
-                </>
-              )}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Full studio names, never truncated — a trainer has to be able to tell
-          two locations apart at a glance. */}
-      <h4 className="font-extrabold uppercase italic tracking-tight text-lg text-ink-d1 mb-1 leading-tight break-words">
-        {studio.name}
-      </h4>
-      <div className="flex items-start gap-1 text-ink-d3 mb-4">
-        <MapPin className="w-3 h-3 shrink-0 mt-0.5" />
-        <span className="text-[11px] font-bold uppercase tracking-wider break-words">
-          {studio.address || (hasAccess ? "Active territory" : "Location")}
-        </span>
-      </div>
-      {networkName && (
-        <p className="text-[10px] font-bold uppercase tracking-widest text-ink-d3 -mt-2 mb-4">
-          {networkName}
-        </p>
-      )}
-
-      {/* What is actually in there, in a sentence. Counts would be true but
-          beside the point: nobody enters Demo Mode to find out how big it is. */}
-      {isDemo && (
-        <p className="text-[11px] font-bold uppercase tracking-wider text-ink-d3 leading-relaxed mb-5 mt-auto">
-          Six clients, three trainers, and a year of sessions — none of them
-          real. Practise anything. Nothing here touches a live record.
-        </p>
-      )}
-
-      {/* Quick stats. Only for studios you can enter — a locked card showing
-          another location's roster size would be leaking it. */}
-      {hasAccess && !isDemo && (
-        <div className="grid grid-cols-2 gap-2 mb-5 mt-auto">
-          <div className="bg-bg-dark-3 border border-div-d rounded-2xl px-3 py-2.5">
-            <div className="flex items-center gap-1.5 text-ink-d3 mb-1">
-              <Users className="w-3 h-3" />
-              <span className="text-[9px] font-black uppercase tracking-widest">
-                Active clients
-              </span>
-            </div>
-            <p className="text-xl font-black text-ink-d1 leading-none tabular-nums">
-              {stats?.clients === null || stats?.clients === undefined ? (
-                <span className="text-ink-d3 text-sm">—</span>
-              ) : (
-                stats.clients
-              )}
-            </p>
-          </div>
-          <div className="bg-bg-dark-3 border border-div-d rounded-2xl px-3 py-2.5">
-            <div className="flex items-center gap-1.5 text-ink-d3 mb-1">
-              <UserCog className="w-3 h-3" />
-              <span className="text-[9px] font-black uppercase tracking-widest">
-                Team
-              </span>
-            </div>
-            <p className="text-xl font-black text-ink-d1 leading-none tabular-nums">
-              {stats?.team ?? 0}
-            </p>
-          </div>
-        </div>
-      )}
-
-      <div className={cn("border-t border-div-d pt-4", !hasAccess && "mt-auto")}>
-        {hasAccess ? (
-          <Button
-            onClick={onEnter}
-            className={cn(
-              "w-full text-white font-black uppercase tracking-widest text-xs h-11 rounded-xl flex items-center justify-center gap-2 cursor-pointer",
-              isDemo
-                ? "bg-bg-dark-3 hover:bg-muted text-ink-d1 border border-div-d"
-                : "bg-cta-strong hover:bg-[#a02400]",
-            )}
-          >
-            {isDemo ? "Enter Demo Mode" : "Enter Studio"}{" "}
-            <ArrowRight className="w-4 h-4" />
-          </Button>
-        ) : isRequested ? (
-          <Button
-            disabled
-            className="w-full bg-muted text-ink-d3 font-black uppercase tracking-widest text-xs h-11 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
-          >
-            <CheckCircle2 className="w-4 h-4" /> Access Requested
-          </Button>
-        ) : (
-          <Button
-            onClick={onRequestAccess}
-            disabled={isRequesting}
-            className="w-full bg-bg-dark-3 hover:bg-muted text-ink-d2 font-bold uppercase tracking-widest text-[11px] h-11 rounded-xl flex items-center justify-center gap-2 border border-div-d cursor-pointer"
-          >
-            {isRequesting ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Lock className="w-3 h-3" />
-            )}
-            Request Access
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
+const PinIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z" />
+  </svg>
+);
 
 export function StudioSelectionView({
   studios,
@@ -301,55 +94,38 @@ export function StudioSelectionView({
   onSelectTrainer,
   onGoToAdmin,
   onBack,
+  onSignOut,
+  greet = false,
+  currentStudioId = null,
 }: StudioSelectionViewProps) {
   const { success: toastSuccess, error: toastError } = useToast();
-  const [requestingStudioId, setRequestingStudioId] = useState<string | null>(
-    null,
-  );
-  const [requestedStudios, setRequestedStudios] = useState<Set<string>>(
-    new Set(),
-  );
-  const [pinnedStudioId, setPinnedStudioId] = useState<string | null>(() =>
-    getDefaultStudioId(),
-  );
+  const [pinnedStudioId, setPinnedStudioId] = useState<string | null>(() => getDefaultStudioId());
+  const [showAll, setShowAll] = useState(false);
   const [showOthers, setShowOthers] = useState(false);
-  const [clientCounts, setClientCounts] = useState<Record<string, number | null>>(
-    {},
-  );
+  const [opening, setOpening] = useState<Studio | null>(null);
+  const [requestingStudioId, setRequestingStudioId] = useState<string | null>(null);
+  const [requestedStudios, setRequestedStudios] = useState<Set<string>>(new Set());
+  const [clientCounts, setClientCounts] = useState<Record<string, number | null>>({});
+  const doorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /*
    * This screen is reached from a Radix menu item, and AppContent answers that
-   * with an early return — so the menu can be unmounted while still open and
-   * leave `pointer-events: none` on <body>. That is invisible with a mouse and
-   * completely freezes an iPad, which is why "can't scroll the studio list"
-   * only ever reproduced on tablets.
-   *
-   * AppContent now closes the menu before navigating; this is the belt to that
-   * pair of braces, and it is idempotent, so it costs nothing when nothing is
-   * stuck. It runs on EVERY mount because the leak can come from any overlay
-   * that was open when the switch happened, not just the trainer menu.
+   * with an early return, so the menu can be unmounted while still open and
+   * leave `pointer-events: none` on <body>: invisible with a mouse, a frozen
+   * iPad. The belt to AppContent's braces; idempotent, so it costs nothing.
    */
   useEffect(() => {
     releaseUiScrollLock();
+    return () => {
+      if (doorTimer.current) clearTimeout(doorTimer.current);
+    };
   }, []);
-
-  /**
-   * Who sees "Go to Operations" here: the same people AppContent's menu
-   * offers it to. isStudioLeader already includes the owner and company
-   * tiers. A hard-coded e-mail that used to sit in this test — a bootstrap
-   * bypass from before roles existed — is gone (fix pile, Sep 2026).
-   */
-  const isAdminUser = isStudioLeader(authTrainer || null);
 
   const hasAccessToStudio = React.useCallback(
     (studioId: string) => {
       if (!authTrainer) return false;
-      /*
-       * Demo Mode is open to every signed-in trainer, and the answer is
-       * derived from the studio's id rather than from anything written on
-       * this trainer's record — so it cannot be granted, and cannot be lost.
-       * features/demo-mode/access.ts has the why.
-       */
+      // Demo Mode is open to every signed-in trainer, by the studio's id
+      // (features/demo-mode/access.ts).
       if (canEnterDemo(authTrainer) && isDemoStudioId(studioId)) return true;
       return (
         authTrainer.primaryHomeStudioId === studioId ||
@@ -366,136 +142,118 @@ export function StudioSelectionView({
   const { demo, mine, others } = useMemo(() => {
     const mine: Studio[] = [];
     const others: Studio[] = [];
-    /* Demo Mode gets a section of its own rather than a place in "Your
-       studios": a trainer looking for the building they are standing in
-       should never have to read past a practice studio to find it. */
     const { demo, rest } = splitOutDemo(studios);
-    rest.forEach((s) => {
-      (hasAccessToStudio(s.id || "") ? mine : others).push(s);
-    });
-    /* Home studio first, then pinned, then alphabetical — the order a trainer
-       scanning this screen would put them in themselves. */
-    mine.sort((a, b) => {
-      const rank = (s: Studio) =>
-        s.id === authTrainer?.primaryHomeStudioId
-          ? 0
-          : s.id === pinnedStudioId
-            ? 1
-            : 2;
-      return rank(a) - rank(b) || (a.name || "").localeCompare(b.name || "");
-    });
+    rest.forEach((s) => (hasAccessToStudio(s.id || "") ? mine : others).push(s));
+    // Home first, then this iPad's, then by name.
+    const rank = (s: Studio) => (s.id === authTrainer?.primaryHomeStudioId ? 0 : s.id === pinnedStudioId ? 1 : 2);
+    mine.sort((a, b) => rank(a) - rank(b) || (a.name || "").localeCompare(b.name || ""));
     others.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
     return { demo, mine, others };
   }, [studios, hasAccessToStudio, authTrainer?.primaryHomeStudioId, pinnedStudioId]);
 
-  /** Trainers per studio — from data already in memory, so it costs nothing. */
+  /** The studio the greeting greets you with: this iPad's, else home, else your only one. */
+  const greetStudio = useMemo(() => {
+    if (!greet || showAll) return null;
+    return (
+      mine.find((s) => s.id === pinnedStudioId) ??
+      mine.find((s) => s.id === authTrainer?.primaryHomeStudioId) ??
+      (mine.length === 1 ? mine[0] : null)
+    );
+  }, [greet, showAll, mine, pinnedStudioId, authTrainer?.primaryHomeStudioId]);
+
+  /** The one studio whose day is read: the greeted one, or the picker's first. */
+  const featured = greetStudio ?? (currentStudioId ? null : mine[0] ?? null);
+  const today = useTodayGlance(featured, authTrainer ?? null, trainers);
+
+  /** Trainers per studio, from data already in memory: costs nothing. */
   const teamSizes = useMemo(() => {
     const counts: Record<string, number> = {};
     trainers.forEach((t) => {
-      const ids = new Set(
-        [
-          t.primaryHomeStudioId,
-          ...(t.accessibleStudioIds || []),
-          ...(t.activeGuestStudioIds || []),
-        ].filter(Boolean) as string[],
+      new Set([t.primaryHomeStudioId, ...(t.accessibleStudioIds || []), ...(t.activeGuestStudioIds || [])].filter(Boolean) as string[]).forEach(
+        (id) => (counts[id] = (counts[id] || 0) + 1),
       );
-      ids.forEach((id) => {
-        counts[id] = (counts[id] || 0) + 1;
-      });
     });
     return counts;
   }, [trainers]);
 
   /*
-   * Roster sizes for the studios this trainer can enter — and only those.
-   * Keyed on the sorted id list rather than the array so a re-render with the
-   * same studios does not re-query (the Aug 30 lesson). Locked studios are
-   * deliberately not counted: nothing on this screen should read another
-   * location's roster before access is granted.
+   * Roster sizes for the studios this person can enter, only on the picker
+   * (the greeting doesn't show them), keyed on the sorted ids so a re-render
+   * costs no read. Studios you can't enter are never counted.
    */
-  const mineIdsKey = mine
-    .map((s) => s.id)
-    .filter(Boolean)
-    .slice(0, MAX_COUNTED_STUDIOS)
-    .sort()
-    .join(",");
-
+  const countIdsKey = greetStudio
+    ? ""
+    : mine
+        .map((s) => s.id)
+        .filter(Boolean)
+        .slice(0, MAX_COUNTED_STUDIOS)
+        .sort()
+        .join(",");
   useEffect(() => {
-    let cancelled = false;
-    const ids = mineIdsKey ? mineIdsKey.split(",") : [];
+    const ids = countIdsKey ? countIdsKey.split(",") : [];
     if (ids.length === 0) return;
-
-    (async () => {
-      const entries = await Promise.all(
-        ids.map(async (id) => [id, await getStudioClientCount(id)] as const),
-      );
+    let cancelled = false;
+    void Promise.all(ids.map(async (id) => [id, await getStudioClientCount(id)] as const)).then((entries) => {
       if (cancelled) return;
       setClientCounts((prev) => {
         const next = { ...prev };
-        entries.forEach(([id, count]) => {
-          next[id] = count;
-        });
+        entries.forEach(([id, count]) => (next[id] = count));
         return next;
       });
-    })();
-
+    });
     return () => {
       cancelled = true;
     };
-  }, [mineIdsKey]);
+  }, [countIdsKey]);
 
   // A request is keyed on the Auth uid, which on older accounts is not the
-  // trainer document id — the rules pin trainerId to it.
+  // trainer document id; the rules pin trainerId to it.
   const myUid = auth.currentUser?.uid ?? authTrainer?.authUid ?? authTrainer?.id ?? "";
 
-  // Which studios has this trainer already asked for?
+  // Which studios has this person already asked for? Only once they look.
   useEffect(() => {
-    if (!myUid) return;
+    if (!myUid || !showOthers) return;
     let cancelled = false;
-
-    const checkRequests = async () => {
-      try {
-        const q = query(
-          collection(db, "access_requests"),
-          where("trainerId", "==", myUid),
-          where("type", "==", "studio_access"),
-          where("status", "==", "Pending"),
-        );
-        const snap = await getDocs(q);
+    void getDocs(
+      query(
+        collection(db, "access_requests"),
+        where("trainerId", "==", myUid),
+        where("type", "==", "studio_access"),
+        where("status", "==", "Pending"),
+      ),
+    )
+      .then((snap) => {
         if (cancelled) return;
         const requested = new Set<string>();
         snap.forEach((d) => {
           if (d.data().studioId) requested.add(d.data().studioId);
         });
         setRequestedStudios(requested);
-      } catch (err) {
-        console.error("Error fetching access requests:", err);
-      }
-    };
-    checkRequests();
-
+      })
+      .catch((err) => console.error("Error fetching access requests:", err));
     return () => {
       cancelled = true;
     };
-  }, [myUid]);
+  }, [myUid, showOthers]);
 
-  const networkNameFor = React.useCallback(
-    (studio: Studio) => {
-      const parent =
-        networks.find((n) => n.studioIds.includes(studio.id || "")) ||
-        networks.find((n) => n.id === studio.networkId);
-      return parent?.name;
-    },
-    [networks],
-  );
+  const networkNameFor = (studio: Studio) =>
+    (networks.find((n) => n.studioIds.includes(studio.id || "")) || networks.find((n) => n.id === studio.networkId))?.name;
+
+  const enter = (studio: Studio) => {
+    if (!authTrainer || !studio.id || opening) return;
+    if (!isDemoStudioId(studio.id)) rememberDeviceStudio({ id: studio.id, name: studio.name || "" });
+    if (prefersReducedMotion()) {
+      onSelectTrainer(authTrainer, studio.id);
+      return;
+    }
+    setOpening(studio);
+    doorTimer.current = setTimeout(() => onSelectTrainer(authTrainer, studio.id!), DOOR_MS);
+  };
 
   const handleRequestAccess = async (studio: Studio) => {
     if (!authTrainer || !studio.id || !myUid) return;
     setRequestingStudioId(studio.id);
     try {
-      // Name, email and the Auth uid: the staff screens list the request by
-      // the first two, and the rules pin trainerId to the third
-      // (studio-access-request.ts).
       await addDoc(collection(db, "access_requests"), {
         ...studioAccessRequest({
           uid: myUid,
@@ -506,261 +264,334 @@ export function StudioSelectionView({
         createdAt: serverTimestamp(),
       });
       setRequestedStudios((prev) => new Set(prev).add(studio.id!));
-      toastSuccess(`Access request to ${studio.name} sent successfully.`);
+      toastSuccess(`Asked ${studio.name}'s leaders to let you in.`);
     } catch (err) {
       console.error("Failed to request access:", err);
-      toastError("Failed to send access request. Please try again.");
+      toastError("The request didn't send. Check the Wi-Fi and try again.");
     } finally {
       setRequestingStudioId(null);
     }
   };
 
-  const handleTogglePin = (studioId: string) => {
-    const next = pinnedStudioId === studioId ? null : studioId;
+  const togglePin = (studio: Studio) => {
+    if (!studio.id) return;
+    const next = pinnedStudioId === studio.id ? null : studio.id;
     setPinnedStudioId(next);
     setDefaultStudioId(next);
-    toastSuccess(
-      next
-        ? `${studios.find((s) => s.id === next)?.name || "This studio"} will open automatically on this device.`
-        : "Default studio cleared — you'll be asked each time.",
-    );
+    if (next) rememberDeviceStudio({ id: studio.id, name: studio.name || "" });
+    toastSuccess(next ? `This iPad will greet everyone with ${studio.name}.` : "This iPad has no studio of its own now.");
   };
 
-  const renderCard = (studio: Studio, hasAccess: boolean, isDemo = false) => (
-    <StudioCard
-      key={studio.id}
-      studio={studio}
-      networkName={isDemo ? undefined : networkNameFor(studio)}
-      hasAccess={hasAccess}
-      isDemo={isDemo}
-      isHome={studio.id === authTrainer?.primaryHomeStudioId}
-      isPinned={!!studio.id && studio.id === pinnedStudioId}
-      isRequested={requestedStudios.has(studio.id || "")}
-      isRequesting={requestingStudioId === studio.id}
-      stats={{
-        clients: clientCounts[studio.id || ""] ?? null,
-        team: teamSizes[studio.id || ""] || 0,
-      }}
-      onEnter={() => {
-        if (authTrainer && studio.id) onSelectTrainer(authTrainer, studio.id);
-      }}
-      onTogglePin={() => studio.id && handleTogglePin(studio.id)}
-      onRequestAccess={() => handleRequestAccess(studio)}
-    />
+  const mayOpenOps = Boolean(onGoToAdmin) && mayOpenOperations(authTrainer, null);
+  const name = (authTrainer?.fullName || "").trim();
+  const first = ((authTrainer as any)?.nickname || "").trim() || name.split(/\s+/)[0] || "there";
+  const whoChip = name ? <WhoChip name={name} photoUrl={(authTrainer as any)?.photoURL || (authTrainer as any)?.photoUrl} onSignOut={onSignOut ?? onBack} /> : null;
+  const current = currentStudioId ? studios.find((s) => s.id === currentStudioId) : null;
+
+  // ---- going in --------------------------------------------------------------
+  if (opening) {
+    return (
+      <FrontDoorPane label={`Opening ${opening.name}`}>
+        <main className="fd-page fd-page--center" style={{ overflow: "hidden" }} aria-busy="true">
+          <Tiles mode="open" />
+          <p className="fd-small fd-center" style={{ marginTop: 30 }} role="status">
+            Opening {opening.name}…
+          </p>
+        </main>
+      </FrontDoorPane>
+    );
+  }
+
+  const lines = glanceLines(today.glance, today.openJobs, featured?.timezone || undefined);
+  const todayList = (
+    <ul className={`fd-today${today.loading ? " fd-today--quiet" : ""}`} aria-live="polite">
+      {today.loading ? (
+        <li>
+          <span>Reading today at {featured?.name}…</span>
+        </li>
+      ) : lines.length === 0 ? (
+        <li>
+          <span>Journey couldn't read today here just now. The Hub will have it.</span>
+        </li>
+      ) : (
+        lines.map((l, i) => (
+          <li key={i} className={l.yours ? "is-yours" : undefined}>
+            <b>{l.figure}</b>
+            <span>{l.words}</span>
+          </li>
+        ))
+      )}
+    </ul>
   );
 
-  return (
-    /*
-     * Its own scroll container. index.css pins html/body to height:100% with
-     * overflow:hidden because the main app shell is a bounded 100dvh column
-     * that scrolls internally — but this screen returns EARLY, before that
-     * shell exists, so a `min-h-screen` page here simply grew past the viewport
-     * with nothing able to scroll it. That was the "can't scroll this page" bug.
-     *
-     * `touch-pane` (index.css) is what makes the pane behave under a FINGER:
-     * an explicit `touch-action: pan-y` so iPadOS commits to vertical panning
-     * instead of waiting to see whether the gesture becomes something else,
-     * momentum scrolling for older iPadOS, and a 100vh height that `dvh`
-     * upgrades where it is supported rather than depending on it.
-     */
-    <div className="touch-pane border-t-safe overflow-y-auto overscroll-contain bg-background text-ink-d1">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-5xl mx-auto p-6 md:p-12"
+  const operationsLink = mayOpenOps ? (
+    <button type="button" className="fd-link" onClick={onGoToAdmin}>
+      Open Operations instead
+    </button>
+  ) : null;
+
+  // ---- the greeting ------------------------------------------------------------
+  if (greetStudio) {
+    const tz = greetStudio.timezone || undefined;
+    const hour = studioHour(new Date(), tz) ?? new Date().getHours();
+    const otherMine = mine.filter((s) => s.id !== greetStudio.id);
+    const why =
+      greetStudio.id === pinnedStudioId
+        ? "This iPad's studio"
+        : greetStudio.id === authTrainer?.primaryHomeStudioId
+          ? "Your home studio"
+          : "Your studio";
+    return (
+      <FrontDoorPane label="Welcome">
+        <main className="fd-page">
+          <div className="fd-top">
+            <Tiles small />
+            {whoChip}
+          </div>
+          <div className="fd-rise fd-rise--1" style={{ marginTop: 44 }}>
+            <div className="fd-eyebrow">
+              {formatStudioDate(new Date(), { weekday: "long", month: "long", day: "numeric" }, tz)}
+            </div>
+            <h1 className="fd-display fd-display--xl" style={{ marginTop: 10 }}>
+              {greetingFor(hour)},
+              <br />
+              {first}.
+            </h1>
+          </div>
+
+          <section className="fd-card fd-rise fd-rise--2" style={{ marginTop: 30 }} aria-label={`Today at ${greetStudio.name}`}>
+            <div className="fd-eyebrow fd-eyebrow--action">{why}</div>
+            <h2 className="fd-display fd-display--m" style={{ marginTop: 6 }}>
+              {greetStudio.name}
+            </h2>
+            {todayList}
+            <button type="button" className="fd-btn fd-btn--primary" style={{ marginTop: 18 }} onClick={() => enter(greetStudio)}>
+              Start at {greetStudio.name} <ArrowIcon />
+            </button>
+          </section>
+
+          {otherMine.length > 0 && (
+            <div className="fd-rise fd-rise--3" style={{ marginTop: 22 }}>
+              <p className="fd-small" style={{ marginBottom: 8 }}>
+                Somewhere else today?
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                {otherMine.slice(0, GREETING_OTHERS).map((s) => (
+                  <button key={s.id} type="button" className="fd-chip" onClick={() => enter(s)}>
+                    {s.name}
+                  </button>
+                ))}
+                <button type="button" className="fd-link" onClick={() => setShowAll(true)}>
+                  All my studios
+                </button>
+              </div>
+            </div>
+          )}
+
+          <footer className="fd-foot fd-rise fd-rise--4">
+            {operationsLink}
+            {demo && (
+              <button type="button" className="fd-link" onClick={() => enter(demo)}>
+                Practise in Demo Mode
+              </button>
+            )}
+            {otherMine.length === 0 && (
+              <button type="button" className="fd-link" onClick={() => setShowAll(true)}>
+                All studios
+              </button>
+            )}
+          </footer>
+        </main>
+      </FrontDoorPane>
+    );
+  }
+
+  // ---- the picker ----------------------------------------------------------------
+  const countLine = (s: Studio) => {
+    const team = teamSizes[s.id || ""] || 0;
+    const clients = clientCounts[s.id || ""];
+    const teamWords = `${team} on the team`;
+    return typeof clients === "number" ? `${clients} active clients · ${teamWords}` : teamWords;
+  };
+  const pinButton = (s: Studio) => {
+    const pinned = s.id === pinnedStudioId;
+    return (
+      <button
+        type="button"
+        className="fd-pin"
+        aria-pressed={pinned}
+        onClick={() => togglePin(s)}
+        aria-label={pinned ? `${s.name} is this iPad's studio. Tap to stop.` : `Make ${s.name} this iPad's studio`}
       >
-        <div className="text-center mb-10 flex flex-col items-center">
-          <MaxStrengthLogo size="xl" className="mb-6" />
-          <h2 className="text-3xl font-black uppercase italic tracking-tight text-ink-d1 mb-2 leading-none">
-            Choose Your Studio
-          </h2>
-          <p className="text-ink-d3 font-bold uppercase tracking-widest text-[11px] max-w-md mt-1">
-            {authTrainer?.fullName
-              ? `Welcome back, ${authTrainer.fullName.split(" ")[0]}`
-              : "Where are you working today?"}
-          </p>
-          {isAdminUser && onGoToAdmin && (
-            <Button
-              onClick={onGoToAdmin}
-              className="mt-4 bg-bg-dark-3 hover:bg-muted text-ink-d1 font-bold uppercase text-[11px] tracking-widest px-4 h-9 rounded-xl border border-div-d flex items-center gap-2 cursor-pointer shadow-md"
-            >
-              <Shield className="w-3.5 h-3.5 text-action" /> Go to Operations
-            </Button>
+        <PinIcon />
+        {pinned ? "This iPad" : "Set"}
+      </button>
+    );
+  };
+  const rest = featured ? mine.filter((s) => s.id !== featured.id) : mine;
+
+  return (
+    <FrontDoorPane label="Where are you today?">
+      <main className="fd-page fd-page--wide">
+        <div className="fd-top">
+          {current ? (
+            <button type="button" className="fd-link" onClick={onBack}>
+              ← Back to {current.name}
+            </button>
+          ) : (
+            <Tiles small />
+          )}
+          {whoChip}
+        </div>
+
+        <div className="fd-rise fd-rise--1" style={{ marginTop: 36 }}>
+          <h1 className="fd-display fd-display--l">Where are you today?</h1>
+          {mine.length > 0 && (
+            <p className="fd-lede">
+              {mine.length === 1 ? "The studio you work at." : `${mine.length} studios you work at.`} The pin makes one this
+              iPad's studio, so it greets everyone with it.
+            </p>
           )}
         </div>
 
-        {/* ---- Your studios ---------------------------------------------- */}
-        {mine.length > 0 && (
-          <section className="mb-12">
-            <div className="flex items-center gap-3 border-b border-div-d pb-2 mb-5">
-              <div className="w-1.5 h-6 bg-action rounded-full" />
-              <div>
-                <h3 className="text-xs font-black uppercase tracking-widest text-action italic">
-                  Your Studios
-                </h3>
-                <p className="text-[11px] font-bold text-ink-d3 uppercase tracking-widest leading-none mt-0.5">
-                  {mine.length} location{mine.length === 1 ? "" : "s"} you can
-                  enter
+        {featured && (
+          <section className="fd-card fd-rise fd-rise--2" style={{ marginTop: 24 }} aria-label={featured.name}>
+            <div className="fd-top" style={{ alignItems: "flex-start", flexWrap: "nowrap" }}>
+              <div style={{ minWidth: 0 }}>
+                {featured.id === authTrainer?.primaryHomeStudioId && <div className="fd-eyebrow fd-eyebrow--action">Home</div>}
+                <h2 className="fd-display fd-display--m" style={{ marginTop: 6 }}>
+                  {featured.name}
+                </h2>
+                <p className="fd-small" style={{ marginTop: 6 }}>
+                  {countLine(featured)}
+                  {networkNameFor(featured) ? ` · ${networkNameFor(featured)}` : ""}
                 </p>
               </div>
+              {pinButton(featured)}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mine.map((s) => renderCard(s, true))}
-            </div>
+            {todayList}
+            <button type="button" className="fd-btn fd-btn--primary" style={{ marginTop: 16 }} onClick={() => enter(featured)}>
+              Start at {featured.name} <ArrowIcon />
+            </button>
           </section>
         )}
 
-        {/* ---- Demo Mode -------------------------------------------------- */}
-        {demo && (
-          <section className="mb-12">
-            <div className="flex items-center gap-3 border-b border-div-d pb-2 mb-5">
-              <div className="w-1.5 h-6 bg-ink-d3 rounded-full" />
-              <div>
-                <h3 className="text-xs font-black uppercase tracking-widest text-ink-d2 italic">
-                  Practice
-                </h3>
-                <p className="text-[11px] font-bold text-ink-d3 uppercase tracking-widest leading-none mt-0.5">
-                  {DEMO_STUDIO_TAGLINE}
-                </p>
+        {rest.length > 0 && (
+          <div className="fd-stack fd-rise fd-rise--3" style={{ marginTop: 14 }}>
+            {rest.map((s) => (
+              <div key={s.id} className="fd-row-wrap">
+                <button type="button" className="fd-row" onClick={() => enter(s)} aria-current={s.id === currentStudioId ? "true" : undefined}>
+                  <div style={{ minWidth: 0 }}>
+                    <div className="fd-row__name">
+                      {s.name}
+                      {s.id === currentStudioId ? <span className="fd-chip__muted"> · open now</span> : null}
+                    </div>
+                    <div className="fd-row__meta">
+                      {countLine(s)}
+                      {networkNameFor(s) ? ` · ${networkNameFor(s)}` : ""}
+                    </div>
+                  </div>
+                  <span className="fd-row__go">
+                    <ArrowIcon />
+                  </span>
+                </button>
+                {pinButton(s)}
               </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {renderCard(demo, true, true)}
-              {authTrainer && (
-                <SetUpDemoCard
-                  seededBy={{ id: authTrainer.id || "", name: authTrainer.fullName || "" }}
-                  existing
-                />
-              )}
-            </div>
+            ))}
+          </div>
+        )}
+
+        {/* ---- practice ---- */}
+        {authTrainer && (
+          <section className="fd-rise fd-rise--4" aria-label="Practice">
+            <div className="fd-eyebrow fd-section-title">Practice</div>
+            {demo ? (
+              <div className="fd-stack">
+                <button type="button" className="fd-row" onClick={() => enter(demo)}>
+                  <div>
+                    <div className="fd-row__name">Demo Mode</div>
+                    <div className="fd-row__meta">{DEMO_STUDIO_TAGLINE}. Nothing here touches a live record.</div>
+                  </div>
+                  <span className="fd-row__go">
+                    <ArrowIcon />
+                  </span>
+                </button>
+                <SetUpDemoCard seededBy={{ id: authTrainer.id || "", name: authTrainer.fullName || "" }} existing />
+              </div>
+            ) : (
+              // Until the seeder has run there is no studio to enter and no
+              // Operations to open, so this screen is the only one that can
+              // offer the button.
+              <SetUpDemoCard seededBy={{ id: authTrainer.id || "", name: authTrainer.fullName || "" }} />
+            )}
           </section>
         )}
 
-        {/* ---- Demo Mode, before it exists -------------------------------
-            The chicken-and-egg: until the seeder has run there is no studio
-            to enter and no Operations to open, so this screen is the only
-            one that can offer the button. */}
-        {!demo && authTrainer && (
-          <section className="mb-12">
-            <div className="flex items-center gap-3 border-b border-div-d pb-2 mb-5">
-              <div className="w-1.5 h-6 bg-ink-d3 rounded-full" />
-              <div>
-                <h3 className="text-xs font-black uppercase tracking-widest text-ink-d2 italic">
-                  Practice
-                </h3>
-                <p className="text-[11px] font-bold text-ink-d3 uppercase tracking-widest leading-none mt-0.5">
-                  A studio to learn in, not yet set up
-                </p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <SetUpDemoCard
-                seededBy={{ id: authTrainer.id || "", name: authTrainer.fullName || "" }}
-              />
-            </div>
-          </section>
+        {/* ---- nothing to enter ---- */}
+        {studios.length === 0 && (
+          <div className="fd-card" style={{ marginTop: 24 }}>
+            <h2 className="fd-display fd-display--m">No studios yet</h2>
+            <p className="fd-lede">
+              {mayOpenOps
+                ? "Journey has no studios set up. Open Operations to add one and link it to Mindbody."
+                : "Journey couldn't find any studios. Check the Wi-Fi, or ask head office."}
+            </p>
+          </div>
+        )}
+        {studios.length > 0 && mine.length === 0 && (
+          <div className="fd-card" style={{ marginTop: 24 }}>
+            <h2 className="fd-display fd-display--m">Not on a studio's team yet</h2>
+            <p className="fd-lede">
+              Ask the studio you work at to let you in, below. A leader there lets you in from My Studio → Team.
+              {demo ? " In the meantime, Demo Mode is open to you." : ""}
+            </p>
+          </div>
         )}
 
-        {/* ---- Other locations ------------------------------------------- */}
+        {/* ---- studios you don't work at ---- */}
         {others.length > 0 && (
-          <section className="mb-12">
+          <section style={{ marginTop: 8 }}>
             <button
               type="button"
+              className="fd-link"
+              aria-expanded={showOthers || mine.length === 0}
               onClick={() => setShowOthers((v) => !v)}
-              aria-expanded={showOthers}
-              className="w-full flex items-center gap-3 border-b border-div-d pb-2 mb-5 text-left cursor-pointer group"
+              style={{ marginTop: 16 }}
             >
-              <div className="w-1.5 h-6 bg-ink-d3 rounded-full" />
-              <div className="flex-1">
-                <h3 className="text-xs font-black uppercase tracking-widest text-ink-d3 italic group-hover:text-ink-d2 transition-colors">
-                  Other Locations
-                </h3>
-                <p className="text-[11px] font-bold text-ink-d3 uppercase tracking-widest leading-none mt-0.5">
-                  {others.length} you don't have access to
-                </p>
-              </div>
-              <ChevronDown
-                className={cn(
-                  "w-4 h-4 text-ink-d3 transition-transform shrink-0",
-                  showOthers && "rotate-180",
-                )}
-              />
+              {showOthers || mine.length === 0 ? "Hide" : "Show"} the {others.length} studio{others.length === 1 ? "" : "s"} you
+              don't work at
             </button>
-            <AnimatePresence initial={false}>
-              {showOthers && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-1">
-                    {others.map((s) => renderCard(s, false))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {(showOthers || mine.length === 0) && (
+              <div className="fd-stack" style={{ marginTop: 8 }}>
+                {others.map((s) => {
+                  const asked = requestedStudios.has(s.id || "");
+                  return (
+                    <div key={s.id} className="fd-row" style={{ cursor: "default" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="fd-row__name">{s.name}</div>
+                        <div className="fd-row__meta">{asked ? "Asked. Its leaders will let you in." : "Ask its leaders to let you in"}</div>
+                      </div>
+                      {!asked && (
+                        <button
+                          type="button"
+                          className="fd-chip"
+                          style={{ marginLeft: "auto", flex: "none" }}
+                          disabled={requestingStudioId === s.id}
+                          onClick={() => void handleRequestAccess(s)}
+                        >
+                          {requestingStudioId === s.id ? "Asking…" : "Ask to join"}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
         )}
 
-        {studios.length === 0 && (
-          <div className="py-20 px-6 text-center bg-bg-dark-2 rounded-[40px] border border-dashed border-div-d flex flex-col items-center justify-center gap-4">
-            <Building2 className="w-12 h-12 text-action mx-auto" />
-            <div>
-              <p className="text-base font-black uppercase tracking-widest text-ink-d1">
-                No Authorized Studios Configuration Found
-              </p>
-              <p className="text-xs uppercase tracking-wider text-ink-d3 mt-1 max-w-md">
-                Database clean start complete. Open Operations to manage
-                studios, create location entries, configure Mindbody Site IDs,
-                and manage staff.
-              </p>
-            </div>
-            {isAdminUser && onGoToAdmin && (
-              <Button
-                onClick={onGoToAdmin}
-                className="mt-2 bg-cta-strong hover:bg-[#a02400] text-white font-black uppercase tracking-widest text-xs h-12 px-8 rounded-xl shadow-lg shadow-action/20 flex items-center gap-2.5 cursor-pointer"
-              >
-                <Shield className="w-4 h-4" /> Go to Operations
-              </Button>
-            )}
-          </div>
-        )}
-
-        {/* A trainer with no access at all should not just see an empty page. */}
-        {studios.length > 0 && mine.length === 0 && (
-          <div className="py-14 px-6 text-center bg-bg-dark-2 rounded-[40px] border border-dashed border-div-d flex flex-col items-center gap-3 mb-12">
-            <Lock className="w-9 h-9 text-ink-d3" />
-            <p className="text-sm font-black uppercase tracking-widest text-ink-d1">
-              No studio access yet
-            </p>
-            <p className="text-xs uppercase tracking-wider text-ink-d3 max-w-md">
-              Open "Other locations" above and request access to the studio you
-              work from. A manager approves it from the Admin panel.
-              {demo && " In the meantime, Demo Mode is open to everyone."}
-            </p>
-            {!showOthers && (
-              <Button
-                onClick={() => setShowOthers(true)}
-                className="mt-1 bg-cta-strong hover:bg-[#a02400] text-white font-black uppercase tracking-widest text-[11px] h-10 px-6 rounded-xl cursor-pointer"
-              >
-                Request Access
-              </Button>
-            )}
-          </div>
-        )}
-
-        <div className="mt-4 flex justify-center pb-4">
-          <Button
-            variant="ghost"
-            onClick={onBack}
-            className="text-ink-d3 hover:text-ink-d1 font-black uppercase text-[11px] tracking-widest gap-2 bg-transparent cursor-pointer"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Clear active session
-          </Button>
-        </div>
-      </motion.div>
-    </div>
+        <footer className="fd-foot">{operationsLink && React.cloneElement(operationsLink, {}, "Open Operations")}</footer>
+      </main>
+    </FrontDoorPane>
   );
 }

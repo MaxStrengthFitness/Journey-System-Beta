@@ -366,33 +366,18 @@ export default function AppContent({
    */
   useEffect(() => installShakeUndoGuard(), []);
 
+  /*
+   * THE iPAD'S STUDIO no longer opens by itself after a sign-in (the front
+   * door, Oct 3 2026): it GREETS the person with it instead (StudioSelection
+   * View), one tap in, because iPads change hands at the start of the day and
+   * the greeting is where whose iPad it is gets seen. A pin to a studio that
+   * no longer exists is still dropped here.
+   */
   useEffect(() => {
-    if (activeStudioId || isChangingStudio) return;
-    if (!authTrainer || studios.length === 0) return;
-
+    if (activeStudioId || isChangingStudio || studios.length === 0) return;
     const pinned = getDefaultStudioId();
-    if (!pinned) return;
-
-    if (!studios.some((s) => s.id === pinned)) {
-      // Studio no longer exists — drop the stale pin rather than retrying.
-      setDefaultStudioId(null);
-      return;
-    }
-    if (!availableStudios.some((s) => s.id === pinned)) return;
-
-    setActiveStudioId(pinned);
-    localStorage.setItem("max_strength_trainer_id", authTrainer.id!);
-    // Trainer PINs are gone (Sep 2026): the iPad's own device lock is the
-    // gate, so choosing a studio completes the sign-in.
-    localStorage.setItem("max_strength_authenticated", "true");
-    setIsAuthenticated(true);
-  }, [
-    activeStudioId,
-    isChangingStudio,
-    authTrainer,
-    studios,
-    availableStudios,
-  ]);
+    if (pinned && !studios.some((s) => s.id === pinned)) setDefaultStudioId(null);
+  }, [activeStudioId, isChangingStudio, studios]);
   const [isSyncing, setIsSyncing] = useState(false);
   /*
    * Who may open Operations: studio leaders and above, and — inside Demo Mode
@@ -1168,6 +1153,9 @@ export default function AppContent({
             setIsChangingStudio(false);
           }
         }}
+        onSignOut={() => handleLogout().catch(console.error)}
+        greet={!activeStudioId && !isChangingStudio}
+        currentStudioId={activeStudioId}
       />
     );
   }
