@@ -292,7 +292,17 @@ describe("a thread on screen", () => {
     expect(host.textContent).toContain("On the briefing from Oct 1.");
 
     mount([entry({ id: "a", importance: "elevated" })], { briefing: { kind: "aged-off", since: "2026-09-22" } });
-    expect(host.textContent).toContain("Off the briefing since Sep 22: a Heads up with no end day is read out for three weeks.");
+    expect(host.textContent).toContain("Off the briefing since Sep 22: a Heads up with no end day is read out for three weeks while sessions can't be counted.");
+
+    // Four sessions (Oct 3 2026): the count, and the way back on.
+    mount([entry({ id: "a", importance: "elevated" })], { briefing: { kind: "aged-off", since: "2026-09-22", by: "sessions" } });
+    expect(host.textContent).toContain(
+      "Off the briefing since Sep 22: a Heads up with no end day is read out at four sessions. Add an update to put it back on.",
+    );
+    mount([entry({ id: "a", importance: "elevated" })], { briefing: { kind: "on", checked: true, sessionsLeft: 2 } });
+    expect(host.textContent).toContain("On your next briefing. Read out at 2 more sessions.");
+    mount([entry({ id: "a", importance: "elevated" })], { briefing: { kind: "on", checked: true, sessionsLeft: 1 } });
+    expect(host.textContent).toContain("Read out at one more session.");
 
     mount([entry({ id: "a" })], { briefing: null });
     expect(host.querySelector(".nt-brief")).toBeNull();

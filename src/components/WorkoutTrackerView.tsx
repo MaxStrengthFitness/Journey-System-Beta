@@ -2045,7 +2045,7 @@ export function WorkoutTrackerView({
          only the session document, which the next trainer's briefing never
          reads. It still goes there (the History list and the export read
          it); it ALSO files to the journal as a Heads up, which is the one
-         loudness the briefing shows for the next three weeks. Outside the
+         loudness the briefing reads out (at her next four sessions since Oct 3 2026). Outside the
          batch, like every journal write. A note only for the profile is the
          Wrap-up's Profile note, filed at Note loudness.
          Being unfiled, it comes back in the Wrap-up's To-file tray, where it
@@ -3612,7 +3612,7 @@ export function WorkoutTrackerView({
                   {/* The note for the next trainer (voice-review round, Sep 27
                       2026 — "the end session note is for the next trainer").
                       It files as a Heads up, the loudness the briefing shows
-                      for three weeks. A note only for the profile is the
+                      at four sessions. A note only for the profile is the
                       Wrap-up's Profile note, one screen on. */}
                   <label
                     htmlFor="next-trainer-note"
@@ -3629,7 +3629,7 @@ export function WorkoutTrackerView({
                     className="min-h-25 border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark resize-none text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus-visible:ring-orange-500 focus-visible:border-orange-500"
                   />
                   <p id="next-trainer-note-hint" className="text-xs text-muted-foreground">
-                    Shows on their briefing for the next three weeks. A note just for the profile goes on the Wrap-up, next.
+                    Read out on the briefing at the next four sessions. A note just for the profile goes on the Wrap-up, next.
                   </p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -100,7 +100,12 @@ function BriefingLine({
         <div className="nt-brief">
           {/* Until this trainer's dismissals are read, the card cannot say
               whether they hushed it: only that the briefing reads it out. */}
-          <span>{briefing.checked ? "On your next briefing." : "On the briefing."}</span>
+          <span>
+            {briefing.checked ? "On your next briefing." : "On the briefing."}
+            {typeof briefing.sessionsLeft === "number" && briefing.sessionsLeft > 0
+              ? ` Read out at ${briefing.sessionsLeft === 1 ? "one more session" : `${briefing.sessionsLeft} more sessions`}.`
+              : ""}
+          </span>
           {briefing.checked && onHush ? (
             <button type="button" className="nt-btn nt-btn--quiet" onClick={onHush}>
               No need to remind me
@@ -129,8 +134,9 @@ function BriefingLine({
       return (
         <div className="nt-brief">
           <span>
-            Off the briefing since {shortDay(briefing.since, today) || "three weeks after it was written"}: a Heads up
-            with no end day is read out for three weeks.
+            {briefing.by === "sessions"
+              ? `Off the briefing since ${shortDay(briefing.since, today) || "four sessions after it was written"}: a Heads up with no end day is read out at four sessions. Add an update to put it back on.`
+              : `Off the briefing since ${shortDay(briefing.since, today) || "three weeks after it was written"}: a Heads up with no end day is read out for three weeks while sessions can't be counted.`}
           </span>
         </div>
       );

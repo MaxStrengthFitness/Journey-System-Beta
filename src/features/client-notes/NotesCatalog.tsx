@@ -61,6 +61,7 @@ import { NoteThreadCard } from "./NoteThreadCard";
 import { ThreadRow } from "./ThreadRow";
 import { CriticalLine } from "./CriticalLine";
 import type { CatalogIntent } from "./notes-intent";
+import type { HeadsUpContext } from "./heads-up";
 import "./notes-page.css";
 
 export interface NotesCatalogProps {
@@ -80,6 +81,8 @@ export interface NotesCatalogProps {
   /** This trainer's dismissals; null until they are read (then no hush is offered). */
   dismissals: NoteDismissals | null;
   headsUpWindowDays: number;
+  /** The journal's `headsUpContextOf`, so a card says how many more sessions a Heads up is read out at. */
+  headsUpContextOf?: ((rootId: string) => HeadsUpContext) | null;
   onHush?: (thread: NoteThread) => void;
   onRestore?: (thread: NoteThread) => void;
   /** How many things FORD holds (`fordDoorCount`); null when unknown or not this reader's to know. */
@@ -119,6 +122,7 @@ export function NotesCatalog({
   headsUpEntries,
   dismissals,
   headsUpWindowDays,
+  headsUpContextOf = null,
   onHush,
   onRestore,
   fordDoorCount,
@@ -324,7 +328,7 @@ export function NotesCatalog({
 
   /* --------------------------------- zones --------------------------------- */
 
-  const briefingCtx = { criticalIds, headsUpIds, dismissals, today, headsUpWindowDays };
+  const briefingCtx = { criticalIds, headsUpIds, dismissals, today, headsUpWindowDays, headsUpContextOf };
 
   const zoneHead = (label: string, count: number, blurb: string, extra?: ReactNode, anchor?: string) => (
     <div className="nx-zone-h" {...(anchor ? { id: anchor, "data-cx-anchor": anchor } : {})}>

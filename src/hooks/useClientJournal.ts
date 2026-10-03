@@ -73,6 +73,13 @@ import { studioDateKey } from "../lib/studio-time";
 import { mattersOn } from "../features/client-notes/mattering";
 import { assembleThreads, withoutThreadUpdates, type NoteThread } from "../features/client-notes/threads";
 import { journalBodyOf } from "../features/client-notes/note-catalog";
+import {
+  HEADS_UP_FALLBACK_DAYS as HEADS_UP_WINDOW_DAYS,
+  HEADS_UP_SESSIONS,
+  isHeadsUpLive,
+  sessionStarts,
+  type HeadsUpContext,
+} from "../features/client-notes/heads-up";
 
 const STREAM_LIMIT = 300;
 const LEGACY_NOTE_LIMIT = 200;
@@ -98,43 +105,15 @@ export const SESSION_SUMMARY_LIMIT = 40;
 export const JOURNAL_GUARD_LIMIT = 200;
 
 /**
- * How long a Heads up stays on the briefing when it has no "until" day
- * (reporting round, Sep 2026). Three weeks: long enough to cover a fortnight
- * of missed sessions, short enough that "a bit sore after the move" is not
- * still being read out in November.
+ * How long a Heads up is read out (notes round, Oct 3 2026): at four of her
+ * sessions, counted from its newest word. `features/client-notes/heads-up.ts`
+ * is the rule; the hook hands it her recent sessions, which it already reads,
+ * and the newest update of each thread. The three weeks is only the answer
+ * while her sessions are unknown (loading, offline, a refused read) — it was
+ * the whole rule until Oct 3. Re-exported here because this is where callers
+ * have always found them.
  */
-export const HEADS_UP_WINDOW_DAYS = 21;
-
-/**
- * Is this Heads up (importance `elevated`) still live at `nowMs`?
- *
- *   • resolved → no.
- *   • it has an "until" day → live while that day is today or later
- *     (compared against the start of the studio day, so a note that says
- *     "until Thursday" is still read out on Thursday morning).
- *   • otherwise → live for HEADS_UP_WINDOW_DAYS after it was written.
- *
- * Pure; `src/features/briefing/heads-up.test.ts` pins it.
- */
-export function isHeadsUpLive(
-  entry: Pick<JournalEntry, "importance" | "resolvedAt" | "effectiveUntil" | "occurredAt"> &
-    Partial<Pick<JournalEntry, "effectiveFrom" | "repeat" | "isArchived">>,
-  nowMs: number,
-): boolean {
-  if (entry.importance !== "elevated") return false;
-  if (entry.resolvedAt) return false;
-  // A note with a window of its own (Operations overhaul, Sep 2026) is read
-  // by the one mattering rule: a range ends on its day, a DAY note shows on
-  // its day only, a pushed-ahead start waits.
-  if (entry.effectiveUntil || entry.effectiveFrom) {
-    const today = studioDateKey(new Date(nowMs));
-    return today !== null && mattersOn({ ...entry, effectiveFrom: entry.effectiveFrom ?? null, isArchived: entry.isArchived ?? false }, today);
-  }
-  const occurred = toDate(entry.occurredAt);
-  if (!occurred) return false;
-  // A note dated ahead ("away from the 20th") is younger than zero and live.
-  return nowMs - occurred.getTime() <= HEADS_UP_WINDOW_DAYS * 86_400_000;
-}
+export { HEADS_UP_WINDOW_DAYS, HEADS_UP_SESSIONS, isHeadsUpLive };
 
 /* ------------------------------------------------------------------ */
 /* WRITES                                                              */
@@ -1006,11 +985,19 @@ export interface UseClientJournalResult {
   criticalEntries: JournalEntry[];
   /**
    * Heads ups still worth reading out (reporting round, Sep 2026): elevated,
-   * unresolved, inside their "until" day or the three-week window. Optional
-   * on the TYPE only so a fixture built before the round still typechecks;
-   * the hook always returns it. Read it as `headsUpEntries ?? []`.
+   * unresolved, inside their "until" day or — since Oct 3 2026 — not yet
+   * heard at four of her sessions (client-notes/heads-up.ts). Optional on the
+   * TYPE only so a fixture built before the round still typechecks; the hook
+   * always returns it. Read it as `headsUpEntries ?? []`.
    */
   headsUpEntries?: JournalEntry[];
+  /**
+   * What each thread's Heads up is counted against: her sessions' starts
+   * (null while unknown) and the thread's newest update. The Notes page asks
+   * it so its "2 more of her sessions" agrees with the briefing. Optional on
+   * the type for the same reason as `headsUpEntries`.
+   */
+  headsUpContextOf?: (rootId: string) => HeadsUpContext;
   isLoading: boolean;
   /** True when the composite index has not been deployed yet. */
   needsIndex: boolean;
@@ -1399,16 +1386,47 @@ export function useClientJournal({
     return entries.filter((e) => e.importance === "critical" && today !== null && mattersOn(e, today));
   }, [entries]);
 
-  const headsUpEntries = useMemo(() => {
-    const now = Date.now();
-    return entries.filter((e) => isHeadsUpLive(e, now));
-  }, [entries]);
-
-  const capped = Object.values(cappedBy).some(Boolean);
-
   // Nothing answered for THIS client yet (or the hook is paused) reads as
   // loading, never as ready.
   const loadFor = enabled && clientId && loadBy.key === clientId ? loadBy.by : NO_LOADS;
+
+  /**
+   * What a Heads up is counted against (notes round, Oct 3 2026): her
+   * sessions' starts once the sessions listener has answered for THIS client
+   * (null until then, so the rule falls back to its clock rather than
+   * counting another client's rows), and each thread's newest update — an
+   * update is how a trainer keeps a Heads up on the briefing.
+   */
+  const sessionsReady = loadFor.sessions === "ready";
+  const headsUpStarts = useMemo(
+    () => (sessionsReady ? sessionStarts(legacySessions) : null),
+    [sessionsReady, legacySessions],
+  );
+  const latestUpdateByThread = useMemo(() => {
+    const out = new Map<string, number>();
+    for (const e of allEntries) {
+      if (!e.threadId) continue;
+      const ms = (toDate(e.createdAt) ?? toDate(e.occurredAt))?.getTime();
+      if (ms === undefined || isNaN(ms)) continue;
+      if (ms > (out.get(e.threadId) ?? -Infinity)) out.set(e.threadId, ms);
+    }
+    return out;
+  }, [allEntries]);
+  const headsUpContextOf = useMemo(
+    () =>
+      (rootId: string): HeadsUpContext => ({
+        sessionStarts: headsUpStarts,
+        latestUpdateMs: latestUpdateByThread.get(rootId) ?? null,
+      }),
+    [headsUpStarts, latestUpdateByThread],
+  );
+
+  const headsUpEntries = useMemo(() => {
+    const now = Date.now();
+    return entries.filter((e) => isHeadsUpLive(e, now, headsUpContextOf(e.id)));
+  }, [entries, headsUpContextOf]);
+
+  const capped = Object.values(cappedBy).some(Boolean);
   const loadState = useMemo<JournalLoadState>(
     () => ({
       notes: groupLoad(loadFor, LOAD_GROUPS.notes),
@@ -1425,6 +1443,7 @@ export function useClientJournal({
     focuses,
     criticalEntries,
     headsUpEntries,
+    headsUpContextOf,
     isLoading,
     needsIndex,
     capped,

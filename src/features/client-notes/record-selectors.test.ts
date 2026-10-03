@@ -363,13 +363,38 @@ describe("briefingStatusOf", () => {
     expect(briefingStatusOf(bday, ctx())).toEqual({ kind: "from", day: "2027-04-02" });
   });
 
-  it("aged-off: an always Heads up goes quiet after three weeks", () => {
+  it("aged-off by the clock: while her sessions are unknown, an always Heads up goes quiet after three weeks", () => {
     // Written Sep 2: read out until Sep 23, quiet from then.
     const old = thread(entry({ id: "o", importance: "elevated", occurredAt: noon("2026-09-02") }));
-    expect(briefingStatusOf(old, ctx())).toEqual({ kind: "aged-off", since: "2026-09-23" });
+    expect(briefingStatusOf(old, ctx())).toEqual({ kind: "aged-off", since: "2026-09-23", by: "clock" });
+    expect(briefingStatusOf(old, ctx({ headsUpContextOf: () => ({ sessionStarts: null }) }))).toEqual({
+      kind: "aged-off",
+      since: "2026-09-23",
+      by: "clock",
+    });
     // Not yet three weeks old and not in the hook's list: nothing to say.
     const fresh = thread(entry({ id: "n", importance: "elevated", occurredAt: noon("2026-09-10") }));
     expect(briefingStatusOf(fresh, ctx())).toBeNull();
+  });
+
+  it("four sessions (Oct 3 2026): sessions left while on, and the fourth session's day once quiet", () => {
+    const starts = ["2026-09-04", "2026-09-08", "2026-09-11", "2026-09-15", "2026-09-18"].map((d) =>
+      noon(d).getTime(),
+    );
+    const counted = { headsUpContextOf: () => ({ sessionStarts: starts }) };
+    // Written Sep 2, heard at Sep 4, 8, 11 and 15: quiet since Sep 15, not the clock's Sep 23.
+    const old = thread(entry({ id: "o", importance: "elevated", occurredAt: noon("2026-09-02") }));
+    expect(briefingStatusOf(old, ctx(counted))).toEqual({ kind: "aged-off", since: "2026-09-15", by: "sessions" });
+    // Written Sep 12, heard at Sep 15 and 18: on, two more to go.
+    const live = thread(entry({ id: "l", importance: "elevated", occurredAt: noon("2026-09-12") }));
+    expect(briefingStatusOf(live, ctx({ ...counted, headsUpIds: new Set(["l"]) }))).toEqual({
+      kind: "on",
+      checked: true,
+      sessionsLeft: 2,
+    });
+    // A critical note never counts sessions.
+    const crit = thread(entry({ id: "c", importance: "critical" }));
+    expect(briefingStatusOf(crit, ctx({ ...counted, criticalIds: new Set(["c"]) }))).toEqual({ kind: "on", checked: true });
   });
 
   it("null for a plain note, a closed one and one whose window ran out", () => {

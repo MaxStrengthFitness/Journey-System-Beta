@@ -388,6 +388,7 @@ export function NotesPage({
         headsUpEntries={journal.headsUpEntries ?? []}
         dismissals={dismissalsRead}
         headsUpWindowDays={HEADS_UP_WINDOW_DAYS}
+        headsUpContextOf={journal.headsUpContextOf ?? null}
         onHush={onHush}
         onRestore={onRestore}
         fordDoorCount={fordDoorCount}

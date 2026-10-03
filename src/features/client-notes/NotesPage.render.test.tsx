@@ -442,7 +442,7 @@ describe("NotesPage — the briefing line", () => {
   it("says why an old Heads up with no end day is no longer read out", async () => {
     const host = await mount(propsFor());
     expect(host.querySelector("#thread-old-hu")?.textContent).toContain(
-      "Off the briefing since Sep 10: a Heads up with no end day is read out for three weeks.",
+      "Off the briefing since Sep 10: a Heads up with no end day is read out for three weeks while sessions can't be counted.",
     );
   });
 });

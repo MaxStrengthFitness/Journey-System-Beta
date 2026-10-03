@@ -34,6 +34,7 @@ import { firstSentences } from "../../lib/first-sentences";
 import { adaptClientEvents, fordSummaryOf } from "../ford/ford-rollup";
 import { FORD_PILLARS, type FordEntry, type FordPillar } from "../ford/types";
 import type { FordReadStatus } from "../ford/read-status";
+import { headsUpStanding, type HeadsUpContext } from "./heads-up";
 import {
   SHOWN_ELSEWHERE_ON_RECORD,
   isUnfiled,
@@ -384,16 +385,23 @@ export function closeWordsOf(root: Pick<JournalEntry, "kind" | "category" | "ori
  *             they hushed it (and offers no hush until it can).
  *   hushed    this trainer said "no need to remind me", and nothing has
  *             happened to it since. Only they see this.
+ *             `sessionsLeft` is how many more of her sessions a Heads up with
+ *             no window is read out at (notes round, Oct 3 2026), when her
+ *             sessions are known; null otherwise.
+ *   hushed    this trainer said "no need to remind me", and nothing has
+ *             happened to it since. Only they see this.
  *   from      it starts being read out on `day` (a pushed-ahead start, or a
  *             dated note's next day).
- *   aged-off  a Heads up with no end day is read out for three weeks; this
- *             one went quiet on `since`.
+ *   aged-off  a Heads up with no end day has been read out at four of her
+ *             sessions (`by: "sessions"`) — or, while her sessions are
+ *             unknown, three weeks have passed (`by: "clock"`); it went quiet
+ *             on `since`. An update puts it back on.
  */
 export type BriefingStatus =
-  | { kind: "on"; checked: boolean }
+  | { kind: "on"; checked: boolean; sessionsLeft?: number | null }
   | { kind: "hushed" }
   | { kind: "from"; day: string }
-  | { kind: "aged-off"; since: string };
+  | { kind: "aged-off"; since: string; by?: "sessions" | "clock" };
 
 export interface BriefingContext {
   /** Ids of the hook's `criticalEntries`. */
@@ -403,8 +411,14 @@ export interface BriefingContext {
   /** This trainer's dismissals; null when not read (yet, or at all). */
   dismissals: NoteDismissals | null;
   today: string;
-  /** `HEADS_UP_WINDOW_DAYS`, passed in so this module never imports the hook. */
+  /** `HEADS_UP_WINDOW_DAYS`, passed in so this module never imports the hook — the clock used only while her sessions are unknown. */
   headsUpWindowDays: number;
+  /**
+   * The hook's `headsUpContextOf`: what each thread's Heads up is counted
+   * against (her sessions, its newest update). Absent or answering null
+   * sessions, the card falls back to the clock, as the briefing does.
+   */
+  headsUpContextOf?: ((rootId: string) => HeadsUpContext) | null;
   tz?: string;
 }
 
@@ -420,9 +434,17 @@ export function briefingStatusOf(thread: NoteThread, ctx: BriefingContext): Brie
   if (root.resolvedAt || root.isArchived) return null;
   if (windowEnded(root, ctx.today, ctx.tz)) return null;
 
+  const counted = ctx.headsUpContextOf?.(thread.id) ?? null;
+  const standing = counted ? headsUpStanding(root, counted, ctx.tz) : null;
+
   if (ctx.criticalIds.has(thread.id) || ctx.headsUpIds.has(thread.id)) {
-    if (ctx.dismissals === null) return { kind: "on", checked: false };
-    return isDismissed(thread, ctx.dismissals) ? { kind: "hushed" } : { kind: "on", checked: true };
+    const left = ctx.headsUpIds.has(thread.id) && standing && "left" in standing ? { sessionsLeft: standing.left } : {};
+    if (ctx.dismissals === null) return { kind: "on", checked: false, ...left };
+    return isDismissed(thread, ctx.dismissals) ? { kind: "hushed" } : { kind: "on", checked: true, ...left };
+  }
+
+  if (standing && "quietSince" in standing) {
+    return { kind: "aged-off", since: standing.quietSince, by: "sessions" };
   }
 
   if (shapeOf(root, ctx.tz) === "day") {
@@ -432,11 +454,13 @@ export function briefingStatusOf(thread: NoteThread, ctx: BriefingContext): Brie
   const start = startDayOf(root, ctx.tz);
   if (start && start > ctx.today) return { kind: "from", day: start };
 
-  if (root.importance === "elevated" && !root.effectiveFrom && !root.effectiveUntil) {
+  // The clock speaks only while her sessions are unknown: once they are
+  // read, `standing` has already said where this Heads up is.
+  if (standing === null && root.importance === "elevated" && !root.effectiveFrom && !root.effectiveUntil) {
     const written = toDate(root.occurredAt as Parameters<typeof toDate>[0]);
     if (!written) return null;
     const since = studioDateKey(new Date(written.getTime() + ctx.headsUpWindowDays * 86_400_000), ctx.tz);
-    return since && since <= ctx.today ? { kind: "aged-off", since } : null;
+    return since && since <= ctx.today ? { kind: "aged-off", since, by: "clock" } : null;
   }
   return null;
 }
