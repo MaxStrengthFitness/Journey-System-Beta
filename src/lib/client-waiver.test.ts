@@ -77,3 +77,11 @@ describe("a studio whose waivers aren't kept in Mindbody (hub fixes, Oct 1 2026)
     expect(waiverFlagState({}, true).state).toBe("unknown");
   });
 });
+describe("the profile's waiver (Oct 3 2026)", () => {
+  it("says Mindbody's 'not signed' as 'Not in Mindbody', never in warning colours", async () => {
+    const { waiverProfileState } = await import("./client-waiver");
+    expect(waiverProfileState({ isLiabilityReleased: false })).toMatchObject({ state: "not-signed", label: "Not in Mindbody", tone: "neutral" });
+    expect(waiverProfileState({ isLiabilityReleased: true }).label).toBe("Signed");
+    expect(waiverProfileState({}).label).toBe("Not synced yet");
+  });
+});

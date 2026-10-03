@@ -89,6 +89,27 @@ export function waiverFlagState(client: WaiverSource | null | undefined, keptInM
   return waiverState(null);
 }
 
+/**
+ * The waiver as a client's PROFILE says it (Oct 3 2026, AJ: "yes" to "Not
+ * kept in Mindbody"). A single client's screen doesn't hold the studio's
+ * roster, so it can't tell whether the studio files waivers in Mindbody at
+ * all (`waiversKeptInMindbody`), and on Oct 3 2026 none of the four studios
+ * did. So Mindbody's "not signed" is said as a plain fact about Mindbody,
+ * "Not in Mindbody", in no warning colour; signed and unknown are as
+ * `waiverState` says. The Hub, which holds the roster, still flags a missing
+ * waiver at a studio that does keep them there (`waiverFlagState`).
+ */
+export function waiverProfileState(client: WaiverSource | null | undefined): WaiverState {
+  const state = waiverState(client);
+  if (state.state !== "not-signed") return state;
+  return {
+    ...state,
+    label: "Not in Mindbody",
+    detail: "Mindbody has no signed liability waiver for this client. If your studio keeps waivers on paper or elsewhere, it's there.",
+    tone: "neutral",
+  };
+}
+
 export function waiverState(client: WaiverSource | null | undefined): WaiverState {
   const released = client?.isLiabilityReleased;
 

@@ -224,7 +224,8 @@ describe("onFileFacts", () => {
       tone: "ok",
       empty: false,
     });
-    expect(facts({ isLiabilityReleased: false }).waiver).toMatchObject({ value: "Not signed", tone: "warn" });
+    // Oct 3 2026: Mindbody's "not signed" is a fact about Mindbody, never a warning on the profile.
+    expect(facts({ isLiabilityReleased: false }).waiver).toMatchObject({ value: "Not in Mindbody", tone: "neutral" });
     expect(facts({}).waiver).toMatchObject({ value: "Not synced yet", tone: "neutral", empty: true });
   });
 

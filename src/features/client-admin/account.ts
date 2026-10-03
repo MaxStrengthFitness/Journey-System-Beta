@@ -64,7 +64,7 @@ import { isAutoRenewMark, liveMindbodyFlag, lockSaysNothingBills, markFor, renew
 import { formatStudioDate, studioDayKeyOf } from "../../lib/studio-time";
 import { mindbodyIdOf } from "../../lib/mindbody-id";
 import { clientLegalName } from "../../lib/client-name";
-import { waiverState } from "../../lib/client-waiver";
+import { waiverProfileState as waiverState } from "../../lib/client-waiver";
 import { formatMindbodyDate, toDateSafe, type FirestoreDateLike } from "../../lib/mindbody-dates";
 import { daysUntilBirthday } from "../../lib/hub-markers";
 import { resolveClientSince, statedFirstDay, type ClientSinceSource } from "../../lib/client-since";
@@ -367,7 +367,7 @@ export interface OnFileFact {
   label: string;
   value: string;
   empty: boolean;
-  /** Only the waiver has one: ok (signed), warn (Mindbody says not signed), neutral. */
+  /** Only the waiver has one: ok (signed), else neutral ("Not in Mindbody" is a fact about Mindbody, Oct 3 2026). */
   tone: "ok" | "warn" | "neutral";
   source: string | null;
 }
