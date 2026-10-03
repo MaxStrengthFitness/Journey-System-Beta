@@ -2,7 +2,7 @@
  * PROFILE HEADER — identity, four headline facts, one loud action.
  *
  * Row 1  ‹ avatar  NAME                                   [▶ START SESSION]
- *        ▪▪▪ studio · client since · flags
+ *                 ▪▪▪ studio · client since · flags     [Track][Note][⟳]
  * Row 2  Top trainer │ Last session │ Next session │ Sessions completed · package
  *
  * Decisions (Sep 5 2026 round):
@@ -355,71 +355,83 @@ export function ProfileHeader({
     <header
       className={cn(
         // cp-head*: hooks for the phone layout only (profile-nav.css, Journey Lite).
-        "cp-head bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800/60 pb-2.5 mb-3 pt-1",
-        // Portrait (a 13" iPad is 1024px — Tailwind's lg): identity + action on
-        // row one, the four facts on row two. Landscape (1366px — xl): one
-        // band — identity, facts, action — which hands the Journey grid ~90px
-        // more height, the difference between 19 and 21 machines on screen.
-        // The identity block gives up its sub-line details until 2xl so the
-        // four tiles keep ~180px each.
-        "grid gap-x-3 xl:gap-x-4 gap-y-3 items-center",
-        "grid-cols-[minmax(0,1fr)_auto] [grid-template-areas:'id_cta'_'strip_strip']",
-        "xl:grid-cols-[auto_minmax(0,1fr)_auto] xl:[grid-template-areas:'id_strip_cta']",
+        "cp-head bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800/60 pb-3 mb-3 pt-1",
+        // AJ, Oct 2 2026: "the first thing that should grab the eye is the
+        // name of the client ... the top of the profiles just feel so bulky".
+        // Track, Note, Sync and Start Session used to share the name's row,
+        // so on a portrait iPad (744-1024px) the name was left ~150px and
+        // broke one word a line, with the studio line under it in five.
+        //
+        // Portrait: the name has the row with Start Session alone; the
+        // studio line sits under it, and the three quiet tools sit under
+        // Start, beside it — two short rows, the name on one line.
+        //   ‹ (SA)  Sharon Ann Tesar                  [▶ START SESSION]
+        //           ▪▪▪ Strongsville Ohio · Client…   [Track][Note][⟳]
+        //   [ the four facts ]
+        // Landscape (xl): one band — identity, facts, tools, Start — which
+        // hands the Journey grid ~90px more height, the difference between
+        // 19 and 21 machines on screen.
+        // The phone (under 600px) lays these same areas out in
+        // profile-nav.css (cp-head, Journey Lite).
+        "grid gap-x-3 xl:gap-x-4 gap-y-1 items-center",
+        "grid-cols-[auto_auto_minmax(0,1fr)_auto]",
+        "[grid-template-areas:'back_avatar_name_start'_'back_avatar_meta_tools'_'strip_strip_strip_strip']",
+        "xl:grid-cols-[auto_auto_auto_minmax(0,1fr)_auto_auto]",
+        "xl:[grid-template-areas:'back_avatar_name_strip_tools_start'_'back_avatar_meta_strip_tools_start']",
       )}
     >
       {/* ---------- identity ---------- */}
-      <div className="flex items-center gap-2 sm:gap-3 min-w-0 [grid-area:id]">
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Back to clients"
-          className="shrink-0 h-10 w-10 rounded-full grid place-items-center text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
-        >
-          <ChevronLeft className="w-6 h-6" />
-        </button>
+      <button
+        type="button"
+        onClick={onBack}
+        aria-label="Back to clients"
+        className="[grid-area:back] -ml-2 shrink-0 h-10 w-10 rounded-full grid place-items-center text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
+      >
+        <ChevronLeft className="w-6 h-6" />
+      </button>
 
-        <Avatar size="xl" className="ring-2 ring-slate-200 dark:ring-slate-800 bg-slate-100 dark:bg-slate-800 shrink-0 xl:size-12 2xl:size-14">
-          {client.photoUrl && <AvatarImage src={client.photoUrl} alt={displayName} />}
-          <AvatarFallback className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-lg">
-            {initials || <User className="w-7 h-7" />}
-          </AvatarFallback>
-        </Avatar>
+      <Avatar size="xl" className="[grid-area:avatar] ring-2 ring-slate-200 dark:ring-slate-800 bg-slate-100 dark:bg-slate-800 shrink-0 size-14 xl:size-12 2xl:size-14">
+        {client.photoUrl && <AvatarImage src={client.photoUrl} alt={displayName} />}
+        <AvatarFallback className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-lg">
+          {initials || <User className="w-7 h-7" />}
+        </AvatarFallback>
+      </Avatar>
 
-        <div className="min-w-0 flex-1 xl:max-w-[240px] 2xl:max-w-[320px]">
-          <h1
-            // Names are never truncated (CLAUDE.md): a long one wraps.
-            className="text-2xl md:text-[26px] xl:text-[28px] font-black tracking-tight leading-[1.05] text-foreground [overflow-wrap:anywhere]"
-            title={nick ? `${displayName} (legal name ${legalName})` : displayName}
-          >
-            {displayName}
-          </h1>
-          <div className="mt-1.5 flex items-center gap-2.5 min-w-0">
-            <BrandTiles size={6} gap={2} />
-            {/* Wraps, never an ellipsis: the studio is a name too ("Demo Mode"). */}
-            <span className="min-w-0 text-[10px] font-bold uppercase tracking-[0.14em] leading-snug text-muted-foreground [overflow-wrap:anywhere]">
-              <span>{studioName}</span>
-              {since && (
-                <span className="xl:hidden 2xl:inline">
-                  {studioName ? "  ·  " : ""}
-                  {since.label} {since.value}
-                </span>
-              )}
-              {(client.experienceLevel || client.trainingPedigree) && (
-                <span className="xl:hidden 2xl:inline">  ·  {client.experienceLevel || client.trainingPedigree}</span>
-              )}
+      <h1
+        // Names are never truncated (CLAUDE.md): a long one wraps, at a space.
+        className="cp-head__name [grid-area:name] self-end min-w-0 xl:max-w-[240px] 2xl:max-w-[320px] text-[26px] md:text-[30px] xl:text-[28px] font-black tracking-tight leading-[1.05] text-foreground [overflow-wrap:break-word]"
+        title={nick ? `${displayName} (legal name ${legalName})` : displayName}
+      >
+        {displayName}
+      </h1>
+
+      <div className="cp-head__meta [grid-area:meta] self-start min-w-0 xl:max-w-[240px] 2xl:max-w-[320px] flex items-center gap-2 flex-wrap">
+        <BrandTiles size={6} gap={2} />
+        {/* Wraps, never an ellipsis: the studio is a name too ("Demo Mode").
+            Sentence case and a normal letter-spacing: the old capitals at
+            0.14em took twice the width and pushed it onto five lines. */}
+        <span className="min-w-0 flex-1 text-[12px] font-semibold leading-snug text-muted-foreground [overflow-wrap:break-word]">
+          <span>{studioName}</span>
+          {since && (
+            <span className="xl:hidden 2xl:inline">
+              {studioName ? " · " : ""}
+              {since.label} {since.value}
             </span>
-            {hasFlags && (
-              <span className="hidden sm:inline-flex xl:hidden 2xl:inline-flex items-center gap-1.5 rounded px-2 py-0.5 border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
-                <AlertTriangle className="w-3 h-3" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Clinical notes</span>
-              </span>
-            )}
-          </div>
-        </div>
+          )}
+          {(client.experienceLevel || client.trainingPedigree) && (
+            <span className="xl:hidden 2xl:inline"> · {client.experienceLevel || client.trainingPedigree}</span>
+          )}
+        </span>
+        {hasFlags && (
+          <span className="hidden sm:inline-flex xl:hidden 2xl:inline-flex items-center gap-1.5 rounded px-2 py-0.5 border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+            <AlertTriangle className="w-3 h-3" />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Clinical notes</span>
+          </span>
+        )}
       </div>
 
-      {/* ---------- the action. Hero orange appears nowhere else in the header. ---------- */}
-      <div className="cp-head__cta [grid-area:cta] justify-self-end flex items-center gap-2">
+      {/* ---------- the quiet tools: under Start in portrait, before it in landscape ---------- */}
+      <div className="cp-head__tools [grid-area:tools] justify-self-end self-start xl:self-center flex items-center gap-2">
         {/*
           Kaizen Roster toggle. Deliberately quiet and deliberately BLUE: the
           red kaizen mark means "this rep needs work" in the session grid, and
@@ -435,7 +447,7 @@ export function ProfileHeader({
             aria-pressed={kaizen.isOn}
             title={kaizen.isOn ? "On your Kaizen Roster — tap to remove" : "Add to your Kaizen Roster"}
             className={cn(
-              "shrink-0 inline-flex items-center gap-1.5 h-12 px-3 rounded-2xl border text-[11px] font-bold uppercase tracking-widest transition-colors",
+              "shrink-0 inline-flex items-center gap-1.5 h-10 xl:h-12 px-3 rounded-xl xl:rounded-2xl border text-[11px] font-bold uppercase tracking-widest transition-colors",
               kaizen.busy && "opacity-50",
               kaizen.isOn
                 ? "border-transparent bg-[#0a548b]/10 text-[#034a84] dark:bg-[#4a9fd8]/15 dark:text-[#7cc0ee]"
@@ -466,7 +478,7 @@ export function ProfileHeader({
             title="Add a note — it goes to their Notes"
             aria-label="Add a note"
             className={cn(
-              "shrink-0 inline-flex items-center justify-center gap-1.5 h-12 min-w-12 px-3 rounded-2xl border text-[11px] font-bold uppercase tracking-widest transition-colors",
+              "shrink-0 inline-flex items-center justify-center gap-1.5 h-10 min-w-10 xl:h-12 xl:min-w-12 px-3 rounded-xl xl:rounded-2xl border text-[11px] font-bold uppercase tracking-widest transition-colors",
               "border-slate-200 dark:border-slate-800 text-muted-foreground hover:text-foreground",
             )}
           >
@@ -486,7 +498,7 @@ export function ProfileHeader({
             }
             aria-label={sync.busy ? "Syncing with Mindbody" : `Sync with Mindbody. ${sync.label}`}
             className={cn(
-              "shrink-0 inline-flex items-center justify-center gap-1.5 h-12 min-w-12 px-3 rounded-2xl border text-[11px] font-bold uppercase tracking-widest transition-colors",
+              "shrink-0 inline-flex items-center justify-center gap-1.5 h-10 min-w-10 xl:h-12 xl:min-w-12 px-3 rounded-xl xl:rounded-2xl border text-[11px] font-bold uppercase tracking-widest transition-colors",
               "border-slate-200 dark:border-slate-800 text-muted-foreground hover:text-foreground",
               "disabled:opacity-50 disabled:cursor-not-allowed",
             )}
@@ -501,6 +513,10 @@ export function ProfileHeader({
             </span>
           </button>
         )}
+      </div>
+
+      {/* ---------- the action. Hero orange appears nowhere else in the header. ---------- */}
+      <div className="cp-head__cta [grid-area:start] justify-self-end flex items-center">
         {activeInProgressSession ? (
           <DropdownMenu>
             <DropdownMenuTrigger className="inline-flex items-center gap-2 h-12 px-4 sm:px-5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-display italic uppercase tracking-wider text-sm sm:text-base shadow-[0_10px_30px_-12px_rgba(245,158,11,.8)] transition-colors">
@@ -561,7 +577,7 @@ export function ProfileHeader({
       </div>
 
       {/* ---------- the four facts, hairline-divided ---------- */}
-      <div className="cp-head__strip [grid-area:strip] min-w-0 grid grid-cols-2 md:grid-cols-4 gap-px bg-slate-200 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+      <div className="cp-head__strip [grid-area:strip] mt-2 xl:mt-0 min-w-0 grid grid-cols-2 md:grid-cols-4 gap-px bg-slate-200 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
         {/* Tap for everyone who has trained this client and how often
             (tracker round, Sep 2026 — "a feature we tried to get working"). */}
         <Stat
@@ -691,7 +707,7 @@ export function ProfileHeader({
           with no named area lands it in a fresh implicit row, in normal
           flow, pushing everything below it down. */}
       {showTrainers && trainerRows.length > 0 && (
-        <div className="col-span-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2" role="region" aria-label="Trainers who have trained this client">
+        <div className="col-span-full mt-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2" role="region" aria-label="Trainers who have trained this client">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Trained by</span>
             <button type="button" className="text-[11px] font-bold text-muted-foreground min-h-8 px-2" onClick={() => setShowTrainers(false)}>

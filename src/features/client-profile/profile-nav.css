@@ -472,13 +472,26 @@
    a label takes a second line instead of an ellipsis.
    -------------------------------------------------------------------------- */
 @media (max-width: 599px) {
+  /* The name and the studio line keep the width beside the avatar; the
+     tools and Start share the row under them (Oct 2 2026). */
   .cp-head {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "id" "cta" "strip";
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "back avatar name name"
+      "back avatar meta meta"
+      "tools tools tools start"
+      "strip strip strip strip";
+  }
+  .cp-head__name { font-size: 24px; }
+  .cp-head [data-slot="avatar"] { width: 48px; height: 48px; }
+  .cp-head__tools {
+    justify-self: start;
+    margin-top: 8px;
   }
   .cp-head__cta {
     justify-self: stretch;
     min-width: 0;
+    margin-top: 8px;
   }
   /* Start session takes the rest of the row, and says so in words. */
   .cp-head__start {
