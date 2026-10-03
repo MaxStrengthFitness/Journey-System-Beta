@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AlertCircle, ChevronDown, ChevronUp, ChevronsRight, MoreHorizontal, NotebookPen, Plus, X } from "lucide-react";
 import type { JourneyRow, JourneySession, JourneySet, LiveColumn, LiveSet, StatMetric } from "./types";
@@ -43,6 +43,12 @@ export interface GridSection {
   numbered?: boolean;
   /** Rows in this section have NO live input even when a live column exists. */
   inactive?: boolean;
+  /**
+   * Drawn in the section's bar in place of its label: the Journey tab's
+   * filter sits here, on the grid it filters (AJ, Oct 2 2026). The count
+   * stays beside it. `label` still names the row for a screen reader.
+   */
+  header?: ReactNode;
 }
 
 export interface JourneyGridProps {
@@ -1168,6 +1174,14 @@ const SectionBlock = memo(function SectionBlock({
   const toggle = section.onToggle;
   return (
     <>
+      {section.header ? (
+        <div className="jg-group jg-group--header" role="row" aria-label={section.label}>
+          <span className="jg-group__label jg-group__label--header">
+            {section.header}
+            <span className="jg-group__count">{section.rows.length}</span>
+          </span>
+        </div>
+      ) : (
       <div
         className={`jg-group ${toggle ? "jg-group--action" : ""}`}
         role="row"
@@ -1180,6 +1194,7 @@ const SectionBlock = memo(function SectionBlock({
           <span className="jg-group__count">{section.rows.length}</span>
         </span>
       </div>
+      )}
       {!section.collapsed &&
         section.rows.map((row, i) => (
           <Row

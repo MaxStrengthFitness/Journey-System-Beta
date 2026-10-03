@@ -171,8 +171,27 @@ export function RecentJourneyView({
           : filter === "b"
             ? rows.filter((r) => inB.has(r.machine.id))
             : rows.filter((r) => Object.keys(r.sets).some((id) => shownIds.has(id)));
-    return [{ id: filter, label: FILTER_LABEL[filter], rows: pick }];
-  }, [rows, filter, routineAMachineIds, routineBMachineIds, visibleSessions]);
+    // The filter rides in the section's own bar, on the grid it filters
+    // (AJ, Oct 2 2026: "lets move the filter directly to the bar down
+    // here"), instead of a row of its own above the key.
+    const header = (
+      <div className="jg-seg jg-seg--bar" role="radiogroup" aria-label="Which machines to show">
+        {availableFilters.map((f) => (
+          <button
+            key={f}
+            type="button"
+            role="radio"
+            aria-checked={filter === f}
+            className={`jg-seg__btn ${filter === f ? "is-on" : ""}`}
+            onClick={() => setFilter(f)}
+          >
+            {FILTER_LABEL[f]}
+          </button>
+        ))}
+      </div>
+    );
+    return [{ id: filter, label: FILTER_LABEL[filter], rows: pick, header }];
+  }, [rows, filter, routineAMachineIds, routineBMachineIds, visibleSessions, availableFilters]);
 
   return (
     <section
@@ -181,22 +200,9 @@ export function RecentJourneyView({
     >
       {/* No caption: this IS the Journey tab, and "Recent journey" under a
           tab called Journey was a heading repeating the tab (profile audit,
-          Sep 2026). The toolbar is the filter and the key, nothing else. */}
+          Sep 2026). The toolbar is the key, nothing else: the filter is in
+          the grid's own section bar since Oct 2 2026. */}
       <GridToolbar>
-        <div className="jg-seg" role="radiogroup" aria-label="Which machines to show">
-          {availableFilters.map((f) => (
-            <button
-              key={f}
-              type="button"
-              role="radio"
-              aria-checked={filter === f}
-              className={`jg-seg__btn ${filter === f ? "is-on" : ""}`}
-              onClick={() => setFilter(f)}
-            >
-              {FILTER_LABEL[f]}
-            </button>
-          ))}
-        </div>
         {/* No "Older +7" pill any more: the grid reveals older sessions as
             the trainer scrolls back, and its sticky rail says where it is.
             The key rides in the toolbar so the grid can take the full height

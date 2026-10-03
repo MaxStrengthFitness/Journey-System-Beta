@@ -2742,3 +2742,29 @@ div.jg-today { cursor: default; }
     white-space: normal;
   }
 }
+
+/* The Journey tab's filter, in the grid's section bar (AJ, Oct 2 2026:
+   "lets move the filter directly to the bar down here"). The bar grows to
+   hold 40px buttons; the label stays pinned left while the grid scrolls. */
+.jg-group.jg-group--header,
+.jg[data-dense="line"] .jg-group.jg-group--header {
+  height: auto;
+  min-height: 48px;
+  padding: 4px 0;
+}
+.jg-group__label--header {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+  font-family: var(--jg-font);
+  font-size: 11.5px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.jg-seg.jg-seg--bar { background: transparent; border-color: transparent; padding: 0; }
+.jg-seg--bar .jg-seg__btn { height: 40px; padding: 0 12px; font-size: 11.5px; }
+@media (max-width: 599px) {
+  .jg-view--journey .jg-seg.jg-seg--bar { display: inline-flex; width: auto; }
+  .jg-view--journey .jg-seg--bar .jg-seg__btn { padding: 2px 8px; font-size: 10px; }
+}
