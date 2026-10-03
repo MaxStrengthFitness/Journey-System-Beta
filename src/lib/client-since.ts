@@ -285,7 +285,7 @@ const MONTHS = [
 export function clientSinceLabel(
   client: ClientSinceInput | null | undefined,
   history?: ClientSinceHistory,
-): { label: string; value: string; source: ClientSinceSource; confirmed: boolean } | null {
+): { label: string; value: string; month: string; source: ClientSinceSource; confirmed: boolean } | null {
   const since = resolveClientSince(client, history);
   if (!since) return null;
   const month = `${MONTHS[since.date.getMonth()]} ${since.date.getFullYear()}`;
@@ -293,6 +293,9 @@ export function clientSinceLabel(
     label: since.fromMindbody ? "Client since" : "In Journey since",
     // Mindbody's date until a trainer confirms it on Account (Oct 2 2026).
     value: since.fromMindbody && !since.confirmed ? `${month} (from Mindbody)` : month,
+    // The month alone, for a screen that marks `confirmed` itself (the
+    // profile header's check, Oct 2 2026) rather than in words.
+    month,
     source: since.source,
     confirmed: since.confirmed,
   };

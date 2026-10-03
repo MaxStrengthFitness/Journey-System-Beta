@@ -18,7 +18,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { studioHour, formatStudioTime, studioTodayKey, studioDayKeyOf } from "../lib/studio-time";
-import { beforeJourneyGuess, MINDBODY_GUESS_WORDS, sessionTotalOf } from "../lib/session-total";
+import { beforeJourneyGuess, sessionTotalOf } from "../lib/session-total";
 import { useClientLateCancels } from "../features/admin/attention/booking-marks";
 import { sessionDayKey } from "../features/client-history/model";
 import {
@@ -524,10 +524,10 @@ export function ClientProfileView({
     return lateCancelRead.rows.filter((r) => !r.day || !logged.has(r.day)).length;
   }, [lateCancelRead.rows, sessions]);
   const headerTotal = sessionTotals?.basis === "mindbody" ? sessionTotals.total : completedTotal;
-  const headerPriorLabel =
-    sessionTotals?.basis === "mindbody" && mindbodyGuess !== null
-      ? `${mindbodyGuess} before Journey \u00b7 ${MINDBODY_GUESS_WORDS}`
-      : priorLabel;
+  // Mindbody's guess is a grey check beside the words, not "from Mindbody,
+  // not yet confirmed" (AJ, Oct 2 2026: "clean up the wordy look").
+  const headerPriorIsGuess = sessionTotals?.basis === "mindbody" && mindbodyGuess !== null;
+  const headerPriorLabel = headerPriorIsGuess ? `${mindbodyGuess} before Journey` : priorLabel;
 
   useEffect(() => {
     if (!clientId) return;
@@ -1513,6 +1513,7 @@ export function ClientProfileView({
         sessionsQuotable={canQuoteNumber || sessionTotals?.basis === "mindbody"}
         coverage={clientCoverage}
         priorLabel={headerPriorLabel}
+        priorConfirmed={!headerPriorIsGuess}
         sessionsSplit={splitOfSessions}
         topTrainer={topTrainer}
         trainers={trainers}

@@ -334,3 +334,23 @@ describe("ProfileHeader's running-session menu", () => {
     expect(line).toBe("Started by JC at 9:04 AM · AJ took it over");
   });
 });
+
+describe("ProfileHeader's checks (Oct 2 2026)", () => {
+  it("marks a guessed first day and a guessed count with a grey check, not words", () => {
+    const host = mount(
+      props({
+        client: { ...client, firstAppointmentDate: "2020-01-15T15:00:00Z" } as unknown as Client,
+        priorLabel: "54 before Journey",
+        priorConfirmed: false,
+      }),
+    );
+    expect(host.textContent).not.toContain("(from Mindbody)");
+    expect(host.querySelector('[data-testid="since-check"]')?.getAttribute("data-confirmed")).toBe("no");
+    expect(host.querySelector('[data-testid="prior-check"]')?.getAttribute("data-confirmed")).toBe("no");
+  });
+
+  it("turns the first day's check green once a person has set it", () => {
+    const host = mount(props({ client: { ...client, firstStudioDay: "2014-09-08" } as unknown as Client }));
+    expect(host.querySelector('[data-testid="since-check"]')?.getAttribute("data-confirmed")).toBe("yes");
+  });
+});

@@ -16,7 +16,7 @@ describe("clientSinceLabel", () => {
       firstAppointmentDate: ts("2014-03-01T15:00:00"),
     });
     // Mindbody's date, not yet confirmed by a trainer (Oct 2 2026): said so.
-    expect(label).toEqual({ label: "Client since", value: "Mar 2014 (from Mindbody)", source: "firstAppointment", confirmed: false });
+    expect(label).toEqual({ label: "Client since", value: "Mar 2014 (from Mindbody)", month: "Mar 2014", source: "firstAppointment", confirmed: false });
   });
 
   it("keeps a genuinely new client's first session, and needs no confirming for a whole story", () => {
@@ -32,6 +32,7 @@ describe("clientSinceLabel", () => {
     expect(whole).toMatchObject({ source: "firstSession", confirmed: true });
     expect(canClaimAnniversary(whole)).toBe(true);
     expect(clientSinceLabel({ firstSessionDate: ts("2026-09-02T15:00:00") })?.value).toBe("Sep 2026 (from Mindbody)");
+    expect(clientSinceLabel({ firstSessionDate: ts("2026-09-02T15:00:00") })?.month).toBe("Sep 2026");
     expect(clientSinceLabel({ firstSessionDate: ts("2026-09-02T15:00:00") }, { coverage: "complete" })?.value).toBe("Sep 2026");
   });
 
@@ -59,6 +60,7 @@ describe("clientSinceLabel", () => {
       expect(clientSinceLabel(filemaker, { coverage })).toEqual({
         label: "In Journey since",
         value: "Sep 2026",
+        month: "Sep 2026",
         source: "firstSession",
         confirmed: false,
       });
@@ -101,7 +103,7 @@ describe("clientSinceLabel", () => {
       expect(since?.date.getMonth()).toBe(8);
       expect(since?.date.getDate()).toBe(8);
     }
-    expect(clientSinceLabel(client, { coverage: "partial" })).toEqual({ label: "Client since", value: "Sep 2014", source: "stated", confirmed: true });
+    expect(clientSinceLabel(client, { coverage: "partial" })).toEqual({ label: "Client since", value: "Sep 2014", month: "Sep 2014", source: "stated", confirmed: true });
     expect(statedFirstDay({ firstStudioDay: "2014-02-30" })).toBeNull();
     expect(statedFirstDay({ firstStudioDay: "1980-01-01" })).toBeNull();
     expect(statedFirstDay({ firstStudioDay: "" })).toBeNull();

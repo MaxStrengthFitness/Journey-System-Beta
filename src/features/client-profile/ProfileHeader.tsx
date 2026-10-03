@@ -18,7 +18,7 @@
  *    Journey — see prior-history-door.ts.
  */
 import { useState, type ReactNode } from "react";
-import { ChevronLeft, Clock, Eye, History, NotebookPen, Play, RefreshCw, Trash2, UserCheck, AlertTriangle, User } from "lucide-react";
+import { BadgeCheck, ChevronLeft, Clock, Eye, History, NotebookPen, Play, RefreshCw, Trash2, UserCheck, AlertTriangle, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn, parseSessionDate } from "../../lib/utils";
@@ -113,6 +113,11 @@ export interface ProfileHeaderProps {
    * the profile, leave it in the profile section").
    */
   priorLabel?: string | null;
+  /**
+   * False while `priorLabel` is Mindbody's guess: the grey check says so
+   * where the words "from Mindbody, not yet confirmed" used to (Oct 2 2026).
+   */
+  priorConfirmed?: boolean;
   topTrainer: TopTrainerState;
   /** Everyone on the studio's list, to name the trainers in the tally. */
   trainers?: Trainer[];
@@ -272,6 +277,31 @@ function Stat({
   );
 }
 
+/**
+ * A quiet check after a fact that can be confirmed (AJ, Oct 2 2026: "a
+ * subtle green check ... a grey check if not verified"), in place of words
+ * like "(from Mindbody)". Green once a person has confirmed it on Notes &
+ * Profile → Account; grey while it is still the app's guess. What it means
+ * is in its label and its title, never only in the colour.
+ */
+function ConfirmedCheck({ confirmed, what, testId }: { confirmed: boolean; what: string; testId: string }) {
+  const words = confirmed ? `Confirmed: ${what}` : `Not confirmed yet: confirm ${what} on Notes & Profile, Account`;
+  return (
+    <BadgeCheck
+      data-testid={testId}
+      data-confirmed={confirmed ? "yes" : "no"}
+      role="img"
+      aria-label={words}
+      className={cn(
+        "inline-block align-[-2px] ml-1 w-3.5 h-3.5",
+        confirmed ? "text-emerald-500 dark:text-emerald-400" : "text-slate-400 dark:text-slate-600",
+      )}
+    >
+      <title>{words}</title>
+    </BadgeCheck>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 
 export function ProfileHeader({
@@ -284,6 +314,7 @@ export function ProfileHeader({
   sessionsQuotable = false,
   coverage = "unknown",
   priorLabel,
+  priorConfirmed = true,
   topTrainer,
   trainers = [],
   pkg,
@@ -415,7 +446,8 @@ export function ProfileHeader({
           {since && (
             <span className="xl:hidden 2xl:inline">
               {studioName ? " · " : ""}
-              {since.label} {since.value}
+              {since.label} {since.month}
+              <ConfirmedCheck confirmed={since.confirmed} what="her first day" testId="since-check" />
             </span>
           )}
           {(client.experienceLevel || client.trainingPedigree) && (
@@ -691,6 +723,7 @@ export function ProfileHeader({
           {priorLabel && (
             <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {priorLabel}
+              <ConfirmedCheck confirmed={priorConfirmed} what="her sessions before Journey" testId="prior-check" />
             </span>
           )}
           {typeof lateCancels === "number" && lateCancels > 0 && (
