@@ -256,7 +256,7 @@ export function RecentJourneyView({
 
   return (
     <section
-      className={`jg-view jg-view--journey ${layout === "fill" ? "jg-view--fill" : ""} ${layout === "page" ? "jg-view--page" : ""}`}
+      className={`jg-view jg-view--journey jg-look ${layout === "fill" ? "jg-view--fill" : ""} ${layout === "page" ? "jg-view--page" : ""}`}
       aria-label="Recent journey"
     >
       {/* No caption: this IS the Journey tab, and "Recent journey" under a

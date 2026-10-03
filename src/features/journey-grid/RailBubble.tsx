@@ -12,7 +12,7 @@ import { useState, type ReactNode } from "react";
 
 export type RailBubbleKind = "practice" | "flow" | "skip";
 
-const ICON: Record<RailBubbleKind, ReactNode> = {
+export const RAIL_ICON: Record<RailBubbleKind, ReactNode> = {
   practice: (
     <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
       <text x="8" y="12.5" textAnchor="middle" fontSize="12" fontWeight="800" fill="currentColor" fontFamily="system-ui, sans-serif">
@@ -48,7 +48,7 @@ export function RailBubble({ kind, caption }: { kind: RailBubbleKind; caption: s
         }}
         onBlur={() => setOpen(false)}
       >
-        <span className="jg-bubble__dot">{ICON[kind]}</span>
+        <span className="jg-bubble__dot">{RAIL_ICON[kind]}</span>
       </button>
       {open && (
         <span className="jg-bubble__tip" role="status">

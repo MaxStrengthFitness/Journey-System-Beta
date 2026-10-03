@@ -3738,7 +3738,9 @@ export function WorkoutTrackerView({
         />
       ) : (
       <div className={`jg-stage ${nowBarSide ? "jg-stage--side" : ""}`}>
-      <div className="jg-stage__main">
+      {/* jg-look: the Journey chart's look, lanes on a rail (AJ, Oct 3 2026:
+          "update an active session to match the new design"). */}
+      <div className="jg-stage__main jg-look">
         {/* The rail used to open with the word ROUTINE, then a bare
             "6 of 21", then a segmented control whose left half also said
             Routine -- three pieces of chrome for one idea. It is one
@@ -3837,6 +3839,8 @@ export function WorkoutTrackerView({
             fit="auto"
             targetColumns={nowBarSide ? 8 : 10}
             title="Machine"
+            /* The rail's Older button above does this job; no strip. */
+            olderRail={false}
           />
         )}
       </div>

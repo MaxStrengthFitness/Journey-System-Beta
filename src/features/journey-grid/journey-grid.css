@@ -2803,7 +2803,7 @@ div.jg-today { cursor: default; }
      every density because the mark is now the only sign. Completed is a
      plain box, and the key drops its swatch.
    -------------------------------------------------------------------------- */
-.jg-view--journey .jg-cell {
+.jg-look .jg-cell {
   display: block;
   padding: 0;
   border-left: 0;
@@ -2812,53 +2812,53 @@ div.jg-today { cursor: default; }
 }
 /* One number in each corner, so a short row never stacks them into each
    other: the weight top-left, the reps bottom-right. */
-.jg-view--journey .jg-cell__w {
+.jg-look .jg-cell__w {
   position: absolute;
   top: 2px;
   left: 5px;
   line-height: 1;
   white-space: nowrap;           /* "120 ▲10" stays on its line */
 }
-.jg-view--journey .jg-cell__w .jg-delta { font-size: 9.5px; margin-left: 1px; }
-.jg-view--journey .jg-cell__r {
+.jg-look .jg-cell__w .jg-delta { font-size: 9.5px; margin-left: 1px; }
+.jg-look .jg-cell__r {
   position: absolute;
   bottom: 2px;
   right: 4px;
   line-height: 1;
 }
-.jg-view--journey .jg-cell__empty,
-.jg-view--journey .jg-cell__skip {
+.jg-look .jg-cell__empty,
+.jg-look .jg-cell__skip {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.jg-view--journey .jg-cell--q1,
-.jg-view--journey .jg-cell--q2,
-.jg-view--journey .jg-cell--q3 {
+.jg-look .jg-cell--q1,
+.jg-look .jg-cell--q2,
+.jg-look .jg-cell--q3 {
   background-color: var(--jg-surface);
   background-image: none;
   border-left-color: transparent;
 }
-.jg-view--journey .jg-cell--q1::before { display: none; }
-.jg-view--journey .jg[data-dense="line"] .jg-cell__mark { display: block; }
-.jg-view--journey .jg-cell__mark { top: 2px; right: 3px; }
-.jg-view--journey .jg-legend__swatch--q1,
-.jg-view--journey .jg-legend__swatch--q3,
-.jg-view--journey .jg-legend__item--done { display: none; }
+.jg-look .jg-cell--q1::before { display: none; }
+.jg-look .jg[data-dense="line"] .jg-cell__mark { display: block; }
+.jg-look .jg-cell__mark { top: 2px; right: 3px; }
+.jg-look .jg-legend__swatch--q1,
+.jg-look .jg-legend__swatch--q3,
+.jg-look .jg-legend__item--done { display: none; }
 /* The machine column's lines match, so the rows read straight across. */
-.jg-view--journey .jg-machine,
-.jg-view--journey .jg-head,
-.jg-view--journey .jg-corner { border-bottom-color: var(--jg-border-strong); }
+.jg-look .jg-machine,
+.jg-look .jg-head,
+.jg-look .jg-corner { border-bottom-color: var(--jg-border-strong); }
 
 /* No up/down marks on the profile's chart (AJ, Oct 2 2026: "very
    cluttery ... it's very easy for a trainer just to use basic math skills
    to understand if the weight went up or down"). The numbers alone; the
    cell's spoken label still says the change. The Active Session keeps
    them. */
-.jg-view--journey .jg-delta,
-.jg-view--journey .jg-trend { display: none; }
+.jg-look .jg-delta,
+.jg-look .jg-trend { display: none; }
 
 /* Bigger type for the profile's chart on an iPad (AJ, Oct 2 2026: "the
    boxes just feel a little bit too thin with the size of all the text").
@@ -2886,22 +2886,22 @@ div.jg-today { cursor: default; }
      is a tile on it (the weight, the reps under it) and a day with no set
      is an open circle on the line.
    -------------------------------------------------------------------------- */
-.jg-view--journey .jg-scroller { background: var(--jg-bg); }
-.jg-view--journey .jg-grid { row-gap: 4px; }
-.jg-view--journey .jg-cell,
-.jg-view--journey .jg-machine { border-right: 0; border-bottom: 0; }
+.jg-look .jg-scroller { background: var(--jg-bg); }
+.jg-look .jg-grid { row-gap: 4px; }
+.jg-look .jg-cell,
+.jg-look .jg-machine { border-right: 0; border-bottom: 0; }
 
 /* the lane's two ends */
-.jg-view--journey .jg-machine {
+.jg-look .jg-machine {
   border-right: 2px solid var(--jg-hero);
   border-radius: 12px 0 0 12px;
 }
-.jg-view--journey .jg-row > .jg-cell:last-child { border-radius: 0 12px 12px 0; }
-.jg-view--journey .jg-row[data-band="1"] .jg-machine::after { border-radius: 12px 0 0 12px; }
-.jg-view--journey .jg-row[data-band="1"] > .jg-cell:last-child::after { border-radius: 0 12px 12px 0; }
+.jg-look .jg-row > .jg-cell:last-child { border-radius: 0 12px 12px 0; }
+.jg-look .jg-row[data-band="1"] .jg-machine::after { border-radius: 12px 0 0 12px; }
+.jg-look .jg-row[data-band="1"] > .jg-cell:last-child::after { border-radius: 0 12px 12px 0; }
 
 /* the rail */
-.jg-view--journey .jg-cell {
+.jg-look .jg-cell {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2912,10 +2912,10 @@ div.jg-today { cursor: default; }
   background-position: center;
   background-repeat: no-repeat;
 }
-.jg-view--journey .jg-row > .jg-cell:last-child { background-size: 50% 2px; background-position: left center; }
+.jg-look .jg-row > .jg-cell:last-child { background-size: 50% 2px; background-position: left center; }
 
 /* a set: a tile on the rail */
-.jg-view--journey .jg-cell:not(.jg-cell--none):not(.jg-cell--nr):not(.jg-cell--skipped)::before {
+.jg-look .jg-cell:not(.jg-cell--none):not(.jg-cell--nr):not(.jg-cell--skipped)::before {
   content: "";
   display: block;
   position: absolute;
@@ -2926,20 +2926,20 @@ div.jg-today { cursor: default; }
   background: var(--jg-surface-3);
   z-index: 0;
 }
-.jg-view--journey .jg-cell__w,
-.jg-view--journey .jg-cell__r {
+.jg-look .jg-cell__w,
+.jg-look .jg-cell__r {
   position: relative;
   inset: auto;
   z-index: 1;
   padding: 0;
 }
-.jg-view--journey .jg-cell__r { color: var(--jg-ink-muted); font-weight: 600; }
-.jg-view--journey .jg-cell__r:not(:has(.jg-tut))::after { content: " reps"; }
-.jg-view--journey .jg-cell__mark { top: 6px; right: 7px; z-index: 1; }
+.jg-look .jg-cell__r { color: var(--jg-ink-muted); font-weight: 600; }
+.jg-look .jg-cell__r:not(:has(.jg-tut))::after { content: " reps"; }
+.jg-look .jg-cell__mark { top: 6px; right: 7px; z-index: 1; }
 
 /* no set: an open circle on the rail */
-.jg-view--journey .jg-cell--none .jg-cell__empty { display: none; }
-.jg-view--journey .jg-cell--none::before {
+.jg-look .jg-cell--none .jg-cell__empty { display: none; }
+.jg-look .jg-cell--none::before {
   content: "";
   position: absolute;
   top: 50%;
@@ -2952,23 +2952,23 @@ div.jg-today { cursor: default; }
   box-shadow: inset 0 0 0 2px var(--jg-border-strong);
   z-index: 0;
 }
-.jg-view--journey .jg-cell--nr .jg-cell__empty,
-.jg-view--journey .jg-cell__skip { position: relative; z-index: 1; background: var(--jg-surface); padding: 0 3px; border-radius: 4px; }
+.jg-look .jg-cell--nr .jg-cell__empty,
+.jg-look .jg-cell__skip { position: relative; z-index: 1; background: var(--jg-surface); padding: 0 3px; border-radius: 4px; }
 
 /* the name, right-aligned against the edge, and her settings under it */
-.jg-view--journey .jg-machine__btn { align-items: flex-end; text-align: right; }
-.jg-view--journey .jg-machine__name { justify-content: flex-end; }
-.jg-view--journey .jg[data-settings="menu"] .jg-machine__meta {
+.jg-look .jg-machine__btn { align-items: flex-end; text-align: right; }
+.jg-look .jg-machine__name { justify-content: flex-end; }
+.jg-look .jg[data-settings="menu"] .jg-machine__meta {
   display: flex;
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 0 6px;
   margin-top: 1px;
 }
-.jg-view--journey .jg-machine__meta .jg-setting { border: 0; padding: 0; margin: 0; gap: 1px; }
-.jg-view--journey .jg-machine__meta .jg-setting__k,
-.jg-view--journey .jg-machine__meta .jg-setting__v,
-.jg-view--journey .jg-machine__meta .jg-setting--more {
+.jg-look .jg-machine__meta .jg-setting { border: 0; padding: 0; margin: 0; gap: 1px; }
+.jg-look .jg-machine__meta .jg-setting__k,
+.jg-look .jg-machine__meta .jg-setting__v,
+.jg-look .jg-machine__meta .jg-setting--more {
   font-size: 10.5px;
   font-weight: 600;
   color: var(--jg-ink-faint);
@@ -2978,18 +2978,18 @@ div.jg-today { cursor: default; }
 /* Columns land on fractions of a pixel, and the dark gap behind the lanes
    showed through as hairlines every few days. Each box overlaps the next
    by a pixel, its band too. */
-.jg-view--journey .jg-row > .jg-cell:not(:last-child) { box-shadow: 1px 0 0 var(--jg-surface); }
-.jg-view--journey .jg-row[data-band="1"] > .jg-cell:not(:last-child)::after { right: -1px; }
+.jg-look .jg-row > .jg-cell:not(:last-child) { box-shadow: 1px 0 0 var(--jg-surface); }
+.jg-look .jg-row[data-band="1"] > .jg-cell:not(:last-child)::after { right: -1px; }
 
 /* Names and settings in straight columns (AJ, Oct 2 2026: "they're all
    starting at a different spot ... a little box around all the settings
    ... all the gaps at the same spot"). Every name starts at the same left
    edge, and each setting is a small box of one width, so Gap (always
    first) and the boxes after it line up from one machine to the next. */
-.jg-view--journey .jg-machine__btn { align-items: flex-start; text-align: left; }
-.jg-view--journey .jg-machine__name { justify-content: flex-start; }
-.jg-view--journey .jg[data-settings="menu"] .jg-machine__meta { justify-content: flex-start; gap: 3px; margin-top: 3px; }
-.jg-view--journey .jg-machine__meta .jg-setting {
+.jg-look .jg-machine__btn { align-items: flex-start; text-align: left; }
+.jg-look .jg-machine__name { justify-content: flex-start; }
+.jg-look .jg[data-settings="menu"] .jg-machine__meta { justify-content: flex-start; gap: 3px; margin-top: 3px; }
+.jg-look .jg-machine__meta .jg-setting {
   display: inline-flex;
   align-items: baseline;
   justify-content: center;
@@ -3001,25 +3001,25 @@ div.jg-today { cursor: default; }
   box-shadow: inset 0 0 0 1px var(--jg-border-strong);
   line-height: 17px;
 }
-.jg-view--journey .jg-machine__meta .jg-setting__v { color: var(--jg-ink-2); }
+.jg-look .jg-machine__meta .jg-setting__v { color: var(--jg-ink-2); }
 .jg-setting--slot { display: none; }
-.jg-view--journey .jg[data-settings="menu"] .jg-machine__meta { gap: 2px; flex-wrap: nowrap; }
-.jg-view--journey .jg-machine__meta .jg-setting { min-width: 25px; padding: 0 2px; }
-.jg-view--journey .jg-machine__meta .jg-setting--slot { display: inline-flex; box-shadow: none; }
+.jg-look .jg[data-settings="menu"] .jg-machine__meta { gap: 2px; flex-wrap: nowrap; }
+.jg-look .jg-machine__meta .jg-setting { min-width: 25px; padding: 0 2px; }
+.jg-look .jg-machine__meta .jg-setting--slot { display: inline-flex; box-shadow: none; }
 /* The tapped row keeps its rail; the highlight is a tint, not a new background. */
-.jg-view--journey .jg-row.is-selected .jg-cell {
+.jg-look .jg-row.is-selected .jg-cell {
   background-color: var(--jg-live-fill);
   background-image: linear-gradient(var(--jg-border-strong), var(--jg-border-strong));
   box-shadow: none;
 }
-.jg-view--journey .jg-row.is-selected .jg-cell {
+.jg-look .jg-row.is-selected .jg-cell {
   background-size: 100% 2px;
   background-position: center;
   background-repeat: no-repeat;
 }
-.jg-view--journey .jg-row.is-selected > .jg-cell:last-child { background-size: 50% 2px; background-position: left center; }
+.jg-look .jg-row.is-selected > .jg-cell:last-child { background-size: 50% 2px; background-position: left center; }
 /* A gap that was never set: the box with its G and nothing beside it. */
-.jg-view--journey .jg-machine__meta .jg-setting--slot {
+.jg-look .jg-machine__meta .jg-setting--slot {
   box-shadow: inset 0 0 0 1px var(--jg-border-strong);
   justify-content: flex-start;
   padding-left: 4px;
@@ -3033,15 +3033,15 @@ div.jg-today { cursor: default; }
    back. The tokens are in journey-grid.tokens.css (--jg-pf-*), light and
    dark. The quality marks keep their own colours.
    -------------------------------------------------------------------------- */
-.jg-view--journey .jg-head__d,
-.jg-view--journey .jg-corner__filter { color: var(--jg-pf-date); }
-.jg-view--journey .jg-head__n { color: var(--jg-pf-date-sub); }
-.jg-view--journey .jg-machine__label { color: var(--jg-ink); }
+.jg-look .jg-head__d,
+.jg-look .jg-corner__filter { color: var(--jg-pf-date); }
+.jg-look .jg-head__n { color: var(--jg-pf-date-sub); }
+.jg-look .jg-machine__label { color: var(--jg-ink); }
 
 /* a set's tile */
-.jg-view--journey .jg-cell:not(.jg-cell--none):not(.jg-cell--nr):not(.jg-cell--skipped)::before { background: var(--jg-pf-tile); }
-.jg-view--journey .jg-cell__w { color: var(--jg-pf-tile-ink); }
-.jg-view--journey .jg-cell__r { color: var(--jg-pf-reps); }
+.jg-look .jg-cell:not(.jg-cell--none):not(.jg-cell--nr):not(.jg-cell--skipped)::before { background: var(--jg-pf-tile); }
+.jg-look .jg-cell__w { color: var(--jg-pf-tile-ink); }
+.jg-look .jg-cell__r { color: var(--jg-pf-reps); }
 
 /* The settings boxes stay grey (AJ, same day: "those should just remain
    gray"). */
@@ -3063,15 +3063,15 @@ div.jg-today { cursor: default; }
    Session keeps its own cells, so the bubble is hidden everywhere else.
    -------------------------------------------------------------------------- */
 .jg-bubble-wrap { display: none; }
-.jg-view--journey .jg-bubble-wrap { display: grid; place-items: center; position: relative; z-index: 2; }
-.jg-view--journey .jg-cell--practice .jg-cell__w,
-.jg-view--journey .jg-cell--practice .jg-cell__r,
-.jg-view--journey .jg-cell--practice .jg-cell__mark,
-.jg-view--journey .jg-cell--practice::after,
-.jg-view--journey .jg-cell--skipped .jg-cell__skip { display: none; }
+.jg-look .jg-bubble-wrap { display: grid; place-items: center; position: relative; z-index: 2; }
+.jg-look .jg-cell--practice .jg-cell__w,
+.jg-look .jg-cell--practice .jg-cell__r,
+.jg-look .jg-cell--practice .jg-cell__mark,
+.jg-look .jg-cell--practice::after,
+.jg-look .jg-cell--skipped .jg-cell__skip { display: none; }
 /* no tile under a bubble */
-.jg-view--journey .jg-cell.jg-cell--practice::before { display: none; }
-.jg-view--journey .jg-row[data-band="1"] .jg-cell--practice::after { display: block; }
+.jg-look .jg-cell.jg-cell--practice::before { display: none; }
+.jg-look .jg-row[data-band="1"] .jg-cell--practice::after { display: block; }
 
 .jg-bubble {
   appearance: none;
@@ -3114,14 +3114,105 @@ div.jg-today { cursor: default; }
   pointer-events: none;
 }
 /* On the newest day the caption opens leftward, inside the chart. */
-.jg-view--journey .jg-row > .jg-cell:last-child .jg-bubble__tip { left: auto; right: 0; transform: none; }
+.jg-look .jg-row > .jg-cell:last-child .jg-bubble__tip { left: auto; right: 0; transform: none; }
 .jg-legend__swatch--flow { display: inline-grid; place-items: center; color: var(--jg-pf-flow, #9b5fd0); }
 /* On the profile the key draws Practice and Skipped as the rail draws them. */
-.jg-view--journey .jg-legend__swatch--practice,
-.jg-view--journey .jg-legend__swatch--skipped,
-.jg-view--journey .jg-legend__swatch--flow {
+.jg-look .jg-legend__swatch--practice,
+.jg-look .jg-legend__swatch--skipped,
+.jg-look .jg-legend__swatch--flow {
   width: 16px; height: 16px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 9px; font-weight: 800;
 }
-.jg-view--journey .jg-legend__swatch--practice { color: var(--jg-pf-practice); background: var(--jg-pf-practice-bg); box-shadow: inset 0 0 0 1px var(--jg-pf-practice); }
-.jg-view--journey .jg-legend__swatch--skipped { color: var(--jg-pf-skip); background: var(--jg-pf-skip-bg); box-shadow: inset 0 0 0 1px var(--jg-pf-skip); }
-.jg-view--journey .jg-legend__swatch--flow { background: var(--jg-pf-flow-bg); box-shadow: inset 0 0 0 1px var(--jg-pf-flow); }
+.jg-look .jg-legend__swatch--practice { color: var(--jg-pf-practice); background: var(--jg-pf-practice-bg); box-shadow: inset 0 0 0 1px var(--jg-pf-practice); }
+.jg-look .jg-legend__swatch--skipped { color: var(--jg-pf-skip); background: var(--jg-pf-skip-bg); box-shadow: inset 0 0 0 1px var(--jg-pf-skip); }
+.jg-look .jg-legend__swatch--flow { background: var(--jg-pf-flow-bg); box-shadow: inset 0 0 0 1px var(--jg-pf-flow); }
+
+/* --------------------------------------------------------------------------
+   The Active Session in the Journey look (AJ, Oct 3 2026: "update an active
+   session to match the new design"; he chose: today's live column is the
+   orange one, quiet marks for quality, no arrows). Today is the last stop
+   on every machine's rail: an orange tile once logged, a dashed orange
+   outline with the prescription while it waits, and Practice, Blood flow
+   and Skipped as the same bubbles the profile draws.
+   -------------------------------------------------------------------------- */
+.jg-today__bubble { display: none; }
+.jg-look .jg-today {
+  border-left: 0;
+  border-radius: 0 12px 12px 0;
+  background-color: var(--jg-surface);
+  background-image: linear-gradient(var(--jg-border-strong), var(--jg-border-strong));
+  background-size: 50% 2px;
+  background-position: left center;
+  background-repeat: no-repeat;
+}
+.jg-look .jg-today::before {
+  content: "";
+  position: absolute;
+  inset: 4px 3px;
+  border-radius: 10px;
+  z-index: 0;
+}
+.jg-look .jg-today--q1::before,
+.jg-look .jg-today--q2::before,
+.jg-look .jg-today--q3::before {
+  background: var(--jg-pf-now-tile);
+  box-shadow: inset 0 0 0 1.5px var(--jg-pf-now-edge);
+}
+.jg-look .jg-today--pending::before {
+  background: var(--jg-surface);
+  box-shadow: none;
+  border: 1.5px dashed var(--jg-pf-now-edge);
+  opacity: 0.75;
+}
+.jg-look .jg-today__w,
+.jg-look .jg-today__r { position: relative; z-index: 1; }
+.jg-look .jg-today__q { z-index: 1; }
+.jg-look .jg-today__r:not(:has(.jg-tut)):not(:has(.jg-today__dot))::after { content: " reps"; }
+.jg-look .jg-today__dot { display: none; }
+.jg-look .jg-today--q1,
+.jg-look .jg-today--q2,
+.jg-look .jg-today--q3 { background-color: var(--jg-surface); }
+.jg-look .jg-today--q1 .jg-today__w,
+.jg-look .jg-today--q2 .jg-today__w,
+.jg-look .jg-today--q3 .jg-today__w { color: var(--jg-pf-now-ink); }
+.jg-look .jg-today__r { color: var(--jg-pf-now-sub); }
+.jg-look .jg-today--pending .jg-today__w { color: var(--jg-pf-now-sub); font-weight: 600; }
+.jg-look .jg-today__q { top: 6px; right: 7px; }
+.jg-look .jg-today--q1 .jg-today__q { color: var(--jg-q-poor); }
+.jg-look .jg-today--q3 .jg-today__q { color: var(--jg-q-star); }
+
+/* Practice, Blood flow and Skipped today: the rail's bubble, nothing else. */
+.jg-look .jg-today--practice::after { display: none; }
+.jg-look .jg-today--practice .jg-today__w,
+.jg-look .jg-today--practice .jg-today__r,
+.jg-look .jg-today--practice .jg-today__q,
+.jg-look .jg-today--skipped .jg-today__skip { display: none; }
+.jg-look .jg-today .jg-today__bubble { display: grid; place-items: center; position: relative; z-index: 1; }
+
+/* Today's header: the orange date. */
+.jg-look .jg-head--live { background: var(--jg-surface-2); border-left: 0; }
+.jg-look .jg-head--live .jg-head__d { color: var(--jg-pf-now); }
+.jg-look .jg-head--live .jg-head__n { color: var(--jg-pf-now-sub); }
+
+/* The last session was framed in blue as "the baseline"; in the Journey
+   look the orange today does that job, so the frame goes and the rail stays. */
+.jg-look .jg-head.is-latest { background: var(--jg-surface-2); }
+.jg-look .jg-head.is-latest .jg-head__btn { box-shadow: none; border-bottom-color: transparent; }
+.jg-look .jg-head.is-latest .jg-head__d { color: var(--jg-pf-date); }
+.jg-look .jg-cell.is-latest {
+  box-shadow: none;
+  background-color: var(--jg-surface);
+  background-image: linear-gradient(var(--jg-border-strong), var(--jg-border-strong));
+  background-size: 100% 2px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.jg-look .jg-cell.is-latest .jg-cell__w { font-size: var(--jg-w-size); }
+
+/* The machine being walked up to keeps its orange trace. */
+.jg-look .jg-row.is-focus .jg-today::after { border-radius: 0 12px 12px 0; }
+
+/* A practice cell's dashed frame is the old look's; the band row's overlay
+   stays a plain band. */
+.jg-look .jg-row[data-band="1"] .jg-cell--practice::after { border: 0; border-radius: 0; inset: 0; }
+/* "Latest" named the framed baseline column; the frame is gone. */
+.jg-look .jg-head.is-latest .jg-head__tag { display: none; }

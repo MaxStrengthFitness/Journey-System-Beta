@@ -3,6 +3,7 @@ import { SKIP_REASON_LABEL, SKIP_REASON_SHORT } from "../../lib/set-outcome";
 import type { LiveSet } from "./types";
 import { formatSeconds } from "./stats";
 import { QualityMark } from "./QualityMark";
+import { RAIL_ICON } from "./RailBubble";
 
 interface TodayCellProps {
   machineId: string;
@@ -56,6 +57,8 @@ function TodayCellImpl({
   const quality = value?.quality ?? null;
   const outcome = value?.outcome ?? "performed";
   const skipReason = value?.skipReason ?? "unknown";
+  // A practice set done for blood flow (Oct 3 2026).
+  const bloodFlow = outcome === "practice" && value?.bloodFlow === true;
 
   const spokenEffort = logged
     ? isTSC
@@ -66,7 +69,7 @@ function TodayCellImpl({
     outcome === "skipped"
       ? "skipped — " + SKIP_REASON_LABEL[skipReason].toLowerCase()
       : outcome === "practice"
-        ? "practice set, " + (weight === null ? "no weight set" : weight + " lb") + ", " + spokenEffort
+        ? (bloodFlow ? "blood flow set, " : "practice set, ") + (weight === null ? "no weight set" : weight + " lb") + ", " + spokenEffort
         : (weight === null ? "no weight set" : weight + " lb") + ", " + spokenEffort;
 
   const cls = [
@@ -74,7 +77,9 @@ function TodayCellImpl({
     outcome === "skipped"
       ? "jg-today--skipped"
       : outcome === "practice"
-        ? "jg-today--practice"
+        ? bloodFlow
+          ? "jg-today--practice jg-today--flow"
+          : "jg-today--practice"
         : logged
           ? "jg-today--q" + (quality ?? 2)
           : "jg-today--pending",
@@ -106,10 +111,16 @@ function TodayCellImpl({
   if (outcome === "skipped") {
     const why = SKIP_REASON_SHORT[skipReason];
     return cell(
-      <span className="jg-today__skip" aria-hidden="true">
-        <span className="jg-today__skip-glyph">⊘</span>
-        {why && <span className="jg-today__skip-why">{why}</span>}
-      </span>,
+      <>
+        <span className="jg-today__skip" aria-hidden="true">
+          <span className="jg-today__skip-glyph">⊘</span>
+          {why && <span className="jg-today__skip-why">{why}</span>}
+        </span>
+        {/* The rail's bubble, drawn by the Journey look (jg-look) only. */}
+        <span className="jg-today__bubble jg-bubble--skip" aria-hidden="true">
+          <span className="jg-bubble__dot">{RAIL_ICON.skip}</span>
+        </span>
+      </>,
     );
   }
 
@@ -129,9 +140,14 @@ function TodayCellImpl({
         )}
       </span>
       {outcome === "practice" ? (
-        <span className="jg-today__q jg-today__q--practice" aria-hidden="true">
-          P
-        </span>
+        <>
+          <span className="jg-today__q jg-today__q--practice" aria-hidden="true">
+            {bloodFlow ? "BF" : "P"}
+          </span>
+          <span className={`jg-today__bubble jg-bubble--${bloodFlow ? "flow" : "practice"}`} aria-hidden="true">
+            <span className="jg-bubble__dot">{bloodFlow ? RAIL_ICON.flow : RAIL_ICON.practice}</span>
+          </span>
+        </>
       ) : (
         logged &&
         (quality === 1 || quality === 3) && (
