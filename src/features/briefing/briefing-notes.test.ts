@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { JournalEntry } from "../../types/journal";
 import { assembleThreads } from "../client-notes/threads";
-import { briefingNotes, latestUpdateLine } from "./briefing-notes";
+import { briefingNotes, latestUpdateLine, standingHealth } from "./briefing-notes";
 
 const at = (iso: string) => new Date(iso);
 
@@ -75,5 +75,47 @@ describe("what the briefing reads out", () => {
     const out = briefingNotes(null, [root], [heads], null);
     expect(out.critical.map((t) => t.id)).toEqual(["a"]);
     expect(out.headsUp.map((t) => t.id)).toEqual(["h"]);
+  });
+});
+
+describe("standingHealth — known, not news (Oct 3 2026)", () => {
+  const e = (over: Partial<JournalEntry>): JournalEntry =>
+    ({
+      id: "x",
+      clientId: "c1",
+      studioId: "s1",
+      kind: "injury",
+      category: null,
+      body: "b",
+      importance: "standard",
+      machineId: null,
+      focusId: null,
+      sessionId: null,
+      origin: "manual",
+      authorId: "t",
+      authorInitials: "T",
+      authorName: "T",
+      occurredAt: new Date(2026, 7, 1, 12),
+      createdAt: null,
+      updatedAt: null,
+      effectiveFrom: null,
+      effectiveUntil: null,
+      resolvedAt: null,
+      isArchived: false,
+      searchTags: [],
+      ...over,
+    }) as JournalEntry;
+
+  it("keeps Health and Incident notes that are simply true, and nothing loud, closed or about coaching", () => {
+    const threads = assembleThreads([
+      e({ id: "knee" }),
+      e({ id: "fall", kind: "incident", occurredAt: new Date(2026, 8, 1, 12) }),
+      e({ id: "loud", importance: "elevated" }),
+      e({ id: "closed", resolvedAt: new Date(2026, 8, 2) }),
+      e({ id: "dated", effectiveFrom: new Date(2026, 9, 1), effectiveUntil: new Date(2026, 9, 9, 23) }),
+      e({ id: "cue", kind: "coaching" }),
+    ]);
+    expect(standingHealth(threads, "2026-10-03").map((t) => t.id)).toEqual(["fall", "knee"]);
+    expect(standingHealth(undefined, "2026-10-03")).toEqual([]);
   });
 });

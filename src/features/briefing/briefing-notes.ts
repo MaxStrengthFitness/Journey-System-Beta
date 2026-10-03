@@ -24,7 +24,8 @@
  * already decides, and only groups and filters them.
  */
 import type { JournalEntry } from "../../types/journal";
-import { assembleThreads, type NoteThread } from "../client-notes/threads";
+import { assembleThreads, zoneOf, type NoteThread } from "../client-notes/threads";
+import { threadCategoryOf } from "../client-notes/note-catalog";
 import { isDismissed, type NoteDismissals } from "../client-notes/dismissals";
 
 export interface BriefingNotes {
@@ -74,6 +75,36 @@ export function briefingNotes(
   const critical = pick(criticalEntries);
   const headsUp = pick(headsUpEntries);
   return { critical, headsUp, hidden };
+}
+
+/**
+ * HER STANDING HEALTH CONTEXT — known, not news (notes round, Oct 3 2026).
+ *
+ * AJ's hand-off: the watch-for read "should lead with what's changed
+ * recently, with stable medical backdrop (knee, osteoporosis, high blood
+ * pressure) sitting underneath as standing context — known, not news —
+ * openable when something looks concerning." Most clients are over 40; the
+ * backdrop is real but stable, so it is never read out with the news and
+ * never counted in "Before you start" — one folded line under it, a tap away.
+ *
+ * Health and Incident threads in the Standing zone (an "always" note at
+ * plain loudness, not closed), most recently touched first. A loud one is
+ * already above, read out with the news; a closed one is history.
+ */
+export function standingHealth(
+  threads: readonly NoteThread[] | null | undefined,
+  today: string,
+  tz?: string,
+): NoteThread[] {
+  const out: NoteThread[] = [];
+  for (const t of threads ?? []) {
+    if (t.root.isArchived) continue;
+    const cat = threadCategoryOf(t);
+    if (cat !== "health" && cat !== "incident") continue;
+    if (zoneOf(t, today, tz) !== "standing") continue;
+    out.push(t);
+  }
+  return out.sort((a, b) => (b.lastActivityAt?.getTime() ?? 0) - (a.lastActivityAt?.getTime() ?? 0));
 }
 
 /** "the latest: MRI on the 31st" — the one line an update adds to a card. */

@@ -388,6 +388,28 @@ describe("the pre-session briefing mounts", () => {
     expect(Object.keys(sets[0].data.threads)).toEqual(["cr"]);
   });
 
+  it("folds her standing health context under the news, never counted, a tap from read (Oct 3 2026)", async () => {
+    const knee = entry({ id: "knee", kind: "injury", importance: "standard", body: "Osteoarthritis in the left knee." });
+    const bp = entry({ id: "bp", kind: "injury", category: "Medication", importance: "standard", body: "On blood pressure tablets." });
+    const cue = entry({ id: "cue", kind: "coaching", importance: "standard", body: "Count her in." });
+    journalMock.threads = assembleThreads([knee, bp, cue]);
+
+    const host = await mount(<Screen last={null} />);
+    const line = host.querySelector('[data-testid="briefing-standing"]')!;
+    expect(line).toBeTruthy();
+    expect(line.textContent).toContain("Show standing health context · 2");
+    expect(line.textContent).toContain("Known, not news.");
+    // Folded: the words are a tap away, and "Before you start" doesn't count them.
+    expect(host.textContent).not.toContain("Osteoarthritis in the left knee.");
+    expect(host.textContent).not.toContain("Before you start ·");
+
+    await click(buttonByText(line, "Show standing health context"));
+    expect(host.textContent).toContain("Osteoarthritis in the left knee.");
+    expect(host.textContent).toContain("On blood pressure tablets.");
+    // Coaching is not health context.
+    expect(host.textContent).not.toContain("Count her in.");
+  });
+
   it("each routine button says when THAT routine last ran", async () => {
     const host = await mount(<Screen />);
     const a = buttonByText(host, "Routine A")!;

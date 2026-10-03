@@ -102,7 +102,7 @@ import type { HistoryCoverage } from "../../lib/prior-history";
 import { JournalEntryCard } from "../../components/journal/JournalEntryCard";
 import { CriticalStrip } from "../../components/journal/CriticalStrip";
 import { BriefingNoteFooter } from "./BriefingNoteFooter";
-import { briefingNotes } from "./briefing-notes";
+import { briefingNotes, latestUpdateLine, standingHealth } from "./briefing-notes";
 import { useNoteDismissals, dismissThread } from "../client-notes/dismissal-store";
 import type { NoteThread } from "../client-notes/threads";
 import { FOCUS_VISUALS, relativeDay, toDate } from "../../types/journal";
@@ -412,6 +412,8 @@ export function BriefingScreen({
   const [openFlagId, setOpenFlagId] = useState<string | null>(null);
   const openFlag = openFlagId ? clientFlags.find((f) => f.id === openFlagId) ?? null : null;
   const [showAllHeadsUp, setShowAllHeadsUp] = useState(false);
+  // Her standing health context, folded under the news (notes round, Oct 3 2026).
+  const [showStanding, setShowStanding] = useState(false);
 
   const severityOrder = {
     "Absolute Contraindication": 0,
@@ -475,6 +477,10 @@ export function BriefingScreen({
      press out until Thursday"). Studio day, string compare. */
   const todayKey = studioTodayKey();
   const carried = useMemo(() => carriedRegions(lastSession, todayKey), [lastSession, todayKey]);
+  /* Known, not news (notes round, Oct 3 2026; briefing-notes.ts): her Health
+     and Incident notes that are simply true — an old knee, osteoporosis —
+     folded under the news, never counted in "Before you start". */
+  const standing = useMemo(() => standingHealth(journal.threads, todayKey), [journal.threads, todayKey]);
 
   /* Everything that belongs under "Before you start", counted once so the
      heading can say how many things there are. */
@@ -738,6 +744,33 @@ export function BriefingScreen({
                   <button type="button" onClick={() => setShowHushed((v) => !v)}>
                     {showHushed ? "Hide them again" : "Show them"}
                   </button>
+                </div>
+              )}
+
+              {/* Her standing health context: what is simply true, under
+                  what is new, one tap away. AJ: "known, not news —
+                  openable when something looks concerning". */}
+              {standing.length > 0 && (
+                <div className="br__standing" data-testid="briefing-standing">
+                  <button
+                    type="button"
+                    className="br__more"
+                    aria-expanded={showStanding}
+                    onClick={() => setShowStanding((v) => !v)}
+                  >
+                    {showStanding ? "Hide" : "Show"} standing health context · {standing.length}
+                  </button>
+                  {!showStanding && <span className="br__standing-note">Known, not news.</span>}
+                  {showStanding &&
+                    standing.map((thread) => {
+                      const latest = latestUpdateLine(thread);
+                      return (
+                        <div key={thread.id}>
+                          <JournalEntryCard entry={thread.root} machines={machines} dense />
+                          {latest ? <p className="br__standing-latest">Latest: {latest}</p> : null}
+                        </div>
+                      );
+                    })}
                 </div>
               )}
 
