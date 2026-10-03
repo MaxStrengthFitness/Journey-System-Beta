@@ -117,6 +117,19 @@
   --jg-focus-ring:     var(--jg-live);
   --jg-sticky-shadow:  rgba(18, 28, 35, 0.10);
   --jg-dim:            0.38;      /* opacity of cells outside the lens     */
+  /* The profile's chart, Journey blue with orange for the newest day
+     (AJ, Oct 2 2026: "the brand blues, but then also the orange for the
+     now"). Read only inside .jg-view--journey. */
+  --jg-pf-date:          #0a548b;
+  --jg-pf-date-sub:      #4f7ea6;
+  --jg-pf-tile:          #d9e9f6;
+  --jg-pf-tile-ink:      #062e4f;
+  --jg-pf-reps:          #3d6a8f;
+  --jg-pf-now:           #c2410c;
+  --jg-pf-now-sub:       #d4682c;
+  --jg-pf-now-tile:      #fde6d8;
+  --jg-pf-now-edge:      #ef5302;
+  --jg-pf-now-ink:       #7a2a06;
   --jg-radius:         10px;
   --jg-radius-sm:      6px;
   --jg-font:           "Geist Variable", "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -190,6 +203,16 @@
   --jg-band:           rgba(230, 236, 242, 0.045);
   --jg-sticky-shadow:  rgba(0, 0, 0, 0.45);
   --jg-dim:            0.34;
+  --jg-pf-date:          #8cc4f2;
+  --jg-pf-date-sub:      #5d86a8;
+  --jg-pf-tile:          #16324b;
+  --jg-pf-tile-ink:      #ffffff;
+  --jg-pf-reps:          #7fa6c6;
+  --jg-pf-now:           #f36d21;
+  --jg-pf-now-sub:       #f7a06b;
+  --jg-pf-now-tile:      #3a2216;
+  --jg-pf-now-edge:      #f36d21;
+  --jg-pf-now-ink:       #ffd2b8;
 
   /* The profile's neutrals are a LIGHT retune only. In dark they are the
      grid's own values, so the profile looks exactly as it did.            */
@@ -240,6 +263,16 @@
     --jg-band:           rgba(230, 236, 242, 0.045);
     --jg-sticky-shadow:  rgba(0, 0, 0, 0.45);
     --jg-dim:            0.34;
+    --jg-pf-date:          #8cc4f2;
+    --jg-pf-date-sub:      #5d86a8;
+    --jg-pf-tile:          #16324b;
+    --jg-pf-tile-ink:      #ffffff;
+    --jg-pf-reps:          #7fa6c6;
+    --jg-pf-now:           #f36d21;
+    --jg-pf-now-sub:       #f7a06b;
+    --jg-pf-now-tile:      #3a2216;
+    --jg-pf-now-edge:      #f36d21;
+    --jg-pf-now-ink:       #ffd2b8;
     --jg-pf-bg:            var(--jg-bg);
     --jg-pf-surface-2:     var(--jg-surface-2);
     --jg-pf-surface-3:     var(--jg-surface-3);

@@ -3024,3 +3024,33 @@ div.jg-today { cursor: default; }
   justify-content: flex-start;
   padding-left: 4px;
 }
+
+/* --------------------------------------------------------------------------
+   Colour (AJ, Oct 2 2026: "everything is just gray ... my eyes aren't drawn
+   to one thing"; he chose "the brand blues, but then also the orange for
+   the now"). Journey blue for the dates and the sets; orange
+   for the newest day alone, so the eye lands on last time first and reads
+   back. The tokens are in journey-grid.tokens.css (--jg-pf-*), light and
+   dark. The quality marks keep their own colours.
+   -------------------------------------------------------------------------- */
+.jg-view--journey .jg-head__d,
+.jg-view--journey .jg-corner__filter { color: var(--jg-pf-date); }
+.jg-view--journey .jg-head__n { color: var(--jg-pf-date-sub); }
+.jg-view--journey .jg-machine__label { color: var(--jg-ink); }
+
+/* a set's tile */
+.jg-view--journey .jg-cell:not(.jg-cell--none):not(.jg-cell--nr):not(.jg-cell--skipped)::before { background: var(--jg-pf-tile); }
+.jg-view--journey .jg-cell__w { color: var(--jg-pf-tile-ink); }
+.jg-view--journey .jg-cell__r { color: var(--jg-pf-reps); }
+
+/* The settings boxes stay grey (AJ, same day: "those should just remain
+   gray"). */
+
+/* the newest day: its date and its tiles in orange */
+.jg-view--journey .jg-row > .jg-head:last-child .jg-head__d { color: var(--jg-pf-now); }
+.jg-view--journey .jg-row > .jg-head:last-child .jg-head__n { color: var(--jg-pf-now-sub); }
+.jg-view--journey .jg-row > .jg-cell:last-child:not(.jg-cell--none):not(.jg-cell--nr):not(.jg-cell--skipped)::before {
+  background: var(--jg-pf-now-tile);
+  box-shadow: inset 0 0 0 1.5px var(--jg-pf-now-edge);
+}
+.jg-view--journey .jg-row > .jg-cell:last-child .jg-cell__w { color: var(--jg-pf-now-ink); }
