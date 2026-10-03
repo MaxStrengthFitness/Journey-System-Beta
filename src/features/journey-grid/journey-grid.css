@@ -3018,3 +3018,9 @@ div.jg-today { cursor: default; }
   background-repeat: no-repeat;
 }
 .jg-view--journey .jg-row.is-selected > .jg-cell:last-child { background-size: 50% 2px; background-position: left center; }
+/* A gap that was never set: the box with its G and nothing beside it. */
+.jg-view--journey .jg-machine__meta .jg-setting--slot {
+  box-shadow: inset 0 0 0 1px var(--jg-border-strong);
+  justify-content: flex-start;
+  padding-left: 4px;
+}

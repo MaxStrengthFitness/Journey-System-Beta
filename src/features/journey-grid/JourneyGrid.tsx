@@ -298,10 +298,15 @@ function RowImpl({
               2026: "leg press seat 6 P1 ... very subtly"). */}
           {settingEntries.length > 0 && (
             <span className="jg-machine__meta">
-              {/* Gap's slot, kept empty when a machine has no gap, so the
-                  boxes after it line up from one machine to the next on the
-                  profile's chart (hidden everywhere else). */}
-              {shownSettings[0]?.[0] !== "G" && <span className="jg-setting jg-setting--slot" aria-hidden="true" />}
+              {/* Gap's box, shown with no number when a machine has no gap
+                  set, so the boxes after it line up from one machine to the
+                  next on the profile's chart (AJ, Oct 2 2026: "if there's
+                  nothing put in, it's just a G"; hidden everywhere else). */}
+              {shownSettings[0]?.[0] !== "G" && (
+                <span className="jg-setting jg-setting--slot" title="No gap set">
+                  <span className="jg-setting__k">G</span>
+                </span>
+              )}
               {shownSettings.map(([k, v]) => (
                 <span key={k} className="jg-setting" title={`${settingLabel(k)} ${v}`}>
                   <span className="jg-setting__k">{k}</span>
