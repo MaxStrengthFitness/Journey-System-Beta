@@ -298,6 +298,10 @@ function RowImpl({
               2026: "leg press seat 6 P1 ... very subtly"). */}
           {settingEntries.length > 0 && (
             <span className="jg-machine__meta">
+              {/* Gap's slot, kept empty when a machine has no gap, so the
+                  boxes after it line up from one machine to the next on the
+                  profile's chart (hidden everywhere else). */}
+              {shownSettings[0]?.[0] !== "G" && <span className="jg-setting jg-setting--slot" aria-hidden="true" />}
               {shownSettings.map(([k, v]) => (
                 <span key={k} className="jg-setting" title={`${settingLabel(k)} ${v}`}>
                   <span className="jg-setting__k">{k}</span>
@@ -924,7 +928,9 @@ export function JourneyGrid({
     }
     const el = scrollerRef.current;
     if (!el) return;
-    const MACHINE_W = settingsDisplay === "menu" ? 150 : 184;
+    // The profile's menu mode shows the settings as a line of boxes under
+    // the name since Oct 2 2026, so its column is as wide as the inline one.
+    const MACHINE_W = 184;
     const STAT_W = settingsDisplay === "menu" ? 92 : 100;
     const OLDER_W = 26;
     const HEAD_H = 40;
@@ -1018,7 +1024,7 @@ export function JourneyGrid({
   const style = {
     "--jg-cols": cols,
     ...(effectiveMaxH ? { "--jg-max-h": effectiveMaxH } : null),
-    ...(settingsDisplay === "menu" ? { "--jg-col-machine": "150px", "--jg-col-stat": "92px" } : null),
+    ...(settingsDisplay === "menu" ? { "--jg-col-stat": "92px" } : null),
     ...(fitVars
       ? {
           "--jg-row-h": `${fitVars.rowH}px`,

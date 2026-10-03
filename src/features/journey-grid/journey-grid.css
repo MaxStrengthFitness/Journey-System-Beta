@@ -2980,3 +2980,41 @@ div.jg-today { cursor: default; }
    by a pixel, its band too. */
 .jg-view--journey .jg-row > .jg-cell:not(:last-child) { box-shadow: 1px 0 0 var(--jg-surface); }
 .jg-view--journey .jg-row[data-band="1"] > .jg-cell:not(:last-child)::after { right: -1px; }
+
+/* Names and settings in straight columns (AJ, Oct 2 2026: "they're all
+   starting at a different spot ... a little box around all the settings
+   ... all the gaps at the same spot"). Every name starts at the same left
+   edge, and each setting is a small box of one width, so Gap (always
+   first) and the boxes after it line up from one machine to the next. */
+.jg-view--journey .jg-machine__btn { align-items: flex-start; text-align: left; }
+.jg-view--journey .jg-machine__name { justify-content: flex-start; }
+.jg-view--journey .jg[data-settings="menu"] .jg-machine__meta { justify-content: flex-start; gap: 3px; margin-top: 3px; }
+.jg-view--journey .jg-machine__meta .jg-setting {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 1px;
+  min-width: 27px;
+  height: 17px;
+  padding: 0 3px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--jg-border-strong);
+  line-height: 17px;
+}
+.jg-view--journey .jg-machine__meta .jg-setting__v { color: var(--jg-ink-2); }
+.jg-setting--slot { display: none; }
+.jg-view--journey .jg[data-settings="menu"] .jg-machine__meta { gap: 2px; flex-wrap: nowrap; }
+.jg-view--journey .jg-machine__meta .jg-setting { min-width: 25px; padding: 0 2px; }
+.jg-view--journey .jg-machine__meta .jg-setting--slot { display: inline-flex; box-shadow: none; }
+/* The tapped row keeps its rail; the highlight is a tint, not a new background. */
+.jg-view--journey .jg-row.is-selected .jg-cell {
+  background-color: var(--jg-live-fill);
+  background-image: linear-gradient(var(--jg-border-strong), var(--jg-border-strong));
+  box-shadow: none;
+}
+.jg-view--journey .jg-row.is-selected .jg-cell {
+  background-size: 100% 2px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.jg-view--journey .jg-row.is-selected > .jg-cell:last-child { background-size: 50% 2px; background-position: left center; }
