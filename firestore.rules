@@ -2649,6 +2649,67 @@ service cloud.firestore {
         allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
       }
 
+      /*
+       * THE FLOOR'S NOTES ON A MACHINE (notes round, Oct 3 2026; AJ's answer
+       * 2A: the studio's notes on a machine merged into "one list per
+       * machine, with dates and a history"). One document per note, threaded
+       * by `threadId` like a client's notes: a studio's own knowledge of the
+       * unit in its building. Read by the people who work there ("Studio-
+       * local machine notes stay with that studio", AJ Sep 28); written by
+       * them, signed by the Auth uid; the words changed only by their author
+       * or a leader; closed and reopened by anyone there; archived, never
+       * deleted. A note may be OFFERED to every MSF studio, and only an
+       * administrator shares it (sharedFieldsValid, shareDecisionOk); other
+       * studios read only a shared one, through {path=**}/floorNotes below.
+       * It never names a client. features/floor-notes.
+       */
+      match /floorNotes/{noteId} {
+        function floorNoteValid(d) {
+          return d.keys().hasOnly(['machineId', 'body', 'threadId', 'authorId', 'authorName',
+                                   'createdAt', 'updatedAt', 'resolvedAt', 'resolvedBy', 'isArchived',
+                                   'shared', 'sharedKeys', 'studioName', 'shareStatus', 'shareReviewNote',
+                                   'shareReviewedBy', 'shareReviewedAt', 'shareRequestedAt', 'shareRequestedBy'])
+              && d.machineId is string && d.machineId.size() > 0 && d.machineId.size() <= 200
+              && d.body is string && d.body.size() > 0 && d.body.size() <= 2000
+              && (d.threadId == null || (d.threadId is string && d.threadId.size() <= 200))
+              && d.authorId is string
+              && d.authorName is string && d.authorName.size() <= 120
+              && (d.resolvedAt == null || d.resolvedAt is timestamp)
+              && (d.resolvedBy == null || (d.resolvedBy is map && d.resolvedBy.keys().hasOnly(['id', 'name'])))
+              && d.isArchived is bool
+              && sharedFieldsValid(d);
+        }
+        allow read: if isAuthenticated() && writesForStudio(studioId);
+        // Cheapest first, and the studio check last: the role lookups behind
+        // writesForStudio and the share decision are what spend Firestore's
+        // 1000-expression budget (the wiki rule's lesson).
+        allow create: if isAuthenticated()
+                      && request.resource.data.authorId == request.auth.uid
+                      && request.resource.data.createdAt == request.time
+                      && floorNoteValid(request.resource.data)
+                      && shareDecisionOk()
+                      && writesForStudio(studioId);
+        // An update touches only what may change — the words, closing and
+        // reopening, archiving, the offer — and is checked on those alone; the
+        // machine, the thread, the author and the day it was written stay.
+        allow update: if isAuthenticated()
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['body', 'updatedAt', 'resolvedAt', 'resolvedBy', 'isArchived',
+                                     'shared', 'sharedKeys', 'studioName', 'shareStatus', 'shareReviewNote',
+                                     'shareReviewedBy', 'shareReviewedAt', 'shareRequestedAt', 'shareRequestedBy'])
+                      && request.resource.data.body is string
+                      && request.resource.data.body.size() > 0 && request.resource.data.body.size() <= 2000
+                      && (request.resource.data.resolvedAt == null || request.resource.data.resolvedAt is timestamp)
+                      && request.resource.data.isArchived is bool
+                      && sharedFieldsValid(request.resource.data)
+                      && (request.resource.data.body == resource.data.body
+                          || resource.data.authorId == request.auth.uid
+                          || isStudioOwnerOrHeadTrainer(studioId))
+                      && shareDecisionOk()
+                      && writesForStudio(studioId);
+        allow delete: if false;
+      }
+
       // EQUIPMENT UPKEEP LOG — "I deep-cleaned the leg press just now"
       // (round: Admin Overhaul, Sep 2026).
       //
@@ -3454,6 +3515,12 @@ service cloud.firestore {
     }
 
     match /{path=**}/wiki/{docId} {
+      allow read: if isAuthenticated() && (resource.data.shared == true || isSuperAdmin());
+    }
+
+    // The floor's notes on a machine (Oct 3 2026): other studios read only a
+    // shared one; an administrator reads the offers waiting for review.
+    match /{path=**}/floorNotes/{noteId} {
       allow read: if isAuthenticated() && (resource.data.shared == true || isSuperAdmin());
     }
 

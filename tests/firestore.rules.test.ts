@@ -1831,6 +1831,102 @@ describe("Firestore Security Rules", () => {
     );
   });
 
+  // ── THE FLOOR'S NOTES ON A MACHINE (notes round, Oct 3 2026, AJ's 2A) ──
+  const floorNote = (over: Record<string, unknown> = {}) => ({
+    machineId: "m-leg-press",
+    body: "The left pad sticks — use the footstool.",
+    threadId: null,
+    authorId: "trainerA",
+    authorName: "Trainer A",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    resolvedAt: null,
+    resolvedBy: null,
+    isArchived: false,
+    ...over,
+  });
+
+  it("keeps the floor's notes on a machine to the people who work there, signed by the writer, never naming a client", async () => {
+    const insider = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const outsider = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertSucceeds(setDoc(doc(insider, "studios", "studioA", "floorNotes", "n1"), floorNote()));
+    await assertSucceeds(getDoc(doc(insider, "studios", "studioA", "floorNotes", "n1")));
+    // Another studio neither reads nor writes it.
+    await assertFails(getDoc(doc(outsider, "studios", "studioA", "floorNotes", "n1")));
+    await assertFails(setDoc(doc(outsider, "studios", "studioA", "floorNotes", "n2"), floorNote({ authorId: "trainerB" })));
+    // Signed by the person writing it; never a client on it; never empty; never deleted.
+    await assertFails(setDoc(doc(insider, "studios", "studioA", "floorNotes", "n3"), floorNote({ authorId: "ownerA" })));
+    await assertFails(setDoc(doc(insider, "studios", "studioA", "floorNotes", "n4"), { ...floorNote(), clientId: "clientA" }));
+    await assertFails(setDoc(doc(insider, "studios", "studioA", "floorNotes", "n5"), floorNote({ body: "" })));
+    await assertFails(deleteDoc(doc(insider, "studios", "studioA", "floorNotes", "n1")));
+  });
+
+  it("lets anyone there close a floor note, and only its author or a leader change its words", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "trainers", "trainerA2"), {
+        fullName: "Trainer A2",
+        initials: "T2",
+        role: "LifeTransformer",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA"],
+      });
+    });
+    const author = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(setDoc(doc(author, "studios", "studioA", "floorNotes", "n1"), floorNote()));
+    const teammate = testEnv.authenticatedContext("trainerA2", { email: "trainera2@test.com" }).firestore();
+    // A teammate closes it ("Fixed") ...
+    await assertSucceeds(
+      updateDoc(doc(teammate, "studios", "studioA", "floorNotes", "n1"), {
+        resolvedAt: serverTimestamp(),
+        resolvedBy: { id: "trainerA2", name: "Trainer A2" },
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    // ... but doesn't rewrite someone else's words, or move it to another machine.
+    await assertFails(updateDoc(doc(teammate, "studios", "studioA", "floorNotes", "n1"), { body: "Rewritten" }));
+    await assertFails(updateDoc(doc(author, "studios", "studioA", "floorNotes", "n1"), { machineId: "m-row" }));
+    // The author may; so may a leader.
+    await assertSucceeds(updateDoc(doc(author, "studios", "studioA", "floorNotes", "n1"), { body: "The left pad sticks." }));
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertSucceeds(updateDoc(doc(owner, "studios", "studioA", "floorNotes", "n1"), { body: "Fixed on Oct 3." }));
+  });
+
+  it("lets a studio offer a floor note to every MSF studio, and only an administrator shares it", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "trainers", "adminFloor"), { fullName: "Admin", initials: "AD", role: "Admin" });
+    });
+    const insider = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(setDoc(doc(insider, "studios", "studioA", "floorNotes", "n1"), floorNote()));
+    await assertFails(updateDoc(doc(insider, "studios", "studioA", "floorNotes", "n1"), { shared: true }));
+    await assertSucceeds(
+      updateDoc(doc(insider, "studios", "studioA", "floorNotes", "n1"), {
+        shareStatus: "pending",
+        sharedKeys: ["m-leg-press"],
+        studioName: "Studio A",
+        shareRequestedAt: serverTimestamp(),
+        shareRequestedBy: "trainerA",
+      }),
+    );
+    // Another studio sees nothing of it until it is shared, and can't list unshared notes at all ...
+    const outsider = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    const sharedOnly = () =>
+      getDocs(query(collectionGroup(outsider, "floorNotes"), where("shared", "==", true), where("sharedKeys", "array-contains", "m-leg-press")));
+    expect((await assertSucceeds(sharedOnly())).size).toBe(0);
+    await assertFails(getDocs(query(collectionGroup(outsider, "floorNotes"), where("shareStatus", "==", "pending"))));
+    const admin = testEnv.authenticatedContext("adminFloor", { email: "adminfloor@test.com" }).firestore();
+    await assertSucceeds(getDocs(query(collectionGroup(admin, "floorNotes"), where("shareStatus", "==", "pending"))));
+    await assertSucceeds(
+      updateDoc(doc(admin, "studios", "studioA", "floorNotes", "n1"), {
+        shared: true,
+        shareStatus: "approved",
+        shareReviewedBy: "adminFloor",
+        shareReviewedAt: serverTimestamp(),
+      }),
+    );
+    // ... and then reads the shared one.
+    expect((await assertSucceeds(sharedOnly())).size).toBe(1);
+  });
+
   it("lets a studio's leaders offer their own machine to the database, and nothing else", async () => {
     await seedMachineDb();
     const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
