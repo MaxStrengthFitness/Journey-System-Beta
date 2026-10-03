@@ -58,6 +58,9 @@ import type { SessionNoteDraft } from "./session-draft";
 import { NoteSweep } from "./NoteSweep";
 import { isNextTrainerNoteOfSessions } from "./note-catalog";
 import { NotesCatalog } from "./NotesCatalog";
+import { AskAnswer, AskBar } from "./AskBar";
+import { askLenses, type AskId, type AskPronouns } from "./ask";
+import type { RecordPage } from "../client-profile/profile-nav";
 import type { CatalogIntent, NotesIntent } from "./notes-intent";
 import { discardUnfiledEntry, fileUnfiledEntry } from "./file-unfiled";
 import { dismissThread, restoreThread, type NoteDismissalsState } from "./dismissal-store";
@@ -85,6 +88,17 @@ export interface NotesPageProps {
   /** "her" / "his" / "their" — the page's own words never print the name. */
   possessive: string;
   /**
+   * The rest of the client's pronouns, for the questions at the top ("What's
+   * going on with her right now?"). Left out, they follow `possessive`.
+   */
+  pronouns?: AskPronouns;
+  /** The sub-toggle's line for each page, for the questions whose answer is a page (FORD, Story). */
+  pageLines?: Partial<Record<RecordPage, string | null>>;
+  /** Open one of the record's pages: a question's door. Left out, no door is drawn. */
+  onOpenPage?: (page: RecordPage) => void;
+  /** The question the page opens on. "now" unless a host asks for another. */
+  initialAsk?: AskId;
+  /**
    * May this reader write the client's FORD? Then FORD / Life in the composer
    * saves in place; otherwise it says where FORD is kept.
    */
@@ -111,6 +125,13 @@ export interface NotesPageProps {
 }
 
 const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+/** The pronouns a possessive implies, for a host that passes only that one. */
+function pronounsFromPossessive(possessive: string): AskPronouns {
+  if (possessive === "his") return { object: "him", possessive: "his", subject: "he", plural: false };
+  if (possessive === "their") return { object: "them", possessive: "their", subject: "they", plural: true };
+  return { object: "her", possessive: "her", subject: "she", plural: false };
+}
 const NO_TRAINERS: Trainer[] = [];
 
 export function NotesPage({
@@ -132,6 +153,10 @@ export function NotesPage({
   intent = null,
   trainers = NO_TRAINERS,
   activeStudioId = null,
+  pronouns,
+  pageLines,
+  onOpenPage,
+  initialAsk = "now",
 }: NotesPageProps) {
   const { success: toastSuccess, error: toastError } = useToast();
   const [composeOpen, setComposeOpen] = useState(false);
@@ -257,6 +282,55 @@ export function NotesPage({
     [uid, dismissals.status, toastSuccess, toastError],
   );
 
+  /* ------------------------------ the questions ------------------------------ *
+   * Notes round, Oct 3 2026 (ask.ts). The page opens on "what's going on
+   * right now"; every other question, and every note, is one tap away. A
+   * door into one thread (the critical line, the Overview) asks the catalog,
+   * which goes back to every note when the question leaves that thread out. */
+  const [askId, setAskId] = useState<AskId>(initialAsk);
+  const said = pronouns ?? pronounsFromPossessive(possessive);
+  const criticalIdSet = useMemo(() => new Set(journal.criticalEntries.map((e) => e.id)), [journal.criticalEntries]);
+  const headsUpIdSet = useMemo(
+    () => new Set((journal.headsUpEntries ?? []).map((e) => e.id)),
+    [journal.headsUpEntries],
+  );
+  const lenses = useMemo(
+    () =>
+      askLenses({
+        threads: record.listed,
+        criticalIds: criticalIdSet,
+        headsUpIds: headsUpIdSet,
+        machines,
+        today,
+        pronouns: said,
+        pageLines,
+        known: !isLoading && !readFailed,
+      }),
+    [record.listed, criticalIdSet, headsUpIdSet, machines, today, said, pageLines, isLoading, readFailed],
+  );
+  const lens = lenses.find((l) => l.id === askId) ?? lenses[0];
+  // Resolved notes wait at the bottom with a way back under every question:
+  // when this question's answer holds none, the line that leads to them is
+  // the page's Resolved anchor, drawn once.
+  const resolvedCount = useMemo(
+    () => record.listed.filter((t) => t.root.resolvedAt && !t.root.isArchived).length,
+    [record.listed],
+  );
+  const lensHasResolved = lens.showsNotes && lens.threads.some((t) => t.root.resolvedAt);
+  const resolvedElsewhere = lens.id !== "all" && resolvedCount > 0 && !lensHasResolved;
+  const catalogLens = useMemo(
+    () =>
+      lens.id === "all"
+        ? null
+        : {
+            id: lens.id,
+            threadIds: new Set(lens.threads.map((t) => t.id)),
+            showCategories: lens.id === "health" || lens.id === "train",
+            empty: lens.empty,
+          },
+    [lens],
+  );
+
   /* ------------------------------ the doors ------------------------------ */
 
   const handled = useRef<unknown>(undefined);
@@ -295,6 +369,8 @@ export function NotesPage({
       }
     }
     handled.current = intent.key;
+    // Resolved is under every note: a door to it leaves the question.
+    if (req.kind === "resolved") setAskId("all");
     setCatalogIntent({ key: intent.key, request: req });
   }, [intent, isLoading, record.unfiled, openComposer]);
 
@@ -378,7 +454,13 @@ export function NotesPage({
         isNextTrainerNote={(e) => isNextTrainerNoteOfSessions(e, journal.recentSessions ?? [])}
       />
 
+      <AskBar lenses={lenses} value={lens.id} onChange={setAskId} object={said.object} />
+      <AskAnswer lens={lens} onOpenPage={onOpenPage} />
+
+      {lens.showsNotes ? (
       <NotesCatalog
+        lens={catalogLens}
+        onLeaveLens={() => setAskId("all")}
         threads={record.listed}
         archivedThreads={journal.archivedThreads ?? []}
         machines={machines}
@@ -402,6 +484,25 @@ export function NotesPage({
         sessionLabelOf={sessionLabelOf}
         onOpenSession={clientId ? (id) => void onOpenSession(id) : undefined}
       />
+      ) : null}
+
+      {resolvedElsewhere ? (
+        <div className="nx-resolved-elsewhere" id="notes-resolved" data-cx-anchor="notes-resolved">
+          <span className="nx-answer__line">
+            {resolvedCount === 1 ? "1 resolved note waits" : `${resolvedCount} resolved notes wait`} under Every note.
+          </span>
+          <button
+            type="button"
+            className="nt-btn"
+            onClick={() => {
+              setAskId("all");
+              setCatalogIntent({ key: Date.now(), request: { kind: "resolved" } });
+            }}
+          >
+            Show {resolvedCount === 1 ? "it" : "them"}
+          </button>
+        </div>
+      ) : null}
 
       {openedSession && clientId ? (
         <SessionDetailDialog

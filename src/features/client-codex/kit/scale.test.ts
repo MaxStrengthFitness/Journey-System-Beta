@@ -94,6 +94,9 @@ const CODEX_FILES: readonly string[] = [
   "features/client-notes/NoteThreadCard.tsx",
   "features/client-notes/ThreadRow.tsx",
   "features/client-notes/notes-page.css",
+  // The questions at the top of Notes (notes round, Oct 3 2026).
+  "features/client-notes/ask.ts",
+  "features/client-notes/AskBar.tsx",
   "features/client-notes/notes-intent.ts",
   // The FORD page (phase 10): the page and its parts, its stylesheet, the
   // pure modules that write its words, and the life editors its Work and

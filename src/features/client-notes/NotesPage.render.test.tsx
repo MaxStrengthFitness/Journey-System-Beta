@@ -194,6 +194,9 @@ function propsFor(list: JournalEntry[] = ALL, over: Partial<NotesPageProps> = {}
     fordStudioId: "s1",
     fordDoorCount: null,
     onOpenFord: () => {},
+    // These tests are about the catalog over every note; the questions
+    // at the top (Oct 3 2026) have their own below.
+    initialAsk: "all",
     ...over,
   };
 }
@@ -702,5 +705,99 @@ describe("the Archived view (Oct 2 2026: archiving is open to all, with an Archi
     const host = await mount(propsFor(ALL, { author: null, journal: journalOf(ALL, { archivedThreads }) }));
     await click(buttonIn(host, "Show the 1 archived note"));
     expect(buttonIn(zone(host, "archived")!, "Restore")).toBeUndefined();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Ask about her — the questions at the top (notes round, Oct 3 2026)  */
+/* ------------------------------------------------------------------ */
+
+describe("NotesPage — the questions at the top", () => {
+  const lines = { body: "2 watch-outs", account: "95 sessions left", ford: "birthday in 17 days", story: "since 2019" };
+
+  it("opens on what's going on right now: the briefing's notes, and nothing merely standing", async () => {
+    const host = await mount(propsFor(ALL, { initialAsk: "now", pageLines: lines }));
+    const ask = host.querySelector('[data-testid="notes-ask"]')!;
+    expect(ask).toBeTruthy();
+    expect(Array.from(ask.querySelectorAll(".nx-ask__question")).map((q) => q.textContent)).toEqual([
+      "What's going on with her right now?",
+      "Her health",
+      "How to train her",
+      "Is she staying with us?",
+      "Her life",
+      "Her time here",
+      "Every note",
+    ]);
+    // Every question is a real button, the chosen one pressed.
+    expect(host.querySelector('[data-testid="ask-now"]')!.getAttribute("aria-pressed")).toBe("true");
+    expect(host.querySelector('[data-testid="ask-now"]')!.textContent).toContain("2 Critical · 1 Heads up");
+    // The critical note is drawn once, in Open; standing context waits under its own question.
+    expect(zone(host, "open")!.querySelector("#thread-crit")).not.toBeNull();
+    expect(host.textContent!.split("stop at 90° at the bottom turn").length - 1).toBe(1);
+    expect(zone(host, "standing")).toBeNull();
+    expect(host.querySelector("#thread-eq1")).toBeNull();
+    // No category chips under a question that is not about categories.
+    expect(host.querySelector('[data-testid="pick-health"]')).toBeNull();
+  });
+
+  it("answers one question with its notes, and opens the page that goes deeper", async () => {
+    const onOpenPage = vi.fn();
+    const host = await mount(propsFor(ALL, { initialAsk: "now", pageLines: lines, onOpenPage }));
+    await click(host.querySelector('[data-testid="ask-health"]'));
+    expect(host.querySelector('[data-testid="ask-health"]')!.getAttribute("aria-pressed")).toBe("true");
+    expect(host.querySelector("#thread-crit")).not.toBeNull();
+    expect(host.textContent).toContain("Resolved · 1");
+    expect(host.textContent).not.toContain("Fan on, no music.");
+    const answer = host.querySelector('[data-testid="notes-answer"]')!;
+    expect(answer.textContent).toContain("Her health");
+    await click(buttonIn(answer, "Open Body & Pulse"));
+    expect(onOpenPage).toHaveBeenCalledWith("body");
+
+    await click(host.querySelector('[data-testid="ask-train"]'));
+    expect(host.textContent).toContain("Fan on, no music.");
+    expect(host.querySelector("#thread-crit")).toBeNull();
+    // How to train her keeps the chips that still help.
+    expect(host.querySelector('[data-testid="pick-coaching"]')).not.toBeNull();
+  });
+
+  it("answers 'her time here' with the Story, never a second one", async () => {
+    const onOpenPage = vi.fn();
+    const host = await mount(propsFor(ALL, { initialAsk: "now", pageLines: lines, onOpenPage }));
+    expect(host.querySelector('[data-testid="ask-story"]')!.textContent).toContain("since 2019");
+    await click(host.querySelector('[data-testid="ask-story"]'));
+    expect(host.querySelector('[data-testid="notes-catalog"]')).toBeNull();
+    const answer = host.querySelector('[data-testid="notes-answer"]')!;
+    expect(answer.textContent).toContain("is her Story");
+    await click(buttonIn(answer, "Open Story"));
+    expect(onOpenPage).toHaveBeenCalledWith("story");
+  });
+
+  it("keeps the way to the resolved notes under every question", async () => {
+    const host = await mount(propsFor(ALL, { initialAsk: "now" }));
+    const line = host.querySelector<HTMLElement>("#notes-resolved")!;
+    expect(line.getAttribute("data-cx-anchor")).toBe("notes-resolved");
+    expect(line.textContent).toContain("1 resolved note waits under Every note.");
+    await click(buttonIn(line, "Show it"));
+    expect(host.querySelector('[data-testid="ask-all"]')!.getAttribute("aria-pressed")).toBe("true");
+    expect(zone(host, "resolved")?.querySelector('[data-testid="row-inj-old"]')).not.toBeNull();
+  });
+
+  it("says so in its own words when nothing answers a question, with the way to every note", async () => {
+    const host = await mount(propsFor([coach1], { initialAsk: "staying" }));
+    const empty = host.querySelector('[data-testid="ask-empty"]')!;
+    expect(empty.textContent).toContain("No retention notes yet");
+    await click(buttonIn(empty, "See every note"));
+    expect(host.querySelector('[data-testid="ask-all"]')!.getAttribute("aria-pressed")).toBe("true");
+    expect(host.textContent).toContain("Count her into the turnaround.");
+  });
+
+  it("leaves the question when a door asks for a note it doesn't hold", async () => {
+    const props = propsFor(ALL, { initialAsk: "now" });
+    const host = await mount(props);
+    expect(host.querySelector("#thread-eq1")).toBeNull();
+    await rerender(host, { ...props, intent: { key: 1, request: { kind: "thread", threadId: "eq1" } } });
+    await settle();
+    expect(host.querySelector('[data-testid="ask-all"]')!.getAttribute("aria-pressed")).toBe("true");
+    expect(host.querySelector("#thread-eq1")).not.toBeNull();
   });
 });

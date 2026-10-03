@@ -19,6 +19,7 @@
  */
 import { useMemo } from "react";
 import { NotesPage as NotesArea } from "../../client-notes/NotesPage";
+import type { RecordPage } from "../../client-profile/profile-nav";
 import type { NotesIntent } from "../../client-notes/notes-intent";
 import { fordStudioIdOf } from "../../ford/ford-write";
 import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
@@ -29,9 +30,12 @@ export function NotesPage({
   data,
   go,
   intent = null,
+  pageLines,
 }: CodexPageProps & {
   /** A door's request (a thread, the composer, Resolved), keyed per move. */
   intent?: { key: unknown; request: NotesIntent } | null;
+  /** The sub-toggle's line for each page, for the questions whose answer is a page. */
+  pageLines?: Partial<Record<RecordPage, string | null>>;
 }) {
   const { client, access, journal, notes, dismissals, machines, author, today, coverage, pronouns, ford } = data;
   // Stamped on a set added in the session pop-up a note opens (Oct 1 2026).
@@ -47,7 +51,7 @@ export function NotesPage({
     <Page
       id="notes"
       title="Notes"
-      lede="Every note is a thread. Open means it matters now, loudest first. Standing context is simply true. Resolved notes wait at the bottom with a way back."
+      lede="Ask what you came to find out. Every note is a thread: Open means it matters now, loudest first; Standing context is simply true; Resolved notes wait at the bottom with a way back."
       go={go}
     >
       <NotesArea
@@ -61,6 +65,9 @@ export function NotesPage({
         today={today}
         coverage={coverage}
         possessive={pronouns.possessive}
+        pronouns={pronouns}
+        pageLines={pageLines}
+        onOpenPage={(page) => go(page)}
         fordWritable={access.fordWritable}
         fordReadable={access.fordReadable}
         fordStudioId={fordStudioIdOf(client)}

@@ -108,6 +108,15 @@ export interface NotesCatalogProps {
    */
   sessionLabelOf?: (entry: JournalEntry) => string | null;
   onOpenSession?: (sessionId: string) => void;
+  /**
+   * The question the page is answering (notes round, Oct 3 2026; ask.ts):
+   * only its threads are listed, its own words say when none answer it, and
+   * the category chips are offered only where they still help. Null or left
+   * out is every note, as before.
+   */
+  lens?: { id: string; threadIds: ReadonlySet<string>; showCategories: boolean; empty: string } | null;
+  /** Back to every note: a door, or "Show it", needs a thread the question leaves out. */
+  onLeaveLens?: () => void;
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -135,6 +144,8 @@ export function NotesCatalog({
   onIntentHandled,
   sessionLabelOf,
   onOpenSession,
+  lens = null,
+  onLeaveLens,
 }: NotesCatalogProps) {
   const [filter, setFilter] = useState<CatalogFilter>(EMPTY_FILTER);
   const [showArchived, setShowArchived] = useState(false);
@@ -157,7 +168,10 @@ export function NotesCatalog({
   const [scrollTo, setScrollTo] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  const catalog = useMemo(() => buildCatalog(threads, filter, today), [threads, filter, today]);
+  // A question answers with its own threads; every one of them is still a
+  // thread on her record, and the critical line below still reads them all.
+  const shown = useMemo(() => (lens ? threads.filter((t) => lens.threadIds.has(t.id)) : threads), [threads, lens]);
+  const catalog = useMemo(() => buildCatalog(shown, filter, today), [shown, filter, today]);
   const [open, standing, resolved] = catalog.zones;
   const keptIds = useMemo(
     () => new Set(catalog.zones.flatMap((z) => z.items.map((t) => t.id))),
@@ -166,9 +180,9 @@ export function NotesCatalog({
   const criticalIds = useMemo(() => new Set(criticalEntries.map((e) => e.id)), [criticalEntries]);
   const headsUpIds = useMemo(() => new Set(headsUpEntries.map((e) => e.id)), [headsUpEntries]);
 
-  const filtered = !!filter.category || !!filter.search.trim() || !!filter.machineId;
+  const filtered = !!filter.category || !!filter.search.trim() || !!filter.machineId || !!lens;
   // The machines she has notes about: the machine filter's choices (Oct 1 2026).
-  const noteMachines = useMemo(() => machinesWithNotes(threads, machines), [threads, machines]);
+  const noteMachines = useMemo(() => machinesWithNotes(shown, machines), [shown, machines]);
   const hidden = useMemo(
     () => (filtered ? hiddenCriticalThreads(threads, keptIds, criticalIds) : []),
     [filtered, threads, keptIds, criticalIds],
@@ -206,6 +220,8 @@ export function NotesCatalog({
     }
     const zone = zoneOf(thread, today);
     if (!keptIds.has(thread.id)) setFilter((f) => ({ ...EMPTY_FILTER, showResolved: f.showResolved }));
+    // The question being answered leaves it out: back to every note.
+    if (lens && !lens.threadIds.has(thread.id)) onLeaveLens?.();
     if (zone === "resolved") setShowResolved(true);
     if (zone !== "open") setExpandedId(thread.id);
     setScrollTo(`thread-${thread.id}`);
@@ -268,11 +284,13 @@ export function NotesCatalog({
           </button>
         ) : null}
       </div>
-      <button type="button" className="nx-pick" aria-pressed={filter.category === null} onClick={() => pick(null)}>
-        All
-        {countsKnown ? <span className="nx-pick__count">{allCount}</span> : null}
-      </button>
-      {NOTES_PAGE_CATEGORIES.map((c) => (
+      {lens && !lens.showCategories ? null : (
+        <button type="button" className="nx-pick" aria-pressed={filter.category === null} onClick={() => pick(null)}>
+          All
+          {countsKnown ? <span className="nx-pick__count">{allCount}</span> : null}
+        </button>
+      )}
+      {(lens ? lens.showCategories : true) && NOTES_PAGE_CATEGORIES.map((c) => (
         <button
           key={c.id}
           type="button"
@@ -429,6 +447,20 @@ export function NotesCatalog({
         ) : null}
       </div>
     );
+  } else if (lens && shown.length === 0) {
+    // Nothing answers this question: say so in its own words, and the way to every note.
+    body = (
+      <div className="nx-empty" data-testid="ask-empty">
+        <p className="nx-empty__text">{lens.empty}</p>
+        {onLeaveLens ? (
+          <div className="nx-empty__acts">
+            <button type="button" className="nt-btn" onClick={onLeaveLens}>
+              See every note
+            </button>
+          </div>
+        ) : null}
+      </div>
+    );
   } else {
     const openOrStanding = open.total + standing.total;
     body = (
@@ -480,7 +512,14 @@ export function NotesCatalog({
                     Show the {plural(resolved.total, "resolved note")}
                   </button>
                 ) : null}
-                <button type="button" className="nt-btn" onClick={clear}>
+                <button
+                  type="button"
+                  className="nt-btn"
+                  onClick={() => {
+                    clear();
+                    onLeaveLens?.();
+                  }}
+                >
                   Show everything
                 </button>
               </div>
@@ -533,6 +572,7 @@ export function NotesCatalog({
           actionLabel="Show it"
           onOpen={(threadId) => {
             clear();
+            if (lens && !lens.threadIds.has(threadId)) onLeaveLens?.();
             setScrollTo(`thread-${threadId}`);
           }}
         />

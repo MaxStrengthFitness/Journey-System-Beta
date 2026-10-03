@@ -878,3 +878,124 @@
   display: flex;
   justify-content: flex-end;
 }
+
+/* ------------------------------------------------------------------ */
+/* ASK ABOUT HER — the questions at the top (notes round, Oct 3 2026)  */
+/* ------------------------------------------------------------------ */
+
+.nx-ask {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nx-ask__kicker {
+  margin: 0;
+  color: var(--eq-ink-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Two across in an upright iPad, more when there is room; a question's
+   words wrap, never cut. */
+.nx-ask__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.nx-ask__q {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3px;
+  min-height: 56px;
+  padding: 9px 13px;
+  border-radius: 10px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-2);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nx-ask__q:focus-visible {
+  outline: 2px solid var(--eq-focus-ring);
+  outline-offset: 2px;
+}
+
+.nx-ask__q[aria-pressed="true"] {
+  border-color: var(--eq-live);
+  background: var(--eq-live-fill);
+  color: var(--eq-live-text);
+}
+
+.nx-ask__question {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.nx-ask__preview {
+  color: var(--eq-ink-muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.nx-ask__q[aria-pressed="true"] .nx-ask__preview {
+  color: inherit;
+}
+
+/* The answer's head: the question, its line, and the door to the page
+   that goes deeper. */
+.nx-answer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 0 2px;
+  border-top: 1px solid var(--eq-border);
+}
+
+.nx-answer__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 260px;
+}
+
+.nx-answer__q {
+  margin: 0;
+  color: var(--eq-ink);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.nx-answer__line {
+  margin: 0;
+  color: var(--eq-ink-2);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.nx-answer__door {
+  flex: none;
+}
+
+/* Resolved, under a question that holds none: the line that leads to them. */
+.nx-resolved-elsewhere {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--eq-border);
+}

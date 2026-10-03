@@ -241,6 +241,7 @@ function NotesArea({ onOpenFord = () => {}, who = client }: { onOpenFord?: () =>
       fordStudioId={fordStudioIdOf(who)}
       fordDoorCount={null}
       onOpenFord={onOpenFord}
+      initialAsk="all"
     />
   );
 }

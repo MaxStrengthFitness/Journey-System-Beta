@@ -259,6 +259,13 @@ export function ClientCodex({
     access.fordReadable,
     hosts.sessionsSplit,
   ]);
+  // Each page's own line, for the Notes page's questions whose answer is a
+  // page (notes round, Oct 3 2026): FORD's "birthday in 17 days", Story's
+  // "since 2019" — the same words as the sub-toggle, never a second rule.
+  const pageLines = useMemo(
+    () => Object.fromEntries(items.map((i) => [i.id, i.meta ?? null])) as Partial<Record<RecordPage, string | null>>,
+    [items],
+  );
 
   const rootRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -308,7 +315,7 @@ export function ClientCodex({
       case "overview":
         return <OverviewPage {...pageProps} />;
       case "notes":
-        return <NotesPage {...pageProps} intent={notesIntent} />;
+        return <NotesPage {...pageProps} intent={notesIntent} pageLines={pageLines} />;
       case "ford":
         return <FordPage {...pageProps} writeLine={fordLineRequest} />;
       case "body":
