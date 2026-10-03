@@ -825,6 +825,7 @@ export function ClientsView({
           <div className="flex-1 flex flex-col min-h-0 bg-slate-50 dark:bg-slate-950">
             {/* The top (calm Hub round): the layers, the week and two doors;
                 on Schedule, the day in words and the chips. */}
+            <div className="hd-top">
             <DayHeader
               layer={layer}
               onLayer={(next) => {
@@ -842,6 +843,8 @@ export function ClientsView({
                 setView("studio-tasks");
               }}
               onOpenKey={() => setKeyOpen(true)}
+              chips={layer === "schedule" && !activeSpot ? chips : undefined}
+              onSpot={(family) => setSpot({ day: gridDayKey, family, next: 0 })}
             />
             {layer === "schedule" && (
               <DaySummary
@@ -874,6 +877,7 @@ export function ClientsView({
                 }
               />
             )}
+            </div>
             <KeySheet open={keyOpen} onClose={() => setKeyOpen(false)} />
             {activePeek &&
               (() => {

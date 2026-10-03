@@ -420,3 +420,37 @@
   .hd-sum[data-focus-switch="true"] .hd-seg-btn { flex: 1 1 0; }
   .hd-sum[data-focus-switch="true"] .hd-chips { flex: 1 0 100%; }
 }
+
+/* ---- the chips in the top row (Oct 3 2026, AJ) ----
+   Upright, the top row has room between the layers and the doors, so the
+   chips go there and the line under the top is drawn only when it holds
+   something else: the spotlight's words, or Focus. On its side the top row
+   is full with the week, and the chips keep their own line. `.hd-top` wraps
+   the two so the line can ask how wide the top is. */
+.hd-top {
+  container-type: inline-size;
+  flex: none;
+}
+
+.hd-chips--top {
+  display: none;
+}
+
+@container (max-width: 900px) {
+  .hd-chips--top {
+    display: flex;
+    flex: 1 1 0;
+  }
+
+  .hd-tools {
+    margin-left: 0;
+  }
+
+  .hd-chips--line {
+    display: none;
+  }
+
+  .hd-sum[data-chips-only="true"] {
+    display: none;
+  }
+}

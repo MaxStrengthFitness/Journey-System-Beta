@@ -18,6 +18,11 @@
  *               on the same line, so the top keeps its two rows.
  *   KeySheet    every mark and state in words, on both layers.
  *
+ * On an upright iPad the chips sit in the top row, between the layers and
+ * the doors (Oct 3 2026, AJ drew the arrow), and the line under it is drawn
+ * only when it has something else to hold (the spotlight, or Focus). On its
+ * side the top row is full with the week, so they stay on their own line.
+ *
  * Presentational; the pure half is day-summary.ts.
  */
 import type { ComponentType } from "react";
@@ -67,6 +72,20 @@ function FamilyIcon({ family }: { family: MomentFamily }) {
   );
 }
 
+/** The family chips: a tap lights that family's cards on the grid. */
+function SpotChips({ chips, onSpot, top = false }: { chips: ReadonlyArray<SummaryChip>; onSpot: (family: MomentFamily) => void; top?: boolean }) {
+  return (
+    <div className={top ? "hd-chips hd-chips--top" : "hd-chips hd-chips--line"} role="group" aria-label="Light them up on the grid">
+      {chips.map((c) => (
+        <button key={c.id} type="button" className="hd-chip" onClick={() => onSpot(c.id)}>
+          <FamilyIcon family={c.id} />
+          {`${c.label} ${c.count}`}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export interface DayHeaderProps {
   layer: HubLayer;
   onLayer: (next: HubLayer) => void;
@@ -79,13 +98,20 @@ export interface DayHeaderProps {
   /** Relay, where the day's tasks are. Absent: no door. */
   onOpenTasks?: () => void;
   onOpenKey: () => void;
+  /**
+   * The family chips, drawn in this row on an upright iPad (Schedule only,
+   * and not while one is lit). Absent: none here.
+   */
+  chips?: ReadonlyArray<SummaryChip>;
+  onSpot?: (family: MomentFamily) => void;
 }
 
-export function DayHeader({ layer, onLayer, days, selected, onSelectDay, openTasks, onOpenTasks, onOpenKey }: DayHeaderProps) {
+export function DayHeader({ layer, onLayer, days, selected, onSelectDay, openTasks, onOpenTasks, onOpenKey, chips, onSpot }: DayHeaderProps) {
   const today = days.find((d) => d.isToday);
   return (
     <div className="hd">
       <LayerSwitch value={layer} onChange={onLayer} />
+      {chips && chips.length > 0 && onSpot && <SpotChips chips={chips} onSpot={onSpot} top />}
       <div className="hd-week" role="tablist" aria-label="Pick a day">
         {days.map((d) => (
           <button
@@ -204,7 +230,7 @@ export function DaySummary({ title, sessions, trainers, chips, spot, spotText, o
     );
   }
   return (
-    <div className="hd-sum" data-focus-switch={focus ? "true" : undefined}>
+    <div className="hd-sum" data-focus-switch={focus ? "true" : undefined} data-chips-only={focus ? undefined : "true"}>
       <span className="hd-sum-words">
         <strong>{title}</strong>
         {sessions > 0
@@ -215,16 +241,7 @@ export function DaySummary({ title, sessions, trainers, chips, spot, spotText, o
               ? " · reading the bookings\u2026"
               : " · nothing booked"}
       </span>
-      {chips.length > 0 && (
-        <div className="hd-chips" role="group" aria-label="Light them up on the grid">
-          {chips.map((c) => (
-            <button key={c.id} type="button" className="hd-chip" onClick={() => onSpot(c.id)}>
-              <FamilyIcon family={c.id} />
-              {`${c.label} ${c.count}`}
-            </button>
-          ))}
-        </div>
-      )}
+      {chips.length > 0 && <SpotChips chips={chips} onSpot={onSpot} />}
       {focus && <FocusSwitch value={focus.value} onChange={focus.onChange} />}
     </div>
   );

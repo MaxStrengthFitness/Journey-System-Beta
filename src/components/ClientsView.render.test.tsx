@@ -267,7 +267,9 @@ describe("the Hub", () => {
     expect(days[0].textContent).toBe("Mon 285");
     expect(days[0].getAttribute("aria-selected")).toBe("true");
     expect(days[1].textContent).toBe("Tue 291");
-    expect([...el.querySelectorAll(".hd-chip")].map((c) => c.textContent)).toEqual(["Celebrate 1", "Welcome 2", "Watch 1"]);
+    expect([...el.querySelectorAll(".hd-chips--line .hd-chip")].map((c) => c.textContent)).toEqual(["Celebrate 1", "Welcome 2", "Watch 1"]);
+    // The same chips in the top row, for an upright iPad (Oct 3 2026; the stylesheet shows one or the other).
+    expect([...el.querySelectorAll(".hd-chips--top .hd-chip")].map((c) => c.textContent)).toEqual(["Celebrate 1", "Welcome 2", "Watch 1"]);
   });
 
   it("opens a card's peek on a tap, and Escape closes it", () => {
@@ -704,7 +706,7 @@ describe("the Hub: Get to know", () => {
     const card = cardOf(el, "Laura Grubb")!;
     expect(card.querySelector('.hs-g[data-family="get-to-know"]')?.getAttribute("aria-label")).toBe("Something to ask about");
     expect(el.querySelector(".hs-scroll")?.innerHTML).not.toContain("mathom");
-    expect([...el.querySelectorAll(".hd-chip")].map((c) => c.textContent)).toEqual(["Celebrate 1", "Welcome 2", "Watch 1", "Get to know 1"]);
+    expect([...el.querySelectorAll(".hd-chips--line .hd-chip")].map((c) => c.textContent)).toEqual(["Celebrate 1", "Welcome 2", "Watch 1", "Get to know 1"]);
     act(() => [...el.querySelectorAll<HTMLButtonElement>(".hd-chip")].find((c) => c.textContent?.startsWith("Get to know"))!.click());
     expect(el.querySelector(".hd-spot-words")?.textContent).toBe("Showing 1 to ask about on the grid");
     expect(cardOf(el, "Laura Grubb")?.dataset.dim).toBeUndefined();
