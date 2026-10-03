@@ -49,13 +49,19 @@ The redesign's Operations room, phase 6 (Sep 28 2026). The round is
   long as the huddle is open. It is a Sheet run the full width, so it pays
   the status bar and home indicator itself (the Home Screen app's rule).
 
+## Your notes and Note for our 1:1 (notes round, Oct 3 2026)
+
+Built: `LeaderNotes.tsx` over `leader-notes.ts`. On each card, for a leader,
+**Your notes** says how many Team member notes the leader has about that
+person in their own Journal and when the newest was (one read of their own
+notes, the Journal's own query), and **Note for our 1:1** writes one more
+there (What happened · What I'll do). It is the Journal's Team member note,
+so the two are never two stores; private to the leader, never shown to the
+person, nothing sent. Whether a studio's leaders should share these is AJ's
+question (the round document, `docs/rounds/2026-10-03-client-notes.md`).
+
 ## Not built, and why
 
-- **Note for our 1:1** (the blueprint's second button on a card). It needs a
-  place to keep a leader's private note about a person. Relay's private
-  notes could hold one with no new field, but that store belongs to the
-  Relay room and is being reworked beside this round; the button waits for
-  AJ's word on where it goes.
 - **Who moved toward steady** on the Monday review and the huddle's
   "yesterday" in the strict sense: both need yesterday's states, which
   Journey doesn't keep until the nightly job writes states (not approved).
