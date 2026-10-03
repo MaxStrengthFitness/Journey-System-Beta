@@ -8,24 +8,22 @@
  * delete — history can't quietly vanish.
  */
 import { archiveJournalEntry, updateJournalEntry } from "../../hooks/useClientJournal";
-import type { FocusCategory } from "../../types/journal";
-import { NOTE_CATEGORY_META, type FilingCategory } from "./note-catalog";
+import { storedKindOf, type FilingCategory, type NoteFlavour } from "./note-catalog";
 
 /**
- * File `entryId` under `category`. `p` is the 4 P for a coaching tip and is
- * ignored for any other category (the journal keeps `category` for the P).
+ * File `entryId` under `category`, with its flavour when one was picked (a
+ * 4 P or Set-up under Coaching & equipment, a Health flavour). What is
+ * written is `storedKindOf`'s answer — the same one the composer writes — so
+ * a note filed from the tray and one filed as it was written are the same
+ * note.
  */
 export async function fileUnfiledEntry(
   entryId: string,
   category: FilingCategory,
-  p?: FocusCategory | null,
+  flavour?: NoteFlavour | null,
 ): Promise<void> {
-  const kind = NOTE_CATEGORY_META[category].kind;
-  if (!kind) throw new Error(`Cannot file a note under ${category}`);
-  await updateJournalEntry(entryId, {
-    kind,
-    category: category === "coaching" ? (p ?? null) : null,
-  });
+  const stored = storedKindOf(category, flavour ?? null);
+  await updateJournalEntry(entryId, { kind: stored.kind, category: stored.category });
 }
 
 /** Discard an unfiled note: archived, not deleted. */

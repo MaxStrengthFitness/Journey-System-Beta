@@ -416,7 +416,7 @@ describe("buildStory — (A) a migrated client", () => {
     expect(open.door).toEqual({ page: "notes", anchor: "note-crit" });
     const closed = beats.find((b) => b.key === "note-close:old-knee")!;
     expect(closed.text).toBe("Closed: Left knee sore after a hike.");
-    expect(closed.sourceLine).toBe("Injury note · opened Oct 1, 2026");
+    expect(closed.sourceLine).toBe("Health note · opened Oct 1, 2026");
   });
 
   it("draws FORD moments and gestures done — never a standing fact, an archived or unfiled detail, an import or the one line", () => {

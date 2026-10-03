@@ -94,15 +94,17 @@ describe("the Note for the next trainer, filed from the Wrap-up", () => {
   });
 
   it("stays on the next briefing once filed, under any category", async () => {
-    for (const [category, p] of [
+    for (const [category, flavour] of [
       ["preference", null],
-      ["injury", null],
+      ["health", null],
+      ["health", "Surgery"],
       ["coaching", "Posture"],
-      ["equipment", null],
+      ["coaching", "Setup"],
       ["incident", null],
+      ["retention", null],
     ] as const) {
       writes.length = 0;
-      await fileUnfiledEntry("j-next", category, p);
+      await fileUnfiledEntry("j-next", category, flavour);
       const filed = applied(nextTrainerNote(), writes[0].data);
       expect(isUnfiled(filed)).toBe(false);
       // The hook's headsUpEntries is exactly this filter over its entries.

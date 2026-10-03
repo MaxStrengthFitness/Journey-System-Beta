@@ -4,8 +4,8 @@
  * The notes twin of `features/ford/FordSweep.tsx`. A note saved with no
  * category ("capture now, tag at teardown", reporting round Sep 2026) comes
  * back here as a card: the words, the machine it was about, and the five
- * categories as chips underneath — plus the 4 P's, so a coaching tip can be
- * filed with its P in the same single tap. One tap files; the card is gone.
+ * categories as chips underneath — plus Coaching & equipment's flavours (the
+ * 4 P's and Set-up), so a cue can be filed with its P in the same single tap. One tap files; the card is gone.
  *
  * WHERE IT IS MOUNTED
  *   - the Active Session sheet, under "This session", for this session's
@@ -38,9 +38,9 @@
 import { useMemo, useState } from "react";
 import { Check, Dumbbell, Forward, Inbox, Trash2 } from "lucide-react";
 import type { Machine } from "../../types";
-import { FOCUS_CATEGORIES, IMPORTANCE_META, type FocusCategory, type JournalEntry } from "../../types/journal";
+import { IMPORTANCE_META, type JournalEntry } from "../../types/journal";
 import { LOUDNESS_TONE } from "../rating/Loudness";
-import { FILING_CATEGORIES, isUnfiled, type FilingCategory } from "./note-catalog";
+import { COACHING_FLAVOURS, FILING_CATEGORIES, isUnfiled, type FilingCategory, type NoteFlavour } from "./note-catalog";
 import { NoteCategoryChips } from "./NoteCategoryChips";
 import "./notes.css";
 
@@ -49,7 +49,7 @@ export interface NoteSweepProps {
   entries: JournalEntry[];
   machines: Machine[];
   clientFirstName: string;
-  onFile: (entryId: string, category: FilingCategory, p?: FocusCategory | null) => Promise<void>;
+  onFile: (entryId: string, category: FilingCategory, flavour?: NoteFlavour | null) => Promise<void>;
   onDiscard?: (entryId: string) => Promise<void>;
   /**
    * Which card is the Note for the next trainer (the Wrap-up passes it; see
@@ -92,10 +92,10 @@ export function NoteSweep({
       return next;
     });
 
-  const file = (entry: JournalEntry, category: FilingCategory, p: FocusCategory | null = null) => {
+  const file = (entry: JournalEntry, category: FilingCategory, flavour: NoteFlavour | null = null) => {
     settle(entry.id);
     setFiled((n) => n + 1);
-    void onFile(entry.id, category, p).catch(() => {
+    void onFile(entry.id, category, flavour).catch(() => {
       /* the stream restores the card; nothing else to do here */
     });
   };
@@ -172,16 +172,17 @@ export function NoteSweep({
                 onChange={(c) => file(entry, c as FilingCategory)}
               />
               <div className="nc-sweep__ps">
-                <span className="nc-kicker">…or a coaching tip by its P</span>
-                <div className="nc-chips" role="group" aria-label="File as a coaching tip with its P">
-                  {FOCUS_CATEGORIES.map((c) => (
+                <span className="nc-kicker">…or Coaching &amp; equipment, by its P or as set-up</span>
+                <div className="nc-chips" role="group" aria-label="File under Coaching and equipment, with its P or as set-up">
+                  {COACHING_FLAVOURS.map((f) => (
                     <button
-                      key={c}
+                      key={f.id}
                       type="button"
                       className="nc-chip nc-chip--small"
-                      onClick={() => file(entry, "coaching", c)}
+                      title={f.blurb}
+                      onClick={() => file(entry, "coaching", f.id)}
                     >
-                      {c}
+                      {f.label}
                     </button>
                   ))}
                 </div>

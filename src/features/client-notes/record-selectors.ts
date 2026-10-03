@@ -38,6 +38,7 @@ import { headsUpStanding, type HeadsUpContext } from "./heads-up";
 import {
   SHOWN_ELSEWHERE_ON_RECORD,
   isUnfiled,
+  flavourOf,
   noteCategoryOf,
   threadCategoryOf,
   withoutRecordFields,
@@ -366,11 +367,21 @@ export interface CloseWords {
  * a body — an injury or an incident — and reads wrong on an equipment note or
  * a preference, which simply close and reopen.
  */
-export function closeWordsOf(root: Pick<JournalEntry, "kind" | "category" | "origin" | "isLegacy">): CloseWords {
+export function closeWordsOf(
+  root: Pick<JournalEntry, "kind" | "category" | "origin" | "isLegacy"> & Partial<Pick<JournalEntry, "bodyParts">>,
+): CloseWords {
   // An open question from Relay (Sep 28 2026) is answered, not healed.
   if (root.kind === "question") return { close: "Answered", reopen: "Open again" };
   const cat = noteCategoryOf(root);
-  if (cat === "injury" || cat === "incident") return { close: "All healed up", reopen: "It’s back" };
+  // Healing is for a body (notes round, Oct 3 2026): a Health note about an
+  // injury or a surgery (or an older one with no flavour, which was always an
+  // injury), and an incident that names a part of the body. A medication, a
+  // diagnosis, care outside the studio or a lost phone simply close.
+  const flavour = flavourOf(root);
+  const bodily =
+    (cat === "health" && (flavour === null || flavour === "Injury" || flavour === "Surgery")) ||
+    (cat === "incident" && (root.bodyParts?.length ?? 0) > 0);
+  if (bodily) return { close: "All healed up", reopen: "It’s back" };
   return { close: "Close", reopen: "Reopen" };
 }
 
@@ -651,7 +662,7 @@ export function injuryThreads(
   for (const t of withoutRecordFields(threads)) {
     if (t.root.isArchived) continue;
     const cat = threadCategoryOf(t);
-    if (cat !== "injury" && !(includeIncidents && cat === "incident")) continue;
+    if (cat !== "health" && !(includeIncidents && cat === "incident")) continue;
     const zone = zoneOf(t, today, tz);
     if (zone === "open") open.push(t);
     else if (zone === "standing") standing.push(t);

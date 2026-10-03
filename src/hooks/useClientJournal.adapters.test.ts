@@ -56,7 +56,7 @@ describe("client.events in the journal", () => {
     ]);
   });
 
-  it("keeps what FORD drops: medical as Injury, the rest under Admin", () => {
+  it("keeps what FORD drops: medical as Health, the rest under Admin", () => {
     const out = adaptEventsToJournal(
       client({
         events: [
@@ -67,7 +67,7 @@ describe("client.events in the journal", () => {
       }),
     );
     expect(out.map((e) => [e.id, noteCategoryOf(e), e.importance])).toEqual([
-      ["legacy:clientEvents:m", "injury", "critical"],
+      ["legacy:clientEvents:m", "health", "critical"],
       ["legacy:clientEvents:a", "admin", "elevated"],
       ["legacy:clientEvents:i", "admin", "standard"],
     ]);
@@ -108,9 +108,9 @@ describe("profile fields in the journal", () => {
   );
   const byId = Object.fromEntries(out.map((e) => [e.id.replace("legacy:profile:", ""), e]));
 
-  it("files medical history and clinical notes as Injury, in the medical section", () => {
+  it("files medical history and clinical notes as Health, in the medical section", () => {
     for (const key of ["medicalHistory", "clinicalNotes"]) {
-      expect(noteCategoryOf(byId[key])).toBe("injury");
+      expect(noteCategoryOf(byId[key])).toBe("health");
       expect(sectionForEntry(byId[key])).toBe("medical");
     }
   });

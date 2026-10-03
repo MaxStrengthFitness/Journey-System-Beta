@@ -7,10 +7,28 @@
  * fix is a CATALOG: every note has a clear category, one tap isolates a
  * category, and a search runs across all of them.
  *
- * The seven categories are the owner's choice, in this order:
+ * The categories are the owner's choice. Since the notes round (Oct 3 2026,
+ * AJ's client-notes hand-off: "Category is... one of the more important
+ * parts because we need to know how to correctly file this into their note
+ * section on their profile, so that way we know how to act on it later"):
  *
- *   Coaching tip (4 P's) · Equipment · Incident · Injury · Preference ·
- *   FORD / Life · Admin (Mindbody + intake)
+ *   Coaching & equipment · Health · Incident · Retention · FORD / Life ·
+ *   Preference · Admin (Mindbody + intake, read-only)
+ *
+ * Each category is where a note goes to be ACTED ON: Coaching & equipment is
+ * how to run her on the floor (a cue, one of the 4 P's, set-up); Health,
+ * Incident and Retention are what a leader can't afford to miss, and reach
+ * the studio's leaders (Operations → Today); FORD is the relationship;
+ * Preference is how she likes things, and the catch-all. Two of them take an
+ * optional second tap, a FLAVOUR (`NOTE_FLAVOURS`): the 4 P's or Set-up under
+ * Coaching & equipment, and Injury · Surgery · Medication · Diagnosis · Care
+ * outside the studio under Health.
+ *
+ * Until Oct 3 there were seven: Coaching tip · Equipment · Incident ·
+ * Injury · Preference · FORD / Life · Admin. Nothing stored changed: the
+ * stored `kind` is what it always was (`coaching` and `equipment` are both
+ * Coaching & equipment; `injury` is Health), so every old note files itself
+ * under the new names when it is read.
  *
  * THIS FILE IS THE ONE PLACE the categories are defined — label, icon,
  * order, and how every journal entry maps onto one. The composer, the
@@ -39,11 +57,17 @@
  */
 import {
   COMPOSER_KINDS,
+  FOCUS_BLURBS,
+  FOCUS_CATEGORIES,
   toDate,
+  type FocusCategory,
+  type HealthFlavour,
   type JournalEntry,
   type JournalKind,
   type JournalOrigin,
+  type NoteBodyMark,
 } from "../../types/journal";
+import { bodyMarksLine, normaliseBodyMarks } from "./body-parts";
 import {
   THREAD_ZONES,
   threadsByZone,
@@ -53,11 +77,11 @@ import {
 
 export type NoteCategory =
   | "coaching"
-  | "equipment"
+  | "health"
   | "incident"
-  | "injury"
-  | "preference"
+  | "retention"
   | "ford"
+  | "preference"
   | "admin";
 
 export interface NoteCategoryMeta {
@@ -71,69 +95,81 @@ export interface NoteCategoryMeta {
   /** lucide-react icon name. */
   icon: string;
   /**
-   * The journal kind a new note of this category is written as. Null for the
-   * two that never write a journal entry: FORD / Life hands off to the FORD
+   * The journal kind a new note of this category is written as, before a
+   * flavour says otherwise (Set-up writes `equipment`). Null for the two
+   * that never write a journal entry: FORD / Life hands off to the FORD
    * capture, and Admin is read-only imports.
    */
   kind: JournalKind | null;
   /** The kind whose colour the category borrows (see getEntryVisual). */
   visualKind: JournalKind;
+  /**
+   * Reaches the studio's leaders on Operations → Today, whatever its
+   * loudness (AJ: "the at-risk things a leader can't afford to miss").
+   */
+  forLeaders: boolean;
 }
 
 export const NOTE_CATEGORIES: readonly NoteCategoryMeta[] = [
   {
     id: "coaching",
-    label: "Coaching tip",
-    shelf: "Coaching tips",
-    blurb: "A cue or correction — Posture, Pace, Path, Purpose.",
+    label: "Coaching & equipment",
+    shelf: "Coaching & equipment",
+    blurb: "How to run the session — a cue, one of the 4 P's, set-up or machine know-how.",
     icon: "Target",
     kind: "coaching",
     visualKind: "coaching",
+    forLeaders: false,
   },
   {
-    id: "equipment",
-    label: "Equipment",
-    shelf: "Equipment",
-    blurb: "Machine know-how that is not a setting.",
-    icon: "Dumbbell",
-    kind: "equipment",
-    visualKind: "equipment",
+    id: "health",
+    label: "Health",
+    shelf: "Health",
+    blurb: "An injury or pain, surgery, medication, a diagnosis, or care outside the studio.",
+    icon: "Stethoscope",
+    kind: "injury",
+    visualKind: "injury",
+    forLeaders: true,
   },
   {
     id: "incident",
     label: "Incident",
     shelf: "Incidents",
-    blurb: "Something went wrong in the room.",
+    blurb: "Something happened in the room — from a lost phone to a fall.",
     icon: "AlertTriangle",
     kind: "incident",
     visualKind: "incident",
+    forLeaders: true,
   },
   {
-    id: "injury",
-    label: "Injury",
-    shelf: "Injuries",
-    blurb: "A limitation, surgery or pain the load has to work around.",
-    icon: "Bandage",
-    kind: "injury",
-    visualKind: "injury",
-  },
-  {
-    id: "preference",
-    label: "Preference",
-    shelf: "Preferences & other",
-    blurb: "How they like things done — music, fan, pace of talk.",
-    icon: "ThumbsUp",
-    kind: "preference",
-    visualKind: "preference",
+    id: "retention",
+    label: "Retention",
+    shelf: "Retention",
+    blurb: "Renewing, the package, staying or leaving — what was said, and by whom.",
+    icon: "Handshake",
+    kind: "retention",
+    visualKind: "retention",
+    forLeaders: true,
   },
   {
     id: "ford",
     label: "FORD / Life",
     shelf: "FORD / Life",
-    blurb: "Family, occupation, recreation, dreams — kept in Life.",
+    blurb: "Family, occupation, recreation, dreams — a trip or an event coming up. Kept in FORD.",
     icon: "Heart",
     kind: null,
     visualKind: "life",
+    forLeaders: false,
+  },
+  {
+    id: "preference",
+    label: "Preference",
+    shelf: "Preferences & other",
+    blurb: "How they like things done — music, fan, pace of talk — and anything else.",
+    icon: "ThumbsUp",
+    kind: "preference",
+    visualKind: "preference",
+    forLeaders: false,
   },
   {
     id: "admin",
@@ -143,6 +179,7 @@ export const NOTE_CATEGORIES: readonly NoteCategoryMeta[] = [
     icon: "ClipboardList",
     kind: null,
     visualKind: "consultation",
+    forLeaders: false,
   },
 ];
 
@@ -166,6 +203,135 @@ export type FilingCategory = Exclude<NoteCategory, "ford" | "admin">;
 export const FILING_CATEGORIES: readonly NoteCategoryMeta[] = NOTE_CATEGORIES.filter(
   (c): c is NoteCategoryMeta & { id: FilingCategory } => c.id !== "ford" && c.id !== "admin",
 );
+
+/** True for a category whose notes reach the studio's leaders. */
+export function isForLeaders(category: NoteCategory): boolean {
+  return NOTE_CATEGORY_META[category].forLeaders;
+}
+
+/* ------------------------------------------------------------------ */
+/* FLAVOURS — the optional second tap                                  */
+/* ------------------------------------------------------------------ */
+
+/** Set-up under Coaching & equipment: machine know-how, stored as `kind: "equipment"`. */
+export type CoachingFlavour = FocusCategory | "Setup";
+export type NoteFlavour = CoachingFlavour | HealthFlavour;
+
+export interface NoteFlavourMeta {
+  id: NoteFlavour;
+  label: string;
+  blurb: string;
+}
+
+export const HEALTH_FLAVOURS: readonly NoteFlavourMeta[] = [
+  { id: "Injury", label: "Injury or pain", blurb: "A limitation or pain the load has to work around." },
+  { id: "Surgery", label: "Surgery", blurb: "Coming up or behind her — the date, and what's off limits until she's cleared." },
+  { id: "Medication", label: "Medication", blurb: "Including GLP-1s, blood pressure and blood thinners." },
+  { id: "Diagnosis", label: "Diagnosis", blurb: "A condition the team should know about." },
+  { id: "OutsideCare", label: "Care outside the studio", blurb: "Massage, chiropractor, physical therapy, an adjustment." },
+];
+
+export const COACHING_FLAVOURS: readonly NoteFlavourMeta[] = [
+  ...FOCUS_CATEGORIES.map((p) => ({ id: p as NoteFlavour, label: p, blurb: FOCUS_BLURBS[p] })),
+  { id: "Setup", label: "Set-up & equipment", blurb: "Machine know-how that is not a setting — a pad, a stop, a sticky seat." },
+];
+
+/** The flavours a category offers, in order; none for the rest. */
+export function flavoursOf(category: NoteCategory | null): readonly NoteFlavourMeta[] {
+  if (category === "coaching") return COACHING_FLAVOURS;
+  if (category === "health") return HEALTH_FLAVOURS;
+  return [];
+}
+
+const HEALTH_FLAVOUR_IDS: ReadonlySet<string> = new Set(HEALTH_FLAVOURS.map((f) => f.id));
+const FOCUS_IDS: ReadonlySet<string> = new Set(FOCUS_CATEGORIES);
+
+/** A flavour that belongs to the category, or null (an old draft's leftover, a wrong pairing). */
+export function flavourFor(category: NoteCategory | null, flavour: unknown): NoteFlavour | null {
+  if (typeof flavour !== "string") return null;
+  return flavoursOf(category).some((f) => f.id === flavour) ? (flavour as NoteFlavour) : null;
+}
+
+/**
+ * What a note of this category and flavour is STORED as: its `kind` and its
+ * `category` field. The one place the composer, the session's unsaved draft
+ * and the To-file tray turn a choice into a write, so they can never differ.
+ */
+export function storedKindOf(
+  category: FilingCategory,
+  flavour: NoteFlavour | null = null,
+): { kind: JournalKind; category: JournalEntry["category"] } {
+  const f = flavourFor(category, flavour);
+  switch (category) {
+    case "coaching":
+      if (f === "Setup") return { kind: "equipment", category: null };
+      return { kind: "coaching", category: f && FOCUS_IDS.has(f) ? (f as FocusCategory) : null };
+    case "health":
+      return { kind: "injury", category: f && HEALTH_FLAVOUR_IDS.has(f) ? (f as HealthFlavour) : null };
+    case "incident":
+      return { kind: "incident", category: null };
+    case "retention":
+      return { kind: "retention", category: null };
+    case "preference":
+      return { kind: "preference", category: null };
+  }
+}
+
+/** The categories that ask where on the body (AJ's map, `body-parts.ts`). */
+export function asksBodyPart(category: NoteCategory | null): boolean {
+  return category === "health" || category === "incident";
+}
+
+/**
+ * Everything a choice in the composer stores, in one answer: the `kind` and
+ * `category` (`storedKindOf`), and the body parts — kept only for Health and
+ * Incident, in the map's order, and null when there are none. No category
+ * (or FORD / Admin, which never write a note) is an unfiled `general` note.
+ * The composer and the session's unsaved draft both write through this.
+ */
+export function storedNoteOf(
+  category: NoteCategory | null,
+  flavour: NoteFlavour | null,
+  bodyParts: readonly NoteBodyMark[] | null | undefined,
+): { kind: JournalKind; category: JournalEntry["category"]; bodyParts: NoteBodyMark[] | null } {
+  if (!category || category === "ford" || category === "admin") {
+    return { kind: "general", category: null, bodyParts: null };
+  }
+  const stored = storedKindOf(category, flavour);
+  const marks = asksBodyPart(category) ? normaliseBodyMarks(bodyParts ?? []) : [];
+  return { ...stored, bodyParts: marks.length ? marks : null };
+}
+
+/** The flavour a stored note carries, read back: the P or Set-up, a Health flavour, an old life note's surgery. */
+export function flavourOf(entry: Pick<JournalEntry, "kind" | "category">): NoteFlavour | null {
+  if (entry.kind === "equipment") return "Setup";
+  if (entry.kind === "coaching" && entry.category && FOCUS_IDS.has(entry.category)) return entry.category as FocusCategory;
+  if (entry.kind === "injury" && entry.category && HEALTH_FLAVOUR_IDS.has(entry.category)) {
+    return entry.category as HealthFlavour;
+  }
+  if (entry.kind === "life" && (entry.category === "Surgery" || entry.category === "Injury")) return entry.category;
+  return null;
+}
+
+/** The flavour's own words ("Care outside the studio"), or null. */
+export function flavourLabel(flavour: NoteFlavour | null): string | null {
+  if (!flavour) return null;
+  return [...COACHING_FLAVOURS, ...HEALTH_FLAVOURS].find((f) => f.id === flavour)?.label ?? null;
+}
+
+/**
+ * A category id this app used before Oct 3 2026, as an old draft in
+ * sessionStorage may still hold it, read as today's: Equipment is Coaching &
+ * equipment's Set-up, Injury is Health. Anything unknown is no category.
+ */
+export function currentCategoryOf(stored: unknown): { category: NoteCategory | null; flavour: NoteFlavour | null } {
+  if (stored === "equipment") return { category: "coaching", flavour: "Setup" };
+  if (stored === "injury") return { category: "health", flavour: null };
+  if (typeof stored === "string" && stored in NOTE_CATEGORY_META) {
+    return { category: stored as NoteCategory, flavour: null };
+  }
+  return { category: null, flavour: null };
+}
 
 /**
  * True for a note saved without a category — "capture now, tag at teardown".
@@ -282,44 +448,47 @@ const IMPORT_ORIGINS: ReadonlySet<JournalOrigin> = new Set<JournalOrigin>([
 /**
  * The category a note is filed under.
  *
- *   coaching              -> Coaching tip
- *   equipment             -> Equipment
- *   incident              -> Incident
- *   injury                -> Injury   (incl. the medical-history and clinical-
- *                                      notes profile fields, adapted as injury)
- *   life, Surgery/Injury  -> Injury   (an old personal note about a surgery is
+ *   coaching              -> Coaching & equipment
+ *   equipment             -> Coaching & equipment (flavour Set-up)
+ *   question              -> Coaching & equipment (an open question about one
+ *                                      client, from Relay: a coaching question,
+ *                                      filed with the cues it is about; its
+ *                                      card says "Open question from …")
+ *   injury                -> Health   (incl. the medical-history and clinical-
+ *                                      notes profile fields, adapted as injury;
+ *                                      its flavour is in `category`)
+ *   life, Surgery/Injury  -> Health   (an old personal note about a surgery is
  *                                      a load constraint first — the same call
  *                                      sectionForEntry makes)
  *   life, anything else   -> FORD / Life
+ *   incident              -> Incident
+ *   retention             -> Retention
  *   preference            -> Preference
  *   general               -> Preference ("Preferences & other")
  *   consultation          -> Admin
- *   question              -> Coaching tip (an open question about one client,
- *                                      from Relay: a coaching question, filed
- *                                      with the cues it is about; its card says
- *                                      "Open question from …", never Preference)
  *   any other import from the profile, Mindbody or the intake -> Admin
  *   anything unrecognised -> Preference ("& other"), never dropped
  */
 export function noteCategoryOf(
   entry: Pick<JournalEntry, "kind" | "category" | "origin" | "isLegacy">,
 ): NoteCategory {
-  if (entry.kind === "injury") return "injury";
+  if (entry.kind === "injury") return "health";
   // Personal detail is FORD / Life wherever it came from — including a dated
   // high-priority event the journal keeps for the briefing.
   if (entry.kind === "life") {
-    return entry.category === "Surgery" || entry.category === "Injury" ? "injury" : "ford";
+    return entry.category === "Surgery" || entry.category === "Injury" ? "health" : "ford";
   }
   if (entry.kind === "consultation") return "admin";
   if (entry.isLegacy && IMPORT_ORIGINS.has(entry.origin)) return "admin";
   switch (entry.kind) {
     case "coaching":
+    case "equipment":
     case "question":
       return "coaching";
-    case "equipment":
-      return "equipment";
     case "incident":
       return "incident";
+    case "retention":
+      return "retention";
     case "preference":
     case "general":
       return "preference";
@@ -343,8 +512,16 @@ export function noteCardLabel(
     return first ? `Open question from ${first}` : "Open question";
   }
   if (entry.kind === "coaching" && entry.category) return entry.category;
+  if (entry.kind === "coaching") return "Coaching";
+  if (entry.kind === "equipment") return "Equipment";
   if (entry.kind === "general" && !(entry.isLegacy && IMPORT_ORIGINS.has(entry.origin))) return "Note";
-  return NOTE_CATEGORY_META[noteCategoryOf(entry)].label;
+  const category = noteCategoryOf(entry);
+  // A Health note says what kind of health note it is: "Health · Surgery".
+  if (category === "health") {
+    const flavour = flavourLabel(flavourOf(entry));
+    return flavour ? `Health · ${flavour}` : "Health";
+  }
+  return NOTE_CATEGORY_META[category].label;
 }
 
 /* ------------------------------------------------------------------ */
@@ -472,6 +649,13 @@ export function matchesSearch(entry: JournalEntry, needle: string): boolean {
     meta.shelf,
     // What the card itself says: "Open question from Ioreth" is found by "question".
     noteCardLabel(entry),
+    // The flavour in words ("Care outside the studio"), and where on the body
+    // ("left knee"), so a search for either finds it (notes round, Oct 3 2026).
+    flavourLabel(flavourOf(entry)) ?? "",
+    bodyMarksLine(entry.bodyParts),
+    // Every Health note written before Oct 3 2026 was filed as Injury, and a
+    // trainer still searches for the word they know.
+    entry.kind === "injury" && !flavourOf(entry) ? "injury" : "",
   ]
     .join(" ")
     .toLowerCase();

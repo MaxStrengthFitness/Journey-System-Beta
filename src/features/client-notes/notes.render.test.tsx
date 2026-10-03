@@ -270,12 +270,12 @@ describe("the Notes page mounts", () => {
     expect(host.textContent!.split("Check blood pressure").length - 1).toBe(1);
 
     const picks = Array.from(catalog.querySelectorAll(".nx-pick"));
-    expect(picks.map(pickLabel)).toEqual(["All", "Coaching tip", "Equipment", "Incident", "Injury", "Preference", "Admin"]);
+    expect(picks.map(pickLabel)).toEqual(["All", "Coaching & equipment", "Health", "Incident", "Retention", "Preference", "Admin"]);
     const count = (id: string) => host.querySelector(`[data-testid="pick-${id}"] .nx-pick__count`)!.textContent;
     expect(count("coaching")).toBe("4");
     expect(count("admin")).toBe("2");
     // A category with nothing in it keeps its place, at 0.
-    expect(count("equipment")).toBe("0");
+    expect(count("retention")).toBe("0");
     expect(catalog.querySelector(".nx-door")?.textContent).toContain("Life · in FORD");
 
     // The zones are the structure. Everything here is a plain "always" note
@@ -341,20 +341,22 @@ describe("the Notes page mounts", () => {
     const { composer } = await mountComposer();
     const chips = Array.from(composer.querySelectorAll(".nc-chips")[0].querySelectorAll("button"));
     expect(chips.map((b) => b.textContent)).toEqual([
-      "Coaching tip",
-      "Equipment",
+      "Coaching & equipment",
+      "Health",
       "Incident",
-      "Injury",
-      "Preference",
+      "Retention",
       "FORD / Life",
+      "Preference",
     ]);
     // Nothing pre-selected, and the record says what that means.
     expect(chips.every((b) => b.getAttribute("aria-pressed") === "false")).toBe(true);
     expect(composer.textContent).toContain("Pick a category, or save and file it later.");
     expect(buttonByText(composer, "Save — file later")).toBeTruthy();
 
-    await click(buttonByText(composer, "Injury"));
-    // Injury starts as Heads up (the shared Loudness control), which reveals the mattering picker.
+    await click(buttonByText(composer, "Health"));
+    // Health reaches the studio's leaders, and says so.
+    expect(composer.querySelector('[data-testid="note-for-leaders"]')!.textContent).toContain("Operations");
+    // Health starts as Heads up (the shared Loudness control), which reveals the mattering picker.
     const loud = composer.querySelector('[role="radiogroup"][aria-label="How loud? (optional)"]')!;
     expect(Array.from(loud.querySelectorAll("button")).map((b) => b.textContent)).toEqual(["Note", "Heads up", "Critical"]);
     expect(loud.querySelector('[aria-checked="true"]')!.textContent).toBe("Heads up");
@@ -364,14 +366,43 @@ describe("the Notes page mounts", () => {
     expect(when.querySelector('[aria-pressed="true"]')!.textContent).toBe("Always");
     expect(composer.querySelector('input[aria-label="Starts mattering on"]')).toBeTruthy();
     await typeInto(composer.querySelector("textarea"), "Sore right shoulder since Tuesday");
-    await click(buttonByText(composer, "Save injury"));
+    // The optional second tap and the body map, in AJ's fixed order.
+    const kinds = composer.querySelector('[role="group"][aria-label="What kind of health note"]')!;
+    expect(Array.from(kinds.querySelectorAll("button")).map((b) => b.textContent)).toEqual([
+      "Injury or pain",
+      "Surgery",
+      "Medication",
+      "Diagnosis",
+      "Care outside the studio",
+    ]);
+    await click(buttonByText(kinds, "Injury or pain"));
+    const parts = composer.querySelector('[role="group"][aria-label="Where on the body"]')!;
+    expect(Array.from(parts.querySelectorAll("button")).map((b) => b.textContent)).toEqual([
+      "Neck",
+      "Shoulder",
+      "Chest",
+      "Upper back",
+      "Lower back",
+      "Abdominals",
+      "Hip",
+      "Knee",
+      "Ankle",
+      "Foot",
+      "Elbow",
+      "Wrist",
+      "Hand",
+    ]);
+    await click(buttonByText(parts, "Shoulder"));
+    await click(buttonByText(composer.querySelector('[role="group"][aria-label="Which shoulder"]')!, "Right"));
+    await click(buttonByText(composer, "Save health"));
 
     expect(writes).toHaveLength(1);
     expect(writes[0].path).toBe("journalEntries");
     expect(writes[0].data).toMatchObject({
       clientId: "c1",
       kind: "injury",
-      category: null,
+      category: "Injury",
+      bodyParts: [{ part: "shoulder", side: "right" }],
       importance: "elevated",
       body: "Sore right shoulder since Tuesday",
       authorId: "uid-jane",
@@ -444,23 +475,43 @@ describe("the Notes page mounts", () => {
     expect([until.getMonth(), until.getDate(), until.getHours()]).toEqual([10, 5, 23]);
   });
 
-  it("keeps the incident's Critical default until the trainer touches loudness", async () => {
+  it("starts Health, Incident and Retention at Heads up, and keeps the trainer's loudness once touched", async () => {
     const { composer } = await mountComposer();
     await click(buttonByText(composer, "Incident"));
     const loud = composer.querySelector('[role="radiogroup"][aria-label="How loud? (optional)"]')!;
-    expect(loud.querySelector('[aria-checked="true"]')!.textContent).toBe("Critical");
+    // Since Oct 3 2026 an incident starts at Heads up: it runs from a lost phone to a fall.
+    expect(loud.querySelector('[aria-checked="true"]')!.textContent).toBe("Heads up");
+    await click(buttonByText(composer, "Retention"));
+    expect(loud.querySelector('[aria-checked="true"]')!.textContent).toBe("Heads up");
     await click(buttonByText(loud, "Note"));
-    await click(buttonByText(composer, "Injury"));
+    await click(buttonByText(composer, "Health"));
     expect(loud.querySelector('[aria-checked="true"]')!.textContent).toBe("Note");
   });
 
-  it("files a coaching tip with its P", async () => {
+  it("files a cue with its P, and set-up as an equipment note", async () => {
     const { composer } = await mountComposer();
-    await click(buttonByText(composer, "Coaching tip"));
+    await click(buttonByText(composer, "Coaching & equipment"));
     await typeInto(composer.querySelector("textarea"), "Cue the exhale");
-    await click(buttonByText(composer.querySelector('[aria-label="Which P"]')!, "Pace"));
-    await click(buttonByText(composer, "Save coaching tip"));
+    await click(buttonByText(composer.querySelector('[aria-label="Which P, or set-up"]')!, "Pace"));
+    // Coaching & equipment never asks where on the body.
+    expect(composer.querySelector('[data-testid="body-part-picker"]')).toBeNull();
+    await click(buttonByText(composer, "Save coaching & equipment"));
     expect(writes[0].data).toMatchObject({ kind: "coaching", category: "Pace", importance: "standard" });
+    expect(writes[0].data.bodyParts).toBeUndefined();
+
+    await click(buttonByText(composer, "Coaching & equipment"));
+    await typeInto(composer.querySelector("textarea"), "Extra pad behind the back");
+    await click(buttonByText(composer.querySelector('[aria-label="Which P, or set-up"]')!, "Set-up & equipment"));
+    await click(buttonByText(composer, "Save coaching & equipment"));
+    expect(writes[1].data).toMatchObject({ kind: "equipment", category: null });
+  });
+
+  it("writes a retention note for the whole team", async () => {
+    const { composer } = await mountComposer();
+    await click(buttonByText(composer, "Retention"));
+    await typeInto(composer.querySelector("textarea"), "Not sure about renewing in May");
+    await click(buttonByText(composer, "Save retention"));
+    expect(writes[0].data).toMatchObject({ kind: "retention", category: null, importance: "elevated" });
   });
 
   it("turns the typed words into a FORD capture in place — the same box, saved to FORD, never the journal", async () => {
@@ -645,7 +696,7 @@ describe("the To-file tray", () => {
     expect(host.querySelector('[data-testid="shelf-preference"]')).toBeNull();
     expect(splitUnfiled(entries).unfiled.map((e) => e.id)).toEqual(["raw"]);
 
-    await click(buttonByText(tray.querySelector('[data-testid="sweep-raw"]')!, "Injury"));
+    await click(buttonByText(tray.querySelector('[data-testid="sweep-raw"]')!, "Health"));
     expect(updates).toHaveLength(1);
     expect(updates[0].path).toBe("journalEntries/raw");
     expect(updates[0].data).toMatchObject({ kind: "injury", category: null });
@@ -674,15 +725,27 @@ describe("the To-file tray", () => {
     expect(tray.textContent).toContain("To file · 2");
     expect(tray.textContent).not.toContain("not shown");
     expect(tray.querySelector('[data-testid="sweep-u1"]')!.textContent).toContain("Leg Press");
-    // Every target is a 40px chip.
-    expect(tray.querySelectorAll(".nc-chip").length).toBe(2 * (5 + 4));
+    // Every target is a 40px chip: the five categories, then the 4 P's and Set-up.
+    expect(tray.querySelectorAll(".nc-chip").length).toBe(2 * (5 + 5));
 
     await click(buttonByText(tray.querySelector('[data-testid="sweep-u1"]')!, "Pace"));
     expect(updates[0]).toMatchObject({ path: "journalEntries/u1", data: { kind: "coaching", category: "Pace" } });
+    // Set-up files as the equipment note it always was.
+    await click(buttonByText(tray.querySelector('[data-testid="sweep-u2"]')!, "Set-up & equipment"));
+    expect(updates[1]).toMatchObject({ path: "journalEntries/u2", data: { kind: "equipment", category: null } });
 
-    await click(buttonByText(tray.querySelector('[data-testid="sweep-u2"]')!, "Discard"));
+    const discardHost = await mount(
+      <NoteSweep
+        entries={[rows[1]]}
+        machines={[]}
+        clientFirstName="Judy"
+        onFile={fileUnfiledEntry}
+        onDiscard={onDiscard}
+      />,
+    );
+    await click(buttonByText(discardHost.querySelector('[data-testid="sweep-u2"]')!, "Discard"));
     expect(onDiscard).toHaveBeenCalledWith("u2");
-    expect(host.querySelector('[data-testid="note-sweep"]')!.textContent).toContain("Filed.");
+    expect(host.querySelector('[data-testid="note-sweep"]')!.textContent).toContain("All 2 filed.");
 
     const empty = await mount(
       <NoteSweep entries={[rows[2]]} machines={[]} clientFirstName="Judy" onFile={fileUnfiledEntry} />,
@@ -727,7 +790,7 @@ describe("the Active Session notes sheet mounts", () => {
     );
     const composer = host.querySelector('[data-testid="note-composer"]')!;
     expect(composer).toBeTruthy();
-    expect(buttonByText(composer, "Injury")).toBeTruthy();
+    expect(buttonByText(composer, "Health")).toBeTruthy();
     expect(buttonByText(composer, "Admin")).toBeUndefined();
 
     await click(buttonByText(composer, "FORD / Life"));
@@ -799,7 +862,7 @@ describe("the Active Session notes sheet mounts", () => {
     );
     const composer = host.querySelector('[data-testid="note-composer"]')!;
     expect(composer.querySelector(".rt--compact")).toBeTruthy();
-    expect(composer.textContent).toContain("untagged notes come back to be filed at the end");
+    expect(composer.textContent).toContain("Pick one so it reaches the right people. Or save it now and file it at the end.");
     expect(buttonByText(composer, "About Leg Press")).toBeTruthy();
     await typeInto(composer.querySelector("textarea"), "Seat one notch higher next time");
     await click(buttonByText(composer, "Save — file later"));

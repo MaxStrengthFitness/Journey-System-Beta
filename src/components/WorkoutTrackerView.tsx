@@ -189,7 +189,7 @@ import { createJournalEntry, useClientJournal } from "../hooks/useClientJournal"
 import { flagLineOf, machineFlags, sessionFlags } from "../features/journey-grid/session-flags";
 import { SessionFlagsSheet } from "../features/journey-grid/SessionFlagsSheet";
 import { formatStudioDate } from "../lib/studio-time";
-import { NOTE_CATEGORY_META, journalBodyOf } from "../features/client-notes/note-catalog";
+import { journalBodyOf, storedNoteOf } from "../features/client-notes/note-catalog";
 import {
   clearSessionDraft,
   hasDraftText,
@@ -2222,17 +2222,18 @@ export function WorkoutTrackerView({
     const body = text.trim();
     if (!snap || !body || !user?.uid) return;
     const d = snap.draft;
-    const kind = d?.category && d.category !== "ford" && d.category !== "admin"
-      ? NOTE_CATEGORY_META[d.category].kind
-      : "general";
+    // The same answer the composer writes (note-catalog's storedNoteOf), so a
+    // draft filed on the way out is the note it would have been.
+    const stored = storedNoteOf(d?.category ?? null, d?.flavour ?? null, d?.bodyParts ?? null);
     await noteOrSay(
       createJournalEntry(
         snap.client.id,
         sessionNoteStudioId(snap.client, contextActiveStudioId || authTrainer?.primaryHomeStudioId),
         { id: user.uid, initials: authTrainer?.initials || "", fullName: authTrainer?.fullName || "" },
         {
-          kind: kind || "general",
-          category: d?.category === "coaching" ? d.p : null,
+          kind: stored.kind,
+          category: stored.category,
+          bodyParts: stored.bodyParts,
           body: body.slice(0, 5000),
           importance: d?.importance ?? importance,
           machineId: d?.aboutMachine ? d?.machineId ?? null : null,

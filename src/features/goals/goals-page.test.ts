@@ -231,7 +231,7 @@ describe("howToCoachRows", () => {
     expect(total).toBe(3);
     expect(rows.map((r) => r.threadId)).toEqual(["tip", "heads", "pref"]);
     expect(rows[0]).toMatchObject({ label: "Pace", importance: "critical", loud: true, machineId: "m-leg", text: "Count the turnaround." });
-    expect(rows[1]).toMatchObject({ label: "Coaching tip", loud: true });
+    expect(rows[1]).toMatchObject({ label: "Coaching", loud: true });
     expect(rows[2]).toMatchObject({ label: "Preference", importance: "standard", loud: false });
   });
 

@@ -126,11 +126,13 @@ function buildSearchTags(e: {
   authorId: string;
   machineId?: string | null;
   focusId?: string | null;
+  bodyParts?: readonly { part: string }[] | null;
 }): string[] {
   const tags = [`kind:${e.kind}`, `imp:${e.importance}`, `coach:${e.authorId}`];
   if (e.category) tags.push(`cat:${e.category}`);
   if (e.machineId) tags.push(`machine:${e.machineId}`);
   if (e.focusId) tags.push(`focus:${e.focusId}`);
+  for (const m of e.bodyParts ?? []) tags.push(`part:${m.part}`);
   return tags;
 }
 
@@ -173,6 +175,9 @@ export async function createJournalEntry(
     // The thread this update hangs from, or null for a note of its own
     // (features/client-notes/threads.ts). Written by addThreadUpdate.
     threadId: draft.threadId ?? null,
+    // Where on the body (notes round, Oct 3 2026): only on a note that names
+    // a part, so every other document keeps the shape it always had.
+    ...(draft.bodyParts && draft.bodyParts.length > 0 ? { bodyParts: draft.bodyParts } : {}),
     sessionId: draft.sessionId ?? null,
     // The session's number and day ride with the link (FileMaker parity,
     // Oct 1 2026; client-notes/session-link.ts). Only on a linked note.
@@ -204,6 +209,7 @@ export async function createJournalEntry(
       authorId: author.id,
       machineId: draft.machineId,
       focusId: draft.focusId,
+      bodyParts: draft.bodyParts,
     }),
   };
 

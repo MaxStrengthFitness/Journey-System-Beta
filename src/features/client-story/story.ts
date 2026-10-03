@@ -60,7 +60,7 @@ import type { Client } from "../../types";
 import type { ClientFocus } from "../../types/journal";
 import type { NoteThread } from "../client-notes/threads";
 import { updateCountLabel } from "../client-notes/threads";
-import { noteCategoryOf } from "../client-notes/note-catalog";
+import { noteCardLabel, noteCategoryOf } from "../client-notes/note-catalog";
 import { shortDay, whoOf } from "../client-notes/record-selectors";
 import { FORD_META, type FordEntry } from "../ford/types";
 import type { InBodyScan } from "../inbody/types";
@@ -840,10 +840,10 @@ function noteBeats(threads: readonly NoteThread[], today: string, tz?: string): 
     const root = t.root;
     if (!root || t.id.startsWith(PROFILE_FIELD_PREFIX) || root.isArchived) continue;
     const critical = root.importance === "critical";
-    if (!critical && noteCategoryOf(root) !== "injury") continue;
+    if (!critical && noteCategoryOf(root) !== "health") continue;
     const body = tidy(root.body);
     if (!body) continue;
-    const label = critical ? "Critical note" : "Injury note";
+    const label = critical ? "Critical note" : `${noteCardLabel(root)} note`;
     const door = noteDoor(t.id);
     const opened = instantDay(root.occurredAt, tz);
     if (opened) {

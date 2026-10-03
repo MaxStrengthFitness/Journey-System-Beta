@@ -587,7 +587,7 @@ describe("Finish never hangs and never counts a session twice (session record, S
     const box = document.getElementById(label!.getAttribute("for")!);
     expect(box?.tagName).toBe("TEXTAREA");
     expect(document.getElementById(box!.getAttribute("aria-describedby")!)?.textContent).toBe(
-      "Shows on their briefing for the next three weeks. A note just for the profile goes on the Wrap-up, next.",
+      "Read out on the briefing at the next four sessions. A note just for the profile goes on the Wrap-up, next.",
     );
     // "Wrap-up" is the post-session screen's name now, not this box's.
     expect(document.body.textContent).not.toContain("Wrap-up note");

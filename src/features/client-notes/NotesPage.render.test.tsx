@@ -354,7 +354,7 @@ describe("NotesPage — the filters", () => {
 
   it("counts resolved notes on the chips, and a chip narrows every zone", async () => {
     const host = await mount(propsFor());
-    const pick = host.querySelector('[data-testid="pick-injury"]')!;
+    const pick = host.querySelector('[data-testid="pick-health"]')!;
     expect(pick.querySelector(".nx-pick__count")?.textContent).toBe("2");
     await click(pick);
     expect(host.textContent).toContain("Open · 1");
@@ -375,13 +375,13 @@ describe("NotesPage — the filters", () => {
 
   it("names a critical note a filter hides, and 'Show it' brings the card back", async () => {
     const host = await mount(propsFor());
-    await click(host.querySelector('[data-testid="pick-equipment"]'));
+    await click(host.querySelector('[data-testid="pick-retention"]'));
     expect(zone(host, "open")).toBeNull();
     const line = host.querySelector('[data-testid="critical-line"]')!;
     expect(line.textContent).toContain("Critical ·");
     expect(line.textContent).toContain("Leg Press: Right knee: stop at 90° at the bottom turn.");
     await click(buttonIn(line, "Show it"));
-    expect(host.querySelector('[data-testid="pick-equipment"]')?.getAttribute("aria-pressed")).toBe("false");
+    expect(host.querySelector('[data-testid="pick-retention"]')?.getAttribute("aria-pressed")).toBe("false");
     expect(zone(host, "open")?.querySelector("#thread-crit")).not.toBeNull();
     expect(host.querySelector('[data-testid="critical-line"]')).toBeNull();
   });

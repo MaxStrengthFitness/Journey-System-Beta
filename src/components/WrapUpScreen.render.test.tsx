@@ -389,7 +389,7 @@ describe("the post-session screen mounts", () => {
     expect(tray.textContent).toContain("Knee clicked on leg press");
     expect(tray.textContent).toContain("Leg Press");
 
-    await click(buttonByText(tray.querySelector('[data-testid="sweep-raw"]')!, "Injury"));
+    await click(buttonByText(tray.querySelector('[data-testid="sweep-raw"]')!, "Health"));
     expect(updates).toHaveLength(1);
     expect(updates[0].path).toBe("journalEntries/raw");
     expect(updates[0].data).toMatchObject({ kind: "injury", category: null });
@@ -525,7 +525,7 @@ describe("the Note for the next trainer in the Wrap-up's To-file tray", () => {
   it("files it to the profile by kind and category only, so it stays a Heads up on the briefing", async () => {
     moreJournal = [nextDoc()];
     const host = await mount(<NextScreen note={{ id: null, body: words }} />);
-    await click(buttonByText(host.querySelector('[data-testid="sweep-next"]')!, "Injury"));
+    await click(buttonByText(host.querySelector('[data-testid="sweep-next"]')!, "Health"));
     expect(updates).toHaveLength(1);
     expect(updates[0].path).toBe("journalEntries/next");
     expect(Object.keys(updates[0].data).sort()).toEqual(["category", "kind", "updatedAt"]);

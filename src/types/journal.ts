@@ -39,10 +39,57 @@ export type JournalKind =
    * tip, labelled "Open question from {name}" (note-catalog.ts), never
    * offered by the composer and never unfiled.                 -> Coaching tip
    */
-  | "question";
+  | "question"
+  /**
+   * Renewing, the package, staying or leaving — what she said and what was
+   * said to her (notes round, Oct 3 2026). AJ: retention conversations
+   * "need to get into our notes", read by the whole team (his answer 1A).
+   * Heads up by default, and it reaches the studio's leaders on
+   * Operations → Today with Health and Incident.                -> Retention
+   */
+  | "retention";
 
 /** The 4 P's. Also the categories a trainer focus can be set to. */
 export type FocusCategory = "Posture" | "Path" | "Pace" | "Purpose";
+
+/**
+ * What KIND of health note (notes round, Oct 3 2026) — the optional second
+ * tap under Health, stored in `category` on a `kind: "injury"` note. AJ's
+ * hand-off: "a HEALTH lane with flavors underneath (surgery, injury,
+ * medication/GLP-1, serious diagnosis)", and care outside the studio
+ * (massage, chiropractor, PT) as one more flavour (his answer 3, "flavor").
+ * Left out, the note is simply Health.
+ */
+export type HealthFlavour = "Injury" | "Surgery" | "Medication" | "Diagnosis" | "OutsideCare";
+
+/**
+ * A part of the body a Health or Incident note is about (notes round, Oct 3
+ * 2026): AJ's fixed head-to-toe map, the same order every time, with a side
+ * for the parts that come in pairs. `features/client-notes/body-parts.ts`
+ * holds the order, the words and how each part lines up with the Pulse pain
+ * map, so "neck noted 3 times" can count a Pulse neck and a note's neck as
+ * one.
+ */
+export type NoteBodyPart =
+  | "neck"
+  | "shoulder"
+  | "chest"
+  | "upper_back"
+  | "lower_back"
+  | "abdominals"
+  | "hip"
+  | "knee"
+  | "ankle"
+  | "foot"
+  | "elbow"
+  | "wrist"
+  | "hand";
+
+/** One part, and which side when it comes in pairs (null: not said, or a centre part). */
+export interface NoteBodyMark {
+  part: NoteBodyPart;
+  side: "left" | "right" | "both" | null;
+}
 
 /** Sub-type for `life` entries. */
 export type LifeCategory =
@@ -82,8 +129,18 @@ export interface JournalEntry {
   studioId: string;
 
   kind: JournalKind;
-  /** FocusCategory for `coaching`, LifeCategory for `life`, else null. */
-  category: FocusCategory | LifeCategory | null;
+  /**
+   * FocusCategory for `coaching`, LifeCategory for `life`, HealthFlavour for
+   * `injury` (since Oct 3 2026, shown as Health), else null.
+   */
+  category: FocusCategory | LifeCategory | HealthFlavour | null;
+
+  /**
+   * The parts of the body a Health or Incident note is about (notes round,
+   * Oct 3 2026), on the ROOT of a thread. Absent on every note written
+   * before, and on any note that names none.
+   */
+  bodyParts?: NoteBodyMark[] | null;
 
   body: string;
   importance: JournalImportance;
@@ -183,6 +240,8 @@ export type JournalDraft = Pick<
 > & {
   /** Set only by `addThreadUpdate` — the root note this update hangs from. */
   threadId?: string | null;
+  /** The parts of the body it is about (Health and Incident). Written only when there are some. */
+  bodyParts?: NoteBodyMark[] | null;
   occurredAt?: Date | null;
   effectiveFrom?: Date | null;
   effectiveUntil?: Date | null;
@@ -398,6 +457,14 @@ const VISUALS = {
     tint: "bg-stone-500/[0.05]",
     label: "Preference",
   },
+  retention: {
+    edge: "bg-indigo-500",
+    chip: "bg-indigo-500/12 text-indigo-600 dark:text-indigo-300 border-indigo-500/25",
+    icon: "Handshake",
+    accent: "text-indigo-600 dark:text-indigo-300",
+    tint: "bg-indigo-500/[0.05]",
+    label: "Retention",
+  },
   question: {
     edge: "bg-blue-500",
     chip: "bg-blue-500/12 text-blue-600 dark:text-blue-300 border-blue-500/25",
@@ -492,6 +559,9 @@ export const IMPORTANCE_META: Record<
  * note must have a clear category, and "Note" was the way to avoid choosing
  * one. Existing `general` entries render under "Preferences & other".
  *
+ * The notes round (Oct 3 2026) added `retention`, and shows `injury` as
+ * Health and `coaching` + `equipment` as one lane, Coaching & equipment.
+ *
  * The labels, icons and order the screens show live in
  * features/client-notes/note-catalog.ts; this list is only the kinds.
  */
@@ -500,6 +570,7 @@ export const COMPOSER_KINDS: JournalKind[] = [
   "equipment",
   "incident",
   "injury",
+  "retention",
   "preference",
 ];
 
@@ -597,6 +668,9 @@ export function sectionForEntry(entry: JournalEntry): DossierSection | null {
         : "life";
     case "consultation":
       return "goals";
+    case "retention":
+      // Her package and whether she stays: the record's admin side (Account).
+      return "admin";
     case "general":
     case "preference":
       return "general";

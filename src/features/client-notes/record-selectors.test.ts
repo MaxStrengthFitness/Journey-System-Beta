@@ -308,7 +308,16 @@ describe("one thread, in words", () => {
 
   it("closeWordsOf: a body heals; anything else closes", () => {
     expect(closeWordsOf(entry({ id: "a", kind: "injury" }))).toEqual({ close: "All healed up", reopen: "It’s back" });
-    expect(closeWordsOf(entry({ id: "a", kind: "incident" })).close).toBe("All healed up");
+    // An incident heals when it names a part of the body; a lost phone simply closes (Oct 3 2026).
+    expect(closeWordsOf(entry({ id: "a", kind: "incident", bodyParts: [{ part: "knee", side: "left" }] })).close).toBe(
+      "All healed up",
+    );
+    expect(closeWordsOf(entry({ id: "a", kind: "incident" })).close).toBe("Close");
+    // Health heals for an injury or a surgery; a medication or care outside the studio closes.
+    expect(closeWordsOf(entry({ id: "a", kind: "injury", category: "Surgery" })).close).toBe("All healed up");
+    expect(closeWordsOf(entry({ id: "a", kind: "injury", category: "Medication" })).close).toBe("Close");
+    expect(closeWordsOf(entry({ id: "a", kind: "injury", category: "OutsideCare" })).close).toBe("Close");
+    expect(closeWordsOf(entry({ id: "a", kind: "retention" })).close).toBe("Close");
     expect(closeWordsOf(entry({ id: "a", kind: "life", category: "Surgery" })).close).toBe("All healed up");
     expect(closeWordsOf(entry({ id: "a", kind: "equipment" }))).toEqual({ close: "Close", reopen: "Reopen" });
     expect(closeWordsOf(entry({ id: "a", kind: "preference" })).close).toBe("Close");

@@ -28,14 +28,25 @@
  * throw nothing (private window, storage full, harness).
  */
 
-import type { FocusCategory, JournalImportance } from "../../types/journal";
-import type { NoteCategory } from "./note-catalog";
+import type { FocusCategory, JournalImportance, NoteBodyMark } from "../../types/journal";
+import { currentCategoryOf, flavourFor, type NoteCategory, type NoteFlavour } from "./note-catalog";
+import { normaliseBodyMarks } from "./body-parts";
 
 export interface SessionNoteDraft {
   body: string;
   category: NoteCategory | null;
-  /** The 4 P, when the category is coaching. */
-  p: FocusCategory | null;
+  /**
+   * The optional second tap (notes round, Oct 3 2026): a 4 P or Set-up under
+   * Coaching & equipment, a Health flavour. Null when none was picked.
+   */
+  flavour: NoteFlavour | null;
+  /**
+   * The 4 P, as drafts written before Oct 3 2026 kept it. Read only, into
+   * `flavour`; never written now.
+   */
+  p?: FocusCategory | null;
+  /** The parts of the body (Health and Incident), in the map's order. */
+  bodyParts: NoteBodyMark[];
   importance: JournalImportance;
   /** The machine the note is about, when one was chosen or offered. */
   machineId: string | null;
@@ -46,7 +57,8 @@ export interface SessionNoteDraft {
 export const EMPTY_SESSION_DRAFT: SessionNoteDraft = {
   body: "",
   category: null,
-  p: null,
+  flavour: null,
+  bodyParts: [],
   importance: "standard",
   machineId: null,
   aboutMachine: true,
@@ -70,6 +82,24 @@ export function isSessionNoteDraft(v: unknown): v is SessionNoteDraft {
   return typeof d.body === "string";
 }
 
+/**
+ * A draft read back off storage, in today's words: a category id from before
+ * Oct 3 2026 (Equipment, Injury) read as today's, the old `p` as the
+ * flavour, and anything that does not belong dropped rather than written.
+ */
+export function currentDraftOf(raw: Partial<SessionNoteDraft> & { body: string }): SessionNoteDraft {
+  const { category, flavour: legacyFlavour } = currentCategoryOf(raw.category);
+  const flavour = flavourFor(category, raw.flavour ?? legacyFlavour ?? (category === "coaching" ? raw.p : null));
+  return {
+    ...EMPTY_SESSION_DRAFT,
+    ...raw,
+    category,
+    flavour,
+    p: undefined,
+    bodyParts: normaliseBodyMarks(raw.bodyParts ?? []),
+  };
+}
+
 export function readSessionDraft(sessionId: string | null | undefined): SessionNoteDraft | null {
   if (!sessionId) return null;
   try {
@@ -77,7 +107,7 @@ export function readSessionDraft(sessionId: string | null | undefined): SessionN
     if (!raw) return null;
     const parsed = JSON.parse(raw) as unknown;
     if (!isSessionNoteDraft(parsed)) return null;
-    return { ...EMPTY_SESSION_DRAFT, ...parsed };
+    return currentDraftOf(parsed);
   } catch {
     return null;
   }

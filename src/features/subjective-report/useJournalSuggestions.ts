@@ -1,6 +1,7 @@
 /**
  * Pulls the journal entries a pain point is likely to be about: `incident`
- * entries (something went wrong in the room) and `life / Injury` entries,
+ * entries (something went wrong in the room) and injury notes — Health notes
+ * about an injury or a surgery, and the older `life / Injury` ones —
  * written pre-, mid- or post-session. The pain map offers them as one-tap
  * links so the 90-day check-in and the session notes point at the same
  * event instead of describing it twice.
@@ -16,7 +17,7 @@ import { studioDayKeyOf } from "../../lib/studio-time";
 
 export interface JournalSuggestion {
   id: string;
-  /** "Incident" | "Injury" */
+  /** "Incident" | "Injury" | "Surgery" */
   kindLabel: string;
   body: string;
   /** ISO yyyy-mm-dd */
@@ -34,6 +35,25 @@ const toIso = (v: any): string => {
     return "";
   }
 };
+
+/**
+ * What a pain point may link to, and the word for it — or null. Until Oct 3
+ * 2026 this asked only for `life / Injury`, so every injury note written
+ * since the notes catalog (`kind: "injury"`) never appeared here. A Health
+ * note about a medication, a diagnosis or care outside the studio is not a
+ * pain; an update hangs off its thread's root, which is the one linked.
+ */
+export function painLinkLabel(e: Pick<JournalEntry, "kind" | "category" | "isArchived"> & { threadId?: string | null }): string | null {
+  if (e.isArchived || e.threadId) return null;
+  if (e.kind === "incident") return "Incident";
+  if (e.kind === "injury") {
+    if (e.category === "Surgery") return "Surgery";
+    if (!e.category || e.category === "Injury") return "Injury";
+    return null;
+  }
+  if (e.kind === "life" && (e.category === "Injury" || e.category === "Surgery")) return e.category;
+  return null;
+}
 
 export function useJournalSuggestions(clientId: string | undefined) {
   const [suggestions, setSuggestions] = useState<JournalSuggestion[]>([]);
@@ -55,13 +75,11 @@ export function useJournalSuggestions(clientId: string | undefined) {
         const rows: JournalSuggestion[] = [];
         for (const d of snap.docs) {
           const e = { id: d.id, ...(d.data() as JournalEntry) };
-          if (e.isArchived) continue;
-          const isIncident = e.kind === "incident";
-          const isInjury = e.kind === "life" && e.category === "Injury";
-          if (!isIncident && !isInjury) continue;
+          const kindLabel = painLinkLabel(e);
+          if (!kindLabel) continue;
           rows.push({
             id: e.id,
-            kindLabel: isIncident ? "Incident" : "Injury",
+            kindLabel,
             body: e.body || "",
             date: toIso(e.occurredAt),
             machineId: e.machineId ?? null,

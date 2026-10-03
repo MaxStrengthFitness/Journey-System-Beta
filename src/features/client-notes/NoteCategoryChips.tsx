@@ -10,9 +10,11 @@ import {
   Bandage,
   ClipboardList,
   Dumbbell,
+  Handshake,
   Heart,
   MessageCircleQuestion,
   MessageSquare,
+  Stethoscope,
   Target,
   ThumbsUp,
 } from "lucide-react";
@@ -34,6 +36,8 @@ export const NOTE_ICONS: Record<string, React.ElementType> = {
   ThumbsUp,
   Heart,
   ClipboardList,
+  Stethoscope,
+  Handshake,
 };
 
 /** The small hue dot a category borrows from the journal's visual contract. */

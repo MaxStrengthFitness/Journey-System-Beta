@@ -17,6 +17,13 @@ import {
   monthKeyOf,
   noteCardLabel,
   noteCategoryOf,
+  currentCategoryOf,
+  flavourLabel,
+  flavourOf,
+  flavoursOf,
+  isForLeaders,
+  storedKindOf,
+  storedNoteOf,
   splitUnfiled,
   threadMatchesSearch,
 } from "./note-catalog";
@@ -52,27 +59,33 @@ function entry(over: Partial<JournalEntry>): JournalEntry {
   };
 }
 
-describe("the seven categories", () => {
-  it("are the owner's seven, in the owner's order", () => {
+describe("the categories (notes round, Oct 3 2026)", () => {
+  it("are the owner's, in the owner's order", () => {
     expect(NOTE_CATEGORIES.map((c) => c.label)).toEqual([
-      "Coaching tip",
-      "Equipment",
+      "Coaching & equipment",
+      "Health",
       "Incident",
-      "Injury",
-      "Preference",
+      "Retention",
       "FORD / Life",
+      "Preference",
       "Admin",
     ]);
+  });
+
+  it("send Health, Incident and Retention to the studio's leaders, and nothing else", () => {
+    expect(NOTE_CATEGORIES.filter((c) => c.forLeaders).map((c) => c.id)).toEqual(["health", "incident", "retention"]);
+    expect(isForLeaders("health")).toBe(true);
+    expect(isForLeaders("coaching")).toBe(false);
   });
 
   it("offer everything but Admin in the composer, and FORD writes no journal entry", () => {
     expect(COMPOSER_CATEGORIES.map((c) => c.id)).toEqual([
       "coaching",
-      "equipment",
+      "health",
       "incident",
-      "injury",
-      "preference",
+      "retention",
       "ford",
+      "preference",
     ]);
     expect(COMPOSER_CATEGORIES.find((c) => c.id === "ford")!.kind).toBeNull();
     // "general" is gone from the composer.
@@ -81,37 +94,101 @@ describe("the seven categories", () => {
 
   it("filter the Notes page with every category but FORD, which is a door there, in the same order", () => {
     expect(NOTES_PAGE_CATEGORIES.map((c) => c.label)).toEqual([
-      "Coaching tip",
-      "Equipment",
+      "Coaching & equipment",
+      "Health",
       "Incident",
-      "Injury",
+      "Retention",
       "Preference",
       "Admin",
     ]);
   });
 });
 
+describe("flavours — the optional second tap", () => {
+  it("Coaching & equipment offers the 4 P's and Set-up; Health its five; the rest none", () => {
+    expect(flavoursOf("coaching").map((f) => f.id)).toEqual(["Posture", "Path", "Pace", "Purpose", "Setup"]);
+    expect(flavoursOf("health").map((f) => f.label)).toEqual([
+      "Injury or pain",
+      "Surgery",
+      "Medication",
+      "Diagnosis",
+      "Care outside the studio",
+    ]);
+    expect(flavoursOf("incident")).toEqual([]);
+    expect(flavoursOf(null)).toEqual([]);
+  });
+
+  it("stores each choice as the kind it always was, so nothing old changes meaning", () => {
+    expect(storedKindOf("coaching")).toEqual({ kind: "coaching", category: null });
+    expect(storedKindOf("coaching", "Pace")).toEqual({ kind: "coaching", category: "Pace" });
+    expect(storedKindOf("coaching", "Setup")).toEqual({ kind: "equipment", category: null });
+    expect(storedKindOf("health")).toEqual({ kind: "injury", category: null });
+    expect(storedKindOf("health", "Medication")).toEqual({ kind: "injury", category: "Medication" });
+    expect(storedKindOf("health", "OutsideCare")).toEqual({ kind: "injury", category: "OutsideCare" });
+    expect(storedKindOf("incident")).toEqual({ kind: "incident", category: null });
+    expect(storedKindOf("retention")).toEqual({ kind: "retention", category: null });
+    expect(storedKindOf("preference")).toEqual({ kind: "preference", category: null });
+    // A flavour from another category is dropped, never stored.
+    expect(storedKindOf("health", "Pace")).toEqual({ kind: "injury", category: null });
+    expect(storedKindOf("coaching", "Surgery")).toEqual({ kind: "coaching", category: null });
+  });
+
+  it("keeps body parts only for Health and Incident, in the map's order, and none is null", () => {
+    const knee = { part: "knee" as const, side: "left" as const };
+    const neck = { part: "neck" as const, side: null };
+    expect(storedNoteOf("health", "Injury", [knee, neck])).toEqual({
+      kind: "injury",
+      category: "Injury",
+      bodyParts: [neck, knee],
+    });
+    expect(storedNoteOf("incident", null, [knee]).bodyParts).toEqual([knee]);
+    expect(storedNoteOf("coaching", null, [knee]).bodyParts).toBeNull();
+    expect(storedNoteOf("health", null, []).bodyParts).toBeNull();
+    expect(storedNoteOf(null, null, [knee])).toEqual({ kind: "general", category: null, bodyParts: null });
+    expect(storedNoteOf("ford", null, null).kind).toBe("general");
+  });
+
+  it("reads a stored note's flavour back", () => {
+    expect(flavourOf(entry({ kind: "equipment" }))).toBe("Setup");
+    expect(flavourOf(entry({ kind: "coaching", category: "Path" }))).toBe("Path");
+    expect(flavourOf(entry({ kind: "injury", category: "Diagnosis" }))).toBe("Diagnosis");
+    expect(flavourOf(entry({ kind: "life", category: "Surgery" }))).toBe("Surgery");
+    expect(flavourOf(entry({ kind: "injury" }))).toBeNull();
+    expect(flavourLabel("OutsideCare")).toBe("Care outside the studio");
+  });
+
+  it("reads an old draft's category ids as today's", () => {
+    expect(currentCategoryOf("equipment")).toEqual({ category: "coaching", flavour: "Setup" });
+    expect(currentCategoryOf("injury")).toEqual({ category: "health", flavour: null });
+    expect(currentCategoryOf("retention")).toEqual({ category: "retention", flavour: null });
+    expect(currentCategoryOf("nonsense")).toEqual({ category: null, flavour: null });
+    expect(currentCategoryOf(null)).toEqual({ category: null, flavour: null });
+  });
+});
+
 describe("noteCategoryOf — every existing note maps in", () => {
   const cases: [string, Partial<JournalEntry>, string][] = [
     ["coaching", { kind: "coaching", category: "Pace" }, "coaching"],
-    ["equipment", { kind: "equipment" }, "equipment"],
+    ["equipment", { kind: "equipment" }, "coaching"],
+    ["retention", { kind: "retention" }, "retention"],
+    ["health, with a flavour", { kind: "injury", category: "Medication" }, "health"],
     ["incident", { kind: "incident" }, "incident"],
     ["legacy clinical incident", { kind: "incident", isLegacy: true, origin: "legacy" }, "incident"],
-    ["injury", { kind: "injury" }, "injury"],
+    ["injury", { kind: "injury" }, "health"],
     ["preference", { kind: "preference" }, "preference"],
     ["old general note", { kind: "general" }, "preference"],
     ["legacy session note", { kind: "general", isLegacy: true, origin: "in_session" }, "preference"],
     ["legacy session summary", { kind: "general", isLegacy: true, origin: "post_session" }, "preference"],
     ["old personal note", { kind: "life", category: "Birthday" }, "ford"],
     ["old personal note, no category", { kind: "life", category: null }, "ford"],
-    ["old surgery note", { kind: "life", category: "Surgery" }, "injury"],
-    ["old injury note", { kind: "life", category: "Injury" }, "injury"],
+    ["old surgery note", { kind: "life", category: "Surgery" }, "health"],
+    ["old injury note", { kind: "life", category: "Injury" }, "health"],
     ["consultation", { kind: "consultation" }, "admin"],
     ["Mindbody account notes", { kind: "consultation", isLegacy: true, origin: "mindbody" }, "admin"],
     ["discovery notes", { kind: "consultation", isLegacy: true, origin: "consultation" }, "admin"],
     ["pinned priority note", { kind: "general", isLegacy: true, origin: "profile", importance: "critical" }, "admin"],
     ["profile notes", { kind: "general", isLegacy: true, origin: "profile" }, "admin"],
-    ["medical history field", { kind: "injury", isLegacy: true, origin: "profile" }, "injury"],
+    ["medical history field", { kind: "injury", isLegacy: true, origin: "profile" }, "health"],
     ["unknown kind", { kind: "mystery" as any }, "preference"],
   ];
   it.each(cases)("%s", (_label, over, expected) => {
@@ -120,10 +197,15 @@ describe("noteCategoryOf — every existing note maps in", () => {
 
   it("labels a card by its category, keeping old Notes as Note", () => {
     expect(noteCardLabel(entry({ kind: "coaching", category: "Posture" }))).toBe("Posture");
-    expect(noteCardLabel(entry({ kind: "coaching", category: null }))).toBe("Coaching tip");
+    expect(noteCardLabel(entry({ kind: "coaching", category: null }))).toBe("Coaching");
+    expect(noteCardLabel(entry({ kind: "equipment" }))).toBe("Equipment");
+    expect(noteCardLabel(entry({ kind: "injury", category: "Surgery" }))).toBe("Health · Surgery");
+    expect(noteCardLabel(entry({ kind: "injury", category: "OutsideCare" }))).toBe("Health · Care outside the studio");
+    expect(noteCardLabel(entry({ kind: "life", category: "Surgery" }))).toBe("Health · Surgery");
+    expect(noteCardLabel(entry({ kind: "retention" }))).toBe("Retention");
     expect(noteCardLabel(entry({ kind: "general" }))).toBe("Note");
     expect(noteCardLabel(entry({ kind: "general", isLegacy: true, origin: "profile" }))).toBe("Admin");
-    expect(noteCardLabel(entry({ kind: "injury" }))).toBe("Injury");
+    expect(noteCardLabel(entry({ kind: "injury" }))).toBe("Health");
     expect(noteCardLabel(entry({ kind: "life", category: "Vacation" }))).toBe("FORD / Life");
   });
 
@@ -157,19 +239,19 @@ describe("buildCatalog", () => {
   const build = (over: Partial<typeof EMPTY_FILTER> = {}) =>
     buildCatalog(threads, { ...EMPTY_FILTER, ...over }, TODAY);
 
-  it("counts all seven tiles, with the newest date", () => {
+  it("counts all seven tiles, with the newest date (Oct 3 2026: the new seven)", () => {
     const cat = build();
     expect(cat.tiles.map((t) => [t.id, t.count])).toEqual([
       ["coaching", 4],
-      ["equipment", 0],
+      ["health", 1],
       ["incident", 0],
-      ["injury", 1],
-      ["preference", 0],
+      ["retention", 0],
       ["ford", 0],
+      ["preference", 0],
       ["admin", 1],
     ]);
     expect(cat.tiles[0].newest?.getDate()).toBe(12);
-    expect(cat.tiles[1].newest).toBeNull();
+    expect(cat.tiles[2].newest).toBeNull();
     expect(cat.total).toBe(6);
     expect(cat.matched).toBe(6);
   });
@@ -232,7 +314,7 @@ describe("buildCatalog", () => {
       entry({ id: "old-inj", kind: "injury", occurredAt: aug(1), resolvedAt: aug(9) }),
     ]);
     const cat = buildCatalog(withClosed, EMPTY_FILTER, TODAY);
-    expect(cat.tiles.find((t) => t.id === "injury")!.count).toBe(2);
+    expect(cat.tiles.find((t) => t.id === "health")!.count).toBe(2);
     expect(cat.zones[2].items.map((t) => t.id)).toEqual(["old-inj"]);
   });
 
@@ -241,7 +323,7 @@ describe("buildCatalog", () => {
     expect(cat.matched).toBe(4);
     expect(cat.zones[1].items.map((t) => t.id)).toEqual(["p2", "p1", "p4", "p3"]);
     // Tiles still count every category, so a coach can hop across.
-    expect(cat.tiles.find((t) => t.id === "injury")!.count).toBe(1);
+    expect(cat.tiles.find((t) => t.id === "health")!.count).toBe(1);
   });
 
   it("keys a note with no date as undated", () => {
@@ -254,7 +336,9 @@ describe("buildCatalog", () => {
     const knee = build({ search: "KNEE" });
     expect(knee.matched).toBe(1);
     expect(knee.zones[1].items.map((t) => t.id)).toEqual(["i1"]);
+    // An old Injury note is still found by the word a trainer knows, and by its new name.
     expect(build({ search: "injur" }).matched).toBe(1);
+    expect(build({ search: "health" }).matched).toBe(1);
     expect(matchesSearch(list[0], "pace")).toBe(true);
     expect(matchesSearch(list[5], "mornings")).toBe(true);
   });
@@ -334,7 +418,7 @@ describe("withoutRecordFields", () => {
 
 describe("capture now, tag at teardown", () => {
   it("offers exactly the five filing categories, in the composer's order", () => {
-    expect(FILING_CATEGORIES.map((c) => c.id)).toEqual(["coaching", "equipment", "incident", "injury", "preference"]);
+    expect(FILING_CATEGORIES.map((c) => c.id)).toEqual(["coaching", "health", "incident", "retention", "preference"]);
     expect(FILING_CATEGORIES.every((c) => c.kind !== null)).toBe(true);
   });
 

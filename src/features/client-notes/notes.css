@@ -150,6 +150,16 @@ textarea.nc-input { resize: vertical; }
 }
 .nc-chip--small { min-height: 40px; font-size: 12px; padding: 0 0.75rem; }
 
+/* The body map's side line (notes round, Oct 3 2026): the part's name, then
+   Left · Right · Both, on one wrapping row under the parts. */
+.nc-bodyside__label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  min-width: 5.5rem;
+  font-weight: 600;
+}
+
 /* ------------------------------------------------------------------ */
 /* COMPOSER                                                            */
 /* ------------------------------------------------------------------ */
