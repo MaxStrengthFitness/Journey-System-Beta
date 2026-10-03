@@ -247,6 +247,122 @@
   font-size: 14px;
 }
 
+/* ---- the sort: a pill and a panel of tiles (Oct 3 2026) ---- */
+.cd-sort {
+  position: relative;
+}
+
+.cd-sort-pill {
+  min-height: 44px;
+  padding: 0 16px 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 999px;
+  background: var(--eq-surface);
+  color: var(--eq-ink-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.cd-sort-pill[aria-expanded="true"] {
+  border-color: var(--eq-live);
+}
+
+.cd-sort-key {
+  color: var(--eq-ink);
+  font-weight: 700;
+}
+
+.cd-sort-dir {
+  color: var(--eq-ink-2);
+  font-weight: 500;
+}
+
+.cd-sort-panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(420px, calc(100vw - 32px));
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 16px;
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-shadow);
+}
+
+.cd-sort-title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--eq-ink-faint);
+}
+
+.cd-sort-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cd-sort-tile,
+.cd-sort-dirbtn {
+  min-height: 44px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--eq-border);
+  border-radius: 12px;
+  background: var(--eq-surface);
+  color: var(--eq-ink-2);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cd-sort-tile[aria-pressed="true"],
+.cd-sort-dirbtn[aria-pressed="true"] {
+  border-color: var(--eq-live);
+  background: var(--eq-live-fill);
+  color: var(--eq-live-text);
+}
+
+.cd-sort-dirbtn::first-letter {
+  text-transform: uppercase;
+}
+
+.cd-sort-dirs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--eq-surface-3);
+}
+
+.cd-sort-dirbtn {
+  justify-content: center;
+  display: block;
+  text-align: center;
+  border-color: transparent;
+  background: transparent;
+}
+
+.cd-sort-pill:focus-visible,
+.cd-sort-tile:focus-visible,
+.cd-sort-dirbtn:focus-visible {
+  outline: 3px solid var(--eq-focus-ring);
+  outline-offset: 2px;
+}
+
 .cd-display {
   display: none;
   align-items: center;

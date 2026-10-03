@@ -203,7 +203,7 @@ describe("ClientDirectory", () => {
     await click(lastIn);
     expect(sectionLabels(host)[0]).toBe("More than 3 months ago \u00b7 1");
     expect(rowIds(host)).toEqual(["af", "nr", "nk", "zp", "ob"]);
-    expect(host.querySelector<HTMLSelectElement>('select[aria-label="Sort"]')?.value).toBe("lastIn:asc");
+    expect(host.querySelector('.cd-sort-pill')?.getAttribute("data-sort")).toBe("lastIn:asc");
     // Unknowns stay last whichever way it runs.
     expect(sectionLabels(host).at(-1)).toBe("Before Journey \u00b7 1");
   });

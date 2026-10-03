@@ -41,7 +41,7 @@ import { formatStudioDate, studioTodayKey } from "../../lib/studio-time";
 import { LoadingArea } from "../../components/LoadingMark";
 import "../trainer-profile/trainer-profile.tokens.css";
 import { buildDirectoryRows, type DirectoryRow } from "./row";
-import { SORTS, SORT_MENU, nextSortForTap, sectionRows, sortWords, type SortKey, type SortSpec } from "./buckets";
+import { SORT_MENU, nextSortForTap, sectionRows, sortWords, type SortKey, type SortSpec } from "./buckets";
 import { buildNameIndex, searchNames } from "./search";
 import { applyTokens, buildNameVocab, buildOccupationVocab, notOnFileWords, parseQuery, type Token } from "./tokens";
 import {
@@ -63,6 +63,7 @@ import { useInactiveMarks } from "../admin/journey/inactive-store";
 import { useStudioSettings } from "../studio-settings/useStudioSettings";
 import { rosterCutWords } from "../../lib/studio-roster";
 import { DirectoryRowView, type DirectoryMark, type ExtraColumn } from "./DirectoryRowView";
+import { SortPicker } from "./SortPicker";
 import { useDirectoryContext } from "./use-directory-context";
 import "./client-directory.css";
 
@@ -560,18 +561,7 @@ export function ClientDirectory({
             <strong>{countWords}</strong>
             {notOnFile.map((w) => ` \u00b7 ${w}`).join("")}
           </span>
-          <select className="cd-select" aria-label="Sort" value={`${sort.key}:${sort.dir}`} onChange={(e) => {
-            const [key, dir] = e.target.value.split(":") as [SortKey, SortSpec["dir"]];
-            setSort({ key, dir });
-          }}>
-            {(view === "today" ? (["time", ...SORT_MENU] as SortKey[]) : SORT_MENU).flatMap((key) =>
-              (["asc", "desc"] as const).map((dir) => (
-                <option key={`${key}:${dir}`} value={`${key}:${dir}`}>
-                  {SORTS[key].words[dir]}
-                </option>
-              )),
-            )}
-          </select>
+          <SortPicker sort={sort} keys={view === "today" ? (["time", ...SORT_MENU] as SortKey[]) : SORT_MENU} onChange={setSort} />
           <span>{bookingsAsOf ? `bookings as of ${bookingsAsOf}` : "bookings not loaded yet"}</span>
           {bookingsAsOf && !bookingsFresh && <span className="cd-warn">{"Bookings haven\u2019t been read lately, so a next booking may be missing."}</span>}
           {rosterStatus === "loading" && rows.length > 0 && <span className="cd-warn">{"Still loading this studio\u2019s clients \u2014 the list may be incomplete."}</span>}
