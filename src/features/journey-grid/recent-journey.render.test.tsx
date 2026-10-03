@@ -198,7 +198,8 @@ describe("RecentJourneyView (the profile's Journey tab)", () => {
     const { host, root } = await mount(
       <RecentJourneyView sessions={sessions} rows={rowsFor(sessions)} layout="page" resetKey="judy" hasMoreOnServer loadingMore />,
     );
-    expect(host.querySelector('[data-testid="loading-older"]')?.textContent).toBe("Loading older sessions…");
+    // The MSF mark over the timeline's left edge (Oct 3 2026), not the old text line.
+    expect(host.querySelector(".jg-older-loading")).not.toBeNull();
     expect(host.querySelector(".jg-view__loading")).toBeNull();
     await act(async () => root.unmount());
   });

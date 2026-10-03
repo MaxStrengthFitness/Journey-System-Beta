@@ -172,6 +172,7 @@ import {
   type MachineClocks,
 } from "../lib/machine-clock";
 import { RoutineOrderSheet } from "../features/journey-grid/RoutineOrderSheet";
+import { SessionCorner } from "../features/journey-grid/SessionCorner";
 import { computeRowStats, orderedSets } from "../features/journey-grid/stats";
 import {
   strengthJourney,
@@ -2607,6 +2608,20 @@ export function WorkoutTrackerView({
   );
 
   const [gridVisible, setGridVisible] = useState(6);
+  /* Scrolling back to the oldest day loads more by itself (AJ, Oct 3 2026:
+     "when a trainer scrolls to the left and attempts to load more it will
+     trigger the load, give the MSF buffer and then load more"). The
+     sessions are already in hand, so the pause is only long enough to see
+     the mark and know more came in. */
+  const [gridLoadingOlder, setGridLoadingOlder] = useState(false);
+  const loadOlderGrid = React.useCallback(() => {
+    if (gridLoadingOlder) return;
+    setGridLoadingOlder(true);
+    window.setTimeout(() => {
+      setGridVisible((v) => v + 5);
+      setGridLoadingOlder(false);
+    }, 650);
+  }, [gridLoadingOlder]);
   const gridVisibleHistory = useMemo(
     () => gridHistory.slice(Math.max(0, gridHistory.length - gridVisible)),
     [gridHistory, gridVisible],
@@ -2717,7 +2732,9 @@ export function WorkoutTrackerView({
     const inRoutine = new Set(shownMachineIds);
     const others = gridRows.filter((r) => !inRoutine.has(r.machine.id));
     return [
-      { id: "routine", label: "Today's routine", rows: routineRows, numbered: true },
+      // No label row while only the routine is listed: the grid's corner
+      // says "Routine" (session top, option 1, Oct 3 2026).
+      { id: "routine", label: "Today's routine", rows: routineRows, numbered: true, bare: !showAllMachines },
       {
         id: "others",
         label: "Not in today's routine",
@@ -3293,41 +3310,17 @@ export function WorkoutTrackerView({
             <div className="jg-sbar__meta">
               {/* No number for a client whose total nobody has recorded:
                   Journey's own count would call a twelve-year client "#3". */}
+              {/* "Session #61 · started 1:19 AM" (AJ, Oct 3 2026: "i like the
+                  started time but we can remove the trainer initials"). */}
               {sessionBarNumber && (
-                <>
-                  <span>
-                    <b>{sessionBarNumber}</b>
-                  </span>
-                  <span aria-hidden>·</span>
-                </>
+                <span>
+                  Session <b>{sessionBarNumber}</b>
+                </span>
               )}
-              <span>{authTrainer?.initials || currentSession?.trainerInitials || "??"}</span>
-              {sessionStartedLabel && (
-                <>
-                  <span aria-hidden>·</span>
-                  <span>Started {sessionStartedLabel}</span>
-                </>
-              )}
+              {sessionBarNumber && sessionStartedLabel && <span aria-hidden>·</span>}
+              {sessionStartedLabel && <span>started {sessionStartedLabel}</span>}
             </div>
           </div>
-          {/* The marker: small, red when something is critical, one tap for
-              the whole of it, never a dialog that has to be dismissed. */}
-          {flags.count > 0 && (
-            <button
-              type="button"
-              className={cn(
-                "jg-sbar__flag",
-                flags.severe && "jg-sbar__flag--severe",
-                flags.caution && "jg-sbar__flag--caution",
-              )}
-              onClick={() => setIsShowingFlags(true)}
-              aria-label={`${flags.count} ${flags.count === 1 ? "thing" : "things"} to know about ${clientFirstName(selectedClient)}. Open.`}
-              title="What to know before you touch the machine"
-            >
-              <ShieldAlert size={14} strokeWidth={2.75} aria-hidden="true" />
-              <span>{flags.count}</span>
-            </button>
-          )}
           {currentSession && (
             <ActiveSessionTimer
               variant="bar"
@@ -3352,6 +3345,24 @@ export function WorkoutTrackerView({
             </div>
           )}
 
+          {/* The marker: small, red when something is critical, one tap for
+              the whole of it, never a dialog that has to be dismissed. */}
+          {flags.count > 0 && (
+            <button
+              type="button"
+              className={cn(
+                "jg-sbar__flag",
+                flags.severe && "jg-sbar__flag--severe",
+                flags.caution && "jg-sbar__flag--caution",
+              )}
+              onClick={() => setIsShowingFlags(true)}
+              aria-label={`${flags.count} ${flags.count === 1 ? "thing" : "things"} to know about ${clientFirstName(selectedClient)}. Open.`}
+              title="What to know before you touch the machine"
+            >
+              <ShieldAlert size={14} strokeWidth={2.75} aria-hidden="true" />
+              <span>{flags.count}</span>
+            </button>
+          )}
           <span className="jg-sbar__sp" />
 
           <button
@@ -3741,78 +3752,17 @@ export function WorkoutTrackerView({
       {/* jg-look: the Journey chart's look, lanes on a rail (AJ, Oct 3 2026:
           "update an active session to match the new design"). */}
       <div className="jg-stage__main jg-look">
-        {/* The rail used to open with the word ROUTINE, then a bare
-            "6 of 21", then a segmented control whose left half also said
-            Routine -- three pieces of chrome for one idea. It is one
-            sentence now: Show [All | Routine], and a chip saying how many of
-            how many. Then the control that edits that list. */}
-        <div className="jg-rail">
-          <span className="jg-rail__label">Show:</span>
-          <div className="jg-seg2" role="radiogroup" aria-label="Which machines to list">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={showAllMachines}
-              className={`jg-seg2__btn ${showAllMachines ? "is-on" : ""}`}
-              onClick={() => setShowAllMachines(true)}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={!showAllMachines}
-              className={`jg-seg2__btn ${!showAllMachines ? "is-on" : ""}`}
-              onClick={() => setShowAllMachines(false)}
-            >
-              Routine
-            </button>
-          </div>
-          <span
-            className="jg-rail__count"
-            aria-label={`${activeMachineIds.length} machines in today's routine, of ${gridRows.length} on file`}
-          >
-            <b>{activeMachineIds.length}</b> <i>of</i> {gridRows.length}
-          </span>
-          <button
-            type="button"
-            className="jg-rail__edit"
-            onClick={() => setIsOrderSheetOpen(true)}
-            disabled={!currentSession}
-          >
-            <Settings2 className="w-3 h-3 shrink-0" strokeWidth={2.5} />
-            Reorder
-          </button>
-          <button
-            type="button"
-            className="jg-rail__older"
-            onClick={() => setGridVisible((v) => v + 5)}
-            disabled={gridVisible >= gridHistory.length}
-          >
-            <ChevronLeft className="w-3 h-3" strokeWidth={2.5} />
-            Older
-          </button>
-          <span className="jg-rail__sp" />
-          <div className="jg-rail__legend">
+        {/* No toolbar row (session top, option 1, Oct 3 2026): Routine / All,
+            Reorder and the Key are the grid's corner (SessionCorner), and
+            scrolling back to the oldest day loads older sessions. */}
+        {isLegendOpen && (
+          <div className="jg-keypop jg-keypop--corner" role="dialog" aria-label="Rep quality key">
             <QualityLegend />
-          </div>
-          <div className="jg-keywrap">
-            <button
-              type="button"
-              className={`jg-key ${isLegendOpen ? "is-on" : ""}`}
-              aria-expanded={isLegendOpen}
-              onClick={() => setIsLegendOpen((o) => !o)}
-            >
-              Key
+            <button type="button" className="jg-keypop__close" onClick={() => setIsLegendOpen(false)}>
+              Close
             </button>
-            {isLegendOpen && (
-              <div className="jg-keypop" role="dialog" aria-label="Rep quality key">
-                <QualityLegend />
-              </div>
-            )}
           </div>
-        </div>
-
+        )}
         {gridLive && (
           <JourneyGrid
             sessions={gridVisibleHistory}
@@ -3825,8 +3775,20 @@ export function WorkoutTrackerView({
                read on the client profile, not what you need while a set is
                running. Off here, it hands its 100px to the timeline. */
             showStats={false}
-            onLoadOlder={() => setGridVisible((v) => v + 5)}
+            onLoadOlder={loadOlderGrid}
             canLoadOlder={gridVisible < gridHistory.length}
+            loadingOlder={gridLoadingOlder}
+            autoLoadOlder
+            corner={
+              <SessionCorner
+                showAll={showAllMachines}
+                routineCount={activeMachineIds.length}
+                allCount={gridRows.length}
+                onShowAll={setShowAllMachines}
+                onReorder={currentSession ? () => setIsOrderSheetOpen(true) : undefined}
+                onKey={() => setIsLegendOpen(true)}
+              />
+            }
             /* The machine's NAME is the target -- one big one, the width of
                the rail. The note glyph is a mark, not a second button:
                "hard to tell if I'm tapping the note or the machine" was the

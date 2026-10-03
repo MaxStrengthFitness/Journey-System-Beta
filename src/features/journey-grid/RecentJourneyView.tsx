@@ -273,13 +273,6 @@ export function RecentJourneyView({
         <div className="jg-toolbar__legend">
           <QualityLegend compact showLatest={false} />
         </div>
-        {/* The Older strip said this; with the strip gone (Oct 2 2026) the
-            key's line does, so scrolling back never looks stuck. */}
-        {loadingMore && (
-          <span className="jg-toolbar__loading" role="status" data-testid="loading-older">
-            Loading older sessions{"…"}
-          </span>
-        )}
       </GridToolbar>
 
       {/* The brand loading mark, never empty cells: a whole-area wait while

@@ -15,6 +15,7 @@ import {
 import { JourneyCell } from "./JourneyCell";
 import { StatCell } from "./StatCell";
 import { TodayCell } from "./TodayCell";
+import { LoadingMark } from "../../components/LoadingMark";
 import {
   DEFAULT_COLUMN_WIDTH,
   OLDER_RAIL_LABEL,
@@ -784,7 +785,9 @@ export function JourneyGrid({
   /* --- older sessions: the profile's continuous history ---------------- *
    * Profile only (`autoLoadOlder`); the Active Session never gets here. The
    * listeners read the latest props through a ref so they are bound once. */
-  const autoOlder = autoLoadOlder && !!onLoadOlder && !live;
+  // The Active Session loads older sessions by scrolling back too since
+  // its Older button went (Oct 3 2026); it asks with `autoLoadOlder`.
+  const autoOlder = autoLoadOlder && !!onLoadOlder;
   const railState = olderRailState(loadingOlder, canLoadOlder);
   const startWords = historyStartWords(coverage);
   const railLabel = railState === "start" ? startWords.label : OLDER_RAIL_LABEL[railState];
@@ -1056,6 +1059,14 @@ export function JourneyGrid({
       data-settings={settingsDisplay}
       style={style}
     >
+      {/* Older sessions coming in, with no Older strip to say so: the MSF
+          mark at the timeline's left edge, over the grid, never covering it
+          (AJ, Oct 3 2026: "give the MSF buffer and then load more"). */}
+      {loadingOlder && !hasOlderColumn && (
+        <div className="jg-older-loading" role="status">
+          <LoadingMark label="Loading older sessions" size="sm" />
+        </div>
+      )}
       <div
         ref={scrollerRef}
         className="jg-scroller"

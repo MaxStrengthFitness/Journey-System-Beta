@@ -3216,3 +3216,86 @@ div.jg-today { cursor: default; }
 .jg-look .jg-row[data-band="1"] .jg-cell--practice::after { border: 0; border-radius: 0; inset: 0; }
 /* "Latest" named the framed baseline column; the frame is gone. */
 .jg-look .jg-head.is-latest .jg-head__tag { display: none; }
+
+/* --------------------------------------------------------------------------
+   Session top, option 1 (AJ, Oct 3 2026). The toolbar row is gone: the
+   grid's corner is the control (SessionCorner), the Key opens over the grid,
+   older sessions load by scrolling back with the MSF mark for a moment.
+   -------------------------------------------------------------------------- */
+.jg { position: relative; }
+.jg-older-loading {
+  position: absolute;
+  z-index: 8;
+  top: 48px;
+  left: calc(var(--jg-col-machine) + 12px);
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--jg-surface-2);
+  border: 1px solid var(--jg-border-strong);
+  box-shadow: 0 10px 24px -10px var(--jg-sticky-shadow);
+  pointer-events: none;
+}
+.jg-keypop--corner {
+  position: absolute;
+  z-index: 9;
+  top: 52px;
+  left: 12px;
+  right: auto;
+  max-width: min(560px, calc(100% - 24px));
+}
+.jg-keypop__close {
+  display: block;
+  margin: 8px 0 0 auto;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--jg-border-strong);
+  background: transparent;
+  color: var(--jg-ink);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.jg-stage__main.jg-look { position: relative; }
+
+/* The session bar: the name bigger, "Session #61 · started 1:19 AM" in
+   sentence case under it. */
+.jg-sbar__name { font-size: 24px; font-weight: 900; }
+.jg-sbar__meta { font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; margin-top: 2px; }
+
+/* Not reached: a small filled dot on the rail, no box. */
+.jg-look .jg-cell--nr .jg-cell__empty { display: none; }
+.jg-look .jg-cell--nr::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: var(--jg-border-strong);
+  z-index: 0;
+}
+
+/* Long setting names ("SAP 2", "SP 11") grow their box and may wrap. */
+.jg-look .jg[data-settings] .jg-machine__meta { flex-wrap: wrap; row-gap: 2px; }
+.jg-look .jg-machine__meta .jg-setting { width: auto; white-space: nowrap; }
+
+/* Today's order is a centred window now (Oct 3 2026): rounded all round,
+   no grab handle. */
+.jg-order { border-bottom: 1px solid var(--jg-border); border-radius: 22px; box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.6); }
+.jg-order__grab { display: none; }
+
+/* The session's single-line rows (data-dense="line") still come out about
+   44px, because each name carries its settings boxes, so the tile keeps
+   the weight over the reps there too. */
+.jg-look .jg[data-dense="line"] .jg-cell {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+.jg-look .jg[data-dense="line"] .jg-cell__r { display: block; }
+.jg-look .jg-cell__r:not(:has(.jg-tut))::after,
+.jg-look .jg-today__r:not(:has(.jg-tut)):not(:has(.jg-today__dot))::after { content: "\00a0reps"; }

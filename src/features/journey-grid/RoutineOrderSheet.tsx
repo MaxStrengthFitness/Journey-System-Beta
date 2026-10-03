@@ -197,7 +197,9 @@ export function RoutineOrderSheet({ open, onClose, ids, rows, values, focusId, o
     >
       <DialogContent
         showCloseButton={false}
-        className="top-auto bottom-0 left-1/2 translate-y-0 max-w-none sm:max-w-[620px] w-full max-h-[88dvh] rounded-b-none rounded-t-[22px] p-0 border-0 bg-transparent shadow-none"
+        /* Centred on the screen (AJ, Oct 3 2026: "move this to the center
+           of the screen"), no longer a sheet rising from the bottom. */
+        className="max-w-none sm:max-w-[620px] w-[calc(100%-2rem)] max-h-[88dvh] rounded-[22px] p-0 border-0 bg-transparent shadow-none"
       >
         <div className="jg-order">
           <div className="jg-order__grab" aria-hidden />
