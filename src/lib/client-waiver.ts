@@ -52,12 +52,30 @@ export interface WaiverSource {
  * about the client, and the Hub says nothing (unknown), never a flag on every
  * card.
  *
+ * ONE "YES" IS NOT ENOUGH (Oct 3 2026). AJ, on Strongsville's Hub: "a lot of
+ * these clients have their waivers signed". Production that day: Mindbody
+ * said "signed" for 2 of Strongsville's 139 clients (both the same day in
+ * April 2025), 1 of Willoughby's 244, 1 of Solon's 131 and none of
+ * westlake's 287, and "not signed" for nearly everyone else. One stray "yes"
+ * had switched the old guard off and every card was flagged again. A studio
+ * keeps its waivers in Mindbody when Mindbody says "signed" for at least
+ * half the clients it answered for, and for at least five of them; anywhere
+ * else its "not signed" is about where the studio files waivers.
+ *
  * @param clients the clients the screen holds for the studio (the roster).
  */
+export const WAIVERS_KEPT_SHARE = 0.5;
+export const WAIVERS_KEPT_MIN_SIGNED = 5;
+
 export function waiversKeptInMindbody(clients: Iterable<WaiverSource> | null | undefined): boolean {
   if (!clients) return false;
-  for (const c of clients) if (c?.isLiabilityReleased === true) return true;
-  return false;
+  let signed = 0;
+  let answered = 0;
+  for (const c of clients) {
+    if (c?.isLiabilityReleased === true) signed++;
+    if (c?.isLiabilityReleased === true || c?.isLiabilityReleased === false) answered++;
+  }
+  return signed >= WAIVERS_KEPT_MIN_SIGNED && signed >= answered * WAIVERS_KEPT_SHARE;
 }
 
 /**

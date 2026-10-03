@@ -49,11 +49,25 @@ describe("waiverState", () => {
 });
 
 describe("a studio whose waivers aren't kept in Mindbody (hub fixes, Oct 1 2026)", () => {
-  it("knows Mindbody holds the studio's waivers only once it has said 'signed' for someone", () => {
+  const many = (signed: number, notSigned: number, unknown = 0) => [
+    ...Array.from({ length: signed }, () => ({ isLiabilityReleased: true })),
+    ...Array.from({ length: notSigned }, () => ({ isLiabilityReleased: false })),
+    ...Array.from({ length: unknown }, () => ({})),
+  ];
+
+  it("knows Mindbody holds the studio's waivers only when most of its answers are 'signed'", () => {
     expect(waiversKeptInMindbody([{ isLiabilityReleased: false }, { isLiabilityReleased: false }, {}])).toBe(false);
-    expect(waiversKeptInMindbody([{ isLiabilityReleased: false }, { isLiabilityReleased: true }])).toBe(true);
+    expect(waiversKeptInMindbody(many(40, 10))).toBe(true);
+    expect(waiversKeptInMindbody(many(20, 20, 100))).toBe(true);
     expect(waiversKeptInMindbody([])).toBe(false);
     expect(waiversKeptInMindbody(null)).toBe(false);
+  });
+
+  it("is not switched on by a stray 'yes' (Oct 3 2026: Strongsville, 2 signed of 138 answered)", () => {
+    expect(waiversKeptInMindbody(many(2, 136, 1))).toBe(false);
+    expect(waiversKeptInMindbody(many(1, 214, 29))).toBe(false);
+    // Too few to say, however they split.
+    expect(waiversKeptInMindbody(many(4, 0))).toBe(false);
   });
 
   it("flags 'not signed' only there; elsewhere it is unknown, never a flag on every card", () => {

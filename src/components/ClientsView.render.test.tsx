@@ -170,6 +170,10 @@ const CLIENTS = [
   client("estella", "Estella", "Bolger", 0, { isLiabilityReleased: false }),
   client("targon", "Targon", "Minas", 0, { requiresConsultation: true }),
   client("laura", "Laura", "Grubb", 44),
+  // Two signed and not booked: the roster keeps its waivers in Mindbody
+  // (lib/client-waiver: at least five signed, and most of its answers).
+  client("rose", "Rose", "Cotton", 12),
+  client("tolman", "Tolman", "Cotton", 8),
 ] as any[];
 
 let seq = 0;
