@@ -111,8 +111,12 @@ describe("ProfileHeader", () => {
  * Completed, Sessions Remaining ... make sure its condensed"). Sessions
  * before Journey and the package's name are on Notes & Profile -> Account.
  */
+/*
+ * The membership card (Oct 2 2026): each date beside the number it goes
+ * with, "completed" and "remaining".
+ */
 describe("ProfileHeader's sessions box", () => {
-  const box = (el: HTMLElement) => el.querySelector<HTMLElement>('[data-testid="sessions-tile"]')!;
+  const box = (el: HTMLElement) => el.querySelector<HTMLElement>('[data-testid="membership"]')!;
   const text = (el: HTMLElement, id: string) => el.querySelector(`[data-testid="${id}"]`)?.textContent ?? null;
   const pif = {
     label: "PIF",
@@ -126,8 +130,8 @@ describe("ProfileHeader's sessions box", () => {
 
   it("says Completed and Remaining, and nothing about before Journey or the package's name", () => {
     const el = mount(props({ completedCount: 413, sessionsQuotable: true, pkg: pif }));
-    expect(box(el).textContent).toContain("Done");
-    expect(box(el).textContent).toContain("Left");
+    expect(box(el).textContent).toContain("413completed");
+    expect(box(el).textContent).toContain("36remaining");
     expect(text(el, "sessions-completed")).toBe("413");
     expect(text(el, "sessions-remaining")).toBe("36");
     expect(el.textContent).not.toContain("before Journey");
@@ -136,8 +140,8 @@ describe("ProfileHeader's sessions box", () => {
 
   it("calls the count Journey's when nobody has recorded what came before", () => {
     const el = mount(props({ completedCount: 3 }));
-    expect(box(el).textContent).toContain("In Journey");
-    expect(box(el).textContent).not.toContain("Done");
+    expect(box(el).textContent).toContain("3in Journey");
+    expect(box(el).textContent).not.toContain("completed");
   });
 
   it("takes Left from the contract, and does not show the extras (Oct 2 2026)", () => {
@@ -264,5 +268,23 @@ describe("ProfileHeader's checks (Oct 2 2026)", () => {
   it("turns the first day's check green once a person has set it", () => {
     const host = mount(props({ client: { ...client, firstStudioDay: "2014-09-08" } as unknown as Client }));
     expect(host.querySelector('[data-testid="since-check"]')?.getAttribute("data-confirmed")).toBe("yes");
+  });
+});
+
+describe("ProfileHeader's membership card (Oct 2 2026)", () => {
+  it("reads each date beside its number: since with completed, the contract's end with remaining", () => {
+    const el = mount(
+      props({
+        client: { ...client, firstStudioDay: "2014-09-08" } as unknown as Client,
+        completedCount: 413,
+        sessionsQuotable: true,
+        sessionsSplit: { contract: 36, hasContract: true, perPayment: false, extra: 0, other: 0 },
+      }),
+    );
+    const card = el.querySelector<HTMLElement>('[data-testid="membership"]')!;
+    const cells = Array.from(card.children).map((c) => c.textContent);
+    expect(cells[0]).toContain("Client since Sep 2014");
+    expect(cells[1]).toBe("413completed");
+    expect(cells[3]).toBe("36remaining");
   });
 });

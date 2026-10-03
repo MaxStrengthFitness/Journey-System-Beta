@@ -18,7 +18,7 @@
  *    Journey — see prior-history-door.ts.
  */
 import { useState, type ReactNode } from "react";
-import { BadgeCheck, ChevronLeft, Clock, Eye, History, NotebookPen, Play, RefreshCw, Trash2, UserCheck, AlertTriangle, User } from "lucide-react";
+import { BadgeCheck, ChevronDown, ChevronLeft, Clock, Eye, NotebookPen, Play, RefreshCw, Trash2, AlertTriangle, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn, parseSessionDate } from "../../lib/utils";
@@ -163,7 +163,6 @@ const RENEWAL_TONE: Record<RenewalTileState["tone"], string> = {
 };
 
 const WEEKDAYS_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function relativeDays(ms: number): string | null {
   if (!ms) return null;
@@ -203,64 +202,107 @@ function daysUntil(d: Date): string | null {
 
 /* ------------------------------------------------------------------ */
 
-function Stat({
+/**
+ * One of the three facts on the header's quiet line: a small capital label,
+ * then the value at 13px. One font, two sizes (AJ, Oct 2 2026: "a lot of
+ * different fonts, a lot of different sizes of text"). A fact with a tap is
+ * a 40px button.
+ */
+function Fact({
   label,
-  icon,
   children,
-  sub,
-  meter,
-  className,
   onClick,
   ariaLabel,
+  expanded,
 }: {
   label: string;
-  icon?: ReactNode;
   children: ReactNode;
-  sub?: ReactNode;
-  /**
-   * Optional fuel gauge drawn on the tile's bottom edge. Absolute, so a
-   * ratio becomes readable at a glance without costing the header a single
-   * pixel of height — which the Journey grid below spends on machines.
-   */
-  meter?: { value: number; max: number; label?: string };
-  className?: string;
-  /** Makes the whole tile a button (≥ 40px tall, as every tappable thing is). */
   onClick?: () => void;
   ariaLabel?: string;
+  expanded?: boolean;
 }) {
-  const pct =
-    meter && meter.max > 0
-      ? Math.max(0, Math.min(100, (meter.value / meter.max) * 100))
-      : null;
-  const Tag = onClick ? "button" : "div";
+  const body = (
+    <>
+      <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground shrink-0">{label}</span>
+      <span className="min-w-0 text-[13px] font-semibold text-slate-900 dark:text-slate-50">{children}</span>
+    </>
+  );
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={ariaLabel}
+        aria-expanded={expanded}
+        className="inline-flex items-center gap-1.5 min-h-10 -mx-1.5 px-1.5 rounded-lg text-left hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+      >
+        {body}
+      </button>
+    );
+  }
+  return <span className="inline-flex items-center gap-1.5 min-h-10">{body}</span>;
+}
+
+/**
+ * The membership card: each date beside the number it goes with (AJ, Oct 2
+ * 2026: "how long has this client been a client since? how many sessions
+ * do they have done? their contract ends when? how many do they have
+ * left?"). Since beside completed, the contract's end beside remaining. A
+ * count that is not known is a dash, never 0; late cancels sit beside the
+ * count, never inside it.
+ */
+function MembershipCard({
+  since,
+  ends,
+  completed,
+  completedWord,
+  lateCancels,
+  remaining,
+  renewal,
+}: {
+  since: ReactNode;
+  ends: ReactNode;
+  completed: number | null;
+  completedWord: string;
+  lateCancels: number | null;
+  remaining: number | null;
+  renewal?: RenewalTileState;
+}) {
+  const date = "min-w-0 text-[13px] font-medium text-muted-foreground [overflow-wrap:break-word]";
+  const count = "text-right whitespace-nowrap text-[13px] font-medium text-muted-foreground";
+  const num = "text-[17px] font-bold tabular-nums mr-1.5";
+  const Tag = renewal ? "button" : "div";
   return (
     <Tag
-      {...(onClick ? { type: "button" as const, onClick, "aria-label": ariaLabel } : {})}
+      {...(renewal
+        ? { type: "button" as const, onClick: renewal.onOpen, "aria-label": `Renewal: ${renewal.text}. Open the renewal card.` }
+        : {})}
+      data-testid="membership"
       className={cn(
-        "relative min-w-0 bg-white dark:bg-slate-950 px-3 xl:px-2.5 py-2 flex flex-col justify-center gap-0.5",
-        pct !== null && "pb-2.5",
-        onClick && "text-left min-h-10 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors",
-        className,
+        "cp-head__card [grid-area:card] mt-2 xl:mt-0 min-w-0 grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-6 gap-y-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 px-3.5 py-2 text-left",
+        renewal && "min-h-10 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors",
       )}
     >
-      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">{label}</span>
-      <span className="flex items-center gap-2 min-w-0 text-[15px] font-bold leading-tight text-slate-900 dark:text-slate-50">
-        {icon && <span className="shrink-0 text-slate-400 dark:text-slate-500 [&>svg]:w-4 [&>svg]:h-4">{icon}</span>}
-        <span className="min-w-0 flex items-center gap-2 [&>.truncate]:min-w-0">{children}</span>
-      </span>
-      {sub && <span className="text-[11px] font-medium leading-none text-slate-500 dark:text-slate-400 min-w-0 flex items-center [&>*]:min-w-0 [&>span:not(.inline-flex)]:truncate">{sub}</span>}
-      {pct !== null && (
-        <span
-          className="absolute inset-x-0 bottom-0 h-1 bg-slate-200/80 dark:bg-slate-800 overflow-hidden"
-          role="img"
-          aria-label={meter!.label ?? `${meter!.value} of ${meter!.max}`}
-        >
-          <span
-            className="block h-full bg-[#F06C22] transition-[width] duration-500"
-            style={{ width: `${pct}%` }}
-          />
+      <span className={date}>{since}</span>
+      <span className={count}>
+        <span className={cn(num, "text-[#F06C22]")} data-testid="sessions-completed">
+          {completed === null ? "—" : completed}
         </span>
-      )}
+        {completedWord}
+        {typeof lateCancels === "number" && lateCancels > 0 && (
+          <span className="ml-1.5 text-[12px]" data-testid="late-cancels">
+            {`· ${lateCancelCount(lateCancels)}`}
+          </span>
+        )}
+      </span>
+      <span className={date}>{ends}</span>
+      <span className={count}>
+        <span className={cn(num, "text-slate-900 dark:text-slate-50")} data-testid="sessions-remaining">
+          {remaining === null ? "—" : remaining}
+        </span>
+        remaining
+        {renewal?.attention && <span className={cn("inline-block ml-1.5 w-1.5 h-1.5 rounded-full bg-current align-middle", RENEWAL_TONE[renewal.tone])} aria-hidden="true" />}
+      </span>
     </Tag>
   );
 }
@@ -287,64 +329,6 @@ function ConfirmedCheck({ confirmed, what, testId }: { confirmed: boolean; what:
     >
       <title>{words}</title>
     </BadgeCheck>
-  );
-}
-
-/**
- * The header's sessions box: two numbers, DONE and LEFT, side by side under
- * a hairline split (AJ, Oct 2 2026: "a sleeker looking design of sessions
- * done and sessions remaining ... we don't need to show the additional
- * sessions plus one"). A count that is not known is a dash, never 0. Late
- * cancels sit under the count when there are any, never inside it.
- */
-function SessionsTile({
-  completedLabel,
-  completed,
-  lateCancels,
-  remaining,
-  renewal,
-}: {
-  completedLabel: string;
-  completed: number | null;
-  lateCancels: number | null;
-  remaining: number | null;
-  renewal?: RenewalTileState;
-}) {
-  const Tag = renewal ? "button" : "div";
-  const caption = "text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none";
-  const number = "text-[26px] font-black leading-none tabular-nums";
-  return (
-    <Tag
-      {...(renewal
-        ? { type: "button" as const, onClick: renewal.onOpen, "aria-label": `Renewal: ${renewal.text}. Open the renewal card.` }
-        : {})}
-      data-testid="sessions-tile"
-      className={cn(
-        "relative min-w-0 bg-white dark:bg-slate-950 px-3 xl:px-2.5 py-2 grid grid-cols-2 items-center text-left",
-        renewal && "min-h-10 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors",
-      )}
-    >
-      <span className="min-w-0 flex flex-col gap-1.5 pr-3">
-        <span className={caption}>{completedLabel}</span>
-        <span className={cn(number, "text-[#F06C22]")} data-testid="sessions-completed">
-          {completed === null ? "—" : completed}
-        </span>
-        {typeof lateCancels === "number" && lateCancels > 0 && (
-          <span className="text-[10px] font-semibold text-muted-foreground leading-none" data-testid="late-cancels">
-            {`· ${lateCancelCount(lateCancels)}`}
-          </span>
-        )}
-      </span>
-      <span className="min-w-0 flex flex-col gap-1.5 pl-3 border-l border-slate-200 dark:border-slate-800">
-        <span className={cn(caption, "flex items-center gap-1.5")}>
-          Left
-          {renewal?.attention && <span className={cn("w-1.5 h-1.5 rounded-full bg-current shrink-0", RENEWAL_TONE[renewal.tone])} aria-hidden="true" />}
-        </span>
-        <span className={cn(number, "text-slate-900 dark:text-slate-50")} data-testid="sessions-remaining">
-          {remaining === null ? "—" : remaining}
-        </span>
-      </span>
-    </Tag>
   );
 }
 
@@ -381,7 +365,15 @@ export function ProfileHeader({
   /* ---- last session ---- */
   const last = sessions.find((s) => s.status === "Completed") ?? sessions[0];
   const lastMs = last?.date ? parseSessionDate(last.date) : 0;
-  const lastLabel = lastMs ? new Date(lastMs).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : null;
+  // "Sep 17", with the year only when it is not this year: the facts line
+  // holds three facts on one line (Oct 2 2026).
+  const lastLabel = lastMs
+    ? new Date(lastMs).toLocaleDateString([], {
+        month: "short",
+        day: "numeric",
+        ...(new Date(lastMs).getFullYear() !== new Date().getFullYear() ? { year: "numeric" as const } : {}),
+      })
+    : null;
 
   /* ---- next session ---- */
   const next = scheduledSessions[0];
@@ -437,33 +429,37 @@ export function ProfileHeader({
   const legalName = clientLegalName(client);
   const nick = goesByNickname(client);
 
+  const completedWord = sessionsQuotable ? "completed" : "in Journey";
+  const toolBtn =
+    "inline-flex items-center justify-center gap-1.5 h-10 min-w-10 px-3 text-[12px] font-semibold text-muted-foreground hover:text-foreground hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+
   return (
     <header
       className={cn(
-        // cp-head*: hooks for the phone layout only (profile-nav.css, Journey Lite).
+        // cp-head*: hooks for the phone layout (profile-nav.css, Journey Lite).
         "cp-head bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800/60 pb-3 mb-3 pt-1",
-        // AJ, Oct 2 2026: "the first thing that should grab the eye is the
-        // name of the client ... the top of the profiles just feel so bulky".
-        // Track, Note, Sync and Start Session used to share the name's row,
-        // so on a portrait iPad (744-1024px) the name was left ~150px and
-        // broke one word a line, with the studio line under it in five.
-        //
-        // Portrait: the name has the row with Start Session alone; the
-        // studio line sits under it, and the three quiet tools sit under
-        // Start, beside it — two short rows, the name on one line.
-        //   ‹ (SA)  Sharon Ann Tesar                  [▶ START SESSION]
-        //           ▪▪▪ Strongsville Ohio · Client…   [Track][Note][⟳]
-        //   [ the four facts ]
-        // Landscape (xl): one band — identity, facts, tools, Start — which
-        // hands the Journey grid ~90px more height, the difference between
-        // 19 and 21 machines on screen.
-        // The phone (under 600px) lays these same areas out in
-        // profile-nav.css (cp-head, Journey Lite).
+        /*
+         * The membership card (AJ, Oct 2 2026). "When I first look at this, I
+         * want to know the client I have, their main studio, their client
+         * since and their contract end" - and the sessions sit beside the
+         * dates they go with: since beside completed, the contract's end
+         * beside remaining ("they're very related"). One font in two sizes;
+         * the three facts on one quiet line; Note, Track and Sync one small
+         * group under Start Session.
+         *
+         *   < (SA)  Sharon Ann Tesar                    [> START SESSION]
+         *           Strongsville Ohio                   [Note | Track | Sync]
+         *   [ Client since Feb 2026 (check)          93 completed ]
+         *   [ Contract ends Aug 16, 2027             93 remaining ]
+         *   LAST Sep 17 - 2 wk ago   NEXT Mon 11:00 AM - 7 booked   TOP TRAINER ...
+         *
+         * Landscape (xl) puts the card between the name and the buttons.
+         */
         "grid gap-x-3 xl:gap-x-4 gap-y-1 items-center",
         "grid-cols-[auto_auto_minmax(0,1fr)_auto]",
-        "[grid-template-areas:'back_avatar_name_start'_'back_avatar_meta_tools'_'strip_strip_strip_strip']",
-        "xl:grid-cols-[auto_auto_auto_minmax(0,1fr)_auto_auto]",
-        "xl:[grid-template-areas:'back_avatar_name_strip_tools_start'_'back_avatar_meta_strip_tools_start']",
+        "[grid-template-areas:'back_avatar_name_start'_'back_avatar_meta_tools'_'card_card_card_card'_'facts_facts_facts_facts']",
+        "xl:grid-cols-[auto_auto_auto_minmax(0,1fr)_auto]",
+        "xl:[grid-template-areas:'back_avatar_name_card_start'_'back_avatar_meta_card_tools'_'facts_facts_facts_facts_facts']",
       )}
     >
       {/* ---------- identity ---------- */}
@@ -485,58 +481,60 @@ export function ProfileHeader({
 
       <h1
         // Names are never truncated (CLAUDE.md): a long one wraps, at a space.
-        className="cp-head__name [grid-area:name] self-end min-w-0 xl:max-w-[240px] 2xl:max-w-[320px] text-[26px] md:text-[30px] xl:text-[28px] font-black tracking-tight leading-[1.05] text-foreground [overflow-wrap:break-word]"
+        className="cp-head__name [grid-area:name] self-end min-w-0 xl:max-w-[260px] 2xl:max-w-[340px] text-[26px] md:text-[30px] xl:text-[28px] font-black tracking-tight leading-[1.05] text-foreground [overflow-wrap:break-word]"
         title={nick ? `${displayName} (legal name ${legalName})` : displayName}
       >
         {displayName}
       </h1>
 
-      <div className="cp-head__meta [grid-area:meta] self-start min-w-0 xl:max-w-[240px] 2xl:max-w-[320px] flex flex-col gap-0.5">
-        {/* Line 1: the studio. Line 2: since and the renewal (AJ, Oct 2
-            2026: "the client's name, the studio, and then we'll read client
-            since ... right after that, a renews on"). Both wrap, never an
-            ellipsis: the studio is a name too ("Demo Mode"). */}
-        <div className="flex items-center gap-2 min-w-0 flex-wrap">
-          <BrandTiles size={6} gap={2} />
-          <span className="min-w-0 flex-1 text-[12px] font-semibold leading-snug text-muted-foreground [overflow-wrap:break-word]">
-            {studioName}
-            {(client.experienceLevel || client.trainingPedigree) && (
-              <span className="xl:hidden 2xl:inline"> · {client.experienceLevel || client.trainingPedigree}</span>
-            )}
-          </span>
-          {hasFlags && (
-            <span className="hidden sm:inline-flex xl:hidden 2xl:inline-flex items-center gap-1.5 rounded px-2 py-0.5 border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
-              <AlertTriangle className="w-3 h-3" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Clinical notes</span>
-            </span>
+      {/* The studio. Wraps, never an ellipsis: the studio is a name too. */}
+      <div className="cp-head__meta [grid-area:meta] self-start min-w-0 xl:max-w-[260px] 2xl:max-w-[340px] flex items-center gap-2 flex-wrap">
+        <BrandTiles size={6} gap={2} />
+        <span className="min-w-0 text-[13px] font-medium leading-snug text-muted-foreground [overflow-wrap:break-word]">
+          {studioName}
+          {(client.experienceLevel || client.trainingPedigree) && (
+            <span className="xl:hidden 2xl:inline"> · {client.experienceLevel || client.trainingPedigree}</span>
           )}
-        </div>
-        {(since || renewalWords) && (
-          <span className="xl:hidden 2xl:block min-w-0 text-[12px] font-medium leading-snug text-muted-foreground [overflow-wrap:break-word]" data-testid="since-line">
-            {since && (
-              <span className="whitespace-nowrap">
-                {since.label} {since.month}
-                <ConfirmedCheck confirmed={since.confirmed} what="her first day" testId="since-check" />
-              </span>
-            )}
-            {since && renewalWords ? " · " : ""}
-            {renewalWords && (
-              <span className="whitespace-nowrap" data-testid="renewal-line">
-                {renewalWords}
-              </span>
-            )}
+        </span>
+        {hasFlags && (
+          <span className="hidden sm:inline-flex items-center gap-1.5 rounded px-2 py-0.5 border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+            <AlertTriangle className="w-3 h-3" />
+            <span className="text-[11px] font-semibold">Clinical notes</span>
           </span>
         )}
       </div>
 
-      {/* ---------- the quiet tools: under Start in portrait, before it in landscape ---------- */}
-      <div className="cp-head__tools [grid-area:tools] justify-self-end self-start xl:self-center flex items-center gap-2">
+      {/* ---------- the membership card: each date beside its number ---------- */}
+      <MembershipCard
+        since={
+          since ? (
+            <span data-testid="since-line">
+              {since.label} {since.month}
+              <ConfirmedCheck confirmed={since.confirmed} what="her first day" testId="since-check" />
+            </span>
+          ) : null
+        }
+        ends={renewalWords ? <span data-testid="renewal-line">{renewalWords}</span> : null}
+        completed={completedCount}
+        completedWord={completedWord}
+        lateCancels={lateCancels}
+        remaining={remainingCount}
+        renewal={renewal}
+      />
+
+      {/* ---------- the quiet tools: one small group under Start ---------- */}
+      <div className="cp-head__tools [grid-area:tools] justify-self-end self-start xl:self-center flex items-stretch rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden divide-x divide-slate-200 dark:divide-slate-800">
+        {onQuickNote && (
+          <button type="button" onClick={onQuickNote} title="Add a note — it goes to their Notes" aria-label="Add a note" className={toolBtn}>
+            <NotebookPen className="w-4 h-4" aria-hidden />
+            <span className="hidden sm:inline">Note</span>
+          </button>
+        )}
         {/*
           Kaizen Roster toggle. Deliberately quiet and deliberately BLUE: the
           red kaizen mark means "this rep needs work" in the session grid, and
           if the two ever share a colour a glance can no longer tell "I am
-          tracking you" from "you are doing it wrong". It also stays visually
-          subordinate to Start Session, which is the one loud thing here.
+          tracking you" from "you are doing it wrong".
         */}
         {kaizen && (
           <button
@@ -545,44 +543,13 @@ export function ProfileHeader({
             disabled={kaizen.busy}
             aria-pressed={kaizen.isOn}
             title={kaizen.isOn ? "On your Kaizen Roster — tap to remove" : "Add to your Kaizen Roster"}
-            className={cn(
-              "shrink-0 inline-flex items-center gap-1.5 h-10 xl:h-12 px-3 rounded-xl xl:rounded-2xl border text-[11px] font-bold uppercase tracking-widest transition-colors",
-              kaizen.busy && "opacity-50",
-              kaizen.isOn
-                ? "border-transparent bg-[#0a548b]/10 text-[#034a84] dark:bg-[#4a9fd8]/15 dark:text-[#7cc0ee]"
-                : "border-slate-200 dark:border-slate-800 text-muted-foreground hover:text-[#034a84] dark:hover:text-[#7cc0ee]",
-            )}
+            className={cn(toolBtn, kaizen.isOn && "text-[#034a84] dark:text-[#7cc0ee] bg-[#0a548b]/10 dark:bg-[#4a9fd8]/15")}
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <polyline points="2,10 6,6 10,10" opacity={0.55} />
               <polyline points="6,13 10,9 14,13" />
             </svg>
             <span className="hidden sm:inline">{kaizen.isOn ? "Tracking" : "Track"}</span>
-          </button>
-        )}
-        {onQuickNote && (
-          <button
-            type="button"
-            onClick={onQuickNote}
-            title="Add a note — it goes to their Notes"
-            aria-label="Add a note"
-            className={cn(
-              "shrink-0 inline-flex items-center justify-center gap-1.5 h-10 min-w-10 xl:h-12 xl:min-w-12 px-3 rounded-xl xl:rounded-2xl border text-[11px] font-bold uppercase tracking-widest transition-colors",
-              "border-slate-200 dark:border-slate-800 text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <NotebookPen className="w-4 h-4" aria-hidden />
-            <span className="hidden sm:inline">Note</span>
           </button>
         )}
         {sync && (
@@ -596,20 +563,11 @@ export function ProfileHeader({
                 : "No Mindbody ID on this client, so there is nothing to sync from."
             }
             aria-label={sync.busy ? "Syncing with Mindbody" : `Sync with Mindbody. ${sync.label}`}
-            className={cn(
-              "shrink-0 inline-flex items-center justify-center gap-1.5 h-10 min-w-10 xl:h-12 xl:min-w-12 px-3 rounded-xl xl:rounded-2xl border text-[11px] font-bold uppercase tracking-widest transition-colors",
-              "border-slate-200 dark:border-slate-800 text-muted-foreground hover:text-foreground",
-              "disabled:opacity-50 disabled:cursor-not-allowed",
-            )}
+            className={toolBtn}
           >
             <RefreshCw className={cn("w-4 h-4", sync.busy && "animate-spin")} aria-hidden />
-            {/* Icon-only until there is room: on a portrait iPad the three
-                buttons otherwise squeeze the client's identity line to a
-                single letter. The label is still the title and aria-label. */}
-            <span className="hidden 2xl:flex flex-col items-start leading-none">
-              <span>{sync.busy ? "Syncing" : "Sync"}</span>
-              <span className="mt-1 text-[9px] font-semibold normal-case tracking-normal opacity-80">{sync.label}</span>
-            </span>
+            <span className="hidden sm:inline">{sync.busy ? "Syncing" : "Sync"}</span>
+            <span className="sr-only">{sync.label}</span>
           </button>
         )}
       </div>
@@ -653,18 +611,18 @@ export function ProfileHeader({
             onClick={onStartSession}
             disabled={isCheckingActiveSession}
             className={cn(
-              "cp-head__start group relative shrink-0 inline-flex items-center gap-3 h-12 xl:h-[52px] pl-1.5 pr-3 sm:pr-5 rounded-2xl text-white",
+              "cp-head__start group relative shrink-0 inline-flex items-center gap-3 h-12 pl-1.5 pr-3 sm:pr-5 rounded-2xl text-white",
               "bg-[linear-gradient(135deg,#ef5302_0%,#f36d21_100%)] ring-1 ring-white/25 ring-inset",
               "shadow-[0_14px_34px_-14px_rgba(239,83,2,.85)] hover:shadow-[0_18px_40px_-14px_rgba(239,83,2,.95)] hover:brightness-[1.04]",
               "active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-wait",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#0a548b]",
             )}
           >
-            <span className="grid place-items-center w-9 h-9 xl:w-10 xl:h-10 rounded-xl bg-white/20 group-hover:bg-white/25 transition-colors">
-              <Play className="w-4 h-4 xl:w-[18px] xl:h-[18px] fill-current translate-x-px" />
+            <span className="grid place-items-center w-9 h-9 rounded-xl bg-white/20 group-hover:bg-white/25 transition-colors">
+              <Play className="w-4 h-4 fill-current translate-x-px" />
             </span>
             <span className="cp-head__startlabel hidden sm:flex flex-col items-start leading-none">
-              <span className="font-display italic uppercase tracking-wider text-base xl:text-lg">
+              <span className="font-display italic uppercase tracking-wider text-base">
                 {isCheckingActiveSession ? "Checking…" : "Start session"}
               </span>
               {!isCheckingActiveSession && nextDate && daysUntil(nextDate) === "today" && (
@@ -675,86 +633,64 @@ export function ProfileHeader({
         )}
       </div>
 
-      {/* ---------- the four facts, hairline-divided ---------- */}
-      <div className="cp-head__strip [grid-area:strip] mt-2 xl:mt-0 min-w-0 grid grid-cols-2 md:grid-cols-4 gap-px bg-slate-200 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
-        {/* Tap for everyone who has trained this client and how often
-            (tracker round, Sep 2026 — "a feature we tried to get working"). */}
-        <Stat
+      {/* ---------- the three facts, one quiet line ---------- */}
+      <div className="cp-head__facts [grid-area:facts] mt-1 min-w-0 flex flex-wrap items-center gap-x-4">
+        <Fact label="Last">
+          {lastLabel ? (
+            <>
+              {lastLabel}
+              {lastMs ? <span className="text-muted-foreground font-normal"> · {relativeDays(lastMs)}</span> : null}
+            </>
+          ) : (
+            <span className="text-muted-foreground font-normal">No sessions yet</span>
+          )}
+        </Fact>
+        <Fact label="Next">
+          {nextLabel ? (
+            <>
+              <span className="break-words">{nextLabel}</span>
+              <span className="text-muted-foreground font-normal"> · {bookedLabel(scheduledSessions.length)}</span>
+            </>
+          ) : (
+            <span className="text-muted-foreground font-normal">Not scheduled</span>
+          )}
+        </Fact>
+        {/* Tap for everyone who has trained this client and how often. */}
+        <Fact
           label="Top trainer"
-          icon={<UserCheck />}
           onClick={trainerRows.length > 0 ? () => setShowTrainers((v) => !v) : undefined}
           ariaLabel={trainerRows.length > 0 ? "Show every trainer who has trained this client" : undefined}
-          sub={
-            topTrainer.top
-              ? topTrainer.source === "tally"
-                ? // Their own count only; the tap lists everyone (AJ, Oct 2 2026).
-                  `${topTrainer.top.sessions} session${topTrainer.top.sessions === 1 ? "" : "s"}`
-                : topTrainer.backfilling
-                  ? "Counting full history…"
-                  : "From recent sessions"
-              : undefined
-          }
+          expanded={trainerRows.length > 0 ? showTrainers : undefined}
         >
-          {topTrainer.top?.name ? <span className="break-words">{topTrainer.top.name}</span> : <span className="text-muted-foreground font-medium">Not yet</span>}
-        </Stat>
-
-        <Stat label="Last session" icon={<History />} sub={lastMs ? relativeDays(lastMs) ?? undefined : undefined}>
-          {lastLabel ?? <span className="text-muted-foreground font-medium">No sessions yet</span>}
-        </Stat>
-
-        {/* "Tomorrow 4:00 PM" read "Tomorro…" on a portrait iPad: the tile is
-            ~180px, and the icon and the "2 booked" chip shared its one line.
-            Now the headline has the line to itself and may wrap at the dot,
-            the chip sits under it with the date, and there is no icon (the
-            label already says what it is). */}
-        <Stat
-          label="Next session"
-          sub={
-            nextDate ? (
-              <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="text-muted-foreground whitespace-nowrap">
-                  {daysUntil(nextDate) && nextDay !== "Today" && nextDay !== "Tomorrow"
-                    ? daysUntil(nextDate)
-                    : `${MONTHS[nextDate.getMonth()]} ${nextDate.getDate()}`}
-                </span>
-                <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 tracking-wide whitespace-nowrap">
-                  {bookedLabel(scheduledSessions.length)}
-                </span>
+          {topTrainer.top?.name ? (
+            <>
+              <span className="break-words">{topTrainer.top.name}</span>
+              <span className="text-muted-foreground font-normal">
+                {" · "}
+                {topTrainer.source === "tally"
+                  ? // Their own count only; the tap lists everyone (AJ, Oct 2 2026).
+                    `${topTrainer.top.sessions} session${topTrainer.top.sessions === 1 ? "" : "s"}`
+                  : topTrainer.backfilling
+                    ? "counting…"
+                    : "recent sessions"}
               </span>
-            ) : undefined
-          }
-        >
-          {nextLabel ? (
-            <span className="whitespace-normal break-words">{nextLabel}</span>
+              {trainerRows.length > 0 && (
+                <ChevronDown className={cn("inline w-3.5 h-3.5 ml-1 text-muted-foreground transition-transform", showTrainers && "rotate-180")} aria-hidden />
+              )}
+            </>
           ) : (
-            <span className="text-muted-foreground font-medium italic">Not scheduled</span>
+            <span className="text-muted-foreground font-normal">Not yet</span>
           )}
-        </Stat>
-
-        {/* Completed · Remaining (AJ, Oct 2 2026: "this box just needs to
-            show Sessions Completed, Sessions Remaining ... make sure its
-            condensed"). Two numbers side by side, the same size. Sessions
-            before Journey are on Notes & Profile -> Account, and the package
-            by name on the same page. */}
-        <SessionsTile
-          completedLabel={sessionsQuotable ? "Done" : "In Journey"}
-          completed={completedCount}
-          lateCancels={lateCancels}
-          remaining={remainingCount}
-          renewal={renewal}
-        />
+        </Fact>
       </div>
 
-      {/* Its own row under the tiles. It used to sit in `[grid-area:strip]`
-          - the same named area as the tile row - so the grid drew the two on
-          top of each other and the list covered the tiles. `col-span-full`
-          with no named area lands it in a fresh implicit row, in normal
-          flow, pushing everything below it down. */}
+      {/* Its own row under the facts: `col-span-full` with no named area
+          lands it in a fresh implicit row, pushing everything below down. */}
       {showTrainers && trainerRows.length > 0 && (
         <div className="col-span-full mt-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2" role="region" aria-label="Trainers who have trained this client">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Trained by</span>
-            <button type="button" className="text-[11px] font-bold text-muted-foreground min-h-8 px-2" onClick={() => setShowTrainers(false)}>
+            <button type="button" className="text-[12px] font-semibold text-muted-foreground min-h-10 px-2" onClick={() => setShowTrainers(false)}>
               Close
             </button>
           </div>

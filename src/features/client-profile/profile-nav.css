@@ -480,7 +480,8 @@
       "back avatar name name"
       "back avatar meta meta"
       "tools tools tools start"
-      "strip strip strip strip";
+      "card card card card"
+      "facts facts facts facts";
   }
   .cp-head__name { font-size: 24px; }
   .cp-head [data-slot="avatar"] { width: 48px; height: 48px; }
@@ -499,8 +500,8 @@
     min-width: 0;
   }
   .cp-head__startlabel { display: flex; }
-  /* "12 left · 12-Month Package" wraps rather than ending in an ellipsis. */
-  .cp-head__strip .truncate {
+  /* Anything in the header wraps rather than ending in an ellipsis. */
+  .cp-head .truncate {
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
