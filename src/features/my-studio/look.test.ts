@@ -49,6 +49,8 @@ const FILES = [
   "features/relay/jobs/jobs.css",
   "features/relay/notes/notes.css",
   "features/relay/notes/note-body.css",
+  // The Journal's Today (the Relay Board rebuild, Oct 3 2026): what to carry, the day's one line.
+  "features/relay/notes/journal-today.css",
   "features/relay/board/relay-strip.css",
   "features/relay/reminders/reminders.css",
   // The standing weeks on Team (and the same card on My Profile): drawn in
@@ -237,6 +239,8 @@ const TAP_CLASSES = [
   "rbc__box", // a card's box (the Relay Board rebuild, Oct 3 2026)
   "rbc__main", // a card's words, which open its work
   "rbd-who__face",
+  "jtd-btn", // the Journal's Today: Keep for today, Save to my journal
+  "jtd-input",
   "rbn__pill", // "● 2 new" in the header
   "rtk-list", // the Tracker's lists
   "rak-tile", // the Ask sheet's six tiles

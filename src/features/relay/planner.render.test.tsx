@@ -270,6 +270,10 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("Someday · Growth");
     expect(h.textContent).toContain("New reminder");
     await click(tab("Journal"));
+    // The Journal opens on Today (the Relay Board rebuild, Oct 3 2026): what to carry, and the day's one line.
+    expect(h.textContent).toContain("Things to carry today");
+    expect(h.textContent).toContain("One line for yourself");
+    await click(tab("Notes"));
     expect(h.textContent).toContain("New note");
     await openSection("Team");
     expect(h.textContent).toContain("Your team");
@@ -415,6 +419,7 @@ describe("My Studio", () => {
   it("opens a new note, the task wizard and the job composer", async () => {
     const h = await mount(lead);
     await click(tab("Journal"));
+    await click(tab("Notes"));
     await click([...h.querySelectorAll("button")].find((b) => b.textContent?.includes("New note")));
     expect(document.body.textContent).toContain("Working notes");
     expect(document.body.textContent).toContain("Share with colleagues");
@@ -431,10 +436,16 @@ describe("My Studio", () => {
   it("writes in the Journal: six types with their templates, the shelves, the day logs and the Studio shelf (the second wave)", async () => {
     const h = await mount(trainer);
     await click(tab("Journal"));
+    // The Journal comes back to where you were on it; Today is its first tab.
+    await click(tab("Today"));
+    // Today holds the Write row; the shelves are under Notes; Day logs, On this day and the Studio shelf are tabs (Oct 3 2026).
     expect([...h.querySelectorAll(".jn-type__h")].map((b) => b.textContent)).toEqual(["Client", "Machine", "Protocol", "Research", "Trend", "Personal"]);
+    expect([...h.querySelectorAll(".msh-sub [role='tab']")].map((t) => t.textContent?.replace(/\d+$/, ""))).toEqual(["Today", "Notes", "Day logs", "On this day", "Studio shelf"]);
+    await click(tab("Notes"));
     const shelves = [...h.querySelectorAll(".jn-shelf")].map((b) => b.textContent ?? "");
     expect(shelves.some((t) => t.startsWith("Trends · hunches"))).toBe(true);
-    expect(shelves.some((t) => t.startsWith("Studio shelf"))).toBe(true);
+    await click(tab("Journal"));
+    await click(tab("Today"));
 
     // A Machine note: its three lines, its body as "more", and the Studio shelf rather than a client's record.
     await click([...h.querySelectorAll<HTMLButtonElement>(".jn-type")].find((b) => b.textContent?.startsWith("Machine")));
@@ -455,9 +466,9 @@ describe("My Studio", () => {
     expect(document.body.textContent).toContain("The sample that would show it");
     expect(document.body.textContent).toContain("Save the hunch, then add evidence each time you see it.");
 
-    await click([...h.querySelectorAll<HTMLButtonElement>(".jn-shelf")].find((b) => b.textContent?.startsWith("Day logs")));
+    await click(tab("Day logs"));
     expect(h.textContent).toContain("No day logs yet");
-    await click([...h.querySelectorAll<HTMLButtonElement>(".jn-shelf")].find((b) => b.textContent?.startsWith("Studio shelf")));
+    await click(tab("Studio shelf"));
     expect(h.textContent).toContain("Nothing on the Studio shelf yet");
   });
 
