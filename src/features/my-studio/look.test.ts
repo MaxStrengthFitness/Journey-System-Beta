@@ -146,7 +146,6 @@ const NAME_CLASSES = [
   "rbc__line", // who did it, who's on it, whose it is
   "rbd-part__t", // a machine in a chore, beside the Board
   "rbd-who__name", // a trainer a leader puts on an ask
-  "rtk-box__t", // the Tracker's Tracking box: the job's name
   "rak-tile__t", // a tile of the Ask sheet
   "stq__item-client", // who an ask is about: a client's whole name
   "stq__answer", // a question's answer, and who gave it
