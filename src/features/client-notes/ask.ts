@@ -202,9 +202,11 @@ export function askLenses(input: AskInput): AskLens[] {
   const staying = live.filter((t) => inCategories(t, ["retention"]));
   const life = live.filter((t) => inCategories(t, ["ford"]));
 
+  // "5 notes" — the ones not closed; never "open", which is a zone's name on
+  // the same page and means something narrower.
   const countLine = (ts: NoteThread[]) => {
     const n = open(ts).length;
-    return n ? plural(n, "open note") : ts.length ? "Nothing open" : null;
+    return n ? plural(n, "note") : ts.length ? "All closed" : null;
   };
 
   const lenses: Record<AskId, AskLens> = {

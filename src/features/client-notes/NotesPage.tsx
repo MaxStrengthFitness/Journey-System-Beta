@@ -325,7 +325,13 @@ export function NotesPage({
         : {
             id: lens.id,
             threadIds: new Set(lens.threads.map((t) => t.id)),
-            showCategories: lens.id === "health" || lens.id === "train",
+            // The chips that can answer this question, and no others.
+            categories:
+              lens.id === "health"
+                ? (["health", "incident"] as const)
+                : lens.id === "train"
+                  ? (["coaching", "preference"] as const)
+                  : null,
             empty: lens.empty,
           },
     [lens],

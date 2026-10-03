@@ -263,7 +263,9 @@ export function NoteThreadCard({
             {machine.name}
           </span>
         ) : null}
-        <span className="nt-grow" />
+        {/* The loudness and the menu travel together, at the right: on a
+            half-width card that wraps, the menu never sits on a line alone. */}
+        <span className="nt-end">
         {pill}
         {canWrite ? (
           <button
@@ -277,6 +279,7 @@ export function NoteThreadCard({
             <MoreHorizontal size={18} aria-hidden />
           </button>
         ) : null}
+        </span>
       </div>
 
       {canWrite && menu !== "closed" ? (

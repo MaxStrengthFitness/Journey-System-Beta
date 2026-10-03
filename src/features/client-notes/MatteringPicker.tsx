@@ -23,6 +23,12 @@ export interface MatteringPickerProps {
   /** Tight spacing inside the in-session sheet. */
   compact?: boolean;
   disabled?: boolean;
+  /**
+   * The note's loudness, so Always says what it means for THIS note: a
+   * Heads up is read out at her next four sessions (Oct 3 2026), a Critical
+   * one until someone closes it.
+   */
+  importance?: "standard" | "elevated" | "critical";
 }
 
 const SHAPES: Array<{ id: MatteringShape; label: string }> = [
@@ -33,7 +39,7 @@ const SHAPES: Array<{ id: MatteringShape; label: string }> = [
 
 export const EMPTY_MATTERING: MatteringChoice = { shape: "always", from: "", until: "", repeat: false };
 
-export function MatteringPicker({ value, onChange, compact = false, disabled = false }: MatteringPickerProps) {
+export function MatteringPicker({ value, onChange, compact = false, disabled = false, importance }: MatteringPickerProps) {
   const set = (patch: Partial<MatteringChoice>) => onChange({ ...value, ...patch });
   return (
     <div className="nc-matters" data-compact={compact ? "true" : undefined}>
@@ -59,7 +65,11 @@ export function MatteringPicker({ value, onChange, compact = false, disabled = f
             <span className="nc-kicker">Starts mattering on</span>
             <input type="date" className="nc-input" value={value.from} aria-label="Starts mattering on" disabled={disabled} onChange={(e) => set({ from: e.target.value })} />
           </label>
-          <span className="nc-muted text-[11px]">Blank means today. It keeps mattering until someone marks it as no longer mattering — and comes up for review after 60 days.</span>
+          <span className="nc-muted text-[11px]">
+            {importance === "elevated"
+              ? "Blank means today. Read out on the briefing at the next four sessions, then quiet on the record until someone closes it. An update puts it back on."
+              : "Blank means today. It keeps mattering until someone marks it as no longer mattering — and comes up for review after 60 days."}
+          </span>
         </div>
       )}
 

@@ -999,3 +999,11 @@
   padding-top: 8px;
   border-top: 1px solid var(--eq-border);
 }
+
+/* A card's loudness and its menu, together at the right (Oct 3 2026). */
+.nt-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}

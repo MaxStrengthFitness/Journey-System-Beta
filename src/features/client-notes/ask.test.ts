@@ -153,9 +153,9 @@ describe("the questions", () => {
   });
 
   it("say how much is behind each, before it is tapped", () => {
-    expect(lens("health").preview).toBe("1 open note · left knee in 2 · 2 watch-outs");
+    expect(lens("health").preview).toBe("1 note · left knee in 2 · 2 watch-outs");
     expect(lens("train").preview).toBe("3 notes · 2 machines");
-    expect(lens("staying").preview).toBe("1 open note · 95 sessions left");
+    expect(lens("staying").preview).toBe("1 note · 95 sessions left");
     expect(lens("life").preview).toBe("birthday in 17 days");
     expect(lens("story").preview).toBe("since 2019");
     expect(lens("all").preview).toBe("7 notes");

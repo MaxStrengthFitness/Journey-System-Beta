@@ -239,21 +239,24 @@ export type NoteFlavour = CoachingFlavour | HealthFlavour;
 
 export interface NoteFlavourMeta {
   id: NoteFlavour;
+  /** The chip's words. */
   label: string;
+  /** A card's label after "Health · " — short enough not to wrap a row's label column. */
+  short: string;
   blurb: string;
 }
 
 export const HEALTH_FLAVOURS: readonly NoteFlavourMeta[] = [
-  { id: "Injury", label: "Injury or pain", blurb: "A limitation or pain the load has to work around." },
-  { id: "Surgery", label: "Surgery", blurb: "Coming up or behind her — the date, and what's off limits until she's cleared." },
-  { id: "Medication", label: "Medication", blurb: "Including GLP-1s, blood pressure and blood thinners." },
-  { id: "Diagnosis", label: "Diagnosis", blurb: "A condition the team should know about." },
-  { id: "OutsideCare", label: "Care outside the studio", blurb: "Massage, chiropractor, physical therapy, an adjustment." },
+  { id: "Injury", label: "Injury or pain", short: "Injury", blurb: "A limitation or pain the load has to work around." },
+  { id: "Surgery", label: "Surgery", short: "Surgery", blurb: "Coming up or behind her — the date, and what's off limits until she's cleared." },
+  { id: "Medication", label: "Medication", short: "Medication", blurb: "Including GLP-1s, blood pressure and blood thinners." },
+  { id: "Diagnosis", label: "Diagnosis", short: "Diagnosis", blurb: "A condition the team should know about." },
+  { id: "OutsideCare", label: "Care outside the studio", short: "Outside care", blurb: "Massage, chiropractor, physical therapy, an adjustment." },
 ];
 
 export const COACHING_FLAVOURS: readonly NoteFlavourMeta[] = [
-  ...FOCUS_CATEGORIES.map((p) => ({ id: p as NoteFlavour, label: p, blurb: FOCUS_BLURBS[p] })),
-  { id: "Setup", label: "Set-up & equipment", blurb: "Machine know-how that is not a setting — a pad, a stop, a sticky seat." },
+  ...FOCUS_CATEGORIES.map((p) => ({ id: p as NoteFlavour, label: p, short: p, blurb: FOCUS_BLURBS[p] })),
+  { id: "Setup", label: "Set-up & equipment", short: "Set-up", blurb: "Machine know-how that is not a setting — a pad, a stop, a sticky seat." },
 ];
 
 /** The flavours a category offers, in order; none for the rest. */
@@ -337,6 +340,12 @@ export function flavourOf(entry: Pick<JournalEntry, "kind" | "category">): NoteF
 export function flavourLabel(flavour: NoteFlavour | null): string | null {
   if (!flavour) return null;
   return [...COACHING_FLAVOURS, ...HEALTH_FLAVOURS].find((f) => f.id === flavour)?.label ?? null;
+}
+
+/** The flavour's short word for a card ("Outside care"), or null. */
+export function flavourShort(flavour: NoteFlavour | null): string | null {
+  if (!flavour) return null;
+  return [...COACHING_FLAVOURS, ...HEALTH_FLAVOURS].find((f) => f.id === flavour)?.short ?? null;
 }
 
 /**
@@ -538,7 +547,7 @@ export function noteCardLabel(
   const category = noteCategoryOf(entry);
   // A Health note says what kind of health note it is: "Health · Surgery".
   if (category === "health") {
-    const flavour = flavourLabel(flavourOf(entry));
+    const flavour = flavourShort(flavourOf(entry));
     return flavour ? `Health · ${flavour}` : "Health";
   }
   return NOTE_CATEGORY_META[category].label;

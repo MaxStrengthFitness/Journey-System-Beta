@@ -200,7 +200,7 @@ describe("noteCategoryOf — every existing note maps in", () => {
     expect(noteCardLabel(entry({ kind: "coaching", category: null }))).toBe("Coaching");
     expect(noteCardLabel(entry({ kind: "equipment" }))).toBe("Equipment");
     expect(noteCardLabel(entry({ kind: "injury", category: "Surgery" }))).toBe("Health · Surgery");
-    expect(noteCardLabel(entry({ kind: "injury", category: "OutsideCare" }))).toBe("Health · Care outside the studio");
+    expect(noteCardLabel(entry({ kind: "injury", category: "OutsideCare" }))).toBe("Health · Outside care");
     expect(noteCardLabel(entry({ kind: "life", category: "Surgery" }))).toBe("Health · Surgery");
     expect(noteCardLabel(entry({ kind: "retention" }))).toBe("Retention");
     expect(noteCardLabel(entry({ kind: "general" }))).toBe("Note");

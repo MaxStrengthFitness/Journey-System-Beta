@@ -114,7 +114,7 @@ export interface NotesCatalogProps {
    * the category chips are offered only where they still help. Null or left
    * out is every note, as before.
    */
-  lens?: { id: string; threadIds: ReadonlySet<string>; showCategories: boolean; empty: string } | null;
+  lens?: { id: string; threadIds: ReadonlySet<string>; categories: readonly NoteCategory[] | null; empty: string } | null;
   /** Back to every note: a door, or "Show it", needs a thread the question leaves out. */
   onLeaveLens?: () => void;
 }
@@ -284,13 +284,13 @@ export function NotesCatalog({
           </button>
         ) : null}
       </div>
-      {lens && !lens.showCategories ? null : (
+      {lens && !lens.categories ? null : (
         <button type="button" className="nx-pick" aria-pressed={filter.category === null} onClick={() => pick(null)}>
           All
           {countsKnown ? <span className="nx-pick__count">{allCount}</span> : null}
         </button>
       )}
-      {(lens ? lens.showCategories : true) && NOTES_PAGE_CATEGORIES.map((c) => (
+      {NOTES_PAGE_CATEGORIES.filter((c) => !lens || (lens.categories ?? []).includes(c.id)).map((c) => (
         <button
           key={c.id}
           type="button"

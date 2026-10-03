@@ -598,7 +598,7 @@ export function JournalComposer({
           />
 
           {(importance !== "standard" || matters.shape === "day") && (
-            <MatteringPicker value={matters} onChange={setMatters} compact={origin === "in_session"} />
+            <MatteringPicker value={matters} onChange={setMatters} compact={origin === "in_session"} importance={importance} />
           )}
           {importance === "standard" && matters.shape !== "day" && (
             <button type="button" className="nc-btn nc-btn--quiet self-start" onClick={() => setMatters({ ...EMPTY_MATTERING, shape: "day" })}>
