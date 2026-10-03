@@ -26,7 +26,7 @@ export const DEMO_STUDIO_ID = "demo-studio";
 export const DEMO_STUDIO_NAME = "Demo Mode";
 
 /** Stands in for the address line on the studio card. */
-export const DEMO_STUDIO_TAGLINE = "Training studio — practise freely";
+export const DEMO_STUDIO_TAGLINE = "Training studio — practice freely";
 
 /**
  * Studios operate in US Eastern time, and the seeded session history is

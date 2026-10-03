@@ -123,14 +123,10 @@ describe("the greeting", () => {
     expect(calls.select).toHaveBeenCalledWith(aj, "strongsville");
   });
 
-  it("offers Operations only to someone who may open it", async () => {
-    expect(button((await mount()).el, "Open Operations")).toBeUndefined();
-    act(() => root?.unmount());
-    host?.remove();
+  it("has no door to Operations, even for a leader: leaders switch from the Hub", async () => {
     const leader = { ...aj, role: "StudioLeader" } as Trainer;
-    const { el, calls } = await mount({ authTrainer: leader, trainers: [leader] });
-    await act(async () => button(el, "Open Operations instead")!.click());
-    expect(calls.ops).toHaveBeenCalled();
+    const { el } = await mount({ authTrainer: leader, trainers: [leader] });
+    expect(button(el, "Operations")).toBeUndefined();
   });
 });
 

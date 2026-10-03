@@ -8,8 +8,10 @@
  * sessions, the open team jobs: useTodayGlance), and one orange button. Other
  * studios are small buttons underneath. AJ, Oct 3 2026: one studio gets "a
  * greeting"; leaders go "through the same as trainers because honestly they
- * will probably want to look at the daily schedule", so Operations is a link
- * at the foot, not a fork in the road.
+ * will probably want to look at the daily schedule", and "leaders will still
+ * go through the hub screen first and switch to operations from there", so
+ * there is no Operations door here (only when no studio exists yet, where
+ * there is no Hub to switch from).
  *
  * iPads change hands at the start of the day, so whose iPad it is sits at the
  * top of every screen here, with the way out ("Not you? Sign out").
@@ -324,12 +326,6 @@ export function StudioSelectionView({
     </ul>
   );
 
-  const operationsLink = mayOpenOps ? (
-    <button type="button" className="fd-link" onClick={onGoToAdmin}>
-      Open Operations instead
-    </button>
-  ) : null;
-
   // ---- the greeting ------------------------------------------------------------
   if (greetStudio) {
     const tz = greetStudio.timezone || undefined;
@@ -389,10 +385,9 @@ export function StudioSelectionView({
           )}
 
           <footer className="fd-foot fd-rise fd-rise--4">
-            {operationsLink}
             {demo && (
               <button type="button" className="fd-link" onClick={() => enter(demo)}>
-                Practise in Demo Mode
+                Practice in Demo Mode
               </button>
             )}
             {otherMine.length === 0 && (
@@ -536,6 +531,13 @@ export function StudioSelectionView({
                 ? "Journey has no studios set up. Open Operations to add one and link it to Mindbody."
                 : "Journey couldn't find any studios. Check the Wi-Fi, or ask head office."}
             </p>
+            {/* The one door to Operations here: with no studio there is no Hub
+                to switch from, and the first studio is added there. */}
+            {mayOpenOps && (
+              <button type="button" className="fd-btn fd-btn--primary" style={{ marginTop: 18 }} onClick={onGoToAdmin}>
+                Open Operations
+              </button>
+            )}
           </div>
         )}
         {studios.length > 0 && mine.length === 0 && (
@@ -590,7 +592,6 @@ export function StudioSelectionView({
           </section>
         )}
 
-        <footer className="fd-foot">{operationsLink && React.cloneElement(operationsLink, {}, "Open Operations")}</footer>
       </main>
     </FrontDoorPane>
   );

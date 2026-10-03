@@ -168,7 +168,7 @@ export default function AccessRequestView({
             <li>
               <span className="fd-tl-dot" aria-hidden="true" />
               <div className="fd-timeline__t">You sign in and start</div>
-              <div className="fd-timeline__d">Once you're in, Demo Mode is there to practise in.</div>
+              <div className="fd-timeline__d">Once you're in, Demo Mode is there to practice in.</div>
             </li>
           </ol>
           <footer className="fd-foot fd-rise fd-rise--3">

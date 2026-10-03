@@ -64,7 +64,7 @@ Three commits, each typechecked on its own (2 errors, the baseline).
    (else home, else your only one) greets the person rather than opening by
    itself: name, today there (your next client, the studio's sessions, open
    team jobs), one orange Start. Other studios are buttons underneath;
-   Operations and Demo Mode links at the foot. "Not you? Sign out" at the top
+   Demo Mode a link at the foot; no Operations door (leaders switch from the Hub). "Not you? Sign out" at the top
    of every screen after sign-in. The picker ("Where are you today?") is for
    no studio to greet with, All my studios, and Change studio. Going in, the
    M and X part and the A opens like a door.
