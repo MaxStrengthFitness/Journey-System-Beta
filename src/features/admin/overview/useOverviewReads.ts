@@ -9,6 +9,10 @@
  *                studioId + effectiveUntil; two equalities need none) — the Moments
  *                panel's birthdays and anniversaries
  *   watch        studios/{s}/watch/performance, the Sunday job's list
+ *   teamNotes    the studio's Health, Incident and Retention notes written
+ *                in the last two weeks (notes round, Oct 3 2026; the index
+ *                studioId + kind + createdAt) — "From the team's notes"
+ *                (team-notes.ts)
  *
  * Every read that fails says so: null means "could not be read", never
  * "nothing there" (the house rule). Re-run when the studio changes.
@@ -21,22 +25,35 @@ import { studioDayBoundsForKey } from "../../../lib/studio-time";
 import type { ClinicalIncident } from "../../../types";
 import type { JournalEntry } from "../../../types/journal";
 import type { PerformanceWatchDocument } from "./performance";
+import { addDays } from "../../client-history/model";
+import { TEAM_NOTES_WINDOW_DAYS, TEAM_NOTE_KINDS } from "./team-notes";
 
 const INCIDENT_LIMIT = 100;
 const CRITICAL_LIMIT = 100;
 const DATED_LIMIT = 200;
+const TEAM_NOTES_LIMIT = 100;
 
 export interface OverviewReads {
   incidents: ClinicalIncident[] | null;
   critical: JournalEntry[] | null;
   dated: JournalEntry[] | null;
+  /** The studio's Health, Incident and Retention notes of the last two weeks; null = couldn't be read. */
+  teamNotes: JournalEntry[] | null;
   /** undefined = loading, null = the job has never written one, else the document. */
   watch: PerformanceWatchDocument | null | undefined;
   loading: boolean;
-  failed: { incidents: boolean; critical: boolean; dated: boolean; watch: boolean };
+  failed: { incidents: boolean; critical: boolean; dated: boolean; watch: boolean; teamNotes: boolean };
 }
 
-const EMPTY: OverviewReads = { incidents: null, critical: null, dated: null, watch: undefined, loading: true, failed: { incidents: false, critical: false, dated: false, watch: false } };
+const EMPTY: OverviewReads = {
+  incidents: null,
+  critical: null,
+  dated: null,
+  teamNotes: null,
+  watch: undefined,
+  loading: true,
+  failed: { incidents: false, critical: false, dated: false, watch: false, teamNotes: false },
+};
 
 export function useOverviewReads(studioId: string | null, today: string, tz?: string): OverviewReads {
   const [state, setState] = useState<OverviewReads>(EMPTY);
@@ -46,7 +63,7 @@ export function useOverviewReads(studioId: string | null, today: string, tz?: st
     if (!studioId || !today) return;
     void (async () => {
       const entriesOf = (snap: { docs: Array<{ id: string; data: () => unknown }> }) => snap.docs.map((d) => ({ ...(d.data() as JournalEntry), id: d.id }));
-      const [inc, crit, dated, watch] = await Promise.all([
+      const [inc, crit, dated, watch, team] = await Promise.all([
         getDocs(query(collection(db, "clinicalIncidents"), where("studioId", "==", studioId), fsLimit(INCIDENT_LIMIT)))
           .then((snap) => snap.docs.map((d) => ({ ...(d.data() as ClinicalIncident), id: d.id })))
           .catch((err) => {
@@ -78,15 +95,31 @@ export function useOverviewReads(studioId: string | null, today: string, tz?: st
             handleFirestoreError(err, OperationType.GET, "watch");
             return "failed" as const;
           }),
+        getDocs(
+          query(
+            collection(db, "journalEntries"),
+            where("studioId", "==", studioId),
+            where("kind", "in", [...TEAM_NOTE_KINDS]),
+            where("createdAt", ">=", Timestamp.fromDate(studioDayBoundsForKey(addDays(today, -TEAM_NOTES_WINDOW_DAYS), tz).start)),
+            orderBy("createdAt", "desc"),
+            fsLimit(TEAM_NOTES_LIMIT),
+          ),
+        )
+          .then(entriesOf)
+          .catch((err) => {
+            handleFirestoreError(err, OperationType.GET, "journalEntries");
+            return null;
+          }),
       ]);
       if (cancelled) return;
       setState({
         incidents: inc,
         critical: crit,
         dated,
+        teamNotes: team,
         watch: watch === "failed" ? undefined : watch,
         loading: false,
-        failed: { incidents: inc === null, critical: crit === null, dated: dated === null, watch: watch === "failed" },
+        failed: { incidents: inc === null, critical: crit === null, dated: dated === null, watch: watch === "failed", teamNotes: team === null },
       });
     })();
     return () => {

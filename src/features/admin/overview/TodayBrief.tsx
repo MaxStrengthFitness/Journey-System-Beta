@@ -13,7 +13,10 @@
  *                        a tap away, the day's facts under it, and today's
  *                        "didn't come" marks with Take back
  *   Needs you            only what a leader can clear right here: acknowledge
- *                        pain, an incident or a Critical note; take a gesture
+ *                        pain, an incident or a Critical note; mark Seen on
+ *                        the team's Health, Incident and Retention notes of
+ *                        the last two weeks (notes round, Oct 3 2026,
+ *                        team-notes.ts); take a gesture
  *                        nobody owns; review a note that has mattered 60 days
  *                        (AJ's question 3, default); and, since wave 2 (AJ,
  *                        Sep 28 2026: "all yes"), a session nobody logged,
@@ -91,6 +94,7 @@ import { useStoredJourney } from "../journey/useStoredJourney";
 import { useStudioSettings } from "../../studio-settings/useStudioSettings";
 import { entriesForDay } from "./floor";
 import { hoursThisWeek, notesToReview, painQuestion, renewalsQuestion } from "./questions";
+import { TEAM_NOTES_ROWS_SHOWN, teamNotesQuestion } from "./team-notes";
 import { dropSentence } from "./performance";
 import { chaseList, todayNumbers } from "./today";
 import { moments } from "./moments";
@@ -215,6 +219,13 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
     [recent.sessions, own.incidents, own.critical, clients, today, tz],
   );
   const painPending = useMemo(() => pendingAcks(pain.rows, acks.value), [pain.rows, acks.value]);
+  // From the team's notes (notes round, Oct 3 2026): Health, Incident and
+  // Retention, whatever their loudness; Seen is the acknowledgement.
+  const teamNotes = useMemo(
+    () => teamNotesQuestion({ entries: own.teamNotes ?? [], clients, today, tz }),
+    [own.teamNotes, clients, today, tz],
+  );
+  const teamPending = useMemo(() => pendingAcks(teamNotes.rows, acks.value), [teamNotes.rows, acks.value]);
   const review = useMemo(() => notesToReview(own.critical ?? [], clients, today, tz), [own.critical, clients, today, tz]);
   const moment = useMemo(
     () => moments({ delight: delight.rows, datedNotes: own.dated ?? [], clients, weekEntries: week.entries, today, cutover: studio.journeyCutoverDate ?? null, tz }),
@@ -227,7 +238,8 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
   // Until the week, today's logging and today's marks have all answered, who nobody logged is unknown: there may be more.
   const unloggedUnknown = canMark && (neverLogged === null || marks.failed);
   const needsLoading = own.loading || recent.loading || acks.loading || delight.isLoading;
-  const otherPartial = own.failed.incidents || own.failed.critical || recent.failed || acks.failed || delight.failed;
+  const otherPartial =
+    own.failed.incidents || own.failed.critical || own.failed.teamNotes || recent.failed || acks.failed || delight.failed;
   const needsPartial = otherPartial || unloggedUnknown;
   // Still reading (not failed): say so in those words.
   const unloggedStillReading = !otherPartial && canMark && neverLogged === null && !marks.failed && (week.loading || logged.loading || marks.loading);
@@ -237,7 +249,8 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
     () => leftOpenSessions(recent.sessions, now.getTime(), { trainerNameOf: (id) => trainers.find((t) => t.id === id || t.authUid === id)?.fullName ?? null, tz }),
     [recent.sessions, now, trainers, tz],
   );
-  const needsCount = painPending.pending.length + unowned.length + review.length + unlogged.length + leftOpen.length;
+  const needsCount =
+    painPending.pending.length + teamPending.pending.length + unowned.length + review.length + unlogged.length + leftOpen.length;
   useEffect(() => {
     onNeedsCount?.(needsLoading ? null : needsCount);
   }, [onNeedsCount, needsLoading, needsCount]);
@@ -667,6 +680,32 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
               onOpenClient={onNavigateProfile}
               empty=""
             />
+            {teamPending.pending.length > 0 && (
+              <ActionRows
+                rows={teamPending.pending.slice(0, TEAM_NOTES_ROWS_SHOWN).map((r) => ({
+                  key: `team-note:${r.entryId}`,
+                  clientId: r.clientId,
+                  name: r.name,
+                  sentence: r.sentence,
+                  proof: r.proof,
+                  tone: r.tone,
+                  badge: r.badge,
+                  actions: (
+                    <AdminButton size="sm" variant="primary" busy={busyKey === "ack"} onClick={() => void ackRows([r])}>
+                      Seen
+                    </AdminButton>
+                  ),
+                }))}
+                onOpenClient={onNavigateProfile}
+                empty=""
+              />
+            )}
+            {teamPending.pending.length > TEAM_NOTES_ROWS_SHOWN && (
+              <BriefEmpty>
+                {teamPending.pending.length - TEAM_NOTES_ROWS_SHOWN} more from the team&rsquo;s notes. Each is on the
+                client&rsquo;s Notes.
+              </BriefEmpty>
+            )}
             {unlogged.length > 0 && (
               <ActionRows
                 rows={unlogged.map((c) => ({
