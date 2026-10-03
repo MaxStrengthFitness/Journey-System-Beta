@@ -247,37 +247,45 @@
   font-size: 14px;
 }
 
-/* ---- the sort: a pill and a panel of tiles (Oct 3 2026) ---- */
+/* ---- the sort: a pill and a panel of tiles (Oct 3 2026) ----
+   On the Hub's scale (day-header.css, peek.css): controls 40px, 14px/700,
+   10px corners; labels 11px/800 caps; the panel is the peek's card; the
+   direction is the Focus switch's segmented control. */
 .cd-sort {
   position: relative;
 }
 
 .cd-sort-pill {
-  min-height: 44px;
-  padding: 0 16px 0 14px;
+  min-height: 40px;
+  padding: 0 14px 0 12px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   border: 1px solid var(--eq-border-strong);
   border-radius: 999px;
   background: var(--eq-surface);
   color: var(--eq-ink-muted);
+  font: inherit;
   font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
 }
 
 .cd-sort-pill[aria-expanded="true"] {
   border-color: var(--eq-live);
+  background: var(--eq-live-fill);
+  color: var(--eq-live-text);
 }
 
 .cd-sort-key {
+  font-weight: 800;
   color: var(--eq-ink);
-  font-weight: 700;
 }
 
 .cd-sort-dir {
+  font-weight: 600;
   color: var(--eq-ink-2);
-  font-weight: 500;
 }
 
 .cd-sort-panel {
@@ -285,23 +293,32 @@
   z-index: 30;
   top: calc(100% + 8px);
   left: 0;
-  width: min(420px, calc(100vw - 32px));
+  box-sizing: border-box;
+  width: min(400px, calc(100vw - 32px));
   padding: 16px;
-  display: grid;
-  gap: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   border: 1px solid var(--eq-border-strong);
   border-radius: 16px;
-  background: var(--eq-surface-2);
-  box-shadow: var(--eq-shadow);
+  background: var(--eq-surface);
+  color: var(--eq-ink);
+  box-shadow: 0 16px 40px var(--eq-shadow);
+}
+
+.cd-sort-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .cd-sort-title {
-  margin: 0 0 8px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--eq-ink-faint);
+  color: var(--eq-ink-muted);
 }
 
 .cd-sort-tiles {
@@ -310,27 +327,63 @@
   gap: 8px;
 }
 
-.cd-sort-tile,
-.cd-sort-dirbtn {
-  min-height: 44px;
-  padding: 8px 12px;
+.cd-sort-tile {
+  min-height: 40px;
+  padding: 0 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  border: 1px solid var(--eq-border);
-  border-radius: 12px;
+  gap: 6px;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 10px;
   background: var(--eq-surface);
   color: var(--eq-ink-2);
-  font-size: 15px;
-  font-weight: 600;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
   text-align: left;
   cursor: pointer;
 }
 
-.cd-sort-tile[aria-pressed="true"],
-.cd-sort-dirbtn[aria-pressed="true"] {
+.cd-sort-tile[aria-pressed="true"] {
   border-color: var(--eq-live);
+  background: var(--eq-live-fill);
+  color: var(--eq-live-text);
+}
+
+.cd-sort-order {
+  padding-top: 16px;
+  border-top: 1px solid var(--eq-border);
+}
+
+/* The Focus switch's control: one bordered row, the pressed half filled. */
+.cd-sort-dirs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--eq-surface);
+}
+
+.cd-sort-dirbtn {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--eq-ink-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+
+.cd-sort-dirbtn + .cd-sort-dirbtn {
+  border-left: 1px solid var(--eq-border);
+}
+
+.cd-sort-dirbtn[aria-pressed="true"] {
   background: var(--eq-live-fill);
   color: var(--eq-live-text);
 }
@@ -339,28 +392,15 @@
   text-transform: uppercase;
 }
 
-.cd-sort-dirs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0;
-  padding: 4px;
-  border-radius: 14px;
-  background: var(--eq-surface-3);
-}
-
-.cd-sort-dirbtn {
-  justify-content: center;
-  display: block;
-  text-align: center;
-  border-color: transparent;
-  background: transparent;
-}
-
 .cd-sort-pill:focus-visible,
-.cd-sort-tile:focus-visible,
-.cd-sort-dirbtn:focus-visible {
+.cd-sort-tile:focus-visible {
   outline: 3px solid var(--eq-focus-ring);
   outline-offset: 2px;
+}
+
+.cd-sort-dirbtn:focus-visible {
+  outline: 3px solid var(--eq-focus-ring);
+  outline-offset: -3px;
 }
 
 .cd-display {

@@ -319,7 +319,7 @@ export function ClientDirectory({
     [clients, activeStudioId, ctx.bookingsByClient],
   );
 
-  const parsedForQuery = useMemo(() => parseQuery(deferredSearch, { words: new Map() }), [deferredSearch]);
+  const parsedForQuery = useMemo(() => parseQuery(deferredSearch, { words: new Map() }, { today }), [deferredSearch, today]);
   const firstNameWord = parsedForQuery.nameText.split(/\s+/)[0] ?? "";
   const queryEnabled = (scope === "all" && canSearchAll) || !rosterReady || rosterCut;
   const remote = useStudiosNameQuery(firstNameWord, queryIds, queryEnabled && firstNameWord.length > 0);
@@ -356,7 +356,7 @@ export function ClientDirectory({
   const nameIndex = useMemo(() => buildNameIndex(rows.map((r) => ({ id: r.id, first: r.name.first, nickname: r.name.nickname, last: r.name.last }))), [rows]);
   const occupations = useMemo(() => buildOccupationVocab(rows), [rows]);
   const nameVocab = useMemo(() => buildNameVocab(rows), [rows]);
-  const parsed = useMemo(() => parseQuery(deferredSearch, occupations, { names: nameVocab, asOccupation }), [deferredSearch, occupations, nameVocab, asOccupation]);
+  const parsed = useMemo(() => parseQuery(deferredSearch, occupations, { names: nameVocab, asOccupation, today }), [deferredSearch, occupations, nameVocab, asOccupation, today]);
   // A search finds an inactive client too; otherwise she is shown only behind the Inactive chip.
   const searching = parsed.tokens.length > 0 || !!parsed.nameText.trim();
   const listed = showInactive || searching ? rows : activeRows;
@@ -471,7 +471,7 @@ export function ClientDirectory({
               enterKeyHint="search"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              placeholder={"Name or nickname \u2014 or describe: \u201cnurses over 60\u201d"}
+              placeholder={"Name or nickname \u2014 or describe: \u201cnurses over 60\u201d, \u201crenewing this month\u201d"}
               aria-label="Search clients by name, or describe them"
               {...NAME_SEARCH_PROPS}
             />

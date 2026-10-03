@@ -7,7 +7,7 @@
  * them flip it, and either closes the panel. The words are `SORTS`' own, split
  * at the colon, so the pill, the panel and the column headers never disagree.
  */
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { ArrowDownUp, Check } from "lucide-react";
 import { SORTS, type SortDir, type SortKey, type SortSpec } from "./buckets";
 
@@ -34,6 +34,22 @@ export function SortPicker({ sort, keys, onChange }: { sort: SortSpec; keys: Rea
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
   const panelId = useId();
+  const panel = useRef<HTMLDivElement>(null);
+  // Anchored under the pill; slid back so it never runs off the right edge (16px gutter).
+  const [shift, setShift] = useState(0);
+  useLayoutEffect(() => {
+    if (!open) {
+      setShift(0);
+      return;
+    }
+    const el = panel.current;
+    if (!el || typeof window === "undefined") return;
+    const r = el.getBoundingClientRect();
+    const over = r.right - shift - (window.innerWidth - 16);
+    setShift(over > 0 ? -over : 0);
+    // Measured once per opening; `shift` is the result, not an input.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -75,7 +91,7 @@ export function SortPicker({ sort, keys, onChange }: { sort: SortSpec; keys: Rea
         <span className="cd-sort-dir">{dirWords(sort.key, sort.dir)}</span>
       </button>
       {open && (
-        <div className="cd-sort-panel" id={panelId} role="dialog" aria-label="Sort clients">
+        <div className="cd-sort-panel" id={panelId} role="dialog" aria-label="Sort clients" ref={panel} style={shift ? { left: shift } : undefined}>
           {GROUPS.map((g) => {
             const here = g.keys.filter((k) => keys.includes(k));
             if (here.length === 0) return null;
@@ -102,12 +118,15 @@ export function SortPicker({ sort, keys, onChange }: { sort: SortSpec; keys: Rea
               </div>
             );
           })}
-          <div className="cd-sort-dirs" role="group" aria-label={`${tileWords(sort.key)}, which way`}>
-            {dirs.map((d) => (
-              <button key={d} type="button" className="cd-sort-dirbtn" aria-pressed={sort.dir === d} onClick={() => pick({ key: sort.key, dir: d })}>
-                {dirWords(sort.key, d)}
-              </button>
-            ))}
+          <div className="cd-sort-group cd-sort-order">
+            <p className="cd-sort-title">{`${tileWords(sort.key)}, in order`}</p>
+            <div className="cd-sort-dirs" role="group" aria-label={`${tileWords(sort.key)}, which way`}>
+              {dirs.map((d) => (
+                <button key={d} type="button" className="cd-sort-dirbtn" aria-pressed={sort.dir === d} onClick={() => pick({ key: sort.key, dir: d })}>
+                  {dirWords(sort.key, d)}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
