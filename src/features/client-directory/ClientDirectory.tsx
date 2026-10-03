@@ -391,7 +391,7 @@ export function ClientDirectory({
   const colsWide = [
     ...base,
     wide.has("renews") ? "minmax(96px, 112px)" : null,
-    wide.has("total") ? "72px" : null,
+    wide.has("total") ? "96px" : null,
     wide.has("age") ? "52px" : null,
     wide.has("height") ? "64px" : null,
     tailCol,

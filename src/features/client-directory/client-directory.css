@@ -647,7 +647,8 @@
   font-size: 15px;
   line-height: 1.3;
   color: var(--eq-ink);
-  overflow-wrap: anywhere;
+  /* Between words only: "Unknown" never splits as "Unkno / wn". A word wider than its column still breaks rather than spill. */
+  overflow-wrap: break-word;
 }
 
 .cd-cell[data-sorted="true"] .cd-val {
