@@ -653,10 +653,16 @@ export function JourneyGrid({
     const firstId = sessions[0]?.id ?? null;
 
     if (firstId !== prevFirstId.current) olderAskedAt.current = undefined;
-    if (prevFirstId.current && firstId !== prevFirstId.current && sessions.some((s) => s.id === prevFirstId.current)) {
-      // Older columns were prepended: keep the same cells under the thumb.
+    if (userScrolled.current && prevFirstId.current && firstId !== prevFirstId.current && sessions.some((s) => s.id === prevFirstId.current)) {
+      // Older columns were prepended while the trainer is back in history:
+      // keep the same cells under the thumb.
       el.scrollLeft += el.scrollWidth - prevScrollWidth.current;
     } else if (!userScrolled.current) {
+      // Not scrolled back, so the newest session stays on the right whatever
+      // loaded. Shifting by the width added could land a column or two
+      // short when the columns had also been resized since the width was
+      // last read (AJ, Oct 2 2026: the profile opened with Sep 14 on the
+      // right and the newest session cut off).
       // Chronological flow: newest is on the right, so open the grid there.
       scrollToEnd();
     }
@@ -680,9 +686,17 @@ export function JourneyGrid({
     // trackpad swipe and an arrow key all arrive here as one scroll event.
     // `scrollToEnd()` lands ON the edge, and its own late echo — the spot it
     // set, read after the columns grew — is not the trainer (`pinnedAt`).
+    // Only a SIDEWAYS move can take the pin off: the scroller scrolls both
+    // ways, and an up-and-down swipe that lands while the columns are still
+    // widening read as "parked away from the newest column" (Oct 2 2026).
+    // Null until the first scroll event: that one is judged as before.
+    let lastLeft: number | null = null;
     const onScroll = () => {
+      const moved = lastLeft === null || Math.abs(el.scrollLeft - lastLeft) >= 1;
+      lastLeft = el.scrollLeft;
       const echo = pinnedAt.current;
       pinnedAt.current = null;
+      if (!moved) return;
       if (echo !== null && Math.abs(el.scrollLeft - echo) < 1) return;
       const colW =
         el.querySelector<HTMLElement>(".jg-head[data-session-id]")?.offsetWidth ||
@@ -699,6 +713,7 @@ export function JourneyGrid({
       typeof ResizeObserver === "function"
         ? new ResizeObserver(() => {
             if (!userScrolled.current) scrollToEnd();
+            prevScrollWidth.current = el.scrollWidth;
           })
         : null;
     ro?.observe(el);

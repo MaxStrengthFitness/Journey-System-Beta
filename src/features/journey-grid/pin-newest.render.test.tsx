@@ -203,3 +203,25 @@ describe("JourneyGrid keeps a freshly opened profile on the newest session", () 
     await unmount();
   });
 });
+
+describe("JourneyGrid stays on the newest session (Oct 2 2026)", () => {
+  it("is not unpinned by an up-and-down scroll while the columns are still widening", async () => {
+    const { scroller, timeline } = await mountProfileGrid();
+    const box = { scrollWidth: 1052, clientWidth: 673, scrollLeft: 379 };
+    fakeLayout(scroller, box);
+    await act(async () => {
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+    // The sets land and the columns widen; before the grid re-pins, a
+    // vertical swipe fires a scroll event with scrollLeft unchanged.
+    box.scrollWidth = 1133;
+    await act(async () => {
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+    await act(async () => {
+      for (const o of watching(timeline)) o.callback();
+    });
+    expect(box.scrollLeft).toBe(box.scrollWidth - box.clientWidth);
+    await unmount();
+  });
+});
