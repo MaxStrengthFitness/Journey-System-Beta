@@ -19,11 +19,11 @@
  *                  (renewals/permissions canManageRenewals: head trainers
  *                  count as leaders)
  *
- * NOT BUILT: "Note for our 1:1" (the blueprint's second button). It needs a
- * place to keep a leader's private note about a person; Relay's private
- * notes could hold one with no new field, but that store belongs to the
- * Relay room and is being reworked beside this round, so the button waits
- * (docs/rounds/2026-09-28-operations.md, for AJ).
+ *   Your notes     (notes round, Oct 3 2026; leader-notes.ts) a leader's
+ *                  own Team member notes about the person, from their
+ *                  Journal, and "Note for our 1:1", which writes one more
+ *                  there. Private to the leader; never shown to the person;
+ *                  nothing is sent
  *
  * READS, one studio, each an existing shape: the Journey (useStudioJourneys:
  * this week's bookings as the server answered them, the renewal settings,
@@ -56,6 +56,8 @@ import { toggleHuddleLine, useHuddleLines } from "./huddle-memory";
 import { checkLine, howWeCheck, renewalCounts, TRAINER_RATE_MIN } from "./renewal-counts";
 import { clientsLine, didLine, offToday, onToday, recognitionLine, usualClients } from "./team-week";
 import { useKudosThisWeek } from "./useKudosThisWeek";
+import { LeaderNotes, useLeaderNotes } from "./LeaderNotes";
+import { auth } from "../../../firebase";
 import "../shell/ops.css";
 
 export interface TeamWeekPageProps {
@@ -117,6 +119,11 @@ export function TeamWeekPage({ studio, studios, clients, trainers, authTrainer }
   }, [outcomes.rows, outcomes.paygRule, studioId, trainers]);
   const [checkOpen, setCheckOpen] = useState(false);
 
+  /* ---- a leader's own notes about each person (Oct 3 2026) ---- */
+  // The Auth uid: the Journal is the leader's by path, and the rules pin it.
+  const myUid = leads ? (auth.currentUser?.uid ?? null) : null;
+  const myNotes = useLeaderNotes(myUid);
+
   const card = (key: string, name: string, trainer: Trainer | null, meta: string, isOff: boolean) => {
     const trainerId = trainer?.id ?? null;
     const theirs = usualClients(j.entries, trainerId);
@@ -143,6 +150,15 @@ export function TeamWeekPage({ studio, studios, clients, trainers, authTrainer }
           <span className="ops-tr__lab">Their clients</span>
           {trainerId ? clientsLine(theirs, known) : "Journey doesn't know this trainer, so their usual clients can't be told."}
         </p>
+        {myUid && (
+          <LeaderNotes
+            name={name}
+            uid={myUid}
+            authorName={authTrainer.fullName || "A leader"}
+            read={myNotes.read}
+            onSaved={myNotes.refresh}
+          />
+        )}
         {rec && line && (
           <>
             <p className="ops-tr__l">
