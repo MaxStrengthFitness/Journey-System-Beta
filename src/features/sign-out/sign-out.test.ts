@@ -11,7 +11,7 @@ import {
   type StorageLike,
 } from "./sign-out";
 import { forgetOnSignOut, forgetPersonalMemory } from "./memory";
-import { DEFAULT_STUDIO_KEY } from "../../lib/default-studio";
+import { DEFAULT_STUDIO_KEY, DEVICE_STUDIO_KEY } from "../../lib/default-studio";
 import { STORE_PREFIX as PROFILE_NAV_PREFIX } from "../client-profile/profile-nav";
 import { PREFIX as SETUP_HINT_PREFIX } from "../machine-fit/ui/open-hint";
 import { PLACE_KEY, RELOAD_KEY } from "../new-version/reload-once";
@@ -81,8 +81,8 @@ describe("clearPersonalStorage — the iPad keeps its studio, nothing else", () 
     expect(local.length).toBe(0);
   });
 
-  it("the pinned studio is the only device key", () => {
-    expect(DEVICE_KEYS).toEqual([DEFAULT_STUDIO_KEY]);
+  it("the pinned studio and the studio this iPad last opened are the only device keys", () => {
+    expect(DEVICE_KEYS).toEqual([DEFAULT_STUDIO_KEY, DEVICE_STUDIO_KEY]);
   });
 
   it("a storage that throws is survived, not fatal", () => {

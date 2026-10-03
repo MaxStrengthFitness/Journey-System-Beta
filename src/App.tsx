@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { signOut } from "firebase/auth";
-import { motion } from "motion/react";
+import { OpeningJourney } from "./features/front-door/CheckingIn";
 import { auth } from "./firebase";
 import { ActiveStudioProvider } from "./contexts/ActiveStudioContext";
 import { MindbodyHealthProvider } from "./contexts/MindbodyHealthContext";
@@ -26,6 +26,9 @@ export default function App() {
     tokenRole,
     setTokenRole,
     signInRefusal,
+    trainerLookup,
+    lookupStep,
+    retryLookup,
   } = useAuthInitialization();
 
   const handleLogout = async () => {
@@ -47,22 +50,9 @@ export default function App() {
     (window as any).migrateClientMachineMetrics = migrateClientMachineMetrics;
   }, []);
 
-  if (!isAuthReady) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex flex-col items-center gap-4"
-        >
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-muted-foreground font-medium">
-            Loading Max Strength...
-          </p>
-        </motion.div>
-      </div>
-    );
-  }
+  // Before Firebase has answered: the front door's three squares, so the
+  // first frame of every visit is already Journey's (features/front-door).
+  if (!isAuthReady) return <OpeningJourney />;
 
   return (
     <MindbodyHealthProvider>
@@ -103,6 +93,9 @@ export default function App() {
             handleLogout={handleLogout}
             tokenRole={tokenRole}
             signInRefusal={signInRefusal}
+            trainerLookup={trainerLookup}
+            lookupStep={lookupStep}
+            retryLookup={retryLookup}
           />
           </UnsavedChangesProvider>
         </ActiveStudioProvider>

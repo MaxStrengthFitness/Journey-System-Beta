@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
 import {
   doc,
@@ -32,6 +32,23 @@ export function useAuthInitialization() {
   const [tokenRole, setTokenRole] = useState<string | null>(null);
   /** Why the last sign-in was turned away (a switched-off account), for the sign-in screen. */
   const [signInRefusal, setSignInRefusal] = useState<string | null>(null);
+  /**
+   * Where finding the signed-in person has got to (the front door, Oct 3
+   * 2026). Firebase answers "signed in" before Journey has found the trainer
+   * record, and AppContent used to read that gap as "no record": every
+   * returning trainer saw the Request Access form flash, and anyone whose read
+   * FAILED (bad Wi-Fi) was treated as a stranger. "checking" is the gap,
+   * "failed" a read that never answered: neither is "not on a team".
+   * features/front-door/README.md.
+   */
+  const [trainerLookup, setTrainerLookup] = useState<TrainerLookup>("idle");
+  /** How many of the three check steps are done: signed in, record, studios. */
+  const [lookupStep, setLookupStep] = useState(0);
+  const resolveRef = useRef<((u: FirebaseUser | null) => void) | null>(null);
+  /** Look the signed-in person up again (Try again on "Can't check"). */
+  const retryLookup = useCallback(() => {
+    if (auth.currentUser) resolveRef.current?.(auth.currentUser);
+  }, []);
 
   /**
    * While signed in, watch the person's own trainer record (one document), so
@@ -59,7 +76,7 @@ export function useAuthInitialization() {
   useEffect(() => {
     /* Whose sign-in the app last saw: undefined until Firebase first answers. */
     let lastUid: string | null | undefined = undefined;
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+    const resolve = async (u: FirebaseUser | null) => {
       /* A sign-out that did not come through the menu — another tab, an
          expired account, a Microsoft account from outside the company turned
          away by the sign-in screen — must forget the last person too. The
@@ -72,6 +89,10 @@ export function useAuthInitialization() {
       lastUid = uid;
       setUser(u);
       if (u) {
+        setTrainerLookup("checking");
+        setLookupStep(1);
+        /* A read of the trainer record that threw: unknown, never "none". */
+        let lookupFailed = false;
         try {
           let claimsRole: string | null = null;
           try {
@@ -234,6 +255,7 @@ export function useAuthInitialization() {
               }
             } catch (e) {
               console.warn("Could not fetch trainer profile.", e);
+              lookupFailed = true;
             }
           }
 
@@ -258,7 +280,16 @@ export function useAuthInitialization() {
           }
           if (trainerData) setSignInRefusal(null);
 
+          /* The record couldn't be read: "Can't check", never Request Access. */
+          if (!trainerData && lookupFailed) {
+            setAuthTrainer(null);
+            setTrainerLookup("failed");
+            setIsAuthReady(true);
+            return;
+          }
+
           setAuthTrainer(trainerData);
+          if (trainerData) setLookupStep(2);
 
           /**
            * ROLE CLAIM (cost round, Sep 2026). The Cloud Function
@@ -293,6 +324,7 @@ export function useAuthInitialization() {
           }
 
           if (!trainerData) {
+            setTrainerLookup("done");
             setIsAuthReady(true);
             return;
           }
@@ -316,10 +348,15 @@ export function useAuthInitialization() {
               ),
             );
           } catch (e) {}
+          setLookupStep(3);
+          setTrainerLookup("done");
         } catch (error) {
           console.error("Auth initialization failed", error);
+          setTrainerLookup("failed");
         }
       } else {
+        setTrainerLookup("idle");
+        setLookupStep(0);
         setAuthTrainer(null);
         setNetworks([]);
         // The last person's role claim. Left here it would still answer
@@ -328,9 +365,14 @@ export function useAuthInitialization() {
         setTokenRole(null);
       }
       setIsAuthReady(true);
-    });
+    };
+    resolveRef.current = (u) => void resolve(u);
+    const unsubscribe = onAuthStateChanged(auth, (u) => void resolve(u));
 
-    return () => unsubscribe();
+    return () => {
+      resolveRef.current = null;
+      unsubscribe();
+    };
   }, []);
 
   return {
@@ -347,5 +389,10 @@ export function useAuthInitialization() {
     tokenRole,
     setTokenRole,
     signInRefusal,
+    trainerLookup,
+    lookupStep,
+    retryLookup,
   };
 }
+
+export type TrainerLookup = "idle" | "checking" | "done" | "failed";

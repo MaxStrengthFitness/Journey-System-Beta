@@ -184,6 +184,14 @@ const LearningView = lazy(() =>
   import("./features/learning").then((m) => ({ default: m.LearningView })),
 );
 import { LoginScreen } from "./components/LoginScreen";
+import { CheckingIn } from "./features/front-door/CheckingIn";
+import { CantCheck } from "./features/front-door/CantCheck";
+import {
+  isCompanyMicrosoftEmail,
+  signInErrorSentence,
+  wrongMicrosoftAccountSentence,
+} from "./features/front-door/sign-in-errors";
+import type { TrainerLookup } from "./hooks/useAuthInitialization";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { isOwner } from "./lib/permissions";
 import { HUB_PLACE, mayOpenOperations } from "./features/admin/operations-access";
@@ -277,6 +285,9 @@ export default function AppContent({
   handleLogout,
   tokenRole,
   signInRefusal = null,
+  trainerLookup = "done",
+  lookupStep = 3,
+  retryLookup,
 }: {
   user: FirebaseUser;
   authTrainer: Trainer;
@@ -291,6 +302,12 @@ export default function AppContent({
   tokenRole: string | null;
   /** Why the last sign-in was turned away: a switched-off account (Oct 2 2026). */
   signInRefusal?: string | null;
+  /** Where finding the signed-in person has got to (the front door, Oct 3 2026). */
+  trainerLookup?: TrainerLookup;
+  /** How many of the three check steps are done. */
+  lookupStep?: number;
+  /** Look the signed-in person up again ("Can't check" → Try again). */
+  retryLookup?: () => void;
 }) {
   const { success: toastSuccess, info: toastInfo } = useToast();
   const { theme } = useTheme();
@@ -1003,8 +1020,8 @@ export default function AppContent({
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  /** Microsoft sign-in is limited to company staff. */
-  const MICROSOFT_ALLOWED_DOMAIN = "maxstrengthfitness.com";
+  /* Microsoft sign-in is limited to company staff (MICROSOFT_DOMAIN,
+     features/front-door/sign-in-errors.ts). */
 
   const handleLogin = async (providerName: "google" | "microsoft") => {
     if (isLoggingIn) return;
@@ -1058,46 +1075,19 @@ export default function AppContent({
           ""
         ).toLowerCase();
 
-        if (!signedInEmail.endsWith(`@${MICROSOFT_ALLOWED_DOMAIN}`)) {
+        if (!isCompanyMicrosoftEmail(signedInEmail)) {
           await signOut(auth);
-          setLoginError(
-            `Microsoft sign-in is restricted to @${MICROSOFT_ALLOWED_DOMAIN} accounts. ${
-              signedInEmail
-                ? `"${signedInEmail}" is not permitted.`
-                : "That account has no usable email address."
-            }`,
-          );
+          setLoginError(wrongMicrosoftAccountSentence(signedInEmail));
           return;
         }
       }
     } catch (error: any) {
-      if (
-        error.code === "auth/popup-closed-by-user" ||
-        error.code === "auth/cancelled-popup-request"
-      ) {
-        return;
-      }
+      // Plain words first, the technical detail after for head office
+      // (features/front-door/sign-in-errors.ts); a closed window says nothing.
+      const sentence = signInErrorSentence(error);
+      if (!sentence) return;
       console.error("Login failed:", error);
-
-      const errMsg = error.message || "";
-      if (
-        errMsg.includes("unauthorized_client") ||
-        errMsg.includes("not enabled for consumers")
-      ) {
-        setLoginError(
-          "Login failed: this Microsoft app does not accept personal Microsoft accounts. Set VITE_MICROSOFT_TENANT_ID=organizations in .env (or your tenant GUID if the app is single-tenant) and restart the dev server.",
-        );
-      } else if (errMsg.includes("AADSTS50011")) {
-        setLoginError(
-          "Login failed: redirect URI mismatch. In Azure App Registrations, add the callback URL shown on Firebase's Microsoft provider page to your app's Web redirect URIs.",
-        );
-      } else if (errMsg.includes("AADSTS50194")) {
-        setLoginError(
-          "Login failed: Your Microsoft App Registration is configured as single-tenant. Please go to Azure Portal and configure application 'dd2ae28c-1a71-4de3-bc12-5b0683032526' to be multi-tenant ('Accounts in any organizational directory and personal Microsoft accounts'), or set VITE_MICROSOFT_TENANT_ID in your environment variables to your tenant ID.",
-        );
-      } else {
-        setLoginError(`Login failed: ${error.message}`);
-      }
+      setLoginError(sentence);
     } finally {
       setIsLoggingIn(false);
     }
@@ -1109,6 +1099,23 @@ export default function AppContent({
         isLoggingIn={isLoggingIn}
         loginError={loginError ?? signInRefusal}
         onLogin={handleLogin}
+      />
+    );
+  }
+
+  /* Signed in, but Journey hasn't found (or couldn't read) the trainer record
+     yet. Neither is "not on a team": the request form waits for a finished
+     lookup that found nobody (the front door, Oct 3 2026). */
+  const signedInEmail = user?.email || user?.providerData?.find((p) => p?.email)?.email || null;
+  if (user && trainerLookup === "checking") {
+    return <CheckingIn step={lookupStep} email={signedInEmail} />;
+  }
+  if (user && !authTrainer && trainerLookup === "failed") {
+    return (
+      <CantCheck
+        email={signedInEmail}
+        onRetry={() => retryLookup?.()}
+        onSignOut={() => void handleLogout()}
       />
     );
   }

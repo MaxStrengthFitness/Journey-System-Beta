@@ -28,3 +28,43 @@ export function setDefaultStudioId(studioId: string | null): void {
     /* ignore */
   }
 }
+
+/**
+ * The studio this iPad last opened, by id AND name (the front door, Oct 3
+ * 2026). The sign-in screen says "This iPad opens Strongsville" before anyone
+ * is signed in, when the studios can't be read yet, so it keeps the name it
+ * was given. It belongs to the iPad, so sign-out keeps it (DEVICE_KEYS).
+ */
+export const DEVICE_STUDIO_KEY = "journey_device_studio";
+
+export interface DeviceStudio {
+  id: string;
+  name: string;
+}
+
+export function getDeviceStudio(): DeviceStudio | null {
+  try {
+    const raw = localStorage.getItem(DEVICE_STUDIO_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as Partial<DeviceStudio>;
+    return typeof v.id === "string" && typeof v.name === "string" && v.id && v.name.trim()
+      ? { id: v.id, name: v.name.trim() }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export function rememberDeviceStudio(studio: DeviceStudio): void {
+  try {
+    localStorage.setItem(DEVICE_STUDIO_KEY, JSON.stringify({ id: studio.id, name: studio.name }));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** The sign-in screen's sentence about this iPad, or null when it knows nothing. */
+export function deviceStudioLine(device: DeviceStudio | null, pinnedId: string | null): string | null {
+  if (!device) return null;
+  return pinnedId === device.id ? `This iPad opens ${device.name}` : `Last used at ${device.name}`;
+}

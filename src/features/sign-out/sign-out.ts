@@ -25,7 +25,7 @@
  * PURE apart from the storage it is handed, so it is tested without a device.
  */
 
-import { DEFAULT_STUDIO_KEY } from "../../lib/default-studio";
+import { DEFAULT_STUDIO_KEY, DEVICE_STUDIO_KEY } from "../../lib/default-studio";
 import { STORE_PREFIX as PROFILE_NAV_PREFIX } from "../client-profile/profile-nav";
 import { PREFIX as SETUP_HINT_PREFIX } from "../machine-fit/ui/open-hint";
 import { PLACE_KEY as NEW_VERSION_PLACE_KEY } from "../new-version/reload-once";
@@ -42,7 +42,7 @@ export interface StorageLike {
 }
 
 /** Local-storage keys that belong to the iPad, not to whoever is signed in. */
-export const DEVICE_KEYS: readonly string[] = [DEFAULT_STUDIO_KEY];
+export const DEVICE_KEYS: readonly string[] = [DEFAULT_STUDIO_KEY, DEVICE_STUDIO_KEY];
 
 /**
  * Session-storage keys, by prefix, that are one-shot handoffs from one screen

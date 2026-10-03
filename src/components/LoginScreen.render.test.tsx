@@ -46,7 +46,7 @@ describe("LoginScreen", () => {
     const onLogin = vi.fn();
     const host = await mount(<LoginScreen isLoggingIn={false} loginError={null} onLogin={onLogin} />);
 
-    expect(host.textContent).toContain("Journey System");
+    expect(host.querySelector("h1")?.textContent).toBe("Journey");
     const google = buttonSaying(host, "Continue with Google");
     const microsoft = buttonSaying(host, "Continue with Microsoft");
     expect(google).toBeDefined();
@@ -73,5 +73,18 @@ describe("LoginScreen", () => {
 
     await act(async () => google.click());
     expect(onLogin).not.toHaveBeenCalled();
+  });
+
+  it("says which studio this iPad opens, before anyone signs in", async () => {
+    localStorage.setItem("journey_device_studio", JSON.stringify({ id: "strongsville", name: "Strongsville" }));
+    localStorage.setItem("max_strength_default_studio_id", "strongsville");
+    const host = await mount(<LoginScreen isLoggingIn={false} loginError={null} onLogin={vi.fn()} />);
+    expect(host.textContent).toContain("This iPad opens Strongsville");
+    localStorage.clear();
+  });
+
+  it("puts the error where it happened, as an alert", async () => {
+    const host = await mount(<LoginScreen isLoggingIn={false} loginError="Check the Wi-Fi." onLogin={vi.fn()} />);
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("Check the Wi-Fi.");
   });
 });
