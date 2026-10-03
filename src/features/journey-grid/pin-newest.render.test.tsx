@@ -189,9 +189,10 @@ describe("JourneyGrid keeps a freshly opened profile on the newest session", () 
     const box = { scrollWidth: 1052, clientWidth: 673, scrollLeft: 379 };
     fakeLayout(scroller, box);
 
-    // Back to the oldest columns, by hand.
+    // Back to the oldest columns, by hand: a finger on the grid, then the scroll.
     box.scrollLeft = 0;
     await act(async () => {
+      scroller.dispatchEvent(new Event("touchmove"));
       scroller.dispatchEvent(new Event("scroll"));
     });
 
@@ -220,6 +221,25 @@ describe("JourneyGrid stays on the newest session (Oct 2 2026)", () => {
     });
     await act(async () => {
       for (const o of watching(timeline)) o.callback();
+    });
+    expect(box.scrollLeft).toBe(box.scrollWidth - box.clientWidth);
+    await unmount();
+  });
+});
+
+describe("JourneyGrid and a scroll nobody made (Oct 2 2026)", () => {
+  it("goes back to the newest column when focus, not the trainer, moves the grid", async () => {
+    const { scroller } = await mountProfileGrid();
+    const box = { scrollWidth: 1052, clientWidth: 673, scrollLeft: 379 };
+    fakeLayout(scroller, box);
+    await act(async () => {
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+    // The corner's menu closes and focus comes back: the browser nudges the
+    // grid a column to the left, with no finger, wheel or key behind it.
+    box.scrollLeft = 285;
+    await act(async () => {
+      scroller.dispatchEvent(new Event("scroll"));
     });
     expect(box.scrollLeft).toBe(box.scrollWidth - box.clientWidth);
     await unmount();

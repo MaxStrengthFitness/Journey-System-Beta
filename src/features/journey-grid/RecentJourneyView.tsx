@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Check, ChevronDown, ListFilter } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { JourneyRow, JourneySession, StatMetric } from "./types";
 import { JourneyGrid, type GridSection } from "./JourneyGrid";
 import { GridToolbar, QualityLegend } from "./GridToolbar";
@@ -23,6 +25,62 @@ const FILTER_LABEL: Record<RowFilter, string> = {
   b: "B routine",
   all: "All machines",
 };
+
+/** The corner's words: short, because the corner is one column wide. */
+const CORNER_LABEL: Record<RowFilter, string> = {
+  performed: "Performed",
+  a: "A routine",
+  b: "B routine",
+  all: "All machines",
+};
+
+/** The menu lists the default first. */
+const MENU_ORDER: RowFilter[] = ["all", "performed", "a", "b"];
+
+/**
+ * The grid's corner as a filter: "ALL MACHINES 19 ⌄" with a filter mark,
+ * the whole corner the tap target. The menu's rows are 44px, each with its
+ * count, the one showing ticked.
+ */
+function FilterCorner({
+  value,
+  options,
+  onChange,
+}: {
+  value: RowFilter;
+  options: { id: RowFilter; count: number }[];
+  onChange: (f: RowFilter) => void;
+}) {
+  const current = options.find((o) => o.id === value);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className="jg-corner__filter"
+        aria-label={`Showing ${FILTER_LABEL[value]}${current ? `, ${current.count}` : ""}. Tap to choose which machines to show.`}
+        data-testid="journey-filter"
+      >
+        <ListFilter className="jg-corner__filter-icon" aria-hidden="true" />
+        <span className="jg-corner__title">{CORNER_LABEL[value]}</span>
+        {current && <span className="jg-corner__count">{current.count}</span>}
+        <ChevronDown className="jg-corner__filter-chev" aria-hidden="true" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-60 rounded-xl p-1.5">
+        {options.map((o) => (
+          <DropdownMenuItem
+            key={o.id}
+            onClick={() => onChange(o.id)}
+            className="min-h-11 rounded-lg px-3 flex items-center gap-2 cursor-pointer"
+            data-testid={`journey-filter-${o.id}`}
+          >
+            <Check className={`w-4 h-4 shrink-0 ${o.id === value ? "opacity-100" : "opacity-0"}`} aria-hidden="true" />
+            <span className="flex-1 text-[13px] font-semibold">{FILTER_LABEL[o.id]}</span>
+            <span className="text-[12px] tabular-nums text-muted-foreground">{o.count}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export interface RecentJourneyViewProps {
   /** Every session loaded so far, oldest → newest. */
@@ -155,7 +213,8 @@ export function RecentJourneyView({
     if (!availableFilters.includes(filter)) setFilter("all");
   }, [availableFilters, filter]);
 
-  const sections = useMemo<GridSection[]>(() => {
+  // Every filter's rows, so the menu can say how many each one shows.
+  const rowsByFilter = useMemo<Record<RowFilter, JourneyRow[]>>(() => {
     const inA = new Set(routineAMachineIds ?? []);
     const inB = new Set(routineBMachineIds ?? []);
     // Performed means performed in a column the grid is actually DRAWING.
@@ -163,35 +222,37 @@ export function RecentJourneyView({
     // 25 sessions ago — a full row of em-dashes, which is the exact thing
     // this filter exists to remove.
     const shownIds = new Set(visibleSessions.map((s) => s.id));
-    const pick =
-      filter === "all"
-        ? rows
-        : filter === "a"
-          ? rows.filter((r) => inA.has(r.machine.id))
-          : filter === "b"
-            ? rows.filter((r) => inB.has(r.machine.id))
-            : rows.filter((r) => Object.keys(r.sets).some((id) => shownIds.has(id)));
-    // The filter rides in the section's own bar, on the grid it filters
-    // (AJ, Oct 2 2026: "lets move the filter directly to the bar down
-    // here"), instead of a row of its own above the key.
-    const header = (
-      <div className="jg-seg jg-seg--bar" role="radiogroup" aria-label="Which machines to show">
-        {availableFilters.map((f) => (
-          <button
-            key={f}
-            type="button"
-            role="radio"
-            aria-checked={filter === f}
-            className={`jg-seg__btn ${filter === f ? "is-on" : ""}`}
-            onClick={() => setFilter(f)}
-          >
-            {FILTER_LABEL[f]}
-          </button>
-        ))}
-      </div>
-    );
-    return [{ id: filter, label: FILTER_LABEL[filter], rows: pick, header }];
-  }, [rows, filter, routineAMachineIds, routineBMachineIds, visibleSessions, availableFilters]);
+    return {
+      all: rows,
+      a: rows.filter((r) => inA.has(r.machine.id)),
+      b: rows.filter((r) => inB.has(r.machine.id)),
+      performed: rows.filter((r) => Object.keys(r.sets).some((id) => shownIds.has(id))),
+    };
+  }, [rows, routineAMachineIds, routineBMachineIds, visibleSessions]);
+
+  // One section, no divider row: the corner names it (Oct 2 2026).
+  const sections = useMemo<GridSection[]>(
+    () => [{ id: filter, label: FILTER_LABEL[filter], rows: rowsByFilter[filter], bare: true }],
+    [rowsByFilter, filter],
+  );
+
+  /*
+   * The filter is the grid's corner (AJ, Oct 2 2026: "maybe there should be
+   * a small adjuster next to the word equipment ... when you tap it, it
+   * filters it, then changes the word equipment to whatever that filter
+   * is"). The corner says what is showing and how many; a tap opens the
+   * four choices with their counts. No row of its own above the machines.
+   */
+  const corner = (
+    <FilterCorner
+      value={filter}
+      options={MENU_ORDER.filter((f) => availableFilters.includes(f)).map((f) => ({
+        id: f,
+        count: rowsByFilter[f].length,
+      }))}
+      onChange={setFilter}
+    />
+  );
 
   return (
     <section
@@ -257,6 +318,7 @@ export function RecentJourneyView({
         maxHeight={maxHeight}
         viewportReserve={viewportReserve}
         title="Equipment"
+        corner={corner}
         fit="auto"
         settingsDisplay="menu"
         targetColumns={initialVisible}

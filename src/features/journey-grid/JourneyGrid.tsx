@@ -44,11 +44,10 @@ export interface GridSection {
   /** Rows in this section have NO live input even when a live column exists. */
   inactive?: boolean;
   /**
-   * Drawn in the section's bar in place of its label: the Journey tab's
-   * filter sits here, on the grid it filters (AJ, Oct 2 2026). The count
-   * stays beside it. `label` still names the row for a screen reader.
+   * No divider row: the section's name is said elsewhere (the Journey tab
+   * names its one section in the corner's filter, Oct 2 2026).
    */
-  header?: ReactNode;
+  bare?: boolean;
 }
 
 export interface JourneyGridProps {
@@ -122,6 +121,11 @@ export interface JourneyGridProps {
   viewportReserve?: number;
   /** Column caption in the sticky corner. */
   title?: string;
+  /**
+   * Drawn in the corner in place of `title`: the Journey tab's filter
+   * (AJ, Oct 2 2026: "a small adjuster next to the word equipment").
+   */
+  corner?: ReactNode;
   /**
    * "fixed" (default, Active Session): the tuned density — 44px rows, 84px
    * columns — and the grid scrolls when it overflows.
@@ -552,6 +556,7 @@ export function JourneyGrid({
   maxHeight,
   viewportReserve = 112,
   title = "Equipment",
+  corner,
   fit = "fixed",
   settingsDisplay = "inline",
   targetColumns = 14,
@@ -681,15 +686,25 @@ export function JourneyGrid({
     const touch = () => {
       userTouched.current = true;
     };
+    // When the trainer last moved the grid themselves: a finger or mouse
+    // dragging, a wheel or trackpad, an arrow key. A scroll with none of
+    // these just before it is the browser's own — most often focus coming
+    // back to the corner's filter after its menu closes, which nudged the
+    // grid a column and switched the pin off (AJ, Oct 2 2026: the profile
+    // "had September 14th as the one all the way to the right").
+    let gestureAt = -Infinity;
+    const gesture = () => {
+      gestureAt = performance.now();
+    };
+    const gestureMove = (e: PointerEvent) => {
+      if (e.buttons !== 0 || e.pointerType === "touch") gesture();
+    };
     // The pin comes off only when the grid is actually parked away from the
-    // newest column. Gesture-agnostic on purpose: a drag on an iPad, a
-    // trackpad swipe and an arrow key all arrive here as one scroll event.
-    // `scrollToEnd()` lands ON the edge, and its own late echo — the spot it
-    // set, read after the columns grew — is not the trainer (`pinnedAt`).
-    // Only a SIDEWAYS move can take the pin off: the scroller scrolls both
-    // ways, and an up-and-down swipe that lands while the columns are still
-    // widening read as "parked away from the newest column" (Oct 2 2026).
-    // Null until the first scroll event: that one is judged as before.
+    // newest column, and only by the trainer's hand. Only a SIDEWAYS move
+    // counts: the scroller scrolls both ways. `scrollToEnd()` lands ON the
+    // edge, and its own late echo — the spot it set, read after the columns
+    // grew — is not the trainer (`pinnedAt`). Null until the first scroll
+    // event: that one is judged on the rest.
     let lastLeft: number | null = null;
     const onScroll = () => {
       const moved = lastLeft === null || Math.abs(el.scrollLeft - lastLeft) >= 1;
@@ -701,13 +716,22 @@ export function JourneyGrid({
       const colW =
         el.querySelector<HTMLElement>(".jg-head[data-session-id]")?.offsetWidth ||
         DEFAULT_COLUMN_WIDTH;
-      if (el.scrollWidth - el.clientWidth - el.scrollLeft > colW / 2) {
+      if (el.scrollWidth - el.clientWidth - el.scrollLeft <= colW / 2) return;
+      // Momentum carries on after the finger lifts, so "just before" is
+      // generous; a focus scroll has no gesture at all.
+      if (performance.now() - gestureAt < 1500) {
         userScrolled.current = true;
+      } else if (!userScrolled.current) {
+        scrollToEnd();
       }
     };
     el.addEventListener("pointerdown", touch, { passive: true });
     el.addEventListener("wheel", touch, { passive: true });
     el.addEventListener("keydown", touch);
+    el.addEventListener("wheel", gesture, { passive: true });
+    el.addEventListener("touchmove", gesture, { passive: true });
+    el.addEventListener("pointermove", gestureMove, { passive: true });
+    el.addEventListener("keydown", gesture);
     el.addEventListener("scroll", onScroll, { passive: true });
     const ro =
       typeof ResizeObserver === "function"
@@ -730,6 +754,10 @@ export function JourneyGrid({
       el.removeEventListener("pointerdown", touch);
       el.removeEventListener("wheel", touch);
       el.removeEventListener("keydown", touch);
+      el.removeEventListener("wheel", gesture);
+      el.removeEventListener("touchmove", gesture);
+      el.removeEventListener("pointermove", gestureMove);
+      el.removeEventListener("keydown", gesture);
       el.removeEventListener("scroll", onScroll);
     };
   }, [scrollToEnd]);
@@ -1007,7 +1035,7 @@ export function JourneyGrid({
                 the screen a trainer actually stares at for an hour it was a
                 caption for something that was not on screen. */}
             <div className="jg-corner" role="columnheader">
-              <span className="jg-corner__title">{title}</span>
+              {corner ?? <span className="jg-corner__title">{title}</span>}
             </div>
 
             {showStats && (
@@ -1189,14 +1217,7 @@ const SectionBlock = memo(function SectionBlock({
   const toggle = section.onToggle;
   return (
     <>
-      {section.header ? (
-        <div className="jg-group jg-group--header" role="row" aria-label={section.label}>
-          <span className="jg-group__label jg-group__label--header">
-            {section.header}
-            <span className="jg-group__count">{section.rows.length}</span>
-          </span>
-        </div>
-      ) : (
+      {section.bare ? null : (
       <div
         className={`jg-group ${toggle ? "jg-group--action" : ""}`}
         role="row"

@@ -2743,28 +2743,42 @@ div.jg-today { cursor: default; }
   }
 }
 
-/* The Journey tab's filter, in the grid's section bar (AJ, Oct 2 2026:
-   "lets move the filter directly to the bar down here"). The bar grows to
-   hold 40px buttons; the label stays pinned left while the grid scrolls. */
-.jg-group.jg-group--header,
-.jg[data-dense="line"] .jg-group.jg-group--header {
-  height: auto;
-  min-height: 48px;
-  padding: 4px 0;
-}
-.jg-group__label--header {
-  display: inline-flex;
+/* The Journey tab's filter IS the grid's corner (AJ, Oct 2 2026): the
+   whole corner is the tap target, it names what is showing and how many,
+   and a tap opens the four choices. */
+.jg-corner:has(.jg-corner__filter) { padding: 0; }
+.jg-corner__filter {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--jg-ink-muted);
+  width: 100%;
+  height: 100%;
+  min-height: 40px;
+  display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 4px;
+  gap: 5px;
+  padding: 0 8px 0 10px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.jg-corner__filter:hover,
+.jg-corner__filter[data-popup-open] { background: var(--jg-surface-3); color: var(--jg-ink); }
+/* One line: the corner is a column wide, and the menu's words are long. */
+.jg-corner__filter .jg-corner__title {
+  color: inherit;
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+.jg-corner__filter-icon { width: 14px; height: 14px; flex: none; opacity: 0.8; }
+.jg-corner__count {
   font-family: var(--jg-font);
-  font-size: 11.5px;
-  letter-spacing: normal;
-  text-transform: none;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--jg-ink-faint);
 }
-.jg-seg.jg-seg--bar { background: transparent; border-color: transparent; padding: 0; }
-.jg-seg--bar .jg-seg__btn { height: 40px; padding: 0 12px; font-size: 11.5px; }
-@media (max-width: 599px) {
-  .jg-view--journey .jg-seg.jg-seg--bar { display: inline-flex; width: auto; }
-  .jg-view--journey .jg-seg--bar .jg-seg__btn { padding: 2px 8px; font-size: 10px; }
-}
+.jg-corner__filter-chev { width: 14px; height: 14px; flex: none; margin-left: auto; opacity: 0.7; }
