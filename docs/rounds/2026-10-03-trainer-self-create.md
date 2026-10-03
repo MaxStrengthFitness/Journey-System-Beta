@@ -34,4 +34,4 @@ Two edge cases worth knowing:
 
 ## To ship it (AJ)
 
-The rules tests run in this branch; your run is the one that counts. Then the usual order: `npm run test:rules` → `firebase deploy --only firestore:rules`. No index and no app change is needed; the app already sends everything the new rule checks.
+Measured on this branch on your PC: rules tests **289** passing (284 before: one test that asserted the old, open behaviour was replaced, six added), and both "stranger" tests fail against the old rule, so they prove the hole was real. Typecheck 2, unchanged. Your run is the one that counts. Then the usual order: `npm run test:rules` → `firebase deploy --only firestore:rules`. No index and no app change is needed; the app already sends everything the new rule checks.
