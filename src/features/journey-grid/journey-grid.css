@@ -2873,3 +2873,110 @@ div.jg-today { cursor: default; }
   .jg-view--journey .jg[data-settings="menu"] .jg-machine__name { font-size: 13.5px; }
   .jg-view--journey .jg-head__n { font-size: 11px; }
 }
+
+/* --------------------------------------------------------------------------
+   Lanes on a rail (AJ, Oct 2 2026: "a mix between lanes and on a rail").
+   The profile's chart only.
+
+   - Each machine is a lane: a rounded strip a shade apart from the next
+     (the row bands), with a gap between lanes.
+   - The name sits right-aligned against an orange edge, with her settings
+     under it as one quiet line ("leg curl at seat 6, gap 2").
+   - A rail runs from that edge through every day to the newest; each set
+     is a tile on it (the weight, the reps under it) and a day with no set
+     is an open circle on the line.
+   -------------------------------------------------------------------------- */
+.jg-view--journey .jg-scroller { background: var(--jg-bg); }
+.jg-view--journey .jg-grid { row-gap: 4px; }
+.jg-view--journey .jg-cell,
+.jg-view--journey .jg-machine { border-right: 0; border-bottom: 0; }
+
+/* the lane's two ends */
+.jg-view--journey .jg-machine {
+  border-right: 2px solid var(--jg-hero);
+  border-radius: 12px 0 0 12px;
+}
+.jg-view--journey .jg-row > .jg-cell:last-child { border-radius: 0 12px 12px 0; }
+.jg-view--journey .jg-row[data-band="1"] .jg-machine::after { border-radius: 12px 0 0 12px; }
+.jg-view--journey .jg-row[data-band="1"] > .jg-cell:last-child::after { border-radius: 0 12px 12px 0; }
+
+/* the rail */
+.jg-view--journey .jg-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background-image: linear-gradient(var(--jg-border-strong), var(--jg-border-strong));
+  background-size: 100% 2px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.jg-view--journey .jg-row > .jg-cell:last-child { background-size: 50% 2px; background-position: left center; }
+
+/* a set: a tile on the rail */
+.jg-view--journey .jg-cell:not(.jg-cell--none):not(.jg-cell--nr):not(.jg-cell--skipped)::before {
+  content: "";
+  display: block;
+  position: absolute;
+  inset: 4px 3px;
+  width: auto;
+  height: auto;
+  border-radius: 10px;
+  background: var(--jg-surface-3);
+  z-index: 0;
+}
+.jg-view--journey .jg-cell__w,
+.jg-view--journey .jg-cell__r {
+  position: relative;
+  inset: auto;
+  z-index: 1;
+  padding: 0;
+}
+.jg-view--journey .jg-cell__r { color: var(--jg-ink-muted); font-weight: 600; }
+.jg-view--journey .jg-cell__r:not(:has(.jg-tut))::after { content: " reps"; }
+.jg-view--journey .jg-cell__mark { top: 6px; right: 7px; z-index: 1; }
+
+/* no set: an open circle on the rail */
+.jg-view--journey .jg-cell--none .jg-cell__empty { display: none; }
+.jg-view--journey .jg-cell--none::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: var(--jg-surface);
+  box-shadow: inset 0 0 0 2px var(--jg-border-strong);
+  z-index: 0;
+}
+.jg-view--journey .jg-cell--nr .jg-cell__empty,
+.jg-view--journey .jg-cell__skip { position: relative; z-index: 1; background: var(--jg-surface); padding: 0 3px; border-radius: 4px; }
+
+/* the name, right-aligned against the edge, and her settings under it */
+.jg-view--journey .jg-machine__btn { align-items: flex-end; text-align: right; }
+.jg-view--journey .jg-machine__name { justify-content: flex-end; }
+.jg-view--journey .jg[data-settings="menu"] .jg-machine__meta {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  margin-top: 1px;
+}
+.jg-view--journey .jg-machine__meta .jg-setting { border: 0; padding: 0; margin: 0; gap: 1px; }
+.jg-view--journey .jg-machine__meta .jg-setting__k,
+.jg-view--journey .jg-machine__meta .jg-setting__v,
+.jg-view--journey .jg-machine__meta .jg-setting--more {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--jg-ink-faint);
+  letter-spacing: 0;
+  text-transform: none;
+}
+/* Columns land on fractions of a pixel, and the dark gap behind the lanes
+   showed through as hairlines every few days. Each box overlaps the next
+   by a pixel, its band too. */
+.jg-view--journey .jg-row > .jg-cell:not(:last-child) { box-shadow: 1px 0 0 var(--jg-surface); }
+.jg-view--journey .jg-row[data-band="1"] > .jg-cell:not(:last-child)::after { right: -1px; }

@@ -293,7 +293,10 @@ function RowImpl({
               <AlertCircle className="jg-machine__alert" size={13} strokeWidth={2.5} aria-label="important machine note" />
             )}
           </span>
-          {settingEntries.length > 0 && settingsDisplay === "inline" && (
+          {/* Drawn in both modes: "menu" hides it by CSS, except on the
+              profile's chart, which shows it as one quiet line (AJ, Oct 2
+              2026: "leg press seat 6 P1 ... very subtly"). */}
+          {settingEntries.length > 0 && (
             <span className="jg-machine__meta">
               {shownSettings.map(([k, v]) => (
                 <span key={k} className="jg-setting" title={`${settingLabel(k)} ${v}`}>

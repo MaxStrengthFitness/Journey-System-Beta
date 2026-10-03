@@ -524,7 +524,7 @@ export function ProfileHeader({
         {(since || renewalWords) && (
           // Two facts side by side, each kept whole; when the line is too
           // narrow the second starts its own line, with no dot left dangling.
-          <span className="xl:hidden 2xl:flex flex flex-wrap gap-x-3 min-w-0 text-[12px] font-medium leading-snug text-muted-foreground" data-testid="since-line">
+          <span className="flex flex-wrap gap-x-3 min-w-0 text-[12px] font-medium leading-snug text-muted-foreground" data-testid="since-line">
             {since && (
               <span className="whitespace-nowrap">
                 {since.label} {since.month}

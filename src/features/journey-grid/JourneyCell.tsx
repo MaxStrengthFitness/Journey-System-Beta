@@ -58,6 +58,8 @@ function JourneyCellImpl({ session, machineName, set, previous, isLatest, isSpot
   const delta = performed ? loadDelta(set, previous) : null;
   const cls = [
     "jg-cell",
+    // No set at all: the profile's chart draws an open circle on its rail.
+    !set ? "jg-cell--none" : "",
     performed ? `jg-cell--q${set.quality}` : "",
     set && set.outcome === "practice" ? "jg-cell--practice" : "",
     set && set.outcome === "skipped" ? "jg-cell--skipped" : "",
