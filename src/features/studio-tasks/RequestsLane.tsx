@@ -150,6 +150,13 @@ export interface RequestsLaneProps {
   kinds?: "asks" | "initiatives";
   /** The lane's heading; "Requests" when absent. */
   title?: string;
+  /**
+   * One ask alone, drawn bare (no heading, no composer, no answered list):
+   * a card's details beside the Relay Board (the Relay Board rebuild, Oct 3
+   * 2026), with everything the lane offers on it — take it, close or answer
+   * it, the replies, the quick replies, an initiative's Log mine and roll-up.
+   */
+  onlyId?: string;
 }
 
 export function RequestsLane({
@@ -162,6 +169,7 @@ export function RequestsLane({
   clients,
   kinds,
   title: laneTitle = "Requests",
+  onlyId,
 }: RequestsLaneProps) {
   const { success: toastSuccess, error: toastError } = useToast();
   const { open: rawRequests, recentlyResolved } = useStudioRequests(studioId);
@@ -187,8 +195,8 @@ export function RequestsLane({
     () =>
       cards
         .map((c) => c.request)
-        .filter((r) => !kinds || (kinds === "initiatives" ? r.kind === "initiative" : r.kind !== "initiative")),
-    [cards, kinds],
+        .filter((r) => (onlyId ? r.id === onlyId : !kinds || (kinds === "initiatives" ? r.kind === "initiative" : r.kind !== "initiative"))),
+    [cards, kinds, onlyId],
   );
 
   // Inside Relay, asks are posted through Capture (relay/board); the inline
@@ -212,8 +220,11 @@ export function RequestsLane({
     toastError(`The Board has it, but ${clientNameOf(r)?.split(" ")[0] ?? "the client"}'s record didn't take the line. Check your connection.`);
   // Questions answered lately keep their answer on screen (the ask's resolution).
   const answered = useMemo(
-    () => (kinds === "initiatives" ? [] : recentlyResolved.filter((r) => r.kind === "question" && r.status === "resolved" && r.resolution).slice(0, 5)),
-    [recentlyResolved, kinds],
+    () =>
+      kinds === "initiatives" || onlyId
+        ? []
+        : recentlyResolved.filter((r) => r.kind === "question" && r.status === "resolved" && r.resolution).slice(0, 5),
+    [recentlyResolved, kinds, onlyId],
   );
   const [composing, setComposing] = useState(false);
   const [kind, setKind] = useState<RequestKind>("cover");
@@ -413,7 +424,8 @@ export function RequestsLane({
   };
 
   return (
-    <section className="stq" aria-label="Studio requests">
+    <section className="stq" data-only={onlyId ? "true" : undefined} aria-label={onlyId ? "The ask" : "Studio requests"}>
+      {!onlyId && (
       <header className="stq__head">
         <MessageSquare size={14} aria-hidden />
         <h2 className="stq__title">{laneTitle}</h2>
@@ -438,6 +450,7 @@ export function RequestsLane({
           </button>
         )}
       </header>
+      )}
 
       {composing && (
         <div className="stq__composer">
@@ -510,7 +523,9 @@ export function RequestsLane({
       {openRequests.length === 0 ? (
         !composing && (
           <p className="stq__empty">
-            {kinds === "initiatives"
+            {onlyId
+              ? "It's been closed, or it came down. Nothing more to do here."
+              : kinds === "initiatives"
               ? "No initiatives from the studio's leaders right now. When they start one, it shows here with the studio's progress."
               : "Nothing floating. Post here to ask for cover, flag something, or get another trainer's read on a client."}
           </p>

@@ -185,43 +185,32 @@ describe("My Studio", () => {
     vi.useRealTimers();
   });
 
-  it("mounts on the Board: Right now, the five doors, the dealt card, Just now, and Floor work's lanes behind its door", async () => {
+  it("mounts on the Board: the parts of the day under the header, the four columns, and Just now (the Relay Board rebuild, Oct 3 2026)", async () => {
     const h = await mount(lead);
     expect(h.textContent).toContain("My Studio");
     expect(h.textContent).toContain("Relay");
     // The teammates line is "Just now" (it was "Pulse", the living assessment's name, until Sep 27 2026).
     expect(h.textContent).toContain("Just now");
-    // Right now won't guess how busy the floor is from a list with nothing on it.
-    expect(h.querySelector(".rbd-lens")?.textContent).toContain("Relay isn't saying how busy the floor is");
-    const doors = [...h.querySelectorAll(".rbd-door .rbd-door__label")].map((d) => d.textContent);
-    expect(doors).toEqual(["Floor work", "Desk work", "Help a teammate", "From leadership", "My work"]);
-    expect(h.textContent).toContain("Dealt to you");
-    expect(h.textContent).toContain("Nothing waiting on the floor.");
-    // Behind Floor work: the shift rings, the floor map and the team jobs, unchanged.
-    expect(h.textContent).toContain("Behind Floor work");
-    expect(h.querySelectorAll(".shr__ring")).toHaveLength(3);
-    expect(h.textContent).toContain("The floor");
-    expect(h.textContent).toContain("Team jobs");
-    expect(h.textContent).toContain("Post a job");
+    // The parts of the day live in the bar under the header, not in the Board's body.
+    const parts = [...h.querySelectorAll(".msh-sub [role='tab']")].map((t) => t.textContent?.replace(/[0-9/✓]+$/, ""));
+    expect(parts).toEqual(["Opening", "Between clients", "Close", "This week"]);
+    // Nothing on the empty database: each part says so, and how to add to it.
+    expect(h.querySelector(".rbd-empty")?.textContent).toContain("Add a studio task or a team job with +.");
+    // The doors, the dealt card and the lanes behind them are gone.
+    expect(h.querySelector(".rbd-door")).toBeNull();
+    expect(h.textContent).not.toContain("Dealt to you");
+    // What's new rides in the header.
+    expect(h.querySelector(".msh__news .rbn__pill")?.textContent).toBe("All read");
   });
 
-  it("opens each door on a tap and shows what sits behind it, with the way back to Relay's pick", async () => {
+  it("switches the part of the day from the bar under the header", async () => {
     const h = await mount(lead);
-    const door = (label: string) => [...h.querySelectorAll<HTMLButtonElement>(".rbd-door")].find((d) => d.textContent?.includes(label));
-    await click(door("Help a teammate"));
-    expect(door("Help a teammate")?.getAttribute("aria-pressed")).toBe("true");
-    expect(h.textContent).toContain("Behind Help a teammate");
-    expect(h.textContent).toContain("Asks from teammates");
-    expect(h.textContent).toContain("You opened Help a teammate.");
-    await click(door("From leadership"));
-    expect(h.textContent).toContain("Behind From leadership");
-    expect(h.textContent).toContain("No initiatives from the studio's leaders right now.");
-    await click(door("Desk work"));
-    expect(h.textContent).toContain("Behind Desk work");
-    await click(door("My work"));
-    expect(h.textContent).toContain("Nothing on the board has your name on it right now.");
-    await click([...h.querySelectorAll("button")].find((b) => b.textContent?.includes("Back to Relay's pick")));
-    expect(h.textContent).toContain("Behind Floor work");
+    const tabIn = (name: string) => [...h.querySelectorAll<HTMLButtonElement>(".msh-sub [role='tab']")].find((t) => t.textContent?.startsWith(name));
+    await click(tabIn("This week"));
+    expect(tabIn("This week")?.getAttribute("aria-selected")).toBe("true");
+    expect(h.querySelector(".rbd-status")?.textContent).toContain("This week");
+    await click(tabIn("Opening"));
+    expect(h.querySelector(".rbd-status")?.textContent).toContain("Opening");
   });
 
   it("has one header: the section and its menu, Relay's tabs, the day, Ask and +, and the bar the Board fills under it (Oct 3 2026)", async () => {
@@ -303,7 +292,7 @@ describe("My Studio", () => {
     expect(tab("Board")).toBeUndefined();
     await openSection("Relay");
     await click(tab("Board"));
-    expect(h.textContent).toContain("Dealt to you");
+    expect(h.querySelector(".rbd-status")).not.toBeNull();
   });
 
   it("mounts the Studio section for a leader: details, sync, the studio's day, renewals and announcements", async () => {

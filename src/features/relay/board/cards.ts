@@ -205,6 +205,7 @@ function groupCard(g: ShiftGroup, input: CardsInput, me: Set<string>): BoardCard
   } else {
     state = laterIn(part, input.phase) ? "later" : "todo";
     line = personal ? "Yours" : assignedMe ? "Yours today" : g.assignedTo ? `For ${first(g.assignedTo.name)}` : "Anyone";
+    if (parts) line = `${line} · ${parts.done} of ${parts.total}`;
   }
   if (state === "taken" && parts && parts.done > 0) line = `${line} · ${parts.done} of ${parts.total}`;
   return {

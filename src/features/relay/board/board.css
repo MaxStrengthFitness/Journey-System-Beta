@@ -1,33 +1,36 @@
 /* ==========================================================================
-   THE BOARD — Relay's first tab, as the redesign draws it
+   THE BOARD — Relay's first tab: the studio's day as one board of cards
    --------------------------------------------------------------------------
-   Relay room, Sep 28 2026 (the Redesign Blueprints' Mission Board + Journal,
-   AJ's pick). On the Studio Hub's --st-* tokens (studio-tasks.css), which
-   carry the app's values; nothing here writes a hex value, and
+   The Relay Board rebuild, Oct 3 2026 (AJ: "this is replacing the laminated
+   paper of a to-do list"). The kamishibai board AJ picked: the parts of the
+   day in the bar under the header, one at a time; four columns, Floor · Desk
+   · Clients · Team; the checkbox card. On the Studio Hub's --st-* tokens
+   (studio-tasks.css); nothing here writes a hex value, and
    my-studio/look.test.ts holds this file to My Studio's look: the 11 / 12 /
    14 / 17 / 30 type scale, 40px controls (44 on the cards), names that wrap
    and are never cut, one heading style.
 
-   Colour meanings are the app's and nothing else: blue is anything you can
-   act on and what is chosen; the deep orange is a fill for the one job dealt
-   to you and orange words are time pressure ("needed at 4:20"); green is
-   done; plum is caution. No red anywhere on the Board: the crimson is a
-   Critical note's alone, and the red kaizen mark is rep quality's.
+   ONE RULE FOR WHAT YOU CAN TAP: a bordered thing is a control (a card, a
+   tab, a button); words with no border only tell you something. Colour only
+   says something, and always the same thing: blue is what you can act on,
+   what's chosen and who's on it; orange words and edge are someone waiting
+   (time pressure, never red); green is done. No red anywhere on the Board:
+   the crimson is a Critical note's alone, and the red kaizen mark is rep
+   quality's.
 
    Prefixes, one owner each (src/css-class-owners.test.ts):
-     rjn   Just now, the teammates' lines (the notices)
-     rbd   the Board: Right now, the doors, the dealt card, Also fits, Later
-           today, Team today, what sits behind the open door, and Undo
-     rwho  Who? — a leader's faces on the dealt card
-     rsc   Opening and Close out: the two small cards at the start and the
-           end of the day, and their line at the foot of Later today
-     rsy   Since you were in: the notice board at the top of the side
-           column (the second wave, Sep 28 2026)
+     rbd   the Board's frame, its status line, the work beside it (the
+           Context Panel's body and foot), Undo
+     rbt   the parts of the day, in the bar under the header
+     rbg   the board's four columns
+     rbc   one card
+     rbn   "● 2 new" in the header, and the notices it opens
+     rjn   Just now, the teammates' lines, at the foot
+     rsy   Since you were in: the notices themselves
 
    Widths follow the Board's own box, not the screen's (a container query on
    .rbd): with the Context Panel open beside it on a landscape iPad the Board
-   is about 800px wide, and the dealt card and the notices stack there just as
-   they do upright.
+   is about 800px wide.
    ========================================================================== */
 
 /* ------------------------------------------------------------------ *
@@ -38,17 +41,16 @@
   container: rbd / inline-size;
   display: flex;
   flex-direction: column;
-  gap: 0.875rem;
+  gap: 0.75rem;
   padding: 0.875rem 0 0;
 }
-.rbd-mute { color: var(--st-ink-muted); }
 
 /* The one heading style (planner.css .pl__list-head): small upright capitals. */
 .rbd-h {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.25rem 0.625rem;
+  gap: 0.25rem 0.5rem;
   margin: 0 0 0.5rem;
   font-size: 12px;
   font-weight: 800;
@@ -63,285 +65,275 @@
   text-transform: none;
   color: var(--st-ink-muted);
 }
-.rbd-h--small { margin-bottom: 0.375rem; }
 
-/* Time pressure, in words: the deep orange, never red. */
-.rbd-hot { color: var(--st-hero-text); font-weight: 800; }
-
-.rbd-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--st-live);
-  font: inherit;
+/* The part of the day in words, and how much of it is done: information, no border. */
+.rbd-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
   font-size: 14px;
-  font-weight: 700;
-  text-align: left;
-  cursor: pointer;
+  color: var(--st-ink-muted);
 }
-.rbd-link svg { flex: none; }
-.rbd-link:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+.rbd-status b { font-weight: 800; color: var(--st-ink); }
+.rbd-status__n { font-weight: 700; color: var(--st-ink-2); font-variant-numeric: tabular-nums; }
+
+.rbd-warn {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--st-hero-text);
+}
 
 .rbd-quiet,
 .rbd-empty {
   margin: 0;
   padding: 0.875rem 1rem;
-  border: 1px dashed var(--st-border-strong);
   border-radius: var(--st-radius);
-  background: var(--st-surface);
+  background: var(--st-surface-2);
   font-size: 14px;
   line-height: 1.5;
   color: var(--st-ink-2);
 }
 .rbd-empty b { color: var(--st-ink); }
 
-/* ------------------------------------------------------------------ *
- * Right now — one sentence with its proof
- * ------------------------------------------------------------------ */
+/* "● 2 new" when the Board is drawn outside the shell, at its top. */
+.rbd-news { display: flex; justify-content: flex-end; }
 
-.rbd-lens {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.375rem 0.75rem;
-}
-.rbd-lens__k {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--st-live);
-  white-space: nowrap;
-}
-.rbd-lens__t {
-  flex: 1 1 18rem;
-  min-width: 0;
-  margin: 0;
-  font-size: 17px;
-  font-weight: 600;
-  line-height: 1.4;
-  color: var(--st-ink);
-}
-.rbd-lens__t b { font-weight: 800; }
-.rbd-lens__t .rbd-mute { font-size: 14px; font-weight: 500; }
-
-/* ------------------------------------------------------------------ *
- * The five doors
- * ------------------------------------------------------------------ */
-
-.rbd-doors {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.5rem;
-}
-@container rbd (max-width: 34rem) {
-  .rbd-doors { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-/* A phone (Journey Lite, Oct 2026): three across left a door about 110px
-   wide, and "From leadership" broke inside its words. Two across, and the
-   fifth door takes the whole row rather than sitting alone in a half. */
-@container rbd (max-width: 26rem) {
-  .rbd-doors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .rbd-door:last-child:nth-child(odd) { grid-column: 1 / -1; }
-}
-
-.rbd-door {
-  position: relative;
+/* The foot: the network's focus and Just now. */
+.rbd-foot-notes {
   display: flex;
   flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+/* ------------------------------------------------------------------ *
+ * The parts of the day, in the bar under the header (planner.css's
+ * .pl__subbar .pl__tab: a second, lighter level)
+ * ------------------------------------------------------------------ */
+
+.rbt {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+/* Each part keeps its whole name; on a phone the row scrolls sideways rather than cut one. */
+.rbt__tab {
+  flex: 1 0 auto;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.rbt__n {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--st-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.rbt__tab[aria-selected="true"] .rbt__n { color: var(--st-live); }
+/* The part it is now. */
+.rbt__now { width: 7px; height: 7px; border-radius: 999px; background: var(--st-live); }
+/* Someone is waiting in this part. */
+.rbt__wait { width: 7px; height: 7px; border-radius: 999px; background: var(--st-hero); }
+
+/* ------------------------------------------------------------------ *
+ * The board: four columns, Floor · Desk · Clients · Team
+ * ------------------------------------------------------------------ */
+
+.rbg {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+}
+.rbg__col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.rbg__head { margin: 0; }
+.rbg__none {
+  margin: 0;
+  padding: 0.25rem 0;
+  font-size: 12px;
+  color: var(--st-ink-faint);
+}
+
+/* Four columns down to an upright iPad (AJ, Oct 3 2026: one part of the
+   day at a time, so the four columns have the room). Narrower (the Context
+   Panel open beside an upright board): two; a phone: one. */
+@container rbd (max-width: 560px) {
+  .rbg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container rbd (max-width: 380px) {
+  .rbg { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ------------------------------------------------------------------ *
+ * One card: the box, the words, the bar
+ * ------------------------------------------------------------------ */
+
+.rbc {
+  display: flex;
   align-items: flex-start;
-  gap: 4px;
-  min-height: 88px;
-  padding: 10px 12px;
-  border: 1px solid var(--st-border);
+  gap: 2px;
+  min-height: 64px;
+  padding: 2px 10px 8px 2px;
+  border: 1px solid var(--st-border-strong);
   border-radius: var(--st-radius);
   background: var(--st-surface);
-  color: var(--st-ink);
+}
+
+/* The box: 44px to tap, a 24px square to see. */
+.rbc__box {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  min-height: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.rbc__box:focus-visible { outline: 2px solid var(--st-live); outline-offset: -2px; border-radius: 10px; }
+.rbc__box:disabled { cursor: progress; opacity: 0.6; }
+.rbc__tick {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--st-border-strong);
+  border-radius: 7px;
+  background: var(--st-surface);
+  color: var(--st-done-on);
+}
+.rbc__box:hover .rbc__tick { border-color: var(--st-live); }
+/* A box that opens the work rather than finishing it: dashed, so it reads differently from a tick. */
+.rbc[data-box="open"] .rbc__tick { border-style: dashed; }
+.rbc[data-state="done"] .rbc__tick { border-style: solid; border-color: var(--st-done); background: var(--st-done); }
+
+/* No box (an initiative, a renewal talk): its mark sits where the box would. */
+.rbc__mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--st-ink-muted);
+}
+.rbc__go { flex: none; align-self: center; color: var(--st-ink-muted); }
+
+/* The words: a tap opens the work. */
+.rbc__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 0 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
-.rbd-door:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
-.rbd-door--open {
-  border-color: var(--st-live);
-  background: var(--st-live-fill);
-  box-shadow: inset 0 0 0 1px var(--st-live);
-}
-.rbd-door__h { display: flex; align-items: center; gap: 8px; width: 100%; padding-right: 18px; }
-.rbd-door__ic {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--st-surface-2);
-  color: var(--st-ink-2);
-}
-.rbd-door--open .rbd-door__ic { background: var(--st-live); color: var(--st-live-on); }
-/* A door's name: the display face, the way a door is signed. It wraps. */
-.rbd-door__label {
-  min-width: 0;
-  font-family: var(--font-display);
+.rbc__main:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; border-radius: 6px; }
+.rbc__t {
   font-size: 14px;
-  font-weight: 800;
-  font-style: italic;
-  line-height: 1.1;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  overflow-wrap: anywhere;
-}
-.rbd-door--open .rbd-door__label { color: var(--st-live); }
-.rbd-door__pick { position: absolute; top: 10px; right: 10px; display: inline-flex; color: var(--st-live); }
-.rbd-door__n { font-size: 14px; color: var(--st-ink-2); }
-.rbd-door__n b { font-size: 17px; font-weight: 800; color: var(--st-ink); font-variant-numeric: tabular-nums; }
-.rbd-door__sub { font-size: 12px; line-height: 1.3; color: var(--st-ink-muted); overflow-wrap: anywhere; }
-
-/* ------------------------------------------------------------------ *
- * The split: the dealt card and Also fits, Just now beside them, Later
- * today under them. One column until the Board is wide enough for two.
- * ------------------------------------------------------------------ */
-
-.rbd-split {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "deal" "notices" "later";
-  gap: 0.875rem 1rem;
-  align-items: start;
-}
-@container rbd (min-width: 52rem) {
-  .rbd-split {
-    grid-template-columns: minmax(0, 1fr) minmax(16rem, 21rem);
-    grid-template-areas: "deal notices" "later notices";
-  }
-}
-.rbd-deal { grid-area: deal; min-width: 0; display: flex; flex-direction: column; gap: 0.75rem; }
-.rbd-notices { grid-area: notices; min-width: 0; display: flex; flex-direction: column; gap: 0.75rem; }
-.rbd-later { grid-area: later; min-width: 0; }
-
-/* ------------------------------------------------------------------ *
- * The dealt card — the one place to look
- * ------------------------------------------------------------------ */
-
-.rbd-dealt {
-  display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
-  padding: 14px 18px 14px 24px;
-  border: 1px solid var(--st-border-strong);
-  border-radius: 18px;
-  background: var(--st-surface);
-  /* The deep orange edge is a fill: the job dealt to you. */
-  box-shadow: inset 6px 0 0 var(--st-hero), 0 1px 2px var(--st-shadow);
-}
-.rbd-dealt__top { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
-.rbd-dealt__top .rbd-hot {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 0 8px;
-  border-radius: 6px;
-  background: var(--st-hero-fill);
-  font-size: 12px;
-}
-.rbd-giver { display: inline-flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; }
-.rbd-giver__face {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--st-surface-3);
-  color: var(--st-ink-2);
-  font-size: 12px;
-  font-weight: 800;
-}
-.rbd-giver__name { min-width: 0; font-size: 14px; font-weight: 800; color: var(--st-ink); overflow-wrap: anywhere; }
-.rbd-dealt__door {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 8px;
-  background: var(--st-surface-2);
-  color: var(--st-ink-2);
-  font-size: 12px;
   font-weight: 700;
-}
-/* The biggest words on the Board, and never cut: they wrap. */
-.rbd-dealt__title {
-  margin: 0;
-  font-size: 30px;
-  font-weight: 800;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  line-height: 1.3;
   color: var(--st-ink);
   overflow-wrap: anywhere;
 }
-.rbd-dealt__meta { margin: 0; display: flex; flex-wrap: wrap; gap: 0.375rem 1.125rem; font-size: 14px; color: var(--st-ink-2); }
-.rbd-dealt__meta span { display: inline-flex; align-items: center; gap: 6px; overflow-wrap: anywhere; }
-.rbd-dealt__meta svg { flex: none; color: var(--st-ink-muted); }
-.rbd-dealt__why { margin: 0; font-size: 14px; line-height: 1.5; color: var(--st-ink-2); }
-.rbd-dealt__why b { color: var(--st-ink); }
-.rbd-dealt__foot { margin: 0; font-size: 12px; color: var(--st-ink-muted); }
+.rbc__glyph { display: inline-flex; vertical-align: -2px; margin-right: 5px; color: var(--st-ink-muted); }
+.rbc__line {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--st-ink-muted);
+  overflow-wrap: anywhere;
+}
+.rbc__bar {
+  display: block;
+  height: 4px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: var(--st-surface-3);
+  overflow: hidden;
+}
+.rbc__bar i { display: block; height: 100%; border-radius: 999px; background: var(--st-done); }
 
-/* A chore's machines, each a tick anyone may make. */
-.rbd-parts { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+/* What each state says. */
+.rbc[data-state="waiting"] { border-color: var(--st-hero); }
+.rbc[data-state="waiting"] .rbc__line { color: var(--st-hero-text); font-weight: 800; }
+.rbc[data-state="taken"] .rbc__line,
+.rbc[data-state="started"] .rbc__line { color: var(--st-live); font-weight: 700; }
+.rbc[data-state="done"] { border-color: var(--st-border); background: var(--st-surface-2); }
+.rbc[data-state="done"] .rbc__t { color: var(--st-ink-muted); text-decoration: line-through; text-decoration-color: var(--st-ink-faint); }
+.rbc[data-state="done"] .rbc__line { color: var(--st-done); font-weight: 700; }
+.rbc[data-state="later"] { opacity: 0.6; }
+
+/* ------------------------------------------------------------------ *
+ * The work beside the board (the Context Panel's body and foot)
+ * ------------------------------------------------------------------ */
+
+.rbd-note { margin: 0 0 0.75rem; font-size: 14px; line-height: 1.45; color: var(--st-ink-2); }
+
+.rbd-parts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .rbd-part {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  width: 100%;
   min-height: 44px;
-  padding: 0 14px 0 10px;
-  border: 1px solid var(--st-border-strong);
-  border-radius: 12px;
-  background: var(--st-surface-2);
+  padding: 0 12px 0 8px;
+  border: 1px solid var(--st-border);
+  border-radius: 10px;
+  background: var(--st-surface);
   color: var(--st-ink);
   font: inherit;
   font-size: 14px;
   font-weight: 700;
+  text-align: left;
   cursor: pointer;
 }
 .rbd-part:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
-.rbd-part:disabled { opacity: 0.6; cursor: progress; }
 .rbd-part__box {
+  flex: none;
   display: grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border: 2px solid var(--st-border-strong);
   border-radius: 6px;
   color: var(--st-done-on);
 }
-.rbd-part--on { color: var(--st-ink-muted); }
-.rbd-part--on .rbd-part__box { border-color: var(--st-done); background: var(--st-done); }
-.rbd-part__t { overflow-wrap: anywhere; }
-.rbd-part--on .rbd-part__t { text-decoration: line-through; }
+.rbd-part[aria-pressed="true"] .rbd-part__box { border-color: var(--st-done); background: var(--st-done); }
+.rbd-part[aria-pressed="true"] .rbd-part__t { color: var(--st-ink-muted); text-decoration: line-through; }
+.rbd-part__t { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.rbd-part__who { flex: none; font-size: 12px; font-weight: 700; color: var(--st-done); }
 
-/* Take it and Not now: the same size, side by side. */
-.rbd-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 0.625rem; }
+.rbd-foot { display: flex; flex-wrap: wrap; gap: 8px; }
 .rbd-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-width: 7.5rem;
   min-height: 44px;
-  padding: 0 18px;
+  padding: 0 14px;
   border: 1px solid var(--st-border-strong);
-  border-radius: 999px;
+  border-radius: 10px;
   background: var(--st-surface);
-  color: var(--st-ink-2);
+  color: var(--st-ink);
   font: inherit;
   font-size: 14px;
   font-weight: 700;
@@ -349,116 +341,67 @@
 }
 .rbd-btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
 .rbd-btn--primary { border-color: var(--st-live); background: var(--st-live); color: var(--st-live-on); }
-.rbd-acts__note { flex: 1 1 8rem; font-size: 12px; color: var(--st-ink-muted); }
 
-.rbd-dealt__named { margin: 0; font-size: 14px; color: var(--st-ink-2); }
-.rbd-dealt__named b { color: var(--st-ink); }
-
-/* The card rides on a swipe row: right is Done, left is Not now, each undone
-   from the line at the foot. The buttons do the same, so nothing is
-   gesture-only. */
-.rbd-swipe .sw__under { border-radius: 18px; }
-
-.rbd-state {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.75rem;
-  min-height: 52px;
-  padding: 6px 8px 6px 12px;
-  border-radius: 12px;
-  background: var(--st-hero-fill);
-  font-size: 14px;
-  line-height: 1.4;
-  color: var(--st-ink-2);
-}
-.rbd-state svg { flex: none; color: var(--st-hero-text); }
-.rbd-state > span { flex: 1 1 14rem; min-width: 0; }
-.rbd-state b { color: var(--st-ink); }
-
-/* ------------------------------------------------------------------ *
- * Also fits, and Deal me another
- * ------------------------------------------------------------------ */
-
-.rbd-also__row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 0.5rem; }
-.rbd-alt {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 56px;
-  padding: 8px 12px;
-  border: 1px solid var(--st-border);
-  border-radius: var(--st-radius);
+/* A leader's "Put a name on it", under an ask. */
+.rbd-who { margin-top: 1rem; }
+.rbd-who__faces { display: flex; flex-wrap: wrap; gap: 8px; }
+.rbd-who__face {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1px;
+  min-height: 44px;
+  padding: 4px 12px;
+  border: 1px solid var(--st-border-strong);
+  border-radius: 10px;
   background: var(--st-surface);
   color: var(--st-ink);
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
-.rbd-alt:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
-.rbd-alt > svg { flex: none; color: var(--st-ink-muted); }
-.rbd-alt__t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
-.rbd-alt__s { font-size: 12px; font-weight: 500; color: var(--st-ink-muted); }
-.rbd-alt--deal { border-style: dashed; border-color: var(--st-border-strong); background: transparent; }
-.rbd-alt--deal .rbd-alt__t { color: var(--st-live); }
-.rbd-alt--deal > svg { color: var(--st-live); }
+.rbd-who__face:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+.rbd-who__name { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+.rbd-who__why { font-size: 12px; color: var(--st-ink-muted); overflow-wrap: anywhere; }
 
 /* ------------------------------------------------------------------ *
- * Later today, and Team today (by chore, never by person)
+ * "● 2 new" in the header, and the notices under it
  * ------------------------------------------------------------------ */
 
-.rbd-later__list,
-.rbd-team__list,
-.rbd-rows {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border: 1px solid var(--st-border);
-  border-radius: var(--st-radius);
-  background: var(--st-surface);
-  overflow: hidden;
-}
-.rbd-later__row {
-  display: grid;
-  grid-template-columns: 5rem minmax(0, 1fr);
-  align-items: baseline;
-  gap: 0.75rem;
-  min-height: 48px;
-  padding: 0.625rem 0.875rem;
-}
-.rbd-later__row + .rbd-later__row { border-top: 1px solid var(--st-border); }
-.rbd-later__time { font-size: 14px; font-weight: 800; color: var(--st-ink); font-variant-numeric: tabular-nums; }
-.rbd-later__t { display: flex; flex-direction: column; gap: 2px; font-size: 14px; font-weight: 700; color: var(--st-ink); overflow-wrap: anywhere; }
-.rbd-later__s { font-size: 12px; font-weight: 500; color: var(--st-ink-muted); }
-
-.rbd-team__row { padding: 0.625rem 0.875rem; font-size: 14px; }
-.rbd-team__row + .rbd-team__row { border-top: 1px solid var(--st-border); }
-.rbd-team__t { font-weight: 700; color: var(--st-ink); overflow-wrap: anywhere; }
-.rbd-team__t .rbd-mute { font-weight: 500; }
-.rbd-team__more { margin: 0.375rem 0 0; font-size: 12px; color: var(--st-ink-muted); }
-
-/* ------------------------------------------------------------------ *
- * Behind the open door: the Floor's lanes, and Mine's list
- * ------------------------------------------------------------------ */
-
-.rbd-behind { padding-top: 0.875rem; border-top: 1px solid var(--st-border); }
-.rbd-behind__h { margin-bottom: 0.25rem; }
-.rbd-tools { display: flex; justify-content: flex-end; margin: 0 0 0.25rem; }
-
-.rbd-mine { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem; }
-.rbd-row {
-  display: flex;
-  flex-wrap: wrap;
+.rbn { position: relative; display: inline-flex; }
+.rbn__pill {
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem 0.75rem;
-  min-height: 60px;
-  padding: 0.5rem 0.875rem;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--st-border-strong);
+  border-radius: 999px;
+  background: var(--st-surface);
+  color: var(--st-ink-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
 }
-.rbd-row + .rbd-row { border-top: 1px solid var(--st-border); }
-.rbd-row__t { flex: 1 1 14rem; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; font-weight: 700; color: var(--st-ink); overflow-wrap: anywhere; }
-.rbd-row__s { font-size: 12px; font-weight: 500; color: var(--st-ink-muted); }
-.rbd-row__acts { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.rbn__pill:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+.rbn__pill[aria-expanded="true"] { background: var(--st-surface-2); }
+.rbn__pill--new { color: var(--st-ink); }
+.rbn__dot { width: 8px; height: 8px; border-radius: 999px; background: var(--st-border-strong); }
+.rbn__pill--new .rbn__dot { background: var(--st-live); }
+.rbn__pop {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(26rem, calc(100vw - 1.5rem));
+  max-height: min(70vh, 36rem);
+  overflow-y: auto;
+  border-radius: var(--st-radius);
+  box-shadow: 0 10px 30px var(--st-shadow);
+}
 
 /* ------------------------------------------------------------------ *
  * Undo — one line at the foot of the Board, for eight seconds
@@ -497,111 +440,6 @@
   cursor: pointer;
 }
 .rbd-undo__btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
-
-/* ------------------------------------------------------------------ *
- * Who? — a leader's faces on the dealt card
- * ------------------------------------------------------------------ */
-
-.rwho {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.75rem;
-  padding-top: 0.625rem;
-  border-top: 1px solid var(--st-border);
-}
-.rwho__l { display: flex; flex-direction: column; gap: 1px; font-size: 14px; font-weight: 800; color: var(--st-ink-2); }
-.rwho__hint { font-size: 12px; font-weight: 600; color: var(--st-ink-muted); }
-.rwho__faces { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-.rwho__wrap { position: relative; display: inline-flex; }
-.rwho__face {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 4px 12px 4px 4px;
-  border: 1px solid var(--st-border);
-  border-radius: 999px;
-  background: var(--st-surface);
-  color: var(--st-ink);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  text-align: left;
-  cursor: pointer;
-}
-.rwho__face:focus-visible,
-.rwho__more:focus-visible,
-.rwho__span:focus-visible,
-.rwho__pop-item:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
-.rwho__av {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--st-live-fill);
-  color: var(--st-live);
-  font-size: 12px;
-  font-weight: 800;
-}
-.rwho__name { display: flex; flex-direction: column; gap: 1px; min-width: 0; overflow-wrap: anywhere; }
-.rwho__why { font-size: 12px; font-weight: 500; color: var(--st-ink-muted); }
-.rwho__more,
-.rwho__span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px dashed var(--st-border-strong);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--st-ink-2);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.rwho__span { border-style: solid; }
-.rwho__pop {
-  position: absolute;
-  z-index: 20;
-  bottom: calc(100% + 6px);
-  right: 0;
-  min-width: 15rem;
-  max-width: min(90vw, 20rem);
-  display: grid;
-  gap: 2px;
-  padding: 6px;
-  border: 1px solid var(--st-border-strong);
-  border-radius: var(--st-radius);
-  background: var(--st-surface);
-  box-shadow: 0 10px 30px var(--st-shadow);
-}
-.rwho__pop-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 44px;
-  padding: 4px 10px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--st-ink);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  text-align: left;
-  cursor: pointer;
-}
-.rwho__pop-item:hover { background: var(--st-surface-2); }
-.rwho__pop-item[aria-checked="true"] { background: var(--st-live-fill); color: var(--st-live); }
-.rwho__pop-note { padding: 4px 10px 6px; font-size: 12px; color: var(--st-ink-muted); }
 
 /* ------------------------------------------------------------------ *
  * Just now — what the team did today, still and whole
@@ -694,146 +532,6 @@
 .rjn__kudos--mine { cursor: default; color: var(--st-hero-text); border-color: transparent; background: var(--st-hero-fill); }
 .rjn__kudos--mine svg { fill: currentColor; }
 .rjn__kudos-n { font-variant-numeric: tabular-nums; }
-
-/* ------------------------------------------------------------------ *
- * Opening and Close out (phase 6): two small cards at the top of the
- * Board, and one line at the foot of Later today that says when each is.
- * The rules are shift-cards.ts. Quiet on purpose: the dealt card is still
- * the one place to look, so these are a hairline card, not a fill.
- * ------------------------------------------------------------------ */
-
-.rsc {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem 0.875rem;
-  border: 1px solid var(--st-border);
-  border-radius: var(--st-radius);
-  background: var(--st-surface);
-}
-.rsc__head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
-.rsc .rsc__title { flex: 1 1 12rem; margin: 0; }
-.rsc .rsc__sub { margin: 0.375rem 0 0; }
-.rsc__ic {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--st-surface-2);
-  color: var(--st-ink-2);
-}
-.rsc__list { list-style: none; margin: 0; padding: 0; }
-.rsc__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.375rem 0.75rem;
-  min-height: 48px;
-  padding: 0.25rem 0;
-}
-.rsc__row + .rsc__row { border-top: 1px solid var(--st-border); }
-/* What is waiting, or what is left: a whole name, wrapped, never cut. */
-.rsc__t {
-  flex: 1 1 14rem;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.4;
-  color: var(--st-ink);
-  overflow-wrap: anywhere;
-}
-.rsc__s { font-size: 12px; font-weight: 500; color: var(--st-ink-muted); }
-.rsc__none { margin: 0; font-size: 14px; line-height: 1.5; color: var(--st-ink-muted); }
-.rsc__draft { margin: 0; font-size: 14px; line-height: 1.6; color: var(--st-ink-2); overflow-wrap: anywhere; }
-
-/* The Journal's day log on the two cards (the second wave, Sep 28 2026):
-   Opening's things to carry, Close out's one line for yourself. */
-.rsc__carry { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; margin-top: 0.25rem; }
-.rsc__carry-list { margin: 0; padding-left: 1.25rem; font-size: 14px; line-height: 1.5; color: var(--st-ink); }
-.rsc__carry-line { overflow-wrap: anywhere; }
-.rsc__field { display: flex; flex-direction: column; gap: 4px; width: 100%; }
-.rsc__field-l { font-size: 12px; font-weight: 800; color: var(--st-ink-2); }
-.rsc__input {
-  width: 100%;
-  min-height: 44px;
-  padding: 0 0.75rem;
-  border: 1px solid var(--st-border);
-  border-radius: 10px;
-  background: var(--st-bg);
-  color: var(--st-ink);
-  font: inherit;
-  font-size: 14px;
-}
-.rsc__input:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
-.rsc__private { display: flex; align-items: flex-start; gap: 6px; margin: 0; font-size: 12px; line-height: 1.4; color: var(--st-ink-muted); }
-.rsc__private > svg { flex: none; margin-top: 2px; }
-
-.rsc-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 16px;
-  border: 1px solid var(--st-border-strong);
-  border-radius: 999px;
-  background: var(--st-surface);
-  color: var(--st-ink-2);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.rsc-btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
-.rsc-btn--go { border-color: transparent; background: transparent; color: var(--st-live); padding: 0 10px; }
-
-.rsc-line {
-  display: flex;
-  flex-direction: column;
-  margin-top: 0.75rem;
-  border: 1px solid var(--st-border);
-  border-radius: var(--st-radius);
-  background: var(--st-surface);
-}
-.rsc-line__part {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.75rem;
-  min-height: 52px;
-  padding: 0.375rem 0.5rem 0.375rem 0.875rem;
-}
-.rsc-line__part + .rsc-line__part { border-top: 1px solid var(--st-border); }
-.rsc-line__t { flex: 1 1 12rem; min-width: 0; font-size: 14px; font-weight: 700; color: var(--st-ink); overflow-wrap: anywhere; }
-
-/* ------------------------------------------------------------------ *
- * Ask the team, behind Help a teammate (phase 7): the Ask sheet's six
- * tiles as one row of buttons, each opening the sheet on its tile.
- * ------------------------------------------------------------------ */
-
-.rbd-asks { display: flex; flex-direction: column; gap: 0.25rem; margin: 0 0 0.875rem; }
-.rbd-asks .rbd-asks__h { margin: 0; }
-.rbd-asks__row { display: flex; flex-wrap: wrap; gap: 0.375rem; }
-.rbd-ask {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--st-border-strong);
-  border-radius: 999px;
-  background: var(--st-surface);
-  color: var(--st-live);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.rbd-ask:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
 
 /* ------------------------------------------------------------------ *
  * Since you were in (the second wave of the Relay room, Sep 28 2026):

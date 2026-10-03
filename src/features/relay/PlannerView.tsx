@@ -154,7 +154,6 @@ export function PlannerView({ authTrainer, clients, trainers, onOpenClientTask, 
       <div className="pl__body" role="tabpanel" id="pl-panel" aria-labelledby={`pl-tab-${tab}`}>
         {tab === "floor" && (
           <StudioHubView
-            embedded
             authTrainer={authTrainer}
             clients={clients}
             trainers={trainers}

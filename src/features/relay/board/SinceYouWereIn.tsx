@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BadgeCheck, BookOpenCheck, CheckCheck, CircleSlash, Flag, Heart, Megaphone, UserRoundPlus } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
@@ -52,11 +52,16 @@ export interface SinceYouWereInProps {
   /** Asks answered lately (useStudioRequests' recentlyResolved). */
   resolved: TaskRequest[];
   playbook: PlaybookEntry[];
+  /**
+   * Drawn as "● 2 new" in the header, opening the notices under it (the
+   * Relay Board rebuild, Oct 3 2026; AJ picked the calm header with it).
+   */
+  pill?: boolean;
 }
 
 const firstName = (name: string) => name.trim().split(/\s+/)[0] || name;
 
-export function SinceYouWereIn({ rows, jobs, resolved, playbook }: SinceYouWereInProps) {
+export function SinceYouWereIn({ rows, jobs, resolved, playbook, pill = false }: SinceYouWereInProps) {
   const relay = useRelay();
   const { studios } = useActiveStudio();
   const { announcements, acked } = useHubAnnouncements(relay.authTrainer, relay.studioId);
@@ -166,7 +171,7 @@ export function SinceYouWereIn({ rows, jobs, resolved, playbook }: SinceYouWereI
     });
   }, [tick, last.seenAt, announcements, acked, relay.trainers, newClients, machines, playbook, hearts, relay.studioId]);
 
-  return (
+  const board = (
     <SinceBoard
       notices={notices}
       newCount={newCount}
@@ -202,6 +207,56 @@ export function SinceYouWereIn({ rows, jobs, resolved, playbook }: SinceYouWereI
         />
       )}
     />
+  );
+  return pill ? <NewsPill newCount={newCount}>{board}</NewsPill> : board;
+}
+
+/**
+ * "● 2 new" — what's new since you were in, as one quiet pill in the header;
+ * a tap opens the notices under it, a tap outside or Escape closes them.
+ * "All read" once there's nothing new.
+ */
+export function NewsPill({ newCount, children }: { newCount: number; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const wrap = useRef<HTMLSpanElement | null>(null);
+  const button = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (wrap.current && !wrap.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        button.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+  return (
+    <span className="rbn" ref={wrap}>
+      <button
+        type="button"
+        ref={button}
+        className={cn("rbn__pill", newCount > 0 && "rbn__pill--new")}
+        aria-expanded={open}
+        aria-label={newCount > 0 ? `${newCount} new since you were in` : "Since you were in: all read"}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="rbn__dot" aria-hidden />
+        {newCount > 0 ? `${newCount} new` : "All read"}
+      </button>
+      {open && (
+        <div className="rbn__pop" role="dialog" aria-label="Since you were in">
+          {children}
+        </div>
+      )}
+    </span>
   );
 }
 

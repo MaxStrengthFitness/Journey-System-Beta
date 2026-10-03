@@ -141,19 +141,12 @@ const NAME_CLASSES = [
   "tj-card__title", // a team job
   "tj-person__name",
   "tj-part__label",
-  "rbd-dealt__title", // the Board's dealt card (Next up's cards until Sep 28 2026)
-  "rbd-giver__name", // who a card comes from
-  "rbd-alt__t", // an Also fits row
-  "rbd-row__t", // a job behind Mine
-  "rbd-door__label", // a door's name
-  "rbd-part__t", // a machine on the dealt card's checklist
-  "rbd-team__t", // a chore on Team today
-  "rbd-later__t", // a row of Later today (a client's name)
   "rbd-undo__t", // what Undo takes back (a job's name)
-  "rwho__name", // a trainer on a leader's Who? faces
+  "rbc__t", // a card on the Board: a chore, an ask, a client (the Relay Board rebuild, Oct 3 2026)
+  "rbc__line", // who did it, who's on it, whose it is
+  "rbd-part__t", // a machine in a chore, beside the Board
+  "rbd-who__name", // a trainer a leader puts on an ask
   "rtk-box__t", // the Tracker's Tracking box: the job's name
-  "rsc__t", // Opening and Close out: what is waiting, what is left (a job's or a client's name)
-  "rsc-line__t", // the line that says when each card is
   "rak-tile__t", // a tile of the Ask sheet
   "stq__item-client", // who an ask is about: a client's whole name
   "stq__answer", // a question's answer, and who gave it
@@ -239,21 +232,16 @@ const TAP_CLASSES = [
   "stm__preset",
   "rjn__kudos",
   // The Board (Relay room, Sep 28 2026): 44px on the cards, per the blueprint.
-  "rbd-door",
   "rbd-btn",
-  "rbd-alt",
   "rbd-part",
-  "rbd-link",
   "rbd-undo__btn",
-  "rwho__face",
-  "rwho__more",
-  "rwho__span",
-  "rwho__pop-item",
+  "rbc__box", // a card's box (the Relay Board rebuild, Oct 3 2026)
+  "rbc__main", // a card's words, which open its work
+  "rbd-who__face",
+  "rbn__pill", // "● 2 new" in the header
   "rtk-list", // the Tracker's lists
-  "rsc-btn", // Opening and Close out
   "rak-tile", // the Ask sheet's six tiles
   "rak-when", // its day and time
-  "rbd-ask", // Ask the team, behind Help a teammate
   "sh__client-ask", // Ask the team about this client
   "ne__suggest-use",
   "rls__chip",
@@ -348,11 +336,8 @@ const BUTTON_CLASSES = [
   "rbd-btn",
   "rbd-part",
   "rbd-undo__btn",
-  "rwho__face",
   "rtk-list",
-  "rsc-btn",
   "rak-tile",
-  "rbd-ask",
   "sh__client-ask",
   "tj-open",
   "tj-done__toggle",
