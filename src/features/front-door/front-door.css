@@ -242,7 +242,12 @@
 /* open: the M and the X part, the A opens like a door into the studio */
 .fd-tiles--open .fd-tile-sq--m { animation: fd-door-l 0.7s cubic-bezier(0.7, 0, 0.3, 1) forwards; }
 .fd-tiles--open .fd-tile-sq--x { animation: fd-door-r 0.7s cubic-bezier(0.7, 0, 0.3, 1) forwards; }
-.fd-tiles--open .fd-tile-sq--a { animation: fd-grow 0.7s cubic-bezier(0.7, 0, 0.3, 1) forwards; }
+.fd-tiles--open .fd-tile-sq--a { animation: fd-grow 0.7s cubic-bezier(0.7, 0, 0.3, 1) forwards; z-index: 1; overflow: visible; }
+.fd-tiles--open .fd-tile-sq--a svg { animation: fd-fade 0.25s ease forwards; }
+/* The door's screen: nothing clips the A, and no scrollbar appears while it grows. */
+.fd.fd--opening { overflow: hidden; }
+.fd--opening .fd-page { overflow: visible; }
+.fd-door-words { position: relative; z-index: 2; color: #fff; font-weight: 600; }
 
 /* ---------- checking you in ---------- */
 .fd-steps { list-style: none; padding: 0; margin: 28px auto 0; max-width: 420px; }
@@ -376,7 +381,9 @@ textarea.fd-input { resize: vertical; min-height: 96px; }
 @keyframes fd-sheen { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 @keyframes fd-door-l { to { transform: translateX(-60vw); opacity: 0; } }
 @keyframes fd-door-r { to { transform: translateX(60vw); opacity: 0; } }
-@keyframes fd-grow { 60% { transform: scale(9); opacity: 1; } to { transform: scale(30); opacity: 0; } }
+/* The A fills the whole screen and stays orange until the studio draws over it. */
+@keyframes fd-grow { to { transform: scale(var(--fd-door-scale, 40)); border-radius: 0; } }
+@keyframes fd-fade { to { opacity: 0; } }
 @keyframes fd-rot { to { transform: rotate(360deg); } }
 @keyframes fd-rise { from { opacity: 0; transform: translateY(8px); } }
 @keyframes fd-shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }

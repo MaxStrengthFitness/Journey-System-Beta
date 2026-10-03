@@ -10,9 +10,9 @@ import "./front-door.css";
  * pane is its own scroller (`touch-pane`, index.css) and pays the top inset
  * itself; html and body never scroll (the Sep 5 scroll-trap lesson).
  */
-export function FrontDoorPane({ children, label }: { children: ReactNode; label?: string }) {
+export function FrontDoorPane({ children, label, opening = false }: { children: ReactNode; label?: string; opening?: boolean }) {
   return (
-    <div className="touch-pane border-t-safe overflow-y-auto overscroll-contain fd" aria-label={label}>
+    <div className={`touch-pane border-t-safe overflow-y-auto overscroll-contain fd${opening ? " fd--opening" : ""}`} aria-label={label}>
       {children}
     </div>
   );

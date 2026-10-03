@@ -291,10 +291,10 @@ export function StudioSelectionView({
   // ---- going in --------------------------------------------------------------
   if (opening) {
     return (
-      <FrontDoorPane label={`Opening ${opening.name}`}>
-        <main className="fd-page fd-page--center" style={{ overflow: "hidden" }} aria-busy="true">
+      <FrontDoorPane label={`Opening ${opening.name}`} opening>
+        <main className="fd-page fd-page--center" aria-busy="true">
           <Tiles mode="open" />
-          <p className="fd-small fd-center" style={{ marginTop: 30 }} role="status">
+          <p className="fd-small fd-center fd-door-words" style={{ marginTop: 30 }} role="status">
             Opening {opening.name}…
           </p>
         </main>
