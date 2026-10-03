@@ -63,6 +63,7 @@ import {
   type FocusCategory,
   type HealthFlavour,
   type JournalEntry,
+  type JournalImportance,
   type JournalKind,
   type JournalOrigin,
   type NoteBodyMark,
@@ -203,6 +204,25 @@ export type FilingCategory = Exclude<NoteCategory, "ford" | "admin">;
 export const FILING_CATEGORIES: readonly NoteCategoryMeta[] = NOTE_CATEGORIES.filter(
   (c): c is NoteCategoryMeta & { id: FilingCategory } => c.id !== "ford" && c.id !== "admin",
 );
+
+/**
+ * How loud a new note starts, per kind. A coach can always change it.
+ * Health, Incident and Retention start at Heads up: the next trainers hear
+ * it at her next four sessions, and the studio's leaders see it on
+ * Operations → Today whatever its loudness. An incident used to start
+ * Critical; the notes round (Oct 3 2026) brought it down to Heads up, since
+ * Incident now runs from a lost phone to a fall and Critical stays until
+ * someone acts on it — a fall is one tap up. Every door that files a note
+ * as it is written (the composer, the arrival note, the End Session box)
+ * starts it here.
+ */
+export const DEFAULT_IMPORTANCE: Record<FilingCategory, JournalImportance> = {
+  coaching: "standard",
+  health: "elevated",
+  incident: "elevated",
+  retention: "elevated",
+  preference: "standard",
+};
 
 /** True for a category whose notes reach the studio's leaders. */
 export function isForLeaders(category: NoteCategory): boolean {

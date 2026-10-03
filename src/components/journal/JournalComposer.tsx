@@ -58,6 +58,7 @@ import { Check, Heart } from "lucide-react";
 import type { JournalDraft, JournalImportance, JournalOrigin, NoteBodyMark } from "../../types/journal";
 import type { Machine } from "../../types";
 import {
+  DEFAULT_IMPORTANCE,
   NOTE_CATEGORY_META,
   asksBodyPart,
   flavourFor,
@@ -87,22 +88,8 @@ const PLACEHOLDERS: Record<FilingCategory, string> = {
 
 const UNTAGGED_PLACEHOLDER = "Write it down now — you can file it later.";
 
-/**
- * How loud a new note starts, per kind. A coach can always change it.
- * Health, Incident and Retention start at Heads up: the next trainers hear
- * it at her next four sessions, and the studio's leaders see it on
- * Operations → Today whatever its loudness. An incident used to start
- * Critical; the notes round (Oct 3 2026) brought it down to Heads up, since
- * Incident now runs from a lost phone to a fall and Critical stays until
- * someone acts on it — a fall is one tap up.
- */
-export const DEFAULT_IMPORTANCE: Record<FilingCategory, JournalImportance> = {
-  coaching: "standard",
-  health: "elevated",
-  incident: "elevated",
-  retention: "elevated",
-  preference: "standard",
-};
+/** How loud a new note starts, per kind — note-catalog.ts's table, re-exported where it always was. */
+export { DEFAULT_IMPORTANCE };
 
 /**
  * Whether "About {machine}" starts on, per category, in a session. A health

@@ -626,6 +626,35 @@ describe("Finish never hangs and never counts a session twice (session record, S
     expect(buttons.some((t) => t?.includes("Discard"))).toBe(false);
   });
 
+  it("files the Note for the next trainer as it is written when a kind is picked, so it never waits in the tray (Oct 3 2026)", async () => {
+    await openEndSession();
+    // Nothing typed: no extra row.
+    expect(document.querySelector('[data-testid="next-trainer-file-as"]')).toBeNull();
+    const box = document.getElementById("next-trainer-note") as HTMLTextAreaElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(box, "Mentioned she may not renew in May.");
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const row = document.querySelector('[data-testid="next-trainer-file-as"]')!;
+    expect(row).toBeTruthy();
+    const retention = Array.from(row.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Retention")!;
+    await act(async () => retention.click());
+    await act(async () => finishButton()!.click());
+    await settle();
+    await settle();
+
+    expect(journalDocs).toHaveLength(1);
+    expect(journalDocs[0].data()).toMatchObject({
+      body: "Mentioned she may not renew in May.",
+      importance: "elevated",
+      kind: "retention",
+      category: null,
+      origin: "post_session",
+    });
+    // Filed already, so the Wrap-up's tray has nothing to ask about it.
+    expect(document.querySelector('[data-testid="sweep-j-1"]')).toBeNull();
+  });
+
   it("offline, goes straight to the Wrap-up and says the session is saved on this iPad", async () => {
     Object.defineProperty(navigator, "onLine", { configurable: true, get: () => false });
     finishCtl.commit = "hang"; // offline, the database never answers

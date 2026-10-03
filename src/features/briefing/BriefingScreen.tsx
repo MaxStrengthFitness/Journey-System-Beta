@@ -119,6 +119,8 @@ import { variationStudioIdOf } from "../inbody/variation";
 import { useStudioSettings } from "../studio-settings";
 import { pronounsOf } from "../client-codex/kit/pronouns";
 import "./briefing.css";
+import { NoteCategoryChips } from "../client-notes/NoteCategoryChips";
+import { FILING_CATEGORIES, type FilingCategory } from "../client-notes/note-catalog";
 import { usePhone } from "../phone/device";
 
 import { clientDisplayName } from "../../lib/client-name";
@@ -147,6 +149,8 @@ export interface BriefingScreenProps {
     customMachines?: string[],
     note?: string,
     checkIn?: PreSessionCheckIn,
+    /** The arrival note's category, when the trainer picked one (notes round, Oct 3 2026). */
+    noteCategory?: FilingCategory | null,
   ) => void;
   onClose: () => void;
   machines: Machine[];
@@ -201,6 +205,12 @@ export function BriefingScreen({
   >("A");
   const [adjustedMachineIds, setAdjustedMachineIds] = useState<string[]>([]);
   const [adjustmentNote, setAdjustmentNote] = useState("");
+  // What kind of note the arrival note is (notes round, Oct 3 2026): one
+  // optional tap, offered only once something is typed, so the start is
+  // never slower. Picked, it is filed as it is written and reaches whoever
+  // acts on it (Health, Incident and Retention reach the studio's leaders);
+  // left alone, it waits in the To-file tray as before.
+  const [arrivalCategory, setArrivalCategory] = useState<FilingCategory | null>(null);
   const [isAdjusting, setIsAdjusting] = useState(false);
   /** Update Pulse — the living assessment, one area at a time, from here. */
   const [showPulse, setShowPulse] = useState(false);
@@ -308,6 +318,7 @@ export function BriefingScreen({
         : undefined,
       adjustmentNote,
       checkIn,
+      adjustmentNote.trim() ? arrivalCategory : null,
     );
   };
 
@@ -959,6 +970,18 @@ export function BriefingScreen({
                   placeholder="Anything they mentioned — how they slept, an ache, a trip coming up, a new diet, the grandkids are in town…"
                   className="br__textarea"
                 />
+                {adjustmentNote.trim() ? (
+                  <div className="br__file-as" data-testid="arrival-file-as">
+                    <span className="nc-kicker">File it as (optional)</span>
+                    <NoteCategoryChips
+                      value={arrivalCategory}
+                      options={FILING_CATEGORIES}
+                      label="File the arrival note as"
+                      small
+                      onChange={(c) => setArrivalCategory((prev) => (prev === c ? null : (c as FilingCategory)))}
+                    />
+                  </div>
+                ) : null}
               </fieldset>
             </section>
             {/* 6. One loud action, sticky to the bottom of the page rather

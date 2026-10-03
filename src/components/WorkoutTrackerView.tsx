@@ -189,7 +189,15 @@ import { createJournalEntry, useClientJournal } from "../hooks/useClientJournal"
 import { flagLineOf, machineFlags, sessionFlags } from "../features/journey-grid/session-flags";
 import { SessionFlagsSheet } from "../features/journey-grid/SessionFlagsSheet";
 import { formatStudioDate } from "../lib/studio-time";
-import { journalBodyOf, storedNoteOf } from "../features/client-notes/note-catalog";
+import {
+  DEFAULT_IMPORTANCE,
+  FILING_CATEGORIES,
+  journalBodyOf,
+  storedNoteOf,
+  type FilingCategory,
+} from "../features/client-notes/note-catalog";
+import { NoteCategoryChips } from "../features/client-notes/NoteCategoryChips";
+import { painSkipNotes } from "../features/client-notes/pain-notes";
 import {
   clearSessionDraft,
   hasDraftText,
@@ -373,6 +381,12 @@ export function WorkoutTrackerView({
     Record<string, ClientMachineSetting>
   >({});
   const [currentSessionNotes, setCurrentSessionNotes] = useState<string>("");
+  /* What kind of note the Note for the next trainer is (notes round, Oct 3
+     2026): one optional tap under the End Session box, offered once
+     something is typed. AJ: capture "can't depend on a Wrap-up pass because
+     the time won't reliably be there". Picked, it is filed as it is written
+     and never waits in the Wrap-up's tray; it is a Heads up either way. */
+  const [nextTrainerCategory, setNextTrainerCategory] = useState<FilingCategory | null>(null);
 
   /**
    * When the trainer arrived at each machine.
@@ -1338,6 +1352,8 @@ export function WorkoutTrackerView({
        everyone remembering. Permanent routine changes are made on the client
        profile. (Sep 2026) */
     preSessionCheckIn?: PreSessionCheckIn,
+    /** The arrival note's category, when one was picked on the briefing (Oct 3 2026). */
+    arrivalCategory?: FilingCategory | null,
   ) => {
     if (!clientId) return;
     const nextNum = (selectedClient?.sessionCount || 0) + 1;
@@ -1495,6 +1511,9 @@ export function WorkoutTrackerView({
           (authTrainer?.fullName || "").substring(0, 2) ||
           "??"
         ).toUpperCase();
+        const arrivalStored = (({ kind, category }) => ({ kind, category }))(
+          storedNoteOf(arrivalCategory ?? null, null, null),
+        );
         try {
           await createJournalEntry(
             clientId,
@@ -1502,8 +1521,12 @@ export function WorkoutTrackerView({
             clientHomeStudioId || currentStudioId || "",
             { id: user.uid, initials, fullName: authTrainer?.fullName || initials },
             {
-              kind: "general",
-              category: null,
+              /* Filed as it is written when the trainer picked what kind it
+                 is (notes round, Oct 3 2026), at that kind's starting
+                 loudness — an ache filed as Health is a Heads up, read out
+                 at her next four sessions and seen by the studio's leaders.
+                 Left unpicked it is unfiled, at Note, and waits in the tray. */
+              ...arrivalStored,
               /* The briefing's box is the ARRIVAL note now ("how they slept,
                  an ache, a trip coming up") — it only reads as a routine
                  change when the sequence actually changed. */
@@ -1511,7 +1534,7 @@ export function WorkoutTrackerView({
                 ? `Routine adjusted for today: ${adjustmentNote.trim()}`
                 : `On arrival: ${adjustmentNote.trim()}`
               ).slice(0, 5000),
-              importance: "standard",
+              importance: arrivalCategory ? DEFAULT_IMPORTANCE[arrivalCategory] : "standard",
               machineId: null,
               focusId: null,
               // Linked to the session it opened, with its number and day
@@ -2054,13 +2077,15 @@ export function WorkoutTrackerView({
          the Wrap-up can tell its card apart (isNextTrainerNote). */
       const nextTrainerNote = journalBodyOf(currentSessionNotes);
       if (nextTrainerNote) {
+        // Filed as it is written when a kind was picked (Oct 3 2026); unfiled otherwise.
+        const nextTrainerStored = storedNoteOf(nextTrainerCategory, null, null);
         createJournalEntry(
           selectedClient.id,
           sessionNoteStudioId(selectedClient, contextActiveStudioId || authTrainer?.primaryHomeStudioId),
           { id: user.uid, initials: authTrainer?.initials || "", fullName: authTrainer?.fullName || "" },
           {
-            kind: "general",
-            category: null,
+            kind: nextTrainerStored.kind,
+            category: nextTrainerStored.category,
             body: nextTrainerNote,
             importance: "elevated",
             machineId: null,
@@ -2078,6 +2103,34 @@ export function WorkoutTrackerView({
             );
           },
           () => toastError("Session saved. The note for the next trainer could not reach their briefing — add it from Notes & Profile → Notes."),
+        );
+      }
+
+      /* A set skipped for pain is a note (notes round, Oct 3 2026;
+         client-notes/pain-notes.ts): each pain skip still standing in the
+         final log is filed as an Incident at Heads up, about that machine —
+         read out at her next four sessions and on the studio's leaders'
+         list. From the final log only, so a skip undone before Finish
+         writes nothing. Outside the batch like every journal write; a
+         failure is said, never a reason to hold Finish. */
+      for (const pain of painSkipNotes(finalLogs, (id) => floorMachines.find((m) => m.id === id)?.name || "")) {
+        createJournalEntry(
+          selectedClient.id,
+          sessionNoteStudioId(selectedClient, contextActiveStudioId || authTrainer?.primaryHomeStudioId),
+          { id: user.uid, initials: authTrainer?.initials || "", fullName: authTrainer?.fullName || "" },
+          {
+            kind: "incident",
+            category: null,
+            bodyParts: pain.bodyParts,
+            body: pain.body,
+            importance: DEFAULT_IMPORTANCE.incident,
+            machineId: pain.machineId,
+            focusId: null,
+            ...sessionLinkOf(currentSession, studioTodayKey()),
+            origin: "in_session",
+          },
+        ).catch(() =>
+          toastError("Session saved. The pain skip couldn't be added to her notes — add it from Notes & Profile → Notes."),
         );
       }
 
@@ -2129,6 +2182,7 @@ export function WorkoutTrackerView({
       forgetLiveSession(currentSession?.id);
       setCurrentSession(null);
       setCurrentSessionNotes("");
+      setNextTrainerCategory(null);
       setShowEndConfirmation(false);
       setIsPostSessionMode(true);
     } catch (error) {
@@ -3245,13 +3299,14 @@ export function WorkoutTrackerView({
           /* The client's sessions stream has no limit: every one she has
              in Journey, so the InBody count is exact (features/inbody/due.ts). */
           sessionsAreAll
-          onStart={(routineType, customMachines, note, checkIn) =>
+          onStart={(routineType, customMachines, note, checkIn, noteCategory) =>
             startNewSession(
               routineType,
               undefined,
               customMachines,
               note,
               checkIn,
+              noteCategory,
             )
           }
           onClose={() => {
@@ -3632,6 +3687,20 @@ export function WorkoutTrackerView({
                   <p id="next-trainer-note-hint" className="text-xs text-muted-foreground">
                     Read out on the briefing at the next four sessions. A note just for the profile goes on the Wrap-up, next.
                   </p>
+                  {currentSessionNotes.trim() ? (
+                    <div className="flex flex-col gap-1.5" data-testid="next-trainer-file-as">
+                      <span className="nc-kicker">File it as (optional)</span>
+                      <NoteCategoryChips
+                        value={nextTrainerCategory}
+                        options={FILING_CATEGORIES}
+                        label="File the note for the next trainer as"
+                        small
+                        onChange={(c) =>
+                          setNextTrainerCategory((prev) => (prev === c ? null : (c as FilingCategory)))
+                        }
+                      />
+                    </div>
+                  ) : null}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Button

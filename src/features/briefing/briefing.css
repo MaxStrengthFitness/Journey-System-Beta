@@ -774,3 +774,12 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* The arrival note's "File it as" row (notes round, Oct 3 2026): under the
+   box, only once something is typed. */
+.br__file-as {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+}

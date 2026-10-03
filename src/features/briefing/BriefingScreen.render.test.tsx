@@ -296,6 +296,36 @@ describe("the pre-session briefing mounts", () => {
     expect(checkIn.mood).toBeUndefined();
   });
 
+  it("offers 'File it as' under the arrival note only once something is typed, and passes the pick to Start (Oct 3 2026)", async () => {
+    const onStart = vi.fn();
+    const host = await mount(<Screen onStart={onStart} />);
+    // Nothing typed: no extra row, so the start is never slower.
+    expect(host.querySelector('[data-testid="arrival-file-as"]')).toBeNull();
+    await click(buttonByText(host, "Start session"));
+    expect(onStart.mock.calls[0][4]).toBeNull();
+
+    const box = host.querySelector(".br__textarea");
+    await typeInto(box, "Knee a bit sore from gardening");
+    const row = host.querySelector('[data-testid="arrival-file-as"]')!;
+    expect(row).toBeTruthy();
+    expect(Array.from(row.querySelectorAll("button")).map((b) => b.textContent)).toEqual([
+      "Coaching & equipment",
+      "Health",
+      "Incident",
+      "Retention",
+      "Preference",
+    ]);
+    await click(buttonByText(row, "Health"));
+    await click(buttonByText(host, "Start session"));
+    expect(onStart.mock.calls[1][2]).toBe("Knee a bit sore from gardening");
+    expect(onStart.mock.calls[1][4]).toBe("health");
+
+    // A second tap takes it back: the note waits in the To-file tray as before.
+    await click(buttonByText(row, "Health"));
+    await click(buttonByText(host, "Start session"));
+    expect(onStart.mock.calls[2][4]).toBeNull();
+  });
+
   it("carries a body region from the last session while its until day has not passed", async () => {
     const host = await mount(<Screen />);
     const before = host.querySelector('[aria-label="Before you start"]')!;
