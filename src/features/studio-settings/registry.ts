@@ -92,7 +92,7 @@ export const SETTINGS: readonly SettingDef[] = [
     min: 0,
     max: 12,
     appDefault: 2,
-    help: "Relay's Right now calls the floor quiet at this many sessions or fewer, and points a trainer with a gap at the jobs that take a while.",
+    help: "Relay's Board calls the floor quiet at this many sessions or fewer, and says it's a good time for floor work.",
     readers: ["features/relay/board/right-now.ts"],
   },
   {

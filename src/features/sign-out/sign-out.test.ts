@@ -18,7 +18,6 @@ import { PLACE_KEY, RELOAD_KEY } from "../new-version/reload-once";
 import { sessionDraftKey } from "../client-notes/session-draft";
 import { clearPlannerIntent, peekPlannerIntent, requestPlanner } from "../relay/intent";
 import { rememberMyStudioSection, rememberedMyStudioSection } from "../my-studio/section-memory";
-import { resetSnoozes, snooze, snoozedIds } from "../relay/board/next-up";
 
 /** Web Storage over a Map, in insertion order like the real thing. */
 class FakeStorage implements StorageLike {
@@ -63,7 +62,6 @@ afterEach(() => {
   vi.restoreAllMocks();
   clearPlannerIntent(peekPlannerIntent());
   rememberMyStudioSection("relay");
-  resetSnoozes();
 });
 
 describe("clearPersonalStorage — the iPad keeps its studio, nothing else", () => {
@@ -152,13 +150,6 @@ describe("forgetPersonalMemory — the module memories registered with it", () =
     rememberMyStudioSection("team");
     forgetPersonalMemory();
     expect(rememberedMyStudioSection()).toBe("relay");
-  });
-
-  it("forgets who said 'Not me' on the Relay board", () => {
-    snooze("westlake", "2026-09-24", "opening", "job-1");
-    expect(snoozedIds("westlake", "2026-09-24", "opening").has("job-1")).toBe(true);
-    forgetPersonalMemory();
-    expect(snoozedIds("westlake", "2026-09-24", "opening").size).toBe(0);
   });
 });
 

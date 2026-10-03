@@ -15,6 +15,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
+import { useStudioSettings } from "../studio-settings";
 import { auth } from "../../firebase";
 import { studioDateKey } from "../../lib/studio-time";
 import type { Client, Trainer } from "../../types";
@@ -63,7 +64,7 @@ export interface StudioHubViewProps {
 }
 
 export function StudioHubView({ authTrainer, clients, trainers, onOpenClientTask, openJobId = null, onOpenedJob }: StudioHubViewProps) {
-  const { activeStudioId } = useActiveStudio();
+  const { activeStudioId, activeStudio } = useActiveStudio();
   const [noteRow, setNoteRow] = useState<TaskRow | null>(null);
   /*
    * ASSIGNMENT IS A LEADER'S ACT — AT THIS STUDIO. leadsHere (relay/leads.ts)
@@ -104,6 +105,14 @@ export function StudioHubView({ authTrainer, clients, trainers, onOpenClientTask
   const leadsJobs = leadsHere(authTrainer, activeStudioId);
   const teamJobs = useTeamJobs(activeStudioId ?? null);
   const relay = useRelayMaybe();
+  /*
+   * THE STUDIO'S OWN NUMBERS (Sep 28 2026, AJ: "all yes, let the admins
+   * assign the default within the app"): the quiet floor the Board's status
+   * row measures by — the studio's own, else Max Strength's default, else
+   * the app's (features/studio-settings).
+   */
+  const settings = useStudioSettings(relay ? (activeStudioId ?? null) : null, activeStudio);
+  const quietFloor = settings.value("quietFloorSessions");
   const [openJobKey, setOpenJobKey] = useState<string | null>(null);
   const openJob: TeamJob | null = useMemo(() => teamJobs.jobs.find((j) => j.id === openJobKey) ?? null, [teamJobs.jobs, openJobKey]);
   // Arrived from a notification: open that job once the jobs have loaded.
@@ -147,6 +156,7 @@ export function StudioHubView({ authTrainer, clients, trainers, onOpenClientTask
             clients={clients}
             loading={loading && rows.length === 0}
             unknown={Boolean(tasksError) || requestsFailed || Boolean(teamJobs.error)}
+            quietFloorSessions={quietFloor ?? undefined}
             news={<SinceYouWereIn rows={rows} jobs={teamJobs.jobs} resolved={recentlyResolved} playbook={playbookEntries} pill />}
           />
         )}

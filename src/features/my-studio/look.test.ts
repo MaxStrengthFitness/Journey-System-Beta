@@ -241,6 +241,7 @@ const TAP_CLASSES = [
   "rbd-who__face",
   "jtd-btn", // the Journal's Today: Keep for today, Save to my journal
   "jtd-input",
+  "fm__head", // the floor map’s one line on the Board
   "rbn__pill", // "● 2 new" in the header
   "rtk-list", // the Tracker's lists
   "rak-tile", // the Ask sheet's six tiles

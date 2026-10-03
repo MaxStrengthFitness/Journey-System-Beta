@@ -15,9 +15,11 @@ import { studioRoster } from "../../studio-tasks/initiatives";
 import { closeJob, leaveJob, joinJob, reopenJob } from "../jobs/mutations";
 import type { TeamJob } from "../jobs/types";
 import { useRelay } from "./RelayContext";
-import { useCardActions } from "./card-actions";
+import { useCloseAsk } from "./card-actions";
 import { whoFaces, type WhoFace } from "./who";
 import { FocusBanner } from "./FocusBanner";
+import { FloorMap } from "./FloorMap";
+import { floorLoad, quietLine } from "./right-now";
 import { JustNow } from "./JustNow";
 import { BoardCardView } from "./BoardCardView";
 import {
@@ -60,7 +62,9 @@ import "./board.css";
  * there ("leadership can just directly assign"); someone whose name is on
  * it says "I can't" there. Every tick, untick and pass-back has the
  * eight-second Undo. Since you were in rides in the header ("● 2 new"); Just
- * now is at the foot, with its hearts.
+ * now is at the foot, with its hearts; above it, on today's parts, the Floor
+ * Map (each machine's wipes, deep cleans and flags, by the studio's own
+ * cleaning log), which sat behind Floor work.
  *
  * Nothing here is stored of its own: every write is the one the work always
  * had (useTaskActions, the asks' trail, the jobs' mutations).
@@ -89,6 +93,12 @@ export interface BoardProps {
   unknown?: boolean;
   /** What's new since you were in (./SinceYouWereIn.tsx as a pill), drawn in the header. */
   news?: ReactNode;
+  /**
+   * The studio's quiet-floor number (studio-settings `quietFloorSessions`,
+   * read by the host): the status row says a quiet floor is a good time for
+   * floor work. Absent, the app's default.
+   */
+  quietFloorSessions?: number;
 }
 
 export function Board({
@@ -106,6 +116,7 @@ export function Board({
   loading,
   unknown = false,
   news,
+  quietFloorSessions,
 }: BoardProps) {
   const relay = useRelay();
   const { now } = relay;
@@ -143,6 +154,9 @@ export function Board({
   useEffect(() => setPart(partNow(now.phase)), [now.phase]);
   const columns = useMemo(() => cardsByColumn(cards, part), [cards, part]);
   const count = partCount(cards, part);
+  // A quiet floor, said once beside today's parts (never off a list it can't count, never after hours).
+  const quiet =
+    part !== "week" && now.phase !== "closed" ? quietLine(floorLoad(relay.schedules, now.todayKey, now.nowMin), quietFloorSessions) : null;
   const partLabel = CARD_PARTS.find((p) => p.id === part)?.label ?? "";
 
   /* Undo: one line at the foot of the Board, for eight seconds. */
@@ -150,7 +164,7 @@ export function Board({
   const offerUndo = (label: string, run: () => Promise<unknown> | void) => setUndo({ key: Date.now(), label, run });
   const clearUndo = useCallback(() => setUndo(null), []);
 
-  const cardActions = useCardActions({ actions, author, onOpenJob, onOpenClientTask });
+  const closeAsk = useCloseAsk(author);
   const failed = (err: unknown) => {
     console.warn("[relay] board write failed:", err);
     toastError("Could not change that. Check your connection.");
@@ -196,7 +210,7 @@ export function Board({
           void reopenAskWithTrail({ studioId, request: r, who: writer }).catch(failed);
           toastSuccess(`"${r.title}" is open again.`);
         } else {
-          cardActions.done({ kind: "ask", id: card.id, request: r, title: r.title, estMinutes: null, origin: "floor" });
+          void closeAsk(r, "");
           offerUndo(`Closed "${r.title}".`, () => reopenAskWithTrail({ studioId, request: r, who: writer }));
         }
         return;
@@ -443,6 +457,7 @@ export function Board({
         <span>
           <b>{partLabel}</b> · {CARD_PARTS.find((p) => p.id === part)?.when}
         </span>
+        {quiet && <span className="rbd-status__quiet">{quiet}</span>}
         {count.total > 0 && (
           <span className="rbd-status__n">
             {count.done} of {count.total} done
@@ -478,6 +493,9 @@ export function Board({
           })}
         </div>
       )}
+
+      {/* The floor's machines: their wipes, deep cleans and flags, by the studio's own cleaning log (machine-care.ts). Today's parts only. */}
+      {part !== "week" && <FloorMap rows={rows} actions={actions} />}
 
       <div className="rbd-foot-notes">
         <FocusBanner />

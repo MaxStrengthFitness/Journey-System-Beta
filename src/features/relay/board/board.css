@@ -78,6 +78,8 @@
 }
 .rbd-status b { font-weight: 800; color: var(--st-ink); }
 .rbd-status__n { font-weight: 700; color: var(--st-ink-2); font-variant-numeric: tabular-nums; }
+/* "Quiet floor right now: a good time for floor work." — information, in the done green. */
+.rbd-status__quiet { flex: 1 1 16rem; font-size: 14px; font-weight: 600; color: var(--st-done); }
 
 .rbd-warn {
   margin: 0;
