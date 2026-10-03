@@ -129,6 +129,8 @@ export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, 
   }, [columns, blocks, layout]);
 
   const nowY = nowMin === null ? null : yOf(layout, nowMin);
+  /** How far down the rail is blue: to now, or all of it once the day's last booking is behind us. */
+  const railDoneY = nowY !== null ? nowY : nowMin !== null && !layout.empty && nowMin >= layout.to ? layout.height : null;
 
   /* LAND ON NOW (tracker round, Sep 2026): the Now line a third of the way
      down, so the next session sits right under it. Once per day shown,
@@ -158,7 +160,17 @@ export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, 
     });
 
   return (
-    <div ref={scrollRef} className="hs-scroll" hidden={hidden} role="region" aria-label="The day's schedule">
+    <div
+      ref={scrollRef}
+      className="hs-scroll"
+      hidden={hidden}
+      role="region"
+      aria-label="The day's schedule"
+      // One trainer on the day: the column stops at the focus column's width
+      // and the rest of the row says so (Oct 3 2026, AJ: one column across a
+      // whole iPad "looks so fat").
+      data-solo={columns.length === 1 ? "true" : undefined}
+    >
       <div className="hs-canvas">
         <div ref={headRef} className="hs-head">
           <div className="hs-corner" aria-hidden />
@@ -205,27 +217,49 @@ export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, 
               </Head>
             );
           })}
+          {columns.length === 1 && <div className="hs-rest-head">Nobody else is booked on this day</div>}
         </div>
 
         <div className="hs-body" style={{ height: layout.height }}>
+          {/* THE RAIL (Oct 3 2026, AJ picked "B" over a ruler and hour
+              blocks: the axis was "very dull... just so flat", and ":30"
+              didn't say what it was). A line down the axis with a dot at
+              each hour and a ring at each half hour, each half hour named in
+              full ("9:30"); on today the rail is blue up to now and the
+              orange stop sits at now, as the client's Journey chart does. */}
           <div className="hs-axis" aria-hidden>
+            <span className="hs-rail" />
+            {railDoneY !== null && <span className="hs-rail-done" style={{ height: railDoneY }} />}
             {layout.ticks
               .filter((tk) => !tk.edge)
-              .map((tk) => (
-                <span
-                  key={tk.min}
-                  className="hs-tick"
-                  data-hour={tk.hour ? "true" : "false"}
-                  // The first label sits at the very top of the day: centred on
-                  // its line, its top half would hide under the sticky trainer
-                  // row ("9 AM" cut in half, hub fixes Oct 1 2026), so it sits
-                  // just below its line instead.
-                  data-first={tk.y < FIRST_TICK_PX ? "true" : undefined}
-                  style={{ top: tk.y }}
-                >
-                  {tk.hour ? clockWords(tk.min) : `:30`}
-                </span>
-              ))}
+              .map((tk) => {
+                const first = tk.y < FIRST_TICK_PX;
+                const passed = nowMin !== null && tk.min <= nowMin;
+                return (
+                  <span key={tk.min}>
+                    <span
+                      className="hs-tick"
+                      data-hour={tk.hour ? "true" : "false"}
+                      // The first label sits at the very top of the day:
+                      // centred on its line, its top half would hide under the
+                      // sticky trainer row ("9 AM" cut in half, hub fixes
+                      // Oct 1 2026), so it sits just below its line instead.
+                      data-first={first ? "true" : undefined}
+                      style={{ top: tk.y }}
+                    >
+                      {tk.hour ? clockWords(tk.min) : clockWords(tk.min, { short: true })}
+                    </span>
+                    <span
+                      className="hs-dot"
+                      data-hour={tk.hour ? "true" : "false"}
+                      data-passed={passed ? "true" : undefined}
+                      data-first={first ? "true" : undefined}
+                      style={{ top: tk.y }}
+                    />
+                  </span>
+                );
+              })}
+            {nowY !== null && <span className="hs-rail-now" style={{ top: nowY }} />}
           </div>
 
           {columns.map((c) => {
@@ -263,6 +297,8 @@ export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, 
               </div>
             );
           })}
+
+          {columns.length === 1 && <div className="hs-rest" aria-hidden />}
 
           {layout.segments
             .filter((s) => s.folded)

@@ -172,4 +172,39 @@ describe("the focus column (hub cherry round)", () => {
     const el = mount({ columns: withDetail, focusId: "t-ioreth", frameOf: (id) => (id === "t-ioreth" ? { kind: "away", note: null } : { kind: "unknown" }) });
     expect(el.querySelector('.hs-colhead[data-focus="true"] .hs-colcount')?.textContent).toBe("Away");
   });
+
+  it("draws the rail: every half hour named in full, a dot at each line, blue up to now (Oct 3 2026, AJ's pick B)", () => {
+    const el = mount();
+    const ticks = [...el.querySelectorAll<HTMLElement>(".hs-tick")].map((tk) => tk.textContent);
+    expect(ticks).toContain("9:30");
+    expect(ticks).not.toContain(":30");
+    const dots = [...el.querySelectorAll<HTMLElement>(".hs-dot")];
+    expect(dots.length).toBe(ticks.length);
+    // Now is 9:24: the 9 AM dot is passed, the 9:30 dot is not.
+    const nine = dots.find((d, i) => ticks[i] === "9 AM")!;
+    const nineThirty = dots.find((d, i) => ticks[i] === "9:30")!;
+    expect(nine.dataset.passed).toBe("true");
+    expect(nineThirty.dataset.passed).toBeUndefined();
+    expect(el.querySelector(".hs-rail-now")).not.toBeNull();
+    expect(px(el.querySelector<HTMLElement>(".hs-rail-done")!.style.height)).toBeGreaterThan(0);
+  });
+
+  it("draws no now on another day", () => {
+    const el = mount({ nowMin: null });
+    expect(el.querySelector(".hs-rail-now")).toBeNull();
+    expect(el.querySelector(".hs-rail-done")).toBeNull();
+  });
+
+  it("stops a lone trainer's column at the focus width and says nobody else is booked (Oct 3 2026)", () => {
+    const el = mount({ columns: [COLUMNS[0]], blocks: BLOCKS.filter((b) => b.columnId === "t-ioreth") });
+    expect(el.querySelector<HTMLElement>(".hs-scroll")!.dataset.solo).toBe("true");
+    expect(el.querySelector(".hs-rest-head")?.textContent).toBe("Nobody else is booked on this day");
+    expect(el.querySelector(".hs-rest")).not.toBeNull();
+    const css = readFileSync(resolve(__dirname, "hub-grid.css"), "utf8");
+    expect(css).toMatch(/\.hs-scroll\[data-solo="true"\] \.hs-col \{[^}]*max-width:\s*420px/);
+    act(() => root?.unmount());
+    host?.remove();
+    // Two trainers: no cap, no line.
+    expect(mount().querySelector(".hs-rest-head")).toBeNull();
+  });
 });

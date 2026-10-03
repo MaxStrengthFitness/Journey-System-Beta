@@ -10,7 +10,7 @@
 @import "../equipment/equipment.tokens.css";
 
 .hs-scroll {
-  --hs-axis: 56px;
+  --hs-axis: 76px;
   --hs-col-min: 156px;
   --hs-head: 56px;
   position: relative;
@@ -190,11 +190,11 @@ button.hs-colhead:focus-visible {
 
 .hs-tick {
   position: absolute;
-  right: 6px;
+  right: 26px;
   transform: translateY(-50%);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--eq-ink-2);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--eq-ink);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -208,8 +208,75 @@ button.hs-colhead:focus-visible {
 
 .hs-tick[data-hour="false"] {
   font-weight: 600;
-  font-size: 10px;
-  color: var(--eq-ink-faint);
+  font-size: 11px;
+  color: var(--eq-ink-muted);
+}
+
+/* ---- the rail (Oct 3 2026, AJ's pick "B") ----
+   A line down the axis, a dot at each hour and a ring at each half hour;
+   on today, blue up to now and the orange stop at now (the Journey chart's
+   idea). The dots sit on the rail 13px in from the axis's right edge. */
+.hs-rail,
+.hs-rail-done {
+  position: absolute;
+  top: 0;
+  right: 13px;
+  width: 2px;
+  pointer-events: none;
+}
+
+.hs-rail {
+  bottom: 0;
+  background: var(--eq-border-strong);
+}
+
+.hs-rail-done {
+  background: var(--eq-live);
+}
+
+.hs-dot {
+  position: absolute;
+  right: 9px;
+  box-sizing: border-box;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 2px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  transform: translateY(-50%);
+}
+
+.hs-dot[data-hour="true"] {
+  right: 8px;
+  width: 12px;
+  height: 12px;
+  border-color: var(--eq-ink-2);
+  background: var(--eq-ink-2);
+}
+
+.hs-dot[data-passed="true"] {
+  border-color: var(--eq-live);
+}
+
+.hs-dot[data-hour="true"][data-passed="true"] {
+  background: var(--eq-live);
+}
+
+/* The day's first dot sits on its line at the top, as its label does. */
+.hs-dot[data-first="true"] {
+  transform: translateY(1px);
+}
+
+.hs-rail-now {
+  position: absolute;
+  right: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--eq-hero);
+  box-shadow: 0 0 0 4px var(--eq-hero-fill, transparent);
+  transform: translateY(-50%);
+  z-index: 1;
 }
 
 .hs-col {
@@ -238,8 +305,34 @@ button.hs-colhead:focus-visible {
 }
 
 .hs-line[data-hour="false"] {
-  border-top-style: dashed;
-  opacity: 0.6;
+  border-top-style: dotted;
+  opacity: 0.7;
+}
+
+/* ---- one trainer on the day (Oct 3 2026) ----
+   The column stops at the focus column's width (420px) instead of
+   stretching across the iPad ("looks so fat", AJ), and the rest of the row
+   is hatched like time a trainer isn't on, with one line saying why. */
+.hs-scroll[data-solo="true"] .hs-colhead,
+.hs-scroll[data-solo="true"] .hs-col {
+  flex: 0 1 420px;
+  max-width: 420px;
+}
+
+.hs-rest-head {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  padding: 6px 14px;
+  color: var(--eq-ink-faint);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hs-rest {
+  flex: 1 1 auto;
+  background: repeating-linear-gradient(135deg, transparent 0 7px, var(--eq-border) 7px 8px);
+  opacity: 0.5;
 }
 
 /* A trainer who isn't on (the agreed week, or a day away): hatched, so it

@@ -98,3 +98,16 @@ What a later fix needs, before a historical import (FileMaker) adds years of for
 - **"+N" opening the row**, **"Show on schedule"** from the list: the list has no scroll target yet. (Done on Oct 1 2026, the hub fixes: "Couldn't load, retrying" when a read fails; columns by trainer id only with an Unassigned column; a tap on a column head opening Opportunities for that trainer.)
 - **Zoom (Day | Close)** from Hub direction B: not asked for in the cherry round.
 - **Words for a Watch or Renew mark in your own column** ("No waiver", "Renewal talk", "Pulse flag", as the blueprint's B drew them): kept a glyph alone, because a client stands at the iPad — a question for AJ.
+
+## The rail and a lone trainer (Oct 3 2026)
+
+AJ, on the time axis: "very dull... not very clear on the half hour marks...
+just so flat", and one trainer's column across a whole iPad "looks so fat".
+From three looks (`harness/hub-axis.html`, git-ignored) he picked **B, the
+rail**: a line down the axis with a dot at each hour and a ring at each half
+hour, every half hour named in full ("9:30", never ":30"), the hours 14px
+bold; on today the rail is blue up to now and the orange stop sits at now
+(`railDoneY`: all of it once the day's last booking is behind us). The axis
+is 76px. With one column (`data-solo`), the column stops at 420px, the focus
+column's width, and the rest of the row is hatched and says "Nobody else is
+booked on this day". `HubGrid.render.test.tsx` holds both.
