@@ -170,13 +170,19 @@ export function planColumns<T extends ColumnTrainer>(input: {
  * and put the one column with sessions, Unassigned, last.
  *
  *   1. yours, when it has sessions;
- *   2. every other column with sessions, Unassigned included, in the order
- *      they came;
- *   3. the empty columns, yours first among them.
+ *   2. Unassigned, when it holds any ("Trainer logged in > Unassigned >
+ *      Scheduled sessions > Anything else", AJ, same day);
+ *   3. every other column with sessions, in the order they came;
+ *   4. the empty columns, yours first among them.
  */
 export function orderColumnsBySessions<C extends { id: string; isMe: boolean; count: number }>(cols: readonly C[]): C[] {
   const busy = cols.filter((c) => c.count > 0);
   const empty = cols.filter((c) => c.count === 0);
-  const meFirst = (list: C[]) => [...list.filter((c) => c.isMe), ...list.filter((c) => !c.isMe)];
-  return [...meFirst(busy), ...meFirst(empty)];
+  return [
+    ...busy.filter((c) => c.isMe),
+    ...busy.filter((c) => !c.isMe && c.id === UNASSIGNED_ID),
+    ...busy.filter((c) => !c.isMe && c.id !== UNASSIGNED_ID),
+    ...empty.filter((c) => c.isMe),
+    ...empty.filter((c) => !c.isMe),
+  ];
 }

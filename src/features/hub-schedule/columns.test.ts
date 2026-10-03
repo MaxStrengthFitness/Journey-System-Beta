@@ -112,8 +112,8 @@ describe("orderColumnsBySessions (Oct 3 2026)", () => {
     expect(order.map((c) => c.id)).toEqual([UNASSIGNED_ID, "me", "a", "b"]);
   });
 
-  it("puts yours first when you have sessions", () => {
+  it("runs yours, then Unassigned, then the other booked columns, then the empty ones", () => {
     const order = orderColumnsBySessions([col("a", 3), col("me", 2, true), col("b", 0), col(UNASSIGNED_ID, 1)]);
-    expect(order.map((c) => c.id)).toEqual(["me", "a", UNASSIGNED_ID, "b"]);
+    expect(order.map((c) => c.id)).toEqual(["me", UNASSIGNED_ID, "a", "b"]);
   });
 });
