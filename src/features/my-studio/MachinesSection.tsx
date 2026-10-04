@@ -19,8 +19,11 @@ import { UpkeepDialog } from "../admin/upkeep/UpkeepDialog";
 import { useStudioUpkeep } from "../admin/upkeep/useStudioUpkeep";
 import { DEFAULT_UPKEEP_POLICY, tallyUpkeep, worstStatus } from "../admin/upkeep/upkeepLog";
 import { StudioSetupCard } from "../catalog/StudioSetupCard";
-import { StudioNotesCard } from "../catalog/StudioNotesCard";
 import { useStudioMachineNotes } from "../catalog/useStudioMachineNotes";
+import { FloorNotes } from "../floor-notes/FloorNotes";
+import type { earlierNotes } from "../floor-notes/floor-notes";
+import { useFloorNotes, type FloorNotesRead } from "../floor-notes/useFloorNotes";
+import { useStudioWiki } from "../wiki/useStudioWiki";
 import { buildDatabase, planAdoption } from "../machine-db/database";
 import { useSharedMachines } from "../machine-db/hooks";
 import { adoptMachine } from "../machine-db/mutations";
@@ -116,7 +119,11 @@ export function MachinesSection({ authTrainer }: MachinesSectionProps) {
     includeUnrostered: true,
   });
   const { settingsByMachineId } = useStudioMachineSettings(studioId);
+  // The floor's notes (notes round, Oct 3 2026): read once for the studio,
+  // with the two old stores they took over from, shown under the list.
   const { notesByMachineId } = useStudioMachineNotes(studioId);
+  const floorNotes = useFloorNotes(studioId);
+  const { overlayFor } = useStudioWiki(studioId);
   const { events: upkeepEvents } = useStudioUpkeep(studioId);
   const shared = useSharedMachines(true, studioId);
   const todayKey = studioDateKey(new Date()) ?? "";
@@ -399,7 +406,32 @@ export function MachinesSection({ authTrainer }: MachinesSectionProps) {
                       }
                       catalogEntry={doorEntry.source === "catalog" ? (catalog as MachineCatalogEntry[]).find((c) => c.id === (doorEntry as { basedOn?: string }).basedOn) ?? null : null}
                       setting={settingsByMachineId[doorEntry.machineId]}
-                      noteValue={notesByMachineId[doorEntry.machineId]?.notes ?? ""}
+                      floorRead={floorNotes}
+                      earlier={{
+                        studioNotes: notesByMachineId[doorEntry.machineId]?.notes
+                          ? {
+                              text: notesByMachineId[doorEntry.machineId].notes,
+                              by: notesByMachineId[doorEntry.machineId].updatedBy?.name ?? null,
+                              at: notesByMachineId[doorEntry.machineId].updatedAt,
+                            }
+                          : null,
+                        catalogNote: (() => {
+                          const o = overlayFor("machine", doorEntry.machineId);
+                          return o
+                            ? {
+                                id: o.id,
+                                blocks: o.blocks,
+                                by: o.updatedByName ?? o.authorName ?? null,
+                                at: o.updatedAt ?? o.createdAt,
+                                shared: o.shared,
+                                shareStatus: o.shareStatus,
+                                shareReviewNote: o.shareReviewNote,
+                              }
+                            : null;
+                        })(),
+                        unitNote: doorEntry.studioNotes ?? null,
+                      }}
+                      shareKey={byId[doorEntry.machineId]?.comparisonKey || doorEntry.machineId}
                       upkeepEvents={upkeepEvents}
                       upkeepStatus={worstStatus(tallyUpkeep(upkeepEvents, doorEntry.machineId, todayKey), DEFAULT_UPKEEP_POLICY)}
                       canLead={canLead}
@@ -430,7 +462,9 @@ function MachineDoor({
   catalogName,
   catalogEntry,
   setting,
-  noteValue,
+  floorRead,
+  earlier,
+  shareKey,
   upkeepEvents,
   upkeepStatus,
   canLead,
@@ -445,7 +479,10 @@ function MachineDoor({
   catalogName: string;
   catalogEntry: MachineCatalogEntry | null;
   setting: ReturnType<typeof useStudioMachineSettings>["settingsByMachineId"][string] | undefined;
-  noteValue: string;
+  floorRead: FloorNotesRead;
+  earlier: Parameters<typeof earlierNotes>[0];
+  /** The lineage other studios find this machine's shared notes under. */
+  shareKey: string;
   upkeepEvents: ReturnType<typeof useStudioUpkeep>["events"];
   upkeepStatus: ReturnType<typeof worstStatus>;
   canLead: boolean;
@@ -456,7 +493,7 @@ function MachineDoor({
   const [localSetup, setLocalSetup] = useState(false);
   const [upkeep, setUpkeep] = useState(false);
   const [offer, setOffer] = useState(openOffer);
-  const author = authTrainer?.id ? { id: authTrainer.id, name: authTrainer.fullName ?? "A trainer" } : null;
+  const uid = auth.currentUser?.uid ?? null;
   const marker = (entry as { submission?: RosterSubmissionMarker }).submission ?? null;
   const markerLabel = submissionLabel(marker);
   const ownMachine = entry.source === "custom" && !(entry as { adoptedFrom?: unknown }).adoptedFrom;
@@ -480,14 +517,22 @@ function MachineDoor({
 
       <section>
         <h3 className="ms__door-h">The floor's notes</h3>
-        <p className="ms__door-sub">Anyone at {studioName} can write here: the pad that sticks, the footstool, what to watch for.</p>
-        <StudioNotesCard
-          machineId={entry.machineId}
-          machineName={machineName}
+        <p className="ms__door-sub">
+          Anyone at {studioName} can write here: the pad that sticks, the footstool, what to watch for. Each note keeps its
+          date and its updates; close one when it's done and it stays in the history. The same list is on the machine's
+          Catalog page.
+        </p>
+        <FloorNotes
           studioId={studioId}
           studioName={studioName}
-          value={noteValue}
-          author={author}
+          machineId={entry.machineId}
+          machineName={machineName}
+          read={floorRead}
+          earlier={earlier}
+          uid={uid}
+          writerName={canLogUpkeep ? (authTrainer?.fullName ?? "A trainer") : null}
+          canLead={canLead}
+          shareKeys={[shareKey]}
         />
       </section>
 

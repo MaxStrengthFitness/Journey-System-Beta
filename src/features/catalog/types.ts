@@ -114,6 +114,12 @@ export interface CatalogMachine {
 
   /** Studio-scoped, from studios/{id}/machineNotes. Empty until one is written. */
   studioNotes: string;
+  /**
+   * The unit's own note, a leader's line from Local set-up
+   * (roster/{id}.studioNotes), kept apart from the above so the floor's
+   * notes can show it as one of the earlier notes (notes round, Oct 3 2026).
+   */
+  unitNote?: string;
 
   // ── the MSF machine database (Learning + Planner round, Sep 2026) ──
   /**

@@ -222,7 +222,7 @@ const floor = () =>
     status: li.dataset.status,
   }));
 
-const LABELS = ["What this studio calls it", "Manufacturer", "Serial number", "Notes about this unit"] as const;
+const LABELS = ["What this studio calls it", "Manufacturer", "Serial number", "The unit's old note"] as const;
 
 const field = (label: string) => {
   const f = [...host.querySelectorAll(".adm-field")].find((el) => el.querySelector(".adm-label")?.textContent === label);
@@ -252,7 +252,7 @@ describe("Local set-up on a studio's own machine", () => {
     expect(floor()).toContainEqual(sled);
 
     // Whatever the dialog offers on it, fill it in and save it.
-    const typed = { "What this studio calls it": "The Sled", Manufacturer: "Rogue", "Serial number": "RG-12", "Notes about this unit": "Pin sticks." };
+    const typed = { "What this studio calls it": "The Sled", Manufacturer: "Rogue", "Serial number": "RG-12", "The unit's old note": "Pin sticks." };
     for (const label of LABELS) if (field(label)) await typeInto(label, typed[label]);
     if (button("Save local setup")) await save();
 
@@ -288,14 +288,28 @@ describe("Local set-up on a Max Strength machine", () => {
       source: "catalog",
       basedOn: "m-leg-press",
       status: "maintenance",
+      studioNotes: "Pin sticks.",
     });
     await open("m-leg-press", "LEG PRESS");
-    await typeInto("Notes about this unit", "Pin sticks on the 90lb stack.");
+    await typeInto("The unit's old note", "Pin sticks on the 90lb stack.");
     await save();
 
     expect(stored("m-leg-press")).toMatchObject({ status: "maintenance", studioNotes: "Pin sticks on the 90lb stack." });
     expect(floor()).toContainEqual(expect.objectContaining({ id: "m-leg-press", status: "maintenance" }));
     expect(closed).toBe(1);
+  });
+
+  it("shows no note box on a unit with no old note, and says where its notes go (notes round, Oct 3 2026)", async () => {
+    fs.docs.set(`${ROSTER}/m-leg-press`, {
+      machineId: "m-leg-press",
+      studioId: "solon",
+      source: "catalog",
+      basedOn: "m-leg-press",
+      status: "active",
+    });
+    await open("m-leg-press", "LEG PRESS");
+    expect(field("The unit's old note")).toBeNull();
+    expect(host.querySelector("[role='dialog']")?.textContent).toContain("go in the floor's notes");
   });
 
   it("clears what was cleared: the catalog's name comes back and the old unit details go", async () => {
@@ -313,7 +327,7 @@ describe("Local set-up on a Max Strength machine", () => {
     expect(floor()).toContainEqual(expect.objectContaining({ id: "m-leg-press", name: "Hoist Leg Press" }));
 
     await typeInto("What this studio calls it", "");
-    await typeInto("Notes about this unit", "");
+    await typeInto("The unit's old note", "");
     await typeInto("Serial number", "");
     await save();
 

@@ -65,14 +65,15 @@ vi.mock("../relay/board/machine-care-store", () => ({
   useMachineCare: () => ({ byMachineId: fx.care, loading: fx.careLoading, error: fx.careError }),
 }));
 vi.mock("./StudioSetupCard", () => ({ StudioSetupCard: () => null }));
-vi.mock("./StudioNotesCard", () => ({ StudioNotesCard: () => null }));
+vi.mock("../floor-notes/FloorNotes", () => ({ FloorNotes: () => null }));
+vi.mock("../floor-notes/useFloorNotes", () => ({ useFloorNotes: () => ({ state: "ready", notes: [] }) }));
+vi.mock("./useStudioMachineNotes", () => ({ useStudioMachineNotes: () => ({ notesByMachineId: {}, loading: false }) }));
 vi.mock("../studio-tasks/usePlaybook", () => ({ usePlaybook: () => ({ entries: [] }) }));
 vi.mock("../studio-tasks/MachinePlaybookCard", () => ({ MachinePlaybookCard: () => null }));
 vi.mock("../studio-tasks/playbook", () => ({ searchPlaybook: () => [] }));
 vi.mock("../wiki/useStudioWiki", () => ({
   useStudioWiki: () => ({ pages: [], loading: false, error: null, overlayFor: () => null }),
 }));
-vi.mock("../wiki/StudioWikiPanel", () => ({ StudioWikiPanel: () => null }));
 vi.mock("../academy/useAcademyContent", () => ({ useAcademyCards: () => null, useAcademyScripts: () => null }));
 vi.mock("../comments", () => ({ CommentsPanel: () => null }));
 vi.mock("../machine-trends/MachineTrendsPanel", () => ({ MachineTrendsPanel: () => null }));

@@ -1,9 +1,13 @@
 /**
- * CATALOG — every write this feature makes, in one file.
+ * CATALOG — the Studio notes store, and why it was where it was.
  *
- * Round: Catalog Redesign, Sep 2026.
+ * Round: Catalog Redesign, Sep 2026. Since the notes round (Oct 3 2026) the
+ * floor writes its notes on a machine to one dated list per machine
+ * (features/floor-notes), and nothing writes here any more: what this store
+ * holds is read as an earlier note under that list. The reasoning below is
+ * why that list, too, is its own collection rather than the roster.
  *
- * There is one write here today, and it exists because the old one was wrong in
+ * The write that was here existed because the one before it was wrong in
  * two different ways at once. `MachineAnatomyCatalogView.handleSaveTip` did:
  *
  *     updateDoc(doc(db, "machines", selectedMachineId), { trainerTips })
@@ -38,7 +42,7 @@
  * is spent on a rule check.
  */
 
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc } from "firebase/firestore";
 import { db } from "../../firebase";
 
 export interface NotesAuthor {
@@ -57,41 +61,4 @@ export interface StudioMachineNote {
 /** Firestore location of one studio's notes for one machine. */
 export function machineNotesRef(studioId: string, machineId: string) {
   return doc(db, "studios", studioId, "machineNotes", machineId);
-}
-
-/**
- * Save this studio's notes for one machine.
- *
- * Throws on failure — deliberately. The old call swallowed the error into a
- * console.error while the button reported success; callers here are expected to
- * surface a real failure state to the trainer.
- */
-export async function saveStudioMachineNotes(params: {
-  studioId: string;
-  machineId: string;
-  notes: string;
-  author?: NotesAuthor | null;
-}): Promise<void> {
-  const { studioId, machineId, notes, author } = params;
-
-  if (!studioId) {
-    throw new Error("No active studio selected — cannot save studio notes.");
-  }
-  if (!machineId) {
-    throw new Error("No machine selected — cannot save studio notes.");
-  }
-
-  // merge:true so the document is created on first write, and so fields added
-  // later (the upkeep round) are never clobbered by a notes edit.
-  await setDoc(
-    machineNotesRef(studioId, machineId),
-    {
-      studioId,
-      machineId,
-      notes,
-      updatedAt: serverTimestamp(),
-      updatedBy: author ?? null,
-    },
-    { merge: true },
-  );
 }

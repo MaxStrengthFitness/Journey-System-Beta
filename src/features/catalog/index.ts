@@ -11,8 +11,9 @@
  * is now `git revert` of that commit.
  *
  * catalog.css and catalog.tokens.css STAY: main.tsx loads them for the whole
- * app, and StudioSetupCard and StudioNotesCard (both drawn by CatalogWikiView)
- * are styled by them.
+ * app, and StudioSetupCard (drawn by CatalogWikiView) is styled by them. The
+ * Studio notes box (StudioNotesCard) went in the notes round (Oct 3 2026):
+ * the floor's notes are one dated list per machine, features/floor-notes.
  */
 
 export { CatalogWikiView as CatalogView } from "./CatalogWikiView";

@@ -1,6 +1,6 @@
 import { isDemoStudioId } from "../demo-mode/is-demo";
 import { useEffect, useMemo, useState } from "react";
-import { Building2 } from "lucide-react";
+import { Building2, NotebookPen } from "lucide-react";
 import type { Machine, Trainer } from "../../types";
 import { auth } from "../../firebase";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
@@ -10,8 +10,8 @@ import { isStudioLeader } from "../../lib/permissions";
 import { LoadingMark } from "../../components/LoadingMark";
 import {
   WikiIndexHeader,
+  WikiSection,
   WikiShell,
-  StudioWikiPanel,
   useStudioWiki,
   accentForPattern,
   type WikiCrumb,
@@ -23,7 +23,9 @@ import { usePlaybook } from "../studio-tasks/usePlaybook";
 // Relay's care record, READ ONLY: the one record for flags (Catalog R2, q4).
 import { useMachineCare } from "../relay/board/machine-care-store";
 import { useAcademyCards, useAcademyScripts } from "../academy/useAcademyContent";
-import { canWriteStudioPages, leadsStudioPerRules } from "../learning/permissions";
+import { canWriteStudioPages, leadsStudioPerRules, writesForStudioPerRules } from "../learning/permissions";
+import { FloorNotes } from "../floor-notes/FloorNotes";
+import { useFloorNotes } from "../floor-notes/useFloorNotes";
 import { leadsHere } from "../relay/leads";
 import { CommentsPanel } from "../comments";
 import {
@@ -31,7 +33,6 @@ import {
   NetworkNotes,
   ShareToggle,
   setMachineOffer,
-  setNoteOffer,
   setTipOffer,
   sharedKeysFor,
   tapOffers,
@@ -54,9 +55,9 @@ import { MachineFigure } from "./MachineFigure";
 import { modelForUnit, modelName, modelsById } from "./models";
 import { movementOf, movementsWithAliases } from "./names";
 import { useMachineModels } from "./useMachineModels";
-import { StudioNotesCard } from "./StudioNotesCard";
 import { StudioSetupCard } from "./StudioSetupCard";
 import { useCatalogMachines } from "./useCatalogMachines";
+import { useStudioMachineNotes } from "./useStudioMachineNotes";
 import { useSectionState } from "./useSectionState";
 import type { CatalogMachine } from "./types";
 import { forgetOnSignOut } from "../sign-out/memory";
@@ -273,11 +274,14 @@ export function CatalogWikiView({
   const { settingsByMachineId } = useStudioMachineSettings(activeStudioId);
   const { entries: playbookEntries } = usePlaybook(activeStudioId);
   const { overlayFor } = useStudioWiki(activeStudioId);
+  // The floor's notes (notes round, Oct 3 2026): one dated list per machine,
+  // read once for the studio, with the old Studio notes beside it (the same
+  // query useCatalogMachines makes, so no second read on the wire).
+  const floorNotes = useFloorNotes(activeStudioId);
+  const { notesByMachineId: oldStudioNotes } = useStudioMachineNotes(activeStudioId);
+  const canWriteHere = writesForStudioPerRules(authTrainer ?? null, activeStudioId);
 
   const canEditStudioSetup = isStudioLeader(authTrainer ?? null);
-  const author = authTrainer?.id
-    ? { id: authTrainer.id, name: authTrainer.fullName ?? "" }
-    : null;
 
   /* ── the MSF machine database: scope, and sharing ─────────────── */
 
@@ -665,43 +669,49 @@ export function CatalogWikiView({
             />
           }
           studioWiki={
-            <StudioWikiPanel
-              studioId={activeStudioId}
-              studioName={activeStudio?.name}
-              targetType="machine"
-              targetId={selected.id}
-              targetName={selected.name}
-              overlay={overlay}
-              author={author}
-              headerAction={
-                overlay && author && activeStudioId && !inDemo ? (
-                  <ShareToggle
-                    item={overlay}
-                    busy={sharing === `n:${overlay.id}`}
-                    onToggle={() =>
-                      runShare(`n:${overlay.id}`, tapOffers(overlay), () =>
-                        setNoteOffer(activeStudioId, overlay.id, tapOffers(overlay), {
-                          keys: sharedKeysFor([selected.id], catalogMachines),
-                          studioName,
-                        }),
-                      )
-                    }
-                  />
-                ) : undefined
-              }
-              emptyLabel={`Add ${activeStudio?.name ?? "this studio"}'s note on this machine`}
-              placeholder="How we set this one up, who it does not suit, what to watch for. Ours sits two notches lower than the card says — that sort of thing."
-            />
-          }
-          studioNotes={
-            <StudioNotesCard
-              machineId={selected.id}
-              machineName={selected.name}
-              studioId={activeStudioId}
-              studioName={activeStudio?.name}
-              value={selected.studioNotes}
-              author={author}
-            />
+            // One dated list per machine (notes round, Oct 3 2026; AJ's 2A):
+            // what were the studio's note here and the Studio notes box at
+            // the foot of the page, on the page and never folded, as the
+            // studio's note was.
+            <WikiSection
+              id="floor-notes"
+              title={`${studioName}'s notes`}
+              icon={<NotebookPen size={13} aria-hidden />}
+              note="What the people here know about this unit. Each note keeps its date and its updates; a closed one stays in the history."
+            >
+              <FloorNotes
+                studioId={activeStudioId}
+                studioName={studioName}
+                machineId={selected.id}
+                machineName={selected.name}
+                read={floorNotes}
+                earlier={{
+                  studioNotes: oldStudioNotes[selected.id]?.notes
+                    ? {
+                        text: oldStudioNotes[selected.id].notes,
+                        by: oldStudioNotes[selected.id].updatedBy?.name ?? null,
+                        at: oldStudioNotes[selected.id].updatedAt,
+                      }
+                    : null,
+                  catalogNote: overlay
+                    ? {
+                        id: overlay.id,
+                        blocks: overlay.blocks,
+                        by: overlay.updatedByName ?? overlay.authorName ?? null,
+                        at: overlay.updatedAt ?? overlay.createdAt,
+                        shared: overlay.shared,
+                        shareStatus: overlay.shareStatus,
+                        shareReviewNote: overlay.shareReviewNote,
+                      }
+                    : null,
+                  unitNote: selected.unitNote ?? null,
+                }}
+                uid={uid}
+                writerName={canWriteHere ? (authTrainer?.fullName ?? "A trainer") : null}
+                canLead={leadsStudioPerRules(authTrainer ?? null, activeStudioId)}
+                shareKeys={inDemo ? [] : sharedKeysFor([selected.id], catalogMachines)}
+              />
+            </WikiSection>
           }
           network={
             <NetworkNotes

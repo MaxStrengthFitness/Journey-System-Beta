@@ -13,7 +13,6 @@ import {
   SlidersHorizontal,
   Target,
   TrendingUp,
-  UserCog,
   Users,
   Wrench,
 } from "lucide-react";
@@ -149,11 +148,12 @@ export interface MachineArticleProps {
   /** Slotted cards, owned by features/studio-tasks. See the note above. */
   playbook?: ReactNode;
   studioSetup?: ReactNode;
-  studioNotes?: ReactNode;
   /**
-   * This studio's own wiki note on this machine — a StudioWikiPanel. Slotted
-   * rather than mounted for the same reason as the rest: it is backed by one
-   * snapshot over the studio's whole wiki collection, read once by the host.
+   * The studio's notes on this machine — the floor's dated list since the
+   * notes round (Oct 3 2026), which took over the studio's one wiki note
+   * here and the Studio notes box that sat folded at the foot of the page.
+   * Slotted rather than mounted for the same reason as the rest: it is
+   * backed by one snapshot over the studio's notes, read once by the host.
    */
   studioWiki?: ReactNode;
   /**
@@ -205,7 +205,6 @@ export function MachineArticle({
   models,
   playbook,
   studioSetup,
-  studioNotes,
   studioWiki,
   network,
   notice,
@@ -493,17 +492,6 @@ export function MachineArticle({
           {...fold("studio-setup", false)}
         >
           {studioSetup}
-        </WikiFoldable>
-      )}
-
-      {studioNotes && (
-        <WikiFoldable
-          id="studio-notes"
-          title="Studio notes"
-          icon={<UserCog size={13} aria-hidden />}
-          {...fold("studio-notes", Boolean(machine.studioNotes))}
-        >
-          {studioNotes}
         </WikiFoldable>
       )}
 

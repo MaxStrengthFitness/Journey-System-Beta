@@ -1243,6 +1243,17 @@
   color: var(--eq-ink-muted);
 }
 .eq-floornote__failed { margin: 0; }
+/* The latest word on an open note, on its own line under it. */
+.eq-floornote__latest {
+  display: block;
+  font-weight: 500;
+  color: var(--eq-ink-2);
+}
+.eq-floornote__more {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--eq-ink-muted);
+}
 
 /* Under a client's machine note: a fault with the unit is the floor's (Oct 3 2026). */
 .eq-composer__whose {

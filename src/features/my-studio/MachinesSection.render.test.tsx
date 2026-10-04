@@ -11,9 +11,12 @@
  * a word (a new machine re-seeded the same card; a close unmounted it). Each
  * now asks the door's leave scope first, and the door is keyed by machine.
  *
- * Mounted with the real section, the real door, the real notes card and the
+ * Mounted with the real section, the real door, the real notes list and the
  * real provider; the floor list is a stand-in that opens a machine the way
- * StudioInventoryManager's Open button does.
+ * StudioInventoryManager's Open button does. Since the notes round (Oct 3
+ * 2026) the floor's notes are one dated list per machine (floor-notes/): the
+ * note box starts empty, and the old Studio notes show under it as an
+ * earlier note.
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
@@ -34,11 +37,12 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     serverTimestamp: () => "now",
   };
 });
-const saved = vi.hoisted(() => ({ notes: vi.fn(async () => {}) }));
-vi.mock("../catalog/mutations", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../catalog/mutations")>()),
-  saveStudioMachineNotes: saved.notes,
+const saved = vi.hoisted(() => ({ notes: vi.fn(async () => "n1") }));
+vi.mock("../floor-notes/store", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../floor-notes/store")>()),
+  addFloorNote: saved.notes,
 }));
+vi.mock("../floor-notes/useFloorNotes", () => ({ useFloorNotes: () => ({ state: "ready", notes: [] }) }));
 vi.mock("../../contexts/ActiveStudioContext", () => ({
   useActiveStudio: () => ({ activeStudio: { id: "solon", name: "Solon" }, activeStudioId: "solon" }),
 }));
@@ -104,7 +108,11 @@ vi.mock("../admin/machines/StudioInventoryManager", () => ({
 
 import { ToastProvider } from "../../contexts/ToastContext";
 import { UnsavedChangesProvider } from "../unsaved-changes";
+import type { Trainer } from "../../types";
 import { MachinesSection } from "./MachinesSection";
+
+/** A trainer at Solon: she may write the floor's notes. */
+const SARA = { id: "t-sara", fullName: "Sara", role: "LifeTransformer", primaryHomeStudioId: "solon" } as unknown as Trainer;
 
 let root: Root;
 let host: HTMLDivElement;
@@ -118,7 +126,7 @@ beforeEach(async () => {
     root.render(
       <UnsavedChangesProvider>
         <ToastProvider>
-          <MachinesSection authTrainer={null} />
+          <MachinesSection authTrainer={SARA} />
         </ToastProvider>
       </UnsavedChangesProvider>,
     );
@@ -137,7 +145,8 @@ const byText = (label: string) => {
 const click = (label: string) => act(async () => byText(label).click());
 const door = () => host.querySelector("aside.cp");
 const doorTitle = () => door()?.querySelector(".cp__title")?.textContent ?? null;
-const notes = () => door()!.querySelector("textarea") as HTMLTextAreaElement;
+const notes = () => door()!.querySelector('textarea[id^="fn-new-"]') as HTMLTextAreaElement;
+const earlier = () => door()?.querySelector('[aria-label="Earlier notes"]')?.textContent ?? "";
 const type = (value: string) =>
   act(async () => {
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(notes(), value);
@@ -154,7 +163,7 @@ describe("the machine's door on My Studio → Machines", () => {
     await type("Left pad sticks. Use the footstool.");
 
     await click("Open Leg Press");
-    expect(question()).toContain("You have unsaved changes to Solon’s notes on Chest Press.");
+    expect(question()).toContain("You have unsaved changes to Solon’s note on Chest Press.");
     // Nothing moved while the question is up.
     expect(doorTitle()).toContain("Chest Press");
 
@@ -165,7 +174,9 @@ describe("the machine's door on My Studio → Machines", () => {
     await click("Open Leg Press");
     await answer("leave");
     expect(doorTitle()).toContain("Leg Press");
-    expect(notes().value).toBe("Footplate to 3.");
+    // A fresh box on the next machine, and its old Studio notes under the list.
+    expect(notes().value).toBe("");
+    expect(earlier()).toContain("Footplate to 3.");
     expect(saved.notes).not.toHaveBeenCalled();
   });
 
@@ -174,7 +185,7 @@ describe("the machine's door on My Studio → Machines", () => {
     await type("Half a thought");
 
     await click("Close");
-    expect(question()).toContain("Solon’s notes on Chest Press");
+    expect(question()).toContain("Solon’s note on Chest Press");
     await answer("keep-editing");
     expect(door()).not.toBeNull();
     expect(notes().value).toBe("Half a thought");
@@ -182,7 +193,7 @@ describe("the machine's door on My Studio → Machines", () => {
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     });
-    expect(question()).toContain("Solon’s notes on Chest Press");
+    expect(question()).toContain("Solon’s note on Chest Press");
     await answer("leave");
     expect(door()).toBeNull();
   });

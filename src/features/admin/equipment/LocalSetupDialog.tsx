@@ -62,6 +62,8 @@ export function LocalSetupDialog({
     (existingOverrides.name as string | undefined) ?? "",
   );
   const [notes, setNotes] = useState(entry.studioNotes ?? "");
+  // Only an old note is shown here; new ones go in the floor's notes.
+  const [hadUnitNote] = useState(Boolean(entry.studioNotes?.trim()));
   const [serialNumber, setSerialNumber] = useState(
     entry.unit?.serialNumber ?? "",
   );
@@ -192,17 +194,25 @@ export function LocalSetupDialog({
                 onChange={(e) => setSerialNumber(e.target.value)}
               />
             </AdminField>
-            <AdminField
-              label="Notes about this unit"
-              wide
-              hint="Seat replacements, a sticky pin, a pad that needs the footstool — what a trainer walking up should know."
-            >
-              <AdminTextarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Seat replaced March 2026. Pin sticks on the 90lb stack."
-              />
-            </AdminField>
+            {/* Notes about the unit are the floor's dated list since the notes
+                round (Oct 3 2026; AJ's answer 2A), on the machine's door and
+                its Catalog page. A note written here before stays editable
+                so it can be cleared once it is copied into that list, where
+                it shows as an earlier note until then. */}
+            {hadUnitNote ? (
+              <AdminField
+                label="The unit's old note"
+                wide
+                hint="New notes about this unit go in the floor's notes, with dates and updates. This one shows there as an earlier note: copy it into the list, then clear it here."
+              >
+                <AdminTextarea value={notes} onChange={(e) => setNotes(e.target.value)} />
+              </AdminField>
+            ) : (
+              <p className="adm-dialog__text">
+                Notes about this unit (a seat replaced, a pin that sticks) go in the floor&apos;s notes on its door and
+                Catalog page, where each keeps its date and its updates.
+              </p>
+            )}
           </AdminGrid>
 
           {localName.trim() && Object.keys(preview).length === 0 && (

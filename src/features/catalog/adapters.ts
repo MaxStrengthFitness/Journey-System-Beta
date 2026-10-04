@@ -288,6 +288,7 @@ export function fromResolvedMachine(
     // one lives in machineNotes and wins. See features/catalog/mutations.ts.
     studioNotes:
       opts.studioNotes?.[id]?.notes ?? machine.studioNotes ?? "",
+    ...(machine.studioNotes?.trim() ? { unitNote: machine.studioNotes } : {}),
 
     // The MSF machine database — see features/machine-db.
     comparisonKey: machine.comparisonKey || id,

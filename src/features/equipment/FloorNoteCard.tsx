@@ -10,28 +10,40 @@
  * with a client, setting it up. The session's machine sheet read only the
  * client's own notes and the company's set-up guide.
  *
- * So the sheet reads both, once, when it opens — two documents, no listener,
- * no index — and draws them read-only under the watch-outs: the flag first
- * (something is wrong with it today), then the floor's note. Neither is
- * about the client, so neither is written here; the door to change the
- * floor's note is where it lives. Nothing when there is nothing, and a read
- * that failed says so rather than looking like "no notes".
+ * So the sheet reads them once, when it opens — no listener — and draws them
+ * read-only under the watch-outs: the flag first (something is wrong with it
+ * today), then the floor's open notes on this machine, each with its latest
+ * update (the dated list since AJ's answer 2A: `studios/{s}/floorNotes`, one
+ * query on the machine, its machineId field override in
+ * firestore.indexes.json), then the old Studio notes while nobody has copied
+ * them into that list. Closed notes are history and stay on the Catalog.
+ * None of it is about the client, so none is written here; the door to
+ * change the floor's notes is where they live. Nothing when there is
+ * nothing, and a read that failed says so rather than looking like "no
+ * notes".
  */
 import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { Wrench } from "lucide-react";
 import { db } from "../../firebase";
 import { firstSentences } from "../../lib/first-sentences";
 import { studioDateKey } from "../../lib/studio-time";
+import { earlierNotes, floorNoteFromDoc, floorThreads, openFloorLines, type FloorNote } from "../floor-notes/floor-notes";
 
 type FloorRead =
   | { status: "loading" }
   | { status: "failed" }
   | {
       status: "ready";
+      /** The floor's open notes on this machine, newest word first. */
+      open: { text: string; latest: string | null; by: string | null; day: string | null }[];
+      /** The old Studio notes, while nobody has copied them into the list. */
       note: { text: string; by: string | null; day: string | null } | null;
       flag: { text: string; by: string | null; day: string | null } | null;
     };
+
+/** At most this many open notes at the machine; the rest are on the Catalog. */
+export const FLOOR_NOTES_AT_MACHINE = 4;
 
 const dayOf = (v: unknown): string | null => {
   if (!v) return null;
@@ -52,13 +64,13 @@ const nameOf = (by: unknown): string | null => {
   return typeof n === "string" && n.trim() ? n.trim().split(/\s+/)[0] : null;
 };
 
-/** Read the floor's note and the Relay flag for one machine, once. */
+/** Read the floor's notes and the Relay flag for one machine, once. */
 export function useFloorNote(studioId: string | null, machineId: string | null): FloorRead {
   const [read, setRead] = useState<FloorRead>({ status: "loading" });
   useEffect(() => {
     let cancelled = false;
     if (!studioId || !machineId) {
-      setRead({ status: "ready", note: null, flag: null });
+      setRead({ status: "ready", open: [], note: null, flag: null });
       return;
     }
     setRead({ status: "loading" });
@@ -68,18 +80,31 @@ export function useFloorNote(studioId: string | null, machineId: string | null):
         Promise.all([
           getDoc(doc(db, "studios", studioId, "machineNotes", machineId)),
           getDoc(doc(db, "studios", studioId, "machineCare", machineId)),
+          getDocs(query(collection(db, "studios", studioId, "floorNotes"), where("machineId", "==", machineId))),
         ]),
       )
-      .then(([noteSnap, careSnap]) => {
+      .then(([noteSnap, careSnap, floorSnap]) => {
         if (cancelled) return;
         const n = noteSnap.exists() ? (noteSnap.data() as Record<string, unknown>) : null;
         const text = typeof n?.notes === "string" ? n.notes.trim() : "";
         const c = careSnap.exists() ? (careSnap.data() as Record<string, unknown>) : null;
         const f = c?.flag as Record<string, unknown> | null | undefined;
         const flagText = typeof f?.note === "string" ? f.note.trim() : "";
+        const notes = floorSnap.docs
+          .map((d) => floorNoteFromDoc(d.id, d.data() as Record<string, unknown>))
+          .filter((x): x is FloorNote => x !== null);
+        const threads = floorThreads(notes, machineId);
+        // The old note shows only while it hasn't become one of the dated ones.
+        const stillEarlier = text ? earlierNotes({ studioNotes: { text } }, threads).length > 0 : false;
         setRead({
           status: "ready",
-          note: text ? { text, by: nameOf(n?.updatedBy), day: dayOf(n?.updatedAt) } : null,
+          open: openFloorLines(threads).map((o) => ({
+            text: o.text,
+            latest: o.latest,
+            by: o.by.trim() ? o.by.trim().split(/\s+/)[0] : null,
+            day: o.atMs ? studioDateKey(new Date(o.atMs)) : null,
+          })),
+          note: stillEarlier ? { text, by: nameOf(n?.updatedBy), day: dayOf(n?.updatedAt) } : null,
           flag: f ? { text: flagText, by: nameOf(f.by), day: dayOf(f.at) } : null,
         });
       })
@@ -112,7 +137,9 @@ export function FloorNoteCard({
       </p>
     );
   }
-  if (!read.note && !read.flag) return null;
+  if (!read.note && !read.flag && read.open.length === 0) return null;
+  const shown = read.open.slice(0, FLOOR_NOTES_AT_MACHINE);
+  const more = read.open.length - shown.length;
   return (
     <section className="eq-floornote" aria-label={`${whose} notes on this machine`} data-testid="floor-note">
       <span className="eq-floornote__kicker">
@@ -128,6 +155,23 @@ export function FloorNoteCard({
               {[read.flag.by, read.flag.day].filter(Boolean).join(" · ")}
             </i>
           ) : null}
+        </p>
+      )}
+      {shown.map((o, i) => (
+        <p key={i} className="eq-floornote__text" data-testid="floor-note-open">
+          {o.text}
+          {o.latest && <span className="eq-floornote__latest">Latest: {o.latest}</span>}
+          {o.by || o.day ? (
+            <i>
+              {" "}
+              {[o.by, o.day].filter(Boolean).join(" · ")}
+            </i>
+          ) : null}
+        </p>
+      ))}
+      {more > 0 && (
+        <p className="eq-floornote__more">
+          {more} more on the machine&rsquo;s Catalog page.
         </p>
       )}
       {read.note && (

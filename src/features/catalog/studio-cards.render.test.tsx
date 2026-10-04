@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 /**
- * A MACHINE'S TWO STUDIO CARDS, MOUNTED (voice review follow-up, Sep 27 2026).
+ * A MACHINE'S STUDIO SETUP CARD, MOUNTED (voice review follow-up, Sep 27 2026).
  *
- * StudioNotesCard and StudioSetupCard hold typing and did not join the
- * unsaved-changes registry, so the bottom bar (or My Studio's sections, where
- * both cards also render) took a half-written note away without a word. Here
+ * StudioSetupCard holds typing and did not join the unsaved-changes
+ * registry, so the bottom bar (or My Studio's sections, where the card also
+ * renders) took a half-typed setting away without a word. (The Studio notes
+ * card beside it went in the notes round, Oct 3 2026; the floor's notes are
+ * held by floor-notes/FloorNotes.render.test.tsx.) Here
  * each is mounted inside the real provider beside a navigation that asks the
  * gate the way the app's own does: typing makes it ask, in words that name
  * the machine; "Keep editing" keeps every character; "Leave" puts the card
@@ -22,19 +24,15 @@ vi.mock("firebase/firestore", () => ({
   setDoc: vi.fn(async () => {}),
   serverTimestamp: () => "now",
 }));
-const saved = vi.hoisted(() => ({ notes: vi.fn(async () => {}) }));
-vi.mock("./mutations", () => ({ saveStudioMachineNotes: saved.notes }));
 
 import { ToastProvider } from "../../contexts/ToastContext";
 import { UnsavedChangesProvider, useLeaveGuard } from "../unsaved-changes";
-import { StudioNotesCard } from "./StudioNotesCard";
 import { StudioSetupCard } from "./StudioSetupCard";
 
 let root: Root;
 let host: HTMLDivElement;
 
 beforeEach(() => {
-  saved.notes.mockClear();
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
@@ -86,50 +84,6 @@ const left = () => away()!.getAttribute("data-left") === "1";
 const question = () => document.querySelector('[role="alertdialog"]');
 const answer = (a: "keep-editing" | "leave") =>
   document.querySelector(`[data-testid="leave-confirm"] [data-action="${a}"]`);
-
-describe("a machine's studio notes", () => {
-  const card = (
-    <StudioNotesCard machineId="cp" machineName="Chest Press" studioId="solon" studioName="Solon" value="Left pad sticks." author={{ id: "t1", name: "Sara" }} />
-  );
-  const notes = () => host.querySelector("textarea") as HTMLTextAreaElement;
-
-  it("lets the app go without asking while nothing is typed", async () => {
-    await mount(card);
-    await click(away());
-    expect(question()).toBeNull();
-    expect(left()).toBe(true);
-  });
-
-  it("asks, naming the studio and the machine, and Keep editing keeps every character", async () => {
-    await mount(card);
-    await type(notes(), "Left pad sticks. Use the footstool.");
-    await click(away());
-    expect(question()!.textContent).toContain("You have unsaved changes to Solon’s notes on Chest Press.");
-    await click(answer("keep-editing"));
-    expect(left()).toBe(false);
-    expect(notes().value).toBe("Left pad sticks. Use the footstool.");
-  });
-
-  it("Leave goes, and puts the note back to what is saved", async () => {
-    await mount(card);
-    await type(notes(), "Half a thought");
-    await click(away());
-    await click(answer("leave"));
-    expect(left()).toBe(true);
-    expect(notes().value).toBe("Left pad sticks.");
-    expect(saved.notes).not.toHaveBeenCalled();
-  });
-
-  it("stops asking once the note is saved", async () => {
-    await mount(card);
-    await type(notes(), "Use the footstool.");
-    await click([...host.querySelectorAll("button")].find((b) => b.textContent === "Save notes"));
-    expect(saved.notes).toHaveBeenCalledTimes(1);
-    await click(away());
-    expect(question()).toBeNull();
-    expect(left()).toBe(true);
-  });
-});
 
 describe("a machine's studio setup", () => {
   const setting = { studioId: "solon", machineId: "cp", settingOptions: ["Seat"], standardSettings: { Seat: "4" } };
