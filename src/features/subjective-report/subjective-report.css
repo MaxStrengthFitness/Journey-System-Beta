@@ -1,40 +1,57 @@
 /* ==========================================================================
    The Pulse (the living subjective record) — form, panel, coach dashboard
    --------------------------------------------------------------------------
-   Scoped under `.sr`. Light tokens on :root, dark on `.dark` (and the OS
-   preference when no explicit theme class is set), same convention as the
-   journey-grid / equipment / calendar feature folders.
+   Scoped under `.sr`. Light tokens on :root, dark on `.dark` and
+   [data-theme="dark"], the same convention as the journey-grid / equipment /
+   calendar feature folders.
 
    Everything is sized for a tablet on the gym floor: 44px tap targets, one
    column in portrait, two in landscape, no hover-only affordances.
 
    Print: the client copy (.sr-client) is designed for white paper — navy
    ink, no dark surfaces, page-break control on every card.
+
+   THE NAVY FRAME (Oct 4 2026): the surfaces, ink and hero orange are
+   equipment.tokens.css's values (palette-copies.test.ts holds them there),
+   so the Pulse on the briefing, the session sidebar and the Wrap-up sits in
+   the same calm daylight and studio navy as the Hub. Dark fills are opaque
+   at their accent's own hue. The RAG set is the Pulse's own; only the light
+   yellow was deepened (lightness only) to keep 4.5:1 on the off-white card.
+   Words on a solid accent read --sr-on (white in light, navy in dark), and
+   the one orange with words is the go pair: the logo orange, navy words.
    ========================================================================== */
 
 :root {
-  --sr-bg:            #f1f5f8;
-  --sr-surface:       #ffffff;
-  --sr-surface-2:     #e8eef2;
-  --sr-surface-3:     #dae1e6;
-  --sr-border:        #d3dadf;
-  --sr-border-strong: #a9b2b9;
+  --sr-bg:            #dee6ee;
+  --sr-surface:       #f3f6f9;
+  --sr-surface-2:     #e4ebf3;
+  --sr-surface-3:     #d4dee8;
+  --sr-border:        #d1dae4;
+  --sr-border-strong: #7a8694;
 
-  --sr-ink:           #121c23;
-  --sr-ink-2:         #3e4952;
-  --sr-ink-muted:     #5b6770;   /* brand slate */
-  --sr-ink-faint:     #848e95;
+  --sr-ink:           #192d41;
+  --sr-ink-2:         #3f4f60;
+  --sr-ink-muted:     #546271;
+  --sr-ink-faint:     #7f8c99;
 
-  --sr-hero:          #ef5302;   /* brand primary-1 */
-  --sr-hero-text:     #bc2c00;
-  --sr-hero-fill:     #fde7dc;
+  --sr-hero:          #d45a06;   /* marks only (the switch): 3.7:1 */
+  --sr-hero-text:     #b04000;
+  --sr-hero-fill:     #ffe9d8;
   --sr-navy:          #034a84;   /* brand primary-2 */
-  --sr-navy-fill:     #e6eef3;
+  --sr-navy-fill:     #dbeefe;   /* navy words on it 7.6:1 */
+
+  /* The one orange with words (a machine that brings the pain on, a linked
+     note): the logo orange with navy words, 6.1:1, the same in both modes. */
+  --sr-go:            #f36d21;
+  --sr-go-on:         #071727;
+
+  /* Words and icons on a solid accent: the navy, and the RAG fills. */
+  --sr-on:            #ffffff;
 
   /* Green / Yellow / Red — the document's three colours, tuned for contrast */
   --sr-green:         #1c7a52;
   --sr-green-fill:    #e3f1ea;
-  --sr-yellow:        #a3650a;
+  --sr-yellow:        #9d5f00;   /* 4.8:1 on the card, 4.5:1 on its fill */
   --sr-yellow-fill:   #fbefd6;
   --sr-red:           #b42318;
   --sr-red-fill:      #fde8e6;
@@ -43,28 +60,31 @@
 
   --sr-radius:        14px;
   --sr-radius-sm:     9px;
-  --sr-shadow:        0 1px 2px rgba(18, 28, 35, 0.06), 0 4px 14px rgba(18, 28, 35, 0.06);
+  --sr-shadow:        0 1px 2px rgba(25, 45, 65, 0.06), 0 4px 14px rgba(25, 45, 65, 0.06);
   --sr-tap:           44px;
 }
 
-.dark {
-  --sr-bg:            #070b0f;
-  --sr-surface:       #0e151c;
-  --sr-surface-2:     #16202a;
-  --sr-surface-3:     #1f2b37;
-  --sr-border:        #253340;
-  --sr-border-strong: #3c4c5b;
+.dark,
+[data-theme="dark"] {
+  --sr-bg:            #0a1c2c;
+  --sr-surface:       #14293d;
+  --sr-surface-2:     #0d2235;
+  --sr-surface-3:     #203549;
+  --sr-border:        #2b3e50;
+  --sr-border-strong: #6e8397;
 
-  --sr-ink:           #eef2f5;
-  --sr-ink-2:         #c2ccd4;
-  --sr-ink-muted:     #98a4ad;
-  --sr-ink-faint:     #6d7982;
+  --sr-ink:           #dfe7ef;
+  --sr-ink-2:         #b8c6d3;
+  --sr-ink-muted:     #9dadbe;
+  --sr-ink-faint:     #697b8d;
 
   --sr-hero:          #f36d21;
-  --sr-hero-text:     #f7ae82;
-  --sr-hero-fill:     #3a1d0c;
-  --sr-navy:          #6fb1e6;
-  --sr-navy-fill:     #0f2438;
+  --sr-hero-text:     #ff9455;
+  --sr-hero-fill:     #4b2915;
+  --sr-navy:          #65abe9;   /* the logo blue, lifted: 6.1:1 */
+  --sr-navy-fill:     #203d57;   /* opaque; navy words on it 4.6:1 */
+
+  --sr-on:            #071727;
 
   --sr-green:         #5ccf98;
   --sr-green-fill:    #0f2e21;
@@ -75,7 +95,7 @@
   --sr-watch:         #c4a9ea;
   --sr-watch-fill:    #251a36;
 
-  --sr-shadow:        0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.35);
+  --sr-shadow:        0 1px 2px rgba(2, 10, 20, 0.4), 0 6px 18px rgba(2, 10, 20, 0.35);
 }
 
 /* ---------- Layout --------------------------------------------------- */
@@ -297,9 +317,8 @@
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
 }
-.sr-chip--on { background: var(--sr-navy); border-color: var(--sr-navy); color: #fff; }
-.dark .sr-chip--on { color: #071a2b; }
-.sr-chip--hero.sr-chip--on { background: var(--sr-hero); border-color: var(--sr-hero); }
+.sr-chip--on { background: var(--sr-navy); border-color: var(--sr-navy); color: var(--sr-on); }
+.sr-chip--hero.sr-chip--on { background: var(--sr-go); border-color: var(--sr-go); color: var(--sr-go-on); }
 .sr-chip--sm { height: 30px; font-size: 12px; padding: 0 10px; }
 
 /* ---------- Days-per-week picker ------------------------------------ */
@@ -315,8 +334,7 @@
   font-weight: 800;
   cursor: pointer;
 }
-.sr-days__btn--on { color: #fff; }
-.dark .sr-days__btn--on { color: #071a2b; }
+.sr-days__btn--on { color: var(--sr-on); }
 .sr-days__btn--on.sr-days__btn--red    { background: var(--sr-red);    border-color: var(--sr-red); }
 .sr-days__btn--on.sr-days__btn--yellow { background: var(--sr-yellow); border-color: var(--sr-yellow); }
 .sr-days__btn--on.sr-days__btn--green  { background: var(--sr-green);  border-color: var(--sr-green); }
@@ -380,7 +398,7 @@
   border: 1px solid var(--sr-border); background: var(--sr-surface-2);
   color: var(--sr-ink-muted); font-size: 11px; font-weight: 900; cursor: pointer;
 }
-.sr-body__side--on { background: var(--sr-red); border-color: var(--sr-red); color: #fff; }
+.sr-body__side--on { background: var(--sr-red); border-color: var(--sr-red); color: var(--sr-on); }
 
 .sr-pain {
   display: flex; flex-direction: column; gap: 12px;
@@ -427,13 +445,12 @@
   color: var(--sr-ink); font-size: 13px; font-weight: 800; cursor: pointer;
   white-space: nowrap;
 }
-.sr-btn--primary { background: var(--sr-hero); border-color: var(--sr-hero); color: #fff; }
+.sr-btn--primary { background: var(--sr-go); border-color: var(--sr-go); color: var(--sr-go-on); }
 .sr-btn--ghost { border-color: transparent; background: transparent; color: var(--sr-ink-muted); }
 .sr-btn--sm { height: 32px; padding: 0 10px; font-size: 12px; }
 .sr-btn--danger { color: var(--sr-red); border-color: var(--sr-red); }
 .sr-btn--tall { height: 48px; padding: 0 20px; font-size: 12px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 14px; }
-.sr-btn--navy { background: var(--sr-navy); border-color: var(--sr-navy); color: #fff; }
-.dark .sr-btn--navy { color: #071a2b; }
+.sr-btn--navy { background: var(--sr-navy); border-color: var(--sr-navy); color: var(--sr-on); }
 .sr-mark {
   display: inline-flex; align-items: center; justify-content: center; flex: none;
   width: 40px; height: 40px; border-radius: 12px;
@@ -449,8 +466,7 @@
   color: var(--sr-ink-2); font-size: 12.5px; font-weight: 800; cursor: pointer;
 }
 .sr-seg button + button { border-left: 1px solid var(--sr-border); }
-.sr-seg button.sr-seg--on { background: var(--sr-navy); color: #fff; }
-.dark .sr-seg button.sr-seg--on { color: #071a2b; }
+.sr-seg button.sr-seg--on { background: var(--sr-navy); color: var(--sr-on); }
 
 /* ---------- Toggle row (client copy switches) ----------------------- */
 
@@ -487,7 +503,7 @@
   border: 1.5px solid var(--sr-red); background: var(--sr-red-fill);
 }
 .sr-flag--watch { border-color: var(--sr-watch); background: var(--sr-watch-fill); }
-.sr-flag__icon { flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--sr-red); color: #fff; }
+.sr-flag__icon { flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--sr-red); color: var(--sr-on); }
 .sr-flag--watch .sr-flag__icon { background: var(--sr-watch); }
 .sr-flag__label { font-size: 14px; font-weight: 900; margin: 0; }
 .sr-flag__detail { font-size: 12.5px; color: var(--sr-ink-2); margin: 2px 0 0; }
@@ -948,7 +964,7 @@
   border: none;
   border-radius: 12px;
   background: var(--sr-navy);
-  color: #ffffff;
+  color: var(--sr-on);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -1138,8 +1154,7 @@
 .sra-btn:disabled { opacity: 0.45; cursor: default; }
 .sra-btn--quiet { border-color: transparent; color: var(--sr-ink-muted); }
 .sra-btn--danger { border-color: color-mix(in srgb, var(--sr-red) 45%, var(--sr-border)); background: var(--sr-red-fill); color: var(--sr-red); }
-.sra-btn--primary { border-color: var(--sr-navy); background: var(--sr-navy); color: #fff; }
-.dark .sra-btn--primary { color: #071a2b; }
+.sra-btn--primary { border-color: var(--sr-navy); background: var(--sr-navy); color: var(--sr-on); }
 .sra-btn--outline { border-color: var(--sr-navy); background: var(--sr-navy-fill); color: var(--sr-navy); }
 
 /* ==========================================================================
@@ -1243,5 +1258,4 @@
   -webkit-tap-highlight-color: transparent;
 }
 .pcm__nav:disabled { opacity: 0.4; cursor: default; }
-.pcm__nav--primary { flex: 2 1 0; border-color: var(--sr-navy); background: var(--sr-navy); color: #fff; }
-.dark .pcm__nav--primary { color: #071a2b; }
+.pcm__nav--primary { flex: 2 1 0; border-color: var(--sr-navy); background: var(--sr-navy); color: var(--sr-on); }

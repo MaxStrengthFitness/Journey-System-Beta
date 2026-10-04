@@ -8,25 +8,34 @@
 
    Contrast is to WCAG 2.1 AA — body text >= 4.5:1, non-text UI >= 3:1 — and
    the ratio is noted beside anything that was close.
+
+   THE NAVY FRAME (Oct 4 2026): every colour here is an alias of the Hub's
+   (--eq-*), so the profile's tab shell can no longer drift from the rest of
+   the app; it had its own blue (#2f7fc4) and a second crimson (#f2637d).
+   The aliases are restated in the dark blocks so a [data-theme="dark"]
+   subtree resolves them against the dark --eq-* values, not the light ones
+   inherited from :root. palette-copies.test.ts holds the aliases.
    ========================================================================== */
 
 :root {
-  --psub-bg:            #e8eef2;   /* the tray                              */
-  --psub-surface:       #ffffff;   /* an unselected segment on hover        */
-  --psub-border:        #d3dadf;
-  --psub-ink:           #121c23;   /* selected-adjacent text       17.3:1   */
-  --psub-ink-muted:     #5b6770;   /* an unselected segment         5.8:1   */
-  --psub-ink-faint:     #6d7780;   /* the meta line                 4.6:1   */
+  --psub-bg:            var(--eq-surface-2);   /* the tray                  */
+  --psub-surface:       var(--eq-surface);     /* a segment on hover        */
+  --psub-border:        var(--eq-border);
+  --psub-ink:           var(--eq-ink);
+  --psub-ink-muted:     var(--eq-ink-muted);   /* an unselected segment 5.2:1 */
+  /* The meta line and the strip's titles are WORDS, so they take the muted
+     ink (4.9:1 on the page): the Hub's faint ink is decorative only. */
+  --psub-ink-faint:     var(--eq-ink-muted);
 
   /* Brand blue — this is an interactive control, so it is never hero orange.
-     #034a84 on white is 9.1:1; white on #034a84 is the same ratio inverted. */
-  --psub-live:          #034a84;
-  --psub-live-soft:     #0a548b;
-  --psub-live-on:       #ffffff;
+     White on the logo blue is 7.9:1, navy on the lifted blue 7.4:1. */
+  --psub-live:          var(--eq-live);
+  --psub-live-soft:     var(--eq-live-text);
+  --psub-live-on:       var(--eq-live-on);
 
   /* The attention dot. The same crimson the Journey grid and the Equipment
      rail use for "this one matters", so it is one colour app-wide. */
-  --psub-flag:          #c0203f;
+  --psub-flag:          var(--eq-alert);
 
   /* What the sticky shell paints over. This MUST be opaque and MUST match
      the page behind it: the shell sticks while a twenty-machine list scrolls
@@ -34,7 +43,7 @@
      straight through. --background is the app's own page token, which
      ThemeProvider already flips; the hex is the same value, as a fallback for
      a frame rendered before the theme has been applied. */
-  --psub-page:          var(--background, #edf0f5);
+  --psub-page:          var(--background, #dee6ee);
 
   --psub-h:             48px;      /* >= 40px floor, on both axes           */
   --psub-radius:        14px;
@@ -42,32 +51,32 @@
 
 .dark,
 [data-theme="dark"] {
-  --psub-bg:            #151e27;
-  --psub-surface:       #1d2833;
-  --psub-border:        #26333f;
-  --psub-ink:           #eef4f8;
-  --psub-ink-muted:     #9aa7b2;   /* 6.1:1 on --psub-bg                    */
-  --psub-ink-faint:     #8593a0;   /* 4.9:1                                 */
-  --psub-live:          #2f7fc4;   /* lifted: #034a84 on a dark tray is 1.6:1 */
-  --psub-live-soft:     #2f7fc4;
-  --psub-live-on:       #04121d;   /* 7.4:1 on --psub-live                  */
-  --psub-flag:          #f2637d;
-  --psub-page:          var(--background, #020617);
+  --psub-bg:            var(--eq-surface-2);
+  --psub-surface:       var(--eq-surface);
+  --psub-border:        var(--eq-border);
+  --psub-ink:           var(--eq-ink);
+  --psub-ink-muted:     var(--eq-ink-muted);   /* 7.1:1 on the tray          */
+  --psub-ink-faint:     var(--eq-ink-muted);
+  --psub-live:          var(--eq-live);
+  --psub-live-soft:     var(--eq-live-text);
+  --psub-live-on:       var(--eq-live-on);
+  --psub-flag:          var(--eq-alert);
+  --psub-page:          var(--background, #0a1c2c);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light):not([data-theme="light"]) {
-    --psub-bg:          #151e27;
-    --psub-surface:     #1d2833;
-    --psub-border:      #26333f;
-    --psub-ink:         #eef4f8;
-    --psub-ink-muted:   #9aa7b2;
-    --psub-ink-faint:   #8593a0;
-    --psub-live:        #2f7fc4;
-    --psub-live-soft:   #2f7fc4;
-    --psub-live-on:     #04121d;
-    --psub-flag:        #f2637d;
-    --psub-page:        var(--background, #020617);
+    --psub-bg:          var(--eq-surface-2);
+    --psub-surface:     var(--eq-surface);
+    --psub-border:      var(--eq-border);
+    --psub-ink:         var(--eq-ink);
+    --psub-ink-muted:   var(--eq-ink-muted);
+    --psub-ink-faint:   var(--eq-ink-muted);
+    --psub-live:        var(--eq-live);
+    --psub-live-soft:   var(--eq-live-text);
+    --psub-live-on:     var(--eq-live-on);
+    --psub-flag:        var(--eq-alert);
+    --psub-page:        var(--background, #0a1c2c);
   }
 }
 
@@ -290,7 +299,7 @@
 .psub-shell[data-wrap] .psub-context {
   font-size: 12px;
   /* The codex's context line is the read-only sentence, which has to be read:
-     --psub-ink-faint is 4.0:1 on the page, the muted ink 5.1:1. */
+     the muted ink, 4.9:1 on the page (the faint ink was 4.0:1 there). */
   color: var(--psub-ink-muted);
 }
 @media (max-width: 420px) {
@@ -364,7 +373,9 @@
 }
 .ptab-strip__chip[data-tone="alert"] {
   border-color: color-mix(in srgb, var(--psub-flag) 45%, transparent);
-  background: color-mix(in srgb, var(--psub-flag) 12%, transparent);
+  /* The opaque Critical fill, like its two siblings: a 12% crimson wash
+     over the dark navy turned violet. */
+  background: var(--eq-alert-fill);
   color: var(--psub-flag);
 }
 .ptab-strip__chip[data-tone="modify"] {

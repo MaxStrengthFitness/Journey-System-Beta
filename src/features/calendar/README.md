@@ -60,8 +60,15 @@ different contrast requirements:
 A `.cal-tone-N` class republishes its four values under generic names, so no
 component ever knows which tone it is rendering.
 
-Dark mode is re-tuned, not flipped: fills become low-alpha washes mixed into
-the dark surface, and accent *text* climbs the hue rather than darkening.
+Dark mode is re-tuned, not flipped: fills mix into the dark surface, and
+accent *text* climbs the hue rather than darkening. Since the Navy Frame (Oct
+4 2026) the calendar's surfaces, ink, hero and live are the Hub's
+(`equipment.tokens.css`, held by `src/palette-copies.test.ts`), and their dark
+fills are opaque at the accent's own hue, because a low-alpha orange over the
+navy greys out. The trainer tones' fills are still washes: they are identity
+colours, and their review is AJ's. The heatmap's dark steps climb from the
+navy card (step 0 is the inset surface, step 5 the lifted live blue), and the
+cell's words change ink at step 4, where both modes pass 4.5:1.
 
 ### 1.3 The arrows moved
 

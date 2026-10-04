@@ -15,43 +15,52 @@
      --t-text   small text in that trainer's colour      (>= 4.5:1)
      --t-fill   soft background behind a chip            (surface tint)
      --t-edge   1px border / left edge bar               (>= 3:1)
+
+   THE NAVY FRAME (Oct 4 2026): the surfaces, ink, hero and live are
+   equipment.tokens.css's values (palette-copies.test.ts holds them there),
+   and their dark fills are opaque at the accent's own hue. The trainer
+   tones are identity colours and did not move. The heat ramp's dark steps
+   climb from the navy card rather than the old near-black, and its words
+   change ink at step 4, where each step passes 4.5:1 in both modes.
    ========================================================================== */
 
 :root {
-  --cal-bg:            #f1f5f8;
-  --cal-surface:       #ffffff;
-  --cal-surface-2:     #e8eef2;
-  --cal-surface-3:     #dae1e6;
-  --cal-border:        #d3dadf;   /* 1.4:1 hairline                        */
-  --cal-border-strong: #a9b2b9;   /* 2.2:1 structural                      */
+  --cal-bg:            #dee6ee;
+  --cal-surface:       #f3f6f9;   /* never pure white                      */
+  --cal-surface-2:     #e4ebf3;
+  --cal-surface-3:     #d4dee8;
+  --cal-border:        #d1dae4;   /* 1.3:1 hairline                        */
+  --cal-border-strong: #7a8694;   /* 3.4:1 structural                      */
 
-  --cal-ink:           #121c23;   /* 17.3:1                                */
-  --cal-ink-2:         #3e4952;   /*  9.2:1                                */
-  --cal-ink-muted:     #5b6770;   /*  5.8:1 (brand slate)                  */
-  --cal-ink-faint:     #848e95;   /*  3.3:1 decorative only                */
+  --cal-ink:           #192d41;   /* 13.0:1                                */
+  --cal-ink-2:         #3f4f60;   /*  7.8:1                                */
+  --cal-ink-muted:     #546271;   /*  5.8:1                                */
+  --cal-ink-faint:     #7f8c99;   /*  3.2:1 decorative only                */
 
-  --cal-hero:          #ef5302;
-  --cal-hero-text:     #bc2c00;   /* 6.0:1 — small orange text uses this   */
-  --cal-hero-fill:     #fde7dc;
+  --cal-hero:          #d45a06;   /* marks: today's bar, a busy day's dot  */
+  --cal-hero-text:     #b04000;   /* 5.4:1 — small orange text uses this   */
+  --cal-hero-fill:     #ffe9d8;
 
-  --cal-live:          #0a548b;   /* 7.9:1 — today, selection, focus       */
-  --cal-live-text:     #034a84;
-  --cal-live-fill:     #e6eef3;
+  --cal-live:          #0a548b;   /* 7.3:1 — today, selection, focus       */
+  --cal-live-text:     #064f89;
+  --cal-live-fill:     #dbeefe;
   --cal-live-on:       #ffffff;
 
   /* Heatmap ramp. Single hue, ascending lightness -> saturation, so it reads
-     as one scale rather than a rainbow. Step 0 is the empty surface. */
+     as one scale rather than a rainbow. Step 0 is the empty surface. Step 4
+     is deepened just enough for white words (4.6:1), so the ink changes at
+     step 4 in both modes; the dark ink on step 3 is 5.1:1. */
   --cal-heat-0:        #eef2f5;
   --cal-heat-1:        #cfe0ec;
   --cal-heat-2:        #a3c7de;
   --cal-heat-3:        #6ba5cb;
-  --cal-heat-4:        #2f7fb4;
+  --cal-heat-4:        #2b7bb0;
   --cal-heat-5:        #0a548b;
-  --cal-heat-ink-lo:   #23303a;   /* text on steps 0-2                     */
-  --cal-heat-ink-hi:   #ffffff;   /* text on steps 3-5                     */
+  --cal-heat-ink-lo:   #23303a;   /* text on steps 0-3                     */
+  --cal-heat-ink-hi:   #ffffff;   /* text on steps 4-5                     */
 
   --cal-radius:        14px;
-  --cal-shadow:        rgba(18, 28, 35, 0.10);
+  --cal-shadow:        rgba(25, 45, 65, 0.10);
   /* Day view: width of one 30-minute slot. */
   --cal-slot-w:        38px;
   --cal-lane-label:    148px;
@@ -68,39 +77,41 @@
 
 .dark,
 [data-theme="dark"] {
-  --cal-bg:            #070b0f;
-  --cal-surface:       #0e151c;
-  --cal-surface-2:     #151e27;
-  --cal-surface-3:     #1d2833;
-  --cal-border:        #1f2a35;
-  --cal-border-strong: #3a4855;
+  --cal-bg:            #0a1c2c;
+  --cal-surface:       #14293d;
+  --cal-surface-2:     #0d2235;
+  --cal-surface-3:     #203549;
+  --cal-border:        #2b3e50;
+  --cal-border-strong: #6e8397;
 
-  --cal-ink:           #eef3f7;   /* 15.8:1 on surface                     */
-  --cal-ink-2:         #b3c0cb;   /*  8.6:1                                */
-  --cal-ink-muted:     #8b98a4;   /*  5.4:1                                */
-  --cal-ink-faint:     #63707c;   /*  3.1:1                                */
+  --cal-ink:           #dfe7ef;   /* 11.9:1 on surface                     */
+  --cal-ink-2:         #b8c6d3;   /*  8.5:1                                */
+  --cal-ink-muted:     #9dadbe;   /*  6.5:1                                */
+  --cal-ink-faint:     #697b8d;   /*  3.4:1                                */
 
   --cal-hero:          #f36d21;
-  --cal-hero-text:     #ff9455;   /* 7.4:1 on surface                      */
-  --cal-hero-fill:     rgba(243, 109, 33, 0.15);
+  --cal-hero-text:     #ff9455;   /* 6.8:1 on surface                      */
+  --cal-hero-fill:     #4b2915;   /* opaque: an orange wash over navy greys out */
 
-  --cal-live:          #4a9fd8;
-  --cal-live-text:     #7cc0ee;
-  --cal-live-fill:     rgba(74, 159, 216, 0.15);
-  --cal-live-on:       #04121c;
+  --cal-live:          #65abe9;
+  --cal-live-text:     #98caf9;
+  --cal-live-fill:     #23405c;
+  --cal-live-on:       #071727;
 
   /* Dark is not a flip: the ramp climbs INTO the surface rather than out of
-     white, or the low steps glow brighter than the page they sit on. */
-  --cal-heat-0:        #131c24;
-  --cal-heat-1:        #17303f;
-  --cal-heat-2:        #1b465c;
-  --cal-heat-3:        #215f7e;
-  --cal-heat-4:        #2c7ca3;
-  --cal-heat-5:        #4a9fd8;
-  --cal-heat-ink-lo:   #cfdae3;
-  --cal-heat-ink-hi:   #04121c;
+     white, or the low steps glow brighter than the page they sit on. Step 0
+     is the inset surface, steps 1 to 4 sit at the logo blue's hue with their
+     lightness evenly spaced, and step 5 is the lifted live blue. */
+  --cal-heat-0:        #0d2235;
+  --cal-heat-1:        #1a3a57;   /* 1.26:1 off the card                   */
+  --cal-heat-2:        #295074;
+  --cal-heat-3:        #386792;   /* ink-lo on it 4.8:1                    */
+  --cal-heat-4:        #5089bf;   /* ink-hi on it 4.9:1                    */
+  --cal-heat-5:        #65abe9;
+  --cal-heat-ink-lo:   #dfe7ef;
+  --cal-heat-ink-hi:   #071727;
 
-  --cal-shadow:        rgba(0, 0, 0, 0.5);
+  --cal-shadow:        rgba(2, 10, 20, 0.45);
 
   --t0-solid: #f36d21; --t0-text: #ff9455; --t0-fill: rgba(243,109,33,.16);  --t0-edge: #f36d21;
   --t1-solid: #4a9fd8; --t1-text: #7cc0ee; --t1-fill: rgba(74,159,216,.16);  --t1-edge: #4a9fd8;
@@ -114,16 +125,16 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light):not([data-theme="light"]) {
-    --cal-bg: #070b0f; --cal-surface: #0e151c; --cal-surface-2: #151e27;
-    --cal-surface-3: #1d2833; --cal-border: #1f2a35; --cal-border-strong: #3a4855;
-    --cal-ink: #eef3f7; --cal-ink-2: #b3c0cb; --cal-ink-muted: #8b98a4; --cal-ink-faint: #63707c;
-    --cal-hero: #f36d21; --cal-hero-text: #ff9455; --cal-hero-fill: rgba(243,109,33,.15);
-    --cal-live: #4a9fd8; --cal-live-text: #7cc0ee; --cal-live-fill: rgba(74,159,216,.15);
-    --cal-live-on: #04121c;
-    --cal-heat-0: #131c24; --cal-heat-1: #17303f; --cal-heat-2: #1b465c;
-    --cal-heat-3: #215f7e; --cal-heat-4: #2c7ca3; --cal-heat-5: #4a9fd8;
-    --cal-heat-ink-lo: #cfdae3; --cal-heat-ink-hi: #04121c;
-    --cal-shadow: rgba(0,0,0,.5);
+    --cal-bg: #0a1c2c; --cal-surface: #14293d; --cal-surface-2: #0d2235;
+    --cal-surface-3: #203549; --cal-border: #2b3e50; --cal-border-strong: #6e8397;
+    --cal-ink: #dfe7ef; --cal-ink-2: #b8c6d3; --cal-ink-muted: #9dadbe; --cal-ink-faint: #697b8d;
+    --cal-hero: #f36d21; --cal-hero-text: #ff9455; --cal-hero-fill: #4b2915;
+    --cal-live: #65abe9; --cal-live-text: #98caf9; --cal-live-fill: #23405c;
+    --cal-live-on: #071727;
+    --cal-heat-0: #0d2235; --cal-heat-1: #1a3a57; --cal-heat-2: #295074;
+    --cal-heat-3: #386792; --cal-heat-4: #5089bf; --cal-heat-5: #65abe9;
+    --cal-heat-ink-lo: #dfe7ef; --cal-heat-ink-hi: #071727;
+    --cal-shadow: rgba(2, 10, 20, 0.45);
     --t0-solid: #f36d21; --t0-text: #ff9455; --t0-fill: rgba(243,109,33,.16);  --t0-edge: #f36d21;
     --t1-solid: #4a9fd8; --t1-text: #7cc0ee; --t1-fill: rgba(74,159,216,.16);  --t1-edge: #4a9fd8;
     --t2-solid: #2dd4bf; --t2-text: #5eead4; --t2-fill: rgba(45,212,191,.15);  --t2-edge: #2dd4bf;

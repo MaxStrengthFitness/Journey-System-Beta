@@ -42,10 +42,11 @@
   --hist-today:     var(--cal-hero);
   /* A booking still to come: the visit's own blue, drawn as a ring. */
   --hist-booked:    var(--hist-visit);
-  /* The cancelled / moved glyph: 9.2:1 light, 8.6:1 dark — legible at 6px. */
+  /* The cancelled / moved glyph: 7.8:1 light, 8.5:1 dark — legible at 6px. */
   --hist-mark:      var(--cal-ink-2);
-  /* Hatch lines: slate at 30% so a break reads as texture, not as a colour. */
-  --hist-hatch:     rgba(91, 103, 112, 0.30);
+  /* Hatch lines: the muted ink at 30% so a break reads as texture, not as a
+     colour. */
+  --hist-hatch:     rgba(84, 98, 113, 0.30);
   /* Away: the calendar's amber tone 4, at fill / text / edge strength. */
   --hist-away-fill: #f6ecd9;
   --hist-away-ink:  #895306;   /* 5.9:1 on the fill */
@@ -54,16 +55,17 @@
 
 .dark,
 [data-theme="dark"] {
-  --hist-hatch:     rgba(139, 152, 164, 0.30);
-  --hist-away-fill: rgba(245, 158, 11, 0.15);
+  --hist-hatch:     rgba(157, 173, 190, 0.30);
+  /* Opaque amber (Oct 4 2026): an amber wash over the navy turns grey-teal. */
+  --hist-away-fill: #3f3112;   /* the away ink on it 7.6:1 */
   --hist-away-ink:  #fbbf24;
   --hist-away-edge: #f59e0b;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light):not([data-theme="light"]) {
-    --hist-hatch:     rgba(139, 152, 164, 0.30);
-    --hist-away-fill: rgba(245, 158, 11, 0.15);
+    --hist-hatch:     rgba(157, 173, 190, 0.30);
+    --hist-away-fill: #3f3112;
     --hist-away-ink:  #fbbf24;
     --hist-away-edge: #f59e0b;
   }

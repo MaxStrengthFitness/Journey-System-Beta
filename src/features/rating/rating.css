@@ -141,10 +141,12 @@
   border-color: var(--eq-ok);
   color: var(--eq-ok);
 }
+/* The two solid segments take the on-colour (white in light, navy in dark):
+   white on the dark ok and alert was 1.8 and 2.8:1 (Oct 4 2026). */
 .rt__seg[aria-checked="true"][data-tone="ok-strong"] {
   background: var(--eq-ok);
   border-color: var(--eq-ok);
-  color: #ffffff;
+  color: var(--eq-live-on);
 }
 .rt__seg[aria-checked="true"][data-tone="warn"] {
   background: var(--eq-warn-fill);
@@ -161,7 +163,7 @@
 .rt__seg[aria-checked="true"][data-tone="alert"] {
   background: var(--eq-alert);
   border-color: var(--eq-alert);
-  color: #ffffff;
+  color: var(--eq-live-on);
 }
 
 /* Words under the bar. Relative mode shows the two ends and the centre,

@@ -8,7 +8,15 @@
    never the wrong theme.
 
    Contrast checked to WCAG 2.1 AA: body text >= 4.5:1, borders and non-text
-   UI >= 3:1. Ratios noted beside each value so a future edit can re-check.
+   UI >= 3:1. Ratios are on the card (#f3f6f9 light, #14293d dark).
+
+   THE NAVY FRAME (Oct 4 2026): the surfaces, ink, hero, live and ok are
+   equipment.tokens.css's values (palette-copies.test.ts holds them there),
+   and every dark fill is OPAQUE at its accent's own hue: a low-alpha orange
+   or amber over the navy greys out, and a plum wash turns violet. Avoid,
+   caution and the anatomy figure are the builder's own and keep their
+   colours; the two avoid edges were deepened (lightness only) to reach 3:1
+   on the new cards.
 
    ── One decision worth knowing before editing ──────────────────────────────
    Severity here is deliberately NOT the Journey Grid's rep-quality palette.
@@ -28,43 +36,44 @@
    ========================================================================== */
 
 :root {
-  --rb-bg:              #f1f5f8;   /* behind both panes                     */
-  --rb-surface:         #ffffff;   /* rows, cards                           */
-  --rb-surface-2:       #e8eef2;   /* headers, read-only chips              */
-  --rb-surface-3:       #dae1e6;   /* hover / pressed                       */
-  --rb-border:          #d3dadf;   /* hairlines                     1.4:1   */
-  --rb-border-strong:   #a9b2b9;   /* pane divider, focus            2.2:1  */
+  --rb-bg:              #dee6ee;   /* behind both panes                     */
+  --rb-surface:         #f3f6f9;   /* rows, cards; never pure white         */
+  --rb-surface-2:       #e4ebf3;   /* headers, read-only chips              */
+  --rb-surface-3:       #d4dee8;   /* hover / pressed                       */
+  --rb-border:          #d1dae4;   /* hairlines                     1.3:1   */
+  --rb-border-strong:   #7a8694;   /* pane divider, focus           3.4:1   */
 
-  --rb-ink:             #121c23;   /* machine names                17.3:1   */
-  --rb-ink-2:           #3e4952;   /* secondary                     9.2:1   */
-  --rb-ink-muted:       #5b6770;   /* labels (brand slate)          5.8:1   */
-  --rb-ink-faint:       #848e95;   /* ghosts, em-dashes             3.3:1   */
+  --rb-ink:             #192d41;   /* machine names                13.0:1   */
+  --rb-ink-2:           #3f4f60;   /* secondary                     7.8:1   */
+  --rb-ink-muted:       #546271;   /* labels                        5.8:1   */
+  --rb-ink-faint:       #7f8c99;   /* ghosts, em-dashes             3.2:1   */
 
-  /* Hero orange: the sequence position numbers and the primary action. */
-  --rb-hero:            #ef5302;
-  --rb-hero-text:       #bc2c00;   /* 6.0:1 on white                        */
-  --rb-hero-fill:       #fde7dc;
-  --rb-hero-on:         #ffffff;
+  /* Hero orange: the sequence position numbers and a goal tag; small orange
+     words use --rb-hero-text. */
+  --rb-hero:            #d45a06;
+  --rb-hero-text:       #b04000;   /* 5.4:1                                 */
+  --rb-hero-fill:       #ffe9d8;
+  --rb-hero-on:         #ffffff;   /* words on the hero text only           */
 
   /* Blue: anything actionable — add, fix, drag affordances, focus rings. */
-  --rb-live:            #0a548b;   /* 7.9:1 on white                        */
-  --rb-live-text:       #034a84;   /* 9.1:1 on white                        */
-  --rb-live-fill:       #e6eef3;
+  --rb-live:            #0a548b;   /* 7.3:1                                 */
+  --rb-live-text:       #064f89;   /* 7.8:1                                 */
+  --rb-live-fill:       #dbeefe;
   --rb-live-on:         #ffffff;
 
   /* Green: a programming category this routine covers. */
-  --rb-ok:              #1c7a52;   /* 4.9:1 on white                        */
+  --rb-ok:              #1c7a52;   /* 4.9:1                                 */
   --rb-ok-fill:         #e3f1ea;
 
   /* Plum: a rule the Academy says to avoid. Not red — see the note above. */
-  --rb-avoid:           #a2457e;   /* 5.7:1 on white                        */
+  --rb-avoid:           #a2457e;   /* 5.3:1                                 */
   --rb-avoid-fill:      #f4e9f0;
-  --rb-avoid-edge:      #c98fb3;   /* 3.0:1, for the rail beside a row      */
+  --rb-avoid-edge:      #ad7598;   /* 3.4:1, for the rail beside a row      */
 
   /* Amber: permissible but worth a thought. */
-  --rb-caution:         #8a5300;   /* 5.8:1 on white                        */
+  --rb-caution:         #8a5300;   /* 5.8:1                                 */
   --rb-caution-fill:    #fbeedd;
-  --rb-caution-edge:    #d9a45c;   /* 2.1:1, decorative rail only           */
+  --rb-caution-edge:    #d9a45c;   /* decorative rail only                  */
 
   /* The anatomy figure. Matches BodyModel's own defaults so the figure and
      the tokens cannot drift apart. */
@@ -73,7 +82,7 @@
   --rb-muscle-base:      #9aa6ae;
 
   --rb-focus-ring:      var(--rb-live);
-  --rb-shadow:          rgba(18, 28, 35, 0.10);
+  --rb-shadow:          rgba(25, 45, 65, 0.10);
   --rb-radius:          14px;
   --rb-radius-sm:       9px;
   --rb-rail-w:          336px;
@@ -86,93 +95,95 @@
 }
 
 /* ── Dark ──────────────────────────────────────────────────────────────────
-   Dark is not a flip. Saturated hero orange at full strength on a near-black
-   ground vibrates, so fills become low-alpha washes and text switches to the
-   lighter tint rather than the darker one used on white.
+   Dark is not a flip. Text switches to the lighter tint rather than the
+   darker one used on the light card, and every fill is opaque at its
+   accent's own hue.
    ------------------------------------------------------------------------ */
 
 :root.dark,
 :root[data-theme="dark"] {
-  --rb-bg:              #070b0f;
-  --rb-surface:         #0e151c;
-  --rb-surface-2:       #151e27;
-  --rb-surface-3:       #1d2833;
-  --rb-border:          #22303c;   /* 1.5:1 on surface                      */
-  --rb-border-strong:   #3a4c5c;   /* 2.8:1                                 */
+  --rb-bg:              #0a1c2c;
+  --rb-surface:         #14293d;
+  --rb-surface-2:       #0d2235;
+  --rb-surface-3:       #203549;
+  --rb-border:          #2b3e50;   /* 1.4:1 on surface                      */
+  --rb-border-strong:   #6e8397;   /* 3.8:1                                 */
 
-  --rb-ink:             #e8eef3;   /* 15.1:1 on surface                     */
-  --rb-ink-2:           #b6c2cc;   /* 9.0:1                                 */
-  --rb-ink-muted:       #8d9aa5;   /* 5.4:1                                 */
-  --rb-ink-faint:       #66737e;   /* 3.1:1                                 */
+  --rb-ink:             #dfe7ef;   /* 11.9:1 on surface                     */
+  --rb-ink-2:           #b8c6d3;   /* 8.5:1                                 */
+  --rb-ink-muted:       #9dadbe;   /* 6.5:1                                 */
+  --rb-ink-faint:       #697b8d;   /* 3.4:1                                 */
 
-  --rb-hero:            #ff6a20;
-  --rb-hero-text:       #ff8b4d;   /* 7.2:1 on surface                      */
-  --rb-hero-fill:       rgba(239, 83, 2, 0.16);
-  --rb-hero-on:         #1a0c04;
+  --rb-hero:            #f36d21;
+  --rb-hero-text:       #ff9455;   /* 6.8:1; 5.9:1 on its fill              */
+  --rb-hero-fill:       #4b2915;
+  --rb-hero-on:         #071727;
 
-  --rb-live:            #55a8e6;
-  --rb-live-text:       #7cc0f2;   /* 8.4:1 on surface                      */
-  --rb-live-fill:       rgba(10, 84, 139, 0.26);
-  --rb-live-on:         #04121d;
+  --rb-live:            #65abe9;
+  --rb-live-text:       #98caf9;   /* 8.6:1; 6.2:1 on its fill              */
+  --rb-live-fill:       #23405c;
+  --rb-live-on:         #071727;
 
-  --rb-ok:              #4fc38c;   /* 8.6:1 on surface                      */
-  --rb-ok-fill:         rgba(28, 122, 82, 0.24);
+  --rb-ok:              #52d7c1;   /* 8.4:1; 6.7:1 on its fill              */
+  --rb-ok-fill:         #113e36;
 
-  --rb-avoid:           #dc93c2;   /* 8.0:1 on surface                      */
-  --rb-avoid-fill:      rgba(162, 69, 126, 0.24);
-  --rb-avoid-edge:      #a2457e;
+  --rb-avoid:           #dc93c2;   /* 6.3:1; 5.6:1 on its fill              */
+  --rb-avoid-fill:      #402846;
+  --rb-avoid-edge:      #af5089;   /* 3.1:1                                 */
 
-  --rb-caution:         #e0a45a;   /* 8.3:1 on surface                      */
-  --rb-caution-fill:    rgba(138, 83, 0, 0.26);
+  --rb-caution:         #e0a45a;   /* 5.8:1 on its fill                     */
+  --rb-caution-fill:    #3f3112;
   --rb-caution-edge:    #8a5300;
 
   --rb-muscle-primary:   #55a8e6;
   --rb-muscle-secondary: #2c6f9e;
   --rb-muscle-base:      #4b555c;
 
-  --rb-shadow:          rgba(0, 0, 0, 0.5);
+  --rb-shadow:          rgba(2, 10, 20, 0.45);
 }
 
-/* System preference, only when no explicit choice has been stamped. */
+/* System preference, only when no explicit choice has been stamped: no
+   .dark, no .light and no data-theme. It used to leave .light out, so an
+   iPad set to dark with the app in light painted the routine editor dark. */
 @media (prefers-color-scheme: dark) {
-  :root:not(.dark):not([data-theme="light"]):not([data-theme="dark"]) {
-    --rb-bg:              #070b0f;
-    --rb-surface:         #0e151c;
-    --rb-surface-2:       #151e27;
-    --rb-surface-3:       #1d2833;
-    --rb-border:          #22303c;
-    --rb-border-strong:   #3a4c5c;
+  :root:not(.dark):not(.light):not([data-theme]) {
+    --rb-bg:              #0a1c2c;
+    --rb-surface:         #14293d;
+    --rb-surface-2:       #0d2235;
+    --rb-surface-3:       #203549;
+    --rb-border:          #2b3e50;
+    --rb-border-strong:   #6e8397;
 
-    --rb-ink:             #e8eef3;
-    --rb-ink-2:           #b6c2cc;
-    --rb-ink-muted:       #8d9aa5;
-    --rb-ink-faint:       #66737e;
+    --rb-ink:             #dfe7ef;
+    --rb-ink-2:           #b8c6d3;
+    --rb-ink-muted:       #9dadbe;
+    --rb-ink-faint:       #697b8d;
 
-    --rb-hero:            #ff6a20;
-    --rb-hero-text:       #ff8b4d;
-    --rb-hero-fill:       rgba(239, 83, 2, 0.16);
-    --rb-hero-on:         #1a0c04;
+    --rb-hero:            #f36d21;
+    --rb-hero-text:       #ff9455;
+    --rb-hero-fill:       #4b2915;
+    --rb-hero-on:         #071727;
 
-    --rb-live:            #55a8e6;
-    --rb-live-text:       #7cc0f2;
-    --rb-live-fill:       rgba(10, 84, 139, 0.26);
-    --rb-live-on:         #04121d;
+    --rb-live:            #65abe9;
+    --rb-live-text:       #98caf9;
+    --rb-live-fill:       #23405c;
+    --rb-live-on:         #071727;
 
-    --rb-ok:              #4fc38c;
-    --rb-ok-fill:         rgba(28, 122, 82, 0.24);
+    --rb-ok:              #52d7c1;
+    --rb-ok-fill:         #113e36;
 
     --rb-avoid:           #dc93c2;
-    --rb-avoid-fill:      rgba(162, 69, 126, 0.24);
-    --rb-avoid-edge:      #a2457e;
+    --rb-avoid-fill:      #402846;
+    --rb-avoid-edge:      #af5089;
 
     --rb-caution:         #e0a45a;
-    --rb-caution-fill:    rgba(138, 83, 0, 0.26);
+    --rb-caution-fill:    #3f3112;
     --rb-caution-edge:    #8a5300;
 
     --rb-muscle-primary:   #55a8e6;
     --rb-muscle-secondary: #2c6f9e;
     --rb-muscle-base:      #4b555c;
 
-    --rb-shadow:          rgba(0, 0, 0, 0.5);
+    --rb-shadow:          rgba(2, 10, 20, 0.45);
   }
 }

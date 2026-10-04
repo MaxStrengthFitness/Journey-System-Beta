@@ -520,7 +520,9 @@
 .cal-heat__cell[data-step="0"] { color: var(--cal-ink-faint); }
 .cal-heat__cell[data-step="1"] { background: var(--cal-heat-1); }
 .cal-heat__cell[data-step="2"] { background: var(--cal-heat-2); }
-.cal-heat__cell[data-step="3"] { background: var(--cal-heat-3); color: var(--cal-heat-ink-hi); }
+/* The words change ink at step 4, where each mode passes 4.5:1 (Oct 4
+   2026). On step 3 the high-step ink measured 2.7:1 in both modes. */
+.cal-heat__cell[data-step="3"] { background: var(--cal-heat-3); }
 .cal-heat__cell[data-step="4"] { background: var(--cal-heat-4); color: var(--cal-heat-ink-hi); }
 .cal-heat__cell[data-step="5"] { background: var(--cal-heat-5); color: var(--cal-heat-ink-hi); }
 
