@@ -7,6 +7,10 @@
  *   ActionRows      the same, with buttons on the right (Acknowledge,
  *                   Snooze, Dismiss, Got it) — the name opens the client,
  *                   the buttons act, nothing is nested inside a button.
+ *                   Since the calm round (Oct 3 2026) the proof — how to
+ *                   clear it, where it came from — opens on the row's (i)
+ *                   ("Why"), and `limit` shows the first few with
+ *                   "Show all N" for the rest, in place.
  *   SnoozeChooser   "3 days · 1 week · 2 weeks · pick a day".
  *   Line            one tappable line that opens a page.
  *
@@ -15,7 +19,7 @@
  * column of sections now (brief-pieces.tsx).
  */
 import { useState, type ReactNode } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Info } from "lucide-react";
 import { AdminBadge, AdminButton, AdminEmpty } from "../primitives";
 import { addDays } from "../../client-history/model";
 import type { OverviewRow, OverviewTone } from "./questions";
@@ -68,7 +72,24 @@ export interface ActionRowItem {
   below?: ReactNode;
 }
 
-export function ActionRows({ rows, total, onOpenClient, empty, moreLabel = "on the full list" }: { rows: ActionRowItem[]; total?: number; onOpenClient?: (id: string) => void; empty: string; moreLabel?: string }) {
+export function ActionRows({
+  rows,
+  total,
+  onOpenClient,
+  empty,
+  moreLabel = "on the full list",
+  limit,
+}: {
+  rows: ActionRowItem[];
+  total?: number;
+  onOpenClient?: (id: string) => void;
+  empty: string;
+  moreLabel?: string;
+  /** Show this many, then "Show all N" opens the rest in place. */
+  limit?: number;
+}) {
+  const [why, setWhy] = useState<string | null>(null);
+  const [all, setAll] = useState(false);
   if (rows.length === 0) {
     return empty ? (
       <div className="p-4">
@@ -76,9 +97,10 @@ export function ActionRows({ rows, total, onOpenClient, empty, moreLabel = "on t
       </div>
     ) : null;
   }
+  const shown = limit && !all ? rows.slice(0, limit) : rows;
   return (
     <ul className="adm-ov__rows">
-      {rows.map((r) => (
+      {shown.map((r) => (
         <li key={r.key} className="adm-ov__row adm-ov__row--actions">
           <div className="adm-ov__row-main">
             <button type="button" className="adm-ov__row-btn" onClick={() => r.clientId && onOpenClient?.(r.clientId)} disabled={!r.clientId || !onOpenClient}>
@@ -88,13 +110,35 @@ export function ActionRows({ rows, total, onOpenClient, empty, moreLabel = "on t
                 {!r.tone && r.badge && <AdminBadge tone="neutral">{r.badge}</AdminBadge>}
               </span>
               <span className="adm-ov__sentence">{r.sentence}</span>
-              {r.proof && <span className="adm-ov__proof">{r.proof}</span>}
             </button>
-            {r.actions && <div className="adm-ov__row-actions">{r.actions}</div>}
+            {(r.actions || r.proof) && (
+              <div className="adm-ov__row-actions">
+                {r.actions}
+                {r.proof && (
+                  <button
+                    type="button"
+                    className="adm-ov__info"
+                    aria-expanded={why === r.key}
+                    aria-label={`Why: ${r.name}`}
+                    onClick={() => setWhy((v) => (v === r.key ? null : r.key))}
+                  >
+                    <Info className="w-4 h-4" aria-hidden />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
+          {why === r.key && r.proof && <p className="adm-ov__proof adm-ov__proof--open">{r.proof}</p>}
           {r.below && <div className="adm-ov__row-below">{r.below}</div>}
         </li>
       ))}
+      {limit && !all && rows.length > limit && (
+        <li className="adm-ov__more">
+          <button type="button" className="adm-ov__show-all" onClick={() => setAll(true)}>
+            Show all {rows.length}
+          </button>
+        </li>
+      )}
       {typeof total === "number" && total > rows.length && <li className="adm-ov__more">and {total - rows.length} more {moreLabel}</li>}
     </ul>
   );

@@ -94,6 +94,37 @@ export function chaseList(dayEntries: ScheduleEntry[], now: Date, logged: Logged
     .sort((a, b) => a.atMs - b.atMs);
 }
 
+export interface NotLoggedGroup {
+  trainerName: string;
+  rows: ChaseRow[];
+}
+
+/**
+ * The sessions nobody logged, ONE GROUP PER TRAINER (the calm round, Oct 3
+ * 2026, AJ's yes to "one row per trainer, names on tap"). Until trainers log
+ * in Journey every booking lands here (146 at one studio in a week), so the
+ * brief says "Kyle · 10 not logged" and the names open on a tap. Groups run
+ * in the order their first session was; a booking with no trainer named is
+ * "No trainer named".
+ */
+export function notLoggedByTrainer(rows: readonly ChaseRow[]): NotLoggedGroup[] {
+  const groups = new Map<string, NotLoggedGroup>();
+  for (const r of [...rows].sort((a, b) => a.atMs - b.atMs)) {
+    const name = r.trainerName.trim() || "No trainer named";
+    const g = groups.get(name) ?? { trainerName: name, rows: [] };
+    g.rows.push(r);
+    groups.set(name, g);
+  }
+  return [...groups.values()];
+}
+
+/** "Mary Ann Petras, Michelle Carrara and 8 more": the first names in a group, never cut short. */
+export function groupNames(rows: readonly ChaseRow[], shown = 2): string {
+  const names = rows.map((r) => r.clientName);
+  if (names.length <= shown + 1) return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : (names[0] ?? "");
+  return `${names.slice(0, shown).join(", ")} and ${names.length - shown} more`;
+}
+
 export const pct = (v: number | null): string => (v === null ? "—" : `${Math.round(v * 100)}%`);
 
 /** "15 of 24 done" style foot lines share one helper so the strip reads the same on every tile. */

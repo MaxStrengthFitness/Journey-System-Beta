@@ -4,39 +4,45 @@
  * The redesign's Operations room, phase 2 (Sep 28 2026; the pick "Brief +
  * Journey", research-operations §6.3). The Overview was five tiles and eight
  * equal panels, so a leader did the adding up every morning before knowing
- * what mattered. Now:
+ * what mattered. It became a brief: a bottom line, then fixed sections.
  *
- *   the freshness line   when the schedule was read, when the nightly record
- *                        last changed, and how many clients can't be judged
- *                        (a button that says who and why)
- *   the bottom line      one sentence written by rules (brief.ts), the rules
- *                        a tap away, the day's facts under it, and today's
- *                        "didn't come" marks with Take back
+ * THE CALM ROUND (Oct 3 2026). AJ: "there's just so many words on there. It's
+ * really overwhelming." Measured that evening at Strongsville: 1,430 words,
+ * a third of them one instruction printed on each of ten rows. AJ took every
+ * recommendation ("i trust all your recommended"), so the page is now:
+ *
+ *   the counts line      booked · logged · on the floor · to come · trainers
+ *                        on, in place of the written bottom line; its rules
+ *                        (and when the schedule was read) behind an (i)
+ *   the one note         what the nightly record can't judge yet, ONCE
+ *                        (brief.ts nightlyNote): not live, no record, stale,
+ *                        or the clients it couldn't place, with Why
  *   Needs you            only what a leader can clear right here: acknowledge
- *                        pain, an incident or a Critical note; mark Seen on
- *                        the team's Health, Incident and Retention notes of
- *                        the last two weeks (notes round, Oct 3 2026,
- *                        team-notes.ts); take a gesture
- *                        nobody owns; review a note that has mattered 60 days
- *                        (AJ's question 3, default); and, since wave 2 (AJ,
- *                        Sep 28 2026: "all yes"), a session nobody logged,
- *                        cleared by "Didn't come" once a leader has asked, or
- *                        by itself when its trainer logs the workout. For
- *                        someone who can't mark here (a leader visiting
- *                        another studio) it stays a door, never a count
+ *                        pain, an incident or a Critical note; Seen on a team
+ *                        note; take a gesture nobody owns; finish a session
+ *                        left open; review a note that has mattered 60 days;
+ *                        and the sessions nobody logged, ONE ROW PER TRAINER
+ *                        ("Kyle · 10 not logged"), the names and Late cancel
+ *                        on Show. For someone who can't mark here they are
+ *                        their own "Not logged" section, never a Needs count
  *   Catch today          clients in today with a reason to see them in
- *                        person, from the Hub's ONE engine (hub-
- *                        opportunities/moments-today), and who trained today
+ *                        person (the Hub's ONE engine), and who trained today
  *                        with nothing booked
- *   Slipping away        the Journey's drifting and at-risk clients (one
- *                        rule, journey/states.ts), catchable first, Snooze
- *                        and Dismiss, and a door to Clients → Journey
- *   Since yesterday      the cancellations and moves noticed since yesterday
- *                        began, each held against its own day
- *   Coming up            the next three days with bookings, Openings' line,
- *                        who has nothing booked ahead, the renewal talks due
+ *   Slipping away        the Journey's drifting and at-risk clients, Snooze
+ *                        and Dismiss, a door to Clients → Journey
+ *   Since yesterday      cancellations and moves since yesterday began, one
+ *                        short line each (changes.ts shortChange)
+ *   Coming up            the next three days with bookings (only the facts
+ *                        that aren't zero), Openings' line, who has nothing
+ *                        booked ahead, renewal talks due
  *   Going right          who came back, the week's milestones and dates
- *   Worth a look         Sunday's strength list, machine fit, Trends, Hours
+ *   Worth a look         strength dropped, machine fit, Trends — only a
+ *                        signal that says something (Hours is on Team)
+ *   All clear            every section with nothing in it, in one line
+ *
+ * Every row is one line; how to clear it and where it came from open on its
+ * (i). A section folds into All clear only when every read behind it
+ * answered; one still reading or unread stays, saying so in a few words.
  *
  * READS PER OPEN, one studio — the Overview's own, no new query: the week's
  * schedule (changes/useStudioWeek, held to the server), today's Journey
@@ -53,7 +59,7 @@
  * could not be, nothing counted from its bookings is said.
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { CalendarRange, ChevronRight, Clock3, Ruler, TrendingDown, TrendingUp, UsersRound } from "lucide-react";
+import { CalendarRange, ChevronRight, Ruler, TrendingUp, UsersRound } from "lucide-react";
 import { auth } from "../../../firebase";
 import type { Client, Machine, Studio, Trainer } from "../../../types";
 import { clientDisplayName } from "../../../lib/client-name";
@@ -73,7 +79,7 @@ import { buildDirectoryRows, prepareDirectory } from "../../client-directory/row
 import { momentsToday } from "../../hub-opportunities/moments-today";
 import { addDays } from "../../client-history/model";
 import { observations, returnRate, studioSummary, trainerMetrics } from "../insights/metrics";
-import { formatHours, sessionMinutesOf, trainerNames } from "../hours/hours";
+import { trainerNames } from "../hours/hours";
 import { useWorthALook } from "../machine-fit/useFitFloor";
 import { rememberMyStudioSection } from "../../my-studio/section-memory";
 import { nextDays as openingsNextDays } from "../../openings/next-days";
@@ -82,7 +88,7 @@ import { showOpenings, useOpeningsData } from "../../openings/ui";
 import { mayReadWeeks } from "../../standing-week/present";
 import { AdminButton, AdminNotice } from "../primitives";
 import { useSessionsInRange } from "../sessions-range";
-import { changeCounts, describeChange } from "../changes/changes";
+import { changeCounts, describeChange, shortChange } from "../changes/changes";
 import { WEEK_DAYS } from "../changes/useWeekSchedule";
 import { useStudioWeek } from "../changes/useStudioWeek";
 import { backAgain, dismissal, keysToAcknowledge, pendingAcks, snooze } from "../attention/attention";
@@ -93,18 +99,18 @@ import { useStudioCases } from "../journey/case-store";
 import { useStoredJourney } from "../journey/useStoredJourney";
 import { useStudioSettings } from "../../studio-settings/useStudioSettings";
 import { entriesForDay } from "./floor";
-import { hoursThisWeek, notesToReview, painQuestion, renewalsQuestion } from "./questions";
+import { notesToReview, painQuestion, renewalsQuestion } from "./questions";
 import { TEAM_NOTES_ROWS_SHOWN, teamNotesQuestion } from "./team-notes";
 import { dropSentence } from "./performance";
-import { chaseList, todayNumbers } from "./today";
+import { chaseList, groupNames, notLoggedByTrainer, todayNumbers } from "./today";
 import { moments } from "./moments";
 import { nextDays, notBookedAhead } from "./next-days";
 import { ActionRows, Line, SnoozeChooser } from "./pieces";
 import { ReviewNotesDialog } from "./ReviewNotesDialog";
 import { useOverviewReads } from "./useOverviewReads";
 import { useTodaySessions } from "./useTodaySessions";
-import { BottomLineBox, BriefEmpty, BriefSection, FreshnessLine } from "./brief-pieces";
-import { bottomLine, catchToday, dayStartMs, heldAgainst, leftWithNothingBooked, nightlyRead, partOfDay, renewalUnknownCount, sinceYesterday } from "./brief";
+import { AllClear, BriefEmpty, BriefSection, CountsLine, PageNote } from "./brief-pieces";
+import { catchToday, dayStartMs, heldAgainst, leftWithNothingBooked, nightlyNote, nightlyRead, sinceYesterday } from "./brief";
 import type { OverviewLink } from "./OverviewPage";
 import { BriefHuddle } from "../team/HuddleSheet";
 import type { BriefHuddleInput } from "../team/huddle-agenda";
@@ -146,10 +152,12 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
   const studioId = studio.id as string;
   const tz = studio.timezone || undefined;
   // Pressing Today while on it: the page has no views of its own any more (the
-  // attendance watch is Clients → Journey), so it closes the chase list.
-  const [showChase, setShowChase] = useState(false);
+  // attendance watch is Clients → Journey), so it closes what is open.
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const [showMarked, setShowMarked] = useState(false);
   useEffect(() => {
-    setShowChase(false);
+    setOpenGroup(null);
+    setShowMarked(false);
   }, [homeSignal]);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [huddleOpen, setHuddleOpen] = useState(false);
@@ -211,7 +219,6 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
 
   /* ---- the nightly record ---- */
   const nightly = useMemo(() => nightlyRead(clients, studioId, now), [clients, studioId, now]);
-  const renewalUnknown = renewalUnknownCount(nightly);
 
   /* ---- Needs you: only what clears here ---- */
   const pain = useMemo(
@@ -404,7 +411,6 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
   /* ---- Going right / Worth a look ---- */
   const goingRight = moment.rows.filter((r) => r.kind !== "gesture" || !r.needsOwner);
   const names = useMemo(() => trainerNames(trainers), [trainers]);
-  const hours = useMemo(() => hoursThisWeek(recent.sessions, today, sessionMinutesOf(studio)), [recent.sessions, today, studio]);
   const insight = useMemo(() => {
     if (recent.loading || recent.failed) return null;
     const summary = studioSummary(recent.sessions);
@@ -499,29 +505,76 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
       </AdminButton>
     );
 
-  /* ---- the bottom line ---- */
-  const reading = needsLoading && week.loading;
-  const line = bottomLine({
-    part: partOfDay(now, tz),
-    needs: needsCount,
-    needsPartial: needsPartial || needsLoading,
-    catchCount,
-    neverLogged,
-    unloggedInNeeds: canMark,
-    week: week.read,
-    renewalUnknown,
-    nightly,
-    tz,
-  });
-  const checkedAt = formatStudioTime(now, tz);
-  const fresh = [
-    week.readAt ? `Schedule read ${formatStudioTime(new Date(week.readAt), tz)}` : week.loading ? "Schedule: reading…" : "Schedule couldn't be read",
-    nightly.lastChangedAt
-      ? `Nightly record last changed ${formatStudioDate(nightly.lastChangedAt, { weekday: "short", month: "short", day: "numeric" }, tz)}`
-      : nightly.homeClients > 0
-        ? "No nightly record yet"
-        : "No clients at this studio yet",
+  /* ---- the counts line, and the page's one note (the calm round, Oct 3 2026) ---- */
+  const note = nightlyNote(nightly, studio, today, (ids) => ids.map(clientName).join(", "), tz);
+  // The record can't judge rhythm yet: Slipping away and who has nothing booked ahead are the note's, never "clear".
+  const noteCovers = note !== null && note.kind !== "unknown";
+  const countRules = [
+    "Logged: a booking counts as done when Journey logged a session for that client that day. Not logged is never \"didn't happen\".",
+    "On the floor: started and not over yet. To come: not started yet.",
+    "Trainers on: named trainers with a booking today; the rotation isn't counted.",
+    week.readAt ? `Bookings as Mindbody last sent them, read ${formatStudioTime(new Date(week.readAt), tz)}.` : "Bookings as Mindbody last sent them.",
   ];
+  const groups = useMemo(() => notLoggedByTrainer(chase), [chase]);
+  const notLoggedRows = (forMarking: boolean) =>
+    groups.map((g) => ({
+      key: `group:${g.trainerName}`,
+      clientId: null,
+      name: g.trainerName,
+      sentence: `${g.rows.length} not logged: ${groupNames(g.rows)}`,
+      proof: forMarking
+        ? "No Journey session for these today. Ask on the floor: if they trained, their trainer logs it and the row goes by itself; if it was a late cancel, mark it here or on the Hub."
+        : "No Journey session for these today. Their trainer logs each one on the client's profile; someone who leads this studio can mark a late cancel.",
+      tone: "alert" as const,
+      badge: "Not logged",
+      actions: (
+        <AdminButton size="sm" variant="ghost" onClick={() => setOpenGroup((v) => (v === g.trainerName ? null : g.trainerName))} aria-expanded={openGroup === g.trainerName}>
+          {openGroup === g.trainerName ? "Hide" : "Show"}
+        </AdminButton>
+      ),
+      below:
+        openGroup === g.trainerName ? (
+          <ActionRows
+            rows={g.rows.map((c) => ({
+              key: `unlogged:${c.id}`,
+              clientId: c.clientId,
+              name: c.clientName,
+              sentence: c.at,
+              actions:
+                forMarking && c.bookingId && c.clientId ? (
+                  <AdminButton size="sm" busy={busyKey === `mark:${c.bookingId}`} onClick={() => void didntCome(c.bookingId as string, c.clientId as string)}>
+                    Late cancel · session taken
+                  </AdminButton>
+                ) : undefined,
+            }))}
+            onOpenClient={onNavigateProfile}
+            empty=""
+          />
+        ) : undefined,
+    }));
+
+  /* ---- which sections have something; the rest fold into "All clear" ---- */
+  const clear: string[] = [];
+  const needsShown = needsLoading || needsCount > 0 || needsPartial;
+  if (!needsShown) clear.push("Needs you");
+  const unloggedShown = !canMark && neverLogged !== null && neverLogged > 0;
+  const catchShown = catchRows === null || (catchCount ?? 0) > 0 || leftRows === null;
+  if (!catchShown) clear.push("Catch today");
+  const slippingShown = slipping === null || slippingOpen.length > 0 || (!noteCovers && week.read !== "ready");
+  if (!slippingShown && !noteCovers) clear.push("Slipping away");
+  const sinceShown = weekUnread || changed.length > 0;
+  if (!sinceShown) clear.push("Since yesterday");
+  const rightLoading = delight.isLoading || own.loading;
+  const rightShown = rightLoading || delight.failed || goingRight.length > 0 || back.length > 0;
+  if (!rightShown) clear.push("Going right");
+  const watchRows = own.watch?.rows ?? [];
+  const lookLoading = recent.loading || fit.status === "loading" || (own.watch === undefined && !own.failed.watch);
+  const lookFailed = recent.failed || fit.status === "failed" || own.failed.watch;
+  const trendsLine = insight?.summary.enoughToJudge && insight.first ? insight.first : null;
+  const lookAny = watchRows.length > 0 || fit.clients > 0 || trendsLine !== null;
+  const lookShown = lookAny || lookFailed;
+  if (!lookShown && !lookLoading) clear.push("Worth a look");
+  const renewalsDue = renewals.counts["talk-now"] + renewals.counts["before-charge"];
 
   return (
     <div className="adm ops-brief">
@@ -535,375 +588,283 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
         </AdminButton>
       </header>
 
-      <FreshnessLine
-        parts={fresh}
-        unknown={renewalUnknown}
-        unknownWhy={`${renewalUnknown === 1 ? "One client has" : `${renewalUnknown} clients have`} no renewal record from last night, or not enough Mindbody data for one (${[...nightly.missing, ...nightly.unknownData].slice(0, 6).map(clientName).join(", ")}${renewalUnknown > 6 ? ", and more" : ""}). Their renewal timing and their rhythm are unknown, and they're never counted as on track or steady.`}
-        door={door("mindbody", "Mindbody")}
-      />
-
-      <BottomLineBox
-        sentence={reading ? "Reading the studio's day…" : line.sentence}
-        rules={line.rules}
-        facts={
-          week.failed ? (
-            <span>Today's numbers are missing, not zero: the schedule couldn't be read.</span>
-          ) : week.loading ? (
-            <span>Reading today's bookings…</span>
-          ) : (
-            <>
-              <span className="ops-brief__eyebrow">Today</span>
-              <span>
-                <b>{numbers.booked}</b> booked
-              </span>
-              <span>
-                <b>{neverLogged === null ? "—" : numbers.done}</b> done
-              </span>
-              <span>
-                <b>{numbers.onTheFloor}</b> on the floor
-              </span>
-              <span>
-                <b>{numbers.stillToCome}</b> to come
-              </span>
-              <span>
-                <b>{trainersOn}</b> {trainersOn === 1 ? "trainer" : "trainers"} on
-              </span>
-              {openLiveFloor && (
-                <AdminButton size="sm" variant="ghost" onClick={openLiveFloor}>
-                  Live floor on My Studio <ChevronRight className="w-3.5 h-3.5" aria-hidden />
-                </AdminButton>
-              )}
-            </>
-          )
-        }
-        below={
-          canMark ? (
-            marked.length > 0 ? (
-              <div className="ops-bluf__chase">
-                <p className="ops-quiet">
-                  Marked late cancel today: {marked.length}. A late cancel takes the session but is never a visit. Marked by mistake? Take it back and the
-                  session is unlogged again.
-                </p>
-                <ActionRows
-                  rows={marked.map((m) => ({
-                    key: `marked:${m.id}`,
-                    clientId: m.clientId,
-                    name: m.booking?.clientName || clientName(m.clientId ?? ""),
-                    sentence: `${m.booking ? `${formatStudioTime(toDate(m.booking.startTime) ?? now, tz)} with ${m.booking.trainerName || "no trainer named"}` : "Today"} — late cancel, session taken.`,
-                    proof: m.markedBy?.name ? `Marked by ${m.markedBy.name}.` : "Marked by someone at the studio.",
-                    tone: "info",
-                    badge: "Late cancel",
-                    actions: (
-                      <AdminButton size="sm" variant="ghost" busy={busyKey === `mark:${m.id}`} onClick={() => void takeBack(m.id)}>
-                        Take back
-                      </AdminButton>
-                    ),
-                  }))}
-                  onOpenClient={onNavigateProfile}
-                  empty=""
-                />
-              </div>
-            ) : undefined
-          ) : neverLogged !== null && neverLogged > 0 ? (
-            <div className="ops-bluf__chase">
-              <p className="ops-quiet">
-                {neverLogged} finished {neverLogged === 1 ? "session has" : "sessions have"} no workout logged. Its trainer logs it on the client's profile; a
-                session that didn't happen stays on this list today.
-              </p>
-              <AdminButton size="sm" onClick={() => setShowChase((v) => !v)} aria-expanded={showChase}>
-                {showChase ? "Hide who" : "See who to ask"}
-              </AdminButton>
-              {showChase && (
-                <ActionRows
-                  rows={chase.map((c) => ({
-                    key: c.id,
-                    clientId: c.clientId,
-                    name: c.clientName,
-                    sentence: `${c.at} with ${c.trainerName} — past its slot, nothing logged.`,
-                    proof: "No Journey session for them today. Trained and not logged, a no-show, or never happened? Someone on the floor knows.",
-                    tone: "alert",
-                    badge: "Not logged",
-                  }))}
-                  onOpenClient={onNavigateProfile}
-                  empty=""
-                />
-              )}
-            </div>
-          ) : undefined
-        }
-      />
-
-      {/* 1 · Needs you */}
-      <BriefSection
-        id="needs"
-        title="Needs you"
-        count={needsLoading ? null : needsCount}
-        hot
-        sub="each one clears right here"
-        door={
-          painPending.pending.length > 1 ? (
-            <AdminButton size="sm" variant="primary" busy={busyKey === "ack"} onClick={() => void ackRows(painPending.pending)}>
-              Acknowledge all
-            </AdminButton>
-          ) : undefined
-        }
+      <CountsLine
+        pending={week.failed ? "Today's numbers are missing, not zero: the schedule couldn't be read." : week.loading ? "Reading today's bookings…" : null}
+        items={[
+          { n: numbers.booked, label: "booked" },
+          { n: neverLogged === null ? null : numbers.done, label: "logged" },
+          { n: numbers.onTheFloor, label: "on the floor" },
+          { n: numbers.stillToCome, label: "to come" },
+          { n: trainersOn, label: trainersOn === 1 ? "trainer on" : "trainers on" },
+        ]}
+        rules={countRules}
       >
-        {needsLoading ? (
-          <BriefEmpty>Reading incidents, notes and the Dial…</BriefEmpty>
-        ) : needsCount === 0 ? (
-          <BriefEmpty>
-            {unloggedStillReading
-              ? "Nothing needs you so far. Today's logging is still being read, so a session nobody logged may not be here yet."
-              : needsPartial
-                ? "Nothing that could be read needs you. Part of this couldn't be read just now, so there may be more."
-                : canMark
-                  ? `Nothing to acknowledge, take, review or mark. Checked ${checkedAt}.`
-                  : `Nothing to acknowledge, take or review. Checked ${checkedAt}.`}
-          </BriefEmpty>
-        ) : (
-          <>
-            <ActionRows
-              rows={painPending.pending.map((r) => ({
-                key: `pain:${r.clientId}`,
-                clientId: r.clientId,
-                name: r.name,
-                sentence: r.sentence,
-                proof: r.proof,
-                tone: r.tone,
-                badge: r.tone === "alert" ? "Acknowledge" : "Pain",
+        {openLiveFloor && (
+          <AdminButton size="sm" variant="ghost" onClick={openLiveFloor}>
+            Live floor <ChevronRight className="w-3.5 h-3.5" aria-hidden />
+          </AdminButton>
+        )}
+      </CountsLine>
+
+      {note && <PageNote text={note.text} why={note.why} door={note.kind === "unknown" ? undefined : door("mindbody", "Mindbody")} />}
+
+      {canMark && marked.length > 0 && (
+        <div className="ops-sec__card">
+          <ActionRows
+            rows={[
+              {
+                key: "marked",
+                clientId: null,
+                name: `Late cancels marked today: ${marked.length}`,
+                sentence: marked.map((m) => m.booking?.clientName || clientName(m.clientId ?? "")).join(", "),
+                proof: "A late cancel takes the session but is never a visit. Marked by mistake? Take it back and the session is unlogged again.",
+                tone: "info",
+                badge: "Late cancel",
                 actions: (
-                  <AdminButton size="sm" variant="primary" busy={busyKey === "ack"} onClick={() => void ackRows([r])}>
-                    Acknowledge
+                  <AdminButton size="sm" variant="ghost" onClick={() => setShowMarked((v) => !v)} aria-expanded={showMarked}>
+                    {showMarked ? "Hide" : "Show"}
                   </AdminButton>
                 ),
-              }))}
-              onOpenClient={onNavigateProfile}
-              empty=""
-            />
-            {teamPending.pending.length > 0 && (
+                below: showMarked ? (
+                  <ActionRows
+                    rows={marked.map((m) => ({
+                      key: `marked:${m.id}`,
+                      clientId: m.clientId,
+                      name: m.booking?.clientName || clientName(m.clientId ?? ""),
+                      sentence: m.booking ? `${formatStudioTime(toDate(m.booking.startTime) ?? now, tz)} with ${m.booking.trainerName || "no trainer named"}` : "Today",
+                      proof: m.markedBy?.name ? `Marked by ${m.markedBy.name}.` : "Marked by someone at the studio.",
+                      actions: (
+                        <AdminButton size="sm" variant="ghost" busy={busyKey === `mark:${m.id}`} onClick={() => void takeBack(m.id)}>
+                          Take back
+                        </AdminButton>
+                      ),
+                    }))}
+                    onOpenClient={onNavigateProfile}
+                    empty=""
+                  />
+                ) : undefined,
+              },
+            ]}
+            onOpenClient={onNavigateProfile}
+            empty=""
+          />
+        </div>
+      )}
+
+      {/* 1 · Needs you */}
+      {needsShown && (
+        <BriefSection
+          id="needs"
+          title="Needs you"
+          count={needsLoading ? null : needsCount}
+          hot
+          door={
+            painPending.pending.length > 1 ? (
+              <AdminButton size="sm" variant="primary" busy={busyKey === "ack"} onClick={() => void ackRows(painPending.pending)}>
+                Acknowledge all
+              </AdminButton>
+            ) : undefined
+          }
+        >
+          {needsLoading ? (
+            <BriefEmpty>Reading…</BriefEmpty>
+          ) : needsCount === 0 ? (
+            <BriefEmpty>{unloggedStillReading ? "Nothing so far. Today's logging is still being read." : "Nothing that could be read. Part of this couldn't be read just now."}</BriefEmpty>
+          ) : (
+            <>
               <ActionRows
-                rows={teamPending.pending.slice(0, TEAM_NOTES_ROWS_SHOWN).map((r) => ({
-                  key: `team-note:${r.entryId}`,
+                rows={painPending.pending.map((r) => ({
+                  key: `pain:${r.clientId}`,
                   clientId: r.clientId,
                   name: r.name,
                   sentence: r.sentence,
                   proof: r.proof,
                   tone: r.tone,
-                  badge: r.badge,
+                  badge: r.tone === "alert" ? "Acknowledge" : "Pain",
                   actions: (
                     <AdminButton size="sm" variant="primary" busy={busyKey === "ack"} onClick={() => void ackRows([r])}>
-                      Seen
+                      Acknowledge
                     </AdminButton>
                   ),
                 }))}
                 onOpenClient={onNavigateProfile}
                 empty=""
               />
-            )}
-            {teamPending.pending.length > TEAM_NOTES_ROWS_SHOWN && (
-              <BriefEmpty>
-                {teamPending.pending.length - TEAM_NOTES_ROWS_SHOWN} more from the team&rsquo;s notes. Each is on the
-                client&rsquo;s Notes.
-              </BriefEmpty>
-            )}
-            {unlogged.length > 0 && (
-              <ActionRows
-                rows={unlogged.map((c) => ({
-                  key: `unlogged:${c.id}`,
-                  clientId: c.clientId,
-                  name: c.clientName,
-                  sentence: `${c.at} with ${c.trainerName} — past its slot, nothing logged.`,
-                  proof:
-                    "No Journey session for her today. Ask on the floor: if she trained, her trainer logs it on her profile and this row goes by itself; if it was a late cancel, mark it (anyone at the studio can, from the Hub too).",
-                  tone: "alert",
-                  badge: "Not logged",
-                  actions:
-                    c.bookingId && c.clientId ? (
-                      <AdminButton size="sm" busy={busyKey === `mark:${c.bookingId}`} onClick={() => void didntCome(c.bookingId as string, c.clientId as string)}>
-                        Late cancel · session taken
+              {teamPending.pending.length > 0 && (
+                <ActionRows
+                  rows={teamPending.pending.map((r) => ({
+                    key: `team-note:${r.entryId}`,
+                    clientId: r.clientId,
+                    name: r.name,
+                    sentence: r.sentence,
+                    proof: r.proof,
+                    tone: r.tone,
+                    badge: r.badge,
+                    actions: (
+                      <AdminButton size="sm" variant="primary" busy={busyKey === "ack"} onClick={() => void ackRows([r])}>
+                        Seen
                       </AdminButton>
-                    ) : undefined,
-                }))}
-                onOpenClient={onNavigateProfile}
-                empty=""
-              />
-            )}
-            <ActionRows
-              rows={unowned.map((r) => ({
-                key: r.key,
-                clientId: r.clientId,
-                name: r.name,
-                sentence: `${dayWord(r.day, today)} — ${r.sentence}`,
-                proof: "A gesture the team promised itself, and nobody owns it yet.",
-                tone: "warn",
-                badge: "No owner",
-                actions: (
-                  <AdminButton size="sm" busy={busyKey === r.key} onClick={() => takeGesture(r.key)}>
-                    Take it
-                  </AdminButton>
-                ),
-              }))}
-              onOpenClient={onNavigateProfile}
-              empty=""
-            />
-            {leftOpen.length > 0 && (
+                    ),
+                  }))}
+                  limit={TEAM_NOTES_ROWS_SHOWN}
+                  onOpenClient={onNavigateProfile}
+                  empty=""
+                />
+              )}
+              {unlogged.length > 0 && <ActionRows rows={notLoggedRows(true)} onOpenClient={onNavigateProfile} empty="" />}
               <ActionRows
-                rows={leftOpen.map((r) => ({
-                  key: `left-open:${r.id}`,
+                rows={unowned.map((r) => ({
+                  key: r.key,
                   clientId: r.clientId,
-                  name: r.clientName,
-                  sentence: `${leftOpenHeading(1)} \u2014 ${r.detail}.`,
-                  proof: LEFT_OPEN_HINT,
+                  name: r.name,
+                  sentence: `${dayWord(r.day, today)} — ${r.sentence}`,
+                  proof: "A gesture the team promised itself, and nobody owns it yet.",
                   tone: "warn",
-                  badge: "Left open",
-                  actions:
-                    r.clientId && onOpenSession ? (
-                      <AdminButton size="sm" onClick={() => onOpenSession(r.clientId as string)}>
-                        Open the session
-                      </AdminButton>
-                    ) : undefined,
+                  badge: "No owner",
+                  actions: (
+                    <AdminButton size="sm" busy={busyKey === r.key} onClick={() => takeGesture(r.key)}>
+                      Take it
+                    </AdminButton>
+                  ),
                 }))}
                 onOpenClient={onNavigateProfile}
                 empty=""
               />
-            )}
-            {review.length > 0 && (
-              <div className="ops-sec__foot">
-                <span className="ops-quiet">
-                  {review.length} {review.length === 1 ? "note has" : "notes have"} mattered 60 days or more. Still matters, or no longer?
-                </span>
-                <AdminButton size="sm" onClick={() => setReviewOpen(true)}>
-                  Review
-                </AdminButton>
-              </div>
-            )}
-            {needsPartial && (
-              <p className="ops-sec__note">
-                {unloggedStillReading ? "Today's logging is still being read, so a session nobody logged may not be here yet." : "Part of this couldn't be read just now, so the list may be short."}
-              </p>
-            )}
-          </>
-        )}
-      </BriefSection>
+              {leftOpen.length > 0 && (
+                <ActionRows
+                  rows={leftOpen.map((r) => ({
+                    key: `left-open:${r.id}`,
+                    clientId: r.clientId,
+                    name: r.clientName,
+                    sentence: `${leftOpenHeading(1)} — ${r.detail}.`,
+                    proof: LEFT_OPEN_HINT,
+                    tone: "warn",
+                    badge: "Left open",
+                    actions:
+                      r.clientId && onOpenSession ? (
+                        <AdminButton size="sm" onClick={() => onOpenSession(r.clientId as string)}>
+                          Open the session
+                        </AdminButton>
+                      ) : undefined,
+                  }))}
+                  onOpenClient={onNavigateProfile}
+                  empty=""
+                />
+              )}
+              {review.length > 0 && (
+                <div className="ops-sec__foot">
+                  <span className="ops-quiet">
+                    {review.length} {review.length === 1 ? "note" : "notes"} to review: mattered 60 days
+                  </span>
+                  <AdminButton size="sm" onClick={() => setReviewOpen(true)}>
+                    Review
+                  </AdminButton>
+                </div>
+              )}
+              {needsPartial && <p className="ops-sec__note">{unloggedStillReading ? "Today's logging is still being read." : "Part of this couldn't be read just now."}</p>}
+            </>
+          )}
+        </BriefSection>
+      )}
+
+      {/* Not logged, for someone who can't mark here: a list to ask from, not a Needs-you count. */}
+      {unloggedShown && (
+        <BriefSection id="unlogged" title="Not logged" count={neverLogged}>
+          <ActionRows rows={notLoggedRows(false)} onOpenClient={onNavigateProfile} empty="" />
+        </BriefSection>
+      )}
 
       {/* 2 · Catch today */}
-      <BriefSection id="catch" title="Catch today" count={catchCount} sub="in person, in the order they're in">
-        {catchRows === null ? (
-          <BriefEmpty>{week.loading ? "Reading today's bookings…" : "Today's bookings couldn't be read just now, so who to catch is unknown."}</BriefEmpty>
-        ) : catchCount === 0 ? (
-          <BriefEmpty>Nobody to catch in person today. Checked {checkedAt}.</BriefEmpty>
-        ) : (
-          <>
+      {catchShown && (
+        <BriefSection id="catch" title="Catch today" count={catchCount}>
+          {catchRows === null ? (
+            <BriefEmpty>{week.loading ? "Reading…" : "Today's bookings couldn't be read just now."}</BriefEmpty>
+          ) : catchCount === 0 ? null : (
             <ActionRows
-              rows={catchRows.map((r) => ({ key: r.key, clientId: r.clientId, name: r.name, sentence: r.sentence, proof: r.proof, tone: "info", badge: "Today" }))}
+              rows={[
+                ...catchRows.map((r) => ({ key: r.key, clientId: r.clientId, name: r.name, sentence: r.sentence, proof: r.proof, tone: "info" as const, badge: "Today" })),
+                ...(leftRows ?? []).map((r) => ({ key: r.key, clientId: r.clientId, name: r.name, sentence: r.sentence, proof: r.proof, tone: "warn" as const, badge: "Nothing booked" })),
+              ]}
+              limit={5}
               onOpenClient={onNavigateProfile}
               empty=""
             />
-            {leftRows && leftRows.length > 0 && (
-              <ActionRows
-                rows={leftRows.map((r) => ({ key: r.key, clientId: r.clientId, name: r.name, sentence: r.sentence, proof: r.proof, tone: "warn", badge: "Nothing booked" }))}
-                onOpenClient={onNavigateProfile}
-                empty=""
-              />
-            )}
-          </>
-        )}
-        {catchRows !== null && leftRows === null && <p className="ops-sec__note">Today's logging couldn't be read, so who trained today and has nothing booked can't be told yet.</p>}
-      </BriefSection>
+          )}
+          {catchRows !== null && leftRows === null && <p className="ops-sec__note">Today's logging couldn't be read, so who trained with nothing booked can't be told yet.</p>}
+        </BriefSection>
+      )}
 
       {/* 3 · Slipping away */}
-      <BriefSection
-        id="slipping"
-        title="Slipping away"
-        count={slipping === null ? null : slippingOpen.length}
-        sub={
-          slipping === null
-            ? "reading the studio's clients…"
-            : `${slipping.filter((e) => e.journey.state === "drifting").length} drifting · ${slipping.filter((e) => e.journey.state === "at-risk").length} at risk${
-                slippingWeek && slippingWeek.back.length > 0 ? ` · ${slippingWeek.back.length} booked again after a gap` : ""
-              }${slipping.length > slippingOpen.length ? ` · ${slipping.length - slippingOpen.length} already answered` : ""}`
-        }
-        door={door("journey", "Journey")}
-      >
-        {nightly.stale && (
-          <p className="ops-sec__note">
-            {nightly.lastChangedAt
-              ? `The nightly record hasn't changed since ${formatStudioDate(nightly.lastChangedAt, { weekday: "short", month: "short", day: "numeric" }, tz)}, so nobody's rhythm is judged from it: nobody is called slipping until it runs again.`
-              : "There is no nightly record for this studio yet, so nobody's rhythm is known."}
-          </p>
-        )}
-        {slipping === null ? (
-          <BriefEmpty>Reading the studio's clients…</BriefEmpty>
-        ) : slippingOpen.length === 0 ? (
-          <BriefEmpty>
-            {slipping.length > 0
-              ? "Everyone slipping has already been snoozed or dismissed. They're on the Journey."
-              : week.read !== "ready"
-                ? "Whether anyone is slipping can't be said until the week's bookings are read."
-                : `Nobody is past ${multipleWords(lines.driftMultiple).toLowerCase()} their usual gap or the studio's ${settings.breakDays}-day line with nothing booked.`}
-          </BriefEmpty>
-        ) : (
-          <ActionRows
-            rows={slippingOpen.slice(0, SLIPPING_SHOWN).map((e) => ({
-              key: e.id,
-              clientId: e.id,
-              name: e.row.name.display,
-              sentence: e.journey.why,
-              proof: [e.usual ? (e.usualInToday ? `${e.usual.name.split(" ")[0]} is in today, ${e.usualInToday}` : `usually with ${e.usual.name.split(" ")[0]}`) : null, e.journey.proof].filter(Boolean).join(" · "),
-              tone: e.journey.state === "at-risk" ? "warn" : "info",
-              badge: e.journey.state === "at-risk" ? "At risk" : "Drifting",
-              actions: (
-                <>
-                  <AdminButton size="sm" busy={busyKey === `watch:${e.id}`} onClick={() => setSnoozing((v) => (v === e.id ? null : e.id))} aria-expanded={snoozing === e.id}>
-                    Snooze
-                  </AdminButton>
-                  <AdminButton size="sm" variant="ghost" busy={busyKey === `watch:${e.id}`} onClick={() => void dismissClient(e.id)}>
-                    Dismiss
-                  </AdminButton>
-                </>
-              ),
-              below: snoozing === e.id ? <SnoozeChooser today={today} onPick={(day) => void snoozeClient(e.id, day)} onCancel={() => setSnoozing(null)} /> : undefined,
-            }))}
-            total={slippingOpen.length}
-            onOpenClient={onNavigateProfile}
-            empty=""
-            moreLabel="on the Journey"
-          />
-        )}
-      </BriefSection>
+      {slippingShown && (
+        <BriefSection id="slipping" title="Slipping away" count={slipping === null ? null : slippingOpen.length} door={door("journey", "Journey")}>
+          {slipping === null ? (
+            <BriefEmpty>Reading…</BriefEmpty>
+          ) : slippingOpen.length === 0 ? (
+            <BriefEmpty>Can't be said until the week's bookings are read.</BriefEmpty>
+          ) : (
+            <ActionRows
+              rows={slippingOpen.slice(0, SLIPPING_SHOWN).map((e) => ({
+                key: e.id,
+                clientId: e.id,
+                name: e.row.name.display,
+                sentence: e.journey.why,
+                proof: [e.usual ? (e.usualInToday ? `${e.usual.name.split(" ")[0]} is in today, ${e.usualInToday}` : `usually with ${e.usual.name.split(" ")[0]}`) : null, e.journey.proof].filter(Boolean).join(" · "),
+                tone: e.journey.state === "at-risk" ? "warn" : "info",
+                badge: e.journey.state === "at-risk" ? "At risk" : "Drifting",
+                actions: (
+                  <>
+                    <AdminButton size="sm" busy={busyKey === `watch:${e.id}`} onClick={() => setSnoozing((v) => (v === e.id ? null : e.id))} aria-expanded={snoozing === e.id}>
+                      Snooze
+                    </AdminButton>
+                    <AdminButton size="sm" variant="ghost" busy={busyKey === `watch:${e.id}`} onClick={() => void dismissClient(e.id)}>
+                      Dismiss
+                    </AdminButton>
+                  </>
+                ),
+                below: snoozing === e.id ? <SnoozeChooser today={today} onPick={(day) => void snoozeClient(e.id, day)} onCancel={() => setSnoozing(null)} /> : undefined,
+              }))}
+              total={slippingOpen.length}
+              onOpenClient={onNavigateProfile}
+              empty=""
+              moreLabel="on the Journey"
+            />
+          )}
+        </BriefSection>
+      )}
 
       {/* 4 · Since yesterday */}
-      <BriefSection id="since" title="Since yesterday" count={weekUnread ? null : changed.length} sub="cancellations and moves, each held against its own day" door={door("week", "All changes")}>
-        {week.loading ? (
-          <BriefEmpty>Reading the week…</BriefEmpty>
-        ) : week.failed ? (
-          <BriefEmpty>{NOT_READ}</BriefEmpty>
-        ) : changed.length === 0 ? (
-          <BriefEmpty>Nothing cancelled or moved since yesterday.</BriefEmpty>
-        ) : (
-          <ActionRows
-            rows={changed.map((c) => {
-              const text = describeChange(c, tz);
-              return {
-                key: c.id,
-                clientId: c.clientId,
-                name: c.clientName,
-                sentence: `${text.sentence} Held against ${heldAgainst(c.forDay, today)}.`,
-                proof: text.proof,
-                tone: c.reading === "cancellation" ? "warn" : "info",
-                badge: c.reading === "cancellation" ? "Cancelled" : "Moved",
-              };
-            })}
-            onOpenClient={onNavigateProfile}
-            empty=""
-          />
-        )}
-      </BriefSection>
+      {sinceShown && (
+        <BriefSection id="since" title="Since yesterday" count={weekUnread ? null : changed.length} door={door("week", "All changes")}>
+          {week.loading ? (
+            <BriefEmpty>Reading…</BriefEmpty>
+          ) : week.failed ? (
+            <BriefEmpty>{NOT_READ}</BriefEmpty>
+          ) : (
+            <ActionRows
+              rows={changed.map((c) => {
+                const text = describeChange(c, tz);
+                return {
+                  key: c.id,
+                  clientId: c.clientId,
+                  name: c.clientName,
+                  sentence: shortChange(c, today, tz),
+                  proof: `${text.proof} Held against ${heldAgainst(c.forDay, today)}.`,
+                  tone: c.reading === "cancellation" ? "warn" : "info",
+                  badge: c.reading === "cancellation" ? "Cancelled" : "Moved",
+                };
+              })}
+              limit={5}
+              onOpenClient={onNavigateProfile}
+              empty=""
+            />
+          )}
+        </BriefSection>
+      )}
 
       {/* 5 · Coming up */}
-      <BriefSection id="coming" title="Coming up" sub="the next three days with bookings">
+      <BriefSection id="coming" title="Coming up">
         {week.loading ? (
-          <BriefEmpty>Reading the week…</BriefEmpty>
+          <BriefEmpty>Reading…</BriefEmpty>
         ) : week.failed ? (
           <BriefEmpty>{NOT_READ}</BriefEmpty>
         ) : (
@@ -914,9 +875,9 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
                   {d.label} · {d.dateLabel}
                 </span>
                 <span className="ops-day__big">{d.booked} booked</span>
-                <span className="ops-day__fact">{d.changes === 0 ? "no changes yet" : `${d.changes} change${d.changes === 1 ? "" : "s"} already`}</span>
-                <span className="ops-day__fact">{d.hot === 0 ? "nobody with a live note" : `${d.hot} with a live note: ${d.hotNames.join(", ")}`}</span>
-                <span className="ops-day__fact">{d.moments === 0 ? "no moments" : `${d.moments} moment${d.moments === 1 ? "" : "s"}`}</span>
+                {d.changes > 0 && <span className="ops-day__fact">{`${d.changes} change${d.changes === 1 ? "" : "s"}`}</span>}
+                {d.hot > 0 && <span className="ops-day__fact">{`${d.hot} with a live note: ${d.hotNames.join(", ")}`}</span>}
+                {d.moments > 0 && <span className="ops-day__fact">{`${d.moments} moment${d.moments === 1 ? "" : "s"}`}</span>}
               </div>
             ))}
           </div>
@@ -929,147 +890,124 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
             {openingsLines.length > OPENINGS_SHOWN && <p className="adm-ov__more">{overviewMoreLine(openingsLines.length - OPENINGS_SHOWN)}</p>}
           </div>
         )}
-        <p className="ops-sec__note">
-          {unbooked.measured === 0
-            ? "Who has nothing booked ahead is unknown: no client has a nightly record yet, so nobody is called booked ahead."
-            : unbooked.count === 0
-              ? `All ${unbooked.measured} active clients with a nightly record have something booked ahead.`
-              : `${unbooked.count} of ${unbooked.measured} active clients with a nightly record have nothing booked ahead.`}
-        </p>
         {unbooked.count > 0 && (
           <ActionRows
-            rows={unbooked.rows.map((r) => ({ key: `unbooked:${r.clientId}`, clientId: r.clientId, name: r.name, sentence: "Nothing on the books after their last visit.", proof: r.proof, tone: "warn", badge: "Not booked" }))}
+            rows={unbooked.rows.map((r) => ({ key: `unbooked:${r.clientId}`, clientId: r.clientId, name: r.name, sentence: "Nothing booked after their last visit.", proof: r.proof, tone: "warn", badge: "Not booked" }))}
             total={unbooked.count}
+            limit={5}
             onOpenClient={onNavigateProfile}
             empty=""
             moreLabel="with nothing booked ahead"
           />
         )}
-        <div className="ops-sec__foot">
-          <span className="ops-quiet">
-            {renewals.counts["talk-now"] + renewals.counts["before-charge"] === 0
-              ? `No renewal conversations due this week. ${renewals.counts["coming-up"]} coming up in the next ${settings.horizonMonths} months.`
-              : `${renewals.counts["talk-now"]} renewal ${renewals.counts["talk-now"] === 1 ? "talk" : "talks"} due now, ${renewals.counts["before-charge"]} before a charge${
-                  renewals.notTalked === null ? ". Whether anyone has talked to them couldn't be read just now." : `, ${renewals.notTalked} with no conversation logged yet.`
+        {renewalsDue > 0 && (
+          <div className="ops-sec__foot">
+            <span className="ops-quiet">
+              {`${renewals.counts["talk-now"]} renewal ${renewals.counts["talk-now"] === 1 ? "talk" : "talks"} due now, ${renewals.counts["before-charge"]} before a charge${
+                  renewals.notTalked === null ? ". Whether anyone has talked to them couldn't be read just now" : renewals.notTalked > 0 ? `, ${renewals.notTalked} with no conversation logged yet` : ""
                 }`}
-          </span>
-          {door("renewals", "Renewals")}
-        </div>
+            </span>
+            {door("renewals", "Renewals")}
+          </div>
+        )}
       </BriefSection>
 
       {/* 6 · Going right */}
-      <BriefSection id="right" title="Going right" sub="worth saying out loud">
-        {back.length > 0 && (
-          <ActionRows
-            rows={back.map((r) => ({
-              key: `back:${r.clientId}`,
-              clientId: r.clientId,
-              name: r.name,
-              sentence: r.sentence,
-              proof: r.proof,
-              badge: "Back",
-              actions: (
-                <AdminButton size="sm" variant="primary" busy={busyKey === `watch:${r.clientId}`} onClick={() => void gotIt(r.clientId)}>
-                  Got it
-                </AdminButton>
-              ),
-            }))}
-            onOpenClient={onNavigateProfile}
-            empty=""
-          />
-        )}
-        {delight.isLoading || own.loading ? (
-          <BriefEmpty>Reading the week's moments…</BriefEmpty>
-        ) : delight.failed ? (
-          <BriefEmpty>The Delight queue couldn't be read just now, so the week's gestures are unknown.</BriefEmpty>
-        ) : goingRight.length === 0 && back.length === 0 ? (
-          <BriefEmpty>{weekUnread ? "Booked milestones (a 50th or 100th session) couldn't be read just now." : "No milestones, dates or gestures in the next seven days."}</BriefEmpty>
-        ) : (
-          <ActionRows
-            rows={goingRight.slice(0, 8).map((r) => ({
-              key: r.key,
-              clientId: r.clientId,
-              name: r.name,
-              sentence: `${dayWord(r.day, today)} — ${r.sentence}`,
-              proof: r.proof,
-              tone: "info",
-              badge: r.kind === "gesture" ? "Gesture" : r.kind === "date" ? "Date" : "Milestone",
-            }))}
-            total={goingRight.length}
-            onOpenClient={onNavigateProfile}
-            empty=""
-            moreLabel="on Moments"
-          />
-        )}
-        {weekUnread && goingRight.length > 0 && <p className="ops-sec__note">Booked milestones (a 50th or 100th session) couldn't be read just now.</p>}
-        <div className="ops-sec__foot">{door("delight", "Moments")}</div>
-      </BriefSection>
+      {rightShown && (
+        <BriefSection id="right" title="Going right" door={door("delight", "Moments")}>
+          {back.length > 0 && (
+            <ActionRows
+              rows={back.map((r) => ({
+                key: `back:${r.clientId}`,
+                clientId: r.clientId,
+                name: r.name,
+                sentence: r.sentence,
+                proof: r.proof,
+                badge: "Back",
+                actions: (
+                  <AdminButton size="sm" variant="primary" busy={busyKey === `watch:${r.clientId}`} onClick={() => void gotIt(r.clientId)}>
+                    Got it
+                  </AdminButton>
+                ),
+              }))}
+              onOpenClient={onNavigateProfile}
+              empty=""
+            />
+          )}
+          {rightLoading ? (
+            <BriefEmpty>Reading…</BriefEmpty>
+          ) : delight.failed ? (
+            <BriefEmpty>The Delight queue couldn't be read just now.</BriefEmpty>
+          ) : (
+            goingRight.length > 0 && (
+              <ActionRows
+                rows={goingRight.slice(0, 8).map((r) => ({
+                  key: r.key,
+                  clientId: r.clientId,
+                  name: r.name,
+                  sentence: `${dayWord(r.day, today)} — ${r.sentence}`,
+                  proof: r.proof,
+                  tone: "info",
+                  badge: r.kind === "gesture" ? "Gesture" : r.kind === "date" ? "Date" : "Milestone",
+                }))}
+                total={goingRight.length}
+                limit={5}
+                onOpenClient={onNavigateProfile}
+                empty=""
+                moreLabel="on Moments"
+              />
+            )
+          )}
+          {weekUnread && goingRight.length > 0 && <p className="ops-sec__note">Booked milestones couldn't be read just now.</p>}
+        </BriefSection>
+      )}
 
-      {/* 7 · Worth a look */}
-      <BriefSection id="look" title="Worth a look" sub="the week's slower signals">
-        {own.watch && own.watch.rows.length > 0 && (
-          <ActionRows
-            rows={own.watch.rows.map((r) => ({
-              key: `drop:${r.clientId}:${r.machineId}`,
-              clientId: r.clientId,
-              name: clientName(r.clientId),
-              sentence: dropSentence(r, machineName(r.machineId)),
-              proof: `Latest set ${r.day}; Sunday's read (${own.watch!.builtAt.slice(0, 10)}).`,
-              tone: r.drop >= 0.5 ? "alert" : "warn",
-              badge: "Strength dropped",
-            }))}
-            onOpenClient={onNavigateProfile}
-            empty=""
-          />
-        )}
-        <div className="p-3 flex flex-col gap-2">
-          <Line
-            icon={<TrendingDown className="w-4 h-4" aria-hidden />}
-            label="Strength dropped"
-            text={
-              own.watch === undefined
-                ? own.failed.watch
-                  ? "The weekly read could not be loaded just now."
-                  : "Reading Sunday's list…"
-                : own.watch === null
-                  ? "The weekly read has not run yet. It runs on Sunday nights."
-                  : own.watch.rows.length === 0
-                    ? `Nobody dropped a third or more at the same weight in the two weeks before Sunday's read (${own.watch.builtAt.slice(0, 10)}).`
-                    : `${own.watch.clients} client${own.watch.clients === 1 ? "" : "s"} dropped by a third or more at the same weight, as of Sunday's read.`
-            }
-            tone={own.watch && own.watch.rows.length > 0 ? "warn" : "neutral"}
-          />
-          <Line
-            icon={<Ruler className="w-4 h-4" aria-hidden />}
-            label="Machine fit"
-            text={fit.status === "loading" ? "Reading the set-ups…" : fit.status === "failed" ? NOT_READ : fit.clients === 0 ? "Nobody is set somewhere unusual for their build." : `${fit.clients} client${fit.clients === 1 ? "" : "s"} worth a look, on ${fit.machines} machine${fit.machines === 1 ? "" : "s"}.`}
-            tone={fit.clients > 0 ? "warn" : "neutral"}
-            onOpen={onOpen && (() => onOpen("floor"))}
-          />
-          <Line
-            icon={<TrendingUp className="w-4 h-4" aria-hidden />}
-            label="Trends"
-            text={
-              recent.loading
-                ? "Reading the floor…"
-                : recent.failed
-                  ? NOT_READ
-                  : !insight?.summary.enoughToJudge
-                    ? `Not enough sessions in the last ${DAYS_READ} days to say anything yet.`
-                    : (insight.first?.text ?? "Nothing stands out in the last two weeks.")
-            }
-            tone={insight?.first?.tone === "problem" ? "alert" : insight?.first?.tone === "watch" ? "warn" : "neutral"}
-            onOpen={onOpen && (() => onOpen("insights"))}
-          />
-          <Line
-            icon={<Clock3 className="w-4 h-4" aria-hidden />}
-            label="Hours"
-            text={recent.loading ? "Adding up the week…" : recent.failed ? NOT_READ : `${formatHours(hours.minutes)} this week so far, over ${hours.sessions} session${hours.sessions === 1 ? "" : "s"} by ${hours.trainers} trainer${hours.trainers === 1 ? "" : "s"} (since Monday ${hours.since.slice(5)}).`}
-            tone="neutral"
-            onOpen={onOpen && (() => onOpen("hours"))}
-          />
-        </div>
-      </BriefSection>
+      {/* 7 · Worth a look: only the signals that say something */}
+      {lookShown && (
+        <BriefSection id="look" title="Worth a look">
+          {watchRows.length > 0 && (
+            <ActionRows
+              rows={watchRows.map((r) => ({
+                key: `drop:${r.clientId}:${r.machineId}`,
+                clientId: r.clientId,
+                name: clientName(r.clientId),
+                sentence: dropSentence(r, machineName(r.machineId)),
+                proof: `Latest set ${r.day}; Sunday's read (${own.watch!.builtAt.slice(0, 10)}).`,
+                tone: r.drop >= 0.5 ? "alert" : "warn",
+                badge: "Strength dropped",
+              }))}
+              limit={5}
+              onOpenClient={onNavigateProfile}
+              empty=""
+            />
+          )}
+          {(fit.clients > 0 || trendsLine) && (
+            <div className="p-3 flex flex-col gap-2">
+              {fit.clients > 0 && (
+                <Line
+                  icon={<Ruler className="w-4 h-4" aria-hidden />}
+                  label="Machine fit"
+                  text={`${fit.clients} client${fit.clients === 1 ? "" : "s"} worth a look, on ${fit.machines} machine${fit.machines === 1 ? "" : "s"}.`}
+                  tone="warn"
+                  onOpen={onOpen && (() => onOpen("floor"))}
+                />
+              )}
+              {trendsLine && (
+                <Line
+                  icon={<TrendingUp className="w-4 h-4" aria-hidden />}
+                  label="Trends"
+                  text={trendsLine.text}
+                  tone={trendsLine.tone === "problem" ? "alert" : trendsLine.tone === "watch" ? "warn" : "neutral"}
+                  onOpen={onOpen && (() => onOpen("insights"))}
+                />
+              )}
+            </div>
+          )}
+          {lookFailed && <p className="ops-sec__note">Part of this couldn't be read just now.</p>}
+        </BriefSection>
+      )}
+
+      <AllClear names={clear} />
 
       {(own.failed.dated || acks.failed || watchlist.failed) && (
         <AdminNotice tone="warn">

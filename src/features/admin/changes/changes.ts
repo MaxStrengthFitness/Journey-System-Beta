@@ -299,6 +299,26 @@ export function describeChange(row: ChangeRow, tz?: string): ChangeText {
   };
 }
 
+/**
+ * ONE SHORT LINE for a list row (the calm round, Oct 3 2026): the row's badge
+ * already says Cancelled or Moved, so this says only when, and with whom.
+ * "7:00 AM with Kyle" for today; "Wed 11:30 AM → Mon 11:00 AM with Kyle"
+ * for a move or a rebook. describeChange's sentence and proof stay for the
+ * row's Why.
+ */
+export function shortChange(row: ChangeRow, today: string, tz?: string): string {
+  const when = (d: Date) => {
+    const time = formatStudioTime(d, tz);
+    return studioDateKey(d, tz) === today ? time : `${formatStudioDate(d, { weekday: "short" }, tz)} ${time}`;
+  };
+  if (row.movedTo) {
+    // The same day twice says it once: "Mon 3:00 PM → 2:30 PM".
+    const to = sameDay(row.movedTo.start, row.originalStart, tz) ? formatStudioTime(row.movedTo.start, tz) : when(row.movedTo.start);
+    return `${when(row.originalStart)} → ${to}${withTrainer(row.movedTo.trainerName)}`;
+  }
+  return `${when(row.originalStart)}${withTrainer(row.trainerName)}`;
+}
+
 function sameDay(a: Date, b: Date, tz?: string): boolean {
   return studioDateKey(a, tz) === studioDateKey(b, tz);
 }

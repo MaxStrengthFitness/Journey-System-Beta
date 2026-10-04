@@ -3,11 +3,16 @@
  *
  * The redesign's Operations room, phase 2 (Sep 28 2026; the pick "Brief +
  * Journey"). Today's Overview was five tiles and eight panels of equal
- * weight, so the leader did the adding up every morning. The brief leads
- * with ONE bottom line, written by rules (research-operations §6.3; BLUF,
- * the President's Daily Brief), then the same sections in the same order
+ * weight, so the leader did the adding up every morning. The brief led with
+ * one bottom line written by rules, then the same sections in the same order
  * every day: Needs you · Catch today · Slipping away · Since yesterday ·
  * Coming up · Going right.
+ *
+ * The calm round (Oct 3 2026, AJ: "there's just so many words on there. It's
+ * really overwhelming"; "i trust all your recommended"): the written bottom
+ * line became one line of counts (TodayBrief), a section with nothing in it
+ * folds into one "All clear" line, and what the nightly record can't tell is
+ * said ONCE at the top (`nightlyNote`), never in each section.
  *
  * WHAT EACH RULE REFUSES TO SAY (the pins "Some lines give false comfort"):
  *
@@ -19,10 +24,10 @@
  *     when its trainer logs the workout. For someone who can't mark at this
  *     studio it stays a door and a clause, never a count that cannot go down
  *     (`unloggedInNeeds`).
- *   - The bottom line says the day "looks steady" only when every read
- *     behind it answered. An unread schedule, an unread day's logging, a
- *     client whose renewal timing is unknown and a nightly record that has
- *     stopped changing are each NAMED in it, never folded into "fine".
+ *   - A section folds into "All clear" only when every read behind it
+ *     answered. An unread schedule or day's logging keeps its section on the
+ *     page, saying so; a nightly record that can't judge yet is the page's
+ *     one note, and the sections it covers are never called clear.
  *   - Catch today says nothing off bookings the server hasn't confirmed; it
  *     returns null (unknown) rather than an empty list.
  *
@@ -31,31 +36,11 @@
 import type { Client, ScheduleEntry } from "../../../types";
 import { clientDisplayName } from "../../../lib/client-name";
 import { isStaffBlock, type LoggedSessions } from "../../../lib/booking-state";
-import { formatStudioDate, formatStudioTime, studioDateKey, studioDayBoundsForKey, toDate, zonedHM } from "../../../lib/studio-time";
+import { formatStudioDate, formatStudioTime, studioDateKey, studioDayBoundsForKey, toDate } from "../../../lib/studio-time";
 import { addDays } from "../../client-history/model";
 import type { MomentFamily, RunSheetEntry } from "../../hub-opportunities/moments-today";
 import type { RenewalSnapshot } from "../../renewals/types";
 import { changesForDay, type ChangeRow } from "../changes/changes";
-
-/* ------------------------------------------------------------------ *
- * Words
- * ------------------------------------------------------------------ */
-
-const WORDS = ["Nothing", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
-
-/** "Three", or "three" mid-sentence; digits past ten. */
-export function countWord(n: number, capital = true): string {
-  const w = n >= 0 && n < WORDS.length ? WORDS[n] : String(n);
-  return capital ? w : w.toLowerCase();
-}
-
-export type PartOfDay = "this morning" | "this afternoon" | "this evening";
-
-/** The studio's part of the day: before noon, before five, then evening. */
-export function partOfDay(now: Date, tz?: string): PartOfDay {
-  const hour = zonedHM(now, tz)?.hour ?? 9;
-  return hour < 12 ? "this morning" : hour < 17 ? "this afternoon" : "this evening";
-}
 
 /* ------------------------------------------------------------------ *
  * The nightly record
@@ -116,84 +101,78 @@ export function renewalUnknownCount(n: NightlyRead): number {
 }
 
 /* ------------------------------------------------------------------ *
- * The bottom line
+ * The nightly record, said once
  * ------------------------------------------------------------------ */
 
 export type WeekReadState = "ready" | "loading" | "failed" | "offline";
 
-export interface BottomLineInput {
-  part: PartOfDay;
-  /** Rows in Needs you. */
-  needs: number;
-  /** A read behind Needs you failed or is still out: there may be more. */
-  needsPartial: boolean;
-  /** Clients worth catching in person; null while today's bookings are unread. */
-  catchCount: number | null;
-  /** Finished sessions with nothing logged; null when unknown. */
-  neverLogged: number | null;
-  /** Those sessions are Needs-you rows (the reader may mark "didn't come" here), not a door. */
-  unloggedInNeeds?: boolean;
-  week: WeekReadState;
-  renewalUnknown: number;
-  nightly: Pick<NightlyRead, "stale" | "lastChangedAt">;
-  tz?: string;
+export type NightlyNoteKind = "not-live" | "no-record" | "stale" | "unknown";
+
+export interface NightlyNote {
+  kind: NightlyNoteKind;
+  /** One line, at the top of the page. */
+  text: string;
+  /** Behind "Why": what it means and who it is. */
+  why: string;
 }
 
-export interface BottomLine {
-  sentence: string;
-  /** "How this line is written": the rules, with this morning's numbers. */
-  rules: string[];
-}
-
-export function bottomLine(i: BottomLineInput): BottomLine {
-  const parts: string[] = [];
-  const need =
-    i.needs > 0
-      ? `${countWord(i.needs)} ${i.needs === 1 ? "thing needs" : "things need"} you ${i.part}`
-      : i.needsPartial
-        ? `Nothing that could be read needs you ${i.part}`
-        : `Nothing needs you ${i.part}`;
-  if (i.catchCount !== null && i.catchCount > 0) {
-    parts.push(`${need}, and ${countWord(i.catchCount, false)} ${i.catchCount === 1 ? "client is" : "clients are"} worth catching in person.`);
-  } else {
-    parts.push(`${need}.`);
-    if (i.catchCount === 0) parts.push("Nobody needs catching in person today.");
+/**
+ * WHAT THE NIGHTLY RECORD CAN'T TELL YET, SAID ONCE (Oct 3 2026, AJ:
+ * "there's just so many words on there"). Before, every section that leans on
+ * the record said so in its own sentence: a studio before its Journey start
+ * said "no nightly record" a dozen times across Operations, six on Team alone.
+ * Now one line at the top of each page says it, and the sections it covers
+ * stay quiet: never counted as fine, never repeated.
+ *
+ *   not-live    the studio's Journey start date isn't set or hasn't come, so
+ *               the nightly job doesn't run for it (`studioIsLive`)
+ *   no-record   it has come, and nothing has been written yet
+ *   stale       nothing changed for NIGHTLY_STALE_DAYS: the job most likely
+ *               hasn't run
+ *   unknown     the record is fresh, but some clients can't be placed
+ *
+ * Null when there is nothing to say (no clients, or every one judged).
+ */
+export function nightlyNote(
+  n: NightlyRead,
+  studio: { name?: string | null; journeyCutoverDate?: string | null },
+  today: string,
+  names: (ids: string[]) => string,
+  tz?: string,
+): NightlyNote | null {
+  if (n.homeClients === 0) return null;
+  const studioName = studio.name?.trim() || "This studio";
+  const waiting = `${n.homeClients === 1 ? "One client is" : `${n.homeClients} clients are`} waiting on it.`;
+  if (!n.lastChangedAt) {
+    const live = typeof studio.journeyCutoverDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(studio.journeyCutoverDate) && studio.journeyCutoverDate <= addDays(today, 1);
+    return live
+      ? {
+          kind: "no-record",
+          text: `No nightly record for ${studioName} yet, so rhythm, MIA and renewals aren't judged.`,
+          why: `Journey works these out each night from Mindbody. ${studioName}'s Journey start date has come, but the first night's record hasn't been written. ${waiting}`,
+        }
+      : {
+          kind: "not-live",
+          text: `${studioName} isn't live in Journey yet. Rhythm, MIA and renewals start after its first nightly run.`,
+          why: `Journey works these out each night from Mindbody, from a studio's Journey start date on${
+            studio.journeyCutoverDate ? ` (${studioName}'s is ${studio.journeyCutoverDate})` : `, and ${studioName} doesn't have one yet`
+          }. ${waiting}`,
+        };
   }
-  if (i.needs > 0 && i.needsPartial) parts.push("Part of the page couldn't be read, so there may be more.");
-
-  if (i.week === "loading") parts.push("Today's bookings are still being read.");
-  else if (i.week !== "ready") parts.push("Today's bookings couldn't be read, so the floor is unknown.");
-  else if (i.neverLogged === null) parts.push("Today's logging couldn't be read, so what was done is unknown.");
-  else if (i.neverLogged > 0) {
-    parts.push(
-      `${countWord(i.neverLogged)} of today's finished ${i.neverLogged === 1 ? "sessions has" : "sessions have"} no workout logged yet${
-        i.unloggedInNeeds ? ": ask on the floor, then its trainer logs it or someone marks it a late cancel" : ""
-      }.`,
-    );
+  if (n.stale) {
+    return {
+      kind: "stale",
+      text: `The nightly record last changed ${formatStudioDate(n.lastChangedAt, { weekday: "short", month: "short", day: "numeric" }, tz)}, so nobody is called slipping until it runs again.`,
+      why: "The job rebuilds every client's record each night, so at a working studio something changes every night. Three quiet days means it most likely hasn't run.",
+    };
   }
-
-  if (i.renewalUnknown > 0) {
-    parts.push(`Renewal timing is unknown for ${i.renewalUnknown === 1 ? "one client" : `${i.renewalUnknown} clients`}, so nothing here calls them on track.`);
-  }
-  if (i.nightly.stale) {
-    parts.push(
-      i.nightly.lastChangedAt
-        ? `The nightly record hasn't changed since ${formatStudioDate(i.nightly.lastChangedAt, { weekday: "short", month: "short", day: "numeric" }, i.tz)}, so nobody's rhythm is judged from it.`
-        : "There is no nightly record for this studio yet, so nobody's rhythm is judged.",
-    );
-  }
-  const allKnown = i.week === "ready" && i.neverLogged !== null && i.renewalUnknown === 0 && !i.nightly.stale && !i.needsPartial;
-  if (allKnown && i.neverLogged === 0) parts.push("The rest of the day looks steady.");
-
-  const rules = [
-    i.unloggedInNeeds
-      ? `Needs you: ${i.needs} ${i.needs === 1 ? "row" : "rows"} you can clear on this page (acknowledge, take a gesture, review a note, or mark a session nobody logged a late cancel), and nothing else. A session its trainer logs later clears by itself.`
-      : `Needs you: ${i.needs} ${i.needs === 1 ? "row" : "rows"} you can clear on this page (acknowledge, take a gesture, review a note), and nothing else. A session nobody logged is its trainer's to log, so it is a door, not a count.`,
-    `Catch today: ${i.catchCount === null ? "unknown until today's bookings are read" : `${i.catchCount} ${i.catchCount === 1 ? "client" : "clients"}`} in the studio today with a reason to see them in person: a renewal talk, back after a break, early sessions, a milestone, or leaving with nothing booked.`,
-    "An unread schedule, an unread day's logging, a client whose renewal timing is unknown and a nightly record that stopped changing are each named here, never counted as fine.",
-    "Written by rules each time the page reads. Never typed by hand.",
-  ];
-  return { sentence: parts.join(" "), rules };
+  const ids = [...n.missing, ...n.unknownData];
+  if (ids.length === 0) return null;
+  return {
+    kind: "unknown",
+    text: `${ids.length === 1 ? "One client" : `${ids.length} clients`} can't be judged yet.`,
+    why: `No renewal record from last night, or not enough Mindbody data for one: ${names(ids.slice(0, 6))}${ids.length > 6 ? ", and more" : ""}. Their renewal timing and rhythm are unknown, and they're never counted as on track or steady.`,
+  };
 }
 
 /* ------------------------------------------------------------------ *

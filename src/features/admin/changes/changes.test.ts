@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ScheduleEntry } from "../../../types";
-import { changeCounts, changesForDay, describeChange, weekEndOf, weekStartOf } from "./changes";
+import { changeCounts, changesForDay, describeChange, shortChange, weekEndOf, weekStartOf } from "./changes";
 
 const TZ = "America/New_York";
 
@@ -278,5 +278,29 @@ describe("changesForDay — Mindbody Unavailable blocks (Openings round, Sep 27 
     const block = row({ id: "u", clientName: "Unavailable", startTime: at("2026-09-19", "11:00"), createdAt: at("2026-09-16", "07:05") });
     const [change] = changesForDay([cancelled, block], "2026-09-18", TZ);
     expect(change).toMatchObject({ reading: "cancellation", movedTo: null, alsoBooked: null });
+  });
+});
+
+describe("shortChange — one line for a list row", () => {
+  it("a cancellation is when and with whom; today's drops the day", () => {
+    const [c] = changesForDay([row({ id: "a", status: "Cancelled" })], "2026-09-18", TZ);
+    expect(shortChange(c, "2026-09-18", TZ)).toBe("9:00 AM with Tom");
+    expect(shortChange(c, "2026-09-16", TZ)).toBe("Fri 9:00 AM with Tom");
+  });
+
+  it("a move is from and to, with the trainer it moved to", () => {
+    const [m] = changesForDay(
+      [row({ id: "m", startTime: at("2026-09-17", "14:00"), movedFromDay: "2026-09-15", movedFromStart: at("2026-09-15", "10:00"), trainerName: "Sara" })],
+      "2026-09-15",
+      TZ,
+    );
+    expect(shortChange(m, "2026-09-15", TZ)).toBe("10:00 AM → Thu 2:00 PM with Sara");
+    // Moved within one day that isn't today: the day is said once.
+    const [same] = changesForDay(
+      [row({ id: "s", startTime: at("2026-09-15", "14:30"), movedFromDay: "2026-09-15", movedFromStart: at("2026-09-15", "15:00"), trainerName: "Sara" })],
+      "2026-09-15",
+      TZ,
+    );
+    expect(shortChange(same, "2026-09-13", TZ)).toBe("Tue 3:00 PM → 2:30 PM with Sara");
   });
 });

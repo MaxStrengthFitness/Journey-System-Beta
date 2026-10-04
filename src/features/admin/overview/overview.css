@@ -241,6 +241,41 @@
   line-height: 1.4;
   color: var(--adm-ink-muted);
 }
+/* The row's (i): how to clear it and where it came from, on a tap (the calm
+   round, Oct 3 2026). 40px, quiet until pressed. */
+.adm-ov__info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--adm-ink-muted);
+  cursor: pointer;
+}
+.adm-ov__info:hover { background: var(--adm-surface-2); }
+.adm-ov__info[aria-expanded="true"] { background: var(--adm-surface-2); color: var(--adm-ink); }
+.adm-ov__info:focus-visible { outline: 2px solid var(--adm-focus-ring); outline-offset: 2px; }
+.adm-ov__proof--open {
+  margin: 0;
+  padding: 0 14px 12px;
+  font-size: 13px;
+}
+.adm-ov__show-all {
+  min-height: 40px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--adm-live-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.adm-ov__show-all:focus-visible { outline: 2px solid var(--adm-focus-ring); outline-offset: 2px; }
 .adm-ov__more {
   padding: 8px 14px;
   font-size: 11px;

@@ -1,78 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { Client, ScheduleEntry } from "../../../types";
 import type { RunSheetEntry } from "../../hub-opportunities/moments-today";
-import { NIGHTLY_STALE_DAYS, bottomLine, catchToday, countWord, dayStartMs, heldAgainst, leftWithNothingBooked, nightlyRead, partOfDay, renewalUnknownCount, sinceYesterday, type BottomLineInput } from "./brief";
+import { NIGHTLY_STALE_DAYS, catchToday, dayStartMs, heldAgainst, leftWithNothingBooked, nightlyNote, nightlyRead, renewalUnknownCount, sinceYesterday } from "./brief";
 
 const NOW = new Date("2026-09-28T13:52:00Z"); // Monday 9:52 AM Eastern
 const TZ = "America/New_York";
 const eastern = (day: string, hm: string) => new Date(`${day}T${hm}:00-04:00`);
-
-const base: BottomLineInput = {
-  part: "this morning",
-  needs: 0,
-  needsPartial: false,
-  catchCount: 0,
-  neverLogged: 0,
-  week: "ready",
-  renewalUnknown: 0,
-  nightly: { stale: false, lastChangedAt: new Date("2026-09-28T06:31:00Z") },
-  tz: TZ,
-};
-
-describe("words", () => {
-  it("spells small counts and falls back to digits", () => {
-    expect(countWord(3)).toBe("Three");
-    expect(countWord(1, false)).toBe("one");
-    expect(countWord(14)).toBe("14");
-  });
-
-  it("names the studio's part of the day", () => {
-    expect(partOfDay(NOW, TZ)).toBe("this morning");
-    expect(partOfDay(new Date("2026-09-28T18:00:00Z"), TZ)).toBe("this afternoon");
-    expect(partOfDay(new Date("2026-09-28T22:30:00Z"), TZ)).toBe("this evening");
-  });
-});
-
-describe("the bottom line", () => {
-  it("leads with what needs you and who to catch, in words", () => {
-    const line = bottomLine({ ...base, needs: 3, catchCount: 4, neverLogged: 0 });
-    expect(line.sentence).toBe("Three things need you this morning, and four clients are worth catching in person. The rest of the day looks steady.");
-  });
-
-  it("says steady only when every read answered", () => {
-    expect(bottomLine({ ...base }).sentence).toBe("Nothing needs you this morning. Nobody needs catching in person today. The rest of the day looks steady.");
-    // One unknown renewal is enough to lose the all-clear, and it is named.
-    const unknown = bottomLine({ ...base, renewalUnknown: 3 }).sentence;
-    expect(unknown).toContain("Renewal timing is unknown for 3 clients, so nothing here calls them on track.");
-    expect(unknown).not.toContain("steady");
-  });
-
-  it("names an unread schedule, an unread day's logging and sessions nobody logged", () => {
-    expect(bottomLine({ ...base, week: "loading", catchCount: null, neverLogged: null }).sentence).toBe("Nothing needs you this morning. Today's bookings are still being read.");
-    expect(bottomLine({ ...base, week: "offline", catchCount: null, neverLogged: null }).sentence).toContain("Today's bookings couldn't be read, so the floor is unknown.");
-    expect(bottomLine({ ...base, neverLogged: null }).sentence).toContain("Today's logging couldn't be read, so what was done is unknown.");
-    const two = bottomLine({ ...base, neverLogged: 2 }).sentence;
-    expect(two).toContain("Two of today's finished sessions have no workout logged yet.");
-    expect(two).not.toContain("steady");
-  });
-
-  it("never says nothing needs you off a partial read", () => {
-    expect(bottomLine({ ...base, needsPartial: true }).sentence).toMatch(/^Nothing that could be read needs you this morning\./);
-    expect(bottomLine({ ...base, needs: 1, needsPartial: true }).sentence).toContain("Part of the page couldn't be read, so there may be more.");
-  });
-
-  it("names a nightly record that has stopped changing", () => {
-    const stale = bottomLine({ ...base, nightly: { stale: true, lastChangedAt: new Date("2026-09-20T06:31:00Z") } }).sentence;
-    expect(stale).toContain("The nightly record hasn't changed since Sun, Sep 20, so nobody's rhythm is judged from it.");
-    expect(bottomLine({ ...base, nightly: { stale: true, lastChangedAt: null } }).sentence).toContain("There is no nightly record for this studio yet");
-  });
-
-  it("writes down its own rules, with this morning's numbers", () => {
-    const rules = bottomLine({ ...base, needs: 2, catchCount: null }).rules;
-    expect(rules[0]).toContain("Needs you: 2 rows you can clear on this page");
-    expect(rules[1]).toContain("unknown until today's bookings are read");
-  });
-});
 
 describe("the nightly record", () => {
   const snap = (extra: Record<string, unknown> = {}) => ({ situation: "on-track", flags: [], computedAt: new Date("2026-09-28T06:31:00Z"), ...extra });
@@ -100,6 +33,45 @@ describe("the nightly record", () => {
     expect(nightlyRead([{ id: "c", homeStudioId: "solon", isActive: true }] as unknown as Client[], "solon", NOW).stale).toBe(true);
     // A studio with no clients has nothing to be stale about.
     expect(nightlyRead([], "solon", NOW).stale).toBe(false);
+  });
+});
+
+describe("the nightly record, said once", () => {
+  const today = "2026-09-28";
+  const names = (ids: string[]) => ids.join(", ");
+  const read = (over: Partial<ReturnType<typeof nightlyRead>> = {}) => ({ lastChangedAt: new Date("2026-09-28T06:31:00Z"), stale: false, homeClients: 3, missing: [], unknownData: [], ...over });
+
+  it("before a studio's Journey start: one line that it isn't live yet, and why behind it", () => {
+    const note = nightlyNote(read({ lastChangedAt: null, stale: true, missing: ["a", "b", "c"] }), { name: "Strongsville Ohio", journeyCutoverDate: null }, today, names, TZ);
+    expect(note?.kind).toBe("not-live");
+    expect(note?.text).toBe("Strongsville Ohio isn't live in Journey yet. Rhythm, MIA and renewals start after its first nightly run.");
+    expect(note?.why).toContain("doesn't have one yet");
+    expect(note?.why).toContain("3 clients are waiting on it.");
+    expect(nightlyNote(read({ lastChangedAt: null, stale: true }), { name: "Solon", journeyCutoverDate: "2026-11-01" }, today, names)?.why).toContain("(Solon's is 2026-11-01)");
+  });
+
+  it("after the start date with nothing written, it says so instead", () => {
+    const note = nightlyNote(read({ lastChangedAt: null, stale: true }), { name: "Solon", journeyCutoverDate: "2026-09-01" }, today, names);
+    expect(note?.kind).toBe("no-record");
+    expect(note?.text).toBe("No nightly record for Solon yet, so rhythm, MIA and renewals aren't judged.");
+  });
+
+  it("names a record that has stopped changing", () => {
+    const note = nightlyNote(read({ lastChangedAt: new Date("2026-09-20T06:31:00Z"), stale: true }), { name: "Solon" }, today, names, TZ);
+    expect(note?.kind).toBe("stale");
+    expect(note?.text).toBe("The nightly record last changed Sun, Sep 20, so nobody is called slipping until it runs again.");
+  });
+
+  it("on a fresh record, only the clients it couldn't place, by name behind Why", () => {
+    const note = nightlyNote(read({ missing: ["c"], unknownData: ["b"] }), { name: "Solon" }, today, names);
+    expect(note?.kind).toBe("unknown");
+    expect(note?.text).toBe("2 clients can't be judged yet.");
+    expect(note?.why).toContain(": c, b.");
+  });
+
+  it("says nothing when there is nothing to say", () => {
+    expect(nightlyNote(read(), { name: "Solon" }, today, names)).toBeNull();
+    expect(nightlyNote(read({ homeClients: 0, lastChangedAt: null, stale: false }), { name: "Solon" }, today, names)).toBeNull();
   });
 });
 

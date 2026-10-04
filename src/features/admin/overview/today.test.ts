@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ScheduleEntry, WorkoutSession } from "../../../types";
 import { loggedSessions } from "../../../lib/booking-state";
-import { chaseList, pct, todayFoot, todayNumbers } from "./today";
+import { chaseList, groupNames, notLoggedByTrainer, pct, todayFoot, todayNumbers, type ChaseRow } from "./today";
 
 const at = (hm: string) => new Date(`2026-09-19T${hm}:00-04:00`);
 const NOW = at("12:00");
@@ -106,5 +106,23 @@ describe("chaseList", () => {
     const day = [...DAY, booking("i", "07:00", "Scheduled", { trainerName: "Sara" })];
     expect(chaseList(day, NOW, loggedFor("c-e"), TZ).map((r) => r.clientName)).toEqual(["Client i"]);
     expect(chaseList(day, NOW, null, TZ)).toEqual([]);
+  });
+});
+
+describe("not logged, one group per trainer", () => {
+  const chase = (id: string, client: string, trainer: string, hm: string): ChaseRow => ({ id, bookingId: id, clientId: id, clientName: client, trainerName: trainer, at: hm, atMs: at(hm).getTime() });
+  const rows = [chase("b", "Bea", "Kyle", "08:00"), chase("a", "Ann", "Kyle", "07:00"), chase("c", "Cy", "Kayla", "07:30"), chase("d", "Dee", " ", "09:00")];
+
+  it("groups by trainer in the order their first session was, each group earliest first", () => {
+    const groups = notLoggedByTrainer(rows);
+    expect(groups.map((g) => g.trainerName)).toEqual(["Kyle", "Kayla", "No trainer named"]);
+    expect(groups[0].rows.map((r) => r.clientName)).toEqual(["Ann", "Bea"]);
+  });
+
+  it("names the first few and counts the rest, never cutting a name", () => {
+    expect(groupNames([rows[0]])).toBe("Bea");
+    expect(groupNames(rows.slice(0, 2))).toBe("Bea and Ann");
+    expect(groupNames(rows.slice(0, 3))).toBe("Bea, Ann and Cy");
+    expect(groupNames(rows)).toBe("Bea, Ann and 2 more");
   });
 });
