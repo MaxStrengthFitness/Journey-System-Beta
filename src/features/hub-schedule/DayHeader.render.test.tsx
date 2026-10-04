@@ -197,9 +197,4 @@ describe("the chips, with Get to know (wave 2 hub)", () => {
     expect(el.querySelector(".hd-chips")).toBeNull();
     expect(el.querySelectorAll(".hd-bar .hd-rule")).toHaveLength(1);
   });
-    expect([...el.querySelectorAll(".hd-chip")].map((c) => c.textContent)).toEqual(["Celebrate 3", "Get to know 2"]);
-    expect(el.querySelectorAll(".hd-chip")[1].querySelector(".hd-fam")?.getAttribute("data-family")).toBe("get-to-know");
-    act(() => btn(el, "Get to know")!.click());
-    expect(calls.spot).toEqual(["get-to-know"]);
-  });
 });
