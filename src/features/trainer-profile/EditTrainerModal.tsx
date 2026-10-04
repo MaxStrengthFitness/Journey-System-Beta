@@ -323,7 +323,7 @@ export function EditTrainerModal({
       <DialogContent className="sm:max-w-137.5 bg-card text-foreground border border-slate-200 dark:border-slate-800 shadow-2xl rounded-3xl overflow-y-auto max-h-[90dvh]">
         <DialogHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
           <DialogTitle className="text-2xl font-black italic uppercase text-foreground tracking-widest flex items-center gap-2">
-            <Users2 className="w-6 h-6 text-[#F06C22]" />
+            <Users2 className="w-6 h-6 text-primary" />
             Edit Trainer Profile
           </DialogTitle>
           <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">
@@ -337,7 +337,7 @@ export function EditTrainerModal({
             {isAdminMode && (
             <div className="space-y-2">
               <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
-                <UserIcon className="w-3 h-3 text-indigo-500" />
+                <UserIcon className="w-3 h-3 text-primary" />
                 Full Name
               </Label>
               <Input
@@ -378,7 +378,7 @@ export function EditTrainerModal({
             {isAdminMode && (
             <div className="space-y-2">
               <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
-                <Mail className="w-3 h-3 text-indigo-500" />
+                <Mail className="w-3 h-3 text-primary" />
                 Email Address
               </Label>
               <Input
@@ -483,7 +483,7 @@ export function EditTrainerModal({
 
             <div className="space-y-2">
               <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-indigo-500" />
+                <Calendar className="w-3 h-3 text-primary" />
                 Started
               </Label>
               <Input
@@ -593,7 +593,7 @@ export function EditTrainerModal({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
-                <Eye className="w-3 h-3 text-orange-500" />
+                <Eye className="w-3 h-3 text-primary" />
                 Mindbody Staff ID
               </Label>
               <Button
@@ -602,7 +602,7 @@ export function EditTrainerModal({
                 size="sm"
                 onClick={handleFetchStaff}
                 disabled={fetchingStaff}
-                className="h-7 text-[10px] font-black uppercase text-indigo-500 hover:text-indigo-600 px-2"
+                className="h-7 text-[10px] font-black uppercase text-primary hover:text-primary px-2"
               >
                 {fetchingStaff ? "Fetching..." : "Lookup from Mindbody"}
               </Button>
@@ -654,7 +654,7 @@ export function EditTrainerModal({
                             {s.fullName}
                           </span>
                         </span>
-                        <span className="font-mono text-xs text-[#F06C22] font-bold shrink-0 bg-[#F06C22]/10 px-2 py-0.5 rounded-md border border-[#F06C22]/20">
+                        <span className="font-mono text-xs text-muted-foreground font-bold shrink-0 bg-muted px-2 py-0.5 rounded-md border border-border">
                           ID: {s.id}
                         </span>
                       </div>
@@ -689,7 +689,7 @@ export function EditTrainerModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <div className="space-y-2">
                   <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
-                    <Shield className="w-3 h-3 text-indigo-500" />
+                    <Shield className="w-3 h-3 text-primary" />
                     Permissions Role
                   </Label>
                   <Select
@@ -721,7 +721,7 @@ export function EditTrainerModal({
 
                 <div className="space-y-2">
                   <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
-                    <Building2 className="w-3 h-3 text-indigo-500" />
+                    <Building2 className="w-3 h-3 text-primary" />
                     Primary Studio
                   </Label>
                   <Select
@@ -757,7 +757,7 @@ export function EditTrainerModal({
               <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <div className="space-y-0.5">
                   <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4 text-[#F06C22]" /> Display on
+                    <Calendar className="w-4 h-4 text-primary" /> Display on
                     Calendar
                   </span>
                   <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
@@ -774,7 +774,7 @@ export function EditTrainerModal({
               {/* Complex Studio Involvements */}
               <div className="space-y-4 pt-2">
                 <h4 className="text-xs font-black uppercase italic tracking-widest text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-1.5 flex items-center gap-1.5">
-                  <Building2 className="w-4 h-4 text-indigo-500" />
+                  <Building2 className="w-4 h-4 text-primary" />
                   Studio Involvements & Connections
                 </h4>
 
@@ -797,7 +797,7 @@ export function EditTrainerModal({
                           key={`access-${s.id}`}
                           className={`flex items-center gap-2.5 p-2 rounded-xl border transition-all ${
                             isPrimary
-                              ? "bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200/50 dark:border-indigo-800/40 opacity-80"
+                              ? "bg-primary/5 border-primary/30 opacity-80"
                               : isChecked
                                 ? "bg-slate-100/80 dark:bg-slate-800 border-border"
                                 : "bg-card border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700"
@@ -810,7 +810,7 @@ export function EditTrainerModal({
                             onCheckedChange={() =>
                               s.id && handleAccessibleStudioToggle(s.id)
                             }
-                            className="rounded border-slate-300 dark:border-slate-700 data-[state=checked]:bg-[#F06C22] data-[state=checked]:border-[#F06C22]"
+                            className="rounded"
                           />
                           <label
                             htmlFor={`access-${s.id}`}
@@ -818,7 +818,7 @@ export function EditTrainerModal({
                           >
                             {s.name}
                             {isPrimary && (
-                              <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] bg-indigo-500/10 text-indigo-500 font-extrabold uppercase">
+                              <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] bg-primary text-primary-foreground font-extrabold uppercase">
                                 Home
                               </span>
                             )}
@@ -858,7 +858,7 @@ export function EditTrainerModal({
                             onCheckedChange={() =>
                               s.id && handleGuestStudioToggle(s.id)
                             }
-                            className="rounded border-slate-300 dark:border-slate-700 data-[state=checked]:bg-[#F06C22] data-[state=checked]:border-[#F06C22]"
+                            className="rounded"
                           />
                           <label
                             htmlFor={`guest-${s.id}`}
@@ -888,7 +888,7 @@ export function EditTrainerModal({
           <Button
             onClick={handleSave}
             disabled={saving || (isAdminMode && !fullName) || !initials}
-            className="bg-cta hover:bg-cta text-cta-foreground font-black uppercase text-xs h-12 rounded-xl transition-all shadow-[0_0_20px_var(--cta)] shadow-cta/30 min-w-37.5"
+            className="bg-primary hover:bg-primary text-primary-foreground font-black uppercase text-xs h-12 rounded-xl transition-all shadow-[0_0_20px_var(--primary)] shadow-primary/30 min-w-37.5"
           >
             {saving ? "Saving Changes..." : "Save Trainer Profile"}
           </Button>

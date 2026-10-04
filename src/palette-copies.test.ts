@@ -22,9 +22,12 @@ import { describe, expect, it } from "vitest";
  *     modes, the copies' own pigments included (FORD's pillars, the Pulse's
  *     traffic lights, the builder's avoid and caution, the heat map);
  *   - the rules that put words on a solid colour use an on-colour token, and
- *     the one loud orange (Start Session, Generate, the Pulse's orange
- *     selections) is the logo orange with navy words, its fill restated on
- *     :hover; nothing puts white words on an orange.
+ *     the one loud orange (Start Session, Generate) is the logo orange with
+ *     navy words, its fill restated on :hover; nothing puts white words on
+ *     an orange;
+ *   - a selection is the blue: the Pulse's linked note and its "Machines
+ *     that bring it on" were the go pair until AJ's answer of Oct 4 2026
+ *     ("a selection is blue"), and the Pulse keeps no orange with words.
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -355,7 +358,6 @@ const PAIRS: [string, string, string, number][] = [
   ["features/subjective-report/subjective-report.css", "--sr-watch", "--sr-surface", 4.5],
   ["features/subjective-report/subjective-report.css", "--sr-watch", "--sr-watch-fill", 4.5],
   ["features/subjective-report/subjective-report.css", "--sr-hero-text", "--sr-hero-fill", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-go-on", "--sr-go", 4.5],
   ["features/subjective-report/subjective-report.css", "--sr-hero", "--sr-surface", 3],
   ["features/subjective-report/subjective-report.css", "--sr-border-strong", "--sr-surface", 3],
   // FORD: the urgency chips, the pillar marks and the unfiled tray.
@@ -450,7 +452,6 @@ describe("words read at 4.5:1 and marks at 3:1, in both modes", () => {
 
 describe("the one loud orange is the logo orange with navy words", () => {
   const briefing = stylesheet("features/briefing/briefing.css");
-  const pulse = stylesheet("features/subjective-report/subjective-report.css");
   const review = stylesheet("features/clinical-review/clinical-review.css");
 
   it("Start Session on the briefing, with its fill restated on :hover and no filter", () => {
@@ -470,20 +471,6 @@ describe("the one loud orange is the logo orange with navy words", () => {
     }
   });
 
-  it("the Pulse's two orange selections (a linked note, a machine that brings it on)", () => {
-    for (const selector of [".sr-btn--primary", ".sr-chip--hero.sr-chip--on"]) {
-      const body = declared(pulse, selector);
-      expect(body.background, selector).toBe("var(--sr-go)");
-      expect(body.color, selector).toBe("var(--sr-go-on)");
-    }
-  });
-
-  it("the Pulse's go pair is the Hub's", () => {
-    const sr = block(pulse, LIGHT);
-    expect(sr["--sr-go"]).toBe(EQ.light["--eq-go"]);
-    expect(sr["--sr-go-on"]).toBe(EQ.light["--eq-go-on"]);
-  });
-
   it("the Deep Dive's Generate, with its fill restated on :hover and no filter or raw hex", () => {
     const body = declared(review, ".cr-generate");
     expect(body.background).toBe("var(--jg-go)");
@@ -492,6 +479,35 @@ describe("the one loud orange is the logo orange with navy words", () => {
     const hover = declared(review, ".cr-generate:hover");
     expect(hover.background).toBe("var(--jg-go)");
     expect(hover.filter).toBeUndefined();
+  });
+});
+
+describe("a selection in the Pulse is the blue (AJ, Oct 4 2026: \"a selection is blue\")", () => {
+  const pulse = stylesheet("features/subjective-report/subjective-report.css");
+  const step = readFileSync(join(HERE, "features/subjective-report/SubjectiveStep.tsx"), "utf8");
+  const ui = readFileSync(join(HERE, "features/subjective-report/ui.tsx"), "utf8");
+
+  it("a linked note is the navy button, its words the on-colour", () => {
+    expect(step).toContain('className={`sr-btn sr-btn--sm${on ? " sr-btn--navy" : ""}`}');
+    const body = declared(pulse, ".sr-btn--navy");
+    expect(body.background).toBe("var(--sr-navy)");
+    expect(body.color).toBe("var(--sr-on)");
+  });
+
+  it("a machine that brings it on is an ordinary picked chip, the navy with the on-colour", () => {
+    const body = declared(pulse, ".sr-chip--on");
+    expect(body.background).toBe("var(--sr-navy)");
+    expect(body.color).toBe("var(--sr-on)");
+    // The orange `hero` chip is gone with its prop.
+    expect(ui).not.toMatch(/sr-chip--hero|hero\?: boolean/);
+    expect(step).not.toMatch(/^\s*hero\s*$/m);
+  });
+
+  it("the Pulse keeps no orange with words: no go pair, no orange button or chip rule", () => {
+    expect(pulse).not.toMatch(/--sr-go\b|sr-btn--primary|sr-chip--hero/);
+    for (const r of rules(pulse)) {
+      if (r.body.background === "var(--sr-hero)") expect(r.body.color, r.selectors.join(", ")).toBeUndefined();
+    }
   });
 });
 

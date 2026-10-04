@@ -222,7 +222,7 @@ export function RenewalCardDialog({ open, onClose, client, trainer, machineNames
               onClick={() => setLogging(true)}
               disabled={!s?.cycleKey}
               title={s?.cycleKey ? undefined : "No package on file to log it under"}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-cta hover:bg-cta px-5 text-[12px] font-black uppercase tracking-widest text-cta-foreground disabled:opacity-50"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary px-5 text-[12px] font-black uppercase tracking-widest text-primary-foreground disabled:opacity-50"
             >
               <MessageSquarePlus className="h-4 w-4" />
               Log a conversation

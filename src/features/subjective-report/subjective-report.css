@@ -17,8 +17,11 @@
    the same calm daylight and studio navy as the Hub. Dark fills are opaque
    at their accent's own hue. The RAG set is the Pulse's own; only the light
    yellow was deepened (lightness only) to keep 4.5:1 on the off-white card.
-   Words on a solid accent read --sr-on (white in light, navy in dark), and
-   the one orange with words is the go pair: the logo orange, navy words.
+   Words on a solid accent read --sr-on (white in light, navy in dark).
+   A selection is the blue (--sr-navy with --sr-on words): a linked note and
+   a machine that brings the pain on were the logo orange until AJ's answer
+   of Oct 4 2026 ("a selection is blue"), so the Pulse has no orange with
+   words now; its one orange is the hero mark on a switch that is on.
    ========================================================================== */
 
 :root {
@@ -39,11 +42,6 @@
   --sr-hero-fill:     #ffe9d8;
   --sr-navy:          #034a84;   /* brand primary-2 */
   --sr-navy-fill:     #dbeefe;   /* navy words on it 7.6:1 */
-
-  /* The one orange with words (a machine that brings the pain on, a linked
-     note): the logo orange with navy words, 6.1:1, the same in both modes. */
-  --sr-go:            #f36d21;
-  --sr-go-on:         #071727;
 
   /* Words and icons on a solid accent: the navy, and the RAG fills. */
   --sr-on:            #ffffff;
@@ -318,7 +316,6 @@
   -webkit-tap-highlight-color: transparent;
 }
 .sr-chip--on { background: var(--sr-navy); border-color: var(--sr-navy); color: var(--sr-on); }
-.sr-chip--hero.sr-chip--on { background: var(--sr-go); border-color: var(--sr-go); color: var(--sr-go-on); }
 .sr-chip--sm { height: 30px; font-size: 12px; padding: 0 10px; }
 
 /* ---------- Days-per-week picker ------------------------------------ */
@@ -445,7 +442,6 @@
   color: var(--sr-ink); font-size: 13px; font-weight: 800; cursor: pointer;
   white-space: nowrap;
 }
-.sr-btn--primary { background: var(--sr-go); border-color: var(--sr-go); color: var(--sr-go-on); }
 .sr-btn--ghost { border-color: transparent; background: transparent; color: var(--sr-ink-muted); }
 .sr-btn--sm { height: 32px; padding: 0 10px; font-size: 12px; }
 .sr-btn--danger { color: var(--sr-red); border-color: var(--sr-red); }

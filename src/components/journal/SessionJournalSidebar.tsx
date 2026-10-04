@@ -250,7 +250,7 @@ export function SessionJournalSidebar({
               onClick={() => setMode(tab.id)}
               className={`h-10 min-w-0 flex-1 basis-0 rounded-lg text-[13px] font-bold transition-colors ${
                 mode === tab.id
-                  ? "bg-(--eq-go) hover:bg-(--eq-go) text-(--eq-go-on)"
+                  ? "bg-primary hover:bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted"
               }`}
             >

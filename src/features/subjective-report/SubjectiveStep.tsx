@@ -699,7 +699,6 @@ function PainPointEditor({
             <Chip
               key={m.id}
               small
-              hero
               on={point.aggravatingMachineIds.includes(m.id!)}
               onClick={() =>
                 set({
@@ -730,7 +729,7 @@ function PainPointEditor({
                 </span>
                 <button
                   type="button"
-                  className={`sr-btn sr-btn--sm${on ? " sr-btn--primary" : ""}`}
+                  className={`sr-btn sr-btn--sm${on ? " sr-btn--navy" : ""}`}
                   onClick={() =>
                     set({
                       linkedJournalEntryIds: on

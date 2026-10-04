@@ -1768,7 +1768,7 @@ export function ClientProfileView({
                 <Button
                   onClick={handleConfirmToggleB}
                   disabled={toggleBReason.trim().length < 3 || isSavingToggle}
-                  className="bg-cta text-cta-foreground hover:bg-cta rounded-xl uppercase font-bold text-xs shadow-md shadow-cta/15"
+                  className="bg-primary text-primary-foreground hover:bg-primary rounded-xl uppercase font-bold text-xs shadow-md shadow-primary/15"
                 >
                   {isSavingToggle ? "Saving..." : "Confirm Switch"}
                 </Button>

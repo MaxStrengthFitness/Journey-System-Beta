@@ -356,7 +356,7 @@ export function CreateClientModal({
           <Button
             onClick={handleSaveClick}
             disabled={isSubmitting || !canSave}
-            className="w-full sm:flex-2 h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl transition-all active:scale-95 bg-cta hover:bg-cta text-cta-foreground cursor-pointer"
+            className="w-full sm:flex-2 h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl transition-all active:scale-95 bg-primary hover:bg-primary text-primary-foreground cursor-pointer"
           >
             {isSubmitting ? (
               <Loader2 className="w-5 h-5 animate-spin" />

@@ -33,12 +33,24 @@ import { describe, expect, it } from "vitest";
  *   - Critical is the one crimson (--eq-alert) on its own fill;
  *   - the record has no sky or teal hex left.
  *
+ * THE FOLLOW-UP (AJ's answer, Oct 4 2026: "yes"). The recorded rule is
+ * "every Save is solid blue" and "a selection is blue"; orange is only now
+ * and go (Start, Finish, the paused Resume). So the Saves the phase left on
+ * the logo orange (InBody, the renewal conversation, Track, the routine
+ * drawer, Confirm Switch, Send to the team, Create Temporary Profile, Save
+ * Trainer Profile) are the theme's blue with its own words, the fill kept on
+ * hover; the selections (the notes sheet's open tab, the feedback kinds,
+ * First-time setup's chips, a trainer's studios) are the blue too; the demo
+ * card's "Yes, reset it" is a destructive confirm; and a caution icon is
+ * plum. The lists below hold each one by name.
+ *
  * Every pair a rule leans on is measured on the real token files, in both
  * modes: index.css (uppercase) and equipment.tokens.css (lowercase).
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const read = (rel: string) => readFileSync(join(HERE, rel), "utf8");
+/** A file with its line endings made \n: a Windows checkout (core.autocrlf) has \r\n. */
+const read = (rel: string) => readFileSync(join(HERE, rel), "utf8").replace(/\r\n/g, "\n");
 
 /* ---------------------------------------------------------------------------
    The tokens, read from both files
@@ -229,21 +241,12 @@ describe("a solid logo-orange button has navy words and keeps its fill on hover"
     });
   }
 
+  // Orange is now and go: these stay the logo orange.
   it.each([
-    ["Save scan (InBody)", "features/inbody/InBodyScanDialog.tsx", 1],
-    ["Save conversation", "features/renewals/LogConversationDialog.tsx", 1],
-    ["Log a conversation (the renewal card)", "features/renewals/RenewalCardDialog.tsx", 1],
     ["Start a new session (a stale session)", "features/tracker/StaleSessionDialog.tsx", 1],
-    ["Track (the Kaizen toggle)", "features/trainer-profile/KaizenToggle.tsx", 1],
-    ["Yes, reset it (the demo card)", "features/demo-mode/SetUpDemoCard.tsx", 1],
-    ["Confirm Switch (routine B)", "components/ClientProfileView.tsx", 1],
-    ["Save preset and Apply (the routine drawer)", "components/EditRoutineDrawer.tsx", 2],
     ["Finish session (the End Session dialog)", "components/WorkoutTrackerView.tsx", 1],
     ["Resume (the paused session timer)", "components/ActiveSessionTimer.tsx", 1],
-    ["Send to the team (feedback)", "features/feedback/FeedbackDrawer.tsx", 1],
     ["Start Consult Workout", "components/ConsultationSetupWizard.tsx", 1],
-    ["Create Temporary Profile (add a client)", "components/CreateClientModal.tsx", 1],
-    ["Save Trainer Profile", "features/trainer-profile/EditTrainerModal.tsx", 1],
   ])("%s is the logo orange with navy words, restated on hover", (_name, file, count) => {
     const strings = classStrings(read(file), file).filter(
       (s) => has(s.body, "bg-cta") && has(s.body, "text-cta-foreground") && has(s.body, "hover:bg-cta"),
@@ -260,8 +263,8 @@ describe("a solid logo-orange button has navy words and keeps its fill on hover"
     ]) {
       expect(read(file), file).not.toMatch(/rgba\((?:240,\s*108,\s*34|239,\s*83,\s*2)/);
     }
-    // The Start Consult Workout glow (whether the wizard's selected chips stay
-    // orange or turn blue is AJ's audit).
+    // The Start Consult Workout glow. (The wizard's picked chips are the blue
+    // since AJ's answer of Oct 4 2026; their glow is the blue's own.)
     const wizard = read("components/ConsultationSetupWizard.tsx");
     expect(wizard).toContain("shadow-[0_10px_30px_var(--cta)] shadow-cta/30");
   });
@@ -384,7 +387,9 @@ describe("the session sheets", () => {
     }
     expect(sidebar.match(/className="h-5 w-5 text-\(--eq-hero\)"/g) ?? []).toHaveLength(3);
     expect(tracker).toContain('<HeartPulse className="h-5 w-5 text-(--eq-hero)" /> Pulse');
-    expect(sidebar).toContain('? "bg-(--eq-go) hover:bg-(--eq-go) text-(--eq-go-on)"');
+    // The open tab is a selection, so it is the blue (AJ, Oct 4 2026).
+    expect(sidebar).toContain('? "bg-primary hover:bg-primary text-primary-foreground"');
+    expect(sidebar).not.toMatch(/bg-\(--eq-go\)/);
     expect(tracker).toContain("focus-visible:ring-(--eq-hero) focus-visible:border-(--eq-hero)");
     // The introductory-session banner: words and icons in the go pair.
     const banner = tracker.slice(tracker.indexOf("{isIntroSession && ("), tracker.indexOf("NEW CLIENT INTRODUCTORY SESSION"));
@@ -523,6 +528,121 @@ describe("the Wrap-up's renewal-due button", () => {
     for (const t of BOTH) {
       expect(ratio(colour(t, "--eq-hero-text"), colour(t, "--eq-hero-fill")), `${t}: the icon`).toBeGreaterThanOrEqual(3);
       expect(ratio(colour(t, "--ink-d1"), colour(t, "--eq-hero-fill")), `${t}: the words`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
+/* ---------------------------------------------------------------------------
+   Every Save is solid blue, and a selection is blue (AJ, Oct 4 2026: "yes")
+   --------------------------------------------------------------------------- */
+
+/** A class string with a solid orange fill (the go pair, the logo orange or a Tailwind orange). */
+const orangeFills = (file: string) => classStrings(read(file), file).filter((s) => ORANGE_FILL.test(s.body));
+
+describe("every Save is solid blue", () => {
+  it.each([
+    ["Save scan and Save correction (InBody)", "features/inbody/InBodyScanDialog.tsx", 1],
+    ["Save conversation", "features/renewals/LogConversationDialog.tsx", 1],
+    ["Log a conversation (the renewal card, the door to Save conversation)", "features/renewals/RenewalCardDialog.tsx", 1],
+    ["Track (the Kaizen toggle)", "features/trainer-profile/KaizenToggle.tsx", 1],
+    ["Confirm Switch (routine B) and the prior sessions' Save", "components/ClientProfileView.tsx", 2],
+    ["Save preset and Apply (the routine drawer)", "components/EditRoutineDrawer.tsx", 2],
+    ["Send to the team (feedback)", "features/feedback/FeedbackDrawer.tsx", 1],
+    ["Create Temporary Profile (add a client)", "components/CreateClientModal.tsx", 1],
+    ["Save Trainer Profile", "features/trainer-profile/EditTrainerModal.tsx", 1],
+  ])("%s is the theme's blue with its own words, the fill kept on hover, and nothing there is orange", (_name, file, count) => {
+    const strings = classStrings(read(file), file).filter(
+      (s) => has(s.body, "bg-primary") && has(s.body, "text-primary-foreground") && has(s.body, "hover:bg-primary"),
+    );
+    expect(strings.length).toBeGreaterThanOrEqual(count);
+    // A blue Save never fades or brightens on hover (an iPad keeps the hover after a tap).
+    expect(strings.filter((s) => /(?:^|\s)hover:(?:opacity|brightness|bg-primary\/)/.test(s.body)).map(where)).toEqual([]);
+    expect(orangeFills(file).map(where)).toEqual([]);
+  });
+
+  it("the blue's words, its edge on a card and its glow read in both modes", () => {
+    for (const t of BOTH) {
+      const primary = colour(t, "--primary");
+      expect(ratio(colour(t, "--primary-foreground"), primary), `${t}: the words`).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(primary, colour(t, "--card")), `${t}: on a card`).toBeGreaterThanOrEqual(3);
+      expect(ratio(primary, colour(t, "--popover")), `${t}: on a sheet`).toBeGreaterThanOrEqual(3);
+    }
+    // Save Trainer Profile kept its glow, in the blue's own colour.
+    expect(read("features/trainer-profile/EditTrainerModal.tsx")).toContain("shadow-[0_0_20px_var(--primary)] shadow-primary/30");
+  });
+
+  it("Yes, reset it (the demo card) is a destructive confirm: red words on the red tint, the tint kept on hover", () => {
+    const card = read("features/demo-mode/SetUpDemoCard.tsx");
+    expect(card).toContain(
+      '? "bg-destructive/10 hover:bg-destructive/10 dark:bg-destructive/20 dark:hover:bg-destructive/20 text-destructive border border-destructive"',
+    );
+    expect(orangeFills("features/demo-mode/SetUpDemoCard.tsx").map(where)).toEqual([]);
+    for (const t of BOTH) {
+      const red = colour(t, "--destructive");
+      const ground = colour(t, "--bg-dark-2");
+      const tint = over(red, ground, t === "light" ? 0.1 : 0.2);
+      expect(ratio(red, tint), `${t}: the words on the tint`).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(red, ground), `${t}: the edge on the card`).toBeGreaterThanOrEqual(3);
+    }
+  });
+});
+
+describe("a selection is blue", () => {
+  it("the notes sheet's open tab", () => {
+    const sidebar = read("components/journal/SessionJournalSidebar.tsx");
+    expect(sidebar).toContain('? "bg-primary hover:bg-primary text-primary-foreground"');
+    for (const t of BOTH) {
+      expect(ratio(colour(t, "--primary"), colour(t, "--background")), `${t}: the tab on the sheet`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("the feedback kinds: the picked one is the blue, its icon in the blue's words", () => {
+    const drawer = read("features/feedback/FeedbackDrawer.tsx");
+    expect(drawer).toContain('? "bg-primary border-primary text-primary-foreground shadow-sm"');
+    expect(drawer).toContain('kind === k ? "text-primary-foreground" : "opacity-50"');
+    expect(drawer).not.toMatch(/--eq-hero|(?:bg|text|border)-cta/);
+  });
+
+  it("First-time setup's gender and skill chips: the picked one is the blue, with the blue's glow", () => {
+    const wizard = read("components/ConsultationSetupWizard.tsx");
+    const picked =
+      '"bg-primary text-primary-foreground border-primary shadow-[0_0_20px_var(--primary)] shadow-primary/25 scale-102 sm:scale-105"';
+    expect(wizard.split(picked)).toHaveLength(3);
+    expect(wizard).not.toMatch(/border-cta shadow/);
+    for (const t of BOTH) {
+      expect(ratio(colour(t, "--primary"), colour(t, "--bg-dark")), `${t}: a chip on the ground`).toBeGreaterThanOrEqual(3);
+      expect(ratio(colour(t, "--primary"), colour(t, "--bg-dark-2")), `${t}: beside the unpicked chip`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("a trainer's studios and their profile edit: no retired orange, no Tailwind orange or indigo", () => {
+    const modal = read("features/trainer-profile/EditTrainerModal.tsx");
+    // Every colour in a class is a token. (The profile colour's default is a
+    // stored value for a colour input, not a class, and stays as it is.)
+    expect(modal).not.toMatch(/-\[#[0-9a-f]{6}\]|\[#[0-9a-f]{6}\]\//i);
+    expect(modal).not.toMatch(/(?:bg|text|border|ring)-(?:orange|indigo)-\d/);
+    // Base UI marks a ticked box data-checked, so a data-[state=checked]
+    // override never drew; the Checkbox's own blue and its 3:1 edge do.
+    expect(modal).not.toMatch(/data-\[state=checked\]/);
+    expect(read("components/ui/checkbox.tsx")).toMatch(/data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground/);
+    // The home studio's chip is the blue with its words; the staff ID is a quiet label.
+    expect(modal).toContain("rounded text-[9px] bg-primary text-primary-foreground font-extrabold uppercase");
+    expect(modal).toContain("font-mono text-xs text-muted-foreground font-bold shrink-0 bg-muted");
+    for (const t of BOTH) {
+      expect(ratio(colour(t, "--primary"), colour(t, "--card")), `${t}: the icons`).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(colour(t, "--input"), colour(t, "--card")), `${t}: an unticked box's edge`).toBeGreaterThanOrEqual(3);
+      expect(ratio(colour(t, "--muted-foreground"), colour(t, "--muted")), `${t}: the staff ID`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
+describe("a caution icon is plum", () => {
+  it("the strong confirmation's warning, when it is not destructive", () => {
+    const modal = read("components/StrongConfirmationModal.tsx");
+    expect(modal).toContain(': "bg-(--eq-warn-fill) text-(--eq-warn)"');
+    expect(modal).not.toMatch(/orange-\d/);
+    for (const t of BOTH) {
+      expect(ratio(colour(t, "--eq-warn"), colour(t, "--eq-warn-fill")), t).toBeGreaterThanOrEqual(3);
     }
   });
 });

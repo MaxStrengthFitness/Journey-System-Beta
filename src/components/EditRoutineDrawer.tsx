@@ -672,7 +672,7 @@ export function EditRoutineDrawer({
                     size="sm"
                     disabled={!presetNameDraft.trim() || isSavingPreset}
                     onClick={handleSaveStudioPreset}
-                    className="h-8 rounded-lg text-[11px] font-bold uppercase bg-cta text-cta-foreground hover:bg-cta shrink-0"
+                    className="h-8 rounded-lg text-[11px] font-bold uppercase bg-primary text-primary-foreground hover:bg-primary shrink-0"
                   >
                     {isSavingPreset ? "Saving..." : "Save"}
                   </Button>
@@ -847,7 +847,7 @@ export function EditRoutineDrawer({
             <Button
               onClick={handleSave}
               disabled={reason.trim().length < 3 || isSaving || !isDirty}
-              className="bg-cta text-cta-foreground hover:bg-cta rounded-xl uppercase font-bold text-xs shadow-md shadow-cta/15"
+              className="bg-primary text-primary-foreground hover:bg-primary rounded-xl uppercase font-bold text-xs shadow-md shadow-primary/15"
             >
               {isSaving ? "Saving Changes..." : `Apply ${activeSlot}`}
             </Button>
