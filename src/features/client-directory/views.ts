@@ -100,7 +100,7 @@ export function inactiveHow(
 }
 
 export const INACTIVE_DEFINITION = (inactiveDays: number) =>
-  `Inactive: marked inactive by a leader, past the studio’s ${inactiveDays}-day line with nothing booked, or inactive in Mindbody. Out of the way, never deleted; a booking makes her active again.`;
+  `Inactive: marked inactive by a leader, past the studio’s ${inactiveDays}-day line with nothing booked, or inactive in Mindbody. Out of the way, never deleted; a booking makes the client active again.`;
 
 /* ------------------------------------------------------------------ */
 /* The sort a trainer chose, remembered on this iPad                   */

@@ -473,10 +473,10 @@ function lastInOf(client: Client, ctx: DirectoryContext, coverage: HistoryCovera
   const push = (day: string | null, reason: string) => {
     if (day) evidence.push({ day, reason });
   };
-  push(pastDayOf(client.lastSessionDate, ctx.today, ctx.tz), "Her record's last session.");
+  push(pastDayOf(client.lastSessionDate, ctx.today, ctx.tz), "The record's last session.");
   const nightly = client.renewal?.lastVisitDate;
-  push(isDayKey(nightly) && nightly <= ctx.today ? nightly : null, "Last night's record of her visits (Mindbody bookings and Journey sessions).");
-  push(latestMachineDay(client, ctx.today, ctx.tz), "The last day a machine setting was recorded for her.");
+  push(isDayKey(nightly) && nightly <= ctx.today ? nightly : null, "Last night's record of visits (Mindbody bookings and Journey sessions).");
+  push(latestMachineDay(client, ctx.today, ctx.tz), "The last day a machine setting was recorded.");
 
   if (evidence.length > 0) {
     evidence.sort((a, b) => b.day.localeCompare(a.day));
@@ -496,7 +496,7 @@ function lastInOf(client: Client, ctx: DirectoryContext, coverage: HistoryCovera
       day: null,
       text: "Before Journey",
       sub: prior ? `${PRIOR_SOURCE_LABEL[prior.source]}${through ? ` record to ${monthYearWords(through)}` : ""}` : null,
-      reason: "Her visits so far are recorded before Journey (FileMaker), not here.",
+      reason: "Visits so far are recorded before Journey (FileMaker), not here.",
     };
   }
   if (coverage === "complete" || client.renewal) {
@@ -507,7 +507,7 @@ function lastInOf(client: Client, ctx: DirectoryContext, coverage: HistoryCovera
     day: null,
     text: "Unknown",
     sub: null,
-    reason: "Journey has no visit for her, and her history before Journey is not recorded yet.",
+    reason: "Journey has no visit on record, and the history before Journey is not recorded yet.",
   };
 }
 
@@ -538,7 +538,7 @@ function nextOf(client: Client, ctx: DirectoryContext): DirectoryRow["next"] {
       day: nightly,
       text: futureDayWords(nightly, ctx.today),
       sub: "as of last night",
-      reason: "From last night's record of her bookings.",
+      reason: "From last night's record of bookings.",
       source: "nightly",
     };
   }
@@ -553,7 +553,7 @@ function nextOf(client: Client, ctx: DirectoryContext): DirectoryRow["next"] {
       day: null,
       text: "Unknown",
       sub: null,
-      reason: "Her bookings at her home studio aren't read on this studio's iPad.",
+      reason: "Bookings at the client's home studio aren't read on this studio's iPad.",
       source: null,
     };
   }
@@ -585,11 +585,11 @@ function leftOf(client: Client, ctx: DirectoryContext): DirectoryRow["left"] {
   const unknown = (reason: string): DirectoryRow["left"] => ({ state: "unknown", value: null, text: "Unknown", sub: null, reason, perPayment: false });
   const services = client.mindbodyServices ?? {};
   const pulled = !!client.mindbodyServicesSyncedAt || Object.keys(services).length > 0;
-  if (!pulled) return unknown("Her packages haven't been pulled from Mindbody yet.");
+  if (!pulled) return unknown("Packages haven't been pulled from Mindbody yet.");
   if (!ctx.packageIndex) return unknown("The studio's package table hasn't loaded.");
   const home = homeOf(client);
   if (ctx.packageStudioId && home && home !== ctx.packageStudioId) {
-    return unknown("Her home studio's package table isn't read on this studio's iPad.");
+    return unknown("The home studio's package table isn't read on this studio's iPad.");
   }
 
   // Left means left in the contract; given sessions are extra, beside it
@@ -606,7 +606,7 @@ function leftOf(client: Client, ctx: DirectoryContext): DirectoryRow["left"] {
       value: n,
       text,
       sub: extras,
-      reason: split.perPayment ? "Paid a month at a time: what she holds now, not what is left in the contract." : null,
+      reason: split.perPayment ? "Paid a month at a time: what is on hand now, not what is left in the contract." : null,
       perPayment: split.perPayment,
     };
   }
@@ -627,10 +627,10 @@ function totalOf(client: Client, coverage: HistoryCoverage): DirectoryRow["total
   // The Hub card's own gate: never "#1" or "new" off Journey's count for a
   // client whose story began before Journey.
   if (!canQuoteSessionNumber(client, coverage)) {
-    return { state: "unknown", value: null, text: "Unknown", sub: null, reason: "Her sessions before Journey aren't recorded yet, so a total would be too low." };
+    return { state: "unknown", value: null, text: "Unknown", sub: null, reason: "Sessions before Journey aren't recorded yet, so a total would be too low." };
   }
   if (count === null) {
-    return { state: "unknown", value: null, text: "Unknown", sub: null, reason: "Not counted yet. Opening her profile counts it." };
+    return { state: "unknown", value: null, text: "Unknown", sub: null, reason: "Not counted yet. Opening the profile counts it." };
   }
   const prior = priorHistoryOf(client);
   const uncounted = priorUncounted(prior);
@@ -690,7 +690,7 @@ function renewsOf(client: Client, today: string): DirectoryRow["renews"] {
       return { state: "renewed", day: s.renewalOnBooks.startsOn, text: "Renewed", sub: `next starts ${shortDay(s.renewalOnBooks.startsOn, today)}`, reason: null };
     }
     if (s.situation === "unknown") {
-      return { state: "unknown", day: null, text: "Unknown", sub: null, reason: s.dataGaps?.[0] ?? "Not enough Mindbody data to work out her renewal." };
+      return { state: "unknown", day: null, text: "Unknown", sub: null, reason: s.dataGaps?.[0] ?? "Not enough Mindbody data to work out the renewal." };
     }
     const day = s.focusDate;
     if (day && YMD.test(day)) {
@@ -707,7 +707,7 @@ function renewsOf(client: Client, today: string): DirectoryRow["renews"] {
             : `Runs out${est}`;
       return { state: "known", day, text: shortDay(day, today), sub, reason: null };
     }
-    return paidInFull(client) ?? { state: "none", day: null, text: "No end date", sub: null, reason: "No end date on file for her package." };
+    return paidInFull(client) ?? { state: "none", day: null, text: "No end date", sub: null, reason: "No end date on file for the package." };
   }
   // No snapshot yet: the latest active contract Mindbody is billing.
   let best: string | null = null;
@@ -725,7 +725,7 @@ function renewsOf(client: Client, today: string): DirectoryRow["renews"] {
       text: "Unknown",
       sub: null,
       reason:
-        "No renewal worked out for her yet, and no contract billing her in Mindbody with an end date. If she paid in full, mark it on her profile: Notes & Profile \u2192 Account \u2192 The package.",
+        "No renewal worked out yet, and no contract in Mindbody with an end date. If the client paid in full, mark it on the profile: Notes & Profile \u2192 Account \u2192 The package.",
     }
   );
 }
