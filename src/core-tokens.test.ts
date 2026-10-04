@@ -236,6 +236,47 @@ describe("the frame", () => {
     expect(ratio(chrome(), hex("light", "--chrome-here"))).toBeGreaterThanOrEqual(4.5);
   });
 
+  // The rules the shell draws with these (AppHeader, AppContent's search and
+  // avatar, AppBottomBar and NavButton), each pair as it is painted: a wash is
+  // composited over the navy before it is measured.
+  const wash = (token: string): [string, number] => {
+    const m = ROOT[token]?.match(/^rgba\(\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\s*\)$/);
+    if (!m) throw new Error(`${token} is "${ROOT[token]}", not an rgba() wash`);
+    const h = "#" + [m[1], m[2], m[3]].map((c) => Number(c).toString(16).padStart(2, "0")).join("").toUpperCase();
+    return [h, Number(m[4])];
+  };
+  const onWash = (token: string) => {
+    const [h, a] = wash(token);
+    return over(h, chrome(), a);
+  };
+
+  it("the navy icon on an orange tab's solid box is at least 4.5:1 (bg-chrome-go text-chrome)", () => {
+    expect(ratio(chrome(), hex("light", "--chrome-go"))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("the search's words and placeholder are at least 4.5:1 in its well (bg-chrome-field)", () => {
+    for (const token of ["--chrome-ink", "--chrome-ink-2"]) {
+      expect(ratio(hex("light", token), onWash("--chrome-field")), token).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("the focus ring (ring-chrome-here) is at least 3:1 on the frame and in the search well", () => {
+    expect(ratio(hex("light", "--chrome-here"), chrome())).toBeGreaterThanOrEqual(3);
+    expect(ratio(hex("light", "--chrome-here"), onWash("--chrome-field"))).toBeGreaterThanOrEqual(3);
+  });
+
+  it("a running session's tab, not the one you're on, is at least 3:1 on its faint box (bg-chrome-go-fill)", () => {
+    expect(ratio(hex("light", "--chrome-go"), onWash("--chrome-go-fill"))).toBeGreaterThanOrEqual(3);
+  });
+
+  it("the search well and the hairlines are washes of white, so they read the same on the navy in both themes", () => {
+    for (const token of ["--chrome-field", "--chrome-line"]) {
+      const [h, a] = wash(token);
+      expect(h, token).toBe("#FFFFFF");
+      expect(a, token).toBeLessThanOrEqual(0.12);
+    }
+  });
+
   it("paints the status band and the Home Screen app's ground", () => {
     expect(INDEX_CSS).toMatch(/\n\.status-band\s*\{[^}]*background:\s*var\(--chrome\);/);
     expect(INDEX_CSS).toMatch(/@media \(display-mode: standalone\)\s*\{[^}]*background-color:\s*var\(--chrome\);/);

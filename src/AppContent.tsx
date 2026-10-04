@@ -1203,7 +1203,7 @@ export default function AppContent({
   const headerSearchSlot = (
     <div className="hidden sm:flex items-center w-full justify-end">
       <div className="relative w-full max-w-[14rem] md:max-w-[18rem] lg:max-w-[22rem] focus-within:max-w-[26rem] lg:focus-within:max-w-[30rem] transition-[max-width] duration-200">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-chrome-ink-2 pointer-events-none" />
         <Input
           ref={hubSearchInputRef}
           value={hubSearchTerm}
@@ -1226,7 +1226,12 @@ export default function AppContent({
           placeholder="Search"
           aria-label="Search clients"
           {...NAME_SEARCH_PROPS}
-          className="h-10 pl-8 pr-8 rounded-lg bg-slate-100/80 dark:bg-slate-800/60 border border-transparent text-sm font-medium text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-1 focus-visible:ring-cyan/60 focus-visible:border-cyan/40 focus-visible:bg-white dark:focus-visible:bg-slate-900"
+          // The frame's own well, the same in both themes (the Navy Frame,
+          // Oct 4 2026). Every background is restated with its dark: twin
+          // because <Input> carries `dark:bg-input/30`, which would otherwise
+          // come back in the dark theme as a pale wash in the navy; the
+          // border stays transparent so --input draws no grey box around it.
+          className="h-10 pl-8 pr-8 rounded-lg border border-transparent bg-chrome-field dark:bg-chrome-field focus-visible:bg-chrome-field dark:focus-visible:bg-chrome-field text-sm font-medium text-chrome-ink placeholder:text-chrome-ink-2 focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-chrome-here"
         />
         {hubSearchTerm && (
           <button
@@ -1236,7 +1241,7 @@ export default function AppContent({
               setHubSearchTerm("");
               hubSearchInputRef.current?.focus();
             }}
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-md text-chrome-ink-2 hover:text-chrome-ink outline-none focus-visible:ring-2 focus-visible:ring-chrome-here"
           >
             <X className="w-4 h-4" />
           </button>
@@ -1263,9 +1268,18 @@ export default function AppContent({
    * guess which of two bells held the thing they wanted. Announcements now
    * render as a pinned section inside the notification sheet - see
    * features/notifications/useHubAnnouncements.ts.
+   *
+   * The icons sit on the frame, the same navy in both themes (the Navy Frame,
+   * Oct 4 2026), so they take the frame's inks and never a theme ink: the
+   * ghost button's own `hover:text-foreground` and `aria-expanded:` colours
+   * would be navy on navy in the light theme, and its `dark:hover:bg-muted/50`
+   * a disc in one theme only. `menuIconClass` is the same button for the two
+   * that move into the avatar menu on a phone, which is a theme surface.
    */
   const headerIconClass =
-    "relative h-9 w-9 sm:h-10 sm:w-10 rounded-full shrink-0 inline-flex items-center justify-center transition-colors outline-none hover:bg-transparent text-muted-foreground hover:text-slate-900 dark:hover:text-slate-50 focus-visible:ring-2 focus-visible:ring-cyan disabled:opacity-50";
+    "relative h-9 w-9 sm:h-10 sm:w-10 rounded-full shrink-0 inline-flex items-center justify-center transition-colors outline-none hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent text-chrome-ink-2 hover:text-chrome-ink aria-expanded:text-chrome-ink focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-chrome-here disabled:opacity-50";
+  const menuIconClass =
+    "relative h-9 w-9 sm:h-10 sm:w-10 rounded-full shrink-0 inline-flex items-center justify-center transition-colors outline-none hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent text-muted-foreground hover:text-foreground aria-expanded:text-foreground focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
 
   const headerRightControls = (
     <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
@@ -1340,7 +1354,7 @@ export default function AppContent({
         variant="ghost"
         size="icon"
         onClick={() => setCurrentView("trainer-hub")}
-        className={`${headerIconClass} ${currentView === "trainer-hub" ? "text-foreground" : ""}`}
+        className={`${headerIconClass} ${currentView === "trainer-hub" ? "text-chrome-ink" : ""}`}
         title="Trainer Settings"
         aria-label="Trainer Settings"
       >
@@ -1364,25 +1378,28 @@ export default function AppContent({
   // test the screen itself is held to (see useGuardedPlace, near the top).
   const headerTrainerDropdown = authTrainer ? (
     <DropdownMenu open={trainerMenuOpen} onOpenChange={setTrainerMenuOpen}>
-      <DropdownMenuTrigger aria-label="Your menu" className="w-10 h-10 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-primary text-primary-foreground shrink-0">
+      {/* Your avatar on the frame: the frame's own blue with navy initials
+          (7.5:1), the same in both themes. The logo blue itself would be
+          2.0:1 on the navy. The menu below is a theme surface (a popover). */}
+      <DropdownMenuTrigger aria-label="Your menu" className="w-10 h-10 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-chrome-here text-chrome outline-none focus-visible:ring-2 focus-visible:ring-chrome-ink shrink-0">
         {authTrainer.initials}
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-56 rounded-[24px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark p-2 shadow-2xl dark:shadow-none text-slate-700 dark:text-slate-300"
+        className="w-56 rounded-[24px] border border-border bg-popover p-2 shadow-2xl dark:shadow-none text-foreground"
       >
         <DropdownMenuGroup>
           {canOpenOperations && (
-            <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-2">
-              <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 block mb-3">
+            <div className="px-3 py-2 border-b border-border mb-2">
+              <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground block mb-3">
                 App Mode
               </Label>
-              <div className="flex bg-slate-100 dark:bg-bg-dark-3 p-1 rounded-xl">
+              <div className="flex bg-muted p-1 rounded-xl">
                 <button
                   onClick={() =>
                     menuNavigate(() => switchAppMode("trainer", "clients"))
                   }
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "trainer" ? "bg-white dark:bg-bg-dark shadow-sm text-sky-600 dark:text-sky-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "trainer" ? "bg-card shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   Trainer
                 </button>
@@ -1390,7 +1407,7 @@ export default function AppContent({
                   onClick={() =>
                     menuNavigate(() => switchAppMode("admin", "admin-dashboard"))
                   }
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "admin" && currentView !== "admins-dashboard" ? "bg-white dark:bg-bg-dark shadow-sm text-orange-600 dark:text-orange-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "admin" && currentView !== "admins-dashboard" ? "bg-card shadow-sm text-(--eq-hero-text)" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   {/* Label only: the mode is still "admin" inside (Renewals round, Sep 2026). */}
                   Operations
@@ -1400,7 +1417,7 @@ export default function AppContent({
                     onClick={() =>
                       menuNavigate(() => switchAppMode("admin", "admins-dashboard"))
                     }
-                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "admin" && currentView === "admins-dashboard" ? "bg-white dark:bg-bg-dark shadow-sm text-orange-600 dark:text-orange-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "admin" && currentView === "admins-dashboard" ? "bg-card shadow-sm text-(--eq-hero-text)" : "text-muted-foreground hover:text-foreground"}`}
                   >
                     {/* The Admins dashboard (Operations overhaul, Sep 2026): administrators and the founder. */}
                     Admin
@@ -1418,21 +1435,21 @@ export default function AppContent({
                 onClick={() => menuNavigate(() => switchAppMode("trainer", lastLearningView))}
                 className="rounded-xl flex items-center gap-3 p-3 min-h-11 font-bold uppercase text-[11px] tracking-widest cursor-pointer"
               >
-                <GraduationCap className="w-4 h-4 text-sky-500" />
+                <GraduationCap className="w-4 h-4 text-primary" />
                 Learning
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => menuNavigate(() => switchAppMode("trainer", "calendar"))}
                 className="rounded-xl flex items-center gap-3 p-3 min-h-11 font-bold uppercase text-[11px] tracking-widest cursor-pointer"
               >
-                <CalendarIcon className="w-4 h-4 text-sky-500" />
+                <CalendarIcon className="w-4 h-4 text-primary" />
                 Calendar
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => menuNavigate(() => setCurrentView("trainer-hub"))}
                 className="rounded-xl flex items-center gap-3 p-3 min-h-11 font-bold uppercase text-[11px] tracking-widest cursor-pointer"
               >
-                <Settings className="w-4 h-4 text-slate-500" />
+                <Settings className="w-4 h-4 text-muted-foreground" />
                 Settings
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -1443,17 +1460,17 @@ export default function AppContent({
                 }}
                 className="rounded-xl flex items-center gap-3 p-3 min-h-11 font-bold uppercase text-[11px] tracking-widest cursor-pointer"
               >
-                <RefreshCw className={`w-4 h-4 text-slate-500 ${isRefreshingSchedule ? "animate-spin" : ""}`} />
+                <RefreshCw className={`w-4 h-4 text-muted-foreground ${isRefreshingSchedule ? "animate-spin" : ""}`} />
                 {isRefreshingSchedule ? "Syncing schedule…" : "Refresh schedule"}
               </DropdownMenuItem>
               <div className="flex items-center gap-2 px-3 py-1">
-                <ThemeToggle className={headerIconClass} />
-                <FeedbackButton className={headerIconClass} />
+                <ThemeToggle className={menuIconClass} />
+                <FeedbackButton className={menuIconClass} />
                 <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                   Theme · Feedback
                 </span>
               </div>
-              <DropdownMenuSeparator className="my-2 bg-slate-700" />
+              <DropdownMenuSeparator className="my-2 bg-border" />
             </>
           )}
           <DropdownMenuLabel className="font-black uppercase text-[11px] tracking-widest px-3 py-2 text-muted-foreground">
@@ -1466,21 +1483,21 @@ export default function AppContent({
                 setCurrentView("trainer-profile");
               })
             }
-            className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900"
+            className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground"
           >
-            <UserCircle className="w-4 h-4 text-sky-500" />
+            <UserCircle className="w-4 h-4 text-primary" />
             View Profile
           </DropdownMenuItem>
         </DropdownMenuGroup>
 
-        <DropdownMenuSeparator className="my-2 bg-slate-700" />
+        <DropdownMenuSeparator className="my-2 bg-border" />
 
         <DropdownMenuGroup>
           <DropdownMenuItem
             onClick={() => menuNavigate(openStudioPicker)}
-            className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900"
+            className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground"
           >
-            <Building2 className="w-4 h-4 text-amber-500" />
+            <Building2 className="w-4 h-4 text-primary" />
             Switch Studio
           </DropdownMenuItem>
 
@@ -1495,8 +1512,9 @@ export default function AppContent({
             session or sets still sending are asked about first (logOut).
           */}
           <DropdownMenuItem
+            variant="destructive"
             onClick={() => menuNavigate(() => void logOut())}
-            className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest text-rose-500 hover:bg-rose-500/10 focus:bg-rose-500/10 focus:text-rose-500 cursor-pointer"
+            className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest text-destructive hover:bg-destructive/10 focus:bg-destructive/10 focus:text-destructive dark:hover:bg-destructive/20 cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
             Sign out
@@ -1552,7 +1570,6 @@ export default function AppContent({
           {/* Header */}
           {currentView !== "workouts" && (
             <AppHeader
-              variant={theme === "light" ? "light" : "dark"}
               studioName={activeStudioName || undefined}
               // Inside Operations and the Admins dashboard the top left goes
               // back to the Hub; 'Looking at' is the studio switch there

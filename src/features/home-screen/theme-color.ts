@@ -9,12 +9,14 @@
  * so it carries a literal colour, and this copies the header's token into it
  * whenever the theme changes, so the tag and the header never disagree.
  *
- * `--bg-dark-2` is the AppHeader's background in both themes: #14293D dark,
- * #F3F6F9 light (index.css, since the Navy Frame's core tokens, Oct 4 2026).
- * index.html sets the same colour before the first paint, from the same theme
- * key.
+ * `--chrome` is the frame: the AppHeader's and the bottom bar's background,
+ * the logo's navy #002341 in BOTH themes (the Navy Frame, Oct 4 2026; AJ's
+ * answer 1A). It is set in index.css's :root only, so the status bar is the
+ * same navy whatever the theme. index.html sets the same colour before the
+ * first paint. Until Oct 4 2026 this was `--bg-dark-2`, which the light
+ * header never actually painted (it was a literal white).
  */
-export const HEADER_TOKEN = "--bg-dark-2";
+export const HEADER_TOKEN = "--chrome";
 
 export function syncThemeColor(doc: Document = document): string | null {
   const meta = doc.querySelector('meta[name="theme-color"]');

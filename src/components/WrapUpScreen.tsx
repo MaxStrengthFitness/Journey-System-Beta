@@ -60,7 +60,6 @@ import { usePackagesDoor } from "../features/packages/usePackagesDoor";
 import { bookedWeekdays } from "../features/packages/booked-days";
 import { DOOR_BUTTON, sheetTitle } from "../features/packages/package-copy";
 import { PackagesSheet } from "../features/packages/PackagesSheet";
-import { useTheme } from "./ThemeProvider";
 import { NextWeightCard, type SaveNextWeight } from "../features/next-weight/NextWeightCard";
 /**
  * THE WRAP-UP — the post-session screen (rebuilt in the tracker round, Sep 2026).
@@ -423,7 +422,6 @@ export function WrapUpScreen({
   onStudioClick,
   coverage = "unknown",
 }: WrapUpScreenProps) {
-  const { theme } = useTheme();
   const [effort, setEffort] = useState<DialValue | null>(null);
   const [effortSaved, setEffortSaved] = useState(false);
   // Whether the effort has been written yet: untouched, the way out writes
@@ -719,10 +717,8 @@ export function WrapUpScreen({
 
       <div className="max-w-205 mx-auto w-full h-full relative flex flex-col border-x border-div-d shadow-2xl">
         <AppHeader
-          // The header follows the theme, as the page below it does: a fixed
-          // "dark" header drew the studio's name white on white in the light
-          // theme (its bg-dark-2 is #FFFFFF there).
-          variant={theme === "light" ? "light" : "dark"}
+          // The header is the frame, the same navy in both themes (the Navy
+          // Frame, Oct 4 2026), so there is no look to pass it.
           studioName={studioName}
           trainerInitials={authTrainer?.initials}
           rightControls={rightControls}

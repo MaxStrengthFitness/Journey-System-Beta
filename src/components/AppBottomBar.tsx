@@ -8,6 +8,13 @@
  * changes the screen goes through `onNavigate`, which AppContent wires to its
  * guarded `setCurrentView` — a screen holding unsaved typing is asked about
  * before the bar can tear it down. See features/unsaved-changes.
+ *
+ * The bar is the bottom of the frame (the Navy Frame, Oct 4 2026; AJ's
+ * answer 1A): the logo's navy (--chrome) in both themes, like the header and
+ * the iPad's status bar. Orange keeps its two meanings here, "a session is
+ * running, come back" and "you're in Operations", in the exact logo orange
+ * (--chrome-go) with a navy icon on its solid box. Until then the bar was
+ * white in the light theme and its orange Tailwind's orange-500 (2.8:1).
  */
 import {
   Building2,
@@ -73,7 +80,7 @@ export function AppBottomBar({
     return (
       <nav
         aria-label="Journey"
-        className="flex-none bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-1 min-h-14 pb-safe flex items-center justify-around z-30"
+        className="flex-none bg-chrome border-t border-chrome-line shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-1 min-h-14 pb-safe flex items-center justify-around z-30"
       >
         <NavButton
           active={!opsOn && currentView === "clients"}
@@ -87,9 +94,9 @@ export function AppBottomBar({
             onClick={() => go("admin", currentView === "admins-dashboard" ? "admins-dashboard" : "admin-dashboard")}
             icon={<LayoutDashboard className="w-5 h-5" />}
             label="Operations"
-            activeColor="text-orange-500"
-            activeBg="bg-orange-500/10 dark:bg-orange-600/10"
-            activeIndicator="bg-orange-500 dark:bg-orange-600"
+            activeColor="text-chrome-go"
+            activeBg="bg-chrome-go text-chrome"
+            activeIndicator="bg-chrome-go"
           />
         )}
         <NavButton
@@ -106,9 +113,9 @@ export function AppBottomBar({
             // "Session", not "Session · Frodo": five tabs leave no room for
             // her name, and a name is never cut short.
             label="Session"
-            activeColor="text-orange-500"
-            activeBg="bg-orange-500/10 dark:bg-orange-600/10"
-            activeIndicator="bg-orange-500 dark:bg-orange-600"
+            activeColor="text-chrome-go"
+            activeBg="bg-chrome-go text-chrome"
+            activeIndicator="bg-chrome-go"
             attention={currentView !== "workouts"}
           />
         )}
@@ -123,7 +130,7 @@ export function AppBottomBar({
   }
 
   return appMode === "trainer" ? (
-    <nav className="flex-none bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-safe flex items-center justify-around z-30">
+    <nav className="flex-none bg-chrome border-t border-chrome-line shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-safe flex items-center justify-around z-30">
       <NavButton
         active={currentView === "clients"}
         onClick={() => onNavigate("clients")}
@@ -151,15 +158,15 @@ export function AppBottomBar({
         onClick={onResumeSession}
         icon={<PlayCircle className="w-5 h-5 sm:w-6 sm:h-6" />}
         label={liveSessionTabLabel(liveSession)}
-        activeColor={liveSession ? "text-orange-500" : undefined}
+        activeColor={liveSession ? "text-chrome-go" : undefined}
         activeBg={
           liveSession
-            ? "bg-orange-500/10 dark:bg-orange-600/10"
+            ? "bg-chrome-go text-chrome"
             : undefined
         }
         activeIndicator={
           liveSession
-            ? "bg-orange-500 dark:bg-orange-600"
+            ? "bg-chrome-go"
             : undefined
         }
         attention={!!liveSession && currentView !== "workouts"}
@@ -195,15 +202,15 @@ export function AppBottomBar({
       />
     </nav>
   ) : (
-    <nav className="flex-none bg-white dark:bg-bg-dark border-t border-orange-500/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-safe flex items-center justify-around z-30">
+    <nav className="flex-none bg-chrome border-t border-chrome-go/30 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-safe flex items-center justify-around z-30">
       <NavButton
         active={currentView === "admin-dashboard"}
         onClick={() => onNavigate("admin-dashboard")}
         icon={<LayoutDashboard className="w-5 h-5 sm:w-6 sm:h-6" />}
         label="Operations"
-        activeColor="text-orange-500"
-        activeBg="bg-orange-500/10 dark:bg-orange-600/10"
-        activeIndicator="bg-orange-500 dark:bg-orange-600"
+        activeColor="text-chrome-go"
+        activeBg="bg-chrome-go text-chrome"
+        activeIndicator="bg-chrome-go"
       />
       {/*
         The Admins dashboard (Operations overhaul, Sep 2026): where the
@@ -216,9 +223,9 @@ export function AppBottomBar({
           onClick={() => onNavigate("admins-dashboard")}
           icon={<ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6" />}
           label="Admin"
-          activeColor="text-orange-500"
-          activeBg="bg-orange-500/10 dark:bg-orange-600/10"
-          activeIndicator="bg-orange-500 dark:bg-orange-600"
+          activeColor="text-chrome-go"
+          activeBg="bg-chrome-go text-chrome"
+          activeIndicator="bg-chrome-go"
         />
       )}
       {/*

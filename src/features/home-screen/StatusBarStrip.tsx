@@ -16,17 +16,20 @@ import { cn } from "@/lib/utils";
  *   session  the Active Session, whose top is <main>'s own ground
  *   demo     the Demo Mode banner, which sits above either of those
  *
- * In the light theme every one of those surfaces is white or near white, and
- * the status bar's text is always white in this style, so the strip is the
- * dark neutral instead. The fixed `.status-band` in index.html paints the same
- * colour over it anyway; this is the belt to that brace.
+ * The header is the frame, the logo's navy (--chrome) in both themes since
+ * the Navy Frame (Oct 4 2026), so under it the strip is the frame too. In the
+ * light theme the session's ground and the demo banner are light, and the
+ * status bar's text is always white in this style, so the strip is the
+ * frame's navy there as well. The fixed `.status-band` in index.html paints
+ * the same --chrome over it in the light theme anyway; this is the belt to
+ * that brace.
  */
 export type StatusBarStripTone = "header" | "session" | "demo";
 
 const TONE: Record<StatusBarStripTone, string> = {
-  header: "bg-slate-900 dark:bg-bg-dark-2",
-  session: "bg-slate-900 dark:bg-slate-950",
-  demo: "bg-slate-900 dark:bg-slate-900",
+  header: "bg-chrome",
+  session: "bg-chrome dark:bg-slate-950",
+  demo: "bg-chrome dark:bg-slate-900",
 };
 
 export function StatusBarStrip({ tone }: { tone: StatusBarStripTone }) {

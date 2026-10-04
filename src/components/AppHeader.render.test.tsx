@@ -45,20 +45,18 @@ const studioButton = (host: HTMLElement) =>
   (host.querySelector('header button[aria-label^="Studio"], header button[aria-label="Choose a studio"]') ?? host.querySelector("header button")) as HTMLButtonElement;
 
 describe("AppHeader — the studio's name", () => {
-  it("shows the studio it is given, in both looks", () => {
-    for (const variant of ["light", "dark"] as const) {
-      const host = mount(<AppHeader variant={variant} studioName="Westlake" onStudioClick={() => {}} />);
-      expect(studioButton(host).textContent).toBe("Westlake");
-      expect(studioButton(host).getAttribute("aria-label")).toBe("Studio: Westlake. Change studio.");
-    }
+  it("shows the studio it is given", () => {
+    const host = mount(<AppHeader studioName="Westlake" onStudioClick={() => {}} />);
+    expect(studioButton(host).textContent).toBe("Westlake");
+    expect(studioButton(host).getAttribute("aria-label")).toBe("Studio: Westlake. Change studio.");
   });
 
   it("never names a studio it wasn't told: 'Choose a studio' when it can change one, nothing when it can't", () => {
-    const chooser = mount(<AppHeader variant="light" onStudioClick={() => {}} />);
+    const chooser = mount(<AppHeader onStudioClick={() => {}} />);
     expect(studioButton(chooser).textContent).toBe("Choose a studio");
     expect(chooser.textContent).not.toMatch(/solon/i);
 
-    const plain = mount(<AppHeader variant="dark" />);
+    const plain = mount(<AppHeader />);
     expect(studioButton(plain).textContent).toBe("");
     expect(studioButton(plain).getAttribute("aria-label")).toBe("Studio");
     expect(plain.textContent).not.toMatch(/solon/i);
@@ -66,7 +64,7 @@ describe("AppHeader — the studio's name", () => {
 
   it("inside Operations, the name and the logo go back to the Hub (Oct 2 2026)", () => {
     let went = 0;
-    const host = mount(<AppHeader variant="light" studioName="Westlake" onStudioClick={() => (went += 1)} studioClickGoesHome />);
+    const host = mount(<AppHeader studioName="Westlake" onStudioClick={() => (went += 1)} studioClickGoesHome />);
     expect(studioButton(host).getAttribute("aria-label")).toBe("Studio: Westlake. Back to the Hub.");
     const logo = host.querySelector<HTMLButtonElement>('button[aria-label="Back to the Hub"]')!;
     expect(logo).not.toBeNull();
@@ -76,8 +74,67 @@ describe("AppHeader — the studio's name", () => {
   });
 
   it("treats a blank name as no name", () => {
-    const host = mount(<AppHeader variant="light" studioName="   " onStudioClick={() => {}} />);
+    const host = mount(<AppHeader studioName="   " onStudioClick={() => {}} />);
     expect(studioButton(host).textContent).toBe("Choose a studio");
+  });
+});
+
+/**
+ * THE HEADER IS THE FRAME (the Navy Frame, Oct 4 2026; AJ's answer 1A): the
+ * logo's navy in both themes, drawn only in the frame's own tokens, so no
+ * theme can make it white on white again and the status bar (which copies
+ * --chrome) always matches it.
+ */
+describe("AppHeader — one look in both themes", () => {
+  it("paints the frame and the frame's inks, whatever the theme", () => {
+    for (const dark of [false, true]) {
+      document.documentElement.classList.toggle("dark", dark);
+      const host = mount(<AppHeader studioName="Westlake" onStudioClick={() => {}} trainerInitials="AJ" />);
+      const header = host.querySelector("header")!;
+      expect(header.className).toMatch(/(^|\s)bg-chrome(\s|$)/);
+      expect(header.className).toMatch(/(^|\s)border-chrome-line(\s|$)/);
+      expect(studioButton(host).className).toMatch(/(^|\s)text-chrome-ink(\s|$)/);
+      const avatar = [...host.querySelectorAll("header button")].find((b) => b.textContent === "AJ")!;
+      expect(avatar.className).toMatch(/(^|\s)bg-chrome-here(\s|$)/);
+      expect(avatar.className).toMatch(/(^|\s)text-chrome(\s|$)/);
+    }
+    document.documentElement.classList.remove("dark");
+  });
+
+  it("has no light or dark look to choose, and no theme ink or palette colour", () => {
+    const header = readFileSync(resolve(__dirname, "AppHeader.tsx"), "utf8");
+    // No `variant` prop, in the props or the destructuring.
+    expect(header).not.toMatch(/^\s*variant\s*[?:,]/m);
+    expect(header).not.toMatch(/isLight|dark:/);
+    expect(header).not.toMatch(/\b(?:bg|text|border)-(?:white|black|primary|foreground|muted-foreground|bg-dark(?:-\d)?|ink-[ld]\d|div-[ld])\b/);
+    expect(header).not.toMatch(/-(?:slate|sky|orange|gray)-\d{2,3}\b|#[0-9a-fA-F]{3,6}\b/);
+  });
+});
+
+/**
+ * The header search sits on the frame too. shadcn's <Input> carries
+ * `dark:bg-input/30`, which would bring a pale wash back into the navy in the
+ * dark theme (the default) unless the field restates its background for
+ * dark: as well; and its `border-input` would draw a grey box unless the
+ * border stays transparent. Mounted with AppContent's own class string, so
+ * the merge that decides it is the real one.
+ */
+describe("AppHeader — the search field in the frame", () => {
+  it("carries the frame's well in both themes and no dark:bg-input", async () => {
+    const { Input } = await import("./ui/input");
+    const source = readFileSync(resolve(__dirname, "..", "AppContent.tsx"), "utf8");
+    const field = source.match(/aria-label="Search clients"[\s\S]*?className="([^"]*)"/)?.[1];
+    expect(field, "the header search's className in AppContent.tsx").toBeTruthy();
+    const host = mount(<Input aria-label="Search clients" className={field} />);
+    const input = host.querySelector("input")!;
+    const classes = input.className.split(/\s+/);
+    expect(classes).toContain("bg-chrome-field");
+    expect(classes).toContain("dark:bg-chrome-field");
+    expect(classes).toContain("border-transparent");
+    expect(classes).toContain("text-chrome-ink");
+    expect(classes).toContain("placeholder:text-chrome-ink-2");
+    expect(classes).toContain("focus-visible:ring-chrome-here");
+    expect(classes.filter((c) => /^dark:bg-input|^border-input$|^focus-visible:ring-ring|cyan/.test(c))).toEqual([]);
   });
 });
 
@@ -98,10 +155,12 @@ describe("AppHeader — every screen that draws it passes the studio", () => {
   });
 
   for (const host of HOSTS) {
-    it(`${host} passes studioName and follows the theme`, () => {
+    it(`${host} passes studioName and no look`, () => {
       for (const jsx of headers(read(host))) {
         expect(jsx).toMatch(/studioName=\{/);
-        expect(jsx).not.toMatch(/variant="(light|dark)"/);
+        // The header is the frame in both themes (Oct 4 2026): no host
+        // chooses a look for it, fixed or computed from the theme.
+        expect(jsx).not.toMatch(/\bvariant=/);
       }
     });
   }

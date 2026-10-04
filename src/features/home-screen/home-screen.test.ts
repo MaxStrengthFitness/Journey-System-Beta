@@ -86,13 +86,29 @@ describe("index.html", () => {
     expect(INDEX_HTML).toContain(`localStorage.getItem("${key}") || "dark"`);
   });
 
-  it("keeps theme-color the header's colour in both themes", () => {
-    const dark = tokenIn(".dark", "--bg-dark-2");
-    const light = tokenIn(":root", "--bg-dark-2");
-    expect(meta("theme-color")?.toUpperCase()).toBe(dark);
-    expect(INDEX_HTML).toContain(`theme === "light" ? "${light}" : "${dark}"`);
-    expect(String(MANIFEST.theme_color).toUpperCase()).toBe(dark);
+  it("keeps theme-color the header's colour, the frame's navy, in both themes", () => {
+    // The Navy Frame (Oct 4 2026; AJ's answer 1A): the header, the bottom
+    // bar and the status bar are --chrome, set in :root only, so one literal
+    // serves both themes. It was the header's --bg-dark-2, light and dark.
+    const frame = tokenIn(":root", "--chrome");
+    const darkBlock = INDEX_CSS.slice(INDEX_CSS.search(/^\.dark\s*\{/m));
+    expect(darkBlock.slice(0, darkBlock.indexOf("\n}")), "--chrome must not change with the theme").not.toMatch(/--chrome:/);
+    expect(meta("theme-color")?.toUpperCase()).toBe(frame);
+    // The pre-paint script sets the same navy whatever the theme.
+    const script = INDEX_HTML.match(/meta\.setAttribute\("content", ([^)]*)\)/)?.[1];
+    expect(script).toBe(`"${frame}"`);
+    expect(String(MANIFEST.theme_color).toUpperCase()).toBe(frame);
     expect(String(MANIFEST.background_color).toUpperCase()).toBe(tokenIn(".dark", "--background"));
+  });
+
+  it("the status bar copies the token the header and the bottom bar paint", () => {
+    const themeColor = read(SRC, "features", "home-screen", "theme-color.ts");
+    expect(themeColor).toMatch(/export const HEADER_TOKEN = "--chrome";/);
+    expect(read(SRC, "components", "AppHeader.tsx")).toMatch(/<header className="[^"]*\bbg-chrome\b/);
+    const bar = read(SRC, "components", "AppBottomBar.tsx");
+    const navs = [...bar.matchAll(/<nav\b[\s\S]*?className="([^"]*)"/g)].map((m) => m[1]);
+    expect(navs).toHaveLength(3);
+    for (const nav of navs) expect(nav).toMatch(/(^|\s)bg-chrome(\s|$)/);
   });
 });
 

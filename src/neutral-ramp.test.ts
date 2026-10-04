@@ -316,8 +316,13 @@ function countBarePaletteUtilities(): number {
  * Sep 28 2026 (the calm Hub): 231 -> 219, the count again. The Hub's card,
  * grid and top moved to features/hub-schedule, every colour a token; the old
  * card (components/schedule/ScheduleBlock) and the old strip are gone.
+ *
+ * Oct 4 2026 (the Navy Frame, phase 5): 219 -> 205, the 14 this phase took
+ * out. The bottom bar's five orange-500 tabs are the frame's --chrome-go, and
+ * the avatar menu's sky, slate, amber and rose are theme tokens. (The real
+ * count is 148: the budget already sat 57 above it on master, db46d32c.)
  */
-const BARE_PALETTE_BUDGET = 219;
+const BARE_PALETTE_BUDGET = 205;
 
 describe("colour drift does not creep back", () => {
   it(`has at most ${BARE_PALETTE_BUDGET} non-theme-aware palette utilities`, () => {

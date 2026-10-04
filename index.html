@@ -20,18 +20,19 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Journey" />
     <!-- iPadOS draws its own status bar ABOVE the page and colours it with
-         theme-color (below): the header's navy in the dark theme, white in
-         the light. It was black-translucent (the page running up under the
+         theme-color (below): the frame's navy, in both themes. It was black-translucent (the page running up under the
          clock) until Sep 27 2026, when AJ's iPad showed the iPadOS 26 bug in
          that style: the app is laid out a status bar taller than it is shown,
          so the bottom bar's labels ran into a black strip at the foot of the
          screen. iOS reads this tag when the icon is added: after changing it,
          delete the Home Screen icon and add it again. -->
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <!-- The dark header (--bg-dark-2), which is also the Home Screen app's
-         status bar. ThemeProvider keeps it in step with the theme; the
-         script below sets it before the first paint. -->
-    <meta name="theme-color" content="#14293D" />
+    <!-- The frame (--chrome): the header and the bottom bar, the logo's navy
+         in both themes since the Navy Frame (Oct 4 2026), which is also the
+         Home Screen app's status bar. ThemeProvider copies the token in on
+         every theme change; the script below sets it before the first paint.
+         After changing it, delete the Home Screen icon and add it again. -->
+    <meta name="theme-color" content="#002341" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
@@ -42,7 +43,8 @@
       // for a moment even though the app defaults to dark, and iPadOS
       // coloured the status bar from a theme-color that did not match.
       // Same key, same default ("dark", from main.tsx) and same "system" rule
-      // as ThemeProvider; the colours are the header's (--bg-dark-2).
+      // as ThemeProvider. The status bar is the frame's navy (--chrome)
+      // whatever the theme; the theme only decides the .dark class.
       (function () {
         var theme = "dark";
         try {
@@ -54,7 +56,7 @@
         if (theme !== "light") theme = "dark";
         document.documentElement.classList.add(theme);
         var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute("content", theme === "light" ? "#F3F6F9" : "#14293D");
+        if (meta) meta.setAttribute("content", "#002341");
       })();
     </script>
     <script>

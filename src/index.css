@@ -346,9 +346,9 @@
     --bg-l-card:   #1E293B;
     --ink-l1:      #F8FAFC;
     --ink-l2:      #CBD5E1;
-    --ink-l3:      #546271;   /* the light header's studio name: it was #94A3B8, 2.6:1 on white */
+    --ink-l3:      #546271;   /* no reader since the header became the frame (--chrome, Oct 4 2026); it was the light header's studio name, #94A3B8 at 2.6:1 on white */
     --ink-l4:      #64748B;
-    --div-l:       #D1DAE4;   /* hairlines (the header, the routine drawer): it was white at 8%, invisible on a light surface */
+    --div-l:       #D1DAE4;   /* hairlines (the routine drawer, the profile's note box; the header's until it became the frame): it was white at 8%, invisible on a light surface */
 
     /* --cta is the logo orange, a FILL colour. White on it is 2.99:1, so
        words on it are navy, --cta-foreground (6.05:1): no white words sit

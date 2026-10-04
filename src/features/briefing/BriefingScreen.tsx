@@ -88,7 +88,6 @@ import { briefingMoments } from "../hub-opportunities/briefing-moments";
 import { sessionNumberWords, sessionTotalOf } from "../../lib/session-total";
 import { BriefingRenewalLine } from "../renewals/BriefingRenewalLine";
 import { AppHeader } from "../../components/AppHeader";
-import { useTheme } from "../../components/ThemeProvider";
 import {
   Machine,
   Routine,
@@ -215,10 +214,6 @@ export function BriefingScreen({
   coverage = "unknown",
   studios = null,
 }: BriefingScreenProps) {
-  // The header follows the app theme now that the page below it does.
-  // Mirrors AppContent's own call so the two can never disagree.
-  const { theme } = useTheme();
-
   const [selectedRoutineType, setSelectedRoutineType] = useState<
     "A" | "B" | "Free" | "Create_A" | "Create_B"
   >("A");
@@ -649,7 +644,6 @@ export function BriefingScreen({
   return (
     <div className="br">
         <AppHeader
-          variant={theme === "light" ? "light" : "dark"}
           studioName={studioName}
           trainerInitials={authTrainer?.initials}
           rightControls={rightControls}

@@ -2,8 +2,16 @@ import React from "react";
 import { MaxStrengthLogo } from "./MaxStrengthLogo";
 import { cn } from "@/lib/utils";
 
+/**
+ * The app's header: the top of the frame (the Navy Frame, Oct 4 2026; AJ's
+ * answer 1A). It is the logo's navy (--chrome) with the frame's own inks in
+ * BOTH themes, like the bottom bar and the iPad's status bar, so there is no
+ * light or dark look to choose and no `variant` to pass. Until then it was
+ * white in the light theme (the studio's name 2.56:1, its hairlines white on
+ * white) and a host that guessed the theme wrong drew white on white.
+ * `theme-color.ts` copies the same --chrome into the status bar.
+ */
 interface AppHeaderProps {
-  variant: "light" | "dark";
   trainerInitials?: string;
   /**
    * The studio the app is in. No default: a header that isn't told its studio
@@ -39,7 +47,6 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({
-  variant,
   trainerInitials,
   studioName,
   onStudioClick,
@@ -48,16 +55,10 @@ export function AppHeader({
   trainerDropdown,
   searchSlot,
 }: AppHeaderProps) {
-  const isLight = variant === "light";
   const name = studioName?.trim() ?? "";
 
   return (
-    <header
-      className={cn(
-        "h-14 shrink-0 border-b flex items-center justify-between px-4 z-20",
-        isLight ? "bg-white border-div-l" : "bg-bg-dark-2 border-div-d",
-      )}
-    >
+    <header className="h-14 shrink-0 border-b flex items-center justify-between px-4 z-20 bg-chrome border-chrome-line">
       {/* min-w-0 is what lets this cluster shrink at all. Without it the flex
           item refuses to go below its content width, so a long studio name
           CLIPS instead of truncating — which is how the end of a name went
@@ -70,13 +71,13 @@ export function AppHeader({
             aria-label="Back to the Hub"
             className="shrink-0 min-h-10 min-w-10 grid place-items-center hover:opacity-75 cursor-pointer"
           >
-            <MaxStrengthLogo size="md" showText={false} className={cn("shrink-0", isLight ? "text-ink-l1" : "text-white")} />
+            <MaxStrengthLogo size="md" showText={false} className="shrink-0 text-chrome-ink" />
           </button>
         ) : (
           <MaxStrengthLogo
             size="md"
             showText={false}
-            className={cn("shrink-0", isLight ? "text-ink-l1" : "text-white")}
+            className="shrink-0 text-chrome-ink"
           />
         )}
         <button
@@ -107,7 +108,7 @@ export function AppHeader({
             // Names are never truncated (CLAUDE.md, Sep 29 2026): a long name
             // wraps onto a second line within the cap instead of ellipsising.
             "font-display italic text-xs sm:text-lg md:text-xl leading-tight uppercase justify-center transition-opacity text-left whitespace-normal [overflow-wrap:anywhere] min-h-10 pe-[0.22em] max-w-[14ch] sm:max-w-[20ch] lg:max-w-[28ch]",
-            isLight ? "text-ink-l3" : "text-white",
+            "text-chrome-ink",
             onStudioClick
               ? "hover:opacity-75 cursor-pointer"
               : "cursor-default",
@@ -127,21 +128,11 @@ export function AppHeader({
       <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
         {rightControls}
 
-        <div
-          className={cn(
-            "w-px h-6",
-            isLight ? "bg-div-l" : "bg-div-d",
-          )}
-        />
+        <div className="w-px h-6 bg-chrome-line" />
 
         {trainerDropdown || (
           <button
-            className={cn(
-              "w-8 h-8 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto shrink-0",
-              isLight
-                ? "bg-primary text-primary-foreground"
-                : "bg-primary text-primary-foreground border border-div-d",
-            )}
+            className="w-8 h-8 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto shrink-0 bg-chrome-here text-chrome"
           >
             {trainerInitials}
           </button>

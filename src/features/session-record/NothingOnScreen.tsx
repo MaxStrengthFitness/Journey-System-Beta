@@ -6,7 +6,6 @@
  */
 import type { ReactNode } from "react";
 import { AppHeader } from "../../components/AppHeader";
-import { useTheme } from "../../components/ThemeProvider";
 import { nothingWords, type NothingKind } from "./nothing-on-screen";
 
 export function NothingOnScreen({
@@ -31,7 +30,6 @@ export function NothingOnScreen({
   /** The studio the app is in, for the header. */
   studioName?: string;
 }) {
-  const { theme } = useTheme();
   const words = nothingWords(kind);
   const primary =
     words.primary === "retry" && onRetry
@@ -43,7 +41,6 @@ export function NothingOnScreen({
   return (
     <div className="h-full min-h-0 flex flex-col bg-background" data-testid="nothing-on-screen" data-kind={kind}>
       <AppHeader
-        variant={theme === "light" ? "light" : "dark"}
         trainerInitials={trainerInitials}
         studioName={studioName}
         rightControls={rightControls}
