@@ -2782,3 +2782,20 @@ Round document: `docs/rounds/2026-10-03-client-notes.md`. On an iPad, upright an
 - [ ] Open that machine in a session: the open notes show under the watch-outs with their latest update; the closed one doesn't.
 - [ ] Local set-up on a machine with an old unit note shows it as "The unit's old note"; on one without, it says notes go in the floor's notes.
 - [ ] Admins → Standard → Waiting for review lists the offered floor note as "A floor note on a machine"; share it, and another studio's Catalog page shows it under "From other MSF studios".
+
+## Round 53 — Operations, calm · *Oct 3 2026, branch `oct3/ops-calm`*
+
+Round document: `docs/rounds/2026-10-03-ops-calm.md`. On an iPad, upright and on its side, as a studio leader:
+
+- [ ] Operations → Today: one line of numbers under the date (booked, logged, on the floor, to come, trainers on). Its (i) says what "logged" means and when the schedule was read.
+- [ ] At a studio that isn't live yet, ONE blue note says so, with Why. No section repeats it.
+- [ ] Needs you shows one row per trainer for the sessions nobody logged ("10 not logged: … and 8 more"). Show opens the names, each with Late cancel · session taken; the row's (i) says how to clear them.
+- [ ] Mark one a late cancel: it leaves the trainer's row, and "Late cancels marked today: 1" appears under the numbers. Show, then Take back: it is back.
+- [ ] Since yesterday: one short line each ("Wed 7:00 AM → Tue 7:00 AM with …"). The (i) says when Mindbody reported it. A booking moved from the Rotation to a trainer at the same time isn't listed.
+- [ ] The foot of Today: "All clear: …" names every section with nothing in it.
+- [ ] The tab bar upright: "Today" is one word beside its count.
+- [ ] Week → Last week, This week so far, Week ahead: numbers at the top, the dates as the subtitle. A day cell says "cancelled late" for a cancellation under a day before, "late cancel" only for one someone marked.
+- [ ] Month: numbers at the top; a birthday under its day says "Turns 65."; the (i) beside Birthdays says how many have no date of birth on file.
+- [ ] Clients → Journey: the stops say a name and a count; the list's (i) says what the state means. Trends: lines below their minimum are names under "Not enough data yet"; tap one for its count.
+- [ ] Team → This week: cards say "41 booked · 41 not logged"; a card with no notes shows only "Note for our 1:1". Hours: the (i) beside the title holds what the page used to say under it.
+- [ ] On a phone (Journey Lite), Today's numbers wrap to two lines and the note's Why stays beside its words.

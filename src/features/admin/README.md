@@ -27,9 +27,9 @@ today, this week and this month"). `shell/places.ts` is the list.
 | Destination → page | Folder or file |
 | --- | --- |
 | The shell — the sidebar (wide), the tabs across the top (upright), "Looking at", the client opened inside Operations, where a leader was | `AdminDashboardView.tsx` and `shell/` (`places.ts` the destinations and their pages, `place-memory.ts` the place, each destination's page, the client and the scroll, forgotten at sign-out; `OperationsNav.tsx` the two menus, Looking at and Setup's list; `ClientPage.tsx` a client opened in Operations, from the Client Directory's row model; `ops.css` every `ops-` class). `AdminDashboardView.render.test.tsx` opens every page |
-| Today (was Overview) | `overview/` — the brief (`TodayBrief.tsx`; `brief.ts` the bottom line, the nightly record, Catch today and since yesterday; `floor.ts` the day's arithmetic), `changes/` (the week's cancellations and moves; `useStudioWeek.ts` the week as the server answered it), `attention/` (the watchlist, acknowledgements and, since wave 2, a leader's "didn't come" on a session nobody logged: `booking-marks.ts`); since the notes round (Oct 3 2026) Needs you also lists **the team's Health, Incident and Retention notes** of the last two weeks, whatever their loudness, with **Seen** = the acknowledgement `note:{id}` (`overview/team-notes.ts`; one read, the index studioId + kind + createdAt) |
+| Today (was Overview) | `overview/` — the brief (`TodayBrief.tsx`; since the calm round, Oct 3 2026, a counts line, one note, one row per trainer for sessions nobody logged and one "All clear" line; `brief.ts` the nightly record and its one note, Catch today and since yesterday; `floor.ts` the day's arithmetic), `changes/` (the week's cancellations and moves; `useStudioWeek.ts` the week as the server answered it), `attention/` (the watchlist, acknowledgements and, since wave 2, a leader's "didn't come" on a session nobody logged: `booking-marks.ts`); since the notes round (Oct 3 2026) Needs you also lists **the team's Health, Incident and Retention notes** of the last two weeks, whatever their loudness, with **Seen** = the acknowledgement `note:{id}` (`overview/team-notes.ts`; one read, the index studioId + kind + createdAt) |
 | Clients → Journey (was the Overview's attendance watch) | `journey/` — `JourneyPage.tsx`, the rhythm (`rhythm.ts`), the states (`states.ts`), the case (`case.ts`), the studio's Journey in one pass (`journey-list.ts`, `useStudioJourneys.ts`), and her journey and case on the client page (`JourneyCase.tsx`). Read `journey/README.md` |
-| Week → Last week · This week so far · Week ahead | `week/` — `WeekPage.tsx` draws all three: the Monday review (a bottom line by rules, day by day, who crossed a line and who came back, the renewals decided, the team in name order, the trust line), this week so far (with the Changes view, `changes/ChangesView.tsx`) and the next seven days. `review.ts` is the pure half (the week's days, done means logged, late cancellations, the bottom line, how many days were read in full, each trainer's week); `useCoverageRecord.ts` reads the whole-read record's month documents |
+| Week → Last week · This week so far · Week ahead | `week/` — `WeekPage.tsx` draws all three: last week (a counts line, a note only when a day wasn't read in full, day by day, who started slipping and who came back, the renewals decided, the team in name order), this week so far (with the Changes view, `changes/ChangesView.tsx`) and the next seven days. `review.ts` is the pure half (the week's days, done means logged, late cancels and "cancelled late", how many days were read in full, each trainer's week); `useCoverageRecord.ts` reads the whole-read record's month documents |
 | Month | `month/` — `MonthPage.tsx`: a given month's renewals (by the day the package effectively ends), birthdays, anniversaries (from her first day, a guessed one said to be a guess) and the MIA list (the Journey's Drifting · At risk · Lapsed, as of today); `month.ts` is the pure half. Read its README first |
 | Clients → Renewals | `renewals/` (the engine is `src/features/renewals/`) |
 | Clients → Moments (was Delight queue) | `src/features/ford/` (drawn by the shell) |
@@ -117,6 +117,22 @@ Plain studio English. The people using these screens run gyms.
 Role names are **not** decoration and do not get reworded: `ROLE_LABELS` in
 `types.ts` is the vocabulary — Life Transformer, Studio Leader, Franchise
 Owner. "Life Transformer" is what this company calls a trainer.
+
+**Say it once, and say less** (the calm round, Oct 3 2026; AJ: "there's just
+so many words on there. It's really overwhelming", then "i trust all your
+recommended"). Today was 1,430 words. Every Operations page now keeps five
+rules, with a piece for each in `overview/brief-pieces.tsx` and
+`overview/pieces.tsx`:
+
+| Instead of | Use |
+|---|---|
+| a written bottom line | `CountsLine`: one line of numbers, its rules behind an (i) |
+| "can't be told yet" in every section | `PageNote` once at the top (`useNightlyNote` for the nightly record); the sections it covers stay quiet, never "clear" |
+| a how-to or a source printed on every row | `ActionRows`' Why: the row's (i). `limit` shows five, then Show all |
+| a caption under a heading, a paragraph under a title | nothing; or `BriefSection` `info` / `AdminHeader` `about`, behind an (i) |
+| a section saying it is empty | `AllClear`: its name in one line at the foot, only when every read behind it answered |
+
+A count is not a score: the proof of every claim is still one tap away.
 
 ---
 
