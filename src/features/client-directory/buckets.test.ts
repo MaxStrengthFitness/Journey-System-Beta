@@ -166,3 +166,48 @@ describe("sort words and taps", () => {
     expect(nextSortForTap({ key: "lastIn", dir: "desc" }, "next")).toEqual({ key: "next", dir: SORTS.next.defaultDir });
   });
 });
+
+describe("renewal sections (Oct 3 2026)", () => {
+  const snap = (over: Record<string, unknown>) =>
+    ({ situation: "on-track", focusDate: null, renewalOnBooks: null, paymentMode: "monthly", autoRenews: true, chargeDateSource: "mindbody", runOutDate: null, dataGaps: [], ...over }) as never;
+  const renewRow = (id: string, renewal: unknown, over: Record<string, unknown> = {}) =>
+    buildDirectoryRow(makeClient({ id, firstName: id, renewal: renewal as never, ...over }), makeContext());
+
+  it("reads the day the package effectively ends, in words that follow the auto-renew answer", () => {
+    const r = renewRow("a", snap({ focusDate: addDays(TODAY, 10) }));
+    expect(r.renews).toMatchObject({ state: "known", day: addDays(TODAY, 10), sub: "Renews" });
+    expect(renewRow("b", snap({ focusDate: addDays(TODAY, 10), autoRenews: false })).renews.sub).toBe("Billing ends");
+    expect(renewRow("c", snap({ focusDate: addDays(TODAY, 10), paymentMode: "prepaid", runOutDate: addDays(TODAY, 10) })).renews.sub).toBe("Runs out (est.)");
+  });
+
+  it("sections soonest first, with renewed, no date and unknown last both ways", () => {
+    const rows = [
+      renewRow("soon", snap({ focusDate: addDays(TODAY, 5) })),
+      renewRow("later", snap({ focusDate: addDays(TODAY, 200) })),
+      renewRow("past", snap({ focusDate: addDays(TODAY, -3) })),
+      renewRow("done", snap({ focusDate: addDays(TODAY, 5), renewalOnBooks: { cycleKey: "x", packageKey: null, startsOn: addDays(TODAY, 6) } })),
+      renewRow("gap", snap({ situation: "unknown" })),
+      renewRow("nil", snap({})),
+      renewRow("none", undefined),
+      renewRow("pif", undefined, { contractTierOverride: { term: 12, payment: "pif", setAt: "2026-09-01" } }),
+    ];
+    expect(sectionRows(rows, { key: "renews", dir: "asc" }, B).map((s) => s.label)).toEqual([
+      "Already ended",
+      "Next 2 weeks",
+      "Later",
+      "Already renewed",
+      "Paid in full · ends when sessions run out",
+      "No end date",
+      "Unknown",
+    ]);
+    expect(sectionRows(rows, { key: "renews", dir: "desc" }, B).map((s) => s.label)[0]).toBe("Later");
+    expect(SORTS.renews.defaultDir).toBe("asc");
+  });
+
+  it("with no snapshot yet, takes the end of the contract Mindbody is billing", () => {
+    const r = renewRow("m", undefined, {
+      mindbodyContracts: { k1: { status: "Active", autopayStatus: "Active", endDate: `${addDays(TODAY, 40)}T12:00:00` } },
+    });
+    expect(r.renews).toMatchObject({ state: "known", day: addDays(TODAY, 40), sub: "Contract ends" });
+  });
+});

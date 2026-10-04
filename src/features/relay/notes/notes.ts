@@ -61,7 +61,10 @@ export type NotesView =
   | { kind: "shelf"; shelf: ShelfId }
   | { kind: "daylogs" }
   | { kind: "studio" }
-  | { kind: "onthisday" };
+  | { kind: "onthisday" }
+  /* Today (the Relay Board rebuild, Oct 3 2026): the Journal's first tab,
+     things to carry and the day's one line. No notes on it. */
+  | { kind: "today" };
 
 export interface NoteProblem {
   field: "title" | "body" | "kind" | "clients" | "share" | "links" | "team" | "type";
@@ -437,6 +440,7 @@ export function inView(note: TrainerNote, view: NotesView, folderIds?: ReadonlyS
     case "daylogs":
     case "studio":
     case "onthisday":
+    case "today":
       return false;
   }
 }

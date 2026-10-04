@@ -135,18 +135,12 @@ export function ShelfNav({
   view,
   counts,
   openHunches,
-  dayLogs,
-  studioShelf,
   onView,
   leader = false,
 }: {
   view: NotesView;
   counts: Record<ShelfId, number>;
   openHunches: number;
-  /** How many day logs, once read; null while unknown. */
-  dayLogs: number | null;
-  /** How many entries on the Studio shelf, once read; null while unknown. */
-  studioShelf: number | null;
   onView: (view: NotesView) => void;
   /** Leads the studio: the Team shelf shows (and for anyone who already has notes on it). */
   leader?: boolean;
@@ -171,11 +165,7 @@ export function ShelfNav({
           s.id === "trends" ? `${openHunches} of ${HUNCH_SLOTS} slots in use` : undefined,
         ),
       )}
-      <span className="pn__views-sep" aria-hidden />
-      {chip("daylogs", { kind: "daylogs" }, "Day logs", CalendarDays, dayLogs)}
-      {chip("onthisday", { kind: "onthisday" }, "On this day", History, null)}
-      <span className="pn__views-sep" aria-hidden />
-      {chip("studio", { kind: "studio" }, "Studio shelf", LibraryBig, studioShelf, "shared · never names a client")}
+      {/* Day logs, On this day and the Studio shelf are the Journal's tabs, in the bar under the header (Oct 3 2026). */}
     </nav>
   );
 }
@@ -596,7 +586,7 @@ export function DayLogList({
       <div className="pl__empty">
         <p className="pl__empty-title">No day logs yet</p>
         <p className="pl__empty-body">
-          Choose what to carry at Opening, and save your day at Close out: both are on the Board. A day log is yours alone, never shown to leaders.
+          Choose what to carry, and save your day’s one line: both are on Today, the Journal’s first tab. A day log is yours alone, never shown to leaders.
         </p>
       </div>
     );

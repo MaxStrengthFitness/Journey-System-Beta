@@ -1,0 +1,125 @@
+/* ==========================================================================
+   TODAY — the Journal's first tab (the Relay Board rebuild, Oct 3 2026)
+   --------------------------------------------------------------------------
+   Things to carry today and One line for yourself, moved here from the
+   Board's Opening and Close out cards, drawn as the Board draws: the
+   studio's cards (one border, the studio's corners), the one heading style,
+   44px buttons, blue to save. On the Studio Hub's --st-* tokens
+   (studio-tasks.css); nothing here writes a hex value, and
+   my-studio/look.test.ts holds this file to My Studio's look.
+
+   Prefix jtd, one owner (src/css-class-owners.test.ts).
+   ========================================================================== */
+
+.jtd {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  max-width: 44rem;
+  padding: 0.875rem 1rem 6rem;
+}
+
+.jtd-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem 1rem;
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+}
+
+/* The one heading style: small upright capitals. */
+.jtd-h {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--st-ink-2);
+}
+.jtd-h__sub {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--st-ink-muted);
+}
+
+.jtd-facts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--st-ink-2);
+}
+
+.jtd-carry { margin: 0; padding-left: 1.125rem; display: flex; flex-direction: column; gap: 4px; }
+.jtd-carry__line { font-size: 14px; font-weight: 700; line-height: 1.4; color: var(--st-ink); overflow-wrap: anywhere; }
+
+.jtd-field { display: flex; flex-direction: column; gap: 4px; }
+.jtd-field__l { font-size: 12px; font-weight: 700; color: var(--st-ink-2); }
+.jtd-input {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--st-border-strong);
+  border-radius: 10px;
+  background: var(--st-bg);
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 14px;
+}
+.jtd-input:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+
+.jtd-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--st-border-strong);
+  border-radius: 10px;
+  background: var(--st-surface);
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.jtd-btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+.jtd-btn:disabled { opacity: 0.55; cursor: default; }
+.jtd-btn--go { border-color: var(--st-live); background: var(--st-live); color: var(--st-live-on); }
+
+.jtd-quiet {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--st-ink-2);
+}
+
+.jtd-private {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--st-ink-muted);
+}
+
+/* The page Today draws in, in place of the Journal's two panes: one column that scrolls. */
+.jtd-page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--st-bg);
+}

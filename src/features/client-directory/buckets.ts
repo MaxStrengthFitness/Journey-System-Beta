@@ -21,7 +21,7 @@ import { daysBetween } from "../client-history/model";
 import type { DirectoryRow } from "./row";
 import { heightWords } from "./row";
 
-export type SortKey = "lastIn" | "next" | "left" | "total" | "age" | "height" | "name" | "lastName" | "since" | "time";
+export type SortKey = "lastIn" | "next" | "left" | "total" | "age" | "height" | "name" | "lastName" | "since" | "time" | "renews";
 export type SortDir = "asc" | "desc";
 export interface SortSpec {
   key: SortKey;
@@ -30,7 +30,7 @@ export interface SortSpec {
 
 export interface SortMeta {
   /** The column header it belongs to, or null for a sort with no column. */
-  column: "client" | "lastIn" | "next" | "left" | "total" | "age" | "height" | null;
+  column: "client" | "lastIn" | "next" | "left" | "total" | "age" | "height" | "renews" | null;
   /** The direction a first tap picks. */
   defaultDir: SortDir;
   /** Each direction said in words. */
@@ -46,12 +46,13 @@ export const SORTS: Record<SortKey, SortMeta> = {
   height: { column: "height", defaultDir: "desc", words: { desc: "Height: tallest first", asc: "Height: shortest first" } },
   name: { column: "client", defaultDir: "asc", words: { asc: "Name: first name A\u2013Z", desc: "Name: first name Z\u2013A" } },
   lastName: { column: null, defaultDir: "asc", words: { asc: "Name: last name A\u2013Z", desc: "Name: last name Z\u2013A" } },
+  renews: { column: "renews", defaultDir: "asc", words: { asc: "Renewal: soonest first", desc: "Renewal: furthest first" } },
   since: { column: null, defaultDir: "asc", words: { asc: "Client since: longest first", desc: "Client since: newest first" } },
   time: { column: null, defaultDir: "asc", words: { asc: "Today\u2019s time: earliest first", desc: "Today\u2019s time: latest first" } },
 };
 
 /** The order the sort menu lists them in. `time` only makes sense in the In today view. */
-export const SORT_MENU: SortKey[] = ["lastIn", "next", "left", "total", "age", "height", "name", "lastName", "since"];
+export const SORT_MENU: SortKey[] = ["lastIn", "next", "left", "renews", "total", "age", "height", "name", "lastName", "since"];
 
 export function sortWords(spec: SortSpec): string {
   return SORTS[spec.key].words[spec.dir];
@@ -133,6 +134,22 @@ function leftBucket(row: DirectoryRow): Bucket {
   return known("13+", "13 or more", 4);
 }
 
+function renewsBucket(row: DirectoryRow, ctx: BucketContext): Bucket {
+  const r = row.renews;
+  if (r.state === "known" && r.day) {
+    const ahead = daysBetween(ctx.today, r.day);
+    if (ahead < 0) return known("ended", "Already ended", 1);
+    if (ahead <= 14) return known("14d", "Next 2 weeks", 2);
+    if (ahead <= 31) return known("31d", "15–31 days", 3);
+    if (ahead <= 92) return known("3m", "1–3 months", 4);
+    return known("later", "Later", 5);
+  }
+  if (r.state === "renewed") return tail("renewed", "Already renewed", 1);
+  if (r.state === "paid") return tail("paid", "Paid in full · ends when sessions run out", 2);
+  if (r.state === "none") return tail("none", "No end date", 3);
+  return tail("unknown", "Unknown", 4);
+}
+
 function totalBucket(row: DirectoryRow): Bucket {
   const v = row.total.value;
   if (row.total.state !== "known" || v === null) return tail("unknown", "Unknown", 1);
@@ -195,6 +212,8 @@ export function bucketOf(row: DirectoryRow, key: SortKey, ctx: BucketContext): B
       return nextBucket(row, ctx);
     case "left":
       return leftBucket(row);
+    case "renews":
+      return renewsBucket(row, ctx);
     case "total":
       return totalBucket(row);
     case "age":
@@ -232,6 +251,9 @@ function valueOf(row: DirectoryRow, key: SortKey): number | string | null {
       return row.next.at;
     case "left":
       return row.left.value;
+    case "renews":
+      // Paid in full has no day: it ends when her sessions run out, so fewest left first.
+      return row.renews.state === "paid" ? row.left.value : row.renews.day;
     case "total":
       return row.total.value;
     case "age":

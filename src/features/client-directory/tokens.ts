@@ -17,6 +17,11 @@
  *   occupation   a word that matches an occupation ON FILE, stemmed
  *                ("nurses", "nursing" → nurse) · retired
  *   height       5'6, 5′6″, 5 ft 6, 5 foot 6, 66 in, 168 cm
+ *   renewal      renewing / renews / up for renewal / contract ending, then
+ *                this week · next week · this month · next month · in or
+ *                within 3 weeks / 30 days · in November · soon; alone it is
+ *                the next 30 days (AJ, Oct 3 2026). Matched on the row's
+ *                renewal day, the one the Renewal sort reads.
  *
  * A word that is both a name on the roster and an occupation on file
  * ("Baker", "Cook", "Porter") is left a NAME and reported as ambiguous, so
@@ -30,14 +35,17 @@ import type { DirectoryRow } from "./row";
 import { heightWords, plainHeightText } from "./row";
 import { normalizeName } from "./search";
 import { parseHeightInches } from "../machine-trends/trends";
+import { addDays, weekdayOf } from "../client-history/model";
 
-export type TokenKind = "gender" | "age" | "occupation" | "height";
+export type TokenKind = "gender" | "age" | "occupation" | "height" | "renews";
 
 export type Token =
   | { kind: "gender"; value: "female" | "male"; label: string; source: string }
   | { kind: "age"; min: number | null; max: number | null; label: string; source: string }
   | { kind: "occupation"; stem: string; label: string; source: string }
-  | { kind: "height"; inches: number; label: string; source: string };
+  | { kind: "height"; inches: number; label: string; source: string }
+  /** A window of studio days, both ends included (`YYYY-MM-DD`). */
+  | { kind: "renews"; from: string; to: string; label: string; source: string };
 
 export interface Ambiguity {
   /** The word as typed. */
@@ -194,7 +202,62 @@ const PHRASES: Extract[] = [
   },
 ];
 
+/* ------------------------------------------------------------------ */
+/* Renewal windows                                                     */
+/* ------------------------------------------------------------------ */
+
+const MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+const MONTH_RE = "jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?";
+const RENEW_RE = new RegExp(
+  String.raw`\b(?:up\s+for\s+renewal|renew(?:s|ing|al|als)?|contracts?\s+(?:ending|ends|end))\b(?:\s+(?:clients?|contracts?|packages?|on|by))?(?:\s+(this\s+week|next\s+week|this\s+month|next\s+month|soon|(?:in|within|in\s+the\s+next|next)\s+(\d{1,3})\s+(days?|weeks?)|(?:in\s+)?(${MONTH_RE})\b))?`,
+  "gi",
+);
+
+function monthEnd(year: number, month0: number): string {
+  const last = new Date(Date.UTC(year, month0 + 1, 0)).getUTCDate();
+  return `${year}-${String(month0 + 1).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+}
+
+function monthStart(year: number, month0: number): string {
+  return `${year}-${String(month0 + 1).padStart(2, "0")}-01`;
+}
+
+/** The window a renewal phrase means, from the studio's today. */
+export function renewalWindow(m: RegExpExecArray, today: string): { from: string; to: string; label: string } | null {
+  const when = (m[1] ?? "").toLowerCase().replace(/\s+/g, " ");
+  const year = Number(today.slice(0, 4));
+  const month0 = Number(today.slice(5, 7)) - 1;
+  // Monday to Sunday, the studio's week.
+  const monday = addDays(today, -((weekdayOf(today) + 6) % 7));
+  if (!when || when === "soon") return { from: today, to: addDays(today, 30), label: "Renewal: next 30 days" };
+  if (when === "this week") return { from: monday, to: addDays(monday, 6), label: "Renewal: this week" };
+  if (when === "next week") return { from: addDays(monday, 7), to: addDays(monday, 13), label: "Renewal: next week" };
+  if (when === "this month") return { from: monthStart(year, month0), to: monthEnd(year, month0), label: "Renewal: this month" };
+  if (when === "next month") {
+    const y = month0 === 11 ? year + 1 : year;
+    const mo = (month0 + 1) % 12;
+    return { from: monthStart(y, mo), to: monthEnd(y, mo), label: "Renewal: next month" };
+  }
+  if (m[2]) {
+    const count = Number(m[2]);
+    if (count < 1) return null;
+    const days = /^week/.test(m[3].toLowerCase()) ? count * 7 : count;
+    return { from: today, to: addDays(today, days), label: `Renewal: next ${count} ${m[3].toLowerCase().replace(/s$/, "")}${count === 1 ? "" : "s"}` };
+  }
+  if (m[4]) {
+    const mo = MONTHS.findIndex((name) => name.startsWith(m[4].toLowerCase().slice(0, 3)));
+    if (mo < 0) return null;
+    // The next one: a month already gone this year means next year's.
+    const y = mo < month0 ? year + 1 : year;
+    const name = MONTHS[mo].charAt(0).toUpperCase() + MONTHS[mo].slice(1);
+    return { from: monthStart(y, mo), to: monthEnd(y, mo), label: `Renewal: ${name}${y === year ? "" : ` ${y}`}` };
+  }
+  return null;
+}
+
 export interface ParseOptions {
+  /** The studio's day; without it a renewal phrase is not read. */
+  today?: string;
   /** Every name word on the roster (first, nickname, last), normalised → how many clients. */
   names?: ReadonlyMap<string, number>;
   /** Words the trainer chose to read as an occupation after an ambiguity. */
@@ -214,6 +277,17 @@ export function buildNameVocab(rows: ReadonlyArray<Pick<DirectoryRow, "name">>):
 export function parseQuery(input: string, occupations: OccupationVocab, opts: ParseOptions = {}): ParsedQuery {
   let text = ` ${plainHeightText(input ?? "")} `;
   const tokens: Token[] = [];
+  if (opts.today) {
+    const today = opts.today;
+    RENEW_RE.lastIndex = 0;
+    text = text.replace(RENEW_RE, (...args) => {
+      const match = Object.assign([...args.slice(0, -2)], { index: args[args.length - 2] as number, input: text }) as unknown as RegExpExecArray;
+      const w = renewalWindow(match, today);
+      if (!w) return match[0];
+      tokens.push({ kind: "renews", ...w, source: match[0].trim() });
+      return " ";
+    });
+  }
   for (const { re, make } of PHRASES) {
     re.lastIndex = 0;
     text = text.replace(re, (...args) => {
@@ -287,6 +361,11 @@ export function tokenMatches(row: DirectoryRow, t: Token): boolean | null {
     }
     case "height":
       return row.height.inches === null ? null : row.height.inches === t.inches;
+    case "renews":
+      // Already renewed is an answer (not in the window); no date is not.
+      if (row.renews.state === "renewed") return false;
+      if (row.renews.state !== "known" || !row.renews.day) return null;
+      return row.renews.day >= t.from && row.renews.day <= t.to;
   }
 }
 
@@ -315,7 +394,7 @@ export function applyTokens(rows: ReadonlyArray<DirectoryRow>, tokens: ReadonlyA
   return { rows: kept, notOnFile };
 }
 
-const KIND_WORD: Record<TokenKind, string> = { gender: "gender", age: "birth date", occupation: "occupation", height: "height" };
+const KIND_WORD: Record<TokenKind, string> = { gender: "gender", age: "birth date", occupation: "occupation", height: "height", renews: "renewal date" };
 
 /** "41 have no occupation on file" — one phrase per kind, in the order the tokens were typed. */
 export function notOnFileWords(filter: TokenFilter, tokens: ReadonlyArray<Token>): string[] {

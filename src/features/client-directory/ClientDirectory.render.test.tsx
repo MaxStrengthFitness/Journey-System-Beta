@@ -195,6 +195,19 @@ describe("ClientDirectory", () => {
     expect(rowIds(host)[0]).toBe("nk");
   });
 
+  it("the sort pill opens a panel of tiles; a tile sorts and closes it, the order switch flips it", async () => {
+    const { host } = await mount();
+    const pill = host.querySelector<HTMLButtonElement>(".cd-sort-pill");
+    await click(pill);
+    expect(host.querySelector(".cd-sort-panel")).toBeTruthy();
+    await click([...host.querySelectorAll(".cd-sort-tile")].find((b) => b.textContent?.startsWith("First name")));
+    expect(host.querySelector(".cd-sort-panel")).toBeNull();
+    expect(pill?.getAttribute("data-sort")).toBe("name:asc");
+    await click(pill);
+    await click([...host.querySelectorAll(".cd-sort-dirbtn")].find((b) => b.textContent === "Z–A"));
+    expect(pill?.getAttribute("data-sort")).toBe("name:desc");
+  });
+
   it("tapping the Last in header re-sorts, and says so in words", async () => {
     const { host } = await mount();
     expect(sectionLabels(host)[0]).toBe("Last 7 days \u00b7 2");
@@ -203,7 +216,7 @@ describe("ClientDirectory", () => {
     await click(lastIn);
     expect(sectionLabels(host)[0]).toBe("More than 3 months ago \u00b7 1");
     expect(rowIds(host)).toEqual(["af", "nr", "nk", "zp", "ob"]);
-    expect(host.querySelector<HTMLSelectElement>('select[aria-label="Sort"]')?.value).toBe("lastIn:asc");
+    expect(host.querySelector('.cd-sort-pill')?.getAttribute("data-sort")).toBe("lastIn:asc");
     // Unknowns stay last whichever way it runs.
     expect(sectionLabels(host).at(-1)).toBe("Before Journey \u00b7 1");
   });

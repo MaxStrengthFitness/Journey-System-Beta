@@ -49,6 +49,8 @@ const FILES = [
   "features/relay/jobs/jobs.css",
   "features/relay/notes/notes.css",
   "features/relay/notes/note-body.css",
+  // The Journal's Today (the Relay Board rebuild, Oct 3 2026): what to carry, the day's one line.
+  "features/relay/notes/journal-today.css",
   "features/relay/board/relay-strip.css",
   "features/relay/reminders/reminders.css",
   // The standing weeks on Team (and the same card on My Profile): drawn in
@@ -138,28 +140,17 @@ const NAME_CLASSES = [
   "ini__name", // a trainer, in the initiative roll-up
   "rjn__line", // Just now: a teammate's name and what they did (the Now Bar's ticker until Sep 28 2026)
   "rjn__who",
-  "msh__now-b", // the header's next session: a client's whole name
-  "msh__track-text", // the header's Tracking chip: the job's name
   "msh__pop-text", // a section or an item in the header's menus
-  "ds__name", // a client on the opened day strip's list
   "stq__reacted", // who replied to an ask
   "tm-card__name", // a person's card on Team
   "tj-card__title", // a team job
   "tj-person__name",
   "tj-part__label",
-  "rbd-dealt__title", // the Board's dealt card (Next up's cards until Sep 28 2026)
-  "rbd-giver__name", // who a card comes from
-  "rbd-alt__t", // an Also fits row
-  "rbd-row__t", // a job behind Mine
-  "rbd-door__label", // a door's name
-  "rbd-part__t", // a machine on the dealt card's checklist
-  "rbd-team__t", // a chore on Team today
-  "rbd-later__t", // a row of Later today (a client's name)
   "rbd-undo__t", // what Undo takes back (a job's name)
-  "rwho__name", // a trainer on a leader's Who? faces
-  "rtk-box__t", // the Tracker's Tracking box: the job's name
-  "rsc__t", // Opening and Close out: what is waiting, what is left (a job's or a client's name)
-  "rsc-line__t", // the line that says when each card is
+  "rbc__t", // a card on the Board: a chore, an ask, a client (the Relay Board rebuild, Oct 3 2026)
+  "rbc__line", // who did it, who's on it, whose it is
+  "rbd-part__t", // a machine in a chore, beside the Board
+  "rbd-who__name", // a trainer a leader puts on an ask
   "rak-tile__t", // a tile of the Ask sheet
   "stq__item-client", // who an ask is about: a client's whole name
   "stq__answer", // a question's answer, and who gave it
@@ -247,22 +238,19 @@ const TAP_CLASSES = [
   "stm__preset",
   "rjn__kudos",
   // The Board (Relay room, Sep 28 2026): 44px on the cards, per the blueprint.
-  "rbd-door",
   "rbd-btn",
-  "rbd-alt",
   "rbd-part",
-  "rbd-link",
   "rbd-undo__btn",
-  "rwho__face",
-  "rwho__more",
-  "rwho__span",
-  "rwho__pop-item",
+  "rbc__box", // a card's box (the Relay Board rebuild, Oct 3 2026)
+  "rbc__main", // a card's words, which open its work
+  "rbd-who__face",
+  "jtd-btn", // the Journal's Today: Keep for today, Save to my journal
+  "jtd-input",
+  "fm__head", // the floor map’s one line on the Board
+  "rbn__pill", // "● 2 new" in the header
   "rtk-list", // the Tracker's lists
-  "rsc-btn", // Opening and Close out
   "rak-tile", // the Ask sheet's six tiles
   "rak-when", // its day and time
-  "rbd-ask", // Ask the team, behind Help a teammate
-  "ds__cover", // I need cover, on the day strip
   "sh__client-ask", // Ask the team about this client
   "ne__suggest-use",
   "rls__chip",
@@ -281,8 +269,6 @@ const TAP_CLASSES = [
   // The one header (Relay room, Sep 28 2026): 44px, as a bar's controls are.
   "msh__sect",
   "msh__tab",
-  "msh__now",
-  "msh__track",
   "msh__ask",
   "msh__plus",
   "msh__pop-item",
@@ -357,17 +343,12 @@ const BUTTON_CLASSES = [
   "pl__btn",
   "msh__ask",
   "msh__tab",
-  "msh__track",
   "msh__pop-item",
   "rbd-btn",
   "rbd-part",
   "rbd-undo__btn",
-  "rwho__face",
   "rtk-list",
-  "rsc-btn",
   "rak-tile",
-  "rbd-ask",
-  "ds__cover",
   "sh__client-ask",
   "tj-open",
   "tj-done__toggle",

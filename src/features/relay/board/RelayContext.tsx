@@ -65,6 +65,14 @@ export interface RelayContextValue {
    * filled in (board/ask.ts). The shell holds the sheet; absent outside it.
    */
   openAsk?: (preset?: AskPreset) => void;
+  /**
+   * The header's two slots the Board fills (the Relay Board rebuild, Oct 3
+   * 2026; AJ: "Tabs are the header"): `news`, in the bar, for "● 2 new"
+   * (Since you were in), and `subhead`, the bar under it, for the parts of
+   * the day. The shell draws them empty; absent outside it, the Board draws
+   * both in its own body.
+   */
+  slots?: { news: HTMLElement | null; subhead: HTMLElement | null };
 }
 
 const RelayCtx = createContext<RelayContextValue | null>(null);

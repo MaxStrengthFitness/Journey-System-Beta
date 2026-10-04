@@ -86,8 +86,7 @@ vi.mock("firebase/firestore", () => {
 });
 
 import { ToastProvider } from "../../../contexts/ToastContext";
-import { DayStrip } from "./NowBar";
-import { nowContext, type NowSession } from "./now-context";
+import { nowContext } from "./now-context";
 import { RelayProvider, type PanelContent, type RelayContextValue } from "./RelayContext";
 import { PlannerView } from "../PlannerView";
 import { MyStudioView } from "../../my-studio/MyStudioView";
@@ -125,56 +124,6 @@ afterEach(() => {
   mounted = null;
   host = null;
   document.body.innerHTML = "";
-});
-
-const session = (id: string, clientName: string, startMin: number, endMin: number): NowSession => ({
-  id,
-  clientId: id,
-  clientName,
-  startMin,
-  endMin,
-  status: "Scheduled",
-});
-
-describe("the opened day strip", () => {
-  it("lists each session with the client's whole name and times, in view rather than on hover", async () => {
-    const sessions = [
-      session("a", "Margaret Ellsworth-Van Buren", 7 * 60, 7 * 60 + 30),
-      session("b", "Sam Lee", 9 * 60, 9 * 60 + 30),
-    ];
-    // 9:10: the first session is past, the second is under way.
-    const h = await render(<DayStrip now={nowContext(sessions, 9 * 60 + 10, "2026-09-27")} />);
-    const items = [...h.querySelectorAll(".ds__item")];
-    expect(items).toHaveLength(2);
-    expect(items[0].textContent).toContain("Margaret Ellsworth-Van Buren");
-    expect(items[0].textContent).toContain("7:00 AM to 7:30 AM");
-    expect(items[0].classList.contains("ds__item--past")).toBe(true);
-    // A past session is dimmed, never called done (a booking is done when Journey logged it).
-    expect(items[0].textContent).not.toMatch(/done/i);
-    expect(items[1].textContent).toContain("Sam Lee");
-    expect(items[1].textContent).toContain("Now");
-    // Nothing is left only in a tooltip.
-    expect(h.querySelectorAll("[title]")).toHaveLength(0);
-    expect(h.querySelector(".ds__list")?.getAttribute("aria-label")).toBe("Your sessions today, 2");
-  });
-
-  it("offers I need cover on a session still to come, and only there (Relay room, Sep 28 2026)", async () => {
-    const sessions = [session("a", "Odo Proudfoot", 7 * 60, 7 * 60 + 30), session("b", "Hamfast Gamgee", 16 * 60, 16 * 60 + 30)];
-    const onNeedCover = vi.fn();
-    const h = await render(<DayStrip now={nowContext(sessions, 9 * 60, "2026-09-28")} onNeedCover={onNeedCover} />);
-    const items = [...h.querySelectorAll(".ds__item")];
-    expect(items[0].querySelector(".ds__cover")).toBeNull();
-    const cover = items[1].querySelector<HTMLButtonElement>(".ds__cover");
-    expect(cover?.getAttribute("aria-label")).toBe("I need cover for Hamfast Gamgee at 4:00 PM");
-    await act(async () => cover!.click());
-    expect(onNeedCover).toHaveBeenCalledWith(sessions[1]);
-  });
-
-  it("says the day is a gap and lists nothing when there are no sessions", async () => {
-    const h = await render(<DayStrip now={nowContext([], 9 * 60, "2026-09-27")} />);
-    expect(h.textContent).toContain("The whole day is a gap");
-    expect(h.querySelector(".ds__list")).toBeNull();
-  });
 });
 
 describe("the Context Panel, and nothing floating over it", () => {

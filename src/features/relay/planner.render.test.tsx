@@ -185,63 +185,48 @@ describe("My Studio", () => {
     vi.useRealTimers();
   });
 
-  it("mounts on the Board: Right now, the five doors, the dealt card, Just now, and Floor work's lanes behind its door", async () => {
+  it("mounts on the Board: the parts of the day under the header, the four columns, and Just now (the Relay Board rebuild, Oct 3 2026)", async () => {
     const h = await mount(lead);
     expect(h.textContent).toContain("My Studio");
     expect(h.textContent).toContain("Relay");
     // The teammates line is "Just now" (it was "Pulse", the living assessment's name, until Sep 27 2026).
     expect(h.textContent).toContain("Just now");
-    expect(h.textContent).toContain("No sessions on your schedule");
-    // Right now won't guess how busy the floor is from a list with nothing on it.
-    expect(h.querySelector(".rbd-lens")?.textContent).toContain("Relay isn't saying how busy the floor is");
-    const doors = [...h.querySelectorAll(".rbd-door .rbd-door__label")].map((d) => d.textContent);
-    expect(doors).toEqual(["Floor work", "Desk work", "Help a teammate", "From leadership", "My work"]);
-    expect(h.textContent).toContain("Dealt to you");
-    expect(h.textContent).toContain("Nothing waiting on the floor.");
-    // Behind Floor work: the shift rings, the floor map and the team jobs, unchanged.
-    expect(h.textContent).toContain("Behind Floor work");
-    expect(h.querySelectorAll(".shr__ring")).toHaveLength(3);
-    expect(h.textContent).toContain("The floor");
-    expect(h.textContent).toContain("Team jobs");
-    expect(h.textContent).toContain("Post a job");
+    // The parts of the day live in the bar under the header, not in the Board's body.
+    const parts = [...h.querySelectorAll(".msh-sub [role='tab']")].map((t) => t.textContent?.replace(/[0-9/✓]+$/, ""));
+    expect(parts).toEqual(["Opening", "Between clients", "Close", "This week"]);
+    // Nothing on the empty database: each part says so, and how to add to it.
+    expect(h.querySelector(".rbd-empty")?.textContent).toContain("Add a studio task or a team job with +.");
+    // The doors, the dealt card and the lanes behind them are gone.
+    expect(h.querySelector(".rbd-door")).toBeNull();
+    expect(h.textContent).not.toContain("Dealt to you");
+    // What's new rides in the header.
+    expect(h.querySelector(".msh__news .rbn__pill")?.textContent).toBe("All read");
   });
 
-  it("opens each door on a tap and shows what sits behind it, with the way back to Relay's pick", async () => {
+  it("switches the part of the day from the bar under the header", async () => {
     const h = await mount(lead);
-    const door = (label: string) => [...h.querySelectorAll<HTMLButtonElement>(".rbd-door")].find((d) => d.textContent?.includes(label));
-    await click(door("Help a teammate"));
-    expect(door("Help a teammate")?.getAttribute("aria-pressed")).toBe("true");
-    expect(h.textContent).toContain("Behind Help a teammate");
-    expect(h.textContent).toContain("Asks from teammates");
-    expect(h.textContent).toContain("You opened Help a teammate.");
-    await click(door("From leadership"));
-    expect(h.textContent).toContain("Behind From leadership");
-    expect(h.textContent).toContain("No initiatives from the studio's leaders right now.");
-    await click(door("Desk work"));
-    expect(h.textContent).toContain("Behind Desk work");
-    await click(door("My work"));
-    expect(h.textContent).toContain("Nothing on the board has your name on it right now.");
-    await click([...h.querySelectorAll("button")].find((b) => b.textContent?.includes("Back to Relay's pick")));
-    expect(h.textContent).toContain("Behind Floor work");
+    const tabIn = (name: string) => [...h.querySelectorAll<HTMLButtonElement>(".msh-sub [role='tab']")].find((t) => t.textContent?.startsWith(name));
+    await click(tabIn("This week"));
+    expect(tabIn("This week")?.getAttribute("aria-selected")).toBe("true");
+    expect(h.querySelector(".rbd-status")?.textContent).toContain("This week");
+    await click(tabIn("Opening"));
+    expect(h.querySelector(".rbd-status")?.textContent).toContain("Opening");
   });
 
-  it("unfolds the day strip from the gap meter", async () => {
+  it("has one header: the section and its menu, Relay's tabs, the day, Ask and +, and the bar the Board fills under it (Oct 3 2026)", async () => {
     const h = await mount(lead);
-    await click(h.querySelector('[aria-controls="relay-daystrip"]'));
-    expect(h.textContent).toContain("The whole day is a gap");
-  });
-
-  it("has one header: the section and its menu, Relay's tabs, the time, Tracking, Ask and + (Relay room, Sep 28 2026)", async () => {
-    const h = await mount(lead);
-    // One bar, not three: no masthead, no second row of Relay tabs, no Now Bar.
+    // One bar, not three: no masthead, no Now Bar; under it only the sub-bar the Board fills.
     expect(h.querySelectorAll("header.msh")).toHaveLength(1);
     expect(h.querySelector(".pl__mast")).toBeNull();
-    expect(h.querySelector(".pl__subbar")).toBeNull();
+    expect(h.querySelectorAll(".pl__subbar")).toHaveLength(1);
     expect(h.querySelector(".rnb")).toBeNull();
     expect(currentSection()).toBe("Relay");
     expect(await sectionNames()).toEqual(["Relay", "Openings", "Machines", "Team", "Studio"]);
     expect([...h.querySelectorAll('[role="tablist"][aria-label="Relay"] [role="tab"]')].map((t) => t.textContent)).toEqual(["Board", "Tracker", "Journal"]);
-    expect(h.querySelector(".msh__track")?.textContent).toBe("Tracking: nothing yet");
+    // The time button and Tracking went in the Relay Board rebuild (AJ, Oct 3 2026: "Drop both").
+    expect(h.querySelector(".msh__now")).toBeNull();
+    expect(h.querySelector(".msh__track")).toBeNull();
+    expect(h.querySelector(".msh__day")?.textContent).toBeTruthy();
     // "Just now" is a still list on the Board, with nothing ticking.
     expect(h.querySelector(".rjn")?.textContent).toContain("Quiet so far today.");
     // A leader's + holds the studio task and the team job beside their own things.
@@ -285,6 +270,10 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("Someday · Growth");
     expect(h.textContent).toContain("New reminder");
     await click(tab("Journal"));
+    // The Journal opens on Today (the Relay Board rebuild, Oct 3 2026): what to carry, and the day's one line.
+    expect(h.textContent).toContain("Things to carry today");
+    expect(h.textContent).toContain("One line for yourself");
+    await click(tab("Notes"));
     expect(h.textContent).toContain("New note");
     await openSection("Team");
     expect(h.textContent).toContain("Your team");
@@ -307,7 +296,7 @@ describe("My Studio", () => {
     expect(tab("Board")).toBeUndefined();
     await openSection("Relay");
     await click(tab("Board"));
-    expect(h.textContent).toContain("Dealt to you");
+    expect(h.querySelector(".rbd-status")).not.toBeNull();
   });
 
   it("mounts the Studio section for a leader: details, sync, the studio's day, renewals and announcements", async () => {
@@ -430,6 +419,7 @@ describe("My Studio", () => {
   it("opens a new note, the task wizard and the job composer", async () => {
     const h = await mount(lead);
     await click(tab("Journal"));
+    await click(tab("Notes"));
     await click([...h.querySelectorAll("button")].find((b) => b.textContent?.includes("New note")));
     expect(document.body.textContent).toContain("Working notes");
     expect(document.body.textContent).toContain("Share with colleagues");
@@ -446,10 +436,16 @@ describe("My Studio", () => {
   it("writes in the Journal: six types with their templates, the shelves, the day logs and the Studio shelf (the second wave)", async () => {
     const h = await mount(trainer);
     await click(tab("Journal"));
+    // The Journal comes back to where you were on it; Today is its first tab.
+    await click(tab("Today"));
+    // Today holds the Write row; the shelves are under Notes; Day logs, On this day and the Studio shelf are tabs (Oct 3 2026).
     expect([...h.querySelectorAll(".jn-type__h")].map((b) => b.textContent)).toEqual(["Client", "Machine", "Protocol", "Research", "Trend", "Personal"]);
+    expect([...h.querySelectorAll(".msh-sub [role='tab']")].map((t) => t.textContent?.replace(/\d+$/, ""))).toEqual(["Today", "Notes", "Day logs", "On this day", "Studio shelf"]);
+    await click(tab("Notes"));
     const shelves = [...h.querySelectorAll(".jn-shelf")].map((b) => b.textContent ?? "");
     expect(shelves.some((t) => t.startsWith("Trends · hunches"))).toBe(true);
-    expect(shelves.some((t) => t.startsWith("Studio shelf"))).toBe(true);
+    await click(tab("Journal"));
+    await click(tab("Today"));
 
     // A Machine note: its three lines, its body as "more", and the Studio shelf rather than a client's record.
     await click([...h.querySelectorAll<HTMLButtonElement>(".jn-type")].find((b) => b.textContent?.startsWith("Machine")));
@@ -470,9 +466,9 @@ describe("My Studio", () => {
     expect(document.body.textContent).toContain("The sample that would show it");
     expect(document.body.textContent).toContain("Save the hunch, then add evidence each time you see it.");
 
-    await click([...h.querySelectorAll<HTMLButtonElement>(".jn-shelf")].find((b) => b.textContent?.startsWith("Day logs")));
+    await click(tab("Day logs"));
     expect(h.textContent).toContain("No day logs yet");
-    await click([...h.querySelectorAll<HTMLButtonElement>(".jn-shelf")].find((b) => b.textContent?.startsWith("Studio shelf")));
+    await click(tab("Studio shelf"));
     expect(h.textContent).toContain("Nothing on the Studio shelf yet");
   });
 

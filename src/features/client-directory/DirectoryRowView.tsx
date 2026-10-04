@@ -28,7 +28,7 @@ export interface DirectoryMark {
   label: string;
 }
 
-export type ExtraColumn = "total" | "age" | "height";
+export type ExtraColumn = "renews" | "total" | "age" | "height";
 
 /** A field's text with the matched letters marked. */
 export function Highlighted({ text, ranges }: { text: string; ranges?: Range[] }) {
@@ -207,6 +207,9 @@ export function DirectoryRowView({
       <Cell label="Last in" value={row.lastIn.text} sub={row.lastIn.sub} reason={row.lastIn.reason} state={row.lastIn.state} sorted={sortKey === "lastIn"} />
       <Cell label="Next" value={row.next.text} sub={row.next.sub} reason={row.next.reason} state={row.next.state} sorted={sortKey === "next"} />
       <Cell label="Left" value={row.left.text} sub={row.left.sub} reason={row.left.reason} state={row.left.state} sorted={sortKey === "left"} />
+      {wide.has("renews") && (
+        <Cell extra label="Renewal" value={row.renews.text} sub={row.renews.sub} reason={row.renews.reason} state={row.renews.state} sorted={sortKey === "renews"} />
+      )}
       {wide.has("total") && (
         <Cell extra label="Total" value={row.total.text} sub={row.total.sub} reason={row.total.reason} state={row.total.state} sorted={sortKey === "total"} />
       )}

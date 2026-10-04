@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
 /**
- * THE ONE HEADER, MOUNTED (Relay room, Sep 28 2026): the section and its
- * menu, Relay's tabs, the time, Tracking, Ask and +, drawn by StudioHeader
- * on its own (MyStudioView mounts it for real in relay/planner.render.test).
+ * THE ONE HEADER, MOUNTED (Relay room, Sep 28 2026; made calm in the Relay
+ * Board rebuild, Oct 3 2026): the section and its menu, Relay's tabs, the
+ * day, the slot for what's new, Ask and +, drawn by StudioHeader on its own
+ * (MyStudioView mounts it for real in relay/planner.render.test).
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { CalendarRange, Dumbbell, LayoutGrid, ListChecks, Settings2, StickyNote, UserRound, Users, Zap } from "lucide-react";
-import { nowContext, type NowSession } from "../relay/board/now-context";
-import { StudioHeader, nextLine, type HeaderSection } from "./StudioHeader";
+import { StudioHeader, type HeaderSection } from "./StudioHeader";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -26,15 +26,6 @@ const TABS = [
   { id: "notes" as const, label: "Journal", icon: StickyNote },
 ];
 
-const session = (id: string, clientName: string, startMin: number, endMin: number): NowSession => ({
-  id,
-  clientId: id,
-  clientName,
-  startMin,
-  endMin,
-  status: "Scheduled",
-});
-
 let root: Root | null = null;
 let host: HTMLElement | null = null;
 
@@ -47,7 +38,7 @@ afterEach(() => {
 });
 
 function render(props: Partial<Parameters<typeof StudioHeader<"floor" | "mine" | "notes">>[0]> = {}) {
-  const calls = { section: vi.fn(), tab: vi.fn(), day: vi.fn(), ask: vi.fn(), show: vi.fn(), stop: vi.fn(), todo: vi.fn() };
+  const calls = { section: vi.fn(), tab: vi.fn(), ask: vi.fn(), todo: vi.fn(), slot: vi.fn() };
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
@@ -61,14 +52,9 @@ function render(props: Partial<Parameters<typeof StudioHeader<"floor" | "mine" |
           relayTabs={TABS}
           relayTab="floor"
           onRelayTab={calls.tab}
-          now={nowContext([session("a", "Barliman Butterbur", 14 * 60 + 40, 15 * 60 + 10)], 14 * 60 + 18, "2026-09-28")}
-          dayOpen={false}
-          onToggleDay={calls.day}
           studioName="Westlake"
           todayLabel="Mon, Sep 28"
-          tracked={null}
-          onShowTracked={calls.show}
-          onStopTracking={calls.stop}
+          newsSlot={calls.slot}
           onAsk={calls.ask}
           plusItems={[{ id: "todo", label: "A to-do for me", icon: ListChecks, onSelect: calls.todo }]}
           {...props}
@@ -85,8 +71,8 @@ function click(el: Element | null | undefined) {
 }
 
 describe("the one header", () => {
-  it("on Relay: the section, Relay's tabs, the time, Tracking, Ask and +, in one bar", () => {
-    const { h } = render();
+  it("on Relay: the section, Relay's tabs, the day, what's new, Ask and +, in one calm bar", () => {
+    const { h, calls } = render();
     const bar = h.querySelector("header.msh");
     expect(bar).not.toBeNull();
     expect(bar!.querySelectorAll("header")).toHaveLength(0);
@@ -97,10 +83,14 @@ describe("the one header", () => {
     const tabs = [...h.querySelectorAll('[role="tablist"][aria-label="Relay"] [role="tab"]')].map((t) => t.textContent);
     expect(tabs).toEqual(["Board", "Tracker", "Journal"]);
     expect(h.querySelector("#pl-tab-floor")?.getAttribute("aria-selected")).toBe("true");
-    expect(h.querySelector(".msh__now")?.textContent).toContain("Mid shift");
-    expect(h.querySelector(".msh__now")?.textContent).toContain("22 min free");
-    expect(h.querySelector(".msh__now")?.textContent).toContain("Next: Barliman Butterbur at 2:40 PM");
-    expect(h.querySelector(".msh__track")?.textContent).toBe("Tracking: nothing yet");
+    expect(h.querySelector(".msh__day")?.textContent).toBe("Mon, Sep 28");
+    // The Board draws "● 2 new" into this slot; the bar hands it over.
+    const slot = h.querySelector(".msh__news");
+    expect(slot).not.toBeNull();
+    expect(calls.slot).toHaveBeenCalledWith(slot);
+    // The time button and Tracking went (AJ, Oct 3 2026: "Drop both").
+    expect(h.querySelector(".msh__now")).toBeNull();
+    expect(h.querySelector(".msh__track")).toBeNull();
     expect(h.querySelector(".msh__ask")?.textContent).toBe("Ask");
     expect(h.querySelector(".msh__plus")?.getAttribute("aria-label")).toBe("Add something just for you");
     // Nothing in the bar carries its words only in a tooltip.
@@ -135,38 +125,13 @@ describe("the one header", () => {
     expect(document.activeElement).toBe(btn);
   });
 
-  it("unfolds the day strip from the time, and switches Relay's tab", () => {
+  it("switches Relay's tab", () => {
     const { h, calls } = render();
-    const now = h.querySelector(".msh__now");
-    expect(now?.getAttribute("aria-controls")).toBe("relay-daystrip");
-    click(now);
-    expect(calls.day).toHaveBeenCalledTimes(1);
     click(h.querySelector("#pl-tab-mine"));
     expect(calls.tab).toHaveBeenCalledWith("mine");
     // The tab already showing does nothing.
     click(h.querySelector("#pl-tab-floor"));
     expect(calls.tab).toHaveBeenCalledTimes(1);
-  });
-
-  it("follows the job you took, with its count, and offers to show it or stop tracking", () => {
-    const { h, calls } = render({ tracked: { id: "group:deep:any", title: "Deep clean", done: 1, total: 3 } });
-    const chip = h.querySelector(".msh__track");
-    expect(chip?.classList.contains("msh__track--on")).toBe(true);
-    expect(chip?.textContent).toBe("Tracking: Deep clean · 1 of 3");
-    click(chip);
-    const dialog = h.querySelector('[role="dialog"][aria-label="Tracking"]');
-    expect(dialog?.textContent).toContain("Deep clean");
-    click([...dialog!.querySelectorAll("button")].find((b) => b.textContent?.includes("Show it")));
-    expect(calls.show).toHaveBeenCalled();
-    click(chip);
-    click([...h.querySelectorAll('[role="dialog"] button')].find((b) => b.textContent?.includes("Stop tracking")));
-    expect(calls.stop).toHaveBeenCalled();
-  });
-
-  it("says what Tracking is for while nothing is taken", () => {
-    const { h } = render();
-    click(h.querySelector(".msh__track"));
-    expect(h.querySelector('[role="dialog"]')?.textContent).toContain("Take a job on the Board and it rides along here");
   });
 
   it("asks the team from Ask, and keeps your own things behind +", () => {
@@ -181,24 +146,13 @@ describe("the one header", () => {
     expect(calls.todo).toHaveBeenCalled();
   });
 
-  it("on another section: the section and the studio's day, Ask and +, and no Relay tabs or time", () => {
+  it("on another section: the section and the studio's day, Ask and +, and no Relay tabs", () => {
     const { h } = render({ shown: "machines" });
     expect(h.querySelector(".msh__sect-name")?.textContent).toBe("Machines");
     expect(h.querySelector("#ms-tab-machines")).not.toBeNull();
     expect(h.querySelector('[role="tablist"]')).toBeNull();
-    expect(h.querySelector(".msh__now")).toBeNull();
-    expect(h.querySelector(".msh__track")).toBeNull();
+    expect(h.querySelector(".msh__news")).toBeNull();
     expect(h.querySelector(".msh__where")?.textContent).toBe("Westlake · Mon, Sep 28");
     expect(h.querySelector(".msh__ask")).not.toBeNull();
-  });
-});
-
-describe("the time's second line", () => {
-  it("names the session under way, the next one, or what the day holds", () => {
-    const s = [session("a", "Barliman Butterbur", 14 * 60 + 40, 15 * 60 + 10)];
-    expect(nextLine(nowContext(s, 14 * 60 + 50, "2026-09-28"))).toBe("Now: Barliman Butterbur until 3:10 PM");
-    expect(nextLine(nowContext(s, 14 * 60, "2026-09-28"))).toBe("Next: Barliman Butterbur at 2:40 PM");
-    expect(nextLine(nowContext(s, 16 * 60, "2026-09-28"))).toBe("1 of 1 sessions done");
-    expect(nextLine(nowContext([], 16 * 60, "2026-09-28"))).toBe("No sessions on your schedule");
   });
 });

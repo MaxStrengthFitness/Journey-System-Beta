@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowRightLeft,
   Bell,
@@ -52,7 +53,6 @@ import { MyCaseEditor } from "./MyCaseEditor";
 import type { StoredCase } from "../admin/journey/case-store";
 import { buildTracker, TRACKER_LISTS, type HandedItem, type TakenItem, type TrackerList } from "./tracker";
 import { minutesToClock, shiftHoursOf, studioMinutesNow } from "./board/now-context";
-import { trackedChipWords, untrack, useTracked } from "./board/tracked";
 import { UndoBar } from "./board/Board";
 import { forgetOnSignOut } from "../sign-out/memory";
 import "./tracker.css";
@@ -68,9 +68,13 @@ import "./tracker.css";
  *   Today       Handed to you · Now · Follow-ups · Closing
  *   Coming up · Anytime · Someday · Growth · Done
  *
- * On the left (above, upright): what you are tracking (the header's chip,
- * with its door), your lists with their counts, and + To-do, + Reminder and
- * All my tasks.
+ * The lists are the tabs in the bar under the header, as the Board's parts
+ * of the day are (the Relay Board rebuild, Oct 3 2026: "the same cards and
+ * type"), with their counts; + To-do, New reminder and All my tasks sit on
+ * the list's first line. Each row is drawn as the Board's card: the same
+ * box, the same type, the same corners (tracker.css). What you were
+ * tracking went with the header's Tracking chip (AJ, Oct 3 2026: "Drop
+ * both"): a job you took says so on its own row, here and on the Board.
  *
  * Nothing new is stored. Personal tasks have lived at trainers/{uid}/task*
  * since the Settings-tiers round, private by path; asks, chores and team
@@ -188,8 +192,6 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
   const [undo, setUndo] = useState<{ key: number; label: string; run: () => Promise<unknown> | void } | null>(null);
   const offerUndo = (label: string, run: () => Promise<unknown> | void) => setUndo({ key: Date.now(), label, run });
   const clearUndo = useCallback(() => setUndo(null), []);
-
-  const tracked = useTracked(activeStudioId ?? null, todayKey);
 
   /* ---------------- writes ---------------- */
 
@@ -713,110 +715,94 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
   const heading = TRACKER_LISTS.find((l) => l.id === list)?.label ?? "Today";
   const todayWords = formatStudioDate(todayKey ? `${todayKey}T12:00:00` : new Date(), { weekday: "long", month: "long", day: "numeric" });
 
+  const tabs = (
+    <div className="pl__tabs rbt" role="tablist" aria-label="Your lists">
+      {TRACKER_LISTS.map((l) => {
+        const Icon = LIST_ICON[l.id];
+        return (
+          <button
+            key={l.id}
+            type="button"
+            role="tab"
+            className="pl__tab rbt__tab rtk-list"
+            aria-selected={list === l.id}
+            aria-controls="rtk-panel"
+            onClick={() => setList(l.id)}
+          >
+            <Icon size={16} aria-hidden />
+            <span className="rtk-list__t">{l.label}</span>
+            <span className="rbt__n rtk-list__n">{tracker.counts[l.id]}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+  const subhead = relay?.slots?.subhead ?? null;
+
   return (
     <div className="st">
+      {subhead ? createPortal(tabs, subhead) : tabs}
       <div className="st__scroll touch-pane">
         <div className="rtk">
-          <div className="rtk-in">
-          <aside className="rtk-rail" aria-label="Your lists">
-            <div className={`rtk-box${tracked ? " rtk-box--on" : ""}`}>
-              <h2 className="pl__h2 rtk-box__h">
-                <Crosshair size={14} aria-hidden /> Tracking
-              </h2>
-              {tracked ? (
-                <>
-                  <p className="rtk-box__t">{trackedChipWords(tracked).replace(/^Tracking: /, "")}</p>
-                  <div className="rtk-acts">
-                    {relay?.openRelayTab && (
-                      <button type="button" className="pl__btn" onClick={() => relay.openRelayTab?.("floor")}>
-                        Show it on the Board
-                      </button>
-                    )}
-                    <button type="button" className="pl__btn" onClick={() => untrack(activeStudioId ?? null, todayKey)}>
-                      Stop tracking
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <p className="rtk-box__none">Nothing yet. Take a job on the Board and it rides along here and in the header until it's done.</p>
-              )}
-            </div>
-
-            <nav className="rtk-lists" aria-label="My lists">
-              {TRACKER_LISTS.map((l) => {
-                const Icon = LIST_ICON[l.id];
-                return (
-                  <button key={l.id} type="button" className="rtk-list" aria-pressed={list === l.id} onClick={() => setList(l.id)}>
-                    <Icon size={17} aria-hidden />
-                    <span className="rtk-list__t">{l.label}</span>
-                    <span className="rtk-list__n">{tracker.counts[l.id]}</span>
-                  </button>
-                );
-              })}
-            </nav>
-
-            <div className="rtk-acts rtk-rail__acts">
-              <button
-                type="button"
-                className="pl__btn"
-                disabled={!ownerId || !activeStudioId}
-                onClick={() => {
-                  if (relay) {
-                    relay.openCapture({ destination: "me" });
-                    return;
-                  }
-                  setIntent({ mode: "new", scope: "personal" });
-                  setManaging(true);
-                }}
-              >
-                <Plus size={14} aria-hidden />
-                To-do
-              </button>
-              <button
-                type="button"
-                className="pl__btn"
-                disabled={!ownerId || !activeStudioId}
-                onClick={() => {
-                  const preset = reminderPreset(todayKey, new Date());
-                  if (relay) {
-                    relay.openCapture({ destination: "me", time: preset.timeOfDay ?? null, remindMinutesBefore: 0 });
-                    return;
-                  }
-                  setIntent({ mode: "new", scope: "personal", preset });
-                  setManaging(true);
-                }}
-              >
-                <BellPlus size={14} aria-hidden />
-                New reminder
-              </button>
-              <button
-                type="button"
-                className="pl__btn"
-                disabled={!ownerId || !activeStudioId}
-                onClick={() => {
-                  setIntent(null);
-                  setManaging(true);
-                }}
-              >
-                <Repeat size={14} aria-hidden />
-                All my tasks{repeating.length > 0 ? ` (${repeating.length})` : ""}
-              </button>
-            </div>
-          </aside>
-
-          <section className="rtk-main" aria-label={heading}>
-            <div className="pl__panel-head">
-              <div className="pl__panel-titles">
+          <section className="rtk-main" id="rtk-panel" role="tabpanel" aria-label={heading}>
+            <div className="rtk-top">
+              <div className="rtk-top__words">
                 <h2 className="pl__h2">{heading}</h2>
                 <p className="pl__sub">
                   {list === "today" ? `${todayWords} · sorted by when. ` : ""}Your own to-dos are yours alone. Each belongs to the studio you added it at: this is {studioName}'s.
                 </p>
               </div>
+              <div className="rtk-acts">
+                <button
+                  type="button"
+                  className="pl__btn"
+                  disabled={!ownerId || !activeStudioId}
+                  onClick={() => {
+                    if (relay) {
+                      relay.openCapture({ destination: "me" });
+                      return;
+                    }
+                    setIntent({ mode: "new", scope: "personal" });
+                    setManaging(true);
+                  }}
+                >
+                  <Plus size={14} aria-hidden />
+                  To-do
+                </button>
+                <button
+                  type="button"
+                  className="pl__btn"
+                  disabled={!ownerId || !activeStudioId}
+                  onClick={() => {
+                    const preset = reminderPreset(todayKey, new Date());
+                    if (relay) {
+                      relay.openCapture({ destination: "me", time: preset.timeOfDay ?? null, remindMinutesBefore: 0 });
+                      return;
+                    }
+                    setIntent({ mode: "new", scope: "personal", preset });
+                    setManaging(true);
+                  }}
+                >
+                  <BellPlus size={14} aria-hidden />
+                  New reminder
+                </button>
+                <button
+                  type="button"
+                  className="pl__btn"
+                  disabled={!ownerId || !activeStudioId}
+                  onClick={() => {
+                    setIntent(null);
+                    setManaging(true);
+                  }}
+                >
+                  <Repeat size={14} aria-hidden />
+                  All my tasks{repeating.length > 0 ? ` (${repeating.length})` : ""}
+                </button>
+              </div>
             </div>
             {readsFailed && <p className="sh__loading">Some of your list couldn't be loaded, so it may be missing things. Check your connection.</p>}
             {loading && rows.length === 0 ? <p className="sh__loading">Loading today…</p> : lists[list]()}
           </section>
-          </div>
         </div>
       </div>
 

@@ -124,7 +124,6 @@ import { ToastProvider } from "../../contexts/ToastContext";
 import { MyTasksPanel } from "./MyTasksPanel";
 import { RelayProvider, type RelayContextValue } from "./board/RelayContext";
 import { nowContext } from "./board/now-context";
-import { readTracked, resetTracked, trackItem } from "./board/tracked";
 import { forgetPersonalMemory } from "../sign-out/memory";
 import { BEREGOND, GLORFINDEL, IORETH, MABLUNG, TODAY, ask, job, row, template, trainerDoc } from "./board/fixtures";
 
@@ -134,7 +133,6 @@ let host: HTMLElement | null = null;
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date(`${TODAY}T14:18:00-04:00`));
-  resetTracked();
   forgetPersonalMemory();
   Object.assign(state, { uid: IORETH.id, rows: [], templates: [], open: [], resolved: [], jobs: [], cases: [], casesFailed: false, failed: false, updates: [], adds: [], calls: [] });
 });
@@ -222,7 +220,7 @@ describe("the Tracker", () => {
     // A leader's assignment is simply yours: Done or I can't, never "Take it".
     expect(button(handed, "Take it")).toBeUndefined();
     expect(inSection("rtk-now")?.textContent).toContain("You took it on the Board");
-    expect(list("Today")?.getAttribute("aria-pressed")).toBe("true");
+    expect(list("Today")?.getAttribute("aria-selected")).toBe("true");
     expect(list("Today")?.querySelector(".rtk-list__n")?.textContent).toBe("5");
   });
 
@@ -342,23 +340,12 @@ describe("the Tracker", () => {
     act(() => root?.unmount());
     host?.remove();
     await render();
-    expect(list("Done")?.getAttribute("aria-pressed")).toBe("true");
+    expect(list("Done")?.getAttribute("aria-selected")).toBe("true");
     act(() => root?.unmount());
     host?.remove();
     forgetPersonalMemory();
     await render();
-    expect(list("Today")?.getAttribute("aria-pressed")).toBe("true");
-  });
-
-  it("carries what you are tracking, with a door to the Board and a way to stop", async () => {
-    trackItem("s1", TODAY, { id: "group:wipe-down:any", title: "Wipe-down round", done: 1, total: 3 });
-    const { relay } = await render();
-    expect(document.querySelector(".rtk-box__t")?.textContent).toBe("Wipe-down round · 1 of 3");
-    await click(button(document.querySelector(".rtk-box"), "Show it on the Board"));
-    expect(relay.openRelayTab).toHaveBeenCalledWith("floor");
-    await click(button(document.querySelector(".rtk-box"), "Stop tracking"));
-    expect(readTracked("s1", TODAY)).toBeNull();
-    expect(document.querySelector(".rtk-box__none")?.textContent).toContain("Take a job on the Board");
+    expect(list("Today")?.getAttribute("aria-selected")).toBe("true");
   });
 
   it("never calls a list empty when a read failed", async () => {

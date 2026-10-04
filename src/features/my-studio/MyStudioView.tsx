@@ -15,13 +15,12 @@ import { mayReadWeeks } from "../standing-week/present";
 import { peekPlannerIntent } from "../relay/intent";
 import { RelayProvider, useRelay, type PanelContent, type RelayContextValue } from "../relay/board/RelayContext";
 import { leadsHere } from "../relay/leads";
-import { DayStrip, useNowContext } from "../relay/board/NowBar";
+import { useNowContext } from "../relay/board/NowBar";
 import { ContextPanel } from "../relay/board/ContextPanel";
 import { CaptureSheet } from "../relay/board/CaptureSheet";
 import type { CapturePreset } from "../relay/board/capture";
 import { AskSheet } from "../relay/board/AskSheet";
-import { coverPresetOf, type AskPreset } from "../relay/board/ask";
-import { untrack, useTracked } from "../relay/board/tracked";
+import type { AskPreset } from "../relay/board/ask";
 import { StudioHeader, type HeaderMenuItem, type HeaderSection } from "./StudioHeader";
 import "../studio-tasks/studio-tasks.css";
 import "../studio-tasks/studio-hub.css";
@@ -63,7 +62,10 @@ import { onMyStudioSectionRequest, rememberMyStudioSection, rememberedMyStudioSe
  * THE ONE HEADER (Relay room, Sep 28 2026, the redesign's phase 1). My
  * Studio's masthead, Relay's tabs and the Now Bar were three bars; they are
  * one (StudioHeader): the section, whose menu holds the five; on Relay its
- * tabs, the time (tap for the day strip) and Tracking; then Ask and +. The
+ * tabs, the day and what's new; then Ask and +. Under it on Relay, the
+ * sub-bar the Board fills with the parts of the day (the Relay Board
+ * rebuild, Oct 3 2026, AJ: "Tabs are the header"); the time button and
+ * Tracking went with that rebuild ("Drop both"). The
  * floating Capture button went with it: Ask asks the team (the Ask sheet's
  * six typed tiles since phase 7, relay/board/AskSheet, held here beside
  * Capture and opened through RelayContext's openAsk), + is something just
@@ -232,7 +234,11 @@ export function MyStudioView({
 
   /* The clock. */
   const now = useNowContext(schedules ?? NONE, authTrainer, activeStudio?.shiftHours ?? null);
-  const [dayOpen, setDayOpen] = useState(false);
+
+  /* The header's two slots the Board fills: "● 2 new" in the bar, the parts of the day under it. */
+  const [newsEl, setNewsEl] = useState<HTMLElement | null>(null);
+  const [subheadEl, setSubheadEl] = useState<HTMLElement | null>(null);
+  const slots = useMemo(() => ({ news: newsEl, subhead: subheadEl }), [newsEl, subheadEl]);
 
   /* The two doors any card can open. */
   const [panel, setPanel] = useState<PanelContent | null>(null);
@@ -243,9 +249,6 @@ export function MyStudioView({
   const openAsk = useCallback((preset: AskPreset = {}) => setAsk({ preset }), []);
   const openPanel = useCallback((content: PanelContent) => setPanel(content), []);
   const closePanel = useCallback(() => setPanel(null), []);
-
-  /* Tracking: the one job this trainer took (relay/board/tracked.ts). */
-  const tracked = useTracked(activeStudioId ?? null, now.todayKey);
 
   // A card's door to one of Relay's tabs (the Board's Mine door ends with the
   // way to Mine), through the same guarded move as the header's.
@@ -276,6 +279,7 @@ export function MyStudioView({
       onOpenClientTask,
       openRelayTab,
       openAsk,
+      slots,
     }),
     [
       activeStudioId,
@@ -296,6 +300,7 @@ export function MyStudioView({
       onOpenClientTask,
       openRelayTab,
       openAsk,
+      slots,
     ],
   );
 
@@ -349,19 +354,15 @@ export function MyStudioView({
           relayTabs={PLANNER_TABS}
           relayTab={relayTab}
           onRelayTab={chooseTab}
-          now={now}
-          dayOpen={dayOpen}
-          onToggleDay={() => setDayOpen((v) => !v)}
           studioName={activeStudio?.name ?? "Studio"}
           todayLabel={today}
-          tracked={tracked}
-          onShowTracked={() => goToRelayTab("floor")}
-          onStopTracking={() => untrack(activeStudioId ?? null, now.todayKey)}
+          newsSlot={setNewsEl}
           onAsk={() => openAsk()}
           plusItems={plusItems}
         />
 
-        {shown === "relay" && dayOpen && <DayStrip now={now} onNeedCover={(session) => openAsk(coverPresetOf(session))} />}
+        {/* The parts of the day (or a tab's own lists), joined under the bar; empty, it takes no room. */}
+        {shown === "relay" && <div className="pl__subbar msh-sub" ref={setSubheadEl} />}
 
         <UnsavedChangesScope scope={sectionScope}>
           {shown === "relay" && (

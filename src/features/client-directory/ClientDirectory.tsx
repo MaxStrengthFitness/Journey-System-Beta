@@ -41,7 +41,7 @@ import { formatStudioDate, studioTodayKey } from "../../lib/studio-time";
 import { LoadingArea } from "../../components/LoadingMark";
 import "../trainer-profile/trainer-profile.tokens.css";
 import { buildDirectoryRows, type DirectoryRow } from "./row";
-import { SORTS, SORT_MENU, nextSortForTap, sectionRows, sortWords, type SortKey, type SortSpec } from "./buckets";
+import { SORT_MENU, nextSortForTap, sectionRows, sortWords, type SortKey, type SortSpec } from "./buckets";
 import { buildNameIndex, searchNames } from "./search";
 import { applyTokens, buildNameVocab, buildOccupationVocab, notOnFileWords, parseQuery, type Token } from "./tokens";
 import {
@@ -63,6 +63,7 @@ import { useInactiveMarks } from "../admin/journey/inactive-store";
 import { useStudioSettings } from "../studio-settings/useStudioSettings";
 import { rosterCutWords } from "../../lib/studio-roster";
 import { DirectoryRowView, type DirectoryMark, type ExtraColumn } from "./DirectoryRowView";
+import { SortPicker } from "./SortPicker";
 import { useDirectoryContext } from "./use-directory-context";
 import "./client-directory.css";
 
@@ -108,12 +109,13 @@ export interface ClientDirectoryProps {
 }
 
 type Scope = "studio" | "all";
-const EXTRA_COLUMNS: ExtraColumn[] = ["total", "age", "height"];
+const EXTRA_COLUMNS: ExtraColumn[] = ["renews", "total", "age", "height"];
 const COLUMN_WORDS: Record<string, string> = {
   client: "Client",
   lastIn: "Last in",
   next: "Next",
   left: "Left",
+  renews: "Renewal",
   total: "Total",
   age: "Age",
   height: "Height",
@@ -189,6 +191,8 @@ function sortedLead(row: DirectoryRow, key: SortKey, wide: Set<ExtraColumn>): st
       return wide.has("height") ? null : row.height.inches === null ? null : row.height.text;
     case "total":
       return wide.has("total") ? null : row.total.value === null ? null : `${row.total.text} sessions`;
+    case "renews":
+      return wide.has("renews") ? null : row.renews.day ? `${row.renews.sub ?? "Renews"} ${row.renews.text}` : null;
     case "since":
       return row.since.year === null ? null : `Since ${row.since.text}`;
     case "time":
@@ -315,7 +319,7 @@ export function ClientDirectory({
     [clients, activeStudioId, ctx.bookingsByClient],
   );
 
-  const parsedForQuery = useMemo(() => parseQuery(deferredSearch, { words: new Map() }), [deferredSearch]);
+  const parsedForQuery = useMemo(() => parseQuery(deferredSearch, { words: new Map() }, { today }), [deferredSearch, today]);
   const firstNameWord = parsedForQuery.nameText.split(/\s+/)[0] ?? "";
   const queryEnabled = (scope === "all" && canSearchAll) || !rosterReady || rosterCut;
   const remote = useStudiosNameQuery(firstNameWord, queryIds, queryEnabled && firstNameWord.length > 0);
@@ -352,7 +356,7 @@ export function ClientDirectory({
   const nameIndex = useMemo(() => buildNameIndex(rows.map((r) => ({ id: r.id, first: r.name.first, nickname: r.name.nickname, last: r.name.last }))), [rows]);
   const occupations = useMemo(() => buildOccupationVocab(rows), [rows]);
   const nameVocab = useMemo(() => buildNameVocab(rows), [rows]);
-  const parsed = useMemo(() => parseQuery(deferredSearch, occupations, { names: nameVocab, asOccupation }), [deferredSearch, occupations, nameVocab, asOccupation]);
+  const parsed = useMemo(() => parseQuery(deferredSearch, occupations, { names: nameVocab, asOccupation, today }), [deferredSearch, occupations, nameVocab, asOccupation, today]);
   // A search finds an inactive client too; otherwise she is shown only behind the Inactive chip.
   const searching = parsed.tokens.length > 0 || !!parsed.nameText.trim();
   const listed = showInactive || searching ? rows : activeRows;
@@ -386,7 +390,8 @@ export function ClientDirectory({
   const cols = [...base, tailCol].filter(Boolean).join(" ");
   const colsWide = [
     ...base,
-    wide.has("total") ? "72px" : null,
+    wide.has("renews") ? "minmax(96px, 112px)" : null,
+    wide.has("total") ? "96px" : null,
     wide.has("age") ? "52px" : null,
     wide.has("height") ? "64px" : null,
     tailCol,
@@ -466,7 +471,7 @@ export function ClientDirectory({
               enterKeyHint="search"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              placeholder={"Name or nickname \u2014 or describe: \u201cnurses over 60\u201d"}
+              placeholder={"Name or nickname \u2014 or describe: \u201cnurses over 60\u201d, \u201crenewing this month\u201d"}
               aria-label="Search clients by name, or describe them"
               {...NAME_SEARCH_PROPS}
             />
@@ -560,18 +565,7 @@ export function ClientDirectory({
             <strong>{countWords}</strong>
             {notOnFile.map((w) => ` \u00b7 ${w}`).join("")}
           </span>
-          <select className="cd-select" aria-label="Sort" value={`${sort.key}:${sort.dir}`} onChange={(e) => {
-            const [key, dir] = e.target.value.split(":") as [SortKey, SortSpec["dir"]];
-            setSort({ key, dir });
-          }}>
-            {(view === "today" ? (["time", ...SORT_MENU] as SortKey[]) : SORT_MENU).flatMap((key) =>
-              (["asc", "desc"] as const).map((dir) => (
-                <option key={`${key}:${dir}`} value={`${key}:${dir}`}>
-                  {SORTS[key].words[dir]}
-                </option>
-              )),
-            )}
-          </select>
+          <SortPicker sort={sort} keys={view === "today" ? (["time", ...SORT_MENU] as SortKey[]) : SORT_MENU} onChange={setSort} />
           <span>{bookingsAsOf ? `bookings as of ${bookingsAsOf}` : "bookings not loaded yet"}</span>
           {bookingsAsOf && !bookingsFresh && <span className="cd-warn">{"Bookings haven\u2019t been read lately, so a next booking may be missing."}</span>}
           {rosterStatus === "loading" && rows.length > 0 && <span className="cd-warn">{"Still loading this studio\u2019s clients \u2014 the list may be incomplete."}</span>}
@@ -595,6 +589,7 @@ export function ClientDirectory({
             {colHead("lastIn", "lastIn")}
             {colHead("next", "next")}
             {colHead("left", "left")}
+            {wide.has("renews") && colHead("renews", "renews", true)}
             {wide.has("total") && colHead("total", "total", true)}
             {wide.has("age") && colHead("age", "age", true)}
             {wide.has("height") && colHead("height", "height", true)}

@@ -33,6 +33,9 @@ import "./notes.css";
 import { NAME_SEARCH_PROPS } from "../../../lib/name-search-input";
 import { NOTE_TEMPLATES, SHELVES, composedBody, hunchLine, hunchState, onThisDayKeys, openHunches, shelfOf, slotsFree, type ShelfId } from "./journal";
 import { DayLogList, DayLogView, OnThisDayList, ShelfNav, StudioShelfList, StudioShelfView, WriteRow } from "./JournalPieces";
+import { JournalToday } from "./JournalToday";
+import { createPortal } from "react-dom";
+import { useRelayMaybe } from "../board/RelayContext";
 import { useDayLogs } from "./day-log-store";
 import { usePlaybook } from "../../studio-tasks/usePlaybook";
 import { confirmPlaybookEntry } from "../../studio-tasks/playbook-mutations";
@@ -65,13 +68,13 @@ const KIND_PLURAL: Record<NoteKind, string> = {
  */
 const remembered: { uid: string | null; view: NotesView; selected: string | null } = {
   uid: null,
-  view: { kind: "all" },
+  view: { kind: "today" },
   selected: null,
 };
 const recall = (uid: string | null) =>
-  remembered.uid === uid ? remembered : { uid, view: { kind: "all" } as NotesView, selected: null };
+  remembered.uid === uid ? remembered : { uid, view: { kind: "today" } as NotesView, selected: null };
 function remember(uid: string | null, patch: Partial<{ view: NotesView; selected: string | null }>) {
-  if (remembered.uid !== uid) Object.assign(remembered, { uid, view: { kind: "all" }, selected: null });
+  if (remembered.uid !== uid) Object.assign(remembered, { uid, view: { kind: "today" }, selected: null });
   Object.assign(remembered, patch);
 }
 
@@ -156,6 +159,11 @@ export function NotesPanel({ authTrainer, trainers, clients, onOpenClient, inten
       if (noteKind && !noteType) baseline.kind = noteKind;
       const here = recall(uid).view;
       if (here.kind === "folder") baseline.folderId = here.folderId;
+      // Started from Today (its Write row): the note opens on Notes, where the editor is.
+      if (here.kind === "today") {
+        remember(uid, { view: { kind: "all" } });
+        setViewState({ kind: "all" });
+      }
       const id = newNoteId(uid);
       setPendingNew({ id, baseline });
       setSelected(id);
@@ -169,8 +177,13 @@ export function NotesPanel({ authTrainer, trainers, clients, onOpenClient, inten
   useEffect(() => {
     if (!intent) return;
     if (intent.kind === "new-note") startNew(intent.client, intent.noteKind ?? "plan");
-    else if (intent.kind === "open-note") setSelected(intent.noteId);
-    else if (intent.kind === "jot") setJotFor(intent.client);
+    else if (intent.kind === "open-note") {
+      if (recall(uid).view.kind === "today") setView({ kind: "all" });
+      setSelected(intent.noteId);
+    } else if (intent.kind === "jot") {
+      if (recall(uid).view.kind === "today") setView({ kind: "all" });
+      setJotFor(intent.client);
+    }
     else if (intent.kind === "open-share") {
       setView({ kind: "withme" });
       setSelected(null);
@@ -345,8 +358,67 @@ export function NotesPanel({ authTrainer, trainers, clients, onOpenClient, inten
     }
   };
 
+  /*
+   * THE JOURNAL'S TABS (the Relay Board rebuild, Oct 3 2026): Today · Notes ·
+   * Day logs · On this day · Studio shelf, in the bar under the header as the
+   * Board's parts of the day are. Notes is every note view (a kind's shelf,
+   * a folder, Pinned...); the other four are their own places.
+   */
+  const relay = useRelayMaybe();
+  const place = view.kind === "today" || view.kind === "daylogs" || view.kind === "onthisday" || view.kind === "studio" ? view.kind : "notes";
+  const go = (next: NotesView) => {
+    setView(next);
+    setSelected(null);
+    setSelectedLog(null);
+    setSelectedEntry(null);
+  };
+  const tabs = (
+    <div className="pl__tabs rbt" role="tablist" aria-label="Your journal">
+      {(
+        [
+          ["today", "Today", { kind: "today" }],
+          ["notes", "Notes", { kind: "all" }],
+          ["daylogs", "Day logs", { kind: "daylogs" }],
+          ["onthisday", "On this day", { kind: "onthisday" }],
+          ["studio", "Studio shelf", { kind: "studio" }],
+        ] as [string, string, NotesView][]
+      ).map(([id, label, target]) => (
+        <button
+          key={id}
+          type="button"
+          role="tab"
+          id={`jn-tab-${id}`}
+          className="pl__tab rbt__tab"
+          aria-selected={place === id}
+          onClick={() => (place === id && id !== "notes" ? undefined : go(target))}
+        >
+          {label}
+          {id === "notes" && <span className="rbt__n">{notes.length}</span>}
+        </button>
+      ))}
+    </div>
+  );
+  const tabsHere = relay?.slots?.subhead ? createPortal(tabs, relay.slots.subhead) : tabs;
+
+  if (view.kind === "today") {
+    return (
+      <div className="jtd-page touch-pane">
+        {tabsHere}
+        <div>
+          <JournalToday
+            studioId={activeStudioId ?? null}
+            uid={uid}
+            now={relay?.now ?? { todayKey, sessions: [] }}
+            write={<WriteRow slotsFree={freeSlots} disabled={!uid} leader={leads} onWrite={(type) => startNew(null, undefined, type)} />}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pn" data-open={editorOpen || (view.kind === "withme" && openShare) || journalOpen ? "note" : "list"}>
+      {tabsHere}
       <aside className="pn__side" aria-label="Your journal">
         <div className="pn__head">
           <div className="pn__head-titles">
@@ -366,8 +438,6 @@ export function NotesPanel({ authTrainer, trainers, clients, onOpenClient, inten
           view={view}
           counts={shelfCounts}
           openHunches={hunchesOpen}
-          dayLogs={logs.state === "ready" ? logs.logs.length : null}
-          studioShelf={view.kind === "studio" && !shelf.loading ? shelf.entries.filter((e) => !e.retiredAt).length : null}
           onView={(v) => {
             setView(v);
             setSelected(null);

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, Flag, FlagOff, Sparkles, Droplets } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Flag, FlagOff, Sparkles, Droplets } from "lucide-react";
 import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
 import { useToast } from "../../../contexts/ToastContext";
 import { useStudioMachines } from "../../../hooks/useStudioMachines";
@@ -35,6 +35,12 @@ import { clearMachineFlag, flagMachine, recordCare, useMachineCare } from "./mac
  *
  * Grouping and accents follow the Catalog (movement pattern, --wk-cat-* in wiki.tokens.css),
  * per AJ's standing direction that machine surfaces match it.
+ *
+ * ON THE BOARD (the Relay Board rebuild, Oct 3 2026) it sits under the cards
+ * of today's parts, folded to its one line ("The floor · 2 want a wipe")
+ * until something on the floor asks for a hand: a machine wanting a wipe, due
+ * a deep clean, or flagged opens it by itself. A tap on the line opens or
+ * folds it either way. Colour and room for the exceptions only.
  */
 export function FloorMap({ rows, actions }: { rows: TaskRow[]; actions: TaskActions }) {
   const relay = useRelay();
@@ -81,10 +87,16 @@ export function FloorMap({ rows, actions }: { rows: TaskRow[]; actions: TaskActi
   const flagged = Object.values(care.byMachineId).filter((c) => c.flag).length;
   const hot = Object.values(wear).filter((w) => w.heat >= 2).length;
   const wantWipe = Object.values(wear).filter((w) => w.wantsWipe).length;
+  const deepDue = Object.values(wear).filter((w) => w.deepDue).length;
+  // Folded until the floor asks for a hand; a tap decides either way.
+  const asks = wantWipe + flagged + deepDue > 0;
+  const [choice, setChoice] = useState<boolean | null>(null);
+  const shown = choice ?? asks;
 
   return (
     <section className="fm" aria-label="The floor">
-      <header className="rl-h">
+      <button type="button" className="rl-h fm__head" aria-expanded={shown} onClick={() => setChoice(!shown)}>
+        {shown ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
         <h2 className="rl-h__title">The floor</h2>
         <span className="rl-h__sub">
           {care.error
@@ -92,10 +104,11 @@ export function FloorMap({ rows, actions }: { rows: TaskRow[]; actions: TaskActi
             : wantWipe || hot || flagged
               ? [wantWipe ? `${wantWipe} ${wantWipe === 1 ? "wants" : "want"} a wipe` : null, hot && !wantWipe ? `${hot} running hot` : null, flagged ? `${flagged} flagged` : null].filter(Boolean).join(" · ")
               : `A machine wants a wipe after ${wipeAfter} ${wipeAfter === 1 ? "session" : "sessions"}`}
+          {deepDue > 0 && !care.error ? ` · ${deepDue} due a deep clean` : ""}
         </span>
-      </header>
+      </button>
       {weekly && <p className="fm__weekly">{weekly}</p>}
-      {machinesLoading && tiles.length === 0 ? (
+      {!shown ? null : machinesLoading && tiles.length === 0 ? (
         <p className="sh__loading">Loading the floor…</p>
       ) : tiles.length === 0 ? (
         <p className="rk-hint">No equipment is set up for this studio yet.</p>
