@@ -147,7 +147,7 @@ export const UPPER_TURN_WORDS: Record<UpperTurn, string> = {
 export const LOWER_TURN_WORDS: Record<NonNullable<CodexSwitches["lowerTurn"]>, string> = {
   stackTouch: "Lower turn: the plates barely touch",
   jointLimited: "Lower turn: where the joint stops",
-  flexLimited: "Lower turn: where her flexibility stops",
+  flexLimited: "Lower turn: where flexibility stops",
 };
 
 /** The switches as short sentences, in the order a trainer meets them. */

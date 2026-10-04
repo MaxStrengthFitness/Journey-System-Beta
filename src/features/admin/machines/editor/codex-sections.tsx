@@ -190,7 +190,7 @@ const LOWER_TURN_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "Not recorded" },
   { value: "stackTouch", label: "The plates barely touch" },
   { value: "jointLimited", label: "Where the joint stops" },
-  { value: "flexLimited", label: "Where her flexibility stops" },
+  { value: "flexLimited", label: "Where flexibility stops" },
 ];
 
 function AtTheMachine(p: CodexSectionProps) {
