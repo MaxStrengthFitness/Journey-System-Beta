@@ -191,18 +191,19 @@ Dark mode is derived from the same tokens but re-tuned, because a 14% orange tin
 - Fills mix the brand color into the dark **surface** (22–32%), not into black. Since the Navy Frame (Oct 4 2026) the dark surfaces are the Hub's studio navy, and a fill is an OPAQUE colour that keeps its accent's hue: an rgba amber or orange wash over navy greys out, and a crimson mixed into it goes violet beside the plum caution. So the rep-quality fills were kept as they were, not re-mixed (only the done fill got a neutral lift, `#2a333d`), and an elevated flag fills with `--jg-elevated-fill`.
 - Accent **text** climbs the same hue: `#ff9455` (the Hub's dark hero text) stands in for orange, the lifted logo blue `#98caf9` for blue, `#f8a7d4` for plum — so small text on a tinted fill still clears 4.5:1.
 
-Every text/fill pairing was checked against WCAG 2.1 AA. Worst cases:
+Every text/fill pairing was checked against WCAG 2.1 AA. Worst cases, on the
+Navy Frame's cells and ink (Oct 4 2026):
 
 | Pairing | Light | Dark |
 |---|---|---|
-| Weight text on any cell fill | 10.0 : 1 | 8.2 : 1 |
-| Reps text on any cell fill | 5.3 : 1 | 6.0 : 1 |
-| Muted labels on header band | 5.0 : 1 | 6.3 : 1 |
-| Green text on max fill | 4.9 : 1 | 6.0 : 1 |
-| Blue load delta on max fill | 6.3 : 1 | 5.3 : 1 |
-| Crimson text on poor fill | 4.5 : 1 | 8.7 : 1 |
-| Gold ★ on max fill (non-text) | 3.5 : 1 | 6.2 : 1 |
-| Red kaizen ◯ on poor fill (non-text) | 3.5 : 1 | 5.7 : 1 |
+| Weight text on any cell fill | 8.2 : 1 | 8.0 : 1 |
+| Reps text on any cell fill | 4.9 : 1 | 5.7 : 1 |
+| Muted labels on header band | 4.9 : 1 | 5.2 : 1 |
+| Green text on max fill | 4.9 : 1 | 6.1 : 1 |
+| Blue load delta on max fill | 5.9 : 1 | 5.7 : 1 |
+| Crimson text on poor fill | 4.6 : 1 | 8.7 : 1 |
+| Gold ★ on max fill (non-text) | 3.5 : 1 | 6.3 : 1 |
+| Red kaizen ◯ on poor fill (non-text) | 3.5 : 1 | 5.6 : 1 |
 
 Every figure above is the WORSE of the pairing on a plain row and on a
 **banded** row, because half the rows carry the banding overlay and a
@@ -215,7 +216,7 @@ to something that fails AA fails the build instead of shipping.
 | Blue text on LATEST / Today fill | 7.7 : 1 | 7.7 : 1 |
 | Quality edge (non-text) on surface | ≥ 3.5 : 1 | ≥ 5.9 : 1 |
 
-The table above is from Sep 2026; the Navy Frame (Oct 4 2026) moved the cells and the ink, so the numbers `contrast.test.ts` computes are the current ones.
+The table above was measured again for the Navy Frame (Oct 4 2026), which moved the cells and the ink; if they move again, the numbers `contrast.test.ts` computes are the current ones.
 
 **No words on the hero orange** (the Navy Frame, Oct 4 2026). `--jg-hero` is the orange of marks: the focus machine's edge and row trace, the Now Bar's marks and the session meter (`#d45a06` in light, the Hub's `--eq-hero`, 3.7:1 on the cells; white on it would be 3.99:1). The one loud action and every orange chip with words — Finish, the paused clock's button, the routine's number chips — is `--jg-go`, the logo orange `#f36d21` with navy `--jg-go-on` words (6.05:1), the same in both themes. Small orange words use `--jg-hero-text` (`#b04000` / `#ff9455`, the Hub's `--eq-hero-text`: 5.4:1 and 6.8:1 on the cells), on the Hub's opaque `--jg-hero-fill` (`#ffe9d8` / `#4b2915`). The Today column's live fill stands at least 1.15:1 off the cells in both themes, with every word on it at 4.5:1, banded rows included. `contrast.test.ts` measures these pairs, and `session-colour-rules.test.ts` holds the rules that draw them and the session's palette to the Hub's.
 

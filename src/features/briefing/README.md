@@ -131,7 +131,8 @@ contraindication is a thing that must not happen in the next ninety minutes.
 - **WCAG 2.1 AA**, ratios recorded beside each token value.
 - **One scroller, and it is `<main>`.** This view does not declare its own
   height or its own `overflow`. See the header of `briefing.css`.
-- **One loud action.** `--br-hero` is spent on START SESSION and nothing else.
+- **One loud action.** START SESSION is `--br-go` with `--br-go-on` words (the
+  logo orange, navy words, since the Navy Frame, Oct 4 2026) and nothing else is.
 
 ## Known: three shared children still carry their own styling
 

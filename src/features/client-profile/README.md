@@ -114,8 +114,9 @@ medium-weight outline button competing with four equal-weight stat tiles.
   `lib/prior-history.ts`. See `docs/business/migration-and-prior-history.md`.
   With the door gone, `Stat` is one button again when a renewal is showing
   (it used to stretch its tap underneath so the door could sit over it).
-- **Start Session is the hero.** Hero-orange gradient, the only orange
-  button in the header. When a session is already in progress the same slot
+- **Start Session is the hero.** The logo orange with navy words
+  (`--eq-go` / `--eq-go-on`, the Hub's Start, since the Navy Frame, Oct 4
+  2026), the only orange button in the header. When a session is already in progress the same slot
   becomes an amber dropdown (take over / view / discard) — same place, same
   size, so the hand goes to the same spot either way.
 - **Layout.** CSS grid areas: `'id cta' / 'strip strip'` in portrait,

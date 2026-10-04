@@ -2799,3 +2799,28 @@ Round document: `docs/rounds/2026-10-03-ops-calm.md`. On an iPad, upright and on
 - [ ] Clients → Journey: the stops say a name and a count; the list's (i) says what the state means. Trends: lines below their minimum are names under "Not enough data yet"; tap one for its count.
 - [ ] Team → This week: cards say "41 booked · 41 not logged"; a card with no notes shows only "Note for our 1:1". Hours: the (i) beside the title holds what the page used to say under it.
 - [ ] On a phone (Journey Lite), Today's numbers wrap to two lines and the note's Why stays beside its words.
+
+## Round 54 — The Navy Frame (colour) · *Oct 4 2026, branch `colour/navy-frame`*
+
+Round document: `docs/rounds/2026-10-04-colour.md`. On an iPad, upright and on its side, in light, dark and System (Settings → theme). Delete and re-add the Home Screen icon first.
+
+- [ ] **The status bar (the gate).** In LIGHT mode in the Home Screen app, the clock and battery draw light over the navy at the top. If they are black on navy, stop and say so.
+- [ ] The header and the bottom bar are the same navy in light and dark. The tab you're on is a solid blue box with a navy icon; the studio name and the icons read.
+- [ ] Start a session, then go to another tab: the Session tab is orange with a pulsing dot, in a faint WARM box (not grey). Operations and Admins tabs are orange; the Operations bar has an orange top line.
+- [ ] The header search in dark: no pale box. The avatar is a blue disc with navy initials; its menu reads in both themes, and the App Mode switch's chosen mode looks raised, not pressed in, in dark.
+- [ ] Light mode: off-white cards on a soft grey-blue page, nothing glaring white. Dark mode: navy, not grey, on the Hub, a client profile, Notes & Profile, the Client Directory, My Studio and Operations.
+- [ ] Hub, first thing in the morning: today is the picked day, a blue chip with an ORANGE underline beneath it. Pick another day: today keeps an orange ring, the picked day is blue.
+- [ ] Hub, the now marker: the line, the rail's dot and the pill are one orange, the pill's words navy.
+- [ ] Hub, your column: a blue head with a blue rule under your name, a light blue cast under your bookings; colleagues' circles quiet.
+- [ ] Hub, a client still to come has a quiet blue left edge; in session the full blue edge and a blue fill; a finished card recedes and its time and "Not logged" still read. The Key's Coming up swatch matches.
+- [ ] The Next 30 minutes strip: a coming-up booking has the same blue edge as its card. Note what a "Now" item looks like beside it (AJ's call: grey edge, or blue too?).
+- [ ] Start session on the peek, the Opportunities list, the Directory, the profile and the briefing: the logo orange with navy words. Tap one and come back: it is still orange, not faded.
+- [ ] A Critical card's triangle and a Celebrate chip on an in-session card in dark: maroon and orange, not grey or violet.
+- [ ] The Active Session: Finish is orange with navy words; the Today column stands out from the history in both themes; the setting keys under each machine read; an elevated flag in dark is amber, not grey-teal.
+- [ ] End Session: a blue header with readable words, Finish orange with navy words, a picked outcome chip blue.
+- [ ] The Wrap-up with a renewal due: the renewal button is a warm orange tint with a dark orange icon; Log a conversation opens with blue picked choices.
+- [ ] My Studio → Relay: picked chips and "yours" tags read blue on blue in dark; the Floor Map's busier machines warm through orange-brown steps in dark, not navy then grey.
+- [ ] Operations and Admins: a form's "Saved" in the save bar reads in light; done cards on the Board read.
+- [ ] Add a client (from the header): orange section headings read in light; a field you tap rings blue.
+- [ ] Walk notes for AJ: is the 3:1 border on cards and placeholders too heavy in dark? Does every field and outline button read as a lighter box in dark (the input fill)? FORD pillars and Pulse's traffic lights in dark? The profile header band in light?
+- [ ] Sign out: the iPad comes back dark (the default).

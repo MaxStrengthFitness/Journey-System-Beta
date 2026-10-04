@@ -151,9 +151,9 @@ Two contrast facts worth knowing before you style something:
   under a small label. The loud button is the logo orange with navy words,
   `--adm-go` / `--adm-go-on` (6.05:1, both modes; the Navy Frame, Oct 4
   2026), with its fill restated on `:hover`. No white words sit on any orange.
-- `--adm-border-strong` is **1.96:1** on the field ground. Fine for a divider;
-  below the 3:1 that WCAG 1.4.11 wants for the boundary of a control. Inputs
-  use `--adm-ink-muted`.
+- `--adm-border-strong` is a control boundary since the Navy Frame (Oct 4
+  2026): **3.1:1** on the field ground and 3.4 on a card in light, 4.1 and
+  3.8 in dark, the 3:1 that WCAG 1.4.11 wants. Inputs use `--adm-ink-muted`.
 
 ---
 
