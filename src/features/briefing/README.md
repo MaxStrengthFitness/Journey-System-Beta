@@ -14,6 +14,55 @@ heads-up.test.ts               pins `isHeadsUpLive` (hooks/useClientJournal.ts)
 index.ts                       barrel — import from "../features/briefing"
 ```
 
+## The Stack (Oct 3 2026) — read this first
+
+AJ's walk, Oct 3 2026: "I feel like we can have a better pre-session briefing
+screen just not the information that's on it but how it's displayed." The
+interview settled what the screen is for: it is opened **just before she
+arrives and held while you walk her to the first machine**, "double checking
+you have everything you need to know and filling anything in". He picked the
+"Stack" mockup, with one change: "we do have a muscular model that we use in
+the catalog in routine editor. So let's go ahead and use that model."
+
+Top to bottom (`stack.ts` is the pure half, `stack.test.ts` beside it):
+
+1. **Who** — name, last session, the session number while it is Mindbody's
+   guess, the goal line.
+2. **Before you start** — SAFETY ONLY, readable in two seconds (AJ: "Safety:
+   what could hurt her" first). The Catalog's figure (`components/anatomy`
+   BodyModel, the one model) with her limits lit in the caution tone — her
+   clinical flags placed by the codex's own table (`client-codex/body/
+   figure-map.ts` `flagRegions`) and the regions carried over from the last
+   session — and only the sides with something lit. Each flag is said in
+   display type with its instructions as sentences (two, then "N more"): the
+   instruction used to sit behind an 11px chip nobody opened. Critical notes
+   and carried regions are here too; the count is these three only. "Nothing
+   flagged — clear to go." in the OK green when there is nothing. The hushed
+   line and the standing health context stay under it.
+3. **Since last time** — how the last session went (`lastTimeLines`: a
+   skip and its reason, a blood-flow set, a machine short of HER usual —
+   the median of her last five performed sets, said only with at least
+   three), the markers (a break, a milestone), heads ups, coaching focuses.
+4. **Something to ask about** — the FORD cue, unchanged.
+5. **On the way in** — Dials (open by default) · Sore spot · Note · Update
+   Pulse · Hand her the iPad. AJ: "sometimes is everything, sometimes its one
+   thing, sometimes its nothing". Sore spot is the same figure, tappable: a
+   tap opens BodyStateTracker's rating step for that region (its `request`
+   prop) and NOTHING is written until it is rated. Hand her the iPad opens
+   Pulse's client mode (ClientCheckInPanel `startInClientMode`, as the
+   codex's PulseCard does). Every write at Start is unchanged.
+6. **Today's routine** — A or B, then ONE line ("Routine A · 6 machines ·
+   suggested", the short names, and "Mind her limits on …" when one of her
+   flags names a machine in it); Edit opens the Routine Builder (AJ: "One
+   line, tap to edit").
+7. **Also today** — the InBody line and the renewal line, quiet, never in the
+   safety band; hidden when empty.
+8. **Start session** — a solid bar pinned to the bottom of the page; nothing
+   scrolls under a see-through gradient any more.
+
+She may see the screen (AJ: "Everything — it's about her"), so nothing on it
+is hidden for privacy. The sections below are the history that led here.
+
 ## The order of the page is the whole design
 
 AJ, Sep 13: "at the very top, everything the trainer needs to know about
