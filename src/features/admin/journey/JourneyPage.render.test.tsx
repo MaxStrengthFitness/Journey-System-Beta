@@ -162,7 +162,9 @@ describe("Clients → Journey", () => {
     expect(count("Back")).toBe("1");
     expect(count("Unknown")).toBe("2");
     expect(el.textContent).toContain("9 active clients");
-    expect(el.textContent).toContain("This week: 4 crossed a line and started slipping");
+    expect(el.textContent).toContain("This week: 4 started slipping · 0 lapsed · 0 went inactive · 1 back");
+    // The calm round (Oct 3 2026): a stop is its name and count; the definition is on the list's (i).
+    expect(el.textContent).not.toContain("twice their usual gap, nothing booked");
   });
 
   it("reads a slipping list catchable first, and a client a leader answered last", async () => {
@@ -241,7 +243,7 @@ describe("Clients → Journey", () => {
     // MIA keeps its own count: neither is Drifting, At risk or Lapsed.
     expect(stop(el, "Drifting").querySelector(".ops-stop__n")?.textContent).toBe("3");
     // This week: Otho, marked on the 22nd; Lobelia crossed the line on the 18th, before the week.
-    expect(el.textContent).toContain("0 lapsed, 1 went inactive");
+    expect(el.textContent).toContain("0 lapsed · 1 went inactive");
     await press(stop(el, "Inactive"));
     const rows = [...el.querySelectorAll(".ops-inrow")];
     expect(rows.map((r) => r.querySelector(".ops-inrow__name")?.textContent)).toEqual(["Otho Sackville", "Lobelia Sackville"]);
@@ -262,7 +264,10 @@ describe("Clients → Journey", () => {
   it("with a nightly record that stopped changing, every client is Unknown and the page says why", async () => {
     const stale = clients.map((c) => (c.renewal ? ({ ...c, renewal: { ...c.renewal, computedAt: new Date("2026-09-20T06:31:00Z") } } as Client) : c));
     const el = await mount(stale);
-    expect(el.textContent).toContain("The nightly record hasn't changed since Sun, Sep 20");
+    expect(el.querySelector(".ops-note")?.textContent).toContain("The nightly record last changed Sun, Sep 20, so nobody is called slipping until it runs again.");
+    // Said once: not again over the list, and no week line built on it.
+    expect(el.querySelectorAll(".ops-note")).toHaveLength(1);
+    expect(el.textContent).not.toContain("This week:");
     expect(stop(el, "Unknown").querySelector("b")?.textContent).toBe("9");
   });
 });

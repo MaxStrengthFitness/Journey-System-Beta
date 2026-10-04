@@ -382,14 +382,8 @@ function OperationsShell({
         if (place.sub === "moments") {
           return (
             <div className="flex flex-col gap-4">
-              <div>
-                <h2 className="font-display text-xl font-black uppercase italic tracking-tight text-foreground">Moments</h2>
-                <p className="mt-1 max-w-2xl text-[12px] leading-relaxed text-muted-foreground">
-                  The Delight queue: what the team has promised itself it would do something about, for every client at this studio, soonest first. A
-                  detail becomes a gesture on a client's FORD page: Add an idea under Going above and beyond, or open a detail and choose Do something
-                  about it.
-                </p>
-              </div>
+              {/* The calm round (Oct 3 2026): how a detail becomes a gesture is the empty list's own line, not a paragraph above it too. */}
+              <h2 className="font-display text-xl font-black uppercase italic tracking-tight text-foreground">Moments</h2>
               {ops.scope.kind === "all" ? (
                 <PickOneStudio what="The Delight queue" />
               ) : (

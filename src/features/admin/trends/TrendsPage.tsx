@@ -9,12 +9,18 @@
  * except that "By trainer" now reads in name order with no red: recognition,
  * never ranking.
  *
+ * The calm round (Oct 3 2026, AJ: "so many words on there"): a line that has
+ * met its minimum says its sentence, its minimum behind an (i); the lines
+ * still below theirs fold into ONE "Not enough data yet" line, each name a
+ * tap that opens its count and the least it needs. The rule holds: nothing
+ * below its minimum claims a rate.
+ *
  * Reads: this quarter's and last quarter's renewal outcomes (`useOutcomes`,
  * the Outcomes panel's own closedOn range, one studio), the Journey
  * (`useStudioJourneys`), and whatever Insights reads itself.
  */
-import { useMemo } from "react";
-import { Scale, TrendingUp } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Info, Scale, TrendingUp } from "lucide-react";
 import type { Client, Studio, Trainer } from "../../../types";
 import { recentQuarters, tallyOutcomes } from "../../renewals/rates";
 import { useOutcomes } from "../../renewals/useOutcomes";
@@ -57,23 +63,59 @@ export function TrendsPage({ studio, studios, clients, trainers, authTrainer }: 
     [thisTally, lastTally, thisQ.label, j.ready, j.entries, j.today, j.tz, now_.loading, now_.error, now_.rows],
   );
 
+  const ready = lines.filter((l) => l.ready);
+  const waiting = lines.filter((l) => !l.ready);
+  const [why, setWhy] = useState<string | null>(null);
+  const [openWait, setOpenWait] = useState<string | null>(null);
+  const opened = waiting.find((l) => l.id === openWait) ?? null;
+
   return (
     <AdminScreen>
-      <AdminHeader icon={<TrendingUp className="w-5 h-5" />} title="Trends" subtitle={`This quarter, ${thisQ.label}. Each line names the least it needs before it says anything.`} />
-      <div className="ops-sec__card" role="list" aria-label="This quarter">
-        {lines.map((l) => (
-          <div key={l.id} className="ops-trend" role="listitem">
-            <h3 className="ops-trend__t">{l.title}</h3>
-            <p className="ops-line">{l.say}</p>
-            {l.min && (
-              <p className="ops-trend__min">
-                <Scale className="w-3.5 h-3.5" aria-hidden />
-                <span>{l.min}</span>
-              </p>
-            )}
+      <AdminHeader icon={<TrendingUp className="w-5 h-5" />} title="Trends" subtitle={`This quarter, ${thisQ.label}`} />
+      {ready.length > 0 && (
+        <div className="ops-sec__card" role="list" aria-label="This quarter">
+          {ready.map((l) => (
+            <div key={l.id} className="ops-trend" role="listitem">
+              <div className="ops-trend__head">
+                <h3 className="ops-trend__t">{l.title}</h3>
+                {l.min && (
+                  <button type="button" className="ops-info" aria-expanded={why === l.id} aria-label={`The least it needs: ${l.title}`} onClick={() => setWhy((v) => (v === l.id ? null : l.id))}>
+                    <Info className="w-4 h-4" aria-hidden />
+                  </button>
+                )}
+              </div>
+              <p className="ops-line">{l.say}</p>
+              {why === l.id && l.min && (
+                <p className="ops-trend__min">
+                  <Scale className="w-3.5 h-3.5" aria-hidden />
+                  <span>{l.min}</span>
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {waiting.length > 0 && (
+        <div className="ops-trend-wait" role="group" aria-label="Not enough data yet">
+          <p className="ops-trend-wait__h">
+            <Scale className="w-4 h-4" aria-hidden />
+            <b>Not enough data yet</b>
+          </p>
+          <div className="ops-toonew__names">
+            {waiting.map((l) => (
+              <button key={l.id} type="button" className="ops-namechip" aria-expanded={openWait === l.id} onClick={() => setOpenWait((v) => (v === l.id ? null : l.id))}>
+                {l.title}
+              </button>
+            ))}
           </div>
-        ))}
-      </div>
+          {opened && (
+            <div className="ops-trend-wait__open">
+              <p className="ops-line">{opened.say}</p>
+              {opened.min && <p className="ops-trend__min">{opened.min}</p>}
+            </div>
+          )}
+        </div>
+      )}
       <AdminInsightsTab studios={studios} trainers={trainers} activeStudioId={studioId} />
     </AdminScreen>
   );

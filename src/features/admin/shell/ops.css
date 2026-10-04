@@ -1129,13 +1129,6 @@
   font-weight: 800;
 }
 
-.ops-stop__cap {
-  font-size: 12px;
-  line-height: 1.35;
-  color: var(--adm-ink-muted);
-  overflow-wrap: anywhere;
-}
-
 .ops-beside {
   display: flex;
   align-items: stretch;
@@ -1174,12 +1167,6 @@
 
 .ops-bchip span {
   font-weight: 800;
-}
-
-.ops-bchip em {
-  font-style: normal;
-  font-size: 12px;
-  color: var(--adm-ink-muted);
 }
 
 .ops-bchip--on {
@@ -1528,6 +1515,42 @@
 .ops-trend__min svg {
   flex: none;
   margin-top: 2px;
+}
+
+/* Trends, calm (Oct 3 2026): a ready line's minimum behind its (i); the lines
+   still below theirs in one "Not enough data yet" group. */
+.ops-trend__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ops-trend-wait {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px dashed var(--adm-border-strong);
+  border-radius: var(--adm-radius);
+}
+
+.ops-trend-wait__h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--adm-ink-2);
+}
+
+.ops-trend-wait__open {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--adm-surface-2);
 }
 
 /* ---------- Setup → Rules ---------------------------------------------- */

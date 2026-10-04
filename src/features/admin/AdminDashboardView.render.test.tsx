@@ -217,19 +217,19 @@ describe("the Operations shell", () => {
   it("every page opens for a leader", async () => {
     const el = await mount(lead, false);
     await clickSide(el, "Week");
-    expect(el.textContent).toContain("The Monday review");
+    expect(el.querySelector(".adm-head__title")?.textContent).toBe("Last week");
     await clickSide(el, "This week so far");
     expect(el.querySelector(".ops-page")?.textContent).toContain("This week so far");
-    expect(el.textContent).toContain("Solon — Changes");
+    expect(el.querySelector(".ops-page")?.textContent).toContain("Changes");
     await clickSide(el, "Week ahead");
     expect(el.textContent).toContain("The week ahead");
     await clickSide(el, "Journey");
     expect(el.querySelector("[aria-label='Client states']")).toBeTruthy();
     await clickSide(el, "Renewals");
     await clickSide(el, "Moments");
-    expect(el.textContent).toContain("The Delight queue");
+    expect(el.textContent).toContain("Show what is done");
     await clickSide(el, "Trends");
-    expect(el.textContent).toContain("Each line names the least it needs");
+    expect(el.textContent).toContain("Not enough data yet");
     expect(el.textContent).toContain("What stands out");
     await clickSide(el, "Team");
     expect(el.textContent).toContain("In today's schedule order, never a ranking.");
@@ -325,13 +325,13 @@ describe("a client, opened inside Operations", () => {
     await clickSide(el, "Moments");
     el = await unmountAndRemount(() => mount(lead, false));
     expect(el.querySelector(".ops-side [aria-current='page']")?.textContent).toBe("Moments");
-    expect(el.textContent).toContain("The Delight queue");
+    expect(el.textContent).toContain("Show what is done");
     // Clients remembers Moments while the leader looks at Team.
     await clickSide(el, "Team");
     const clients = [...el.querySelectorAll<HTMLButtonElement>(".ops-tabs .ops-tab")].find((b) => text(b) === "Clients")!;
     await act(async () => clients.click());
     await settle();
-    expect(el.textContent).toContain("The Delight queue");
+    expect(el.textContent).toContain("Show what is done");
     // The next person on a shared iPad starts on Today.
     forgetPersonalMemory();
     el = await unmountAndRemount(() => mount(lead, false));

@@ -178,7 +178,6 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
       <AdminHeader
         icon={<TrendingUp className="w-5 h-5" />}
         title="Insights"
-        subtitle="What this window says about the floor, and what to do about it."
         actions={
           <div className="adm-ins-controls">
             <AdminField label="Window" htmlFor="ins-window">
@@ -296,7 +295,7 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
 
       <AdminPanel
         title="By trainer"
-        subtitle="In name order, never a ranking (the redesign's Operations room, Sep 28 2026). Volume is a rota fact; a rate with a small sample says so."
+        subtitle="In name order, never a ranking."
         flush
       >
         {failed ? (

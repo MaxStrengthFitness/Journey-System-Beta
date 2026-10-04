@@ -91,7 +91,13 @@ export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainer
       <AdminHeader
         icon={<CalendarClock className="w-5 h-5" />}
         title="Renewals"
-        subtitle="Get ahead of renewals: who is coming up, and when your studio starts the conversation."
+        actions={
+          onOpenMyStudio && ops.scope.kind !== "all" && studio && studioId ? (
+            <AdminButton size="sm" variant="quiet" onClick={onOpenMyStudio}>
+              <SlidersHorizontal className="w-4 h-4" aria-hidden /> Settings on My Studio
+            </AdminButton>
+          ) : undefined
+        }
       />
 
       {ops.scope.kind === "all" ? (
@@ -127,23 +133,19 @@ export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainer
             </button>
           </div>
 
-          <AdminNotice tone={toMatch > 0 || autoRenewUnanswered ? "warn" : "info"}>
-            <SlidersHorizontal className="w-4 h-4 shrink-0" />
-            <div className="flex-1">
-              {autoRenewUnanswered
-                ? `${studio.name} hasn't said whether its packages renew automatically, so they read as renewing. `
-                : ""}
-              {toMatch > 0
-                ? `${toMatch} Mindbody package name${toMatch === 1 ? "" : "s"} ${toMatch === 1 ? "is" : "are"} waiting to be matched, so those clients cannot be placed in the pipeline. `
-                : ""}
-              Auto-renewal, when to talk, the package table and name matching are set on <b>My Studio → Studio</b>, not here.
-            </div>
-            {onOpenMyStudio && (
-              <AdminButton size="sm" variant="quiet" onClick={onOpenMyStudio}>
-                Open My Studio
-              </AdminButton>
-            )}
-          </AdminNotice>
+          {/* The calm round (Oct 3 2026): only when a setting is waiting; where the settings live is the header's door. */}
+          {(toMatch > 0 || autoRenewUnanswered) && (
+            <AdminNotice tone="warn">
+              <SlidersHorizontal className="w-4 h-4 shrink-0" />
+              <div className="flex-1">
+                {autoRenewUnanswered ? `${studio.name} hasn't said whether its packages renew automatically, so they read as renewing. ` : ""}
+                {toMatch > 0
+                  ? `${toMatch} Mindbody package name${toMatch === 1 ? "" : "s"} ${toMatch === 1 ? "is" : "are"} waiting to be matched, so those clients can't be placed. `
+                  : ""}
+                Set on <b>My Studio → Studio</b>.
+              </div>
+            </AdminNotice>
+          )}
 
           {error && <AdminNotice tone="warn">{error}</AdminNotice>}
           {/* Both views stay mounted, so unsaved settings survive a look at

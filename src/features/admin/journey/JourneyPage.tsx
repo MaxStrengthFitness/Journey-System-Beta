@@ -23,6 +23,12 @@
  *   too new to judge  under the line's lists, the clients whose rhythm can't
  *                     be measured yet, by name, with why
  *
+ * The calm round (Oct 3 2026, AJ: "so many words on there"): the subtitle's
+ * seven facts are behind the count's (i), the nightly record's note is said
+ * once (useNightlyNote), a stop says its name and count (its definition is
+ * on the list's (i), with the order the list is in), and an empty list says
+ * so in four words.
+ *
  * Reads: useStudioJourneys (the week, the settings, the watchlist); the rest
  * is the app's. Every number here is a count of clients Operations can see,
  * and "0" is said only once the settings and the week have answered.
@@ -33,6 +39,8 @@ import { cn } from "@/lib/utils";
 import type { Client, Studio, Trainer } from "../../../types";
 import { formatStudioDate, formatStudioTime } from "../../../lib/studio-time";
 import { AdminButton, AdminHeader, AdminNotice, AdminScreen } from "../primitives";
+import { BriefSection, CountsLine, PageNote } from "../overview/brief-pieces";
+import { noteCovers, useNightlyNote } from "../overview/useNightlyNote";
 import { leadsHere } from "../../relay/leads";
 import { markReasonWords } from "./inactive";
 import { markActiveAgain } from "./inactive-store";
@@ -100,15 +108,15 @@ export function JourneyPage({ studio, studios, clients, trainers, authTrainer, o
   const active = j.entries.length;
   const reading = !j.ready;
 
+  const note = useNightlyNote(j.nightly, studio, j.today, clients, j.tz);
+  const covered = noteCovers(note);
   const meta = [
-    reading ? "Reading the studio's clients…" : `${active} active ${active === 1 ? "client" : "clients"}`,
     j.nightly.lastChangedAt ? `visits from the nightly record of ${formatStudioDate(j.nightly.lastChangedAt, { weekday: "short", month: "short", day: "numeric" }, j.tz)}` : "no nightly record yet",
     j.week.readAt ? `bookings read ${formatStudioTime(new Date(j.week.readAt), j.tz)}` : j.week.loading ? "bookings: reading…" : "bookings couldn't be read",
     "each client judged against their own rhythm",
     j.night.fresh ? `states from last night's run${j.night.at ? ` at ${formatStudioTime(j.night.at, j.tz)}` : ""}, checked against today's bookings` : null,
   ]
-    .filter(Boolean)
-    .join(" · ");
+    .filter((m): m is string => Boolean(m));
 
   const stop = (s: JourneyState) => (
     <button
@@ -120,13 +128,13 @@ export function JourneyPage({ studio, studios, clients, trainers, authTrainer, o
     >
       <span className="ops-stop__n">{reading ? "…" : counts[s]}</span>
       <span className="ops-stop__name">{STATE_NAMES[s]}</span>
-      <span className="ops-stop__cap">{CAPTION[s](j.breakDays, j.lines)}</span>
     </button>
   );
 
   return (
     <AdminScreen>
-      <AdminHeader icon={<Route className="w-5 h-5" />} title="The Journey" subtitle={meta} />
+      <AdminHeader icon={<Route className="w-5 h-5" />} title="The Journey" />
+      <CountsLine pending={reading ? "Reading the studio's clients…" : null} items={[{ n: active, label: active === 1 ? "active client" : "active clients" }]} rules={meta} />
       <div className="ops-seg" role="group" aria-label="Lens">
         {LENSES.map((l) => (
           <button key={l.id} type="button" aria-pressed={lens === l.id} onClick={() => setLens(l.id)}>
@@ -135,13 +143,7 @@ export function JourneyPage({ studio, studios, clients, trainers, authTrainer, o
         ))}
       </div>
 
-      {j.nightly.stale && (
-        <AdminNotice tone="warn">
-          {j.nightly.lastChangedAt
-            ? `The nightly record hasn't changed since ${formatStudioDate(j.nightly.lastChangedAt, { weekday: "short", month: "short", day: "numeric" }, j.tz)}, so nobody's rhythm is judged from it: every client reads Unknown until it runs again.`
-            : "There is no nightly record for this studio yet, so every client reads Unknown."}
-        </AdminNotice>
-      )}
+      {note && <PageNote text={note.text} why={note.why} />}
       {j.settingsFailed && <AdminNotice tone="warn">The studio's renewal settings couldn't be read just now, so At risk uses Max Strength's 14 days.</AdminNotice>}
       {j.linesFailed && (
         <AdminNotice tone="warn">Part of the studio's settings couldn't be read just now, so a line may be Max Strength's or the app's default rather than the studio's own. Setup → Rules says which.</AdminNotice>
@@ -169,35 +171,29 @@ export function JourneyPage({ studio, studios, clients, trainers, authTrainer, o
           <button key={s} type="button" className={cn("ops-bchip", state === s && "ops-bchip--on")} aria-pressed={state === s} onClick={() => setState(s)}>
             <b>{reading ? "…" : counts[s]}</b>
             <span>{STATE_NAMES[s]}</span>
-            <em>{CAPTION[s](j.breakDays, j.lines)}</em>
           </button>
         ))}
       </div>
 
-      {!reading && (
+      {!reading && !covered && (
         <p className="ops-quiet">
-          <b>This week:</b> {week.startedSlipping.length} crossed a line and started slipping, {week.lapsedThisWeek.length} lapsed, {week.inactiveThisWeek.length} went inactive, {week.back.length} booked again after a gap.{" "}
-          {week.towardSteady === null
-            ? "Who moved toward steady needs last night's states, which haven't reached this page."
-            : `${week.towardSteady.length} moved back toward steady after slipping.`}
+          <b>This week:</b> {week.startedSlipping.length} started slipping · {week.lapsedThisWeek.length} lapsed · {week.inactiveThisWeek.length} went inactive · {week.back.length} back
+          {week.towardSteady === null ? "" : ` · ${week.towardSteady.length} toward steady`}
         </p>
       )}
 
-      <section className="ops-sec" aria-labelledby="journey-list-t">
-        <header className="ops-sec__h">
-          <h2 className="ops-sec__t" id="journey-list-t">
-            {STATE_NAMES[state]}
-          </h2>
-          <span className="ops-badge">{reading ? "…" : list.length}</span>
-          {lens !== "all" && <span className="ops-sec__sub">{lens === "renewal" ? "in their renewal window" : `in their first ${j.lines.settlingMax} sessions`}</span>}
-        </header>
-        <p className="ops-quiet">{LIST_SAYS[state](j.lines)}</p>
-        <div className="ops-sec__card">
+      <BriefSection
+        id="journey-list"
+        title={STATE_NAMES[state]}
+        count={reading ? null : list.length}
+        sub={lens !== "all" ? (lens === "renewal" ? "in their renewal window" : `in their first ${j.lines.settlingMax} sessions`) : undefined}
+        info={`${STATE_NAMES[state]}: ${CAPTION[state](j.breakDays, j.lines)}. ${LIST_SAYS[state](j.lines)}`}
+      >
           {reading ? (
             <p className="ops-sec__empty">Reading the studio's clients…</p>
           ) : list.length === 0 ? (
             <p className="ops-sec__empty">
-              No {STATE_NAMES[state].toLowerCase()} clients{lens === "renewal" ? " in their renewal window" : lens === "new" ? ` in their first ${j.lines.settlingMax} sessions` : ""}. That's a real count, not a missing read.
+              No {STATE_NAMES[state].toLowerCase()} clients{lens === "renewal" ? " in their renewal window" : lens === "new" ? ` in their first ${j.lines.settlingMax} sessions` : ""}.
             </p>
           ) : state === "inactive" ? (
             <InactiveRows rows={list} studioId={studio.id as string} leads={leadsHere(authTrainer, studio.id)} onOpenClient={onOpenClient} />
@@ -213,11 +209,10 @@ export function JourneyPage({ studio, studios, clients, trainers, authTrainer, o
           ) : (
             <JourneyRows rows={list} onOpenClient={onOpenClient} />
           )}
-        </div>
         {!reading && state !== "unknown" && tooNew.length > 0 && (isSlipping(state) || state === "steady" || state === "lapsed") && (
           <div className="ops-toonew">
             <p className="ops-toonew__h">
-              <b>Too new to judge ({tooNew.length})</b> Fewer than six visits over four weeks on record, so no claim about their rhythm yet.
+              <b>Too new to judge ({tooNew.length})</b> fewer than six visits on record
             </p>
             <div className="ops-toonew__names">
               {tooNew.map((e) => (
@@ -229,7 +224,7 @@ export function JourneyPage({ studio, studios, clients, trainers, authTrainer, o
             </div>
           </div>
         )}
-      </section>
+      </BriefSection>
     </AdminScreen>
   );
 }

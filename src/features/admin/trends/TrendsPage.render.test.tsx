@@ -117,15 +117,22 @@ async function mount() {
   return host;
 }
 
-const lineOf = (el: HTMLElement, title: string) => {
-  const item = [...el.querySelectorAll<HTMLElement>(".ops-trend")].find((i) => i.querySelector(".ops-trend__t")?.textContent === title);
-  return { say: item?.querySelector(".ops-line")?.textContent ?? null, min: item?.querySelector(".ops-trend__min")?.textContent ?? null };
+/** A line below its minimum is a name in the "Not enough data yet" group; a tap opens its count and the least it needs (the calm round). */
+const waiting = (el: HTMLElement) => [...el.querySelectorAll<HTMLButtonElement>(".ops-trend-wait .ops-namechip")];
+const lineOf = async (el: HTMLElement, title: string) => {
+  const chip = waiting(el).find((b) => b.textContent === title);
+  if (!chip) throw new Error(`no waiting line ${title}`);
+  if (chip.getAttribute("aria-expanded") !== "true") await act(async () => chip.click());
+  const open = el.querySelector(".ops-trend-wait__open");
+  return { say: open?.querySelector(".ops-line")?.textContent ?? null, min: open?.querySelector(".ops-trend__min")?.textContent ?? null };
 };
 
 describe("Clients → Trends", () => {
-  it("says counts below each line's minimum, and names the minimum", async () => {
+  it("folds every line below its minimum into one group, and says its count and minimum on a tap", async () => {
     const el = await mount();
-    expect([...el.querySelectorAll(".ops-trend__t")].map((t) => t.textContent)).toEqual([
+    // None has met its minimum here: no line claims a rate, and none is a paragraph on the page.
+    expect(el.querySelectorAll(".ops-trend")).toHaveLength(0);
+    expect(waiting(el).map((t) => t.textContent)).toEqual([
       "Renewal outcomes",
       "A longer package",
       "Start groups",
@@ -134,18 +141,19 @@ describe("Clients → Trends", () => {
       "Win-back results",
       "The signal check",
     ]);
-    expect(lineOf(el, "Renewal outcomes")).toEqual({
+    expect(el.textContent).not.toContain("A rate appears from");
+    expect(await lineOf(el, "Renewal outcomes")).toEqual({
       say: "3 renewal points closed this quarter: 1 renewed, 1 on a longer package, 0 on a shorter one, 0 pay-as-you-go, 1 lost.",
       min: "A rate appears from 10 renewal points. There are 3.",
     });
-    expect(lineOf(el, "A longer package")).toEqual({
+    expect(await lineOf(el, "A longer package")).toEqual({
       say: "1 of 2 renewals this quarter moved to a longer package.",
       min: "Compared with last quarter only when both have 10 or more renewals: this quarter 2, last quarter 1.",
     });
-    expect(lineOf(el, "Studio rhythm").say).toBe("1 client has a measured rhythm so far.");
-    expect(lineOf(el, "Lost reasons").say).toBe("1 client was lost this quarter. That's fewer than 5, so no breakdown by reason yet.");
-    expect(lineOf(el, "Win-back results").say).toMatch(/^Not enough history yet\./);
-    expect(lineOf(el, "The signal check").say).toMatch(/^Not enough history yet\./);
+    expect((await lineOf(el, "Studio rhythm")).say).toBe("1 client has a measured rhythm so far.");
+    expect((await lineOf(el, "Lost reasons")).say).toBe("1 client was lost this quarter. That's fewer than 5, so no breakdown by reason yet.");
+    expect((await lineOf(el, "Win-back results")).say).toMatch(/^Not enough history yet\./);
+    expect((await lineOf(el, "The signal check")).say).toMatch(/^Not enough history yet\./);
   });
 
   it("keeps Insights below, with By trainer in name order and no red", async () => {

@@ -90,17 +90,15 @@ describe("AdminRenewalsTab — the door to the studio's auto-renewal answer", ()
     const n = notice(host)!;
     expect(n.classList.contains("adm-notice--warn")).toBe(true);
     expect(n.textContent).toContain("Solon hasn't said whether its packages renew automatically, so they read as renewing.");
-    expect(n.textContent).toContain(
-      "Auto-renewal, when to talk, the package table and name matching are set on My Studio → Studio, not here.",
-    );
-    // A door, not an editor: nothing on this screen changes the answer.
+    expect(n.textContent).toContain("Set on My Studio → Studio.");
+    // A door, not an editor: nothing on this screen changes the answer. The door is the header's (the calm round, Oct 3 2026).
     expect(host.querySelector("#renewals-autorenew")).toBeNull();
-    const open = Array.from(n.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Open My Studio")!;
+    const open = Array.from(host.querySelectorAll<HTMLButtonElement>(".adm-head button")).find((b) => b.textContent?.trim() === "Settings on My Studio")!;
     await act(async () => open.click());
     expect(onOpenMyStudio).toHaveBeenCalledTimes(1);
   });
 
-  it("stays a plain pointer once the studio has answered", async () => {
+  it("says nothing once the studio has answered, and keeps the door in the header", async () => {
     hook.state = {
       settings: { ...DEFAULT_RENEWAL_SETTINGS, packagesRenewAutomatically: false },
       saved: true,
@@ -110,9 +108,9 @@ describe("AdminRenewalsTab — the door to the studio's auto-renewal answer", ()
       error: null,
     };
     const { host } = await mount();
-    const n = notice(host)!;
-    expect(n.classList.contains("adm-notice--info")).toBe(true);
-    expect(n.textContent).not.toContain("hasn't said");
+    // The calm round (Oct 3 2026): no notice when nothing is waiting.
+    expect(notice(host)).toBeUndefined();
+    expect(Array.from(host.querySelectorAll(".adm-head button")).some((b) => b.textContent?.trim() === "Settings on My Studio")).toBe(true);
   });
 
   it("never calls a read that failed 'unanswered'", async () => {
@@ -125,6 +123,6 @@ describe("AdminRenewalsTab — the door to the studio's auto-renewal answer", ()
       error: "Couldn't load this studio's renewal settings. Showing the defaults.",
     };
     const { host } = await mount();
-    expect(notice(host)!.textContent).not.toContain("hasn't said");
+    expect(host.textContent).not.toContain("hasn't said");
   });
 });

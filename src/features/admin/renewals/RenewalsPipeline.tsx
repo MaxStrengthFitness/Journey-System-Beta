@@ -186,30 +186,37 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief }
     );
   };
 
+  // The calm round (Oct 3 2026): an empty pipeline is one short line, not four zero tiles and five filters.
+  const empty = !loading && rows.length === 0 && !error;
+  const showTiles = !empty || (missingCount ?? 0) > 0;
   return (
     <div className="space-y-4">
       {error && <AdminNotice tone="warn">{error}</AdminNotice>}
 
-      <AdminTiles>
-        <AdminStatTile label="Before the charge" value={count("before-charge")} loading={loading} tone={count("before-charge") ? "attention" : undefined} foot="Banked sessions, charge inside your window" />
-        <AdminStatTile label="Talk now" value={count("talk-now")} loading={loading} tone={count("talk-now") ? "attention" : undefined} foot={`${settings.conversationAtSessionsLeft} or fewer left, or ended`} />
-        <AdminStatTile label="Coming up" value={count("coming-up")} loading={loading} foot={`Next ${settings.horizonMonths} month${settings.horizonMonths === 1 ? "" : "s"}`} />
-        <AdminStatTile
-          label="Missing Mindbody data"
-          value={missingCount ?? "—"}
-          loading={missingCount === null && loading}
-          onClick={() => setShowMissing((v) => !v)}
-          foot={showMissing ? "Tap to hide" : "Tap to see who"}
-        />
-      </AdminTiles>
+      {showTiles && (
+        <AdminTiles>
+          <AdminStatTile label="Before the charge" value={count("before-charge")} loading={loading} tone={count("before-charge") ? "attention" : undefined} foot="Banked sessions, charge inside your window" />
+          <AdminStatTile label="Talk now" value={count("talk-now")} loading={loading} tone={count("talk-now") ? "attention" : undefined} foot={`${settings.conversationAtSessionsLeft} or fewer left, or ended`} />
+          <AdminStatTile label="Coming up" value={count("coming-up")} loading={loading} foot={`Next ${settings.horizonMonths} month${settings.horizonMonths === 1 ? "" : "s"}`} />
+          <AdminStatTile
+            label="Missing Mindbody data"
+            value={missingCount ?? "—"}
+            loading={missingCount === null && loading}
+            onClick={() => setShowMissing((v) => !v)}
+            foot={showMissing ? "Tap to hide" : "Tap to see who"}
+          />
+        </AdminTiles>
+      )}
 
-      <div className="adm-segmented adm-segmented--wrap" role="tablist" aria-label="Filter the pipeline">
-        {FILTERS.map((f) => (
-          <button key={f} type="button" role="tab" className="adm-seg" aria-selected={filter === f} onClick={() => setFilter(f)}>
-            {FILTER_LABELS[f]}
-          </button>
-        ))}
-      </div>
+      {!empty && (
+        <div className="adm-segmented adm-segmented--wrap" role="tablist" aria-label="Filter the pipeline">
+          {FILTERS.map((f) => (
+            <button key={f} type="button" role="tab" className="adm-seg" aria-selected={filter === f} onClick={() => setFilter(f)}>
+              {FILTER_LABELS[f]}
+            </button>
+          ))}
+        </div>
+      )}
 
       {showMissing && (
         <AdminPanel
@@ -238,11 +245,8 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief }
         </AdminPanel>
       )}
 
-      {!loading && rows.length === 0 && !error ? (
-        <AdminEmpty title={`No renewals to plan at ${studioName} yet`}>
-          The pipeline fills from the nightly renewals job. Until it has run — and pulled
-          Mindbody for this studio's clients — there's nothing to place here.
-        </AdminEmpty>
+      {empty ? (
+        <AdminEmpty title={`No renewals to plan at ${studioName} yet`}>It fills from the nightly run, once that has pulled this studio's clients from Mindbody.</AdminEmpty>
       ) : (
         <>
           {lanePanel("before-charge")}
@@ -253,12 +257,14 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief }
         </>
       )}
 
-      <p className="adm-hint">
-        <CalendarClock className="inline w-3.5 h-3.5 mr-1" />
-        Worked out overnight from Mindbody and the studio's bookings. Open a client for today's numbers.
-        <Users className="inline w-3.5 h-3.5 mx-1" />
-        Nothing here contacts anyone.
-      </p>
+      {!empty && (
+        <p className="adm-hint">
+          <CalendarClock className="inline w-3.5 h-3.5 mr-1" />
+          Worked out overnight from Mindbody. Open a client for today's numbers.
+          <Users className="inline w-3.5 h-3.5 mx-1" />
+          Nothing here contacts anyone.
+        </p>
+      )}
     </div>
   );
 }
