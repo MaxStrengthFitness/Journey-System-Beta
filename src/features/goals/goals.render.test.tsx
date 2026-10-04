@@ -22,7 +22,7 @@ import { ReachedShelf } from "./ReachedShelf";
 import { herWhyLinks, reachedShelf } from "./goals-page";
 import { FocusBoard } from "../../components/journal/FocusBoard";
 import { useRecordForm } from "../client-codex/useRecordForm";
-import { pronounsOf } from "../client-codex/kit";
+import { CLIENT_PRONOUNS } from "../client-codex/kit";
 
 vi.mock("../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "uid-jane" } } }));
 vi.mock("../../contexts/ToastContext", () => ({
@@ -92,7 +92,7 @@ function GoalsHarness({ client, probe, canEdit = true }: { client: Client; probe
   const form = useRecordForm({ client, trainerId: "t1", canEdit });
   probe.formData = form.formData;
   probe.dirty = form.dirty;
-  const p = pronounsOf(client);
+  const p = CLIENT_PRONOUNS;
   const rows = reachedShelf({
     current: form.formData.goalHistory !== undefined ? form.formData.goalHistory : client.goalHistory,
     saved: client.goalHistory,
@@ -147,9 +147,9 @@ describe("the goal cards mount", () => {
     const host = await mount(<GoalsHarness client={baseClient()} probe={probe} />);
     const why = card(host, "goals-why");
     expect(why.textContent).toContain("“Wants to garden again”");
-    expect(why.textContent).toContain("Her why, as it's written on her record");
+    expect(why.textContent).toContain("Their why, as it's written on their record");
     await click(editOf(host, "goals-why"));
-    expect((fieldByLabel(why, "Her why") as HTMLTextAreaElement).value).toBe("Wants to garden again");
+    expect((fieldByLabel(why, "Their why") as HTMLTextAreaElement).value).toBe("Wants to garden again");
   });
 
   it("shows the goal, its SMART words and five squares, and Edit reveals the goal and the five toggles", async () => {
@@ -237,7 +237,7 @@ describe("the goal cards mount", () => {
     // the new one not saved yet.
     expect(card(host, "goals-now").querySelectorAll(".gf-square")).toHaveLength(0);
     expect(buttonByText(host, "Mark achieved")).toBeUndefined();
-    expect(card(host, "goals-now").textContent).toContain("Nothing set yet. What is she working toward now?");
+    expect(card(host, "goals-now").textContent).toContain("Nothing set yet. What are they working toward now?");
     const shelf = host.querySelector<HTMLElement>('[data-testid="goal-history"]')!;
     expect(shelf.textContent).toContain("Reached · 2 goals");
     expect(shelf.textContent).toContain("Kaizen pin");

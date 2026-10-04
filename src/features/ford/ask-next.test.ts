@@ -85,12 +85,6 @@ describe("askNext", () => {
     const ask = askNext("occupation", { retired: true, seed: SEEDS[3] });
     expect(ask).toEqual({ kind: "prompt", question: "How is retirement going?", why: "retired" });
     expect(askNextMeta(ask, "occupation")).toBe("The work questions are skipped: marked retired");
-    expect(askNextMeta(ask, "occupation", { subject: "she", plural: false })).toBe(
-      "The work questions are skipped because she is retired",
-    );
-    expect(askNextMeta(ask, "occupation", { subject: "they", plural: true })).toBe(
-      "The work questions are skipped because they are retired",
-    );
   });
 
   it("is one of the pillar's questions otherwise", () => {
@@ -145,7 +139,7 @@ describe("askNext with follow-ups", () => {
     const ask = askNext("recreation", { retired: false, seed: SEEDS[0], entries: [boots] });
     expect(ask).toMatchObject({ kind: "follow-up", question: "How did the new boots do on the long walk?", byName: "Jess Moreno" });
     expect(ask.kind === "follow-up" && ask.entry.id).toBe("boots");
-    expect(askNextMeta(ask, "recreation", null, NOW)).toBe("Follow up from Jess Moreno, Mar 15");
+    expect(askNextMeta(ask, "recreation", NOW)).toBe("Follow up from Jess Moreno, Mar 15");
   });
 
   it("beats the retirement prompt too — a written question is always asked first", () => {
@@ -187,11 +181,11 @@ describe("askNext with follow-ups", () => {
 
   it("says who and when as far as it knows", () => {
     const noName = askNext("recreation", { retired: false, entries: [{ ...boots, followUpBy: null }] });
-    expect(askNextMeta(noName, "recreation", null, NOW)).toBe("A follow up saved Mar 15");
+    expect(askNextMeta(noName, "recreation", NOW)).toBe("A follow up saved Mar 15");
     const lastYear = askNext("recreation", { retired: false, entries: [{ ...boots, followUpAt: new Date(2026, 10, 2) }] });
-    expect(askNextMeta(lastYear, "recreation", null, NOW)).toBe("Follow up from Jess Moreno, Nov 2, 2026");
+    expect(askNextMeta(lastYear, "recreation", NOW)).toBe("Follow up from Jess Moreno, Nov 2, 2026");
     const nothing = askNext("recreation", { retired: false, entries: [{ ...boots, followUpBy: null, followUpAt: null }] });
-    expect(askNextMeta(nothing, "recreation", null, NOW)).toBe("A follow up saved on a detail");
+    expect(askNextMeta(nothing, "recreation", NOW)).toBe("A follow up saved on a detail");
   });
 });
 

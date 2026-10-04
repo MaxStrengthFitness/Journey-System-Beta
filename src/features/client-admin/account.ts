@@ -77,7 +77,7 @@ import {
 import { ageFromDob, masterSyncLabel } from "../client-profile/sync-label";
 import { firstVisitOf, monthYear, type FirstVisitBasis } from "../client-story/story";
 import { cap, dayKeyDate, joinDots, plural } from "../client-codex/kit/text";
-import { agree, pronounsOf, type Pronouns } from "../client-codex/kit/pronouns";
+import { CLIENT_PRONOUNS, agree, type Pronouns } from "../client-codex/kit/pronouns";
 import { recordStudioIdOf } from "../client-codex/access";
 import {
   PACKAGE_NAME,
@@ -195,7 +195,7 @@ export interface FirstDayView {
 const GUESS_WORDS: Record<ClientSinceSource, string> = {
   stated: "set on the profile",
   firstSession: "the first session Journey recorded",
-  firstAppointment: "her first appointment in Mindbody",
+  firstAppointment: "the first appointment in Mindbody",
   mindbodyCreated: "the day Mindbody made the record",
   commercial: "the first package on file",
   journey: "the day Journey first saw the record",
@@ -301,7 +301,7 @@ const text = (v: unknown): string => (typeof v === "string" ? v.replace(/\s+/g, 
 export function contactFacts(
   client: ContactClient,
   formData: Partial<Client>,
-  { now = new Date(), pronouns = pronounsOf(client) }: { now?: Date; pronouns?: Pronouns } = {},
+  { now = new Date(), pronouns = CLIENT_PRONOUNS }: { now?: Date; pronouns?: Pronouns } = {},
 ): ContactFact[] {
   const linked = isMindbodyLinked(client);
   const missing = missingWords(client);

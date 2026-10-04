@@ -11,7 +11,7 @@ import { askNext } from "../ford/ask-next";
 import { FORD_READ_NOTICE } from "../ford/read-status";
 import { accountGlance } from "../client-admin/account";
 import { buildStory, type Src, type StoryInput } from "../client-story/story";
-import { pronounsOf } from "./kit/pronouns";
+import { CLIENT_PRONOUNS } from "./kit/pronouns";
 import { notesOfJournal, pulseFromReports, type CodexPulse } from "./codex-data";
 import {
   OV_NOTE_ROWS,
@@ -33,9 +33,6 @@ import {
  */
 const TODAY = "2027-03-16";
 const NOW = new Date(2027, 2, 16, 12);
-const SHE = pronounsOf({ gender: "Female" });
-const HE = pronounsOf({ gender: "Male" });
-const THEY = pronounsOf(null);
 const noon = (day: string) => new Date(`${day}T12:00:00-05:00`);
 
 /* ------------------------------------------------------------------ */
@@ -167,7 +164,7 @@ const carolClient = (over: Partial<Client> = {}): Client =>
     globalNotes: "“Keep up with my granddaughters, and walk the Camino with Tom before my knees say no.”",
     smartGoal: "10 miles two days running, a Camino rehearsal",
     goalTargetDate: "2027-05-01",
-    discoveryNotes: "Talk her through the first rep. She goes quiet when she's working hard, and that's a good sign.\n\nNever rush the set-up.",
+    discoveryNotes: "Talk them through the first rep. They go quiet when they're working hard, and that's a good sign.\n\nNever rush the set-up.",
     emergencyContactName: "Tom Brennan",
     emergencyContactRelationship: "husband",
     inbodySummary: { scanCount: 2, firstTestedAt: "2026-10-02", latestTestedAt: "2027-03-03" },
@@ -181,7 +178,7 @@ const carolEntries = [
     kind: "injury",
     importance: "critical",
     machineId: "m-leg",
-    body: "Right knee. Stop at 90° at the bottom turn. She felt a pinch on Mar 4 with the seat one notch closer.",
+    body: "Right knee. Stop at 90° at the bottom turn. They felt a pinch on Mar 4 with the seat one notch closer.",
     authorName: "AJ Jurgens",
     authorInitials: "AJ",
     occurredAt: noon("2027-03-04"),
@@ -221,7 +218,7 @@ function storyOf(client: Client, over: Partial<StoryInput> = {}) {
     client,
     coverage: "complete",
     totals: { total: 461, journey: 49, before: 412 },
-    pronouns: SHE,
+    pronouns: CLIENT_PRONOUNS,
     notes: ready([] as NoteThread[]),
     focuses: ready([] as ClientFocus[]),
     ford: ready([] as FordEntry[]),
@@ -263,7 +260,7 @@ function input(over: Partial<OverviewInput> = {}, entries = carolEntries): Overv
     client,
     today: TODAY,
     access: { fordReadable: true, fordWritable: true, homeStudioName: "Westlake" },
-    pronouns: SHE,
+    pronouns: CLIENT_PRONOUNS,
     machines: MACHINES,
     notes: notesOfJournal(journal, TODAY),
     journal,
@@ -310,7 +307,7 @@ describe("notesGlance", () => {
     expect(g.rows[0]).toMatchObject({ importance: "critical", machine: "Leg Press" });
     // Whole first sentences, never cut and never an ellipsis.
     expect(g.rows[0].text).toBe(
-      "Right knee. Stop at 90° at the bottom turn. She felt a pinch on Mar 4 with the seat one notch closer.",
+      "Right knee. Stop at 90° at the bottom turn. They felt a pinch on Mar 4 with the seat one notch closer.",
     );
     expect(g.rows[0].meta).toBe("AJ · Mar 4 · matters always · 1 update");
     expect(g.rows[1]).toMatchObject({ importance: "elevated", machine: null });
@@ -396,7 +393,7 @@ describe("fordGlance", () => {
   it("lists Coming up within two months — her Mindbody birthday first — coloured by urgency", () => {
     const g = fordGlance(input());
     expect(g.dates).toEqual([
-      { key: "birthday", when: "in 17 days", urgency: "soon", what: "Her 69th birthday · Apr 2" },
+      { key: "birthday", when: "in 17 days", urgency: "soon", what: "Their 69th birthday · Apr 2" },
       { key: "fam2", when: "in 5 weeks", urgency: "later", what: "Granddaughter Ellie's first piano recital. · Apr 20" },
     ]);
     expect(g.datesEmpty).toBeNull();
@@ -474,9 +471,7 @@ describe("fordGlance", () => {
   });
 
   it("names the slot with her pronoun", () => {
-    expect(fordEyebrow(SHE)).toBe("Who she is · FORD");
-    expect(fordEyebrow(HE)).toBe("Who he is · FORD");
-    expect(fordEyebrow(THEY)).toBe("Who they are · FORD");
+    expect(fordEyebrow(CLIENT_PRONOUNS)).toBe("Who they are · FORD");
   });
 });
 
@@ -492,7 +487,7 @@ describe("bodyGlance", () => {
 
   it("says a missing height, and an unreadable one, in Build's own words", () => {
     expect(bodyGlance(input({ client: carolClient({ height: "" }) })).lede).toBe(
-      "No height on file, so machine set-up can't be matched to her.",
+      "No height on file, so machine set-up can't be matched to them.",
     );
     expect(bodyGlance(input({ client: carolClient({ height: "tall" }) })).lede).toMatch(/isn't one the app can read/);
   });
@@ -522,8 +517,8 @@ describe("bodyGlance", () => {
 
 describe("pulseGlance", () => {
   it("quotes Sleep & Recovery verbatim with its word and the last different one, then the pain map", () => {
-    const g = pulseGlance(input().pulse, SHE, NOW);
-    expect(g.label).toBe("She says:");
+    const g = pulseGlance(input().pulse, CLIENT_PRONOUNS, NOW);
+    expect(g.label).toBe("They say:");
     expect(g.text).toBe("“I wake up feeling rested.” Often, up from Sometimes in January. Right knee Mild, was Moderate in January.");
   });
 
@@ -535,36 +530,36 @@ describe("pulseGlance", () => {
       round("r2", "2027-02-10", { sleepRecovery_2: 8 }, [knee(3)]),
       round("r3", "2027-03-10", { strengthConfidence_1: 10 }),
     );
-    expect(pulseGlance(pulse, SHE, NOW).text).toBe(
+    expect(pulseGlance(pulse, CLIENT_PRONOUNS, NOW).text).toBe(
       "“I wake up feeling rested.” Often (Feb 10), up from Sometimes in January. Right knee Mild (Feb 10), was Moderate in January.",
     );
     expect(bodyGlance(input({ pulse })).foot).toMatch(/Pulse Mar 10/);
   });
 
   it("says no 'was' from one round (a minimum sample of two)", () => {
-    const g = pulseGlance(pulseOf(round("r2", "2027-03-10", { sleepRecovery_2: 8 }, [knee(3)])), SHE, NOW);
+    const g = pulseGlance(pulseOf(round("r2", "2027-03-10", { sleepRecovery_2: 8 }, [knee(3)])), CLIENT_PRONOUNS, NOW);
     expect(g.text).toBe("“I wake up feeling rested.” Often, Mar 10. Right knee Mild.");
     expect(g.text).not.toMatch(/\bwas\b|up from|down from/);
   });
 
   it("with no Sleep answer, quotes the first answered area in the Pulse's own order", () => {
-    const g = pulseGlance(pulseOf(round("r2", "2027-03-10", { strengthConfidence_1: 10, mentalEmotional_1: 3 })), HE, NOW);
-    expect(g.label).toBe("He says:");
+    const g = pulseGlance(pulseOf(round("r2", "2027-03-10", { strengthConfidence_1: 10, mentalEmotional_1: 3 })), CLIENT_PRONOUNS, NOW);
+    expect(g.label).toBe("They say:");
     expect(g.text).toMatch(/^“[^”]+” Nearly always, Mar 10\.$/);
     expect(g.text).not.toContain("Rarely");
   });
 
   it("says loading, failed and none each in its own words", () => {
-    expect(pulseGlance({ status: "loading", history: null }, SHE, NOW)).toEqual({ label: null, text: "Loading the Pulse…" });
-    expect(pulseGlance({ status: "failed", history: null }, THEY, NOW)).toEqual({
+    expect(pulseGlance({ status: "loading", history: null }, CLIENT_PRONOUNS, NOW)).toEqual({ label: null, text: "Loading the Pulse…" });
+    expect(pulseGlance({ status: "failed", history: null }, CLIENT_PRONOUNS, NOW)).toEqual({
       label: null,
       text: "The Pulse couldn't be loaded, so what they say isn't shown here.",
     });
-    expect(pulseGlance(pulseOf(), SHE, NOW)).toEqual({ label: null, text: "No Pulse saved in Journey yet." });
+    expect(pulseGlance(pulseOf(), CLIENT_PRONOUNS, NOW)).toEqual({ label: null, text: "No Pulse saved in Journey yet." });
   });
 
   it("never gives a number, a percentage or a traffic light", () => {
-    const text = pulseGlance(input().pulse, SHE, NOW).text;
+    const text = pulseGlance(input().pulse, CLIENT_PRONOUNS, NOW).text;
     expect(text).not.toMatch(/\d\s*%|\/\s*10|\b(Red|Yellow|Green)\b/);
   });
 });
@@ -583,8 +578,8 @@ describe("goalsOverview", () => {
     expect(g.lines[1].label).toBe("Focus ·");
     expect(g.lines[1].text).toMatch(/^Pace: Slow the lower turnaround on Leg Press\. No bounce\. · AJ, /);
     expect(g.lines[2]).toMatchObject({
-      label: "How to coach her:",
-      text: "Talk her through the first rep. She goes quiet when she's working hard, and that's a good sign.",
+      label: "How to coach them:",
+      text: "Talk them through the first rep. They go quiet when they're working hard, and that's a good sign.",
     });
     expect(g.foot).toBe("1 focus running");
   });
@@ -593,11 +588,11 @@ describe("goalsOverview", () => {
     const client = carolClient({ globalNotes: "", smartGoal: "", goalTargetDate: "", discoveryNotes: "" });
     const g = goalsOverview(input({ client }, [entry({ id: "x", kind: "equipment", body: "Seat 7." })]));
     expect(g.why).toBeNull();
-    expect(g.whyMissing).toBe("Her why isn't written down yet.");
+    expect(g.whyMissing).toBe("Their why isn't written down yet.");
     expect(g.lines.map((l) => `${l.label} ${l.text}`)).toEqual([
       "Working toward: nothing set yet.",
       "Focus: none running.",
-      "How to coach her: not written yet.",
+      "How to coach them: not written yet.",
     ]);
   });
 
@@ -606,19 +601,19 @@ describe("goalsOverview", () => {
     const loading = goalsOverview(input({ client, journal: journalOf(carolEntries, { notes: "loading", focuses: "loading", sessions: "ready" }) }));
     expect(loading.lines.slice(1).map((l) => l.text)).toEqual(["loading…", "loading…"]);
     const failed = goalsOverview(input({ client, journal: journalOf(carolEntries, { notes: "failed", focuses: "failed", sessions: "ready" }) }));
-    expect(failed.lines.slice(1).map((l) => l.text)).toEqual(["the focuses couldn't be loaded.", "her notes couldn't be loaded."]);
+    expect(failed.lines.slice(1).map((l) => l.text)).toEqual(["the focuses couldn't be loaded.", "their notes couldn't be loaded."]);
   });
 
   it("with no strategy, leads with her first coaching note, its machine and its author", () => {
     const client = carolClient({ discoveryNotes: "" });
     const g = goalsOverview(
       input({ client }, [
-        entry({ id: "t1", kind: "coaching", importance: "elevated", machineId: "m-leg", body: "Count her down on the last rep. She likes it." }),
+        entry({ id: "t1", kind: "coaching", importance: "elevated", machineId: "m-leg", body: "Count them down on the last rep. They like it." }),
       ]),
     );
     expect(g.lines[2]).toEqual({
-      label: "How to coach her:",
-      text: "Leg Press: Count her down on the last rep. She likes it. — Jess",
+      label: "How to coach them:",
+      text: "Leg Press: Count them down on the last rep. They like it. — Jess",
       importance: "elevated",
     });
   });
@@ -675,7 +670,7 @@ describe("storyGlance", () => {
 
   it("says when she started isn't on file when the Story cannot say", () => {
     const story = { ...storyOf(carolClient()), sinceLine: null };
-    expect(storyGlance(input({ story })).lede).toBe("When she started isn't on file yet.");
+    expect(storyGlance(input({ story })).lede).toBe("When they started isn't on file yet.");
   });
 });
 

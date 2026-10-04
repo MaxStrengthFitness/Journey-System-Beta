@@ -7,13 +7,12 @@ import { historyFromDocs } from "../../subjective-report/assessment-history";
 import { emptyAssessment } from "../../subjective-report/scoring";
 import type { PainPoint, SubjectiveAssessment } from "../../subjective-report/types";
 import type { RenewalSnapshot } from "../../renewals/types";
-import { pronounsOf } from "../kit/pronouns";
+import { CLIENT_PRONOUNS } from "../kit/pronouns";
 import { latestPain, latestPulseReadings, type PulseSource } from "./pulse-read";
 import type { ProgressReportsStatus } from "../../client-profile/client-answer";
 import { NOT_ASKED_YET, PULSE_UNKNOWN, measuredToldPairs, strengthMeasured, toldMissingLine } from "./pairs";
 
 const NOW = new Date(2027, 2, 24, 12);
-const her = pronounsOf({ gender: "Female" });
 
 const scan = (id: string, testedAt: string, muscle: number): InBodyScan =>
   scanFromDoc(id, { testedAt, weightLb: 142, skeletalMuscleMassLb: muscle, bodyFatMassLb: 48, percentBodyFat: 34 })!;
@@ -56,7 +55,7 @@ describe("Strength, measured", () => {
     client: {} as Client,
     variation: DEFAULT_INBODY_VARIATION,
     variationOwner: null,
-    pronouns: her,
+    pronouns: CLIENT_PRONOUNS,
     now: NOW,
   };
 
@@ -84,7 +83,7 @@ describe("Strength, measured", () => {
   it("with no scan, uses the machines Journey measured itself", () => {
     const client = { renewal: { proof: { machinesImproved: 6, machinesTracked: 9 } } } as unknown as Client;
     expect(strengthMeasured({ ...base, client, inbody: inbody([]) })).toEqual({
-      text: "Stronger on 6 of 9 machines she has done 3+ times.",
+      text: "Stronger on 6 of 9 machines they have done 3+ times.",
       source: "First logged weight against the latest, in Journey",
     });
     expect(strengthMeasured({ ...base, inbody: inbody([]) }).text).toBe("No InBody scan yet.");
@@ -117,7 +116,7 @@ describe("the pairs", () => {
       source: src,
       readings: latestPulseReadings(src),
       pulseStatus,
-      pronouns: her,
+      pronouns: CLIENT_PRONOUNS,
       now: NOW,
     });
 
@@ -159,7 +158,7 @@ describe("the pairs", () => {
     expect(failed.map((r) => r.toldMissing)).toEqual([PULSE_UNKNOWN, PULSE_UNKNOWN]);
     expect(PULSE_UNKNOWN).toBe("Not known: the saved Pulse couldn't be read");
     const loading = pairs([], unknown, {} as Client, "loading");
-    expect(loading.map((r) => r.toldMissing)).toEqual(["Loading what she told us…", "Loading what she told us…"]);
+    expect(loading.map((r) => r.toldMissing)).toEqual(["Loading what they told us…", "Loading what they told us…"]);
     for (const r of [...failed, ...loading]) expect(r.toldMissing).not.toBe(NOT_ASKED_YET);
   });
 
@@ -180,9 +179,8 @@ describe("the pairs", () => {
   });
 
   it("words the missing told side by the reader's pronoun", () => {
-    expect(toldMissingLine("loading", pronounsOf({ gender: "Male" }))).toBe("Loading what he told us…");
-    expect(toldMissingLine("loading", pronounsOf({}))).toBe("Loading what they told us…");
-    expect(toldMissingLine("ready", her)).toBe(NOT_ASKED_YET);
+    expect(toldMissingLine("loading", CLIENT_PRONOUNS)).toBe("Loading what they told us…");
+    expect(toldMissingLine("ready", CLIENT_PRONOUNS)).toBe(NOT_ASKED_YET);
   });
 
   it("reuses the renewal check's pace sentence", () => {

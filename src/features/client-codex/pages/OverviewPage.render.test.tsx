@@ -31,7 +31,7 @@ import { assembleThreads, type NoteThread } from "../../client-notes/threads";
 import { groupByPillar } from "../../ford/ford-rollup";
 import { FORD_READ_NOTICE } from "../../ford/read-status";
 import { buildStory, type Src, type StoryInput } from "../../client-story/story";
-import { pronounsOf } from "../kit/pronouns";
+import { CLIENT_PRONOUNS } from "../kit/pronouns";
 import { notesOfJournal, pulseFromReports, type CodexData, type CodexPageProps, type CodexPulse } from "../codex-data";
 import { overviewModel, type OverviewInput } from "../overview-model";
 import { OverviewPage } from "./OverviewPage";
@@ -39,7 +39,6 @@ import { OverviewPage } from "./OverviewPage";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const TODAY = "2027-03-16";
-const SHE = pronounsOf({ gender: "Female" });
 const noon = (day: string) => new Date(`${day}T12:00:00-05:00`);
 const ready = <T,>(data: T): Src<T> => ({ status: "ready", data });
 
@@ -173,7 +172,7 @@ function dataOf(f: Fixture): { data: CodexData; input: OverviewInput } {
     client: f.client,
     coverage: f.coverage ?? "complete",
     totals: f.totals ?? null,
-    pronouns: SHE,
+    pronouns: CLIENT_PRONOUNS,
     notes: src(notesLoad, threads as NoteThread[]),
     focuses: src(focusesLoad, (f.focuses ?? []) as ClientFocus[]),
     ford:
@@ -200,7 +199,7 @@ function dataOf(f: Fixture): { data: CodexData; input: OverviewInput } {
       fordWritable: f.fordWritable ?? fordStatus === "ready",
       homeStudioName: "Westlake",
     },
-    pronouns: SHE,
+    pronouns: CLIENT_PRONOUNS,
     machines: [{ id: "m-leg", name: "Leg Press" }],
     notes: notesOfJournal(journal, TODAY),
     journal,
@@ -248,7 +247,7 @@ const carol = (over: Partial<Client> = {}): Client =>
     globalNotes: "Keep up with my granddaughters, and walk the Camino with Tom before my knees say no.",
     smartGoal: "10 miles two days running, a Camino rehearsal",
     goalTargetDate: "2027-05-01",
-    discoveryNotes: "Talk her through the first rep. She goes quiet when she's working hard, and that's a good sign.",
+    discoveryNotes: "Talk them through the first rep. They go quiet when they're working hard, and that's a good sign.",
     emergencyContactName: "Tom Brennan",
     emergencyContactRelationship: "husband",
     inbodySummary: { scanCount: 2, firstTestedAt: "2026-10-02", latestTestedAt: "2027-03-03" },
@@ -263,7 +262,7 @@ const FULL: Fixture = {
       id: "crit",
       importance: "critical",
       machineId: "m-leg",
-      body: "Right knee. Stop at 90° at the bottom turn. She felt a pinch on Mar 4 with the seat one notch closer.",
+      body: "Right knee. Stop at 90° at the bottom turn. They felt a pinch on Mar 4 with the seat one notch closer.",
       authorName: "AJ Jurgens",
       occurredAt: noon("2027-03-04"),
     }),
@@ -409,7 +408,7 @@ async function expectTheContract(f: Fixture) {
   const { host, model } = await mount(f);
   expect(slots(host).map((s) => text(s.querySelector(".cx-eyebrow")))).toEqual([
     "Notes",
-    "Who she is · FORD",
+    "Who they are · FORD",
     "Body & Pulse",
     "Goals & Focus",
     "Story",
@@ -458,7 +457,7 @@ async function expectTheContract(f: Fixture) {
   expect(text(body)).toContain(model.body.says.text);
   // Goals & Focus: her why (or its absence) and every line, label and words.
   const goals = slot(host, "goals");
-  says(goals, model.goals.why, "her why");
+  says(goals, model.goals.why, "their why");
   says(goals, model.goals.whyMissing, "no why");
   for (const l of model.goals.lines) {
     says(goals, l.importance ? l.label : `${l.label} ${l.text}`, l.label);
@@ -517,7 +516,7 @@ describe("OverviewPage — a full client", () => {
     const when = f.querySelector(".cx-ov-when");
     expect(text(when)).toBe("in 17 days");
     expect(when?.getAttribute("data-urgency")).toBe("soon");
-    expect(text(f)).toContain("Her 69th birthday · Apr 2");
+    expect(text(f)).toContain("Their 69th birthday · Apr 2");
     expect(text(f)).toContain("Buen Camino send-off · AJ Jurgens");
     await click(buttonIn(f, "Open FORD"));
     expect(go).toHaveBeenLastCalledWith("ford");
@@ -530,7 +529,7 @@ describe("OverviewPage — a full client", () => {
       "Every set: “Keep the breathing continuous on every set — no breath-holding under load.”",
     );
     expect(text(b.querySelector('[data-testid="ov-says"]'))).toBe(
-      "She says: “I wake up feeling rested.” Often, up from Sometimes in January.",
+      "They say: “I wake up feeling rested.” Often, up from Sometimes in January.",
     );
     // Crimson only for an absolute contraindication: the chips carry the flags' own tones.
     expect(Array.from(b.querySelectorAll(".cx-chip")).length).toBe(2);
@@ -547,7 +546,7 @@ describe("OverviewPage — a full client", () => {
     );
     expect(text(g)).toContain("Working toward: 10 miles two days running, a Camino rehearsal · target May 1, 2027");
     expect(text(g)).toContain("Focus · Pace: Slow the lower turnaround on Leg Press.");
-    expect(text(g)).toContain("How to coach her: Talk her through the first rep.");
+    expect(text(g)).toContain("How to coach them: Talk them through the first rep.");
     await click(g);
     expect(go).toHaveBeenLastCalledWith("goals");
   });
@@ -583,8 +582,8 @@ describe("OverviewPage — a sparse client", () => {
     expect(text(b)).toContain("No clinical flags on file.");
     expect(b.querySelector('[data-testid="ov-every-set"]')).toBeNull();
     expect(text(b)).toContain("No Pulse saved in Journey yet.");
-    expect(text(slot(host, "goals"))).toContain("Her why isn't written down yet.");
-    expect(text(slot(host, "goals"))).toContain("How to coach her: not written yet.");
+    expect(text(slot(host, "goals"))).toContain("Their why isn't written down yet.");
+    expect(text(slot(host, "goals"))).toContain("How to coach them: not written yet.");
     // A count of none is never a footer: "none running" says it once.
     expect(text(slot(host, "goals"))).not.toContain("0 focuses");
   });
@@ -624,7 +623,7 @@ describe("OverviewPage — every read failed", () => {
     expect(text(slot(host, "ford").querySelector('[data-testid="ov-ford-notice"]'))).toBe(FORD_READ_NOTICE.failed);
     // No empty pillar tiles beside it: they would read as nothing on file.
     expect(slot(host, "ford").querySelector(".cx-ov-pillar")).toBeNull();
-    expect(text(slot(host, "body"))).toContain("The Pulse couldn't be loaded, so what she says isn't shown here.");
+    expect(text(slot(host, "body"))).toContain("The Pulse couldn't be loaded, so what they say isn't shown here.");
     expect(text(slot(host, "goals"))).toContain("Focus: the focuses couldn't be loaded.");
     expect(text(slot(host, "story"))).toMatch(/Couldn't read .* here, so a moment may be missing\./);
     const page = text(host);

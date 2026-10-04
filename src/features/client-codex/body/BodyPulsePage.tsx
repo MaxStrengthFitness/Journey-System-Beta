@@ -468,7 +468,6 @@ export function BodyPulsePage({
             due={
               <InBodyDuePanel
                 due={due}
-                possessive={p.possessive}
                 studioEvery={studioEvery}
                 canEdit={canEdit}
                 value={formData.inbodyEvery}

@@ -175,25 +175,18 @@ export function followUpPatch(
 /**
  * The quiet line under the question. For a follow-up, who set it and when:
  * "Follow up from Jess Moreno, Mar 15". For a prompt, whose question it is;
- * `who` is the client's pronoun, for the retired case ("because she's
- * retired"); without one it says "marked retired", which names the record
- * rather than the person.
+ * in the retired case it says "marked retired", which names the record rather
+ * than the person, so it needs no pronoun (on-screen text never guesses a
+ * client's gender, Oct 3 2026).
  */
-export function askNextMeta(
-  ask: AskNext,
-  pillar: FordPillar,
-  who?: { subject: string; plural: boolean } | null,
-  now: Date = new Date(),
-): string {
+export function askNextMeta(ask: AskNext, pillar: FordPillar, now: Date = new Date()): string {
   if (ask.kind === "follow-up") {
     const when = shortDate(ask.at, now);
     if (ask.byName) return when ? `Follow up from ${ask.byName}, ${when}` : `Follow up from ${ask.byName}`;
     return when ? `A follow up saved ${when}` : "A follow up saved on a detail";
   }
   if (ask.why === "retired") {
-    return who
-      ? `The work questions are skipped because ${who.subject} ${who.plural ? "are" : "is"} retired`
-      : "The work questions are skipped: marked retired";
+    return "The work questions are skipped: marked retired";
   }
   return `One of FORD’s ${FORD_META[pillar].label} questions`;
 }

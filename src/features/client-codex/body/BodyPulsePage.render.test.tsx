@@ -100,7 +100,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
 
 import { BodyPulsePage, type BodyPulsePageProps } from "./BodyPulsePage";
 import { useRecordForm } from "../useRecordForm";
-import { pronounsOf } from "../kit/pronouns";
+import { CLIENT_PRONOUNS } from "../kit/pronouns";
 import { historyFromDocs } from "../../subjective-report/assessment-history";
 import { emptyAssessment } from "../../subjective-report/scoring";
 import { assembleThreads } from "../../client-notes/threads";
@@ -275,7 +275,7 @@ function Host(p: HostProps) {
     filedReports: 1,
     inbody: { scans: [], loading: false, error: null },
     programming: p.programming ?? NO_PROGRAMMING,
-    pronouns: pronounsOf(client),
+    pronouns: CLIENT_PRONOUNS,
     today: TODAY,
     go: () => {},
     onOpenNote: () => {},
@@ -356,7 +356,7 @@ describe("Body & Pulse — the page", () => {
     const host = await mount();
     const build = host.querySelector("#body-build")!;
     expect(build.textContent).toContain(`4'11" wingspan`);
-    expect(build.textContent).toContain(`1" less than her height`);
+    expect(build.textContent).toContain(`1" less than their height`);
     expect(build.textContent).toContain("Shorter than our machines are set for.");
     await click(build.querySelector('[aria-label="Edit Build"]'));
     const wingspan = Array.from(build.querySelectorAll("input")).find((i) =>
@@ -392,7 +392,7 @@ describe("Body & Pulse — how to coach her (Goals & Focus's line, phase 14)", (
     kind: "coaching",
     category: "Pace",
     importance: "standard",
-    body: "Count her into the turnaround.",
+    body: "Count them into the turnaround.",
   });
 
   it("leads with the first paragraph of the coach strategy, with All of it when there is more", async () => {
@@ -400,16 +400,16 @@ describe("Body & Pulse — how to coach her (Goals & Focus's line, phase 14)", (
       client: carol({ discoveryNotes: "Sets up short on everything.\n\nShe goes quiet when working hard." }),
       entries: [critical, tip],
     });
-    expect(strip(host).textContent).toContain("How to coach her");
+    expect(strip(host).textContent).toContain("How to coach them");
     expect(strip(host).textContent).toContain("Sets up short on everything.");
-    expect(strip(host).textContent).not.toContain("She goes quiet");
+    expect(strip(host).textContent).not.toContain("They go quiet");
     expect(buttonIn(strip(host), "All of it")).toBeTruthy();
   });
 
   it("with no strategy, quotes her first coaching note and who wrote it", async () => {
     const host = await mount({ entries: [critical, tip] });
-    expect(strip(host).textContent).toContain("Count her into the turnaround.");
-    expect(strip(host).textContent).toContain("Jess, in her notes");
+    expect(strip(host).textContent).toContain("Count them into the turnaround.");
+    expect(strip(host).textContent).toContain("Jess, in their notes");
     expect(buttonIn(strip(host), "Goals & Focus")).toBeTruthy();
   });
 
@@ -447,10 +447,10 @@ describe("Body & Pulse — how to coach her (Goals & Focus's line, phase 14)", (
 
   it("never says nothing is written while her notes are unknown", async () => {
     const loading = await mount({ entries: [], notesState: "loading" });
-    expect(strip(loading).textContent).toContain("Loading her coaching notes…");
+    expect(strip(loading).textContent).toContain("Loading their coaching notes…");
     expect(strip(loading).textContent).not.toContain("No coach strategy or coaching notes");
     const none = await mount({ entries: [critical] });
-    expect(strip(none).textContent).toContain("No coach strategy or coaching notes for her yet.");
+    expect(strip(none).textContent).toContain("No coach strategy or coaching notes for them yet.");
   });
 });
 
@@ -561,7 +561,7 @@ describe("Body & Pulse — where it matters", () => {
       expect(fig.querySelector(".bp-fig__body")!.getAttribute("aria-hidden")).toBe("true");
     }
     expect(figures[0].getAttribute("aria-label")).toBe(
-      "Front of the body: a watch-out on file at the knee; she told us about the knee",
+      "Front of the body: a watch-out on file at the knee; they told us about the knee",
     );
   });
 
@@ -594,9 +594,9 @@ describe("Body & Pulse — where it matters", () => {
     expect(row.getAttribute("aria-expanded")).toBe("true");
     expect(detail.hidden).toBe(false);
     expect(detail.textContent).toContain("The flag doesn't record a side, so the diamond sits on the midline.");
-    expect(detail.textContent).toContain("She told us: right knee, Mild (Pulse, Mar 10).");
+    expect(detail.textContent).toContain("They told us: right knee, Mild (Pulse, Mar 10).");
     // The button's name is the region and its line, never the sentences.
-    expect(row.textContent).not.toContain("She told us");
+    expect(row.textContent).not.toContain("They told us");
     expect(row.contains(detail)).toBe(false);
   });
 
@@ -616,7 +616,7 @@ describe("Body & Pulse — where it matters", () => {
     const card = host.querySelector("#body-figure")!;
     expect(card.querySelector('circle.bp-fig__told[data-region="knee"]')).not.toBeNull();
     expect(card.textContent).toContain("The saved Pulse couldn't be read just now; only the open round is drawn.");
-    expect(card.textContent).not.toContain("what she told us isn't drawn");
+    expect(card.textContent).not.toContain("what they told us isn't drawn");
   });
 
   it("lists her Heads-up injury note and leaves out the one on the critical line", async () => {
@@ -675,7 +675,7 @@ describe("Body & Pulse — the Pulse", () => {
     const host = await mount({ pulse: { status: "loading", history: null } });
     const measured = host.querySelector("#body-measured")!.textContent ?? "";
     expect(measured).not.toContain("Not asked yet");
-    expect(measured).toContain("Loading what she told us…");
+    expect(measured).toContain("Loading what they told us…");
   });
 });
 
@@ -696,7 +696,7 @@ describe("Body & Pulse — over time (decision 9)", () => {
     const host = await mount();
     const card = host.querySelector("#body-timeline")!;
     expect(card.querySelector(".cx-lede")?.textContent).toBe(
-      "“How's the body since last time?” asked at 3 of her last 4 sessions. “Still feeling it” or “Still wrecked” at 2 of them.",
+      "“How's the body since last time?” asked at 3 of their last 4 sessions. “Still feeling it” or “Still wrecked” at 2 of them.",
     );
     expect(card.querySelectorAll('svg[data-lane="arrive:recovery"] rect.bp-tl__mark')).toHaveLength(3);
     expect(card.querySelector('[data-lane="arrive:dose"]')?.textContent).toContain("How it landed");
@@ -714,7 +714,7 @@ describe("Body & Pulse — over time (decision 9)", () => {
     const host = await mount({ sessions: [] });
     const card = host.querySelector("#body-timeline")!;
     expect(card.querySelector(".cx-lede")?.textContent).toBe(
-      "Not asked yet: Journey holds no session of hers in these six months.",
+      "Not asked yet: Journey holds no session of theirs in these six months.",
     );
     expect(card.querySelectorAll("rect.bp-tl__mark")).toHaveLength(0);
     expect(card.querySelector(".cx-lede")?.textContent).not.toContain("As usual");
@@ -724,10 +724,10 @@ describe("Body & Pulse — over time (decision 9)", () => {
     const host = await mount({ sessionsState: "failed" });
     const card = host.querySelector("#body-timeline")!;
     // Said once, in its row — the lede only says what the card is about.
-    const failed = "Her recent sessions couldn't be loaded just now, so how she arrived isn't drawn. The rest of this page is unaffected.";
+    const failed = "Their recent sessions couldn't be loaded just now, so how they arrived isn't drawn. The rest of this page is unaffected.";
     expect(occurrences(card.textContent, failed)).toBe(1);
     expect(card.querySelector(".cx-lede")?.textContent).toBe(
-      "How she arrives at the door and how each session lands, over these six months.",
+      "How they arrive at the door and how each session lands, over these six months.",
     );
     expect(card.textContent).not.toContain("Not asked");
     expect(card.textContent).not.toContain("Try again");
@@ -740,10 +740,10 @@ describe("Body & Pulse — over time (decision 9)", () => {
     const host = await mount({ sessionsState: "loading" });
     const card = host.querySelector("#body-timeline")!;
     expect(card.querySelector('[data-lane="gap:sessions"] [role="status"]')?.getAttribute("aria-label")).toBe(
-      "Loading her recent sessions…",
+      "Loading their recent sessions…",
     );
     // Once — the loading mark's label — never again as the lede.
-    expect(occurrences(card.textContent, "Loading her recent sessions…")).toBe(1);
+    expect(occurrences(card.textContent, "Loading their recent sessions…")).toBe(1);
     expect(card.textContent).not.toContain("sessions in these six months");
     expect(card.textContent).not.toContain("sessions in Journey in these six months");
   });
@@ -754,7 +754,7 @@ describe("Body & Pulse — over time (decision 9)", () => {
     });
     const card = host.querySelector("#body-timeline")!;
     expect(card.querySelector(".cx-lede")?.textContent).toBe(
-      "The briefing asks “How's the body since last time?” at the door. Her 3 sessions in these six months were imported, and imports don't record the door.",
+      "The briefing asks “How's the body since last time?” at the door. Their 3 sessions in these six months were imported, and imports don't record the door.",
     );
     expect(card.textContent).not.toMatch(/wasn't asked|Not asked/);
     expect(card.querySelectorAll("rect.bp-tl__mark")).toHaveLength(0);
@@ -767,7 +767,7 @@ describe("Body & Pulse — over time (decision 9)", () => {
     )!;
     await click(row);
     const detail = host.querySelector<HTMLElement>(`[id="${row.getAttribute("aria-controls")}"]`)!;
-    expect(detail.textContent).toContain("At the door: “Stiff” on Mar 20 · tapped at 1 of her last 4 sessions.");
+    expect(detail.textContent).toContain("At the door: “Stiff” on Mar 20 · tapped at 1 of their last 4 sessions.");
   });
 });
 
@@ -777,27 +777,27 @@ describe("Body & Pulse — on our floor", () => {
     const host = await mount({ programming: { ...NO_PROGRAMMING, status: "failed" } });
     const card = host.querySelector("#body-floor")!.textContent ?? "";
     expect(card).toContain("Leg Press");
-    expect(card).not.toContain("Not in her routines");
-    expect(card).not.toContain("No machines in her routines yet");
+    expect(card).not.toContain("Not in their routines");
+    expect(card).not.toContain("No machines in their routines yet");
     expect(card).not.toContain("machines set up");
-    expect(card).toContain("Her routines or machine settings couldn't be loaded just now, so a machine may be missing.");
+    expect(card).toContain("Their routines or machine settings couldn't be loaded just now, so a machine may be missing.");
     expect(card).toContain("Not known just now");
   });
 
   it("says it is loading her programme, and claims nothing from it, until it lands", async () => {
     const host = await mount({ programming: { ...NO_PROGRAMMING, status: "loading" } });
     const card = host.querySelector("#body-floor")!.textContent ?? "";
-    expect(card).not.toContain("Not in her routines");
+    expect(card).not.toContain("Not in their routines");
     expect(card).not.toContain("machines set up");
-    expect(card).toContain("Loading her routines and machine settings…");
+    expect(card).toContain("Loading their routines and machine settings…");
   });
 
   it("says what her programme holds once it answered", async () => {
     const host = await mount();
     const card = host.querySelector("#body-floor")!.textContent ?? "";
-    expect(card).toContain("Not in her routines");
+    expect(card).toContain("Not in their routines");
     expect(card).toContain("0 of 2 machines set up");
-    expect(card).not.toContain("Loading her routines");
+    expect(card).not.toContain("Loading their routines");
   });
 });
 
@@ -811,12 +811,12 @@ describe("Body & Pulse — when an InBody is due (FileMaker parity, Oct 1 2026)"
     expect(due.textContent).toContain("Counted against the studio's number.");
 
     await click(buttonIn(due, "Edit"));
-    await click(buttonIn(due, "Not for her"));
+    await click(buttonIn(due, "Not for this client"));
     expect(card.querySelector('[data-testid="inbody-due"]')!.textContent).toContain("InBody reminders are off for this client.");
     // Unsaved until the Save bar saves it: nothing was written by the tap.
     expect(fake.gets.filter((p) => p.startsWith("clients"))).toEqual([]);
 
-    await click(buttonIn(due, "Her own number"));
+    await click(buttonIn(due, "This client's own number"));
     const box = due.querySelector<HTMLInputElement>('input[type="number"]')!;
     expect(box.value).toBe("50");
   });
@@ -824,7 +824,7 @@ describe("Body & Pulse — when an InBody is due (FileMaker parity, Oct 1 2026)"
   it("counts nothing while her sessions are still loading: an unread list is not an empty one", async () => {
     const host = await mount({ sessionsState: "loading" });
     const due = host.querySelector('#body-inbody [data-testid="inbody-due"]')!;
-    expect(due.textContent).toContain("Counting her sessions…");
+    expect(due.textContent).toContain("Counting sessions…");
     expect(due.textContent).not.toContain("0 sessions");
   });
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { CLIENT_PRONOUNS } from "../client-codex/kit/pronouns";
 import { birthdayLabel, comingUp, ordinal, studioNoon, type BirthdayRow, type DetailRow } from "./coming-up";
 import type { FordEntry } from "./types";
 
@@ -195,8 +196,8 @@ describe("ordinal", () => {
 
 describe("birthdayLabel", () => {
   it("names whose birthday and the age she turns, one wording for FORD and the Overview", () => {
-    expect(birthdayLabel({ turning: 69 }, { possessive: "her" })).toBe("Her 69th birthday");
-    expect(birthdayLabel({ turning: 41 }, { possessive: "his" })).toBe("His 41st birthday");
-    expect(birthdayLabel({ turning: null }, { possessive: "their" })).toBe("Their birthday");
+    expect(birthdayLabel({ turning: 69 }, CLIENT_PRONOUNS)).toBe("Their 69th birthday");
+    expect(birthdayLabel({ turning: 41 }, CLIENT_PRONOUNS)).toBe("Their 41st birthday");
+    expect(birthdayLabel({ turning: null }, CLIENT_PRONOUNS)).toBe("Their birthday");
   });
 });

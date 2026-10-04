@@ -4,11 +4,11 @@ import type { JournalEntry } from "../../../types/journal";
 import { MACHINE_DEFINITIONS } from "../../../data/machine-definitions";
 import { assembleThreads } from "../../client-notes/threads";
 import { threadsByMachine } from "../../client-notes/record-selectors";
+import { CLIENT_PRONOUNS } from "../kit/pronouns";
 import { academyParts, floorEyebrow, floorReads, floorRows, noAcademyLine } from "./floor";
 
 const TODAY = "2027-03-24";
 const NOW = new Date(2027, 2, 24, 12);
-const her = { possessive: "her", object: "her" };
 
 const MACHINES = [
   { id: "m-leg-press", name: "Leg Press", order: 3 },
@@ -131,13 +131,13 @@ describe("On our floor", () => {
     expect(view.rows).toEqual([]);
     expect(view.rest).toBe(3);
     expect(rows({ band: null }).rest).toBe(3);
-    expect(noAcademyLine("average", her)).toBe(
-      `Her height is within 3" of what our machines are set for, so the standard set-up applies.`,
+    expect(noAcademyLine("average", CLIENT_PRONOUNS)).toBe(
+      `Their height is within 3" of what our machines are set for, so the standard set-up applies.`,
     );
-    expect(noAcademyLine(null, her)).toBe(
-      "No height on file, so the Academy's shorter and taller set-ups can't be matched to her.",
+    expect(noAcademyLine(null, CLIENT_PRONOUNS)).toBe(
+      "No height on file, so the Academy's shorter and taller set-ups can't be matched to them.",
     );
-    expect(noAcademyLine("shorter", her)).toBeNull();
+    expect(noAcademyLine("shorter", CLIENT_PRONOUNS)).toBeNull();
   });
 
   it("lists Routine B's machines only while B is on", () => {
@@ -164,15 +164,15 @@ describe("On our floor", () => {
   });
 
   it("names the card for the band", () => {
-    expect(floorEyebrow("shorter", her)).toBe("On our floor · set-up for a shorter body");
-    expect(floorEyebrow("taller", her)).toBe("On our floor · set-up for a taller body");
-    expect(floorEyebrow("average", her)).toBe("On our floor · her notes by machine");
+    expect(floorEyebrow("shorter", CLIENT_PRONOUNS)).toBe("On our floor · set-up for a shorter body");
+    expect(floorEyebrow("taller", CLIENT_PRONOUNS)).toBe("On our floor · set-up for a taller body");
+    expect(floorEyebrow("average", CLIENT_PRONOUNS)).toBe("On our floor · their notes by machine");
   });
 });
 
 describe("what the card may claim while a read is out", () => {
   it("claims everything once her programme and the catalog answered", () => {
-    expect(floorReads({ band: "shorter", programme: "ready", catalog: "ready", pronouns: her })).toEqual({
+    expect(floorReads({ band: "shorter", programme: "ready", catalog: "ready", pronouns: CLIENT_PRONOUNS })).toEqual({
       programmeKnown: true,
       academyKnown: true,
       fit: "ready",
@@ -181,35 +181,35 @@ describe("what the card may claim while a read is out", () => {
   });
 
   it("holds back the standard set-up count and says so while the Academy's text loads", () => {
-    const reads = floorReads({ band: "taller", programme: "ready", catalog: "loading", pronouns: her });
+    const reads = floorReads({ band: "taller", programme: "ready", catalog: "loading", pronouns: CLIENT_PRONOUNS });
     expect(reads.academyKnown).toBe(false);
     expect(reads.fit).toBe("loading");
     expect(reads.lines).toEqual(["Loading the Academy's set-up…"]);
   });
 
   it("never reads a failed catalog as no Academy text, and machine fit's count as unknown", () => {
-    const reads = floorReads({ band: "shorter", programme: "ready", catalog: "failed", pronouns: her });
+    const reads = floorReads({ band: "shorter", programme: "ready", catalog: "failed", pronouns: CLIENT_PRONOUNS });
     expect(reads.academyKnown).toBe(false);
     expect(reads.fit).toBe("failed");
     expect(reads.lines).toEqual(["The Academy's set-up couldn't be loaded just now, so it isn't shown."]);
   });
 
   it("needs no catalog for the Academy when her band has no column, but machine fit still does", () => {
-    const reads = floorReads({ band: "average", programme: "ready", catalog: "loading", pronouns: her });
+    const reads = floorReads({ band: "average", programme: "ready", catalog: "loading", pronouns: CLIENT_PRONOUNS });
     expect(reads.academyKnown).toBe(true);
     expect(reads.fit).toBe("loading");
     expect(reads.lines).toEqual([]);
   });
 
   it("never says she has no machines while her routines or settings are out", () => {
-    const loading = floorReads({ band: null, programme: "loading", catalog: "ready", pronouns: her });
+    const loading = floorReads({ band: null, programme: "loading", catalog: "ready", pronouns: CLIENT_PRONOUNS });
     expect(loading.programmeKnown).toBe(false);
-    expect(loading.lines).toEqual(["Loading her routines and machine settings…"]);
-    const failed = floorReads({ band: null, programme: "failed", catalog: "ready", pronouns: her });
+    expect(loading.lines).toEqual(["Loading their routines and machine settings…"]);
+    const failed = floorReads({ band: null, programme: "failed", catalog: "ready", pronouns: CLIENT_PRONOUNS });
     expect(failed.programmeKnown).toBe(false);
     expect(failed.fit).toBe("failed");
     expect(failed.lines).toEqual([
-      "Her routines or machine settings couldn't be loaded just now, so a machine may be missing.",
+      "Their routines or machine settings couldn't be loaded just now, so a machine may be missing.",
     ]);
   });
 });

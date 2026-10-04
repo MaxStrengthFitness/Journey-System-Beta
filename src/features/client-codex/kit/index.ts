@@ -53,4 +53,4 @@ export {
   monthLabel,
   plural,
 } from "./text";
-export { agree, pronounsOf, type Pronouns } from "./pronouns";
+export { CLIENT_PRONOUNS, agree, type Pronouns } from "./pronouns";

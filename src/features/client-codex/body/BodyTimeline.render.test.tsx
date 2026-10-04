@@ -26,7 +26,7 @@ import { DEFAULT_INBODY_VARIATION } from "../../inbody/variation";
 import { scanFromDoc } from "../../inbody/scans";
 import { historyFromDocs } from "../../subjective-report/assessment-history";
 import { emptyAssessment } from "../../subjective-report/scoring";
-import { pronounsOf } from "../kit/pronouns";
+import { CLIENT_PRONOUNS } from "../kit/pronouns";
 import { readArrivals } from "./arrivals";
 import { BodyTimeline, TIMELINE_FALLBACK_WIDTH } from "./BodyTimeline";
 import { buildTimeline, timelineWindow, type TimelineInput } from "./timeline";
@@ -35,7 +35,6 @@ import { buildTimeline, timelineWindow, type TimelineInput } from "./timeline";
 
 const NOW = new Date(2027, 2, 24, 12);
 const W = timelineWindow("2027-03-24");
-const her = pronounsOf({ gender: "Female" });
 
 let seq = 0;
 const session = (date: string, recovery?: DialValue): WorkoutSession => {
@@ -80,7 +79,7 @@ function model(over: Partial<TimelineInput> = {}) {
     variationOwner: null,
     coverage: "complete",
     prior: null,
-    pronouns: her,
+    pronouns: CLIENT_PRONOUNS,
     now: NOW,
     ...over,
   });
@@ -180,14 +179,14 @@ describe("BodyTimeline", () => {
       <BodyTimeline model={model({ arrivals: readArrivals({ sessions: [], state: "loading", window: W, limit: 40 }) })} />,
     );
     const gap = loading.querySelector('[data-lane="gap:sessions"]')!;
-    expect(gap.querySelector('[role="status"]')?.getAttribute("aria-label")).toBe("Loading her recent sessions…");
+    expect(gap.querySelector('[role="status"]')?.getAttribute("aria-label")).toBe("Loading their recent sessions…");
     expect(gap.querySelector("svg.bp-tl__plot")).toBeNull();
 
     const failed = await mount(
       <BodyTimeline model={model({ arrivals: readArrivals({ sessions: [], state: "failed", window: W, limit: 40 }) })} />,
     );
     expect(failed.querySelector('[data-lane="gap:sessions"]')?.textContent).toContain(
-      "Her recent sessions couldn't be loaded just now",
+      "Their recent sessions couldn't be loaded just now",
     );
     expect(failed.textContent).not.toContain("Try again");
     // The rest still draws.

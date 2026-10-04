@@ -34,7 +34,7 @@ describe("inbodyDue", () => {
     expect(inbodyDue({ ...base, sessionDays: days(49) })).toMatchObject({ kind: "count", sessions: 49, due: false, atLeast: false });
     const due = inbodyDue({ ...base, sessionDays: days(51) });
     expect(due).toMatchObject({ kind: "count", sessions: 51, due: true, since: "scan", every: 50, everySource: "studio" });
-    expect(inbodyDueLine(due, "her")).toBe("Due an InBody: 51 sessions since her last scan");
+    expect(inbodyDueLine(due)).toBe("Due an InBody: 51 sessions since the last scan");
   });
 
   it("does not count the session on the scan day itself", () => {
@@ -46,7 +46,7 @@ describe("inbodyDue", () => {
     expect(inbodyDue({ ...base, sessionDays: days(20), clientEvery: 12 })).toMatchObject({ due: true, every: 12, everySource: "client" });
     const off = inbodyDue({ ...base, sessionDays: days(200), clientEvery: "never" });
     expect(off).toEqual({ kind: "off" });
-    expect(inbodyDueLine(off, "her")).toBeNull();
+    expect(inbodyDueLine(off)).toBeNull();
   });
 
   it("ignores a client number that isn't usable, rather than bending it", () => {
@@ -62,25 +62,25 @@ describe("inbodyDue", () => {
     for (const coverage of ["partial", "unknown"] as const) {
       const r = inbodyDue({ ...base, latestScanDay: null, coverage, sessionDays: days(80) });
       expect(r).toEqual({ kind: "no-scan", every: 50, everySource: "studio" });
-      expect(inbodyDueLine(r, "her")).toBeNull();
-      expect(inbodyDueSentence(r, "her")).toBe("No InBody scan in Journey yet.");
+      expect(inbodyDueLine(r)).toBeNull();
+      expect(inbodyDueSentence(r)).toBe("No InBody scan in Journey yet.");
     }
   });
 
   it("counts from her first session when there was never a scan and Journey holds her whole story", () => {
     const r = inbodyDue({ ...base, latestScanDay: null, sessionDays: days(52) });
     expect(r).toMatchObject({ kind: "count", sessions: 52, since: "first-session", due: true });
-    expect(inbodyDueLine(r, "his")).toBe("Due an InBody: 52 sessions and no scan yet");
+    expect(inbodyDueLine(r)).toBe("Due an InBody: 52 sessions and no scan yet");
     expect(inbodyDue({ ...base, latestScanDay: null, sessionDays: days(3) })).toMatchObject({ sessions: 3, due: false });
   });
 
   it("calls the count a floor when the scan predates everything Journey holds of a migrating client", () => {
     const r = inbodyDue({ ...base, latestScanDay: "2025-06-01", coverage: "partial", sessionDays: days(12) });
     expect(r).toMatchObject({ kind: "count", sessions: 12, atLeast: true, due: false });
-    expect(inbodyDueSentence(r, "her")).toBe("At least 12 sessions since her last scan that Journey can see. A scan is due every 50.");
+    expect(inbodyDueSentence(r)).toBe("At least 12 sessions since the last scan that Journey can see. A scan is due every 50.");
     // A floor past her number is still due.
     const due = inbodyDue({ ...base, latestScanDay: "2025-06-01", coverage: "partial", sessionDays: days(60) });
-    expect(inbodyDueLine(due, "her")).toBe("Due an InBody: at least 60 sessions since her last scan");
+    expect(inbodyDueLine(due)).toBe("Due an InBody: at least 60 sessions since the last scan");
     // A scan Journey saw sessions either side of is counted exactly, whatever the coverage.
     const exact = inbodyDue({ ...base, latestScanDay: "2026-01-05", coverage: "partial", sessionDays: days(10) });
     expect(exact).toMatchObject({ sessions: 6, atLeast: false });
@@ -97,23 +97,23 @@ describe("inbodyDue", () => {
   it("counts nothing while her sessions are unread: an unread list is not an empty one", () => {
     const r = inbodyDue({ ...base, sessionDays: [], sessionsRead: false });
     expect(r).toEqual({ kind: "unread" });
-    expect(inbodyDueLine(r, "her")).toBeNull();
-    expect(inbodyDueSentence(r, "her")).toBe("Counting her sessions…");
+    expect(inbodyDueLine(r)).toBeNull();
+    expect(inbodyDueSentence(r)).toBe("Counting sessions…");
     // No scan and not her whole story: "no scan" whether or not the sessions are read.
     expect(inbodyDue({ ...base, latestScanDay: null, coverage: "partial", sessionDays: [], sessionsRead: false })).toMatchObject({ kind: "no-scan" });
   });
 
   it("says how many are left on the card", () => {
-    expect(inbodyDueSentence(inbodyDue({ ...base, sessionDays: days(47) }), "her")).toBe(
-      "47 sessions since her last scan. Due in 3 sessions (every 50).",
+    expect(inbodyDueSentence(inbodyDue({ ...base, sessionDays: days(47) }))).toBe(
+      "47 sessions since the last scan. Due in 3 sessions (every 50).",
     );
-    expect(inbodyDueSentence(inbodyDue({ ...base, sessionDays: days(1) }), "their")).toBe(
-      "1 session since their last scan. Due in 49 sessions (every 50).",
+    expect(inbodyDueSentence(inbodyDue({ ...base, sessionDays: days(1) }))).toBe(
+      "1 session since the last scan. Due in 49 sessions (every 50).",
     );
-    expect(inbodyDueSentence(inbodyDue({ ...base, sessionDays: days(50) }), "her")).toBe(
-      "50 sessions since her last scan: due a scan (every 50).",
+    expect(inbodyDueSentence(inbodyDue({ ...base, sessionDays: days(50) }))).toBe(
+      "50 sessions since the last scan: due a scan (every 50).",
     );
-    expect(inbodyDueSentence({ kind: "off" }, "her")).toBe("InBody reminders are off for this client.");
+    expect(inbodyDueSentence({ kind: "off" })).toBe("InBody reminders are off for this client.");
   });
 });
 

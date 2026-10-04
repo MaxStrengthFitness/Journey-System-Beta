@@ -8,10 +8,9 @@ import { auditSummary, noSuggestionSentence, suggestionSentence } from "../../ma
 import type { FitField } from "../../machine-fit/ui/field-values";
 import type { SetupRowModel } from "../../machine-fit/ui/useSetupModel";
 import type { SuggestionResult } from "../../machine-fit/types";
-import { pronounsOf } from "../kit/pronouns";
+import { CLIENT_PRONOUNS } from "../kit/pronouns";
 import { BUILT_LIKE_HER_MAX_LINES, builtLikeHer } from "./built-like-her";
 
-const her = pronounsOf({ gender: "Female" });
 const studio = compoundRowStudio();
 
 const FIELDS: FitField[] = ROW_FIELDS.map((k) => ({
@@ -53,7 +52,7 @@ describe("clients built like her", () => {
       rows: [row("m-compound-row", s)],
       allRows: [row("m-compound-row", s)],
       target: body(67),
-      pronouns: her,
+      pronouns: CLIENT_PRONOUNS,
     });
     expect(view.lines).toHaveLength(1);
     expect(view.lines[0].sentence).toBe(s.ok === true ? suggestionSentence(s) : "");
@@ -69,7 +68,7 @@ describe("clients built like her", () => {
       rows: [row("m-a", universal)],
       allRows: [row("m-a", universal)],
       target: body(67),
-      pronouns: her,
+      pronouns: CLIENT_PRONOUNS,
     });
     expect(none.lines).toEqual([]);
     const gapForAll = { ...s, picks: s.picks.map((p) => (p.key === "gap" ? { ...p, universal: true } : p)) };
@@ -77,7 +76,7 @@ describe("clients built like her", () => {
       rows: [row("m-a", gapForAll)],
       allRows: [row("m-a", gapForAll)],
       target: body(67),
-      pronouns: her,
+      pronouns: CLIENT_PRONOUNS,
     });
     expect(some.lines[0].picks).toBe("Seat 4 · Chest 3 · Handles IN");
   });
@@ -88,7 +87,7 @@ describe("clients built like her", () => {
       rows: [row("m-a", thin)],
       allRows: [row("m-a", thin)],
       target: body(67),
-      pronouns: her,
+      pronouns: CLIENT_PRONOUNS,
     });
     expect(view.reason).toBe(noSuggestionSentence(thin));
     expect(view.reason).toMatch(/^Only 3 clients/);
@@ -99,22 +98,22 @@ describe("clients built like her", () => {
       rows: [row("m-a", null)],
       allRows: [row("m-a", null)],
       target: body(null),
-      pronouns: her,
+      pronouns: CLIENT_PRONOUNS,
     });
-    expect(view.reason).toBe("Add a height to her record to compare her with clients built like her.");
+    expect(view.reason).toBe("Add a height to their record to compare them with clients built like them.");
   });
 
   it("shows at most three machines", () => {
     const s = good();
     const rows = ["a", "b", "c", "d", "e"].map((id) => row(`m-${id}`, s));
-    expect(builtLikeHer({ rows, allRows: rows, target: body(67), pronouns: her }).lines).toHaveLength(
+    expect(builtLikeHer({ rows, allRows: rows, target: body(67), pronouns: CLIENT_PRONOUNS }).lines).toHaveLength(
       BUILT_LIKE_HER_MAX_LINES,
     );
   });
 
   it("leads with the Setup screen's own summary", () => {
     const rows = [row("m-a", null, { isSetUp: true }), row("m-b", null)];
-    const view = builtLikeHer({ rows, allRows: rows, target: body(67), pronouns: her });
+    const view = builtLikeHer({ rows, allRows: rows, target: body(67), pronouns: CLIENT_PRONOUNS });
     expect(view.summary).toBe(auditSummary([], 1, 2));
     // Only the count: the card's head already says it, so no verdict line.
     expect(view.verdict).toBeNull();
@@ -122,7 +121,7 @@ describe("clients built like her", () => {
     const cohort = buildCohort(studio, body(67), DEFAULT_MATCH_SPEC);
     const fine = auditMachine({ fieldKeys: [...ROW_FIELDS], settings: { seat: "4" }, cohort, tier: "studio", minClients: 5 });
     const checked = [row("m-a", null, { isSetUp: true, audit: fine })];
-    expect(builtLikeHer({ rows: checked, allRows: checked, target: body(67), pronouns: her }).verdict).toBe(
+    expect(builtLikeHer({ rows: checked, allRows: checked, target: body(67), pronouns: CLIENT_PRONOUNS }).verdict).toBe(
       "Nothing looks unusual for this build.",
     );
   });

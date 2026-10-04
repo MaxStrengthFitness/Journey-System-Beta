@@ -9,7 +9,7 @@ import { assembleThreads, type NoteThread } from "../client-notes/threads";
 import { historyFromDocs, type AssessmentHistory } from "../subjective-report/assessment-history";
 import { CATEGORY_BY_KEY } from "../subjective-report/questions";
 import { COVERAGE_CAVEAT, type PriorHistory } from "../../lib/prior-history";
-import { pronounsOf } from "../client-codex/kit/pronouns";
+import { CLIENT_PRONOUNS } from "../client-codex/kit/pronouns";
 import {
   STORY_READ_KIND,
   buildStory,
@@ -34,7 +34,6 @@ import {
  */
 const TZ = "America/New_York";
 const TODAY = "2027-03-16";
-const SHE = pronounsOf({ gender: "Female" });
 /** A studio instant at noon Eastern on a day. */
 const noon = (day: string) => new Date(`${day}T12:00:00-05:00`);
 
@@ -166,7 +165,7 @@ const input = (over: Partial<StoryInput> & { client: StoryClient }): StoryInput 
   tz: TZ,
   coverage: "complete",
   totals: null,
-  pronouns: SHE,
+  pronouns: CLIENT_PRONOUNS,
   notes: ready([] as NoteThread[]),
   focuses: ready([] as ClientFocus[]),
   ford: ready([] as FordEntry[]),
@@ -215,8 +214,8 @@ const carol: StoryClient = {
 
 const LONG_BODY =
   "A pinch in the right knee on Leg Press with the seat one notch closer. Back to seat 7, stop at 90 degrees at the bottom turn and hold the pause. " +
-  "She said it felt fine the next day but asked us to keep an eye on it through the spring, because the pickleball season starts in April and she wants to play. " +
-  "Check in with her before every Leg Press set until the end of the month.";
+  "They said it felt fine the next day but asked us to keep an eye on it through the spring, because the pickleball season starts in April and they want to play. " +
+  "Check in with them before every Leg Press set until the end of the month.";
 
 const carolThreads = assembleThreads([
   entry({ id: "crit", body: LONG_BODY, importance: "critical", occurredAt: noon("2027-03-04"), authorName: "AJ Jurgens" }),
@@ -255,7 +254,7 @@ const carolFord = [
       ownerName: "AJ Jurgens",
       plannedFor: null,
       doneAt: noon("2027-01-20"),
-      outcome: "AJ sent a trail-map postcard for the Camino. She pinned it on her fridge.",
+      outcome: "AJ sent a trail-map postcard for the Camino. They pinned it on their fridge.",
     },
   }),
   ford({ id: "fact", pillar: "family", isPinned: true, body: "Husband Tom." }),
@@ -329,7 +328,7 @@ describe("buildStory — (A) a migrated client", () => {
     expect(era.day).toBe("2026-09-12");
     expect(era.text).toBe("Mar 2019 – Sep 2026 · 412 sessions in FileMaker");
     expect(era.eraDetail).toContain("The detail of those years lives in FileMaker.");
-    expect(era.eraDetail).toContain("so she is never treated as new");
+    expect(era.eraDetail).toContain("so they are never treated as new");
     expect(era.kind).toBe("milestone");
     expect(era.door).toBeNull();
   });
@@ -424,7 +423,7 @@ describe("buildStory — (A) a migrated client", () => {
       entry({ id: "fall", kind: "incident", body: "Slipped stepping off the leg press.", occurredAt: noon("2027-02-01") }),
       entry({ id: "stay", kind: "retention", body: "Not sure about renewing in May.", occurredAt: noon("2027-02-10"), authorName: "Jess Moreno" }),
       entry({ id: "stay-u", kind: "retention", threadId: "stay", body: "Renewed for six months.", occurredAt: noon("2027-02-20"), authorName: "Lee Leader" }),
-      entry({ id: "cue", kind: "coaching", body: "Count her in.", occurredAt: noon("2027-02-05") }),
+      entry({ id: "cue", kind: "coaching", body: "Count them in.", occurredAt: noon("2027-02-05") }),
     ]);
     const beats = buildStory(input({ client: carol, coverage: "partial", totals: { total: 461, journey: 49, before: 412 }, notes: ready(threads) })).beats;
     const fall = beats.find((b) => b.key === "note-open:fall")!;
@@ -443,7 +442,7 @@ describe("buildStory — (A) a migrated client", () => {
   it("draws FORD moments and gestures done — never a standing fact, an archived or unfiled detail, an import or the one line", () => {
     const beats = carolStory().beats.filter((b) => b.source === "ford");
     expect(beats.map((b) => b.key)).toEqual(["ford-done:camino", "ford:moment"]);
-    expect(beats[0].text).toBe("AJ sent a trail-map postcard for the Camino. She pinned it on her fridge.");
+    expect(beats[0].text).toBe("AJ sent a trail-map postcard for the Camino. They pinned it on their fridge.");
     expect(beats[0].sourceLine).toBe("FORD · above and beyond · AJ");
     expect(beats[0].door).toEqual({ page: "ford", anchor: "ford-beyond" });
     expect(beats[1].sourceLine).toBe("FORD · Dreams · Marcus");
@@ -518,7 +517,7 @@ describe("buildStory — the other clients", () => {
     );
     expect(story.beats.find((b) => b.isEra)?.eraDetail).toContain("starts partway through");
     expect(story.beats.find((b) => b.key === "journey-first")?.text).toBe("First session recorded in Journey.");
-    expect(story.sinceLine).toBe("In Journey since Oct 2026. 12 sessions in Journey. Her sessions before Journey aren't recorded here yet.");
+    expect(story.sinceLine).toBe("In Journey since Oct 2026. 12 sessions in Journey. Their sessions before Journey aren't recorded here yet.");
   });
 
   it("(D) an inferred first appointment is the earliest seen, never the first visit", () => {
@@ -593,7 +592,7 @@ describe("buildStory — the other clients", () => {
   it("(F) a round she filled in herself says so", () => {
     const history = historyOf([report("r1", "2026-10-01", { strengthConfidence_1: 5 }, "", "client")]);
     const beat = buildStory(input({ client: {}, pulse: ready(history) })).beats[0];
-    expect(beat.sourceLine).toBe("Pulse · in her own words");
+    expect(beat.sourceLine).toBe("Pulse · in their own words");
   });
 
   it("(G) came back after a gap, ended with nothing after, cancelled when Mindbody said so, on UTC days", () => {
@@ -671,7 +670,7 @@ describe("buildStory — the other clients", () => {
   it("(J) the tab line and the page's line say the same year", () => {
     const client: StoryClient = { firstSessionDate: noon("2026-09-20") };
     expect(storyTabHint({ client, coverage: "partial", tz: TZ })).toBe("in Journey since 2026");
-    expect(sinceLine({ client, coverage: "partial", tz: TZ, pronouns: SHE })).toMatch(/^In Journey since Sep 2026\./);
+    expect(sinceLine({ client, coverage: "partial", tz: TZ, pronouns: CLIENT_PRONOUNS })).toMatch(/^In Journey since Sep 2026\./);
     expect(storyTabHint({ client: {}, coverage: "unknown", tz: TZ })).toBeNull();
   });
 
@@ -727,10 +726,10 @@ describe("the years before Journey — every source, and the record's edge cases
     ["other", "412 sessions before Journey"],
   ] as const)("the since line names a %s record, saying “before Journey” once", (source, words) => {
     const client = priorClient({ source });
-    const withCount = sinceLine({ client, coverage: "partial", tz: TZ, pronouns: SHE, totals: { total: 461, journey: 49, before: 412 } });
+    const withCount = sinceLine({ client, coverage: "partial", tz: TZ, pronouns: CLIENT_PRONOUNS, totals: { total: 461, journey: 49, before: 412 } });
     expect(withCount).toBe(`With Max Strength since Mar 2019. ${words}, and 49 in Journey.`);
     expect(withCount!.split("before Journey").length - 1).toBe(1);
-    const noCount = sinceLine({ client, coverage: "partial", tz: TZ, pronouns: SHE, totals: { total: null, journey: null, before: 412 } });
+    const noCount = sinceLine({ client, coverage: "partial", tz: TZ, pronouns: CLIENT_PRONOUNS, totals: { total: null, journey: null, before: 412 } });
     expect(noCount).toBe(`With Max Strength since Mar 2019. ${words}.`);
     // The panel's own words never double it either.
     const era = buildStory(input({ client, coverage: "partial" })).beats.find((b) => b.isEra)!;
@@ -762,7 +761,7 @@ describe("the years before Journey — every source, and the record's edge cases
   it("a record brought wholly into Journey says so, and never that Journey can't show them", () => {
     const all = buildStory(input({ client: priorClient({ sessions: 100, importedCount: 100 }), coverage: "complete" })).beats.find((b) => b.isEra)!;
     expect(all.eraDetail).not.toContain("can't show");
-    expect(all.eraDetail).toContain("so she is never treated as new.");
+    expect(all.eraDetail).toContain("so they are never treated as new.");
     expect(all.eraDetail).toContain("All of them have since been brought into Journey.");
     // More imported than stated reads as all of them, never a bigger number.
     const over = buildStory(input({ client: priorClient({ sessions: 100, importedCount: 140 }), coverage: "complete" })).beats.find((b) => b.isEra)!;

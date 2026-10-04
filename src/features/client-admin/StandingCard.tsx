@@ -47,7 +47,7 @@ export function automaticFromRecord(client: Client, today: string, inactiveDays:
   const last = typeof r.lastVisitDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.lastVisitDate) ? r.lastVisitDate : null;
   const days = last ? daysBetween(last, today) : null;
   if (!pastInactiveLine(days, !r.nextBookingDate, inactiveDays)) return null;
-  return `${days} days since her last visit (${dayWords(last as string)}), past the studio's ${inactiveDays}-day line, with nothing booked as of last night's record: inactive by herself.`;
+  return `${days} days since the last visit (${dayWords(last as string)}), past the studio's ${inactiveDays}-day line, with nothing booked as of last night's record, so inactive.`;
 }
 
 export function StandingCard({ client, trainer, today }: StandingCardProps) {

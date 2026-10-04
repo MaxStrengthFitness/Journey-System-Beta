@@ -238,7 +238,7 @@ const criticalNote = {
   studioId: "s1",
   kind: "injury",
   category: null,
-  body: "Right knee: stop at 90° at the bottom turn. She felt a pinch on Mar 4.",
+  body: "Right knee: stop at 90° at the bottom turn. They felt a pinch on Mar 4.",
   importance: "critical",
   machineId: "m-leg",
   focusId: null,
@@ -654,7 +654,7 @@ describe("ClientCodex — one load for the tab", () => {
     const host = await mount(baseClient(), homeTrainer, "body");
     const card = panel(host, "body").querySelector("#body-timeline")!;
     expect(card.querySelector(".cx-lede")?.textContent).toBe(
-      "“How's the body since last time?” asked at 3 of her last 3 sessions. “Still feeling it” or “Still wrecked” at 1 of them.",
+      "“How's the body since last time?” asked at 3 of their last 3 sessions. “Still feeling it” or “Still wrecked” at 1 of them.",
     );
     expect(card.querySelectorAll("rect.bp-tl__mark")).toHaveLength(3);
     expect(liveOn("sessions")).toBe(1);
@@ -915,13 +915,13 @@ describe("ClientCodex — the intake matcher (phase 17)", () => {
     const why = panel(host, "goals").querySelector<HTMLElement>("#goals-why")!;
     expect(why.textContent).toContain("At sign-up (Mindbody notes)");
     expect(why.textContent).toContain("“Keep up w/ grandkids. Camino!”");
-    expect(buttonIn(why, "Use as her why")).toBeUndefined();
+    expect(buttonIn(why, "Use as their why")).toBeUndefined();
   });
 
   it("offers a cross-train reader no tap, and says FORD is the home studio's", async () => {
     const host = await mount(baseClient({ mindbodyNotes: NOTES }), crossTrainer, "account");
-    expect(notesCard(host).textContent).toContain("FORD is kept by her home studio");
-    for (const text of ["Add to Recreation", "Add as medical history", "Use as her why"]) {
+    expect(notesCard(host).textContent).toContain("FORD is kept by their home studio");
+    for (const text of ["Add to Recreation", "Add as medical history", "Use as their why"]) {
       expect(buttonIn(notesCard(host), text), text).toBeUndefined();
     }
     expect(fake.listeners.filter((l) => l.path === "clients/c1/ford")).toHaveLength(0);
@@ -931,7 +931,7 @@ describe("ClientCodex — the intake matcher (phase 17)", () => {
     fake.rows["clients/c1/ford"] = [];
     const founder = { ...crossTrainer, id: "t-aj", fullName: "AJ Founder", role: "Founder" } as Trainer;
     const host = await mount(baseClient({ mindbodyNotes: NOTES }), founder, "account");
-    expect(notesCard(host).textContent).toContain("Only a trainer at her home studio can add a FORD detail");
+    expect(notesCard(host).textContent).toContain("Only a trainer at their home studio can add a FORD detail");
     expect(buttonIn(notesCard(host), "Add to Recreation")).toBeUndefined();
     expect(buttonIn(notesCard(host), "Add as medical history")).toBeDefined();
   });
@@ -942,7 +942,7 @@ describe("ClientCodex — the intake matcher (phase 17)", () => {
     const host = await mount(baseClient(), founder, "ford");
     const ford = panel(host, "ford");
     expect(ford.querySelector('[data-testid="ford-add-not-offered"]')?.textContent).toBe(
-      "Only a trainer at her home studio can add to FORD, so adding isn't offered here.",
+      "Only a trainer at their home studio can add to FORD, so adding isn't offered here.",
     );
     expect(buttonIn(ford, "Remember something")).toBeUndefined();
     expect(ford.querySelector('[aria-label^="Add a "]')).toBeNull();
@@ -1445,7 +1445,7 @@ describe("ClientCodex — the Overview", () => {
     const slots = Array.from(panel(host, "overview").querySelectorAll<HTMLElement>(".cx-ov > .cx-slot"));
     expect(slots.map((d) => d.querySelector(".cx-eyebrow")?.textContent)).toEqual([
       "Notes",
-      "Who she is · FORD",
+      "Who they are · FORD",
       "Body & Pulse",
       "Goals & Focus",
       "Story",

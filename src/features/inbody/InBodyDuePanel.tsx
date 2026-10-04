@@ -20,12 +20,8 @@ function modeOf(value: unknown): Mode {
   return "studio";
 }
 
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
 export interface InBodyDuePanelProps {
   due: InBodyDue;
-  /** her · his · their */
-  possessive: string;
   /** The studio's number, as the setting resolved it. */
   studioEvery: number;
   /** May this reader change the record (codexAccess().canEdit)? */
@@ -38,9 +34,9 @@ export interface InBodyDuePanelProps {
   revision: number;
 }
 
-export function InBodyDuePanel({ due, possessive, studioEvery, canEdit, value, onChange, dirty, revision }: InBodyDuePanelProps) {
+export function InBodyDuePanel({ due, studioEvery, canEdit, value, onChange, dirty, revision }: InBodyDuePanelProps) {
   const { open, toggle } = useReadEdit({ canEdit, revision });
-  // Kept apart from the value so "Her own number" stays picked while the box is empty.
+  // Kept apart from the value so "This client's own number" stays picked while the box is empty.
   const [mode, setMode] = useState<Mode>(modeOf(value));
   const [seen, setSeen] = useState(value);
   if (seen !== value) {
@@ -55,7 +51,7 @@ export function InBodyDuePanel({ due, possessive, studioEvery, canEdit, value, o
       <div className="ib-due__head">
         <p className="ib-due__line">
           <Bell size={14} aria-hidden="true" className="ib-due__icon" />
-          <span>{inbodyDueSentence(due, possessive)}</span>
+          <span>{inbodyDueSentence(due)}</span>
         </p>
         {canEdit ? <EditButton open={open} onToggle={toggle} label="when an InBody scan is due" /> : null}
       </div>
@@ -71,8 +67,8 @@ export function InBodyDuePanel({ due, possessive, studioEvery, canEdit, value, o
             value={mode}
             options={[
               { value: "studio", label: `The studio's number (${studioEvery})` },
-              { value: "own", label: `${cap(possessive)} own number` },
-              { value: "never", label: `Not for ${possessive === "their" ? "them" : possessive === "his" ? "him" : "her"}` },
+              { value: "own", label: "This client's own number" },
+              { value: "never", label: "Not for this client" },
             ]}
             onChange={(next) => {
               const m = (next || "studio") as Mode;

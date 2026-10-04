@@ -406,7 +406,7 @@ export function FordPage({
                   // the server answers, and a remount would drop it
                   // (AskNextLine). A closed line simply follows Ask next.
                   ask={ask}
-                  meta={askNextMeta(ask, pillar, pronouns.known ? pronouns : null, now)}
+                  meta={askNextMeta(ask, pillar, now)}
                   actions={askActions(pillar)}
                 />
               }

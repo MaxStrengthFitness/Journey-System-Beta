@@ -1,16 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { Client } from "../../../types";
-import { pronounsOf } from "../kit/pronouns";
+import { CLIENT_PRONOUNS } from "../kit/pronouns";
 import { NOT_RECORDED, baselineWords, buildFacts, heightHint, reachSentence, statureLede } from "./build";
 
 const NOW = new Date(2027, 2, 24, 12);
-const her = pronounsOf({ gender: "Female" });
-const them = pronounsOf({});
 
 const client = (over: Partial<Client> = {}): Client =>
   ({ id: "c1", firstName: "Carol", lastName: "B", gender: "Female", height: `5'0"`, ...over }) as Client;
 
-const facts = (c: Client, formData: Partial<Client> = {}, p = her) =>
+const facts = (c: Client, formData: Partial<Client> = {}, p = CLIENT_PRONOUNS) =>
   buildFacts({ client: c, formData, pronouns: p, now: NOW });
 
 describe("Build — where she sits against the machines", () => {
@@ -32,7 +30,7 @@ describe("Build — where she sits against the machines", () => {
   });
 
   it("measures a client with no gender against 5'6½\"", () => {
-    const f = facts(client({ gender: undefined, height: "66" }), {}, them);
+    const f = facts(client({ gender: undefined, height: "66" }), {}, CLIENT_PRONOUNS);
     expect(f.band).toBe("average");
     expect(f.lede).toBe(`Within 3" of the height our machines are set for.`);
     expect(baselineWords(null)).toBe(`clients with no gender on file is 5'6½"`);
@@ -46,8 +44,8 @@ describe("Build — where she sits against the machines", () => {
   });
 
   it("says no height on file, in her pronoun", () => {
-    expect(facts(client({ height: "" })).lede).toBe("No height on file, so machine set-up can't be matched to her.");
-    expect(statureLede(null, { pronouns: them })).toBe(
+    expect(facts(client({ height: "" })).lede).toBe("No height on file, so machine set-up can't be matched to them.");
+    expect(statureLede(null, { pronouns: CLIENT_PRONOUNS })).toBe(
       "No height on file, so machine set-up can't be matched to them.",
     );
   });
@@ -61,10 +59,10 @@ describe("Build — where she sits against the machines", () => {
 describe("Build — reach", () => {
   it("compares the wingspan with the height", () => {
     const f = facts(client({ wingspan: "59" }));
-    expect(f.reach).toEqual({ text: `4'11" wingspan`, source: `1" less than her height` });
-    expect(reachSentence(60, 60, her)).toBe("The same as her height");
-    expect(reachSentence(60, 62.5, her)).toBe(`2.5" more than her height`);
-    expect(reachSentence(null, 60, her)).toBe("No height on file to compare it with.");
+    expect(f.reach).toEqual({ text: `4'11" wingspan`, source: `1" less than their height` });
+    expect(reachSentence(60, 60, CLIENT_PRONOUNS)).toBe("The same as their height");
+    expect(reachSentence(60, 62.5, CLIENT_PRONOUNS)).toBe(`2.5" more than their height`);
+    expect(reachSentence(null, 60, CLIENT_PRONOUNS)).toBe("No height on file to compare it with.");
   });
 
   it("leaves the row out with no wingspan", () => {
@@ -90,7 +88,7 @@ describe("Build — weight, body fat, age and sex", () => {
     const f = facts(scanned);
     expect(f.weight).toEqual({ text: "142 lb", source: "InBody, Mar 3" });
     expect(f.bodyFat).toEqual({ text: "34.1%", source: "InBody, Mar 3" });
-    expect(facts(client({ weight: "150" })).weight).toEqual({ text: "150 lb", source: "Typed on her record" });
+    expect(facts(client({ weight: "150" })).weight).toEqual({ text: "150 lb", source: "Typed on their record" });
   });
 
   it("says no scan and not recorded, never blank", () => {
@@ -103,7 +101,7 @@ describe("Build — weight, body fat, age and sex", () => {
     const linked = facts(client({ dateOfBirth: "1958-06-01", mindbodyClientId: "100000123" } as Partial<Client>));
     expect(linked.ageSex).toEqual({ text: "68 · female", source: "From Mindbody" });
     const own = facts(client({ dateOfBirth: "1958-06-01" }));
-    expect(own.ageSex.source).toBe("On her record");
+    expect(own.ageSex.source).toBe("On their record");
   });
 });
 

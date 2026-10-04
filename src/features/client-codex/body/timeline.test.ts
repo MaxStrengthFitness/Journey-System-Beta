@@ -8,7 +8,7 @@ import { historyFromDocs } from "../../subjective-report/assessment-history";
 import { emptyAssessment } from "../../subjective-report/scoring";
 import type { PainPoint, SubjectiveAssessment } from "../../subjective-report/types";
 import { COVERAGE_CAVEAT, type PriorHistory } from "../../../lib/prior-history";
-import { pronounsOf } from "../kit/pronouns";
+import { CLIENT_PRONOUNS } from "../kit/pronouns";
 import { readArrivals, type ArrivalsRead } from "./arrivals";
 import type { PulseSource } from "./pulse-read";
 import {
@@ -29,7 +29,6 @@ import {
 
 const TODAY = "2027-03-24";
 const NOW = new Date(2027, 2, 24, 12);
-const her = pronounsOf({ gender: "Female" });
 const W = timelineWindow(TODAY);
 
 /* ---- fixtures ----------------------------------------------------------- */
@@ -99,7 +98,7 @@ function input(over: Partial<TimelineInput> = {}): TimelineInput {
     variationOwner: null,
     coverage: "complete",
     prior: null,
-    pronouns: her,
+    pronouns: CLIENT_PRONOUNS,
     now: NOW,
     ...over,
   };
@@ -107,7 +106,7 @@ function input(over: Partial<TimelineInput> = {}): TimelineInput {
 
 const keys = (lanes: TimelineLane[]) => lanes.map((l) => l.key);
 /** The lede while the sessions are unknown: what the card is about, never the state (the row says that). */
-const LEDE_UNKNOWN = "How she arrives at the door and how each session lands, over these six months.";
+const LEDE_UNKNOWN = "How they arrive at the door and how each session lands, over these six months.";
 const lane = <T extends TimelineLane>(lanes: TimelineLane[], key: string) => lanes.find((l) => l.key === key) as T;
 
 /* ---- the window --------------------------------------------------------- */
@@ -195,10 +194,10 @@ describe("the lanes, in order", () => {
     // The lane's title is the question, so its lines don't repeat it; the whole sentence is its <desc>.
     expect(dose.lines).toEqual([
       "After the session, judged by the trainer.",
-      "Judged at 2 of her last 3 sessions, not enough for a line yet (needs 3).",
+      "Judged at 2 of their last 3 sessions, not enough for a line yet (needs 3).",
     ]);
     expect(dose.desc).toBe(
-      "How it landed, judged by the trainer after 2 of her last 3 sessions, not enough for a line yet (needs 3).",
+      "How it landed, judged by the trainer after 2 of their last 3 sessions, not enough for a line yet (needs 3).",
     );
     expect(lane<MarksLane>(full().lanes, "arrive:recovery").lines).toEqual(["At the door, in the briefing."]);
   });
@@ -284,7 +283,7 @@ describe("InBody", () => {
     // The Aug 1 scan is before the window: it sets the band, it is not drawn.
     expect(muscle.points.map((p) => p.day)).toEqual(["2026-12-02", "2027-03-03"]);
     expect(muscle.lines[0]).toBe(
-      "InBody · the shaded band is the scanner's normal variation around her first scan (Aug 1, 2026): ±3.5 lb, Max Strength's default.",
+      "InBody · the shaded band is the scanner's normal variation around their first scan (Aug 1, 2026): ±3.5 lb, Max Strength's default.",
     );
     expect(muscle.lo).toBeLessThanOrEqual(43.6);
     expect(muscle.hi).toBeGreaterThanOrEqual(50.6);
@@ -307,7 +306,7 @@ describe("InBody", () => {
     const muscle = lane<MeasureLane>(m.lanes, "inbody:skeletalMuscleMassLb");
     expect(muscle.line).toBe(false);
     expect(muscle.lines).toEqual([
-      "InBody · the shaded band is the scanner's normal variation around her first scan (Mar 3): ±3.5 lb, Max Strength's default. One scan in these six months; two or more draw a line.",
+      "InBody · the shaded band is the scanner's normal variation around their first scan (Mar 3): ±3.5 lb, Max Strength's default. One scan in these six months; two or more draw a line.",
     ]);
     // Weight has no band: its line is the bare source and the note, one separator between.
     expect(lane<MeasureLane>(m.lanes, "inbody:weightLb").lines).toEqual([
@@ -338,7 +337,7 @@ describe("a read that has not answered", () => {
       }),
     );
     expect(keys(m.lanes)[0]).toBe("gap:sessions");
-    expect(lane(m.lanes, "gap:sessions")).toMatchObject({ state: "loading", lines: ["Loading her recent sessions…"] });
+    expect(lane(m.lanes, "gap:sessions")).toMatchObject({ state: "loading", lines: ["Loading their recent sessions…"] });
     expect(keys(m.lanes)).toContain("pulse:strengthConfidence_1");
     // The row says it is loading; the lede only says what the card is about — never the same sentence twice.
     expect(m.lede).toBe(LEDE_UNKNOWN);
@@ -347,7 +346,7 @@ describe("a read that has not answered", () => {
   it("says a failed sessions read couldn't be loaded — never not asked — with no retry", () => {
     const m = buildTimeline(input({ arrivals: read([], "failed") }));
     const text =
-      "Her recent sessions couldn't be loaded just now, so how she arrived isn't drawn. The rest of this page is unaffected.";
+      "Their recent sessions couldn't be loaded just now, so how they arrived isn't drawn. The rest of this page is unaffected.";
     expect(lane(m.lanes, "gap:sessions")).toMatchObject({ state: "failed", lines: [text] });
     expect(m.lede).toBe(LEDE_UNKNOWN);
     expect([m.lede, ...m.lanes.flatMap((l) => l.lines)].filter((line) => line === text)).toHaveLength(1);
@@ -361,7 +360,7 @@ describe("a read that has not answered", () => {
   it("says a failed or loading Pulse couldn't be read, instead of drawing no answers", () => {
     const failed = buildTimeline(input({ pulseStatus: "failed" as ProgressReportsStatus, source: { draft: null, history: null } }));
     expect(lane(failed.lanes, "gap:pulse").lines).toEqual([
-      "The saved Pulse couldn't be read just now, so her answers aren't drawn.",
+      "The saved Pulse couldn't be read just now, so their answers aren't drawn.",
     ]);
     expect(failed.footer.join(" ")).not.toContain("Pulse round");
     const loading = buildTimeline(input({ pulseStatus: "loading", source: { draft: null, history: null } }));
@@ -424,7 +423,7 @@ describe("a read that has not answered", () => {
 
   it("says Journey holds no session — not asked, never as usual — for a client with none", () => {
     const m = buildTimeline(input());
-    expect(m.lede).toBe("Not asked yet: Journey holds no session of hers in these six months.");
+    expect(m.lede).toBe("Not asked yet: Journey holds no session of theirs in these six months.");
     expect(keys(m.lanes)[0]).toBe("arrive:recovery");
     expect(JSON.stringify(m)).not.toContain("As usual”");
     expect(lane(m.lanes, "gap:pulse").lines).toEqual(["No Pulse answer saved in these six months."]);
@@ -433,7 +432,7 @@ describe("a read that has not answered", () => {
   it("never leads with 'wasn't asked' for a migrating client whose sessions were imported", () => {
     const m = buildTimeline(input({ arrivals: read([charted("2027-03-10"), charted("2027-03-03"), charted("2027-02-24")]) }));
     expect(m.lede).toBe(
-      "The briefing asks “How's the body since last time?” at the door. Her 3 sessions in these six months were imported, and imports don't record the door.",
+      "The briefing asks “How's the body since last time?” at the door. Their 3 sessions in these six months were imported, and imports don't record the door.",
     );
     expect(JSON.stringify(m)).not.toMatch(/wasn't asked|Not asked/);
     expect(lane<MarksLane>(m.lanes, "arrive:recovery").marks).toEqual([]);
@@ -452,7 +451,7 @@ describe("the lede and the footer", () => {
       session("2027-02-27"),
     ];
     expect(buildTimeline(input({ arrivals: read(sessions) })).lede).toBe(
-      "“How's the body since last time?” asked at 3 of her last 4 sessions. “Still feeling it” or “Still wrecked” at 2 of them.",
+      "“How's the body since last time?” asked at 3 of their last 4 sessions. “Still feeling it” or “Still wrecked” at 2 of them.",
     );
   });
 
@@ -468,10 +467,10 @@ describe("the lede and the footer", () => {
       }),
     );
     expect(m.footer).toEqual([
-      "Every reading sits where she gave it: how she arrived and how the session landed on the Dial's words, Pulse answers on the Pulse's own five words (better is higher), InBody as the scanner printed it.",
+      "Every reading sits where they gave it: how they arrived and how the session landed on the Dial's words, Pulse answers on the Pulse's own five words (better is higher), InBody as the scanner printed it.",
       "1 saved Pulse round, 1 InBody scan and 1 session in Journey in these six months.",
       COVERAGE_CAVEAT.partial,
-      "The 412 sessions she had before Journey (FileMaker) aren't drawn.",
+      "The 412 sessions they had before Journey (FileMaker) aren't drawn.",
     ]);
   });
 

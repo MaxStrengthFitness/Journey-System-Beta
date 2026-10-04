@@ -132,7 +132,6 @@ import {
 import { completedSessionDays, inbodyDue, inbodyDueLine } from "../inbody/due";
 import { variationStudioIdOf } from "../inbody/variation";
 import { useStudioSettings } from "../studio-settings";
-import { pronounsOf } from "../client-codex/kit/pronouns";
 import "./briefing.css";
 import { NoteCategoryChips } from "../client-notes/NoteCategoryChips";
 import { FILING_CATEGORIES, type FilingCategory } from "../client-notes/note-catalog";
@@ -546,7 +545,6 @@ export function BriefingScreen({
           studioEvery,
           clientEvery: client.inbodyEvery,
         }),
-        pronounsOf(client).possessive,
       ),
     [client, sessions, sessionsAreAll, coverage, studioEvery],
   );
@@ -605,17 +603,16 @@ export function BriefingScreen({
   );
   const figureViews = useMemo(() => viewsToDraw(litRegions), [litRegions]);
   const figureGender = figureGenderOf(client.gender);
-  const possessive = pronounsOf(client).possessive;
   const lastTime = useMemo(
-    () => lastTimeLines({ lastSession, logs, machines, possessive }),
-    [lastSession, logs, machines, possessive],
+    () => lastTimeLines({ lastSession, logs, machines }),
+    [lastSession, logs, machines],
   );
   const safetyCount = clientFlags.length + notes.critical.length + carried.length;
   const sinceCount =
     lastTime.length + notes.headsUp.length + markers.length + activeJournalFocuses.length;
 
   /* On the way in: Dials open by default (one tap is the usual capture);
-     Sore spot and Note a tap away; Hand her the iPad opens Pulse's client
+     Sore spot and Note a tap away; Hand over the iPad opens Pulse's client
      mode. Untouched = not asked, exactly as before. */
   const [drawer, setDrawer] = useState<{ dials: boolean; sore: boolean; note: boolean }>({
     dials: true,
@@ -723,7 +720,7 @@ export function BriefingScreen({
                     <div
                       className="br-safe__figs"
                       role="img"
-                      aria-label={`Her limits: ${litRegions.map(regionWords).join(", ")}`}
+                      aria-label={`The client's limits: ${litRegions.map(regionWords).join(", ")}`}
                       data-testid="briefing-figure"
                     >
                       {figureViews.map((view) => (
@@ -780,7 +777,7 @@ export function BriefingScreen({
                               {open ? "Show fewer" : `${rules.length - 2} more`}
                             </button>
                           )}
-                          <span className="br-safe__src">On her record · {flag.severity}</span>
+                          <span className="br-safe__src">On the record · {flag.severity}</span>
                         </article>
                       );
                     })}
@@ -987,7 +984,7 @@ export function BriefingScreen({
                 </button>
                 <button type="button" className="br-cap__chip" onClick={() => setHanding(true)}>
                   <Tablet className="w-4 h-4" aria-hidden />
-                  Hand {pronounsOf(client).object} the iPad
+                  Hand over the iPad
                 </button>
               </div>
 
@@ -1119,7 +1116,7 @@ export function BriefingScreen({
                 {touching.length > 0 && (
                   <span className="br-routine__touch">
                     <ShieldAlert className="w-3.5 h-3.5" aria-hidden />
-                    Mind her limits on {touching.join(", ")}
+                    Mind the limits on {touching.join(", ")}
                   </span>
                 )}
                 <span className="br-routine__edit">

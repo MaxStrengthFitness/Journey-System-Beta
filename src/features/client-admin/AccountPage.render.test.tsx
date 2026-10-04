@@ -48,7 +48,7 @@ vi.mock("../ford/ford-write", async (importOriginal) => ({
 
 import { AccountPage, type AccountPageProps } from "./AccountPage";
 import { useRecordForm, type RecordForm } from "../client-codex/useRecordForm";
-import { pronounsOf } from "../client-codex/kit";
+import { CLIENT_PRONOUNS } from "../client-codex/kit";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -137,7 +137,7 @@ function Harness({
           ford={{ status: fordStatus, entries: fordEntries, canAdd: fordCanAdd }}
           fordAuthor={FORD_AUTHOR}
           coverage="complete"
-          pronouns={pronounsOf(c)}
+          pronouns={CLIENT_PRONOUNS}
           today={TODAY}
           go={go}
           onOpenMigrationHub={onOpenMigrationHub}
@@ -233,7 +233,7 @@ describe("AccountPage — the ID card", () => {
   it("stages a nickname on the form; Done only closes the box", async () => {
     const probe: Probe = {};
     const host = await mount(<Harness c={carol()} probe={probe} />);
-    expect(facts(contact(host))["Goes by"]).toContain("Her first name");
+    expect(facts(contact(host))["Goes by"]).toContain("Their first name");
     await click(buttonByText(contact(host), "Set a nickname"));
     await typeInto(fieldByLabel(contact(host), "Nickname"), "Judy");
     expect(probe.form!.formData.nickname).toBe("Judy");
@@ -255,7 +255,7 @@ describe("AccountPage — the ID card", () => {
     expect(facts(contact(host))["Mindbody ID"]).toBe("Not linked to Mindbody");
     // Mindbody holds nothing for her: said once, not "Not synced yet" four times.
     expect(host.querySelector("#account-on-file")?.textContent).toContain(
-      "Not linked to Mindbody, so Mindbody has nothing on file for him yet.",
+      "Not linked to Mindbody, so Mindbody has nothing on file for them yet.",
     );
     expect(host.querySelector("#account-fine-print")?.textContent).toContain("Not linked to Mindbody");
     await click(buttonByText(contact(host), "Edit"));
@@ -305,7 +305,7 @@ describe("AccountPage — Mindbody's account notes", () => {
       ["MED", "R TKA Mar 2024.\nwith a second line"],
     ]);
     expect(card.textContent).toContain("edit in Mindbody");
-    expect(card.textContent).toContain("The first 1,000 characters of her Mindbody account notes");
+    expect(card.textContent).toContain("The first 1,000 characters of their Mindbody account notes");
     expect(card.textContent).toContain("Nothing is copied on its own");
   });
 
@@ -325,15 +325,15 @@ describe("AccountPage — the intake matcher (AJ's decision 4)", () => {
   it("says where each line belongs, and offers one tap for each on an empty record", async () => {
     const host = await mount(<Harness c={carol({ mindbodyNotes: MOCKUP_NOTES })} />);
     const to = (label: string) => row(host, label).querySelector(".cadm-intake__to")?.textContent;
-    expect([to("OCC"), to("MED"), to("ACTIVITY"), to("GOALS")]).toEqual(["Occupation", "Body", "Recreation", "Her why"]);
-    expect(status(row(host, "OCC"))).toBe("No job title on her record yet.");
+    expect([to("OCC"), to("MED"), to("ACTIVITY"), to("GOALS")]).toEqual(["Occupation", "Body", "Recreation", "Their why"]);
+    expect(status(row(host, "OCC"))).toBe("No job title on their record yet.");
     expect(status(row(host, "MED"))).toBe("Nothing in Body's watch-outs yet.");
     expect(status(row(host, "ACTIVITY"))).toBe("Nothing in Recreation yet.");
-    expect(status(row(host, "GOALS"))).toBe("Her why isn't written yet.");
+    expect(status(row(host, "GOALS"))).toBe("Their why isn't written yet.");
     expect(buttonByText(row(host, "OCC"), "Add to Occupation")).toBeDefined();
     expect(buttonByText(row(host, "MED"), "Add as medical history")).toBeDefined();
     expect(buttonByText(row(host, "ACTIVITY"), "Add to Recreation")).toBeDefined();
-    expect(buttonByText(row(host, "GOALS"), "Use as her why")).toBeDefined();
+    expect(buttonByText(row(host, "GOALS"), "Use as their why")).toBeDefined();
     // A line it does not know is shown exactly as typed, label and all, with
     // nothing offered and nowhere to go.
     const pmt = rowByText(host, "Pmt: autopay");
@@ -397,7 +397,7 @@ describe("AccountPage — the intake matcher (AJ's decision 4)", () => {
     expect(probe.form!.isDirty("medicalHistory")).toBe(true);
     expect(probe.form!.where).toEqual([{ page: "body", anchor: "body-watchouts", label: "Watch-outs" }]);
     expect(status(row(host, "MED"))).toBe(
-      "UnsavedAdded to her medical history. Nothing is saved until you tap Save changes on the bar at the bottom.",
+      "UnsavedAdded to their medical history. Nothing is saved until you tap Save changes on the bar at the bottom.",
     );
     expect(buttonByText(row(host, "MED"), "Add to medical history")).toBeUndefined();
     expect(fordWrite.createFordEntry).not.toHaveBeenCalled();
@@ -410,24 +410,24 @@ describe("AccountPage — the intake matcher (AJ's decision 4)", () => {
     const probe: Probe = {};
     const host = await mount(<Harness c={carol({ mindbodyNotes: MOCKUP_NOTES })} probe={probe} />);
     await click(buttonByText(row(host, "OCC"), "Add to Occupation"));
-    await click(buttonByText(row(host, "GOALS"), "Use as her why"));
+    await click(buttonByText(row(host, "GOALS"), "Use as their why"));
     expect(probe.form!.formData.occupation).toBe("Retired dental hygienist.");
     expect(probe.form!.formData.globalNotes).toBe("Keep up w/ grandkids. Camino!");
     expect(probe.form!.where).toEqual([
       { page: "ford", anchor: "ford-occupation", label: "Occupation" },
       { page: "goals", anchor: "goals-why", label: "The why" },
     ]);
-    expect(status(row(host, "OCC"))).toContain("Now her job title.");
-    expect(status(row(host, "GOALS"))).toContain("Now her why.");
+    expect(status(row(host, "OCC"))).toContain("Now their job title.");
+    expect(status(row(host, "GOALS"))).toContain("Now their why.");
 
     // A job title or why already on the record is never replaced.
     const other = await mount(
       <Harness c={carol({ mindbodyNotes: MOCKUP_NOTES, occupation: "Hygienist", globalNotes: "Walk the Camino" })} />,
     );
-    expect(status(row(other, "OCC"))).toBe("Journey has: “Hygienist” as her job title.");
-    expect(status(row(other, "GOALS"))).toBe("Her why is already written on her record.");
+    expect(status(row(other, "OCC"))).toBe("Journey has: “Hygienist” as their job title.");
+    expect(status(row(other, "GOALS"))).toBe("Their why is already written on their record.");
     expect(row(other, "OCC").textContent).not.toContain("Add to Occupation");
-    expect(row(other, "GOALS").textContent).not.toContain("Use as her why");
+    expect(row(other, "GOALS").textContent).not.toContain("Use as their why");
   });
 
   it("offers nothing once these exact words are there", async () => {
@@ -448,7 +448,7 @@ describe("AccountPage — the intake matcher (AJ's decision 4)", () => {
         ]}
       />,
     );
-    expect(status(row(host, "MED"))).toBe("This exact line is in her medical history.");
+    expect(status(row(host, "MED"))).toBe("This exact line is in their medical history.");
     expect(status(row(host, "ACTIVITY"))).toBe("This line is already a detail in Recreation.");
     expect(buttonByText(row(host, "MED"), "Add")).toBeUndefined();
     expect(buttonByText(row(host, "ACTIVITY"), "Add")).toBeUndefined();
@@ -467,7 +467,7 @@ describe("AccountPage — the intake matcher (AJ's decision 4)", () => {
   it("offers no FORD add to a reader the FORD create rule refuses (an administrator elsewhere), and says why", async () => {
     const host = await mount(<Harness c={carol({ mindbodyNotes: MOCKUP_NOTES })} fordCanAdd={false} />);
     expect(status(row(host, "ACTIVITY"))).toBe(
-      "Nothing in Recreation yet. Only a trainer at her home studio can add a FORD detail, so it isn't offered here.",
+      "Nothing in Recreation yet. Only a trainer at their home studio can add a FORD detail, so it isn't offered here.",
     );
     expect(buttonByText(row(host, "ACTIVITY"), "Add")).toBeUndefined();
     // The record's own fields are still theirs to stage.
@@ -478,14 +478,14 @@ describe("AccountPage — the intake matcher (AJ's decision 4)", () => {
   it("gives a reader who may not edit the sentences and the doors, and no tap", async () => {
     const go = vi.fn();
     const host = await mount(<Harness c={carol({ mindbodyNotes: MOCKUP_NOTES })} canEdit={false} fordStatus="off" go={go} />);
-    expect(status(row(host, "OCC"))).toBe("No job title on her record yet.");
+    expect(status(row(host, "OCC"))).toBe("No job title on their record yet.");
     expect(status(row(host, "ACTIVITY"))).toBe(
-      "FORD is kept by her home studio, so this line can't be checked or added to Recreation here.",
+      "FORD is kept by their home studio, so this line can't be checked or added to Recreation here.",
     );
     for (const text of ["Add to", "Add as", "Use as"]) expect(buttonByText(notesCard(host), text), text).toBeUndefined();
     await click(buttonByText(row(host, "MED"), "Open Watch-outs"));
     expect(go).toHaveBeenLastCalledWith("body", "body-watchouts");
-    await click(buttonByText(row(host, "GOALS"), "Open her why"));
+    await click(buttonByText(row(host, "GOALS"), "Open their why"));
     expect(go).toHaveBeenLastCalledWith("goals", "goals-why");
   });
 
@@ -569,7 +569,7 @@ describe("AccountPage — the page", () => {
     const host = await mount(<Harness c={carol()} go={go} />);
     const lede = host.querySelector(".cx-page-lede")?.textContent ?? "";
     expect(lede).toBe(
-      "Her contact details as Mindbody knows them, then her membership. The nickname, how she found us, where she can train and the tier lock are changed here, and whether she is on auto-renewal is noted here for Journey's renewal screens; everything else changes in Mindbody and arrives with the next sync.",
+      "Their contact details as Mindbody knows them, then their membership. The nickname, how they found us, where they can train and the tier lock are changed here, and whether they are on auto-renewal is noted here for Journey's renewal screens; everything else changes in Mindbody and arrives with the next sync.",
     );
     // The box below says auto-renewal is changed in Mindbody; the lede agrees.
     expect(lede).not.toMatch(/auto-renewal[^;]*changed here/);
@@ -577,12 +577,12 @@ describe("AccountPage — the page", () => {
     // A client typed into Journey: her details are typed here, not synced.
     const him = await mount(<Harness c={sam()} />);
     expect(him.querySelector(".cx-page-lede")?.textContent).toBe(
-      "His contact details as typed into Journey, then his membership. Mindbody does not hold him yet, so his details are typed here until he is linked.",
+      "Their contact details as typed into Journey, then their membership. Mindbody does not hold them yet, so their details are typed here until they are linked.",
     );
     // A reader who may not edit is offered no edit in words either.
     const reader = await mount(<Harness c={carol()} canEdit={false} />);
     expect(reader.querySelector(".cx-page-lede")?.textContent).toBe(
-      "Her contact details as Mindbody knows them, then her membership. Read only here: her home studio keeps the record.",
+      "Their contact details as Mindbody knows them, then their membership. Read only here: their home studio keeps the record.",
     );
     await click(host.querySelector('[aria-label="Previous page: Story"]'));
     expect(go).toHaveBeenLastCalledWith("story");

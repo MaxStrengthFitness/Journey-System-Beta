@@ -30,7 +30,7 @@ import type { JournalEntry } from "../../types/journal";
 import type { FordEntry } from "../ford/types";
 import { assembleThreads } from "../client-notes/threads";
 import { historyFromDocs } from "../subjective-report/assessment-history";
-import { pronounsOf } from "../client-codex/kit/pronouns";
+import { CLIENT_PRONOUNS } from "../client-codex/kit/pronouns";
 import { buildStory, type Src, type StoryClient, type StoryInput } from "./story";
 import { StoryPage } from "./StoryPage";
 
@@ -38,14 +38,13 @@ import { StoryPage } from "./StoryPage";
 
 const TZ = "America/New_York";
 const TODAY = "2027-03-16";
-const SHE = pronounsOf({ gender: "Female" });
 const noon = (day: string) => new Date(`${day}T12:00:00-05:00`);
 const ready = <T,>(data: T): Src<T> => ({ status: "ready", data });
 
 const LONG =
-  "A pinch in the right knee on Leg Press with the seat one notch closer, so we moved her back to seat 7 and she stops at " +
+  "A pinch in the right knee on Leg Press with the seat one notch closer, so we moved them back to seat 7 and they stop at " +
   "ninety degrees at the bottom turn, holds the pause, and tells us before the set whether the knee feels warm or tight " +
-  "that morning, because the pickleball season starts in April and she wants to be able to play three mornings a week " +
+  "that morning, because the pickleball season starts in April and they want to be able to play three mornings a week " +
   "without the knee swelling afterwards, which it did twice last spring when the seat crept forward during the set.";
 
 const note = (over: Partial<JournalEntry> & { id: string }): JournalEntry =>
@@ -121,7 +120,7 @@ function carolInput(over: Partial<StoryInput> = {}): StoryInput {
     client: carol,
     coverage: "partial",
     totals: { total: 461, journey: 49, before: 412 },
-    pronouns: SHE,
+    pronouns: CLIENT_PRONOUNS,
     notes: ready(assembleThreads([note({ id: "crit", body: LONG })])),
     focuses: ready([]),
     ford: ready([moment]),
@@ -145,7 +144,7 @@ async function mount(input: StoryInput = carolInput()) {
   await act(async () => {
     root.render(
       <StrictMode>
-        <StoryPage story={buildStory(input)} pronouns={input.pronouns ?? SHE} go={go} />
+        <StoryPage story={buildStory(input)} pronouns={input.pronouns ?? CLIENT_PRONOUNS} go={go} />
       </StrictMode>,
     );
   });
@@ -182,7 +181,7 @@ describe("StoryPage", () => {
   it("leads with the since line and her time, in her pronoun, with the neighbours and the Next card", async () => {
     const { host, go } = await mount();
     expect(host.querySelector(".cx-page-title")?.textContent).toBe("Story");
-    expect(host.querySelector(".cx-page-lede")?.textContent).toMatch(/^Her time with Max Strength, newest first\./);
+    expect(host.querySelector(".cx-page-lede")?.textContent).toMatch(/^Their time with Max Strength, newest first\./);
     expect(host.querySelector(".st-since")?.textContent).toBe(
       "With Max Strength since Mar 2019. 412 sessions in FileMaker before Journey, and 49 in Journey.",
     );
@@ -295,7 +294,7 @@ describe("StoryPage", () => {
       tz: TZ,
       client: {},
       coverage: "complete",
-      pronouns: SHE,
+      pronouns: CLIENT_PRONOUNS,
       notes: ready([]),
       focuses: ready([]),
       ford: ready([]),

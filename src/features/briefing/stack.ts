@@ -144,7 +144,7 @@ export interface LastTimeLine {
  * What the last session's sets say, in a trainer's words, at most `limit`:
  *
  *   Skipped Leg Press last time: pain or injury.
- *   Leg Press: 5 reps last time, her usual is 8.
+ *   Leg Press: 5 reps last time, usually 8.
  *   Leg Press was a light set last time (blood flow), not counted.
  *
  * Only facts on the last session's own logs; a machine without enough
@@ -155,13 +155,11 @@ export function lastTimeLines({
   lastSession,
   logs,
   machines,
-  possessive = "her",
   limit = 3,
 }: {
   lastSession: Pick<WorkoutSession, "id"> | null;
   logs: readonly ExerciseLog[];
   machines: readonly Pick<Machine, "id" | "name">[];
-  possessive?: string;
   limit?: number;
 }): LastTimeLine[] {
   if (!lastSession?.id) return [];
@@ -211,7 +209,7 @@ export function lastTimeLines({
       out.push({
         key: `short-${log.machineId}`,
         kind: "short",
-        text: `${name}: ${reps} reps last time, ${possessive} usual is ${usual}.`,
+        text: `${name}: ${reps} reps last time, usually ${usual}.`,
       });
       seen.add(log.machineId);
     }

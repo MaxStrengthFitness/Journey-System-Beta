@@ -41,7 +41,7 @@ import { studioTodayKey } from "../../lib/studio-time";
 import type { HistoryCoverage } from "../../lib/prior-history";
 import type { ProgressReportsStatus } from "../client-profile/client-answer";
 import { buildStory } from "../client-story/story";
-import { pronounsOf } from "./kit/pronouns";
+import { CLIENT_PRONOUNS } from "./kit/pronouns";
 import { codexAccess } from "./access";
 import {
   codexFordStatus,
@@ -141,7 +141,7 @@ export function useCodexData({
     () => pulseFromReports(progressReports, clientId, progressReportsStatus),
     [progressReports, clientId, progressReportsStatus],
   );
-  const pronouns = useMemo(() => pronounsOf(client), [client]);
+  const pronouns = CLIENT_PRONOUNS;
   const fordStatus = codexFordStatus(access.fordReadable, ford.status);
   // Her story, built once from what the tab already holds (no read): the
   // Story page and the Overview's Story slot read the same one.

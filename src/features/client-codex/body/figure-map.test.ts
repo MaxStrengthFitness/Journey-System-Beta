@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CLINICAL_FLAGS_MATRIX } from "../../../data/clinical-matrix";
 import type { PainPoint } from "../../subjective-report/types";
-import { pronounsOf } from "../kit/pronouns";
+import { CLIENT_PRONOUNS } from "../kit/pronouns";
 import { isBodyArea } from "../../../types/machines";
 import {
   FIGURE_VIEWBOX,
@@ -17,7 +17,6 @@ import {
 import type { PainReading } from "./pulse-read";
 
 const NOW = new Date(2027, 2, 24, 12);
-const her = pronounsOf({ gender: "Female" });
 
 const point = (over: Partial<PainPoint>): PainPoint => ({
   id: over.id ?? "p1",
@@ -42,7 +41,7 @@ const reading = (
 });
 
 const rows = (flagIds: string[], pain: PainReading | null = null, machines = new Map<string, { name: string }>()) =>
-  regionRows({ flagIds, pain, machinesById: machines, pronouns: her, now: NOW });
+  regionRows({ flagIds, pain, machinesById: machines, pronouns: CLIENT_PRONOUNS, now: NOW });
 
 const GENDERS: FigureGender[] = ["male", "female"];
 
@@ -96,10 +95,10 @@ describe("where each flag sits", () => {
 
   it("names what is marked on each view for a screen reader", () => {
     const marks = figureMarks({ flagIds: ["joint-tka"], painSpots: [point({})], gender: "female" });
-    expect(figureLabel("front", marks, her)).toBe(
-      "Front of the body: a watch-out on file at the knee; she told us about the knee",
+    expect(figureLabel("front", marks, CLIENT_PRONOUNS)).toBe(
+      "Front of the body: a watch-out on file at the knee; they told us about the knee",
     );
-    expect(figureLabel("back", marks, her)).toBe("Back of the body, nothing marked");
+    expect(figureLabel("back", marks, CLIENT_PRONOUNS)).toBe("Back of the body, nothing marked");
   });
 });
 
@@ -176,11 +175,11 @@ describe("the region list", () => {
       ]),
       new Map([["m-leg", { name: "Leg Press" }]]),
     );
-    expect(knee.meta).toBe("on file + she told us");
+    expect(knee.meta).toBe("on file + they told us");
     expect(knee.sentences).toEqual([
       "On file: Total Knee Replacement (TKA).",
       "The flag doesn't record a side, so the diamond sits on the midline.",
-      "She told us: right knee, Mild (Pulse, Mar 10), Moderate on Sep 16, 2026.",
+      "They told us: right knee, Mild (Pulse, Mar 10), Moderate on Sep 16, 2026.",
       "Brought on by Leg Press.",
       "“Seat too close”",
     ]);
@@ -209,7 +208,7 @@ describe("the region list", () => {
       flagIds: [],
       pain: reading([{ p: point({}) }]),
       machinesById: new Map(),
-      pronouns: pronounsOf({}),
+      pronouns: CLIENT_PRONOUNS,
       now: NOW,
     })[0];
     expect(told.meta).toBe("they told us");
@@ -222,11 +221,11 @@ describe("the region list", () => {
       pain: null,
       machinesById: new Map(),
       door: new Map([["knee", { k: 3, n: 12, latest: { word: "Stiff", day: "2027-03-20" } }]]),
-      pronouns: her,
+      pronouns: CLIENT_PRONOUNS,
       now: NOW,
     });
     expect(knee.meta).toBe("at the door");
-    expect(knee.sentences).toEqual(["At the door: “Stiff” on Mar 20 · tapped at 3 of her last 12 sessions."]);
+    expect(knee.sentences).toEqual(["At the door: “Stiff” on Mar 20 · tapped at 3 of their last 12 sessions."]);
   });
 
   it("says one session plainly at the door", () => {
@@ -235,10 +234,10 @@ describe("the region list", () => {
       pain: null,
       machinesById: new Map(),
       door: new Map([["knee", { k: 1, n: 1, latest: { word: "Pain", day: "2027-03-20" } }]]),
-      pronouns: her,
+      pronouns: CLIENT_PRONOUNS,
       now: NOW,
     });
-    expect(knee.sentences).toEqual(["At the door: “Pain” on Mar 20 · tapped at her one session in these six months."]);
+    expect(knee.sentences).toEqual(["At the door: “Pain” on Mar 20 · tapped at their one session in these six months."]);
   });
 
   it("says the count is of her sessions run in Journey when imported or logged ones were left out", () => {
@@ -248,14 +247,14 @@ describe("the region list", () => {
         pain: null,
         machinesById: new Map(),
         door: new Map([["knee", { ...taps, runOnly: true, latest: { word: "Stiff", day: "2027-03-20" } }]]),
-        pronouns: her,
+        pronouns: CLIENT_PRONOUNS,
         now: NOW,
       })[0];
     expect(row({ k: 2, n: 5 }).sentences).toEqual([
-      "At the door: “Stiff” on Mar 20 · tapped at 2 of her last 5 sessions run in Journey.",
+      "At the door: “Stiff” on Mar 20 · tapped at 2 of their last 5 sessions run in Journey.",
     ]);
     expect(row({ k: 1, n: 1 }).sentences).toEqual([
-      "At the door: “Stiff” on Mar 20 · tapped at her one session run in Journey in these six months.",
+      "At the door: “Stiff” on Mar 20 · tapped at their one session run in Journey in these six months.",
     ]);
   });
 });

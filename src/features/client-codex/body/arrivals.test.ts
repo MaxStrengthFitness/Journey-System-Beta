@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DialValue, PreSessionCheckIn, WorkoutSession } from "../../../types";
 import { READINESS_SCALES, RECOVERY_ASKED_FROM } from "../../rating/scales";
-import { pronounsOf } from "../kit/pronouns";
+import { CLIENT_PRONOUNS } from "../kit/pronouns";
 import {
   ARRIVE_ORDER,
   SESSION_REGION_TO_FIGURE,
@@ -20,8 +20,6 @@ import { SPOTS } from "./figure-map";
 import { BODY_REGIONS } from "../../../data/body-regions";
 
 const NOW = new Date(2027, 2, 24, 12);
-const her = pronounsOf({ gender: "Female" });
-const him = pronounsOf({ gender: "Male" });
 const WINDOW = { from: "2026-09-23", to: "2027-03-24" };
 
 let seq = 0;
@@ -178,78 +176,78 @@ describe("the sentences", () => {
   const ask = READINESS_SCALES.recovery.ask;
 
   it("says not asked yet — never as usual — when Journey holds no session in the window", () => {
-    const s = arriveSentence(summary({ sessions: 0 }), her, NOW);
-    expect(s).toBe("Not asked yet: Journey holds no session of hers in these six months.");
+    const s = arriveSentence(summary({ sessions: 0 }), CLIENT_PRONOUNS, NOW);
+    expect(s).toBe("Not asked yet: Journey holds no session of theirs in these six months.");
     expect(s).not.toContain("As usual");
   });
 
   it("names the briefing's question when it was asked at none of her sessions", () => {
-    expect(arriveSentence(summary({ sessions: 12 }), her, NOW)).toBe(
-      `The briefing asks “${ask}” at the door. It wasn't asked at any of her last 12 sessions.`,
+    expect(arriveSentence(summary({ sessions: 12 }), CLIENT_PRONOUNS, NOW)).toBe(
+      `The briefing asks “${ask}” at the door. It wasn't asked at any of their last 12 sessions.`,
     );
-    expect(arriveSentence(summary({ key: "sleep", sessions: 12 }), her, NOW)).toBe(
-      "“How'd you sleep?” wasn't asked at any of her last 12 sessions.",
+    expect(arriveSentence(summary({ key: "sleep", sessions: 12 }), CLIENT_PRONOUNS, NOW)).toBe(
+      "“How'd you sleep?” wasn't asked at any of their last 12 sessions.",
     );
   });
 
   it("says there is not enough for a line below three answers (the rule of three)", () => {
-    expect(arriveSentence(summary({ asked: 2, sessions: 12, below: 2 }), her, NOW)).toBe(
-      `“${ask}” asked at 2 of her last 12 sessions, not enough for a line yet (needs 3).`,
+    expect(arriveSentence(summary({ asked: 2, sessions: 12, below: 2 }), CLIENT_PRONOUNS, NOW)).toBe(
+      `“${ask}” asked at 2 of their last 12 sessions, not enough for a line yet (needs 3).`,
     );
   });
 
   it("says how often she arrived below her usual, from three answers on", () => {
-    expect(arriveSentence(summary({ asked: 3, sessions: 12, below: 3 }), her, NOW)).toBe(
-      `“${ask}” asked at 3 of her last 12 sessions. “Still feeling it” or “Still wrecked” at 3 of them.`,
+    expect(arriveSentence(summary({ asked: 3, sessions: 12, below: 3 }), CLIENT_PRONOUNS, NOW)).toBe(
+      `“${ask}” asked at 3 of their last 12 sessions. “Still feeling it” or “Still wrecked” at 3 of them.`,
     );
-    expect(arriveSentence(summary({ asked: 12, sessions: 24, below: 0 }), him, NOW)).toBe(
-      `“${ask}” asked at 12 of his last 24 sessions. At or above “As usual” every time.`,
+    expect(arriveSentence(summary({ asked: 12, sessions: 24, below: 0 }), CLIENT_PRONOUNS, NOW)).toBe(
+      `“${ask}” asked at 12 of their last 24 sessions. At or above “As usual” every time.`,
     );
   });
 
   it("says since when when the page stops short of six months", () => {
-    expect(arriveSentence(summary({ asked: 12, sessions: 40, below: 3, sinceDay: "2026-12-01" }), her, NOW)).toBe(
-      `“${ask}” asked at 12 of her last 40 sessions (since Dec 1, 2026). “Still feeling it” or “Still wrecked” at 3 of them.`,
+    expect(arriveSentence(summary({ asked: 12, sessions: 40, below: 3, sinceDay: "2026-12-01" }), CLIENT_PRONOUNS, NOW)).toBe(
+      `“${ask}” asked at 12 of their last 40 sessions (since Dec 1, 2026). “Still feeling it” or “Still wrecked” at 3 of them.`,
     );
   });
 
   it("words the dose as the trainer's judgement, and never as 'better'", () => {
-    expect(arriveSentence(summary({ key: "dose", asked: 5, sessions: 6, below: 2 }), her, NOW)).toBe(
-      "How it landed, judged by the trainer after 5 of her last 6 sessions. “Drained” or “Wiped out” at 2 of them.",
+    expect(arriveSentence(summary({ key: "dose", asked: 5, sessions: 6, below: 2 }), CLIENT_PRONOUNS, NOW)).toBe(
+      "How it landed, judged by the trainer after 5 of their last 6 sessions. “Drained” or “Wiped out” at 2 of them.",
     );
-    expect(arriveSentence(summary({ key: "dose", asked: 5, sessions: 6, below: 0 }), her, NOW)).toBe(
-      "How it landed, judged by the trainer after 5 of her last 6 sessions. Never “Drained” or “Wiped out”.",
+    expect(arriveSentence(summary({ key: "dose", asked: 5, sessions: 6, below: 0 }), CLIENT_PRONOUNS, NOW)).toBe(
+      "How it landed, judged by the trainer after 5 of their last 6 sessions. Never “Drained” or “Wiped out”.",
     );
-    expect(arriveSentence(summary({ key: "dose", sessions: 6 }), her, NOW)).toBe(
-      "How it landed wasn't judged after any of her last 6 sessions.",
+    expect(arriveSentence(summary({ key: "dose", sessions: 6 }), CLIENT_PRONOUNS, NOW)).toBe(
+      "How it landed wasn't judged after any of their last 6 sessions.",
     );
-    expect(arriveSentence(summary({ key: "dose", sessions: 0 }), her, NOW)).toBe(
-      "Not judged yet: Journey holds no session of hers in these six months.",
+    expect(arriveSentence(summary({ key: "dose", sessions: 0 }), CLIENT_PRONOUNS, NOW)).toBe(
+      "Not judged yet: Journey holds no session of theirs in these six months.",
     );
   });
 
   it("says one session plainly", () => {
-    expect(arriveSentence(summary({ asked: 1, sessions: 1 }), her, NOW)).toBe(
-      `“${ask}” asked at her one session in these six months, not enough for a line yet (needs 3).`,
+    expect(arriveSentence(summary({ asked: 1, sessions: 1 }), CLIENT_PRONOUNS, NOW)).toBe(
+      `“${ask}” asked at their one session in these six months, not enough for a line yet (needs 3).`,
     );
-    expect(arriveSentence(summary({ key: "energy", sessions: 1 }), her, NOW)).toBe(
-      "“How are you feeling?” wasn't asked at her one session in these six months.",
+    expect(arriveSentence(summary({ key: "energy", sessions: 1 }), CLIENT_PRONOUNS, NOW)).toBe(
+      "“How are you feeling?” wasn't asked at their one session in these six months.",
     );
   });
 
   it("drops the question for a lane whose title already is the question", () => {
-    expect(arriveDetail(summary({ key: "sleep", asked: 5, sessions: 24, below: 2 }), her, NOW)).toBe(
-      "Asked at 5 of her last 24 sessions. “A bit short” or “Rough night” at 2 of them.",
+    expect(arriveDetail(summary({ key: "sleep", asked: 5, sessions: 24, below: 2 }), CLIENT_PRONOUNS, NOW)).toBe(
+      "Asked at 5 of their last 24 sessions. “A bit short” or “Rough night” at 2 of them.",
     );
-    expect(arriveDetail(summary({ key: "stress", sessions: 24 }), her, NOW)).toBe("Not asked at any of her last 24 sessions.");
-    expect(arriveDetail(summary({ key: "dose", asked: 4, sessions: 6, below: 0 }), her, NOW)).toBe(
-      "Judged at 4 of her last 6 sessions. Never “Drained” or “Wiped out”.",
+    expect(arriveDetail(summary({ key: "stress", sessions: 24 }), CLIENT_PRONOUNS, NOW)).toBe("Not asked at any of their last 24 sessions.");
+    expect(arriveDetail(summary({ key: "dose", asked: 4, sessions: 6, below: 0 }), CLIENT_PRONOUNS, NOW)).toBe(
+      "Judged at 4 of their last 6 sessions. Never “Drained” or “Wiped out”.",
     );
-    expect(arriveDetail(summary({ key: "dose", sessions: 1 }), her, NOW)).toBe(
-      "Not judged at her one session in these six months.",
+    expect(arriveDetail(summary({ key: "dose", sessions: 1 }), CLIENT_PRONOUNS, NOW)).toBe(
+      "Not judged at their one session in these six months.",
     );
-    expect(arriveDetail(summary({ sessions: 0 }), her, NOW)).toBe(
-      "Not asked yet: Journey holds no session of hers in these six months.",
+    expect(arriveDetail(summary({ sessions: 0 }), CLIENT_PRONOUNS, NOW)).toBe(
+      "Not asked yet: Journey holds no session of theirs in these six months.",
     );
   });
 
@@ -265,7 +263,7 @@ describe("the sentences", () => {
     ];
     for (const key of keys) {
       for (const shape of shapes) {
-        for (const s of [arriveSentence(summary({ ...shape, key }), her, NOW), arriveDetail(summary({ ...shape, key }), her, NOW)]) {
+        for (const s of [arriveSentence(summary({ ...shape, key }), CLIENT_PRONOUNS, NOW), arriveDetail(summary({ ...shape, key }), CLIENT_PRONOUNS, NOW)]) {
           expect(s).not.toMatch(/next time|lighter|room to add|increase|progress/i);
           expect(s).not.toMatch(/\d+%|\/10/);
         }
@@ -328,22 +326,22 @@ describe("sessions where nothing could be recorded", () => {
   it("never says imported chart sessions weren't asked (the migration rule)", () => {
     const s = arriveSummary(read([charted("2027-03-10"), charted("2027-02-10"), fileMaker("2027-01-10")]), "recovery");
     expect(s).toMatchObject({ asked: 0, sessions: 0, imported: 3 });
-    const text = arriveSentence(s, her, NOW);
+    const text = arriveSentence(s, CLIENT_PRONOUNS, NOW);
     expect(text).toBe(
-      `The briefing asks “${ask}” at the door. Her 3 sessions in these six months were imported, and imports don't record the door.`,
+      `The briefing asks “${ask}” at the door. Their 3 sessions in these six months were imported, and imports don't record the door.`,
     );
     expect(text).not.toMatch(/wasn't asked|not asked/i);
-    expect(arriveSentence(arriveSummary(read([charted("2027-03-10")]), "dose"), her, NOW)).toBe(
-      "The trainer judges how it landed after each session. Her one session in these six months was imported, and imports don't record how it landed.",
+    expect(arriveSentence(arriveSummary(read([charted("2027-03-10")]), "dose"), CLIENT_PRONOUNS, NOW)).toBe(
+      "The trainer judges how it landed after each session. Their one session in these six months was imported, and imports don't record how it landed.",
     );
   });
 
   it("never says sessions from Log past session weren't asked or judged", () => {
     const r = read([loggedLater("2027-03-10"), loggedLater("2027-02-10")]);
-    expect(arriveSentence(arriveSummary(r, "recovery"), her, NOW)).toBe(
-      `The briefing asks “${ask}” at the door. Her 2 sessions in these six months were logged later, and Log past session doesn't record the door.`,
+    expect(arriveSentence(arriveSummary(r, "recovery"), CLIENT_PRONOUNS, NOW)).toBe(
+      `The briefing asks “${ask}” at the door. Their 2 sessions in these six months were logged later, and Log past session doesn't record the door.`,
     );
-    expect(arriveSentence(arriveSummary(r, "dose"), her, NOW)).not.toMatch(/wasn't judged|not judged/i);
+    expect(arriveSentence(arriveSummary(r, "dose"), CLIENT_PRONOUNS, NOW)).not.toMatch(/wasn't judged|not judged/i);
   });
 
   it("names the sessions left out beside the ones counted", () => {
@@ -355,11 +353,11 @@ describe("sessions where nothing could be recorded", () => {
       charted("2027-01-03"),
       loggedLater("2027-02-01"),
     ]);
-    expect(arriveSentence(arriveSummary(r, "recovery"), her, NOW)).toBe(
-      `“${ask}” asked at 2 of her last 3 sessions run in Journey, not enough for a line yet (needs 3). 2 more were imported and 1 logged later; neither records the door.`,
+    expect(arriveSentence(arriveSummary(r, "recovery"), CLIENT_PRONOUNS, NOW)).toBe(
+      `“${ask}” asked at 2 of their last 3 sessions run in Journey, not enough for a line yet (needs 3). 2 more were imported and 1 logged later; neither records the door.`,
     );
-    expect(arriveDetail(arriveSummary(read([session("2027-03-20"), charted("2027-01-10")]), "stress"), her, NOW)).toBe(
-      "Not asked at her one session run in Journey in these six months. 1 more was imported, and imports don't record the door.",
+    expect(arriveDetail(arriveSummary(read([session("2027-03-20"), charted("2027-01-10")]), "stress"), CLIENT_PRONOUNS, NOW)).toBe(
+      "Not asked at their one session run in Journey in these six months. 1 more was imported, and imports don't record the door.",
     );
   });
 
@@ -379,9 +377,9 @@ describe("sessions where nothing could be recorded", () => {
       const r = read(days.map(oldBriefing), W2);
       const s = arriveSummary(r, "recovery");
       expect(s).toMatchObject({ asked: 0, sessions: 0, before: 30 });
-      const text = arriveSentence(s, her, NOW2);
+      const text = arriveSentence(s, CLIENT_PRONOUNS, NOW2);
       expect(text).toBe(
-        `The briefing asks “${ask}” at the door. Her 30 sessions in these six months came before the question was added (Sep 16).`,
+        `The briefing asks “${ask}” at the door. Their 30 sessions in these six months came before the question was added (Sep 16).`,
       );
       expect(text).not.toMatch(/wasn't asked/);
       // Sleep has its legacy field: asked at all thirty.
@@ -402,8 +400,8 @@ describe("sessions where nothing could be recorded", () => {
       );
       const s = arriveSummary(r, "recovery");
       expect(s).toMatchObject({ asked: 2, sessions: 3, before: 2, imported: 1 });
-      expect(arriveSentence(s, her, NOW2)).toBe(
-        `“${ask}” asked at 2 of her 3 sessions run in Journey since the question was added (Sep 16), not enough for a line yet (needs 3). 1 more was imported, and imports don't record the door.`,
+      expect(arriveSentence(s, CLIENT_PRONOUNS, NOW2)).toBe(
+        `“${ask}” asked at 2 of their 3 sessions run in Journey since the question was added (Sep 16), not enough for a line yet (needs 3). 1 more was imported, and imports don't record the door.`,
       );
       // A session before the day that DID answer it is counted, not left out.
       expect(arriveSummary(read([session("2026-09-15", {}, recovery(1))], W2), "recovery")).toMatchObject({
@@ -415,8 +413,8 @@ describe("sessions where nothing could be recorded", () => {
 
     it("says every reason when no session could record it", () => {
       const r = read([oldBriefing("2026-09-10"), oldBriefing("2026-09-03"), charted("2026-06-01")], W2);
-      expect(arriveSentence(arriveSummary(r, "recovery"), her, NOW2)).toBe(
-        `The briefing asks “${ask}” at the door. None of her 3 sessions in these six months could record it: 2 came before the question was added (Sep 16) and 1 was imported.`,
+      expect(arriveSentence(arriveSummary(r, "recovery"), CLIENT_PRONOUNS, NOW2)).toBe(
+        `The briefing asks “${ask}” at the door. None of their 3 sessions in these six months could record it: 2 came before the question was added (Sep 16) and 1 was imported.`,
       );
     });
   });

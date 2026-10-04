@@ -71,7 +71,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
 
 import { GoalsPage, type GoalsPageProps } from "./GoalsPage";
 import { useRecordForm } from "../client-codex/useRecordForm";
-import { pronounsOf } from "../client-codex/kit/pronouns";
+import { CLIENT_PRONOUNS } from "../client-codex/kit/pronouns";
 import { assembleThreads } from "../client-notes/threads";
 import type { CodexFordStatus } from "../client-codex/codex-data";
 import type { Client, Machine, Trainer } from "../../types";
@@ -104,7 +104,7 @@ const carol = (over: Partial<Client> = {}): Client =>
     homeStudioId: "s1",
     isActive: true,
     remainingSessions: 10,
-    discoveryNotes: "Sets up short on everything.\nTalk her through the first rep.",
+    discoveryNotes: "Sets up short on everything.\nTalk them through the first rep.",
     globalNotes: "Keep up with my granddaughters.",
     goals: "Walk the Camino with Tom.",
     mindbodyIndexes: { LongtermGoal: "IncreasedFlexibility" },
@@ -238,7 +238,7 @@ function Host(p: HostProps) {
     notesState,
     ford: { status: fordStatus, entries: fordStatus === "ready" ? [dream] : [] },
     coverage: p.coverage ?? "complete",
-    pronouns: pronounsOf(client),
+    pronouns: CLIENT_PRONOUNS,
     today: TODAY,
     go: p.go ?? (() => {}),
     onOpenThread: p.onOpenThread ?? (() => {}),
@@ -346,9 +346,9 @@ describe("Goals & Focus — how to coach her", () => {
   it("quotes the strategy, then her Preference and Coaching-tip notes in Notes' order, Critical shown", async () => {
     const host = await mount();
     const card = cardOf(host, "goals-coach");
-    expect(card.textContent).toContain("How to coach her");
+    expect(card.textContent).toContain("How to coach them");
     expect(card.querySelector(".gf-strategy")?.textContent).toBe(
-      "Sets up short on everything.\nTalk her through the first rep.",
+      "Sets up short on everything.\nTalk them through the first rep.",
     );
     const rows = Array.from(card.querySelectorAll(".gf-row"));
     expect(rows).toHaveLength(2);
@@ -360,7 +360,7 @@ describe("Goals & Focus — how to coach her", () => {
     // The check-in stays on its focus, the closed tip on Notes.
     expect(card.textContent).not.toContain("Slower today.");
     expect(card.textContent).not.toContain("Old tip.");
-    expect(card.textContent).toContain("Her Preference and Coaching-tip notes, as they are in Notes. Nothing new is stored.");
+    expect(card.textContent).toContain("Their Preference and Coaching-tip notes, as they are in Notes. Nothing new is stored.");
   });
 
   it("opens a row's thread on Notes", async () => {
@@ -372,24 +372,24 @@ describe("Goals & Focus — how to coach her", () => {
 
   it("says a failed or loading read of her notes is one, never that none are written", async () => {
     const failed = await mount({ notesState: "failed" });
-    expect(cardOf(failed, "goals-coach").textContent).toContain("Couldn't load her notes just now");
+    expect(cardOf(failed, "goals-coach").textContent).toContain("Couldn't load their notes just now");
     expect(cardOf(failed, "goals-coach").textContent).not.toContain("No coaching tips");
     const loading = await mount({ notesState: "loading" });
-    expect(cardOf(loading, "goals-coach").textContent).toContain("Loading her notes…");
+    expect(cardOf(loading, "goals-coach").textContent).toContain("Loading their notes…");
     expect(cardOf(loading, "goals-coach").textContent).not.toContain("No coaching tips");
   });
 
   it("edits the strategy through the record form, and Done leaves it unsaved", async () => {
     const host = await mount();
     const card = cardOf(host, "goals-coach");
-    await click(card.querySelector('[aria-label="Edit How to coach her"]'));
+    await click(card.querySelector('[aria-label="Edit How to coach them"]'));
     const box = card.querySelector("textarea")!;
     await act(async () => {
-      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(box, "Count her in.");
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(box, "Count them in.");
       box.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    await click(card.querySelector('[aria-label="Done editing How to coach her"]'));
-    expect(card.querySelector(".gf-strategy")?.textContent).toBe("Count her in.");
+    await click(card.querySelector('[aria-label="Done editing How to coach them"]'));
+    expect(card.querySelector(".gf-strategy")?.textContent).toBe("Count them in.");
     expect(card.textContent).toContain("Unsaved");
   });
 });
@@ -465,7 +465,7 @@ describe("Goals & Focus — focuses, plans and Reached", () => {
     expect(buttonIn(plans, "Write a plan")).toBeTruthy();
     expect(buttonIn(plans, "Jot a note")).toBeUndefined();
     // Worded with the pronoun, never the client's name.
-    expect(plans.textContent).toContain("everyone who coaches her");
+    expect(plans.textContent).toContain("everyone who coaches them");
     expect(plans.textContent).not.toContain("Carol");
   });
 

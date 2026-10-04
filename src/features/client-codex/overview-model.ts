@@ -50,8 +50,8 @@
  *  - Prior history is real history: the Story line is the Story's own
  *    (`sinceLine`), which never calls a migrating client new; "No notes in
  *    Journey yet" and "No Pulse saved in Journey yet" say where they looked.
- *  - Pronouns from the gender Mindbody holds (she / he / they); the client's
- *    name is the header's, never repeated here.
+ *  - The pronoun is they for every client (`CLIENT_PRONOUNS`: never a guess
+ *    at a gender); the client's name is the header's, never repeated here.
  *
  * Pure: no React, no Firestore, no clock of its own (`today` is the studio's
  * day, handed in). overview-model.test.ts, under TZ=America/New_York.

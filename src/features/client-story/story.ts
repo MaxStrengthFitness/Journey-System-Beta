@@ -92,7 +92,7 @@ import {
 import { studioDayKeyOf, type DateLike } from "../../lib/studio-time";
 import { firstSentences } from "../../lib/first-sentences";
 import { cap, curly, dayKeyDate, joinDots, plural } from "../client-codex/kit/text";
-import { agree, pronounsOf, type Pronouns } from "../client-codex/kit/pronouns";
+import { CLIENT_PRONOUNS, agree, type Pronouns } from "../client-codex/kit/pronouns";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -243,7 +243,7 @@ export interface StoryInput {
 /* Small helpers                                                       */
 /* ------------------------------------------------------------------ */
 
-const THEY = pronounsOf(null);
+const THEY = CLIENT_PRONOUNS;
 
 /** A gap longer than this between one package's end and the next one's start is "came back", not "renewed". */
 export const COME_BACK_GAP_DAYS = 60;

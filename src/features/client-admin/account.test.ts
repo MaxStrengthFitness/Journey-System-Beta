@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import type { AutoRenewMark, Client, ContractTierOverride, MindbodyContract, Studio } from "../../types";
 import type { RenewalSnapshot } from "../renewals/types";
 import type { PriorHistory } from "../../lib/prior-history";
-import { pronounsOf } from "../client-codex/kit/pronouns";
+import { CLIENT_PRONOUNS } from "../client-codex/kit/pronouns";
 import { buildContractHistory } from "./contract";
 import {
   accountGlance,
@@ -163,11 +163,11 @@ describe("contactFacts", () => {
   });
 
   it("goes by the nickname — the form's, staged or saved — else the first name, in the pronoun", () => {
-    expect(fact(contactFacts(linked(), {}, { now: NOW }), "goesBy")).toMatchObject({ value: "Her first name", empty: true });
+    expect(fact(contactFacts(linked(), {}, { now: NOW }), "goesBy")).toMatchObject({ value: "Their first name", empty: true });
     expect(fact(contactFacts(linked({ nickname: "Judy" }), {}, { now: NOW }), "goesBy")).toMatchObject({ value: "Judy", empty: false });
     expect(fact(contactFacts(linked({ nickname: "Judy" }), { nickname: "Jude" }, { now: NOW }), "goesBy").value).toBe("Jude");
-    expect(fact(contactFacts(linked({ gender: "Male" }), {}, { now: NOW }), "goesBy").value).toBe("His first name");
-    expect(fact(contactFacts(linked({ gender: undefined }), {}, { now: NOW, pronouns: pronounsOf(null) }), "goesBy").value).toBe(
+    expect(fact(contactFacts(linked({ gender: "Male" }), {}, { now: NOW }), "goesBy").value).toBe("Their first name");
+    expect(fact(contactFacts(linked({ gender: undefined }), {}, { now: NOW, pronouns: CLIENT_PRONOUNS }), "goesBy").value).toBe(
       "Their first name",
     );
   });
@@ -474,9 +474,7 @@ describe("packageView", () => {
 });
 
 describe("autoRenewView — the package card's auto-renewal box (Sep 25 2026)", () => {
-  const her = pronounsOf({ gender: "Female" });
-  const them = pronounsOf(null);
-  const BILLING = "This tells Journey's renewal screens what Mindbody is set to. It doesn't change her billing: auto-renewal itself is changed in Mindbody.";
+  const BILLING = "This tells Journey's renewal screens what Mindbody is set to. It doesn't change their billing: auto-renewal itself is changed in Mindbody.";
   type Over = Partial<Parameters<typeof autoRenewView>[0]>;
   const view = (client: Client, over: Over = {}) =>
     autoRenewView({
@@ -484,7 +482,7 @@ describe("autoRenewView — the package card's auto-renewal box (Sep 25 2026)", 
       pendingMark: client.autoRenewMark ?? null,
       pendingOverride: null,
       canEdit: true,
-      pronouns: her,
+      pronouns: CLIENT_PRONOUNS,
       studioName: "Westlake",
       ...over,
     });
@@ -503,7 +501,7 @@ describe("autoRenewView — the package card's auto-renewal box (Sep 25 2026)", 
     const v = view(on({ renews: true, from: "default" }));
     expect(v).toMatchObject({ kind: "pick", pressed: true, canClear: false, contractId: "k" });
     expect(v.source).toBe(
-      "Westlake hasn't said whether its packages renew by themselves. The standard is yes, so this starts ticked. Untick if she isn't on auto-renewal.",
+      "Westlake hasn't said whether its packages renew by themselves. The standard is yes, so this starts ticked. Untick if they aren't on auto-renewal.",
     );
     expect(v.metas).toEqual([BILLING]);
   });
@@ -511,22 +509,22 @@ describe("autoRenewView — the package card's auto-renewal box (Sep 25 2026)", 
   it("C — the package's answer, either way", () => {
     expect(view(on({ renews: true, from: "package" }))).toMatchObject({
       pressed: true,
-      source: "Westlake set Committed to renew automatically, so this starts ticked. Untick if she isn't on auto-renewal.",
+      source: "Westlake set Committed to renew automatically, so this starts ticked. Untick if they aren't on auto-renewal.",
     });
     expect(view(on({ renews: false, from: "package" }))).toMatchObject({
       pressed: false,
-      source: "Westlake set Committed not to renew by itself, so this starts unticked. Tick if she is on auto-renewal.",
+      source: "Westlake set Committed not to renew by itself, so this starts unticked. Tick if they are on auto-renewal.",
     });
   });
 
   it("D — the studio's answer, either way", () => {
     expect(view(on({ renews: true, from: "studio" }))).toMatchObject({
       pressed: true,
-      source: "Westlake's packages renew automatically, so this starts ticked. Untick if she isn't on auto-renewal.",
+      source: "Westlake's packages renew automatically, so this starts ticked. Untick if they aren't on auto-renewal.",
     });
     expect(view(on({ renews: false, from: "studio" }))).toMatchObject({
       pressed: false,
-      source: "Westlake's packages don't renew by themselves, so this starts unticked. Tick if she is on auto-renewal.",
+      source: "Westlake's packages don't renew by themselves, so this starts unticked. Tick if they are on auto-renewal.",
     });
   });
 
@@ -538,7 +536,7 @@ describe("autoRenewView — the package card's auto-renewal box (Sep 25 2026)", 
       pressed: false,
       canClear: false,
       source:
-        "Journey can't tell: Mindbody hasn't said, and this contract isn't matched to a package in Renewal settings. Tap one once you know whether she is on auto-renewal.",
+        "Journey can't tell: Mindbody hasn't said, and this contract isn't matched to a package in Renewal settings. Tap one once you know whether they are on auto-renewal.",
     });
     // Picking "no" is an answer, staged and then saved.
     expect(view(on(null), { pendingMark: mark(false) })).toMatchObject({
@@ -607,7 +605,7 @@ describe("autoRenewView — the package card's auto-renewal box (Sep 25 2026)", 
     expect(v).toMatchObject({
       pressed: true,
       canClear: false,
-      source: "Westlake's packages renew automatically, so this starts ticked. Untick if she isn't on auto-renewal.",
+      source: "Westlake's packages renew automatically, so this starts ticked. Untick if they aren't on auto-renewal.",
     });
     expect(v.metas).toEqual([BILLING, "AJ's mark was for the contract before this one."]);
     // Removing a tap made over it puts the earlier contract's mark back, not null.
@@ -707,12 +705,12 @@ describe("autoRenewView — the package card's auto-renewal box (Sep 25 2026)", 
   });
 
   it("speaks in the pronoun, and names 'the studio' when it has no name", () => {
-    const v = view(on({ renews: true, from: "default" }), { pronouns: them, studioName: null });
+    const v = view(on({ renews: true, from: "default" }), { pronouns: CLIENT_PRONOUNS, studioName: null });
     expect(v.source).toBe(
       "The studio hasn't said whether its packages renew by themselves. The standard is yes, so this starts ticked. Untick if they aren't on auto-renewal.",
     );
     expect(v.metas[0]).toContain("It doesn't change their billing");
-    expect(view(on({ renews: false, from: "studio" }), { pronouns: them, studioName: "" }).source).toBe(
+    expect(view(on({ renews: false, from: "studio" }), { pronouns: CLIENT_PRONOUNS, studioName: "" }).source).toBe(
       "The studio's packages don't renew by themselves, so this starts unticked. Tick if they are on auto-renewal.",
     );
   });
@@ -936,30 +934,27 @@ describe("accountGlance", () => {
 });
 
 describe("accountLede", () => {
-  const her = pronounsOf({ gender: "Female" });
   it("is true for the client and the reader", () => {
-    expect(accountLede(linked(), true, her)).toBe(
-      "Her contact details as Mindbody knows them, then her membership. The nickname, how she found us, where she can train and the tier lock are changed here, and whether she is on auto-renewal is noted here for Journey's renewal screens; everything else changes in Mindbody and arrives with the next sync.",
+    expect(accountLede(linked(), true, CLIENT_PRONOUNS)).toBe(
+      "Their contact details as Mindbody knows them, then their membership. The nickname, how they found us, where they can train and the tier lock are changed here, and whether they are on auto-renewal is noted here for Journey's renewal screens; everything else changes in Mindbody and arrives with the next sync.",
     );
-    expect(accountLede(unlinked(), true, her)).toBe(
-      "Her contact details as typed into Journey, then her membership. Mindbody does not hold her yet, so her details are typed here until she is linked.",
+    expect(accountLede(unlinked(), true, CLIENT_PRONOUNS)).toBe(
+      "Their contact details as typed into Journey, then their membership. Mindbody does not hold them yet, so their details are typed here until they are linked.",
     );
-    expect(accountLede(linked(), false, her)).toBe(
-      "Her contact details as Mindbody knows them, then her membership. Read only here: her home studio keeps the record.",
+    expect(accountLede(linked(), false, CLIENT_PRONOUNS)).toBe(
+      "Their contact details as Mindbody knows them, then their membership. Read only here: their home studio keeps the record.",
     );
-    expect(accountLede(unlinked(), false, pronounsOf(null))).toBe(
+    expect(accountLede(unlinked(), false, CLIENT_PRONOUNS)).toBe(
       "Their contact details as typed into Journey, then their membership. Read only here: their home studio keeps the record.",
     );
-    expect(accountLede(unlinked(), true, pronounsOf(null))).toContain("until they are linked");
-    expect(accountLede(linked(), true, pronounsOf(null))).toContain("the tier lock are changed here, and whether they are on auto-renewal is noted here for Journey's renewal screens;");
+    expect(accountLede(unlinked(), true, CLIENT_PRONOUNS)).toContain("until they are linked");
+    expect(accountLede(linked(), true, CLIENT_PRONOUNS)).toContain("the tier lock are changed here, and whether they are on auto-renewal is noted here for Journey's renewal screens;");
   });
 
   it("never says auto-renewal is changed here: the box under it says it is changed in Mindbody", () => {
-    for (const p of [her, pronounsOf(null)]) {
-      const lede = accountLede(linked(), true, p);
-      expect(lede).not.toMatch(/auto-renewal (is|are) changed here/);
-      expect(lede).not.toMatch(/auto-renewal[^;]*changed here/);
-    }
+    const lede = accountLede(linked(), true, CLIENT_PRONOUNS);
+    expect(lede).not.toMatch(/auto-renewal (is|are) changed here/);
+    expect(lede).not.toMatch(/auto-renewal[^;]*changed here/);
   });
 });
 

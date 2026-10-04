@@ -113,7 +113,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
 import { FordPage, type FordPageProps } from "./FordPage";
 import { ONE_LINE_BLOCKED, ONE_LINE_SAVED_MS } from "./OneLinePanel";
 import { useRecordForm } from "../../client-codex/useRecordForm";
-import { pronounsOf } from "../../client-codex/kit";
+import { CLIENT_PRONOUNS } from "../../client-codex/kit";
 import { groupByPillar, upcomingFord } from "../ford-rollup";
 import type { UseClientFordResult } from "../useClientFord";
 import type { FordReadStatus } from "../read-status";
@@ -264,7 +264,7 @@ function Harness({
       writeLine={writeLine}
       homeStudioName={homeStudioName}
       author={author}
-      pronouns={pronounsOf(client)}
+      pronouns={CLIENT_PRONOUNS}
       today={today}
       go={go}
     />
@@ -381,7 +381,7 @@ describe("Coming up", () => {
   it("leads with the Mindbody birthday: her 69th, in 17 days", async () => {
     const host = await mount();
     const coming = host.querySelector("#ford-coming-up")!;
-    expect(coming.textContent).toContain("Her 69th birthday");
+    expect(coming.textContent).toContain("Their 69th birthday");
     expect(coming.textContent).toContain("In 17 days · Family · from Mindbody");
     expect(coming.querySelector('.fordpg-when[data-urgency="soon"]')).not.toBeNull();
   });
@@ -421,7 +421,7 @@ describe("Coming up", () => {
 });
 
 describe("the To file tray", () => {
-  const caught = detail({ id: "u1", pillar: null, origin: "in_session", body: "Her sister might visit from Arizona in April." });
+  const caught = detail({ id: "u1", pillar: null, origin: "in_session", body: "Their sister might visit from Arizona in April." });
 
   it("files a capture with a labelled button, and says where it was caught", async () => {
     const host = await mount({ ford: fordOf([caught]) });
@@ -499,7 +499,7 @@ describe("a pillar", () => {
     const host = await mount({ client: baseClient({ isRetired: true }) });
     const ask = card(host, "occupation").querySelector(".fordpg-ask")!;
     expect(ask.textContent).toContain("“How is retirement going?”");
-    expect(ask.textContent).toContain("The work questions are skipped because she is retired");
+    expect(ask.textContent).toContain("The work questions are skipped: marked retired");
   });
 
   it("quotes the Pulse's own statement beside Recreation, and says nothing is copied", async () => {
@@ -528,7 +528,7 @@ describe("a pillar", () => {
   it("stages Occupation on the Save bar: Edit, pick, 'Not saved yet' — and Done does not save", async () => {
     const host = await mount();
     const occ = card(host, "occupation");
-    expect(occ.textContent).toContain("Work · from her record");
+    expect(occ.textContent).toContain("Work · from their record");
     await click(occ.querySelector('[aria-label="Edit Occupation"]'));
     await click(buttonIn(occ, "Seated / desk"));
     expect(occ.textContent).toContain("Not saved yet");
@@ -579,7 +579,7 @@ describe("a read that did not come back is never 'nothing on file'", () => {
     expect(host.querySelector(".fordpg-gap")).toBeNull();
     expect(host.querySelector("#ford-beyond")).toBeNull();
     // The birthday is the client record's, which every reader of the tab can see.
-    expect(host.querySelector("#ford-coming-up")?.textContent).toContain("Her 69th birthday");
+    expect(host.querySelector("#ford-coming-up")?.textContent).toContain("Their 69th birthday");
   });
 
   it("says a client with no studio has none, and offers no add the rules would refuse", async () => {
@@ -606,7 +606,7 @@ describe("a read that did not come back is never 'nothing on file'", () => {
     for (const status of ["loading", "failed"] as const) {
       const host = await mount({ status, ford: fordOf([], status) });
       const coming = host.querySelector("#ford-coming-up")!;
-      expect(coming.textContent).toContain("Her 69th birthday");
+      expect(coming.textContent).toContain("Their 69th birthday");
       expect(coming.querySelector('button[data-kind="birthday"]')).toBeNull();
       expect(coming.querySelector('div[data-kind="birthday"]')).not.toBeNull();
     }
@@ -688,10 +688,10 @@ describe("going above and beyond", () => {
     const host = await mount({ ford: fordOf([planned]) });
     const beyond = host.querySelector("#ford-beyond")!;
     await click(buttonIn(beyond, "Mark done"));
-    await typeInto(beyond.querySelector('input[placeholder^="What actually happened"]'), "She cried at the door.");
+    await typeInto(beyond.querySelector('input[placeholder^="What actually happened"]'), "They cried at the door.");
     await click(buttonIn(beyond, "Done"));
     const update = fake.writes.find((w) => w.path === "clients/c1/ford/g-plan")!;
-    expect(update.data.opportunity).toMatchObject({ status: "done", outcome: "She cried at the door.", ownerTrainerId: "uid-aj" });
+    expect(update.data.opportunity).toMatchObject({ status: "done", outcome: "They cried at the door.", ownerTrainerId: "uid-aj" });
   });
 
   it("says there are no ideas yet only once FORD answered", async () => {
@@ -897,13 +897,13 @@ describe("In one line", () => {
 describe("a reader who may change FORD but not add to it (phase 19)", () => {
   // An administrator who works elsewhere: the record's update rule and the
   // FORD update rule let them in, the FORD create rule does not.
-  const caught = detail({ id: "u1", pillar: null, origin: "in_session", body: "Her sister might visit from Arizona in April." });
+  const caught = detail({ id: "u1", pillar: null, origin: "in_session", body: "Their sister might visit from Arizona in April." });
   const kids = detail({ id: "f1", pillar: "family", body: "Two granddaughters, Ellie and Rose." });
 
   it("says why adding isn't offered, and offers no Add anywhere", async () => {
     const host = await mount({ canAdd: false, ford: fordOf([caught, kids]) });
     expect(host.querySelector('[data-testid="ford-add-not-offered"]')?.textContent).toBe(
-      "Only a trainer at her home studio can add to FORD, so adding isn't offered here.",
+      "Only a trainer at their home studio can add to FORD, so adding isn't offered here.",
     );
     expect(buttonIn(host, "Remember something")).toBeUndefined();
     expect(host.querySelector('[aria-label^="Add a "]')).toBeNull();
@@ -911,7 +911,7 @@ describe("a reader who may change FORD but not add to it (phase 19)", () => {
     expect(buttonIn(host.querySelector("#ford-beyond")!, "Add an idea")).toBeUndefined();
     // The birthday nobody planned is a new detail: not offered.
     expect(host.querySelector('#ford-coming-up button[data-kind="birthday"]')).toBeNull();
-    expect(host.querySelector("#ford-coming-up")!.textContent).toContain("Her 69th birthday");
+    expect(host.querySelector("#ford-coming-up")!.textContent).toContain("Their 69th birthday");
   });
 
   it("still changes what is on file: files a capture, opens a detail", async () => {
@@ -1186,9 +1186,9 @@ describe("Follow up next time", () => {
   });
 
   it("shows the question on a capture that is not filed yet", async () => {
-    const caught = detail({ id: "u1", pillar: null, body: "Sister visiting from Arizona", followUp: "Did her sister make it?" });
+    const caught = detail({ id: "u1", pillar: null, body: "Sister visiting from Arizona", followUp: "Did their sister make it?" });
     const host = await mount({ ford: fordOf([caught]) });
-    expect(host.querySelector(".fordpg-tray")?.textContent).toContain("Follow up next time: “Did her sister make it?”");
+    expect(host.querySelector(".fordpg-tray")?.textContent).toContain("Follow up next time: “Did their sister make it?”");
   });
 
   it("the dialog saves a new detail's question with who set it", async () => {

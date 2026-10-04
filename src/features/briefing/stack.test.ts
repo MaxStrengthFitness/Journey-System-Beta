@@ -62,7 +62,7 @@ describe("lastTimeLines", () => {
   it("says a machine came in short of her usual, the median of her last five", () => {
     const logs = [...earlierLp, log({ sessionId: "s9", machineId: "lp", reps: "5", day: 20 })];
     expect(lastTimeLines({ lastSession: last, logs, machines }).map((l) => l.text)).toEqual([
-      "Leg Press: 5 reps last time, her usual is 8.",
+      "Leg Press: 5 reps last time, usually 8.",
     ]);
   });
 
@@ -93,9 +93,9 @@ describe("lastTimeLines", () => {
     expect(lastTimeLines({ lastSession: last, logs, machines })[0].text).toBe("Skipped Chest Press last time.");
   });
 
-  it("uses the client's own pronoun", () => {
+  it("never guesses the client's gender: no pronoun at all", () => {
     const logs = [...earlierLp, log({ sessionId: "s9", machineId: "lp", reps: "5", day: 20 })];
-    expect(lastTimeLines({ lastSession: last, logs, machines, possessive: "his" })[0].text).toContain("his usual");
+    expect(lastTimeLines({ lastSession: last, logs, machines })[0].text).not.toMatch(/\b(she|her|he|his|him)\b/i);
   });
 
   it("is empty with no last session", () => {

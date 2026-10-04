@@ -143,25 +143,25 @@ const plural = (n: number) => `${n} session${n === 1 ? "" : "s"}`;
 
 /**
  * The briefing's one quiet line, or null when there is nothing to say there
- * (not due, not counted, or not for her). `possessive` is her · his · their.
+ * (not due, not counted, or not for this client).
  */
-export function inbodyDueLine(due: InBodyDue, possessive: string): string | null {
+export function inbodyDueLine(due: InBodyDue): string | null {
   if (due.kind !== "count" || !due.due) return null;
   const n = `${due.atLeast ? "at least " : ""}${plural(due.sessions)}`;
   return due.since === "scan"
-    ? `Due an InBody: ${n} since ${possessive} last scan`
+    ? `Due an InBody: ${n} since the last scan`
     : `Due an InBody: ${n} and no scan yet`;
 }
 
 /** The InBody card's sentence, for every state. */
-export function inbodyDueSentence(due: InBodyDue, possessive: string): string {
+export function inbodyDueSentence(due: InBodyDue): string {
   if (due.kind === "off") return "InBody reminders are off for this client.";
   if (due.kind === "no-scan") return "No InBody scan in Journey yet.";
-  if (due.kind === "unread") return `Counting ${possessive} sessions…`;
+  if (due.kind === "unread") return "Counting sessions…";
   const n = `${due.atLeast ? "At least " : ""}${plural(due.sessions)}`;
   const lead = due.atLeast ? n : n.charAt(0).toUpperCase() + n.slice(1);
   const body =
-    due.since === "scan" ? `${lead} since ${possessive} last scan` : `${lead} and no scan yet`;
+    due.since === "scan" ? `${lead} since the last scan` : `${lead} and no scan yet`;
   if (due.due) return `${body}: due a scan (every ${due.every}).`;
   if (due.atLeast) return `${body} that Journey can see. A scan is due every ${due.every}.`;
   const left = due.every - due.sessions;

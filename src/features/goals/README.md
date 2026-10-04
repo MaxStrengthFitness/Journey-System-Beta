@@ -36,7 +36,7 @@ Client codex, Sep 2026 (phase 14 of `docs/rounds/2026-09-24-client-codex.md`). T
 - **Firestore refuses `undefined`.** `buildAchievedGoal` leaves every empty value out, and the Save bar's payload is stripped of `undefined` (`record-form.ts`).
 - **The jot strip never writes on a guess.** Its read used to settle as "none" when it FAILED, and a jot then started a second "working notes" note beside the one the read could not see. A failed read now says so and keeps the box and Add off; a read still on its way offers nothing (`ClientJotStrip.render.test.tsx`). A failed listener does not come back while the profile stays open, so the words say to reopen the profile — they never promise the notes will load.
 - **The app describes; the trainer decides.** Nothing here suggests a goal, a focus or a progression. The SMART squares are the coach's own ticks — nothing is inferred from the goal's words — and "All five ticked" is a sentence, not a score. No "set by" or "set on" on the goal: no field records either.
-- **Words and dates.** Pronouns come from the gender Mindbody holds (`pronounsOf`; they/their when it is unknown). Dates are the studio's days in en-US words ("Jan 22, 2027"); a target is "May 1, 2027 · in 6 weeks" (the kit's `inTime`).
+- **Words and dates.** The pronoun is they/their for every client (`CLIENT_PRONOUNS`; on-screen text never guesses a client's gender, Oct 3 2026). Dates are the studio's days in en-US words ("Jan 22, 2027"); a target is "May 1, 2027 · in 6 weeks" (the kit's `inTime`).
 
 ## What moved, and what it replaced
 

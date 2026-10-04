@@ -159,7 +159,7 @@ One look for every page, so a trainer learns it once. An area's own stylesheet m
 
 None of these uses a regex lookbehind: older iPadOS Safari fails the whole module when it parses one, and the tests read the files to keep it that way.
 
-**Pronouns** (`kit/pronouns.ts`): the header prints the client's name once; page copy says "she", "he" or "they" through `pronounsOf(client)`, from the gender Mindbody holds (read by machine fit's `parseGender`). Female is she/her, Male is he/his, anything else — no gender, "Other", "None" — is they/their, and `known` is false so a screen can tell a fallback from a fact. Pass both verb forms to `agree(p, "says", "say")`. This is the overnight default for AJ's open question (Sep 24 2026), reversible in that one file.
+**Pronouns** (`kit/pronouns.ts`): the header prints the client's name once; page copy says "they" through `CLIENT_PRONOUNS`, for every client. On-screen text never guesses a client's gender (AJ, Oct 3 2026, on a man's row: "it says her when its a man"), and the gender Mindbody holds is not a client's pronouns, so nothing reads it for one. From Sep 24 2026 until then the codex said she for Female and he for Male. Where a sentence reads as well without a pronoun, write it without one; where it needs one, pass both verb forms to `agree(p, "says", "say")`.
 
 ## The contract, and the test that holds it
 

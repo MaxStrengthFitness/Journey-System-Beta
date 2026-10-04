@@ -608,7 +608,7 @@ describe("Due an InBody (FileMaker parity, Oct 1 2026)", () => {
     const onStart = vi.fn();
     const host = await mount(<DueScreen who={scanned()} list={after(51)} onStart={onStart} />);
     const line = host.querySelector('[data-testid="briefing-inbody"]');
-    expect(line?.textContent).toBe("Due an InBody: 51 sessions since her last scan");
+    expect(line?.textContent).toBe("Due an InBody: 51 sessions since the last scan");
     expect(host.querySelector('[aria-label="Also today"]')?.contains(line!)).toBe(true);
     expect(host.querySelector('[aria-label="Before you start"]')?.contains(line!)).toBe(false);
     // Information, never a gate.
@@ -630,7 +630,7 @@ describe("Due an InBody (FileMaker parity, Oct 1 2026)", () => {
 
   it("follows her own number before the studio's", async () => {
     const host = await mount(<DueScreen who={scanned({ inbodyEvery: 12 })} list={after(13)} />);
-    expect(host.querySelector('[data-testid="briefing-inbody"]')?.textContent).toBe("Due an InBody: 13 sessions since her last scan");
+    expect(host.querySelector('[data-testid="briefing-inbody"]')?.textContent).toBe("Due an InBody: 13 sessions since the last scan");
   });
 });
 
@@ -695,7 +695,7 @@ describe("the Stack (AJ's walk, Oct 3 2026)", () => {
     const band = host.querySelector('[aria-label="Before you start"]')!;
     expect(band.textContent).toContain("Before you start · 1");
     const fig = band.querySelector('[data-testid="briefing-figure"]')!;
-    expect(fig.getAttribute("aria-label")).toBe("Her limits: Shoulder");
+    expect(fig.getAttribute("aria-label")).toBe("The client's limits: Shoulder");
     expect(fig.querySelectorAll("svg").length).toBeGreaterThan(0);
     // The instruction itself is on the page, as a sentence.
     expect(band.querySelectorAll(".br-safe__do").length).toBeGreaterThan(0);
@@ -726,7 +726,7 @@ describe("the Stack (AJ's walk, Oct 3 2026)", () => {
     const words = Array.from(chips.querySelectorAll("button")).map((b) => b.textContent);
     expect(words.slice(0, 4)).toEqual(["Dials", "Sore spot", "Note", "Update Pulse"]);
     // In her own pronoun (this client has none on file).
-    expect(words[4]).toMatch(/^Hand (her|him|them) the iPad$/);
+    expect(words[4]).toBe("Hand over the iPad");
     expect(host.querySelector('[data-testid="briefing-dials"]')).toBeTruthy();
     expect(host.querySelector(".br__textarea")).toBeNull();
     expect(host.querySelector('[data-testid="briefing-sore"]')).toBeNull();

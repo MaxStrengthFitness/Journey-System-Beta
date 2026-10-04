@@ -592,7 +592,7 @@ function FirstDayCard({
               type="date"
               value={value}
               onChange={(v) => updateField("firstStudioDay", v || null)}
-              hint={view.guess ? `The app's guess is ${view.guess.words} (${view.guess.from}). The day ${p.subject} first trained here is usually earlier.` : `Her anniversaries count from this day.`}
+              hint={view.guess ? `The app's guess is ${view.guess.words} (${view.guess.from}). The day ${p.subject} first trained here is usually earlier.` : "Anniversaries count from this day."}
             />
           </div>
           <Meta>Nothing is saved until you tap Save changes on the bar at the bottom.</Meta>

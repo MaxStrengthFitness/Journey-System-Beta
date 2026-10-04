@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FordEntry } from "../ford/types";
-import { pronounsOf } from "../client-codex/kit/pronouns";
+import { CLIENT_PRONOUNS } from "../client-codex/kit/pronouns";
 import {
   aliasKind,
   intakeGoalsLines,
@@ -28,8 +28,6 @@ import {
 const MOCKUP =
   "OCC: Retired dental hygienist.\nMED: R TKA Mar 2024. BP managed w/ meds.\nACTIVITY: Pickleball 2x/wk, gardening.\nGOALS: Keep up w/ grandkids. Camino!";
 
-const she = pronounsOf({ gender: "Female" });
-const he = pronounsOf({ gender: "Male" });
 
 const lines = (raw: string | null | undefined) => parseIntakeNotes(raw).lines;
 const kinds = (raw: string) => lines(raw).map((l) => [l.kind, l.label, l.text]);
@@ -81,8 +79,8 @@ describe("parseIntakeNotes", () => {
       ["other", null, "Call Tom about Tuesdays"],
     ]);
     // A first line with no label has nothing to carry on from.
-    expect(kinds("Referred by her sister\nOcc: nurse")).toEqual([
-      ["other", null, "Referred by her sister"],
+    expect(kinds("Referred by their sister\nOcc: nurse")).toEqual([
+      ["other", null, "Referred by their sister"],
       ["occupation", "Occ", "nurse"],
     ]);
   });
@@ -138,7 +136,7 @@ describe("parseIntakeNotes", () => {
     expect(kinds("Seen at 7:00 today")).toEqual([["other", null, "Seen at 7:00 today"]]);
     expect(kinds("See https://x.y")).toEqual([["other", null, "See https://x.y"]]);
     // A long run of words before a colon is a sentence, not a label.
-    expect(kinds("Wife is Karen and she said: hello")).toEqual([["other", null, "Wife is Karen and she said: hello"]]);
+    expect(kinds("Wife is Karen and they said: hello")).toEqual([["other", null, "Wife is Karen and they said: hello"]]);
   });
 
   it("reads HTML and entities as plain text", () => {
@@ -226,10 +224,10 @@ const detail = (over: Partial<FordEntry>): FordEntry =>
     ...over,
   }) as FordEntry;
 
-function match(raw: string, view: IntakeView = {}, ford: IntakeFord = READY, p = she): IntakeMatch[] {
+function match(raw: string, view: IntakeView = {}, ford: IntakeFord = READY, p = CLIENT_PRONOUNS): IntakeMatch[] {
   return matchIntake(parseIntakeNotes(raw), view, ford, p);
 }
-const one = (raw: string, view?: IntakeView, ford?: IntakeFord, p = she) => match(raw, view, ford, p)[0];
+const one = (raw: string, view?: IntakeView, ford?: IntakeFord, p = CLIENT_PRONOUNS) => match(raw, view, ford, p)[0];
 
 describe("matchIntake — Occ goes to the job title, only while it is empty", () => {
   it("offers an empty client's job title, staged, the words verbatim", () => {
@@ -238,7 +236,7 @@ describe("matchIntake — Occ goes to the job title, only while it is empty", ()
       target: "occupation",
       targetLabel: "Occupation",
       journey: "nothing",
-      sentence: "No job title on her record yet.",
+      sentence: "No job title on their record yet.",
       action: { kind: "field", field: "occupation", mode: "set", label: "Add to Occupation", text: "Retired dental hygienist." },
       door: { page: "ford", anchor: "ford-occupation", label: "Open Occupation" },
     });
@@ -247,32 +245,32 @@ describe("matchIntake — Occ goes to the job title, only while it is empty", ()
   it("never replaces a job title that is there, and says what Journey has", () => {
     const m = one("Occ: nurse", { occupation: "Dental hygienist", isRetired: true });
     expect(m.journey).toBe("something");
-    expect(m.sentence).toBe("Journey has: “Dental hygienist” as her job title, retired.");
+    expect(m.sentence).toBe("Journey has: “Dental hygienist” as their job title, retired.");
     expect(m.action).toBeNull();
     // A title that says "retired" itself is not told so twice.
     expect(one("Occ: nurse", { occupation: "Retired dental hygienist.", isRetired: true }).sentence).toBe(
-      "Journey has: “Retired dental hygienist.” as her job title.",
+      "Journey has: “Retired dental hygienist.” as their job title.",
     );
     const ford: IntakeFord = { ...READY, entries: [detail({ pillar: "occupation" })] };
     expect(one("Occ: nurse", { occupation: "Hygienist" }, ford).sentence).toBe(
-      "Journey has: “Hygienist” as her job title · 1 FORD detail in Occupation.",
+      "Journey has: “Hygienist” as their job title · 1 FORD detail in Occupation.",
     );
   });
 
   it("says the line is the job title once it is (the form's value, so a staged one counts)", () => {
     const m = one("Occ: Retired dental hygienist.", { occupation: "retired dental hygienist" });
-    expect(m).toMatchObject({ journey: "present", sentence: "This is her job title in Journey.", action: null });
+    expect(m).toMatchObject({ journey: "present", sentence: "This is their job title in Journey.", action: null });
   });
 
   it("names what else Journey holds about her work, and FORD's Occupation details once FORD answered", () => {
     const ford: IntakeFord = { ...READY, entries: [detail({ pillar: "occupation" }), detail({ id: "f2", pillar: "occupation" })] };
     const m = one("Occ: nurse", { isRetired: true }, ford);
     expect(m.journey).toBe("something");
-    expect(m.sentence).toBe("No job title on her record yet. Journey has: Retired · 2 FORD details in Occupation.");
+    expect(m.sentence).toBe("No job title on their record yet. Journey has: Retired · 2 FORD details in Occupation.");
     expect(m.action).toMatchObject({ field: "occupation", mode: "set" });
     // FORD not read: nothing is claimed about it, and the job title is still offered (it is not FORD's).
     const unread = one("Occ: nurse", {}, { ...READY, status: "failed" });
-    expect(unread).toMatchObject({ journey: "nothing", sentence: "No job title on her record yet." });
+    expect(unread).toMatchObject({ journey: "nothing", sentence: "No job title on their record yet." });
     expect(unread.action).not.toBeNull();
   });
 
@@ -328,10 +326,10 @@ describe("matchIntake — Activity goes to FORD's Recreation, saved at once", ()
     expect(m.journey).toBe("nothing");
     expect(m.action).toBeNull();
     expect(m.sentence).toBe(
-      "Nothing in Recreation yet. Only a trainer at her home studio can add a FORD detail, so it isn't offered here.",
+      "Nothing in Recreation yet. Only a trainer at their home studio can add a FORD detail, so it isn't offered here.",
     );
     const withSome = one("Activity: golf", { activityLevel: "Moderate" }, { ...READY, canAdd: false });
-    expect(withSome.sentence).toMatch(/^Journey has: Moderate\. Only a trainer at her home studio/);
+    expect(withSome.sentence).toMatch(/^Journey has: Moderate\. Only a trainer at their home studio/);
     // The record's own fields are not FORD's: still offered.
     expect(one("Occ: nurse", {}, { ...READY, canAdd: false }).action).not.toBeNull();
   });
@@ -342,7 +340,7 @@ describe("matchIntake — Activity goes to FORD's Recreation, saved at once", ()
     expect(at("loading")).toMatchObject({ journey: "unknown", action: null });
     expect(at("loading").sentence).toBe("Still reading FORD, so it isn't known yet whether this line is in Recreation.");
     expect(at("failed").sentence).toMatch(/^Couldn't check FORD just now/);
-    expect(at("denied").sentence).toBe("FORD is kept by her home studio, so this line can't be checked or added to Recreation here.");
+    expect(at("denied").sentence).toBe("FORD is kept by their home studio, so this line can't be checked or added to Recreation here.");
     expect(at("off").sentence).toBe(at("denied").sentence);
     expect(at("failed", "").sentence).toMatch(/no home studio on file/);
     for (const s of ["loading", "failed", "denied", "off"] as const) expect(at(s).action).toBeNull();
@@ -353,33 +351,33 @@ describe("matchIntake — Goals go to the why, only while it is empty", () => {
   it("offers an empty why, staged", () => {
     expect(one("GOALS: Keep up w/ grandkids. Camino!")).toMatchObject({
       target: "her-why",
-      targetLabel: "Her why",
+      targetLabel: "Their why",
       journey: "nothing",
-      sentence: "Her why isn't written yet.",
-      action: { kind: "field", field: "globalNotes", mode: "set", label: "Use as her why", text: "Keep up w/ grandkids. Camino!" },
-      door: { page: "goals", anchor: "goals-why", label: "Open her why" },
+      sentence: "Their why isn't written yet.",
+      action: { kind: "field", field: "globalNotes", mode: "set", label: "Use as their why", text: "Keep up w/ grandkids. Camino!" },
+      door: { page: "goals", anchor: "goals-why", label: "Open their why" },
     });
   });
 
   it("never replaces a why that is written", () => {
     expect(one("Goals: walk the Camino", { globalNotes: "Stay strong for the grandkids" })).toMatchObject({
       journey: "something",
-      sentence: "Her why is already written on her record.",
+      sentence: "Their why is already written on their record.",
       action: null,
     });
     expect(one("Goals: walk the Camino", { globalNotes: "I want to walk the Camino." })).toMatchObject({
       journey: "present",
-      sentence: "Her why already says this.",
+      sentence: "Their why already says this.",
     });
     // Part of a longer word is not the words: "strength" is not in "strengthening".
-    expect(one("Goals: strength", { globalNotes: "Strengthening her back" }).journey).toBe("something");
+    expect(one("Goals: strength", { globalNotes: "Strengthening their back" }).journey).toBe("something");
   });
 
   it("speaks in the client's pronoun", () => {
-    const m = one("Goals: stay strong", {}, READY, he);
-    expect(m.targetLabel).toBe("His why");
-    expect(m.sentence).toBe("His why isn't written yet.");
-    expect(m.action?.label).toBe("Use as his why");
+    const m = one("Goals: stay strong", {}, READY, CLIENT_PRONOUNS);
+    expect(m.targetLabel).toBe("Their why");
+    expect(m.sentence).toBe("Their why isn't written yet.");
+    expect(m.action?.label).toBe("Use as their why");
   });
 });
 
@@ -415,7 +413,7 @@ describe("matchIntake — Med goes to the medical history, and coverage is never
 
   it("offers nothing only when these exact words are already in the history", () => {
     const m = one("MED: R TKA Mar 2024.", { medicalHistory: "Notes from intake:\n\nR TKA  Mar 2024\nMore" });
-    expect(m).toMatchObject({ journey: "present", sentence: "This exact line is in her medical history.", action: null });
+    expect(m).toMatchObject({ journey: "present", sentence: "This exact line is in their medical history.", action: null });
   });
 
   it("compares whole words, so a short line is never 'there' inside a longer word", () => {
@@ -453,7 +451,7 @@ describe("matchIntake — Med goes to the medical history, and coverage is never
 
 describe("matchIntake — every other line", () => {
   it("is shown with nowhere to go and nothing offered", () => {
-    for (const raw of ["Pmt: autopay", "Referred by her sister", "Seen at 7:00 today"]) {
+    for (const raw of ["Pmt: autopay", "Referred by their sister", "Seen at 7:00 today"]) {
       expect(one(raw), raw).toMatchObject({ target: null, targetLabel: null, sentence: null, action: null, door: null });
     }
   });
@@ -465,7 +463,7 @@ describe("matchIntake — every other line", () => {
     expect(goals.line.truncated).toBe(true);
     expect(goals.action).toBeNull();
     expect(goals.sentence).toBe(
-      "Her why isn't written yet. This line may be cut off where Journey's copy of the notes ends, so it isn't offered.",
+      "Their why isn't written yet. This line may be cut off where Journey's copy of the notes ends, so it isn't offered.",
     );
   });
 
@@ -479,7 +477,7 @@ describe("matchIntake — every other line", () => {
 
 describe("nextFieldValue and intakeNorm", () => {
   it("sets an empty field to the line, and appends after a blank line", () => {
-    const set = { kind: "field", field: "globalNotes", mode: "set", label: "Use as her why", text: "Camino!" } as const;
+    const set = { kind: "field", field: "globalNotes", mode: "set", label: "Use as their why", text: "Camino!" } as const;
     const append = { kind: "field", field: "medicalHistory", mode: "append", label: "Add to medical history", text: "R TKA" } as const;
     expect(nextFieldValue("", set)).toBe("Camino!");
     expect(nextFieldValue(undefined, set)).toBe("Camino!");

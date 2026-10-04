@@ -40,7 +40,7 @@ vi.mock("../../contexts/ActiveStudioContext", () => ({
 
 import { MembershipSection, type MembershipSectionProps } from "./MembershipSection";
 import { useRecordForm, type RecordForm } from "../client-codex/useRecordForm";
-import { pronounsOf } from "../client-codex/kit";
+import { CLIENT_PRONOUNS } from "../client-codex/kit";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -134,7 +134,7 @@ function Harness({
           author={author}
           coverage={coverage}
           canEdit={canEdit}
-          pronouns={pronounsOf(c)}
+          pronouns={CLIENT_PRONOUNS}
           today={TODAY}
           onOpenMigrationHub={onOpenMigrationHub}
           split={split}
@@ -356,7 +356,7 @@ describe("MembershipSection — auto-renewal", () => {
   const box = (host: HTMLElement) => pkg(host).querySelector<HTMLButtonElement>(".cadm-renew .cx-pick");
   const renewText = (host: HTMLElement) => pkg(host).querySelector<HTMLElement>(".cadm-renew")?.textContent ?? "";
   const BILLING =
-    "This tells Journey's renewal screens what Mindbody is set to. It doesn't change her billing: auto-renewal itself is changed in Mindbody.";
+    "This tells Journey's renewal screens what Mindbody is set to. It doesn't change their billing: auto-renewal itself is changed in Mindbody.";
 
   it("starts ticked on the standard answer, and says where that came from and what it doesn't change", async () => {
     const host = await mount(<Harness c={client({ renewal: v2() })} />);
@@ -366,7 +366,7 @@ describe("MembershipSection — auto-renewal", () => {
     expect(b.classList.contains("cx-pick")).toBe(true);
     expect(pkg(host).querySelector('.cadm-renew[role="group"][aria-label="Auto-renewal"]')).not.toBeNull();
     expect(renewText(host)).toContain(
-      "Solon hasn't said whether its packages renew by themselves. The standard is yes, so this starts ticked. Untick if she isn't on auto-renewal.",
+      "Solon hasn't said whether its packages renew by themselves. The standard is yes, so this starts ticked. Untick if they aren't on auto-renewal.",
     );
     expect(renewText(host)).toContain(BILLING);
     expect(pkg(host).textContent).toContain("Auto-renews Jan 1, 2027");
@@ -484,7 +484,7 @@ describe("MembershipSection — auto-renewal", () => {
       ["Not on auto-renewal", "false"],
     ]);
     expect(renewText(host)).toContain(
-      "Journey can't tell: Mindbody hasn't said, and this contract isn't matched to a package in Renewal settings. Tap one once you know whether she is on auto-renewal.",
+      "Journey can't tell: Mindbody hasn't said, and this contract isn't matched to a package in Renewal settings. Tap one once you know whether they are on auto-renewal.",
     );
     expect(pkg(host).textContent).toContain("Payments finish Jan 1, 2027");
     expect(probe.form!.count).toBe(0);
@@ -687,7 +687,7 @@ describe("MembershipSection — on file, how she found us, the fine print", () =
     const probe: Probe = {};
     const host = await mount(<Harness c={client({ referredBy: "Janet Olsen" })} probe={probe} />);
     const card = () => host.querySelector<HTMLElement>("#account-found-us")!;
-    expect(card().querySelector("h3")?.textContent).toBe("How she found us");
+    expect(card().querySelector("h3")?.textContent).toBe("How they found us");
     expect(card().textContent).toContain("Janet Olsen");
     expect(card().textContent).toContain("Not recorded");
     await click(buttonByText(card(), "Edit"));
@@ -749,7 +749,7 @@ describe("MembershipSection — the section", () => {
     const host = await mount(<Harness c={client()} />);
     const head = host.querySelector<HTMLElement>("#account-membership")!;
     expect(head.textContent).toContain("Membership");
-    expect(head.textContent).toContain("what she has bought, what is left, and where she can train");
+    expect(head.textContent).toContain("what they have bought, what is left, and where they can train");
     for (const anchor of ["account-membership", "account-train-at", "account-on-file", "account-found-us", "account-fine-print"]) {
       expect(host.querySelectorAll(`[id="${anchor}"][data-cx-anchor]`), anchor).toHaveLength(1);
     }
@@ -776,10 +776,10 @@ describe("MembershipSection — her first day at the studio", () => {
     const card = host.querySelector<HTMLElement>('#account-first-day')!;
     expect(card).not.toBeNull();
     expect(card.textContent).toContain("Jan 15, 2020 (from Mindbody, not yet confirmed)");
-    expect(card.textContent).toContain("From her first appointment in Mindbody. Anniversaries wait until a trainer confirms it.");
+    expect(card.textContent).toContain("From the first appointment in Mindbody. Anniversaries wait until a trainer confirms it.");
 
     await click(buttons(host).find((b) => b.getAttribute("aria-label") === "Edit First day at the studio"));
-    await typeInto(fieldByLabel(host, "The day she first trained here"), "2014-09-08");
+    await typeInto(fieldByLabel(host, "The day they first trained here"), "2014-09-08");
     expect(probe.form?.isDirty("firstStudioDay")).toBe(true);
     expect(probe.form?.formData.firstStudioDay).toBe("2014-09-08");
     // Where the Save bar says it is.

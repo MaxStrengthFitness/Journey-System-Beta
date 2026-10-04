@@ -14,7 +14,7 @@ const client = (renewal: Record<string, unknown> | null) => ({ id: "rosie", firs
 describe("automaticFromRecord", () => {
   it("says inactive by herself past the studio's line with nothing booked", () => {
     expect(automaticFromRecord(client({ lastVisitDate: "2026-06-20", nextBookingDate: null }), "2026-10-01", 90)).toBe(
-      "103 days since her last visit (Jun 20, 2026), past the studio's 90-day line, with nothing booked as of last night's record: inactive by herself.",
+      "103 days since the last visit (Jun 20, 2026), past the studio's 90-day line, with nothing booked as of last night's record, so inactive.",
     );
   });
 
