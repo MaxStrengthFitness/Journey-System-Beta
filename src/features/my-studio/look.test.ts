@@ -129,6 +129,17 @@ describe("My Studio's colours", () => {
       expect(read(file).replace(/\/\*[\s\S]*?\*\//g, ""), file).not.toMatch(/--st-[\w-]+\s*:/);
     }
   });
+
+  it("warm the Floor Map's tiles in dark from the opaque orange fill, never a little orange in the navy", () => {
+    // The Navy Frame (Oct 4 2026): orange mixed a little into the navy card
+    // cancels to grey, so the dark heat steps start from --st-hero-fill.
+    const dark = RULES.find((r) => r.selectors.includes(".dark .pl"));
+    expect(dark, "a .dark .pl rule in relay.css").toBeDefined();
+    for (const step of ["--rl-heat-1", "--rl-heat-2", "--rl-heat-3"]) {
+      expect(declared(dark!.body, step).join(), step).toContain("var(--st-hero-fill)");
+    }
+    expect(dark!.selectors).toContain('[data-theme="dark"] .pl');
+  });
 });
 
 /* ------------------------------------------------------------------ */

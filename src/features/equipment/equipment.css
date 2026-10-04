@@ -693,7 +693,7 @@
   margin-top: 4px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--eq-ink-faint);
+  color: var(--eq-ink-muted);
   line-height: 1.3;
 }
 .eq-field__read {

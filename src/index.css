@@ -415,7 +415,7 @@
     --chrome-line:    rgba(255, 255, 255, 0.10);  /* the frame's hairlines and divider */
     --chrome-here:    #65ABE9;                    /* the tab you're on (a solid box) and your avatar, 6.5:1 both ways; dark --primary's blue */
     --chrome-go:      #F36D21;                    /* a running session's tab, Operations and Admins, 5.3:1 */
-    --chrome-go-fill: rgba(243, 109, 33, 0.18);   /* the running tab's box when it is not the one you're on */
+    --chrome-go-fill: #3D2112;                    /* the running tab's box when it is not the one you're on: OPAQUE, at the orange's hue (an rgba orange over the navy greys out); the go icon on it 4.9:1 */
 
     /* --- MINDBODY INTEGRATION TOKENS — append to existing :root { } --- */
     --mb-state-scheduled:    #94A3B8;

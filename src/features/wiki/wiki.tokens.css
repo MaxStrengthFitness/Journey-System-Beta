@@ -91,7 +91,7 @@
   --wk-live-on:   #ffffff;   /* the words on a solid blue button, 7.9:1 */
 
   /* ── green: done / healthy ────────────────────────────────────────── */
-  --wk-ok:      #1c7a52;     /* 4.9:1 */
+  --wk-ok:      #17714b;     /* 5.5:1 */
   --wk-ok-fill: #e3f1ea;
 
   /* ── the caution colour: clinical warnings, upkeep and a machine a
@@ -246,8 +246,8 @@
   --wk-cat-hips-text:      #f472b6;
   --wk-cat-other-text:     #93a0ac;
 
-  /* The worked muscles in the live blue, brightest on near-black. */
-  --wk-muscle-primary:   #4a9fd8;
+  /* The worked muscles in the live blue (the lifted logo blue, as --wk-live). */
+  --wk-muscle-primary:   #65abe9;
   --wk-muscle-secondary: #2d6690;
   --wk-muscle-base:      #2f3942;
 }

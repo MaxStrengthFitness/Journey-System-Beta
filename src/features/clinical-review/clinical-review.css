@@ -29,8 +29,8 @@
   --cr-ink-faint: var(--jg-ink-faint, #7f8c99);
 
   --cr-hero: var(--jg-hero, #d45a06);
-  --cr-hero-text: var(--jg-hero-text, #bc2c00);
-  --cr-hero-fill: var(--jg-hero-fill, #fde7dc);
+  --cr-hero-text: var(--jg-hero-text, #b04000);
+  --cr-hero-fill: var(--jg-hero-fill, #ffe9d8);
   --cr-live: var(--jg-live, #0a548b);
   --cr-live-text: var(--jg-live-text, #064f89);
   --cr-live-fill: var(--jg-live-fill, #d6e8f8);
@@ -44,7 +44,7 @@
   /* Urgency, never identity (reporting round): the pain timeline and the
      Pulse trend colour by how bad, on the equipment tokens' names. Yellow
      is the Pulse's own amber (the reference document's RAG), not plum. */
-  --cr-ok: var(--eq-ok, #1c7a52);
+  --cr-ok: var(--eq-ok, #17714b);
   --cr-ok-fill: var(--eq-ok-fill, #e3f1ea);
   --cr-warn: var(--eq-warn, #a2457e);
   --cr-warn-fill: var(--eq-warn-fill, #f4e9f0);

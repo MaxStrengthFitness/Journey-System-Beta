@@ -81,7 +81,14 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* The left edge says the booking's state, as on the grid's cards. */
+/* The left edge says the booking's state, as on the grid's cards. Coming up
+   (AJ's answer 2A, Oct 4 2026) is the grid's quiet blue edge. "Now" (its time
+   has come, no session started) keeps a darker grey edge of the strip's own,
+   which the grid has no twin for: whether it takes the blue too is AJ's to say. */
+.hn-item[data-when="soon"] {
+  border-left-color: var(--eq-rail-booked);
+}
+
 .hn-item[data-when="in-session"] {
   border-left-color: var(--eq-live);
   background: var(--eq-live-fill);
@@ -94,6 +101,7 @@
 .hn-item[data-kind="unlinked"] {
   border-style: dashed;
   border-left-width: 1px;
+  border-left-color: var(--eq-ink-faint); /* the grid's unlinked edge, whatever its time */
   background: var(--eq-surface-2);
   cursor: default;
 }

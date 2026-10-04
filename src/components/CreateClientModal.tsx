@@ -193,7 +193,7 @@ export function CreateClientModal({
         <CardContent className="flex-1 p-8 space-y-8 overflow-y-auto custom-scrollbar bg-card">
           {/* Stage 1: Identity & Contact */}
           <div className="space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-widest text-[#F06C22] border-b border-slate-200 dark:border-slate-800 pb-2">
+            <h3 className="text-xs font-black uppercase tracking-widest text-(--eq-hero-text) border-b border-slate-200 dark:border-slate-800 pb-2">
               Step 1: Contact Information
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -204,7 +204,7 @@ export function CreateClientModal({
                 <Input
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="h-12 bg-slate-50 dark:bg-slate-800 border-border text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-[#F06C22] rounded-xl font-bold"
+                  className="h-12 bg-slate-50 dark:bg-slate-800 border-border text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-ring rounded-xl font-bold"
                   placeholder="First"
                 />
               </div>
@@ -215,7 +215,7 @@ export function CreateClientModal({
                 <Input
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="h-12 bg-slate-50 dark:bg-slate-800 border-border text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-[#F06C22] rounded-xl font-bold"
+                  className="h-12 bg-slate-50 dark:bg-slate-800 border-border text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-ring rounded-xl font-bold"
                   placeholder="Last"
                 />
               </div>
@@ -229,7 +229,7 @@ export function CreateClientModal({
                 <Input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="h-12 bg-slate-50 dark:bg-slate-800 border-border text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-[#F06C22] rounded-xl font-bold"
+                  className="h-12 bg-slate-50 dark:bg-slate-800 border-border text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-ring rounded-xl font-bold"
                   placeholder="555-555-5555"
                   type="tel"
                 />
@@ -241,7 +241,7 @@ export function CreateClientModal({
                 <Input
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-12 bg-slate-50 dark:bg-slate-800 border-border text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-[#F06C22] rounded-xl font-bold"
+                  className="h-12 bg-slate-50 dark:bg-slate-800 border-border text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-ring rounded-xl font-bold"
                   placeholder="name@email.com"
                   type="email"
                 />
@@ -256,7 +256,7 @@ export function CreateClientModal({
                 <select
                   value={gender}
                   onChange={(e) => setGender(e.target.value)}
-                  className="w-full h-12 bg-slate-50 dark:bg-slate-800 border border-border text-foreground focus:border-[#F06C22] focus:ring-0 rounded-xl font-bold px-3"
+                  className="w-full h-12 bg-slate-50 dark:bg-slate-800 border border-border text-foreground focus:border-ring focus:ring-0 rounded-xl font-bold px-3"
                 >
                   <option value="">Select Gender</option>
                   <option value="Male">Male</option>
@@ -272,7 +272,7 @@ export function CreateClientModal({
                 <Input
                   value={age}
                   onChange={(e) => setAge(e.target.value)}
-                  className="h-12 bg-slate-50 dark:bg-slate-800 border-border text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-[#F06C22] rounded-xl font-bold"
+                  className="h-12 bg-slate-50 dark:bg-slate-800 border-border text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-ring rounded-xl font-bold"
                   placeholder="e.g. 40"
                   type="number"
                   min="0"
@@ -289,7 +289,7 @@ export function CreateClientModal({
                 <select
                   value={homeStudioId}
                   onChange={(e) => setHomeStudioId(e.target.value)}
-                  className="w-full h-12 bg-slate-50 dark:bg-slate-800 border border-border text-foreground focus:border-[#F06C22] focus:ring-0 rounded-xl font-bold px-3"
+                  className="w-full h-12 bg-slate-50 dark:bg-slate-800 border border-border text-foreground focus:border-ring focus:ring-0 rounded-xl font-bold px-3"
                 >
                   <option value="" disabled>
                     Select Studio
@@ -311,7 +311,7 @@ export function CreateClientModal({
 
           {/* Discovery Notes */}
           <div className="space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-widest text-[#F06C22] border-b border-slate-200 dark:border-slate-800 pb-2">
+            <h3 className="text-xs font-black uppercase tracking-widest text-(--eq-hero-text) border-b border-slate-200 dark:border-slate-800 pb-2">
               Discovery Notes
             </h3>
             <div className="space-y-2 mt-4">
@@ -322,7 +322,7 @@ export function CreateClientModal({
                 value={discoveryNotes}
                 onChange={(e) => setDiscoveryNotes(e.target.value)}
                 placeholder="Why are they coming in? What are their initial questions or concerns? Jot down quick notes to reference during the Stage 2 consultation..."
-                className="min-h-30 bg-slate-50 dark:bg-slate-800 border-border text-foreground rounded-xl font-medium placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-[#F06C22] resize-none"
+                className="min-h-30 bg-slate-50 dark:bg-slate-800 border-border text-foreground rounded-xl font-medium placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-ring resize-none"
               />
             </div>
           </div>
@@ -334,7 +334,7 @@ export function CreateClientModal({
             <select
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="w-full h-12 bg-slate-50 dark:bg-slate-800 border border-border text-foreground focus:border-[#F06C22] focus:ring-0 rounded-xl font-bold px-3"
+              className="w-full h-12 bg-slate-50 dark:bg-slate-800 border border-border text-foreground focus:border-ring focus:ring-0 rounded-xl font-bold px-3"
             >
               {ADD_CLIENT_REASONS.map((r) => (
                 <option key={r} value={r}>

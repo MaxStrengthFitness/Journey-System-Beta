@@ -82,7 +82,7 @@
 .pn__view[aria-pressed="true"] {
   background: var(--st-live-fill);
   border-color: var(--st-live);
-  color: var(--st-live);
+  color: var(--st-live-text);
 }
 .pn__view:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 .pn__view--add { border-style: dashed; color: var(--st-ink-muted); }
@@ -583,7 +583,7 @@
 .ne__kind[aria-pressed="true"] {
   border-color: var(--st-live);
   background: var(--st-live-fill);
-  color: var(--st-live);
+  color: var(--st-live-text);
   box-shadow: inset 0 0 0 1px var(--st-live);
   font-weight: 800;
 }
@@ -633,7 +633,7 @@
 .ne__pin[aria-pressed="true"] {
   border-color: var(--st-live);
   background: var(--st-live-fill);
-  color: var(--st-live);
+  color: var(--st-live-text);
 }
 
 .ne__clients { margin-top: 1rem; }
@@ -1212,7 +1212,7 @@
   border: 1px solid var(--st-live);
   border-radius: 999px;
   background: transparent;
-  color: var(--st-live);
+  color: var(--st-live-text); /* words on the .ne__suggest fill */
   font: inherit;
   font-size: 11px;
   font-weight: 800;

@@ -36,6 +36,14 @@ const THEME_COLOUR = /(?:^|[\s:])(?:bg|text|border|ring)-(?:white|black|backgrou
 const FRAME_FILES = ["components/AppHeader.tsx", "components/AppBottomBar.tsx", "components/NavButton.tsx"];
 
 describe("the frame draws only in the frame's tokens", () => {
+  it("the header's Bug button keeps the frame's ink: no palette colour and no stroke of its own on the icon", () => {
+    // Oct 4 2026: a hover:stroke-orange-500 on the Bug stuck after a tap on the
+    // navy header, an orange that meant neither now nor go.
+    const source = read("features/feedback/FeedbackButton.tsx");
+    expect(source).not.toMatch(PALETTE);
+    expect(source).not.toMatch(/\bstroke-[a-z]/);
+  });
+
   for (const file of FRAME_FILES) {
     it(`${file}: no palette class, raw hex or theme colour`, () => {
       const strings = classStrings(read(file));

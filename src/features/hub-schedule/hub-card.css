@@ -80,6 +80,22 @@
   opacity: 0.7;
 }
 
+/* Its quiet words still read at arm's length (the colour round's review,
+   Oct 4 2026): at 0.70 the muted ink would be 2.9:1 on the light grid and
+   ink-2 3.5:1, so on a card that is over they lift to the ink (4.96:1 light,
+   7.00 dark) rather than the card fading less. Size and weight keep the name
+   first. */
+.hs-card[data-recede="true"] .hs-card-when,
+.hs-card[data-recede="true"] .hs-card-when strong,
+.hs-card[data-recede="true"] .hs-card-rest,
+.hs-card[data-recede="true"] .hs-card-rest strong,
+.hs-card[data-recede="true"] .hs-card-num,
+.hs-card[data-recede="true"] .hs-card-staff,
+.hs-card[data-recede="true"][data-kind="staff"] .hs-card-name,
+.hs-card[data-recede="true"][data-kind="unlinked"] .hs-card-name {
+  color: var(--eq-ink);
+}
+
 /* Left open (hub fixes, Oct 1 2026): a session started and gone quiet for an
    hour. It recedes like any card that is over, and its edge is plum, the
    app's caution, so it reads apart from "done" — never the red kaizen mark. */

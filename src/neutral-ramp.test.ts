@@ -328,8 +328,12 @@ function countBarePaletteUtilities(): number {
  * record's two sky dots), and the 57 of slack the
  * budget carried from master go with them, so a new theme-blind colour fails
  * here instead of hiding in the gap.
+ *
+ * Oct 4 2026 (the Navy Frame, the review's fixes): 139 -> 137, the count
+ * again. Log a conversation, the InBody scan and trend and the report
+ * archive draw the theme's blue where they drew Tailwind sky.
  */
-const BARE_PALETTE_BUDGET = 139;
+const BARE_PALETTE_BUDGET = 137;
 
 describe("colour drift does not creep back", () => {
   it(`has at most ${BARE_PALETTE_BUDGET} non-theme-aware palette utilities`, () => {

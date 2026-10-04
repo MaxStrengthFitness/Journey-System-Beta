@@ -143,7 +143,7 @@ export function RenewalCardDialog({ open, onClose, client, trainer, machineNames
         <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg font-black">
-              <CalendarClock className="h-5 w-5 text-sky-600 dark:text-sky-400" />
+              <CalendarClock className="h-5 w-5 text-primary" />
               Renewal · {client.firstName} {client.lastName}
             </DialogTitle>
             <DialogDescription>

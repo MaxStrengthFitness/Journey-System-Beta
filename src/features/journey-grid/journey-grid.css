@@ -692,10 +692,10 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--jg-ink-faint);
+  color: var(--jg-ink-muted);
 }
 .jg-setting__v { font-size: 11px; font-weight: 750; color: var(--jg-ink); }
-.jg-setting--more { font-size: 10px; font-weight: 700; color: var(--jg-ink-faint); }
+.jg-setting--more { font-size: 10px; font-weight: 700; color: var(--jg-ink-muted); }
 
 /* The machine being walked up to gets the loud version — same rail, one
    size up, so the setup read works from further away. */
@@ -1265,7 +1265,7 @@ div.jg-today { cursor: default; }
 }
 .jg-nb__expectline { display: inline-flex; align-items: center; gap: 3px; }
 .jg-nb__expect em { font-style: normal; font-weight: 800; color: var(--jg-ink); }
-.jg-nb__readout { display: block; color: var(--jg-ink-faint); font-weight: 600; font-size: 10.5px; }
+.jg-nb__readout { display: block; color: var(--jg-ink-muted); font-weight: 600; font-size: 10.5px; }
 .jg-nb__mark { display: inline-flex; vertical-align: -1px; margin-left: 1px; line-height: 0; }
 .jg-nb__mark--q3 { color: var(--jg-q-star); }
 .jg-nb__mark--q1 { color: var(--jg-q-poor-text); }
@@ -1296,7 +1296,7 @@ div.jg-today { cursor: default; }
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--jg-ink-faint);
+  color: var(--jg-ink-muted);
   line-height: 1;
   padding-left: 1px;
 }
@@ -1610,7 +1610,7 @@ div.jg-today { cursor: default; }
   touch-action: manipulation;
 }
 .jg-nb__flag:disabled { cursor: default; }
-.jg-nb__flag--critical { background: var(--jg-q-poor-fill, rgba(225, 29, 72, 0.10)); border-color: var(--jg-q-poor-text, #e11d48); color: var(--jg-q-poor-text, #e11d48); }
+.jg-nb__flag--critical { background: var(--jg-q-poor-fill); border-color: var(--jg-q-poor-text); color: var(--jg-q-poor-text); }
 /* A high-risk condition: plum, the equipment tokens' warning (main.tsx loads
    them app-wide). Crimson stays for a critical note or an absolute
    contraindication. */
@@ -1758,15 +1758,14 @@ div.jg-today { cursor: default; }
   height: 30px;
   border: none;
   background: transparent;
-  color: var(--jg-ink-2, #b6c2cc);
+  color: var(--jg-ink-2);
   border-radius: 6px;
 }
 .jg-machine__move:hover:not(:disabled),
 .jg-machine__drop:hover { background: var(--jg-surface-3); color: var(--jg-ink); }
 .jg-machine__move:disabled { opacity: 0.25; }
-.jg-machine__drop:hover { color: var(--jg-critical, #dc93c2); }
 .jg-machine__move:focus-visible,
-.jg-machine__drop:focus-visible { outline: 2px solid var(--jg-live, #55a8e6); outline-offset: -2px; }
+.jg-machine__drop:focus-visible { outline: 2px solid var(--jg-live); outline-offset: -2px; }
 
 /* The whole routine section reads as editable while reordering, so a trainer
    can see at a glance which rows the arrows apply to. */
@@ -2317,9 +2316,9 @@ div.jg-today { cursor: default; }
   touch-action: manipulation;
 }
 .jg-sbar__flag--severe {
-  border-color: var(--jg-q-poor-text, #e11d48);
-  background: var(--jg-q-poor-fill, rgba(225, 29, 72, 0.10));
-  color: var(--jg-q-poor-text, #e11d48);
+  border-color: var(--jg-q-poor-text);
+  background: var(--jg-q-poor-fill);
+  color: var(--jg-q-poor-text);
 }
 .jg-sbar__flag--caution {
   border-color: var(--eq-warn);
@@ -3319,7 +3318,7 @@ div.jg-today { cursor: default; }
 .jg-nb__expect { align-items: flex-end; text-align: right; gap: 1px; color: var(--jg-ink-faint); font-size: 11px; font-weight: 600; }
 .jg-nb__expect em { color: var(--jg-ink-muted); font-weight: 700; }
 .jg-nb__readouts { display: inline-flex; gap: 8px; }
-.jg-nb__readout { font-size: 10.5px; color: var(--jg-ink-faint); }
+.jg-nb__readout { font-size: 10.5px; color: var(--jg-ink-muted); }
 @media (max-width: 899px) {
   .jg-nb--bar .jg-nb__head .jg-nb__sp { display: block; order: 3; }
   .jg-nb--bar .jg-nb__settings { flex: 0 1 auto; }

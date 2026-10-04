@@ -116,14 +116,14 @@ export function FeedbackDrawer({
                 className={cn(
                   "flex flex-col items-center justify-center gap-1.5 h-16 sm:h-20 rounded-2xl border transition-all font-black uppercase text-[9px] sm:text-[10px] tracking-widest",
                   kind === k
-                    ? "bg-cta/10 border-cta text-foreground shadow-sm"
+                    ? "bg-(--eq-hero-fill) border-cta text-foreground shadow-sm"
                     : "bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted",
                 )}
               >
                 <Icon
                   className={cn(
                     "w-5 h-5 sm:w-6 sm:h-6",
-                    kind === k ? "text-cta" : "opacity-50",
+                    kind === k ? "text-(--eq-hero-text)" : "opacity-50",
                   )}
                 />
                 {FEEDBACK_KIND_SHORT[k]}

@@ -267,7 +267,7 @@
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--br-ink-faint);
+  color: var(--br-ink-muted);
 }
 
 .br__focus-target {
@@ -499,7 +499,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--br-ink-faint);
+  color: var(--br-ink-muted);
 }
 
 .br__field { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -703,7 +703,7 @@
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--br-ink-faint);
+  color: var(--br-ink-muted);
 }
 .br__carried-row[data-tone="warn"] { border-left-color: var(--br-warn); background: var(--br-warn-fill); }
 .br__carried-row[data-tone="warn"] strong { color: var(--br-warn); }

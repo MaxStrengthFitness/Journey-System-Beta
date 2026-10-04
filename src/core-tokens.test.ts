@@ -266,7 +266,13 @@ describe("the frame", () => {
   });
 
   it("a running session's tab, not the one you're on, is at least 3:1 on its faint box (bg-chrome-go-fill)", () => {
-    expect(ratio(hex("light", "--chrome-go"), onWash("--chrome-go-fill"))).toBeGreaterThanOrEqual(3);
+    expect(ratio(hex("light", "--chrome-go"), hex("light", "--chrome-go-fill"))).toBeGreaterThanOrEqual(3);
+  });
+
+  it("that faint box is an opaque warm colour, not a wash (an rgba orange over the navy cancels to grey)", () => {
+    const box = hex("light", "--chrome-go-fill");
+    const [r, , b] = [1, 3, 5].map((i) => parseInt(box.slice(i, i + 2), 16));
+    expect(r, "red over blue: it keeps the orange's hue").toBeGreaterThan(b * 2);
   });
 
   it("the search well and the hairlines are washes of white, so they read the same on the navy in both themes", () => {

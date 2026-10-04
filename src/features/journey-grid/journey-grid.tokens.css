@@ -47,11 +47,11 @@
   /* Hero: the orange of MARKS, the Hub's light hero (Oct 4 2026): the focus
      machine's edge and row trace, the Now Bar's marks, the session meter.
      3.7:1 on the cells, so bars, borders and edges only, never words (white
-     on it is 3.99). Small orange words use --jg-hero-text (5.5:1 on the
-     cells, 5.0:1 on the hero fill). */
+     on it is 3.99). Small orange words use --jg-hero-text (5.4:1 on the
+     cells, 5.0:1 on the hero fill; the Hub's values since the review). */
   --jg-hero:           #d45a06;
-  --jg-hero-text:      #bc2c00;
-  --jg-hero-fill:      #fde7dc;   /* 14% orange over white                 */
+  --jg-hero-text:      #b04000;   /* the Hub's --eq-hero-text           */
+  --jg-hero-fill:      #ffe9d8;   /* the Hub's --eq-hero-fill           */
   /* Go: the one loud action (Finish) and every orange chip with words (the
      paused clock's button, the routine's number chips). The logo orange with
      navy words, 6.05:1, the same in both themes. Nothing puts white words on
@@ -211,8 +211,8 @@
   --jg-ink-faint:      #697b8d;   /* 3.4:1                                 */
 
   --jg-hero:           var(--brand-accent-3);   /* 5.0:1 on surface        */
-  --jg-hero-text:      var(--brand-accent-2);   /* 8.0:1, 7.4:1 on fill    */
-  --jg-hero-fill:      #432619;
+  --jg-hero-text:      #ff9455;   /* 6.8:1, 5.9:1 on fill (the Hub's)     */
+  --jg-hero-fill:      #4b2915;   /* the Hub's opaque hero fill           */
   --jg-go:             #f36d21;
   --jg-go-on:          #071727;
 
@@ -284,8 +284,8 @@
     --jg-ink-muted:      #9dadbe;
     --jg-ink-faint:      #697b8d;
     --jg-hero:           var(--brand-accent-3);
-    --jg-hero-text:      var(--brand-accent-2);
-    --jg-hero-fill:      #432619;
+    --jg-hero-text:      #ff9455;
+    --jg-hero-fill:      #4b2915;   /* the Hub's opaque hero fill           */
     --jg-go:             #f36d21;
     --jg-go-on:          #071727;
     --jg-live:           #65abe9;

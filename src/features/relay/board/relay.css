@@ -19,7 +19,6 @@
 
 .pl {
   --rl-floor: var(--st-hero);
-  --rl-floor-fill: color-mix(in srgb, var(--st-hero) 12%, transparent);
   /* The Floor Map's heat: one hue, warming with touches. Low heat borrowed
      the flag colour until Sep 27 2026, which would have drawn a busy machine
      in the caution plum once the flag became plum. */
@@ -31,6 +30,14 @@
   --rl-mine-fill: var(--st-live-fill);
   --rl-panel-w: 360px;
   position: relative;
+}
+/* Dark (the Navy Frame, Oct 4 2026): the orange is the navy's complement, so a
+   little of it mixed into the navy card cancels to grey. The dark steps start
+   from the opaque orange fill instead, and each keeps the orange's hue. */
+.dark .pl, [data-theme="dark"] .pl {
+  --rl-heat-1: color-mix(in srgb, var(--st-hero-fill) 80%, var(--st-surface));
+  --rl-heat-2: var(--st-hero-fill);
+  --rl-heat-3: color-mix(in srgb, var(--st-hero) 20%, var(--st-hero-fill));
 }
 
 /* ------------------------------------------------------------------ *

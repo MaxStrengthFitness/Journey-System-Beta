@@ -195,10 +195,11 @@ describe("an elevated flag", () => {
 describe("one palette with the Hub", () => {
   // The session's own steps stay its own: the dark header band and sticky
   // column (one step above the cells), the strong border, the Today column's
-  // fills, the hero's small words and fill, and every rep-quality colour.
+  // fills and every rep-quality colour. (The hero's small words and fill
+  // joined the Hub's in the review, Oct 4 2026.)
   const SHARED = {
-    light: ["bg", "surface", "surface-2", "surface-3", "border", "ink", "ink-2", "ink-muted", "ink-faint", "hero", "live", "live-text", "live-on", "go", "go-on"],
-    dark: ["bg", "surface", "surface-3", "border", "ink", "ink-2", "ink-muted", "ink-faint", "hero", "live", "live-text", "live-on", "go", "go-on"],
+    light: ["bg", "surface", "surface-2", "surface-3", "border", "ink", "ink-2", "ink-muted", "ink-faint", "hero", "hero-text", "hero-fill", "live", "live-text", "live-on", "go", "go-on"],
+    dark: ["bg", "surface", "surface-3", "border", "ink", "ink-2", "ink-muted", "ink-faint", "hero", "hero-text", "hero-fill", "live", "live-text", "live-on", "go", "go-on"],
   } as const;
 
   for (const theme of ["light", "dark"] as const) {
@@ -206,4 +207,17 @@ describe("one palette with the Hub", () => {
       expect(resolve(grid[theme], `--jg-${key}`)).toBe(resolve(hub[theme], `--eq-${key}`));
     });
   }
+});
+
+describe("small words on every machine read in the muted ink, never the faint", () => {
+  // The faint ink is 3.2:1, decorative only (the review, Oct 4 2026): the
+  // setting keys, the "+ more", the Now Bar's kicker and readout, and the
+  // Dial's word and legend are words a trainer reads mid-session.
+  it.each([".jg-setting__k", ".jg-setting--more", ".jg-nb__kicker", ".jg-nb__readout"])("%s", (selector) => {
+    expect(declared(SESSION, selector).color).toBe("var(--jg-ink-muted)");
+  });
+
+  it("the Dial (rating.css) sets no word in the faint ink", () => {
+    expect(stylesheet("features/rating/rating.css")).not.toMatch(/(^|[\s;{])color:\s*var\(--eq-ink-faint\)/);
+  });
 });

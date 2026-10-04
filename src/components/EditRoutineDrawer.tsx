@@ -813,7 +813,7 @@ export function EditRoutineDrawer({
               onBlur={() => setNotesFocused(false)}
               placeholder="e.g., Decreasing spinal load post L4 herniation flare-up; swapping leg press for leg extension today."
               rows={2}
-              className="rounded-xl border-div-l bg-card resize-none text-xs text-slate-800 dark:text-neutral-100"
+              className="rounded-xl border-input bg-card resize-none text-xs text-slate-800 dark:text-neutral-100"
             />
             <div className="flex justify-between items-center mt-2">
               <p className="text-[10px] text-muted-foreground">

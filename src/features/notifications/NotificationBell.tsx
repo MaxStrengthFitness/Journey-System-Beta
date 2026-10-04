@@ -259,7 +259,7 @@ export function NotificationBell({
                             </span>
                           )}
                           {isNew && (
-                            <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-cta/15 text-(--eq-hero-text)">
+                            <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-(--eq-hero-fill) text-(--eq-hero-text)">
                               New
                             </span>
                           )}
@@ -292,7 +292,7 @@ export function NotificationBell({
                                 );
                                 setOpen(false);
                               }}
-                              className="mt-2 inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-xl border border-cta/40 bg-cta/10 px-3 text-left text-[11px] font-black uppercase tracking-widest text-(--eq-hero-text)"
+                              className="mt-2 inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-xl border border-cta/40 bg-(--eq-hero-fill) px-3 text-left text-[11px] font-black uppercase tracking-widest text-(--eq-hero-text)"
                             >
                               <BookOpen className="w-3.5 h-3.5 shrink-0" />
                               <span className="min-w-0 [overflow-wrap:anywhere]">Open {learningRefLabel(page)}</span>

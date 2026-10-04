@@ -251,7 +251,7 @@ export function SessionJournalSidebar({
               className={`h-10 min-w-0 flex-1 basis-0 rounded-lg text-[13px] font-bold transition-colors ${
                 mode === tab.id
                   ? "bg-(--eq-go) hover:bg-(--eq-go) text-(--eq-go-on)"
-                  : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800"
+                  : "text-muted-foreground hover:bg-muted"
               }`}
             >
               {tab.label}

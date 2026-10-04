@@ -46,7 +46,7 @@ export function ProgressReportArchive({
         <button
           type="button"
           onClick={onNew}
-          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 text-[10px] font-black uppercase tracking-wider text-sky-600 transition-colors hover:bg-sky-500/20 dark:text-sky-300"
+          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 px-3 text-[10px] font-black uppercase tracking-wider text-primary transition-colors hover:bg-primary/20"
         >
           <Plus className="h-3 w-3" /> New
         </button>

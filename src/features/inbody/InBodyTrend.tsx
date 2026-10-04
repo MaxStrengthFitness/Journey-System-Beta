@@ -61,7 +61,7 @@ export function InBodyTrend({ points, measure, label, minSpan, today, variant = 
         aria-label={`${label}: ${formatMeasure(points[0].value, measure)} on ${scanDateLabel(points[0].date, today)}, ${formatMeasure(points[last].value, measure)} on ${scanDateLabel(points[last].date, today)}`}
         className={cn(
           "block overflow-visible",
-          report ? "text-[#F06C22]" : "text-sky-600 dark:text-sky-400",
+          report ? "text-[#F06C22]" : "text-primary",
         )}
       >
         <path d={d} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />

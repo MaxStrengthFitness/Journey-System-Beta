@@ -62,7 +62,7 @@
   --rb-live-on:         #ffffff;
 
   /* Green: a programming category this routine covers. */
-  --rb-ok:              #1c7a52;   /* 4.9:1                                 */
+  --rb-ok:              #17714b;   /* 5.5:1                                 */
   --rb-ok-fill:         #e3f1ea;
 
   /* Plum: a rule the Academy says to avoid. Not red — see the note above. */
@@ -135,7 +135,7 @@
   --rb-caution-fill:    #3f3112;
   --rb-caution-edge:    #8a5300;
 
-  --rb-muscle-primary:   #55a8e6;
+  --rb-muscle-primary:   #65abe9;
   --rb-muscle-secondary: #2c6f9e;
   --rb-muscle-base:      #4b555c;
 
@@ -180,7 +180,7 @@
     --rb-caution-fill:    #3f3112;
     --rb-caution-edge:    #8a5300;
 
-    --rb-muscle-primary:   #55a8e6;
+    --rb-muscle-primary:   #65abe9;
     --rb-muscle-secondary: #2c6f9e;
     --rb-muscle-base:      #4b555c;
 

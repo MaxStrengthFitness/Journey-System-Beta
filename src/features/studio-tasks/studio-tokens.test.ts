@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -51,6 +51,7 @@ const FROM_THE_APP: Readonly<Record<string, string>> = {
   "--st-done": "--eq-ok",
   "--st-done-fill": "--eq-ok-fill",
   "--st-live": "--eq-live",
+  "--st-live-text": "--eq-live-text",
   "--st-live-fill": "--eq-live-fill",
   "--st-live-on": "--eq-live-on",
   "--st-flag": "--eq-warn",
@@ -144,6 +145,39 @@ describe("--st-* keeps what a person reads readable", () => {
       expect(ratio(theme["--st-hero-on"], theme["--st-hero-text"]), "orange").toBeGreaterThanOrEqual(4.5);
       expect(ratio(theme["--st-done-on"], theme["--st-done"]), "green").toBeGreaterThanOrEqual(4.5);
     }
+  });
+
+  it("blue words on the blue fill, in both themes", () => {
+    for (const theme of [st.light, st.dark]) {
+      expect(ratio(theme["--st-live-text"], theme["--st-live-fill"])).toBeGreaterThanOrEqual(4.5);
+    }
+    // Why --st-live-text exists: the dark --st-live is under 4.5 on its own fill
+    // (the Navy Frame, Oct 4 2026), so it may draw edges and icons there, never words.
+    expect(ratio(st.dark["--st-live"], st.dark["--st-live-fill"])).toBeLessThan(4.5);
+  });
+
+  it("no rule writes --st-live words on the --st-live fill", () => {
+    const src = join(here, "..", "..");
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, e.name);
+        if (e.isDirectory()) { walk(p); continue; }
+        if (p.endsWith(".css")) {
+          const css = readFileSync(p, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+          for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+            if (/background(-color)?:\s*var\(--st-live-fill\)/.test(m[2])
+              && /(^|[;\s])color:\s*var\(--st-live\)/.test(m[2])) offenders.push(`${e.name}: ${m[1].trim()}`);
+          }
+        } else if (p.endsWith(".tsx")) {
+          const tsx = readFileSync(p, "utf8");
+          if (/bg-\[var\(--st-live-fill\)\][^"`]*text-\[var\(--st-live\)\]/.test(tsx)
+            || /text-\[var\(--st-live\)\][^"`]*bg-\[var\(--st-live-fill\)\]/.test(tsx)) offenders.push(e.name);
+        }
+      }
+    };
+    walk(src);
+    expect(offenders).toEqual([]);
   });
 
   it("small orange words, in both themes", () => {

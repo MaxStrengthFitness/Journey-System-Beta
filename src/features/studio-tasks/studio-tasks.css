@@ -21,7 +21,9 @@
    is written out there: --st-done is --eq-ok, --st-flag is --eq-warn. What
    each colour MEANS is the app's:
      - live (blue): anything you can act on, and what is selected. A solid
-       blue button writes in --st-live-on.
+       blue button writes in --st-live-on. Blue WORDS on the blue fill are
+       --st-live-text (the app's --eq-live-text): the dark --st-live is
+       4.4:1 on its own fill, so it draws only the edges and icons there.
      - hero (orange): the one loud action (Capture), the studio's shared work
        on the board, and the Floor Map's heat. Solid orange is 4.0:1 with
        white (the Navy Frame's light hero, Oct 4 2026), so anything with a
@@ -53,10 +55,11 @@
   --st-ink-muted: #546271;   /*  5.8:1 — the smallest ink a person reads */
   --st-ink-faint: #7f8c99;   /*  3.2:1 — decorative only */
 
-  --st-done:      #1c7a52;   /* 4.9:1 */
+  --st-done:      #17714b;   /* 5.5:1 */
   --st-done-fill: #e3f1ea;
-  --st-done-on:   #ffffff;   /* 5.3:1 on --st-done */
+  --st-done-on:   #ffffff;   /* 6.0:1 on --st-done */
   --st-live:      #0a548b;   /* 7.3:1 */
+  --st-live-text: #064f89;   /* 7.1:1 on --st-live-fill: blue WORDS on the blue fill */
   --st-live-fill: #dbeefe;
   --st-live-on:   #ffffff;   /* 7.9:1 on --st-live */
   --st-flag:        #a2457e; /* 5.3:1 */
@@ -93,7 +96,8 @@
   --st-done:      #52d7c1;
   --st-done-fill: #113e36;
   --st-done-on:   #04121c;
-  --st-live:      #65abe9;
+  --st-live:      #65abe9;   /* 4.4:1 on its own fill: borders and icons there */
+  --st-live-text: #98caf9;   /* 6.2:1 on --st-live-fill */
   --st-live-fill: #23405c;
   --st-live-on:   #071727;
   --st-flag:        #d98cbd;
@@ -275,7 +279,7 @@
   text-transform: uppercase; color: var(--st-ink-2); }
 .stq__count { display: inline-flex; align-items: center; justify-content: center;
   min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
-  background: var(--st-live-fill); color: var(--st-live);
+  background: var(--st-live-fill); color: var(--st-live-text);
   font-size: 11px; font-weight: 800; }
 .stq__new { margin-left: auto; display: inline-flex; align-items: center; gap: 0.3rem;
   min-height: 40px; padding: 0 0.7rem; border: 1px solid var(--st-border);
@@ -293,7 +297,7 @@
   font: inherit; font-size: 12px; font-weight: 700;
   cursor: pointer; }
 /* Selected in the brand blue, as every other pick on the board is. */
-.stq__kind[aria-pressed="true"] { border-color: var(--st-live); color: var(--st-live);
+.stq__kind[aria-pressed="true"] { border-color: var(--st-live); color: var(--st-live-text);
   background: var(--st-live-fill); box-shadow: inset 0 0 0 1px var(--st-live); }
 
 .stq__row { display: flex; gap: 0.4rem; }
@@ -394,7 +398,7 @@
   cursor: pointer; white-space: nowrap; }
 .stq__react:hover { background: var(--st-surface-3); color: var(--st-ink-2); }
 .stq__react[aria-pressed="true"] { border-color: var(--st-live);
-  background: var(--st-live-fill); color: var(--st-live); }
+  background: var(--st-live-fill); color: var(--st-live-text); }
 .stq__react:disabled { opacity: 0.5; cursor: default; }
 .stq__react:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 

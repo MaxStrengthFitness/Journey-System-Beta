@@ -1394,7 +1394,7 @@ export default function AppContent({
               <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground block mb-3">
                 App Mode
               </Label>
-              <div className="flex bg-muted p-1 rounded-xl">
+              <div className="flex bg-muted dark:bg-background p-1 rounded-xl">
                 <button
                   onClick={() =>
                     menuNavigate(() => switchAppMode("trainer", "clients"))

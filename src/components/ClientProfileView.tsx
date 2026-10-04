@@ -1739,7 +1739,7 @@ export function ClientProfileView({
                   onChange={(e) => setToggleBReason(e.target.value)}
                   placeholder="e.g., Sandra is experiencing shoulder tightness; setting up B as a low-impact chest day."
                   rows={3}
-                  className="rounded-xl border-div-l bg-slate-50/50 dark:bg-slate-950/20 text-xs text-slate-800 dark:text-neutral-200 resize-none"
+                  className="rounded-xl border-input bg-slate-50/50 dark:bg-slate-950/20 text-xs text-slate-800 dark:text-neutral-200 resize-none"
                 />
                 <div className="flex justify-between items-center text-[10px]">
                   <span className="text-muted-foreground font-medium">

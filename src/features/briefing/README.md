@@ -135,7 +135,8 @@ contraindication is a thing that must not happen in the next ninety minutes.
 
 ## Known: three shared children still carry their own styling
 
-`ConditionChip`, `JournalEntryCard`, `RoutineCompareCard` and `SequenceRow`
+`JournalEntryCard`, `RoutineCompareCard` and `SequenceRow` (`ConditionChip`,
+unused, was deleted in the colour round's review, Oct 4 2026)
 are used on other screens too, so converting them would be a change to those
 screens as much as this one. They read acceptably against the new surfaces.
 Worth a pass of its own when the next screen that uses them is redesigned.

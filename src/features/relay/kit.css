@@ -160,7 +160,7 @@
 .rk-chip[aria-pressed="true"] {
   border-color: var(--st-live);
   background: var(--st-live-fill);
-  color: var(--st-live);
+  color: var(--st-live-text);
 }
 .rk-chip:disabled { opacity: 0.5; cursor: default; }
 .rk-chip:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
@@ -289,7 +289,7 @@
   white-space: nowrap;
 }
 .rk-tag svg { flex: none; }
-.rk-tag--live { border-color: transparent; background: var(--st-live-fill); color: var(--st-live); }
+.rk-tag--live { border-color: transparent; background: var(--st-live-fill); color: var(--st-live-text); }
 .rk-tag--flag { border-color: var(--st-flag-border); background: var(--st-flag-fill); color: var(--st-flag); }
 .rk-tag--done { border-color: transparent; background: var(--st-done-fill); color: var(--st-done); }
 /* Orange with a label: the deep orange fill (white on the bright one is 3.55:1). */

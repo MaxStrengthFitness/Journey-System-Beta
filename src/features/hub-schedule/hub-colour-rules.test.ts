@@ -164,6 +164,17 @@ describe("a coming-up client card (AJ's answer 2A)", () => {
   it("is drawn the same way in the Key", () => {
     expect(declared(TOP, '.hd-swatch[data-state="live"]')["border-left"]).toContain("var(--eq-rail-booked)");
   });
+
+  it("is drawn the same way on the Next 30 minutes strip, and an open or unlinked item there still wins", () => {
+    const STRIP = stylesheet("features/hub-schedule/next-strip.css");
+    const SOON = '.hn-item[data-when="soon"]';
+    expect(declared(STRIP, SOON)["border-left-color"]).toBe("var(--eq-rail-booked)");
+    // Same specificity, so the later rule wins: unlinked keeps the grid's
+    // unlinked edge and an open item is blue all round.
+    expect(declared(STRIP, '.hn-item[data-kind="unlinked"]')["border-left-color"]).toBe("var(--eq-ink-faint)");
+    expect(position(STRIP, SOON)).toBeLessThan(position(STRIP, '.hn-item[data-kind="unlinked"]'));
+    expect(position(STRIP, SOON)).toBeLessThan(position(STRIP, '.hn-item[data-open="true"]'));
+  });
 });
 
 /** Start session and the orange chips with words: [stylesheet, selector, its :hover (buttons only), the palette]. */
@@ -264,6 +275,15 @@ describe("words that must still read", () => {
         const ratio = contrast(name, card);
         expect({ mode, ground, pass: ratio >= 4.5 }).toEqual({ mode, ground, pass: true });
       }
+    }
+  });
+
+  it("lifts a finished card's quiet words (the time, Not logged, the rest, the number, a staff name) to the ink", () => {
+    for (const words of [".hs-card-when", ".hs-card-when strong", ".hs-card-rest", ".hs-card-rest strong", ".hs-card-num", ".hs-card-staff"]) {
+      expect(declared(CARD, `.hs-card[data-recede="true"] ${words}`).color, words).toBe("var(--eq-ink)");
+    }
+    for (const kind of ["staff", "unlinked"]) {
+      expect(declared(CARD, `.hs-card[data-recede="true"][data-kind="${kind}"] .hs-card-name`).color, kind).toBe("var(--eq-ink)");
     }
   });
 

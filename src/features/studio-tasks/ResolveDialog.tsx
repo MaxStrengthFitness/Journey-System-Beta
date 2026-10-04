@@ -165,7 +165,7 @@ export function ResolveDialog({
                   className={cn(
                     "mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border",
                     keep
-                      ? "border-[var(--st-live)] bg-[var(--st-live-fill)] text-[var(--st-live)]"
+                      ? "border-[var(--st-live)] bg-[var(--st-live-fill)] text-[var(--st-live-text)]"
                       : "border-input bg-card text-transparent",
                   )}
                 >

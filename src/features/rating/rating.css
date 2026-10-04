@@ -72,7 +72,7 @@
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--eq-ink-faint);
+  color: var(--eq-ink-muted);
   white-space: nowrap;
 }
 .rt__word[data-tone="alert"] { color: var(--eq-alert); }
@@ -177,7 +177,7 @@
   font-size: 10px;
   font-weight: 700;
   line-height: 1.15;
-  color: var(--eq-ink-faint);
+  color: var(--eq-ink-muted);
   text-align: center;
 }
 .rt__legend > span { min-width: 0; padding: 0 2px; }

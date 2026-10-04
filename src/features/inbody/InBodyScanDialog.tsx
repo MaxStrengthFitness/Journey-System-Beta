@@ -39,7 +39,7 @@ import { INBODY_SEGMENTS, type InBodyScan } from "./types";
 const LABEL = "text-[11px] font-bold uppercase tracking-widest text-muted-foreground";
 const INPUT =
   "h-11 w-full rounded-xl border bg-card px-3 text-sm font-semibold tabular-nums text-slate-900 outline-none " +
-  "focus:border-sky-500 dark:bg-slate-900 dark:text-slate-100";
+  "focus:border-ring dark:bg-slate-900 dark:text-slate-100";
 const INPUT_OK = "border-border";
 const INPUT_BAD = "border-rose-400 dark:border-rose-500";
 const PROBLEM = "text-[11px] font-semibold text-rose-600 dark:text-rose-400";
@@ -207,7 +207,7 @@ export function InBodyScanDialog({ open, onClose, client, scan, scans, authTrain
       <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg font-black">
-            <Scale className="h-5 w-5 text-sky-600 dark:text-sky-400" />
+            <Scale className="h-5 w-5 text-primary" />
             {scan ? `Correct the ${scanDateLabel(scan.testedAt, today)} scan` : `InBody scan for ${firstName}`}
           </DialogTitle>
           <DialogDescription>
@@ -313,7 +313,7 @@ export function InBodyScanDialog({ open, onClose, client, scan, scans, authTrain
                 type="checkbox"
                 checked={updateWeight}
                 onChange={(e) => setUpdateWeight(e.target.checked)}
-                className="h-5 w-5 accent-sky-600"
+                className="h-5 w-5 accent-primary"
               />
               <span>
                 Also set the profile's weight to {weightOffer} lb

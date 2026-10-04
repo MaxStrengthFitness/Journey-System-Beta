@@ -65,7 +65,7 @@ function Chip({
       className={cn(
         "min-h-11 rounded-xl border px-3.5 text-[13px] font-bold transition-colors",
         on
-          ? "border-sky-600 bg-sky-600 text-white dark:border-sky-400 dark:bg-sky-500"
+          ? "border-primary bg-primary text-primary-foreground"
           : "border-border bg-card text-slate-700 hover:border-slate-300 dark:text-slate-200",
       )}
     >
@@ -136,7 +136,7 @@ export function LogConversationDialog({
       <DialogContent className="sm:max-w-xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg font-black">
-            <MessageSquareText className="h-5 w-5 text-sky-600 dark:text-sky-400" />
+            <MessageSquareText className="h-5 w-5 text-primary" />
             Renewal conversation with {firstName}
           </DialogTitle>
           <DialogDescription>
@@ -208,7 +208,7 @@ export function LogConversationDialog({
                 value={draft.note}
                 onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))}
                 placeholder="What did they say? e.g. wants to see the InBody first"
-                className="w-full rounded-xl border border-border bg-card p-3 text-sm text-slate-800 outline-none focus:border-sky-500 dark:text-slate-100"
+                className="w-full rounded-xl border border-border bg-card p-3 text-sm text-slate-800 outline-none focus:border-ring dark:text-slate-100"
               />
             </div>
 

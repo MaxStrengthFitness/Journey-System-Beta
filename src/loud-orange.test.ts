@@ -256,12 +256,27 @@ describe("a solid logo-orange button has navy words and keeps its fill on hover"
       "components/ActiveSessionTimer.tsx",
       "features/trainer-profile/EditTrainerModal.tsx",
       "features/client-profile/ProfileHeader.tsx",
+      "components/ConsultationSetupWizard.tsx",
     ]) {
       expect(read(file), file).not.toMatch(/rgba\((?:240,\s*108,\s*34|239,\s*83,\s*2)/);
     }
-    // The Start Consult Workout glow (the wizard's selected chips are AJ's audit).
+    // The Start Consult Workout glow (whether the wizard's selected chips stay
+    // orange or turn blue is AJ's audit).
     const wizard = read("components/ConsultationSetupWizard.tsx");
     expect(wizard).toContain("shadow-[0_10px_30px_var(--cta)] shadow-cta/30");
+  });
+
+  it("First-time setup (in the session for a prospect) writes in the theme's ink, never white or the logo orange", () => {
+    // Its ground is the bg-dark ladder, which follows the theme, so white
+    // words vanished in light (the title was 1.26:1).
+    const wizard = read("components/ConsultationSetupWizard.tsx");
+    expect(wizard).not.toMatch(/(?:^|[\s"'`:])text-white(?=[\s"'`]|$)/m);
+    expect(wizard).not.toMatch(/(?:^|[\s"'`])text-cta(?=[\s"'`]|$)/m);
+    expect(wizard).not.toMatch(/bg-cta\/\d/);
+    for (const t of BOTH) {
+      expect(ratio(colour(t, "--eq-hero-text"), colour(t, "--eq-surface")), `${t}: the weights`).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(colour(t, "--eq-hero-text"), colour(t, "--eq-bg")), `${t}: Skip Setup`).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });
 
@@ -283,16 +298,19 @@ describe("the notification bell", () => {
     expect(bell).not.toMatch(/(?:^|[\s"'`])text-cta(?=[\s"'`]|$)/m);
     expect(bell.match(/text-\(--eq-hero-text\)/g) ?? []).toHaveLength(3);
     for (const t of BOTH) {
-      // The sheet is a card; the New chip is cta/15 on it; the Learning door
-      // is cta/10 inside an unread announcement's cta/5; the icon sits on muted.
+      // The sheet is a card; the New chip and the Learning door sit on the
+      // opaque orange fill; the icon sits on muted.
       const card = colour(t, "--card");
-      const cta = colour(t, "--cta");
       const word = colour(t, "--eq-hero-text");
       expect(ratio(word, card), `${t}: on the sheet`).toBeGreaterThanOrEqual(4.5);
-      expect(ratio(word, over(cta, card, 0.15)), `${t}: the New chip`).toBeGreaterThanOrEqual(4.5);
-      expect(ratio(word, over(cta, over(cta, card, 0.05), 0.1)), `${t}: the Learning door`).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(word, colour(t, "--eq-hero-fill")), `${t}: the New chip and the Learning door`).toBeGreaterThanOrEqual(4.5);
       expect(ratio(word, colour(t, "--muted")), `${t}: a notice's icon`).toBeGreaterThanOrEqual(3);
     }
+  });
+
+  it("its orange chips are the opaque orange fill, never an orange wash (one over the navy greys out)", () => {
+    expect(bell).not.toMatch(/bg-cta\/(?:10|15)\b/);
+    expect(bell.match(/bg-\(--eq-hero-fill\) /g) ?? []).toHaveLength(2);
   });
 });
 
@@ -456,6 +474,55 @@ describe("the client record has no sky or teal left", () => {
       expect(ratio(colour(t, "--eq-live-text"), colour(t, "--eq-live-fill")), `${t}: the banner`).toBeGreaterThanOrEqual(4.5);
       expect(ratio(primary, over(primary, colour(t, "--card"), 0.1)), `${t}: the picked source`).toBeGreaterThanOrEqual(4.5);
       expect(ratio(primary, colour(t, "--card")), `${t}: the dialog line`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
+/* ---------------------------------------------------------------------------
+   The review's leftovers (Oct 4 2026): the renewal conversation, InBody, the
+   report archive, Add a client and the Wrap-up's renewal button
+   --------------------------------------------------------------------------- */
+
+describe("the renewal conversation, InBody and the report archive draw the brand blue, not sky", () => {
+  const FILES = [
+    "features/renewals/LogConversationDialog.tsx",
+    "features/renewals/RenewalCardDialog.tsx",
+    "features/inbody/InBodyScanDialog.tsx",
+    "features/inbody/InBodyTrend.tsx",
+    "components/journal/ProgressReportArchive.tsx",
+  ];
+  it.each(FILES)("%s has no sky utility", (file) => {
+    expect(read(file)).not.toMatch(/(?:^|[\s"'`:])(?:bg|text|border|ring|accent)-sky-\d/m);
+  });
+
+  it("a picked choice in Log a conversation is the theme's blue with its own words", () => {
+    expect(read("features/renewals/LogConversationDialog.tsx")).toContain('"border-primary bg-primary text-primary-foreground"');
+    for (const t of BOTH) {
+      expect(ratio(colour(t, "--primary-foreground"), colour(t, "--primary")), t).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
+describe("Add a client has no retired orange", () => {
+  it("its headings are the deep orange and its fields focus in the theme's ring", () => {
+    const modal = read("components/CreateClientModal.tsx");
+    expect(modal).not.toMatch(/#F06C22/i);
+    expect(modal.match(/focus:border-ring/g) ?? []).toHaveLength(9);
+    for (const t of BOTH) {
+      expect(ratio(colour(t, "--eq-hero-text"), colour(t, "--card")), t).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
+describe("the Wrap-up's renewal-due button", () => {
+  it("is the opaque orange fill with the deep orange icon, never a wash (one over the navy greys out)", () => {
+    const wrap = read("components/WrapUpScreen.tsx");
+    expect(wrap).toContain('"border-(--eq-hero)/50 bg-(--eq-hero-fill) text-ink-d1"');
+    expect(wrap).toContain('"text-(--eq-hero-text)" : "text-(--eq-live)"');
+    expect(wrap).not.toMatch(/bg-cta\/\d/);
+    for (const t of BOTH) {
+      expect(ratio(colour(t, "--eq-hero-text"), colour(t, "--eq-hero-fill")), `${t}: the icon`).toBeGreaterThanOrEqual(3);
+      expect(ratio(colour(t, "--ink-d1"), colour(t, "--eq-hero-fill")), `${t}: the words`).toBeGreaterThanOrEqual(4.5);
     }
   });
 });

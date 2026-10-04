@@ -1019,11 +1019,11 @@ export function WrapUpScreen({
                   onClick={() => setShowRenewal(true)}
                   className={`min-h-11 rounded-xl border px-4 py-2 text-[14px] font-bold hover:opacity-90 flex items-center justify-center gap-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring) ${
                     renewalDue && !renewalLogged
-                      ? "border-cta/50 bg-cta/10 text-ink-d1"
+                      ? "border-(--eq-hero)/50 bg-(--eq-hero-fill) text-ink-d1"
                       : "border-div-d bg-bg-dark-3 text-ink-d1"
                   }`}
                 >
-                  <MessageSquareText className={`w-4 h-4 shrink-0 ${renewalDue && !renewalLogged ? "text-cta" : "text-(--eq-live)"}`} />
+                  <MessageSquareText className={`w-4 h-4 shrink-0 ${renewalDue && !renewalLogged ? "text-(--eq-hero-text)" : "text-(--eq-live)"}`} />
                   {renewalLogged
                     ? "Renewal conversation saved ✓"
                     : renewalDue

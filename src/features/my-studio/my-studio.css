@@ -127,7 +127,7 @@
 .msh__pop-item svg { flex: none; color: var(--st-ink-2); }
 .msh__pop-item:hover,
 .msh__pop-item:focus-visible { background: var(--st-surface-2); outline: none; }
-.msh__pop-item[aria-checked="true"] { background: var(--st-live-fill); color: var(--st-live); }
+.msh__pop-item[aria-checked="true"] { background: var(--st-live-fill); color: var(--st-live-text); }
 .msh__pop-item[aria-checked="true"] svg { color: var(--st-live); }
 .msh__pop-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; overflow-wrap: anywhere; }
 .msh__pop-hint { font-size: 12px; font-weight: 600; color: var(--st-ink-muted); }

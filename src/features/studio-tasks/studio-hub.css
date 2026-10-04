@@ -183,7 +183,7 @@
 .sh__claim--mine {
   border-color: var(--st-live);
   background: var(--st-live-fill);
-  color: var(--st-live);
+  color: var(--st-live-text);
 }
 
 /* Four controls in a 52px row is the ceiling on a phone. The icon carries the
@@ -642,7 +642,7 @@
 .sh__mine[aria-pressed="true"] {
   background: var(--st-live-fill);
   border-color: var(--st-live);
-  color: var(--st-live);
+  color: var(--st-live-text);
 }
 
 /* ------------------------------------------------------------------ *
@@ -897,7 +897,7 @@
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--st-live);
+  color: var(--st-live-text);
   background: var(--st-live-fill);
   border-radius: 999px;
   padding: 2px 6px;

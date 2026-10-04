@@ -73,10 +73,10 @@ export function ConsultationSetupWizard({
   ];
 
   return (
-    <div className="flex flex-col bg-bg-dark min-h-screen text-white pb-48">
+    <div className="flex flex-col bg-bg-dark min-h-screen text-ink-d1 pb-48">
       {/* Header */}
-      <div className="p-6 sm:p-8 pt-10 sm:pt-12 mb-2 bg-linear-to-b from-black/35 to-transparent">
-        <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter text-white">
+      <div className="p-6 sm:p-8 pt-10 sm:pt-12 mb-2 bg-linear-to-b from-transparent dark:from-black/35 to-transparent">
+        <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter text-ink-d1">
           First-Time Setup
         </h1>
         <p className="text-cyan uppercase tracking-widest text-xs font-bold mt-2">
@@ -100,7 +100,7 @@ export function ConsultationSetupWizard({
                   className={cn(
                     "flex-1 py-4 sm:py-5 px-3 rounded-2xl font-black uppercase tracking-tight transition-all duration-200 border-2 text-sm sm:text-base",
                     gender === g
-                      ? "bg-cta/15 text-white border-cta shadow-[0_0_20px_rgba(240,108,34,0.25)] scale-102 sm:scale-105"
+                      ? "bg-(--eq-hero-fill) text-ink-d1 border-cta shadow-[0_0_20px_var(--cta)] shadow-cta/25 scale-102 sm:scale-105"
                       : "bg-bg-dark-2 text-ink-d3 border-div-d hover:border-white/20 hover:bg-white/5",
                   )}
                 >
@@ -120,7 +120,7 @@ export function ConsultationSetupWizard({
                 type="number"
                 value={age ?? ""}
                 onChange={(e) => setAge(parseAge(e.target.value))}
-                className="bg-transparent w-full h-full text-white text-xl sm:text-2xl font-black px-6 outline-none"
+                className="bg-transparent w-full h-full text-ink-d1 text-xl sm:text-2xl font-black px-6 outline-none"
                 placeholder="e.g. 45"
               />
             </div>
@@ -140,7 +140,7 @@ export function ConsultationSetupWizard({
                     className={cn(
                       "flex-1 py-4 sm:py-5 px-1 rounded-2xl font-black uppercase tracking-tight transition-all duration-200 border-2 text-xs sm:text-sm",
                       skillLevel === s
-                        ? "bg-cta/15 text-white border-cta shadow-[0_0_20px_rgba(240,108,34,0.25)] scale-102 sm:scale-105"
+                        ? "bg-(--eq-hero-fill) text-ink-d1 border-cta shadow-[0_0_20px_var(--cta)] shadow-cta/25 scale-102 sm:scale-105"
                         : "bg-bg-dark-2 text-ink-d3 border-div-d hover:border-white/20 hover:bg-white/5",
                     )}
                   >
@@ -193,7 +193,7 @@ export function ConsultationSetupWizard({
                             Starting Wt
                           </span>
                           <div className="bg-black/30 border-2 border-div-d shadow-sm px-5 py-2.5 rounded-xl flex items-baseline gap-1.5">
-                            <span className="text-3xl font-black tracking-tighter text-cta">
+                            <span className="text-3xl font-black tracking-tighter text-(--eq-hero-text)">
                               {weight ?? "—"}
                             </span>
                             {weight !== null && (
@@ -227,7 +227,7 @@ export function ConsultationSetupWizard({
             <Button
               variant="ghost"
               onClick={onCancel}
-              className="text-ink-d3 hover:text-white hover:bg-white/5 font-bold uppercase tracking-widest text-xs h-12 rounded-xl flex-1 sm:flex-initial"
+              className="text-ink-d3 hover:text-ink-d1 hover:bg-white/5 font-bold uppercase tracking-widest text-xs h-12 rounded-xl flex-1 sm:flex-initial"
             >
               Cancel
             </Button>
@@ -235,7 +235,7 @@ export function ConsultationSetupWizard({
           <Button
             variant="ghost"
             onClick={() => onComplete({ gender, age, skillLevel, routine: [] })}
-            className="text-cta hover:bg-cta/10 font-black uppercase tracking-widest text-xs px-5 rounded-xl border-2 border-cta/30 flex flex-col items-center justify-center py-2 h-12 flex-1 sm:flex-initial"
+            className="text-(--eq-hero-text) hover:bg-(--eq-hero-fill) font-black uppercase tracking-widest text-xs px-5 rounded-xl border-2 border-cta/30 flex flex-col items-center justify-center py-2 h-12 flex-1 sm:flex-initial"
           >
             <span className="leading-none">Skip Setup</span>
             <span className="text-[9px] opacity-60 font-bold mt-0.5">
