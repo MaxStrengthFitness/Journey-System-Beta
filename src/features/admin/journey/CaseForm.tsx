@@ -35,7 +35,7 @@ export interface CaseFormProps {
   choices: readonly OwnerChoice[];
 }
 
-const firstNameOf = (name: string) => name.trim().split(/\s+/)[0] || "her";
+const firstNameOf = (name: string) => name.trim().split(/\s+/)[0] || "this client";
 
 export function CaseForm({ studioId, clientId, clientName, stored, view, rights, choices }: CaseFormProps) {
   // A leader tapped "Open a case" where none is stored.
@@ -117,7 +117,7 @@ export function CaseForm({ studioId, clientId, clientName, stored, view, rights,
       <p className="ops-quiet">
         {stored
           ? "The case as the team wrote it. Any change here counts as a step."
-          : `Nothing is stored for ${first} yet: the case above is worked out by the rules. Open one to write down who is catching her and what happens next.`}
+          : `Nothing is stored for ${first} yet: the case above is worked out by the rules. Open one to write down who is catching ${first} and what happens next.`}
       </p>
       <div className="ops-case__fields">
         <AdminField label="Owner" required htmlFor="case-owner" hint={may("owner") ? "Someone who works here. Their Relay lists the cases they own." : "Only a leader changes the owner."}>
@@ -144,7 +144,7 @@ export function CaseForm({ studioId, clientId, clientName, stored, view, rights,
             onChange={(e) => form.setField("nextStep", e.target.value)}
           />
         </AdminField>
-        <AdminField label="Outcome" htmlFor="case-outcome" hint="Booked again closes it by itself when Journey sees her booking; Paused and Lost are the team's words.">
+        <AdminField label="Outcome" htmlFor="case-outcome" hint="Booked again closes it by itself when Journey sees a new booking; Paused and Lost are the team's words.">
           <AdminSelect id="case-outcome" value={form.value.outcome} disabled={!may("outcome")} onChange={(e) => form.setField("outcome", e.target.value as CaseOutcome)}>
             {CASE_OUTCOMES.map((o) => (
               <option key={o} value={o}>
@@ -153,7 +153,7 @@ export function CaseForm({ studioId, clientId, clientName, stored, view, rights,
             ))}
           </AdminSelect>
         </AdminField>
-        <AdminField label="Reason" htmlFor="case-reason" hint={reasonWanted ? "Why, in a line. The next person to open her should know." : "Optional."}>
+        <AdminField label="Reason" htmlFor="case-reason" hint={reasonWanted ? "Why, in a line. The next person to open this case should know." : "Optional."}>
           <AdminInput
             id="case-reason"
             value={form.value.reason}

@@ -85,12 +85,12 @@ export function teamNotesQuestion(input: {
     const label = noteCardLabel(e);
     const body = firstSentences(e.body, 140) || (e.body ?? "").trim();
     const where = bodyMarksLine(e.bodyParts);
-    const loud = e.importance === "elevated" ? "A Heads up: the next trainers hear it at her next four sessions." : "Filed at Note: on her record, not her briefing.";
+    const loud = e.importance === "elevated" ? "A Heads up: the next trainers hear it at the next four sessions." : "Filed at Note: on the record, not the briefing.";
     rows.push({
       clientId: e.clientId,
       name: names.get(e.clientId) ?? "A client at this studio",
       sentence: `${label} from ${firstName(e.authorName)}, ${day === today ? "today" : day}: ${body}`,
-      proof: [where ? `${where}.` : null, loud, "Seen takes it off this list; the note stays on her record."]
+      proof: [where ? `${where}.` : null, loud, "Seen takes it off this list; the note stays on the record."]
         .filter(Boolean)
         .join(" "),
       tone: noteCategoryOf(e) === "incident" ? "alert" : "warn",

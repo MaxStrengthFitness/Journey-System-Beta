@@ -151,7 +151,7 @@ export function ClientPage(props: ClientPageProps) {
 
       {!client || !row ? (
         <>
-          <AdminNotice tone="info">This client isn't on this studio's list on this iPad, so Operations can't say more here. Her full profile has everything.</AdminNotice>
+          <AdminNotice tone="info">This client isn't on this studio's list on this iPad, so Operations can't say more here. The full profile has everything.</AdminNotice>
           {onOpenProfile && (
             <div className="ops-client__acts">
               <AdminButton variant="primary" onClick={() => onOpenProfile(clientId)}>
@@ -174,7 +174,7 @@ export function ClientPage(props: ClientPageProps) {
                   ...row.badges,
                 ]
                   .filter(Boolean)
-                  .join(" · ") || "Nothing on file about when she started."}
+                  .join(" · ") || "Nothing on file about when this client started."}
               </p>
             </div>
             {onOpenProfile && (
@@ -195,7 +195,7 @@ export function ClientPage(props: ClientPageProps) {
 
           <div>
             <p className="ops-line">
-              <b>Renewal:</b> {renewal ? `${situationSentence(renewal, today)}.` : `${chipText(null, today)}. Last night's record hasn't reached her yet.`}
+              <b>Renewal:</b> {renewal ? `${situationSentence(renewal, today)}.` : `${chipText(null, today)}. Last night's record doesn't include this client yet.`}
             </p>
             {renewal && <p className="ops-quiet">{paceSentence(renewal)}.</p>}
           </div>
@@ -216,9 +216,9 @@ export function ClientPage(props: ClientPageProps) {
               }}
             />
           ) : !journeys.ready ? (
-            <p className="ops-quiet">Reading her journey…</p>
+            <p className="ops-quiet">Reading the journey…</p>
           ) : row.visitingFrom ? (
-            <p className="ops-quiet">Her home studio, {row.visitingFrom}, keeps her journey.</p>
+            <p className="ops-quiet">{row.visitingFrom}, the home studio, keeps the journey.</p>
           ) : null}
 
           {children}

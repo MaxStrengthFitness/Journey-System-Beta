@@ -32,7 +32,7 @@ describe("the case, worked out", () => {
     // A worked-out owner carries the sign-in uid, the id a stored case keeps.
     expect(c.owner).toEqual({ id: "uid-ber", name: "Beregond Guard", usual: true });
     expect(c.nextStep).toContain("Beregond is in today (7:00 AM – 3:00 PM): ask if they know why.");
-    expect(c.nextStep).toContain("Beregond phones her (a person, not the app)");
+    expect(c.nextStep).toContain("Beregond phones the client (a person, not the app)");
     expect(c.dueDay).toBe("2026-09-28");
     expect(CASE_ESCALATE_DAYS).toBe(3);
     expect(c.leaders).toBe(false);
@@ -43,13 +43,13 @@ describe("the case, worked out", () => {
     const c = caseOf(journey({ since: "2026-09-20" }), { trainer: beregond, inToday: null }, TODAY);
     expect(c.leaders).toBe(true);
     expect(c.nextStep).toContain("Ask Beregond next time they're in.");
-    expect(c.nextStep).toContain("so it's the leader's now. No case is stored for her, so check with Beregond first.");
+    expect(c.nextStep).toContain("so it's the leader's now. No case is stored for this client, so check with Beregond first.");
   });
 
   it("with no usual trainer on record, a leader owns it", () => {
     const c = caseOf(journey({ state: "at-risk", crossed: "studio-line" }), { trainer: null, inToday: null }, TODAY);
     expect(c.owner).toEqual({ id: null, name: "A leader", usual: false });
-    expect(c.nextStep).toMatch(/^A leader phones her the next day they're in/);
+    expect(c.nextStep).toMatch(/^A leader phones the client the next day they're in/);
   });
 
   it("closes by itself when she books again, and is no case for a steady client", () => {
@@ -60,14 +60,14 @@ describe("the case, worked out", () => {
     const steady = caseOf(journey({ state: "steady", crossed: null, since: null }), { trainer: beregond, inToday: null }, TODAY);
     expect(steady.open).toBe(false);
     expect(steady.dueDay).toBeNull();
-    expect(steady.nextStep).toBe("Nothing to do. She's in her own rhythm.");
+    expect(steady.nextStep).toBe("Nothing to do. The rhythm is steady.");
     expect(caseWorthy("drifting") && caseWorthy("at-risk") && caseWorthy("lapsed")).toBe(true);
     expect(caseWorthy("steady") || caseWorthy("back") || caseWorthy("unknown")).toBe(false);
   });
 
   it("says what an unknown waits on", () => {
     expect(caseOf(journey({ state: "unknown", unknownWhy: "too-new" }), { trainer: null, inToday: null }, TODAY).nextStep).toContain("six visits over four weeks");
-    expect(caseOf(journey({ state: "unknown", unknownWhy: "bookings-unread" }), { trainer: null, inToday: null }, TODAY).nextStep).toContain("until her bookings are read");
+    expect(caseOf(journey({ state: "unknown", unknownWhy: "bookings-unread" }), { trainer: null, inToday: null }, TODAY).nextStep).toContain("until the bookings are read");
   });
 });
 
@@ -102,7 +102,7 @@ describe("the case, stored (wave 2)", () => {
       updatedOn: "2026-09-27",
     });
     expect(c.owner.usual).toBe(false);
-    expect(c.nextStep).toMatch(/^A leader phones her/);
+    expect(c.nextStep).toMatch(/^A leader phones the client/);
   });
 
   it("comes to the leader after three days with no step, counted from its last change", () => {
@@ -119,7 +119,7 @@ describe("the case, stored (wave 2)", () => {
     expect(c.bookedAgainOnRead).toBe(true);
     expect(c.open).toBe(false);
     expect(c.leaders).toBe(false);
-    expect(c.outcomeWords).toContain("Journey sees her next booking on Wednesday, Sep 30");
+    expect(c.outcomeWords).toContain("Journey sees the next booking on Wednesday, Sep 30");
   });
 
   it("says a closed case's outcome and reason", () => {

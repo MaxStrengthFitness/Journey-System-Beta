@@ -102,9 +102,9 @@ export function RetentionConversations({
   return (
     <div className="ops-case__b" data-testid="retention-conversations">
       <h3 className="ops-case__lab">Conversations about staying</h3>
-      {read.status === "loading" && <p className="ops-quiet">Reading her retention notes…</p>}
+      {read.status === "loading" && <p className="ops-quiet">Reading the retention notes…</p>}
       {read.status === "failed" && (
-        <p className="ops-quiet">Her retention notes couldn't be read just now, so a conversation saved here starts a new thread.</p>
+        <p className="ops-quiet">The retention notes couldn't be read just now, so a conversation saved here starts a new thread.</p>
       )}
       {read.status === "ready" && open && (
         <ol className="ops-convo" aria-label="The open conversation, oldest first">
@@ -135,14 +135,14 @@ export function RetentionConversations({
             label={open ? "Add to the conversation" : "Write down a conversation"}
             wide
             htmlFor={`convo-${clientId}`}
-            hint="It goes on her notes as Retention, for the whole team: the next trainer's briefing while it is new, and Is she staying with us? on her Notes. Journey contacts no one."
+            hint="It goes on the client's notes as Retention, for the whole team: the next trainer's briefing while it is new, and the staying question on Notes. Journey contacts no one."
           >
             <AdminTextarea
               id={`convo-${clientId}`}
               rows={3}
               maxLength={5000}
               value={text}
-              placeholder="What she said, and what was said to her — renewing, the package, staying or leaving."
+              placeholder="What the client said, and what was said back — renewing, the package, staying or leaving."
               onChange={(e) => {
                 setText(e.target.value);
                 setSaved(false);
@@ -156,12 +156,12 @@ export function RetentionConversations({
           )}
           {saved && !text && (
             <p className="ops-quiet" role="status">
-              Saved to her notes.
+              Saved to the client's notes.
             </p>
           )}
           <div className="ops-case__acts">
             <AdminButton variant="primary" busy={saving} disabled={!text.trim()} onClick={() => void save()}>
-              Save to her notes
+              Save to the client's notes
             </AdminButton>
           </div>
         </form>

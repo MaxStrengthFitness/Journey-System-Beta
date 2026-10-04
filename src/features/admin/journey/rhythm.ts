@@ -106,7 +106,7 @@ export function rhythmFromVisits(days: readonly string[], today: string): Rhythm
  * pace, held to the same minimum on an estimate of the visits behind it.
  */
 export function rhythmFromSnapshot(s: Pick<RenewalSnapshot, "pacePerWeek" | "proof"> | null | undefined): RhythmResult {
-  if (!s) return { measured: false, visits: null, why: "no nightly record for her yet" };
+  if (!s) return { measured: false, visits: null, why: "no nightly record for this client yet" };
   const pace = typeof s.pacePerWeek === "number" && Number.isFinite(s.pacePerWeek) ? s.pacePerWeek : null;
   const weeks = typeof s.proof?.weeksObserved === "number" ? s.proof.weeksObserved : null;
   if (pace === null) return { measured: false, visits: null, why: "not enough weeks on record for a pace yet" };

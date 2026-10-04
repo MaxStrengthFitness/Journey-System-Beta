@@ -115,7 +115,7 @@ describe("one studio's night", () => {
     expect(t.crossed).toBe("twice-usual");
     // Last visit Thu Sep 17 plus the drift line (7 days): the day he crossed it.
     expect(t.since).toBe("2026-09-24");
-    expect(t.reasons[0]).toBe("She usually trains every 3–4 days. It has been 11 days, and nothing is booked.");
+    expect(t.reasons[0]).toBe("Usually trains every 3–4 days. It has been 11 days, and nothing is booked.");
     const h = night.states.get("hama")!;
     expect(h.state).toBe("back");
     expect(h.nextBookedHere).toBe(false);

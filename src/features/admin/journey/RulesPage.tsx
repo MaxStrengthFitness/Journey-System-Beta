@@ -97,10 +97,10 @@ export function RulesPage({ studio, onOpenMyStudio }: RulesPageProps) {
   ];
 
   const lineSentence: Record<LineKey, string> = {
-    driftMultiple: `Drifting: ${multipleWords(lines.driftMultiple).toLowerCase()} her usual gap between visits, with nothing booked.`,
-    driftMinDays: `However short her usual gap, Drifting waits at least ${lines.driftMinDays} days.`,
-    lapsedDays: `Lapsed: ${lines.lapsedDays} days since her last visit, with nothing booked. A client Journey can't judge yet is never Lapsed.`,
-    inactiveDays: `Inactive: ${lines.inactiveDays} days since her last visit, with nothing booked, or marked inactive by a leader. A booking makes her active again; a client Journey can't judge yet is never made Inactive by herself.`,
+    driftMultiple: `Drifting: ${multipleWords(lines.driftMultiple).toLowerCase()} the usual gap between visits, with nothing booked.`,
+    driftMinDays: `However short the usual gap, Drifting waits at least ${lines.driftMinDays} days.`,
+    lapsedDays: `Lapsed: ${lines.lapsedDays} days since the last visit, with nothing booked. A client Journey can't judge yet is never Lapsed.`,
+    inactiveDays: `Inactive: ${lines.inactiveDays} days since the last visit, with nothing booked, or marked inactive by a leader. A booking makes the client active again; a client Journey can't judge yet becomes Inactive only by a leader's mark.`,
     newMax: `New: sessions 1 to ${lines.newMax}, and only from a total that may be quoted — a client whose history is before Journey is never called new.`,
     settlingMax: `Settling in: sessions ${lines.newMax + 1} to ${lines.settlingMax}.`,
   };
@@ -120,7 +120,7 @@ export function RulesPage({ studio, onOpenMyStudio }: RulesPageProps) {
       key: "gap",
       name: "A usual gap",
       line: `Needs ${MIN_RHYTHM_VISITS} visits over ${MIN_RHYTHM_WEEKS} weeks. Below that a client is "too new to judge", never steady or slipping.`,
-      where: "The research's minimum, the same at every studio. Measured each night from her visits, or on the page from last night's pace until the night's states arrive.",
+      where: "The research's minimum, the same at every studio. Measured each night from the client's visits, or on the page from last night's pace until the night's states arrive.",
     },
     { key: "nightly", name: "The nightly record", line: `Trusted until ${NIGHTLY_STALE_DAYS} days pass with no client's record changing; then nobody's rhythm is judged from it.`, where: constant },
   ];

@@ -249,7 +249,7 @@ describe("Clients → Journey", () => {
     expect(rows.map((r) => r.querySelector(".ops-inrow__name")?.textContent)).toEqual(["Otho Sackville", "Lobelia Sackville"]);
     expect(rows[0].textContent).toContain("Marked inactive · since Tue, Sep 22");
     expect(rows[0].textContent).toContain("Moved away: Moved to the Shire. Marked by Glorfindel Lord.");
-    expect(rows[1].textContent).toContain("Inactive by herself · since Fri, Sep 18");
+    expect(rows[1].textContent).toContain("Inactive past the line · since Fri, Sep 18");
     expect(rows[1].textContent).toContain("past the studio's 90-day line");
     expect(rows[1].textContent).toContain("no win-back case yet");
     // Only a leader's mark can be taken back here; the line's own needs a booking.

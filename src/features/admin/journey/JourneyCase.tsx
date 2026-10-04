@@ -115,15 +115,15 @@ export function JourneyCase({ entry, studioId, today, me, tz, trainers = [], aut
     snapshot ? `Renewal: ${situationSentence(snapshot, today)}.` : `${chipText(null, today)}.`,
     ...(snapshot?.flags ?? []).map((f) => f.text),
     entry.watch === "snoozed" && entry.watchEntry?.snoozedUntil ? `Snoozed until ${dayWords(entry.watchEntry.snoozedUntil)}.` : null,
-    entry.watch === "dismissed" && entry.watchEntry ? `Dismissed${entry.watchEntry.dismissedByName ? ` by ${entry.watchEntry.dismissedByName}` : ""}${entry.watchEntry.dismissedAt ? ` on ${dayWords(entry.watchEntry.dismissedAt)}` : ""}: someone knows why she's out.` : null,
+    entry.watch === "dismissed" && entry.watchEntry ? `Dismissed${entry.watchEntry.dismissedByName ? ` by ${entry.watchEntry.dismissedByName}` : ""}${entry.watchEntry.dismissedAt ? ` on ${dayWords(entry.watchEntry.dismissedAt)}` : ""}: someone knows why.` : null,
   ].filter((t): t is string => Boolean(t));
 
   return (
     <section className="ops-case" aria-label={`${entry.row.name.display}'s journey`}>
       <header className="ops-case__h">
-        <h2 className="ops-case__t">Her journey</h2>
+        <h2 className="ops-case__t">The client's journey</h2>
         <AdminBadge tone={STATE_TONE[j.state]}>{STATE_NAMES[j.state]}</AdminBadge>
-        {!j.judged && j.state !== "unknown" && <span className="ops-quiet">Too new to judge her rhythm</span>}
+        {!j.judged && j.state !== "unknown" && <span className="ops-quiet">Too new to judge a rhythm</span>}
       </header>
       <dl className="ops-case__body">
         <div className="ops-case__b">
@@ -147,11 +147,11 @@ export function JourneyCase({ entry, studioId, today, me, tz, trainers = [], aut
           <dt className="ops-case__lab">Next step</dt>
           <dd className="ops-line">
             <b>Owner: {c.owner.name}</b>
-            {c.owner.usual ? " · her usual trainer" : " · no usual trainer on record"}
+            {c.owner.usual ? " · the usual trainer" : " · no usual trainer on record"}
             {entry.usualInToday ? ` · in today, ${entry.usualInToday}` : ""}
           </dd>
           <dd className="ops-line">{c.nextStep}</dd>
-          {c.open && c.dueDay && !c.leaders && <dd className="ops-quiet">If nobody has caught her by {dayWords(c.dueDay)}, it's the leader's.</dd>}
+          {c.open && c.dueDay && !c.leaders && <dd className="ops-quiet">If nobody has caught the client by {dayWords(c.dueDay)}, it's the leader's.</dd>}
         </div>
         {(c.open || c.outcome) && (
           <div className="ops-case__b">
@@ -180,7 +180,7 @@ export function JourneyCase({ entry, studioId, today, me, tz, trainers = [], aut
           {stampWords(stored.updatedAt, tz) ? `, last changed ${stampWords(stored.updatedAt, tz)}` : ""}.
         </p>
       )}
-      {casesFailed && !leads && own.failed && <p className="ops-quiet">Her stored case couldn't be read on this iPad, so the case above is worked out by the rules.</p>}
+      {casesFailed && !leads && own.failed && <p className="ops-quiet">The stored case couldn't be read on this iPad, so the case above is worked out by the rules.</p>}
       {authTrainer && !own.loading && (
         <CaseForm studioId={studioId} clientId={entry.id} clientName={entry.row.name.display} stored={stored} view={c} rights={rights} choices={choices} />
       )}
@@ -189,7 +189,7 @@ export function JourneyCase({ entry, studioId, today, me, tz, trainers = [], aut
         <RetentionConversations
           clientId={entry.id}
           homeStudioId={(entry.client as Client | undefined)?.homeStudioId || studioId}
-          firstName={entry.row.name.display.split(/\s+/)[0] || "her"}
+          firstName={entry.row.name.display.split(/\s+/)[0] || "this client"}
           author={me.id ? { id: me.id, initials: (authTrainer.initials || "").toUpperCase(), fullName: authTrainer.fullName || me.name } : null}
         />
       )}
@@ -201,7 +201,7 @@ export function JourneyCase({ entry, studioId, today, me, tz, trainers = [], aut
                 Snooze
               </AdminButton>
               <AdminButton size="sm" variant="ghost" busy={busy} onClick={() => void run(() => writeWatch(studioId, dismissal(entry.id, entry.client as Client, me, today)))}>
-                Dismiss: I know why she's out
+                Dismiss: I know why
               </AdminButton>
             </>
           ) : (

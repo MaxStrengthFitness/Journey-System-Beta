@@ -45,7 +45,7 @@ describe("rhythmFromSnapshot — what a screen can say without her history", () 
   });
 
   it("says why when it can't: no record, no pace, too few weeks, too few visits", () => {
-    expect(rhythmFromSnapshot(null)).toMatchObject({ measured: false, why: "no nightly record for her yet" });
+    expect(rhythmFromSnapshot(null)).toMatchObject({ measured: false, why: "no nightly record for this client yet" });
     expect(rhythmFromSnapshot(snap(null, 12))).toMatchObject({ measured: false, why: "not enough weeks on record for a pace yet" });
     expect(rhythmFromSnapshot(snap(2, null))).toMatchObject({ measured: false, why: "fewer than 4 weeks of visits on record" });
     // Once a week over four observed weeks is about four visits: under six.

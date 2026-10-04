@@ -74,7 +74,7 @@ describe("journeyOf", () => {
     const j = journeyOf(input());
     expect(j.state).toBe("steady");
     expect(j.judged).toBe(true);
-    expect(j.why).toBe("Trains every 3–4 days, in her own rhythm.");
+    expect(j.why).toBe("Trains every 3–4 days, a steady rhythm.");
   });
 
   it("is Drifting at twice her usual gap with nothing booked, and names the line", () => {
@@ -83,15 +83,15 @@ describe("journeyOf", () => {
     expect(j.crossed).toBe("twice-usual");
     expect(j.daysSince).toBe(10);
     expect(j.since).toBe("2026-09-25");
-    expect(j.why).toBe("She usually trains every 3–4 days. It has been 10 days, and nothing is booked.");
-    expect(j.proof).toContain("twice her usual gap is 7 days");
+    expect(j.why).toBe("Usually trains every 3–4 days. It has been 10 days, and nothing is booked.");
+    expect(j.proof).toContain("twice the usual gap is 7 days");
   });
 
   it("is At risk past the studio's own line, and Lapsed past 45 days", () => {
     const atRisk = journeyOf(input({ lastVisit: "2026-09-10", next: { state: "none", day: null } }));
     expect(atRisk.state).toBe("at-risk");
     expect(atRisk.crossed).toBe("studio-line");
-    expect(atRisk.why).toBe("18 days since her last visit, past the studio's 14-day line, and nothing is booked.");
+    expect(atRisk.why).toBe("18 days since the last visit, past the studio's 14-day line, and nothing is booked.");
     const lapsed = journeyOf(input({ lastVisit: "2026-08-10", next: { state: "none", day: null } }));
     expect(lapsed.state).toBe("lapsed");
     expect(lapsed.crossed).toBe("lapse-line");
@@ -163,9 +163,9 @@ describe("journeyOf", () => {
     // The drifting proof names the studio's own multiple.
     const drifting = journeyOf(input({ ...out, lines: { ...APP_LINES, driftMultiple: 3 } }));
     expect(drifting.state).toBe("drifting");
-    expect(drifting.proof).toContain("three times her usual gap is 11 days");
+    expect(drifting.proof).toContain("three times the usual gap is 11 days");
     // New and Settling in at the studio's own sessions.
-    expect(journeyOf(input({ quotableTotal: 12, lines: { ...APP_LINES, newMax: 12 } })).why).toBe("At session 12 of her first 12.");
+    expect(journeyOf(input({ quotableTotal: 12, lines: { ...APP_LINES, newMax: 12 } })).why).toBe("At session 12 of the first 12.");
   });
 
   it("counts every state, the empty ones as zero", () => {
@@ -198,7 +198,7 @@ describe("Inactive, the end of the line (Oct 1 2026)", () => {
     expect(j.crossed).toBe("inactive-line");
     expect(j.since).toBe("2026-09-28");
     expect(j.inactive).toEqual({ kind: "automatic", since: "2026-09-28", mark: null });
-    expect(j.why).toBe("90 days since her last visit, past the studio's 90-day line, and nothing is booked: inactive by herself.");
+    expect(j.why).toBe("90 days since the last visit, past the studio's 90-day line, and nothing is booked, so inactive.");
   });
 
   it("holds a client to the studio's own Inactive line", () => {
@@ -246,7 +246,7 @@ describe("Inactive, the end of the line (Oct 1 2026)", () => {
   it("reads Back when a marked client books again, and lets the rules decide once she visits after the mark", () => {
     const booked = journeyOf(input({ lastVisit: "2026-09-12", next: { state: "booked", day: "2026-10-01" }, mark: mark() }));
     expect(booked.state).toBe("back");
-    expect(booked.why).toContain("booked again since: she's back");
+    expect(booked.why).toContain("booked again since: back with us");
     // She came in on the 26th, after the mark of the 20th: the mark no longer holds.
     const visited = journeyOf(input({ lastVisit: "2026-09-26", next: { state: "booked", day: "2026-09-30" }, mark: mark() }));
     expect(visited.state).toBe("steady");

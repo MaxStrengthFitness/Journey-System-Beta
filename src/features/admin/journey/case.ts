@@ -92,32 +92,32 @@ function ruleStep(j: ClientJourney, owner: { usual: boolean; name: string }, fir
   switch (j.state) {
     case "drifting":
       return inToday
-        ? `${first} is in today (${inToday}): ask if they know why. If nobody knows by ${dueDay ? dayWords(dueDay) : "the third day"}, ${owner.usual ? first : "a leader"} phones her (a person, not the app) and writes a note on her profile about how it went.`
-        : `Ask ${owner.usual ? first : "her usual trainer"} next time they're in. If nobody knows by ${dueDay ? dayWords(dueDay) : "the third day"}, ${owner.usual ? first : "a leader"} phones her (a person, not the app) and writes a note on her profile about how it went.`;
+        ? `${first} is in today (${inToday}): ask if they know why. If nobody knows by ${dueDay ? dayWords(dueDay) : "the third day"}, ${owner.usual ? first : "a leader"} phones the client (a person, not the app) and writes a note on the profile about how it went.`
+        : `Ask ${owner.usual ? first : "the client's usual trainer"} next time they're in. If nobody knows by ${dueDay ? dayWords(dueDay) : "the third day"}, ${owner.usual ? first : "a leader"} phones the client (a person, not the app) and writes a note on the profile about how it went.`;
     case "at-risk":
-      return `${owner.usual ? first : "A leader"} phones her ${inToday ? "today" : "the next day they're in"} (a person, not the app) and writes a note on her profile about how it went.`;
+      return `${owner.usual ? first : "A leader"} phones the client ${inToday ? "today" : "the next day they're in"} (a person, not the app) and writes a note on the profile about how it went.`;
     case "lapsed":
-      return "A note on file. If she comes by, someone catches her in person; one call from the person who knows her best is fine.";
+      return "A note on file. If the client comes by, someone has a word in person; one call from whoever knows the client best is fine.";
     case "inactive":
       return j.inactive?.kind === "manual"
-        ? "Nothing to chase: a leader marked her inactive. If a win-back is worth trying, open a case and name who reaches out (a person, not the app)."
-        : "A win-back, if it's worth one: the person who knows her best reaches out once (a person, not the app) and writes a note on her profile about how it went.";
+        ? "Nothing to chase: a leader marked the client inactive. If a win-back is worth trying, open a case and name who reaches out (a person, not the app)."
+        : "A win-back, if it's worth one: whoever knows the client best reaches out once (a person, not the app) and writes a note on the profile about how it went.";
     case "back":
-      return "Welcome her back. Booking again closed the case by itself.";
+      return "Welcome the client back. Booking again closed the case by itself.";
     case "away":
-      return j.why.includes("until") ? "Nothing to do until she's due back." : "Nothing to do; ask when she expects to be back next time someone speaks with her.";
+      return j.why.includes("until") ? "Nothing to do before the day due back." : "Nothing to do; next time someone speaks with the client, ask about a day back.";
     case "new":
-      return "Book her next two before she leaves, and find her a standing slot.";
+      return "Book the next two before the client leaves, and find a standing slot.";
     case "settling":
-      return `Nothing to do. ${owner.usual ? first : "Her trainer"} is building her rhythm.`;
+      return `Nothing to do. ${owner.usual ? first : "The trainer"} is building a rhythm.`;
     case "steady":
-      return "Nothing to do. She's in her own rhythm.";
+      return "Nothing to do. The rhythm is steady.";
     default:
       return j.unknownWhy === "bookings-unread"
-        ? "Nothing can be judged until her bookings are read. Check Setup → Mindbody."
+        ? "Nothing can be judged until the bookings are read. Check Setup → Mindbody."
         : j.unknownWhy === "too-new"
-          ? "Nothing to judge yet. Her rhythm is measured once six visits over four weeks are on record."
-          : "Nothing can be judged until last night's record reaches her.";
+          ? "Nothing to judge yet. A rhythm is measured once six visits over four weeks are on record."
+          : "Nothing can be judged until last night's record includes this client.";
   }
 }
 
@@ -139,7 +139,7 @@ export function caseOf(j: ClientJourney, who: CaseOwnerInput, today: string, sto
     const outcome: CaseOutcome | null = bookedAgainOnRead ? "booked-again" : s.outcome === "open" ? null : s.outcome;
     const reason = s.reason ? ` ${s.reason.trim().replace(/\.?$/, ".")}` : "";
     const outcomeWords = bookedAgainOnRead
-      ? `Booked again: Journey sees her next booking on ${dayWords(j.nextBooking as string)}. Close the case when you're happy she's back.`
+      ? `Booked again: Journey sees the next booking on ${dayWords(j.nextBooking as string)}. Close the case once you're happy the client is back.`
       : s.outcome === "booked-again"
         ? `Closed: booked again.${reason}`
         : s.outcome === "paused"
@@ -168,7 +168,7 @@ export function caseOf(j: ClientJourney, who: CaseOwnerInput, today: string, sto
   const dueDay = open && j.since ? addDays(j.since, CASE_ESCALATE_DAYS) : null;
   const leaders = Boolean(dueDay && today > dueDay);
   let nextStep = ruleStep(j, owner, first, dueDay, who.inToday);
-  const leadersWhy = open && leaders ? `It's past ${dayWords(dueDay as string)}, so it's the leader's now. No case is stored for her, so check with ${owner.usual ? first : "the team"} first.` : null;
+  const leadersWhy = open && leaders ? `It's past ${dayWords(dueDay as string)}, so it's the leader's now. No case is stored for this client, so check with ${owner.usual ? first : "the team"} first.` : null;
   if (leadersWhy) nextStep = `${nextStep} ${leadersWhy}`;
   const outcome: CaseOutcome | null = j.state === "back" ? "booked-again" : null;
   const outcomeWords = outcome ? "Booked again: the case closed by itself when Journey saw the booking from Mindbody." : open ? "Booked again closes the case by itself. Journey notices the booking from Mindbody." : "";

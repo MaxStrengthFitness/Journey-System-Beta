@@ -106,10 +106,10 @@ describe("Setup → Rules", () => {
     expect(text).toContain("Solon's own number, set on My Studio → Studio.");
 
     // The studio's own beats head office's; head office's beats the app's.
-    expect(rule(el, "Lapsed")?.textContent).toContain("Lapsed: 60 days since her last visit, with nothing booked.");
+    expect(rule(el, "Lapsed")?.textContent).toContain("Lapsed: 60 days since the last visit, with nothing booked.");
     expect(rule(el, "Lapsed")?.dataset.source).toBe("studio");
     expect(rule(el, "Lapsed")?.textContent).toContain("This studio's own: Solon's leaders set it on My Studio → Studio.");
-    expect(rule(el, "Drifting")?.textContent).toContain("Drifting: 2.5 times her usual gap between visits");
+    expect(rule(el, "Drifting")?.textContent).toContain("Drifting: 2.5 times the usual gap between visits");
     expect(rule(el, "Drifting")?.dataset.source).toBe("company");
     expect(rule(el, "Drifting")?.textContent).toContain("Max Strength's default, set by head office.");
     expect(rule(el, "Drifting's least")?.textContent).toContain("waits at least 7 days");
@@ -131,7 +131,7 @@ describe("Setup → Rules", () => {
     const el = await mount();
     expect(el.textContent).toContain("Warn me when a client has not visited for 14 days");
     expect(el.textContent).toContain("Max Strength's default: the studio hasn't set its own");
-    expect(rule(el, "Lapsed")?.textContent).toContain("Lapsed: 45 days since her last visit");
+    expect(rule(el, "Lapsed")?.textContent).toContain("Lapsed: 45 days since the last visit");
     expect(rule(el, "Lapsed")?.dataset.source).toBe("app");
   });
 

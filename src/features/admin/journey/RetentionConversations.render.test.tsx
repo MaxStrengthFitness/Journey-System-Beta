@@ -101,11 +101,11 @@ describe("conversations about staying, on the case", () => {
     expect(box.textContent).toContain("Add to the conversation");
 
     await typeInto(box.querySelector("textarea"), "She renewed for six months.");
-    await act(async () => buttonIn(box, "Save to her notes")!.click());
+    await act(async () => buttonIn(box, "Save to the client's notes")!.click());
     await settle();
     expect(writes.list).toEqual([{ how: "update", text: "She renewed for six months.", rootId: "r1" }]);
     expect((box.querySelector("textarea") as HTMLTextAreaElement).value).toBe("");
-    expect(box.textContent).toContain("Saved to her notes.");
+    expect(box.textContent).toContain("Saved to the client's notes.");
   });
 
   it("starts a new thread when nothing is open, and says when the read failed without refusing the save", async () => {
@@ -114,7 +114,7 @@ describe("conversations about staying, on the case", () => {
     const box = host.querySelector('[data-testid="retention-conversations"]')!;
     expect(box.textContent).toContain("couldn't be read just now, so a conversation saved here starts a new thread");
     await typeInto(box.querySelector("textarea"), "Thinking of cancelling.");
-    await act(async () => buttonIn(box, "Save to her notes")!.click());
+    await act(async () => buttonIn(box, "Save to the client's notes")!.click());
     await settle();
     expect(writes.list).toEqual([{ how: "new", text: "Thinking of cancelling.", rootId: undefined }]);
   });

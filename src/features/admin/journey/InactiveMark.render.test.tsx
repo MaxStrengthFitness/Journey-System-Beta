@@ -98,7 +98,7 @@ describe("the inactive mark", () => {
     // No reason yet: the save waits for one.
     expect(form.querySelector<HTMLButtonElement>("button[type='submit']")!.disabled).toBe(true);
     const reasons = [...form.querySelectorAll<HTMLButtonElement>(".ops-inactive__reason")];
-    expect(reasons.map((r) => r.textContent)).toEqual(["Moved away", "Injury or health", "Cost", "Schedule or time", "Taking a break, her choice", "Other"]);
+    expect(reasons.map((r) => r.textContent)).toEqual(["Moved away", "Injury or health", "Cost", "Schedule or time", "Taking a break, by choice", "Other"]);
     await click(reasons[2]);
     expect(reasons[2].getAttribute("aria-pressed")).toBe("true");
     const note = form.querySelector<HTMLTextAreaElement>("textarea")!;
@@ -120,7 +120,7 @@ describe("the inactive mark", () => {
   it("says who marked her, when and why, and lets a leader take it back", async () => {
     const el = await mount({ mark });
     expect(el.textContent).toContain("Marked inactive by Glorfindel Lord on Tue, Sep 22, 2026: Injury or health: Knee surgery in November.");
-    expect(el.textContent).toContain("A booking makes her active again by itself.");
+    expect(el.textContent).toContain("A booking makes Rosie active again by itself.");
     await click(button(el, "Mark active again"));
     expect(writes.deletes).toEqual(["studios/westlake/inactiveMarks/rosie"]);
     expect(writes.sets).toEqual([]);
@@ -128,15 +128,15 @@ describe("the inactive mark", () => {
 
   it("says a mark she has visited since no longer holds", async () => {
     const el = await mount({ mark, lastVisit: "2026-09-29" });
-    expect(el.textContent).toContain("she has visited since, so the mark no longer holds");
+    expect(el.textContent).toContain("Rosie has visited since, so the mark no longer holds");
     expect(button(el, "Change the reason")).toBeNull();
     expect(button(el, "Mark active again")).not.toBeNull();
   });
 
   it("says inactive by herself in the Journey's words, and offers a leader's mark beside it", async () => {
-    const el = await mount({ automatic: "120 days since her last visit, past the studio's 90-day line, and nothing is booked: inactive by herself." });
+    const el = await mount({ automatic: "120 days since the last visit, past the studio's 90-day line, and nothing is booked, so inactive." });
     expect(el.textContent).toContain("past the studio's 90-day line");
-    expect(el.textContent).toContain("Inactive by herself: a booking makes her active again.");
+    expect(el.textContent).toContain("Inactive past the studio's line: a booking makes Rosie active again.");
     expect(button(el, "Mark inactive")).not.toBeNull();
   });
 

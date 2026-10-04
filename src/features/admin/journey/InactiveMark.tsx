@@ -64,7 +64,7 @@ const dayWords = (day: string) => {
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 };
 
-const firstOf = (name: string) => name.trim().split(/\s+/)[0] || "her";
+const firstOf = (name: string) => name.trim().split(/\s+/)[0] || "this client";
 
 export function InactiveMarkPanel({ studioId, clientId, clientName, mark, read, lastVisit, automatic, leads, markerName, today }: InactiveMarkProps) {
   const first = firstOf(clientName);
@@ -109,7 +109,7 @@ export function InactiveMarkPanel({ studioId, clientId, clientName, mark, read, 
     try {
       await markActiveAgain(studioId, clientId);
     } catch (err) {
-      setError(err instanceof Error && err.message ? err.message : "Couldn't mark her active again. Check your connection and try again.");
+      setError(err instanceof Error && err.message ? err.message : `Couldn't mark ${first} active again. Check your connection and try again.`);
     } finally {
       setBusy(false);
     }
@@ -117,10 +117,10 @@ export function InactiveMarkPanel({ studioId, clientId, clientName, mark, read, 
 
   /* ---- what it says ---- */
   let said: string;
-  if (read === "loading") said = "Reading whether she is marked inactive…";
-  else if (read === "failed") said = "Whether a leader marked her inactive couldn't be read just now.";
+  if (read === "loading") said = `Reading whether ${first} is marked inactive…`;
+  else if (read === "failed") said = `Whether a leader marked ${first} inactive couldn't be read just now.`;
   else if (mark && holds) said = `Marked inactive by ${mark.markedBy.name || "a leader"} on ${dayWords(mark.day)}: ${markReasonWords(mark)}.`;
-  else if (mark) said = `Marked inactive on ${dayWords(mark.day)} (${markReasonWords(mark)}), but she has visited since, so the mark no longer holds.`;
+  else if (mark) said = `Marked inactive on ${dayWords(mark.day)} (${markReasonWords(mark)}), but ${first} has visited since, so the mark no longer holds.`;
   else if (automatic) said = automatic;
   else said = "Active: not marked inactive.";
 
@@ -129,8 +129,8 @@ export function InactiveMarkPanel({ studioId, clientId, clientName, mark, read, 
       <p className="ops-inactive__said">
         <b className="ops-inactive__k">{(mark && holds) || automatic ? "Inactive" : "Active or inactive"}</b> {said}
       </p>
-      {mark && holds && <p className="ops-quiet">A booking makes her active again by itself. Her history, notes and packages stay as they are.</p>}
-      {!mark && automatic && <p className="ops-quiet">Inactive by herself: a booking makes her active again. Nothing is deleted.</p>}
+      {mark && holds && <p className="ops-quiet">A booking makes {first} active again by itself. The history, notes and packages stay as they are.</p>}
+      {!mark && automatic && <p className="ops-quiet">Inactive past the studio's line: a booking makes {first} active again. Nothing is deleted.</p>}
 
       {leads && read === "ready" && !open && (
         <div className="ops-inactive__acts">
@@ -169,7 +169,7 @@ export function InactiveMarkPanel({ studioId, clientId, clientName, mark, read, 
               </button>
             ))}
           </fieldset>
-          <AdminField label="Note" htmlFor={`inactive-note-${clientId}`} hint="Optional. The next leader to open her should know.">
+          <AdminField label="Note" htmlFor={`inactive-note-${clientId}`} hint="Optional. The next leader to open this record should know.">
             <AdminTextarea
               id={`inactive-note-${clientId}`}
               rows={2}
@@ -179,7 +179,7 @@ export function InactiveMarkPanel({ studioId, clientId, clientName, mark, read, 
             />
           </AdminField>
           <p className="ops-quiet">
-            Signed with your name and dated {dayWords(today)}. She leaves the active lists and the Client Directory's All, and the nightly job stops asking Mindbody about her packages every month. Nothing is deleted, and a booking makes her active again.
+            Signed with your name and dated {dayWords(today)}. This takes {first} off the active lists and the Client Directory's All, and the nightly job stops asking Mindbody about the packages every month. Nothing is deleted, and a booking makes {first} active again.
           </p>
           <div className="ops-inactive__acts">
             <AdminButton type="submit" variant="primary" busy={busy} disabled={!draft.reason}>

@@ -44,7 +44,7 @@ export const INACTIVE_REASON_WORDS: Record<InactiveReason, string> = {
   health: "Injury or health",
   cost: "Cost",
   schedule: "Schedule or time",
-  break: "Taking a break, her choice",
+  break: "Taking a break, by choice",
   other: "Other",
 };
 

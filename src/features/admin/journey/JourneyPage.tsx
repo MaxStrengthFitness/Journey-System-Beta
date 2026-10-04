@@ -79,7 +79,7 @@ const LIST_SAYS: Record<JourneyState, (lines: JourneyLines) => string> = {
   "at-risk": () => "Catchable first: their usual trainer is in today. A client a leader already answered is last.",
   lapsed: () => "Closest to the line first.",
   inactive: (l) =>
-    `Out of the way, never deleted: inactive by herself after ${l.inactiveDays} days with nothing booked, or marked by a leader. The most recent first, the likeliest win-backs. A booking makes her active again.`,
+    `Out of the way, never deleted: inactive after ${l.inactiveDays} days with nothing booked, or marked by a leader. The most recent first, the likeliest win-backs. A booking makes a client active again.`,
   away: () => "Soonest back first. A known reason is not a risk.",
   back: () => "Booked again after crossing a line. Booking again closes the case by itself.",
   new: (l) => `Sessions 1 to ${l.newMax}, from a total that may be quoted: a client whose history is before Journey is never called new.`,
@@ -287,7 +287,7 @@ export function InactiveRows({
         const inactive = e.journey.inactive ?? null;
         const mark = inactive?.mark ?? null;
         const since = inactive?.since ?? e.journey.since;
-        const how = inactive?.kind === "manual" ? "Marked inactive" : "Inactive by herself";
+        const how = inactive?.kind === "manual" ? "Marked inactive" : "Inactive past the line";
         const why = mark ? `${markReasonWords(mark)}. Marked by ${mark.markedBy.name || "a leader"}.` : e.journey.why;
         const meta = [e.usual ? `usually with ${e.usual.name.split(" ")[0]}` : null, e.case.stored ? caseLine(e) : "no win-back case yet"].filter(Boolean).join(" · ");
         return (
@@ -308,7 +308,7 @@ export function InactiveRows({
             )}
             {failed === e.id && (
               <p className="adm-hint adm-hint--error" role="alert">
-                Couldn't mark her active again. Check your connection and try again.
+                Couldn't mark {e.row.name.display} active again. Check your connection and try again.
               </p>
             )}
           </li>

@@ -119,7 +119,7 @@ export function ReviewNotesDialog({ open, onOpenChange, rows, onOpenClient, auth
                       type="text"
                       maxLength={200}
                       value={reason}
-                      placeholder="She moved to mornings."
+                      placeholder="Moved to mornings."
                       onChange={(e) => setReason(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") void answer(r, false);

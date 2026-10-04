@@ -421,7 +421,7 @@ describe("Today, the brief", () => {
     const slipping = section(el, "slipping").textContent ?? "";
     // Gil: twice a week, ten days out, nothing booked. Bea booked again on Wednesday: Back, not slipping.
     expect(slipping).toContain("Gil Galdor");
-    expect(slipping).toContain("She usually trains every 3–4 days. It has been 10 days, and nothing is booked.");
+    expect(slipping).toContain("Usually trains every 3–4 days. It has been 10 days, and nothing is booked.");
     expect(slipping).not.toContain("Bea Best");
     await click(buttonByText(section(el, "slipping"), "Snooze"));
     expect(el.textContent).toContain("Remind me again in");

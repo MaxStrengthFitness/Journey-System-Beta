@@ -284,7 +284,7 @@ export function journeyOf(i: JourneyInput): ClientJourney {
       return {
         ...markCommon,
         state: "back",
-        why: `${marked} (${markReasonWords(mark)}), and booked again since: she's back.`,
+        why: `${marked} (${markReasonWords(mark)}), and booked again since: back with us.`,
         proof: `${last} · ${i.next.day ? `next booking ${dayWords(i.next.day, i.today)}` : "booked"}`,
       };
     }
@@ -299,8 +299,8 @@ export function journeyOf(i: JourneyInput): ClientJourney {
     };
   }
 
-  if (!i.snapshot) return unknown("no-record", "No nightly record for her yet, so her visits can't be judged.", "Last night's record hasn't reached her.");
-  if (i.nightlyStale) return unknown("stale-record", "The nightly record has stopped changing, so her rhythm isn't judged from it.", "The studio's nightly record hasn't changed in days.");
+  if (!i.snapshot) return unknown("no-record", "No nightly record for this client yet, so the visits can't be judged.", "Last night's record doesn't include this client yet.");
+  if (i.nightlyStale) return unknown("stale-record", "The nightly record has stopped changing, so the rhythm isn't judged from it.", "The studio's nightly record hasn't changed in days.");
 
   const s = i.snapshot;
   const rhythmResult = i.rhythm ?? rhythmFromSnapshot(s);
@@ -334,13 +334,13 @@ export function journeyOf(i: JourneyInput): ClientJourney {
         state: "at-risk",
         crossed: "due-back",
         since: addDays(s.awayUntil, 1),
-        why: `She was due back on ${dayWords(s.awayUntil, i.today)}, and nothing is booked.`,
+        why: `Due back on ${dayWords(s.awayUntil, i.today)}, and nothing is booked.`,
         proof: `${reason} until ${dayWords(s.awayUntil, i.today)} · ${lastText} · nothing booked`,
       };
     }
     if (s.awayUntil && s.awayUntil < i.today) {
       return {
-        ...unknown("bookings-unread", `She was due back on ${dayWords(s.awayUntil, i.today)}, and whether anything is booked couldn't be read.`, `${reason} until ${dayWords(s.awayUntil, i.today)} · ${lastText} · next booking unknown`, rhythmWhy),
+        ...unknown("bookings-unread", `Due back on ${dayWords(s.awayUntil, i.today)}, and whether anything is booked couldn't be read.`, `${reason} until ${dayWords(s.awayUntil, i.today)} · ${lastText} · next booking unknown`, rhythmWhy),
         daysSince,
       };
     }
@@ -359,11 +359,11 @@ export function journeyOf(i: JourneyInput): ClientJourney {
       return {
         ...common,
         state: stage,
-        why: stage === "new" ? `At session ${i.quotableTotal} of her first ${L.newMax}.` : `Settling in: ${i.quotableTotal} sessions.`,
+        why: stage === "new" ? `At session ${i.quotableTotal} of the first ${L.newMax}.` : `Settling in: ${i.quotableTotal} sessions.`,
         proof: `${lastText} · ${nextText}`,
       };
     }
-    return unknown("no-visit", "No visit on record since the studio's bookings began syncing, so her gap can't be measured.", `${nextText}`, rhythmWhy);
+    return unknown("no-visit", "No visit on record since the studio's bookings began syncing, so the gap can't be measured.", `${nextText}`, rhythmWhy);
   }
 
   /* ---- The lines she crossed with nothing booked ---- */
@@ -376,7 +376,7 @@ export function journeyOf(i: JourneyInput): ClientJourney {
         state: "inactive",
         crossed: "inactive-line",
         since,
-        why: `${daysText(daysSince)} since her last visit, past the studio's ${L.inactiveDays}-day line, and nothing is booked: inactive by herself.`,
+        why: `${daysText(daysSince)} since the last visit, past the studio's ${L.inactiveDays}-day line, and nothing is booked, so inactive.`,
         proof: `${lastText} · nothing booked${withRhythm}`,
         inactive: { kind: "automatic", since, mark: null },
       };
@@ -387,7 +387,7 @@ export function journeyOf(i: JourneyInput): ClientJourney {
         state: "lapsed",
         crossed: "lapse-line",
         since: addDays(i.lastVisit as string, L.lapsedDays),
-        why: `${daysText(daysSince)} since her last visit, past the ${L.lapsedDays}-day line, and nothing is booked.`,
+        why: `${daysText(daysSince)} since the last visit, past the ${L.lapsedDays}-day line, and nothing is booked.`,
         proof: `${lastText} · nothing booked${withRhythm}`,
       };
     }
@@ -397,7 +397,7 @@ export function journeyOf(i: JourneyInput): ClientJourney {
         state: "at-risk",
         crossed: "studio-line",
         since: addDays(i.lastVisit as string, i.breakDays),
-        why: `${daysText(daysSince)} since her last visit, past the studio's ${i.breakDays}-day line, and nothing is booked.`,
+        why: `${daysText(daysSince)} since the last visit, past the studio's ${i.breakDays}-day line, and nothing is booked.`,
         proof: `${lastText} · nothing booked${withRhythm}`,
       };
     }
@@ -407,8 +407,8 @@ export function journeyOf(i: JourneyInput): ClientJourney {
         state: "drifting",
         crossed: "twice-usual",
         since: addDays(i.lastVisit as string, drift),
-        why: `She usually trains ${rhythm.words}. It has been ${daysText(daysSince)}, and nothing is booked.`,
-        proof: `${lastText} · nothing booked · ${multipleWords(L.driftMultiple).toLowerCase()} her usual gap is ${daysText(drift)} · ${rhythmProof(rhythm)}`,
+        why: `Usually trains ${rhythm.words}. It has been ${daysText(daysSince)}, and nothing is booked.`,
+        proof: `${lastText} · nothing booked · ${multipleWords(L.driftMultiple).toLowerCase()} the usual gap is ${daysText(drift)} · ${rhythmProof(rhythm)}`,
       };
     }
   }
@@ -417,7 +417,7 @@ export function journeyOf(i: JourneyInput): ClientJourney {
   const crossedLine = daysSince >= L.inactiveDays || daysSince >= L.lapsedDays || daysSince >= i.breakDays || (drift !== null && daysSince >= drift);
   if (crossedLine && i.next.state === "unknown") {
     return {
-      ...unknown("bookings-unread", `${daysText(daysSince)} since her last visit, and whether anything is booked couldn't be read, so whether she is slipping can't be said.`, `${lastText} · next booking unknown${withRhythm}`, rhythmWhy),
+      ...unknown("bookings-unread", `${daysText(daysSince)} since the last visit, and whether anything is booked couldn't be read, so slipping can't be judged.`, `${lastText} · next booking unknown${withRhythm}`, rhythmWhy),
       daysSince,
       driftDays: drift,
     };
@@ -439,7 +439,7 @@ export function journeyOf(i: JourneyInput): ClientJourney {
     return {
       ...common,
       state: stage,
-      why: stage === "new" ? `At session ${i.quotableTotal} of her first ${L.newMax}.` : `Settling in: ${i.quotableTotal} sessions${rhythm ? `, ${rhythm.words}` : ""}.`,
+      why: stage === "new" ? `At session ${i.quotableTotal} of the first ${L.newMax}.` : `Settling in: ${i.quotableTotal} sessions${rhythm ? `, ${rhythm.words}` : ""}.`,
       proof: `${lastText} · ${nextText}${withRhythm}`,
     };
   }
@@ -449,7 +449,7 @@ export function journeyOf(i: JourneyInput): ClientJourney {
     return {
       ...common,
       state: "steady",
-      why: `Trains ${rhythm.words}, in her own rhythm.`,
+      why: `Trains ${rhythm.words}, a steady rhythm.`,
       proof: `${lastText} · ${nextText} · ${rhythmProof(rhythm)}`,
     };
   }
