@@ -29,6 +29,9 @@ The Learning Overview links to All MSF machines under the Catalog's tiles, and L
 | A studio's own machine | `studios/{s}/roster/{id}` (`source: "custom"`) → `shareStatus`, `sharedStudioName`; `shared` once decided | The studio's leaders (the roster rule) |
 | The studio's note on a machine | `studios/{s}/wiki/machine__{id}` (overlay) → `shareStatus`, `sharedKeys`, `studioName`; `shared` once decided | Anyone at the studio (they can already edit it) |
 | A playbook tip | `studios/{s}/playbook/{id}` → `shareStatus`, `sharedKeys`, `studioName`; `shared` once decided | Its author, or a leader (the playbook rule) |
+| One of the floor's notes on a machine (since Oct 3 2026) | `studios/{s}/floorNotes/{id}`, a note of its own and still open → `shareStatus`, `sharedKeys`, `studioName`; `shared` once decided | Its author, or a leader (the screen; the rules let anyone at the studio) |
+
+The floor's dated notes (`features/floor-notes`, AJ's answer 2A) took over from the studio's one note on the Catalog page. That note is no longer written; it shows under the list as an earlier note and **keeps its switch while it is shared or offered**, so a studio can always take it back. Review kind `floor` ("A floor note on a machine"); other studios read shared, open floor notes as notes (`noteFromFloorDoc`), beside the wiki notes and tips.
 
 Only an **administrator** sets `shared` to true, and only an administrator decides an offer (`shareStatus` "approved" or "declined", `shareReviewedBy`, `shareReviewedAt`, and an optional `shareReviewNote` of up to 300 characters the studio reads beside its switch). firestore.rules says so in `shareDecisionOk`, cheapest check first: a write that neither publishes nor decides passes on its fields alone, and only a publish or a decision asks `isSuperAdmin()` (the other way round ran out of Firestore's 1000-expression budget).
 
@@ -76,7 +79,7 @@ A machine page queries its own lineage. So a tip about Westlake's copy of Solon'
 
 ## Deploy
 
-- Two new composite collection-group indexes, `playbook` and `wiki` (`shared` + `sharedKeys` contains).
+- Two new composite collection-group indexes, `playbook` and `wiki` (`shared` + `sharedKeys` contains), and a third for `floorNotes` since Oct 3 2026.
 - Two field overrides, each listed alongside the default collection-scope indexes: `roster.shared`, collection-group ascending (the shared list), and `roster.basedOn`, collection-group ascending (the admin's "studios using this" count before a machine is retired, which the rules only now let through).
 - New rules. Until the indexes finish building, the shared lists fail to load, and the screens say so instead of looking empty.
 

@@ -932,6 +932,12 @@ Four changes, each because the code said something the spec had assumed.
 
 ### 11.1 Studio notes are a sibling collection, not a roster field
 
+*Since the notes round (Oct 3 2026) the Studio notes box is gone: a studio's
+notes on a machine are one dated list per machine (`features/floor-notes`,
+`studios/{s}/floorNotes`), drawn where the studio's note was, on the page and
+never folded. The reasoning below is why that list is its own collection too.
+What `machineNotes` holds is read, as an earlier note under the list.*
+
 The spec sent notes to `studios/{id}/roster/{machineId}.studioNotes`, following the
 comment in `types/machines.ts`. The rules say otherwise:
 

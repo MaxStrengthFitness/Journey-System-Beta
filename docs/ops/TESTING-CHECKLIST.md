@@ -2762,3 +2762,23 @@ Round document: `docs/rounds/2026-10-02-atlas-answers.md`. On an iPad, upright a
 - [ ] My Studio → Machines: "We don't have this" on a studio's own machine retires it; bring it back from Add from MSF.
 - [ ] Admins: the Waiting for review count; Change role → Switch the account off, then sign in as that person (refused).
 - [ ] Operations → Today lists a session left open, with Open the session.
+
+## Round 52 — Client notes, the leader's 1:1 notes, and the floor's notes on a machine · *Oct 3 2026, branch `oct3/notes-writing`*
+
+Round document: `docs/rounds/2026-10-03-client-notes.md`. On an iPad, upright and on its side:
+
+- [ ] In a session, open the note box. It shows six short choices, the words and one row of chips. Type "left knee sore after the hike": Health is marked dashed, the chips say Injury and Left knee, and Save says "Save as Health". Save it.
+- [ ] Type something it can't place ("bring the blue towel"): Save says "Save — file later". Pick Preference instead and save.
+- [ ] The Health note is read out on her next four briefings, then folds under "Show standing health context". Add an update to it: it is read out again.
+- [ ] Skip a set for pain and Finish: her Notes has "Skipped Leg Press for pain: left knee." as an Incident.
+- [ ] Her Notes opens on "What's going on with her right now?". Tap each question; "Her health" names the knee.
+- [ ] As a leader, Operations → Today lists the Health note under the team's notes; tap Seen and it goes.
+- [ ] Operations → Clients → Journey, open a slipping client's case: write a conversation under "Conversations about staying". Her Story shows it.
+- [ ] Operations → Team, as a leader: a trainer's card says "Your notes"; "Note for our 1:1" writes one, and it is in your own Journal, nobody else's.
+- [ ] Learning → Catalog → a machine: "{Studio}'s notes" sits under Execution. Add a note, add an update, Close it with what happened; it is under Closed · 1, and Open again brings it back.
+- [ ] The old Studio notes text shows under Earlier notes. Copy into the list: it moves up, dated today, and leaves Earlier notes.
+- [ ] More on your own note: Change the words, Offer to all MSF studios. On a colleague's note, as a trainer, there is no More.
+- [ ] My Studio → Machines → the same machine's door shows the same list. Type in the box and tap another machine: it asks first.
+- [ ] Open that machine in a session: the open notes show under the watch-outs with their latest update; the closed one doesn't.
+- [ ] Local set-up on a machine with an old unit note shows it as "The unit's old note"; on one without, it says notes go in the floor's notes.
+- [ ] Admins → Standard → Waiting for review lists the offered floor note as "A floor note on a machine"; share it, and another studio's Catalog page shows it under "From other MSF studios".

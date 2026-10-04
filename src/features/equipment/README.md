@@ -340,6 +340,13 @@ AJ (the Atlas answers): notes about her on one machine live in her journal and s
 
 ## The floor's note on this machine, in the session (Oct 3 2026)
 
+*Since AJ's answer 2A the same day, the floor's notes are one dated list per
+machine (`features/floor-notes`), and the card reads this machine's OPEN notes
+from it (one query on `machineId`, its field override in
+firestore.indexes.json), each with its latest update, at most four, then the
+old Studio notes below while nobody has copied them into the list. The text
+below is how it began.*
+
 `FloorNoteCard.tsx`, on the session's machine sheet under the watch-outs. A
 studio's own knowledge of the unit in its building (`studios/{s}/machineNotes/
 {machineId}`, written on the Catalog and My Studio → Machines) and a Relay flag

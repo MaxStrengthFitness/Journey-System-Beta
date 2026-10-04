@@ -3,8 +3,8 @@
 *Oct 3 2026. Branch `oct3/notes-writing`, on master's `969ce169`. Built after AJ's
 interview with claude.ai (brief: `docs/ops/NOTES-INTERVIEW-BRIEF.md`), his hand-off
 below, Claude Code's brief-back, and his three answers. Then the trainer's journal,
-the leader's journal and studios' notes on machines, in the same branch — see the
-second half of this document when it is written.*
+the leader's journal and studios' notes on machines, in the same branch, after his
+second three answers ("1a 2a 3b") — the second half of this document.*
 
 AJ, the round's ask: *"I really want to nail down client notes first... So that way
 studios can like take advantage of like, hey, if one person takes a note, the whole
@@ -225,20 +225,97 @@ organized note-taking format"*. What was used, and where:
 
 ---
 
+## The second half: the journals, and the floor's notes on machines
+
+AJ, mid-round: *"after you fully complete that, I want you to then move on to the
+notes that can be made within the trainer's journal. And also the leader's journal.
+And then also how studios can take notes. On machines."*
+
+### What was found
+
+- **Machine notes** never reached the session: a studio's notes about a machine
+  showed only on Learning → Catalog and My Studio → Machines. They were split across
+  three overlapping boxes (the "Studio notes" text, the studio's note on the Catalog
+  page, the leader's note on the unit in Local set-up), and a client's machine note
+  invited "sticky seat", filing a broken machine into one client's record.
+- **The trainer's journal**: a note about a client in a trainer's Relay Journal never
+  reaches her Notes, her briefing or the leaders; sharing it puts it on Goals & Focus.
+- **The leader's journal**: there wasn't one. The nearest was the Journal's "Team
+  member" note type, whose "Who" is typed; "Note for our 1:1" on Operations → Team was
+  never built because nobody had said where it lives.
+
+### AJ's answers (Oct 3 2026): "1a 2a 3b"
+
+1. **Leaders' notes about a trainer: A, private to the leader who wrote them**, as
+   built (Claude Code had suggested sharing them with the studio's other leaders).
+   Never shown to the trainer.
+2. **The studio's machine notes: A, merge the three places into one list per machine,
+   with dates and a history, the way client notes became threads.**
+3. **A trainer's journal note about a client, when shared: B, Goals & Focus only, as
+   today** (Claude Code had suggested also filing it on her Notes). Nothing changed.
+
+And on the note box, while this half was built: *"if note harness is the current
+design we really need to look at some other was we can take a note because that is so
+clunky looking but ill let you cook"* — Notes 10 below.
+
+### What was built — ten more commits
+
+| # | Commit | What it does |
+| --- | --- | --- |
+| 9 | `a3c87d78` | **The floor's note reaches the session**: the session's machine sheet draws the studio's notes on that machine under the watch-outs, read-only, the Relay flag first (`equipment/FloorNoteCard.tsx`). A client's machine note says whose it is ("About her on this machine"), and a fault with the unit is pointed to a Relay flag. |
+| 10 | `63f58a55`, `77261213` | **The leader's journal** (answer 1a): each person's card on Operations → Team, for a leader, says how many Team member notes the leader has about them and when the newest was, and **Note for our 1:1** writes one more (What happened · What I'll do) into the leader's own Journal (`admin/team/leader-notes.ts`). Private, like every Journal note; nothing is sent. |
+| 11 | `dd58090b` | **The review's fixes**: eight real problems found by a fresh review of the branch, each fixed with a test (a quiet Health Heads up joins the standing context; a chip picked under one question never carries into another; a running session isn't one of the four; an orphan retention update never stands for its root; Seen on a team note is its own acknowledgement; a door leaves a question that draws nothing; a partly failed read says so; a session finished on another iPad writes no pain notes here). |
+| 12 | `3cfd6884`, `c0a613ca` | **The note box, quiet by default** (AJ: "so clunky looking"): one row of six short choices, the words ("What did you notice about Ruth?"), one row of detail chips that each open their control on a tap, and Save that says where it goes ("Save as Health"). **Where a note goes is suggested from its words** (`client-notes/suggest.ts`): "left knee sore after the hike" marks Health · Injury · left knee, and says why; a suggestion only stands in for a choice not made, and FORD is never filed by one. |
+| 13 | `62e0a4ed` | **The floor's notes — data and rules** (answer 2a): `studios/{s}/floorNotes/{noteId}`, read and written by the people who work there, signed, the words changed only by their author or a leader, closed by anyone, never deleted. |
+| 14 | `d5f6fcd0` | **One dated list per machine** (`features/floor-notes`): a note with its updates, Close (with what happened) and Open again, Closed · N folded; the three old boxes' words shown under it as **Earlier notes**, read-only, with **Copy into the list**. A note can be offered to every MSF studio (author or leader; an administrator decides; kind `floor` on Waiting for review). |
+| 15 | `a616ac5c` | **The list where the old boxes were**: the Catalog page ("{Studio}'s notes", on the page and never folded), My Studio → Machines' door (and Operations → Floor), the session's machine sheet (this machine's open notes with their latest word, at most four), and Local set-up (its old note only while one exists). The Studio notes box and its save are deleted. |
+| 16 | `0464ed97` | **Two buttons on a floor note**: Add an update and Close, with the words, Take off the list and the offer behind More — from looking at it on the page. |
+
+### The floor's notes, in short
+
+The whole design is in `src/features/floor-notes/README.md`. What matters for AJ:
+
+- **Nothing old was rewritten or lost.** The three old boxes are read as they are and
+  shown under the list as Earlier notes until a person copies one in (the copy says
+  where it came from, and the earlier one then stops showing). No script, no
+  migration: a person decides what is still true.
+- **A closed note is history, never gone** — "pin sticks" → "maintenance booked" →
+  closed "pin replaced" stays on the machine's page under Closed.
+- **At the machine**, the trainer sees the Relay flag, then the open notes with their
+  latest word. Closed ones stay on the Catalog.
+- **Sharing works as before**: the author or a leader offers a note, an administrator
+  decides. The old Catalog note keeps its switch while shared, so it can be taken back.
+
+### The trainer's journal (3b) — no change
+
+Sharing a client note from a trainer's Journal still puts it on Goals & Focus only.
+What a trainer writes about a client for the team is the client's own note box, which
+this round made quick to file; the Journal stays the trainer's own.
+
+---
+
 ## What it touches
 
 - **Data.** `journalEntries` gains the kind `retention`, Health flavours in `category`,
-  and an optional `bodyParts` field (written only when a part was picked). No new
-  collection. Leaders' Seen is the existing `studios/{s}/acknowledgements` (key
-  `note:{id}`).
-- **Rules.** None changed: the journal's create rule doesn't restrict `kind`, and
-  acknowledgements are already the leaders'.
-- **Indexes.** One new: `journalEntries` (studioId ASC, kind ASC, createdAt DESC), for
-  Operations → Today. **Deploy it before the app** (`firebase deploy --only
-  firestore:indexes`); until it builds, Today says part of Needs you couldn't be read.
+  and an optional `bodyParts` field (written only when a part was picked). Leaders' Seen
+  is the existing `studios/{s}/acknowledgements` (key `note:team:{id}`). **One new
+  collection, `studios/{s}/floorNotes`** (AJ's answer 2a is the OK for it; CLAUDE.md asks
+  for one before the Firestore structure changes). The old `machineNotes`, the wiki
+  overlay and the roster's `studioNotes` are no longer written by the screens that
+  wrote them, and still read.
+- **Rules.** The client notes needed none. The floor's notes add one block
+  (`match /floorNotes/{noteId}`) and a collection-group read of shared notes; three new
+  rules tests, **287 passing** on the emulator on AJ's PC (AJ's run is the one that
+  counts).
+- **Indexes.** Three: `journalEntries` (studioId, kind, createdAt DESC) for Operations →
+  Today; `floorNotes` collection group (shared, sharedKeys contains) for other studios'
+  shared notes; and a `floorNotes.machineId` field override for the session's one-machine
+  read.
 - **Reads.** One per Today open (the team's notes, ≤100 docs); one per client case open
-  in Operations (her newest 100 notes, the profile's existing index). The Heads up
-  count uses the sessions the profile already reads. No Mindbody call.
+  in Operations (her newest 100 notes, the profile's existing index); one listener over
+  the studio's floor notes while the Catalog or My Studio → Machines is open (the same
+  pattern as the Studio notes it replaced); one query each time a machine sheet opens in
+  a session (with the two documents it already read). No Mindbody call.
 - **Session record.** The note sheet is the same composer; Save never waits for a
   category. A pain skip's note is written at Finish outside the batch, like every
   journal write, and a failure is said, never a reason to hold Finish.
@@ -254,11 +331,19 @@ organized note-taking format"*. What was used, and where:
 - **A vacation that makes her Away for Operations.** Away is read from `client.events`
   (frozen) and the Retention Status switch; a FORD trip with dates reaches the briefing
   and "right now", but Operations doesn't read FORD. A question for AJ.
+- **Copying the old machine notes into the list by script.** A person copies what is
+  still true; a script would date old words today.
+- **Reviewing every later edit of a shared floor note.** As with tips and the old
+  Catalog note, only the first share is reviewed (machine-db README).
 
 ## For AJ
 
-1. Walk it on the iPad: write a Health note mid-session with a knee, open Notes → each
-   question, open Operations → Today and tap Seen, write a conversation on a client's
-   case, open her Story.
-2. Deploy order: indexes → (rules unchanged) → push.
+1. Walk it on the iPad: write a Health note mid-session with a knee (try typing "left
+   knee sore" and watch it file itself), open Notes → each question, open Operations →
+   Today and tap Seen, write a conversation on a client's case, open her Story; then
+   open a machine on the Catalog, add a floor note and an update, close it, copy an
+   earlier note into the list, and open that machine in a session.
+2. Deploy order: `firebase deploy --only firestore:indexes` → `npm run test:rules` →
+   `firebase deploy --only firestore:rules` → push. The rules go before the app
+   because the floor's notes need them; until then the list says it couldn't load.
 3. Say if Incident should start at Critical again.
