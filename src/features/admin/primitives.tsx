@@ -50,21 +50,33 @@ export function AdminHeader({
   icon,
   title,
   subtitle,
+  about,
   actions,
 }: {
   icon?: React.ReactNode;
   title: string;
   /** One line of plain English. What this screen is for, not what it is called. */
   subtitle?: string;
+  /** How the screen counts, behind an (i) beside the title rather than a paragraph under it (Operations' calm round, Oct 3 2026). */
+  about?: React.ReactNode;
   actions?: React.ReactNode;
 }) {
+  const [open, setOpen] = React.useState(false);
   return (
     <header className="adm-head">
       <div className="adm-head__id">
         {icon && <div className="adm-head__icon">{icon}</div>}
         <div className="min-w-0">
-          <h1 className="adm-head__title">{title}</h1>
+          <div className="adm-head__line">
+            <h1 className="adm-head__title">{title}</h1>
+            {about && (
+              <button type="button" className="adm-head__info" aria-expanded={open} aria-label={`About ${title}`} onClick={() => setOpen((v) => !v)}>
+                <Info className="w-4 h-4" aria-hidden />
+              </button>
+            )}
+          </div>
           {subtitle && <p className="adm-head__sub">{subtitle}</p>}
+          {about && open && <p className="adm-head__about">{about}</p>}
         </div>
       </div>
       {actions && <div className="adm-head__actions">{actions}</div>}

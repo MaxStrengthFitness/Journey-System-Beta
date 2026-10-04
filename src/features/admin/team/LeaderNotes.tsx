@@ -8,6 +8,11 @@
  * read shape, no index). "Note for our 1:1" writes one more, there: What
  * happened · What I'll do. Private to the leader, like every Journal note;
  * never shown to the person or to anyone else; nothing is sent.
+ *
+ * The calm round (Oct 3 2026): with nothing in the Journal about a person the
+ * card shows only the button. "None in your Journal yet. Only you would read
+ * them." was on every card; that it is private is said once, under the Team
+ * page's (i), and on the form.
  */
 import { useCallback, useEffect, useState } from "react";
 import { getDocs, limit, orderBy, query } from "firebase/firestore";
@@ -92,13 +97,11 @@ export function LeaderNotes({
 
   const record = read.status === "ready" ? recordFor(read.records, name) : null;
   const line =
-    read.status === "loading"
-      ? "Reading your Journal…"
-      : read.status === "failed"
-        ? "Your Journal couldn't be read just now."
-        : record && record.count > 0
-          ? `${record.count} in your Journal${lastWords(record.lastMs) ? ` · last ${lastWords(record.lastMs)}` : ""}. Only you can read them.`
-          : "None in your Journal yet. Only you would read them.";
+    read.status === "failed"
+      ? "Your Journal couldn't be read just now."
+      : record && record.count > 0
+        ? `${record.count} in your Journal${lastWords(record.lastMs) ? ` · last ${lastWords(record.lastMs)}` : ""}`
+        : null;
 
   const save = async () => {
     if (!oneToOneReady({ what, next }) || saving) return;
@@ -126,11 +129,13 @@ export function LeaderNotes({
 
   return (
     <>
-      <p className="ops-tr__l" data-testid={`leader-notes-${first}`}>
-        <span className="ops-tr__lab">Your notes</span>
-        {saved && !open ? "Saved to your Journal. " : ""}
-        {line}
-      </p>
+      {(line || (saved && !open)) && (
+        <p className="ops-tr__l" data-testid={`leader-notes-${first}`}>
+          <span className="ops-tr__lab">Your notes</span>
+          {saved && !open ? "Saved to your Journal. " : ""}
+          {line}
+        </p>
+      )}
       {open ? (
         <form
           className="ops-convo__form"
@@ -143,7 +148,7 @@ export function LeaderNotes({
           <AdminField label="What happened" wide htmlFor={`oto-what-${first}`} hint="What you saw, said or agreed.">
             <AdminTextarea id={`oto-what-${first}`} rows={2} maxLength={2000} value={what} onChange={(e) => setWhat(e.target.value)} />
           </AdminField>
-          <AdminField label="What I'll do" wide htmlFor={`oto-next-${first}`} hint="The follow-up, and when. Journey sends nothing to anyone.">
+          <AdminField label="What I'll do" wide htmlFor={`oto-next-${first}`} hint="The follow-up, and when. Only you can read it; Journey sends nothing to anyone.">
             <AdminTextarea id={`oto-next-${first}`} rows={2} maxLength={2000} value={next} onChange={(e) => setNext(e.target.value)} />
           </AdminField>
           {error && (

@@ -169,12 +169,12 @@ describe("Team → This week", () => {
   it("says last week's logging, the usual clients who are slipping, and what is worth recognising", async () => {
     const el = await mount();
     const beregondCard = cardOf(el, "Beregond Guard");
-    expect(lineOf(beregondCard, "Last week")).toBe("One session last week isn't logged yet: Hugo Bracegirdle, Sat 10:30 AM.");
+    expect(lineOf(beregondCard, "Last week")).toBe("2 booked · 1 not logged: Hugo Bracegirdle, Sat 10:30 AM");
     expect(lineOf(beregondCard, "Their clients")).toBe("Gil Galdor is drifting. They may know why.");
     expect(lineOf(beregondCard, "Recognise")).toBeNull();
     const imrahilCard = cardOf(el, "Imrahil Prince");
-    expect(lineOf(imrahilCard, "Last week")).toBe("Last week's one session is logged.");
-    expect(lineOf(imrahilCard, "Their clients")).toBe("None of their usual clients is drifting or at risk.");
+    expect(lineOf(imrahilCard, "Last week")).toBe("1 booked, all logged.");
+    expect(lineOf(imrahilCard, "Their clients")).toBe("None drifting or at risk.");
     expect(lineOf(imrahilCard, "Recognise")).toBe("Rosie Cotton is booked again after a gap. 2 kudos from the team in the last seven days.");
   });
 

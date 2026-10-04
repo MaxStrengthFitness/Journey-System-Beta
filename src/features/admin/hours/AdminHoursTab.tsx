@@ -66,7 +66,7 @@ export function AdminHoursTab({ trainers }: Props) {
       <AdminHeader
         icon={<Clock3 className="w-5 h-5" />}
         title="Hours"
-        subtitle="Training hours by trainer. A completed session counts for the studio's booked session length, whatever the stopwatch said."
+        about={`Training hours by trainer. A completed session counts for the studio's booked session length, whatever the stopwatch said. Weeks run Monday to Sunday. A session logged more than ${LATE_LOG_GRACE_DAYS} days after the day it happened is not counted here. Nothing on this screen is a rate or a ranking.`}
         actions={
           <div className="adm-ins-controls">
             <AdminField label="Month" htmlFor="hrs-month">
@@ -99,10 +99,6 @@ export function AdminHoursTab({ trainers }: Props) {
         <StudioHours studio={inScope[0]} month={month} names={names} showName={false} />
       ) : null}
 
-      <p className="adm-hrs-foot">
-        Weeks run Monday to Sunday. A session logged more than {LATE_LOG_GRACE_DAYS} days after the day it happened is not
-        counted here. Nothing on this screen is a rate or a ranking.
-      </p>
     </AdminScreen>
   );
 }
@@ -139,7 +135,7 @@ function StudioHours({
       <HoursTable
         tally={tally}
         title={showName ? studio.name : "By trainer, by week"}
-        subtitle={`${monthLabel(month)} · a session is ${tally.sessionMinutes} minutes at ${studio.name}.`}
+        subtitle={`A session is ${tally.sessionMinutes} minutes here.`}
         loading={read.loading}
         failed={read.failed}
         truncated={read.truncated}
@@ -220,7 +216,7 @@ function HoursTable({
       {loading ? (
         <AdminEmpty title="Adding up the month…" />
       ) : tally.rows.length === 0 ? (
-        <AdminEmpty title="No completed sessions this month">{failed ? "" : "Nothing at this studio was finished in Journey in this month."}</AdminEmpty>
+        <AdminEmpty title="No completed sessions this month" />
       ) : (
         <div className="adm-ins-table-wrap">
           <table className="adm-ins-table adm-hrs-table">

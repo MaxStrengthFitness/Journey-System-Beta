@@ -49,13 +49,15 @@ describe("a trainer's card", () => {
   const week = (over: Partial<TrainerWeek>): TrainerWeek => ({ key: "t2", trainerId: "t2", name: "Beregond Guard", booked: 0, notLogged: 0, missing: [], ...over });
 
   it("says last week's logging by name, and never guesses an unread week", () => {
-    expect(didLine(week({ booked: 12, notLogged: 0 }), "ready", TZ)).toBe("Every one of last week's 12 sessions is logged.");
+    expect(didLine(week({ booked: 12, notLogged: 0 }), "ready", TZ)).toBe("12 booked, all logged.");
     expect(
       didLine(week({ booked: 12, notLogged: 1, missing: [{ clientId: "hugo", clientName: "Hugo Bracegirdle", day: "2026-09-26", startMs: eastern("2026-09-26", "10:30").getTime() }] }), "ready", TZ),
-    ).toBe("One session last week isn't logged yet: Hugo Bracegirdle, Sat 10:30 AM.");
-    expect(didLine(week({ booked: 3, notLogged: null }), "ready", TZ)).toBe("3 booked last week; what was logged couldn't be read.");
-    expect(didLine(undefined, "ready", TZ)).toBe("Nothing was booked with them last week.");
-    expect(didLine(undefined, "failed", TZ)).toBe("Last week's bookings couldn't be read just now.");
+    ).toBe("12 booked · 1 not logged: Hugo Bracegirdle, Sat 10:30 AM");
+    // A whole week of them is a count, not a list of names.
+    expect(didLine(week({ booked: 41, notLogged: 41 }), "ready", TZ)).toBe("41 booked · 41 not logged");
+    expect(didLine(week({ booked: 3, notLogged: null }), "ready", TZ)).toBe("3 booked; what was logged couldn't be read.");
+    expect(didLine(undefined, "ready", TZ)).toBe("Nothing booked.");
+    expect(didLine(undefined, "failed", TZ)).toBe("Couldn't be read just now.");
   });
 
   const entry = (name: string, usual: string, state: string) =>
@@ -66,8 +68,8 @@ describe("a trainer's card", () => {
     const theirs = usualClients(journeys, "t2");
     expect(theirs).toHaveLength(4);
     expect(clientsLine(theirs, true)).toBe("Adelard Took is drifting and Estella Bolger is at risk. They may know why.");
-    expect(clientsLine(usualClients(journeys, "t1"), true)).toBe("None of their usual clients is drifting or at risk.");
-    expect(clientsLine(theirs, false)).toBe("Whether their clients are slipping can't be told yet.");
+    expect(clientsLine(usualClients(journeys, "t1"), true)).toBe("None drifting or at risk.");
+    expect(clientsLine(theirs, false)).toBe("Can't be told yet.");
     expect(usualClients(journeys, null)).toEqual([]);
   });
 

@@ -25,6 +25,11 @@
  *                  there. Private to the leader; never shown to the person;
  *                  nothing is sent
  *
+ * The calm round (Oct 3 2026, AJ: "so many words on there"): the subtitle's
+ * two rules are behind the counts line's (i); each card's lines are short
+ * ("41 booked · 41 not logged"), and "Their clients" is left off while the
+ * nightly record can't judge (the page's one note says so, not every card).
+ *
  * READS, one studio, each an existing shape: the Journey (useStudioJourneys:
  * this week's bookings as the server answered them, the renewal settings,
  * the watchlist), last week's bookings and the sessions logged since last
@@ -48,7 +53,8 @@ import { AdminButton, AdminHeader, AdminScreen } from "../primitives";
 import { useSessionsInRange } from "../sessions-range";
 import { useBookingMarks } from "../attention/booking-marks";
 import { useWeekSchedule } from "../changes/useWeekSchedule";
-import { BriefEmpty, BriefSection } from "../overview/brief-pieces";
+import { BriefEmpty, BriefSection, CountsLine, PageNote } from "../overview/brief-pieces";
+import { noteCovers, useNightlyNote } from "../overview/useNightlyNote";
 import { useStudioJourneys } from "../journey/useStudioJourneys";
 import { useMinuteClock } from "../shell/useMinuteClock";
 import { mondayOf, teamWeek, type TrainerWeek } from "../week/review";
@@ -107,6 +113,8 @@ export function TeamWeekPage({ studio, studios, clients, trainers, authTrainer }
   /* ---- recognition ---- */
   const kudos = useKudosThisWeek(studioId);
   const known = j.ready && !j.nightly.stale;
+  const note = useNightlyNote(j.nightly, studio, today, clients, tz);
+  const covered = noteCovers(note);
   const onHuddle = useHuddleLines(studioId, today);
 
   /* ---- leaders only ---- */
@@ -146,10 +154,12 @@ export function TeamWeekPage({ studio, studios, clients, trainers, authTrainer }
           <span className="ops-tr__lab">Last week</span>
           {didLine(weeks.get(trainerId ?? name.toLowerCase()), weekRead, tz)}
         </p>
-        <p className="ops-tr__l">
-          <span className="ops-tr__lab">Their clients</span>
-          {trainerId ? clientsLine(theirs, known) : "Journey doesn't know this trainer, so their usual clients can't be told."}
-        </p>
+        {!covered && (
+          <p className="ops-tr__l">
+            <span className="ops-tr__lab">Their clients</span>
+            {trainerId ? clientsLine(theirs, known) : "Not a trainer Journey knows."}
+          </p>
+        )}
         {myUid && (
           <LeaderNotes
             name={name}
@@ -182,13 +192,21 @@ export function TeamWeekPage({ studio, studios, clients, trainers, authTrainer }
 
   return (
     <AdminScreen>
-      <AdminHeader
-        icon={<UsersRound className="w-5 h-5" />}
-        title="This week"
-        subtitle={`${studio.name}. In today's schedule order, never a ranking. Recognise sends nothing: it puts the line on today's huddle, which you start from Today.`}
+      <AdminHeader icon={<UsersRound className="w-5 h-5" />} title="This week" />
+      <CountsLine
+        items={[
+          { n: j.week.read === "ready" ? on.length : null, label: "on today" },
+          { n: j.week.read === "ready" ? off.length : null, label: "off today" },
+        ]}
+        rules={[
+          "In today's schedule order, then the rest in name order: never a ranking.",
+          "Recognise sends nothing: it puts the line on today's huddle, which you start from Today.",
+          ...(myUid ? ["Your notes about a person are in your own Journal: only you can read them, never the person, and nothing is sent."] : []),
+        ]}
       />
+      {note && <PageNote text={note.text} why={note.why} />}
 
-      <BriefSection id="on" title="On today" count={j.week.read === "ready" ? on.length : null} sub="in the order their day starts">
+      <BriefSection id="on" title="On today" count={j.week.read === "ready" ? on.length : null}>
         {j.week.read === "loading" ? (
           <BriefEmpty>Reading today's bookings…</BriefEmpty>
         ) : j.week.read !== "ready" ? (
@@ -206,7 +224,7 @@ export function TeamWeekPage({ studio, studios, clients, trainers, authTrainer }
       </BriefSection>
 
       {off.length > 0 && (
-        <BriefSection id="off" title="Off today" sub="in name order">
+        <BriefSection id="off" title="Off today">
           <div className="ops-team p-3">{off.map((t) => card(t.id as string, t.fullName, t, roleOf(t) ?? "No booking today", true))}</div>
         </BriefSection>
       )}
@@ -217,7 +235,7 @@ export function TeamWeekPage({ studio, studios, clients, trainers, authTrainer }
           title="Leaders only"
           sub={
             <>
-              <Lock className="w-3.5 h-3.5 inline" aria-hidden /> renewals this quarter ({quarter.label}) · context for a conversation, never a verdict
+              <Lock className="w-3.5 h-3.5 inline" aria-hidden /> renewals, {quarter.label}
             </>
           }
         >

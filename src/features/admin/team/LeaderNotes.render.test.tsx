@@ -76,12 +76,13 @@ describe("a leader's notes on a person's card", () => {
       { id: "c", noteType: "client", fields: { who: "Ana Torres" }, title: "t", body: "" },
     ];
     const host = await mount();
-    expect(host.textContent).toContain("2 in your Journal · last Sep 30. Only you can read them.");
+    expect(host.textContent).toContain("2 in your Journal · last Sep 30");
   });
 
   it("writes a 1:1 note into the leader's own Journal, and nowhere else", async () => {
     const host = await mount();
-    expect(host.textContent).toContain("None in your Journal yet.");
+    // Nothing in the Journal yet: only the button, no sentence saying so (the calm round).
+    expect(host.querySelector("[data-testid^='leader-notes-']")).toBeNull();
     await act(async () => buttonIn(host, "Note for our 1:1")!.click());
     const boxes = host.querySelectorAll("textarea");
     await typeInto(boxes[0], "Late twice this week.");

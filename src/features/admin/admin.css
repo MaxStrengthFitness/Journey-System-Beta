@@ -70,6 +70,45 @@
   max-width: 70ch;
 }
 
+.adm-head__line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* The header's (i): how the screen counts, on a tap (Operations' calm round, Oct 3 2026). */
+.adm-head__info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--adm-ink-muted);
+  cursor: pointer;
+}
+
+.adm-head__info:hover,
+.adm-head__info[aria-expanded="true"] {
+  background: var(--adm-surface-2);
+  color: var(--adm-ink);
+}
+
+.adm-head__info:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: 2px;
+}
+
+.adm-head__about {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--adm-ink-2);
+  max-width: 70ch;
+}
+
 .adm-head__actions {
   display: flex;
   align-items: center;
@@ -1979,12 +2018,6 @@
   margin-top: 1px;
   font-size: 10px;
   font-weight: 600;
-  color: var(--adm-ink-muted);
-}
-
-.adm-hrs-foot {
-  font-size: 11px;
-  line-height: 1.5;
   color: var(--adm-ink-muted);
 }
 

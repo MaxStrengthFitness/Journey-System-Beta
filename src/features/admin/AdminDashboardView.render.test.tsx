@@ -232,9 +232,9 @@ describe("the Operations shell", () => {
     expect(el.textContent).toContain("Not enough data yet");
     expect(el.textContent).toContain("What stands out");
     await clickSide(el, "Team");
-    expect(el.textContent).toContain("In today's schedule order, never a ranking.");
+    expect(el.querySelector(".ops-counts__line")?.textContent).toContain("on today");
     await clickSide(el, "Hours");
-    expect(el.textContent).toContain("Training hours by trainer");
+    expect(el.textContent).toContain("By trainer, by week");
     await clickSide(el, "Setup");
     expect(el.querySelector("nav[aria-label='Setup']")).toBeTruthy();
     await openSetupPages(el);

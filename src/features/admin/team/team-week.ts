@@ -89,12 +89,14 @@ function missingList(w: TrainerWeek, tz?: string): string {
 
 /** What last week says about their logging. `read` is the week's bookings: an unread week says so. */
 export function didLine(w: TrainerWeek | undefined, read: "loading" | "failed" | "ready", tz?: string): string {
-  if (read === "loading") return "Reading last week…";
-  if (read === "failed") return "Last week's bookings couldn't be read just now.";
-  if (!w || w.booked === 0) return "Nothing was booked with them last week.";
-  if (w.notLogged === null) return `${w.booked} booked last week; what was logged couldn't be read.`;
-  if (w.notLogged === 0) return w.booked === 1 ? "Last week's one session is logged." : `Every one of last week's ${w.booked} sessions is logged.`;
-  return `${w.notLogged === 1 ? "One session" : `${w.notLogged} sessions`} last week ${w.notLogged === 1 ? "isn't" : "aren't"} logged yet: ${missingList(w, tz)}.`;
+  // The calm round (Oct 3 2026): the row's label already says "Last week".
+  if (read === "loading") return "Reading…";
+  if (read === "failed") return "Couldn't be read just now.";
+  if (!w || w.booked === 0) return "Nothing booked.";
+  if (w.notLogged === null) return `${w.booked} booked; what was logged couldn't be read.`;
+  if (w.notLogged === 0) return `${w.booked} booked, all logged.`;
+  // A few are worth naming; a whole week of them (before trainers log in Journey) is a count.
+  return `${w.booked} booked · ${w.notLogged} not logged${w.notLogged <= 3 ? `: ${missingList(w, tz)}` : ""}`;
 }
 
 const names = (list: readonly string[], max = 3) => {
@@ -115,9 +117,9 @@ export function usualClients(entries: readonly JourneyEntry[], trainerId: string
  * judged, so nothing is said either way.
  */
 export function clientsLine(theirs: readonly JourneyEntry[], known: boolean): string {
-  if (!known) return "Whether their clients are slipping can't be told yet.";
+  if (!known) return "Can't be told yet.";
   const slipping = theirs.filter((e) => e.journey.state === "drifting" || e.journey.state === "at-risk");
-  if (slipping.length === 0) return "None of their usual clients is drifting or at risk.";
+  if (slipping.length === 0) return "None drifting or at risk.";
   const said = slipping.map((e) => `${e.row.name.display} ${e.journey.state === "at-risk" ? "is at risk" : "is drifting"}`);
   return `${names(said)}. They may know why.`;
 }
