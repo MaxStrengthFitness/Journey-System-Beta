@@ -132,7 +132,7 @@ describe("a month's birthdays", () => {
 });
 
 describe("a month's anniversaries", () => {
-  it("counts whole years from the day a person set, and holds a Mindbody date back until it is confirmed (Oct 2 2026)", () => {
+  it("counts whole years from the day a person set, and lists a Mindbody date marked not confirmed (Oct 3 2026)", () => {
     const a = monthAnniversaries(
       [
         client("frodo", "Frodo", { firstStudioDay: "2019-10-06", firstAppointmentDate: "2020-01-15T15:00:00Z" }),
@@ -145,9 +145,14 @@ describe("a month's anniversaries", () => {
       null,
       TZ,
     );
-    // Sam's day is Mindbody's first appointment, not yet confirmed: counted, not celebrated.
-    expect(a.rows.map((r) => [r.name, r.day, r.badge, r.tone])).toEqual([["Frodo Took", "2026-10-06", "7 years", "info"]]);
+    // Sam's day is Mindbody's first appointment, not yet confirmed: listed, and it says so (AJ, Oct 3 2026).
+    expect(a.rows.map((r) => [r.name, r.day, r.badge, r.tone])).toEqual([
+      ["Frodo Took", "2026-10-06", "7 years", "info"],
+      ["Sam Took", "2026-10-20", "Not confirmed", "info"],
+    ]);
     expect(a.rows[0].proof).toBe("First day Sun, Oct 6, 2019 — set on their profile.");
+    expect(a.rows[1].sentence).toBe("2 years with the studio.");
+    expect(a.rows[1].proof).toContain("not confirmed yet. Confirm or correct it on the client's Account");
     expect(a.guessed).toBe(1);
     // Bilbo's only date is Journey's own: no anniversary can be said, and he is counted.
     expect(a.noDate).toBe(1);

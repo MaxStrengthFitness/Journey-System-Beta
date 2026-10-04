@@ -18,8 +18,9 @@
  *                           Today and Week use, for the MIA list
  *
  * A row opens the client inside Operations. Every list says what it can't
- * say: renewals whose timing is unknown are counted, a guessed anniversary
- * says it is a guess and where to set the real day, and nothing is MIA
+ * say: renewals whose timing is unknown are counted, an anniversary by
+ * Mindbody's date is listed badged "Not confirmed" with where to set the real
+ * day (AJ, Oct 3 2026), and nothing is MIA
  * until the Journey is ready.
  *
  * The calm round (Oct 3 2026, AJ: "so many words on there"): one line of
@@ -108,7 +109,7 @@ export function MonthPage({ studio, studios, clients, trainers, authTrainer, onO
   if (!renewalsShown && !covered) clear.push("Renewals");
   const birthdaysShown = birthdays.rows.length > 0;
   if (!birthdaysShown) clear.push("Birthdays");
-  const anniversariesShown = anniversaries.rows.length > 0 || anniversaries.guessed > 0;
+  const anniversariesShown = anniversaries.rows.length > 0;
   if (!anniversariesShown) clear.push("Anniversaries");
   const miaShown = !mia || (mia.rows.length > 0 && !covered);
   if (mia && mia.rows.length === 0 && !covered) clear.push("MIA");
@@ -194,18 +195,16 @@ export function MonthPage({ studio, studios, clients, trainers, authTrainer, onO
           count={anniversaries.rows.length}
           info={
             [
-              anniversaries.guessed > 0 ? `${anniversaries.guessed} more ${anniversaries.guessed === 1 ? "waits" : "wait"} for a confirmed first day. Confirm it on the client's Account.` : null,
+              anniversaries.guessed > 0
+                ? `${anniversaries.guessed} ${anniversaries.guessed === 1 ? "is" : "are"} by Mindbody's first day, not confirmed yet. Confirm each on the client's Account → First day at the studio.`
+                : null,
               anniversaries.noDate > 0 ? `${anniversaries.noDate} with no first day to count from.` : null,
             ]
               .filter(Boolean)
               .join(" ") || undefined
           }
         >
-          <MonthList
-            rows={anniversaries.rows}
-            onOpenClient={onOpenClient}
-            empty={`${anniversaries.guessed} ${anniversaries.guessed === 1 ? "anniversary waits" : "anniversaries wait"} for a confirmed first day. Confirm it on the client's Account.`}
-          />
+          <MonthList rows={anniversaries.rows} onOpenClient={onOpenClient} empty="" />
         </BriefSection>
       )}
 

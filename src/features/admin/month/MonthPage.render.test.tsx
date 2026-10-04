@@ -185,7 +185,7 @@ describe("Operations → Month", () => {
     await press(button(el, "Next month"));
     expect(el.textContent).toContain("October 2026");
     expect(counts(el)).toContain("2 renewals");
-    expect(counts(el)).toContain("1 anniversary");
+    expect(counts(el)).toContain("2 anniversaries");
     expect(names(el, "renewals")).toEqual(["Sam Gamgee", "Frodo Baggins"]);
     const renewals = section(el, "renewals");
     expect(renewals.textContent).toContain("Before the charge");
@@ -197,13 +197,17 @@ describe("Operations → Month", () => {
     expect(await info(el, "renewals", "Renewals")).toContain("Nobody has talked to 1 of them yet.");
     expect(names(el, "birthdays")).toEqual(["Rosie Cotton"]);
     expect(section(el, "birthdays").textContent).toContain("Turns 70");
-    // Rosie's is Mindbody's date, not yet confirmed: counted, not listed (Oct 2 2026).
-    expect(names(el, "anniversaries")).toEqual(["Sam Gamgee"]);
+    // Rosie's is Mindbody's date, not yet confirmed: listed, badged Not confirmed (AJ, Oct 3 2026).
+    expect(names(el, "anniversaries")).toContain("Sam Gamgee");
+    expect(names(el, "anniversaries")).toContain("Rosie Cotton");
     const anniversaries = section(el, "anniversaries");
     expect(anniversaries.textContent).toContain("7 years with the studio.");
+    expect(anniversaries.textContent).toContain("Not confirmed");
     await press(anniversaries.querySelector<HTMLButtonElement>("button[aria-label='Why: Sam Gamgee']"));
     expect(anniversaries.textContent).toContain("set on their profile");
-    expect(await info(el, "anniversaries", "Anniversaries")).toContain("1 more waits for a confirmed first day. Confirm it on the client's Account.");
+    await press(anniversaries.querySelector<HTMLButtonElement>("button[aria-label='Why: Rosie Cotton']"));
+    expect(anniversaries.textContent).toContain("Confirm or correct it on the client's Account");
+    expect(await info(el, "anniversaries", "Anniversaries")).toContain("1 is by Mindbody's first day, not confirmed yet.");
     // MIA is as of today whichever month is open.
     expect(await info(el, "mia", "MIA")).toContain("As of today:");
     await press(button(el, "This month"));

@@ -276,9 +276,10 @@ export function monthBirthdays(clients: readonly Client[], month: string): Month
 export interface MonthAnniversaries {
   rows: MonthRow[];
   /**
-   * Clients whose anniversary falls this month by Mindbody's date, which no
-   * one has confirmed yet: NOT listed (AJ, Oct 2 2026: anniversaries wait for
-   * a confirmed date), only counted, with a nudge to confirm it on Account.
+   * How many of the rows are by Mindbody's date, which no one has confirmed
+   * yet. Listed, badged "Not confirmed" (AJ, Oct 3 2026: "even if they are
+   * not confirmed we should still show them but signify that they are not
+   * confirmed"); they were only counted from Oct 2 to Oct 3.
    */
   guessed: number;
   /** Active clients with no date that proves when they started: no anniversary can be said. */
@@ -323,10 +324,24 @@ export function monthAnniversaries(clients: readonly Client[], month: string, cu
     if (years < 1) continue;
     const day = dayInMonth(month, Number(first.day.slice(8, 10)));
     const stated = first.source === "stated";
-    // Anniversaries wait for a confirmed date (AJ, Oct 2 2026): Mindbody's
-    // first appointment is counted as waiting, never celebrated.
+    const sinceWords = SINCE_SOURCE_WORDS[first.source] ?? "Mindbody's record";
+    // Mindbody's date, nobody has confirmed it: shown, and says so (AJ, Oct 3
+    // 2026). Month is a leader's list to act on; a milestone the app claims
+    // (Today, the Hub) still waits for a confirmed day (canClaimAnniversary).
     if (!first.confirmed) {
       guessed += 1;
+      rows.push({
+        key: `years:${c.id}`,
+        clientId: c.id,
+        name: nameOf(c),
+        day,
+        // The badge says it isn't confirmed; the row says the years like any other (the calm round: no sentence on every row).
+        sentence: `${years} ${years === 1 ? "year" : "years"} with the studio.`,
+        proof: `First day ${dayWords(first.day)}, ${first.day.slice(0, 4)} (${sinceWords}), not confirmed yet. Confirm or correct it on the client's Account → First day at the studio.`,
+        badge: "Not confirmed",
+        // Quiet, not a warning: thirteen alert badges on one list read as alarm.
+        tone: "info",
+      });
       continue;
     }
     rows.push({
@@ -337,7 +352,7 @@ export function monthAnniversaries(clients: readonly Client[], month: string, cu
       sentence: `${years} ${years === 1 ? "year" : "years"} with the studio.`,
       proof: stated
         ? `First day ${dayWords(first.day)}, ${first.day.slice(0, 4)} — set on their profile.`
-        : `First day ${dayWords(first.day)}, ${first.day.slice(0, 4)} (${SINCE_SOURCE_WORDS[first.source] ?? "Mindbody's record"}) — Journey holds their whole story.`,
+        : `First day ${dayWords(first.day)}, ${first.day.slice(0, 4)} (${sinceWords}) — Journey holds their whole story.`,
       badge: `${years} ${years === 1 ? "year" : "years"}`,
       tone: "info",
     });
