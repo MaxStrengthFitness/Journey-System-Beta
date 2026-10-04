@@ -188,8 +188,8 @@ The most recent logged session is the baseline for today's prescription, so it g
 
 Dark mode is derived from the same tokens but re-tuned, because a 14% orange tint that looks warm on white turns to mud on navy:
 
-- Fills mix the brand color into the dark **surface** (22–32%), not into black.
-- Accent **text** climbs the same hue: peach `--brand-accent-2` stands in for orange, sky `#8cc4f2` for blue, `#f8a7d4` for plum — so small text on a tinted fill still clears 4.5:1.
+- Fills mix the brand color into the dark **surface** (22–32%), not into black. Since the Navy Frame (Oct 4 2026) the dark surfaces are the Hub's studio navy, and a fill is an OPAQUE colour that keeps its accent's hue: an rgba amber or orange wash over navy greys out, and a crimson mixed into it goes violet beside the plum caution. So the rep-quality fills were kept as they were, not re-mixed (only the done fill got a neutral lift, `#2a333d`), and an elevated flag fills with `--jg-elevated-fill`.
+- Accent **text** climbs the same hue: peach `--brand-accent-2` stands in for orange, the lifted logo blue `#98caf9` for blue, `#f8a7d4` for plum — so small text on a tinted fill still clears 4.5:1.
 
 Every text/fill pairing was checked against WCAG 2.1 AA. Worst cases:
 
@@ -215,7 +215,9 @@ to something that fails AA fails the build instead of shipping.
 | Blue text on LATEST / Today fill | 7.7 : 1 | 7.7 : 1 |
 | Quality edge (non-text) on surface | ≥ 3.5 : 1 | ≥ 5.9 : 1 |
 
-The only pairing that does *not* clear 4.5:1 is white text on solid `#ef5302` in light mode (3.55:1). That is why the hero orange is used for **bars, edges and ≥18px bold buttons only** — small orange text always uses `--jg-hero-text` (`#bc2c00`, 6.0:1).
+The table above is from Sep 2026; the Navy Frame (Oct 4 2026) moved the cells and the ink, so the numbers `contrast.test.ts` computes are the current ones.
+
+**No words on the hero orange** (the Navy Frame, Oct 4 2026). `--jg-hero` is the orange of marks: the focus machine's edge and row trace, the Now Bar's marks and the session meter (`#d45a06` in light, the Hub's `--eq-hero`, 3.7:1 on the cells; white on it would be 3.99:1). The one loud action and every orange chip with words — Finish, the paused clock's button, the routine's number chips — is `--jg-go`, the logo orange `#f36d21` with navy `--jg-go-on` words (6.05:1), the same in both themes. Small orange words use `--jg-hero-text` (`#bc2c00`, 5.5:1 on the cells). The Today column's live fill stands at least 1.15:1 off the cells in both themes, with every word on it at 4.5:1, banded rows included. `contrast.test.ts` measures these pairs, and `session-colour-rules.test.ts` holds the rules that draw them and the session's palette to the Hub's.
 
 ### 1.5 Typography
 

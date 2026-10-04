@@ -103,6 +103,18 @@ const PAIRINGS: Array<[string, string, string, number]> = [
   ["--jg-ink-muted", "--jg-surface-2", "session numbers on the header band", TEXT],
   ["--jg-live-text", "--jg-surface-2", "blue dates in the Analytics rail", TEXT],
   ["--jg-ink-muted", "--jg-bg", "the section divider's label", TEXT],
+  // The Today column (and the LATEST column and a selected row) is the live
+  // fill, the write-in column of every set: the words drawn on it. The muted
+  // pair is the one the Navy Frame's first dark fill failed (4.41, 3.96 on a
+  // banded row), so it is held here.
+  ["--jg-live-text", "--jg-live-fill", "the blue weight in the Today column", TEXT],
+  ["--jg-ink-2", "--jg-live-fill", "reps in the Today column", TEXT],
+  ["--jg-ink-muted", "--jg-live-fill", "muted words on the Today and LATEST columns", TEXT],
+  ["--jg-live-on", "--jg-live", "the machine being performed, in the Today column", TEXT],
+  // The one loud orange (Finish, the paused clock, the routine's number
+  // chips) carries navy words, never white (Oct 4 2026).
+  ["--jg-go-on", "--jg-go", "words on the one loud orange", TEXT],
+  ["--jg-ink", "--jg-elevated-fill", "words on an elevated flag", TEXT],
 ];
 
 /**
@@ -171,6 +183,34 @@ describe.each([
       expect(ratio(hex(vars, "--jg-surface-2"), hex(vars, "--jg-surface"))).toBeGreaterThanOrEqual(1.08);
     });
   }
+});
+
+describe.each([
+  ["light", ":root {"],
+  ["dark", ".dark,"],
+])("the Today column, %s theme", (_theme, selector) => {
+  const light = readBlock(":root {");
+  const vars = selector === ":root {" ? light : { ...light, ...readBlock(selector) };
+
+  it("stands off the cells (>= 1.15:1)", () => {
+    // The write-in column of every set has to read as its own column from a
+    // glance. On the Navy Frame's off-white cells the old #e6eef3 was 1.08:1
+    // and melted into the history; 1.16 in light and 1.27 in dark now.
+    expect(ratio(hex(vars, "--jg-live-fill"), hex(vars, "--jg-surface"))).toBeGreaterThanOrEqual(1.15);
+  });
+
+  it("keeps blue words readable on the strong fill (the Now Bar's picked buttons)", () => {
+    // Not a row cell, so no banding: the Now Bar's unit and Next buttons.
+    expect(ratio(hex(vars, "--jg-live-text"), hex(vars, "--jg-live-fill-strong"))).toBeGreaterThanOrEqual(TEXT);
+  });
+});
+
+describe("the system-preference fallback", () => {
+  it("is the dark block, key for key", () => {
+    const dark = readBlock(".dark,");
+    const fallback = readBlock(':root:not(.light):not([data-theme="light"]):not(.dark):not([data-theme="dark"]) {');
+    expect(fallback).toEqual(dark);
+  });
 });
 
 describe("the profile retune", () => {
