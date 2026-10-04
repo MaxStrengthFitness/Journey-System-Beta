@@ -213,11 +213,17 @@
   outline: 2px solid var(--eq-focus-ring);
   outline-offset: -2px;
 }
-.eq-item--selected {
-  background: var(--eq-hero-fill);
-  border-left-color: var(--eq-hero);
-}
 .eq-item--idle { background: var(--eq-bg); }
+/* The picked machine is the blue (AJ, Oct 4 2026: "a selection is blue");
+   it was the hero orange, which is for now and go. Restated on :hover,
+   which an iPad keeps after the tap that picked it, and on a machine not in
+   use, or the grey of either would hide which one is open. */
+.eq-item--selected,
+.eq-item--selected:hover,
+.eq-item--selected.eq-item--idle {
+  background: var(--eq-live-fill);
+  border-left-color: var(--eq-live);
+}
 .eq-item--idle .eq-item__name { color: var(--eq-ink-2); }
 
 .eq-item__top {
@@ -268,7 +274,7 @@
 .eq-item__empty {
   font-size: 12px;
   font-weight: 700;
-  color: var(--eq-ink-faint);
+  color: var(--eq-ink-muted);
   font-style: italic;
 }
 /* Progression since the first set — green up, plum down, muted flat. */
@@ -286,12 +292,14 @@
 }
 .eq-item__prog--up   { color: var(--eq-ok);   border-color: var(--eq-ok);   background: var(--eq-ok-fill); }
 .eq-item__prog--down { color: var(--eq-warn); border-color: var(--eq-warn); background: var(--eq-warn-fill); }
-/* "12×" — sessions the machine appeared in. Quiet on purpose. */
+/* "12×" — sessions the machine appeared in. Quiet on purpose: the muted
+   ink, as is "No load yet" above, because both are words (the faint ink is
+   3:1, and 2.5 on the picked machine's blue in dark). */
 .eq-item__count {
   flex: 0 0 auto;
   font-size: 11px;
   font-weight: 800;
-  color: var(--eq-ink-faint);
+  color: var(--eq-ink-muted);
   font-variant-numeric: tabular-nums;
 }
 

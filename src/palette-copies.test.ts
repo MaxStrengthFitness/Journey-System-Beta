@@ -27,7 +27,8 @@ import { describe, expect, it } from "vitest";
  *     an orange;
  *   - a selection is the blue: the Pulse's linked note and its "Machines
  *     that bring it on" were the go pair until AJ's answer of Oct 4 2026
- *     ("a selection is blue"), and the Pulse keeps no orange with words.
+ *     ("a selection is blue"), and the Pulse keeps no orange with words;
+ *     a switch that is on is the blue too, so no Pulse rule reads the orange.
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -508,6 +509,21 @@ describe("a selection in the Pulse is the blue (AJ, Oct 4 2026: \"a selection is
     for (const r of rules(pulse)) {
       if (r.body.background === "var(--sr-hero)") expect(r.body.color, r.selectors.join(", ")).toBeUndefined();
     }
+  });
+
+  it("a switch that is on is the blue, its knob the on-colour, as the app's own Switch", () => {
+    // It was the hero orange, the last orange in the Pulse (review of the
+    // follow-ups, Oct 4 2026): a switch that is on is picked, not now or go.
+    expect(declared(pulse, ".sr-switch--on").background).toBe("var(--sr-navy)");
+    expect(declared(pulse, ".sr-switch--on::after").background).toBe("var(--sr-on)");
+    expect(ui).toContain('className={`sr-switch${on ? " sr-switch--on" : ""}`}');
+  });
+
+  it("no Pulse rule paints with the orange: the hero tokens are only the Hub's copy", () => {
+    const readers = rules(pulse)
+      .filter((r) => Object.values(r.body).some((v) => /var\(--sr-hero/.test(v)))
+      .flatMap((r) => r.selectors);
+    expect(readers).toEqual([]);
   });
 });
 

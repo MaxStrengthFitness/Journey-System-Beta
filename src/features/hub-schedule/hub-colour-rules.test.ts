@@ -293,3 +293,39 @@ describe("words that must still read", () => {
     expect(declared(TOP, '.hd-swatch[data-state="left-open"]').opacity).toBe(opacity);
   });
 });
+
+/* ---------------------------------------------------------------------------
+   A selection is blue (AJ, Oct 4 2026: "yes"). The Equipment tab's picked
+   machine was the hero orange, which is for now and go; the review of the
+   follow-ups found it. Its fill is kept on :hover (an iPad keeps hover after
+   the tap that picked it) and on a machine not in use.
+   --------------------------------------------------------------------------- */
+
+describe("the Equipment tab's picked machine is the blue", () => {
+  const EQ = stylesheet("features/equipment/equipment.css");
+
+  it("fills with the live fill and a blue edge, kept on :hover and on a machine not in use", () => {
+    for (const selector of [".eq-item--selected", ".eq-item--selected:hover", ".eq-item--selected.eq-item--idle"]) {
+      const rule = declared(EQ, selector);
+      expect(rule.background, selector).toBe("var(--eq-live-fill)");
+      expect(rule["border-left-color"], selector).toBe("var(--eq-live)");
+    }
+    // Equal weight, so the picked rule must come after the plain hover and the idle ground.
+    expect(position(EQ, ".eq-item--selected:hover")).toBeGreaterThan(position(EQ, ".eq-item:hover"));
+    expect(position(EQ, ".eq-item--selected.eq-item--idle")).toBeGreaterThan(position(EQ, ".eq-item--idle"));
+    expect(EQ).not.toMatch(/\.eq-item--selected[^{]*\{[^}]*--eq-hero/);
+  });
+
+  it("keeps every word on it at 4.5:1 and its edge at 3:1, in both modes", () => {
+    for (const [mode, t] of Object.entries(THEMES)) {
+      const fill = rgb(t["--eq-live-fill"]);
+      for (const ink of ["--eq-ink", "--eq-ink-2", "--eq-ink-muted", "--eq-hero-text"]) {
+        expect({ mode, ink, pass: contrast(rgb(t[ink]), fill) >= 4.5 }).toEqual({ mode, ink, pass: true });
+      }
+      expect({ mode, edge: contrast(rgb(t["--eq-live"]), rgb(t["--eq-surface"])) >= 3 }).toEqual({ mode, edge: true });
+    }
+    // "No load yet" and the session count are words: the muted ink, never the faint.
+    expect(declared(EQ, ".eq-item__empty").color).toBe("var(--eq-ink-muted)");
+    expect(declared(EQ, ".eq-item__count").color).toBe("var(--eq-ink-muted)");
+  });
+});
