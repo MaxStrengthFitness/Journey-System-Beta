@@ -304,6 +304,8 @@ describe("the pre-session briefing mounts", () => {
     await click(buttonByText(host, "Start session"));
     expect(onStart.mock.calls[0][4]).toBeNull();
 
+    // The note is one tap away on the way in (the Stack, Oct 3 2026).
+    await click(buttonByText(host, "Note"));
     const box = host.querySelector(".br__textarea");
     await typeInto(box, "Knee a bit sore from gardening");
     const row = host.querySelector('[data-testid="arrival-file-as"]')!;
@@ -355,8 +357,12 @@ describe("the pre-session briefing mounts", () => {
     journalMock.criticalEntries = [entry({ id: "cr", importance: "critical", body: "No overhead pressing" })];
     const host2 = await mount(<Screen last={null} />);
     const before = host2.querySelector('[aria-label="Before you start"]')!;
-    expect(before.textContent).toContain("Before you start · 2");
-    const headsUp = before.querySelector('[data-testid="briefing-headsup"]')!;
+    // Safety only (the Stack, Oct 3 2026): the critical note is counted here,
+    // the heads up is news and sits under Since last time.
+    expect(before.textContent).toContain("Before you start · 1");
+    const since = host2.querySelector('[aria-label="Since last time"]')!;
+    expect(since.textContent).toContain("Since last time · 1");
+    const headsUp = since.querySelector('[data-testid="briefing-headsup"]')!;
     expect(headsUp.textContent).toContain("Heads up");
     expect(headsUp.textContent).toContain("Right shoulder twinge");
     // Critical is drawn first, heads up after.
@@ -446,6 +452,7 @@ describe("the pre-session briefing mounts", () => {
   it("a body region is rated on the Dial and can carry a matters-until day", async () => {
     const onStart = vi.fn();
     const host = await mount(<Screen onStart={onStart} />);
+    await click(buttonByText(host, "Sore spot"));
     await click(buttonByText(host, "Tag Body Region"));
     const dialog = document.querySelector('[role="dialog"][aria-label="Body region picker"]')!;
     expect(dialog).toBeTruthy();
@@ -477,6 +484,7 @@ describe("the pre-session briefing mounts", () => {
   it("a region above the centre never writes an until key", async () => {
     const onStart = vi.fn();
     const host = await mount(<Screen onStart={onStart} />);
+    await click(buttonByText(host, "Sore spot"));
     await click(buttonByText(host, "Tag Body Region"));
     const dialog = document.querySelector('[role="dialog"][aria-label="Body region picker"]')!;
     await click(buttonByText(dialog, "Hips"));
@@ -533,19 +541,22 @@ describe("the briefing's renewal line follows the auto-renewal mark", () => {
     />
   );
   const before = (host: HTMLElement) => host.querySelector<HTMLElement>('[aria-label="Before you start"]')!;
+  /** Admin lines live in the quiet footer since the Stack (Oct 3 2026). */
+  const also = (host: HTMLElement) => host.querySelector<HTMLElement>('[aria-label="Also today"]')!;
 
   it("warns before the charge while the package renews", async () => {
     const host = await mount(renewalScreen({}));
-    expect(before(host).querySelector(".br__quote")?.textContent).toBe("30 left · auto-renews Oct 20, 2099");
-    expect(before(host).textContent).not.toContain("Nothing flagged");
+    expect(also(host).querySelector(".br__quote")?.textContent).toBe("30 left · auto-renews Oct 20, 2099");
+    // A charge coming is not a safety matter: the band still says clear.
+    expect(before(host).textContent).toContain("Nothing flagged — clear to go.");
   });
 
   it("stops the warning once a trainer marked her not on auto-renewal for this contract", async () => {
     const autoRenewMark = { renews: false, contractId: "9001", setAt: "2026-09-25T14:00:00.000Z", setById: "uid-aj" };
     const host = await mount(renewalScreen({ autoRenewMark }));
     // Sessions still bank when billing ends, so the line stays — in the right words.
-    expect(before(host).querySelector(".br__quote")?.textContent).toBe("30 left · billing ends Oct 20, 2099");
-    expect(before(host).textContent).not.toContain("auto-renews");
+    expect(also(host).querySelector(".br__quote")?.textContent).toBe("30 left · billing ends Oct 20, 2099");
+    expect(also(host).textContent).not.toContain("auto-renews");
     // No charge is coming, so nothing flags "Before you start".
     expect(before(host).textContent).toContain("Nothing flagged — clear to go.");
   });
@@ -593,12 +604,13 @@ describe("Due an InBody (FileMaker parity, Oct 1 2026)", () => {
     );
   }
 
-  it("says one quiet line under Before you start once she is due, and Start still starts", async () => {
+  it("says one quiet line in the footer once she is due, and Start still starts", async () => {
     const onStart = vi.fn();
     const host = await mount(<DueScreen who={scanned()} list={after(51)} onStart={onStart} />);
     const line = host.querySelector('[data-testid="briefing-inbody"]');
     expect(line?.textContent).toBe("Due an InBody: 51 sessions since her last scan");
-    expect(host.querySelector('[aria-label="Before you start"]')?.contains(line!)).toBe(true);
+    expect(host.querySelector('[aria-label="Also today"]')?.contains(line!)).toBe(true);
+    expect(host.querySelector('[aria-label="Before you start"]')?.contains(line!)).toBe(false);
     // Information, never a gate.
     expect(line!.querySelector("button")).toBeNull();
     await click(buttonByText(host, "Start session"));
@@ -654,5 +666,84 @@ describe("her total while it is Mindbody's guess (Atlas answers, Oct 2 2026)", (
   it("says nothing extra once the total is whole or confirmed", async () => {
     const host = await mount(<Screen who={{ ...client, sessionCount: 6 } as Client} coverage="complete" />);
     expect(host.querySelector('[data-testid="briefing-session-guess"]')).toBeNull();
+  });
+});
+
+/* ---------------------------------------------------------------- */
+
+describe("the Stack (AJ's walk, Oct 3 2026)", () => {
+  const flagged = { ...client, clinicalFlags: ["gen-shoulder"] } as Client;
+  function Flagged() {
+    return (
+      <BriefingScreen
+        authTrainer={trainer}
+        client={flagged}
+        targetRoutine={routines[0]}
+        lastSession={null}
+        sessions={sessions}
+        onStart={() => {}}
+        onClose={() => {}}
+        machines={machines}
+        routines={routines}
+        trainers={[trainer]}
+      />
+    );
+  }
+
+  it("leads with safety: the figure lit where her limit is, and what to do said, not behind a tap", async () => {
+    const host = await mount(<Flagged />);
+    const band = host.querySelector('[aria-label="Before you start"]')!;
+    expect(band.textContent).toContain("Before you start · 1");
+    const fig = band.querySelector('[data-testid="briefing-figure"]')!;
+    expect(fig.getAttribute("aria-label")).toBe("Her limits: Shoulder");
+    expect(fig.querySelectorAll("svg").length).toBeGreaterThan(0);
+    // The instruction itself is on the page, as a sentence.
+    expect(band.querySelectorAll(".br-safe__do").length).toBeGreaterThan(0);
+    // Safety comes before the routine and the capture on the page.
+    const routine = host.querySelector('[aria-label="Today\'s routine"]')!;
+    expect(band.compareDocumentPosition(routine) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("draws no figure and says clear to go when nothing is flagged", async () => {
+    const host = await mount(<Screen last={null} />);
+    expect(host.querySelector('[data-testid="briefing-figure"]')).toBeNull();
+    expect(host.querySelector(".br-safe--clear")).toBeTruthy();
+  });
+
+  it("reads the routine as one line, and opens the builder only on Edit", async () => {
+    const host = await mount(<Screen />);
+    const line = host.querySelector('[data-testid="briefing-routine-line"]')!;
+    expect(line.textContent).toContain("Routine A · 2 machines");
+    expect(line.textContent).toContain("Leg Press · Chest Press");
+    expect(host.querySelector('[data-testid="routine-builder"]')).toBeNull();
+    await click(line);
+    expect(host.querySelector('[data-testid="routine-builder"]')?.getAttribute("data-count")).toBe("2");
+  });
+
+  it("offers every capture a tap away, with Dials open and the rest folded", async () => {
+    const host = await mount(<Screen />);
+    const chips = host.querySelector('[aria-label="What to fill in"]')!;
+    const words = Array.from(chips.querySelectorAll("button")).map((b) => b.textContent);
+    expect(words.slice(0, 4)).toEqual(["Dials", "Sore spot", "Note", "Update Pulse"]);
+    // In her own pronoun (this client has none on file).
+    expect(words[4]).toMatch(/^Hand (her|him|them) the iPad$/);
+    expect(host.querySelector('[data-testid="briefing-dials"]')).toBeTruthy();
+    expect(host.querySelector(".br__textarea")).toBeNull();
+    expect(host.querySelector('[data-testid="briefing-sore"]')).toBeNull();
+  });
+
+  it("a tap on the body opens the rating for that region and writes nothing until it is rated", async () => {
+    const onStart = vi.fn();
+    const host = await mount(<Screen onStart={onStart} />);
+    await click(buttonByText(host, "Sore spot"));
+    const knee = host.querySelector('[data-testid="briefing-sore"] [id^="knees"], [data-testid="briefing-sore"] path[id*="knee"]');
+    if (knee) {
+      await act(async () => {
+        knee.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+      await settle();
+    }
+    await click(buttonByText(host, "Start session"));
+    expect(onStart.mock.calls[0][3]?.bodyStates).toBeUndefined();
   });
 });
