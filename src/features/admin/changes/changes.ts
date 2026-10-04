@@ -31,6 +31,12 @@
  *   booking she already held (`alsoBooked`). A cancellation with no stamp
  *   cannot be matched to a rebook, so it reads as a cancellation.
  *
+ *   Not a change at all (Oct 3 2026): a cancelled booking when she still
+ *   holds another at the very same start. That is the front desk handing a
+ *   "{studio} Rotation" booking to a named trainer by cancelling one and
+ *   booking the other; she is still coming at that time, and the list read
+ *   six of one Saturday's fourteen changes as cancellations because of it.
+ *
  *   The calendar shows none of this. A cancelled row is removed from the
  *   calendar entirely (greying it out clutters the calendar); the list is
  *   where it is recorded.
@@ -169,6 +175,10 @@ export function changesForDay(all: ScheduleEntry[], day: string, tz?: string): C
       const start = toDate(e.startTime);
       if (!start || dayOf(start) !== day) continue;
       const others = (liveByClient.get(clientKey(e)) ?? []).filter((o) => (o.id ?? o.mindbodyAppointmentId) !== id);
+      // Handed to another trainer at the same time (the front desk moving a
+      // rotation booking to a named trainer): she is still coming, so it is
+      // not a change at all (Oct 3 2026).
+      if (others.some((o) => toDate(o.startTime)?.getTime() === start.getTime())) continue;
       const detectedAt = toDate(e.cancelledAt);
       // A reschedule only when she rebooked: see isRealRebook.
       const next = nearestAfter(

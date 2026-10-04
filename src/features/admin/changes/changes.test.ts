@@ -78,6 +78,18 @@ describe("changesForDay — day-bucketing", () => {
   it("a live booking is not a change", () => {
     expect(changesForDay([row({ id: "live" })], "2026-09-18", TZ)).toHaveLength(0);
   });
+
+  it("a booking handed from the rotation to a named trainer at the same time is not a change", () => {
+    const entries = [
+      row({ id: "rot", status: "Cancelled", trainerId: null, trainerName: "Strongsville Rotation", cancelledAt: at("2026-09-18", "07:20"), cancelSource: "mindbody" }),
+      row({ id: "kyle", trainerId: "t2", trainerName: "Kyle", createdAt: at("2026-09-11", "10:00") }),
+    ];
+    expect(changesForDay(entries, "2026-09-18", TZ)).toHaveLength(0);
+    expect(changeCounts(entries, ["2026-09-18"], TZ)["2026-09-18"]).toBe(0);
+    // Another booking at a different time that day is still a cancellation.
+    const later = [entries[0], row({ id: "kyle", trainerName: "Kyle", startTime: at("2026-09-18", "10:00"), createdAt: at("2026-09-11", "10:00") })];
+    expect(changesForDay(later, "2026-09-18", TZ)).toHaveLength(1);
+  });
 });
 
 describe("changesForDay — cancellation vs reschedule", () => {
