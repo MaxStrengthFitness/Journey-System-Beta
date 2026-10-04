@@ -8,7 +8,10 @@
  *   offering a machine      studios/{s}/roster       leaders; custom only
  *   offering a note         studios/{s}/wiki         anyone at the studio
  *   offering a tip          studios/{s}/playbook     its author, or a leader
- *   deciding an offer       any of the three         administrators only
+ *   offering a floor note   studios/{s}/floorNotes   anyone at the studio (the
+ *                                                    screen offers its author's
+ *                                                    or a leader's; Oct 3 2026)
+ *   deciding an offer       any of the four          administrators only
  *
  * SHARING WAITS FOR AN ADMINISTRATOR (AJ, Sep 28 2026: sharing with all MSF
  * studios "should submit to admins first for review, we can review in admin
@@ -111,13 +114,23 @@ export async function setTipOffer(studioId: string, entryId: string, on: boolean
   await updateDoc(doc(db, "studios", studioId, "playbook", entryId), offerFields(on, where));
 }
 
-/** Which kind of thing an offer is, and so which collection it lives in. */
-export type OfferKind = "machine" | "note" | "tip";
+/**
+ * Offers (or takes back) one of the floor's notes on a machine (notes round,
+ * Oct 3 2026: the dated list that took over from the Catalog's one note).
+ */
+export async function setFloorNoteOffer(studioId: string, noteId: string, on: boolean, where: ShareWhere): Promise<void> {
+  refuseDemoOffer(studioId, on);
+  await updateDoc(doc(db, "studios", studioId, "floorNotes", noteId), offerFields(on, where));
+}
 
-const COLLECTION: Record<OfferKind, "roster" | "wiki" | "playbook"> = {
+/** Which kind of thing an offer is, and so which collection it lives in. */
+export type OfferKind = "machine" | "note" | "tip" | "floor";
+
+const COLLECTION: Record<OfferKind, "roster" | "wiki" | "playbook" | "floorNotes"> = {
   machine: "roster",
   note: "wiki",
   tip: "playbook",
+  floor: "floorNotes",
 };
 
 /**

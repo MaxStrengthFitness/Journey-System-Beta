@@ -2665,19 +2665,19 @@ service cloud.firestore {
        */
       match /floorNotes/{noteId} {
         function floorNoteValid(d) {
-          return d.keys().hasOnly(['machineId', 'body', 'threadId', 'authorId', 'authorName',
-                                   'createdAt', 'updatedAt', 'resolvedAt', 'resolvedBy', 'isArchived',
-                                   'shared', 'sharedKeys', 'studioName', 'shareStatus', 'shareReviewNote',
-                                   'shareReviewedBy', 'shareReviewedAt', 'shareRequestedAt', 'shareRequestedBy'])
+          // A new note is never already offered: offering is an update.
+          return d.keys().hasOnly(['machineId', 'machineName', 'copiedFrom', 'body', 'threadId', 'authorId', 'authorName',
+                                   'createdAt', 'updatedAt', 'resolvedAt', 'resolvedBy', 'isArchived'])
               && d.machineId is string && d.machineId.size() > 0 && d.machineId.size() <= 200
+              && (!('machineName' in d) || (d.machineName is string && d.machineName.size() <= 120))
+              && (!('copiedFrom' in d) || d.copiedFrom in ['studio-notes', 'catalog-note', 'unit-note'])
               && d.body is string && d.body.size() > 0 && d.body.size() <= 2000
               && (d.threadId == null || (d.threadId is string && d.threadId.size() <= 200))
               && d.authorId is string
               && d.authorName is string && d.authorName.size() <= 120
               && (d.resolvedAt == null || d.resolvedAt is timestamp)
               && (d.resolvedBy == null || (d.resolvedBy is map && d.resolvedBy.keys().hasOnly(['id', 'name'])))
-              && d.isArchived is bool
-              && sharedFieldsValid(d);
+              && d.isArchived is bool;
         }
         allow read: if isAuthenticated() && writesForStudio(studioId);
         // Cheapest first, and the studio check last: the role lookups behind
@@ -2687,7 +2687,6 @@ service cloud.firestore {
                       && request.resource.data.authorId == request.auth.uid
                       && request.resource.data.createdAt == request.time
                       && floorNoteValid(request.resource.data)
-                      && shareDecisionOk()
                       && writesForStudio(studioId);
         // An update touches only what may change — the words, closing and
         // reopening, archiving, the offer — and is checked on those alone; the

@@ -4,8 +4,8 @@
  * admins first for review, we can review in admin dashboard").
  *
  * An offer is a studio's own document marked `shareStatus: "pending"`: its
- * own machine (roster), its note on a machine (wiki overlay) or a playbook
- * tip. This turns each into one row an administrator can read whole and
+ * own machine (roster), its note on a machine (wiki overlay), a playbook
+ * tip, or one of the floor's dated notes on a machine (floorNotes, Oct 3 2026). This turns each into one row an administrator can read whole and
  * decide. The studio is the one the PATH names, never a field the writer
  * filled in (the same rule as the credit on a shared item, hooks.ts).
  */
@@ -32,6 +32,7 @@ export const KIND_LABEL: Record<OfferKind, string> = {
   machine: "Their own machine",
   note: "A note on a machine",
   tip: "A tip",
+  floor: "A floor note on a machine",
 };
 
 /** studios/{studioId}/{collection}/{docId} → studioId; anything else → null. */
@@ -86,6 +87,21 @@ export function offerFrom(kind: OfferKind, path: string, docId: string, data: Re
       lines: machineLines(def),
       studioName: str(data.sharedStudioName),
       offeredBy: str(data.sharedBy),
+      offeredAt: data.shareRequestedAt ?? null,
+    };
+  }
+  if (kind === "floor") {
+    // Only a note of its own, still open: an update or a closed note is not offered.
+    const body = str(data.body);
+    if (!body || data.threadId || data.resolvedAt || data.isArchived === true) return null;
+    return {
+      kind,
+      studioId,
+      docId,
+      title: str(data.machineName) ?? str(data.machineId) ?? docId,
+      lines: [body],
+      studioName: str(data.studioName),
+      offeredBy: str(data.shareRequestedBy) ?? str(data.authorId),
       offeredAt: data.shareRequestedAt ?? null,
     };
   }

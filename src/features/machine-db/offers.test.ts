@@ -100,3 +100,32 @@ describe("byOldestOffer", () => {
     expect(sorted.map((o) => o.title)).toEqual(["early", "middle", "late"]);
   });
 });
+
+describe("a floor note offered (notes round, Oct 3 2026)", () => {
+  const floor = {
+    machineId: "m-leg-press",
+    machineName: "Leg Press",
+    body: "Ours sits two notches lower than the card.",
+    threadId: null,
+    authorId: "u1",
+    shareStatus: "pending",
+    studioName: "Solon",
+    shareRequestedBy: "u1",
+  };
+
+  it("reads as one row: the machine's name, the words, the studio from the path", () => {
+    expect(offerFrom("floor", "studios/solon/floorNotes/n1", "n1", floor)).toMatchObject({
+      kind: "floor",
+      studioId: "solon",
+      title: "Leg Press",
+      lines: ["Ours sits two notches lower than the card."],
+      offeredBy: "u1",
+    });
+  });
+
+  it("never lists an update, a closed note or one taken off the list", () => {
+    expect(offerFrom("floor", "studios/solon/floorNotes/n1", "n1", { ...floor, threadId: "r1" })).toBeNull();
+    expect(offerFrom("floor", "studios/solon/floorNotes/n1", "n1", { ...floor, resolvedAt: { seconds: 1 } })).toBeNull();
+    expect(offerFrom("floor", "studios/solon/floorNotes/n1", "n1", { ...floor, isArchived: true })).toBeNull();
+  });
+});

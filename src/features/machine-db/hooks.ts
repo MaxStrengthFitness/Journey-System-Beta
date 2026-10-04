@@ -17,7 +17,7 @@ import { resolveMachine } from "../../lib/resolve-machine";
 import type { RosterEntryCustom } from "../../types/machines";
 import { fromResolvedMachine } from "../catalog/adapters";
 import type { SharedStudioMachine } from "./database";
-import { noteFromWikiDoc, tipFromDoc, type NetworkItem } from "./network";
+import { noteFromFloorDoc, noteFromWikiDoc, tipFromDoc, type NetworkItem } from "./network";
 
 /**
  * The studio a collection-group document sits under: studios/{id}/…, else
@@ -113,8 +113,9 @@ export interface NetworkNotesState {
 }
 
 /**
- * What studios shared about one machine: their notes and their tips, filed
- * under its lineage key. Two listeners, only while that machine's page is open.
+ * What studios shared about one machine: their notes, their floor notes
+ * (Oct 3 2026) and their tips, filed under its lineage key. Three listeners,
+ * only while that machine's page is open.
  */
 export function useNetworkNotes(lineageKey: string | null): NetworkNotesState {
   const [tips, setTips] = useState<{ items: NetworkItem[]; ready: boolean; error: string | null }>({
@@ -127,15 +128,22 @@ export function useNetworkNotes(lineageKey: string | null): NetworkNotesState {
     ready: false,
     error: null,
   });
+  const [floor, setFloor] = useState<{ items: NetworkItem[]; ready: boolean; error: string | null }>({
+    items: [],
+    ready: false,
+    error: null,
+  });
 
   useEffect(() => {
     if (!lineageKey) {
       setTips({ items: [], ready: true, error: null });
       setNotes({ items: [], ready: true, error: null });
+      setFloor({ items: [], ready: true, error: null });
       return;
     }
     setTips({ items: [], ready: false, error: null });
     setNotes({ items: [], ready: false, error: null });
+    setFloor({ items: [], ready: false, error: null });
     const failed = "Couldn't load what other studios shared about this machine.";
     const offTips = onSnapshot(
       query(
@@ -183,20 +191,45 @@ export function useNetworkNotes(lineageKey: string | null): NetworkNotesState {
         setNotes({ items: [], ready: true, error: failed });
       },
     );
+    const offFloor = onSnapshot(
+      query(
+        collectionGroup(db, "floorNotes"),
+        where("shared", "==", true),
+        where("sharedKeys", "array-contains", lineageKey),
+        limit(40),
+      ),
+      (snap) =>
+        setFloor({
+          items: snap.docs
+            .map((d) => {
+              const studioId = studioFromPath(d.ref as never);
+              return studioId ? noteFromFloorDoc(d.id, studioId, d.data()) : null;
+            })
+            .filter((x): x is NonNullable<typeof x> => x !== null),
+          ready: true,
+          error: null,
+        }),
+      (err: any) => {
+        console.warn("[machine-db] shared floor notes read failed:", err);
+        setFloor({ items: [], ready: true, error: failed });
+      },
+    );
     return () => {
       offTips();
       offNotes();
+      offFloor();
     };
   }, [lineageKey]);
 
   const nameOf = useStudioNameOf();
   const items = useMemo(
-    () => [...notes.items, ...tips.items].map((i) => ({ ...i, studioName: nameOf(i.studioId, i.studioName) })),
-    [notes.items, tips.items, nameOf],
+    () =>
+      [...notes.items, ...floor.items, ...tips.items].map((i) => ({ ...i, studioName: nameOf(i.studioId, i.studioName) })),
+    [notes.items, floor.items, tips.items, nameOf],
   );
   return {
     items,
-    loading: !tips.ready || !notes.ready,
-    error: tips.error ?? notes.error,
+    loading: !tips.ready || !notes.ready || !floor.ready,
+    error: tips.error ?? notes.error ?? floor.error,
   };
 }

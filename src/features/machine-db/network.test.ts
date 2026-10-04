@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { networkItems, noteFromWikiDoc, studiosLine, tipFromDoc, type NetworkItem } from "./network";
+import { networkItems, noteFromFloorDoc, noteFromWikiDoc, studiosLine, tipFromDoc, type NetworkItem } from "./network";
 
 describe("reading what other studios shared", () => {
   it("takes a shared, current tip and nothing else", () => {
@@ -54,5 +54,27 @@ describe("networkItems", () => {
     expect(studiosLine([tip("1", "Solon", 1), tip("2", "Westlake", 1)])).toBe("From Solon and Westlake");
     expect(studiosLine([tip("1", "A", 1), tip("2", "B", 1), tip("3", "C", 1)])).toBe("From 3 studios");
     expect(studiosLine([])).toBe("");
+  });
+});
+
+describe("a shared floor note (notes round, Oct 3 2026)", () => {
+  const base = { shared: true, machineId: "m-leg-press", body: "Ours sits two notches lower.", threadId: null, authorName: "Ana", studioName: "Solon" };
+
+  it("reads as a note of one paragraph, credited to the studio its path names", () => {
+    expect(noteFromFloorDoc("n1", "solon", base)).toMatchObject({
+      kind: "note",
+      studioId: "solon",
+      studioName: "Solon",
+      blocks: [{ kind: "para", text: "Ours sits two notches lower." }],
+      authorName: "Ana",
+    });
+  });
+
+  it("never shows one that isn't shared, an update, a closed note or one taken off the list", () => {
+    expect(noteFromFloorDoc("n1", "solon", { ...base, shared: false })).toBeNull();
+    expect(noteFromFloorDoc("n1", "solon", { ...base, threadId: "r1" })).toBeNull();
+    expect(noteFromFloorDoc("n1", "solon", { ...base, resolvedAt: { seconds: 1 } })).toBeNull();
+    expect(noteFromFloorDoc("n1", "solon", { ...base, isArchived: true })).toBeNull();
+    expect(noteFromFloorDoc("n1", "solon", { ...base, body: " " })).toBeNull();
   });
 });

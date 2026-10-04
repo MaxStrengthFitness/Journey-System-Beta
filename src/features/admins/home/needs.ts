@@ -244,7 +244,8 @@ export function needItems(input: NeedInputs): { items: NeedItem[]; more: NeedIte
     const first = pending[0];
     const from = first.studioName || "a studio";
     const waiting = waitingWords(first.offeredAt, input.now);
-    const what = first.kind === "machine" ? "its own machine" : first.kind === "note" ? "a note on a machine" : "a tip";
+    const what =
+      first.kind === "machine" ? "its own machine" : first.kind === "note" || first.kind === "floor" ? "a note on a machine" : "a tip";
     out.push({
       id: "shares",
       kind: "Waiting for review",

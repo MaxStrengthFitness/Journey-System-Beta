@@ -58,6 +58,9 @@ const FILES = [
   // Openings (Openings round, Sep 27 2026): the usual week's grid, the next
   // 7 days, the offers and who's usually in.
   "features/openings/openings.css",
+  // The floor's notes on a machine (notes round, Oct 3 2026): on Machines'
+  // door and the Catalog page, in --eq-* colours like standing-week.css.
+  "features/floor-notes/floor-notes.css",
 ] as const;
 
 /**
@@ -180,6 +183,8 @@ const NAME_CLASSES = [
   "op-line__text", // a line of the next 7 days (a trainer), and after a tap a client
   "op-offer__meta", // who could take a time for good
   "op-person__name", // a person on Openings' Who's usually in
+  "fn-note__meta", // who wrote a floor note, and when
+  "fn-note__body", // a floor note's words
 ] as const;
 
 describe("names in My Studio", () => {
@@ -290,6 +295,8 @@ const TAP_CLASSES = [
   "op-chip", // Openings' day picker and whose times
   "op-line", // a line of the next 7 days, tapped to show who
   "op-btn", // Who's usually in: show the regulars' names
+  "fn-btn", // the floor's notes: Add note, Add an update, Close
+  "fn-fold", // Closed · N
 ] as const;
 
 const px = (v: string) => (/^\d+(?:\.\d+)?px$/.test(v.trim()) ? parseFloat(v) : null);
@@ -366,6 +373,8 @@ const BUTTON_CLASSES = [
   "tj-done__toggle",
   "wl__btn",
   "op-btn",
+  "fn-btn",
+  "fn-fold",
 ] as const;
 const CHIP_CLASSES = ["stq__kind", "sh__chip", "rls__chip", "ne__kind", "op-chip"] as const;
 

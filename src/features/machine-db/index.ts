@@ -12,4 +12,4 @@ export { ShareReviewPanel } from "./ShareReviewPanel";
 export {
   sharedKeysFor,
 } from "./database";
-export { decideOffer, setMachineOffer, setNoteOffer, setTipOffer, type OfferKind } from "./mutations";
+export { decideOffer, setFloorNoteOffer, setMachineOffer, setNoteOffer, setTipOffer, type OfferKind } from "./mutations";

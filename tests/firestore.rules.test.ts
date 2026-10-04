@@ -1859,6 +1859,17 @@ describe("Firestore Security Rules", () => {
     await assertFails(setDoc(doc(insider, "studios", "studioA", "floorNotes", "n4"), { ...floorNote(), clientId: "clientA" }));
     await assertFails(setDoc(doc(insider, "studios", "studioA", "floorNotes", "n5"), floorNote({ body: "" })));
     await assertFails(deleteDoc(doc(insider, "studios", "studioA", "floorNotes", "n1")));
+    // It may carry the machine's name and say which earlier note it copies, and nothing else.
+    await assertSucceeds(
+      setDoc(
+        doc(insider, "studios", "studioA", "floorNotes", "n6"),
+        floorNote({ machineName: "Leg Press", copiedFrom: "unit-note" }),
+      ),
+    );
+    await assertFails(setDoc(doc(insider, "studios", "studioA", "floorNotes", "n7"), floorNote({ copiedFrom: "somewhere" })));
+    // A new note is never already offered or shared: offering is a change to one.
+    await assertFails(setDoc(doc(insider, "studios", "studioA", "floorNotes", "n8"), floorNote({ shareStatus: "pending" })));
+    await assertFails(setDoc(doc(insider, "studios", "studioA", "floorNotes", "n9"), floorNote({ shared: true })));
   });
 
   it("lets anyone there close a floor note, and only its author or a leader change its words", async () => {

@@ -118,6 +118,33 @@ export function noteFromWikiDoc(
   };
 }
 
+/**
+ * One of the floor's dated notes on a machine, shared (notes round, Oct 3
+ * 2026), read as a note: its words are one paragraph. Only a note of its
+ * own that is still open — an update, a closed note or one taken off the
+ * list is not shown to other studios.
+ */
+export function noteFromFloorDoc(
+  id: string,
+  fromPath: string | null,
+  d: Record<string, unknown> | undefined,
+): NetworkNote | null {
+  if (!d || d.shared !== true || d.isArchived === true || d.resolvedAt || d.threadId) return null;
+  const body = str(d.body, 2000).trim();
+  if (!body) return null;
+  const studioId = studioOf(d, fromPath);
+  if (!studioId) return null;
+  return {
+    kind: "note",
+    id,
+    studioId,
+    studioName: str(d.studioName, 80).trim() || "Another studio",
+    blocks: [{ kind: "para", text: body }],
+    authorName: str(d.authorName, 80).trim(),
+    updatedAt: d.updatedAt ?? d.createdAt,
+  };
+}
+
 function millis(v: unknown): number {
   const t = v as { toMillis?: () => number; seconds?: number } | null;
   if (!t) return 0;
