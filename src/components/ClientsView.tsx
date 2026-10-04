@@ -188,7 +188,7 @@ export function ClientsView({
   const [listRequest, setListRequest] = useState<{ filter: FilterId; nonce: number } | null>(null);
   /** The card whose peek is open (a tap on a card: Hub question 1's default). */
   const [peek, setPeek] = useState<{ clientId: string; blockKey: string; day: string; anchor: HTMLElement | null } | null>(null);
-  /** Me (your own column, in words) or Everyone (every column alike); remembered on this iPad. */
+  /** On a phone only: Me (your own bookings) or Everyone; remembered on this device. The iPad has no switch since Oct 3 2026. */
   const [focus, setFocus] = useState<HubFocus>(() => readFocus());
   /* A phone draws the day as a list (Journey Lite, features/phone). */
   const isPhone = usePhone();
@@ -596,12 +596,17 @@ export function ClientsView({
    * YOUR OWN COLUMN, IN WORDS (hub cherry round, Sep 28 2026; Hub direction
    * B's focus column): your column takes more of the spare room, its head
    * says your day in words, and its cards say every mark they may say out
-   * loud. Only when you have a column on the day on screen, and Focus is on
-   * Me (Everyone makes every column alike: features/hub-schedule/focus.ts).
+   * loud. Only when you have a column on the day on screen.
+   *
+   * The iPad's Focus switch (My day | Everyone) went on Oct 3 2026 (AJ:
+   * "this is useless now with our auto filter, remove it"): the columns run
+   * yours first, then everyone with sessions, so your column is always the
+   * focus. On a phone the switch stays, because there it decides whether the
+   * list is your bookings or everyone's (features/hub-schedule/focus.ts).
    */
   const myColumn = visibleTrainersList.find((t) => isSelfTrainer(t));
   const myColumnId = myColumn ? String(myColumn.id) : null;
-  const focusId = focusColumnId(focus, myColumnId);
+  const focusId = isPhone ? focusColumnId(focus, myColumnId) : myColumnId;
   // The name they go by, whole (research-hub §6.0), never cut; the full name
   // when two columns would otherwise read alike (two Chrises, Oct 1 2026).
   const shortName = (t: Trainer) => ((t as any).nickname || "").trim() || (t.fullName || "").trim().split(" ")[0] || "Trainer";
@@ -865,7 +870,7 @@ export function ClientsView({
                   setLayer("opportunities");
                 }}
                 focus={
-                  myColumnId
+                  isPhone && myColumnId
                     ? {
                         value: focus,
                         onChange: (next) => {

@@ -310,21 +310,14 @@ describe("the Hub", () => {
     expect(cardOf(el, "Estella Bolger")?.dataset.words).toBeUndefined();
   });
 
-  it("Focus: Everyone makes every column alike, and the iPad remembers it", () => {
+  it("has no Focus switch on the iPad: your column is the focus, whatever an earlier visit chose (Oct 3 2026)", () => {
+    // AJ: "this is useless now with our auto filter, remove it". A choice left on this iPad is ignored.
+    window.localStorage.setItem("journey.hub.focus", "everyone");
     const { el } = mount();
-    const focusBtn = (label: string) => [...el.querySelectorAll<HTMLButtonElement>('[aria-label="Focus"] button')].find((b) => b.textContent === label)!;
-    expect(focusBtn("My day").getAttribute("aria-pressed")).toBe("true");
-    act(() => focusBtn("Everyone").click());
-    expect(el.querySelectorAll('[data-focus="true"]')).toHaveLength(0);
-    expect(cardOf(el, "Belladonna Took")?.dataset.words).toBeUndefined();
-    expect(el.querySelector(".hs-colhead .hs-colcount")?.textContent).toBe("2 sessions");
-    expect(window.localStorage.getItem("journey.hub.focus")).toBe("everyone");
-    // The next visit opens on Everyone.
-    act(() => root?.unmount());
-    host?.remove();
-    const again = mount();
-    expect(again.el.querySelectorAll('[data-focus="true"]')).toHaveLength(0);
-    expect([...again.el.querySelectorAll<HTMLButtonElement>('[aria-label="Focus"] button')].find((b) => b.textContent === "Everyone")?.getAttribute("aria-pressed")).toBe("true");
+    expect(el.querySelector('[aria-label="Focus"]')).toBeNull();
+    expect(el.querySelectorAll('.hs-colhead[data-focus="true"]')).toHaveLength(1);
+    expect(cardOf(el, "Belladonna Took")?.dataset.words).toBe("all");
+    window.localStorage.removeItem("journey.hub.focus");
   });
 
   it("shows who is due in the next 30 minutes, across the floor, and a tap opens the peek", () => {

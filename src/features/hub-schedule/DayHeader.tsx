@@ -13,9 +13,10 @@
  *               chips (six since Get to know, wave 2 hub; a zero is never
  *               drawn). A chip lights its cards on the grid (the spotlight);
  *               the bar then says what it shows, steps to the next card, and
- *               opens the same group as a list. At its end, for someone with
- *               a column that day, Focus: Me | Everyone (hub cherry round) —
- *               on the same line, so the top keeps its two rows.
+ *               opens the same group as a list. At its end, on a phone and
+ *               for someone with a column that day, Focus: Me | Everyone
+ *               (hub cherry round; off the iPad since Oct 3 2026, where the
+ *               columns already run yours first).
  *   KeySheet    every mark and state in words, on both layers.
  *
  * On an upright iPad the chips sit in the top row, between the layers and

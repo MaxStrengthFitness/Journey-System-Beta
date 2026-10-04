@@ -6,6 +6,10 @@
  * calm grid as it was. Me is your own column, in words (the focus column:
  * your-day.ts, HubGrid `focusId`, HubCard `wordy`).
  *
+ *   - On a phone only since Oct 3 2026 (AJ, on the iPad's switch: "this is
+ *     useless now with our auto filter, remove it"): the iPad's columns run
+ *     yours first, so your column is always the focus there. On a phone the
+ *     switch decides whether the list is your bookings or everyone's.
  *   - Me by default: the round is your own day read in words.
  *   - Offered only to someone with a column on the day on screen; with no
  *     column there is nothing to focus on, and every column is alike.
