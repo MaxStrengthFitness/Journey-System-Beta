@@ -77,34 +77,6 @@ export function BriefEmpty({ children }: { children: ReactNode }) {
   return <p className="ops-sec__empty">{children}</p>;
 }
 
-/**
- * THE BOTTOM LINE (BLUF): one sentence built by rules (overview/brief.ts),
- * the rules themselves a tap away, and the day's facts under it.
- */
-export function BottomLineBox({ sentence, rules, facts, below }: { sentence: string; rules: string[]; facts?: ReactNode; below?: ReactNode }) {
-  const [how, setHow] = useState(false);
-  return (
-    <section className="ops-bluf" aria-label="Bottom line">
-      <div className="ops-bluf__top">
-        <span className="ops-bluf__lab">Bottom line</span>
-        <button type="button" className="ops-bluf__how" aria-expanded={how} onClick={() => setHow((v) => !v)}>
-          <Info className="w-4 h-4" aria-hidden /> How this line is written
-        </button>
-      </div>
-      <p className="ops-bluf__say">{sentence}</p>
-      {how && (
-        <ul className="ops-bluf__rules">
-          {rules.map((r) => (
-            <li key={r}>{r}</li>
-          ))}
-        </ul>
-      )}
-      {facts && <div className="ops-bluf__facts">{facts}</div>}
-      {below}
-    </section>
-  );
-}
-
 /* ------------------------------------------------------------------ *
  * The calm round's pieces (Oct 3 2026)
  * ------------------------------------------------------------------ */
