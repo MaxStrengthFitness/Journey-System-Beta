@@ -311,9 +311,9 @@ export function sectionLocation(section: DossierSection): ProfileLocation {
 
 /** The four tabs, by depth: AJ's order (Sep 27 2026), see the header. Don't reorder, merge or add one without asking. */
 export const PROFILE_TABS: { id: ProfileTab; label: string; blurb: string }[] = [
-  { id: "journey", label: "Journey", blurb: "Every machine she has performed, in order" },
-  { id: "programming", label: "Programming", blurb: "What she is prescribed and how it is set up" },
-  { id: "record", label: "Notes & Profile", blurb: "Everything written down, and who she is" },
+  { id: "journey", label: "Journey", blurb: "Every machine performed, in order" },
+  { id: "programming", label: "Programming", blurb: "What is prescribed and how it is set up" },
+  { id: "record", label: "Notes & Profile", blurb: "Everything written down, and who this client is" },
   { id: "clinical", label: "Activity Archive", blurb: "Every visit, the Deep Dive, and the filed reports" },
 ];
 

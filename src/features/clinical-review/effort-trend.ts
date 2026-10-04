@@ -88,7 +88,7 @@ export function effortTrend(facts: EffortFactLike[], firstName: string): EffortT
   ) {
     return {
       status: "declining",
-      sentence: `${who}'s effort has been lower lately: ${below} of her last ${recentRated.length} rated workouts were below what was expected. Worth a conversation.`,
+      sentence: `${who}'s effort has been lower lately: ${below} of the last ${recentRated.length} rated workouts were below what was expected. Worth a conversation.`,
       rated: rated.length,
       defaulted,
     };
@@ -100,7 +100,7 @@ export function effortTrend(facts: EffortFactLike[], firstName: string): EffortT
   if (recent.length >= EFFORT_RECENT && pushing >= EFFORT_PUSHING_MIN) {
     return {
       status: "pushing",
-      sentence: `${who} has been pushing hard lately: ${pushing} of her last ${recent.length} workouts were marked Pushed hard or Gave everything.`,
+      sentence: `${who} has been pushing hard lately: ${pushing} of the last ${recent.length} workouts were marked Pushed hard or Gave everything.`,
       rated: rated.length,
       defaulted,
     };
@@ -108,7 +108,7 @@ export function effortTrend(facts: EffortFactLike[], firstName: string): EffortT
 
   return {
     status: "steady",
-    sentence: `${who}'s effort has been about where it usually is across her ${rated.length} rated workouts.`,
+    sentence: `${who}'s effort has been about where it usually is across ${rated.length} rated workouts.`,
     rated: rated.length,
     defaulted,
   };

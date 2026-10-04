@@ -184,9 +184,9 @@ export function CreateClientModal({
             Add a client
           </h2>
           <p className="text-sm font-medium text-muted-foreground leading-relaxed">
-            A temporary profile, for a walk-in or when Mindbody is down. Run her
-            sessions on it as usual. Once Mindbody has her, a leader joins it to
-            her real record on My Studio → Team and her sessions move across.
+            A temporary profile, for a walk-in or when Mindbody is down. Run the
+            sessions on it as usual. Once Mindbody has the client, a leader joins it
+            to the real record on My Studio → Team and the sessions move across.
           </p>
         </div>
 

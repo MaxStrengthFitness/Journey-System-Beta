@@ -25,7 +25,7 @@ describe("effort, lately", () => {
   it("says her effort has been lower lately, from tapped ratings only", () => {
     const t = effortTrend(facts(1, 0, 1, 0, 0, -1, -1, 0, -2), "Judy");
     expect(t.status).toBe("declining");
-    expect(t.sentence).toBe("Judy's effort has been lower lately: 3 of her last 4 rated workouts were below what was expected. Worth a conversation.");
+    expect(t.sentence).toBe("Judy's effort has been lower lately: 3 of the last 4 rated workouts were below what was expected. Worth a conversation.");
   });
 
   it("never counts a default toward a decline", () => {
@@ -37,7 +37,7 @@ describe("effort, lately", () => {
   it("recognises pushing hard lately", () => {
     const t = effortTrend(facts(0, 0, 0, 0, 0, 1, 2, 0, 1, 1), "Judy");
     expect(t.status).toBe("pushing");
-    expect(t.sentence).toBe("Judy has been pushing hard lately: 4 of her last 5 workouts were marked Pushed hard or Gave everything.");
+    expect(t.sentence).toBe("Judy has been pushing hard lately: 4 of the last 5 workouts were marked Pushed hard or Gave everything.");
   });
 
   it("a default in her last five counts as not pushing", () => {
@@ -48,7 +48,7 @@ describe("effort, lately", () => {
   it("otherwise says it is about where it usually is", () => {
     const t = effortTrend(facts(0, 0, 1, 0, -1, 0, 0), "Judy");
     expect(t.status).toBe("steady");
-    expect(t.sentence).toBe("Judy's effort has been about where it usually is across her 7 rated workouts.");
+    expect(t.sentence).toBe("Judy's effort has been about where it usually is across 7 rated workouts.");
     // Words, never the Dial's numbers.
     expect(t.sentence).not.toMatch(/[-+]\d|average|score/);
   });

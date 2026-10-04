@@ -528,7 +528,7 @@ export function ProfileHeader({
             {since && (
               <span className="whitespace-nowrap">
                 {since.label} {since.month}
-                <ConfirmedCheck confirmed={since.confirmed} what="her first day" testId="since-check" />
+                <ConfirmedCheck confirmed={since.confirmed} what="the first day" testId="since-check" />
               </span>
             )}
             {renewalWords && (
