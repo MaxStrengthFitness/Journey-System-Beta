@@ -202,10 +202,17 @@ describe("the floor's notes on a machine", () => {
     );
   });
 
+  it("keeps a note to two buttons, with the rest behind More", async () => {
+    await mount();
+    const labels = buttons(item("The pin sticks")).map((b) => b.textContent?.trim());
+    expect(labels).toEqual(["Add an update", "Close", "More"]);
+  });
+
   it("lets its author or a leader change a note's words, and no one else", async () => {
     await mount();
-    expect(buttons(item("The pin sticks")).map((b) => b.textContent)).toContain("Change the words");
-    expect(buttons(item("Back pad loose")).map((b) => b.textContent)).not.toContain("Change the words");
+    // Someone else's note has nothing behind More for a trainer, so no More.
+    expect(buttons(item("Back pad loose")).map((b) => b.textContent?.trim())).toEqual(["Add an update", "Close"]);
+    await click(byText("More", item("The pin sticks")));
     await click(byText("Change the words", item("The pin sticks")));
     await type(item("The pin sticks").querySelector("textarea"), "The pin sticks at 7 and 8.");
     await click(byText("Save the words", item("The pin sticks")));
@@ -214,6 +221,7 @@ describe("the floor's notes on a machine", () => {
 
   it("gives a leader the words and Take off the list on everyone's notes", async () => {
     await mount({ canLead: true });
+    await click(byText("More", item("Back pad loose")));
     await click(byText("Take off the list", item("Back pad loose")));
     await click(byText("Take it off", item("Back pad loose")));
     expect(w.archive).toHaveBeenCalledWith("solon", "theirs");
@@ -238,8 +246,9 @@ describe("the floor's notes on a machine", () => {
 
   it("offers its author's note to every MSF studio when the machine has keys, and never from Demo Mode", async () => {
     await mount({ shareKeys: ["m-leg-press"] });
+    await click(byText("More", item("The pin sticks")));
     expect(buttons(item("The pin sticks")).map((b) => b.textContent)).toContain("Offer to all MSF studios");
-    expect(buttons(item("Back pad loose")).map((b) => b.textContent)).not.toContain("Offer to all MSF studios");
+    expect(buttons(item("Back pad loose")).map((b) => b.textContent)).not.toContain("More");
     await click(byText("Offer to all MSF studios", item("The pin sticks")));
     expect(w.offer).toHaveBeenCalledWith("solon", "open1", true, { keys: ["m-leg-press"], studioName: "Solon" });
     await mount({ shareKeys: ["m-leg-press"], studioId: "demo-studio" });

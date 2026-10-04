@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { ChevronDown, History } from "lucide-react";
+import { ChevronDown, History, MoreHorizontal } from "lucide-react";
 import { useToast } from "../../contexts/ToastContext";
 import { useUnsavedChanges } from "../unsaved-changes";
 import {
@@ -125,7 +125,7 @@ function FloorNotesBody({
             className="fn-words"
             rows={2}
             value={draft}
-            placeholder={`Something about the ${machineName} here: the pin that sticks, the footstool, ours sits two notches lower.`}
+            placeholder={`What should the next person at the ${machineName} know?`}
             onChange={(e) => setDraft(e.target.value)}
           />
           {draft.trim() !== "" && (
@@ -273,6 +273,7 @@ function ThreadItem({
   const toast = useToast();
   const { root, updates, closed } = thread;
   const [mode, setMode] = useState<Mode>(null);
+  const [more, setMore] = useState(false);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const canWrite = Boolean(studioId && writerName);
@@ -283,8 +284,13 @@ function ThreadItem({
 
   const start = (m: Mode) => {
     setMode(m);
+    setMore(false);
     setText(m === "edit" ? root.body : "");
   };
+  // What sits behind More: the words and Take off the list for its author or
+  // a leader, and the offer to every MSF studio. Two buttons on a note, not five.
+  const offer = !closed ? offerSwitch?.(root) : null;
+  const hasMore = mayChange(root) || Boolean(offer);
 
   const run = async (work: () => Promise<void>, done: string) => {
     if (!studioId) return;
@@ -346,17 +352,35 @@ function ThreadItem({
               </button>
             </>
           )}
+          {hasMore && (
+            <button
+              type="button"
+              className="fn-btn fn-btn--quiet"
+              aria-expanded={more}
+              aria-label={more ? "Less for this note" : "More for this note"}
+              onClick={() => setMore((v) => !v)}
+            >
+              <MoreHorizontal size={16} aria-hidden />
+              More
+            </button>
+          )}
+          {!hasMore && root.shared && <span className="fn-quiet">Shared with all MSF studios</span>}
+        </div>
+      )}
+
+      {canWrite && mode === null && more && (
+        <div className="fn-row fn-more">
           {mayChange(root) && (
             <>
-              <button type="button" className="fn-btn fn-btn--quiet" onClick={() => start("edit")}>
+              <button type="button" className="fn-btn" onClick={() => start("edit")}>
                 Change the words
               </button>
-              <button type="button" className="fn-btn fn-btn--quiet" onClick={() => start("remove")}>
+              <button type="button" className="fn-btn" onClick={() => start("remove")}>
                 Take off the list
               </button>
             </>
           )}
-          {!closed && offerSwitch?.(root)}
+          {offer}
         </div>
       )}
 
