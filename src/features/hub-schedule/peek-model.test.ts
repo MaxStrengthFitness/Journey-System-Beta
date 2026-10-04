@@ -48,7 +48,7 @@ describe("the peek", () => {
   it("names her whole, with her time, her trainer and her number", () => {
     const peek = peekContent(entryFor(belladonna, [booking]));
     expect(peek.name).toBe("Belladonna Took");
-    expect(peek.subtitle).toBe("4:00 – 4:30 PM · with you · her 100th session");
+    expect(peek.subtitle).toBe("4:00 – 4:30 PM · with you · 100th session");
   });
 
   it("puts Read first on its own, whole, and says every other mark in words in the Key's order", () => {
@@ -56,7 +56,7 @@ describe("the peek", () => {
     expect(peek.critical).toBe("No overhead pressing until her surgeon clears the left shoulder");
     expect(peek.lines.map((l) => [l.family, l.text])).toEqual([
       ["watch", "No liability waiver signed in Mindbody."],
-      ["celebrate", "Her 100th session."],
+      ["celebrate", "100th session."],
       ["celebrate", "Turns 80 on Thursday, Oct 1."],
     ]);
   });
@@ -65,7 +65,7 @@ describe("the peek", () => {
     const peek = peekContent(entryFor(belladonna, [booking]));
     expect(peek.facts.map((f) => f.label)).toEqual(["Last in", "Package"]);
     expect(peek.facts.find((f) => f.label === "Package")).toMatchObject({ text: "No package read yet", muted: true });
-    expect(peek.notes).toEqual(["Clinical history on file — her briefing has it."]);
+    expect(peek.notes).toEqual(["Clinical history on file — the briefing has it."]);
   });
 
   it("says in full what a narrow card may leave out (hub fixes, Oct 1 2026)", () => {
@@ -111,8 +111,8 @@ describe("the peek", () => {
   it("says, quietly, when her FORD couldn't be checked", () => {
     const peek = peekContent(entryFor(belladonna, [booking], { fordFor: () => null }));
     expect(peek.notes).toEqual([
-      "Couldn’t check FORD for something to ask about — her FORD page has it.",
-      "Clinical history on file — her briefing has it.",
+      "Couldn’t check FORD for something to ask about — the FORD page has it.",
+      "Clinical history on file — the briefing has it.",
     ]);
   });
 });

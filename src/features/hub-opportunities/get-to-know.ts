@@ -77,7 +77,7 @@ export const ASK_ABOUT_LABEL = "Something to ask about";
  * What the peek and an opened row say when her FORD couldn't be checked (the
  * Hub's read failed): unknown, never "nothing special".
  */
-export const ASK_UNREAD_LINE = "Couldn’t check FORD for something to ask about — her FORD page has it.";
+export const ASK_UNREAD_LINE = "Couldn’t check FORD for something to ask about — the FORD page has it.";
 
 export interface AskAbout {
   /** The FORD detail it came from. */

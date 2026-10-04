@@ -71,8 +71,8 @@ export function numberWords(
   journeyNumber: number | null = null,
 ): string | null {
   if (n === null || n < 1) return basis === "journey-only" ? sessionNumberWords(journeyNumber, "journey-only") : null;
-  if (n === 1 && canClaimMilestone(basis)) return "her first session";
-  const words = `her ${ordinal(n)} session`;
+  if (n === 1 && canClaimMilestone(basis)) return "first session";
+  const words = `${ordinal(n)} session`;
   return basis === "mindbody" ? `${words} \u00b7 ${MINDBODY_GUESS_WORDS}` : words;
 }
 
@@ -97,9 +97,9 @@ export function peekContent(entry: RunSheetEntry, sessionNumber: number | null =
     { label: "Package", text: f.left.sentence, muted: f.left.unknown },
   ];
   const notes: string[] = [];
-  if (entry.criticalUnknown) notes.push("Couldn’t check her critical notes — her briefing shows them.");
+  if (entry.criticalUnknown) notes.push("Couldn’t check the critical notes — the briefing shows them.");
   if (entry.askUnknown) notes.push(ASK_UNREAD_LINE);
-  if (entry.clinicalOnFile) notes.push("Clinical history on file — her briefing has it.");
+  if (entry.clinicalOnFile) notes.push("Clinical history on file — the briefing has it.");
   return {
     name: entry.name,
     subtitle,
@@ -175,7 +175,7 @@ export function peekState(
       return {
         words: "Left open",
         primary: { kind: "open-session", label: "Resume or start new" },
-        note: "Started and quiet for over an hour. Resume it here, or close it from her profile (Discard).",
+        note: "Started and quiet for over an hour. Resume it here, or close it from the profile (Discard).",
         lateCancel: null,
       };
     case "done": {
@@ -187,7 +187,7 @@ export function peekState(
       return {
         words: "Not logged",
         primary: { kind: "log-past", label: "Log past session" },
-        note: "Opens her Activity Archive, where Log past session is. A late cancel takes the session without a visit.",
+        note: "Opens the Activity Archive, where Log past session is. A late cancel takes the session without a visit.",
         lateCancel: "mark",
       };
     case "didnt-come":

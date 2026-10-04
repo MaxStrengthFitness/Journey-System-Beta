@@ -276,7 +276,7 @@ describe("the Hub", () => {
     const { el, calls } = mount();
     act(() => cardOf(el, "Belladonna Took")!.click());
     expect(document.querySelector(".hp-name")?.textContent).toBe("Belladonna Took");
-    expect(document.querySelector(".hp-sub")?.textContent).toContain("her 100th session");
+    expect(document.querySelector(".hp-sub")?.textContent).toContain("100th session");
     expect(calls.views).toEqual([]);
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));

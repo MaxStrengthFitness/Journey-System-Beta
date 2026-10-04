@@ -490,7 +490,7 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
     const consult = /consult/i.test(booking.serviceName || "") || (!!client.requiresConsultation && !client.consultationCompleted);
     if (consult) moments.push({ family: "welcome", kind: "consult", chip: "Consultation", sentence: "A consultation." });
     if (!consult && claim && sessionNumber !== null && sessionNumber <= 3) {
-      moments.push({ family: "welcome", kind: "early-session", chip: sessionWords(sessionNumber), sentence: `Her ${sessionNumber === 1 ? "first" : ordinal(sessionNumber)} session.` });
+      moments.push({ family: "welcome", kind: "early-session", chip: sessionWords(sessionNumber), sentence: `${sessionNumber === 1 ? "First" : ordinal(sessionNumber)} session.` });
     }
     // First time with this trainer: only when Journey holds her whole story,
     // so the tally is every session she has had.
@@ -504,7 +504,7 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
       !((tally[booking.trainerId] ?? 0) > 0)
     ) {
       const who = input.trainerNameOf?.(booking.trainerId) ?? booking.trainerName;
-      moments.push({ family: "welcome", kind: "first-with-trainer", chip: `First with ${firstWord(who) ?? "trainer"}`, sentence: `Her first session with ${firstWord(who) ?? "this trainer"}.` });
+      moments.push({ family: "welcome", kind: "first-with-trainer", chip: `First with ${firstWord(who) ?? "trainer"}`, sentence: `First session with ${firstWord(who) ?? "this trainer"}.` });
     }
 
     /* ---- last seen, and back after a break ---- */
@@ -521,19 +521,19 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
       } else if (missed !== null && missed >= BACK_MIN_MISSED && claimable) {
         const weeks = Math.round(gap / 7);
         facts.lastSeen = { sentence: `Back after ${weeks} weeks \u2014 missed about ${missed}`, bucket: "back", unknown: false, value: gap };
-        moments.push({ family: "welcome", kind: "back", chip: `Back after ${weeks} wk`, sentence: `Back after ${weeks} weeks \u2014 missed about ${missed} at her usual pace.` });
+        moments.push({ family: "welcome", kind: "back", chip: `Back after ${weeks} wk`, sentence: `Back after ${weeks} weeks \u2014 missed about ${missed} at the usual pace.` });
       } else {
         facts.lastSeen = { sentence: `Last in ${pastDayWords(last.day, input.day)} (${gap} ${gap === 1 ? "day" : "days"})`, bucket: "usual", unknown: false, value: gap };
       }
     } else if (last?.state === "nothing-recorded" && coverage === "complete" && sessionNumber === 1) {
       facts.lastSeen = { sentence: isToday ? "First visit today" : "First visit", bucket: "first", unknown: false, value: -1 };
     } else if (last?.state === "before-journey") {
-      facts.lastSeen = unknownFact("Can\u2019t tell yet \u2014 her visits are recorded before Journey");
+      facts.lastSeen = unknownFact("Can\u2019t tell yet \u2014 the visits are recorded before Journey");
     }
 
     /* ---- Celebrate ---- */
     if (milestone && sessionNumber !== null) {
-      moments.push({ family: "celebrate", kind: "milestone", chip: `${ordinal(sessionNumber)}${isToday ? " today" : ""}`, sentence: `Her ${ordinal(sessionNumber)} session.` });
+      moments.push({ family: "celebrate", kind: "milestone", chip: `${ordinal(sessionNumber)}${isToday ? " today" : ""}`, sentence: `${ordinal(sessionNumber)} session.` });
     }
     const bday = birthdayFrom(client.dateOfBirth, input.day);
     if (bday) {

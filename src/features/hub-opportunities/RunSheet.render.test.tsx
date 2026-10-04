@@ -160,7 +160,7 @@ describe("RunSheet", () => {
     const { host, calls } = await mount();
     await click(host.querySelector('.ho-row[data-client-id="ruth"] .ho-rowbtn'));
     const titles = [...host.querySelectorAll(".ho-slot-title")].map((t) => t.textContent);
-    expect(titles).toEqual(["Where she is", "Something to say", "Watch"]);
+    expect(titles).toEqual(["Where things stand", "Something to say", "Watch"]);
     expect(host.querySelector(".ho-open")?.textContent).toContain("Turns 80 on Thursday, Oct 1.");
     expect(host.querySelector(".ho-open")?.textContent).toContain("Nothing to watch.");
     await click(button(host, ".ho-action", "Open profile"));
@@ -224,7 +224,7 @@ describe("RunSheet: Get to know (wave 2 hub)", () => {
     expect(host.querySelector(".ho-line")?.textContent).toContain("Couldn’t check FORD for 3 clients, so something to ask about may be missing.");
     await click(host.querySelector('.ho-row[data-client-id="harold"] .ho-rowbtn'));
     const opened = host.querySelector(".ho-open")?.textContent ?? "";
-    expect(opened).toContain("Couldn’t check FORD for something to ask about — her FORD page has it.");
+    expect(opened).toContain("Couldn’t check FORD for something to ask about — the FORD page has it.");
     expect(opened).not.toContain("Nothing special today.");
   });
 });

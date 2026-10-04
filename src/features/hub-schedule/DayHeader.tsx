@@ -268,9 +268,9 @@ export function DaySummary({ title, spot, spotText, onSpot, onNext, onAsList, fo
 const MARKS: ReadonlyArray<{ family: MomentFamily; icon: Icon; name: string; means: string }> = [
   { family: "read-first", icon: AlertTriangle, name: "Read first", means: "A Critical note that matters today. The only red mark." },
   { family: "watch", icon: FileSignature, name: "No waiver signed", means: "Mindbody has no signed liability waiver (its red “nw” corner). It never stops a session." },
-  { family: "watch", icon: Activity, name: "Pulse flag", means: "Her last Pulse check scored red where the reference flags it." },
-  { family: "welcome", icon: Sparkles, name: "New", means: "A consultation, sessions 1 to 3, or her first time with this trainer." },
-  { family: "welcome", icon: Undo2, name: "Back after a break", means: "About 3 or more sessions missed at her own pace." },
+  { family: "watch", icon: Activity, name: "Pulse flag", means: "The last Pulse check scored red where the reference flags it." },
+  { family: "welcome", icon: Sparkles, name: "New", means: "A consultation, sessions 1 to 3, or a first time with this trainer." },
+  { family: "welcome", icon: Undo2, name: "Back after a break", means: "About 3 or more sessions missed at the client's own pace." },
   { family: "celebrate", icon: Award, name: "Milestone", means: "The 50th, 100th, 150th… session." },
   { family: "celebrate", icon: Cake, name: "Birthday", means: "Within a week either side. A decade is said aloud." },
   { family: "renew", icon: RefreshCw, name: "Renewal talk", means: "The Wrap-up says it’s time to talk about renewing." },
@@ -278,13 +278,13 @@ const MARKS: ReadonlyArray<{ family: MomentFamily; icon: Icon; name: string; mea
     family: "get-to-know",
     icon: MessageCircle,
     name: "Ask about",
-    means: "Something from her FORD: a day that comes round this week, or something noted in the last two weeks. What it is stays in the peek and the list, never on the card.",
+    means: "Something from FORD: a day that comes round this week, or something noted in the last two weeks. What it is stays in the peek and the list, never on the card.",
   },
 ];
 
 const STATES: ReadonlyArray<{ state: string; name: string; means: string }> = [
   { state: "live", name: "Coming up", means: "Every mark shows until the session is done." },
-  { state: "in-session", name: "In session", means: "A Journey session is open for her." },
+  { state: "in-session", name: "In session", means: "A Journey session is open for this client." },
   {
     state: "left-open",
     name: "Left open",
@@ -337,7 +337,7 @@ export function KeySheet({ open, onClose }: { open: boolean; onClose: () => void
           })}
         </ul>
         <p className="hd-key-note">
-          <strong>#43</strong> in a card’s top-right corner is the session this booking will be, shown only where Journey holds her
+          <strong>#43</strong> in a card’s top-right corner is the session this booking will be, shown only where Journey holds the
           whole story or someone wrote the rest down. Sessions 1 to 3 are the Welcome mark’s to say.
         </p>
         <h3 className="hd-key-h">On the grid</h3>

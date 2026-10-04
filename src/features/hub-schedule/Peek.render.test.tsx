@@ -111,7 +111,7 @@ describe("the peek", () => {
     const dialog = el.querySelector('[role="dialog"]');
     expect(dialog?.getAttribute("aria-labelledby")).toBe("hp-name");
     expect(el.querySelector(".hp-name")?.textContent).toBe("Rosie Cotton");
-    expect(el.querySelector(".hp-sub")?.textContent).toBe("4:00 – 4:30 PM · with you · her 45th session");
+    expect(el.querySelector(".hp-sub")?.textContent).toBe("4:00 – 4:30 PM · with you · 45th session");
     expect(el.querySelector(".hp-critical")?.textContent).toBe("Read first: Pacemaker: no chest-compression machines");
     expect([...el.querySelectorAll(".hp-lines li")].map((l) => l.textContent)).toEqual(["No liability waiver signed in Mindbody."]);
   });
@@ -162,7 +162,7 @@ describe("the peek", () => {
     ford = () => null;
     const { el } = mount();
     expect([...el.querySelectorAll(".hp-notes li")].map((n) => n.textContent)).toContain(
-      "Couldn’t check FORD for something to ask about — her FORD page has it.",
+      "Couldn’t check FORD for something to ask about — the FORD page has it.",
     );
   });
 });

@@ -174,16 +174,16 @@ function OpenedRow({ entry, onOpenProfile, onStartSession }: { entry: RunSheetEn
   }
   const watch: Line[] = entry.moments.filter((m) => m.family === "read-first" || m.family === "watch").map((m) => ({ key: m.kind, text: m.sentence }));
   if (entry.criticalUnknown) {
-    watch.push({ key: "unread", text: "Couldn\u2019t check her critical notes \u2014 her briefing shows them." });
+    watch.push({ key: "unread", text: "Couldn\u2019t check the critical notes \u2014 the briefing shows them." });
   }
   // Standing context, said quietly: the amber dot left the Hub card (calm Hub round).
   if (entry.clinicalOnFile) {
-    watch.push({ key: "clinical", text: "Clinical history on file \u2014 her briefing has it.", muted: true });
+    watch.push({ key: "clinical", text: "Clinical history on file \u2014 the briefing has it.", muted: true });
   }
   return (
     <div className="ho-open">
       <div className="ho-slots">
-        <Slot title="Where she is" lines={where} empty="" />
+        <Slot title="Where things stand" lines={where} empty="" />
         <Slot title="Something to say" lines={say} empty="Nothing special today." />
         <Slot title="Watch" lines={watch} empty="Nothing to watch." />
       </div>

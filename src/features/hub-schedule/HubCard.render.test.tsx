@@ -356,8 +356,8 @@ describe("the card's words and marks come from the Hub's one engine", () => {
 describe("your own column, in words", () => {
   const entryWith = (moments: RunSheetEntry["moments"]) =>
     ({ key: "b1", clientId: "c1", moments, sessionNumber: 5, criticalUnknown: false, clinicalOnFile: false }) as unknown as RunSheetEntry;
-  const firstWithYou = { family: "welcome", kind: "first-with-trainer", chip: "First with Sara", sentence: "Her first session with Sara." } as const;
-  const milestone = { family: "celebrate", kind: "milestone", chip: "100th", sentence: "Her 100th session." } as const;
+  const firstWithYou = { family: "welcome", kind: "first-with-trainer", chip: "First with Sara", sentence: "First session with Sara." } as const;
+  const milestone = { family: "celebrate", kind: "milestone", chip: "100th", sentence: "100th session." } as const;
 
   function card(wordy: boolean, moments: RunSheetEntry["moments"] = [firstWithYou, milestone]) {
     if (root) {
