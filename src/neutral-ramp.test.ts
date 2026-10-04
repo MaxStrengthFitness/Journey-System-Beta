@@ -8,29 +8,37 @@ import { describe, expect, it } from "vitest";
  *
  * WHAT WENT WRONG, so a future edit does not undo the fix.
  *
- * This app was built dark-first on Tailwind's stock `slate` scale, and every
- * dark-mode token in index.css IS a Tailwind slate value. The Sep 9 light-mode
- * retune then moved the LIGHT palette off pure slate on purpose — a ground a
- * real step below white, greys pulled off blue, muted inks darkened to clear
- * AA — but the ~2,700 hardcoded `slate-*` classes in the components did not
- * move with it. Light mode therefore painted Tailwind's cold blue-grey right
- * beside the retuned brand neutral, on screen after screen. That mismatch was
- * the whole of the "some screens don't match the rest" report.
+ * This app was built dark-first on Tailwind's stock `slate` scale. The Sep 9
+ * light-mode retune then moved the LIGHT palette off pure slate on purpose — a
+ * ground a real step below white, greys pulled off blue, muted inks darkened
+ * to clear AA — but the ~2,700 hardcoded `slate-*` classes in the components
+ * did not move with it. Light mode therefore painted Tailwind's cold
+ * blue-grey right beside the retuned brand neutral, on screen after screen.
+ * That mismatch was the whole of the "some screens don't match the rest"
+ * report.
  *
  * The fix redefines what `slate-*` MEANS (the `@theme` block in index.css)
  * rather than editing 2,700 call sites. That only stays true if three things
  * stay true, so this file checks them against the ACTUAL file rather than
  * trusting the comment beside them:
  *
- *   1. DARK IS UNTOUCHED. The dark ramp must remain byte-identical to
- *      Tailwind slate. Dark mode already agreed with the brand; if someone
- *      "tidies" the dark ramp, every dark screen shifts at once and the
- *      damage is invisible until it is on a tablet in a studio.
+ *   1. DARK IS THE STUDIO NAVY (Oct 2026), set from the logo blue's hue;
+ *      change it only on purpose. Until the Navy Frame (Oct 4 2026) this
+ *      rule read "DARK IS UNTOUCHED": the dark ramp had to stay
+ *      byte-identical to Tailwind slate, because every dark token then WAS a
+ *      slate value. That kept dark mode two colour families, a navy shell
+ *      over near-black slate content, and AJ found it "just so gray". The
+ *      Navy Frame retinted the dark tokens and this ramp together, on
+ *      purpose. The rule that survives is the same: if someone "tidies" the
+ *      dark ramp, every dark screen shifts at once and the damage is
+ *      invisible until it is on a tablet in a studio, so the values are
+ *      pinned below.
  *   2. BOTH RAMPS STAY MONOTONIC. 50 is the lightest rung and 950 the
  *      darkest, in both themes. A non-monotonic ramp inverts a pairing
  *      somebody already wrote as `bg-white dark:bg-slate-900`.
  *   3. THE TEXT RUNGS STILL CLEAR AA. The rungs that components actually
- *      use for type have to hold their contrast on the light ground.
+ *      use for type have to hold their contrast on the light ground, and
+ *      (since the Navy Frame) the dark text rungs on a dark card.
  *
  * And one ratchet, in the same spirit as the CI typecheck gate: a COUNT, not
  * a clean run. A gate demanding zero hardcoded colours would be red on every
@@ -44,22 +52,27 @@ import { describe, expect, it } from "vitest";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const INDEX_CSS = readFileSync(join(HERE, "index.css"), "utf8");
 
-/** Tailwind v4's stock slate scale — the values the dark ramp must equal. */
-const TAILWIND_SLATE: Record<string, string> = {
-  "50": "#F8FAFC",
-  "100": "#F1F5F9",
-  "200": "#E2E8F0",
-  "300": "#CBD5E1",
-  "400": "#94A3B8",
-  "500": "#64748B",
-  "600": "#475569",
-  "700": "#334155",
-  "800": "#1E293B",
-  "900": "#0F172A",
-  "950": "#020617",
+/**
+ * The dark ramp: the studio navy (the Navy Frame, Oct 4 2026), the values the
+ * dark ramp must equal. 900 is the dark card and 950 the dark ground; 400 is
+ * the dark muted ink and 600 the dark --secondary. It replaced TAILWIND_SLATE
+ * (#F8FAFC .. #020617), which the dark ramp had to equal from Sep 12 2026.
+ */
+const JOURNEY_NAVY_DARK: Record<string, string> = {
+  "50": "#F4F7FB",
+  "100": "#E9EEF4",
+  "200": "#D8E1E9",
+  "300": "#C6D1DC",
+  "400": "#9DADBE",
+  "500": "#7E90A3",
+  "600": "#52657A",
+  "700": "#354A5F",
+  "800": "#23374C",
+  "900": "#14293D",
+  "950": "#0A1C2C",
 };
 
-const RUNGS = Object.keys(TAILWIND_SLATE);
+const RUNGS = Object.keys(JOURNEY_NAVY_DARK);
 
 /**
  * Pull the `--n-*` definitions out of one block of index.css.
@@ -97,7 +110,7 @@ const LIGHT = readRamp(":root");
 const DARK = readRamp(".dark");
 
 /** The light page ground, which most light-mode type sits on or near. */
-const GROUND = "#EDF0F5";
+const GROUND = "#DEE6EE";
 
 describe("the neutral ramp is defined at all", () => {
   it("declares every rung in both themes", () => {
@@ -118,16 +131,31 @@ describe("the neutral ramp is defined at all", () => {
   });
 });
 
-describe("dark mode is byte-identical to Tailwind slate", () => {
-  // Every dark token in index.css IS one of these values: --background is
-  // slate-950, --card is slate-900, --elevated is slate-800, and
-  // --ink-l1/l2/l3/l4 are slate-50/300/400/500. Changing a rung here moves
-  // every dark screen in the app.
+describe("dark mode is the studio navy", () => {
+  // Since the Navy Frame (Oct 4 2026) the dark ramp is the navy family the
+  // dark tokens are: --background is slate-950, --card is slate-900,
+  // --muted-foreground is slate-400 and --secondary is slate-600. Changing a
+  // rung here moves every dark screen in the app, so it is pinned.
   for (const rung of RUNGS) {
-    it(`slate-${rung} is unchanged in dark`, () => {
-      expect(DARK[rung]).toBe(TAILWIND_SLATE[rung]);
+    it(`slate-${rung} is the studio navy in dark`, () => {
+      expect(DARK[rung]).toBe(JOURNEY_NAVY_DARK[rung]);
     });
   }
+});
+
+describe("the dark rungs that carry text clear AA on a dark card", () => {
+  // The floor the dark ramp never had while it was Tailwind's own: slate-500
+  // on slate-900 was 3.75:1. A dark screen's quiet words are slate-400 or
+  // slate-500 on a card (slate-900), and its body copy slate-300 or lighter.
+  const CARD = () => DARK["900"];
+  for (const rung of ["400", "500"]) {
+    it(`slate-${rung} on slate-900 is at least 4.5:1`, () => {
+      expect(ratio(DARK[rung], CARD())).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+  it("slate-300 on slate-900 is at least 7:1", () => {
+    expect(ratio(DARK["300"], CARD())).toBeGreaterThanOrEqual(7);
+  });
 });
 
 describe("both ramps are monotonic and non-inverting", () => {
@@ -147,7 +175,7 @@ describe("both ramps are monotonic and non-inverting", () => {
 
 describe("the light rungs that carry text clear AA", () => {
   // Only the rungs components actually use for type. slate-400 is absent on
-  // purpose: it is a NON-TEXT grey (2.7:1) and cannot be darkened without
+  // purpose: it is a NON-TEXT grey (2.5:1) and cannot be darkened without
   // colliding with slate-500, which is why the 367 places that used it for
   // text were moved to `text-muted-foreground` instead.
   const TEXT_RUNGS = ["500", "600", "700", "800", "900", "950"];

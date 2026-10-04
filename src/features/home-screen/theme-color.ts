@@ -9,9 +9,10 @@
  * so it carries a literal colour, and this copies the header's token into it
  * whenever the theme changes, so the tag and the header never disagree.
  *
- * `--bg-dark-2` is the AppHeader's background in both themes: #16263D dark,
- * #FFFFFF light (index.css). index.html sets the same colour before the first
- * paint, from the same theme key.
+ * `--bg-dark-2` is the AppHeader's background in both themes: #14293D dark,
+ * #F3F6F9 light (index.css, since the Navy Frame's core tokens, Oct 4 2026).
+ * index.html sets the same colour before the first paint, from the same theme
+ * key.
  */
 export const HEADER_TOKEN = "--bg-dark-2";
 

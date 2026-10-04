@@ -31,7 +31,7 @@
     <!-- The dark header (--bg-dark-2), which is also the Home Screen app's
          status bar. ThemeProvider keeps it in step with the theme; the
          script below sets it before the first paint. -->
-    <meta name="theme-color" content="#16263D" />
+    <meta name="theme-color" content="#14293D" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
@@ -54,7 +54,7 @@
         if (theme !== "light") theme = "dark";
         document.documentElement.classList.add(theme);
         var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute("content", theme === "light" ? "#FFFFFF" : "#16263D");
+        if (meta) meta.setAttribute("content", theme === "light" ? "#F3F6F9" : "#14293D");
       })();
     </script>
     <script>

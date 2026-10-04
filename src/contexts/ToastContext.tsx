@@ -98,7 +98,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         <AnimatePresence>
           {toasts.map((t) => {
             let bgColor = "bg-slate-900/90 border-slate-800 text-slate-100";
-            let iconColor = "text-cyan";
+            // The info toast is dark in both themes, so its icon is the
+            // frame's blue, which is the same in both (--cyan follows the
+            // theme and would be the deep logo blue on it in light).
+            let iconColor = "text-chrome-here";
             let IconComponent = Info;
 
             switch (t.type) {

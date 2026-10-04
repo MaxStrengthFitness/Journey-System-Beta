@@ -69,12 +69,32 @@
     
     --color-cta: var(--cta);
     --color-cta-strong: var(--cta-strong);
+    --color-cta-foreground: var(--cta-foreground);
     --color-cyan: var(--cyan);
     --color-yellow: var(--yellow);
     --color-green: var(--green);
     --color-red: var(--red);
     --color-amber: var(--amber);
-    
+
+    /* THE FRAME (the Navy Frame, Oct 4 2026): the header, the bottom bar
+       and the iPad status bar, the logo's navy in both modes. These give
+       bg-chrome, text-chrome-ink, border-chrome-line, ring-chrome-here and
+       the rest as utilities. Set in :root only (see --chrome there). */
+    --color-chrome: var(--chrome);
+    --color-chrome-ink: var(--chrome-ink);
+    --color-chrome-ink-2: var(--chrome-ink-2);
+    --color-chrome-field: var(--chrome-field);
+    --color-chrome-line: var(--chrome-line);
+    --color-chrome-here: var(--chrome-here);
+    --color-chrome-go: var(--chrome-go);
+    --color-chrome-go-fill: var(--chrome-go-fill);
+
+    /* The logo's own three squares and their strokes, fixed in both modes. */
+    --color-brand-tile-m: var(--brand-tile-m);
+    --color-brand-tile-a: var(--brand-tile-a);
+    --color-brand-tile-x: var(--brand-tile-x);
+    --color-brand-tile-ink: var(--brand-tile-ink);
+
     --font-display: 'Saira Condensed', var(--font-sans);
 
     /* ELEVATION.
@@ -86,7 +106,7 @@
        dull". Ours are tinted with the ink colour and split into a tight
        contact shadow plus a wide ambient one, which is what actually reads as
        a raised surface. In dark mode they collapse to almost nothing (see
-       .dark below) because a shadow on a near-black ground is invisible
+       .dark below) because a shadow on the dark navy ground barely shows
        anyway; there, elevation comes from the surface getting LIGHTER. */
     --shadow-sm:  var(--elev-1);
     --shadow-md:  var(--elev-2);
@@ -132,50 +152,50 @@
 }
 
 /* =====================================================================
-   THE NEUTRAL RAMP — `slate-*` retinted onto the brand palette (Sep 12 2026)
+   THE NEUTRAL RAMP — `slate-*` retinted onto the brand palette (light
+   since Sep 12 2026, dark since the Navy Frame, Oct 4 2026)
 
    WHY THIS EXISTS, AND WHY IT IS AN OVERRIDE RATHER THAN A NEW SCALE.
 
    This app was built dark-first on Tailwind's stock `slate` scale, and
-   every dark-mode token in .dark below is EXACTLY a Tailwind slate value:
-   --background #020617 IS slate-950, --card #0F172A IS slate-900,
-   --elevated #1E293B IS slate-800, and --ink-l1/l2/l3/l4 ARE slate-50 /
-   300 / 400 / 500. Checked, not assumed. That is why dark mode has always
-   looked coherent — the ~2,700 hardcoded `slate-*` classes scattered
-   through the components happen to agree with the tokens exactly.
+   ~2,700 hardcoded `slate-*` classes (about 970 still today) are scattered
+   through the components. The Sep 9 light-mode retune moved the LIGHT
+   palette off pure slate deliberately, and the hardcoded classes did not
+   move with it, so light screens painted Tailwind's cold blue-grey right
+   beside the retuned brand neutral: the "some screens don't match the
+   rest" report.
 
-   The Sep 9 light-mode retune then moved the LIGHT palette off pure slate
-   deliberately: a ground a real step below white (#EDF0F5), greys pulled
-   off pure blue and desaturated, both muted inks darkened to clear AA.
-   The hardcoded `slate-*` classes did not move with it. So in light mode
-   those screens paint Tailwind's cold blue-grey directly beside the
-   retuned brand neutral — and that mismatch is precisely the "some
-   screens don't match the rest" report.
-
-   Rather than edit ~2,700 call sites, this redefines what `slate-*` MEANS.
+   Rather than edit every call site, this redefines what `slate-*` MEANS.
    Same technique as the elevation scale above, which overrides Tailwind's
    shadow scale so every `shadow-*` already written softens at once.
 
-     LIGHT -> the retuned brand neutrals, anchored on tokens already
-              defined in :root (--bg-dark-3, --background, --border,
-              --input, --ink-d3, --ink-d2, --foreground). No new pigment.
-     DARK  -> Tailwind's original slate values, BYTE-IDENTICAL. Dark mode
-              already agreed with the brand, so it must not move at all.
+     LIGHT -> the brand neutrals, anchored on tokens already defined in
+              :root (--bg-dark-3, --background, --border, --ink-d3,
+              --foreground). No new pigment.
+     DARK  -> the studio navy, set from the logo blue's hue (Oct 4 2026),
+              anchored on the dark tokens (--background, --card,
+              --muted-foreground, --secondary).
+
+   THE DARK RAMP USED TO BE TAILWIND'S SLATE, BYTE FOR BYTE. The Sep 12
+   round decided "dark must not move at all", because every dark token
+   then WAS a slate value. That left dark mode two colour families: a navy
+   shell (the bars, the Hub) over near-black slate content everywhere
+   else. AJ, Oct 4 2026: "in our dark mode, it just so gray". The Navy
+   Frame reverses the Sep 12 decision on purpose; neutral-ramp.test.ts
+   holds the new values, so a change is still a deliberate one.
 
    The ramp stays monotonic and non-inverting in BOTH themes (50 is always
    the lightest rung, 950 always the darkest), so pairs already written as
    `bg-white dark:bg-slate-900` keep behaving exactly as before.
 
-   Contrast on the light ground (#EDF0F5), text rungs, after / before:
-     slate-500   5.59:1 / 4.17:1   <- crosses AA; it was failing
-     slate-600   7.19:1 / 6.63:1
-     slate-700   9.25:1 / 9.06:1
-     slate-900  15.63:1 / 15.63:1  unchanged
-   slate-400 improves 2.24:1 -> 2.73:1 but is STILL not a text colour. It
-   is a non-text grey by design and cannot be darkened further without
-   colliding with slate-500. The 367 places using it for text are a
-   wrong-token bug, not a colour bug; the next commit moves them to
-   `text-muted-foreground` (identical in dark, 5.9:1 in light).
+   Contrast of the light text rungs on the light ground (#DEE6EE):
+     slate-500   4.95:1     slate-600   6.44:1
+     slate-700   8.28:1     slate-900  11.16:1
+   slate-400 (2.46:1) is NOT a text colour: it is a non-text grey by design
+   and cannot be darkened without colliding with slate-500. Words that
+   need a quiet grey use `text-muted-foreground`.
+   In dark, on a card (slate-900): slate-400 6.47:1, slate-500 4.53:1,
+   slate-300 9.58:1.
 
    TO REVERT: delete this @theme block. The --n-* definitions can stay;
    nothing else reads them.
@@ -218,19 +238,28 @@
 
    4. THERE WAS NO ELEVATION SCALE AT ALL — see --elev-* below.
 
-   Contrast ratios quoted are against the ground (#EDF0F5) unless stated.
+   5. IT WAS STILL TOO BRIGHT (the Navy Frame, Oct 4 2026). AJ: "the light
+      mode is just so bright ... it feels like a negative mode". Nothing is
+      pure white now: cards are an off-white #F3F6F9 on a soft grey-blue
+      ground #DEE6EE, and the ink is a deep navy #192D41 at 13:1 on a card
+      (it was 16-18:1 black on white). The accents are the logo's own: the
+      blue #0A548B and the orange #F36D21, with navy words on the orange.
+      The header, the bottom bar and the status bar are the frame
+      (--chrome below), the logo's navy in both modes.
+
+   Contrast ratios quoted are against the ground (#DEE6EE) unless stated.
    ===================================================================== */
 :root {
-    --background: #EDF0F5;
-    --foreground: #0F172A;          /* 15.8:1 — body copy */
-    --card: #FFFFFF;
-    --card-foreground: #0F172A;
-    --popover: #FFFFFF;
-    --elevated: #FFFFFF;
-    --popover-foreground: #0F172A;
-    --primary: #115E8D;             /* 6.2:1 on white */
+    --background: #DEE6EE;
+    --foreground: #192D41;          /* 11.2:1; 13.0:1 on a card — body copy */
+    --card: #F3F6F9;
+    --card-foreground: #192D41;
+    --popover: #F3F6F9;
+    --elevated: #F3F6F9;
+    --popover-foreground: #192D41;
+    --primary: #0A548B;             /* the logo blue: 7.3:1 on a card, white on it 7.9:1 */
     --primary-foreground: #FFFFFF;
-    --brand: #115E8D;
+    --brand: #0A548B;
     --brand-foreground: #FFFFFF;
     /* The logo's own three squares and their white strokes, fixed: the
        same in light and dark (BRAND_TILE_COLORS in BrandTiles.tsx and
@@ -240,21 +269,25 @@
     --brand-tile-a: #F36D21;
     --brand-tile-x: #5B6770;
     --brand-tile-ink: #FFFFFF;
-    --action: #F06C22;
-    --action-foreground: #FFFFFF;
-    --secondary: #55606F;
+    --action: #F36D21;
+    --action-foreground: #071727;   /* navy words on the logo orange, 6.05:1 (white is 2.99) */
+    --secondary: #546271;
     --secondary-foreground: #FFFFFF;
-    --muted: #E4E9F0;
-    --muted-foreground: #55606F;    /* 5.9:1 — was #68717A at 4.6:1 */
-    --accent: #E4E9F0;
-    --accent-foreground: #115E8D;
-    --destructive: #D92D20;         /* 4.6:1 on white; #EF4444 was 3.3:1 */
+    --muted: #E4EBF3;
+    --muted-foreground: #546271;    /* 4.95:1; 5.8:1 on a card, 5.2:1 on --muted */
+    --accent: #E4EBF3;
+    --accent-foreground: #0A548B;
+    /* --destructive is a WORD colour: Sign out, errors, invalid borders and
+       the shadcn destructive button, which is red words on a 10% tint. No
+       screen puts white on a solid destructive fill. 5.7:1 on a card and
+       the popover, 4.9:1 on the ground, 4.8:1 on its 10% button tint. */
+    --destructive: #BB271B;
     --destructive-foreground: #FFFFFF;
-    --border: #DCE3EC;              /* separators — decorative, low contrast is fine */
-    --input: #C3CEDC;               /* 3.1:1 — WCAG 1.4.11 wants 3:1 for a control's own boundary */
-    --ring: #115E8D;
-    --chart-1: #115E8D;
-    --chart-2: #F06C22;
+    --border: #D1DAE4;              /* separators — decorative, low contrast is fine */
+    --input: #748190;               /* 3.15:1; 3.7:1 on a card — WCAG 1.4.11 wants 3:1 for a control's own boundary */
+    --ring: #0A548B;
+    --chart-1: #0A548B;
+    --chart-2: #F36D21;
     --chart-3: #68717A;
     --chart-4: #0EA5E9;
     --chart-5: #F59E0B;
@@ -273,13 +306,15 @@
        contact shadow that anchors the element to the surface, and a wide,
        soft ambient one that gives it height. One shadow alone always reads
        as either a hard outline or a blur. Tinted with the ink colour
-       (15,23,42) rather than pure black so it stays in the palette.
+       (25,45,65, the navy #192D41) rather than pure black so it stays in
+       the palette; a touch stronger since Oct 4 2026, because an off-white
+       card on a grey-blue ground needs a little more lift than white did.
        --------------------------------------------------------------- */
-    --elev-1: 0 1px 2px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.05);
-    --elev-2: 0 1px 2px rgba(15,23,42,0.05), 0 3px 8px rgba(15,23,42,0.06);
-    --elev-3: 0 2px 4px rgba(15,23,42,0.05), 0 8px 20px rgba(15,23,42,0.08);
-    --elev-4: 0 4px 8px rgba(15,23,42,0.05), 0 16px 32px rgba(15,23,42,0.09);
-    --elev-5: 0 8px 16px rgba(15,23,42,0.06), 0 28px 56px rgba(15,23,42,0.12);
+    --elev-1: 0 1px 2px rgba(25,45,65,0.06), 0 1px 3px rgba(25,45,65,0.05);
+    --elev-2: 0 1px 2px rgba(25,45,65,0.06), 0 3px 8px rgba(25,45,65,0.07);
+    --elev-3: 0 2px 4px rgba(25,45,65,0.06), 0 8px 20px rgba(25,45,65,0.10);
+    --elev-4: 0 4px 8px rgba(25,45,65,0.05), 0 16px 32px rgba(25,45,65,0.09);
+    --elev-5: 0 8px 16px rgba(25,45,65,0.06), 0 28px 56px rgba(25,45,65,0.12);
 
     /* ---------------------------------------------------------------
        JOURNEY SYSTEM BETA TOKENS — LIGHT MODE
@@ -293,35 +328,42 @@
 
        Light mode now keeps the same MEANING per rung: page, then card,
        then raised. In light that means the page is tinted and the card is
-       white, which is the inverse of the colours but the same hierarchy.
+       the off-white, which is the inverse of the colours but the same
+       hierarchy.
        --------------------------------------------------------------- */
-    --bg-dark:     #EDF0F5;   /* page ground */
-    --bg-dark-2:   #FFFFFF;   /* card / panel */
-    --bg-dark-3:   #F5F8FC;   /* raised or inset within a card */
-    --ink-d1:      #0F172A;   /* 15.8:1 on the ground */
-    --ink-d2:      #33404F;   /* 9.6:1  — secondary copy */
-    --ink-d3:      #55606F;   /* 5.9:1  — labels, meta; was 4.6:1 */
-    --div-d:       #DCE3EC;
+    --bg-dark:     #DEE6EE;   /* page ground */
+    --bg-dark-2:   #F3F6F9;   /* card / panel */
+    --bg-dark-3:   #ECF1F5;   /* raised or inset within a card */
+    --ink-d1:      #192D41;   /* 11.2:1 on the ground, 13.0:1 on a card */
+    --ink-d2:      #3F4F60;   /* 6.7:1  — secondary copy */
+    --ink-d3:      #546271;   /* 4.95:1 — labels, meta; 5.8:1 on a card */
+    --div-d:       #D1DAE4;
 
-    --surface-1:   #FFFFFF;
-    --surface-2:   #F5F8FC;
+    --surface-1:   #F3F6F9;
+    --surface-2:   #ECF1F5;
 
     --bg-l:        #0F172A;
     --bg-l-card:   #1E293B;
     --ink-l1:      #F8FAFC;
     --ink-l2:      #CBD5E1;
-    --ink-l3:      #94A3B8;
+    --ink-l3:      #546271;   /* the light header's studio name: it was #94A3B8, 2.6:1 on white */
     --ink-l4:      #64748B;
-    --div-l:       rgba(255,255,255,0.08);
+    --div-l:       #D1DAE4;   /* hairlines (the header, the routine drawer): it was white at 8%, invisible on a light surface */
 
-    /* --cta is a FILL colour. White on it is 3.5:1, which is below AA for
-       small text, so any orange button carrying a label uses --cta-strong
-       (6.0:1 with white). Same call the admin round already made; this
-       lifts it to the app-wide token so the rest of the app stops failing
-       the check the admin screens now pass. */
-    --cta:         #F06C22;
-    --cta-strong:  #BC2C00;
-    --cyan:        #38BDF8;
+    /* --cta is the logo orange, a FILL colour. White on it is 2.99:1, so
+       words on it are navy, --cta-foreground (6.05:1): no white words sit
+       on any orange (the Navy Frame, Oct 4 2026). --cta-strong is the deep
+       orange that still carries white (5.87:1), for the buttons that have
+       not moved to bg-cta + text-cta-foreground yet. The same three are
+       written in .dark too, so the pair never depends on which block wins. */
+    --cta:         #F36D21;
+    --cta-foreground: #071727;
+    --cta-strong:  #B04000;
+    /* --cyan was Tailwind sky #38BDF8 in both themes (2.1:1 on white, so
+       its focus rings and words failed in light). Since Oct 4 2026 it
+       follows the theme and equals --primary: the logo blue here, the
+       lifted blue in .dark. */
+    --cyan:        #0A548B;
     --yellow:      #FCD661;
     --green:       #4FDB8E;
     --red:         #E84F4F;
@@ -329,32 +371,51 @@
 
     /* ---------------------------------------------------------------
        THE NEUTRAL RAMP — LIGHT. See the @theme block near the top of this
-       file for why `slate-*` is redefined at all. Every rung below is an
-       anchor already defined above, so no new pigment enters the palette:
+       file for why `slate-*` is redefined at all. The rungs are anchored
+       on tokens already defined above wherever one fits:
 
-         n-50  = --bg-dark-3   raised / inset fill within a card
+         n-50  = --bg-dark-3   raised / inset fill; it sits BETWEEN the
+                               card and the ground, 1.05:1 darker than a
+                               card, so every bg-slate-50 inset still
+                               reads as a well
          n-100 = --background  the page ground
-         n-200 = --border      hairline   (267 `border-slate-200` uses)
-         n-300 = --input       control boundary, 3.1:1
-         n-400 =               interpolated; a NON-TEXT grey, 2.7:1
-         n-500 = --ink-d3      secondary ink, 5.9:1 on white
-         n-600 =               interpolated, 8.2:1 on white
-         n-700 = --ink-d2      10.6:1 on white
-         n-800 / n-900 / n-950 are Tailwind's own values, unchanged: they
-         are the dark palette's surfaces and they double as dark chips on
-         a light ground, where they already read correctly.
+         n-200 = --border      hairline
+         n-300 =               a soft control line, 1.6:1 on a card
+         n-400 =               a NON-TEXT grey, 2.46:1 on the ground
+         n-500 = --ink-d3      secondary ink, 4.95:1 (5.8:1 on a card)
+         n-600 =               6.4:1
+         n-700 =               8.3:1
+         n-800 =               9.7:1; a dark chip on a light ground
+         n-900 = --foreground  the ink, 11.2:1
+         n-950 =               the deepest navy (--cta-foreground)
        --------------------------------------------------------------- */
-    --n-50:  #F5F8FC;
-    --n-100: #EDF0F5;
-    --n-200: #DCE3EC;
-    --n-300: #C3CEDC;
-    --n-400: #8893A2;
-    --n-500: #55606F;
-    --n-600: #44505F;
-    --n-700: #33404F;
-    --n-800: #1E293B;
-    --n-900: #0F172A;
-    --n-950: #020617;
+    --n-50:  #ECF1F5;
+    --n-100: #DEE6EE;
+    --n-200: #D1DAE4;
+    --n-300: #BBC5D1;
+    --n-400: #8794A1;
+    --n-500: #546271;
+    --n-600: #425162;
+    --n-700: #314153;
+    --n-800: #24374A;
+    --n-900: #192D41;
+    --n-950: #071727;
+
+    /* ---------------------------------------------------------------
+       THE FRAME (the Navy Frame, Oct 4 2026; AJ chose answer 1A): the
+       header, the bottom bar and the iPad status bar are the logo's navy
+       in BOTH modes, the front door's navy family. Set here only, never in
+       .dark: the frame does not change with the theme. Ratios are on
+       --chrome.
+       --------------------------------------------------------------- */
+    --chrome:         #002341;
+    --chrome-ink:     #F2F5F8;                    /* the studio name, 14.6:1 */
+    --chrome-ink-2:   #ADC0D4;                    /* header icons, idle tab labels, search text, 8.6:1 */
+    --chrome-field:   rgba(255, 255, 255, 0.08);  /* the search well */
+    --chrome-line:    rgba(255, 255, 255, 0.10);  /* the frame's hairlines and divider */
+    --chrome-here:    #65ABE9;                    /* the tab you're on (a solid box) and your avatar, 6.5:1 both ways; dark --primary's blue */
+    --chrome-go:      #F36D21;                    /* a running session's tab, Operations and Admins, 5.3:1 */
+    --chrome-go-fill: rgba(243, 109, 33, 0.18);   /* the running tab's box when it is not the one you're on */
 
     /* --- MINDBODY INTEGRATION TOKENS — append to existing :root { } --- */
     --mb-state-scheduled:    #94A3B8;
@@ -389,33 +450,48 @@
     --mb-motion-state-shift: 400ms;
 }
 
+/* =====================================================================
+   DARK MODE — the studio navy (the Navy Frame, Oct 4 2026)
+
+   AJ: "in our dark mode, it just so gray ... in the hub, nothing has
+   color". Dark was near-black Tailwind slate (#020617 / #0F172A) under a
+   navy shell, with Tailwind sky #38BDF8 as its blue. It is now one navy
+   family set from the logo blue's hue: a navy ground #0A1C2C, cards one
+   step up #14293D, popovers a step above that, soft ink #DFE7EF at 12:1
+   on a card (it was 16-19:1). The blue is the logo blue lifted to read on
+   navy, #65ABE9; the orange is the logo orange itself, with navy words.
+   Ratios are on a card (#14293D) unless stated.
+   ===================================================================== */
 .dark {
-    --background: #020617;
-    --foreground: #F8FAFC;
-    --card: #0F172A;
-    --card-foreground: #F8FAFC;
-    --popover: #1E293B;
-    --elevated: #1E293B;
-    --popover-foreground: #F8FAFC;
-    --primary: #38BDF8;
-    --primary-foreground: #0F172A;
-    --brand: #38BDF8;
-    --brand-foreground: #0F172A;
-    --action: #F06C22;
-    --action-foreground: #FFFFFF;
-    --secondary: #68717A;
+    --background: #0A1C2C;
+    --foreground: #DFE7EF;          /* 11.9:1; 13.8:1 on the ground */
+    --card: #14293D;
+    --card-foreground: #DFE7EF;
+    --popover: #22374B;
+    --elevated: #22374B;
+    --popover-foreground: #DFE7EF;
+    --primary: #65ABE9;             /* the logo blue, lifted: 6.05:1, navy on it 7.4:1 */
+    --primary-foreground: #071727;
+    --brand: #65ABE9;
+    --brand-foreground: #071727;
+    --action: #F36D21;
+    --action-foreground: #071727;
+    --secondary: #52657A;           /* white on it 6.0:1 */
     --secondary-foreground: #FFFFFF;
-    --muted: #334155;
-    --muted-foreground: #94A3B8;
-    --accent: #334155;
-    --accent-foreground: #38BDF8;
-    --destructive: #EF4444;
-    --destructive-foreground: #FFFFFF;
-    --border: #334155;
-    --input: #334155;
-    --ring: #38BDF8;
-    --chart-1: #38BDF8;
-    --chart-2: #F06C22;
+    --muted: #203549;
+    --muted-foreground: #9DADBE;    /* 6.5:1; 5.5:1 on --muted */
+    --accent: #203549;
+    --accent-foreground: #98CAF9;
+    /* Red WORDS, as in :root: 5.5:1 on the popover, 6.6:1 on a card, 4.7:1
+       on its 20% button tint. --destructive-foreground has no reader; navy
+       is the word colour that passes on it (8.1:1) for the first one. */
+    --destructive: #FF8C8C;
+    --destructive-foreground: #071727;
+    --border: #2B3E50;
+    --input: #6E8397;               /* 3.8:1; 4.4:1 on the ground */
+    --ring: #65ABE9;
+    --chart-1: #65ABE9;
+    --chart-2: #F36D21;
     --chart-3: #68717A;
     --chart-4: #0EA5E9;
     --chart-5: #F59E0B;
@@ -428,55 +504,74 @@
     --sidebar-border: #334155;
     --sidebar-ring: #38BDF8;
 
-    /* On a near-black ground a drop shadow is invisible — elevation there
+    /* On the dark navy ground a drop shadow barely shows — elevation there
        comes from the SURFACE getting lighter (bg-dark -> -2 -> -3). Left at
        the light-mode values, every `shadow-xl` in the app would be spending
-       paint on nothing and muddying the edges of dark cards. */
-    --elev-1: 0 1px 2px rgba(0,0,0,0.30);
-    --elev-2: 0 2px 6px rgba(0,0,0,0.35);
-    --elev-3: 0 6px 16px rgba(0,0,0,0.40);
-    --elev-4: 0 12px 28px rgba(0,0,0,0.45);
-    --elev-5: 0 20px 48px rgba(0,0,0,0.55);
+       paint on nothing and muddying the edges of dark cards. Tinted with
+       the deepest navy (2,10,20) rather than pure black. */
+    --elev-1: 0 1px 2px rgba(2,10,20,0.30);
+    --elev-2: 0 2px 6px rgba(2,10,20,0.35);
+    --elev-3: 0 6px 16px rgba(2,10,20,0.45);
+    --elev-4: 0 12px 28px rgba(2,10,20,0.45);
+    --elev-5: 0 20px 48px rgba(2,10,20,0.55);
 
-    /* JOURNEY SYSTEM BETA TOKENS — DARK MODE */
-    --bg-dark:     #0D1A2B;
-    --bg-dark-2:   #16263D;
-    --bg-dark-3:   #1F344F;
-    --ink-d1:      #FFFFFF;
-    --ink-d2:      #B8C5D6;
-    --ink-d3:      #94A3B8;
-    --div-d:       rgba(255,255,255,0.08);
+    /* JOURNEY SYSTEM BETA TOKENS — DARK MODE. The ladder is the same navy
+       family as the tokens above: page, card, raised. */
+    --bg-dark:     #0A1C2C;
+    --bg-dark-2:   #14293D;
+    --bg-dark-3:   #203549;
+    --ink-d1:      #DFE7EF;   /* soft ink, never pure white */
+    --ink-d2:      #B8C6D3;   /* 8.5:1 */
+    --ink-d3:      #9DADBE;   /* 6.5:1 */
+    --div-d:       #2B3E50;
 
-    --surface-1:   #16263D;
-    --surface-2:   #1F344F;
+    --surface-1:   #14293D;
+    --surface-2:   #203549;
 
     --bg-l:        #F5F7FA;
     --bg-l-card:   #FFFFFF;
     --ink-l1:      #0D1A2B;
     --ink-l2:      #344155;
-    --ink-l3:      #6B7C95;
+    --ink-l3:      #9DADBE;
     --ink-l4:      #64748B;
-    --div-l:       #E4E7EB;
+    --div-l:       #2B3E50;   /* it was #E4E7EB, a near-white line on the dark routine drawer */
+
+    /* The orange, written out here too (the same values as :root). */
+    --cta:         #F36D21;
+    --cta-foreground: #071727;
+    --cta-strong:  #B04000;
+    --cyan:        #65ABE9;   /* = --primary */
 
     /* ---------------------------------------------------------------
-       THE NEUTRAL RAMP — DARK. These are Tailwind's own slate values,
-       unchanged, because every dark token above already IS one of them.
+       THE NEUTRAL RAMP — DARK: the studio navy (Oct 4 2026). Until then
+       these were Tailwind's own slate values, byte for byte ("dark must
+       not move at all", Sep 12 2026); the Navy Frame reversed that on
+       purpose, so the ~970 `slate-*` classes paint the same navy as the
+       tokens above instead of near-black. Anchors:
+
+         n-400 = --muted-foreground   6.5:1 on a card
+         n-500 =                      4.53:1 on a card (slate-500 was 3.75)
+         n-600 = --secondary
+         n-900 = --card
+         n-950 = --background
+
        They are written out explicitly rather than left to fall through so
        that a future edit to the light ramp cannot silently drag dark mode
        along with it. If you change a value here you are changing dark
        mode; if you meant to change light mode, edit :root.
+       neutral-ramp.test.ts holds these values.
        --------------------------------------------------------------- */
-    --n-50:  #F8FAFC;
-    --n-100: #F1F5F9;
-    --n-200: #E2E8F0;
-    --n-300: #CBD5E1;
-    --n-400: #94A3B8;
-    --n-500: #64748B;
-    --n-600: #475569;
-    --n-700: #334155;
-    --n-800: #1E293B;
-    --n-900: #0F172A;
-    --n-950: #020617;
+    --n-50:  #F4F7FB;
+    --n-100: #E9EEF4;
+    --n-200: #D8E1E9;
+    --n-300: #C6D1DC;
+    --n-400: #9DADBE;
+    --n-500: #7E90A3;
+    --n-600: #52657A;
+    --n-700: #354A5F;
+    --n-800: #23374C;
+    --n-900: #14293D;
+    --n-950: #0A1C2C;
 
     /* --- MINDBODY INTEGRATION TOKENS — append to existing .dark { } --- */
     --mb-state-early-cancel: var(--ink-d3);
@@ -622,15 +717,17 @@
    nothing under that strip, so there the shell takes the smallest it
    reports (--app-h, set only once measured) and the bar always sits above
    the strip. Under the shell the page's ground is the bar's colour, so if
-   iPadOS does draw a sliver below it reads as the bar, not a gap. */
+   iPadOS does draw a sliver below it reads as the bar, not a gap. The bar
+   is the frame (--chrome) since the Navy Frame, Oct 4 2026: the same navy
+   in both themes, so one rule covers both. */
 .app-shell { height: 100vh; }
 @supports (height: 100dvh) {
   .app-shell { height: 100dvh; }
 }
 html[data-app-h] .app-shell { height: var(--app-h); }
 @media (display-mode: standalone) {
-  html { background-color: var(--color-white); }
-  html.dark { background-color: var(--color-bg-dark); }
+  html,
+  html.dark { background-color: var(--chrome); }
 }
 
 /* pt-safe / pb-safe: exactly the inset. pt-safe-4 / pb-safe-6: the inset
@@ -671,15 +768,15 @@ html[data-app-h] .app-shell { height: var(--app-h); }
    tap. It is as tall as the top inset, so 0px with the `default` status
    bar; it matters only if the style goes back to `black-translucent`.
    Then: in the dark theme it is clear, so each screen's own dark top runs
-   up behind the clock. In the light theme every top surface is white or
-   near white, and a black-translucent status bar always draws WHITE text,
-   so the band paints the one dark neutral that is the same in both themes
-   — without it the clock and battery are invisible. */
+   up behind the clock. In the light theme a black-translucent status bar
+   still draws WHITE text, so the band paints the frame's navy (--chrome,
+   the same in both themes since the Navy Frame, Oct 4 2026) — without it
+   the clock and battery would be invisible over a light top. */
 .status-band {
   position: fixed;
   inset: 0 0 auto 0;
   height: env(safe-area-inset-top, 0px);
-  background: var(--n-900);
+  background: var(--chrome);
   z-index: 2147483000;
   pointer-events: none;
 }

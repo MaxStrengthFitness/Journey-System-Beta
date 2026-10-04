@@ -321,7 +321,7 @@ export function BodyStateTracker({
                     type="button"
                     onClick={handleSave}
                     disabled={pendingDial === null}
-                    className="inline-flex w-full h-12 items-center justify-center gap-2 rounded-xl bg-cyan text-[14px] font-bold uppercase tracking-widest text-black disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+                    className="inline-flex w-full h-12 items-center justify-center gap-2 rounded-xl bg-primary text-[14px] font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <Check className="w-4 h-4" aria-hidden />
                     {pendingDial === null ? 'Tap how it is today' : `Save · ${dialWord(REGION_SCALE, pendingDial)}`}
