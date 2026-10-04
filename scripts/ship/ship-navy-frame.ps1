@@ -15,8 +15,9 @@
  change (the status bar's navy), which is why the Home Screen icon has to be
  deleted and added again after the push.
 
- Run from the project folder, with the folder on the branch (ask Claude to
- switch it; do not switch branches by hand), IN ORDER:
+ Run from the branch's own folder, .claude\worktrees\navy-frame (it is on the
+ branch already), or from the project folder with the folder on the branch
+ (ask Claude to switch it; do not switch branches by hand), IN ORDER:
 
    powershell -ExecutionPolicy Bypass -File .\scripts\ship\ship-navy-frame.ps1 -Stage prepare
    powershell -ExecutionPolicy Bypass -File .\scripts\ship\ship-navy-frame.ps1 -Stage golive
@@ -92,7 +93,12 @@ function Must {
 
 Log "ship-navy-frame $Stage" 'White'
 
-if (-not (Test-Path 'service-account.json')) { Stop-Here 'run this from the project folder (the one with service-account.json).' }
+# The project folder, or the branch's own worktree folder
+# (.claude\worktrees\navy-frame): either is a full checkout of Journey. Nothing
+# here touches Firestore, so service-account.json is not needed (a worktree has
+# no copy of it, on purpose).
+$top = (& git --no-optional-locks rev-parse --show-toplevel 2>$null)
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path 'package.json') -or -not (Test-Path 'scripts\ship\ship-navy-frame.ps1') -or ((Resolve-Path $top).Path -ne (Get-Location).Path)) { Stop-Here 'run this from the top of a Journey checkout (the project folder or .claude\worktrees\navy-frame).' }
 
 # ---- from the project folder, on the branch -----------------------------------------
 $head = (& git --no-optional-locks symbolic-ref --quiet --short HEAD)
