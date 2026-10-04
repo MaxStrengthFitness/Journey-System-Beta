@@ -149,21 +149,84 @@ About 120 files, mostly single colour values, and the new tests that hold them.
 - Colleagues' quiet avatar circles are 1.13:1 off their head in light (the initials carry them at 10:1). The light profile header is a card-coloured band flush to its edges. The profile's setup banner is 1.06:1 off the page in light (its blue border and words carry it). The trainer profile's light Kaizen fill is 1.06:1 off its card. FORD's pillar fills and Pulse's traffic-light fills in dark are still their own near-black colours, 1.03–1.14:1 off the navy card.
 - `StatusBarStrip`'s dark halves stay the session's and the demo banner's own colours: the strip is 0px under the `default` status-bar style, so it is cosmetic.
 
+## Follow-ups (Oct 4 2026, AJ: "yes")
+
+Three of the open questions (orange Saves and selections, the Journey tab's dates, the session's button outlines) went to AJ with a recommendation each, and he answered "yes" to all three. **Branch** `oct4/colour-followups`, on master's `e38d29bb` (the Navy Frame, live): four commits and the docs. **Ships with** `scripts/ship/ship-colour-followups.ps1`. No rules, indexes, Cloud Functions, server, Mindbody, `index.html` or manifest change, so the Home Screen icon stays as it is.
+
+### Every Save and every selection is blue; orange is only now and go (`bf7c50fb`, `1f15ce3d`)
+
+The rule was already "every Save is solid blue" and "a selection is blue". Phase 7 held only "no white words on orange", so it left these on the logo orange. Orange is now only now and go: Start a new session, Finish, the paused Resume, Start Consult Workout, the profile's and the briefing's Start, the now marks and Celebrate.
+
+- **Saves** are `bg-primary text-primary-foreground`, with the fill restated on hover (words 7.9:1 light, 7.4 dark), and their glows are the blue's: Save scan and Save correction (InBody), Save conversation, Log a conversation (the renewal card's door into it), Track (Kaizen), Save preset and Apply (the routine drawer), Confirm Switch, Send to the team (feedback), Create Temporary Profile (Add a client), Save Trainer Profile.
+- **Selections** are the blue with its own words: the notes sheet's open tab, the feedback kind chips, First-time setup's gender and skill chips (their glow in the blue), and the Pulse's Linked (the existing `.sr-btn--navy`) and Machines that bring it on (an ordinary picked chip). The review found two more: the Equipment tab's picked machine (`.eq-item--selected`) is the live fill with a blue edge, restated on `:hover` and on a machine not in use, which both used to paint over the selection; and the Pulse's switch that is on (`.sr-switch--on`) is the navy with an on-colour knob, like the app's own Switch. The picked machine's "No load yet" and session count moved from the faint ink (2.9:1) to the muted.
+- **Yes, reset it** (the demo card) is a destructive confirm: red words on the destructive tint with a red edge, 4.82:1 light and 4.66 dark.
+- **The caution icon** in `StrongConfirmationModal` is plum (`--eq-warn` on `--eq-warn-fill`), 4.81 light and 5.24 dark.
+- **A trainer's own profile edit** (`EditTrainerModal`) had its token pass. Every icon and the Lookup button are the theme's blue (no `#F06C22`, Tailwind orange or indigo left). The home studio chip is solid blue, 4.96 / 5.24 even under the row's opacity. The staff ID is a quiet muted label. The checkboxes lost an override that never drew (Base UI marks a ticked box `data-checked`, not `data-state=checked`) and that hid the Checkbox's own 3:1 edge.
+- Retired with their last readers: `.sr-btn--primary`, the Pulse's hero chip, `--sr-go` / `--sr-go-on` and the Chip's `hero` prop. `BARE_PALETTE_BUDGET` is **127** (was 137).
+
+### The Journey tab's dates read at 4.5:1, hues kept (`61eb0ea1`)
+
+AJ's Oct 2–3 picks, stepped in lightness: each hue is kept (it moves 0.2° or less, the dark date-sub 1°), and the saturation moves 4 points or less. The newest tile's edge stays the logo orange. These colours are read in the Active Session as well as the profile (`.jg-look`).
+
+| Token | Mode | Was | Now | On its worst ground |
+| --- | --- | --- | --- | --- |
+| `--jg-pf-date-sub`, the session number under each date | light | `#4f7ea6` | `#3f6b90` | 3.59 → 4.70 on the band |
+| `--jg-pf-now`, the newest date | light | `#c2410c` | `#b53c0b` | 4.31 → 4.83 on the band, 4.63 spotlit |
+| `--jg-pf-now-sub`, its number (and today's reps and the waiting prescription in the session) | light | `#d4682c` | `#9e4d20` | 2.83 → 4.66 on a banded orange tile |
+| `--jg-pf-reps`, a set's reps on its tile | light | `#3d6a8f` | `#3b6689` | 4.34 → 4.61 on a banded tile |
+| `--jg-pf-date-sub` | dark | `#5d86a8` | `#7a9dbc` | 3.50 → 4.75 on the band |
+| `--jg-pf-now` | dark | `#f36d21` | `#f58443` | 4.52 → 5.32 on the band, 3.92 → 4.62 spotlit |
+
+Light pf-now, light and dark pf-date-sub are the values AJ was shown; pf-now-sub and pf-reps were stepped the same way.
+
+### The Active Session's controls get a firmer edge (`74eb585d`)
+
+`--jg-control-edge` is the Hub's `--eq-border-strong`, `#7a8694` in light and `#6e8397` in dark (all three blocks of `journey-grid.tokens.css`). It is 3.08:1 on the Now Bar and 3.42 on a control's fill in light, 3.45 and 3.79 in dark; the edge was 1.87 and 2.05 on the bar. Eighteen rules in `journey-grid.css` draw with it: the Now Bar's setting chips, steppers, REPS | SEC switch, quality buttons, No set? buttons, skip reasons and pain field; the session bar's Notes and Pulse; the Today column's add; the routine sheet's Find and add buttons; a machine's menu, the Key and its Close; and four controls nothing renders today (`.jg-btn`, `.jg-seg2`, `.jg-rail__edit`, `.jg-rail__older`). The softer `--jg-border-strong` stays on the sticky separators, the rail, the empty-day circles, the setting boxes and the captions.
+
+### Close calls
+
+- **Log a conversation** went blue: it records, and it opens the blue Save conversation.
+- **Yes, reset it** is red words on the destructive tint, not a solid red fill: no screen puts words on a solid destructive fill. In dark that tint blends to a violet-grey (`#433d4d`), against "dark fills are opaque and keep their hue"; it is the shadcn destructive button the whole app uses, and its words pass.
+- **The feedback kind chips** are solid blue, as the picked chips in Log a conversation and End Session's outcome are, not the live tint: there was nothing nearby to match.
+- **EditTrainerModal:** its Tailwind indigo went blue along with the orange, so the dialog isn't half indigo. The staff ID is a muted label, not blue: it is an identifier, not a selection, and blue on a blue tint was 4.18 on the dark popover. The home chip is solid blue because the tint fell to 3.99 in dark. The title and Display on Calendar icons are blue, not orange: neither is now or go. The stored default `brandColor` `"#F06C22"` is a colour input's value, not a class, and is left alone.
+- **First-time setup's chips** kept their glow, in the blue.
+- **The Pulse's Linked** reuses `.sr-btn--navy`, which had no reader. The orange-only tokens were deleted rather than left without readers.
+- **`--jg-pf-reps`** was not on AJ's list, but it was a word under 4.5:1 on every other row.
+- **A spotlit newest-day header keeps its orange words** on the blue spotlight, because the profile's newest-day rule outranks the spotlight's. It passes (4.62:1 in dark). Whether it should turn blue like every other spotlit date is question 3 below.
+- **The routine sheet's light page** (`--jg-bg` `#dee6ee`) puts the control edge at 2.94:1, on the dashed add buttons and the outer edge of Find. The token equals the Hub's, which measures the same 2.94 on the Hub's page, and the words and the blue + carry those buttons (question 4 below). On a press or hover ground (`--jg-surface-3`) the edge is 2.72 in light, for a moment.
+- **Kept orange on purpose**, outside AJ's lists, because their kit calls them the screen's one loud action: the machine sheet's `eq-btn--hero` (Save setup / Log & save, Confirm, Add note), machine-fit's Save set-up, the admin template editor's Save changes / Create template, and the progress report's Finalize (question 2 below).
+- **`loud-orange.test.ts` now turns `\r\n` into `\n`** when it reads a file. In a fresh Windows worktree (`core.autocrlf`) its token-block patterns never matched and the whole file failed to load, even on master. That is a reader fix, not a looser rule.
+
+### What holds them
+
+- `src/loud-orange.test.ts`: the go list that must stay orange (Start a new session, Finish, Resume, Start Consult Workout); the Saves that must be blue, with no solid orange anywhere in their file and no fading hover; the destructive reset; the selections; the plum icon. Each is measured in both modes.
+- `src/palette-copies.test.ts`: the Pulse's selections and its switch are blue, and no Pulse rule reads `--sr-go` or `--sr-hero`.
+- `src/features/hub-schedule/hub-colour-rules.test.ts`: the picked machine, its `:hover` and idle cases, and its words.
+- `src/features/journey-grid/contrast.test.ts`: the Journey look's words in all four palettes (`PAIRINGS`, banded rows included; `HEADER_WORDS` on the band and on a spotlit header), and the control edge at 3:1 on the bar and on a control's fill, firmer than the separators' line.
+- `src/features/journey-grid/session-colour-rules.test.ts`: the eighteen rules that read the control edge (any other reader fails), the five sticky separators on the soft line, and the token equal to the Hub's in both themes and the copy.
+- `src/neutral-ramp.test.ts`: the budget, 127.
+
+Putting the old values or classes back failed the guards on every commit (24 tests for the dates, 9 for the edge, 3 for the review's two selections).
+
+**Measured** on the branch's final commit, in its worktree on AJ's PC: typecheck **2** (`charts.tsx`, `EditTrainerModal.tsx`); `TZ=America/New_York npx vitest run --dir src` **9,657 passing in 663 files**, none failing (the Navy Frame: 9,551 in 663); `npx vite build` clean; the case check prints nothing. **Not seen on a screen**: no browser was used in the follow-ups. Walk Round 55 of `docs/ops/TESTING-CHECKLIST.md`.
+
 ## For AJ: the open questions
 
+Questions 2, 3 and 4 as first asked (orange Saves and selections, the Journey tab's dates, the session's button outlines) were answered "yes" on Oct 4 2026 and built: see the follow-ups above. Questions 2, 3 and 4 below took their places; they came out of that work.
+
 1. **The status bar (the gate).** After the push, delete and re-add the Home Screen icon. In LIGHT mode, under the `default` status-bar style, the clock and battery should draw light over the navy. If they come out black on navy, say so: the runner-up's light frame (the Quiet Frame's light bars) is the fallback. And: the icon's teal field in navy now (one more re-add) or later?
-2. **Orange Saves and selections.** The recorded rule is "every Save is solid blue" and "a selection is blue". These Saves are the logo orange with navy words today: Save scan / Save correction (InBody), Save conversation, Track (Kaizen), Save preset and Apply (the routine drawer), Confirm Switch, Save Trainer Profile, Create Temporary Profile, Send to the team. These selections are orange: the notes sheet's open tab and Pulse's "Linked" and "Machines that bring it on" (the go pair), the feedback kind chips and First-time setup's gender and skill chips (the warm orange fill). Move them to blue (`bg-primary text-primary-foreground`), or keep orange? Close calls: Log a conversation, and Yes, reset it (the demo card). `EditTrainerModal` (a trainer's own profile edit) still has raw `#F06C22` on its icons, ID chip and checkboxes, and Tailwind orange and indigo icons: it needs its own token pass either way. `StrongConfirmationModal`'s warning icon is Tailwind orange, where caution is plum by the rule.
-3. **The profile's Journey tab dates (your Oct 2–3 picks).** The header band under them moved, so: the newest date (`--jg-pf-now`, light) is 4.31:1 on the band, where it was 4.60; the session number under each date (`--jg-pf-date-sub`) is 3.50:1 in dark (was 4.26) and 3.59 in light; the number under the newest date (`--jg-pf-now-sub`, light) is 3.00. These are words, in every session. May they be retuned by lightness only, keeping your hues? Light pf-now `#b53c0b` (4.83), dark pf-date-sub `#7a9dbc` (4.75), light pf-date-sub `#3f6b90` (4.70), and a like step for pf-now-sub.
-4. **The Active Session's button outlines.** The Now Bar's controls (the quality and set buttons, the unit and chips, the menus) have an edge under 3:1: 1.87 against the bar in light, 2.05 in dark (it was so before, 1.84 and 1.76). The softer line was chosen on purpose for the sticky separators. May the session's buttons get a firmer outline? If yes, a `--jg-control-edge` equal to the Hub's `#7a8694` / `#6e8397` (3.08 and 3.45 on the bar), with the separators keeping the soft line.
+2. **The Saves still orange.** "Every Save is solid blue", but these stayed orange because their own kit calls them the screen's one loud action: the machine sheet's Save setup / Log & save, Confirm and Add note (`eq-btn--hero`), machine-fit's Save set-up, the admin template editor's Save changes / Create template (admin's own save bar is already blue), and the progress report's Finalize. Blue too, or keep them as the one loud action?
+3. **The newest date when it is spotlit.** Tap the newest date on the Journey tab: its words stay orange on the blue spotlight (4.62:1 in dark, so they read), while every other spotlit date turns blue. Turn it blue too, or keep the orange that marks the newest day?
+4. **The routine sheet's add buttons.** On the sheet's light page the dashed add buttons and Find's outer edge are 2.94:1, just under 3 (the same token on the Hub's page measures the same). Their words and the blue + carry them. Leave it, or give the sheet a darker edge of its own?
 5. **The Next 30 minutes strip's "now" edge.** A booking under way with no session open is the strip's only grey edge (`--eq-ink-2`); on the grid that same booking has the blue coming-up edge, and grey on the Hub means "over". Same quiet blue as coming up (matches the grid), the orange now mark (`--eq-hero`, "orange is now"), or keep the grey so "now" stands apart from "soon"?
 6. **A finished Hub card's time and "Not logged".** They now lift to the ink so they read (they were about 2.9:1 at 0.70). Keep that, or should a finished card stay quiet?
-7. **`ConsultationWizard.tsx`** is unmounted dead code with about 46 raw colours, kept for the consultation redesign. Keep it, or delete it (with its render test and the tab-words assertion, and the notes in `ARCHITECTURE.md` and `KNOWN-TRAPS.md`)?
-8. **The next colour pass?** Seen in the sweep, out of this round, none of them blocking the push: the calendar's trainer avatars put white initials on the orange tone (`calendar.css` `.cal-avatar`, 3.55:1 light, 2.99 dark), which breaks "no white words on any orange"; Learning's dark pull family colour is still the old sky `#38bdf8`; the FORD pillar and Pulse fills in dark; the progress-report editor's dark surfaces are the old slate; amber caution (the profile header's flags, the routine drawer, the paused clock's gold, the elevated flags, the briefing's Heads up and safety band, the calendar's away days, Add a client's Force Create, the record's "Reason required") is a recorded drift from plum; and the destructive styles are still Tailwind red and rose (Scrap Session, the InBody delete, the session detail's delete) rather than `--destructive`.
+7. **`ConsultationWizard.tsx`** is unmounted dead code with about 46 raw colours, kept for the consultation redesign (its checkbox overrides, `data-[state=checked]:bg-[#38BDF8]`, never draw under Base UI). Keep it, or delete it (with its render test and the tab-words assertion, and the notes in `ARCHITECTURE.md` and `KNOWN-TRAPS.md`)?
+8. **The next colour pass?** Seen in the sweep, out of this round, none of them blocking the push: the calendar's trainer avatars put white initials on the orange tone (`calendar.css` `.cal-avatar`, 3.55:1 light, 2.99 dark), which breaks "no white words on any orange"; Learning's dark pull family colour is still the old sky `#38bdf8`; the FORD pillar and Pulse fills in dark; the progress-report editor's dark surfaces are the old slate; amber caution (the profile header's flags, the routine drawer, the paused clock's gold, the elevated flags, the briefing's Heads up and safety band, the calendar's away days, Add a client's Force Create, the record's "Reason required") is a recorded drift from plum; and the destructive styles are still Tailwind red and rose (Scrap Session, the InBody delete, the session detail's delete, `StrongConfirmationModal`'s destructive branch and Wipe Data, the trainer profile edit's remove-certification hover) rather than `--destructive`. Seen in the follow-ups: orange states that look like selections but are deliberate or out of round (Operations' orange identity in the avatar menu's Operations and Admin segments and the Operations nav's tab; Relay's assign toggle `.sh__assign--on`; the progress-report editor's metric toggles), an orange hover tint that stays after a tap on the iPad (`.stg-kind:hover`), a machine note's flag dot in the go pair where a flag is plum (`.eq-note-dot--flag`), and the destructive tint going violet-grey in dark; and the grid's `.jg-btn`, `.jg-seg2` and `.jg-rail*` rules have no screen that draws them.
 9. Optional, taste only: a brighter dark ok green (`#42e1bd`) so a done mark and a Critical mark differ more by colour as well as shape. No check fails without it.
 
 ## The iPad walk (checklist Round 54)
 
-On an iPad, upright and on its side, in light, dark and System. Delete and re-add the Home Screen icon first, then the status-bar gate above. Then the frame, the Hub in the morning and at the now marker, your column, a coming-up card, the strip, every Start, a Critical card and a Celebrate chip in dark, the Active Session, End Session, the Wrap-up, the briefing, a client profile, My Studio, Learning and the Catalog, Operations and Admins, Add a client. Finally sign out: the iPad comes back dark, the default. `docs/ops/TESTING-CHECKLIST.md` Round 54 is the list.
+On an iPad, upright and on its side, in light, dark and System. Delete and re-add the Home Screen icon first, then the status-bar gate above. Then the frame, the Hub in the morning and at the now marker, your column, a coming-up card, the strip, every Start, a Critical card and a Celebrate chip in dark, the Active Session, End Session, the Wrap-up, the briefing, a client profile, My Studio, Learning and the Catalog, Operations and Admins, Add a client. Finally sign out: the iPad comes back dark, the default. `docs/ops/TESTING-CHECKLIST.md` Round 54 is the list, and Round 55 is the follow-ups' (the blue Saves and selections, the Journey tab's dates, the session's control edges).
 
 ## How to ship
 
@@ -173,6 +236,15 @@ powershell -ExecutionPolicy Bypass -File .\scripts\ship\ship-navy-frame.ps1 -Sta
 ```
 
 `prepare` changes nothing: the branch, a clean tree, that it fast-forwards master, that rules, indexes and functions are unchanged, the case check, the typecheck count (2), the suite in Eastern time and the build. `golive` asks for GO, tags master as `restore/2026-10-04-before-navy-frame`, and pushes the branch to master. **Every push to master deploys.** Then delete and re-add the Home Screen icon, and walk Round 54.
+
+The follow-ups ship on their own, from their worktree folder (`.claude\worktrees\colour-followups`), the same two stages:
+
+```
+powershell -ExecutionPolicy Bypass -File .\scripts\ship\ship-colour-followups.ps1 -Stage prepare
+powershell -ExecutionPolicy Bypass -File .\scripts\ship\ship-colour-followups.ps1 -Stage golive
+```
+
+`prepare` also checks that master holds `e38d29bb` and that `index.html` and `public` are unchanged; `golive` tags master as `restore/2026-10-04-before-colour-followups` first. No Home Screen icon re-add this time. Then walk Round 55.
 
 ## Measured
 

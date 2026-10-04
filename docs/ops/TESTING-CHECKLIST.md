@@ -2824,8 +2824,21 @@ Round document: `docs/rounds/2026-10-04-navy-frame.md`. On an iPad, upright and 
 - [ ] Operations and Admins: a form's "Saved" in the save bar reads in light; done cards on the Board read.
 - [ ] Add a client (from the header): orange section headings read in light; a field you tap rings blue.
 - [ ] The briefing: Start Session is the logo orange with navy words; the Heads up and the safety band in dark are warm amber and maroon, not grey or violet. Pulse (the floor entry): Done reads in dark.
-- [ ] A client profile: the tab tray and the open tab in both modes; the Journey tab's dates and session numbers in the header band read in light and dark (AJ's question 3 in the round document).
+- [ ] A client profile: the tab tray and the open tab in both modes; the Journey tab's dates and session numbers in the header band read in light and dark (retuned in the follow-ups: Round 55).
 - [ ] The Calendar: the Week heat map in dark climbs navy to blue with readable counts; the Activity Archive's visit cells in dark are blue with navy numerals.
 - [ ] Learning → Catalog and a machine's page, and the routine builder: navy in dark, the worked muscles in the logo blue.
 - [ ] Walk notes for AJ: is the 3:1 border on cards and placeholders too heavy in dark (Notes & Profile, the Calendar day view)? Does every field and outline button read as a lighter box in dark (the input fill)? FORD pillars and Pulse's traffic lights in dark? The profile header band in light? In light, does an in-session card stand out in your own column? Is light still "so bright" (the round document has a dimmer step ready)?
 - [ ] Set light, then sign out and sign in again: the app comes back dark (the default), whatever the last person chose.
+
+## Round 55 — The colour follow-ups · *Oct 4 2026, branch `oct4/colour-followups`*
+
+Round document: `docs/rounds/2026-10-04-navy-frame.md`, "Follow-ups". On an iPad, upright and on its side, in light and dark. Nothing to re-add on the Home Screen this time. Every Save below should be solid blue with light words, and stay blue after you tap it (not fade, not turn orange); orange is only Start, Finish and the paused Resume.
+
+- [ ] Saves: Save scan (a client's InBody), Save conversation and the renewal card's Log a conversation, Track (Kaizen, on a trainer profile), Save preset and Apply (the routine drawer), Confirm Switch, Send to the team (the bug button), Create Temporary Profile (Add a client), Save Trainer Profile. Start a new session and Finish are still the logo orange with navy words.
+- [ ] Selections, blue with readable words: the notes sheet's open tab in a session; the feedback kinds; First-time setup's gender and skill chips (a blue glow); the Pulse's Linked, a picked "Machines that bring it on" chip, and a switch that is on (navy, with a light knob); the Equipment tab's picked machine, which stays blue after the tap and on a machine not in use, with "No load yet" readable on it.
+- [ ] Demo Mode's card, Reset: "Yes, reset it" is red words on a pale red with a red edge, readable in both modes. A strong confirmation that isn't a delete shows a plum caution icon, not orange.
+- [ ] Edit a trainer profile: the icons and Lookup are blue, the home studio chip solid blue, the staff ID a quiet grey label, and a ticked box shows its tick with a visible edge.
+- [ ] A client profile's Journey tab, in light and dark: the session number under every date, the newest date in orange and the number under it, and a set's reps on its tile all read, on plain and banded rows. Tap the newest date: its orange words still read on the blue spotlight (AJ's call, question 3 in the round document: keep the orange, or turn it blue?).
+- [ ] The Active Session's Now Bar, in light and dark: the setting chips, the steppers, REPS | SEC, the quality buttons, No set? and its reasons each have an outline you can see against the bar. The session bar's Notes and Pulse, a machine's menu and the Key too. The sticky lines between the rows stay soft.
+- [ ] The routine sheet in light: Find and the dashed add buttons. Note whether their edges are clear enough on the grey-blue page (AJ's call, question 4 in the round document).
+- [ ] The Saves still orange as their screen's one loud action, to judge (question 2 in the round document): a machine's Save setup / Log & save, Confirm and Add note in the session's machine sheet, and machine-fit's Save set-up.
