@@ -204,6 +204,8 @@ Navy Frame's cells and ink (Oct 4 2026):
 | Crimson text on poor fill | 4.6 : 1 | 8.7 : 1 |
 | Gold ★ on max fill (non-text) | 3.5 : 1 | 6.3 : 1 |
 | Red kaizen ◯ on poor fill (non-text) | 3.5 : 1 | 5.6 : 1 |
+| Blue text on the LATEST / Today fill | 6.3 : 1 | 6.0 : 1 |
+| Max-effort cell edge (non-text) on a cell | 3.0 : 1 | 6.3 : 1 |
 
 Every figure above is the WORSE of the pairing on a plain row and on a
 **banded** row, because half the rows carry the banding overlay and a
@@ -213,8 +215,6 @@ None of these are typed by hand any more. `contrast.test.ts` parses the
 token file, resolves the `var()` chains, and asserts all of it — both themes
 and the profile's retuned light palette, banded and not — so retuning a token
 to something that fails AA fails the build instead of shipping.
-| Blue text on LATEST / Today fill | 7.7 : 1 | 7.7 : 1 |
-| Quality edge (non-text) on surface | ≥ 3.5 : 1 | ≥ 5.9 : 1 |
 
 The table above was measured again for the Navy Frame (Oct 4 2026), which moved the cells and the ink; if they move again, the numbers `contrast.test.ts` computes are the current ones.
 

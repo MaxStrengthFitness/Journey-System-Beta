@@ -128,7 +128,7 @@ existed — invisible. Now it is a three-state, colour-and-shape indicator:
 
 | State                | Glyph                | Colour             |
 |----------------------|----------------------|--------------------|
-| No notes             | outline clipboard    | faint slate        |
+| No notes             | outline clipboard    | the faint ink (`--eq-ink-faint`) |
 | Has notes            | filled clipboard + count badge | live blue |
 | Flagged maintenance  | filled + wrench glyph | the logo orange, solid, navy count (`--eq-go` / `--eq-go-on`, Oct 4 2026) |
 

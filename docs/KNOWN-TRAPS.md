@@ -402,7 +402,9 @@ beta-prep trim moved the traps out of `CLAUDE.md`. It is kept word for word.
 
 ### The Navy Frame (the colour round, Oct 4 2026)
 
-`docs/rounds/2026-10-04-colour.md` is the round. Every trap here has a test that fails if it comes back.
+`docs/rounds/2026-10-04-navy-frame.md` is the round. Every trap here has a test that fails if it comes back.
+
+- **The dark ramp is the studio navy, not Tailwind slate.** From Sep 12 2026 the dark `--n-*` ramp (what every `slate-*` class means) had to be byte-identical to Tailwind slate, and dark mode was a navy shell over near-black content; AJ found it "so gray". The Navy Frame retinted the dark ramp and the dark tokens together, on purpose, so a `dark:bg-slate-900` is now the dark card `#14293D` and `slate-950` the ground. Don't "restore" Tailwind's values: `neutral-ramp.test.ts` pins the navy rungs, and `core-tokens.test.ts` fails on a grey (low-chroma) dark surface or a pure-white light one.
 
 - **The frame does not follow the theme.** The header, the bottom bar and the iPad status bar are `--chrome` (`#002341`) in light AND dark (AJ's answer 1A). `HEADER_TOKEN` in `features/home-screen/theme-color.ts` is `"--chrome"`, not `--bg-dark-2`; `index.html`'s meta and pre-paint script and the manifest's `theme_color` say `#002341` whatever the theme. Don't "fix" the frame back to following the theme: `home-screen.test.ts`, `theme-color.test.ts` and `components/frame-colours.test.ts` (the frame draws only in `--chrome-*` tokens, with no `dark:` look of its own) hold it, and `core-tokens.test.ts` fails if `.dark` redefines a frame token.
 - **The frame's inks vanish on a theme surface.** `headerIconClass` (in `AppContent.tsx`) paints `--chrome-ink-2` for the navy header; on the phone's avatar menu, a light popover in light mode, it would be about 1.8:1, so ThemeToggle and FeedbackButton there take `menuIconClass`. A control that sits on the frame never carries its own palette hover either: the Bug icon's `hover:stroke-orange-500` stuck after a tap on the iPad (`frame-colours.test.ts`).
