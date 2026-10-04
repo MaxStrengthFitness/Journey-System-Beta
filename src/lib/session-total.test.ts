@@ -65,9 +65,9 @@ describe("the words", () => {
   });
 
   it("the peek: a guess is said to be one, a first session only off a sure total", () => {
-    expect(numberWords(312, "mindbody")).toBe("her 312th session · from Mindbody, not yet confirmed");
-    expect(numberWords(1, "mindbody")).toBe("her 1st session · from Mindbody, not yet confirmed");
-    expect(numberWords(1, "whole-story")).toBe("her first session");
+    expect(numberWords(312, "mindbody")).toBe("312th session · from Mindbody, not yet confirmed");
+    expect(numberWords(1, "mindbody")).toBe("1st session · from Mindbody, not yet confirmed");
+    expect(numberWords(1, "whole-story")).toBe("first session");
     expect(numberWords(null, "journey-only", 6)).toBe("#6 in Journey");
     expect(numberWords(null, "confirmed")).toBeNull();
   });

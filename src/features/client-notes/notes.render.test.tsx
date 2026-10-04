@@ -241,7 +241,6 @@ function NotesArea({ onOpenFord = () => {}, who = client }: { onOpenFord?: () =>
       author={AUTHOR}
       today={TODAY}
       coverage="complete"
-      possessive="her"
       fordWritable
       fordStudioId={fordStudioIdOf(who)}
       fordDoorCount={null}
