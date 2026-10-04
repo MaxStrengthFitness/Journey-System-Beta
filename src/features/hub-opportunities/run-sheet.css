@@ -364,10 +364,13 @@
   cursor: pointer;
 }
 
-.ho-action[data-primary="true"] {
-  border-color: var(--eq-hero-text);
-  background: var(--eq-hero-text);
-  color: var(--eq-hero-on);
+/* Start session: the logo orange with navy words, as on the peek (Oct 4
+   2026). The fill is restated on :hover, which an iPad keeps after a tap. */
+.ho-action[data-primary="true"],
+.ho-action[data-primary="true"]:hover {
+  border-color: var(--eq-go);
+  background: var(--eq-go);
+  color: var(--eq-go-on);
 }
 
 .ho-empty {

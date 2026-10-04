@@ -555,18 +555,17 @@
 
 /* The one loud action on a screen. There should never be two.
 
-   Note the ground: white on solid --adm-hero is 3.55:1, which is fine for a
-   fill or 18px+ bold but NOT for a 12px uppercase label. The deep orange is
-   6.0:1 and still unmistakably the brand. Bright --adm-hero stays where it
-   belongs — accent bars, icon washes, chart marks. */
-.adm-btn--hero {
-  background: var(--adm-hero-text);
-  color: var(--adm-hero-on);
-}
+   The logo orange with navy words (6.05:1), the same in both modes, as the
+   Hub's Start (the Navy Frame, Oct 4 2026). No white words sit on any
+   orange: white on the light --adm-hero is 3.99:1, under AA for a 12px
+   uppercase label. --adm-hero stays where it belongs: accent bars, icon
+   washes, chart marks. The fill is restated on :hover rather than darkened,
+   because an iPad keeps :hover after a tap and a darker orange would lower
+   the navy label's contrast at the moment it is aimed at. */
+.adm-btn--hero,
 .adm-btn--hero:not(:disabled):hover {
-  /* Darken rather than swap: any lighter hover would drop the label back
-     below AA at exactly the moment the user is aiming at it. */
-  filter: brightness(0.9);
+  background: var(--adm-go);
+  color: var(--adm-go-on);
 }
 
 .adm-btn--primary {

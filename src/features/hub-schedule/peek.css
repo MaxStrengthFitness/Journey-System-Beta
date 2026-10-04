@@ -219,15 +219,15 @@
   cursor: pointer;
 }
 
-/* Start Session is the one loud action: hero orange, filled with the DEEP
-   orange so its words read (6.0:1 on white; the bright orange is 3.55:1),
-   as My Studio fills Capture. A filled variant restates its fill on :hover
+/* Start Session is the one loud action: the logo orange with navy words
+   (6.05:1), the same in both modes (the Navy Frame, Oct 4 2026). No white
+   words sit on any orange. A filled variant restates its fill on :hover
    (an iPad keeps :hover after a tap). */
 .hp-btn[data-primary="true"],
 .hp-btn[data-primary="true"]:hover {
-  border-color: var(--eq-hero-text);
-  background: var(--eq-hero-text);
-  color: var(--eq-hero-on);
+  border-color: var(--eq-go);
+  background: var(--eq-go);
+  color: var(--eq-go-on);
 }
 
 /* Late cancel · session taken (Oct 2 2026): a whole-width quiet button

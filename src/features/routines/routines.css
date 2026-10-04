@@ -118,8 +118,11 @@
 .rt-btn:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 1px; }
 .rt-btn:disabled { opacity: 0.55; cursor: default; }
 .rt-btn--live { border-color: var(--eq-live); color: var(--eq-live-text); background: var(--eq-live-fill); }
-.rt-btn--hero { border-color: var(--eq-hero); background: var(--eq-hero); color: var(--eq-hero-on); }
-.rt-btn--hero:hover { filter: brightness(1.06); background: var(--eq-hero); }
+/* The one loud action: the logo orange with navy words, never white on
+   orange (the Navy Frame, Oct 4 2026). The fill is restated on :hover,
+   or .rt-btn:hover would paint it grey with an iPad's kept hover. */
+.rt-btn--hero,
+.rt-btn--hero:hover { border-color: var(--eq-go); background: var(--eq-go); color: var(--eq-go-on); }
 .rt-btn--hero:disabled { opacity: 1; } /* "Active today" is a state, not a dead button */
 
 /* ---------- The two panels ------------------------------------------ */
@@ -176,7 +179,8 @@
   font-weight: 900;
   font-style: italic;
 }
-.rt-routine--today .rt-badge { background: var(--eq-hero); color: var(--eq-hero-on); }
+/* Today's routine: an orange chip with words, so the go pair. */
+.rt-routine--today .rt-badge { background: var(--eq-go); color: var(--eq-go-on); }
 
 .rt-routine__title { flex: 1 1 140px; min-width: 0; }
 .rt-routine__name {
@@ -196,8 +200,8 @@
   gap: 4px;
   padding: 1px 7px;
   border-radius: 999px;
-  background: var(--eq-hero);
-  color: var(--eq-hero-on);
+  background: var(--eq-go);
+  color: var(--eq-go-on);
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.08em;

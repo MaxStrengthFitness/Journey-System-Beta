@@ -313,10 +313,12 @@
   background: var(--eq-live-fill);
   border-color: var(--eq-live);
 }
+/* An orange chip with words: the logo orange with navy words, never white
+   on orange (the Navy Frame, Oct 4 2026). */
 .eq-note-dot--flag {
-  color: var(--eq-hero-on);
-  background: var(--eq-hero);
-  border-color: var(--eq-hero);
+  color: var(--eq-go-on);
+  background: var(--eq-go);
+  border-color: var(--eq-go);
 }
 .eq-note-dot__count {
   font-size: 10px;
@@ -431,10 +433,14 @@
 .eq-btn:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 1px; }
 .eq-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .eq-btn--live { border-color: var(--eq-live); color: var(--eq-live-text); background: var(--eq-live-fill); }
-.eq-btn--hero {
-  border-color: var(--eq-hero);
-  background: var(--eq-hero);
-  color: var(--eq-hero-on);
+/* The one loud action: the logo orange with navy words. The fill is
+   restated on :hover, or .eq-btn:hover would paint it grey with an iPad's
+   kept hover after a tap. */
+.eq-btn--hero,
+.eq-btn--hero:hover {
+  border-color: var(--eq-go);
+  background: var(--eq-go);
+  color: var(--eq-go-on);
 }
 .eq-btn--ghost { border-color: transparent; background: transparent; }
 

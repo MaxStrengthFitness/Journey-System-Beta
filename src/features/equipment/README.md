@@ -130,7 +130,7 @@ existed — invisible. Now it is a three-state, colour-and-shape indicator:
 |----------------------|----------------------|--------------------|
 | No notes             | outline clipboard    | faint slate        |
 | Has notes            | filled clipboard + count badge | live blue |
-| Flagged maintenance  | filled + wrench glyph | hero orange, solid |
+| Flagged maintenance  | filled + wrench glyph | the logo orange, solid, navy count (`--eq-go` / `--eq-go-on`, Oct 4 2026) |
 
 Colour alone never carries the meaning — the glyph changes too, which keeps it
 readable for a colour-blind trainer and at arm's length on a gym floor.

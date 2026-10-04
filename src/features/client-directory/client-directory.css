@@ -707,13 +707,19 @@
   display: none;
 }
 
+/* Start: the logo orange with navy words, as on the Hub (Oct 4 2026). The
+   fill is restated on :hover, which an iPad keeps after a tap. */
+.cd-start,
+.cd-start:hover {
+  background: var(--eq-go);
+  color: var(--eq-go-on);
+}
+
 .cd-start {
   min-height: 44px;
   padding: 0 14px;
   border: 0;
   border-radius: 10px;
-  background: var(--eq-hero-text);
-  color: var(--eq-hero-on);
   font-size: 15px;
   font-weight: 800;
   cursor: pointer;

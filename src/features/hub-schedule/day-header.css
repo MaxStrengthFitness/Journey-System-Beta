@@ -51,6 +51,14 @@
   border-left: 0;
 }
 
+/* The layer you're on is a raised chip on the bar, not a tint alone: a
+   pale blue on the bar's own grey-blue was told apart by colour only
+   (Oct 4 2026). Its words stay the blue of what you chose. */
+.hd-bar .hl-btn[aria-pressed="true"] {
+  background: var(--eq-surface);
+  box-shadow: 0 1px 2px var(--eq-shadow);
+}
+
 .hd-rule {
   flex: none;
   width: 1px;
@@ -119,8 +127,16 @@
   background: var(--eq-hero);
 }
 
+/* Today is orange, the colour of now; the picked day is blue, the colour of
+   what you chose (the Navy Frame, Oct 4 2026). Today's ring and its numeral
+   are the orange of marks; the numeral is the deep orange so it reads as
+   words (5.41:1 light, 6.80 dark). */
 .hd-day[data-today="true"] {
-  border-color: var(--eq-live);
+  border-color: var(--eq-hero);
+}
+
+.hd-day[data-today="true"] .hd-day-name strong {
+  color: var(--eq-hero-text);
 }
 
 .hd-day[aria-selected="true"] {
@@ -136,6 +152,21 @@
 
 .hd-day[aria-selected="true"] .hd-dot {
   background: var(--eq-live-on);
+}
+
+/* Every morning today IS the picked day, and the Today button is hidden
+   then, so this underline is the only "today" left on screen. It is drawn
+   OUTSIDE the blue chip (an outset shadow, never inset), on the day
+   header: 3.68:1 light, 4.96 dark. Inside the chip it would be carried by
+   hue alone (1.98 / 1.22 on the blue). The week's gap and the top's bottom
+   padding leave it room. */
+.hd-day[data-today="true"][aria-selected="true"] {
+  border-color: var(--eq-live);
+  box-shadow: 0 3px 0 var(--eq-hero);
+}
+
+.hd-day[data-today="true"][aria-selected="true"] .hd-day-name strong {
+  color: var(--eq-live-on);
 }
 
 .hd-day:focus-visible,
@@ -428,20 +459,26 @@
   background: var(--eq-surface);
 }
 
+/* Coming up: the card's quiet blue edge (AJ's answer 2A, Oct 4 2026). */
+.hd-swatch[data-state="live"] {
+  border-left: 4px solid var(--eq-rail-booked);
+}
+
 .hd-swatch[data-state="in-session"] {
   border-left: 4px solid var(--eq-live);
   background: var(--eq-live-fill);
 }
 
+/* Over: the swatches recede as the cards do (hub-card.css, 0.70). */
 .hd-swatch[data-state="left-open"] {
   border-left: 4px solid var(--eq-warn);
   background: var(--eq-surface-2);
-  opacity: 0.62;
+  opacity: 0.7;
 }
 
 .hd-swatch[data-state="done"] {
   background: var(--eq-surface-2);
-  opacity: 0.62;
+  opacity: 0.7;
 }
 
 .hd-swatch[data-state="unlinked"] {

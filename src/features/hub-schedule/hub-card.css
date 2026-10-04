@@ -43,8 +43,22 @@
   outline-offset: 1px;
 }
 
-/* The one being looked at (its peek is open). */
-.hs-card[data-open="true"] {
+/* Coming up (AJ's answer 2A, Oct 4 2026): a client card still to come
+   carries a quiet logo-blue edge instead of the grey one (3.12:1 on the
+   card light, 3.07 dark), so the Hub has colour before the first session.
+   In session keeps the full blue edge and its fill; over, left open,
+   staff and unlinked keep theirs, so the edge still says the state.
+   HubCard always sets data-kind, data-state and data-recede, and "live" is
+   hubCardState's word for still to come or under way, not logged: a rule
+   keyed on a MISSING attribute would match nothing. */
+.hs-card[data-kind="client"][data-state="live"] {
+  border-left-color: var(--eq-rail-booked);
+}
+
+/* The one being looked at (its peek is open): blue all round, its edge
+   included, over the coming-up edge above. */
+.hs-card[data-open="true"],
+.hs-card[data-kind="client"][data-state="live"][data-open="true"] {
   border-color: var(--eq-live);
   box-shadow: 0 0 0 2px var(--eq-live);
 }
@@ -56,12 +70,14 @@
 
 /* Over: done, not logged, or nothing to claim. It recedes and drops its
    marks, the triangle included (AJ, Sep 28: "once the session is done it
-   should make a lot less noise"). */
+   should make a lot less noise"). At 0.70 its name still reads on the
+   calmer light grid (4.96:1; 0.62 would be 3.96, Oct 4 2026). The Key's
+   swatches recede by the same amount (day-header.css). */
 .hs-card[data-recede="true"] {
   border-left-color: var(--eq-border-strong);
   background: var(--eq-surface-2);
   box-shadow: none;
-  opacity: 0.62;
+  opacity: 0.7;
 }
 
 /* Left open (hub fixes, Oct 1 2026): a session started and gone quiet for an

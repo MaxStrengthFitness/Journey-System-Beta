@@ -83,13 +83,17 @@ button.hs-colhead:focus-visible {
   outline-offset: -3px;
 }
 
+/* Your head is blue, with a 3px blue rule under your name: the same mark
+   as the tab you're on (the Navy Frame, Oct 4 2026). */
 .hs-colhead[data-me="true"] {
   position: sticky;
   left: var(--hs-axis);
   z-index: 1;
-  background: var(--eq-surface-3);
+  background: var(--eq-mine-head);
+  box-shadow: inset 0 -3px 0 var(--eq-live);
 }
 
+/* Colleagues' circles are quiet; yours (below) is the only solid blue disc. */
 .hs-avatar {
   flex: none;
   display: inline-flex;
@@ -98,8 +102,8 @@ button.hs-colhead:focus-visible {
   width: 32px;
   height: 32px;
   border-radius: 999px;
-  background: var(--eq-ink-2);
-  color: var(--eq-surface);
+  background: var(--eq-surface-3);
+  color: var(--eq-ink);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -137,6 +141,12 @@ button.hs-colhead:focus-visible {
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+/* On your blue head the YOU tag is a card-coloured chip, so it stands off
+   the head instead of melting into it (blue words 7.78:1 light, 8.59 dark). */
+.hs-colhead[data-me="true"] .hs-you {
+  background: var(--eq-surface);
 }
 
 .hs-colcount {
@@ -287,11 +297,13 @@ button.hs-colhead:focus-visible {
   border-right: 1px solid var(--eq-border);
 }
 
+/* Your column: a blue cast under your bookings. Opaque, because it is
+   sticky and the others scroll under it. */
 .hs-col[data-me="true"] {
   position: sticky;
   left: var(--hs-axis);
   z-index: 3;
-  background: var(--eq-bg);
+  background: var(--eq-mine);
   box-shadow: 1px 0 0 var(--eq-border-strong);
 }
 
@@ -324,7 +336,8 @@ button.hs-colhead:focus-visible {
   display: flex;
   align-items: center;
   padding: 6px 14px;
-  color: var(--eq-ink-faint);
+  /* Words, so the muted ink, never the faint (5.20:1 light, 7.06 dark). */
+  color: var(--eq-ink-muted);
   font-size: 13px;
   font-weight: 600;
 }
@@ -408,7 +421,10 @@ button.hs-colhead:focus-visible {
   outline-offset: -3px;
 }
 
-/* ---- now ---- */
+/* ---- now ----
+   ONE orange at the now marker: the line, the rail's dot and the pill are
+   all --eq-hero, and the pill's words are navy (4.53:1 light, 6.05 dark).
+   White on the light hero would be 3.99, so nothing puts white on it. */
 
 .hs-now {
   position: absolute;
@@ -429,7 +445,7 @@ button.hs-colhead:focus-visible {
   padding: 2px 6px;
   border-radius: 6px;
   background: var(--eq-hero);
-  color: var(--eq-hero-on);
+  color: var(--eq-go-on);
   font-size: 11px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;

@@ -144,10 +144,15 @@
   color: var(--eq-live-text);
 }
 .fit-btn--quiet { border-color: var(--eq-border-strong); background: transparent; }
+/* The one loud action: the logo orange with navy words (Oct 4 2026), its
+   fill restated on :hover, which an iPad keeps after a tap. */
+.fit-btn--hero,
+.fit-btn--hero:hover {
+  border-color: var(--eq-go);
+  background: var(--eq-go);
+  color: var(--eq-go-on);
+}
 .fit-btn--hero {
-  border-color: var(--eq-hero);
-  background: var(--eq-hero);
-  color: var(--eq-hero-on);
   min-width: 148px;
 }
 
