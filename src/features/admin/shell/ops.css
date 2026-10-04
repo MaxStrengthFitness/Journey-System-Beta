@@ -952,6 +952,16 @@
   margin-left: auto;
 }
 
+/* A section's (i), opened (the calm round). */
+.ops-sec__info {
+  margin: 0;
+  padding: 0 2px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--adm-ink-2);
+  overflow-wrap: anywhere;
+}
+
 .ops-sec__card {
   display: flex;
   flex-direction: column;

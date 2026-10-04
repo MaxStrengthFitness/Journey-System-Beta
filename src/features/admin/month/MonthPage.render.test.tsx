@@ -143,50 +143,69 @@ async function mount(list: Client[] = clients, onOpenClient: (id: string) => voi
 }
 
 const section = (el: HTMLElement, id: string) => el.querySelector<HTMLElement>(`#brief-month-${id}`)!;
-const names = (el: HTMLElement, id: string) => [...section(el, id).querySelectorAll(".ops-jr-row__name")].map((n) => n.textContent);
+const names = (el: HTMLElement, id: string) => [...section(el, id).querySelectorAll(".adm-ov__name")].map((n) => n.textContent);
 const press = async (b: HTMLElement | null | undefined) => {
   if (!b) throw new Error("button not found");
   await act(async () => b.click());
 };
 const button = (el: HTMLElement, label: string) => [...el.querySelectorAll<HTMLButtonElement>("button")].find((b) => b.getAttribute("aria-label") === label || b.textContent?.trim() === label);
+/** A section's (i): what the list can't show, opened (the calm round). */
+const info = async (el: HTMLElement, id: string, title: string) => {
+  await press(button(section(el, id), `More about ${title}`));
+  return section(el, id).querySelector(".ops-sec__info")?.textContent ?? "";
+};
+const counts = (el: HTMLElement) => el.querySelector(".ops-counts__line")?.textContent ?? "";
 
 describe("Operations → Month", () => {
   it("opens on this month with the four lists, counts an unknown renewal, and says what is MIA today", async () => {
     const el = await mount();
     expect(el.textContent).toContain("September 2026");
     expect(el.textContent).toContain("this month");
+    // The calm round (Oct 3 2026): one line of counts, no subtitle sentence.
+    expect(counts(el)).toContain("0 renewals");
+    expect(counts(el)).toContain("1 birthday");
+    expect(counts(el)).toContain("2 MIA today");
+    expect(el.querySelector(".adm-head__sub")).toBeNull();
     // September: Frodo's birthday; no package ends; MIA from the Journey.
     expect(names(el, "birthdays")).toEqual(["Frodo Baggins"]);
-    expect(section(el, "birthdays").textContent).toContain("Turns 58 on Tue, Sep 22.");
-    expect(section(el, "renewals").textContent).toContain("No package ends in September 2026.");
-    expect(section(el, "renewals").textContent).toContain("1 client's timing unknown");
+    // The day is the list's heading; the row says the age.
+    expect(section(el, "birthdays").textContent).toContain("Tue, Sep 22");
+    expect(section(el, "birthdays").textContent).toContain("Turns 58.");
+    // No package ends, but one client's timing is unknown: never folded into All clear.
+    expect(section(el, "renewals").textContent).toContain("No package known to end in September.");
+    expect(await info(el, "renewals", "Renewals")).toContain("1 client's renewal timing is unknown");
     expect(names(el, "mia")).toEqual(["Adelard Took", "Mungo Baggins"]);
-    expect(section(el, "mia").textContent).toContain("1 drifting · 1 at risk · 0 lapsed");
-    expect(section(el, "mia").textContent).toContain("1 can't be judged yet");
-    expect(el.textContent).toContain("2 clients are MIA today");
+    const mia = await info(el, "mia", "MIA");
+    expect(mia).toContain("1 drifting · 1 at risk · 0 lapsed");
+    expect(mia).toContain("1 can't be judged yet");
   });
 
   it("goes to next month, where the renewals, a birthday and the anniversaries are, and a guessed anniversary says so", async () => {
     const el = await mount();
     await press(button(el, "Next month"));
     expect(el.textContent).toContain("October 2026");
+    expect(counts(el)).toContain("2 renewals");
+    expect(counts(el)).toContain("1 anniversary");
     expect(names(el, "renewals")).toEqual(["Sam Gamgee", "Frodo Baggins"]);
-    const renewals = section(el, "renewals").textContent ?? "";
-    expect(renewals).toContain("Before the charge");
-    expect(renewals).toContain("Talk now");
-    expect(renewals).toContain("Last talked to by Sam — leaning yes.");
-    expect(renewals).toContain("1 nobody has talked to yet");
+    const renewals = section(el, "renewals");
+    expect(renewals.textContent).toContain("Before the charge");
+    expect(renewals.textContent).toContain("Talk now");
+    // Where it came from is on the row's (i).
+    expect(renewals.textContent).not.toContain("Last talked to by Sam");
+    await press(renewals.querySelector<HTMLButtonElement>("button[aria-label='Why: Frodo Baggins']"));
+    expect(renewals.textContent).toContain("Last talked to by Sam — leaning yes.");
+    expect(await info(el, "renewals", "Renewals")).toContain("Nobody has talked to 1 of them yet.");
     expect(names(el, "birthdays")).toEqual(["Rosie Cotton"]);
     expect(section(el, "birthdays").textContent).toContain("Turns 70");
     // Rosie's is Mindbody's date, not yet confirmed: counted, not listed (Oct 2 2026).
     expect(names(el, "anniversaries")).toEqual(["Sam Gamgee"]);
-    const anniversaries = section(el, "anniversaries").textContent ?? "";
-    expect(anniversaries).toContain("7 years with the studio on Tue, Oct 6.");
-    expect(anniversaries).toContain("set on their profile");
-    expect(anniversaries).toContain("1 more waits for a confirmed first day — confirm it on Account");
+    const anniversaries = section(el, "anniversaries");
+    expect(anniversaries.textContent).toContain("7 years with the studio.");
+    await press(anniversaries.querySelector<HTMLButtonElement>("button[aria-label='Why: Sam Gamgee']"));
+    expect(anniversaries.textContent).toContain("set on their profile");
+    expect(await info(el, "anniversaries", "Anniversaries")).toContain("1 more waits for a confirmed first day. Confirm it on the client's Account.");
     // MIA is as of today whichever month is open.
-    expect(section(el, "mia").textContent).toContain("as of today");
-    expect(el.textContent).toContain("October will have 2 renewals, 1 birthday and 1 anniversary.");
+    expect(await info(el, "mia", "MIA")).toContain("As of today:");
     await press(button(el, "This month"));
     expect(el.textContent).toContain("September 2026");
   });
@@ -194,7 +213,7 @@ describe("Operations → Month", () => {
   it("opens a client inside Operations from any row", async () => {
     const opened: string[] = [];
     const el = await mount(clients, (id) => opened.push(id));
-    await press(section(el, "mia").querySelector<HTMLButtonElement>(".ops-jr-row"));
+    await press(section(el, "mia").querySelector<HTMLButtonElement>(".adm-ov__row-btn"));
     expect(opened).toEqual(["adelard"]);
   });
 
@@ -204,9 +223,12 @@ describe("Operations → Month", () => {
     const el = await mount();
     await press(button(el, "Next month"));
     warn.mockRestore();
-    const renewals = section(el, "renewals").textContent ?? "";
-    expect(renewals).toContain("the conversations couldn't be read");
-    expect(renewals).not.toContain("Nobody has talked to them yet");
-    expect(renewals).toContain("couldn't be read just now");
+    const more = await info(el, "renewals", "Renewals");
+    expect(more).toContain("Who has talked to them couldn't be read just now.");
+    expect(more).not.toContain("Nobody has talked");
+    const renewals = section(el, "renewals");
+    await press(renewals.querySelector<HTMLButtonElement>("button[aria-label='Why: Frodo Baggins']"));
+    expect(renewals.textContent).toContain("couldn't be read just now");
+    expect(renewals.textContent).not.toContain("Nobody has talked to them yet");
   });
 });

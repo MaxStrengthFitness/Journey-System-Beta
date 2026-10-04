@@ -258,8 +258,9 @@ export function monthBirthdays(clients: readonly Client[], month: string): Month
       clientId: c.id,
       name: nameOf(c),
       day,
-      sentence: `Turns ${turns} on ${dayWords(day)}.`,
-      proof: decade ? "A decade birthday." : "",
+      // The day is the list's heading (the calm round): the row says only the age.
+      sentence: decade ? "A decade birthday." : `Turns ${turns}.`,
+      proof: "",
       badge: decade ? `Turns ${turns}` : "Birthday",
       tone: decade ? "warn" : "info",
     });
@@ -333,7 +334,7 @@ export function monthAnniversaries(clients: readonly Client[], month: string, cu
       clientId: c.id,
       name: nameOf(c),
       day,
-      sentence: `${years} ${years === 1 ? "year" : "years"} with the studio on ${dayWords(day)}.`,
+      sentence: `${years} ${years === 1 ? "year" : "years"} with the studio.`,
       proof: stated
         ? `First day ${dayWords(first.day)}, ${first.day.slice(0, 4)} — set on their profile.`
         : `First day ${dayWords(first.day)}, ${first.day.slice(0, 4)} (${SINCE_SOURCE_WORDS[first.source] ?? "Mindbody's record"}) — Journey holds their whole story.`,
@@ -417,29 +418,8 @@ export function monthMia(entries: readonly JourneyEntry[], today: string, month:
 }
 
 /* ------------------------------------------------------------------ *
- * The month in one sentence
+ * The days
  * ------------------------------------------------------------------ */
-
-export interface MonthSummaryInput {
-  month: string;
-  today: string;
-  renewals: MonthRenewals;
-  birthdays: MonthBirthdays;
-  anniversaries: MonthAnniversaries;
-  /** Null until the Journey is ready. */
-  mia: MonthMia | null;
-}
-
-/** "October: 6 renewals, 4 birthdays and 3 anniversaries. 5 clients are MIA today." */
-export function monthSentence(i: MonthSummaryInput): string {
-  const monthName = monthLabel(i.month).split(" ")[0];
-  const n = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
-  const parts = [n(i.renewals.rows.length, "renewal"), n(i.birthdays.rows.length, "birthday"), n(i.anniversaries.rows.length, "anniversary", "anniversaries")];
-  const list = `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
-  const when = i.month < monthOf(i.today) ? " had" : i.month > monthOf(i.today) ? " will have" : " has";
-  const mia = i.mia ? ` ${n(i.mia.rows.length, "client is", "clients are")} MIA today${i.mia.unknown > 0 ? `, and ${n(i.mia.unknown, "can't be judged yet", "can't be judged yet")}` : ""}.` : " The MIA list is still being worked out.";
-  return `${monthName}${when} ${list}.${mia}`;
-}
 
 /** The rows of a list grouped by day, in day order, for a screen to draw with a heading per day. */
 export function byDay<T extends MonthRow>(rows: readonly T[]): Array<{ day: string; rows: T[] }> {

@@ -33,6 +33,7 @@ export function BriefSection({
   count,
   hot,
   sub,
+  info,
   door,
   children,
 }: {
@@ -44,9 +45,12 @@ export function BriefSection({
   hot?: boolean;
   /** A short fact beside the count, never a caption explaining the section (the calm round). */
   sub?: ReactNode;
+  /** What the section can't show or leaves out (no date of birth on file, a guessed first day), behind an (i) beside the title. */
+  info?: ReactNode;
   door?: ReactNode;
   children: ReactNode;
 }) {
+  const [open, setOpen] = useState(false);
   return (
     <section className="ops-sec" id={`brief-${id}`} aria-labelledby={`brief-${id}-t`}>
       <header className="ops-sec__h">
@@ -55,8 +59,14 @@ export function BriefSection({
         </h2>
         {typeof count === "number" && <span className={cn("ops-badge", hot && count > 0 && "ops-badge--hot")}>{count}</span>}
         {sub && <span className="ops-sec__sub">{sub}</span>}
+        {info && (
+          <button type="button" className="ops-info" aria-expanded={open} aria-label={`More about ${title}`} onClick={() => setOpen((v) => !v)}>
+            <Info className="w-4 h-4" aria-hidden />
+          </button>
+        )}
         {door && <span className="ops-sec__door">{door}</span>}
       </header>
+      {open && info && <p className="ops-sec__info">{info}</p>}
       <div className="ops-sec__card">{children}</div>
     </section>
   );

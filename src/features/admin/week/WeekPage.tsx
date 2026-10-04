@@ -35,7 +35,6 @@ import { useMemo } from "react";
 import { CalendarRange, ChevronRight } from "lucide-react";
 import type { Client, Studio, Trainer } from "../../../types";
 import { loggedSessions } from "../../../lib/booking-state";
-import { clientDisplayName } from "../../../lib/client-name";
 import { formatStudioTime, studioDateKey, studioDayBoundsForKey } from "../../../lib/studio-time";
 import { addDays } from "../../client-history/model";
 import { tallyOutcomes } from "../../renewals/rates";
@@ -46,7 +45,7 @@ import { useBookingMarks } from "../attention/booking-marks";
 import { ChangesView } from "../changes/ChangesView";
 import { useStudioWeek } from "../changes/useStudioWeek";
 import { useWeekSchedule } from "../changes/useWeekSchedule";
-import { nightlyNote, type NightlyNote, type NightlyRead } from "../overview/brief";
+import { useNightlyNote } from "../overview/useNightlyNote";
 import { AllClear, BriefEmpty, BriefSection, CountsLine, PageNote } from "../overview/brief-pieces";
 import { moments } from "../overview/moments";
 import { renewalsQuestion } from "../overview/questions";
@@ -395,29 +394,5 @@ function WeekAhead({ studio, studios, clients, trainers, authTrainer, onOpenClie
       )}
       <AllClear names={clear} />
     </AdminScreen>
-  );
-}
-
-/**
- * The page's one note about the nightly record (overview/brief.ts
- * nightlyNote): not live, no record, stale, or the clients it couldn't place.
- */
-function useNightlyNote(nightly: NightlyRead, studio: Studio, today: string, clients: Client[], tz?: string): NightlyNote | null {
-  return useMemo(
-    () =>
-      nightlyNote(
-        nightly,
-        studio,
-        today,
-        (ids) =>
-          ids
-            .map((id) => {
-              const c = clients.find((x) => x.id === id);
-              return c ? clientDisplayName(c, "A client") : "A client";
-            })
-            .join(", "),
-        tz,
-      ),
-    [nightly, studio, today, clients, tz],
   );
 }

@@ -5,7 +5,7 @@ import type { RenewalCycle } from "../../renewals/types";
 import type { WatchlistEntry } from "../attention/attention";
 import { studioJourneys, type StudioJourneysInput } from "../journey/journey-list";
 import { APP_LINES } from "../journey/states";
-import { byDay, dayWords, daysInMonth, dobKeyOf, firstDayOf, monthAnniversaries, monthBirthdays, monthLabel, monthMia, monthOf, monthRenewals, monthSentence, shiftMonth } from "./month";
+import { byDay, dayWords, daysInMonth, dobKeyOf, firstDayOf, monthAnniversaries, monthBirthdays, monthLabel, monthMia, monthOf, monthRenewals, shiftMonth } from "./month";
 
 const TODAY = "2026-09-29"; // a Tuesday
 const TZ = "America/New_York";
@@ -117,8 +117,8 @@ describe("a month's birthdays", () => {
       "2026-10",
     );
     expect(b.rows.map((r) => [r.name, r.day, r.badge, r.sentence])).toEqual([
-      ["Sam Took", "2026-10-02", "Birthday", "Turns 65 on Fri, Oct 2."],
-      ["Rosie Took", "2026-10-14", "Turns 70", "Turns 70 on Wed, Oct 14."],
+      ["Sam Took", "2026-10-02", "Birthday", "Turns 65."],
+      ["Rosie Took", "2026-10-14", "Turns 70", "A decade birthday."],
     ]);
     expect(b.rows[1].tone).toBe("warn");
     expect(b.noDate).toBe(1);
@@ -216,18 +216,7 @@ describe("the MIA list", () => {
   });
 });
 
-describe("the month in one sentence, and the days", () => {
-  it("says what the month has, in the right tense, and whether the MIA list is ready", () => {
-    const empty = { rows: [], unknown: 0, notTalked: 0 };
-    const i = { month: "2026-10", today: TODAY, renewals: { rows: [1, 2] as never, unknown: 0, notTalked: 0 }, birthdays: { rows: [1] as never, noDate: 0 }, anniversaries: { ...empty, guessed: 0, noDate: 0 }, mia: null };
-    expect(monthSentence(i)).toBe("October will have 2 renewals, 1 birthday and 0 anniversaries. The MIA list is still being worked out.");
-    expect(monthSentence({ ...i, month: "2026-09", mia: { rows: [1, 2, 3] as never, counts: { drifting: 1, "at-risk": 1, lapsed: 1 }, unknown: 2, wentInactive: 0 } })).toBe(
-      "September has 2 renewals, 1 birthday and 0 anniversaries. 3 clients are MIA today, and 2 can't be judged yet.",
-    );
-    expect(monthSentence({ ...i, month: "2026-08", mia: { rows: [1] as never, counts: { drifting: 1, "at-risk": 0, lapsed: 0 }, unknown: 0, wentInactive: 0 } })).toContain("August had");
-    expect(monthSentence({ ...i, month: "2026-08", mia: { rows: [1] as never, counts: { drifting: 1, "at-risk": 0, lapsed: 0 }, unknown: 0, wentInactive: 0 } })).toContain("1 client is MIA today.");
-  });
-
+describe("the days", () => {
   it("groups rows by day in day order", () => {
     const row = (key: string, day: string) => ({ key, clientId: key, name: key, day, sentence: "", proof: "", badge: "", tone: "info" as const });
     expect(byDay([row("b", "2026-10-09"), row("a", "2026-10-02"), row("c", "2026-10-09")]).map((g) => [g.day, g.rows.map((r) => r.key)])).toEqual([
