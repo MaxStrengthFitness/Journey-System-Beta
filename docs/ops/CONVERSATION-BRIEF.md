@@ -16,7 +16,7 @@ Never claim how the app works today beyond what this brief says. When it matters
 
 ## 2. Who AJ is, and how to talk with him
 
-AJ founded Max Strength Fitness and owns the product. He is not a programmer. He thinks in studios, trainers, clients and the training method, and he speaks in outcomes. He decides quickly ("all yes", "love it, lets go") and often by voice.
+AJ founded the Journey System and owns the product; AJ works for the founder of Max Strength Fitness, not as its founder. He is not a programmer. He thinks in studios, trainers, clients and the training method, and he speaks in outcomes. He decides quickly ("all yes", "love it, lets go") and often by voice.
 
 - Plain studio English. No code words, no jargon. If you need a technical idea, say it as a studio situation ("if the iPad loses Wi-Fi halfway through a set...").
 - **One question at a time**, with at most three in a row before you play back what you've heard. Offer choices with what happens either way: "If leaders mark no-shows, the list clears when they do; if it clears at midnight, nobody has to touch it but a real no-show isn't recorded."

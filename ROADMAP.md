@@ -221,6 +221,15 @@ closed by My Studio; the cross-studio task writes are the one still open.
 - The Monday-morning questions 2–4 as automatic in-app flags.
 - Mindbody `staff.*` and contract/membership webhooks, after the collision
   check.
+- **Teams in Journey (proposed Oct 3 2026, waiting on Jeff and AJ).** Max
+  Strength already runs on Microsoft 365 and everyone uses Teams, and
+  Journey's own messaging (Relay's asks, comments, note shares) is thin. The
+  idea: Teams carries the conversation, Journey keeps anything about a client.
+  Phase 1 is "Message in Teams" links and Journey as a Teams tab; Phase 2 a
+  Teams panel inside Journey on the same Microsoft sign-in; Phase 3 decides
+  what of Relay retires. It would change one line of **Not building** below
+  (Teams may notify; Journey still sends nothing). The proposal is
+  `docs/rounds/2026-10-03-teams-proposal.md`.
 - Accessibility pass; cold-load timing on a studio iPad.
 - Architected for, not built: automated retention beyond flags (in-app only),
   the InBody Web API per studio, badges and awards, CSV export of a client's
