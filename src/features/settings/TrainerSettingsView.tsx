@@ -34,6 +34,7 @@
  * where it is read.
  */
 
+import { isStandalone, reportedHeights, visibleHeight } from "../home-screen/app-height";
 import {
   Bug,
   ChevronRight,
@@ -46,7 +47,7 @@ import {
   UserCircle,
 } from "lucide-react";
 import { motion } from "motion/react";
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { ROLE_LABELS, type Studio, type Trainer } from "../../types";
 import { mayOpenOperations } from "../admin/operations-access";
 import { STATUS_LABEL, statusCountsLine, type ReportStatus } from "../admin/bugs/reportView";
@@ -148,9 +149,22 @@ export function TrainerSettingsView({
   const activeStudio = studios.find((s) => s.id === activeStudioId);
 
   // Cross-training locations, minus the home studio it already shows above.
+  // A studio this screen cannot name (Demo Mode's practice studio, hidden
+  // outside Demo Mode by the realm rule, or one that no longer exists) is
+  // left out rather than printed as a dash (AJ's walk, Oct 3 2026).
   const otherStudios = (authTrainer?.accessibleStudioIds || [])
     .filter((id) => id && id !== authTrainer?.primaryHomeStudioId)
-    .map(studioName);
+    .map((id) => studios.find((s) => s.id === id)?.name?.trim())
+    .filter((name): name is string => !!name);
+
+  // In the Home Screen app only: the heights iPadOS reports, so a photo of
+  // this screen says why the bottom bar sits where it does (Oct 3 2026).
+  const screenLine = useMemo(() => {
+    if (typeof window === "undefined" || !isStandalone()) return null;
+    const r = reportedHeights();
+    const shell = visibleHeight([r.inner, r.client, r.dvh]);
+    return `Home Screen app · window ${r.inner} · page ${r.client} · dvh ${r.dvh === null ? "?" : Math.round(r.dvh)} · app ${shell ?? "?"}`;
+  }, []);
 
   // Team's own rule for who works here, so this count and My Studio -> Team
   // never disagree (voice review follow-up, Sep 27 2026).
@@ -227,6 +241,7 @@ export function TrainerSettingsView({
           <Fact label="Role" value={role} />
           <Fact label="Home studio" value={studioName(authTrainer?.primaryHomeStudioId)} />
           {otherStudios.length > 0 && <Fact label="Also works at" value={otherStudios.join(" · ")} />}
+          {screenLine && <Fact label="This screen" value={screenLine} />}
           <Fact
             label="Mindbody"
             value={

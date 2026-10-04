@@ -519,6 +519,7 @@
     visibility: visible;
   }
   body.printing-report .h-\[100dvh\],
+  body.printing-report .app-shell,
   body.printing-report .overflow-hidden,
   body.printing-report .overflow-y-auto,
   body.printing-report .min-h-0 {
@@ -605,6 +606,24 @@
    home-screen.test.ts keeps it: a new use of safe-area-inset in src/
    has to be added there with its reason.
    ===================================================================== */
+
+/* THE APP'S HEIGHT (Oct 3 2026; features/home-screen/app-height.ts).
+   The shell is 100dvh, with 100vh first for an iPad that has no dvh (an
+   unknown unit would void the whole declaration and leave it auto). In the
+   Home Screen app iPadOS 26 reports two heights a strip apart and draws
+   nothing under that strip, so there the shell takes the smallest it
+   reports (--app-h, set only once measured) and the bar always sits above
+   the strip. Under the shell the page's ground is the bar's colour, so if
+   iPadOS does draw a sliver below it reads as the bar, not a gap. */
+.app-shell { height: 100vh; }
+@supports (height: 100dvh) {
+  .app-shell { height: 100dvh; }
+}
+html[data-app-h] .app-shell { height: var(--app-h); }
+@media (display-mode: standalone) {
+  html { background-color: var(--color-white); }
+  html.dark { background-color: var(--color-bg-dark); }
+}
 
 /* pt-safe / pb-safe: exactly the inset. pt-safe-4 / pb-safe-6: the inset
    PLUS that much of the spacing scale, for an edge that needs breathing

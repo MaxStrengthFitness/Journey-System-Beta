@@ -804,3 +804,290 @@
   font-size: 12px;
   color: var(--eq-ink-2);
 }
+
+/* ==========================================================================
+   THE STACK (AJ's walk, Oct 3 2026; stack.ts is the pure half)
+   --------------------------------------------------------------------------
+   Safety first and readable in two seconds: the Catalog's muscle figure with
+   her limits lit, each limit in display type with the line that says what to
+   do. Then Since last time, the one thing to ask about, On the way in, the
+   routine as one line, and the admin lines as a quiet footer. Start is a
+   solid bar: nothing scrolls under it.
+   ========================================================================== */
+
+/* --- 2. before you start: the safety band ------------------------------ */
+
+.br-safe {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-color: var(--br-warn);
+  box-shadow: inset 4px 0 0 var(--br-warn), 0 1px 2px var(--br-shadow);
+}
+.br-safe .br__before-head,
+.br-safe .br__before-head svg { color: var(--br-warn); }
+
+.br-safe--clear {
+  border-color: var(--br-border);
+  box-shadow: inset 4px 0 0 var(--br-ok), 0 1px 2px var(--br-shadow);
+}
+.br-safe--clear .br__before-head,
+.br-safe--clear .br__before-head svg { color: var(--br-ok); }
+
+.br-safe__clear {
+  margin: 0;
+  font-family: var(--font-display, inherit);
+  font-style: italic;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: 22px;
+  line-height: 1.1;
+  color: var(--br-ok);
+}
+.br-safe__clear--unknown { color: var(--br-ink-2); font-size: 16px; }
+
+.br-safe__body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+/* No figure (a whole-body flag, or a note with no place): the list takes the row. */
+.br-safe__body:has(> .br-safe__list:only-child) { grid-template-columns: minmax(0, 1fr); }
+
+.br-safe__figs {
+  display: flex;
+  gap: 6px;
+}
+.br-safe__fig {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  margin: 0;
+}
+.br-safe__fig figcaption {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--br-ink-muted);
+}
+/* The figure is drawn into a box of its own shape (the model is twice as
+   tall as it is wide), so its size is the box's, never the svg's guess. */
+.br-safe__fig-body {
+  width: 92px;
+  aspect-ratio: 1 / 2;
+}
+.br-safe__fig-body svg { width: 100%; height: 100%; }
+
+.br-safe__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.br-safe__limit {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.br-safe__title {
+  margin: 0;
+  font-family: var(--font-display, inherit);
+  font-style: italic;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: 22px;
+  line-height: 1.1;
+  color: var(--br-ink);
+}
+.br-safe__limit[data-severity="high"] .br-safe__title { color: var(--br-warn); }
+.br-safe__do {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--br-ink);
+}
+.br-safe__do b { font-weight: 800; }
+.br-safe__src {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--br-ink-muted);
+}
+
+@media (max-width: 599px) {
+  .br-safe__body { grid-template-columns: minmax(0, 1fr); }
+  .br-safe__figs { justify-content: center; }
+}
+
+/* --- 3. since last time ------------------------------------------------ */
+
+.br-since { display: flex; flex-direction: column; gap: 10px; }
+.br-since__lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.br-since__line {
+  position: relative;
+  padding-left: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--br-ink);
+}
+.br-since__line::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--br-live);
+}
+.br-since__line[data-kind="light"] { color: var(--br-ink-2); }
+
+/* --- 5. on the way in -------------------------------------------------- */
+
+.br-cap__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.br-cap__chip {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--br-border-strong);
+  background: var(--br-surface);
+  color: var(--br-ink-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.br-cap__chip svg { flex: none; color: var(--br-live); }
+.br-cap__chip[aria-pressed="true"] {
+  border-color: var(--br-live);
+  background: var(--br-live-fill);
+  color: var(--br-live-text);
+}
+
+.br-cap__sore { display: flex; flex-direction: column; gap: 10px; }
+.br-cap__sore-fig {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.br-cap__sides {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.br-cap__sides button {
+  min-height: 44px;
+  min-width: 80px;
+  padding: 0 12px;
+  border-radius: var(--br-radius);
+  border: 1px solid var(--br-border-strong);
+  background: var(--br-surface);
+  color: var(--br-ink-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.br-cap__sides button[aria-pressed="true"] {
+  border-color: var(--br-live);
+  background: var(--br-live-fill);
+  color: var(--br-live-text);
+}
+/* Big enough to hit a knee with a thumb. */
+.br-cap__tap { width: 150px; }
+.br-cap__tap svg path { cursor: pointer; }
+
+/* --- 6. the routine as one line ---------------------------------------- */
+
+.br-routine { display: flex; flex-direction: column; gap: 10px; }
+.br-routine__line {
+  width: 100%;
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: center;
+  padding: 10px 14px;
+  text-align: left;
+  border: 1px solid var(--br-border);
+  border-radius: var(--br-radius);
+  background: var(--br-surface-2);
+  color: var(--br-ink);
+  font: inherit;
+  cursor: pointer;
+}
+.br-routine__what { font-size: 15px; font-weight: 600; }
+.br-routine__what b { font-weight: 900; }
+.br-routine__codes {
+  grid-column: 1;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--br-ink-2);
+}
+.br-routine__touch {
+  grid-column: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--br-warn);
+}
+.br-routine__touch svg { flex: none; }
+.br-routine__edit {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--br-live-text);
+}
+.br-routine__edit svg { transition: transform 150ms ease; }
+
+/* --- 7. also today ----------------------------------------------------- */
+
+.br-also {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 4px;
+}
+.br-also .br__quote { margin: 0; font-size: 13px; }
+
+.br__meta--quiet { text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 600; }
+
+/* --- 8. Start: a solid bar, never a button floating over the page ------ */
+.br__cta-bar {
+  background: var(--br-bg);
+  border-top: 1px solid var(--br-border);
+  margin-left: -14px;
+  margin-right: -14px;
+  padding-left: 14px;
+  padding-right: 14px;
+}
+@media (min-width: 900px) {
+  .br__cta-bar { margin-left: -20px; margin-right: -20px; padding-left: 20px; padding-right: 20px; }
+}
+
+.br-also:empty { display: none; }

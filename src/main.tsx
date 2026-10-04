@@ -14,6 +14,7 @@ import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { APP_BUILD } from './features/new-version/build';
 import { noteChunkLoadError } from './features/new-version/chunk-error';
 import { versionStore } from './features/new-version/version-store';
+import { watchAppHeight } from './features/home-screen/app-height';
 
 declare global {
   interface Window {
@@ -156,6 +157,10 @@ window.addEventListener('unhandledrejection', (e) => {
 // Flush anything that failed before this module ran.
 (window.__earlyErrors ?? []).forEach(reportClientError);
 window.__earlyErrors = [];
+
+// The Home Screen app's height (Oct 3 2026): the shell takes the smallest
+// height iPadOS reports, so the bottom bar never lands under iPadOS's strip.
+watchAppHeight();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

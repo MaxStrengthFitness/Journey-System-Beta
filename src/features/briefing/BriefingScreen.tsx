@@ -58,15 +58,22 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Activity,
+  ChevronDown,
+  Crosshair,
   HeartPulse,
-  Info,
+  History,
   Lightbulb,
+  PenLine,
   Play,
   Scale,
+  ShieldAlert,
+  SlidersHorizontal,
+  Tablet,
   Target,
   X,
 } from "lucide-react";
-import { ConditionChip } from "../../components/ConditionChip";
+import { BodyModel, figureGenderOf } from "../../components/anatomy";
+import { ClientCheckInPanel } from "../../components/journal/ClientCheckInPanel";
 import {
   RoutineBuilder,
   type MachineHistoryEntry,
@@ -79,8 +86,6 @@ import {
 import { hubMarkers } from "../../lib/hub-markers";
 import { briefingMoments } from "../hub-opportunities/briefing-moments";
 import { sessionNumberWords, sessionTotalOf } from "../../lib/session-total";
-import { renewalPromptDue } from "../renewals/conversation";
-import { renewalOf } from "../renewals/auto-renew";
 import { BriefingRenewalLine } from "../renewals/BriefingRenewalLine";
 import { AppHeader } from "../../components/AppHeader";
 import { useTheme } from "../../components/ThemeProvider";
@@ -107,13 +112,23 @@ import { useNoteDismissals, dismissThread } from "../client-notes/dismissal-stor
 import type { NoteThread } from "../client-notes/threads";
 import { FOCUS_VISUALS, relativeDay, toDate } from "../../types/journal";
 import { CLINICAL_FLAGS_MATRIX } from "../../data/clinical-matrix";
-import { namedMachines } from "../../lib/clinical-watchouts";
+import { namedMachines, shortCondition } from "../../lib/clinical-watchouts";
 import { safeToDate } from "../../lib/utils";
 import { isPerformedLog } from "../../lib/set-outcome";
 import { studioTodayKey } from "../../lib/studio-time";
 import { auth } from "../../firebase";
 import { Dial, READINESS_KEYS, READINESS_SCALES, compactReadiness, type Readiness } from "../rating";
 import { carriedRegions, lastRunLabel, lastRunOfRoutine } from "./briefing-facts";
+import {
+  figureRegionOfTag,
+  lastTimeLines,
+  machinesTouchingLimits,
+  regionWords,
+  routineCodes,
+  safetyRegions,
+  tagOfSlug,
+  viewsToDraw,
+} from "./stack";
 import { completedSessionDays, inbodyDue, inbodyDueLine } from "../inbody/due";
 import { variationStudioIdOf } from "../inbody/variation";
 import { useStudioSettings } from "../studio-settings";
@@ -124,6 +139,11 @@ import { FILING_CATEGORIES, type FilingCategory } from "../client-notes/note-cat
 import { usePhone } from "../phone/device";
 
 import { clientDisplayName } from "../../lib/client-name";
+
+/** Her limits on the figure: the briefing's caution tone, never the kaizen red. */
+const SAFETY_LIT: [string, string] = ["var(--br-warn)", "var(--br-warn)"];
+/** A sore spot she tells you about on the way in: the live blue. */
+const SORE_LIT: [string, string] = ["var(--br-live)", "var(--br-live)"];
 
 export interface BriefingScreenProps {
   /** The studio the session is at, for the header (the active studio's name). */
@@ -531,18 +551,6 @@ export function BriefingScreen({
     [client, sessions, sessionsAreAll, coverage, studioEvery],
   );
 
-  const beforeCount =
-    clientFlags.length +
-    notes.critical.length +
-    notes.headsUp.length +
-    carried.length +
-    markers.length +
-    (inbodyLine ? 1 : 0) +
-    (guessLine ? 1 : 0) +
-    activeJournalFocuses.length;
-  // With her auto-renewal mark applied (auto-renew.ts), as the line below reads it.
-  const renewalNow = useMemo(() => renewalOf(client), [client]);
-  const hasBefore = beforeCount > 0 || renewalPromptDue(renewalNow);
 
   /* When each routine last ran — a different date from the last session's. */
   const lastRunA = useMemo(() => lastRunOfRoutine(sessions, routines, "A"), [sessions, routines]);
@@ -587,6 +595,60 @@ export function BriefingScreen({
         ? routineA?.machineIds || []
         : routineB?.machineIds || [];
 
+  /* ---------------------------------------------------------------- *
+   * THE STACK (AJ's walk, Oct 3 2026; stack.ts is the pure half).
+   * ---------------------------------------------------------------- */
+  const flagIds = useMemo(() => clientFlags.map((f) => f.id), [clientFlags]);
+  const litRegions = useMemo(
+    () => safetyRegions(flagIds, carried.map((c) => c.region)),
+    [flagIds, carried],
+  );
+  const figureViews = useMemo(() => viewsToDraw(litRegions), [litRegions]);
+  const figureGender = figureGenderOf(client.gender);
+  const possessive = pronounsOf(client).possessive;
+  const lastTime = useMemo(
+    () => lastTimeLines({ lastSession, logs, machines, possessive }),
+    [lastSession, logs, machines, possessive],
+  );
+  const safetyCount = clientFlags.length + notes.critical.length + carried.length;
+  const sinceCount =
+    lastTime.length + notes.headsUp.length + markers.length + activeJournalFocuses.length;
+
+  /* On the way in: Dials open by default (one tap is the usual capture);
+     Sore spot and Note a tap away; Hand her the iPad opens Pulse's client
+     mode. Untouched = not asked, exactly as before. */
+  const [drawer, setDrawer] = useState<{ dials: boolean; sore: boolean; note: boolean }>({
+    dials: true,
+    sore: false,
+    note: false,
+  });
+  const toggleDrawer = (key: "dials" | "sore" | "note") =>
+    setDrawer((d) => ({ ...d, [key]: !d[key] }));
+  const [handing, setHanding] = useState(false);
+  const [soreView, setSoreView] = useState<"front" | "back">("front");
+  const tappedDials = Object.keys(compactReadiness(readiness) ?? {}).length;
+  /* A tap on the Sore spot figure opens the tracker's rating step for that
+     region: nothing is written until it is rated on the Dial. */
+  const [soreRequest, setSoreRequest] = useState<{ region: string; nonce: number } | null>(null);
+  const tapSore = (slug: string) => {
+    const region = tagOfSlug(slug);
+    if (region) setSoreRequest((prev) => ({ region, nonce: (prev?.nonce ?? 0) + 1 }));
+  };
+  const soreRegions = useMemo(
+    () =>
+      bodyStates
+        .map((b) => figureRegionOfTag(b.region))
+        .filter((r): r is NonNullable<typeof r> => r !== null),
+    [bodyStates],
+  );
+
+  /* The routine, as one line until it is opened. */
+  const [routineOpen, setRoutineOpen] = useState(false);
+  const routineLetter =
+    selectedRoutineType === "B" || selectedRoutineType === "Create_B" ? "B" : "A";
+  const codes = routineCodes(selectedRoutineIds, machines);
+  const touching = machinesTouchingLimits(selectedRoutineIds, machines, flagIds);
+
   return (
     <div className="br">
         <AppHeader
@@ -599,7 +661,7 @@ export function BriefingScreen({
         />
 
         <div className="br__page">
-            {/* 1. Who is in front of you, and what must not happen. */}
+            {/* 1. Who is in front of you. */}
             <section className="br-card br__hero">
               <div className="br__hero-top">
                 <div className="min-w-0">
@@ -609,6 +671,11 @@ export function BriefingScreen({
                   <p className="br__meta">
                     Last session · {lastSessionDate} · {lastRoutineName}
                   </p>
+                  {guessLine && (
+                    <p className="br__meta br__meta--quiet" data-testid="briefing-session-guess">
+                      {guessLine}
+                    </p>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -628,119 +695,128 @@ export function BriefingScreen({
               )}
             </section>
 
-            {/* 1b. BEFORE YOU START (tracker round, Sep 2026). AJ's order:
-                "at the very top, everything the trainer needs to know about
-                that client is known instantly — critical notes, notes from
-                previous sessions marked critical, upcoming events". One
-                block, one heading, and when there is nothing it says so in
-                one line instead of leaving the trainer to wonder. */}
-            <section className={cn("br-card br__before", !hasBefore && "br__before--clear")} aria-label="Before you start">
+            {/* 2. BEFORE YOU START — what could hurt her, readable in two
+                seconds (AJ, Oct 3 2026: "Safety: what could hurt her" first).
+                The Catalog's muscle figure with her limits lit, and each
+                limit with the line that says what to DO. Only safety is
+                counted here; news, admin and the routine live below. */}
+            <section
+              className={cn("br-card br-safe", safetyCount === 0 && "br-safe--clear")}
+              aria-label="Before you start"
+            >
               <span className="br__label br__before-head">
-                <Info className="w-3.5 h-3.5" />
-                Before you start{hasBefore ? ` · ${beforeCount}` : ""}
+                <ShieldAlert className="w-3.5 h-3.5" aria-hidden />
+                Before you start{safetyCount > 0 ? ` · ${safetyCount}` : ""}
               </span>
-              {!hasBefore &&
-                (notesKnown ? (
-                  <p className="br__before-clear">Nothing flagged — clear to go.</p>
+
+              {safetyCount === 0 ? (
+                notesKnown ? (
+                  <p className="br-safe__clear">Nothing flagged — clear to go.</p>
                 ) : (
-                  <p className="br__before-clear">
+                  <p className="br-safe__clear br-safe__clear--unknown">
                     Notes not loaded yet — nothing is being claimed either way.
                   </p>
-                ))}
-
-              {/* Conditions as chips, and the chip is a TAP: it used to be a
-                  bare span that named the condition and nothing else, while
-                  the matrix's actual instruction ("no Valsalva, keep the
-                  head up") sat unread. A small marker, tappable for more —
-                  AJ: "I really don't want clutter." Fluidity round, Sep 2026. */}
-              {clientFlags.length > 0 && (
-                <div className="br__flags">
-                  {clientFlags.map((cond, i) => {
-                    const open = openFlagId === cond.id;
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        className="br__flagbtn"
-                        aria-expanded={open}
-                        onClick={() => setOpenFlagId(open ? null : cond.id)}
-                      >
-                        <ConditionChip
-                          label={cond.conditionName || (cond as any).label}
-                          severity={
-                            cond.severity === "High Risk" ||
-                            cond.severity === "Absolute Contraindication"
-                              ? "critical"
-                              : "standard"
-                          }
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              {openFlag && (
-                <div className="br__flagdetail" data-testid="briefing-flag-detail">
-                  <span className="br__label">{openFlag.conditionName}</span>
-                  {(openFlag.protocolHandling || []).map((rule, i) => (
-                    <p key={i} className="br__flagrule">
-                      {(rule.affectedMachineIds || []).length > 0 ? (
-                        // The machines as this floor names them, never the
-                        // matrix's keys ("lumbar_extension").
-                        <b>{namedMachines(rule.affectedMachineIds, machines).join(", ")}: </b>
-                      ) : (
-                        <b>Every machine: </b>
-                      )}
-                      {rule.instruction}
-                      {rule.setupModification?.trim() ? ` — set-up: ${rule.setupModification.trim()}` : ""}
-                    </p>
-                  ))}
-                </div>
-              )}
-
-              {/* Critical notes, three at a time. `CriticalStrip` is the one
-                  component built for "a small marker, tappable for more"; it
-                  was on the Notes catalog and not on the screen that needed
-                  it most. */}
-              {notes.critical.length > 0 && (
-                <div className="br__critical">
-                  <CriticalStrip
-                    entries={notes.critical.map((t) => t.root)}
-                    machines={machines}
-                    title="Critical"
-                    footer={(e) => {
-                      const thread = notes.critical.find((t) => t.id === e.id);
-                      return thread ? <BriefingNoteFooter thread={thread} onDismiss={hush} /> : null;
-                    }}
-                  />
-                </div>
-              )}
-
-              {/* Heads ups: under the critical ones, and quieter. Reporting
-                  round, Sep 2026. Three, then "N more". */}
-              {notes.headsUp.length > 0 && (
-                <div className="br__headsup" data-testid="briefing-headsup">
-                  <span className="br__label">Heads up</span>
-                  {(showAllHeadsUp ? notes.headsUp : notes.headsUp.slice(0, 3)).map((thread) => (
-                    <div key={thread.id}>
-                      <JournalEntryCard entry={thread.root} machines={machines} dense />
-                      <BriefingNoteFooter thread={thread} onDismiss={hush} />
-                    </div>
-                  ))}
-                  {notes.headsUp.length > 3 && (
-                    <button
-                      type="button"
-                      className="br__more"
-                      onClick={() => setShowAllHeadsUp((v) => !v)}
+                )
+              ) : (
+                <div className="br-safe__body">
+                  {litRegions.length > 0 && (
+                    <div
+                      className="br-safe__figs"
+                      role="img"
+                      aria-label={`Her limits: ${litRegions.map(regionWords).join(", ")}`}
+                      data-testid="briefing-figure"
                     >
-                      {showAllHeadsUp ? "Show fewer" : `${notes.headsUp.length - 3} more`}
-                    </button>
+                      {figureViews.map((view) => (
+                        <figure key={view} className="br-safe__fig">
+                          <div className="br-safe__fig-body" aria-hidden="true">
+                            <BodyModel
+                              gender={figureGender}
+                              view={view}
+                              areas={litRegions}
+                              colors={SAFETY_LIT}
+                              baseFill="var(--br-surface-3)"
+                            />
+                          </div>
+                          <figcaption>{view === "front" ? "Front" : "Back"}</figcaption>
+                        </figure>
+                      ))}
+                    </div>
                   )}
+
+                  <div className="br-safe__list">
+                    {/* Each clinical flag with what to do, said, not behind a
+                        tap: the instruction was the part nobody opened. */}
+                    {clientFlags.map((flag) => {
+                      const rules = flag.protocolHandling || [];
+                      const open = openFlagId === flag.id;
+                      const shown = open ? rules : rules.slice(0, 2);
+                      return (
+                        <article
+                          key={flag.id}
+                          className="br-safe__limit"
+                          data-severity={
+                            flag.severity === "High Risk" || flag.severity === "Absolute Contraindication"
+                              ? "high"
+                              : "modify"
+                          }
+                        >
+                          <h3 className="br-safe__title">{shortCondition(flag.conditionName)}</h3>
+                          {shown.map((rule, i) => (
+                            <p key={i} className="br-safe__do">
+                              {(rule.affectedMachineIds || []).length > 0 ? (
+                                <b>{namedMachines(rule.affectedMachineIds, machines).join(", ")}: </b>
+                              ) : null}
+                              {rule.instruction}
+                              {rule.setupModification?.trim() ? ` — set-up: ${rule.setupModification.trim()}` : ""}
+                            </p>
+                          ))}
+                          {rules.length > 2 && (
+                            <button
+                              type="button"
+                              className="br__more"
+                              aria-expanded={open}
+                              onClick={() => setOpenFlagId(open ? null : flag.id)}
+                            >
+                              {open ? "Show fewer" : `${rules.length - 2} more`}
+                            </button>
+                          )}
+                          <span className="br-safe__src">On her record · {flag.severity}</span>
+                        </article>
+                      );
+                    })}
+
+                    {/* Body regions carried over from the last session, while
+                        their "matters until" day has not passed. */}
+                    {carried.length > 0 && (
+                      <div className="br__carried" data-testid="briefing-carried">
+                        {carried.map((r) => (
+                          <span key={r.region} className="br__carried-row" data-tone={r.tone}>
+                            <strong>{r.region}</strong> · {r.word} · {r.untilLabel}
+                            <span className="br__carried-from">last session</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Critical notes, as their threads. */}
+                    {notes.critical.length > 0 && (
+                      <div className="br__critical">
+                        <CriticalStrip
+                          entries={notes.critical.map((t) => t.root)}
+                          machines={machines}
+                          title="Critical"
+                          footer={(e) => {
+                            const thread = notes.critical.find((t) => t.id === e.id);
+                            return thread ? <BriefingNoteFooter thread={thread} onDismiss={hush} /> : null;
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* Nothing is hidden without a way back to it. A trainer's own
-                  dismissals, counted and one tap from being shown again. */}
+              {/* Nothing is hidden without a way back to it. */}
               {(notes.hidden > 0 || showHushed) && (
                 <div className="br__hidden-line" data-testid="briefing-hushed">
                   <span>
@@ -754,9 +830,9 @@ export function BriefingScreen({
                 </div>
               )}
 
-              {/* Her standing health context: what is simply true, under
-                  what is new, one tap away. AJ: "known, not news —
-                  openable when something looks concerning". */}
+              {/* Her standing health context: what is simply true, one tap
+                  away. AJ: "known, not news — openable when something looks
+                  concerning". */}
               {standing.length > 0 && (
                 <div className="br__standing" data-testid="briefing-standing">
                   <button
@@ -780,86 +856,84 @@ export function BriefingScreen({
                     })}
                 </div>
               )}
-
-              {/* Body regions carried over from the last session, while their
-                  "matters until" day has not passed. One sentence-shaped row
-                  each, coloured by urgency. */}
-              {carried.length > 0 && (
-                <div className="br__carried" data-testid="briefing-carried">
-                  {carried.map((r) => (
-                    <span key={r.region} className="br__carried-row" data-tone={r.tone}>
-                      <strong>{r.region}</strong> · {r.word} · {r.untilLabel}
-                      <span className="br__carried-from">last session</span>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Upcoming events and milestones, the same markers the Hub card
-                  shows (lib/hub-markers.ts, and the milestone and the break from
-                  the Hub engine, briefing-moments.ts): a break starting Saturday, surgery
-                  on the 25th, a birthday, the 100th. */}
-              {markers.length > 0 && (
-                <div className="br__markers">
-                  {markers.map((m) => (
-                    <span key={m.kind} className={cn("br__marker", `br__marker--${m.kind}`)}>
-                      {m.label}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {guessLine && (
-                <p className="br__inbody" data-testid="briefing-session-guess">
-                  <span>{guessLine}</span>
-                </p>
-              )}
-
-              {/* Due an InBody (FileMaker parity, Oct 1 2026). Information,
-                  not a gate: Start is never held back by it. */}
-              {inbodyLine && (
-                <p className="br__inbody" data-testid="briefing-inbody">
-                  <Scale className="w-3.5 h-3.5" aria-hidden />
-                  <span>{inbodyLine}</span>
-                </p>
-              )}
-
-              {/* Renewals round (Sep 2026): only when there's something to know. */}
-              <BriefingRenewalLine client={client} />
-
-              {/* Active coaching focuses — one line each. */}
-              {activeJournalFocuses.map((f) => {
-                const visual =
-                  FOCUS_VISUALS[f.category] || FOCUS_VISUALS.Posture;
-                return (
-                  <article key={f.id} className="br__focus br__focus--line">
-                    <span
-                      aria-hidden
-                      className={cn("br__focus-edge", visual.edge)}
-                    />
-                    <span className="br__label">
-                      <Target className="w-3.5 h-3.5" />
-                      {f.category} · {f.trainerInitials}
-                      <span className="br__focus-when">
-                        {relativeDay(toDate(f.startedAt))}
-                      </span>
-                    </span>
-                    <p className="br__quote">
-                      {f.intent}
-                      {f.targetMachineId && (
-                        <span className="br__focus-target">
-                          {" "}· {machines.find((m) => m.id === f.targetMachineId)?.name || "Unknown machine"}
-                        </span>
-                      )}
-                    </p>
-                  </article>
-                );
-              })}
             </section>
 
-            {/* 1b. Something to ask about. One quiet row, below the critical
-                strip on purpose — a personal detail must never compete with a
-                contraindication for the eye. Renders nothing when there is
+            {/* 3. SINCE LAST TIME — what is different, in a few lines: how the
+                last session went, notes since, time away and milestones, and
+                what the team is working on with her. */}
+            {sinceCount > 0 && (
+              <section className="br-card br-since" aria-label="Since last time">
+                <span className="br__label">
+                  <History className="w-3.5 h-3.5" aria-hidden />
+                  Since last time · {sinceCount}
+                </span>
+
+                {markers.length > 0 && (
+                  <div className="br__markers">
+                    {markers.map((m) => (
+                      <span key={m.kind} className={cn("br__marker", `br__marker--${m.kind}`)}>
+                        {m.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {lastTime.length > 0 && (
+                  <ul className="br-since__lines" data-testid="briefing-last-time">
+                    {lastTime.map((line) => (
+                      <li key={line.key} className="br-since__line" data-kind={line.kind}>
+                        {line.text}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {notes.headsUp.length > 0 && (
+                  <div className="br__headsup" data-testid="briefing-headsup">
+                    <span className="br__label">Heads up</span>
+                    {(showAllHeadsUp ? notes.headsUp : notes.headsUp.slice(0, 3)).map((thread) => (
+                      <div key={thread.id}>
+                        <JournalEntryCard entry={thread.root} machines={machines} dense />
+                        <BriefingNoteFooter thread={thread} onDismiss={hush} />
+                      </div>
+                    ))}
+                    {notes.headsUp.length > 3 && (
+                      <button
+                        type="button"
+                        className="br__more"
+                        onClick={() => setShowAllHeadsUp((v) => !v)}
+                      >
+                        {showAllHeadsUp ? "Show fewer" : `${notes.headsUp.length - 3} more`}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {activeJournalFocuses.map((f) => {
+                  const visual = FOCUS_VISUALS[f.category] || FOCUS_VISUALS.Posture;
+                  return (
+                    <article key={f.id} className="br__focus br__focus--line">
+                      <span aria-hidden className={cn("br__focus-edge", visual.edge)} />
+                      <span className="br__label">
+                        <Target className="w-3.5 h-3.5" />
+                        {f.category} · {f.trainerInitials}
+                        <span className="br__focus-when">{relativeDay(toDate(f.startedAt))}</span>
+                      </span>
+                      <p className="br__quote">
+                        {f.intent}
+                        {f.targetMachineId && (
+                          <span className="br__focus-target">
+                            {" "}· {machines.find((m) => m.id === f.targetMachineId)?.name || "Unknown machine"}
+                          </span>
+                        )}
+                      </p>
+                    </article>
+                  );
+                })}
+              </section>
+            )}
+
+            {/* 4. Something to ask about. One quiet row; gone when there is
                 nothing worth saying. FORD round, Sep 2026. */}
             <FordBriefingCue
               client={client ?? null}
@@ -867,22 +941,141 @@ export function BriefingScreen({
               studioId={client.homeStudioId || ""}
             />
 
-            {/* 2. Routine. The alternation logic proposes one; the trainer
-                can override it before starting. */}
-            <section className="br-section">
-              <header className="br-section__head">
-                <h2 className="br-section__title">Today&rsquo;s routine</h2>
-                <span className="br-section__hint">
-                  {routinePickedByTrainer
-                    ? "Manually selected"
-                    : `Suggested: Routine ${suggestedType}`}
-                </span>
-              </header>
-              <div
-                role="group"
-                aria-label="Select today&rsquo;s routine"
-                className="br__routines"
-              >
+            {/* 5. ON THE WAY IN — filled in walking to the first machine.
+                AJ: "sometimes is everything, sometimes its one thing,
+                sometimes its nothing maybe they came in extra early and you
+                have time to hand them the pulse client view". */}
+            <section className="br-card br__checkin" aria-label="On the way in">
+              <div className="br__checkin-head">
+                <h2 className="br-section__title">
+                  <Activity className="w-4 h-4" />
+                  On the way in
+                  <span className="br__optional">Optional</span>
+                </h2>
+              </div>
+              <div className="br-cap__chips" role="group" aria-label="What to fill in">
+                <button
+                  type="button"
+                  className="br-cap__chip"
+                  aria-pressed={drawer.dials}
+                  onClick={() => toggleDrawer("dials")}
+                >
+                  <SlidersHorizontal className="w-4 h-4" aria-hidden />
+                  Dials{tappedDials > 0 ? ` · ${tappedDials}` : ""}
+                </button>
+                <button
+                  type="button"
+                  className="br-cap__chip"
+                  aria-pressed={drawer.sore}
+                  onClick={() => toggleDrawer("sore")}
+                >
+                  <Crosshair className="w-4 h-4" aria-hidden />
+                  Sore spot{bodyStates.length > 0 ? ` · ${bodyStates.length}` : ""}
+                </button>
+                <button
+                  type="button"
+                  className="br-cap__chip"
+                  aria-pressed={drawer.note}
+                  onClick={() => toggleDrawer("note")}
+                >
+                  <PenLine className="w-4 h-4" aria-hidden />
+                  Note{adjustmentNote.trim() ? " · 1" : ""}
+                </button>
+                <button type="button" className="br-cap__chip" onClick={() => setShowPulse(true)}>
+                  <HeartPulse className="w-4 h-4" aria-hidden />
+                  Update Pulse
+                </button>
+                <button type="button" className="br-cap__chip" onClick={() => setHanding(true)}>
+                  <Tablet className="w-4 h-4" aria-hidden />
+                  Hand {pronounsOf(client).object} the iPad
+                </button>
+              </div>
+
+              {/* Sleep · Energy · Recovery · Stress. Untouched = not asked. */}
+              {drawer.dials && (
+                <div className="br__dials" data-testid="briefing-dials">
+                  {READINESS_KEYS.map((key) => (
+                    <div key={key} className="br__dial">
+                      <Dial
+                        scale={READINESS_SCALES[key]}
+                        value={readiness[key] ?? null}
+                        onChange={(v) =>
+                          setReadiness((prev) => {
+                            const next = { ...prev };
+                            if (v === null) delete next[key];
+                            else next[key] = v;
+                            return next;
+                          })
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Where it hurts: tap the figure, or pick a region; each is
+                  then rated on the Dial with an optional "matters until". */}
+              {drawer.sore && (
+                <fieldset className="br__field br-cap__sore" data-testid="briefing-sore">
+                  <legend className="br__label">Sore spot · tap where</legend>
+                  <div className="br-cap__sore-fig">
+                    <div className="br-cap__sides" role="group" aria-label="Side of the figure">
+                      {(["front", "back"] as const).map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          aria-pressed={soreView === v}
+                          onClick={() => setSoreView(v)}
+                        >
+                          {v === "front" ? "Front" : "Back"}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="br-safe__fig-body br-cap__tap">
+                      <BodyModel
+                        gender={figureGender}
+                        view={soreView}
+                        areas={soreRegions}
+                        colors={SORE_LIT}
+                        baseFill="var(--br-surface-3)"
+                        onRegionClick={tapSore}
+                      />
+                    </div>
+                  </div>
+                  <BodyStateTracker value={bodyStates} onChange={setBodyStates} request={soreRequest} />
+                </fieldset>
+              )}
+
+              {drawer.note && (
+                <fieldset className="br__field">
+                  <legend className="br__label">Arrival note</legend>
+                  <textarea
+                    value={adjustmentNote}
+                    onChange={(e) => setAdjustmentNote(e.target.value)}
+                    placeholder="Anything they mentioned — how they slept, an ache, a trip coming up, a new diet, the grandkids are in town…"
+                    className="br__textarea"
+                  />
+                  {adjustmentNote.trim() ? (
+                    <div className="br__file-as" data-testid="arrival-file-as">
+                      <span className="nc-kicker">File it as (optional)</span>
+                      <NoteCategoryChips
+                        value={arrivalCategory}
+                        options={FILING_CATEGORIES}
+                        label="File the arrival note as"
+                        small
+                        onChange={(c) => setArrivalCategory((prev) => (prev === c ? null : (c as FilingCategory)))}
+                      />
+                    </div>
+                  ) : null}
+                </fieldset>
+              )}
+            </section>
+
+            {/* 6. TODAY'S ROUTINE — one line until it is opened (AJ: "One
+                line, tap to edit"). A or B stays a tap, each saying when THAT
+                routine last ran. */}
+            <section className="br-card br-routine" aria-label="Today's routine">
+              <div role="group" aria-label="Select today&rsquo;s routine" className="br__routines">
                 {(["A", "B"] as const).map((type) => {
                   const routine = type === "A" ? routineA : routineB;
                   const lastRun = type === "A" ? lastRunA : lastRunB;
@@ -908,128 +1101,80 @@ export function BriefingScreen({
                   );
                 })}
               </div>
+              <button
+                type="button"
+                className="br-routine__line"
+                aria-expanded={routineOpen}
+                onClick={() => setRoutineOpen((v) => !v)}
+                data-testid="briefing-routine-line"
+              >
+                <span className="br-routine__what">
+                  <b>Routine {routineLetter}</b>
+                  {" · "}
+                  {selectedRoutineIds.length} {selectedRoutineIds.length === 1 ? "machine" : "machines"}
+                  {routinePickedByTrainer ? "" : " · suggested"}
+                  {isAdjusting ? " · changed for today" : ""}
+                </span>
+                {codes.length > 0 && <span className="br-routine__codes">{codes.join(" · ")}</span>}
+                {touching.length > 0 && (
+                  <span className="br-routine__touch">
+                    <ShieldAlert className="w-3.5 h-3.5" aria-hidden />
+                    Mind her limits on {touching.join(", ")}
+                  </span>
+                )}
+                <span className="br-routine__edit">
+                  {routineOpen ? "Done" : "Edit"}
+                  <ChevronDown className={cn("w-4 h-4", routineOpen && "rotate-180")} aria-hidden />
+                </span>
+              </button>
+              {routineOpen && (
+                <div className="br__builder">
+                  <RoutineBuilder
+                    mode="briefing"
+                    slot={
+                      selectedRoutineType === "B" || selectedRoutineType === "Create_B"
+                        ? "B"
+                        : selectedRoutineType === "A" || selectedRoutineType === "Create_A"
+                          ? "A"
+                          : null
+                    }
+                    machineIds={selectedRoutineIds}
+                    onChange={handleSequenceChange}
+                    machines={machines}
+                    client={client}
+                    history={machineHistory}
+                    counterpartMachineIds={counterpartIds}
+                    counterpartLabel={
+                      selectedRoutineType === "B" || selectedRoutineType === "Create_B"
+                        ? "Routine A"
+                        : "Routine B"
+                    }
+                    purposeText={purposeText}
+                    established={!isIntroSession}
+                  />
+                </div>
+              )}
             </section>
 
-            {/* The "scheduled vs last performed" pair is gone (audit, Sep 13):
-                the hero says when the last session was and which routine it
-                ran, and each sequence row carries its own "last time". */}
+            {/* 7. Also today — the admin lines, quiet, never in the safety
+                band and never a gate on Start. */}
+            {/* Always mounted: the renewal line decides for itself whether it
+                has anything to say, and the footer hides when it is empty. */}
+              <section className="br-also" aria-label="Also today">
+                {inbodyLine && (
+                  <p className="br__inbody" data-testid="briefing-inbody">
+                    <Scale className="w-3.5 h-3.5" aria-hidden />
+                    <span>{inbodyLine}</span>
+                  </p>
+                )}
+                <BriefingRenewalLine client={client} />
+              </section>
 
-            {/* 4. Execution sequence — the shared Routine Builder.
-
-                Previously this section had its own drag implementation, its
-                own flat "add machine" list behind an Edit routine / Done
-                editing toggle, and no rule checking at all: the pre-session
-                briefing was the one place a trainer could commit a routine
-                that put two pulling movements back to back without being
-                told. It is also the place a B routine is most often created,
-                which is exactly where the twice-weekly analysis belongs. */}
-            <section className="br-section br__seq">
-              <div className="br__builder">
-                <RoutineBuilder
-                  mode="briefing"
-                  slot={
-                    selectedRoutineType === "B" || selectedRoutineType === "Create_B"
-                      ? "B"
-                      : selectedRoutineType === "A" || selectedRoutineType === "Create_A"
-                        ? "A"
-                        : null
-                  }
-                  machineIds={selectedRoutineIds}
-                  onChange={handleSequenceChange}
-                  machines={machines}
-                  client={client}
-                  history={machineHistory}
-                  counterpartMachineIds={counterpartIds}
-                  counterpartLabel={
-                    selectedRoutineType === "B" || selectedRoutineType === "Create_B"
-                      ? "Routine A"
-                      : "Routine B"
-                  }
-                  purposeText={purposeText}
-                  established={!isIntroSession}
-                />
-              </div>
-            </section>
-
-            {/* 5. How they turned up today. Optional, and the last stop
-                before START. Four Dials against this client's usual, the
-                body regions, the arrival note. Reporting round, Sep 2026. */}
-            <section className="br-card br__checkin">
-              <div className="br__checkin-head">
-                <h2 className="br-section__title">
-                  <Activity className="w-4 h-4" />
-                  On the way in
-                  <span className="br__optional">Optional</span>
-                </h2>
-                {/* The Pulse — the living assessment — one area at a time,
-                    saved as you tap, without leaving the briefing. */}
-                <button
-                  type="button"
-                  onClick={() => setShowPulse(true)}
-                  className="br__link-btn"
-                >
-                  <HeartPulse className="w-3.5 h-3.5" aria-hidden /> Update Pulse
-                </button>
-              </div>
-
-              {/* Sleep · Energy · Recovery · Stress. Untouched = not asked. */}
-              <div className="br__dials" data-testid="briefing-dials">
-                {READINESS_KEYS.map((key) => (
-                  <div key={key} className="br__dial">
-                    <Dial
-                      scale={READINESS_SCALES[key]}
-                      value={readiness[key] ?? null}
-                      onChange={(v) =>
-                        setReadiness((prev) => {
-                          const next = { ...prev };
-                          if (v === null) delete next[key];
-                          else next[key] = v;
-                          return next;
-                        })
-                      }
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* Where it hurts, and how — the same Dial per region, with an
-                  optional "matters until" day the briefing honours next time. */}
-              <fieldset className="br__field">
-                <legend className="br__label">Body regions</legend>
-                <BodyStateTracker
-                  value={bodyStates}
-                  onChange={setBodyStates}
-                />
-              </fieldset>
-
-              <fieldset className="br__field">
-                <legend className="br__label">Arrival note</legend>
-                <textarea
-                  value={adjustmentNote}
-                  onChange={(e) => setAdjustmentNote(e.target.value)}
-                  placeholder="Anything they mentioned — how they slept, an ache, a trip coming up, a new diet, the grandkids are in town…"
-                  className="br__textarea"
-                />
-                {adjustmentNote.trim() ? (
-                  <div className="br__file-as" data-testid="arrival-file-as">
-                    <span className="nc-kicker">File it as (optional)</span>
-                    <NoteCategoryChips
-                      value={arrivalCategory}
-                      options={FILING_CATEGORIES}
-                      label="File the arrival note as"
-                      small
-                      onChange={(c) => setArrivalCategory((prev) => (prev === c ? null : (c as FilingCategory)))}
-                    />
-                  </div>
-                ) : null}
-              </fieldset>
-            </section>
-            {/* 6. One loud action, sticky to the bottom of the page rather
-                than a fixed footer that has to know the nav bar's height. */}
+            {/* 8. One loud action, a solid bar pinned to the bottom of the
+                page: nothing scrolls under it any more. */}
             <div className="br__cta-bar">
               {/* Journey Lite (Oct 1 2026): a phone may run a session, and
-                  is told once, here, that it isn't the way (AJ: "it is not
-                  advised to run a session on your phone"). Never a gate. */}
+                  is told once, here, that it isn't the way. Never a gate. */}
               {isPhone && (
                 <p className="br__phone-note" role="note">
                   Sessions are meant to be run on the iPad. On a phone you get the short version: the routine, the weights and the reps.
@@ -1049,6 +1194,20 @@ export function BriefingScreen({
         trainer={authTrainer}
         machines={machines}
       />
+
+      {/* Hand her the iPad: Pulse's own client mode, the same panel the
+          codex hands over (PulseCard), mounted only while it is handed. */}
+      {handing && (
+        <div hidden>
+          <ClientCheckInPanel
+            client={client}
+            trainer={authTrainer}
+            machines={machines}
+            startInClientMode
+            onClientModeClose={() => setHanding(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }

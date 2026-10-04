@@ -26,6 +26,13 @@ interface BodyStateTrackerProps {
   onChange: (next: BodyStateTag[]) => void;
   disabled?: boolean;
   className?: string;
+  /**
+   * Open the rating step for this region, as if it had been picked from the
+   * list: the briefing's Sore spot figure (Oct 3 2026) asks here, so a tap on
+   * the body is rated on the Dial before anything is written. A new `nonce`
+   * asks again for the same region.
+   */
+  request?: { region: string; nonce: number } | null;
 }
 
 type View = 'region' | 'state';
@@ -66,6 +73,7 @@ export function BodyStateTracker({
   onChange,
   disabled,
   className,
+  request = null,
 }: BodyStateTrackerProps) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<View>('region');
@@ -131,6 +139,13 @@ export function BodyStateTracker({
     onChange(next);
     closePopover();
   };
+
+  useEffect(() => {
+    if (!request || disabled) return;
+    setOpen(true);
+    handleSelectRegion(request.region);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [request?.nonce]);
 
   const handleRemoveTag = (region: string) => {
     onChange(value.filter((t) => t.region !== region));

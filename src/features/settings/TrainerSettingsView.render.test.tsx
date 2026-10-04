@@ -100,6 +100,16 @@ describe("Trainer Settings", () => {
     expect([...host.querySelectorAll("button")].some((b) => b.textContent?.includes("Open Operations"))).toBe(false);
   });
 
+  it("leaves out a studio it cannot name, never a dash (AJ's walk, Oct 3 2026)", async () => {
+    await mount(person({ accessibleStudioIds: ["solon", "demo-studio", "westlake"] }));
+    expect(fact("Also works at")).toBe("Westlake");
+  });
+
+  it("shows no screen line outside the Home Screen app", async () => {
+    await mount(person({}));
+    expect(fact("This screen")).toBeUndefined();
+  });
+
   it("says whether Mindbody is linked, and who links it", async () => {
     await mount(person({ mindbodyStaffId: "100000123" }));
     expect(fact("Mindbody")).toBe("Linked · 100000123");
