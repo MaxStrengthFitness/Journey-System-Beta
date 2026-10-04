@@ -1530,7 +1530,7 @@ export default function AppContent({
         sessionId={currentSession?.id ?? null}
         theme={theme}
       >
-        <div className="flex flex-col h-[100dvh] overflow-hidden bg-background text-foreground font-sans overflow-x-hidden w-full max-w-full">
+        <div className="app-shell flex flex-col overflow-hidden bg-background text-foreground font-sans overflow-x-hidden w-full max-w-full">
           {/* The iPad status bar's inset, paid once for every screen in the
               shell (features/home-screen). 0px outside the Home Screen app;
               the bottom inset is AppBottomBar's. */}
