@@ -27,6 +27,7 @@ import {
 } from "firebase/firestore";
 import { describe, it, beforeAll, afterAll, beforeEach, expect } from "vitest";
 import * as fs from "fs";
+import { claimedProfile, tombstone } from "../src/features/trainer-identity/claim";
 
 let testEnv: RulesTestEnvironment;
 
@@ -473,39 +474,181 @@ describe("Firestore Security Rules", () => {
     );
   });
 
-  it("still allows a signed-in account to create its own ordinary profile", async () => {
-    // This is the claim-at-first-sign-in path. Break it and an admin-created
-    // placeholder can never become a real account.
-    const ctx = testEnv.authenticatedContext("newguy", {
-      email: "newguy@test.com",
-    });
-    const db = ctx.firestore();
-    await assertSucceeds(
+  // ── WHO A SELF-MADE PROFILE MAY BE (Oct 3 2026) ──────────────────────
+  //
+  // The role ceiling above never looked at the studios, so a stranger could
+  // create trainers/{own uid} at any real studio and skip the leader's
+  // approval. A self-create is now the owner's bootstrap or a claim of a
+  // placeholder someone else set up, and nothing else.
+  // docs/rounds/2026-10-03-trainer-self-create.md.
+
+  it("denies a stranger giving themselves a real studio", async () => {
+    const db = testEnv
+      .authenticatedContext("newguy", { email: "newguy@test.com" })
+      .firestore();
+    const base = { fullName: "New Guy", initials: "NG" };
+    await assertFails(
       setDoc(doc(db, "trainers", "newguy"), {
-        fullName: "New Guy",
-        initials: "NG",
+        ...base,
         role: "LifeTransformer",
         primaryHomeStudioId: "studioA",
         accessibleStudioIds: ["studioA"],
       }),
     );
+    await assertFails(
+      setDoc(doc(db, "trainers", "newguy"), {
+        ...base,
+        role: "StudioOwner",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA", "studioB"],
+        ownedStudioIds: ["studioA", "studioB"],
+        managedStudioIds: ["studioA"],
+      }),
+    );
+    // No role at all reads as LifeTransformer to every rule.
+    await assertFails(
+      setDoc(doc(db, "trainers", "newguy"), {
+        ...base,
+        primaryHomeStudioId: "studioB",
+        activeGuestStudioIds: ["studioA"],
+      }),
+    );
+  });
+
+  it("denies a stranger a profile with no studios too", async () => {
+    // Any trainers/{uid} makes isAnyAuthenticatedTrainer() true, and no
+    // screen writes one, so "no studios" is not a door either.
+    const db = testEnv
+      .authenticatedContext("newguy", { email: "newguy@test.com" })
+      .firestore();
+    await assertFails(
+      setDoc(doc(db, "trainers", "newguy"), {
+        fullName: "New Guy",
+        initials: "NG",
+        role: "LifeTransformer",
+        primaryHomeStudioId: "system",
+        accessibleStudioIds: [],
+        activeGuestStudioIds: [],
+      }),
+    );
+  });
+
+  describe("claiming a placeholder at first sign-in", () => {
+    // Shaped as mintProvisionalTrainer writes one (features/admin/provisional).
+    const placeholder = {
+      fullName: "Jane Smith",
+      initials: "JS",
+      role: "LifeTransformer",
+      primaryHomeStudioId: "studioA",
+      accessibleStudioIds: ["studioA"],
+      activeGuestStudioIds: [],
+      managedStudioIds: ["studioA"],
+      mindbodyLinked: false,
+      pendingClaim: true,
+      email: "jane@test.com",
+      provisional: true,
+      createdAt: "2026-10-01T12:00:00.000Z",
+    };
+    const seed = (id: string, data: Record<string, unknown>) =>
+      testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), "trainers", id), data);
+      });
+    const jane = () =>
+      testEnv
+        .authenticatedContext("jane-uid", { email: "jane@test.com" })
+        .firestore();
+    // The app's own payload, so this fails if claim.ts and the rule drift.
+    const claimOf = (fromId: string, data: Record<string, unknown>) =>
+      claimedProfile({ ...data, id: fromId }, "jane-uid", "2026-10-03T09:00:00.000Z");
+
+    it("still lets the person a placeholder was set up for claim it", async () => {
+      await seed("ph-jane", placeholder);
+      await assertSucceeds(
+        setDoc(doc(jane(), "trainers", "jane-uid"), claimOf("ph-jane", placeholder)),
+      );
+      // And the tombstone the claim leaves on the placeholder, which she may
+      // write as its owner by email (ownsTrainerDoc).
+      await assertSucceeds(
+        updateDoc(doc(jane(), "trainers", "ph-jane"), tombstone("jane-uid", "2026-10-03T09:00:01.000Z")),
+      );
+    });
+
+    it("refuses a claim that changes the studios or the role", async () => {
+      await seed("ph-jane", placeholder);
+      const claimed = claimOf("ph-jane", placeholder);
+      const db = jane();
+      await assertFails(
+        setDoc(doc(db, "trainers", "jane-uid"), {
+          ...claimed,
+          accessibleStudioIds: ["studioA", "studioB"],
+        }),
+      );
+      await assertFails(
+        setDoc(doc(db, "trainers", "jane-uid"), { ...claimed, primaryHomeStudioId: "studioB" }),
+      );
+      await assertFails(
+        setDoc(doc(db, "trainers", "jane-uid"), { ...claimed, ownedStudioIds: ["studioA"] }),
+      );
+      await assertFails(
+        setDoc(doc(db, "trainers", "jane-uid"), { ...claimed, role: "StudioOwner" }),
+      );
+      await assertFails(
+        setDoc(doc(db, "trainers", "jane-uid"), { ...claimed, authUid: "someone-else" }),
+      );
+    });
+
+    it("refuses a claim of someone else's placeholder", async () => {
+      await seed("ph-jane", placeholder);
+      const db = testEnv
+        .authenticatedContext("newguy", { email: "newguy@test.com" })
+        .firestore();
+      await assertFails(
+        setDoc(
+          doc(db, "trainers", "newguy"),
+          claimedProfile({ ...placeholder, id: "ph-jane" }, "newguy", "2026-10-03T09:00:00.000Z"),
+        ),
+      );
+    });
+
+    it("refuses a claim of a placeholder already claimed, or of a real profile", async () => {
+      await seed("ph-jane", { ...placeholder, supersededByUid: "earlier-uid" });
+      await assertFails(
+        setDoc(doc(jane(), "trainers", "jane-uid"), claimOf("ph-jane", placeholder)),
+      );
+
+      // A colleague's working profile is not a placeholder, whatever the email.
+      const { pendingClaim: _pending, ...colleague } = placeholder;
+      await seed("colleague", colleague);
+      await assertFails(
+        setDoc(doc(jane(), "trainers", "jane-uid"), claimOf("colleague", colleague)),
+      );
+
+      // A claim naming no placeholder, or one that does not exist.
+      const { claimedFromId: _drop, ...unnamed } = claimOf("ph-jane", placeholder);
+      await assertFails(setDoc(doc(jane(), "trainers", "jane-uid"), unnamed));
+      await assertFails(
+        setDoc(doc(jane(), "trainers", "jane-uid"), claimOf("no-such-doc", placeholder)),
+      );
+    });
   });
 
   it("still allows the owner's own bootstrap to mint an Admin profile", async () => {
     // Exempted by email, mirroring the hard-coded bootstrap in
-    // useAuthInitialization.ts. Not new surface — the same surface, written
-    // down in the one place that can actually enforce it.
+    // useAuthInitialization.ts -- the exact document it writes.
     const ctx = testEnv.authenticatedContext("ownerBootstrap", {
       email: "jurgensaj@gmail.com",
     });
     const db = ctx.firestore();
     await assertSucceeds(
       setDoc(doc(db, "trainers", "ownerBootstrap"), {
+        id: "ownerBootstrap",
         fullName: "System Admin",
         initials: "SA",
         role: "Admin",
+        email: "jurgensaj@gmail.com",
         primaryHomeStudioId: "system",
         accessibleStudioIds: ["system"],
+        activeGuestStudioIds: [],
       }),
     );
   });

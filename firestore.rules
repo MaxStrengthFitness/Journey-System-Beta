@@ -684,6 +684,75 @@ service cloud.firestore {
               && request.resource.data.role != 'Overseer');
     }
 
+    /**
+     * WHO A SELF-MADE TRAINER DOCUMENT MAY BE (Oct 3 2026).
+     *
+     * selfCreatedRoleIsAllowed() caps the ROLE; it never looked at the
+     * STUDIOS. isValidTrainer constrains none of primaryHomeStudioId,
+     * accessibleStudioIds, activeGuestStudioIds, managedStudioIds or
+     * ownedStudioIds, so any signed-in Google account could create
+     * trainers/{its own uid} as a LifeTransformer -- or a StudioOwner -- at
+     * any real studio, and walk past the leader's approval on
+     * My Studio -> Team. The app never sends that write; a crafted request
+     * could.
+     *
+     * The app writes trainers/{uid} for itself in exactly two places, and a
+     * self-create must now be one of them:
+     *
+     *   1. The owner's bootstrap (useAuthInitialization.ts), by email.
+     *   2. The claim at first sign-in (features/trainer-identity/claim.ts):
+     *      a placeholder a leader or owner set up is copied onto the uid.
+     *      claimedProfile() names the placeholder in `claimedFromId`, and the
+     *      new document must be THAT placeholder -- still waiting
+     *      (pendingClaim), not yet claimed, carrying the signed-in email --
+     *      with nothing changed but the claim's own bookkeeping. The studios
+     *      and the role therefore come from whoever set the placeholder up,
+     *      never from the claimant.
+     *
+     * "No studios at all" is deliberately NOT a third door: any trainers/{uid}
+     * makes isAnyAuthenticatedTrainer() true (session writes, notifications,
+     * the run of Demo Mode), and no screen writes one.
+     *
+     * email_verified is not required, for the reason ownsTrainerDoc gives.
+     * Approval is untouched: an approver writes the new person's document
+     * under their OWN clause of `allow create`, not this one.
+     *
+     * If claimedProfile() ever writes a new field, add it to the list in
+     * claimMatchesPlaceholder or every claim is refused.
+     * Round: docs/rounds/2026-10-03-trainer-self-create.md.
+     */
+    function isOwnerBootstrap() {
+      return request.auth.token.get('email', '') == 'jurgensaj@gmail.com';
+    }
+
+    function claimMatchesPlaceholder(p, data) {
+      return p.get('pendingClaim', false) == true
+          && p.get('supersededByUid', null) == null
+          && p.get('email', '') is string
+          && p.get('email', '') != ''
+          && p.email.lower() == request.auth.token.email.lower()
+          && data.get('authUid', request.auth.uid) == request.auth.uid
+          && data.diff(p).affectedKeys().hasOnly([
+               // claimedProfile(): dropped, then added.
+               'pendingClaim', 'supersededByUid', 'id',
+               'claimedFromId', 'claimedAt', 'authUid'
+             ]);
+    }
+
+    function selfCreateIsAClaim(trainerId) {
+      let data = request.resource.data;
+      let fromId = data.get('claimedFromId', '');
+      return fromId is string
+          && fromId != ''
+          && fromId != trainerId
+          && request.auth.token.get('email', '') is string
+          && request.auth.token.get('email', '') != ''
+          && exists(/databases/$(database)/documents/trainers/$(fromId))
+          && claimMatchesPlaceholder(
+               get(/databases/$(database)/documents/trainers/$(fromId)).data,
+               data);
+    }
+
     function isValidTrainer(data) {
       // Trainer PINs were removed in Sep 2026 and `pinHash` is no longer a
       // field anywhere in the app. The refusal stays as a belt: a client that
@@ -1534,9 +1603,13 @@ service cloud.firestore {
                       studioTierRole(request.resource.data.get('role', null)) &&
                       request.resource.data.get('managedStudioIds', []).hasOnly([request.resource.data.primaryHomeStudioId])) ||
                      // Bootstrap / claim: a person may own trainers/{their uid},
-                     // but may not hand themselves Admin, Founder or Overseer.
-                     // See selfCreatedRoleIsAllowed() above.
-                     (request.auth.uid == trainerId && selfCreatedRoleIsAllowed()) ||
+                     // but may not hand themselves Admin, Founder or Overseer
+                     // (selfCreatedRoleIsAllowed), and since Oct 3 2026 only
+                     // as the owner's bootstrap or a claim of a placeholder
+                     // someone else set up -- never with studios of their own
+                     // choosing. See selfCreateIsAClaim() above.
+                     (request.auth.uid == trainerId && selfCreatedRoleIsAllowed() &&
+                      (isOwnerBootstrap() || selfCreateIsAClaim(trainerId))) ||
                      // Demo Mode (Sep 20 2026). The seeder's three demo
                      // trainers have no Auth account, so they cannot be minted
                      // by the bootstrap clause above, and the studio they join
