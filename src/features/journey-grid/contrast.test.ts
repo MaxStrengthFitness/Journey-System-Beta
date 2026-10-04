@@ -115,6 +115,33 @@ const PAIRINGS: Array<[string, string, string, number]> = [
   // chips) carries navy words, never white (Oct 4 2026).
   ["--jg-go-on", "--jg-go", "words on the one loud orange", TEXT],
   ["--jg-ink", "--jg-elevated-fill", "words on an elevated flag", TEXT],
+  // The Journey look (.jg-look: the profile's chart and the Active Session),
+  // AJ's Oct 2-3 colours retuned by lightness only (Oct 4 2026: "yes"). The
+  // words on a set's tile and on the newest day's orange tile, and today's
+  // waiting prescription on a cell.
+  ["--jg-pf-tile-ink", "--jg-pf-tile", "a set's weight on its tile", TEXT],
+  ["--jg-pf-reps", "--jg-pf-tile", "a set's reps on its tile", TEXT],
+  ["--jg-pf-now-ink", "--jg-pf-now-tile", "the newest day's weight on its orange tile", TEXT],
+  ["--jg-pf-now-sub", "--jg-pf-now-tile", "today's reps on the orange tile, in the session", TEXT],
+  ["--jg-pf-now-sub", "--jg-surface", "today's waiting prescription, in the session", TEXT],
+];
+
+/**
+ * The Journey look's dates. They sit on the header row, which never carries
+ * the banding overlay, so they are measured as drawn: on the header band,
+ * and the newest one also on a spotlit header (tap a date: the blue live
+ * fill, with the newest day's orange words kept). The Navy Frame's band left
+ * the light session numbers at 3.6:1, the newest date at 4.3 and its number
+ * at 3.0, and the dark session numbers at 3.5; AJ's answer (Oct 4 2026,
+ * "yes") was to retune them by lightness only, keeping each hue.
+ */
+const HEADER_WORDS: Array<[string, string, string]> = [
+  ["--jg-pf-date", "--jg-surface-2", "a date on the header band"],
+  ["--jg-pf-date-sub", "--jg-surface-2", "the session number under a date"],
+  ["--jg-pf-now", "--jg-surface-2", "the newest date, and today's in the session"],
+  ["--jg-pf-now-sub", "--jg-surface-2", "the session number under the newest date"],
+  ["--jg-pf-now", "--jg-live-fill", "the newest date on a spotlit header"],
+  ["--jg-pf-now-sub", "--jg-live-fill", "its session number on a spotlit header"],
 ];
 
 /**
@@ -156,6 +183,10 @@ describe.each([
   it.each(PAIRINGS)("%s on %s — %s clears %s:1 on a BANDED row", (fg, bg, _what, floor) => {
     const banded = band(hex(vars, bandInk), hex(vars, bg), bandAlpha);
     expect(ratio(hex(vars, fg), banded)).toBeGreaterThanOrEqual(floor);
+  });
+
+  it.each(HEADER_WORDS)("%s on %s — %s clears 4.5:1", (fg, bg) => {
+    expect(ratio(hex(vars, fg), hex(vars, bg))).toBeGreaterThanOrEqual(TEXT);
   });
 
   it("keeps the three quality fills separable with no colour at all", () => {

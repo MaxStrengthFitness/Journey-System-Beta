@@ -140,16 +140,24 @@
      amber turns grey-teal, so the fill is opaque in both themes; the amber
      edge stays in journey-grid.css. */
   --jg-elevated-fill:  #f3ede1;
-  /* The profile's chart, Journey blue with orange for the newest day
+  /* The Journey look's chart, Journey blue with orange for the newest day
      (AJ, Oct 2 2026: "the brand blues, but then also the orange for the
-     now"). Read only inside .jg-view--journey. */
+     now"). Read by .jg-look: the profile's chart and, since Oct 3 2026,
+     the Active Session's.
+     Retuned by lightness only, each hue and saturation kept (AJ, Oct 4
+     2026: "yes"), when the Navy Frame's new grounds left some of these
+     words under 4.5:1. Each word clears 4.5:1 on every ground it sits on:
+     the dates on the header band (and the newest one on a spotlit, blue
+     header), today's reps and the waiting prescription on the cells and
+     the orange tile, the reps on a set's tile, banded rows included.
+     contrast.test.ts measures them, light and dark.                      */
   --jg-pf-date:          #0a548b;
-  --jg-pf-date-sub:      #4f7ea6;
+  --jg-pf-date-sub:      #3f6b90;   /* 4.7:1 on the band (was #4f7ea6, 3.6) */
   --jg-pf-tile:          #d9e9f6;
   --jg-pf-tile-ink:      #062e4f;
-  --jg-pf-reps:          #3d6a8f;
-  --jg-pf-now:           #c2410c;
-  --jg-pf-now-sub:       #d4682c;
+  --jg-pf-reps:          #3b6689;   /* 4.6:1 on a banded tile (was #3d6a8f, 4.3) */
+  --jg-pf-now:           #b53c0b;   /* 4.8:1 on the band, 4.6 spotlit (was #c2410c) */
+  --jg-pf-now-sub:       #9e4d20;   /* 4.7:1 on a banded orange tile (was #d4682c, 2.8) */
   --jg-pf-now-tile:      #fde6d8;
   --jg-pf-now-edge:      #ef5302;
   --jg-pf-now-ink:       #7a2a06;
@@ -248,11 +256,11 @@
   --jg-dim:            0.34;
   --jg-elevated-fill:  #3f3112;
   --jg-pf-date:          #8cc4f2;
-  --jg-pf-date-sub:      #5d86a8;
+  --jg-pf-date-sub:      #7a9dbc;   /* 4.7:1 on the band (was #5d86a8, 3.5) */
   --jg-pf-tile:          #16324b;
   --jg-pf-tile-ink:      #ffffff;
   --jg-pf-reps:          #7fa6c6;
-  --jg-pf-now:           #f36d21;
+  --jg-pf-now:           #f58443;   /* 5.3:1 on the band, 4.6 spotlit (was #f36d21, 3.9 spotlit) */
   --jg-pf-now-sub:       #f7a06b;
   --jg-pf-now-tile:      #3a2216;
   --jg-pf-now-edge:      #f36d21;
@@ -318,11 +326,11 @@
     --jg-dim:            0.34;
     --jg-elevated-fill:  #3f3112;
     --jg-pf-date:          #8cc4f2;
-    --jg-pf-date-sub:      #5d86a8;
+    --jg-pf-date-sub:      #7a9dbc;
     --jg-pf-tile:          #16324b;
     --jg-pf-tile-ink:      #ffffff;
     --jg-pf-reps:          #7fa6c6;
-    --jg-pf-now:           #f36d21;
+    --jg-pf-now:           #f58443;
     --jg-pf-now-sub:       #f7a06b;
     --jg-pf-now-tile:      #3a2216;
     --jg-pf-now-edge:      #f36d21;
