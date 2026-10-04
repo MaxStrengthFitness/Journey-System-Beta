@@ -255,7 +255,7 @@ export function askLenses(input: AskInput): AskLens[] {
     },
     staying: {
       id: "staying",
-      question: `Is ${p.subject} staying with us?`,
+      question: `${p.plural ? "Are" : "Is"} ${p.subject} staying with us?`,
       threads: staying,
       showsNotes: true,
       door: { page: "account", label: "Account" },

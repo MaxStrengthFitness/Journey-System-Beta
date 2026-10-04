@@ -189,7 +189,6 @@ function propsFor(list: JournalEntry[] = ALL, over: Partial<NotesPageProps> = {}
     author: AUTHOR,
     today: TODAY,
     coverage: "complete",
-    possessive: "her",
     fordWritable: true,
     fordStudioId: "s1",
     fordDoorCount: null,
@@ -554,7 +553,7 @@ describe("NotesPage — empty, failed and large", () => {
   it("never says 'No notes' when the notes could not be read", async () => {
     const host = await mount(propsFor([], { notesState: "failed" }));
     expect(host.querySelector('[data-testid="notes-failed"]')?.textContent).toContain(
-      "Some of her notes couldn’t be loaded",
+      "Some notes couldn’t be loaded",
     );
     expect(host.textContent).toContain("Nothing loaded yet.");
     expect(host.textContent).not.toContain("No notes in Journey yet.");
@@ -720,12 +719,12 @@ describe("NotesPage — the questions at the top", () => {
     const ask = host.querySelector('[data-testid="notes-ask"]')!;
     expect(ask).toBeTruthy();
     expect(Array.from(ask.querySelectorAll(".nx-ask__question")).map((q) => q.textContent)).toEqual([
-      "What's going on with her right now?",
-      "Her health",
-      "How to train her",
-      "Is she staying with us?",
-      "Her life",
-      "Her time here",
+      "What's going on with them right now?",
+      "Their health",
+      "How to train them",
+      "Are they staying with us?",
+      "Their life",
+      "Their time here",
       "Every note",
     ]);
     // Every question is a real button, the chosen one pressed.
@@ -749,7 +748,7 @@ describe("NotesPage — the questions at the top", () => {
     expect(host.textContent).toContain("Resolved · 1");
     expect(host.textContent).not.toContain("Fan on, no music.");
     const answer = host.querySelector('[data-testid="notes-answer"]')!;
-    expect(answer.textContent).toContain("Her health");
+    expect(answer.textContent).toContain("Their health");
     await click(buttonIn(answer, "Open Body & Pulse"));
     expect(onOpenPage).toHaveBeenCalledWith("body");
 
@@ -767,7 +766,7 @@ describe("NotesPage — the questions at the top", () => {
     await click(host.querySelector('[data-testid="ask-story"]'));
     expect(host.querySelector('[data-testid="notes-catalog"]')).toBeNull();
     const answer = host.querySelector('[data-testid="notes-answer"]')!;
-    expect(answer.textContent).toContain("is her Story");
+    expect(answer.textContent).toContain("is their Story");
     await click(buttonIn(answer, "Open Story"));
     expect(onOpenPage).toHaveBeenCalledWith("story");
   });

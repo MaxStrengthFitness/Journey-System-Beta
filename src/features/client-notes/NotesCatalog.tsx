@@ -155,7 +155,7 @@ export function NotesCatalog({
     setRestoringId(thread.id);
     try {
       await unarchiveThread(thread);
-      toastSuccess("Restored. It is back on her notes.");
+      toastSuccess("Restored. It is back on the notes.");
     } catch {
       toastError("Could not restore that note. Check your connection and try again.");
     } finally {

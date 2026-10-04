@@ -60,6 +60,7 @@ import { isNextTrainerNoteOfSessions } from "./note-catalog";
 import { NotesCatalog } from "./NotesCatalog";
 import { AskAnswer, AskBar } from "./AskBar";
 import { askLenses, type AskId, type AskPronouns } from "./ask";
+import { CLIENT_PRONOUNS } from "../client-codex/kit/pronouns";
 import type { RecordPage } from "../client-profile/profile-nav";
 import type { CatalogIntent, NotesIntent } from "./notes-intent";
 import { discardUnfiledEntry, fileUnfiledEntry } from "./file-unfiled";
@@ -85,11 +86,10 @@ export interface NotesPageProps {
   /** The studio's day (yyyy-mm-dd). */
   today: string;
   coverage: HistoryCoverage;
-  /** "her" / "his" / "their" — the page's own words never print the name. */
-  possessive: string;
   /**
-   * The rest of the client's pronouns, for the questions at the top ("What's
-   * going on with her right now?"). Left out, they follow `possessive`.
+   * The client's pronouns, for the questions at the top ("What's going on
+   * with them right now?"): they, never a guessed gender (Oct 3 2026). The
+   * page's own words never print the name and need no pronoun.
    */
   pronouns?: AskPronouns;
   /** The sub-toggle's line for each page, for the questions whose answer is a page (FORD, Story). */
@@ -124,14 +124,6 @@ export interface NotesPageProps {
   activeStudioId?: string | null;
 }
 
-const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-
-/** The pronouns a possessive implies, for a host that passes only that one. */
-function pronounsFromPossessive(possessive: string): AskPronouns {
-  if (possessive === "his") return { object: "him", possessive: "his", subject: "he", plural: false };
-  if (possessive === "their") return { object: "them", possessive: "their", subject: "they", plural: true };
-  return { object: "her", possessive: "her", subject: "she", plural: false };
-}
 const NO_TRAINERS: Trainer[] = [];
 
 export function NotesPage({
@@ -144,7 +136,6 @@ export function NotesPage({
   author,
   today,
   coverage,
-  possessive,
   fordWritable,
   fordReadable = false,
   fordStudioId,
@@ -289,7 +280,7 @@ export function NotesPage({
    * which goes back to every note when the question leaves that thread out. */
   const [askId, setAskId] = useState<AskId>(initialAsk);
   // Stable across renders, so the questions are worked out only when the notes change.
-  const said = useMemo(() => pronouns ?? pronounsFromPossessive(possessive), [pronouns, possessive]);
+  const said = pronouns ?? CLIENT_PRONOUNS;
   const criticalIdSet = useMemo(() => new Set(journal.criticalEntries.map((e) => e.id)), [journal.criticalEntries]);
   const headsUpIdSet = useMemo(
     () => new Set((journal.headsUpEntries ?? []).map((e) => e.id)),
@@ -386,8 +377,7 @@ export function NotesPage({
 
   /* -------------------------------- drawing -------------------------------- */
 
-  const Possessive = cap(possessive);
-  const composerTitle = fordMode ? `Something about ${possessive} life` : "New note";
+  const composerTitle = fordMode ? "Something about the client's life" : "New note";
 
   return (
     <section className="nx-notes" data-testid="notes-page">
@@ -414,8 +404,8 @@ export function NotesPage({
         <p className="nx-banner" role="alert" data-testid="notes-failed">
           <Info className="nx-banner__icon" size={16} aria-hidden />
           <span>
-            Some of {possessive} notes couldn’t be loaded, so what’s below may be missing some. Open {possessive}{" "}
-            profile again to try again.
+            Some notes couldn’t be loaded, so what’s below may be missing some. Open the profile again to try
+            again.
           </span>
         </p>
       ) : null}
@@ -530,7 +520,7 @@ export function NotesPage({
 
       <div className="nx-fordline">
         <p className="nx-fordline__text">
-          {Possessive} family, work and trips are kept in FORD, which only {possessive} home studio’s team can read.
+          Family, work and trips are kept in FORD, which only the home studio’s team can read.
         </p>
         <button type="button" className="nt-btn" onClick={onOpenFord}>
           Open FORD

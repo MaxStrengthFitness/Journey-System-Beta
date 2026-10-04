@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { JournalEntry } from "../../types/journal";
+import { CLIENT_PRONOUNS } from "../client-codex/kit/pronouns";
 import { ASK_ORDER, askLenses, isRightNow, mostNamedPart, nowBreakdown } from "./ask";
 import { assembleThreads } from "./threads";
 
@@ -39,7 +40,6 @@ function entry(over: Partial<JournalEntry>): JournalEntry {
   };
 }
 
-const her = { object: "her", possessive: "her", subject: "she", plural: false };
 
 describe("what's going on right now", () => {
   const ctx = (crit: string[] = [], hu: string[] = []) => ({
@@ -112,7 +112,7 @@ describe("the questions", () => {
       { id: "row", name: "Compound Row" },
     ],
     today: TODAY,
-    pronouns: her,
+    pronouns: CLIENT_PRONOUNS,
     pageLines: { body: "2 watch-outs", account: "95 sessions left", ford: "birthday in 17 days", story: "since 2019" },
     known: true,
   });
@@ -121,25 +121,14 @@ describe("the questions", () => {
   it("are always the same seven, in the same order, in her pronouns", () => {
     expect(ASK_ORDER).toEqual(["now", "health", "train", "staying", "life", "story", "all"]);
     expect(lenses.map((l) => l.question)).toEqual([
-      "What's going on with her right now?",
-      "Her health",
-      "How to train her",
-      "Is she staying with us?",
-      "Her life",
-      "Her time here",
+      "What's going on with them right now?",
+      "Their health",
+      "How to train them",
+      "Are they staying with us?",
+      "Their life",
+      "Their time here",
       "Every note",
     ]);
-    const him = askLenses({
-      threads: [],
-      criticalIds: new Set(),
-      headsUpIds: new Set(),
-      machines: [],
-      today: TODAY,
-      pronouns: { object: "him", possessive: "his", subject: "he", plural: false },
-      known: true,
-    });
-    expect(him[0].question).toBe("What's going on with him right now?");
-    expect(him[3].question).toBe("Is he staying with us?");
   });
 
   it("are views over the notes' facets: one note can answer two questions, and is never copied", () => {
@@ -172,7 +161,7 @@ describe("the questions", () => {
       headsUpIds: new Set(),
       machines: [],
       today: TODAY,
-      pronouns: her,
+      pronouns: CLIENT_PRONOUNS,
       known: false,
     });
     expect(unknown.filter((l) => l.id !== "life" && l.id !== "story").every((l) => l.preview === null)).toBe(true);

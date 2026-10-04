@@ -579,7 +579,7 @@ describe("the Notes page mounts", () => {
     expect(composer.querySelector('[role="radiogroup"][aria-label="How loud? (optional)"]')).toBeNull();
     const letters = composer.querySelector('[role="group"][aria-label="File under (optional)"]')!;
     expect(letters.querySelectorAll("button")).toHaveLength(4);
-    expect(host.querySelector(".nx-compose__title")?.textContent).toBe("Something about her life");
+    expect(host.querySelector(".nx-compose__title")?.textContent).toBe("Something about the client's life");
 
     await click(buttonByText(composer, "Save to FORD"));
     expect(writes.map((w) => w.path)).toEqual(["clients/c1/ford"]);

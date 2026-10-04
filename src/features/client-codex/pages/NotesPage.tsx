@@ -64,7 +64,6 @@ export function NotesPage({
         author={writer}
         today={today}
         coverage={coverage}
-        possessive={pronouns.possessive}
         pronouns={pronouns}
         pageLines={pageLines}
         onOpenPage={(page) => go(page)}

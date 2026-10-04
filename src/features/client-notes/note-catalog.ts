@@ -257,7 +257,7 @@ export interface NoteFlavourMeta {
 
 export const HEALTH_FLAVOURS: readonly NoteFlavourMeta[] = [
   { id: "Injury", label: "Injury or pain", short: "Injury", blurb: "A limitation or pain the load has to work around." },
-  { id: "Surgery", label: "Surgery", short: "Surgery", blurb: "Coming up or behind her — the date, and what's off limits until she's cleared." },
+  { id: "Surgery", label: "Surgery", short: "Surgery", blurb: "Coming up or done — the date, and what's off limits until cleared." },
   { id: "Medication", label: "Medication", short: "Medication", blurb: "Including GLP-1s, blood pressure and blood thinners." },
   { id: "Diagnosis", label: "Diagnosis", short: "Diagnosis", blurb: "A condition the team should know about." },
   { id: "OutsideCare", label: "Care outside the studio", short: "Outside care", blurb: "Massage, chiropractor, physical therapy, an adjustment." },
