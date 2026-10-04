@@ -38,6 +38,12 @@
   --jg-surface-3:      #d4dee8;   /* pressed / hover                       */
   --jg-border:         #d1dae4;   /* hairlines between cells   1.3:1       */
   --jg-border-strong:  #a3aebb;   /* sticky-edge separators    2.1:1       */
+  /* A control's edge (AJ, Oct 4 2026: "yes" to firmer outlines on the
+     Active Session's buttons): the Hub's --eq-border-strong, value for
+     value. 3.1:1 on the Now Bar, 3.4:1 on a control's own fill; the softer
+     line above stays for the sticky separators and the decorative lines.
+     contrast.test.ts holds the 3:1 in both themes.                       */
+  --jg-control-edge:   #7a8694;   /* buttons, fields, menus    3.4:1       */
 
   --jg-ink:            #192d41;   /* weights, names            13.0:1      */
   --jg-ink-2:          #3f4f60;   /* reps / secondary          7.8:1       */
@@ -204,6 +210,7 @@
   --jg-surface-3:      #203549;
   --jg-border:         #2b3e50;
   --jg-border-strong:  #4a5f73;
+  --jg-control-edge:   #6e8397;   /* 3.8:1 on surface, 3.5:1 on the bar    */
 
   --jg-ink:            #dfe7ef;   /* 11.9:1 on surface                     */
   --jg-ink-2:          #b8c6d3;   /* 8.5:1                                 */
@@ -279,6 +286,7 @@
     --jg-surface-3:      #203549;
     --jg-border:         #2b3e50;
     --jg-border-strong:  #4a5f73;
+    --jg-control-edge:   #6e8397;
     --jg-ink:            #dfe7ef;
     --jg-ink-2:          #b8c6d3;
     --jg-ink-muted:      #9dadbe;

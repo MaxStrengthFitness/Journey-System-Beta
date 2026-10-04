@@ -1120,7 +1120,7 @@ div.jg-today { cursor: default; }
 }
 .jg-today__add {
   appearance: none;
-  border: 1px dashed var(--jg-border-strong);
+  border: 1px dashed var(--jg-control-edge);
   background: transparent;
   color: var(--jg-live-text);
   border-radius: var(--jg-radius-sm);
@@ -1141,6 +1141,12 @@ div.jg-today { cursor: default; }
    Portrait stacks the three; at 900px+ the set and Next share a line; and
    `.jg-nb--side` turns the whole thing into a right-hand column for
    landscape (Zone 4 becomes a panel beside the grid, not a bar under it).
+
+   Every control's edge, here and across the session (the session bar's
+   buttons, the routine sheet, the menus), is --jg-control-edge, 3:1 on
+   the bar (AJ, Oct 4 2026: "yes" to firmer outlines). --jg-border-strong
+   is the softer line of the sticky separators and the rail, and stays.
+   session-colour-rules.test.ts lists which rules read which.
    ========================================================================== */
 .jg-nb {
   flex: none;
@@ -1228,7 +1234,7 @@ div.jg-today { cursor: default; }
   padding: 0 9px;
   color: var(--jg-ink);
   background: var(--jg-surface);
-  border: 1px solid var(--jg-border-strong);
+  border: 1px solid var(--jg-control-edge);
   border-radius: var(--jg-radius-sm);
   white-space: nowrap;
 }
@@ -1309,7 +1315,7 @@ div.jg-today { cursor: default; }
   width: 44px;
   height: 44px;
   flex: none;
-  border: 1px solid var(--jg-border-strong);
+  border: 1px solid var(--jg-control-edge);
   border-radius: var(--jg-radius-sm);
   background: var(--jg-surface);
   color: var(--jg-ink-2);
@@ -1397,7 +1403,7 @@ div.jg-today { cursor: default; }
   display: flex;
   flex-direction: column;
   height: 44px;
-  border: 1px solid var(--jg-border-strong);
+  border: 1px solid var(--jg-control-edge);
   border-radius: var(--jg-radius-sm);
   overflow: hidden;
   background: var(--jg-surface);
@@ -1484,7 +1490,7 @@ div.jg-today { cursor: default; }
   appearance: none;
   width: 44px;
   height: 44px;
-  border: 1px solid var(--jg-border-strong);
+  border: 1px solid var(--jg-control-edge);
   border-radius: var(--jg-radius-sm);
   background: var(--jg-surface);
   color: var(--jg-ink-faint);
@@ -1508,7 +1514,7 @@ div.jg-today { cursor: default; }
   appearance: none;
   height: 44px;
   padding: 0 12px;
-  border: 1px dashed var(--jg-border-strong);
+  border: 1px dashed var(--jg-control-edge);
   border-radius: var(--jg-radius-sm);
   background: transparent;
   color: var(--jg-ink-muted);
@@ -1533,7 +1539,7 @@ div.jg-today { cursor: default; }
   appearance: none;
   height: 42px;
   padding: 0 14px;
-  border: 1px solid var(--jg-border-strong);
+  border: 1px solid var(--jg-control-edge);
   border-radius: var(--jg-radius-sm);
   background: var(--jg-surface);
   color: var(--jg-ink);
@@ -1554,7 +1560,7 @@ div.jg-today { cursor: default; }
   min-width: 0;
   height: 42px;
   padding: 0 12px;
-  border: 1px solid var(--jg-border-strong);
+  border: 1px solid var(--jg-control-edge);
   border-radius: var(--jg-radius-sm);
   background: var(--jg-surface);
   color: var(--jg-ink);
@@ -1725,7 +1731,7 @@ div.jg-today { cursor: default; }
   flex: none;
   height: 22px;
   padding: 0 8px;
-  border: 1px solid var(--jg-border-strong);
+  border: 1px solid var(--jg-control-edge);
   border-radius: var(--jg-radius-sm);
   background: var(--jg-surface);
   color: var(--jg-ink-2);
@@ -1782,7 +1788,7 @@ div.jg-today { cursor: default; }
 /* Focus, renamed to what it does: which machines the list shows. */
 .jg-seg2 {
   display: inline-flex;
-  border: 1px solid var(--jg-border-strong);
+  border: 1px solid var(--jg-control-edge);
   border-radius: var(--jg-radius-sm);
   overflow: hidden;
   flex: none;
@@ -1813,7 +1819,7 @@ div.jg-today { cursor: default; }
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  border: 1px solid var(--jg-border-strong);
+  border: 1px solid var(--jg-control-edge);
   border-radius: var(--jg-radius-sm);
   background: var(--jg-surface);
   color: var(--jg-live-text);
@@ -1858,7 +1864,7 @@ div.jg-today { cursor: default; }
   right: 0;
   z-index: 40;
   background: var(--jg-surface);
-  border: 1px solid var(--jg-border-strong);
+  border: 1px solid var(--jg-control-edge);
   border-radius: var(--jg-radius);
   box-shadow: 0 8px 24px var(--jg-sticky-shadow);
   padding: 12px 14px;
@@ -1923,7 +1929,7 @@ div.jg-today { cursor: default; }
 
 .jg-btn {
   appearance: none;
-  border: 1px solid var(--jg-border-strong);
+  border: 1px solid var(--jg-control-edge);
   background: var(--jg-surface);
   color: var(--jg-ink);
   height: 40px;
@@ -2079,7 +2085,7 @@ div.jg-today { cursor: default; }
   padding: 10px 12px 10px;
   border-radius: 12px;
   background: var(--jg-surface);
-  border: 1px solid var(--jg-border-strong);
+  border: 1px solid var(--jg-control-edge);
   box-shadow: 0 16px 40px -18px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.12);
   color: var(--jg-ink);
   font-family: var(--jg-font);
@@ -2356,7 +2362,7 @@ div.jg-today { cursor: default; }
 }
 .jg-sbar__btn {
   padding: 0 12px;
-  border: 1px solid var(--jg-border);
+  border: 1px solid var(--jg-control-edge);
   background: var(--jg-surface-2);
   color: var(--jg-ink);
 }
@@ -2562,7 +2568,7 @@ div.jg-today { cursor: default; }
   min-width: 0;
   height: 40px;
   padding: 0 12px;
-  border: 1px solid var(--jg-border-strong);
+  border: 1px solid var(--jg-control-edge);
   border-radius: var(--jg-radius-sm);
   background: var(--jg-surface);
   color: var(--jg-ink);
@@ -2578,7 +2584,7 @@ div.jg-today { cursor: default; }
   gap: 8px;
   min-height: 44px;
   padding: 6px 12px;
-  border: 1px dashed var(--jg-border-strong);
+  border: 1px dashed var(--jg-control-edge);
   border-radius: var(--jg-radius-sm);
   background: transparent;
   color: var(--jg-ink);
@@ -3251,7 +3257,7 @@ div.jg-today { cursor: default; }
   min-height: 40px;
   padding: 0 12px;
   border-radius: 10px;
-  border: 1px solid var(--jg-border-strong);
+  border: 1px solid var(--jg-control-edge);
   background: transparent;
   color: var(--jg-ink);
   font: inherit;

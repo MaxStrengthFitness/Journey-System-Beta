@@ -205,6 +205,34 @@ describe.each([
   });
 });
 
+describe.each([
+  ["light", ":root {"],
+  ["dark", ".dark,"],
+])("a control's edge, %s theme", (_theme, selector) => {
+  // AJ, Oct 4 2026: "yes" to firmer outlines on the Active Session's
+  // buttons. The edge is what tells a control from the bar under it, so it
+  // clears WCAG's 3:1 for a boundary against both the bar and the control's
+  // own fill. The Now Bar is the header band's grey and its controls fill
+  // with the cells' colour; the session bar is the cells' colour and its
+  // Notes and Pulse fill with the band's grey.
+  const light = readBlock(":root {");
+  const vars = selector === ":root {" ? light : { ...light, ...readBlock(selector) };
+  const edge = () => hex(vars, "--jg-control-edge");
+
+  it.each([
+    ["--jg-surface-2", "the Now Bar; the session bar's buttons' fill"],
+    ["--jg-surface", "a control's own fill; the session bar"],
+  ])("clears 3:1 on %s (%s)", (ground) => {
+    expect(ratio(edge(), hex(vars, ground))).toBeGreaterThanOrEqual(UI);
+  });
+
+  it("is firmer than the sticky separators' line, which stays the softer one", () => {
+    for (const ground of ["--jg-surface", "--jg-surface-2"]) {
+      expect(ratio(edge(), hex(vars, ground))).toBeGreaterThan(ratio(hex(vars, "--jg-border-strong"), hex(vars, ground)));
+    }
+  });
+});
+
 describe("the system-preference fallback", () => {
   it("is the dark block, key for key", () => {
     const dark = readBlock(".dark,");
