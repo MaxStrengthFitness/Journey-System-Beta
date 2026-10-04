@@ -308,7 +308,7 @@ export function newClientsCaveat(n: NewClients): string | null {
   if (n.state === "failed") return "Couldn't check for new clients: the studio's client list didn't load.";
   if (n.unsure === 0) return null;
   return n.unsure === 1
-    ? "Couldn't check 1 client booked this week: Journey doesn't have her first visit on file."
+    ? "Couldn't check 1 client booked this week: Journey doesn't have that client's first visit on file."
     : `Couldn't check ${n.unsure} clients booked this week: Journey doesn't have their first visit on file.`;
 }
 

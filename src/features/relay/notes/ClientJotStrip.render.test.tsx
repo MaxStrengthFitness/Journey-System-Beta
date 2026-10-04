@@ -56,11 +56,11 @@ vi.mock("./mutations", () => ({
   }),
 }));
 
+import { CLIENT_PRONOUNS } from "../../client-codex/kit/pronouns";
 import { ClientJotStrip } from "./ClientJotStrip";
 import type { Client } from "../../../types";
 
 const client = { id: "c1", firstName: "Carol", lastName: "Brennan", gender: "Female" } as Client;
-const her = { object: "her" as const };
 
 /** A note of the trainer's about Carol, with jots in its log. */
 const noteDoc = (id: string, jots: Array<{ id: string; text: string; at: number }>, updatedAt: number) => ({
@@ -94,7 +94,7 @@ async function mount() {
   await act(async () => {
     root.render(
       <StrictMode>
-        <ClientJotStrip client={client} onOpenPlanner={() => {}} pronouns={her} />
+        <ClientJotStrip client={client} onOpenPlanner={() => {}} pronouns={CLIENT_PRONOUNS} />
       </StrictMode>,
     );
   });
@@ -177,7 +177,7 @@ describe("ClientJotStrip", () => {
 
     const box = host.querySelector("textarea")!;
     expect(box.disabled).toBe(false);
-    expect(box.placeholder).toBe("What did you notice about her today?");
+    expect(box.placeholder).toBe("What did you notice about them today?");
     await type(box, "Knee felt better today.");
     await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Add the jot"]')!.click());
     await settle();
@@ -188,7 +188,7 @@ describe("ClientJotStrip", () => {
 
   it("starts a working-notes note only when the read answered that there is none", async () => {
     const host = await mount();
-    expect(host.textContent).toContain("A note about her starts when you jot.");
+    expect(host.textContent).toContain("A note about them starts when you jot.");
     await type(host.querySelector("textarea")!, "First thing I noticed.");
     await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Add the jot"]')!.click());
     await settle();

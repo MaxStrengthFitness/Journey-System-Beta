@@ -108,7 +108,7 @@ export function MyCaseEditor({ studioId, theCase, open, onOpenChange, todayKey, 
                   className="rk-textarea"
                   rows={3}
                   maxLength={CASE_LIMITS.nextStep}
-                  placeholder="What you'll do next — “ask about her knee after Thursday's session”"
+                  placeholder="What you'll do next — “ask about the knee after Thursday's session”"
                   value={draft.nextStep}
                   onChange={(e) => edit({ nextStep: e.target.value })}
                 />

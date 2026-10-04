@@ -122,7 +122,7 @@ const journal = () => state.adds.filter((a) => a.path === "journalEntries");
 describe("the asks lane and the open-questions trail", () => {
   it("names the client a question is about, and says it's on her record", async () => {
     await render();
-    expect(document.querySelector(".stq__item-client")?.textContent).toBe("About Nancy Took · on her record until it's answered");
+    expect(document.querySelector(".stq__item-client")?.textContent).toBe("About Nancy Took · on the client's record until it's answered");
   });
 
   it("puts a reply on the ask and on her record, by the person replying (the Auth uid)", async () => {

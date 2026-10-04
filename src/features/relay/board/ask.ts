@@ -277,7 +277,7 @@ export function askGoesTo(d: AskDraft, ctx: { studioName: string; canLead: boole
           ? `${firstName(d.person.name)}'s list, under Handed to you (it rings their bell once).`
           : `Everyone at ${ctx.studioName}, under Help a teammate.`;
       const trail = d.client
-        ? ` It opens a thread on ${firstName(d.client.name)}'s record: her next briefing reads it out while it's open, and the answer stays there.`
+        ? ` It opens a thread on ${firstName(d.client.name)}'s record: the next briefing reads it out while it's open, and the answer stays there.`
         : "";
       return `${who}${trail}`;
     }

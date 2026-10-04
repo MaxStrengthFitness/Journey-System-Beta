@@ -43,12 +43,12 @@ vi.mock("./mutations", () => ({
   }),
 }));
 
+import { CLIENT_PRONOUNS } from "../../client-codex/kit/pronouns";
 import { SharedNotesCard } from "./SharedNotesCard";
 import type { Client, Trainer } from "../../../types";
 import type { SharedNote } from "./types";
 
 const client = { id: "c1", firstName: "Carol", lastName: "Brennan", gender: "Female", homeStudioId: "s1" } as Client;
-const her = { object: "her" as const, possessive: "her" as const };
 
 const leader = { id: "t-lee", fullName: "Lee Leader", role: "StudioLeader", primaryHomeStudioId: "s1" } as Trainer;
 const trainer = { id: "t-ann", fullName: "Ann Trainer", role: "LifeTransformer", primaryHomeStudioId: "s1" } as Trainer;
@@ -87,7 +87,7 @@ async function mount(authTrainer: Trainer | null) {
   await act(async () => {
     root.render(
       <StrictMode>
-        <SharedNotesCard client={client} authTrainer={authTrainer} onOpenPlanner={() => {}} pronouns={her} />
+        <SharedNotesCard client={client} authTrainer={authTrainer} onOpenPlanner={() => {}} pronouns={CLIENT_PRONOUNS} />
       </StrictMode>,
     );
   });
@@ -145,7 +145,7 @@ describe("SharedNotesCard with a plan on the record", () => {
     expect(button(host, "Edit in Relay")).toBeNull();
     await click(button(host, "Take off the record"));
     const confirm = host.querySelector<HTMLElement>('[role="alertdialog"]')!;
-    expect(confirm.textContent).toContain("Take “Right knee — the next six weeks” off her record?");
+    expect(confirm.textContent).toContain("Take “Right knee — the next six weeks” off their record?");
     expect(confirm.textContent).toContain("Jess Moreno keeps their own copy");
     // The confirm replaces the button: it cannot be asked twice.
     expect(button(host, "Take off the record")).toBeNull();

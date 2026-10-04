@@ -556,7 +556,7 @@ export function RequestsLane({
                     {clientNameOf(r) && (
                       <span className="stq__item-client">
                         About {clientNameOf(r)}
-                        {hasTrail(r) ? " · on her record until it's answered" : ""}
+                        {hasTrail(r) ? " · on the client's record until it's answered" : ""}
                       </span>
                     )}
                     <span className="stq__item-sub">

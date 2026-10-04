@@ -99,7 +99,7 @@ describe("A question", () => {
     const d = blankAsk({ tile: "question", text: "Nancy isn't feeling her seated dip\nCan anyone help?", client: { id: "c-nancy", name: "Nancy Took" } });
     expect(toAskRequest(d, ctx)).toMatchObject({ kind: "question", title: "Nancy isn't feeling her seated dip", detail: "Can anyone help?", clientId: "c-nancy", priority: "low" });
     expect(askGoesTo(d, { studioName: "Westlake", canLead: false })).toBe(
-      "Everyone at Westlake, under Help a teammate. It opens a thread on Nancy's record: her next briefing reads it out while it's open, and the answer stays there.",
+      "Everyone at Westlake, under Help a teammate. It opens a thread on Nancy's record: the next briefing reads it out while it's open, and the answer stays there.",
     );
   });
 

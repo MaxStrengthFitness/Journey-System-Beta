@@ -170,7 +170,7 @@ export function AskSheet({
           }
           if (out.failed === "board") {
             setRootId(out.rootId);
-            setError(`It's on ${her}'s record, but the Board didn't take the ask. Post again: her record won't get it twice.`);
+            setError(`It's on ${her}'s record, but the Board didn't take the ask. Post again: the record won't get it twice.`);
             return;
           }
         } else {
@@ -405,7 +405,7 @@ export function AskSheet({
 
               {tile === "question" && (
                 <>
-                  {words("Your question", "Nancy isn't feeling her seated dip where she should. Can anyone help?")}
+                  {words("Your question", "Nancy isn't feeling the seated dip in the right place. Can anyone help?")}
                   {clientField("About a client (optional)")}
                   {relay.canLead && (
                     <div className="rk-field">
