@@ -63,6 +63,11 @@ export const LINK_BADGE: Record<
  * Every field defaults to a string so the baseline and the draft are built the
  * same way — otherwise a studio with no phone number reports itself dirty the
  * moment it loads, and people learn to ignore the unsaved-changes warning.
+ *
+ * No Accent colour (the colour round, Oct 4 2026, AJ's answer 3A): the app's
+ * orange is Max Strength's, so the field and its only reader (an effect in
+ * ActiveStudioContext that repainted --cta) went together. A studio's stored
+ * brandColor is left as it is; this form never writes it.
  */
 export interface StudioForm {
   name: string;
@@ -73,7 +78,6 @@ export interface StudioForm {
   mindbodySiteId: string;
   mindbodyLocationId: string;
   locationType: string;
-  brandColor: string;
   mindbodyMode: "linked" | "offline";
   /** yyyy-mm-dd, or "" while nobody has set it. */
   journeyCutoverDate: string;
@@ -92,7 +96,6 @@ export function studioToForm(studio: Studio): StudioForm {
         ? String(studio.mindbodyLocationId)
         : "",
     locationType: studio.locationType ?? "franchise",
-    brandColor: studio.brandColor ?? "#F37427",
     mindbodyMode: studio.mindbodyMode ?? "linked",
     journeyCutoverDate: studio.journeyCutoverDate ?? "",
   };
@@ -320,22 +323,6 @@ export function StudioDetailsForm({
               <option value="corporate">Corporate</option>
               <option value="franchise">Franchise</option>
             </AdminSelect>
-          </AdminField>
-
-          <AdminField label="Accent colour" hint="Used on this studio's schedule blocks.">
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                aria-label="Accent colour"
-                value={form.value.brandColor}
-                onChange={(e) => form.setField("brandColor", e.target.value)}
-                className="w-10 h-10 rounded-lg border-0 bg-transparent p-0 cursor-pointer"
-              />
-              <AdminInput
-                value={form.value.brandColor}
-                onChange={(e) => form.setField("brandColor", e.target.value)}
-              />
-            </div>
           </AdminField>
         </AdminGrid>
       </fieldset>

@@ -1956,6 +1956,12 @@ export interface Studio {
    * is cut off by a closed tab is simply run again.
    */
   lastDeepScheduleSyncAt?: number;
+  /**
+   * RETIRED (the colour round, Oct 4 2026, AJ's answer 3A): the studio's old
+   * Accent colour. Nothing reads or writes it now; values already stored are
+   * left untouched. The app's orange is the theme's (index.css --cta). Not
+   * the trainer's own brandColor, which is a different field and stays.
+   */
   brandColor?: string;
 }
 

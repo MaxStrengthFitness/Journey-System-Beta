@@ -8,8 +8,10 @@ import "./loading-mark.css";
  * with M, ∧ and X, bobbing in turn. One component for every wait, so a
  * spinner never has to be hand-rolled again (there were ~20).
  *
- * Colours come from the theme tokens (--brand, --cta, and the neutral ink),
- * so it is right in light and dark without a second version.
+ * Colours are the logo's own, fixed (--brand-tile-m, -a, -x and the white
+ * --brand-tile-ink in index.css :root; the colour round, Oct 4 2026), so the
+ * mark looks like the logo in light and dark alike. They used to follow the
+ * theme's --brand and --cta, which turned the M square sky in dark mode.
  */
 export function LoadingMark({
   label = "Loading…",

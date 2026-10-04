@@ -176,29 +176,14 @@ export function ActiveStudioProvider({
     await onLogout();
   };
 
-  useEffect(() => {
-    if (activeStudio && activeStudio.brandColor) {
-      document.documentElement.style.setProperty(
-        "--cta",
-        activeStudio.brandColor,
-      );
-      document.documentElement.style.setProperty(
-        "--color-cta",
-        activeStudio.brandColor,
-      );
-      document.documentElement.style.setProperty(
-        "--color-cta-strong",
-        activeStudio.brandColor,
-      );
-    } else {
-      document.documentElement.style.setProperty("--cta", "#F37427");
-      document.documentElement.style.setProperty("--color-cta", "#F37427");
-      document.documentElement.style.setProperty(
-        "--color-cta-strong",
-        "#E45F0F",
-      );
-    }
-  }, [activeStudio]);
+  // The app's orange is the theme's, never the studio's (the colour round,
+  // Oct 4 2026, AJ's answer 3A). An effect here used to write --cta,
+  // --color-cta and --color-cta-strong inline on <html> from the studio's
+  // Accent colour (or a fixed orange), and an inline style beats :root and
+  // .dark, so no orange in index.css could ever render. It is gone, with the
+  // Accent colour control that fed it; a studio's stored brandColor is left
+  // as it is and nothing reads it. Nothing here writes a colour to <html>
+  // (ActiveStudioContext.render.test.tsx holds it).
 
   // If the active studio is no longer in the available list, clear it
   useEffect(() => {

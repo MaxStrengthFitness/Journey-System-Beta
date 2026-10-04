@@ -232,6 +232,14 @@
     --primary-foreground: #FFFFFF;
     --brand: #115E8D;
     --brand-foreground: #FFFFFF;
+    /* The logo's own three squares and their white strokes, fixed: the
+       same in light and dark (BRAND_TILE_COLORS in BrandTiles.tsx and
+       max-strength-logo.svg). Read by the loading mark. Set here only, never
+       in .dark: the logo does not change with the theme. */
+    --brand-tile-m: #0A548B;
+    --brand-tile-a: #F36D21;
+    --brand-tile-x: #5B6770;
+    --brand-tile-ink: #FFFFFF;
     --action: #F06C22;
     --action-foreground: #FFFFFF;
     --secondary: #55606F;

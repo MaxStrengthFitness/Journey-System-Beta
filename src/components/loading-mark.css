@@ -1,4 +1,5 @@
-/* The loading mark — see LoadingMark.tsx. Brand colours from the theme. */
+/* The loading mark — see LoadingMark.tsx. The logo's own fixed colours
+   (--brand-tile-*, index.css :root), the same in light and dark. */
 .lm { display: inline-flex; flex-direction: column; align-items: center; gap: 10px; }
 .lm__row { display: inline-flex; gap: 4px; }
 .lm__sq {
@@ -8,7 +9,7 @@
   display: grid;
   place-items: center;
   border-radius: 3px;
-  color: var(--brand-foreground, #fff);
+  color: var(--brand-tile-ink, #fff);
   font-family: var(--jg-font-display, "Saira Condensed", system-ui, sans-serif);
   font-weight: 800;
   font-size: calc(var(--lm-size) * 0.62);
@@ -16,9 +17,9 @@
   animation: lm-wave 1.15s ease-in-out infinite;
   will-change: transform;
 }
-.lm__sq--m { background: var(--brand, #115e8d); animation-delay: 0s; }
-.lm__sq--a { background: var(--cta, #f06c22); animation-delay: 0.15s; }
-.lm__sq--x { background: var(--muted-foreground, #5b6770); animation-delay: 0.3s; }
+.lm__sq--m { background: var(--brand-tile-m, #0a548b); animation-delay: 0s; }
+.lm__sq--a { background: var(--brand-tile-a, #f36d21); animation-delay: 0.15s; }
+.lm__sq--x { background: var(--brand-tile-x, #5b6770); animation-delay: 0.3s; }
 .lm--sm .lm__sq { --lm-size: 18px; border-radius: 2px; }
 .lm--lg .lm__sq { --lm-size: 40px; border-radius: 4px; }
 .lm__label {

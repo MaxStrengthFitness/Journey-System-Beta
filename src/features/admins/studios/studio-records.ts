@@ -23,7 +23,6 @@ const FIELD_WORDS: Record<keyof StudioForm, { label: string; word: string }> = {
   mindbodySiteId: { label: "Mindbody Site ID", word: "Mindbody Site ID" },
   mindbodyLocationId: { label: "Mindbody location", word: "Mindbody location" },
   locationType: { label: "Location type", word: "location type" },
-  brandColor: { label: "Accent colour", word: "accent colour" },
   mindbodyMode: { label: "Mindbody", word: "Mindbody link" },
   journeyCutoverDate: { label: "Journey cutover date", word: "Journey cutover date" },
 };
