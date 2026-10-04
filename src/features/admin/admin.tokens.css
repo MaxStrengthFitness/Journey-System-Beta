@@ -15,116 +15,140 @@
    before hydration is never the wrong theme.
 
    Contrast checked to WCAG 2.1 AA: body text >= 4.5:1, borders and non-text
-   UI >= 3:1. Ratios noted beside each value so a future edit can be re-checked.
-   admin-tokens.test.ts asserts these still match the equipment set, so a
-   well-meant tweak here cannot quietly fork the app's colour language again.
+   UI >= 3:1. Ratios noted beside each value so a future edit can be re-checked:
+   in light against the panel (#f3f6f9), in dark against the dark panel
+   (#14293d). admin-tokens.test.ts asserts these still match the equipment
+   set, so a well-meant tweak here cannot quietly fork the app's colour
+   language again. The Navy Frame (Oct 4 2026) moved both sets together.
    ========================================================================== */
 
 :root {
-  --adm-bg:              #f1f5f8;   /* page                                  */
-  --adm-surface:         #ffffff;   /* panels                                */
-  --adm-surface-2:       #e8eef2;   /* panel headers, read-only chips        */
-  --adm-surface-3:       #dae1e6;   /* hover / pressed                       */
-  --adm-border:          #d3dadf;   /* hairlines                     1.4:1   */
-  --adm-border-strong:   #a9b2b9;   /* dividers, focused input       2.2:1   */
+  --adm-bg:              #dee6ee;   /* page                                  */
+  --adm-surface:         #f3f6f9;   /* panels; never pure white              */
+  --adm-surface-2:       #e4ebf3;   /* panel headers, read-only chips        */
+  --adm-surface-3:       #d4dee8;   /* hover / pressed                       */
+  --adm-border:          #d1dae4;   /* hairlines                     1.3:1   */
+  --adm-border-strong:   #7a8694;   /* dividers, focused input       3.4:1   */
 
-  --adm-ink:             #121c23;   /* names, figures               17.3:1   */
-  --adm-ink-2:           #3e4952;   /* secondary                     9.2:1   */
-  --adm-ink-muted:       #5b6770;   /* labels (brand slate)          5.8:1   */
-  --adm-ink-faint:       #848e95;   /* em-dashes, empty states       3.3:1   */
+  --adm-ink:             #192d41;   /* names, figures (deep navy)   13.0:1   */
+  --adm-ink-2:           #3f4f60;   /* secondary                     7.8:1   */
+  --adm-ink-muted:       #546271;   /* labels                        5.8:1   */
+  --adm-ink-faint:       #7f8c99;   /* em-dashes, empty states       3.2:1   */
 
-  /* Hero orange: the one loud action per screen. Solid orange is 3.55:1 on
-     white — fine for fills and >=18px bold, never small text, which uses
-     --adm-hero-text. */
-  --adm-hero:            #ef5302;
-  --adm-hero-text:       #bc2c00;   /* 6.0:1 on white                        */
-  --adm-hero-fill:       #fde7dc;
-  --adm-hero-on:         #ffffff;
+  /* Orange is now and go. The go orange is the one loud action per screen:
+     the logo orange with navy words, 6.1:1, the same in both modes. The hero
+     orange is a mark (3.7:1 on a panel) and carries navy words only; small
+     orange words are the hero text. Nothing puts white words on an orange:
+     white is 4.0:1 on the light hero and 3.0:1 on the logo orange. */
+  --adm-hero:            #d45a06;
+  --adm-hero-text:       #b04000;   /* 5.4:1; white words on it 5.9:1        */
+  --adm-hero-fill:       #ffe9d8;
+  --adm-hero-on:         #ffffff;   /* words on the hero text only           */
+  --adm-go:              #f36d21;   /* the logo orange                       */
+  --adm-go-on:           #071727;   /* navy words on it              6.1:1   */
 
   /* Blue: anything you can act on, plus "this came from Mindbody". */
-  --adm-live:            #0a548b;   /* 7.9:1 on white                        */
-  --adm-live-text:       #034a84;   /* 9.1:1 on white                        */
-  --adm-live-fill:       #e6eef3;
-  --adm-live-on:         #ffffff;
+  --adm-live:            #0a548b;   /* the logo blue                 7.3:1   */
+  --adm-live-text:       #064f89;   /*                               7.8:1   */
+  --adm-live-fill:       #dbeefe;
+  --adm-live-on:         #ffffff;   /* words on the blue             7.9:1   */
 
-  --adm-ok:              #1c7a52;   /* 4.9:1 on white                        */
+  /* The Hub's "yours" and a coming-up card's edge, kept in step with the
+     equipment set so the two palettes stay one. */
+  --adm-mine:            #d3e2f1;
+  --adm-mine-head:       #cbe1f7;
+  --adm-rail-booked:     #668fba;   /*                               3.1:1   */
+
+  --adm-ok:              #1c7a52;   /* 4.9:1, 4.6:1 on its fill              */
   --adm-ok-fill:         #e3f1ea;
 
-  --adm-warn:            #a2457e;   /* 5.7:1 on white                        */
+  --adm-warn:            #a2457e;   /* 5.3:1, 4.8:1 on its fill              */
   --adm-warn-fill:       #f4e9f0;
 
-  --adm-alert:           #c0203f;   /* 5.9:1 on white                        */
+  --adm-alert:           #c0203f;   /* 5.5:1, 4.9:1 on its fill              */
   --adm-alert-fill:      #fce3e8;
 
   --adm-focus-ring:      var(--adm-live);
-  --adm-shadow:          rgba(18, 28, 35, 0.10);
+  --adm-shadow:          rgba(25, 45, 65, 0.10);
   --adm-radius:          14px;
 }
 
 .dark,
 [data-theme="dark"] {
-  --adm-bg:              #070b0f;
-  --adm-surface:         #0e151c;
-  --adm-surface-2:       #151e27;
-  --adm-surface-3:       #1d2833;
-  --adm-border:          #1f2a35;   /* 1.5:1 on surface                      */
-  --adm-border-strong:   #3a4855;   /* 2.9:1                                 */
+  --adm-bg:              #0a1c2c;   /* the studio navy                       */
+  --adm-surface:         #14293d;   /* panels, one step up                   */
+  --adm-surface-2:       #0d2235;
+  --adm-surface-3:       #203549;
+  --adm-border:          #2b3e50;   /* 1.4:1 on surface                      */
+  --adm-border-strong:   #6e8397;   /* 3.8:1                                 */
 
-  --adm-ink:             #eef3f7;   /* 15.8:1 on surface                     */
-  --adm-ink-2:           #b3c0cb;   /* 8.6:1                                 */
-  --adm-ink-muted:       #8b98a4;   /* 5.4:1                                 */
-  --adm-ink-faint:       #63707c;   /* 3.1:1 — decorative only               */
+  --adm-ink:             #dfe7ef;   /* 11.9:1 on surface; never pure white   */
+  --adm-ink-2:           #b8c6d3;   /* 8.5:1                                 */
+  --adm-ink-muted:       #9dadbe;   /* 6.5:1                                 */
+  --adm-ink-faint:       #697b8d;   /* 3.4:1 — decorative only               */
 
-  /* Dark is not a flip: saturated orange vibrates on near-black, so fills
-     become low-alpha washes and text tones lift instead of darkening. */
-  --adm-hero:            #f36d21;
-  --adm-hero-text:       #ff9455;   /* 7.4:1 on surface                      */
-  --adm-hero-fill:       rgba(243, 109, 33, 0.14);
-  --adm-hero-on:         #1a0c04;
+  /* Dark is not a flip: text tones lift instead of darkening, and every fill
+     is OPAQUE and keeps its accent's hue. A low-alpha orange wash over the
+     navy cancels to grey, and a crimson or plum wash turns violet. */
+  --adm-hero:            #f36d21;   /* the logo orange               5.0:1   */
+  --adm-hero-text:       #ff9455;   /* 6.8:1                                 */
+  --adm-hero-fill:       #4b2915;   /* hero text on it 5.9:1                 */
+  --adm-hero-on:         #071727;
+  --adm-go:              #f36d21;
+  --adm-go-on:           #071727;   /* 6.1:1                                 */
 
-  --adm-live:            #4a9fd8;
-  --adm-live-text:       #7cc0ee;   /* 8.1:1 on surface                      */
-  --adm-live-fill:       rgba(74, 159, 216, 0.14);
-  --adm-live-on:         #04121c;
+  --adm-live:            #65abe9;   /* the logo blue, lifted         6.1:1   */
+  --adm-live-text:       #98caf9;   /* 8.6:1                                 */
+  --adm-live-fill:       #23405c;   /* live text on it 6.2:1                 */
+  --adm-live-on:         #071727;
 
-  --adm-ok:              #4ec08c;
-  --adm-ok-fill:         rgba(78, 192, 140, 0.13);
+  --adm-mine:            #0e243a;
+  --adm-mine-head:       #133555;
+  --adm-rail-booked:     #4675a4;   /* 3.1:1                                 */
 
-  --adm-warn:            #d98cbd;
-  --adm-warn-fill:       rgba(217, 140, 189, 0.14);
+  --adm-ok:              #52d7c1;   /* 8.4:1, 6.7:1 on its fill              */
+  --adm-ok-fill:         #113e36;
 
-  --adm-alert:           #f2718c;   /* 7.6:1 on surface                      */
-  --adm-alert-fill:      rgba(242, 113, 140, 0.13);
+  --adm-warn:            #d98cbd;   /* 6.0:1, 5.2:1 on its fill              */
+  --adm-warn-fill:       #402846;
 
-  --adm-shadow:          rgba(0, 0, 0, 0.5);
+  --adm-alert:           #f2718c;   /* 5.3:1, 5.0:1 on its fill              */
+  --adm-alert-fill:      #472024;
+
+  --adm-shadow:          rgba(2, 10, 20, 0.45);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light):not([data-theme="light"]) {
-    --adm-bg:              #070b0f;
-    --adm-surface:         #0e151c;
-    --adm-surface-2:       #151e27;
-    --adm-surface-3:       #1d2833;
-    --adm-border:          #1f2a35;
-    --adm-border-strong:   #3a4855;
-    --adm-ink:             #eef3f7;
-    --adm-ink-2:           #b3c0cb;
-    --adm-ink-muted:       #8b98a4;
-    --adm-ink-faint:       #63707c;
+    --adm-bg:              #0a1c2c;
+    --adm-surface:         #14293d;
+    --adm-surface-2:       #0d2235;
+    --adm-surface-3:       #203549;
+    --adm-border:          #2b3e50;
+    --adm-border-strong:   #6e8397;
+    --adm-ink:             #dfe7ef;
+    --adm-ink-2:           #b8c6d3;
+    --adm-ink-muted:       #9dadbe;
+    --adm-ink-faint:       #697b8d;
     --adm-hero:            #f36d21;
     --adm-hero-text:       #ff9455;
-    --adm-hero-fill:       rgba(243, 109, 33, 0.14);
-    --adm-hero-on:         #1a0c04;
-    --adm-live:            #4a9fd8;
-    --adm-live-text:       #7cc0ee;
-    --adm-live-fill:       rgba(74, 159, 216, 0.14);
-    --adm-live-on:         #04121c;
-    --adm-ok:              #4ec08c;
-    --adm-ok-fill:         rgba(78, 192, 140, 0.13);
+    --adm-hero-fill:       #4b2915;
+    --adm-hero-on:         #071727;
+    --adm-go:              #f36d21;
+    --adm-go-on:           #071727;
+    --adm-live:            #65abe9;
+    --adm-live-text:       #98caf9;
+    --adm-live-fill:       #23405c;
+    --adm-live-on:         #071727;
+    --adm-mine:            #0e243a;
+    --adm-mine-head:       #133555;
+    --adm-rail-booked:     #4675a4;
+    --adm-ok:              #52d7c1;
+    --adm-ok-fill:         #113e36;
     --adm-warn:            #d98cbd;
-    --adm-warn-fill:       rgba(217, 140, 189, 0.14);
+    --adm-warn-fill:       #402846;
     --adm-alert:           #f2718c;
-    --adm-alert-fill:      rgba(242, 113, 140, 0.13);
-    --adm-shadow:          rgba(0, 0, 0, 0.5);
+    --adm-alert-fill:      #472024;
+    --adm-shadow:          rgba(2, 10, 20, 0.45);
   }
 }

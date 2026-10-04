@@ -23,83 +23,90 @@
      - live (blue): anything you can act on, and what is selected. A solid
        blue button writes in --st-live-on.
      - hero (orange): the one loud action (Capture), the studio's shared work
-       on the board, and the Floor Map's heat. Solid orange is 3.55:1 with
-       white, so anything with a label fills with --st-hero-text and writes
-       in --st-hero-on; small orange text is --st-hero-text.
+       on the board, and the Floor Map's heat. Solid orange is 4.0:1 with
+       white (the Navy Frame's light hero, Oct 4 2026), so anything with a
+       label fills with --st-hero-text and writes in --st-hero-on; small
+       orange text is --st-hero-text.
      - flag (plum): caution — a flagged machine, a late job, a tight gap. It
        was amber until Sep 27 2026, so a machine flagged on the Floor Map was
        amber here and plum everywhere else.
      - alert (crimson): critical, and the destructive button.
      - done (green): finished. A solid green button writes in --st-done-on.
-   The ink-faint grey is 3.3:1 and decorative only (dots, chevrons, an icon
+   The ink-faint grey is 3.2:1 and decorative only (dots, chevrons, an icon
    beside a label); anything a person reads is --st-ink-muted or darker.
+
+   The ratios below are against the card: #f3f6f9 in light, #14293d in dark
+   (the Navy Frame, Oct 4 2026: off-white cards on a grey-blue ground, and
+   the studio navy).
    ========================================================================== */
 
 :root {
-  --st-bg:            #f1f5f8;
-  --st-surface:       #ffffff;
-  --st-surface-2:     #e8eef2;
-  --st-surface-3:     #dae1e6;
-  --st-border:        #d3dadf;   /* 1.4:1 hairline          */
-  --st-border-strong: #a9b2b9;   /* 2.2:1 control boundary  */
+  --st-bg:            #dee6ee;
+  --st-surface:       #f3f6f9;
+  --st-surface-2:     #e4ebf3;
+  --st-surface-3:     #d4dee8;
+  --st-border:        #d1dae4;   /* 1.3:1 hairline          */
+  --st-border-strong: #7a8694;   /* 3.4:1 control boundary  */
 
-  --st-ink:       #121c23;   /* 17.3:1 */
-  --st-ink-2:     #3e4952;   /*  9.2:1 */
-  --st-ink-muted: #5b6770;   /*  5.8:1 — the smallest ink a person reads */
-  --st-ink-faint: #848e95;   /*  3.3:1 — decorative only */
+  --st-ink:       #192d41;   /* 13.0:1 */
+  --st-ink-2:     #3f4f60;   /*  7.8:1 */
+  --st-ink-muted: #546271;   /*  5.8:1 — the smallest ink a person reads */
+  --st-ink-faint: #7f8c99;   /*  3.2:1 — decorative only */
 
   --st-done:      #1c7a52;   /* 4.9:1 */
   --st-done-fill: #e3f1ea;
   --st-done-on:   #ffffff;   /* 5.3:1 on --st-done */
-  --st-live:      #0a548b;   /* 7.9:1 */
-  --st-live-fill: #e6eef3;
+  --st-live:      #0a548b;   /* 7.3:1 */
+  --st-live-fill: #dbeefe;
   --st-live-on:   #ffffff;   /* 7.9:1 on --st-live */
-  --st-flag:        #a2457e; /* 5.7:1 */
+  --st-flag:        #a2457e; /* 5.3:1 */
   --st-flag-fill:   #f4e9f0;
   --st-flag-border: #a2457e;
-  --st-hero:      #ef5302;   /* 3.55:1 — bars, rails and icons, never a label */
-  --st-hero-text: #bc2c00;   /* 6.0:1 on white */
-  --st-hero-fill: #fde7dc;
-  --st-hero-on:   #ffffff;   /* 6.0:1 on --st-hero-text */
-  --st-alert:      #c0203f;  /* 5.9:1 */
+  --st-hero:      #d45a06;   /* 3.7:1 — bars, rails and icons, never a label */
+  --st-hero-text: #b04000;   /* 5.4:1 */
+  --st-hero-fill: #ffe9d8;
+  --st-hero-on:   #ffffff;   /* 5.9:1 on --st-hero-text */
+  --st-alert:      #c0203f;  /* 5.5:1 */
   --st-alert-fill: #fce3e8;
 
   --st-radius: 14px;
-  --st-shadow: rgba(18, 28, 35, 0.10);
+  --st-shadow: rgba(25, 45, 65, 0.10);
 }
 
 .dark, [data-theme="dark"] {
-  --st-bg:            #070b0f;
-  --st-surface:       #0e151c;
-  --st-surface-2:     #151e27;
-  --st-surface-3:     #1d2833;
-  --st-border:        #1f2a35;
-  --st-border-strong: #3a4855;
+  --st-bg:            #0a1c2c;
+  --st-surface:       #14293d;
+  --st-surface-2:     #0d2235;
+  --st-surface-3:     #203549;
+  --st-border:        #2b3e50;
+  --st-border-strong: #6e8397;
 
-  --st-ink:       #eef3f7;
-  --st-ink-2:     #b3c0cb;
-  --st-ink-muted: #8b98a4;
-  --st-ink-faint: #63707c;
+  --st-ink:       #dfe7ef;
+  --st-ink-2:     #b8c6d3;
+  --st-ink-muted: #9dadbe;
+  --st-ink-faint: #697b8d;
 
-  /* Dark is not a flip: the fills become low-alpha washes, the text tones
-     lift, and a solid button writes in near-black rather than white. */
-  --st-done:      #4ec08c;
-  --st-done-fill: rgba(78, 192, 140, 0.13);
+  /* Dark is not a flip: the text tones lift, a solid button writes in
+     near-black navy rather than white, and the fills are OPAQUE and keep
+     their accent's hue (a low-alpha orange wash over the navy greys out,
+     and a crimson or plum one turns violet). */
+  --st-done:      #52d7c1;
+  --st-done-fill: #113e36;
   --st-done-on:   #04121c;
-  --st-live:      #4a9fd8;
-  --st-live-fill: rgba(74, 159, 216, 0.14);
-  --st-live-on:   #04121c;
+  --st-live:      #65abe9;
+  --st-live-fill: #23405c;
+  --st-live-on:   #071727;
   --st-flag:        #d98cbd;
-  --st-flag-fill:   rgba(217, 140, 189, 0.14);
+  --st-flag-fill:   #402846;
   --st-flag-border: rgba(217, 140, 189, 0.32);
   --st-hero:      #f36d21;
   --st-hero-text: #ff9455;
-  --st-hero-fill: rgba(243, 109, 33, 0.14);
-  --st-hero-on:   #1a0c04;
+  --st-hero-fill: #4b2915;
+  --st-hero-on:   #071727;
   --st-alert:      #f2718c;
-  --st-alert-fill: rgba(242, 113, 140, 0.13);
+  --st-alert-fill: #472024;
 
-  --st-shadow: rgba(0, 0, 0, 0.5);
+  --st-shadow: rgba(2, 10, 20, 0.45);
 }
 
 .st {

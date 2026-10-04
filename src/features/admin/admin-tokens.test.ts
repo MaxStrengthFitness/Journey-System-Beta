@@ -145,9 +145,13 @@ const TEXT_PAIRS: [string, string, string][] = [
   ["labels on a panel header", "--adm-ink-muted", "--adm-surface-2"],
   ["row name on hover", "--adm-ink", "--adm-surface-3"],
   ["hero text", "--adm-hero-text", "--adm-surface"],
-  // Solid --adm-hero is 3.55:1 against white, so the loud button sits on the
-  // deep orange instead. See the note in admin.css.
+  // A labelled chip on the deep orange: white words on it in light, navy in
+  // dark. Nothing puts white words on --adm-hero (4.0:1 in light).
   ["hero button label", "--adm-hero-on", "--adm-hero-text"],
+  // The Navy Frame (Oct 4 2026): the one loud action is the logo orange with
+  // navy words, and the now pill draws those navy words on the hero orange.
+  ["the one loud action: go-on on go", "--adm-go-on", "--adm-go"],
+  ["the now pill: go-on on hero", "--adm-go-on", "--adm-hero"],
   ["danger button, hovered", "--adm-surface", "--adm-alert"],
   ["primary button label", "--adm-live-on", "--adm-live"],
   ["link / action text", "--adm-live-text", "--adm-surface"],
@@ -176,29 +180,15 @@ for (const [theme, vars] of [
 ] as const) {
   describe(`contrast — ${theme}`, () => {
     it.each(TEXT_PAIRS)("%s clears AA for body text", (_name, ink, ground) => {
-      // Dark-theme fills are rgba washes over the surface; skip anything that
-      // is not a flat hex rather than pretend to composite it here.
-      let a: string;
-      let b: string;
-      try {
-        a = hex(vars, ink);
-        b = hex(vars, ground);
-      } catch {
-        return;
-      }
-      expect(ratio(a, b)).toBeGreaterThanOrEqual(4.5);
+      // Every colour a pair names is a flat hex in both themes. The dark
+      // fills were rgba washes until the Navy Frame (Oct 4 2026) and this
+      // pair was skipped for them; they are opaque now, so a value that is
+      // not a hex fails here instead of passing unchecked.
+      expect(ratio(hex(vars, ink), hex(vars, ground))).toBeGreaterThanOrEqual(4.5);
     });
 
     it.each(UI_PAIRS)("%s clears AA for non-text UI", (_name, ink, ground) => {
-      let a: string;
-      let b: string;
-      try {
-        a = hex(vars, ink);
-        b = hex(vars, ground);
-      } catch {
-        return;
-      }
-      expect(ratio(a, b)).toBeGreaterThanOrEqual(3);
+      expect(ratio(hex(vars, ink), hex(vars, ground))).toBeGreaterThanOrEqual(3);
     });
   });
 }

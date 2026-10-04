@@ -26,57 +26,59 @@
   /* ── geometry ─────────────────────────────────────────────────────── */
   --cat-radius: 14px;
 
-  /* ── surfaces ─────────────────────────────────────────────────────── */
-  --cat-surface:       #ffffff;
-  --cat-surface-2:     #e8eef2;
-  --cat-surface-3:     #dae1e6;
-  --cat-border:        #d3dadf;   /* 1.4:1 hairline                       */
-  --cat-border-strong: #a9b2b9;   /* 2.2:1 control boundary               */
+  /* ── surfaces (the Navy Frame, Oct 4 2026: off-white, never pure white;
+        the ratios below are against this card) ─────────────────────────── */
+  --cat-surface:       #f3f6f9;
+  --cat-surface-2:     #e4ebf3;
+  --cat-surface-3:     #d4dee8;
+  --cat-border:        #d1dae4;   /* 1.3:1 hairline                       */
+  --cat-border-strong: #7a8694;   /* 3.4:1 control boundary               */
 
   /* ── ink ──────────────────────────────────────────────────────────── */
-  --cat-ink:       #121c23;   /* 17.3:1 */
-  --cat-ink-2:     #3e4952;   /*  9.2:1 */
-  --cat-ink-muted: #5b6770;   /*  5.8:1 — the quietest ink a reader reads */
+  --cat-ink:       #192d41;   /* 13.0:1 */
+  --cat-ink-2:     #3f4f60;   /*  7.8:1 */
+  --cat-ink-muted: #546271;   /*  5.8:1 — the quietest ink a reader reads */
 
   /* ── blue: anything you can act on, and every Save ────────────────── */
-  --cat-live:      #0a548b;   /* 7.9:1 */
+  --cat-live:      #0a548b;   /* 7.3:1 */
   --cat-live-on:   #ffffff;   /* the words on a solid blue button, 7.9:1 */
 
   /* ── green: done ──────────────────────────────────────────────────── */
-  --cat-ok:      #1c7a52;     /* 5.3:1 */
+  --cat-ok:      #1c7a52;     /* 4.9:1 */
   --cat-ok-fill: #e3f1ea;
 
   /* ── the caution colour. The app's plum since Sep 27 2026 (it was
         amber); learning-tokens.test.ts holds every colour here to its
         equipment.tokens.css original. ─────────────────────────────────── */
-  --cat-warn:        #a2457e;   /* 5.7:1 on white, 4.8:1 on its fill */
+  --cat-warn:        #a2457e;   /* 5.3:1, 4.8:1 on its fill */
   --cat-warn-fill:   #f4e9f0;
-  --cat-warn-border: #a2457e;   /* 5.7:1 */
+  --cat-warn-border: #a2457e;   /* 5.3:1 */
 
   --cat-focus-ring: var(--cat-live);
 }
 
 .dark,
 [data-theme="dark"] {
-  --cat-surface:       #0e151c;
-  --cat-surface-2:     #151e27;
-  --cat-surface-3:     #1d2833;
-  --cat-border:        #1f2a35;   /* 1.3:1 on surface */
-  --cat-border-strong: #3a4855;   /* 2.0:1 */
+  --cat-surface:       #14293d;
+  --cat-surface-2:     #0d2235;
+  --cat-surface-3:     #203549;
+  --cat-border:        #2b3e50;   /* 1.4:1 on surface */
+  --cat-border-strong: #6e8397;   /* 3.8:1 */
 
-  --cat-ink:       #eef3f7;   /* 16.5:1 on surface */
-  --cat-ink-2:     #b3c0cb;   /*  9.9:1 */
-  --cat-ink-muted: #8b98a4;   /*  6.2:1 */
+  --cat-ink:       #dfe7ef;   /* 11.9:1 on surface */
+  --cat-ink-2:     #b8c6d3;   /*  8.5:1 */
+  --cat-ink-muted: #9dadbe;   /*  6.5:1 */
 
-  /* Dark is not a flip: fills become low-alpha washes and text tones lift
-     instead of darken. */
-  --cat-live:      #4a9fd8;   /* 6.3:1 */
-  --cat-live-on:   #04121c;   /* on --cat-live, 6.5:1 */
+  /* Dark is not a flip: text tones lift instead of darken, and the fills
+     are OPAQUE and keep their accent's hue (a low-alpha wash over the navy
+     greys out or turns violet). */
+  --cat-live:      #65abe9;   /* 6.1:1 */
+  --cat-live-on:   #071727;   /* on --cat-live, 7.4:1 */
 
-  --cat-ok:      #4ec08c;     /* 8.1:1 */
-  --cat-ok-fill: rgba(78, 192, 140, 0.13);
+  --cat-ok:      #52d7c1;     /* 8.4:1 */
+  --cat-ok-fill: #113e36;
 
-  --cat-warn:        #d98cbd;   /* 7.4:1 on surface */
-  --cat-warn-fill:   rgba(217, 140, 189, 0.14);
+  --cat-warn:        #d98cbd;   /* 6.0:1 on surface */
+  --cat-warn-fill:   #402846;
   --cat-warn-border: rgba(217, 140, 189, 0.32);
 }

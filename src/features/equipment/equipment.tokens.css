@@ -7,123 +7,166 @@
    fallbacks so a page rendered before hydration is never the wrong theme.
 
    Contrast checked to WCAG 2.1 AA: body text >= 4.5:1, borders and non-text
-   UI >= 3:1. Ratios noted beside each value so a future edit can be re-checked.
+   UI >= 3:1. Ratios noted beside each value so a future edit can be re-checked:
+   in light against the card (#f3f6f9), in dark against the dark card
+   (#14293d). equipment-tokens.test.ts measures every pair the Hub draws, in
+   both modes, and the four copies of this palette (--adm-*, --st-*, --wk-*,
+   --cat-*) are held to it value for value by their own tests.
+
+   THE NAVY FRAME (Oct 4 2026; AJ: "the light mode is just so bright", "in our
+   dark mode, it just so gray"). Light is calm daylight: off-white cards on a
+   soft grey-blue ground, deep navy ink, nothing pure white. Dark is studio
+   navy: a navy ground, cards one step up, soft ink. The logo's blue means
+   yours, picked and in session; its orange means now and go.
    ========================================================================== */
 
 :root {
-  --eq-bg:              #f1f5f8;   /* page behind both panes                */
-  --eq-surface:         #ffffff;   /* rail items, cards                     */
-  --eq-surface-2:       #e8eef2;   /* section headers, read-only chips      */
-  --eq-surface-3:       #dae1e6;   /* hover / pressed                       */
-  --eq-border:          #d3dadf;   /* hairlines                     1.4:1   */
-  --eq-border-strong:   #a9b2b9;   /* pane divider, focused input   2.2:1   */
+  --eq-bg:              #dee6ee;   /* page behind both panes, the grid      */
+  --eq-surface:         #f3f6f9;   /* rail items, cards; never pure white   */
+  --eq-surface-2:       #e4ebf3;   /* section headers, read-only chips      */
+  --eq-surface-3:       #d4dee8;   /* hover / pressed                       */
+  --eq-border:          #d1dae4;   /* hairlines                     1.3:1   */
+  --eq-border-strong:   #7a8694;   /* pane divider, control edge    3.4:1   */
 
-  --eq-ink:             #121c23;   /* names, values                17.3:1   */
-  --eq-ink-2:           #3e4952;   /* secondary                     9.2:1   */
-  --eq-ink-muted:       #5b6770;   /* labels (brand slate)          5.8:1   */
-  --eq-ink-faint:       #848e95;   /* ghosts, em-dashes             3.3:1   */
+  --eq-ink:             #192d41;   /* names, values (deep navy)    13.0:1   */
+  --eq-ink-2:           #3f4f60;   /* secondary                     7.8:1   */
+  --eq-ink-muted:       #546271;   /* labels                        5.8:1   */
+  --eq-ink-faint:       #7f8c99;   /* ghosts, em-dashes, a card's edge 3.2  */
 
-  /* Hero orange: selection, the current prescription, maintenance flags.
-     Solid orange is 3.55:1 on white — fine for bars and >=18px bold, not for
-     small text, which uses --eq-hero-text instead. */
-  --eq-hero:            #ef5302;
-  --eq-hero-text:       #bc2c00;   /* 6.0:1 on white                        */
-  --eq-hero-fill:       #fde7dc;
-  --eq-hero-on:         #ffffff;
+  /* Orange is now and go. The hero orange is the orange of MARKS: the now
+     line, its dot and its pill, today, the day dots. In light it is the
+     logo orange's own hue made just deep enough for 3:1 where the marks sit
+     (3.2 on the grid, 3.0 over your lane, 3.7 on a card), and it carries navy
+     words only (4.5, the now pill). The go orange is the one loud action
+     (Start session) and every orange chip with words: the logo orange with
+     navy words, 6.1:1, the same in both modes. Small orange words are the
+     hero text. Nothing puts white words on an orange: white is 4.0:1 on the
+     light hero and 3.0:1 on the logo orange. */
+  --eq-hero:            #d45a06;
+  --eq-hero-text:       #b04000;   /* 5.4:1; white words on it 5.9:1        */
+  --eq-hero-fill:       #ffe9d8;
+  --eq-hero-on:         #ffffff;   /* words on the hero text only           */
+  --eq-go:              #f36d21;   /* the logo orange                       */
+  --eq-go-on:           #071727;   /* navy words on it              6.1:1   */
 
-  /* Blue: anything you can act on — edit affordances, notes, focus rings. */
-  --eq-live:            #0a548b;   /* 7.9:1 on white                        */
-  --eq-live-text:       #034a84;   /* 9.1:1 on white                        */
-  --eq-live-fill:       #e6eef3;
-  --eq-live-on:         #ffffff;
+  /* Blue: yours, picked, in session, and anything you can act on (edit
+     affordances, notes, focus rings). */
+  --eq-live:            #0a548b;   /* the logo blue                 7.3:1   */
+  --eq-live-text:       #064f89;   /*                               7.8:1   */
+  --eq-live-fill:       #dbeefe;   /* an in-session card                    */
+  --eq-live-on:         #ffffff;   /* words on the blue             7.9:1   */
+
+  /* Yours on the Hub: your own column (opaque, because it is sticky) and
+     your head, and the quiet blue edge of a client card still to come (AJ's
+     answer 2A, Oct 4 2026). The now line keeps 3:1 over your lane, so a
+     retune of the lane has to keep it too. */
+  --eq-mine:            #d3e2f1;
+  --eq-mine-head:       #cbe1f7;
+  --eq-rail-booked:     #668fba;   /* a coming-up card's edge       3.1:1   */
 
   /* Green: a machine that is set up and in use. */
-  --eq-ok:              #1c7a52;   /* 4.9:1 on white                        */
+  --eq-ok:              #1c7a52;   /* 4.9:1, 4.6:1 on its fill              */
   --eq-ok-fill:         #e3f1ea;
 
-  /* Amber/plum: warnings and maintenance. Plum rather than red so it does not
-     collide with the hero orange for a protanope. */
-  --eq-warn:            #a2457e;   /* 5.7:1 on white                        */
+  /* Plum: caution, warnings and maintenance. Plum rather than red so it does
+     not collide with the hero orange for a protanope. */
+  --eq-warn:            #a2457e;   /* 5.3:1, 4.8:1 on its fill              */
   --eq-warn-fill:       #f4e9f0;
 
   /* High-importance client note. Deliberately the SAME crimson the Journey
      Grid uses for a set that needs work, so "this is the one that matters"
      is one colour across both screens instead of two near-reds a trainer
-     has to learn separately. Plum (--eq-warn) was not an option: a note
-     that says "hip pain" must not read as a decorative accent.            */
-  --eq-alert:           #c0203f;   /* 5.9:1 on white, 5.0:1 on its fill     */
+     has to learn separately. Plum (the warn colour) was not an option: a
+     note that says "hip pain" must not read as a decorative accent.        */
+  --eq-alert:           #c0203f;   /* 5.5:1, 4.9:1 on its fill              */
   --eq-alert-fill:      #fce3e8;
 
   --eq-focus-ring:      var(--eq-live);
-  --eq-shadow:          rgba(18, 28, 35, 0.10);
+  --eq-shadow:          rgba(25, 45, 65, 0.10);
   --eq-radius:          14px;
   --eq-rail-w:          320px;
 }
 
 .dark,
 [data-theme="dark"] {
-  --eq-bg:              #070b0f;
-  --eq-surface:         #0e151c;
-  --eq-surface-2:       #151e27;
-  --eq-surface-3:       #1d2833;
-  --eq-border:          #1f2a35;   /* 1.5:1 on surface                      */
-  --eq-border-strong:   #3a4855;   /* 2.9:1                                 */
+  --eq-bg:              #0a1c2c;   /* the studio navy                       */
+  --eq-surface:         #14293d;   /* cards, one step up                    */
+  --eq-surface-2:       #0d2235;
+  --eq-surface-3:       #203549;
+  --eq-border:          #2b3e50;   /* 1.4:1 on surface                      */
+  --eq-border-strong:   #6e8397;   /* 3.8:1                                 */
 
-  --eq-ink:             #eef3f7;   /* 15.8:1 on surface                     */
-  --eq-ink-2:           #b3c0cb;   /* 8.6:1                                 */
-  --eq-ink-muted:       #8b98a4;   /* 5.4:1                                 */
-  --eq-ink-faint:       #63707c;   /* 3.1:1 — decorative only               */
+  --eq-ink:             #dfe7ef;   /* 11.9:1 on surface; never pure white   */
+  --eq-ink-2:           #b8c6d3;   /* 8.5:1                                 */
+  --eq-ink-muted:       #9dadbe;   /* 6.5:1                                 */
+  --eq-ink-faint:       #697b8d;   /* 3.4:1 — decorative only               */
 
-  /* Dark is not a flip: saturated orange vibrates on near-black, so the fills
-     go to low-alpha washes and the text tones lift instead of darken. */
-  --eq-hero:            #f36d21;
-  --eq-hero-text:       #ff9455;   /* 7.4:1 on surface                      */
-  --eq-hero-fill:       rgba(243, 109, 33, 0.14);
-  --eq-hero-on:         #1a0c04;
+  /* Dark is not a flip: saturated orange vibrates on the navy, so the text
+     tones lift instead of darken, and the fills mix into the dark surface.
+     Every fill is OPAQUE and keeps its accent's hue (OKLCH L 0.30-0.36,
+     C 0.05-0.06). Orange and navy are complements, so a low-alpha orange
+     wash over the navy cancels to grey, and the crimson and plum washes both
+     turn violet, which made Critical and caution look the same. An opaque
+     fill also measures the same on an in-session card as on a plain one. */
+  --eq-hero:            #f36d21;   /* the logo orange               5.0:1   */
+  --eq-hero-text:       #ff9455;   /* 6.8:1                                 */
+  --eq-hero-fill:       #4b2915;   /* hero text on it 5.9:1                 */
+  --eq-hero-on:         #071727;
+  --eq-go:              #f36d21;
+  --eq-go-on:           #071727;   /* 6.1:1                                 */
 
-  --eq-live:            #4a9fd8;
-  --eq-live-text:       #7cc0ee;   /* 8.1:1 on surface                      */
-  --eq-live-fill:       rgba(74, 159, 216, 0.14);
-  --eq-live-on:         #04121c;
+  --eq-live:            #65abe9;   /* the logo blue, lifted         6.1:1   */
+  --eq-live-text:       #98caf9;   /* 8.6:1                                 */
+  --eq-live-fill:       #23405c;   /* live text on it 6.2:1                 */
+  --eq-live-on:         #071727;
 
-  --eq-ok:              #4ec08c;
-  --eq-ok-fill:         rgba(78, 192, 140, 0.13);
+  --eq-mine:            #0e243a;
+  --eq-mine-head:       #133555;
+  --eq-rail-booked:     #4675a4;   /* 3.1:1                                 */
 
-  --eq-warn:            #d98cbd;
-  --eq-warn-fill:       rgba(217, 140, 189, 0.14);
+  --eq-ok:              #52d7c1;   /* 8.4:1, 6.7:1 on its fill              */
+  --eq-ok-fill:         #113e36;
 
-  --eq-alert:           #f2718c;   /* 7.6:1 on surface                      */
-  --eq-alert-fill:      rgba(242, 113, 140, 0.13);
+  --eq-warn:            #d98cbd;   /* 6.0:1, 5.2:1 on its fill              */
+  --eq-warn-fill:       #402846;
 
-  --eq-shadow:          rgba(0, 0, 0, 0.5);
+  --eq-alert:           #f2718c;   /* 5.3:1, 5.0:1 on its fill              */
+  --eq-alert-fill:      #472024;
+
+  --eq-shadow:          rgba(2, 10, 20, 0.45);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light):not([data-theme="light"]) {
-    --eq-bg:              #070b0f;
-    --eq-surface:         #0e151c;
-    --eq-surface-2:       #151e27;
-    --eq-surface-3:       #1d2833;
-    --eq-border:          #1f2a35;
-    --eq-border-strong:   #3a4855;
-    --eq-ink:             #eef3f7;
-    --eq-ink-2:           #b3c0cb;
-    --eq-ink-muted:       #8b98a4;
-    --eq-ink-faint:       #63707c;
+    --eq-bg:              #0a1c2c;
+    --eq-surface:         #14293d;
+    --eq-surface-2:       #0d2235;
+    --eq-surface-3:       #203549;
+    --eq-border:          #2b3e50;
+    --eq-border-strong:   #6e8397;
+    --eq-ink:             #dfe7ef;
+    --eq-ink-2:           #b8c6d3;
+    --eq-ink-muted:       #9dadbe;
+    --eq-ink-faint:       #697b8d;
     --eq-hero:            #f36d21;
     --eq-hero-text:       #ff9455;
-    --eq-hero-fill:       rgba(243, 109, 33, 0.14);
-    --eq-hero-on:         #1a0c04;
-    --eq-live:            #4a9fd8;
-    --eq-live-text:       #7cc0ee;
-    --eq-live-fill:       rgba(74, 159, 216, 0.14);
-    --eq-live-on:         #04121c;
-    --eq-ok:              #4ec08c;
-    --eq-ok-fill:         rgba(78, 192, 140, 0.13);
+    --eq-hero-fill:       #4b2915;
+    --eq-hero-on:         #071727;
+    --eq-go:              #f36d21;
+    --eq-go-on:           #071727;
+    --eq-live:            #65abe9;
+    --eq-live-text:       #98caf9;
+    --eq-live-fill:       #23405c;
+    --eq-live-on:         #071727;
+    --eq-mine:            #0e243a;
+    --eq-mine-head:       #133555;
+    --eq-rail-booked:     #4675a4;
+    --eq-ok:              #52d7c1;
+    --eq-ok-fill:         #113e36;
     --eq-warn:            #d98cbd;
-    --eq-warn-fill:       rgba(217, 140, 189, 0.14);
+    --eq-warn-fill:       #402846;
     --eq-alert:           #f2718c;
-    --eq-alert-fill:      rgba(242, 113, 140, 0.13);
-    --eq-shadow:          rgba(0, 0, 0, 0.5);
+    --eq-alert-fill:      #472024;
+    --eq-shadow:          rgba(2, 10, 20, 0.45);
   }
 }

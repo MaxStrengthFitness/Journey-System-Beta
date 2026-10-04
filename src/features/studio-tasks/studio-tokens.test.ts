@@ -159,4 +159,13 @@ describe("--st-* keeps what a person reads readable", () => {
   it("and white on the bright orange stays under 4.5 — which is why no label sits on it", () => {
     expect(ratio("#ffffff", st.light["--st-hero"])).toBeLessThan(4.5);
   });
+
+  it("the app's one loud orange carries its navy words, in both themes", () => {
+    // The Navy Frame (Oct 4 2026): Start session and every orange chip with
+    // words are the logo orange (--eq-go) with navy words (--eq-go-on), never
+    // white on an orange. The dark block may leave them to :root.
+    for (const theme of [eq.light, { ...eq.light, ...eq.dark }]) {
+      expect(ratio(theme["--eq-go-on"], theme["--eq-go"])).toBeGreaterThanOrEqual(4.5);
+    }
+  });
 });
