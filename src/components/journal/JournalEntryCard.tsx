@@ -122,7 +122,7 @@ export function JournalEntryCard({
       className={cn(
         "group relative overflow-hidden rounded-2xl border transition-colors",
         "border-slate-200/80 dark:border-slate-800",
-        "bg-white dark:bg-slate-900/70",
+        "bg-card dark:bg-slate-900/70",
         dense ? "p-3 pl-4" : "p-4 pl-5",
         isCritical && [visual.tint, importance.ring],
         entry.importance === "elevated" && !isCritical && importance.ring,
@@ -237,7 +237,7 @@ export function JournalEntryCard({
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 top-11 z-20 w-48 overflow-hidden rounded-xl border border-border bg-white p-1 shadow-xl dark:bg-slate-800">
+                <div className="absolute right-0 top-11 z-20 w-48 overflow-hidden rounded-xl border border-border bg-popover p-1 shadow-xl dark:bg-slate-800">
                   {isReadOnly ? (
                     <p className="px-3 py-2 text-[11px] leading-snug text-muted-foreground">
                       Read-only — {entry.legacySource || "imported record"}.

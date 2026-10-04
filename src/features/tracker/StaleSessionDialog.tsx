@@ -62,7 +62,7 @@ export function StaleSessionDialog({
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onStartNew()}>
       <DialogContent className="sm:max-w-120 rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
-        <div className="bg-white dark:bg-bg-dark p-8 text-foreground space-y-3">
+        <div className="bg-card p-8 text-foreground space-y-3">
           <DialogTitle className="text-2xl font-black italic uppercase tracking-tight">
             {clientFirstName} has an unfinished session
           </DialogTitle>
@@ -78,7 +78,7 @@ export function StaleSessionDialog({
           </p>
         </div>
         <div
-          className={`p-6 grid grid-cols-1 ${onFinishAsItWas ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-3 bg-white dark:bg-bg-dark border-t border-slate-100 dark:border-slate-800`}
+          className={`p-6 grid grid-cols-1 ${onFinishAsItWas ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-3 bg-card border-t border-slate-100 dark:border-slate-800`}
         >
           <Button
             variant="outline"

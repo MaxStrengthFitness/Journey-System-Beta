@@ -237,9 +237,9 @@ function Stat({
     <Tag
       {...(onClick ? { type: "button" as const, onClick, "aria-label": ariaLabel } : {})}
       className={cn(
-        "relative min-w-0 bg-white dark:bg-slate-950 px-3 xl:px-2.5 py-2 flex flex-col justify-center gap-0.5",
+        "relative min-w-0 bg-card px-3 xl:px-2.5 py-2 flex flex-col justify-center gap-0.5",
         pct !== null && "pb-2.5",
-        onClick && "text-left min-h-10 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors",
+        onClick && "text-left min-h-10 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
         className,
       )}
     >
@@ -318,8 +318,8 @@ function SessionsTile({
         : {})}
       data-testid="sessions-tile"
       className={cn(
-        "relative min-w-0 bg-white dark:bg-slate-950 px-3 xl:px-2.5 py-2 flex flex-col justify-center gap-0.5 text-left",
-        renewal && "min-h-10 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors",
+        "relative min-w-0 bg-card px-3 xl:px-2.5 py-2 flex flex-col justify-center gap-0.5 text-left",
+        renewal && "min-h-10 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
       )}
     >
       <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
@@ -445,13 +445,13 @@ export function ProfileHeader({
   const nick = goesByNickname(client);
 
   const toolBtn =
-    "inline-flex items-center justify-center gap-1.5 h-10 min-w-10 px-3 text-[12px] font-semibold text-muted-foreground hover:text-foreground hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+    "inline-flex items-center justify-center gap-1.5 h-10 min-w-10 px-3 text-[12px] font-semibold text-muted-foreground hover:text-foreground hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
     <header
       className={cn(
         // cp-head*: hooks for the phone layout only (profile-nav.css, Journey Lite).
-        "cp-head bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800/60 pb-3 mb-3 pt-1",
+        "cp-head bg-card border-b border-slate-200 dark:border-slate-800/60 pb-3 mb-3 pt-1",
         // AJ, Oct 2 2026: "the first thing that should grab the eye is the
         // name of the client ... the top of the profiles just feel so bulky".
         // Track, Note, Sync and Start Session used to share the name's row,
@@ -726,7 +726,7 @@ export function ProfileHeader({
           with no named area lands it in a fresh implicit row, in normal
           flow, pushing everything below it down. */}
       {showTrainers && trainerRows.length > 0 && (
-        <div className="col-span-full mt-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2" role="region" aria-label="Trainers who have trained this client">
+        <div className="col-span-full mt-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-card px-3 py-2" role="region" aria-label="Trainers who have trained this client">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Trained by</span>
             <button type="button" className="text-[11px] font-bold text-muted-foreground min-h-8 px-2" onClick={() => setShowTrainers(false)}>

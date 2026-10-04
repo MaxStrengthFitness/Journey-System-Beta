@@ -421,7 +421,7 @@ export function EditTrainerModal({
                 rows={3}
                 onChange={(e) => setBio(e.target.value)}
                 placeholder="A couple of sentences that would mean something to a client reading it."
-                className="w-full bg-white dark:bg-slate-800 border border-border text-foreground rounded-xl p-3 text-sm resize-y"
+                className="w-full bg-card dark:bg-slate-800 border border-border text-foreground rounded-xl p-3 text-sm resize-y"
               />
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold text-right">
                 {bio.length} / 600
@@ -437,7 +437,7 @@ export function EditTrainerModal({
                   {certifications.map((cert) => (
                     <span
                       key={cert}
-                      className="inline-flex items-center gap-1.5 h-8 pl-3 pr-1.5 rounded-full bg-white dark:bg-slate-800 border border-border text-xs font-bold text-slate-700 dark:text-slate-200"
+                      className="inline-flex items-center gap-1.5 h-8 pl-3 pr-1.5 rounded-full bg-card dark:bg-slate-800 border border-border text-xs font-bold text-slate-700 dark:text-slate-200"
                     >
                       {cert}
                       <button
@@ -467,7 +467,7 @@ export function EditTrainerModal({
                     }
                   }}
                   placeholder="e.g. NASM-CPT, Precision Nutrition L1"
-                  className="bg-white dark:bg-slate-800 border-border text-foreground rounded-xl h-11"
+                  className="bg-card dark:bg-slate-800 border-border text-foreground rounded-xl h-11"
                 />
                 <Button
                   type="button"
@@ -490,7 +490,7 @@ export function EditTrainerModal({
                 type="date"
                 value={employmentStartDate}
                 onChange={(e) => setEmploymentStartDate(e.target.value)}
-                className="bg-white dark:bg-slate-800 border-border text-foreground rounded-xl h-11"
+                className="bg-card dark:bg-slate-800 border-border text-foreground rounded-xl h-11"
               />
             </div>
           </div>
@@ -541,7 +541,7 @@ export function EditTrainerModal({
           */}
           <div className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30">
             <span
-              className="relative w-14 h-14 rounded-2xl overflow-hidden shrink-0 grid place-items-center bg-white dark:bg-slate-800 border border-border text-lg font-black tracking-wider"
+              className="relative w-14 h-14 rounded-2xl overflow-hidden shrink-0 grid place-items-center bg-card dark:bg-slate-800 border border-border text-lg font-black tracking-wider"
               style={{ color: brandColor || undefined }}
               aria-hidden="true"
             >

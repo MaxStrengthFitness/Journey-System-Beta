@@ -33,7 +33,7 @@ export function ProgressReportArchive({
   onNew,
 }: ProgressReportArchiveProps) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/70">
+    <section className="rounded-2xl border border-slate-200 bg-card p-4 dark:border-slate-800 dark:bg-slate-900/70">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
           <h3 className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">

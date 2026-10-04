@@ -1446,7 +1446,7 @@ export function ClientProfileView({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-350 mx-auto space-y-2 pb-8 px-2 sm:px-4 bg-slate-50 dark:bg-slate-950 min-h-screen pt-4"
+      className="max-w-350 mx-auto space-y-2 pb-8 px-2 sm:px-4 bg-background min-h-screen pt-4"
     >
       {/* Alerts / Notifications */}
       {(() => {
@@ -1617,7 +1617,7 @@ export function ClientProfileView({
             chosen tab with data-active, never data-state). */}
         <div className="mb-2 w-full">
           <div className="w-full pb-0.5">
-            <TabsList className="cp-tabs bg-slate-100 dark:bg-slate-800/60 p-1 grid grid-cols-4 w-full h-12! rounded-xl gap-1">
+            <TabsList className="cp-tabs bg-slate-200 dark:bg-slate-800/60 p-1 grid grid-cols-4 w-full h-12! rounded-xl gap-1">
               {PROFILE_TABS.map((tab) => (
                 <TabsTrigger
                   key={tab.id}
@@ -1906,7 +1906,7 @@ export function ClientProfileView({
         onOpenChange={(v) => !isDiscardingActiveSession && !v && setDiscardTarget(null)}
       >
         <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
-          <div className="bg-white dark:bg-bg-dark p-8 text-foreground space-y-3">
+          <div className="bg-card p-8 text-foreground space-y-3">
             <div
               className={cn(
                 "w-12 h-12 rounded-2xl flex items-center justify-center mb-2 transition-all",
@@ -1940,7 +1940,7 @@ export function ClientProfileView({
                     .join(" ")}
             </p>
           </div>
-          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-bg-dark border-t border-slate-100 dark:border-slate-800">
+          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-card border-t border-slate-100 dark:border-slate-800">
             <Button
               variant="outline"
               disabled={isDiscardingActiveSession}

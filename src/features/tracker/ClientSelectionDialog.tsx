@@ -48,7 +48,7 @@ export function ClientSelectionDialog({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Find client..."
-              className="pl-10 h-11 rounded-xl bg-white dark:bg-bg-dark border-none"
+              className="pl-10 h-11 rounded-xl bg-muted dark:bg-card border-none"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus

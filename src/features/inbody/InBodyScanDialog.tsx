@@ -38,7 +38,7 @@ import { INBODY_SEGMENTS, type InBodyScan } from "./types";
 
 const LABEL = "text-[11px] font-bold uppercase tracking-widest text-muted-foreground";
 const INPUT =
-  "h-11 w-full rounded-xl border bg-white px-3 text-sm font-semibold tabular-nums text-slate-900 outline-none " +
+  "h-11 w-full rounded-xl border bg-card px-3 text-sm font-semibold tabular-nums text-slate-900 outline-none " +
   "focus:border-sky-500 dark:bg-slate-900 dark:text-slate-100";
 const INPUT_OK = "border-border";
 const INPUT_BAD = "border-rose-400 dark:border-rose-500";

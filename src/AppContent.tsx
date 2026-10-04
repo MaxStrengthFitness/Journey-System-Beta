@@ -1588,9 +1588,13 @@ export default function AppContent({
 
           {/* Main Content */}
           {/* Under 640px (a phone: Journey Lite) the shell pads 12px, not 24px,
-              and the session none (its cards pad themselves). */}
+              and the session none (its cards pad themselves). The ground is
+              --background in all three branches (the Navy Frame, Oct 4 2026):
+              it was slate-50 / slate-950, so a new --background never reached
+              the page people see, and the cards sat on a ground one rung
+              lighter than the theme's. */}
           <main
-            className={`w-full max-w-full mx-auto relative ${currentView === "workouts" ? "flex-1 min-h-0 p-0 sm:p-2 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950 flex flex-col" : currentView === "clients" || currentView === "client-directory" || isLearningView || currentView === "studio-tasks" ? "flex-1 min-h-0 overflow-hidden bg-slate-50 dark:bg-slate-950 p-0 flex flex-col" : "flex-1 min-h-0 p-3 sm:p-6 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950"}`}
+            className={`w-full max-w-full mx-auto relative ${currentView === "workouts" ? "flex-1 min-h-0 p-0 sm:p-2 overflow-y-auto overscroll-contain bg-background flex flex-col" : currentView === "clients" || currentView === "client-directory" || isLearningView || currentView === "studio-tasks" ? "flex-1 min-h-0 overflow-hidden bg-background p-0 flex flex-col" : "flex-1 min-h-0 p-3 sm:p-6 overflow-y-auto overscroll-contain bg-background"}`}
           >
             {/* A screen whose file a deploy removed replaces only itself, and
                 recovers when it is safe to; any other error goes on up to the
@@ -2013,7 +2017,7 @@ export default function AppContent({
           onOpenChange={setIsReorderingTrainers}
         >
           <DialogContent className="max-w-md sm:max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none max-h-[85dvh] flex flex-col">
-            <DialogHeader className="p-8 bg-white dark:bg-bg-dark border-b shrink-0">
+            <DialogHeader className="p-8 bg-card border-b shrink-0">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-primary/10 rounded-2xl">
                   <GripVertical className="w-6 h-6 text-primary" />
@@ -2040,7 +2044,7 @@ export default function AppContent({
                 .map((trainer, idx, studioTrainers) => (
                   <div
                     key={trainer.id}
-                    className="flex items-center gap-4 p-4 bg-white dark:bg-bg-dark rounded-2xl border border-border/50 group"
+                    className="flex items-center gap-4 p-4 bg-card rounded-2xl border border-border/50 group"
                   >
                     <div className="w-8 h-8 rounded-lg bg-background border flex items-center justify-center font-black text-xs text-muted-foreground">
                       {idx + 1}
@@ -2104,7 +2108,7 @@ export default function AppContent({
                   </div>
                 ))}
             </div>
-            <DialogFooter className="p-6 border-t bg-white dark:bg-bg-dark shrink-0">
+            <DialogFooter className="p-6 border-t bg-card shrink-0">
               <Button
                 onClick={() => setIsReorderingTrainers(false)}
                 className="rounded-xl font-bold uppercase tracking-widest w-full h-12"

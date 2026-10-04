@@ -3688,7 +3688,7 @@ export function WorkoutTrackerView({
                     onChange={(e) => setCurrentSessionNotes(e.target.value)}
                     placeholder="What should the next trainer know before the next session?"
                     aria-describedby="next-trainer-note-hint"
-                    className="min-h-25 border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark resize-none text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus-visible:ring-orange-500 focus-visible:border-orange-500"
+                    className="min-h-25 border-2 border-slate-200 dark:border-slate-800 bg-card resize-none text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus-visible:ring-orange-500 focus-visible:border-orange-500"
                   />
                   <p id="next-trainer-note-hint" className="text-xs text-muted-foreground">
                     Read out on the briefing at the next four sessions. A note just for the profile goes on the Wrap-up, next.
@@ -3747,7 +3747,7 @@ export function WorkoutTrackerView({
         onOpenChange={(v) => !isDeletingSession && setShowCancelConfirmation(v)}
       >
         <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
-          <div className="bg-white dark:bg-bg-dark p-8 text-foreground space-y-3">
+          <div className="bg-card p-8 text-foreground space-y-3">
             <div
               className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-2 transition-all ${isDeletingSession ? "bg-red-500/20 text-red-500 animate-pulse" : "bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.4)]"}`}
             >
@@ -3769,7 +3769,7 @@ export function WorkoutTrackerView({
             </p>
           </div>
 
-          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-bg-dark border-t border-slate-100 dark:border-slate-800">
+          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-card border-t border-slate-100 dark:border-slate-800">
             <Button
               variant="outline"
               disabled={isDeletingSession}
@@ -3971,7 +3971,7 @@ export function WorkoutTrackerView({
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="relative flex h-full w-full max-w-md flex-col border-l border-slate-200 bg-slate-50 pt-safe pb-safe shadow-2xl dark:border-slate-800 dark:bg-slate-950"
+              className="relative flex h-full w-full max-w-md flex-col border-l border-slate-200 bg-background pt-safe pb-safe shadow-2xl dark:border-slate-800"
               role="dialog"
               aria-label="Pulse"
             >
@@ -3989,7 +3989,7 @@ export function WorkoutTrackerView({
                   size="icon"
                   onClick={() => setIsShowingAssessment(false)}
                   aria-label="Close the Pulse"
-                  className="rounded-full hover:bg-white dark:hover:bg-surface-1/10"
+                  className="rounded-full hover:bg-card dark:hover:bg-surface-1/10"
                 >
                   <X className="h-5 w-5 text-muted-foreground" />
                 </Button>

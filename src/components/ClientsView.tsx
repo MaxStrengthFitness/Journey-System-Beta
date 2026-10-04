@@ -817,7 +817,7 @@ export function ClientsView({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 text-foreground dark:text-white w-full overflow-hidden"
+      className="flex flex-col h-full bg-background text-foreground w-full overflow-hidden"
     >
       {/* Client search moved to the global header (AppContent → AppHeader.searchSlot).
           Manual client creation stays removed: profiles arrive via the Mindbody sync.
@@ -827,7 +827,7 @@ export function ClientsView({
 
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden w-full">
         {!searchTerm ? (
-          <div className="flex-1 flex flex-col min-h-0 bg-slate-50 dark:bg-slate-950">
+          <div className="flex-1 flex flex-col min-h-0 bg-background">
             {/* The top (calm Hub round): the layers, the week and two doors;
                 on Schedule, the day in words and the chips. */}
             <div className="hd-top">
