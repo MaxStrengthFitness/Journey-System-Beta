@@ -1,9 +1,9 @@
 /* ==========================================================================
    The Hub's top (calm Hub round, Sep 28 2026). Prefix hd-.
-   AJ on the Blueprints page: the top bar "is very jumbled". So: one row
-   (the layers, the week, two small doors), and on Schedule one quiet line
-   under it (the day in words and the family chips). The week wraps to its
-   own line when the Hub is narrow (an iPad upright). Colour from
+   AJ on the Blueprints page: the top bar "is very jumbled". Since Oct 3
+   2026 (AJ: "it's getting cut off"; direction B of three) the top is ONE
+   COMMAND BAR — the layers, the family chips, and Today, Tasks and the Key,
+   on one surface split by hairlines — with the week under it. Colour from
    equipment.tokens.css; nothing tappable under 40px.
    ========================================================================== */
 @import "../equipment/equipment.tokens.css";
@@ -12,23 +12,63 @@
   container-type: inline-size;
   flex: none;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--eq-border);
   background: var(--eq-surface);
   color: var(--eq-ink);
 }
 
+/* ---- the command bar (Oct 3 2026) ----
+   One surface: [ Schedule | Opportunities ] | the chips ......... | Today
+   Tasks Key. A hairline between the three groups instead of a border round
+   every control. On an iPad it never wraps: the chips give up room and
+   scroll before anything else moves. */
+.hd-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 3px;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 14px;
+  background: var(--eq-surface-2);
+}
+
+.hd-bar .hl-switch {
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+}
+
+.hd-bar .hl-btn {
+  border-radius: 11px;
+}
+
+.hd-bar .hl-btn + .hl-btn {
+  border-left: 0;
+}
+
+.hd-rule {
+  flex: none;
+  width: 1px;
+  height: 24px;
+  margin: 0 6px;
+  background: var(--eq-border-strong);
+}
+
+.hd-gap {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .hd-week {
-  flex: 1 1 auto;
   min-width: 0;
   display: grid;
   grid-template-columns: repeat(7, minmax(48px, 1fr));
   gap: 4px;
-  max-width: 620px;
-  margin: 0 auto;
 }
 
 .hd-day {
@@ -106,10 +146,10 @@
 }
 
 .hd-tools {
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-left: auto;
+  gap: 2px;
 }
 
 .hd-btn {
@@ -141,13 +181,31 @@
   color: var(--eq-live-on);
 }
 
-/* Upright, the week takes its own line under the layers and the doors. */
-@container (max-width: 900px) {
-  .hd-week {
-    order: 3;
-    flex: 1 0 100%;
-    max-width: none;
-  }
+/* In the bar a tool is borderless: the bar is the frame. */
+.hd-bar .hd-btn {
+  border-color: transparent;
+  background: transparent;
+  padding: 0 10px;
+  border-radius: 11px;
+}
+
+.hd-bar .hd-btn:hover,
+.hd-bar .hd-chip:hover {
+  background: var(--eq-surface-3);
+}
+
+/* Tasks' count, as a small pill beside its icon. */
+.hd-count {
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--eq-live-fill);
+  color: var(--eq-live-text);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---- the day in words, and the chips (Schedule only) ---- */
@@ -177,9 +235,12 @@
   color: var(--eq-ink);
 }
 
+/* The chips: an icon in its family's colour and a count, borderless in the
+   bar; the word when the bar has room. */
 .hd-chips {
+  flex: 0 1 auto;
   display: flex;
-  gap: 8px;
+  gap: 2px;
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
@@ -188,18 +249,27 @@
 .hd-chip {
   flex: none;
   min-height: 40px;
+  min-width: 40px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 0 12px;
-  border: 1px solid var(--eq-border-strong);
-  border-radius: 999px;
-  background: var(--eq-surface);
+  padding: 0 10px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
   color: var(--eq-ink-2);
   font: inherit;
   font-size: 14px;
   font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
+}
+
+.hd-chip-n {
+  font-weight: 800;
+  color: var(--eq-ink);
+  font-variant-numeric: tabular-nums;
 }
 
 .hd-fam {
@@ -249,14 +319,6 @@
   display: flex;
   gap: 8px;
   margin-left: auto;
-}
-
-/* Upright, the week strip already says the day and its count: the chips
-   keep the line to themselves. */
-@container (max-width: 900px) {
-  .hd-sum-words {
-    display: none;
-  }
 }
 
 /* ---- Focus: Me | Everyone (hub cherry round, Hub direction B) ----
@@ -421,36 +483,42 @@
   .hd-sum[data-focus-switch="true"] .hd-chips { flex: 1 0 100%; }
 }
 
-/* ---- the chips in the top row (Oct 3 2026, AJ) ----
-   Upright, the top row has room between the layers and the doors, so the
-   chips go there and the line under the top is drawn only when it holds
-   something else: the spotlight's words, or Focus. On its side the top row
-   is full with the week, and the chips keep their own line. `.hd-top` wraps
-   the two so the line can ask how wide the top is. */
-.hd-top {
-  container-type: inline-size;
-  flex: none;
-}
-
-.hd-chips--top {
-  display: none;
-}
-
+/* ---- the bar's words (Oct 3 2026) ----
+   On an iPad on its side the bar has room for every word: "Celebrate 1",
+   "Tasks 41", "Key". Upright it says each chip and tool by its icon and
+   count (every one keeps its whole name for a screen reader). */
 @container (max-width: 900px) {
-  .hd-chips--top {
-    display: flex;
+  .hd-chip-word,
+  .hd-bar .hd-btn-word {
+    display: none;
+  }
+
+  .hd-chip {
+    padding: 0 8px;
+  }
+}
+
+/* On a phone the bar takes two rows: the layers the width of the phone,
+   then the chips and the tools under them, split by the bar's own line. */
+@container (max-width: 520px) {
+  .hd-bar {
+    flex-wrap: wrap;
+    row-gap: 3px;
+  }
+
+  .hd-bar .hl-switch {
+    flex: 1 0 100%;
+  }
+
+  .hd-bar .hl-btn {
     flex: 1 1 0;
   }
 
-  .hd-tools {
-    margin-left: 0;
-  }
-
-  .hd-chips--line {
+  .hd-bar .hd-rule {
     display: none;
   }
 
-  .hd-sum[data-chips-only="true"] {
-    display: none;
+  .hd-bar .hd-gap {
+    display: block;
   }
 }

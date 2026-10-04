@@ -854,10 +854,7 @@ export function ClientsView({
             {layer === "schedule" && (
               <DaySummary
                 title={dayTitle(selectedKey)}
-                sessions={preBookedCount}
                 bookings={bookingsRead}
-                trainers={gridColumns.filter((c) => c.count > 0 && c.id !== UNASSIGNED_ID).length}
-                chips={chips}
                 spot={activeSpot}
                 spotText={activeSpot ? spotWords(dayMoments.entries, activeSpot) : ""}
                 onSpot={(family) => setSpot(family ? { day: gridDayKey, family, next: 0 } : null)}

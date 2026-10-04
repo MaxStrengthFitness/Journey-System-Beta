@@ -100,12 +100,6 @@ function summary(over: Partial<DaySummaryProps> = {}) {
   const el = render(
     <DaySummary
       title="Monday, Sep 28"
-      sessions={57}
-      trainers={5}
-      chips={[
-        { id: "read-first", label: "Read first", count: 1 },
-        { id: "celebrate", label: "Celebrate", count: 3 },
-      ]}
       spot={null}
       spotText=""
       onSpot={(f) => calls.spot.push(f)}
@@ -117,17 +111,15 @@ function summary(over: Partial<DaySummaryProps> = {}) {
   return { el, calls };
 }
 
-describe("the day in words, the chips and the spotlight", () => {
-  it("says the day and draws the list's own chips, which light the grid", () => {
-    const { el, calls } = summary();
-    expect(el.querySelector(".hd-sum-words")?.textContent).toBe("Monday, Sep 28 · 57 sessions · 5 trainers");
-    expect([...el.querySelectorAll(".hd-chip")].map((c) => c.textContent)).toEqual(["Read first 1", "Celebrate 3"]);
-    act(() => btn(el, "Celebrate")!.click());
-    expect(calls.spot).toEqual(["celebrate"]);
+describe("the line under the bar: only what the bar and the week don't say", () => {
+  it("draws nothing on a day whose bookings were read (the command bar, Oct 3 2026)", () => {
+    expect(summary().el.querySelector(".hd-sum")).toBeNull();
   });
 
-  it("says an empty day without a zero", () => {
-    expect(summary({ sessions: 0, chips: [] }).el.querySelector(".hd-sum-words")?.textContent).toBe("Monday, Sep 28 · nothing booked");
+  it("says a day whose bookings couldn't be read, or are still being read", () => {
+    expect(summary({ bookings: "failed" }).el.querySelector(".hd-sum-words")?.textContent).toBe("Monday, Sep 28 · couldn't load the bookings");
+    act(() => root?.unmount());
+    expect(summary({ bookings: "loading" }).el.querySelector(".hd-sum-words")?.textContent).toBe("Monday, Sep 28 · reading the bookings\u2026");
   });
 
   it("ends the same line with Focus: Me | Everyone, for someone with a column (hub cherry round)", () => {
@@ -140,7 +132,7 @@ describe("the day in words, the chips and the spotlight", () => {
     ]);
     act(() => btn(el, "Everyone")!.click());
     expect(picked).toEqual(["everyone"]);
-    // One line: the switch sits in the summary itself, after the chips.
+    // The switch is the line's only thing on a read day.
     expect(el.querySelector(".hd-sum")?.lastElementChild?.className).toBe("hd-focus");
   });
 
@@ -179,13 +171,32 @@ describe("the Key", () => {
 });
 
 describe("the chips, with Get to know (wave 2 hub)", () => {
-  it("draws its chip after the others, and lights its cards", () => {
-    const { el, calls } = summary({
+  it("draws the chips in the bar, Get to know after the others, and lights its cards", () => {
+    const spots: string[] = [];
+    const { el } = header({
       chips: [
+        { id: "read-first", label: "Read first", count: 1 },
         { id: "celebrate", label: "Celebrate", count: 3 },
         { id: "get-to-know", label: "Get to know", count: 2 },
       ],
+      onSpot: (f) => spots.push(f),
     });
+    // One command bar (Oct 3 2026): the layers, the chips, then the tools, on one surface.
+    const bar = el.querySelector(".hd-bar")!;
+    expect([...bar.children].map((c) => c.className)).toEqual(["hl-switch", "hd-rule", "hd-chips", "hd-gap", "hd-rule hd-rule--tools", "hd-tools"]);
+    expect([...el.querySelectorAll(".hd-chip")].map((c) => c.textContent)).toEqual(["Read first 1", "Celebrate 3", "Get to know 2"]);
+    // The word can hide when the bar is narrow; a screen reader always hears it.
+    expect(el.querySelectorAll(".hd-chip")[1].getAttribute("aria-label")).toBe("Celebrate: 3. Light them up on the grid");
+    expect(el.querySelectorAll(".hd-chip")[2].querySelector(".hd-fam")?.getAttribute("data-family")).toBe("get-to-know");
+    act(() => btn(el, "Get to know")!.click());
+    expect(spots).toEqual(["get-to-know"]);
+  });
+
+  it("draws no chips, and no hairline for them, on a day without any", () => {
+    const { el } = header({ chips: [], onSpot: () => {} });
+    expect(el.querySelector(".hd-chips")).toBeNull();
+    expect(el.querySelectorAll(".hd-bar .hd-rule")).toHaveLength(1);
+  });
     expect([...el.querySelectorAll(".hd-chip")].map((c) => c.textContent)).toEqual(["Celebrate 3", "Get to know 2"]);
     expect(el.querySelectorAll(".hd-chip")[1].querySelector(".hd-fam")?.getAttribute("data-family")).toBe("get-to-know");
     act(() => btn(el, "Get to know")!.click());

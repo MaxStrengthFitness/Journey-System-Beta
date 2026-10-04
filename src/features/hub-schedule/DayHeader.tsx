@@ -8,21 +8,24 @@
  *   DayHeader   the layers, the week (each day's count, a dot for a day with
  *               something to celebrate, Mindbody's Keep), Today when you are
  *               elsewhere, and two small doors: Tasks (Relay) and the Key.
- *   DaySummary  Schedule only: the day in words ("Monday, Sep 28 · 57
- *               sessions · 5 trainers") and the Opportunities list's own
- *               chips (six since Get to know, wave 2 hub; a zero is never
- *               drawn). A chip lights its cards on the grid (the spotlight);
- *               the bar then says what it shows, steps to the next card, and
- *               opens the same group as a list. At its end, on a phone and
+ *   DaySummary  Schedule only, and only when it has something to say: the
+ *               spotlight (a chip lit its cards on the grid; the line says
+ *               what it shows, steps to the next card, and opens the same
+ *               group as a list), a day whose bookings aren't read yet, and
+ *               on a phone Focus. At its end, on a phone and
  *               for someone with a column that day, Focus: Me | Everyone
  *               (hub cherry round; off the iPad since Oct 3 2026, where the
  *               columns already run yours first).
  *   KeySheet    every mark and state in words, on both layers.
  *
- * On an upright iPad the chips sit in the top row, between the layers and
- * the doors (Oct 3 2026, AJ drew the arrow), and the line under it is drawn
- * only when it has something else to hold (the spotlight, or Focus). On its
- * side the top row is full with the week, so they stay on their own line.
+ * THE COMMAND BAR (AJ, Oct 3 2026, direction B of three; "it's getting cut
+ * off"): the layers, the Opportunities list's own chips (six since Get to
+ * know; a zero is never drawn) and the tools — Today, Tasks, the Key — on ONE
+ * surface split by hairlines, the way Linear's and Arc's toolbars hold a
+ * whole screen's controls, with the week under it. Six bordered boxes of
+ * equal weight became one strip. A chip is its icon and count; its word, and
+ * the tools' words, show when the bar has room (an iPad on its side). The
+ * bar never wraps on an iPad: the chips scroll first.
  *
  * Presentational; the pure half is day-summary.ts.
  */
@@ -73,14 +76,18 @@ function FamilyIcon({ family }: { family: MomentFamily }) {
   );
 }
 
-/** The family chips: a tap lights that family's cards on the grid. */
-function SpotChips({ chips, onSpot, top = false }: { chips: ReadonlyArray<SummaryChip>; onSpot: (family: MomentFamily) => void; top?: boolean }) {
+/**
+ * The family chips, in the bar: a tap lights that family's cards on the grid.
+ * The icon and the count always; the word when the bar has room (an iPad on
+ * its side), and always for a screen reader.
+ */
+function SpotChips({ chips, onSpot }: { chips: ReadonlyArray<SummaryChip>; onSpot: (family: MomentFamily) => void }) {
   return (
-    <div className={top ? "hd-chips hd-chips--top" : "hd-chips hd-chips--line"} role="group" aria-label="Light them up on the grid">
+    <div className="hd-chips" role="group" aria-label="Light them up on the grid">
       {chips.map((c) => (
-        <button key={c.id} type="button" className="hd-chip" onClick={() => onSpot(c.id)}>
+        <button key={c.id} type="button" className="hd-chip" data-family={c.id} onClick={() => onSpot(c.id)} aria-label={`${c.label}: ${c.count}. Light them up on the grid`}>
           <FamilyIcon family={c.id} />
-          {`${c.label} ${c.count}`}
+          <span className="hd-chip-word">{c.label}</span> <span className="hd-chip-n">{c.count}</span>
         </button>
       ))}
     </div>
@@ -100,8 +107,8 @@ export interface DayHeaderProps {
   onOpenTasks?: () => void;
   onOpenKey: () => void;
   /**
-   * The family chips, drawn in this row on an upright iPad (Schedule only,
-   * and not while one is lit). Absent: none here.
+   * The family chips, in the bar (Schedule only, and not while one is lit).
+   * Absent or empty: none.
    */
   chips?: ReadonlyArray<SummaryChip>;
   onSpot?: (family: MomentFamily) => void;
@@ -109,10 +116,37 @@ export interface DayHeaderProps {
 
 export function DayHeader({ layer, onLayer, days, selected, onSelectDay, openTasks, onOpenTasks, onOpenKey, chips, onSpot }: DayHeaderProps) {
   const today = days.find((d) => d.isToday);
+  const hasChips = Boolean(chips && chips.length > 0 && onSpot);
   return (
     <div className="hd">
-      <LayerSwitch value={layer} onChange={onLayer} />
-      {chips && chips.length > 0 && onSpot && <SpotChips chips={chips} onSpot={onSpot} top />}
+      {/* ONE COMMAND BAR (AJ, Oct 3 2026, direction B): where you are, what is
+          in front of you today, and the tools, on one surface split by
+          hairlines. It never wraps: the chips give up room and scroll first. */}
+      <div className="hd-bar">
+        <LayerSwitch value={layer} onChange={onLayer} />
+        {hasChips && <span className="hd-rule" aria-hidden />}
+        {hasChips && <SpotChips chips={chips!} onSpot={onSpot!} />}
+        <span className="hd-gap" aria-hidden />
+        <span className="hd-rule hd-rule--tools" aria-hidden />
+        <div className="hd-tools">
+          {today && today.key !== selected && (
+            <button type="button" className="hd-btn" onClick={() => onSelectDay(today.key)}>
+              Today
+            </button>
+          )}
+          {onOpenTasks && (
+            <button type="button" className="hd-btn" onClick={onOpenTasks} aria-label={openTasks ? `Tasks: ${openTasks} open. Opens Relay` : "Tasks. Opens Relay"}>
+              <ListChecks size={16} aria-hidden />
+              <span className="hd-btn-word">{"Tasks"}</span>
+              {openTasks ? <strong className="hd-count">{openTasks}</strong> : null}
+            </button>
+          )}
+          <button type="button" className="hd-btn" onClick={onOpenKey} aria-label="Key: what the marks mean">
+            <KeyRound size={16} aria-hidden />
+            <span className="hd-btn-word">{"Key"}</span>
+          </button>
+        </div>
+      </div>
       <div className="hd-week" role="tablist" aria-label="Pick a day">
         {days.map((d) => (
           <button
@@ -138,34 +172,13 @@ export function DayHeader({ layer, onLayer, days, selected, onSelectDay, openTas
           </button>
         ))}
       </div>
-      <div className="hd-tools">
-        {today && today.key !== selected && (
-          <button type="button" className="hd-btn" onClick={() => onSelectDay(today.key)}>
-            Today
-          </button>
-        )}
-        {onOpenTasks && (
-          <button type="button" className="hd-btn" onClick={onOpenTasks} aria-label={openTasks ? `Tasks: ${openTasks} open. Opens Relay` : "Tasks. Opens Relay"}>
-            <ListChecks size={16} aria-hidden />
-            <span className="hd-btn-word">{"Tasks"}</span>
-            {openTasks ? <strong>{openTasks}</strong> : null}
-          </button>
-        )}
-        <button type="button" className="hd-btn" onClick={onOpenKey} aria-label="Key: what the marks mean">
-          <KeyRound size={16} aria-hidden />
-          <span className="hd-btn-word">{"Key"}</span>
-        </button>
-      </div>
     </div>
   );
 }
 
 export interface DaySummaryProps {
-  /** "Monday, Sep 28". */
+  /** "Monday, Sep 28": said only while the day's bookings aren't read. */
   title: string;
-  sessions: number;
-  trainers: number;
-  chips: ReadonlyArray<SummaryChip>;
   /** The family lit on the grid, or null. */
   spot: MomentFamily | null;
   /** What the spotlight shows, in words (spotWords). */
@@ -206,7 +219,7 @@ function FocusSwitch({ value, onChange }: { value: HubFocus; onChange: (next: Hu
   );
 }
 
-export function DaySummary({ title, sessions, trainers, chips, spot, spotText, onSpot, onNext, onAsList, focus = null, bookings = "ready" }: DaySummaryProps) {
+export function DaySummary({ title, spot, spotText, onSpot, onNext, onAsList, focus = null, bookings = "ready" }: DaySummaryProps) {
   if (spot) {
     return (
       <div className="hd-sum" data-spot="true" role="status">
@@ -230,19 +243,19 @@ export function DaySummary({ title, sessions, trainers, chips, spot, spotText, o
       </div>
     );
   }
+  // The bar holds the chips and the week says each day's count (the command
+  // bar, Oct 3 2026): this line is drawn only for what neither says — a day
+  // whose bookings aren't read yet, and the phone's Focus switch.
+  const unread = bookings !== "ready";
+  if (!unread && !focus) return null;
   return (
-    <div className="hd-sum" data-focus-switch={focus ? "true" : undefined} data-chips-only={focus ? undefined : "true"}>
-      <span className="hd-sum-words">
-        <strong>{title}</strong>
-        {sessions > 0
-          ? ` · ${sessions} ${sessions === 1 ? "session" : "sessions"} · ${trainers} ${trainers === 1 ? "trainer" : "trainers"}`
-          : bookings === "failed"
-            ? " · couldn't load the bookings"
-            : bookings === "loading"
-              ? " · reading the bookings\u2026"
-              : " · nothing booked"}
-      </span>
-      {chips.length > 0 && <SpotChips chips={chips} onSpot={onSpot} />}
+    <div className="hd-sum" data-focus-switch={focus ? "true" : undefined}>
+      {unread && (
+        <span className="hd-sum-words">
+          <strong>{title}</strong>
+          {bookings === "failed" ? " · couldn't load the bookings" : " · reading the bookings\u2026"}
+        </span>
+      )}
       {focus && <FocusSwitch value={focus.value} onChange={focus.onChange} />}
     </div>
   );

@@ -267,9 +267,9 @@ describe("the Hub", () => {
     expect(days[0].textContent).toBe("Mon 285");
     expect(days[0].getAttribute("aria-selected")).toBe("true");
     expect(days[1].textContent).toBe("Tue 291");
-    expect([...el.querySelectorAll(".hd-chips--line .hd-chip")].map((c) => c.textContent)).toEqual(["Celebrate 1", "Welcome 2", "Watch 1"]);
-    // The same chips in the top row, for an upright iPad (Oct 3 2026; the stylesheet shows one or the other).
-    expect([...el.querySelectorAll(".hd-chips--top .hd-chip")].map((c) => c.textContent)).toEqual(["Celebrate 1", "Welcome 2", "Watch 1"]);
+    // Once, in the command bar (Oct 3 2026).
+    expect([...el.querySelectorAll(".hd-bar .hd-chip")].map((c) => c.textContent)).toEqual(["Celebrate 1", "Welcome 2", "Watch 1"]);
+    expect(el.querySelectorAll(".hd-chip")).toHaveLength(3);
   });
 
   it("opens a card's peek on a tap, and Escape closes it", () => {
@@ -369,7 +369,8 @@ describe("the Hub: the day rolls over", () => {
     expect(selected(el)).toBe("Tue 291");
     // The strip starts at the new today.
     expect(el.querySelectorAll(".hd-day")[0].textContent).toBe("Tue 291");
-    expect(el.querySelector(".hd-sum-words strong")?.textContent).toContain("Tuesday");
+    // The week says the day; no line under the bar repeats it (the command bar, Oct 3 2026).
+    expect(el.querySelector(".hd-sum")).toBeNull();
   });
 
   it("keeps a day the trainer picked on purpose", () => {
@@ -423,7 +424,7 @@ describe("the Hub: columns by trainer id", () => {
     expect(unassigned.querySelectorAll(".hs-card")).toHaveLength(3);
     expect([...unassigned.querySelectorAll(".hs-card-staff")].map((s) => s.textContent)).toEqual(["Booked with Samuel Lee"]);
     // Counted once each in the day, and the column says how many.
-    expect(el.querySelector(".hd-sum-words")?.textContent).toContain("8 sessions");
+    expect(el.querySelector('.hd-day[aria-selected="true"] .hd-day-count')?.textContent).toBe("8");
     expect([...el.querySelectorAll(".hs-colhead")][at]?.querySelector(".hs-colcount")?.textContent).toBe("3 sessions");
   });
 
@@ -699,7 +700,7 @@ describe("the Hub: Get to know", () => {
     const card = cardOf(el, "Laura Grubb")!;
     expect(card.querySelector('.hs-g[data-family="get-to-know"]')?.getAttribute("aria-label")).toBe("Something to ask about");
     expect(el.querySelector(".hs-scroll")?.innerHTML).not.toContain("mathom");
-    expect([...el.querySelectorAll(".hd-chips--line .hd-chip")].map((c) => c.textContent)).toEqual(["Celebrate 1", "Welcome 2", "Watch 1", "Get to know 1"]);
+    expect([...el.querySelectorAll(".hd-bar .hd-chip")].map((c) => c.textContent)).toEqual(["Celebrate 1", "Welcome 2", "Watch 1", "Get to know 1"]);
     act(() => [...el.querySelectorAll<HTMLButtonElement>(".hd-chip")].find((c) => c.textContent?.startsWith("Get to know"))!.click());
     expect(el.querySelector(".hd-spot-words")?.textContent).toBe("Showing 1 to ask about on the grid");
     expect(cardOf(el, "Laura Grubb")?.dataset.dim).toBeUndefined();
