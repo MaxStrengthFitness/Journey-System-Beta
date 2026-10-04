@@ -1900,6 +1900,21 @@ describe("Firestore Security Rules", () => {
     await assertSucceeds(updateDoc(doc(author, "studios", "studioA", "floorNotes", "n1"), { body: "The left pad sticks." }));
     const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
     await assertSucceeds(updateDoc(doc(owner, "studios", "studioA", "floorNotes", "n1"), { body: "Fixed on Oct 3." }));
+    // Anyone opens it again; "closed by" names the person closing, never someone else.
+    await assertSucceeds(
+      updateDoc(doc(teammate, "studios", "studioA", "floorNotes", "n1"), { resolvedAt: null, resolvedBy: null }),
+    );
+    await assertFails(
+      updateDoc(doc(teammate, "studios", "studioA", "floorNotes", "n1"), {
+        resolvedAt: serverTimestamp(),
+        resolvedBy: { id: "trainerA", name: "Trainer A" },
+      }),
+    );
+    // Taking it off the list is its author's or a leader's, as changing its words is (the review, Oct 3 2026).
+    await assertFails(updateDoc(doc(teammate, "studios", "studioA", "floorNotes", "n1"), { isArchived: true }));
+    await assertSucceeds(setDoc(doc(author, "studios", "studioA", "floorNotes", "n2"), floorNote()));
+    await assertSucceeds(updateDoc(doc(owner, "studios", "studioA", "floorNotes", "n2"), { isArchived: true }));
+    await assertSucceeds(updateDoc(doc(author, "studios", "studioA", "floorNotes", "n1"), { isArchived: true }));
   });
 
   it("lets a studio offer a floor note to every MSF studio, and only an administrator shares it", async () => {

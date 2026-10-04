@@ -28,7 +28,7 @@ import { Wrench } from "lucide-react";
 import { db } from "../../firebase";
 import { firstSentences } from "../../lib/first-sentences";
 import { studioDateKey } from "../../lib/studio-time";
-import { earlierNotes, floorNoteFromDoc, floorThreads, openFloorLines, type FloorNote } from "../floor-notes/floor-notes";
+import { copiedKeysOf, earlierNotes, floorNoteFromDoc, floorThreads, openFloorLines, type FloorNote } from "../floor-notes/floor-notes";
 
 type FloorRead =
   | { status: "loading" }
@@ -95,7 +95,9 @@ export function useFloorNote(studioId: string | null, machineId: string | null):
           .filter((x): x is FloorNote => x !== null);
         const threads = floorThreads(notes, machineId);
         // The old note shows only while it hasn't become one of the dated ones.
-        const stillEarlier = text ? earlierNotes({ studioNotes: { text } }, threads).length > 0 : false;
+        const stillEarlier = text
+          ? earlierNotes({ studioNotes: { text } }, threads, copiedKeysOf(notes, machineId)).length > 0
+          : false;
         setRead({
           status: "ready",
           open: openFloorLines(threads).map((o) => ({

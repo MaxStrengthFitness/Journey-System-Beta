@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blocksText, earlierNotes, floorNoteFromDoc, floorThreads, openFloorLines, type FloorNote } from "./floor-notes";
+import { blocksText, copiedKeysOf, earlierNotes, floorNoteFromDoc, floorThreads, openFloorLines, type FloorNote } from "./floor-notes";
 
 const at = (iso: string) => ({ toDate: () => new Date(iso) });
 
@@ -150,5 +150,26 @@ describe("blocksText and openFloorLines", () => {
     expect(openFloorLines(threads)).toEqual([
       { text: "Pin sticks.", latest: "Sprayed it.", by: "Sam", atMs: new Date("2026-10-02T14:00:00Z").getTime() },
     ]);
+  });
+});
+
+describe("a note taken off the list (the review, Oct 3 2026)", () => {
+  it("takes its updates with it: none comes back as a note of its own", () => {
+    const notes = [
+      note({ id: "r", isArchived: true }),
+      note({ id: "u", threadId: "r", body: "Maintenance booked." }),
+      note({ id: "other", body: "Back pad loose." }),
+    ];
+    expect(floorThreads(notes, "leg").map((t) => t.id)).toEqual(["other"]);
+  });
+
+  it("still answers for the old note it was copied from, so the old one never comes back", () => {
+    const notes = [note({ id: "copy", body: "Left pad sticks.", copiedFrom: "studio-notes", isArchived: true })];
+    const threads = floorThreads(notes, "leg");
+    expect(threads).toEqual([]);
+    expect(copiedKeysOf(notes, "leg")).toEqual(new Set(["studio-notes"]));
+    expect(copiedKeysOf(notes, "chest").size).toBe(0);
+    expect(earlierNotes({ studioNotes: { text: "Left pad sticks." } }, threads, copiedKeysOf(notes, "leg"))).toEqual([]);
+    expect(earlierNotes({ studioNotes: { text: "Left pad sticks." } }, threads)).toHaveLength(1);
   });
 });

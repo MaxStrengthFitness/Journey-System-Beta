@@ -1,8 +1,9 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { ChevronDown, History, MoreHorizontal } from "lucide-react";
 import { useToast } from "../../contexts/ToastContext";
 import { useUnsavedChanges } from "../unsaved-changes";
 import {
+  copiedKeysOf,
   earlierNotes,
   floorThreads,
   msOf,
@@ -28,9 +29,14 @@ import "./floor-notes.css";
  * list. Mounted by the machine's Catalog page and by My Studio → Machines;
  * the screen reads the studio's notes ONCE (useFloorNotes) and hands them in.
  *
- * Typing is never lost unannounced: the note box and each open update, close
- * or edit box join the unsaved-changes registry. The whole list is keyed by
- * studio and machine, so a draft never follows a trainer onto the next one.
+ * Typing is never lost unannounced: the note box and every update, close or
+ * edit box join the unsaved-changes registry. Those boxes' words are held
+ * HERE, not in the note they belong to, because another iPad can close a
+ * note or take it off the list mid-sentence (the review, Oct 3 2026): a note
+ * closed elsewhere opens the closed list so the words stay on screen, and a
+ * note gone altogether leaves its words in a card that saves them as a new
+ * note or lets them go. The whole list is keyed by studio and machine, so a
+ * draft never follows a trainer onto the next one.
  */
 export interface FloorNotesProps {
   studioId: string | null;
@@ -44,7 +50,11 @@ export interface FloorNotesProps {
   uid: string | null;
   /** Their name as the floor knows it; null when they can't write here. */
   writerName: string | null;
-  /** Leads this studio: may change anyone's words and take a note off the list. */
+  /**
+   * May change anyone's words and take any note off the list: the rules'
+   * isStudioOwnerOrHeadTrainer, so pass leadsStudioPerRules, never a wider
+   * "leads" answer (the review, Oct 3 2026).
+   */
   canLead: boolean;
   /**
    * The machine's lineage keys (sharedKeysFor), which other studios find a
@@ -53,6 +63,34 @@ export interface FloorNotesProps {
   shareKeys?: string[];
   /** Clock, for the tests. */
   nowMs?: number;
+}
+
+type Mode = "update" | "close" | "edit" | "remove";
+
+/** What someone has started on one note: held by the list, not the note. */
+interface Draft {
+  mode: Mode;
+  text: string;
+  /** The note's words when the draft began: the edit's starting point, and the orphan card's reminder. */
+  about: string;
+  /** A write is on its way: the note may leave the open list before it lands, and that is not an orphan. */
+  sending?: boolean;
+}
+
+const isTyping = (d: Draft | undefined): boolean =>
+  Boolean(
+    d &&
+      (d.mode === "update" || d.mode === "close" || d.mode === "edit") &&
+      d.text.trim() !== "" &&
+      (d.mode !== "edit" || d.text !== d.about),
+  );
+
+/** "That isn't yours to change" for a refusal; the connection only when it may be the connection. */
+function failedWords(err: unknown): string {
+  const code = (err as { code?: unknown } | null)?.code;
+  return code === "permission-denied"
+    ? "That isn't yours to change here."
+    : "Couldn't save that. Check the connection and try again.";
 }
 
 export function FloorNotes(props: FloorNotesProps) {
@@ -78,12 +116,14 @@ function FloorNotesBody({
   const open = threads.filter((t) => !t.closed);
   const closed = threads.filter((t) => t.closed);
   const older = useMemo(
-    () => (read.state === "ready" ? earlierNotes(earlier ?? {}, threads) : []),
-    [read.state, earlier, threads],
+    () =>
+      read.state === "ready" ? earlierNotes(earlier ?? {}, threads, copiedKeysOf(read.notes, machineId)) : [],
+    [read.state, read.notes, earlier, threads, machineId],
   );
   const [showClosed, setShowClosed] = useState(false);
-  const [draft, setDraft] = useState("");
+  const [box, setBox] = useState("");
   const [saving, setSaving] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const canWrite = Boolean(studioId && writerName);
   const { offerSwitch, catalogNoteSwitch } = useFloorNoteSwitches({
     studioId,
@@ -94,7 +134,22 @@ function FloorNotesBody({
     canWrite,
   });
 
-  useUnsavedChanges(draft.trim() !== "", `${studioName}’s note on ${machineName}`, { onDiscard: () => setDraft("") });
+  const patchDraft = useCallback((id: string, next: Draft | null | ((d: Draft) => Draft)) => {
+    setDrafts((prev) => {
+      const copy = { ...prev };
+      if (next === null) delete copy[id];
+      else if (typeof next === "function") {
+        if (!prev[id]) return prev;
+        copy[id] = next(prev[id]);
+      } else copy[id] = next;
+      return copy;
+    });
+  }, []);
+
+  useUnsavedChanges(box.trim() !== "", `${studioName}’s note on ${machineName}`, { onDiscard: () => setBox("") });
+  useUnsavedChanges(Object.values(drafts).some(isTyping), `An update on the ${machineName}`, {
+    onDiscard: () => setDrafts({}),
+  });
 
   const add = async (body: string, copiedFrom?: EarlierNote["key"]) => {
     if (!studioId || !writerName) return false;
@@ -104,7 +159,7 @@ function FloorNotesBody({
       return true;
     } catch (err) {
       console.error("[floor-notes] add failed:", err);
-      toast.error("Couldn't save the note. Check the connection and try again.");
+      toast.error(failedWords(err));
       return false;
     } finally {
       setSaving(false);
@@ -112,6 +167,30 @@ function FloorNotesBody({
   };
 
   const mayChange = (n: FloorNote) => canLead || (uid !== null && n.authorId === uid);
+
+  // A note closed on another iPad while someone here writes on it: the
+  // closed list opens, so the words stay where they were being written.
+  const closedHoldsTyping = closed.some((t) => isTyping(drafts[t.id]) && !drafts[t.id].sending);
+  const closedShown = showClosed || closedHoldsTyping;
+  // A note gone from the list altogether (taken off it elsewhere): its words
+  // wait in a card of their own.
+  const orphans = Object.entries(drafts).filter(
+    ([id, d]) => isTyping(d) && !d.sending && read.state === "ready" && !threads.some((t) => t.id === id),
+  );
+
+  const item = (t: FloorThread, withOffer: boolean) => (
+    <ThreadItem
+      key={t.id}
+      thread={t}
+      studioId={studioId}
+      now={now}
+      writerName={writerName}
+      mayChange={mayChange}
+      offerSwitch={withOffer ? offerSwitch : undefined}
+      draft={drafts[t.id]}
+      patchDraft={patchDraft}
+    />
+  );
 
   return (
     <div className="fn" data-testid="floor-notes">
@@ -124,26 +203,26 @@ function FloorNotesBody({
             id={`fn-new-${machineId}`}
             className="fn-words"
             rows={2}
-            value={draft}
+            value={box}
             placeholder={`What should the next person at the ${machineName} know?`}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => setBox(e.target.value)}
           />
-          {draft.trim() !== "" && (
+          {box.trim() !== "" && (
             <div className="fn-row">
               <button
                 type="button"
                 className="fn-btn fn-btn--primary"
                 disabled={saving}
                 onClick={async () => {
-                  if (await add(draft)) {
-                    setDraft("");
+                  if (await add(box)) {
+                    setBox("");
                     toast.success("Note added. Everyone at the studio sees it.");
                   }
                 }}
               >
                 {saving ? "Saving…" : "Add note"}
               </button>
-              <button type="button" className="fn-btn" onClick={() => setDraft("")}>
+              <button type="button" className="fn-btn" onClick={() => setBox("")}>
                 Clear
               </button>
             </div>
@@ -151,30 +230,52 @@ function FloorNotesBody({
         </div>
       )}
 
+      {orphans.map(([id, d]) => (
+        <div key={id} className="fn-confirm" role="group" aria-label="Words not saved yet" data-testid="floor-note-orphan">
+          <p className="fn-quiet">
+            The note you were writing on (“{d.about}”) was taken off the list on another iPad. Your words aren’t saved yet.
+          </p>
+          <textarea
+            className="fn-words"
+            rows={2}
+            aria-label="Your words"
+            value={d.text}
+            onChange={(e) => patchDraft(id, (x) => ({ ...x, text: e.target.value }))}
+          />
+          <div className="fn-row">
+            <button
+              type="button"
+              className="fn-btn fn-btn--primary"
+              disabled={saving || !canWrite}
+              onClick={async () => {
+                if (await add(d.text)) {
+                  patchDraft(id, null);
+                  toast.success("Saved as a new note.");
+                }
+              }}
+            >
+              Save as a new note
+            </button>
+            <button type="button" className="fn-btn" onClick={() => patchDraft(id, null)}>
+              Let them go
+            </button>
+          </div>
+        </div>
+      ))}
+
       {read.state === "loading" && <p className="fn-quiet">Loading the floor’s notes…</p>}
       {read.state === "failed" && (
         <p className="fn-quiet" role="status">
           Couldn’t load the floor’s notes. They aren’t lost; check the connection.
         </p>
       )}
-      {read.state === "ready" && threads.length === 0 && older.length === 0 && (
+      {read.state === "ready" && threads.length === 0 && older.length === 0 && orphans.length === 0 && (
         <p className="fn-quiet">No notes on the {machineName} at {studioName} yet.</p>
       )}
 
       {open.length > 0 && (
         <ul className="fn-list" aria-label={`Open notes on the ${machineName}`}>
-          {open.map((t) => (
-            <ThreadItem
-              key={t.id}
-              thread={t}
-              studioId={studioId}
-              machineName={machineName}
-              now={now}
-              writerName={writerName}
-              mayChange={mayChange}
-              offerSwitch={offerSwitch}
-            />
-          ))}
+          {open.map((t) => item(t, true))}
         </ul>
       )}
 
@@ -183,25 +284,16 @@ function FloorNotesBody({
           <button
             type="button"
             className="fn-fold"
-            aria-expanded={showClosed}
+            aria-expanded={closedShown}
+            disabled={closedHoldsTyping}
             onClick={() => setShowClosed((v) => !v)}
           >
             <ChevronDown size={14} aria-hidden className="fn-fold__chev" />
             Closed · {closed.length}
           </button>
-          {showClosed && (
+          {closedShown && (
             <ul className="fn-list" aria-label={`Closed notes on the ${machineName}`}>
-              {closed.map((t) => (
-                <ThreadItem
-                  key={t.id}
-                  thread={t}
-                  studioId={studioId}
-                  machineName={machineName}
-                  now={now}
-                  writerName={writerName}
-                  mayChange={mayChange}
-                />
-              ))}
+              {closed.map((t) => item(t, false))}
             </ul>
           )}
         </div>
@@ -251,42 +343,42 @@ function FloorNotesBody({
   );
 }
 
-type Mode = null | "update" | "close" | "edit" | "remove";
-
 function ThreadItem({
   thread,
   studioId,
-  machineName,
   now,
   writerName,
   mayChange,
   offerSwitch,
+  draft,
+  patchDraft,
 }: {
   thread: FloorThread;
   studioId: string | null;
-  machineName: string;
   now: number;
   writerName: string | null;
   mayChange: (n: FloorNote) => boolean;
   offerSwitch?: (note: FloorNote) => ReactNode;
+  draft: Draft | undefined;
+  patchDraft: (id: string, next: Draft | null | ((d: Draft) => Draft)) => void;
 }) {
   const toast = useToast();
   const { root, updates, closed } = thread;
-  const [mode, setMode] = useState<Mode>(null);
   const [more, setMore] = useState(false);
-  const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
   const canWrite = Boolean(studioId && writerName);
   const writer = { name: writerName ?? "" };
-  const typing = (mode === "update" || mode === "close" || mode === "edit") && text.trim() !== "" && text !== (mode === "edit" ? root.body : "");
-
-  useUnsavedChanges(typing, `An update on the ${machineName}`, { onDiscard: () => setMode(null) });
+  // A note closed (here or elsewhere) while an update or a close was being
+  // written: the words are kept and go on it as an update.
+  const closedUnderYou = closed && Boolean(draft) && !draft!.sending && (draft!.mode === "update" || draft!.mode === "close");
+  const mode: Mode | null = draft ? (closedUnderYou ? "update" : draft.mode) : null;
+  const text = draft?.text ?? "";
+  const busy = Boolean(draft?.sending);
 
   const start = (m: Mode) => {
-    setMode(m);
     setMore(false);
-    setText(m === "edit" ? root.body : "");
+    patchDraft(root.id, { mode: m, text: m === "edit" ? root.body : "", about: root.body });
   };
+  const stop = () => patchDraft(root.id, null);
   // What sits behind More: the words and Take off the list for its author or
   // a leader, and the offer to every MSF studio. Two buttons on a note, not five.
   const offer = !closed ? offerSwitch?.(root) : null;
@@ -294,17 +386,16 @@ function ThreadItem({
 
   const run = async (work: () => Promise<void>, done: string) => {
     if (!studioId) return;
-    setBusy(true);
+    const sendingOne = Boolean(draft);
+    if (sendingOne) patchDraft(root.id, (d) => ({ ...d, sending: true }));
     try {
       await work();
-      setMode(null);
-      setText("");
+      if (sendingOne) stop();
       toast.success(done);
     } catch (err) {
       console.error("[floor-notes] write failed:", err);
-      toast.error("Couldn't save that. Check the connection and try again.");
-    } finally {
-      setBusy(false);
+      if (sendingOne) patchDraft(root.id, (d) => ({ ...d, sending: false }));
+      toast.error(failedWords(err));
     }
   };
 
@@ -337,7 +428,6 @@ function ThreadItem({
             <button
               type="button"
               className="fn-btn"
-              disabled={busy}
               onClick={() => run(() => reopenFloorNote(studioId!, root.id), "Opened again.")}
             >
               Open again
@@ -386,6 +476,11 @@ function ThreadItem({
 
       {(mode === "update" || mode === "close" || mode === "edit") && (
         <div className="fn-compose">
+          {closedUnderYou && (
+            <p className="fn-quiet" role="status">
+              This note was closed while you were writing. Your words go on it as an update.
+            </p>
+          )}
           <label className="fn-sr" htmlFor={`fn-${mode}-${root.id}`}>
             {mode === "update" ? "The update" : mode === "close" ? "What happened" : "The note's words"}
           </label>
@@ -402,7 +497,7 @@ function ThreadItem({
                   ? "What happened, if anyone will want to know (optional): the pin was replaced."
                   : undefined
             }
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => patchDraft(root.id, (d) => ({ ...d, text: e.target.value }))}
           />
           <div className="fn-row">
             <button
@@ -419,7 +514,7 @@ function ThreadItem({
             >
               {busy ? "Saving…" : mode === "update" ? "Add update" : mode === "close" ? "Close the note" : "Save the words"}
             </button>
-            <button type="button" className="fn-btn" disabled={busy} onClick={() => setMode(null)}>
+            <button type="button" className="fn-btn" disabled={busy} onClick={stop}>
               Cancel
             </button>
           </div>
@@ -441,7 +536,7 @@ function ThreadItem({
             >
               Take it off
             </button>
-            <button type="button" className="fn-btn" disabled={busy} onClick={() => setMode(null)}>
+            <button type="button" className="fn-btn" disabled={busy} onClick={stop}>
               Keep it
             </button>
           </div>

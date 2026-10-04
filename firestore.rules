@@ -2701,7 +2701,15 @@ service cloud.firestore {
                       && (request.resource.data.resolvedAt == null || request.resource.data.resolvedAt is timestamp)
                       && request.resource.data.isArchived is bool
                       && sharedFieldsValid(request.resource.data)
-                      && (request.resource.data.body == resource.data.body
+                      // "Closed by" names the person closing, or stays as it was.
+                      && (request.resource.data.resolvedBy == resource.data.resolvedBy
+                          || request.resource.data.resolvedBy == null
+                          || (request.resource.data.resolvedBy is map
+                              && request.resource.data.resolvedBy.keys().hasOnly(['id', 'name'])
+                              && request.resource.data.resolvedBy.id == request.auth.uid))
+                      // The words, and taking it off the list: its author or a leader.
+                      && ((request.resource.data.body == resource.data.body
+                           && request.resource.data.isArchived == resource.data.isArchived)
                           || resource.data.authorId == request.auth.uid
                           || isStudioOwnerOrHeadTrainer(studioId))
                       && shareDecisionOk()

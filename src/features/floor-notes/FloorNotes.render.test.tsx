@@ -270,6 +270,51 @@ describe("the floor's notes on a machine", () => {
     expect(host.querySelector('[aria-label="Earlier notes"]')).toBeNull();
   });
 
+  it("keeps half-written words when another iPad closes the note: they stay on screen and go on as an update", async () => {
+    await mount();
+    await click(byText("Add an update", item("Back pad loose")));
+    await type(item("Back pad loose").querySelector("textarea"), "Tightened the bolt.");
+    // Another iPad closes it.
+    const closedElsewhere = NOTES.map((n) =>
+      n.id === "theirs" ? { ...n, resolvedAt: at("2026-10-03T15:00:00Z"), resolvedBy: { id: "u-sam", name: "Sam" } } : n,
+    );
+    await mount({ read: { state: "ready", notes: closedElsewhere } });
+    const kept = item("Back pad loose");
+    expect((kept.querySelector("textarea") as HTMLTextAreaElement).value).toBe("Tightened the bolt.");
+    expect(kept.textContent).toContain("This note was closed while you were writing.");
+    await click(host.querySelector('[data-action="away"]')!);
+    expect(question()).toContain("An update on the Leg Press");
+    await click(document.querySelector('[data-testid="leave-confirm"] [data-action="keep-editing"]')!);
+    await click(byText("Add update", kept));
+    expect(w.update).toHaveBeenCalledWith(expect.objectContaining({ body: "Tightened the bolt.", root: expect.objectContaining({ id: "theirs" }) }));
+    expect(w.close).not.toHaveBeenCalled();
+  });
+
+  it("keeps half-written words when another iPad takes the note off the list, and saves them as a new note", async () => {
+    await mount();
+    await click(byText("Add an update", item("Back pad loose")));
+    await type(item("Back pad loose").querySelector("textarea"), "Still loose on Friday.");
+    await mount({ read: { state: "ready", notes: NOTES.map((n) => (n.id === "theirs" ? { ...n, isArchived: true } : n)) } });
+    const card = host.querySelector('[data-testid="floor-note-orphan"]')!;
+    expect(card.textContent).toContain("(“Back pad loose.”) was taken off the list on another iPad");
+    expect((card.querySelector("textarea") as HTMLTextAreaElement).value).toBe("Still loose on Friday.");
+    await click(byText("Save as a new note", card));
+    expect(w.add).toHaveBeenCalledWith(expect.objectContaining({ body: "Still loose on Friday.", machineId: "leg" }));
+    expect(host.querySelector('[data-testid="floor-note-orphan"]')).toBeNull();
+  });
+
+  it("says a refused change isn't yours, never that the connection failed", async () => {
+    w.edit.mockRejectedValueOnce(Object.assign(new Error("denied"), { code: "permission-denied" }));
+    await mount({ canLead: true });
+    await click(byText("More", item("Back pad loose")));
+    await click(byText("Change the words", item("Back pad loose")));
+    await type(item("Back pad loose").querySelector("textarea"), "Back pad loose on the left.");
+    await click(byText("Save the words", item("Back pad loose")));
+    expect(document.body.textContent).toContain("That isn't yours to change here.");
+    // The words are still there to try again.
+    expect((item("Back pad loose").querySelector("textarea") as HTMLTextAreaElement).value).toBe("Back pad loose on the left.");
+  });
+
   it("says plainly when a machine has no notes at all", async () => {
     await mount({ read: { state: "ready", notes: [] }, earlier: {} });
     expect(host.textContent).toContain("No notes on the Leg Press at Solon yet.");

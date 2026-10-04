@@ -27,7 +27,7 @@ import { useStudioWiki } from "../wiki/useStudioWiki";
 import { buildDatabase, planAdoption } from "../machine-db/database";
 import { useSharedMachines } from "../machine-db/hooks";
 import { adoptMachine } from "../machine-db/mutations";
-import { writesForStudioPerRules } from "../learning/permissions";
+import { leadsStudioPerRules, writesForStudioPerRules } from "../learning/permissions";
 import { ContextPanel } from "../relay/board/ContextPanel";
 import { useRelayMaybe } from "../relay/board/RelayContext";
 import { leadsHere } from "../relay/leads";
@@ -531,7 +531,9 @@ function MachineDoor({
           earlier={earlier}
           uid={uid}
           writerName={canLogUpkeep ? (authTrainer?.fullName ?? "A trainer") : null}
-          canLead={canLead}
+          // The rules' own answer for whose words a leader may change
+          // (isStudioOwnerOrHeadTrainer), never the wider leadsHere.
+          canLead={leadsStudioPerRules(authTrainer ?? null, studioId)}
           shareKeys={[shareKey]}
         />
       </section>

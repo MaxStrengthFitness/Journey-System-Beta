@@ -258,7 +258,7 @@ And on the note box, while this half was built: *"if note harness is the current
 design we really need to look at some other was we can take a note because that is so
 clunky looking but ill let you cook"* — Notes 10 below.
 
-### What was built — ten more commits
+### What was built — eleven more commits
 
 | # | Commit | What it does |
 | --- | --- | --- |
@@ -270,6 +270,7 @@ clunky looking but ill let you cook"* — Notes 10 below.
 | 14 | `d5f6fcd0` | **One dated list per machine** (`features/floor-notes`): a note with its updates, Close (with what happened) and Open again, Closed · N folded; the three old boxes' words shown under it as **Earlier notes**, read-only, with **Copy into the list**. A note can be offered to every MSF studio (author or leader; an administrator decides; kind `floor` on Waiting for review). |
 | 15 | `a616ac5c` | **The list where the old boxes were**: the Catalog page ("{Studio}'s notes", on the page and never folded), My Studio → Machines' door (and Operations → Floor), the session's machine sheet (this machine's open notes with their latest word, at most four), and Local set-up (its old note only while one exists). The Studio notes box and its save are deleted. |
 | 16 | `0464ed97` | **Two buttons on a floor note**: Add an update and Close, with the words, Take off the list and the offer behind More — from looking at it on the page. |
+| 17 | (this commit) | **The review's fixes** (a fresh review of the floor's notes found four real problems and one smaller): taking a note off the list takes its updates with it, instead of each coming back as an open note; a copy taken off the list still answers for the old note it came from; My Studio offers "Change the words" only to the leaders the rules allow (not administrators or franchise owners), and a refused change says so instead of blaming the connection; the rules now hold taking a note off the list to its author or a leader, and "closed by" to the person closing; and words being written when another iPad closes or removes the note are kept (on screen as an update, or in a card that saves them as a new note). |
 
 ### The floor's notes, in short
 
@@ -305,7 +306,7 @@ this round made quick to file; the Journal stays the trainer's own.
   wrote them, and still read.
 - **Rules.** The client notes needed none. The floor's notes add one block
   (`match /floorNotes/{noteId}`) and a collection-group read of shared notes; three new
-  rules tests, **287 passing** on the emulator on AJ's PC (AJ's run is the one that
+  rules tests, **287 passing** (with the review's tighter archive and closed-by checks) on the emulator on AJ's PC (AJ's run is the one that
   counts).
 - **Indexes.** Three: `journalEntries` (studioId, kind, createdAt DESC) for Operations →
   Today; `floorNotes` collection group (shared, sharedKeys contains) for other studios'

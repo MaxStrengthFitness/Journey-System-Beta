@@ -18,11 +18,11 @@ Until this round a studio's machine knowledge lived in three boxes that asked fo
 
 - A note of its own has `threadId: null`; an **update** carries its root's id. Updates hang off the note, oldest first, so "pin sticks" → "maintenance booked" → closed "pin replaced" is one story.
 - **Close** moves a note to the history (Closed · N, folded); anyone at the studio may close or **open it again**. Closing can carry what happened, written as a last update.
-- **Change the words**: the note's author or a leader. **Take off the list** (archive, never delete): the author or a leader, for a note that should never have been written.
+- **Change the words**: the note's author or a leader. **Take off the list** (archive, never delete): the author or a leader, for a note that should never have been written; its updates go with it, and a copy taken off the list still answers for the old note it came from, so that never comes back. "A leader" is the rules' `isStudioOwnerOrHeadTrainer` (`leadsStudioPerRules`), never the wider `leadsHere`, which also answers for administrators and franchise owners the rule refuses.
 - Every note is signed by the Auth uid that wrote it (`authorId`), with the writer's name and the day.
 - A note may carry `machineName` (for the review page) and `copiedFrom` (which old box it was copied from).
 
-`firestore.rules` holds all of this: read and write by the people who work there (`writesForStudio`), the machine, thread, author and day fixed for the note's life, no delete. A new note is never already offered; offering is an update (this also keeps the create rule under Firestore's 1,000-expression budget).
+`firestore.rules` holds all of this (the words and taking it off the list for the author or a leader; "closed by" naming the person closing): read and write by the people who work there (`writesForStudio`), the machine, thread, author and day fixed for the note's life, no delete. A new note is never already offered; offering is an update (this also keeps the create rule under Firestore's 1,000-expression budget).
 
 ## Nothing old is rewritten
 
@@ -46,4 +46,4 @@ A note of its own can be **offered to every MSF studio** by its author or a lead
 | `store.ts` | Every write: add, update, close (with words), reopen, change the words, take off the list |
 | `useFloorNotes.ts` | One listener for the studio's notes, mounted by the screen; a failed read is "couldn't load", never "no notes" |
 | `useFloorNoteSwitches.tsx` | Who may offer what, the same on both screens |
-| `FloorNotes.tsx` + `floor-notes.css` | The list. Every box that holds typing joins the unsaved-changes registry, and the list is keyed by studio and machine so a draft never follows a trainer to the next one. `FloorNotes.render.test.tsx`; the stylesheet is held by `my-studio/look.test.ts` |
+| `FloorNotes.tsx` + `floor-notes.css` | The list. Every box that holds typing joins the unsaved-changes registry, and the list is keyed by studio and machine so a draft never follows a trainer to the next one. An update or close box's words are held by the list, not the note: a note closed on another iPad mid-sentence opens the closed list with the words still in it (they go on as an update), and one taken off the list leaves them in a card that saves them as a new note. A refused write says it isn't yours to change, never that the connection failed. `FloorNotes.render.test.tsx`; the stylesheet is held by `my-studio/look.test.ts` |

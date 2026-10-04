@@ -145,10 +145,18 @@ const writtenMs = (n: FloorNote) => msOf(n.createdAt) ?? msOf(n.updatedAt) ?? 0;
 /**
  * One machine's notes as threads: open ones first, newest movement first,
  * then closed ones, newest first. An update whose root isn't here stands as
- * its own thread rather than vanishing; an archived note is left out.
+ * its own thread rather than vanishing; an archived note is left out, and so
+ * is every update on it (taking a note off the list takes its story with it:
+ * only the root is marked, and its updates must never come back as notes of
+ * their own — the review, Oct 3 2026).
  */
 export function floorThreads(notes: readonly FloorNote[], machineId: string): FloorThread[] {
-  const mine = notes.filter((n) => n.machineId === machineId && !n.isArchived);
+  const archivedRoots = new Set(
+    notes.filter((n) => n.machineId === machineId && n.isArchived && !n.threadId).map((n) => n.id),
+  );
+  const mine = notes.filter(
+    (n) => n.machineId === machineId && !n.isArchived && !(n.threadId && archivedRoots.has(n.threadId)),
+  );
   const roots = new Map<string, FloorNote>();
   for (const n of mine) if (!n.threadId) roots.set(n.id, n);
   const updates = new Map<string, FloorNote[]>();
@@ -188,11 +196,23 @@ export function blocksText(blocks: readonly WikiBlock[] | null | undefined): str
 const norm = (t: string) => t.replace(/\s+/g, " ").trim().toLowerCase();
 
 /**
+ * Which earlier notes have been copied into a machine's list, archived
+ * copies included: a copy taken off the list still answers for the old
+ * note, which nothing can clear any more (the review, Oct 3 2026).
+ */
+export function copiedKeysOf(notes: readonly FloorNote[], machineId: string): Set<EarlierKey> {
+  const out = new Set<EarlierKey>();
+  for (const n of notes) if (n.machineId === machineId && n.copiedFrom) out.add(n.copiedFrom);
+  return out;
+}
+
+/**
  * The older notes to show under the list, each once, in the order a reader
  * would want them (the Catalog note, the Studio notes, the unit's note). One
- * already copied into a dated note — it says so, or its words are already a
- * note on the list — is left out, except a Catalog note shared with (or
- * offered to) every MSF studio, which stays, marked copied, for its switch.
+ * already copied into a dated note — a note says so (`alsoCopied` counts
+ * the archived ones), or its words are already a note on the list — is left
+ * out, except a Catalog note shared with (or offered to) every MSF studio,
+ * which stays, marked copied, for its switch.
  */
 export function earlierNotes(
   input: {
@@ -209,9 +229,10 @@ export function earlierNotes(
     unitNote?: string | null;
   },
   threads: readonly FloorThread[],
+  alsoCopied: Iterable<EarlierKey> = [],
 ): EarlierNote[] {
   const said = new Set<string>();
-  const claimed = new Set<EarlierKey>();
+  const claimed = new Set<EarlierKey>(alsoCopied);
   for (const t of threads) {
     for (const n of [t.root, ...t.updates]) {
       said.add(norm(n.body));
