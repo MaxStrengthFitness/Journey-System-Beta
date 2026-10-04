@@ -659,7 +659,7 @@ export function WorkoutTrackerView({
       },
       (error) => {
         console.error("[stale] finishing the old session was refused", error);
-        toastError(`${name}'s unfinished session couldn't be finished. It is still on her profile.`);
+        toastError(`${name}'s unfinished session couldn't be finished. It is still on the profile.`);
       },
     );
   };
@@ -2132,7 +2132,7 @@ export function WorkoutTrackerView({
             origin: "in_session",
           },
         ).catch(() =>
-          toastError("Session saved. The pain skip couldn't be added to her notes — add it from Notes & Profile → Notes."),
+          toastError("Session saved. The pain skip couldn't be added to the client's notes — add it from Notes & Profile → Notes."),
         );
       }
 

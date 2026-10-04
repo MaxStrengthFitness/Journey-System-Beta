@@ -183,7 +183,7 @@ export function MachineNotes({
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="About her on this machine — a cue, a pad she needs, where she feels it…"
+            placeholder="About this client on this machine — a cue, a pad that helps, where it's felt…"
             aria-label="New machine note"
             aria-describedby="machine-note-whose"
           />
@@ -193,7 +193,7 @@ export function MachineNotes({
               else. */}
           <p className="eq-composer__whose" id="machine-note-whose">
             Something wrong with the machine itself — a sticky seat, a pin that jams? That&rsquo;s the floor&rsquo;s, not
-            hers: flag it on My Studio → Relay so it&rsquo;s fixed for everyone.
+            the client&rsquo;s: flag it on My Studio → Relay so it&rsquo;s fixed for everyone.
           </p>
           <div className="eq-composer__row">
             <label className="eq-check">

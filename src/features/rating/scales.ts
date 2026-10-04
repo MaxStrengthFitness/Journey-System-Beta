@@ -185,7 +185,7 @@ export const DOSE_SCALE: DialScale = {
 export const EFFORT_SCALE: DialScale = {
   id: "effort",
   mode: "relative",
-  ask: "How hard did she work today?",
+  ask: "How hard did the client work today?",
   words: ["Left some in the tank", "Held back a bit", "As expected", "Pushed hard", "Gave everything"],
   untouched: "As expected",
   neutral: true,

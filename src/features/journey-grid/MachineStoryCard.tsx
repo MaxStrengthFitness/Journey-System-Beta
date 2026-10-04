@@ -30,7 +30,7 @@ export function MachineStoryCard({ lines, partial }: { lines: StoryLine[]; parti
         ))}
       </dl>
       {partial && (
-        <p className="mt-1.5 text-[11px] text-muted-foreground">From the sessions loaded on her profile.</p>
+        <p className="mt-1.5 text-[11px] text-muted-foreground">From the sessions loaded on the profile.</p>
       )}
     </section>
   );
