@@ -11,8 +11,8 @@
  docs/ops/TESTING-CHECKLIST.md.
 
  No Mindbody call and no Cloud Functions change (prepare refuses one).
- Three new indexes (journalEntries studioId+kind+createdAt; floorNotes
- shared+sharedKeys, collection group; floorNotes.machineId). One new
+ Two new indexes (journalEntries studioId+kind+createdAt; floorNotes
+ shared+sharedKeys, collection group). One new
  collection, studios/{s}/floorNotes, with its own rules block and a
  collection-group read of shared notes; nothing else in the rules changes.
  Rules go before the app.

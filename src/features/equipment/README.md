@@ -342,8 +342,9 @@ AJ (the Atlas answers): notes about her on one machine live in her journal and s
 
 *Since AJ's answer 2A the same day, the floor's notes are one dated list per
 machine (`features/floor-notes`), and the card reads this machine's OPEN notes
-from it (one query on `machineId`, its field override in
-firestore.indexes.json), each with its latest update, at most four, then the
+from it (one query on `machineId` over this studio's floor notes, with no index
+of its own: the Enterprise edition refuses single-field index settings), each
+with its latest update, at most four, then the
 old Studio notes below while nobody has copied them into the list. The text
 below is how it began.*
 

@@ -308,10 +308,12 @@ this round made quick to file; the Journal stays the trainer's own.
   (`match /floorNotes/{noteId}`) and a collection-group read of shared notes; three new
   rules tests, **287 passing** (with the review's tighter archive and closed-by checks) on the emulator on AJ's PC (AJ's run is the one that
   counts).
-- **Indexes.** Three: `journalEntries` (studioId, kind, createdAt DESC) for Operations →
+- **Indexes.** Two: `journalEntries` (studioId, kind, createdAt DESC) for Operations →
   Today; `floorNotes` collection group (shared, sharedKeys contains) for other studios'
-  shared notes; and a `floorNotes.machineId` field override for the session's one-machine
-  read.
+  shared notes. A third, a `floorNotes.machineId` single-field override for the session's
+  one-machine read, was refused at the first golive ("Enterprise Edition does not support
+  updating field index configuration") and taken out; that read goes through one studio's
+  floor notes, which are few. Nothing had been pushed or deployed past the restore tag.
 - **Reads.** One per Today open (the team's notes, ≤100 docs); one per client case open
   in Operations (her newest 100 notes, the profile's existing index); one listener over
   the studio's floor notes while the Catalog or My Studio → Machines is open (the same

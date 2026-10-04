@@ -800,18 +800,5 @@
         }
       ]
     }
-  ],
-  "fieldOverrides": [
-    {
-      "collectionGroup": "floorNotes",
-      "fieldPath": "machineId",
-      "ttl": false,
-      "indexes": [
-        {
-          "order": "ASCENDING",
-          "queryScope": "COLLECTION"
-        }
-      ]
-    }
   ]
 }

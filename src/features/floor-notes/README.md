@@ -36,7 +36,7 @@ A note of its own can be **offered to every MSF studio** by its author or a lead
 
 - **Learning → Catalog → a machine** — "{Studio}'s notes", on the page and never folded, where the studio's note was (`CatalogWikiView`).
 - **My Studio → Machines → a machine's door** — "The floor's notes" (`MachinesSection`; Operations → Floor mounts the same door).
-- **The session's machine sheet** — read-only, under the watch-outs: the Relay flag, then the open notes with their latest word (at most four; the rest are on the Catalog), then the old Studio notes while nobody has copied them (`equipment/FloorNoteCard.tsx`, one query on `machineId`, its field override in `firestore.indexes.json`).
+- **The session's machine sheet** — read-only, under the watch-outs: the Relay flag, then the open notes with their latest word (at most four; the rest are on the Catalog), then the old Studio notes while nobody has copied them (`equipment/FloorNoteCard.tsx`, one query on `machineId` over this studio's floor notes. It has no index of its own: the database's Enterprise edition refused a single-field index setting at deploy, Oct 3 2026, and the query reads through one studio's notes, which are few).
 
 ## Files
 

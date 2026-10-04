@@ -736,6 +736,7 @@ the data files with esbuild's text loader, so that field comes back as the
 
 - **Shared lists are collection-group reads.** Each needs a `{path=**}` rule its filters satisfy (`shared == true`) and a collection-group index. Until a new index finishes building, the screen says it couldn't load the shared part.
 - **A new query on the Enterprise edition works without its index — by scanning** (wave 2 hub, Sep 28 2026). This database is Firestore's Enterprise edition: it builds no index by itself, and an unindexed query still answers, reading every document in the collection group company-wide, billed by the byte. Nothing fails, so no test sees it. A new query ships with its index in `firestore.indexes.json`, and the index is deployed before the app (the Hub's Get to know read ships with two `ford` indexes).
+- **The Enterprise edition refuses single-field index settings** (notes round, Oct 3 2026). A `fieldOverrides` entry in `firestore.indexes.json` fails the deploy with "Enterprise Edition does not support updating field index configuration", and the ship script stops there. Give a query a composite index in `indexes`, or let a query over one studio's small subcollection scan it; never add a field override.
 
 
 - **Roster entries name their own studio** (`studioId` must match the path), and a copy adopted from another studio can't be shared.
