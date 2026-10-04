@@ -1,10 +1,11 @@
 /**
  * THE ROW SHAPES Operations' lists are built from, so every list reads as
  * one screen (Today's brief, Changes, the attendance watch, the 60-day
- * review).
+ * review). Rows, the button-only variant, went with the calm round (Oct 3
+ * 2026): Changes was its last reader, and a row with a Why can't be one
+ * button.
  *
- *   Rows            claim + proof, the whole row opens the client.
- *   ActionRows      the same, with buttons on the right (Acknowledge,
+ *   ActionRows      claim + proof, with buttons on the right (Acknowledge,
  *                   Snooze, Dismiss, Got it) — the name opens the client,
  *                   the buttons act, nothing is nested inside a button.
  *                   Since the calm round (Oct 3 2026) the proof — how to
@@ -22,7 +23,7 @@ import { useState, type ReactNode } from "react";
 import { ChevronRight, Info } from "lucide-react";
 import { AdminBadge, AdminButton, AdminEmpty } from "../primitives";
 import { addDays } from "../../client-history/model";
-import type { OverviewRow, OverviewTone } from "./questions";
+import type { OverviewTone } from "./questions";
 
 /* ------------------------------------------------------------------ *
  * Rows
@@ -30,33 +31,6 @@ import type { OverviewRow, OverviewTone } from "./questions";
 
 const TONE_BADGE: Record<OverviewTone, "alert" | "warn" | "neutral"> = { alert: "alert", warn: "warn", info: "neutral" };
 const TONE_WORD: Record<OverviewTone, string> = { alert: "Now", warn: "Soon", info: "Note" };
-
-export function Rows({ rows, total, onOpenClient, empty, moreLabel = "on the tab" }: { rows: OverviewRow[]; total: number; onOpenClient?: (id: string) => void; empty: string; moreLabel?: string }) {
-  if (rows.length === 0) {
-    return empty ? (
-      <div className="p-4">
-        <AdminEmpty title={empty} />
-      </div>
-    ) : null;
-  }
-  return (
-    <ul className="adm-ov__rows">
-      {rows.map((r) => (
-        <li key={`${r.clientId}:${r.sentence}`} className="adm-ov__row">
-          <button type="button" className="adm-ov__row-btn" onClick={() => onOpenClient?.(r.clientId)} disabled={!onOpenClient}>
-            <span className="adm-ov__head">
-              <span className="adm-ov__name">{r.name}</span>
-              <AdminBadge tone={TONE_BADGE[r.tone]}>{r.badge ?? TONE_WORD[r.tone]}</AdminBadge>
-            </span>
-            <span className="adm-ov__sentence">{r.sentence}</span>
-            {r.proof && <span className="adm-ov__proof">{r.proof}</span>}
-          </button>
-        </li>
-      ))}
-      {total > rows.length && <li className="adm-ov__more">and {total - rows.length} more {moreLabel}</li>}
-    </ul>
-  );
-}
 
 export interface ActionRowItem {
   key: string;

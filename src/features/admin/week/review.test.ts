@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ScheduleEntry } from "../../../types";
 import { bookingMarks, loggedSessions } from "../../../lib/booking-state";
-import { busiestDay, dayFacts, dayLine, mondayOf, readInFull, reviewLine, teamWeek, totals, weekFrom, type DayFacts } from "./review";
+import { busiestDay, dayFacts, dayLine, mondayOf, readInFull, teamWeek, totals, weekFrom, type DayFacts } from "./review";
 
 const TZ = "America/New_York";
 const eastern = (day: string, hm: string) => new Date(`${day}T${hm}:00-04:00`);
@@ -29,7 +29,8 @@ describe("the week's days", () => {
     const logged = loggedSessions([{ status: "Completed", clientId: "ann", date: "2026-09-24" } as never], TZ);
     const d = dayFacts(entries, "2026-09-24", logged, NOW, TZ);
     expect(d).toMatchObject({ label: "Thu", booked: 2, done: 1, notLogged: 1, cancelled: 3, late: 1, unstamped: 1, toCome: 0 });
-    expect(dayLine(d)).toBe("1 of 2 logged · 1 not logged · 1 late cancel");
+    // A cancellation less than a day before is "cancelled late", never a "late cancel" (a leader's mark, the session taken).
+    expect(dayLine(d)).toBe("1 logged · 1 cancelled late");
   });
 
   it("is unknown, never zero, when the sessions couldn't be read", () => {
@@ -37,13 +38,18 @@ describe("the week's days", () => {
     expect(d.done).toBeNull();
     expect(d.notLogged).toBeNull();
     expect(totals([d]).done).toBeNull();
-    expect(dayLine(d)).toBe("1 booked");
+    expect(dayLine(d)).toBe("logged: unknown");
   });
 
   it("says what is still to come on a day that hasn't finished", () => {
     const d = dayFacts([booking("a", "ann", "2026-09-28", "15:00")], "2026-09-28", loggedSessions([], TZ), NOW, TZ);
     expect(d.toCome).toBe(1);
-    expect(dayLine(d)).toBe("1 booked, 1 to come");
+    // A day wholly to come says nothing beyond its count; a day partly done says what is left.
+    expect(dayLine(d)).toBe("");
+    const half = dayFacts([booking("a", "ann", "2026-09-28", "15:00"), booking("b", "bea", "2026-09-28", "07:00")], "2026-09-28", loggedSessions([], TZ), NOW, TZ);
+    expect(dayLine(half)).toBe("1 to come · 0 logged");
+    // The week ahead doesn't read logging: it says nothing about it.
+    expect(dayLine(half, { logging: false })).toBe("1 to come");
   });
 
   it("counts a booking a leader marked \"didn't come\" as that, never as not logged", () => {
@@ -51,30 +57,8 @@ describe("the week's days", () => {
     const logged = loggedSessions([], TZ);
     const d = dayFacts(entries, "2026-09-24", logged, NOW, TZ, bookingMarks([{ id: "b", noShow: true }]));
     expect(d).toMatchObject({ booked: 2, done: 0, notLogged: 1, noShow: 1 });
-    expect(dayLine(d)).toBe("0 of 2 logged · 1 not logged · 1 late cancel");
+    expect(dayLine(d)).toBe("0 logged · 1 late cancel");
     expect(totals([d]).noShow).toBe(1);
-  });
-});
-
-describe("the Monday review's bottom line", () => {
-  const day = (over: Partial<DayFacts>): DayFacts => ({ day: "2026-09-21", label: "Mon", booked: 0, done: 0, notLogged: 0, noShow: 0, toCome: 0, cancelled: 0, late: 0, unstamped: 0, ...over });
-
-  it("says what was logged, the late cancellations, who slipped and came back, and the renewals decided", () => {
-    const t = totals([day({ booked: 56, done: 54, notLogged: 2 }), day({ day: "2026-09-22", booked: 49, done: 49, late: 3, cancelled: 3 })]);
-    const line = reviewLine(t, { crossed: 5, back: 2, renewals: { total: 3, renewed: 1, upgraded: 1, downgraded: 0, payAsYouGo: 1, lost: 0, kept: 3, keptRate: 1 }, coverage: { read: 2, of: 2, unknown: 0 }, renewalUnknown: 0 });
-    expect(line).toBe(
-      "103 of 105 booked sessions were logged as done in Journey, and 2 have no workout logged. 3 cancellations came less than a day before the session. 5 clients crossed a line and started slipping; 2 clients booked again after a gap. 3 renewals were decided, 1 up to a longer package.",
-    );
-  });
-
-  it("names what couldn't be read: the sessions, the outcomes, the whole-read record", () => {
-    const unknown = reviewLine(totals([day({ booked: 4, done: null, notLogged: null })]), { crossed: 0, back: 0, renewals: null, coverage: null, renewalUnknown: 2 });
-    expect(unknown).toContain("4 sessions were booked; what was logged couldn't be read.");
-    expect(unknown).toContain("The week's renewal outcomes couldn't be read.");
-    expect(unknown).toContain("Whether every day's bookings were read in full can't be told.");
-    expect(unknown).toContain("Renewal timing is unknown for 2 clients.");
-    const short = reviewLine(totals([day({ booked: 4, done: 4 })]), { crossed: 0, back: 0, renewals: null, coverage: { read: 5, of: 6, unknown: 0 }, renewalUnknown: 0 });
-    expect(short).toContain("Bookings were read in full on 5 of 6 days with bookings, so the counts may be short.");
   });
 });
 

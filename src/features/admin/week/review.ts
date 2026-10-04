@@ -31,7 +31,6 @@ import { studioDateKey, toDate } from "../../../lib/studio-time";
 import { addDays, weekdayOf } from "../../client-history/model";
 import { cancellationOf } from "../../openings/room";
 import { wasReadInFull, type CoverageRecord } from "../../openings/coverage";
-import type { OutcomeTally } from "../../renewals/rates";
 
 const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -135,44 +134,6 @@ export function busiestDay(days: readonly DayFacts[]): DayFacts | null {
   return best;
 }
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-
-export interface ReviewExtras {
-  /** Clients who crossed a line during the week (the Journey's derived `since`). */
-  crossed: number;
-  /** Clients who booked again after a gap. */
-  back: number;
-  /** The week's renewal outcomes; null while unread or failed. */
-  renewals: OutcomeTally | null;
-  coverage: { read: number; of: number; unknown: number } | null;
-  renewalUnknown: number;
-}
-
-/**
- * The Monday review's bottom line, from the week's facts. Rules, never typed:
- * "{done} of {booked} booked sessions were logged as done", the late
- * cancellations, who crossed a line and who came back, the renewals decided,
- * and whatever couldn't be read named at the end.
- */
-export function reviewLine(t: WeekTotals, x: ReviewExtras): string {
-  const parts: string[] = [];
-  if (t.booked === 0) parts.push("Nothing was booked.");
-  else if (t.done === null) parts.push(`${plural(t.booked, "session was", "sessions were")} booked; what was logged couldn't be read.`);
-  else parts.push(`${t.done} of ${plural(t.booked, "booked session was", "booked sessions were")} logged as done in Journey${t.notLogged ? `, and ${t.notLogged} ${t.notLogged === 1 ? "has" : "have"} no workout logged` : ""}.`);
-  if (t.noShow > 0) parts.push(`${plural(t.noShow, "late cancel", "late cancels")}, marked by the studio.`);
-  if (t.late > 0) parts.push(`${plural(t.late, "cancellation came", "cancellations came")} less than a day before the session.`);
-  parts.push(`${plural(x.crossed, "client", "clients")} crossed a line and started slipping; ${plural(x.back, "client", "clients")} booked again after a gap.`);
-  if (x.renewals === null) parts.push("The week's renewal outcomes couldn't be read.");
-  else if (x.renewals.total === 0) parts.push("No renewals were decided.");
-  else parts.push(`${plural(x.renewals.total, "renewal was", "renewals were")} decided${x.renewals.upgraded > 0 ? `, ${x.renewals.upgraded} up to a longer package` : ""}.`);
-  if (x.coverage === null) parts.push("Whether every day's bookings were read in full can't be told.");
-  else if (x.coverage.of > 0 && x.coverage.read < x.coverage.of) {
-    parts.push(`Bookings were read in full on ${x.coverage.read} of ${plural(x.coverage.of, "day", "days")} with bookings${x.coverage.unknown ? ` (${x.coverage.unknown} can't be told)` : ""}, so the counts may be short.`);
-  }
-  if (x.renewalUnknown > 0) parts.push(`Renewal timing is unknown for ${plural(x.renewalUnknown, "client", "clients")}.`);
-  return parts.join(" ");
-}
-
 export interface TrainerWeek {
   /** The trainer's id when Journey knows them, else their name in lower case. */
   key: string;
@@ -233,11 +194,16 @@ export function teamWeek(
 }
 
 /** "Mon 54 of 56 logged · 2 not logged · 1 late cancel" — one day's line. */
-export function dayLine(d: DayFacts): string {
+export function dayLine(d: DayFacts, opts: { logging?: boolean } = {}): string {
   if (d.booked === 0 && d.cancelled === 0) return "nothing booked";
-  const bits = [d.done === null ? `${d.booked} booked` : d.toCome > 0 ? `${d.booked} booked, ${d.toCome} to come` : `${d.done} of ${d.booked} logged`];
-  if (d.notLogged) bits.push(`${d.notLogged} not logged`);
+  // The cell already says "N booked" in large type (the calm round, Oct 3 2026): this line says only what happened to them.
+  const bits: string[] = [];
+  // A day still wholly to come says nothing more than its count.
+  if (d.toCome > 0 && d.toCome < d.booked) bits.push(`${d.toCome} to come`);
+  // The week ahead doesn't read what was logged (`logging: false`): it says nothing about it rather than "unknown".
+  if (opts.logging !== false && d.booked - d.toCome > 0) bits.push(d.done === null ? "logged: unknown" : `${d.done} logged`);
   if (d.noShow) bits.push(`${d.noShow} late ${d.noShow === 1 ? "cancel" : "cancels"}`);
-  if (d.late) bits.push(`${d.late} late cancel${d.late === 1 ? "" : "s"}`);
+  // Not the same thing as a late cancel (a leader's mark, the session taken): a Mindbody cancellation less than a day before.
+  if (d.late) bits.push(`${d.late} cancelled late`);
   return bits.join(" · ");
 }

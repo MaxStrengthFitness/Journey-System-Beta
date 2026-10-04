@@ -11,6 +11,10 @@
  * was stamped, or after) and had not already happened. A booking she held
  * all along is not a rebook — changes.ts has the rules (`isRealRebook`).
  * Every row opens the client.
+ *
+ * The calm round (Oct 3 2026): each row is one short line (shortChange),
+ * when it was noticed is on the row's (i), and how the list works is behind
+ * the counts line's (i) rather than two paragraphs on the page.
  */
 import { useMemo, useState } from "react";
 import { ArrowLeft, CalendarClock } from "lucide-react";
@@ -18,9 +22,9 @@ import { cn } from "@/lib/utils";
 import type { ScheduleEntry, Studio } from "../../../types";
 import { addDays } from "../../client-history/model";
 import { AdminButton, AdminEmpty, AdminHeader, AdminNotice, AdminPanel, AdminScreen } from "../primitives";
-import { Rows } from "../overview/pieces";
-import type { OverviewRow } from "../overview/questions";
-import { changeCounts, changesForDay, describeChange } from "./changes";
+import { ActionRows } from "../overview/pieces";
+import { CountsLine } from "../overview/brief-pieces";
+import { changeCounts, changesForDay, describeChange, shortChange } from "./changes";
 import { WEEK_DAYS } from "./useWeekSchedule";
 import "../overview/overview.css";
 
@@ -64,8 +68,7 @@ export function ChangesView({ studio, entries, loading, failed, today, onBack, b
     <AdminScreen>
       <AdminHeader
         icon={<CalendarClock className="w-5 h-5" />}
-        title={`${studio.name} — Changes`}
-        subtitle="Cancellations and moves, held against the day the session was for. A day's list clears when that day ends. A cancellation reads as a reschedule only when the client rebooked: another session that week, booked within 12 hours before the cancellation or any time after it, and not already past. A booking they already held doesn't count."
+        title="Changes"
         actions={
           onBack ? (
             <AdminButton variant="quiet" onClick={onBack}>
@@ -76,6 +79,16 @@ export function ChangesView({ studio, entries, loading, failed, today, onBack, b
       />
 
       {failed && <AdminNotice tone="alert">The week's schedule could not be read just now — this list is missing, not empty.</AdminNotice>}
+
+      <CountsLine
+        pending={loading ? "Reading the week…" : null}
+        items={[{ n: failed ? null : total, label: total === 1 ? "change in the next seven days" : "changes in the next seven days" }]}
+        rules={[
+          "Cancellations and moves, held against the day the session was for. A day's list clears when that day ends.",
+          "A cancellation reads as a reschedule only when the client rebooked: another session that week, booked within 12 hours before the cancellation or any time after it, and not already past. A booking they already held doesn't count, and one handed to another trainer at the same time isn't a change.",
+          "Mindbody doesn't say why a booking went; Journey notices it went, and says when on the row's (i). The calendar hides a cancelled row; this list is where it is recorded.",
+        ]}
+      />
 
       <div className="adm-ch__strip" role="tablist" aria-label="Days">
         {days.map((d) => (
@@ -101,7 +114,7 @@ export function ChangesView({ studio, entries, loading, failed, today, onBack, b
             ? "Reading the week…"
             : rows.length === 0
               ? "Nothing cancelled or moved for this day."
-              : `${rows.filter((r) => r.reading === "cancellation").length} cancelled outright, ${rows.filter((r) => r.reading === "reschedule").length} moved or rebooked the same week.`
+              : `${rows.filter((r) => r.reading === "cancellation").length} cancelled · ${rows.filter((r) => r.reading === "reschedule").length} moved`
         }
         flush
       >
@@ -110,31 +123,22 @@ export function ChangesView({ studio, entries, loading, failed, today, onBack, b
             <AdminEmpty title={loading ? "Reading…" : "No changes for this day."} />
           </div>
         ) : (
-          <Rows
-            rows={rows.map((c): OverviewRow => {
-              const text = describeChange(c, tz);
-              return {
-                clientId: c.clientId ?? "",
-                name: c.clientName,
-                sentence: text.sentence,
-                proof: `${text.proof}${c.trainerName ? ` Booked with ${c.trainerName}.` : ""}`,
-                tone: c.reading === "cancellation" ? "warn" : "info",
-                badge: c.reading === "cancellation" ? "Cancelled" : "Moved",
-              };
-            })}
-            total={rows.length}
+          <ActionRows
+            rows={rows.map((c) => ({
+              key: c.id,
+              clientId: c.clientId,
+              name: c.clientName,
+              sentence: shortChange(c, today, tz),
+              proof: describeChange(c, tz).proof,
+              tone: c.reading === "cancellation" ? ("warn" as const) : ("info" as const),
+              badge: c.reading === "cancellation" ? "Cancelled" : "Moved",
+            }))}
             onOpenClient={onOpenClient}
             empty=""
           />
         )}
       </AdminPanel>
 
-      <AdminNotice tone="info">
-        {total === 0 && !loading ? "No changes recorded this week. " : ""}
-        Mindbody does not say why a booking went; the app notices it went. A booking that vanishes from the schedule pull is stamped by the sync as it
-        happens, so the list says when it was noticed; a cancellation the webhook delivered shows without a time until it, too, stamps. The calendar hides
-        a cancelled row entirely — this list is where it is recorded.
-      </AdminNotice>
     </AdminScreen>
   );
 }

@@ -15,6 +15,14 @@
  *   Week ahead     the next seven days: the busiest day, who is due back,
  *                  the milestones, the renewal talks due and who to catch
  *
+ * THE CALM ROUND (Oct 3 2026, AJ: "so many words on there"): each page's
+ * written bottom line is one line of counts (its rules behind an (i)), the
+ * subtitle is the dates, the trust line and the nightly record are each one
+ * note at the top (said once), and a section with nothing in it folds into
+ * one "All clear" line. A day cell says what was logged and what is still to
+ * come; a leader's late cancel and a Mindbody cancellation less than a day
+ * before are two different words ("late cancel", "cancelled late").
+ *
  * READS, one studio, each an existing shape (no new index): last week's and
  * this week's bookings (`useWeekSchedule`, studioId + startTime and the moves
  * into them — the Overview's own query), the studio's sessions since last
@@ -27,25 +35,26 @@ import { useMemo } from "react";
 import { CalendarRange, ChevronRight } from "lucide-react";
 import type { Client, Studio, Trainer } from "../../../types";
 import { loggedSessions } from "../../../lib/booking-state";
+import { clientDisplayName } from "../../../lib/client-name";
 import { formatStudioTime, studioDateKey, studioDayBoundsForKey } from "../../../lib/studio-time";
 import { addDays } from "../../client-history/model";
 import { tallyOutcomes } from "../../renewals/rates";
 import { useOutcomes } from "../../renewals/useOutcomes";
-import { AdminButton, AdminHeader, AdminNotice, AdminScreen } from "../primitives";
+import { AdminButton, AdminHeader, AdminScreen } from "../primitives";
 import { useSessionsInRange } from "../sessions-range";
 import { useBookingMarks } from "../attention/booking-marks";
 import { ChangesView } from "../changes/ChangesView";
 import { useStudioWeek } from "../changes/useStudioWeek";
 import { useWeekSchedule } from "../changes/useWeekSchedule";
-import { renewalUnknownCount } from "../overview/brief";
-import { BottomLineBox, BriefEmpty, BriefSection } from "../overview/brief-pieces";
+import { nightlyNote, type NightlyNote, type NightlyRead } from "../overview/brief";
+import { AllClear, BriefEmpty, BriefSection, CountsLine, PageNote } from "../overview/brief-pieces";
 import { moments } from "../overview/moments";
 import { renewalsQuestion } from "../overview/questions";
 import { useStudioJourneys } from "../journey/useStudioJourneys";
 import { isSlipping } from "../journey/states";
 import { useMinuteClock } from "../shell/useMinuteClock";
 import type { OpsDoor } from "../shell/places";
-import { busiestDay, dayFacts, dayLine, mondayOf, readInFull, reviewLine, teamWeek, totals, weekFrom, type DayFacts } from "./review";
+import { busiestDay, dayFacts, dayLine, mondayOf, readInFull, teamWeek, totals, weekFrom, type DayFacts } from "./review";
 import { useCoverageRecord } from "./useCoverageRecord";
 import "../shell/ops.css";
 
@@ -73,7 +82,13 @@ const dateWords = (day: string) => {
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 };
 
-function DayCells({ days, today }: { days: DayFacts[]; today: string }) {
+/** "Thursday", from a day key's digits. */
+function longDay(day: string): string {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+}
+
+function DayCells({ days, today, logging = true }: { days: DayFacts[]; today: string; logging?: boolean }) {
   return (
     <div className="ops-days">
       {days.map((d) => (
@@ -82,7 +97,7 @@ function DayCells({ days, today }: { days: DayFacts[]; today: string }) {
             {d.day === today ? "Today" : d.label} · {dateWords(d.day).split(", ")[1]}
           </span>
           <span className="ops-day__big">{d.booked} booked</span>
-          <span className="ops-day__fact">{dayLine(d)}</span>
+          {dayLine(d, { logging }) && <span className="ops-day__fact">{dayLine(d, { logging })}</span>}
         </div>
       ))}
     </div>
@@ -102,7 +117,7 @@ function Door({ label, to, onOpen }: { label: string; to: OpsDoor; onOpen?: (to:
  * Last week — the Monday review
  * ------------------------------------------------------------------ */
 
-function LastWeek({ studio, studios, clients, trainers, authTrainer, onOpenClient, onOpen }: WeekPageProps) {
+function LastWeek({ studio, studios, clients, trainers, authTrainer, onOpen }: WeekPageProps) {
   const now = useMinuteClock();
   const studioId = studio.id as string;
   const j = useStudioJourneys({ studio, studios, clients, trainers, authTrainer, now });
@@ -126,111 +141,115 @@ function LastWeek({ studio, studios, clients, trainers, authTrainer, onOpenClien
   const crossed = j.entries.filter((e) => (isSlipping(e.journey.state) || e.journey.state === "lapsed") && e.journey.since && e.journey.since >= lastMonday && e.journey.since <= lastSunday);
   const back = j.entries.filter((e) => e.journey.state === "back");
   const reading = week.loading || sessions.loading || !j.ready;
-  const line = reviewLine(t, { crossed: crossed.length, back: back.length, renewals: tally, coverage: cov, renewalUnknown: renewalUnknownCount(j.nightly) });
+  const note = useNightlyNote(j.nightly, studio, j.today, clients, tz);
+  const noteCovers = note !== null && note.kind !== "unknown";
+  const decided = outcomes.rows.filter((r) => r.outcome);
 
   // The team, from the week's bookings: each trainer's facts, in name order, never ranked (review.ts).
   const team = useMemo(() => teamWeek(week.entries, logged, lastMonday, lastSunday, trainers, now, tz, marks.marks), [week.entries, logged, lastMonday, lastSunday, trainers, now, tz, marks.marks]);
 
+  // The calm round (Oct 3 2026): what has nothing in it folds into one line.
+  const clear: string[] = [];
+  const clientsShown = !j.ready || crossed.length > 0 || back.length > 0;
+  if (!clientsShown && !noteCovers) clear.push("Clients");
+  const renewalsShown = outcomes.loading || Boolean(outcomes.error) || decided.length > 0;
+  if (!renewalsShown) clear.push("Renewals");
+
   return (
     <AdminScreen>
-      <AdminHeader
-        icon={<CalendarRange className="w-5 h-5" />}
-        title="The Monday review"
-        subtitle={`${studio.name}, the week of ${dateWords(lastMonday)} to ${dateWords(lastSunday)}. What happened, who moved, and how far to trust it.`}
-      />
-      <BottomLineBox
-        sentence={reading ? "Reading last week…" : line}
+      <AdminHeader icon={<CalendarRange className="w-5 h-5" />} title="Last week" subtitle={`${dateWords(lastMonday)} – ${dateWords(lastSunday)}`} />
+      <CountsLine
+        pending={reading ? "Reading last week…" : week.failed ? "Last week's bookings couldn't be read just now, so these counts are missing, not zero." : null}
+        items={[
+          { n: t.booked, label: "booked" },
+          { n: t.done, label: "logged" },
+          ...(t.noShow > 0 ? [{ n: t.noShow, label: t.noShow === 1 ? "late cancel" : "late cancels" }] : []),
+          ...(t.late > 0 ? [{ n: t.late, label: "cancelled late" }] : []),
+          ...(noteCovers ? [] : [{ n: crossed.length, label: "started slipping" }, { n: back.length, label: "back" }]),
+          { n: tally === null ? null : tally.total, label: tally?.total === 1 ? "renewal decided" : "renewals decided" },
+        ]}
         rules={[
-          "Done means logged: a booking counts as done when Journey logged a session for that client that day. Not logged is never \"didn't happen\".",
+          "Logged: a booking counts as done when Journey logged a session for that client that day. Not logged is never \"didn't happen\".",
           "A late cancel is a mark anyone at the studio makes on a session nobody logged: the session is taken, but it is never a visit. A session logged later for that day beats it.",
-          "A cancellation less than a day before its session is late (Openings' own rule).",
-          "Who crossed a line comes from the Journey: their last visit plus the line. Who moved toward steady needs yesterday's states, which Journey doesn't keep yet.",
-          "Written by rules each time the page reads. Never typed by hand.",
+          "Cancelled late: a cancellation less than a day before its session (Openings' own rule).",
+          "Started slipping comes from the Journey: their last visit plus the line. Who moved toward steady needs yesterday's states, which Journey doesn't keep yet.",
         ]}
       />
-      {week.failed && <AdminNotice tone="alert">Last week's bookings couldn't be read just now, so these counts are missing, not zero.</AdminNotice>}
+      {cov !== null && cov.of > 0 && cov.read < cov.of && (
+        <PageNote
+          text={`Bookings were read in full on ${cov.read} of ${cov.of} days, so these counts may be short.`}
+          why={`Journey counts a day only when it read that day's bookings from Mindbody in full${cov.unknown ? `; for ${cov.unknown} ${cov.unknown === 1 ? "day" : "days"} it can't be told` : ""}.${t.unstamped > 0 ? ` ${t.unstamped} ${t.unstamped === 1 ? "cancellation" : "cancellations"} arrived without a time.` : ""}`}
+        />
+      )}
+      {cov === null && !reading && <PageNote text="Whether every day's bookings were read in full can't be told, so these counts may be short." />}
+      {note && <PageNote text={note.text} why={note.why} />}
 
-      <BriefSection id="happened" title="What happened" sub="booked sessions logged as done, by day">
-        {week.loading ? <BriefEmpty>Reading last week…</BriefEmpty> : <DayCells days={days} today={j.today} />}
+      <BriefSection id="happened" title="Day by day">
+        {week.loading ? <BriefEmpty>Reading…</BriefEmpty> : <DayCells days={days} today={j.today} />}
         {logged === null && !sessions.loading && <p className="ops-sec__note">The week's sessions couldn't be read in full, so what was logged is unknown.</p>}
-        {marks.failed && <p className="ops-sec__note">The late cancel marks couldn't be read just now, so a marked session may show as not logged.</p>}
+        {marks.failed && <p className="ops-sec__note">The late cancel marks couldn't be read just now.</p>}
       </BriefSection>
 
-      <BriefSection id="clients" title="Clients" sub="how they moved" door={<Door label="Journey" to="journey" onOpen={onOpen} />}>
-        {!j.ready ? (
-          <BriefEmpty>Reading the Journey…</BriefEmpty>
-        ) : (
-          <>
-            <p className="ops-sec__note">
-              <b>Crossed a line last week:</b> {crossed.length === 0 ? "nobody." : crossed.map((e) => e.row.name.display).join(", ")}
-            </p>
-            <p className="ops-sec__note">
-              <b>Booked again after a gap:</b> {back.length === 0 ? "nobody." : back.map((e) => e.row.name.display).join(", ")}
-            </p>
-          </>
-        )}
-      </BriefSection>
+      {clientsShown && (
+        <BriefSection id="clients" title="Clients" door={<Door label="Journey" to="journey" onOpen={onOpen} />}>
+          {!j.ready ? (
+            <BriefEmpty>Reading…</BriefEmpty>
+          ) : (
+            <>
+              {crossed.length > 0 && (
+                <p className="ops-sec__note">
+                  <b>Started slipping:</b> {crossed.map((e) => e.row.name.display).join(", ")}
+                </p>
+              )}
+              {back.length > 0 && (
+                <p className="ops-sec__note">
+                  <b>Back after a gap:</b> {back.map((e) => e.row.name.display).join(", ")}
+                </p>
+              )}
+            </>
+          )}
+        </BriefSection>
+      )}
 
-      <BriefSection id="renewals" title="Renewals" sub="decided last week" door={<Door label="Renewals" to="renewals" onOpen={onOpen} />}>
-        {outcomes.loading ? (
-          <BriefEmpty>Reading last week's renewals…</BriefEmpty>
-        ) : outcomes.error ? (
-          <BriefEmpty>Last week's renewal outcomes couldn't be read just now.</BriefEmpty>
-        ) : outcomes.rows.filter((r) => r.outcome).length === 0 ? (
-          <BriefEmpty>No renewals were decided last week.</BriefEmpty>
-        ) : (
-          <ul className="ops-jr-list">
-            {outcomes.rows
-              .filter((r) => r.outcome)
-              .map((r) => (
+      {renewalsShown && (
+        <BriefSection id="renewals" title="Renewals" count={outcomes.loading || outcomes.error ? null : decided.length} door={<Door label="Renewals" to="renewals" onOpen={onOpen} />}>
+          {outcomes.loading ? (
+            <BriefEmpty>Reading…</BriefEmpty>
+          ) : outcomes.error ? (
+            <BriefEmpty>Last week's renewal outcomes couldn't be read just now.</BriefEmpty>
+          ) : (
+            <ul className="ops-jr-list">
+              {decided.map((r) => (
                 <li key={r.cycleKey} className="ops-sec__note">
                   <b>{r.clientName || "A client"}</b> — {r.outcome === "upgraded" ? "renewed on a longer package" : r.outcome === "downgraded" ? "renewed on a shorter package" : r.outcome === "pay-as-you-go" ? "went pay-as-you-go" : r.outcome}
                   {r.closedOn ? `, ${dateWords(r.closedOn)}` : ""}
                 </li>
               ))}
-          </ul>
-        )}
-      </BriefSection>
+            </ul>
+          )}
+        </BriefSection>
+      )}
 
-      <BriefSection id="team" title="Team" sub="facts from the week's bookings, in name order — recognition, never ranking" door={<Door label="Team" to="team" onOpen={onOpen} />}>
+      <BriefSection id="team" title="Team" door={<Door label="Team" to="team" onOpen={onOpen} />}>
         {week.loading ? (
-          <BriefEmpty>Reading last week…</BriefEmpty>
+          <BriefEmpty>Reading…</BriefEmpty>
         ) : team.length === 0 ? (
           <BriefEmpty>No sessions were booked with a named trainer last week.</BriefEmpty>
         ) : (
           <ul className="ops-jr-list">
             {team.map((r) => (
               <li key={r.key} className="ops-sec__note">
-                <b>{r.name}</b>: {r.booked} booked
-                {r.notLogged === null ? "." : r.notLogged === 0 ? ", every one logged." : `, ${r.notLogged} not logged yet.`}
+                <b>{r.name}</b> · {r.booked} booked
+                {r.notLogged === null ? "" : r.notLogged === 0 ? " · all logged" : ` · ${r.notLogged} not logged`}
               </li>
             ))}
           </ul>
         )}
       </BriefSection>
 
-      <BriefSection id="trust" title="Trust" sub="how complete this review is">
-        <p className="ops-sec__note">
-          {cov === null
-            ? "Whether each day's bookings were read in full can't be told yet."
-            : cov.of === 0
-              ? "No day last week had bookings to read."
-              : `Bookings were read in full on ${cov.read} of the ${cov.of} days with bookings${cov.unknown ? `; ${cov.unknown} can't be told` : ""}.`}
-        </p>
-        <p className="ops-sec__note">
-          {t.notLogged === null ? "What was logged couldn't be read." : `${t.notLogged} ${t.notLogged === 1 ? "session still has" : "sessions still have"} no workout logged.`}{" "}
-          {t.unstamped > 0 ? `${t.unstamped} ${t.unstamped === 1 ? "cancellation arrived" : "cancellations arrived"} without a time.` : ""}{" "}
-          {renewalUnknownCount(j.nightly) > 0 ? `Renewal timing is unknown for ${renewalUnknownCount(j.nightly)} ${renewalUnknownCount(j.nightly) === 1 ? "client" : "clients"}.` : ""}
-        </p>
-      </BriefSection>
+      <AllClear names={clear} />
     </AdminScreen>
   );
-}
-
-/** "Thursday", from a day key's digits. */
-function longDay(day: string): string {
-  const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
 }
 
 /* ------------------------------------------------------------------ *
@@ -251,22 +270,22 @@ function ThisWeek({ studio, onOpenClient }: WeekPageProps) {
   const days = useMemo(() => weekFrom(monday).map((d) => dayFacts(week.entries, d, logged, now, tz, marks.marks)), [monday, week.entries, logged, now, tz, marks.marks]);
   const t = totals(days);
   const changes = useStudioWeek(studioId, todayKey, tz);
-  const sentence = week.loading
-    ? "Reading this week…"
-    : week.failed
-      ? "This week's bookings couldn't be read just now."
-      : t.done === null
-        ? `${t.booked} booked this week, ${t.toCome} still to come; what was logged so far couldn't be read.`
-        : t.booked - t.toCome === 0
-          ? `Nothing booked this week has finished yet. ${t.toCome} still to come.`
-          : `${t.done} of the ${t.booked - t.toCome} booked sessions so far ${t.done === 1 ? "is" : "are"} logged as done${t.notLogged ? `, ${t.notLogged} not logged yet` : ""}${t.noShow ? `, ${t.noShow} late ${t.noShow === 1 ? "cancel" : "cancels"}` : ""}. ${t.toCome} still to come this week.`;
 
   return (
     <AdminScreen>
-      <AdminHeader icon={<CalendarRange className="w-5 h-5" />} title="This week so far" subtitle={`${studio.name}, Monday ${dateWords(monday)} to Sunday. Each day's bookings, what was logged, and what is still to come.`} />
-      <BottomLineBox sentence={sentence} rules={["Done means logged: a booking counts as done when Journey logged a session for that client that day.", "Written by rules each time the page reads."]} />
-      <BriefSection id="days" title="Day by day" sub="Monday to Sunday">
-        {week.loading ? <BriefEmpty>Reading this week…</BriefEmpty> : week.failed ? <BriefEmpty>Could not be read just now.</BriefEmpty> : <DayCells days={days} today={todayKey} />}
+      <AdminHeader icon={<CalendarRange className="w-5 h-5" />} title="This week so far" subtitle={`${dateWords(monday)} – ${dateWords(addDays(monday, 6))}`} />
+      <CountsLine
+        pending={week.loading ? "Reading this week…" : week.failed ? "This week's bookings couldn't be read just now." : null}
+        items={[
+          { n: t.booked - t.toCome, label: "booked so far" },
+          { n: t.done, label: "logged" },
+          ...(t.noShow > 0 ? [{ n: t.noShow, label: t.noShow === 1 ? "late cancel" : "late cancels" }] : []),
+          { n: t.toCome, label: "to come" },
+        ]}
+        rules={["Logged: a booking counts as done when Journey logged a session for that client that day."]}
+      />
+      <BriefSection id="days" title="Day by day">
+        {week.loading ? <BriefEmpty>Reading…</BriefEmpty> : week.failed ? <BriefEmpty>Could not be read just now.</BriefEmpty> : <DayCells days={days} today={todayKey} />}
       </BriefSection>
       <ChangesView studio={studio} entries={changes.entries} loading={changes.loading} failed={changes.failed} today={todayKey} onOpenClient={onOpenClient} />
     </AdminScreen>
@@ -293,63 +312,112 @@ function WeekAhead({ studio, studios, clients, trainers, authTrainer, onOpenClie
   );
   const renewals = useMemo(() => renewalsQuestion(clients, {}, j.settings, j.today, false), [clients, j.settings, j.today]);
   const readAt = j.week.readAt ? formatStudioTime(new Date(j.week.readAt), tz) : null;
-  const sentence = j.week.loading
-    ? "Reading the week ahead…"
-    : j.week.failed
-      ? "The week ahead's bookings couldn't be read just now."
-      : `${days.reduce((n, d) => n + d.booked, 0)} booked over the next seven days${busiest ? `; ${busiest.day === j.today ? "today" : longDay(busiest.day)} is the busiest, with ${busiest.booked}` : ""}. ${dueBack.length} due back from time away, ${slipping.length} slipping to catch.`;
+  const note = useNightlyNote(j.nightly, studio, j.today, clients, tz);
+  const noteCovers = note !== null && note.kind !== "unknown";
+  const renewalsDue = renewals.counts["talk-now"] + renewals.counts["before-charge"];
+
+  const clear: string[] = [];
+  const backShown = !j.ready || dueBack.length > 0;
+  if (!backShown && !noteCovers) clear.push("Due back");
+  const milestonesShown = j.week.read !== "ready" || milestones.length > 0;
+  if (!milestonesShown) clear.push("Milestones");
+  const renewalsShown = renewalsDue > 0 || renewals.counts["coming-up"] > 0;
+  if (!renewalsShown && !noteCovers) clear.push("Renewals");
+  const catchShown = !j.ready || slipping.length > 0;
+  if (!catchShown && !noteCovers) clear.push("To catch");
 
   return (
     <AdminScreen>
-      <AdminHeader icon={<CalendarRange className="w-5 h-5" />} title="The week ahead" subtitle={`${studio.name}, the next seven days${readAt ? ` · bookings read ${readAt}` : ""}.`} />
-      <BottomLineBox sentence={sentence} rules={["The next seven days' bookings as the server answered them; nothing is said from a week this iPad's cache alone holds.", "Who is due back comes from Mindbody's away events on last night's record.", "Written by rules each time the page reads."]} />
-      <BriefSection id="ahead-days" title="Day by day" sub="the next seven days">
-        {j.week.loading ? <BriefEmpty>Reading the week ahead…</BriefEmpty> : j.week.failed ? <BriefEmpty>Could not be read just now.</BriefEmpty> : <DayCells days={days} today={j.today} />}
+      <AdminHeader icon={<CalendarRange className="w-5 h-5" />} title="The week ahead" subtitle={`${dateWords(j.today)} – ${dateWords(lastDay)}`} />
+      <CountsLine
+        pending={j.week.loading ? "Reading the week ahead…" : j.week.failed ? "The week ahead's bookings couldn't be read just now." : null}
+        items={[
+          { n: days.reduce((n, d) => n + d.booked, 0), label: "booked" },
+          ...(busiest ? [{ n: busiest.booked, label: `on ${busiest.day === j.today ? "today" : longDay(busiest.day)}, the busiest` }] : []),
+          ...(noteCovers ? [] : [{ n: j.ready ? dueBack.length : null, label: "due back" }, { n: j.ready ? slipping.length : null, label: "to catch" }]),
+        ]}
+        rules={[
+          `The next seven days' bookings as the server answered them${readAt ? `, read ${readAt}` : ""}; nothing is said from a week this iPad's cache alone holds.`,
+          "Due back comes from Mindbody's away events on last night's record.",
+        ]}
+      />
+      {note && <PageNote text={note.text} why={note.why} />}
+      <BriefSection id="ahead-days" title="Day by day">
+        {j.week.loading ? <BriefEmpty>Reading…</BriefEmpty> : j.week.failed ? <BriefEmpty>Could not be read just now.</BriefEmpty> : <DayCells days={days} today={j.today} logging={false} />}
       </BriefSection>
-      <BriefSection id="ahead-back" title="Due back" count={j.ready ? dueBack.length : null} sub="from time away, this week">
-        {!j.ready ? (
-          <BriefEmpty>Reading the Journey…</BriefEmpty>
-        ) : dueBack.length === 0 ? (
-          <BriefEmpty>Nobody is due back from time away this week.</BriefEmpty>
-        ) : (
-          <ul className="ops-jr-list">
-            {dueBack.map((e) => (
-              <li key={e.id}>
-                <button type="button" className="ops-jr-row" onClick={() => onOpenClient?.(e.id)} disabled={!onOpenClient}>
-                  <span className="ops-jr-row__name">{e.row.name.display}</span>
-                  <span className="ops-jr-row__why">{e.journey.why}</span>
-                  <span className="ops-jr-row__meta">{e.row.next.state === "booked" ? `booked ${e.row.next.text}` : "nothing booked yet"}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </BriefSection>
-      <BriefSection id="ahead-moments" title="Milestones" count={j.week.read === "ready" ? milestones.length : null} sub="booked this week, only when a total may be quoted">
-        {j.week.read !== "ready" ? (
-          <BriefEmpty>{j.week.loading ? "Reading the week ahead…" : "Booked milestones couldn't be read just now."}</BriefEmpty>
-        ) : milestones.length === 0 ? (
-          <BriefEmpty>No milestones booked this week.</BriefEmpty>
-        ) : (
-          <ul className="ops-jr-list">
-            {milestones.map((m) => (
-              <li key={m.key} className="ops-sec__note">
-                <b>{m.name}</b> — {m.sentence} {m.proof}
-              </li>
-            ))}
-          </ul>
-        )}
-      </BriefSection>
-      <BriefSection id="ahead-renewals" title="Renewals" sub="from last night's record" door={<Door label="Renewals" to="renewals" onOpen={onOpen} />}>
-        <p className="ops-sec__note">
-          {renewals.counts["talk-now"]} to talk to now, {renewals.counts["before-charge"]} before a charge, {renewals.counts["coming-up"]} coming up in the next {j.settings.horizonMonths} months.
-        </p>
-      </BriefSection>
-      <BriefSection id="ahead-catch" title="To catch" count={j.ready ? slipping.length : null} sub="drifting and at risk, on the Journey" door={<Door label="Journey" to="journey" onOpen={onOpen} />}>
-        <p className="ops-sec__note">
-          {!j.ready ? "Reading the Journey…" : slipping.length === 0 ? "Nobody is slipping right now." : `${slipping.length} ${slipping.length === 1 ? "client is" : "clients are"} drifting or at risk, with nothing booked.`}
-        </p>
-      </BriefSection>
+      {backShown && !(noteCovers && j.ready) && (
+        <BriefSection id="ahead-back" title="Due back" count={j.ready ? dueBack.length : null}>
+          {!j.ready ? (
+            <BriefEmpty>Reading…</BriefEmpty>
+          ) : (
+            <ul className="ops-jr-list">
+              {dueBack.map((e) => (
+                <li key={e.id}>
+                  <button type="button" className="ops-jr-row" onClick={() => onOpenClient?.(e.id)} disabled={!onOpenClient}>
+                    <span className="ops-jr-row__name">{e.row.name.display}</span>
+                    <span className="ops-jr-row__why">{e.journey.why}</span>
+                    <span className="ops-jr-row__meta">{e.row.next.state === "booked" ? `booked ${e.row.next.text}` : "nothing booked yet"}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </BriefSection>
+      )}
+      {milestonesShown && (
+        <BriefSection id="ahead-moments" title="Milestones" count={j.week.read === "ready" ? milestones.length : null}>
+          {j.week.read !== "ready" ? (
+            <BriefEmpty>{j.week.loading ? "Reading…" : "Booked milestones couldn't be read just now."}</BriefEmpty>
+          ) : (
+            <ul className="ops-jr-list">
+              {milestones.map((m) => (
+                <li key={m.key} className="ops-sec__note">
+                  <b>{m.name}</b> — {m.sentence}
+                </li>
+              ))}
+            </ul>
+          )}
+        </BriefSection>
+      )}
+      {renewalsShown && (
+        <BriefSection id="ahead-renewals" title="Renewals" door={<Door label="Renewals" to="renewals" onOpen={onOpen} />}>
+          <p className="ops-sec__note">
+            {renewals.counts["talk-now"]} to talk to now · {renewals.counts["before-charge"]} before a charge · {renewals.counts["coming-up"]} in the next {j.settings.horizonMonths} months
+          </p>
+        </BriefSection>
+      )}
+      {catchShown && !(noteCovers && j.ready) && (
+        <BriefSection id="ahead-catch" title="To catch" count={j.ready ? slipping.length : null} door={<Door label="Journey" to="journey" onOpen={onOpen} />}>
+          <p className="ops-sec__note">
+            {!j.ready ? "Reading…" : `${slipping.length} ${slipping.length === 1 ? "client is" : "clients are"} drifting or at risk, with nothing booked.`}
+          </p>
+        </BriefSection>
+      )}
+      <AllClear names={clear} />
     </AdminScreen>
+  );
+}
+
+/**
+ * The page's one note about the nightly record (overview/brief.ts
+ * nightlyNote): not live, no record, stale, or the clients it couldn't place.
+ */
+function useNightlyNote(nightly: NightlyRead, studio: Studio, today: string, clients: Client[], tz?: string): NightlyNote | null {
+  return useMemo(
+    () =>
+      nightlyNote(
+        nightly,
+        studio,
+        today,
+        (ids) =>
+          ids
+            .map((id) => {
+              const c = clients.find((x) => x.id === id);
+              return c ? clientDisplayName(c, "A client") : "A client";
+            })
+            .join(", "),
+        tz,
+      ),
+    [nightly, studio, today, clients, tz],
   );
 }

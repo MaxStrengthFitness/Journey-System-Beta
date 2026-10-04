@@ -126,18 +126,28 @@ async function mount(sub: WeekSub, onOpen: (to: string) => void = () => {}) {
 }
 
 describe("Week → Last week: the Monday review", () => {
-  it("writes its bottom line by rules and says how far to trust it", async () => {
+  it("leads with the week's counts, and says how far to trust them only when it must", async () => {
     const el = await mount("last");
-    expect(el.querySelector(".ops-bluf__say")?.textContent).toBe(
-      "1 of 2 booked sessions were logged as done in Journey, and 1 has no workout logged. 1 cancellation came less than a day before the session. 1 client crossed a line and started slipping; 0 clients booked again after a gap. 1 renewal was decided, 1 up to a longer package.",
-    );
+    // The calm round (Oct 3 2026): one line of counts in place of the written bottom line.
+    const counts = el.querySelector(".ops-counts__line")?.textContent ?? "";
+    expect(counts).toContain("2 booked");
+    expect(counts).toContain("1 logged");
+    expect(counts).toContain("1 cancelled late");
+    expect(counts).toContain("1 started slipping");
+    expect(counts).toContain("0 back");
+    expect(counts).toContain("1 renewal decided");
+    expect(el.querySelector(".ops-bluf")).toBeNull();
     const text = el.textContent ?? "";
-    expect(text).toContain("1 of 2 logged · 1 not logged");
-    expect(text).toContain("1 late cancel");
-    expect(text).toContain("Crossed a line last week: Gil Galdor");
+    expect(text).toContain("Mon · Sep 212 booked1 logged");
+    expect(text).toContain("Wed · Sep 230 booked1 cancelled late");
+    expect(text).toContain("Started slipping: Gil Galdor");
     expect(text).toContain("Belladonna Took — renewed on a longer package");
-    expect(text).toContain("Beregond Guard: 2 booked, 1 not logged yet.");
-    expect(text).toContain("Bookings were read in full on 2 of the 2 days with bookings.");
+    expect(text).toContain("Beregond Guard · 2 booked · 1 not logged");
+    // Every day was read in full: no trust note, and no Trust section.
+    expect(text).not.toContain("read in full");
+    expect(el.querySelector(".ops-note")).toBeNull();
+    // The subtitle is the dates, not a sentence.
+    expect(el.querySelector(".adm-head__sub")?.textContent).toMatch(/^Mon, \w{3} \d+ – Sun, \w{3} \d+$/);
   });
 
   it("its doors open the Journey and Renewals", async () => {
@@ -153,13 +163,24 @@ describe("Week → Last week: the Monday review", () => {
 describe("Week → This week and the week ahead", () => {
   it("says what has finished and what is still to come, with the week's changes", async () => {
     const el = await mount("now");
-    expect(el.querySelector(".ops-bluf__say")?.textContent).toBe("Nothing booked this week has finished yet. 2 still to come.");
-    expect(el.textContent).toContain("Westlake — Changes");
+    const counts = el.querySelector(".ops-counts__line")?.textContent ?? "";
+    expect(counts).toContain("0 booked so far");
+    expect(counts).toContain("2 to come");
+    expect(el.textContent).toContain("Changes");
+    // How the list works is behind its (i), not two paragraphs on the page.
+    expect(el.textContent).not.toContain("Mindbody doesn't say why a booking went");
   });
 
   it("names the busiest day and who to catch", async () => {
     const el = await mount("ahead");
-    expect(el.querySelector(".ops-bluf__say")?.textContent).toBe("2 booked over the next seven days; Tuesday is the busiest, with 1. 0 due back from time away, 1 slipping to catch.");
+    const counts = el.querySelector(".ops-counts__line")?.textContent ?? "";
+    expect(counts).toContain("2 booked");
+    expect(counts).toContain("1 on Tuesday, the busiest");
+    expect(counts).toContain("0 due back");
+    expect(counts).toContain("1 to catch");
     expect(el.textContent).toContain("1 client is drifting or at risk, with nothing booked.");
+    // Nobody due back: one line at the foot, not a section saying so.
+    expect(el.querySelector("#brief-ahead-back")).toBeNull();
+    expect(el.querySelector("[data-testid='all-clear']")?.textContent).toContain("Due back");
   });
 });
