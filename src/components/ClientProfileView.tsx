@@ -1457,13 +1457,13 @@ export function ClientProfileView({
               animate={{ opacity: 1, height: "auto" }}
               className="mb-2"
             >
-              <div className="bg-[#5BC0BE]/10 border-2 border-[#5BC0BE]/20 rounded-3xl p-4 flex items-center gap-4 text-[#5BC0BE]">
+              <div className="bg-(--eq-live-fill) border-2 border-(--eq-live)/30 rounded-3xl p-4 flex items-center gap-4 text-(--eq-live-text)">
                 <AlertCircle className="w-6 h-6 shrink-0" />
                 <div className="flex-1">
                   <p className="text-xs font-bold uppercase tracking-tight">
                     Profile Setup Needed
                   </p>
-                  <p className="text-[11px] font-bold opacity-80 uppercase tracking-widest mt-0.5">
+                  <p className="text-[11px] font-bold uppercase tracking-widest mt-0.5">
                     Set up their routine in Programming, and their details
                     in Notes &amp; Profile.
                   </p>
@@ -1638,13 +1638,13 @@ export function ClientProfileView({
                       <span
                         className={cn(
                           "absolute inline-flex h-full w-full rounded-full opacity-60 motion-safe:animate-ping",
-                          reportDue.level === "renewal" ? "bg-amber-400" : "bg-sky-400",
+                          reportDue.level === "renewal" ? "bg-amber-400" : "bg-primary",
                         )}
                       />
                       <span
                         className={cn(
                           "relative inline-flex h-2.5 w-2.5 rounded-full",
-                          reportDue.level === "renewal" ? "bg-amber-500" : "bg-sky-500",
+                          reportDue.level === "renewal" ? "bg-amber-500" : "bg-primary",
                         )}
                       />
                     </span>
@@ -1768,7 +1768,7 @@ export function ClientProfileView({
                 <Button
                   onClick={handleConfirmToggleB}
                   disabled={toggleBReason.trim().length < 3 || isSavingToggle}
-                  className="bg-cta text-white hover:bg-cta-strong rounded-xl uppercase font-bold text-xs shadow-md shadow-cta/15"
+                  className="bg-cta text-cta-foreground hover:bg-cta rounded-xl uppercase font-bold text-xs shadow-md shadow-cta/15"
                 >
                   {isSavingToggle ? "Saving..." : "Confirm Switch"}
                 </Button>
@@ -1999,7 +1999,7 @@ export function ClientProfileView({
             <DialogTitle className="text-xl font-bold uppercase italic tracking-tighter">
               Sessions before Journey
             </DialogTitle>
-            <DialogDescription className="text-xs uppercase tracking-widest text-[#38BDF8] font-bold">
+            <DialogDescription className="text-xs uppercase tracking-widest text-primary font-bold">
               What {client.firstName} did before this studio moved onto Journey.
             </DialogDescription>
           </DialogHeader>
@@ -2028,7 +2028,7 @@ export function ClientProfileView({
                 value={sessionCountInput}
                 onChange={(e) => setSessionCountInput(e.target.value)}
                 disabled={!canEditPrior}
-                className="bg-slate-50 dark:bg-slate-800 border-border font-bold text-lg h-12 focus-visible:ring-[#38BDF8] disabled:opacity-100"
+                className="bg-slate-50 dark:bg-slate-800 border-border font-bold text-lg h-12 focus-visible:ring-ring disabled:opacity-100"
                 placeholder="0"
               />
               {priorReading.ok === false && priorReading.problem && (
@@ -2060,7 +2060,7 @@ export function ClientProfileView({
                     className={cn(
                       "min-h-10 rounded-xl px-3 text-[11px] font-bold uppercase tracking-widest border transition-colors disabled:cursor-default",
                       priorSource === s
-                        ? "border-[#38BDF8] bg-[#38BDF8]/15 text-[#0284c7] dark:text-[#8cc4f2]"
+                        ? "border-primary bg-primary/10 text-primary"
                         : "border-border bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300",
                     )}
                   >
@@ -2079,7 +2079,7 @@ export function ClientProfileView({
                 value={priorThrough}
                 onChange={(e) => setPriorThrough(e.target.value)}
                 disabled={!canEditPrior}
-                className="bg-slate-50 dark:bg-slate-800 border-border font-bold h-12 focus-visible:ring-[#38BDF8] disabled:opacity-100"
+                className="bg-slate-50 dark:bg-slate-800 border-border font-bold h-12 focus-visible:ring-ring disabled:opacity-100"
               />
               <p className="text-[11px] text-muted-foreground">
                 Journey owns everything after this day.
@@ -2094,7 +2094,7 @@ export function ClientProfileView({
                 value={priorNote}
                 onChange={(e) => setPriorNote(e.target.value)}
                 disabled={!canEditPrior}
-                className="bg-slate-50 dark:bg-slate-800 border-border h-12 focus-visible:ring-[#38BDF8] disabled:opacity-100"
+                className="bg-slate-50 dark:bg-slate-800 border-border h-12 focus-visible:ring-ring disabled:opacity-100"
                 // Read-only, a placeholder would pass for the note itself.
                 placeholder={canEditPrior ? "Counted from the FileMaker export" : undefined}
               />
@@ -2111,7 +2111,7 @@ export function ClientProfileView({
                 <Button
                   onClick={handleSaveSessionCount}
                   disabled={!priorCanSave}
-                  className="flex-2 h-11 bg-[#38BDF8] hover:bg-[#0284c7] rounded-full font-bold uppercase tracking-widest text-[11px]"
+                  className="flex-2 h-11 bg-primary text-primary-foreground hover:bg-primary rounded-full font-bold uppercase tracking-widest text-[11px]"
                 >
                   Save
                 </Button>

@@ -321,8 +321,15 @@ function countBarePaletteUtilities(): number {
  * out. The bottom bar's five orange-500 tabs are the frame's --chrome-go, and
  * the avatar menu's sky, slate, amber and rose are theme tokens. (The real
  * count is 148: the budget already sat 57 above it on master, db46d32c.)
+ *
+ * Oct 4 2026 (the Navy Frame, phase 7): 205 -> 139, the count again. This
+ * phase took 9 out (the session sheets' four orange-500 icons and the notes
+ * sheet's orange-500 tab, the Critical strip's rose wash and border, and the
+ * record's two sky dots), and the 57 of slack the
+ * budget carried from master go with them, so a new theme-blind colour fails
+ * here instead of hiding in the gap.
  */
-const BARE_PALETTE_BUDGET = 205;
+const BARE_PALETTE_BUDGET = 139;
 
 describe("colour drift does not creep back", () => {
   it(`has at most ${BARE_PALETTE_BUDGET} non-theme-aware palette utilities`, () => {

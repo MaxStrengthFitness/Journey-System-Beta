@@ -192,15 +192,15 @@ export function SessionJournalSidebar({
             <h2 className="flex items-center gap-2 text-xl font-black uppercase tracking-tighter text-foreground">
               {mode === "note" ? (
                 <>
-                  <NotebookPen className="h-5 w-5 text-orange-500" /> Session notes
+                  <NotebookPen className="h-5 w-5 text-(--eq-hero)" /> Session notes
                 </>
               ) : mode === "ford" ? (
                 <>
-                  <Heart className="h-5 w-5 text-orange-500" /> Remember this
+                  <Heart className="h-5 w-5 text-(--eq-hero)" /> Remember this
                 </>
               ) : (
                 <>
-                  <HeartPulse className="h-5 w-5 text-orange-500" /> Update Pulse
+                  <HeartPulse className="h-5 w-5 text-(--eq-hero)" /> Update Pulse
                 </>
               )}
             </h2>
@@ -250,7 +250,7 @@ export function SessionJournalSidebar({
               onClick={() => setMode(tab.id)}
               className={`h-10 min-w-0 flex-1 basis-0 rounded-lg text-[13px] font-bold transition-colors ${
                 mode === tab.id
-                  ? "bg-orange-500 text-white"
+                  ? "bg-(--eq-go) hover:bg-(--eq-go) text-(--eq-go-on)"
                   : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
             >

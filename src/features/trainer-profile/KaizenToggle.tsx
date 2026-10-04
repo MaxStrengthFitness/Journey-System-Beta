@@ -246,7 +246,7 @@ export function KaizenToggle({
               type="button"
               onClick={() => void submit()}
               disabled={!reason || saving}
-              className="h-10 px-5 rounded-xl bg-cta-strong text-white text-[11px] font-black uppercase tracking-widest cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-10 px-5 rounded-xl bg-cta hover:bg-cta text-cta-foreground text-[11px] font-black uppercase tracking-widest cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? "Saving…" : "Track"}
             </button>

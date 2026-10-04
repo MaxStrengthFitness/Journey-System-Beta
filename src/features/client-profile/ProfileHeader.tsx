@@ -256,7 +256,7 @@ function Stat({
           aria-label={meter!.label ?? `${meter!.value} of ${meter!.max}`}
         >
           <span
-            className="block h-full bg-[#F06C22] transition-[width] duration-500"
+            className="block h-full bg-(--eq-hero) transition-[width] duration-500"
             style={{ width: `${pct}%` }}
           />
         </span>
@@ -327,7 +327,7 @@ function SessionsTile({
         {renewal?.attention && <span className={cn("w-1.5 h-1.5 rounded-full bg-current shrink-0", RENEWAL_TONE[renewal.tone])} aria-hidden="true" />}
       </span>
       <span className="text-[15px] font-bold leading-tight text-slate-900 dark:text-slate-50 whitespace-nowrap">
-        <span className="text-[#F06C22] tabular-nums" data-testid="sessions-completed">
+        <span className="text-(--eq-hero-text) tabular-nums" data-testid="sessions-completed">
           {completed === null ? "\u2014" : completed}
         </span>{" "}
         <span className="font-semibold">{completedWord}</span>
@@ -561,7 +561,7 @@ export function ProfileHeader({
             disabled={kaizen.busy}
             aria-pressed={kaizen.isOn}
             title={kaizen.isOn ? "On your Kaizen Roster — tap to remove" : "Add to your Kaizen Roster"}
-            className={cn(toolBtn, kaizen.isOn && "text-[#034a84] dark:text-[#7cc0ee] bg-[#0a548b]/10 dark:bg-[#4a9fd8]/15")}
+            className={cn(toolBtn, kaizen.isOn && "text-(--eq-live-text) bg-(--eq-live-fill) hover:text-(--eq-live-text) hover:bg-(--eq-live-fill) dark:hover:bg-(--eq-live-fill)")}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <polyline points="2,10 6,6 10,10" opacity={0.55} />
@@ -629,11 +629,15 @@ export function ProfileHeader({
             onClick={onStartSession}
             disabled={isCheckingActiveSession}
             className={cn(
-              "cp-head__start group relative shrink-0 inline-flex items-center gap-3 h-12 xl:h-[52px] pl-1.5 pr-3 sm:pr-5 rounded-2xl text-white",
-              "bg-[linear-gradient(135deg,#ef5302_0%,#f36d21_100%)] ring-1 ring-white/25 ring-inset",
-              "shadow-[0_14px_34px_-14px_rgba(239,83,2,.85)] hover:shadow-[0_18px_40px_-14px_rgba(239,83,2,.95)] hover:brightness-[1.04]",
+              // Start, as on the Hub (the Navy Frame, Oct 4 2026): the logo
+              // orange with navy words, the fill restated on hover (an iPad
+              // keeps hover after a tap). White on the old gradient was 2.99
+              // to 3.55:1.
+              "cp-head__start group relative shrink-0 inline-flex items-center gap-3 h-12 xl:h-[52px] pl-1.5 pr-3 sm:pr-5 rounded-2xl text-(--eq-go-on)",
+              "bg-(--eq-go) hover:bg-(--eq-go) ring-1 ring-white/25 ring-inset",
+              "shadow-[0_14px_34px_-14px_var(--eq-go)] hover:shadow-[0_18px_40px_-14px_var(--eq-go)] shadow-(color:--eq-go)/40",
               "active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-wait",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#0a548b]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-card focus-visible:ring-(--eq-focus-ring)",
             )}
           >
             <span className="grid place-items-center w-9 h-9 xl:w-10 xl:h-10 rounded-xl bg-white/20 group-hover:bg-white/25 transition-colors">
@@ -644,7 +648,7 @@ export function ProfileHeader({
                 {isCheckingActiveSession ? "Checking…" : "Start session"}
               </span>
               {!isCheckingActiveSession && nextDate && daysUntil(nextDate) === "today" && (
-                <span className="text-[10px] font-bold uppercase tracking-widest text-white/85 mt-1">Booked today{nextTime ? ` · ${nextTime}` : ""}</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-(--eq-go-on) mt-1">Booked today{nextTime ? ` · ${nextTime}` : ""}</span>
               )}
             </span>
           </button>
@@ -738,7 +742,7 @@ export function ProfileHeader({
               <li key={t.key} className="flex items-center gap-3 py-1.5">
                 <span className="flex-1 min-w-0 break-words text-[13px] font-semibold text-slate-800 dark:text-slate-100">{t.name}</span>
                 <span className="w-24 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                  <span className="block h-full bg-[#F06C22]" style={{ width: `${Math.round(t.share * 100)}%` }} />
+                  <span className="block h-full bg-(--eq-hero)" style={{ width: `${Math.round(t.share * 100)}%` }} />
                 </span>
                 <span className="shrink-0 whitespace-nowrap text-right text-[12px] tabular-nums text-slate-600 dark:text-slate-300">
                   {t.sessions} session{t.sessions === 1 ? "" : "s"} · {Math.round(t.share * 100)}%

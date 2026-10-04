@@ -158,7 +158,7 @@ export function FeedbackDrawer({
           <Button
             onClick={send}
             disabled={!description.trim() || busy || sent}
-            className="w-full h-12 sm:h-14 rounded-2xl bg-cta text-white font-black uppercase text-[11px] sm:text-xs tracking-widest gap-2 disabled:opacity-40"
+            className="w-full h-12 sm:h-14 rounded-2xl bg-cta hover:bg-cta text-cta-foreground font-black uppercase text-[11px] sm:text-xs tracking-widest gap-2 disabled:opacity-40"
           >
             {sent ? (
               <>

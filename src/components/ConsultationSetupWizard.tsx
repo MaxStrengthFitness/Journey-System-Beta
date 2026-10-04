@@ -206,7 +206,7 @@ export function ConsultationSetupWizard({
                       </div>
 
                       <div className="mt-5 pt-3 border-t border-div-d flex justify-between items-center">
-                        <button className="bg-bg-dark-3 hover:bg-slate-800 transition-colors py-2 px-3.5 rounded-lg text-[10px] font-black uppercase tracking-widest text-cyan flex items-center gap-2 cursor-pointer">
+                        <button className="bg-bg-dark-3 hover:bg-muted transition-colors py-2 px-3.5 rounded-lg text-[10px] font-black uppercase tracking-widest text-cyan flex items-center gap-2 cursor-pointer">
                           Setup Info
                           <ChevronRight className="w-4.5 h-4.5" />
                         </button>
@@ -245,7 +245,7 @@ export function ConsultationSetupWizard({
         </div>
         <Button
           onClick={() => onComplete({ gender, age, skillLevel, routine })}
-          className="bg-cta hover:opacity-90 text-white font-black uppercase tracking-widest text-sm sm:text-base h-14 sm:h-16 px-8 sm:px-10 rounded-2xl shadow-[0_10px_30px_rgba(240,108,34,0.3)] pointer-events-auto items-center justify-center flex gap-2.5 z-20"
+          className="bg-cta hover:bg-cta text-cta-foreground font-black uppercase tracking-widest text-sm sm:text-base h-14 sm:h-16 px-8 sm:px-10 rounded-2xl shadow-[0_10px_30px_var(--cta)] shadow-cta/30 pointer-events-auto items-center justify-center flex gap-2.5 z-20"
         >
           Start Consult Workout
           <Play className="w-5 h-5 fill-current shrink-0" />

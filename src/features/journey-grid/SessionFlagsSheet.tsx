@@ -64,7 +64,7 @@ export function SessionFlagsSheet({ clientFirstName, flags, machines, onClose }:
         <div className="flex shrink-0 items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
           <div className="flex flex-col">
             <h2 className="flex items-center gap-2 text-xl font-black uppercase tracking-tighter text-foreground">
-              <ShieldAlert className="h-5 w-5 text-rose-500 dark:text-rose-400" /> Before you touch the machine
+              <ShieldAlert className="h-5 w-5 text-(--eq-alert)" /> Before you touch the machine
             </h2>
             <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               {name} · the same things the briefing showed

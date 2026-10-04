@@ -171,7 +171,7 @@ export function BodyStateTracker({
                 style={chipStyle(dial)}
                 className={cn(
                   'inline-flex items-center gap-2 h-11 min-w-[140px] px-3 rounded-xl border text-[13px] font-medium uppercase tracking-wide transition-all active:scale-95',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 )}
                 aria-label={`Remove ${tag.region} (${word}${untilText ? `, ${untilText}` : ''})`}
               >
@@ -200,9 +200,9 @@ export function BodyStateTracker({
         className={cn(
           'flex items-center justify-between w-full h-11 px-4 rounded-xl bg-surface-2 border border-div-d text-ink-d2 text-[13px] font-medium uppercase tracking-wide transition-all',
           'hover:bg-bg-dark-3 hover:text-white',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           'disabled:opacity-50 disabled:cursor-not-allowed',
-          open && 'ring-2 ring-cyan'
+          open && 'ring-2 ring-ring'
         )}
         aria-expanded={open}
         aria-haspopup="dialog"
@@ -277,7 +277,7 @@ export function BodyStateTracker({
                       setPendingDial(null);
                       setPendingUntil('');
                     }}
-                    className="flex items-center justify-center w-11 h-11 rounded-lg text-ink-d2 hover:bg-bg-dark-3 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+                    className="flex items-center justify-center w-11 h-11 rounded-lg text-ink-d2 hover:bg-bg-dark-3 hover:text-ink-d1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     aria-label="Back to region list"
                   >
                     <ChevronLeft className="w-5 h-5" />

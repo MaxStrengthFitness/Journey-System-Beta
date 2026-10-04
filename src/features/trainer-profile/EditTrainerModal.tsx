@@ -888,7 +888,7 @@ export function EditTrainerModal({
           <Button
             onClick={handleSave}
             disabled={saving || (isAdminMode && !fullName) || !initials}
-            className="bg-[#F06C22] hover:bg-[#d95b16] text-white font-black uppercase text-xs h-12 rounded-xl transition-all shadow-[0_0_20px_rgba(240,108,34,0.3)] min-w-37.5"
+            className="bg-cta hover:bg-cta text-cta-foreground font-black uppercase text-xs h-12 rounded-xl transition-all shadow-[0_0_20px_var(--cta)] shadow-cta/30 min-w-37.5"
           >
             {saving ? "Saving Changes..." : "Save Trainer Profile"}
           </Button>

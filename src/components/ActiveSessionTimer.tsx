@@ -139,7 +139,7 @@ export const ActiveSessionTimer = memo(function ActiveSessionTimer({
             "flex items-center justify-center transition-all cursor-pointer select-none active:scale-95 shrink-0",
             isMobile ? "w-7 h-7 rounded-lg" : "w-10 h-10 rounded-xl",
             isPaused
-              ? "bg-cta hover:opacity-90 text-white shadow-[0_0_12px_rgba(240,108,34,0.4)]"
+              ? "bg-cta hover:bg-cta text-cta-foreground shadow-[0_0_12px_var(--cta)] shadow-cta/40"
               : "bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200",
           )}
           title={isPaused ? "Resume Session" : "Pause Session"}

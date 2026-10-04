@@ -171,7 +171,7 @@ export function SetUpDemoCard({
             className={cn(
               "w-full font-black uppercase tracking-widest text-xs h-11 rounded-xl flex items-center justify-center gap-2 cursor-pointer",
               state === "confirm"
-                ? "bg-cta-strong hover:bg-[#a02400] text-white"
+                ? "bg-cta hover:bg-cta text-cta-foreground"
                 : "bg-bg-dark-3 hover:bg-muted text-ink-d1 border border-div-d",
             )}
           >

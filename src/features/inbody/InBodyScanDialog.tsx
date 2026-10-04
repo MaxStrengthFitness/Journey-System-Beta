@@ -377,7 +377,7 @@ export function InBodyScanDialog({ open, onClose, client, scan, scans, authTrain
                 type="button"
                 onClick={save}
                 disabled={saving}
-                className="min-h-11 rounded-xl bg-cta-strong px-6 text-[12px] font-black uppercase tracking-widest text-white disabled:opacity-50"
+                className="min-h-11 rounded-xl bg-cta hover:bg-cta px-6 text-[12px] font-black uppercase tracking-widest text-cta-foreground disabled:opacity-50"
               >
                 {saving ? "Saving…" : scan ? "Save correction" : "Save scan"}
               </button>

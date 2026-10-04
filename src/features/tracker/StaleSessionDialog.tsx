@@ -97,7 +97,7 @@ export function StaleSessionDialog({
             </Button>
           )}
           <Button
-            className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-cta-strong text-white hover:brightness-110"
+            className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-cta text-cta-foreground hover:bg-cta"
             onClick={onStartNew}
           >
             Start a new session

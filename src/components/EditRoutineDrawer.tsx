@@ -587,7 +587,7 @@ export function EditRoutineDrawer({
                       className={cn(
                         "h-11 px-5 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-2",
                         activeSlot === slot
-                          ? "bg-cyan text-white border-transparent shadow-sm shadow-cyan/20"
+                          ? "bg-primary text-primary-foreground border-transparent shadow-sm shadow-primary/20"
                           : inactive
                             ? "bg-slate-50 dark:bg-slate-900/40 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:border-cyan hover:text-cyan dark:hover:text-cyan cursor-pointer"
                             : "bg-slate-100 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800",
@@ -672,7 +672,7 @@ export function EditRoutineDrawer({
                     size="sm"
                     disabled={!presetNameDraft.trim() || isSavingPreset}
                     onClick={handleSaveStudioPreset}
-                    className="h-8 rounded-lg text-[11px] font-bold uppercase bg-cta text-white hover:bg-cta-strong shrink-0"
+                    className="h-8 rounded-lg text-[11px] font-bold uppercase bg-cta text-cta-foreground hover:bg-cta shrink-0"
                   >
                     {isSavingPreset ? "Saving..." : "Save"}
                   </Button>
@@ -847,7 +847,7 @@ export function EditRoutineDrawer({
             <Button
               onClick={handleSave}
               disabled={reason.trim().length < 3 || isSaving || !isDirty}
-              className="bg-cta text-white hover:bg-cta-strong rounded-xl uppercase font-bold text-xs shadow-md shadow-cta/15"
+              className="bg-cta text-cta-foreground hover:bg-cta rounded-xl uppercase font-bold text-xs shadow-md shadow-cta/15"
             >
               {isSaving ? "Saving Changes..." : `Apply ${activeSlot}`}
             </Button>

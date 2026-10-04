@@ -243,7 +243,7 @@ export function LogConversationDialog({
               onClick={save}
               disabled={Boolean(problem) || saving}
               title={problem ?? undefined}
-              className="min-h-11 rounded-xl bg-cta-strong px-6 text-[12px] font-black uppercase tracking-widest text-white disabled:opacity-50"
+              className="min-h-11 rounded-xl bg-cta hover:bg-cta px-6 text-[12px] font-black uppercase tracking-widest text-cta-foreground disabled:opacity-50"
             >
               {saving ? "Saving…" : problem ? "Pick a leaning" : "Save conversation"}
             </button>

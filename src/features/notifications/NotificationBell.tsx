@@ -209,7 +209,7 @@ export function NotificationBell({
       >
         <Bell className="w-5 h-5 sm:w-6 sm:h-6" />
         {badge > 0 && (
-          <span className="absolute top-0.5 right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-cta text-white text-[9px] font-black flex items-center justify-center leading-none">
+          <span className="absolute top-0.5 right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-chrome-go text-chrome text-[9px] font-black flex items-center justify-center leading-none">
             {badge > 9 ? "9+" : badge}
           </span>
         )}
@@ -259,7 +259,7 @@ export function NotificationBell({
                             </span>
                           )}
                           {isNew && (
-                            <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-cta/15 text-cta">
+                            <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-cta/15 text-(--eq-hero-text)">
                               New
                             </span>
                           )}
@@ -292,7 +292,7 @@ export function NotificationBell({
                                 );
                                 setOpen(false);
                               }}
-                              className="mt-2 inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-xl border border-cta/40 bg-cta/10 px-3 text-left text-[11px] font-black uppercase tracking-widest text-cta"
+                              className="mt-2 inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-xl border border-cta/40 bg-cta/10 px-3 text-left text-[11px] font-black uppercase tracking-widest text-(--eq-hero-text)"
                             >
                               <BookOpen className="w-3.5 h-3.5 shrink-0" />
                               <span className="min-w-0 [overflow-wrap:anywhere]">Open {learningRefLabel(page)}</span>
@@ -365,7 +365,7 @@ export function NotificationBell({
                             "w-8 h-8 rounded-xl flex items-center justify-center border shrink-0",
                             n.kind === "machine-flagged"
                               ? "bg-amber/10 border-amber/30 text-amber"
-                              : "bg-muted border-border text-cta",
+                              : "bg-muted border-border text-(--eq-hero-text)",
                           ].join(" ")}
                         >
                           <Icon className="w-4 h-4" />

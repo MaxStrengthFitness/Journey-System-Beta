@@ -3346,12 +3346,12 @@ export function WorkoutTrackerView({
       )}
     >
       {isIntroSession && (
-        <div className="bg-orange-500 dark:bg-orange-600 p-3 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-orange-500/20 border border-white/20 animate-pulse mt-2 mx-4 relative z-40">
-          <Sparkles className="w-5 h-5 text-foreground" />
-          <span className="text-foreground font-black uppercase italic tracking-[0.15em] text-xs">
+        <div className="bg-(--eq-go) p-3 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-(color:--eq-go)/20 border border-white/20 animate-pulse mt-2 mx-4 relative z-40">
+          <Sparkles className="w-5 h-5 text-(--eq-go-on)" />
+          <span className="text-(--eq-go-on) font-black uppercase italic tracking-[0.15em] text-xs">
             NEW CLIENT INTRODUCTORY SESSION: CONVERSATIONAL BASELINE
           </span>
-          <Sparkles className="w-5 h-5 text-foreground" />
+          <Sparkles className="w-5 h-5 text-(--eq-go-on)" />
         </div>
       )}
       {/* Zone 1 — session bar. In flow, one row, 48px. It used to be a
@@ -3545,9 +3545,9 @@ export function WorkoutTrackerView({
       {/* End Session Confirmation Dialog */}
       <Dialog open={showEndConfirmation} onOpenChange={setShowEndConfirmation}>
         <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
-          <div className="bg-primary p-8 text-foreground space-y-3">
+          <div className="bg-primary p-8 text-primary-foreground space-y-3">
             <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-2">
-              <AlertCircle className="w-6 h-6 text-foreground" />
+              <AlertCircle className="w-6 h-6 text-primary-foreground" />
             </div>
             <h3 className="text-2xl font-black italic uppercase tracking-tight">
               End Session?
@@ -3656,7 +3656,7 @@ export function WorkoutTrackerView({
                                   className={cn(
                                     "h-10 px-3 rounded-xl text-[11px] font-black uppercase tracking-widest border-2 transition-colors",
                                     choice === opt
-                                      ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white"
+                                      ? "bg-primary text-primary-foreground border-primary"
                                       : "border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300",
                                   )}
                                 >
@@ -3688,7 +3688,7 @@ export function WorkoutTrackerView({
                     onChange={(e) => setCurrentSessionNotes(e.target.value)}
                     placeholder="What should the next trainer know before the next session?"
                     aria-describedby="next-trainer-note-hint"
-                    className="min-h-25 border-2 border-slate-200 dark:border-slate-800 bg-card resize-none text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus-visible:ring-orange-500 focus-visible:border-orange-500"
+                    className="min-h-25 border-2 border-slate-200 dark:border-slate-800 bg-card resize-none text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus-visible:ring-(--eq-hero) focus-visible:border-(--eq-hero)"
                   />
                   <p id="next-trainer-note-hint" className="text-xs text-muted-foreground">
                     Read out on the briefing at the next four sessions. A note just for the profile goes on the Wrap-up, next.
@@ -3717,7 +3717,7 @@ export function WorkoutTrackerView({
                     Keep Training
                   </Button>
                   <Button
-                    className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20 bg-cta text-white hover:opacity-90"
+                    className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-cta/20 bg-cta text-cta-foreground hover:bg-cta"
                     onClick={() => void commitEndSession()}
                     disabled={isSyncing}
                   >
@@ -3978,7 +3978,7 @@ export function WorkoutTrackerView({
               <div className="flex shrink-0 items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
                 <div className="flex flex-col">
                   <h2 className="flex items-center gap-2 text-xl font-black uppercase tracking-tighter text-foreground">
-                    <HeartPulse className="h-5 w-5 text-orange-500" /> Pulse
+                    <HeartPulse className="h-5 w-5 text-(--eq-hero)" /> Pulse
                   </h2>
                   <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                     Saves as you type · session keeps running
