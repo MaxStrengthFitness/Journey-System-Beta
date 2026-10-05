@@ -1,6 +1,6 @@
 # Type and depth ("Refined Lift") — Oct 4 2026
 
-**Branch:** `oct4/type-depth`, off `oct4/colour-followups` (`6340109a`, the Navy Frame and its three follow-ups). Fourteen phases, one commit each (two for the last: the look and these docs), then the review's fixes (Oct 5 2026, one commit and its docs), each typechecked at the baseline (2), run through the whole suite and built before the next began. The phases are separate so each can be reverted alone; they ship as ONE push, because half a look reads as patched. No Firestore rules, indexes, Cloud Functions, server or Mindbody change. The plan, the kits, the maps and each phase's working files are in `harness/depth/` on AJ's PC, which git ignores.
+**Branch:** `oct4/type-depth`, off `oct4/colour-followups` (`6340109a`, the Navy Frame and its three follow-ups). Fourteen phases, one commit each (two for the last: the look and these docs), then the review's fixes (Oct 5 2026, one commit and its docs) and a follow-up for the last old words (one commit and its docs), each typechecked at the baseline (2), run through the whole suite and built before the next began. The phases are separate so each can be reverted alone; they ship as ONE push, because half a look reads as patched. No Firestore rules, indexes, Cloud Functions, server or Mindbody change. The plan, the kits, the maps and each phase's working files are in `harness/depth/` on AJ's PC, which git ignores.
 
 ## What AJ asked
 
@@ -51,7 +51,7 @@ AJ picked Refined Lift and answered **"1a 2a 3b"**:
 | A lane head on the Hub, a room's title in its bar | Saira Condensed, upright | 17 / 800, 22 / 800 | Mixed |
 | Headline figures | Saira Condensed, upright | 22 / 800 (strips, facts); 30 (a big number); 17 (day numerals, hours) | |
 | Machine codes | Saira Condensed, upright | 14 / 700, a jersey tag ringed in its own ink | |
-| **Brand slant** | Saira Condensed, slanted capitals | 20 (the studio name), 17 (Go) / 800 | CAPS — the studio name, Start session, the front door's display line. Nowhere else |
+| **Brand slant** | Saira Condensed, slanted capitals | 20 (the studio name), 17 (Go) / 800 | CAPS — the studio name, Start session, the front door's display line. Nowhere else (the briefing's safety heading dropped its upright capitals in the follow-up) |
 | Section title | Geist | 22 / 800, -0.015em | Sentence |
 | Panel title | Geist | 17 / 700, -0.01em, ink, led by a 32px icon square | Sentence |
 | Label (over a list or field) | Geist | 14 / 700, ink-2 | Sentence |
@@ -114,6 +114,7 @@ All of it is tokens in `src/index.css` (`:root` and `.dark`), carried by every f
 | 13 | `b0391c9e` | The Active Session: nothing under 11px, nothing in capitals (AJ's 3B), its controls raised, the grid lifted, the Now Bar docked |
 | 14 | `f0782379` | Operations' 260 buttons speak 14/700 as written; the depth rules held app-wide; seventeen callouts that tapered into crescents became bands; fourteen class lists stopped animating a shadow; three tints got a 3:1 edge |
 | Review | `85c7c106` | The review's fixes (Oct 5): the sheets a session opens speak its voice; a raised control on a popover steps up in dark; the peek's Go words for Start session alone; the last old words on the frame, the bell, toasts, dialogs, the Wrap-up, the briefing and the rooms; 900 calmed to 800 in every stylesheet; three guards widened (below) |
+| Follow-up | `e7e80aa8` | The last capitals the lead saw (the briefing's safety heading, the Dial's Not asked, Learning's switch, the feedback drawer) and the dialogs the review deferred, in the round's voice and depth (below) |
 
 Each phase's commit message sets out what it moved, the deviations from the plan with their reasons, and what it owes the iPad walk.
 
@@ -123,16 +124,16 @@ Every guard reads the source (jsdom draws no CSS, so nothing can be measured on 
 
 - **`src/fonts.test.ts`** (phase 1): no Google font, the Saira files exist at 700 and 800 only with their licence, no rule asks Saira for 600 or 900, the body weight and the eyebrow's tracking; since the review, **no stylesheet asks for 900 at all** (Geist is variable, so 136 rules that wrote 900 drew heavier than every class list).
 - **`src/css-vars-declared.test.ts`** (phase 3, grown each phase): every `var(--x)` without a fallback is declared somewhere in `src`; since the review it reads **every stylesheet in `src`**, not only the ones the round touched (all passed).
-- **`src/session-sheets-type.test.ts`** (the review): the sheets a session opens (the machine sheet, the Pulse slide-over and quick log, the note composer, the briefing, the Journal's Today) set no text under 11px and no capitals beyond Go and the briefing's safety voice; the components it mounts (the notes sidebar's cards, the Critical strip, the stale-session and pick-a-client dialogs, a toast, the leave question) carry no capitals, nothing under 11px and no raw veil.
+- **`src/session-sheets-type.test.ts`** (the review): the sheets a session opens (the machine sheet, the Pulse slide-over and quick log, the note composer, the briefing, the Journal's Today, and since the follow-up the Dial and Loudness) set no text under 11px and no capitals beyond Go; the components it mounts (the notes sidebar's cards, the Critical strip, the stale-session and pick-a-client dialogs, a toast, the leave question) carry no capitals, nothing under 11px and no raw veil.
 - **`src/elevation.test.ts`** (phases 3 and 14): the tokens (navy never black, short resting shadows, lighter is higher, a raised fill keeps the 3:1 edge) and, since phase 14, **the rules across every stylesheet and component in `src`**: the most-seen panels lift; no shadow is raw black; nothing animates a shadow (a class list read whole, across a `cn()` call); no crescent (the rails that stay are listed with reasons, exact both ways); nothing tappable under 40px; every raised control keeps a 3:1 edge (a control token, a solid fill, or a tint measured on its card in both modes); no well in `bg-muted` or `--bg-dark-3`. Since the review the 40px scan names tabs and back buttons too, not only `btn` (it had missed the Archive's session tabs at 32px and the machine sheet's back button at 36px).
 - **`src/components/ui/button-sizes.test.ts`** (phase 4): every Button size is 40px or more, no caller shrinks one or animates its shadow, and no className writes a shadow as an arbitrary value starting with `var(` (or `inset-shadow-(`).
 - **`src/frame-and-shelves.test.ts`** (phase 5): the frame's cast, the shelves and their z-order, the Active Session's layers.
 - **`src/features/client-codex/kit/depth.test.ts`** (phase 6): the codex kit's panels, heads, wells and buttons.
-- **`src/buttons-depth.test.ts`** (phase 8): the raised recipe on 35 buttons, each palette's edge (3:1) and words (4.5:1) on its raised fill in both modes, Go's voice and depth, the 40px list, pointer-only hovers.
+- **`src/buttons-depth.test.ts`** (phase 8): the raised recipe on 35 buttons, each palette's edge (3:1) and words (4.5:1) on its raised fill in both modes, Go's voice and depth, the 40px list, pointer-only hovers; since the follow-up, the deferred dialogs' secondary buttons raised on `border-input` with the lift, or the outline variant.
 - **`src/wells-and-rows.test.ts`** (phase 9): every well, its words at 4.5:1 in both modes, the rows.
 - **`src/panels-and-heads.test.ts`** (phase 10): 47 panels, their heads, the two voices, the icon squares, the bands.
 - **`src/features/hub-schedule/hub-depth.test.ts`** (phase 11): the Hub's bookings, bar, numerals, lane heads, hours and peek; since the review, the peek's raised step above the popover in dark and `index.css`'s own pair for dialogs, sheets and menus.
-- **`src/type-voice.test.ts`** (phases 12 and 14): the display face slanted and in capitals only on its allow-lists; no faked italics; titles, names, figures and codes upright; Geist heads; dialog titles; the panel heads the plan names; Operations' button voice, and every `AdminButton` label in sentence case.
+- **`src/type-voice.test.ts`** (phases 12 and 14, and the follow-up): the display face slanted and in capitals only on its allow-lists (since the follow-up, the slanted ones alone); no faked italics; titles, names, figures and codes upright; Geist heads; dialog titles; the panel heads the plan names; Operations' button voice, and every `AdminButton` label in sentence case; since the follow-up, the dialogs the review deferred (section 9) and Learning's switch (section 10).
 - **`src/features/journey-grid/session-depth.test.ts`** (phase 13): the session's stylesheet free of sizes under 11px and of capitals, its raised controls, the lift and the dock with no new z-index, its 40px reaches and its words at 4.5:1.
 - **`src/lib/names-wrap.test.ts`** (extended): the new name classes (the lane head, the peek's name, a booking's name, the profile header's name, the briefing's, a machine's, a trainer's, the codex's page title) never clip.
 - **`next-session-tile.test.ts`**: "Tomorrow ·" and "7:30 AM" break only between them (no-break spaces, written as escapes).
@@ -170,7 +171,7 @@ Where the plan and the kit disagreed, the kit's rendered values won; each phase'
 - **The always-dark screens were not repainted**: the error screen, the legacy chart importer, the unmounted consultation wizard and the client-facing progress report keep their own palettes (the Navy Frame's `NOT_THIS_ROUND`), and took only what the guards require (no shadow transitions, no black shadow tokens).
 - **One raw black shadow remains in a class list**, the legacy importer's (an always-dark screen). The session timer's unmounted card variant went in the review, and Add a client lost its dark black glow.
 - **Older rules elsewhere still put words in the faint ink** (about 120 at the Navy Frame; this round moved the ones it touched), and some heads keep their band (`.stq__head`, `.ford-sweep__head`, `.sra-pillar__head`, the Directory's and the history sheet's column heads).
-- **Lower-traffic dialogs keep the old voice** (10-12px heavy capitals, fields that override the 3:1 edge): the feedback drawer, most of the routine drawer, the InBody scan, the Kaizen toggle, Log a conversation, the session pop-up's delete, the demo banner, Edit trainer and the trainer reorder dialog. The review moved Add a client, the report archive (its Delete was hover-only and 32px) and the Assign dialog's 36px durations; the rest is a follow-up of one mechanical pass. `RenewalCardDialog.tsx` has no importer and is left for that pass (a test still counts its Save).
+- **The lower-traffic dialogs took the voice in the follow-up** (below). Left as they were: the demo strip's Leave is a 26px line by design ("the floor has none to spare", and its test pins the height), so its tap area is under 40px; a few helper words keep Tailwind colours under 4.5:1 (the routine drawer's emerald and amber "Reason captured" / "Reason required" and its inactive Routine B's slate-400), since the follow-up changed case, size, weight and depth only.
 - **Not under 40px but close**: the shadcn Checkbox (a 16px box with a tap area of about 40 × 32) and Switch (about 34px tall) are older than this round.
 
 ## For AJ: what is still open
@@ -194,7 +195,7 @@ No rules, indexes, Cloud Functions, server or Mindbody change, so it is the push
 
 ## Measured
 
-On the branch's last commit, in the worktree on AJ's PC: `npx tsc --noEmit` **2** errors (`charts.tsx`, `EditTrainerModal.tsx`, as before); `TZ=America/New_York npx vitest run --dir src` **10,885** passing in **676** files, none failing (10,864 in 675 before the review's fixes; the base, `oct4/colour-followups`, measured 9,657 in 663); `npx vite build` clean, with no CSS-optimiser warning (until the review one remained: a comment in `button.tsx` and a line here spelled the bracket form of a shadow class, so Tailwind built an invalid class from them; both are reworded). The round changed 159 files (+11,270, -1,659 lines, most of them the guards) before its first docs.
+On the branch's last commit, in the worktree on AJ's PC: `npx tsc --noEmit` **2** errors (`charts.tsx`, `EditTrainerModal.tsx`, as before); `TZ=America/New_York npx vitest run --dir src` **10,910** passing in **676** files, none failing (10,885 before the follow-up; 10,864 in 675 before the review's fixes; the base, `oct4/colour-followups`, measured 9,657 in 663); `npx vite build` clean, with no CSS-optimiser warning (until the review one remained: a comment in `button.tsx` and a line here spelled the bracket form of a shadow class, so Tailwind built an invalid class from them; both are reworded). The round changed 159 files (+11,270, -1,659 lines, most of them the guards) before its first docs.
 
 ## The review's fixes (Oct 5 2026)
 
@@ -207,3 +208,29 @@ A review of the whole branch found where the round had not reached and where it 
 - **Weight 900 to 800** in every stylesheet; the history calendar's landscape card rule placed after its base so it applies (without its 9.5px day numbers); the session timer's dead card variant and ThemeToggle's dead default removed; two literal pins in `loud-orange.test.ts` made token sets (`someStringHas`), so the lift classes went back into one expression.
 
 Rejected, with reasons: `.lps-pick` (named with the flat buttons) is the Log past session picker's container, not a button; `.cfl-toggle` is a toggle row with its own band, left a row. Left for AJ: the flags above (questions 3 and 5 to 8).
+
+## The follow-up (Oct 5 2026)
+
+The round's type voice, finished where it stopped. Two sources: what the lead saw on the real app (Demo Mode, light, an iPad mini's 744 × 1133) and the dialogs the review's fix deferred.
+
+**What the lead saw, still true on the branch, now fixed:**
+
+- **The briefing's safety heading.** "NOTHING FLAGGED — CLEAR TO GO." was the display face in upright capitals (the Stack's safety voice, Oct 3). AJ's 1A sets every title upright in its own capitalisation, with capitals for the studio's name and Start session alone, so it now reads "Nothing flagged — clear to go." in the same face, size (22), weight (800) and green. A limit's name in the same block ("Lower back") went with it. "Before you start" over it, the line under the client's name and the routine card's Edit had already been fixed by the review.
+- **The Dial's "NOT ASKED".** The Dial's word (`.rt__word`) is the chip voice, 12/700 as written ("Not asked", "A bit short"); its question is the 14/700 label (it was 13); its legend is 11px (it was 10); Loudness says Note · Heads up · Critical in the segment voice, 14/600 and the picked one 700 (they were 11px capitals). This is the one Dial, so the note sheet, the Pulse and the progress report's Four Ps change with the briefing.
+- **Learning's Overview / Catalog / Academy.** The switch is the run sheet's: a well inside its 3:1 edge, each segment 14/600 in its own words, the picked one raised with the soft ring at 700 (it was a hairline group of 11px tracked capitals). The Catalog figure's Front / Back is the same control.
+- **The feedback drawer.** The line under "Help us build this" is a 14px sentence; Bug, UI feedback and Feature idea are raised buttons on the 3:1 edge in the button voice, the picked one the solid blue with its own lift; "Attached automatically:" is 12px words; "Send to the team" is the button voice. The title is the 22/800 section voice and the field sinks.
+
+**The dialogs the review deferred, now in the round's voice** (labels the 14/700 label voice or 12px, buttons the 14/700 button voice raised on the 3:1 edge or a solid fill kept on hover, fields on their 3:1 `--input` edge and sunk, no `font-black`, no tracked capitals; every string's words kept, Title Case re-cased where the capitals had hidden it):
+
+- **Edit routine** (`EditRoutineDrawer.tsx`): Routine A / B raised (the picked one the blue with its lift; B dashed until active), "Tap to activate" 12px, Preset routines the label, Save current a 40px text button, the preset pills 40px and raised with a 40px x (they were 28px with a 14px x), a studio's name wrapping (it was truncated), the reason field sunk, Close outlined beside Apply.
+- **InBody scan**: labels, fields sunk on the 3:1 edge, the two disclosures raised, Keep it and Cancel raised, Remove solid red kept on hover, Save the blue with its lift.
+- **The Kaizen toggle**: Track 40px (it was 36) and raised; its sheet's reasons raised; the note and the date sunk.
+- **Log a conversation and the Renewal card**: chips and "A leader should follow up" raised; the facts sit in wells instead of boxes in the dialog; Cancel and Close raised. (`RenewalCardDialog.tsx` is mounted: ClientProfileView opens it.)
+- **A session's delete** (the Activity Archive): Cancel outlined, Delete permanently solid red kept on hover.
+- **The demo strip**: "Demo Mode — nobody here is real" and Leave at 12/700 as written, still one 26px line.
+- **Edit trainer profile**: every label, the fields on the shared recipe, a certificate's remove 40px (it was 20px), the switch rows and Studio involvements & connections in words, Cancel outlined, Save the blue with its glow.
+- **Team presence sorting** (AppContent's trainer reorder dialog): the title and lines in words, names wrapping, no flattened dark.
+
+**Guards.** `type-voice.test.ts` section 9 reads those files' class lists (and the reorder dialog's slice of AppContent): no capitals, no tracking, nothing under 11px, no `font-black`, no `dark:shadow-none`, no field painting its own ground or a decorative edge, a solid red button restating its fill; section 10 holds Learning's switch. `buttons-depth.test.ts` holds their secondary buttons raised on `border-input` with the lift (or the outline variant). `session-sheets-type.test.ts` reads `rating.css`. Tests moved on purpose are in `docs/KNOWN-TRAPS.md` (type and depth). Each new guard was broken on purpose and failed.
+
+**Left as it was:** the demo strip's Leave stays inside its 26px line (under 40px, by design and pinned); a few helper words keep Tailwind colours under 4.5:1 (the routine drawer's "Reason captured" / "Reason required" and its inactive Routine B); nothing was seen in a browser, so Round 56's walk gains a section for these.

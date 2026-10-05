@@ -2893,3 +2893,16 @@ Round document: `docs/rounds/2026-10-04-type-and-depth.md`. Nothing in this roun
 - [ ] The avatar menu: App mode is a tray with the picked mode raised; every item in ordinary words. The header search's clear (x) is easy to hit. The bell's sheet, a toast (a sentence, its x easy to hit) and the leave question read calmly.
 - [ ] Hub bookings in dark still stand off the grid (their rim is softer than before; say if they float).
 - [ ] A client with late cancels at 744 upright, and at 1366 on its side: the header grows by about 14px at most; count the Journey tab's machine rows.
+
+**The follow-up (Oct 5 2026): the last old words, and the dialogs the review left**
+- [ ] The briefing: "Nothing flagged — clear to go." in the same green narrow face, in ordinary capitalisation; for a client with a flag, the limit's name ("Lower back") as written too. The four readiness questions say "Not asked" in ordinary words until you tap, and the chosen word ("A bit short") the same way.
+- [ ] A note's loudness (Note · Heads up · Critical) is in words, in the Note button's sheet and in the session's notes.
+- [ ] Learning: Overview / Catalog / Academy at the top are words in a sunken strip with the one you're on raised out of it (on a phone, the icons alone). A Catalog machine's figure switch (Front / Back) looks the same.
+- [ ] The feedback drawer (the bug button): the line under its title is a sentence; Bug, UI feedback and Feature idea are raised buttons in words, the picked one blue; "Attached automatically:" and "Send to the team" are in ordinary words.
+- [ ] Edit routine (Programming): Routine A / B are raised buttons in words (B dashed until it is active); Preset routines is a label; a preset is a 40px pill whose x is easy to hit; a studio's long name wraps; Close has a firm outline beside Apply.
+- [ ] An InBody scan (add one, then correct it): the labels are words over sunken fields on a firm outline; More from the printout and Segmental lean are raised; Cancel, Keep it and Remove read as buttons.
+- [ ] My Profile's Kaizen roster: Track is a 40px raised pill; its sheet's reasons are raised choices in words; the note and the date sink.
+- [ ] A client's Renewal card and Log a conversation: the four facts sit in sunken wells; the chips and "A leader should follow up" are raised; Cancel and Close have a firm outline.
+- [ ] Activity Archive: a session's Delete asks with Cancel outlined and Delete permanently solid red, both in words.
+- [ ] Demo Mode: the strip at the top says "Demo Mode — nobody here is real" in ordinary words and still fits one line.
+- [ ] Edit trainer profile (My Profile, and a leader's view of a colleague on My Studio -> Team): every label in words, the fields sunk on a firm outline, a certificate's x easy to hit, Studio involvements & connections a heading; Team presence sorting (the Hub's trainer order) in words.
