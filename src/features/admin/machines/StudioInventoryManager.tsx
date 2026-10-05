@@ -527,7 +527,7 @@ export function StudioInventoryManager({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           {!hideHeading && (
-            <h2 className="text-2xl font-black uppercase tracking-tight">
+            <h2 className="text-[22px] font-extrabold tracking-[-0.015em]">
               Equipment {studioName ? `· ${studioName}` : ""}
             </h2>
           )}

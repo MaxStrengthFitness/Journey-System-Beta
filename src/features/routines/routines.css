@@ -540,7 +540,7 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
   border-radius: 8px;
   border: 1px solid var(--eq-border);
   background: var(--eq-surface-2);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   color: var(--eq-ink-2);
 }

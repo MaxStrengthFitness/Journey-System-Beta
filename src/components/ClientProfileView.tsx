@@ -1751,13 +1751,13 @@ export function ClientProfileView({
                   rows={3}
                   className="rounded-xl border-input bg-slate-50/50 dark:bg-slate-950/20 text-xs text-slate-800 dark:text-neutral-200 resize-none"
                 />
-                <div className="flex justify-between items-center text-[10px]">
+                <div className="flex justify-between items-center gap-3 text-[12px]">
                   <span className="text-muted-foreground font-medium">
                     Be brief and clinical for Sandra's logs.
                   </span>
                   <span
                     className={cn(
-                      "font-semibold tracking-wide",
+                      "font-semibold",
                       toggleBReason.trim().length >= 3
                         ? "text-emerald-500"
                         : "text-amber-500",

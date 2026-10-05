@@ -156,7 +156,7 @@ export function MachinePicker({
                   className={`rb-tag ${g.foundational ? "rb-tag--gap" : "rb-tag--freq"}`}
                   style={{ marginLeft: "0.35rem" }}
                 >
-                  {g.foundational ? "missing" : "none yet"}
+                  {g.foundational ? "Missing" : "None yet"}
                 </span>
               )}
             </div>

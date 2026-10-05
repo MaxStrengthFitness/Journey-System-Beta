@@ -418,10 +418,10 @@
   align-items: center;
   gap: 8px;
   color: var(--eq-hero-text);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  text-transform: none;
+  letter-spacing: 0;
 }
 .ph-day__now::after {
   content: "";

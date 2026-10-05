@@ -73,10 +73,10 @@
   outline-offset: 2px;
 }
 .fit-modes__label {
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .fit-modes__blurb {
   font-size: 11px;
@@ -208,15 +208,18 @@
 .fit-switch input { width: 20px; height: 20px; accent-color: var(--eq-live); }
 
 .fit-loading { display: flex; justify-content: center; padding: 6px 0; }
+/* An empty place is a well with a sentence (type and depth, the sweep). */
 .fit-empty {
   margin: 0;
   padding: 28px 16px;
-  border: 1px dashed var(--eq-border-strong);
-  border-radius: var(--eq-radius);
+  border: 0;
+  border-radius: 12px;
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
   text-align: center;
   font-size: 14px;
   font-weight: 700;
-  color: var(--eq-ink-muted);
+  color: var(--eq-ink-2);
 }
 
 /* ---------- The list ------------------------------------------------------ */
@@ -275,9 +278,9 @@
   margin: 0;
   font-size: 15px;
   font-weight: 800;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
   line-height: 1.2;
-  text-transform: uppercase;
+  text-transform: none;
   /* Never truncated: a long name wraps. */
   overflow-wrap: anywhere;
 }
@@ -327,11 +330,11 @@
   /* A long label ("Shoulder Pads") wraps over its box instead of pushing the
      next one along: the boxes stay in a grid a thumb can learn. */
   max-width: 96px;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
   line-height: 1.15;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 .fit-cell--read .fit-cell__label { max-width: none; white-space: nowrap; }
@@ -432,10 +435,10 @@ button.fit-cell--read { cursor: pointer; }
 .fit-suggest[data-strength="fair"] { background: var(--eq-surface-2); }
 .fit-suggest__kicker {
   margin-right: 8px;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-live-text);
 }
 .fit-suggest[data-strength="fair"] .fit-suggest__kicker { color: var(--eq-ink-muted); }
@@ -470,7 +473,7 @@ button.fit-cell--read { cursor: pointer; }
 }
 .fit-pick[data-strong] { border-style: solid; }
 .fit-pick b { font-size: 17px; font-weight: 800; color: var(--eq-live-text); }
-.fit-pick__label { color: var(--eq-ink-muted); font-size: 11.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.fit-pick__label { color: var(--eq-ink-muted); font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; }
 .fit-pick__count { color: var(--eq-ink-faint); font-size: 11.5px; font-weight: 700; }
 
 /* ---------- Worth a look -------------------------------------------------- */
@@ -528,10 +531,10 @@ button.fit-cell--read { cursor: pointer; }
 .fit-dist__label {
   display: block;
   margin-bottom: 4px;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 .fit-dist__bars { display: flex; flex-direction: column; gap: 3px; margin: 0; padding: 0; list-style: none; }
@@ -556,7 +559,7 @@ button.fit-cell--read { cursor: pointer; }
   background: var(--eq-surface);
 }
 .fit-match__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.fit-match__title { margin: 0; font-size: 14px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.fit-match__title { margin: 0; font-size: 14px; font-weight: 700; letter-spacing: 0; text-transform: none; }
 .fit-match__sub,
 .fit-match__note,
 .fit-match__why,
@@ -635,7 +638,7 @@ button.fit-cell--read { cursor: pointer; }
   box-shadow: 0 -6px 22px var(--eq-shadow);
 }
 .fit-pad__context { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
-.fit-pad__machine { font-size: 13px; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; }
+.fit-pad__machine { font-size: 13px; font-weight: 800; letter-spacing: 0; text-transform: none; }
 .fit-pad__field { display: inline-flex; align-items: baseline; gap: 8px; font-size: 13px; font-weight: 800; color: var(--eq-ink-muted); }
 .fit-pad__field b { font-size: 20px; font-weight: 800; color: var(--eq-live-text); }
 .fit-pad__where { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--eq-ink-faint); }
@@ -671,7 +674,7 @@ button.fit-cell--read { cursor: pointer; }
 .fit-pad__key:active { background: var(--eq-surface-3); }
 .fit-pad__key--option { flex: 1 1 84px; font-size: 16px; }
 .fit-pad__key--option[data-on] { border-color: var(--eq-live); background: var(--eq-live-fill); color: var(--eq-live-text); }
-.fit-pad__key--quiet { flex: 1 1 auto; font-size: 13px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--eq-ink-2); }
+.fit-pad__key--quiet { flex: 1 1 auto; font-size: 14px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--eq-ink-2); }
 .fit-pad__key--offer { flex: 1 1 auto; border-color: var(--eq-live); background: var(--eq-live-fill); color: var(--eq-live-text); font-size: 15px; }
 .fit-pad__key--next {
   flex: 2 1 auto;
@@ -679,8 +682,8 @@ button.fit-cell--read { cursor: pointer; }
   background: var(--eq-live);
   color: var(--eq-live-on);
   font-size: 16px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 @media (max-width: 820px) {
   .fit-pad__keys { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }

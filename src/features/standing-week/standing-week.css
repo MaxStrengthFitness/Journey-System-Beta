@@ -153,11 +153,11 @@
 
 .stw-note { display: grid; gap: 6px; padding-top: 12px; }
 .stw-note__label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--eq-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--eq-ink-2);
 }
 .stw-textarea { padding: 8px 10px; font-family: inherit; line-height: 1.45; resize: vertical; }
 
@@ -170,10 +170,10 @@
    round). The one head style: 12px small upright capitals, as Away's. */
 .stw-week__head {
   margin: 0 0 8px;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-2);
 }
 
@@ -240,11 +240,11 @@
 
 .stw-field { display: grid; gap: 4px; flex: 1 1 160px; min-width: 0; }
 .stw-field__label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--eq-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--eq-ink-2);
 }
 .stw-input--date { font-family: inherit; }
 .stw-field .stw-input { width: 100%; }

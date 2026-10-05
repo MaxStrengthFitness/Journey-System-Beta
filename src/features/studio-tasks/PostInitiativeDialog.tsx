@@ -105,7 +105,7 @@ export function PostInitiativeDialog({
           <div>
             <label
               htmlFor="ini-title"
-              className="block text-[11px] font-black uppercase tracking-widest text-ink-d3 mb-1.5"
+              className="block text-[14px] font-bold text-ink-d2 mb-1.5"
             >
               What are you asking for?
             </label>
@@ -120,7 +120,7 @@ export function PostInitiativeDialog({
           </div>
 
           <div>
-            <span className="block text-[11px] font-black uppercase tracking-widest text-ink-d3 mb-1.5">
+            <span className="block text-[14px] font-bold text-ink-d2 mb-1.5">
               What kind of work
             </span>
             <div className="flex flex-wrap gap-2">
@@ -144,7 +144,7 @@ export function PostInitiativeDialog({
           </div>
 
           <div>
-            <span className="block text-[11px] font-black uppercase tracking-widest text-ink-d3 mb-1.5">
+            <span className="block text-[14px] font-bold text-ink-d2 mb-1.5">
               How many each
             </span>
             <div className="flex flex-wrap gap-2">
@@ -188,7 +188,7 @@ export function PostInitiativeDialog({
           <div>
             <label
               htmlFor="ini-due"
-              className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-ink-d3 mb-1.5"
+              className="flex items-center gap-1.5 text-[14px] font-bold text-ink-d2 mb-1.5"
             >
               <CalendarClock size={12} aria-hidden />
               By when — optional
@@ -204,7 +204,7 @@ export function PostInitiativeDialog({
           <div>
             <label
               htmlFor="ini-detail"
-              className="block text-[11px] font-black uppercase tracking-widest text-ink-d3 mb-1.5"
+              className="block text-[14px] font-bold text-ink-d2 mb-1.5"
             >
               Why — optional, but it is what gets people to do it
             </label>

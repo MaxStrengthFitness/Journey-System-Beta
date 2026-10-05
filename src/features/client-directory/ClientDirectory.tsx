@@ -442,7 +442,7 @@ export function ClientDirectory({
               <Button
                 variant="outline"
                 onClick={() => onStartOpenSession()}
-                className="font-bold uppercase tracking-widest rounded-xl h-12 px-5 cursor-pointer"
+                className="text-[14px] font-bold rounded-xl h-12 px-5 cursor-pointer"
                 title="Start a session now and assign the client at the end"
               >
                 Open session
@@ -451,10 +451,10 @@ export function ClientDirectory({
             {onStartNewClientOnboarding && (
               <Button
                 onClick={() => onStartNewClientOnboarding("")}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-widest rounded-xl h-12 px-6 shadow-sm cursor-pointer"
+                className="bg-primary hover:bg-primary text-primary-foreground text-[14px] font-bold rounded-xl h-12 px-6 cursor-pointer"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Add Client
+                Add client
               </Button>
             )}
           </div>

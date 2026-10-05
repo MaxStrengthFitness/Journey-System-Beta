@@ -128,7 +128,7 @@ export function ResolveDialog({
           <div>
             <label
               htmlFor="resolve-body"
-              className="block text-[11px] font-black uppercase tracking-widest text-ink-d3 mb-1.5"
+              className="block text-[14px] font-bold text-ink-d2 mb-1.5"
             >
               What was the answer?
             </label>
@@ -172,7 +172,7 @@ export function ResolveDialog({
                   <Check size={12} strokeWidth={3} aria-hidden />
                 </span>
                 <span>
-                  <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-ink-d1">
+                  <span className="flex items-center gap-1.5 text-[14px] font-bold text-ink-d1">
                     <BookOpen size={13} aria-hidden />
                     Keep this in the playbook
                   </span>
@@ -189,7 +189,7 @@ export function ResolveDialog({
                   <div>
                     <label
                       htmlFor="pb-title"
-                      className="block text-[11px] font-black uppercase tracking-widest text-ink-d3 mb-1"
+                      className="block text-[14px] font-bold text-ink-d2 mb-1"
                     >
                       Title — what someone would search for
                     </label>
@@ -204,7 +204,7 @@ export function ResolveDialog({
                   <div>
                     <label
                       htmlFor="pb-tags"
-                      className="block text-[11px] font-black uppercase tracking-widest text-ink-d3 mb-1"
+                      className="block text-[14px] font-bold text-ink-d2 mb-1"
                     >
                       Tags — comma separated
                     </label>

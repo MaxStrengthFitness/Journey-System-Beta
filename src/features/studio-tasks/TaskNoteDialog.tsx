@@ -74,7 +74,7 @@ export function TaskNoteDialog({
 
         <div className="flex flex-col gap-3 p-1">
           <label className="flex flex-col gap-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <span className="text-[14px] font-bold text-ink-d2">
               Note {requiresNote && <span aria-hidden>· required</span>}
             </span>
             <textarea

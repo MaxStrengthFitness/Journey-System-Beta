@@ -112,6 +112,9 @@
   color: var(--eq-ink-muted);
   cursor: pointer;
 }
+/* Drawn 24px inside the field; its ::after reaches 40 to tap (type and
+   depth, the sweep, Oct 5 2026). */
+.eq-summary__clear::after { content: ""; position: absolute; inset: -8px; }
 .eq-summary__clear:hover { background: var(--eq-surface-3); color: var(--eq-ink); }
 
 /* The native search affordance duplicates our clear button. */

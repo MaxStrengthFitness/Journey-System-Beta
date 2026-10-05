@@ -276,8 +276,8 @@
 
 .stu__facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem; margin: 0; }
-.stu__facts dt { display: flex; align-items: center; gap: 0.3rem; font-size: 11px;
-  font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+.stu__facts dt { display: flex; align-items: center; gap: 0.3rem; font-size: 12px;
+  font-weight: 700; letter-spacing: 0; text-transform: none;
   color: var(--wk-ink-muted); }
 .stu__facts dd { margin: 0.2rem 0 0; font-size: 12px; font-weight: 700;
   color: var(--wk-ink); overflow-wrap: anywhere; }
@@ -331,8 +331,8 @@
 .stq__head { display: flex; align-items: center; gap: 0.5rem;
   padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--st-border);
   background: var(--st-surface-2); color: var(--st-ink-2); }
-.stq__title { margin: 0; font-size: 11px; font-weight: 800; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--st-ink-2); }
+.stq__title { margin: 0; font-size: 14px; font-weight: 700; letter-spacing: 0;
+  text-transform: none; color: var(--st-ink-2); }
 .stq__count { display: inline-flex; align-items: center; justify-content: center;
   min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
   background: var(--st-live-fill); color: var(--st-live-text);
@@ -385,8 +385,8 @@
 .stq__item-text { flex: 1; min-width: 12rem; }
 .stq__item-title { display: block; font-size: 14px; font-weight: 700;
   color: var(--st-ink); overflow-wrap: anywhere; }
-.stq__item-sub { display: block; margin-top: 1px; font-size: 11px; font-weight: 700;
-  letter-spacing: 0.06em; color: var(--st-ink-muted); }
+.stq__item-sub { display: block; margin-top: 1px; font-size: 12px; font-weight: 700;
+  letter-spacing: 0; color: var(--st-ink-muted); }
 /* Who an ask is about (Relay room, Sep 28 2026): a client's whole name, wrapped. */
 .stq__item-client { display: block; margin-top: 1px; font-size: 12px; font-weight: 700;
   color: var(--st-ink-2); overflow-wrap: anywhere; }
@@ -416,8 +416,8 @@
   flex-direction: column; gap: 0.35rem; }
 .stq__reply { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem;
   padding: 0.4rem 0.6rem; border-radius: 10px; background: var(--st-surface-2); }
-.stq__reply-who { font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--st-live); }
+.stq__reply-who { font-size: 12px; font-weight: 700; letter-spacing: 0;
+  text-transform: none; color: var(--st-live); }
 .stq__reply-body { flex: 1; min-width: 8rem; font-size: 12px; color: var(--st-ink);
   overflow-wrap: anywhere; }
 .stq__reply-when { font-size: 11px; font-weight: 700; color: var(--st-ink-muted); }
@@ -428,8 +428,8 @@
    a heading above it, because a second heading inside a composer that is
    already inside a lane inside a board is one nesting level too many. */
 .stq__expiry-label { display: inline-flex; align-items: center; gap: 0.3rem;
-  align-self: center; margin-right: 0.15rem; font-size: 11px; font-weight: 800;
-  letter-spacing: 0.1em; text-transform: uppercase; color: var(--st-ink-muted); }
+  align-self: center; margin-right: 0.15rem; font-size: 12px; font-weight: 700;
+  letter-spacing: 0; text-transform: none; color: var(--st-ink-muted); }
 
 /* Time remaining, inline in the sub-line. The caution plum, not the alert
    crimson: a request winding down is not a problem, and spending the alert
@@ -437,7 +437,7 @@
 .stq__ttl { display: inline-flex; align-items: center; gap: 0.2rem;
   margin-left: 0.4rem; padding: 1px 5px; border-radius: 999px;
   background: var(--st-flag-fill); color: var(--st-flag);
-  font-size: 11px; font-weight: 800; letter-spacing: 0.06em; }
+  font-size: 12px; font-weight: 800; letter-spacing: 0; }
 
 /* When a cover is needed (it keeps its time since Sep 28 2026): time
    pressure in words, the deep orange the Board uses, never red. */
@@ -451,7 +451,7 @@
 .stq__react { display: inline-flex; align-items: center; gap: 0.3rem;
   min-height: 40px; padding: 0 0.6rem; border: 1px solid var(--st-border);
   border-radius: 999px; background: var(--st-surface-2); color: var(--st-ink-muted);
-  font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.06em;
+  font: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0;
   cursor: pointer; white-space: nowrap; }
 .stq__react:hover { background: var(--st-surface-3); color: var(--st-ink-2); }
 .stq__react[aria-pressed="true"] { border-color: var(--st-live);
@@ -515,8 +515,8 @@
 .stm__scroll { overflow-x: auto; }
 .stm__grid { width: 100%; border-collapse: collapse; }
 .stm__grid th, .stm__grid td { padding: 0.4rem 0.35rem; text-align: center; }
-.stm__grid thead th { font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--st-ink-muted);
+.stm__grid thead th { font-size: 12px; font-weight: 700; letter-spacing: 0;
+  text-transform: none; color: var(--st-ink-muted);
   border-bottom: 1px solid var(--st-border); }
 .stm__grid tbody tr { border-bottom: 1px solid var(--st-divider); }
 .stm__grid tbody tr:last-child { border-bottom: 0; }
@@ -524,8 +524,8 @@
 .stm__grid-name { text-align: left !important; min-width: 9rem; }
 .stm__grid-title { display: block; font-size: 12px; font-weight: 700;
   color: var(--st-ink); overflow-wrap: anywhere; }
-.stm__grid-sub { display: block; font-size: 11px; font-weight: 700;
-  letter-spacing: 0.08em; text-transform: uppercase; color: var(--st-ink-muted); }
+.stm__grid-sub { display: block; font-size: 12px; font-weight: 700;
+  letter-spacing: 0; text-transform: none; color: var(--st-ink-muted); }
 
 .stm__cell { display: inline-block; width: 14px; height: 14px; border-radius: 4px;
   background: var(--st-surface-3); }
@@ -546,8 +546,8 @@
 .stm__item:last-child { border-bottom: 0; }
 .stm__item-title { display: block; font-size: 14px; font-weight: 700;
   color: var(--st-ink); overflow-wrap: anywhere; }
-.stm__item-sub { display: block; margin-top: 1px; font-size: 11px; font-weight: 700;
-  letter-spacing: 0.06em; color: var(--st-ink-muted); }
+.stm__item-sub { display: block; margin-top: 1px; font-size: 12px; font-weight: 700;
+  letter-spacing: 0; color: var(--st-ink-muted); }
 
 /* ── studio task authoring, inside Manage (Sep 6) ───────────────────────── */
 

@@ -63,18 +63,18 @@
 .cal-nav__label:focus-visible { outline: 2px solid var(--cal-live); outline-offset: -2px; border-radius: 999px; }
 .cal-nav__primary {
   font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink);
   line-height: 1.1;
   white-space: nowrap;
 }
 .cal-nav__secondary {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
   line-height: 1;
   white-space: nowrap;
@@ -193,11 +193,11 @@
   color: var(--cal-ink-faint);
 }
 .cal-empty__title {
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--cal-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--cal-ink-2);
 }
 .cal-empty__hint { font-size: 12px; max-width: 320px; line-height: 1.5; }
 
@@ -219,10 +219,10 @@
   background: var(--cal-surface-2);
   padding: 7px 4px;
   text-align: center;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
 }
 
@@ -273,11 +273,11 @@
   color: var(--cal-ink);
 }
 .cal-day__total span {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--cal-ink-faint);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--cal-ink-muted);
 }
 .cal-day--quiet .cal-day__total b { color: var(--cal-ink-faint); font-size: 15px; }
 
@@ -289,7 +289,7 @@
 }
 .cal-day__more {
   align-self: center;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   color: var(--cal-ink-muted);
 }
@@ -302,7 +302,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--cal-ink-muted);
   /* A client's name is never cut (FORD dates, Oct 2 2026): the title wraps. */
@@ -367,10 +367,10 @@
   color: var(--cal-ink);
 }
 .cal-total__label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
 }
 .cal-total__delta {
@@ -435,10 +435,10 @@
 .cal-bar--today .cal-bar__fill { background: var(--cal-hero); }
 .cal-bar--peak .cal-bar__fill { background: var(--cal-live); }
 .cal-bar__day {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
   line-height: 1;
 }
@@ -488,7 +488,7 @@
   color: var(--cal-ink);
   font-variant-numeric: tabular-nums;
 }
-.cal-board__share { font-size: 10px; font-weight: 800; color: var(--cal-ink-faint); }
+.cal-board__share { font-size: 11px; font-weight: 800; color: var(--cal-ink-muted); }
 
 /* Capacity heatmap */
 .cal-heat {
@@ -500,10 +500,10 @@
 .cal-heat__corner { }
 .cal-heat__dow {
   text-align: center;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
   padding-bottom: 2px;
 }
@@ -511,10 +511,10 @@
 .cal-heat__band {
   display: flex;
   align-items: center;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
   padding-right: 6px;
 }
@@ -545,11 +545,11 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--cal-ink-faint);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--cal-ink-muted);
 }
 .cal-legend__swatch { width: 14px; height: 14px; border-radius: 4px; }
 
@@ -595,19 +595,19 @@
   display: flex;
   align-items: center;
   padding: 0 10px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
 }
 .cal-axis__tick {
   /* Each hour label spans its two half-hour slots. */
   grid-column: span 2;
   padding: 6px 0 5px 6px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   color: var(--cal-ink-muted);
   border-left: 1px solid var(--cal-border);
   white-space: nowrap;
@@ -690,7 +690,7 @@
 .cal-block:hover { filter: brightness(1.06); }
 .cal-block:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 1px; }
 .cal-block__name {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   color: var(--cal-ink);
   line-height: 1.1;
@@ -698,7 +698,7 @@
   overflow-wrap: anywhere;
 }
 .cal-block__time {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--cal-ink-muted);
   line-height: 1.1;
@@ -741,7 +741,7 @@
 .cal-lane__item:hover { border-color: var(--t-edge); }
 .cal-lane__item:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 1px; }
 .cal-lane__item b { font-size: 11px; font-weight: 800; color: var(--cal-ink); }
-.cal-lane__item span { font-size: 10px; font-weight: 700; color: var(--cal-ink-muted); }
+.cal-lane__item span { font-size: 11px; font-weight: 700; color: var(--cal-ink-muted); }
 
 .cal-daystat {
   display: flex;
@@ -763,10 +763,10 @@
   line-height: 1;
 }
 .cal-daystat__big span {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
 }
 .cal-daystat__sep { width: 1px; height: 24px; background: var(--cal-border); }
@@ -830,10 +830,10 @@
 }
 .cal-header__sub {
   margin-top: 4px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
 }
 
@@ -892,10 +892,10 @@
   border: 0;
   background: transparent;
   color: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   max-width: 170px;
   cursor: pointer;
 }

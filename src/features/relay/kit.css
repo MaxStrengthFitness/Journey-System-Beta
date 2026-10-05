@@ -62,11 +62,11 @@
 .rk-row > .rk-field { flex: 1 1 12rem; }
 
 .rk-label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--st-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--st-ink-2);
 }
 .rk-hint {
   margin: 0;
@@ -125,10 +125,10 @@
   background: transparent;
   color: var(--st-ink-muted);
   font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
   text-align: center;
 }
@@ -136,6 +136,7 @@
   background: var(--st-surface);
   color: var(--st-live);
   box-shadow: 0 1px 2px var(--st-shadow);
+  font-weight: 700;
 }
 .rk-seg > button:focus-visible { outline: 2px solid var(--st-live); outline-offset: -2px; }
 .rk-seg > button svg { flex: none; }
@@ -284,10 +285,10 @@
   border: 1px solid var(--st-border);
   background: var(--st-surface-2);
   color: var(--st-ink-2);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
 }
 .rk-tag svg { flex: none; }
@@ -310,10 +311,10 @@
   background: transparent;
   color: var(--st-ink-muted);
   font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   text-align: left;
   cursor: pointer;
 }

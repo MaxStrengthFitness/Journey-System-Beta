@@ -50,10 +50,10 @@
   background: transparent;
   color: var(--st-ink-muted);
   font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -63,6 +63,7 @@
   background: var(--st-surface);
   color: var(--st-live);
   box-shadow: 0 1px 2px var(--st-shadow);
+  font-weight: 700;
 }
 .pl__tab:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 
@@ -311,10 +312,10 @@
 .pl__task-title { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
 .pl__task--done .pl__task-title { color: var(--st-ink-muted); text-decoration: line-through; }
 .pl__task-meta {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-muted);
 }
 .pl__task-detail { font-size: 12px; line-height: 1.45; color: var(--st-ink-muted); overflow-wrap: anywhere; }
@@ -358,10 +359,10 @@
   gap: 1px;
 }
 .pl__when-day {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-muted);
 }
 .pl__when-time {

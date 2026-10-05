@@ -364,11 +364,11 @@
   border-radius: 7px;
   background: var(--cx-surface-3);
   color: var(--cx-ink);
-  font-size: var(--cx-fs-11);
-  font-weight: 800;
+  font-size: var(--cx-fs-12);
+  font-weight: 700;
   line-height: 1.2;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .gf-focus-blurb {

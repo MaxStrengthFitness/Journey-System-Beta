@@ -36,10 +36,10 @@ export function ProgressReportArchive({
     <section className="rounded-2xl border border-slate-200 bg-card p-4 dark:border-slate-800 dark:bg-slate-900/70">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <h3 className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+          <h3 className="text-[14px] font-bold text-ink-d2">
             Progress reports
           </h3>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[12px] text-muted-foreground">
             {reports.length} on file
           </p>
         </div>
@@ -53,7 +53,7 @@ export function ProgressReportArchive({
       </div>
 
       {reports.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-[11px] text-muted-foreground dark:border-slate-800">
+        <p className="rounded-xl bg-(--well) shadow-(--elev-0) p-4 text-center text-[14px] text-ink-d2">
           No evaluations yet.
         </p>
       ) : (
@@ -90,7 +90,7 @@ export function ProgressReportArchive({
                       : `Session #${r.sessionNumber || "—"}`}
                     <span
                       className={cn(
-                        "ml-1.5 rounded px-1 py-0.5 text-[9px] font-black uppercase tracking-wider",
+                        "ml-1.5 rounded px-1.5 py-0.5 text-[12px] font-bold",
                         r.status === "Draft"
                           ? "bg-amber-500/15 text-amber-600 dark:text-amber-300"
                           : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300",
@@ -99,7 +99,7 @@ export function ProgressReportArchive({
                       {r.status || "Finalized"}
                     </span>
                   </span>
-                  <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
                     {reportDay(r.date)} · {r.trainerInitials || r.trainerName || "Team"}
                     {/* The assessment: overall colour + red-flag count, from the cached summary. */}
                     {summary && (

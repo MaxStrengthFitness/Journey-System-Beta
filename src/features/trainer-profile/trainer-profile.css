@@ -163,10 +163,10 @@
   border: 1px solid var(--tp-border);
   background: var(--tp-surface-2);
   color: var(--tp-ink-2);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
 }
 
@@ -261,11 +261,11 @@
 
 .tp-label {
   display: block;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--tp-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--tp-ink-2);
   margin-bottom: 8px;
 }
 
@@ -349,10 +349,10 @@
 .tp-stat--hero .tp-stat__v { color: var(--tp-hero-text); }
 
 .tp-stat__k {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--tp-ink-muted);
 }
 
@@ -429,10 +429,10 @@
 
 .tp-yw__heading {
   margin: 0;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--tp-ink-2);
 }
 
@@ -509,11 +509,11 @@
   margin: 0;
   padding: 10px 16px 6px;
   border-top: 1px solid var(--tp-border);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--tp-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--tp-ink-2);
 }
 
 .tp-mc__group:first-child { border-top: 0; }

@@ -157,10 +157,10 @@
 
 .bp-figs figcaption {
   color: var(--cx-ink-3);
-  font-size: var(--cx-fs-11);
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: var(--cx-fs-12);
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 /* The Catalog's figure (components/anatomy BodyModel) with the marks in a
@@ -505,10 +505,10 @@ button.bp-hers {
   align-items: center;
   gap: 7px;
   color: var(--cx-ink-3);
-  font-size: var(--cx-fs-11);
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: var(--cx-fs-12);
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .bp-pair__text {
@@ -733,11 +733,11 @@ button.bp-hers {
   margin: 0;
   padding: 10px 14px;
   border-bottom: 1px solid var(--cx-line);
-  color: var(--cx-ink-3);
-  font-size: var(--cx-fs-11);
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .bp-pa__row {

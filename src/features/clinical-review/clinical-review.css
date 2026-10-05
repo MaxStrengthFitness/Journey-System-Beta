@@ -121,7 +121,7 @@
 
 /* ---- range picker ------------------------------------------------------ */
 .cr-range { display: flex; flex-direction: column; gap: 10px; }
-.cr-range__label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cr-ink-muted); }
+.cr-range__label { font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--cr-ink-muted); }
 .cr-seg { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .cr-seg__btn {
   appearance: none; border: 1px solid var(--cr-control-edge); background: var(--cr-surface); color: var(--cr-ink-2);
@@ -212,7 +212,7 @@
 @media (min-width: 700px)  { .cr-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (min-width: 1180px) { .cr-kpis { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
 .cr-kpi { background: var(--cr-surface); padding: 12px 14px 11px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.cr-kpi__label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cr-ink-muted); line-height: 1.1; }
+.cr-kpi__label { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--cr-ink-muted); line-height: 1.1; }
 .cr-kpi__value { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; color: var(--cr-ink); font-variant-numeric: normal; }
 .cr-kpi__value small { font-size: 12px; font-weight: 700; color: var(--cr-ink-muted); margin-left: 4px; letter-spacing: 0; }
 .cr-kpi__sub { font-size: 11px; color: var(--cr-ink-muted); line-height: 1.2; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -232,7 +232,7 @@
 .cr-insight::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 4px; border-radius: 0 3px 3px 0; background: var(--cr-done); }
 .cr-insight--notable::before { background: var(--cr-poor); }
 .cr-insight--good::before { background: var(--cr-hero); }
-.cr-insight__kind { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cr-ink-muted); display: flex; gap: 8px; align-items: center; }
+.cr-insight__kind { font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--cr-ink-muted); display: flex; gap: 8px; align-items: center; }
 .cr-insight__title { margin: 0; font-size: 14.5px; font-weight: 800; line-height: 1.25; color: var(--cr-ink); }
 .cr-insight__body { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--cr-ink-2); }
 .cr-insight__evidence { font-size: 11px; color: var(--cr-ink-muted); font-weight: 600; }
@@ -273,7 +273,7 @@
 .cr-level { display: grid; grid-template-columns: minmax(84px, 34%) minmax(0, 1fr) 52px; align-items: center; gap: 8px; font-size: 12px; }
 .cr-level__label { color: var(--cr-ink-2); font-weight: 600; display: flex; align-items: center; gap: 6px; min-width: 0; }
 .cr-level__label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cr-level__n { font-size: 10px; color: var(--cr-ink-faint); font-weight: 700; flex: none; }
+.cr-level__n { font-size: 11px; color: var(--cr-ink-muted); font-weight: 700; flex: none; }
 .cr-level__track { position: relative; height: 16px; background: var(--cr-surface-2); border-radius: 4px; overflow: hidden; }
 .cr-level__bar { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 0 4px 4px 0; background: var(--cr-live); opacity: 0.85; }
 .cr-level__bar--poor { background: var(--cr-poor); }
@@ -294,8 +294,8 @@
 .cr-heat { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .cr-heat__grid { display: grid; gap: 3px; align-items: center; min-width: max-content; }
 .cr-heat__machine { font-size: 12px; font-weight: 700; color: var(--cr-ink); padding-right: 10px; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
-.cr-heat__group { font-size: 10px; color: var(--cr-ink-faint); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
-.cr-heat__colhead { font-size: 10.5px; font-weight: 700; color: var(--cr-ink-muted); text-align: center; white-space: nowrap; padding-bottom: 2px; }
+.cr-heat__group { font-size: 12px; color: var(--cr-ink-muted); font-weight: 600; text-transform: none; letter-spacing: 0; }
+.cr-heat__colhead { font-size: 11px; font-weight: 700; color: var(--cr-ink-muted); text-align: center; white-space: nowrap; padding-bottom: 2px; }
 .cr-heat__cell {
   width: 46px; height: 30px; border-radius: 5px; display: grid; place-items: center;
   font-size: 11px; font-weight: 700; color: var(--cr-ink-2); background: var(--cr-surface-2);
@@ -303,8 +303,8 @@
 .cr-heat__cell--empty { background: transparent; border: 1px dashed var(--cr-border); color: var(--cr-ink-faint); }
 .cr-heat__cell--total { width: 60px; font-weight: 800; }
 .cr-heat__cell.is-ink { color: var(--cr-on-dark); }
-.cr-heat__row--group .cr-heat__machine { color: var(--cr-ink-muted); font-weight: 800; letter-spacing: .04em; text-transform: uppercase; font-size: 11px; }
-.cr-heat__row--group .cr-heat__cell { border-radius: 3px; height: 24px; font-size: 10.5px; }
+.cr-heat__row--group .cr-heat__machine { color: var(--cr-ink-muted); font-weight: 800; letter-spacing: 0; text-transform: none; font-size: 11px; }
+.cr-heat__row--group .cr-heat__cell { border-radius: 3px; height: 24px; font-size: 11px; }
 .cr-heat__divider { grid-column: 1 / -1; height: 1px; background: var(--cr-border); margin: 4px 0; }
 .cr-scale { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--cr-ink-muted); font-weight: 600; }
 .cr-scale__step { width: 22px; height: 12px; border-radius: 3px; }
@@ -316,7 +316,7 @@
 .cr-plateau__spark { height: 44px; width: 120px; }
 .cr-pill {
   display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 999px;
-  font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
+  font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; white-space: nowrap;
 }
 .cr-pill--plateau { background: var(--cr-poor-fill); color: var(--cr-poor-text); }
 .cr-pill--regressing { background: var(--cr-poor-fill); color: var(--cr-poor-text); }

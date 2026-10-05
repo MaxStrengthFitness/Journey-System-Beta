@@ -20,7 +20,7 @@ export function MachineStoryCard({ lines, partial }: { lines: StoryLine[]; parti
       <dl className="grid grid-cols-[auto_1fr_auto] gap-x-4 gap-y-1.5 items-baseline">
         {lines.map((l) => (
           <div key={l.key} className="contents" data-story={l.key}>
-            <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{l.label}</dt>
+            <dt className="text-[12px] font-bold text-muted-foreground">{l.label}</dt>
             <dd className="text-[15px] font-bold tabular-nums text-slate-900 dark:text-slate-50">
               {l.weight} lb
               {l.effort && <span className="ml-2 text-[12px] font-semibold text-muted-foreground">{l.effort}</span>}

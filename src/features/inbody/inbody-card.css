@@ -61,10 +61,10 @@
 
 .ib-tile__label {
   color: var(--cx-ink-3);
-  font-size: var(--cx-fs-11);
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: var(--cx-fs-12);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .ib-tile__value {

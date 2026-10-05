@@ -152,9 +152,9 @@
   margin: 0;
   padding: 0.5rem 12px 0.25rem;
   font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-muted);
   overflow-wrap: anywhere;
 }
@@ -248,10 +248,10 @@
 .msh__where {
   flex: 1 1 10rem;
   min-width: 0;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-muted);
   text-align: right;
   overflow-wrap: anywhere;

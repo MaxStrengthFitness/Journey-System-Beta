@@ -103,12 +103,12 @@ export function SwapSheet({
                     {option.machineIds.map((m) => machineName(m)).join("  +  ")}
                   </span>
                   {!option.availableHere ? (
-                    <span className="rb-tag rb-tag--clash">not at this studio</span>
+                    <span className="rb-tag rb-tag--clash">Not at this studio</span>
                   ) : incoming.length === 0 ? (
-                    <span className="rb-tag rb-tag--clash">all already running</span>
+                    <span className="rb-tag rb-tag--clash">All already running</span>
                   ) : partial ? (
                     <span className="rb-tag rb-tag--pair">
-                      adds {incoming.map((m) => machineName(m)).join(" + ")}
+                      Adds {incoming.map((m) => machineName(m)).join(" + ")}
                     </span>
                   ) : null}
                 </button>

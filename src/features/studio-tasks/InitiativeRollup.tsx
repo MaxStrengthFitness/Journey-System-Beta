@@ -152,7 +152,7 @@ export function InitiativeRollup({
                 <UserRound size={14} className="ini__avatar" aria-hidden />
                 <span className="ini__name">
                   {t.trainerName}
-                  {isMe && <span className="ini__you">you</span>}
+                  {isMe && <span className="ini__you">You</span>}
                 </span>
                 <span className="ini__count tabular">
                   {per > 0 ? `${t.count} / ${t.target}` : t.count}

@@ -110,7 +110,7 @@ export function SequenceMachineRow({
           {!dense && (
             <div className="rb-row__meta">
               {abbr && <span className="rb-row__abbr">{abbr}</span>}
-              {missing && <span style={{ color: "var(--rb-caution)" }}>not at this studio</span>}
+              {missing && <span style={{ color: "var(--rb-caution)" }}>Not at this studio</span>}
               {history?.lastDate && !missing && <span>{history.lastDate}</span>}
             </div>
           )}
