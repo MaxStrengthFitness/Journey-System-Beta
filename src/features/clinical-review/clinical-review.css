@@ -138,19 +138,23 @@
 .cr-range__custom input {
   height: 40px; border: 1px solid var(--cr-border); border-radius: 10px; padding: 0 10px; background: var(--cr-surface); color: var(--cr-ink); font: inherit;
 }
-/* Generate is Go (type and depth, phase 8, Oct 4 2026; AJ's 1A): the
-   display face's slanted capitals at 800 and 17, 0.04em (it asked for no
-   weight and drew 700, at 0.08em), a short orange glow and a white top
-   light (the old glow blurred 34px; a resting shadow stays at 18 or
-   less), and a press
-   down a pixel into an inset shadow. Only the transform transitions. */
+/* Build the Deep Dive: Go's DEPTH in the button voice (AJ's 2A, Oct 5
+   2026, "1a 2a 3a"). Slanted capitals are the studio's name, Start session,
+   In progress and the front door's display lines, nothing else, so this
+   orange button speaks as every other orange button that is not Start
+   session does: Geist 14/700, upright, in its own capitalisation ("Build
+   the Deep Dive"). It keeps Go's depth: the short orange glow and the white
+   top light (type and depth, phase 8; the old glow blurred 34px, a resting
+   shadow stays at 18 or less), and a press down a pixel into an inset
+   shadow. Only the transform transitions. 52px tall: it holds the range
+   under its words. */
 .cr-generate {
   appearance: none; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent;
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;
   height: 52px; padding: 0 22px; border-radius: 14px; color: var(--jg-go-on);
   background: var(--jg-go);
   box-shadow: var(--cr-glow-go), var(--cr-go-light);
-  font-family: var(--cr-font-display); font-style: italic; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; font-size: 17px;
+  font-family: inherit; font-style: normal; font-weight: 700; text-transform: none; letter-spacing: 0; font-size: 14px;
   transition: transform 120ms ease;
 }
 .cr-generate:hover { background: var(--jg-go); color: var(--jg-go-on); }

@@ -16,7 +16,9 @@ import { describe, expect, it } from "vitest";
  *      on the frame and the front door's display line (the brand), and Go
  *      (Start session: the profile header and its In progress, the peek's
  *      and the run sheet's primary, the Directory's Start, the briefing's
- *      Start session, the Deep Dive's Generate).
+ *      Start session). AJ's 2A (Oct 5 2026): exactly those, so the Deep
+ *      Dive's Build the Deep Dive stands upright in the button voice with
+ *      Go's depth, like every orange button that is not Start session.
  *   2. The display face is set in capitals only on its allow-list: the
  *      brand and Go. (The briefing's safety heading kept its capitals until
  *      the follow-up of Oct 5 2026; it now says its words as written.) The
@@ -185,7 +187,6 @@ const BRAND = "a brand moment";
 /** 1. The display face, slanted. */
 const DISPLAY_SLANT: Record<string, string> = {
   'features/briefing/briefing.css .br__cta': `${GO} (the briefing's Start session)`,
-  "features/clinical-review/clinical-review.css .cr-generate": `${GO} (the Deep Dive's Generate)`,
   "features/client-directory/client-directory.css .cd-start": `${GO} (the Directory's Start)`,
   'features/hub-opportunities/run-sheet.css .ho-action[data-primary="true"]': `${GO} (the run sheet's primary)`,
   'features/hub-schedule/peek.css .hp-btn[data-go="true"]': `${GO} (the peek's primary when it says Start session; its other labels keep the button voice)`,
@@ -332,6 +333,49 @@ describe("1. the display face slants only for the brand and Go", () => {
         expect(tokensOf(l), `${file}: ${l}`).toContain("font-extrabold");
       }
     }
+  });
+});
+
+describe("AJ's 2A: slanted capitals are the studio's name, Start session, In progress and the front door's display lines", () => {
+  /** What each slanted place says, by where it is drawn. */
+  const SAYS: Record<string, string> = {
+    'features/briefing/briefing.css .br__cta': "Start session",
+    "features/client-directory/client-directory.css .cd-start": "Start session",
+    'features/hub-opportunities/run-sheet.css .ho-action[data-primary="true"]': "Start session",
+    'features/hub-schedule/peek.css .hp-btn[data-go="true"]': "Start session",
+    "features/front-door/front-door.css .fd-display": "the front door's display lines",
+  };
+  const TSX_SAYS: Record<string, string[]> = {
+    "components/AppHeader.tsx": ["the studio's name"],
+    "features/client-profile/ProfileHeader.tsx": ["Start session", "In progress"],
+  };
+
+  it("the stylesheets slant the display face for these and nothing else", () => {
+    expect(Object.keys(DISPLAY_SLANT).sort()).toEqual(Object.keys(SAYS).sort());
+  });
+
+  it("the class lists slant it for the studio's name, Start session and In progress, and nothing else", () => {
+    expect(Object.fromEntries(Object.entries(TSX_DISPLAY_SLANT).map(([f, v]) => [f, v.count]))).toEqual(
+      Object.fromEntries(Object.entries(TSX_SAYS).map(([f, v]) => [f, v.length])),
+    );
+  });
+
+  it("the profile header's two slanted lists are Start session's and In progress's", () => {
+    const header = read("features/client-profile/ProfileHeader.tsx");
+    expect(header).toMatch(/In progress/);
+    expect(header).toMatch(/Start session/);
+  });
+
+  it("the Deep Dive's Build the Deep Dive stands upright in the 14/700 button voice and keeps Go's depth", () => {
+    const rule = ALL_RULES.find((r) => r.file === "features/clinical-review/clinical-review.css" && r.prelude === ".cr-generate")!;
+    expect(declared(rule.body, "font-family")).toEqual(["inherit"]);
+    expect(declared(rule.body, "font-style")).toEqual(["normal"]);
+    expect(declared(rule.body, "text-transform")).toEqual(["none"]);
+    expect(declared(rule.body, "letter-spacing")).toEqual(["0"]);
+    expect(declared(rule.body, "font-size")).toEqual(["14px"]);
+    expect(declared(rule.body, "font-weight")).toEqual(["700"]);
+    expect(declared(rule.body, "box-shadow")).toEqual(["var(--cr-glow-go), var(--cr-go-light)"]);
+    expect(read("features/clinical-review/ClinicalReviewTab.tsx")).toMatch(/"Build the Deep Dive"/);
   });
 });
 

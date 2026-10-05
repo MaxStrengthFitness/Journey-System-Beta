@@ -387,17 +387,18 @@ describe("a solid blue button drops a blue-tinted shadow and keeps a top light",
 /* ------------------------------------------------------------------ */
 
 /**
- * Start session, wherever it is drawn in CSS, and the Deep Dive's Generate.
- * The peek's primary carries Go's depth in every state but Go's words only
- * when it says Start session (data-go): [stylesheet, selector, palette, the
- * rule that holds the words when it is another one].
+ * Start session, wherever it is drawn in CSS. The peek's primary carries
+ * Go's depth in every state but Go's words only when it says Start session
+ * (data-go): [stylesheet, selector, palette, the rule that holds the words
+ * when it is another one]. The Deep Dive's Build the Deep Dive left this
+ * list for the next one with AJ's 2A (Oct 5 2026): Go's depth, the button
+ * voice.
  */
 const GO: [string, string, string, string?][] = [
   ["features/hub-schedule/peek.css", '.hp-btn[data-primary="true"]', "eq", '.hp-btn[data-go="true"]'],
   ["features/hub-opportunities/run-sheet.css", '.ho-action[data-primary="true"]', "eq"],
   ["features/client-directory/client-directory.css", ".cd-start", "eq"],
   ["features/briefing/briefing.css", ".br__cta", "br"],
-  ["features/clinical-review/clinical-review.css", ".cr-generate", "cr"],
 ];
 
 /** Every other orange button: Go's depth in the button voice. */
@@ -406,6 +407,8 @@ const GO_DEPTH: [string, string, string, string][] = [
   ["features/equipment/equipment.css", ".eq-btn--hero", ".eq-btn", "eq"],
   ["features/machine-fit/ui/machine-fit.css", ".fit-btn--hero", ".fit-btn", "eq"],
   ["features/routines/routines.css", ".rt-btn--hero", ".rt-btn", "eq"],
+  // AJ's 2A (Oct 5 2026): upright, 14/700, with Go's glow, top light and press.
+  ["features/clinical-review/clinical-review.css", ".cr-generate", ".cr-generate", "cr"],
 ];
 
 describe("Go is Start session: one voice and one depth", () => {
