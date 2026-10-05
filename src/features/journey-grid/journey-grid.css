@@ -31,7 +31,7 @@
   --jg-row-h:       44px;
   --jg-head-h:      40px;
   --jg-w-size:      15px;      /* weight                                   */
-  --jg-r-size:      10.5px;    /* reps / TUT                               */
+  --jg-r-size:      11px;      /* reps / TUT: nothing under 11 (phase 13)  */
   --jg-show-reps:   block;
   --jg-col-older:   26px;      /* the sticky "load older" rail             */
 
@@ -47,6 +47,10 @@
   border: 1px solid var(--jg-border);
   border-radius: var(--jg-radius);
   overflow: hidden;              /* clips the rounded corners only        */
+  /* The grid lifts as one panel (type and depth, phase 13): an element's
+     own overflow never clips its outer shadow. Shadow only, so the borders,
+     the separators and the layers above are untouched. */
+  box-shadow: var(--jg-elev-2);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -113,7 +117,7 @@
   padding: 14px 22px;
   border-radius: 12px;
   background: var(--card);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+  box-shadow: var(--jg-elev-4);  /* a popover's lift, in the navy, never black */
 }
 .jg-view__legend { padding: 10px 2px 0; flex: none; }
 
@@ -223,21 +227,24 @@
   padding: 0 12px;
   gap: 2px;
 }
+/* The machine column's head, like a lane head on the Hub: the display face,
+   upright, in its own capitalisation (type and depth, phase 13; AJ's 1A and
+   3B). It was 13px capitals at 0.08em; the words are narrower now. */
 .jg-corner__title {
   font-family: var(--jg-font-display);
   font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--jg-ink-muted);
 }
 /* Retained: the ⋯ machine menu still uses it for the journey summary. The
    grid corner does not -- it is one word now. */
 .jg-corner__sub {
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--jg-ink-faint);
-  letter-spacing: 0.02em;
+  color: var(--jg-ink-muted);
+  letter-spacing: 0;
 }
 
 /* ---- Analytics column header (sticky top + left, after the machine col) */
@@ -277,18 +284,20 @@
   font-weight: 800;
   font-size: 15px;
   line-height: 1;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--jg-live-text);
 }
+/* 11px in the 40px head: the dots sit a pixel closer so the three lines
+   take no more height than the 10.5px line did. */
 .jg-stat-head__sub {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--jg-ink-muted);
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
   line-height: 1;
 }
-.jg-stat-head__dots { display: inline-flex; align-items: center; gap: 3px; margin-top: 3px; color: var(--jg-ink-faint); }
+.jg-stat-head__dots { display: inline-flex; align-items: center; gap: 3px; margin-top: 2px; color: var(--jg-ink-faint); }
 .jg-stat-head__dots i { width: 5px; height: 5px; border-radius: 999px; background: var(--jg-border-strong); }
 .jg-stat-head__dots i.is-on { background: var(--jg-live); width: 12px; }
 
@@ -332,22 +341,28 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   color: var(--jg-ink);
   letter-spacing: -0.01em;
 }
-.jg-stat__unit { font-size: 10px; font-weight: 600; color: var(--jg-ink-muted); margin-left: 3px; letter-spacing: 0.02em; }
+.jg-stat__unit { font-size: 11px; font-weight: 600; color: var(--jg-ink-muted); margin-left: 3px; letter-spacing: 0; }
 .jg-stat__meta { display: flex; flex-direction: column; align-items: center; gap: 1px; line-height: 1.1; }
-.jg-stat__date { font-size: 10.5px; font-weight: 700; color: var(--jg-live-text); }
-.jg-stat__ctx { font-size: 10.5px; font-weight: 600; color: var(--jg-ink-muted); white-space: nowrap; }
-.jg-stat__older { font-size: 9.5px; font-weight: 700; color: var(--jg-ink-faint); letter-spacing: 0.04em; }
+.jg-stat__date { font-size: 11px; font-weight: 700; color: var(--jg-live-text); }
+.jg-stat__ctx { font-size: 11px; font-weight: 600; color: var(--jg-ink-muted); white-space: nowrap; }
+/* "‹ older" is a word a trainer reads: the muted ink, never the faint. */
+.jg-stat__older { font-size: 11px; font-weight: 700; color: var(--jg-ink-muted); letter-spacing: 0; }
 /* when the Analytics column is on, the rail edge moves to it */
 .jg[data-stats="true"] .jg-machine,
 .jg[data-stats="true"] .jg-corner { box-shadow: none; border-right-color: var(--jg-border); }
 
-/* shared header tag ("LATEST · #45", "TODAY") */
+/* shared header tag ("Latest", "Today"). A label, so Geist at 11/700 in its
+   own capitalisation (type and depth, phase 13; it was Saira 8.5px
+   capitals). Measured in the 40px head, less its 3px underline: the tag,
+   the date and the number line are 11 + 15 + 11 = 37px of line boxes in
+   37px. In a dense grid's 36px head (date 12.5) they are 34.5px in 33, and
+   their letters 31.6px, so the letters still clear both edges. */
 .jg-head__tag {
-  font-family: var(--jg-font-display);
-  font-size: 8.5px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-family: var(--jg-font);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--jg-live-text);
   line-height: 1;
 }
@@ -378,20 +393,25 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 /* Three stacked lines (number, date, avatar circle) cost 68px of every
    screen. The trainer's initials read just as well as text on the number
    line, and the header drops to 50px. */
+/* "#312 · AJ": 11px on one line (47px; a column is 56 to 84). Its line box
+   is the font size, so the three-line heads above fit. */
 .jg-head__n {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
+  line-height: 1;
   color: var(--jg-ink-muted);
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+/* The day, "Sep 24": the display face upright, as written (AJ's 1A). */
 .jg-head__d {
   font-family: var(--jg-font-display);
   font-weight: 700;
   font-size: 15px;
   line-height: 1;
   letter-spacing: 0.02em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--jg-ink);
 }
 .jg-head__d { white-space: nowrap; }
@@ -450,15 +470,17 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 /* With the rail present, the machine column hands its edge treatment over. */
 .jg[data-older="true"] .jg-machine,
 .jg[data-older="true"] .jg-corner { box-shadow: none; border-right-color: var(--jg-border); }
+/* "‹ Older" reads down the 26px rail: a label, Geist 12/700 as written
+   (it was Saira 10px capitals); its line is 14px of the rail's 26. */
 .jg-head--older .jg-head__btn {
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   color: var(--jg-live-text);
-  font-family: var(--jg-font-display);
-  font-size: 10px;
+  font-family: var(--jg-font);
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   gap: 3px;
   padding: 0;
   white-space: nowrap;
@@ -510,11 +532,11 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   left: 50%;
   writing-mode: vertical-rl;
   transform: translateX(-50%) rotate(180deg);
-  font-family: var(--jg-font-display);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-family: var(--jg-font);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
   color: var(--jg-ink-muted);
   pointer-events: none;
@@ -546,24 +568,29 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   border-bottom: 1px solid var(--jg-border);
   z-index: 1;
 }
+/* "Today's routine", "Not in today's routine": the label over a list, Geist
+   14/700 in the second ink as written (type and depth, phase 13; it was
+   Saira 11.5px capitals). Its line is 21px of the band's 30 (24 dense,
+   where it is 12px on an 18px line). The count is a quiet number, in the
+   muted ink. */
 .jg-group__label {
   position: sticky;
   left: 0;
   padding: 0 12px;
-  font-family: var(--jg-font-display);
-  font-size: 11.5px;
+  font-family: var(--jg-font);
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--jg-ink-muted);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--jg-ink-2);
 }
 .jg-group__count {
   margin-left: 8px;
   font-family: var(--jg-font);
   font-weight: 600;
-  font-size: 10px;
-  color: var(--jg-ink-faint);
-  letter-spacing: 0.04em;
+  font-size: 12px;
+  color: var(--jg-ink-muted);
+  letter-spacing: 0;
 }
 .jg-group--action { cursor: pointer; }
 .jg-group--action:active { background: var(--jg-surface-3); }
@@ -652,7 +679,7 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   border-radius: 4px;
   background: var(--jg-live);
   color: var(--jg-live-on);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   display: grid;
   place-items: center;
@@ -666,12 +693,15 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
    A chip's fill, padding and radius each say "separate object"; five of
    them is five boxes of noise for what is really one string of numbers.
    So: no boxes. The structure lives in the type instead — key small and
-   muted, value in full ink, a hairline between pairs. Five fit in ~138px. */
+   muted, value in full ink, a hairline between pairs. Five fit in ~138px.
+   Since type and depth (phase 13) the key is 11px, not 8.5: five fit in
+   about 145px of the column's 163, and a sixth, or a long value, goes onto
+   a second line rather than being cut off. */
 .jg-machine__meta {
   display: flex;
   align-items: baseline;
-  gap: 0;
-  flex-wrap: nowrap;
+  gap: 2px 0;
+  flex-wrap: wrap;
   min-width: 0;
   overflow: hidden;
   line-height: 1;
@@ -687,15 +717,16 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   border-right: 1px solid var(--jg-border);
 }
 .jg-setting:last-child { padding-right: 0; margin-right: 0; border-right: 0; }
+/* The keys are capitals as written ("G", "SA": orderMachineSettings makes
+   them), so they need no transform. */
 .jg-setting__k {
-  font-size: 8.5px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--jg-ink-muted);
 }
 .jg-setting__v { font-size: 11px; font-weight: 750; color: var(--jg-ink); }
-.jg-setting--more { font-size: 10px; font-weight: 700; color: var(--jg-ink-muted); }
+.jg-setting--more { font-size: 11px; font-weight: 700; color: var(--jg-ink-muted); }
 
 /* The machine being walked up to gets the loud version — same rail, one
    size up, so the setup read works from further away. */
@@ -715,7 +746,9 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   padding: 4px 6px;
   border-left: 3px solid transparent;     /* quality edge lives here         */
   font-variant-numeric: tabular-nums;
-  transition: opacity 140ms ease, box-shadow 140ms ease;
+  /* Opacity only: a shadow is never animated, on a list of many cells
+     least of all (type and depth, phase 13). */
+  transition: opacity 140ms ease;
 }
 .jg-cell__w {
   font-size: var(--jg-w-size);
@@ -724,11 +757,13 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   color: var(--jg-ink);
   letter-spacing: -0.01em;
 }
+/* Line-height 1: at 11px the reps take no more height than they did at
+   10.5 (a 36px row still holds the weight over them). */
 .jg-cell__r {
   display: var(--jg-show-reps);
   font-size: var(--jg-r-size);
   font-weight: 600;
-  line-height: 1.1;
+  line-height: 1;
   color: var(--jg-ink-2);
   white-space: nowrap;
 }
@@ -823,7 +858,7 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   pointer-events: none;
 }
 .jg-cell__mark--practice {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0.02em;
@@ -838,11 +873,18 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   line-height: 1.1;
 }
 .jg-cell__skip-glyph { font-size: 15px; font-weight: 600; }
+/* The one-word reason ("pain", "occupied"; set-outcome.ts writes them in
+   lower case for the Now Bar's "Skipped · pain") with its first letter a
+   capital, 11/600 on one 11px line: the glyph and the word are 27.5px in a
+   36px row, and "Occupied" is no wider than "OCCUPIED" was at 9px. A word a
+   trainer reads, so the muted ink. */
 .jg-cell__skip-why {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: capitalize;
+  color: var(--jg-ink-muted);
 }
 .jg[data-dense="line"] .jg-cell__skip-why { display: none; }
 .jg-cell--nr .jg-cell__empty { font-size: 15px; font-weight: 700; }
@@ -870,21 +912,21 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-delta {
   display: inline-block;
   margin-left: 3px;
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: -0.02em;
   vertical-align: 1px;
 }
 .jg-delta--gain { color: var(--jg-delta-up); }
 .jg-delta--drop { color: var(--jg-drop); font-weight: 700; }
-/* The arrow rides at 0.85em so "▲2" stays one optical unit at 9.5px. */
+/* The arrow rides at 0.85em so "▲2" stays one optical unit at 11px. */
 .jg-delta__arrow { font-size: 0.85em; margin-right: 0.5px; }
 
 /* trend glyph next to reps — reps only, and only when the load held. */
 .jg-trend {
   display: inline-block;
   margin-left: 3px;
-  font-size: 9px;
+  font-size: 11px;
   vertical-align: 1px;
   color: var(--jg-ink-muted);
 }
@@ -1040,7 +1082,7 @@ div.jg-today { cursor: default; }
   display: var(--jg-show-reps);
   font-size: var(--jg-r-size);
   font-weight: 600;
-  line-height: 1.1;
+  line-height: 1;
   color: var(--jg-ink-2);
   white-space: nowrap;
 }
@@ -1084,7 +1126,7 @@ div.jg-today { cursor: default; }
   border-radius: 4px;
   pointer-events: none;
 }
-.jg-today__q--practice { font-size: 9px; font-weight: 800; line-height: 1; color: var(--jg-ink-muted); }
+.jg-today__q--practice { font-size: 11px; font-weight: 800; line-height: 1; color: var(--jg-ink-muted); }
 .jg-today__skip {
   display: flex;
   flex-direction: column;
@@ -1093,9 +1135,10 @@ div.jg-today { cursor: default; }
   line-height: 1.1;
 }
 .jg-today__skip-glyph { font-size: 15px; font-weight: 600; }
-.jg-today__skip-why { font-size: 9px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.jg-today__skip-why { font-size: 11px; font-weight: 600; line-height: 1; letter-spacing: 0; text-transform: capitalize; color: var(--jg-ink-muted); }
 .jg-today.is-focus::after { border-color: var(--jg-live-on); }
 .jg-today.is-focus .jg-today__skip,
+.jg-today.is-focus .jg-today__skip-why,
 .jg-today.is-focus .jg-today__q--practice { color: var(--jg-live-on); }
 
 /* The machine being performed right now. */
@@ -1119,6 +1162,7 @@ div.jg-today { cursor: default; }
   padding: 0;
 }
 .jg-today__add {
+  position: relative;
   appearance: none;
   border: 1px dashed var(--jg-control-edge);
   background: transparent;
@@ -1130,6 +1174,14 @@ div.jg-today { cursor: default; }
   place-items: center;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+/* 28px drawn, 40px to tap (type and depth, phase 13): the row's height is
+   fixed by the grid's fit, so the box stays and its tap area reaches 6px
+   past each side. */
+.jg-today__add::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
 }
 
 /* ==========================================================================
@@ -1147,14 +1199,26 @@ div.jg-today { cursor: default; }
    the bar (AJ, Oct 4 2026: "yes" to firmer outlines). --jg-border-strong
    is the softer line of the sticky separators and the rail, and stays.
    session-colour-rules.test.ts lists which rules read which.
+
+   Depth (type and depth, phase 13; AJ's 2A): the bar docks, casting the
+   frame's navy up over the grid (--jg-dock; leftward as the landscape
+   column, --jg-dock-side). It is positioned so it paints after the grid,
+   which is positioned too; it sets no z-index and the grid's own layers are
+   untouched. The steppers, the quality buttons, the REPS | SEC switch and
+   the session bar's Notes and Pulse are RAISED on their 3:1 edge: a fill a
+   hair lighter (--jg-raised), the lift and a top light, and a press (down a
+   pixel into --jg-press). No set? stays dashed and unfilled and only
+   presses. Nothing animates a shadow.
    ========================================================================== */
 .jg-nb {
+  position: relative;
   flex: none;
   display: grid;
   gap: 8px 12px;
   padding: 8px 12px 10px;
   background: var(--jg-surface-2);
   border-top: 2px solid var(--jg-hero);
+  box-shadow: var(--jg-dock);
   font-family: var(--jg-font);
   color: var(--jg-ink);
   grid-template-columns: 1fr;
@@ -1198,12 +1262,14 @@ div.jg-today { cursor: default; }
   place-items: center;
   font-variant-numeric: tabular-nums;
 }
+/* The machine's name: the display face upright, as the floor writes it
+   (AJ's 1A and 3B; it was capitals). */
 .jg-nb__name {
   font-family: var(--jg-font-display);
   font-size: 21px;
   font-weight: 800;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   line-height: 1.1;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -1238,11 +1304,14 @@ div.jg-today { cursor: default; }
   border-radius: var(--jg-radius-sm);
   white-space: nowrap;
 }
+/* The setting's name over its value, 11/700 as written ("Seat Angle"). It
+   was 8px capitals at 0.1em, which took the same width ("Shoulder Pads" is
+   79px either way); label and value are 26px of the tile's 32. */
 .jg-nb__chip b {
-  font-size: 8.5px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--jg-ink-muted);
   line-height: 1;
 }
@@ -1271,7 +1340,7 @@ div.jg-today { cursor: default; }
 }
 .jg-nb__expectline { display: inline-flex; align-items: center; gap: 3px; }
 .jg-nb__expect em { font-style: normal; font-weight: 800; color: var(--jg-ink); }
-.jg-nb__readout { display: block; color: var(--jg-ink-muted); font-weight: 600; font-size: 10.5px; }
+.jg-nb__readout { display: block; color: var(--jg-ink-muted); font-weight: 600; font-size: 11px; }
 .jg-nb__mark { display: inline-flex; vertical-align: -1px; margin-left: 1px; line-height: 0; }
 .jg-nb__mark--q3 { color: var(--jg-q-star); }
 .jg-nb__mark--q1 { color: var(--jg-q-poor-text); }
@@ -1295,13 +1364,16 @@ div.jg-today { cursor: default; }
   min-width: 0;
 }
 /* Every control group carries a one-word kicker above it. A new trainer
-   reads LOAD · SET · FORM · NO SET? and knows the bar without a tour. */
+   reads Load · Set · Form · No set? and knows the bar without a tour.
+   12/700 as written (type and depth, phase 13; it was 9px capitals at
+   0.12em, the same width): the bar grows 3px, which the grid's fit takes
+   from the rows. */
 .jg-nb__grp { display: flex; flex-direction: column; gap: 3px; flex: none; min-width: 0; }
 .jg-nb__kicker {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--jg-ink-muted);
   line-height: 1;
   padding-left: 1px;
@@ -1317,7 +1389,8 @@ div.jg-today { cursor: default; }
   flex: none;
   border: 1px solid var(--jg-control-edge);
   border-radius: var(--jg-radius-sm);
-  background: var(--jg-surface);
+  background: var(--jg-raised);
+  box-shadow: var(--jg-elev-1), inset 0 1px 0 var(--jg-highlight);
   color: var(--jg-ink-2);
   display: grid;
   place-items: center;
@@ -1325,7 +1398,7 @@ div.jg-today { cursor: default; }
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-.jg-nb__sbtn:active { background: var(--jg-surface-3); }
+.jg-nb__sbtn:active { background: var(--jg-surface-3); transform: translateY(1px); box-shadow: var(--jg-press); }
 /* Three digits and "lb". Weights on the floor never need more. */
 .jg-nb__wwrap {
   display: flex;
@@ -1356,7 +1429,7 @@ div.jg-today { cursor: default; }
 }
 .jg-nb__weight:focus { outline: none; }
 .jg-nb__weight::placeholder { color: var(--jg-ink-faint); font-weight: 500; }
-.jg-nb__lb { font-size: 10px; font-weight: 700; color: var(--jg-ink-muted); flex: none; }
+.jg-nb__lb { font-size: 12px; font-weight: 700; color: var(--jg-ink-muted); flex: none; }
 
 /* The count field, then a real REPS | SEC switch beside it. */
 .jg-nb__setrow { display: flex; align-items: stretch; gap: 4px; height: 44px; }
@@ -1398,6 +1471,8 @@ div.jg-today { cursor: default; }
 }
 .jg-nb__outin:focus { outline: none; }
 .jg-nb__outin::placeholder { color: var(--jg-ink-faint); font-weight: 500; }
+/* Raised as one switch: its own overflow clips its corners, never its
+   outer lift. */
 .jg-nb__unit {
   flex: none;
   display: flex;
@@ -1406,8 +1481,12 @@ div.jg-today { cursor: default; }
   border: 1px solid var(--jg-control-edge);
   border-radius: var(--jg-radius-sm);
   overflow: hidden;
-  background: var(--jg-surface);
+  background: var(--jg-raised);
+  box-shadow: var(--jg-elev-1), inset 0 1px 0 var(--jg-highlight);
 }
+.jg-nb__unit:active { transform: translateY(1px); box-shadow: var(--jg-press); }
+/* "Reps" over "Sec", 12/700 as written (they were 9.5px capitals), each on
+   a 12px line in its 19px half of the 40px switch. */
 .jg-nb__ubtn {
   appearance: none;
   flex: 1;
@@ -1417,10 +1496,11 @@ div.jg-today { cursor: default; }
   background: transparent;
   color: var(--jg-ink-muted);
   font: inherit;
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -1492,7 +1572,8 @@ div.jg-today { cursor: default; }
   height: 44px;
   border: 1px solid var(--jg-control-edge);
   border-radius: var(--jg-radius-sm);
-  background: var(--jg-surface);
+  background: var(--jg-raised);
+  box-shadow: var(--jg-elev-1), inset 0 1px 0 var(--jg-highlight);
   color: var(--jg-ink-faint);
   font-size: 17px;
   line-height: 1;
@@ -1502,6 +1583,7 @@ div.jg-today { cursor: default; }
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
+.jg-nb__qbtn:active { transform: translateY(1px); box-shadow: var(--jg-press); }
 .jg-nb__qbtn[data-q="1"].is-on { background: var(--jg-q-poor-fill); border-color: var(--jg-q-poor); color: var(--jg-q-poor-text); }
 /* The star is gold on the button too — the trainer taps the same mark they
    will read back in the grid tomorrow. */
@@ -1527,7 +1609,8 @@ div.jg-today { cursor: default; }
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-.jg-nb__obtn:active { background: var(--jg-surface-3); }
+/* Quiet: dashed and unfilled at rest, so it gains only the press. */
+.jg-nb__obtn:active { background: var(--jg-surface-3); transform: translateY(1px); box-shadow: var(--jg-press); }
 
 /* the skip strip — takes the controls line over while a reason is picked */
 .jg-nb__controls--skip { align-items: stretch; }
@@ -1582,6 +1665,9 @@ div.jg-today { cursor: default; }
   border: 1px solid var(--jg-live);
   border-radius: var(--jg-radius-sm);
   background: var(--jg-live-fill-strong);
+  /* A tint on its own edge: the lift, no top light (type and depth, phase
+     13). Solid in portrait and as the landscape column: the blue's drop. */
+  box-shadow: var(--jg-elev-1);
   color: var(--jg-live-text);
   font: inherit;
   font-size: 13px;
@@ -1634,14 +1720,16 @@ div.jg-today { cursor: default; }
   background: transparent;
   color: var(--jg-live-text);
   border: 1.5px dashed var(--jg-live);
+  box-shadow: none;
 }
 .jg-nb__nextlbl { flex: none; opacity: 0.85; }
+/* The next machine's name, upright and as written (it was capitals). */
 .jg-nb__nextname {
   font-family: var(--jg-font-display);
   font-size: 16px;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   line-height: 1.1;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -1650,7 +1738,7 @@ div.jg-today { cursor: default; }
   .jg-nb--bar .jg-nb__controls .jg-nb__sp { display: none; }
   .jg-nb--bar .jg-nb__controls { gap: 8px 10px; }
   /* Full width, and the loudest thing on the bar. */
-  .jg-nb--bar .jg-nb__next { width: 100%; min-height: 48px; background: var(--jg-live); color: var(--jg-live-on); border-color: var(--jg-live); }
+  .jg-nb--bar .jg-nb__next { width: 100%; min-height: 48px; background: var(--jg-live); color: var(--jg-live-on); border-color: var(--jg-live); box-shadow: var(--jg-glow-live), var(--jg-solid-light); }
 }
 
 /* ---- zone 2 · the grid rail ------------------------------------------ *
@@ -1678,23 +1766,26 @@ div.jg-today { cursor: default; }
 }
 /* the Key popover has to escape the rail's overflow */
 .jg-rail { overflow: visible; }
+/* No screen draws the rail since the session's top lost its toolbar (Oct 3
+   2026); its words still follow the session's voice (phase 13), in case it
+   comes back: nothing under 11px, no capitals. */
 .jg-rail__title {
   font-family: var(--jg-font-display);
   font-size: 12.5px;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--jg-ink-muted);
   flex: none;
   white-space: nowrap;
 }
 /* "Show:" -- the toggle's own label, so the toggle does not need a
-   redundant "ROUTINE" heading sitting above a "Routine" button. */
+   redundant "Routine" heading sitting above a "Routine" button. */
 .jg-rail__label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--jg-ink-muted);
   flex: none;
   white-space: nowrap;
@@ -1702,7 +1793,7 @@ div.jg-today { cursor: default; }
 /* The count is a fact, not a control, so it is a quiet chip rather than one
    more thing that looks pressable in a rail full of buttons. */
 .jg-rail__count {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 650;
   color: var(--jg-ink-2);
   background: var(--jg-surface);
@@ -1736,16 +1827,18 @@ div.jg-today { cursor: default; }
   background: var(--jg-surface);
   color: var(--jg-ink-2);
   font: inherit;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-.jg-rail__edit:hover { background: var(--jg-surface-3); }
+@media (hover: hover) {
+  .jg-rail__edit:hover { background: var(--jg-surface-3); }
+}
 /* Reorder controls, inside the sticky machine cell. */
 .jg-machine__reorder {
   display: inline-flex;
@@ -1767,8 +1860,10 @@ div.jg-today { cursor: default; }
   color: var(--jg-ink-2);
   border-radius: 6px;
 }
-.jg-machine__move:hover:not(:disabled),
-.jg-machine__drop:hover { background: var(--jg-surface-3); color: var(--jg-ink); }
+@media (hover: hover) {
+  .jg-machine__move:hover:not(:disabled),
+  .jg-machine__drop:hover { background: var(--jg-surface-3); color: var(--jg-ink); }
+}
 .jg-machine__move:disabled { opacity: 0.25; }
 .jg-machine__move:focus-visible,
 .jg-machine__drop:focus-visible { outline: 2px solid var(--jg-live); outline-offset: -2px; }
@@ -1800,10 +1895,10 @@ div.jg-today { cursor: default; }
   background: var(--jg-surface);
   color: var(--jg-ink-muted);
   font: inherit;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   padding: 4px 9px;
   cursor: pointer;
   white-space: nowrap;
@@ -1824,10 +1919,10 @@ div.jg-today { cursor: default; }
   background: var(--jg-surface);
   color: var(--jg-live-text);
   font: inherit;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   padding: 4px 8px;
   cursor: pointer;
   flex: none;
@@ -1848,16 +1943,17 @@ div.jg-today { cursor: default; }
   background: var(--jg-surface);
   color: var(--jg-live-text);
   font: inherit;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   padding: 4px 9px;
   cursor: pointer;
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
 }
 .jg-key.is-on { background: var(--jg-live); color: var(--jg-live-on); }
+/* The Key over the grid is a popover: the popover's lift (phase 13). */
 .jg-keypop {
   position: absolute;
   top: calc(100% + 6px);
@@ -1866,7 +1962,7 @@ div.jg-today { cursor: default; }
   background: var(--jg-surface);
   border: 1px solid var(--jg-control-edge);
   border-radius: var(--jg-radius);
-  box-shadow: 0 8px 24px var(--jg-sticky-shadow);
+  box-shadow: var(--jg-elev-4);
   padding: 12px 14px;
   min-width: 236px;
 }
@@ -1895,8 +1991,8 @@ div.jg-today { cursor: default; }
   font-family: var(--jg-font-display);
   font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--jg-ink);
 }
 .jg-toolbar__bar { width: 3px; height: 18px; border-radius: 2px; background: var(--jg-hero); }
@@ -1914,14 +2010,14 @@ div.jg-today { cursor: default; }
   border: 0;
   background: transparent;
   color: var(--jg-ink-muted);
-  height: 32px;
+  height: 40px;
   padding: 0 12px;
   border-radius: 999px;
   font: inherit;
   font-size: 11.5px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -1968,18 +2064,31 @@ div.jg-today { cursor: default; }
 /* legend */
 .jg-legend { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font-size: 11.5px; color: var(--jg-ink-muted); font-weight: 600; }
 .jg-legend__item { display: inline-flex; align-items: center; gap: 6px; }
-.jg-legend__swatch { width: 18px; height: 14px; border-radius: 3px; border-left: 3px solid; box-sizing: border-box; }
+/* The swatch stands for a cell, whose 3px quality edge runs straight down
+   its left: so the left corners are square and only the right ones round. A
+   3px edge on a rounded corner tapers into a crescent (type and depth,
+   phase 13). The swatches with a 1px frame round all four. */
+.jg-legend__swatch {
+  width: 18px;
+  height: 14px;
+  border-top-right-radius: 3px;
+  border-bottom-right-radius: 3px;
+  border-left: 3px solid;
+  box-sizing: border-box;
+}
 .jg-legend__swatch--q2 { background: var(--jg-q-done-fill); border-color: var(--jg-q-done-fill); }
 .jg-legend__swatch--q3 { background: var(--jg-q-max-fill); border-color: var(--jg-q-max-edge); }
 .jg-legend__mark { display: inline-flex; line-height: 0; }
 .jg-legend__mark--q3 { color: var(--jg-q-star); }
 .jg-legend__mark--q1 { color: var(--jg-q-poor-text); }
+/* What a mark means, in words: 11px in the muted ink (it was 10px in the
+   faint, 3.2:1). */
 .jg-legend__gloss {
   font-style: normal;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--jg-ink-faint);
-  letter-spacing: 0.02em;
+  color: var(--jg-ink-muted);
+  letter-spacing: 0;
 }
 .jg-legend__item--quiet { opacity: 0.8; }
 .jg-legend__swatch--latest { background: var(--jg-live-fill); border-color: var(--jg-live); box-shadow: inset -2px 0 0 var(--jg-live); }
@@ -1989,9 +2098,10 @@ div.jg-today { cursor: default; }
   place-items: center;
   border-left-width: 1px;
   border: 1px dashed var(--jg-border-strong);
+  border-radius: 3px;
   background: var(--jg-surface);
   color: var(--jg-ink-muted);
-  font-size: 8.5px;
+  font-size: 11px;
   font-weight: 800;
   line-height: 1;
 }
@@ -2001,6 +2111,7 @@ div.jg-today { cursor: default; }
   display: inline-grid;
   place-items: center;
   border: 1px solid var(--jg-border);
+  border-radius: 3px;
   background: var(--jg-surface);
   color: var(--jg-ink-faint);
   font-size: 15px;
@@ -2010,6 +2121,7 @@ div.jg-today { cursor: default; }
 /* The Analytics set: the same dashed outline as .jg-cell.is-stat-hit. */
 .jg-legend__swatch--stat-hit {
   border: 0;
+  border-radius: 3px;
   background: var(--jg-surface);
   outline: 1.5px dashed var(--jg-ink-muted);
   outline-offset: -2px;
@@ -2068,11 +2180,12 @@ div.jg-today { cursor: default; }
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.jg-machine__more:hover, .jg-machine__more.is-open { background: var(--jg-surface-3); color: var(--jg-ink); }
+.jg-machine__more.is-open { background: var(--jg-surface-3); color: var(--jg-ink); }
 .jg-machine__more.has-notes { color: var(--jg-live-text); }
 .jg-machine__note ~ .jg-machine__more { right: 26px; }
 /* the row hover reveals the ⋯ a shade darker on pointer devices */
 @media (hover: hover) {
+  .jg-machine__more:hover { background: var(--jg-surface-3); color: var(--jg-ink); }
   .jg-machine__more { opacity: 0.55; }
   .jg-machine:hover .jg-machine__more, .jg-machine__more.is-open, .jg-machine__more.has-notes { opacity: 1; }
 }
@@ -2086,7 +2199,7 @@ div.jg-today { cursor: default; }
   border-radius: 12px;
   background: var(--jg-surface);
   border: 1px solid var(--jg-control-edge);
-  box-shadow: 0 16px 40px -18px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--jg-elev-4);  /* a popover, in the navy (it was raw black) */
   color: var(--jg-ink);
   font-family: var(--jg-font);
   font-size: 12px;
@@ -2095,17 +2208,23 @@ div.jg-today { cursor: default; }
 .jg-menu__summary { font-size: 11px; font-weight: 600; color: var(--jg-ink-muted); font-variant-numeric: tabular-nums; }
 .jg-menu__settings { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 10px; }
 .jg-menu__setting { display: flex; justify-content: space-between; gap: 6px; padding: 4px 6px; border-radius: 6px; background: var(--jg-surface-2); }
-.jg-menu__setting dt { color: var(--jg-ink-muted); font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A setting's name, 12px as written: "Shoulder Pads" is 85px, where its
+   10.5px capitals were 94, so the menu's narrow column cuts less of a long
+   name than it did. */
+.jg-menu__setting dt { color: var(--jg-ink-muted); font-weight: 600; font-size: 12px; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .jg-menu__setting dd { margin: 0; font-weight: 750; font-variant-numeric: tabular-nums; }
 .jg-menu__empty { margin: 0; color: var(--jg-ink-muted); }
 .jg-menu__note {
   appearance: none; border: 0; margin: 8px 0 0; width: 100%;
-  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px; border-radius: 8px;
+  display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 8px; border-radius: 8px;
   background: var(--jg-live-fill); color: var(--jg-live-text); font: inherit; font-weight: 700; cursor: pointer;
 }
 
-/* single-line cells */
-.jg[data-dense="line"] { --jg-w-size: 13px; --jg-r-size: 10px; }
+/* single-line cells. Nothing under 11px here either (type and depth, phase
+   13): the reps, the load change, the trend glyph, the day's number line
+   and the Analytics date are 11, and the section label 12. One line of 13px
+   weight and 11px words still sits in the 26px floor row. */
+.jg[data-dense="line"] { --jg-w-size: 13px; --jg-r-size: 11px; }
 .jg[data-dense="line"] .jg-cell {
   flex-direction: row;
   align-items: baseline;
@@ -2115,24 +2234,26 @@ div.jg-today { cursor: default; }
 }
 .jg[data-dense="line"] .jg-cell.is-latest .jg-cell__w { font-size: var(--jg-w-size); }
 .jg[data-dense="line"] .jg-cell__r { display: inline-flex; align-items: baseline; }
-.jg[data-dense="line"] .jg-trend { margin-left: 2px; font-size: 8px; }
-.jg[data-dense="line"] .jg-delta { margin-left: 2px; font-size: 8.5px; }
+.jg[data-dense="line"] .jg-trend { margin-left: 2px; font-size: 11px; }
+.jg[data-dense="line"] .jg-delta { margin-left: 2px; font-size: 11px; }
 .jg[data-dense="line"] .jg-stat__btn { flex-direction: row; align-items: baseline; justify-content: center; gap: 5px; padding: 0 4px; }
 .jg[data-dense="line"] .jg-stat__value { font-size: 12.5px; }
 .jg[data-dense="line"] .jg-stat__unit { display: none; }
 .jg[data-dense="line"] .jg-stat__meta { flex-direction: row; gap: 4px; }
 .jg[data-dense="line"] .jg-stat__ctx { display: none; }
-.jg[data-dense="line"] .jg-stat__date { font-size: 10px; }
+.jg[data-dense="line"] .jg-stat__date { font-size: 11px; }
 .jg[data-dense="line"] .jg-stat__older { display: none; }
 .jg[data-dense="line"] .jg-group { height: 24px; }
-.jg[data-dense="line"] .jg-group__label { font-size: 10px; }
-.jg[data-dense="line"] .jg-head__n { font-size: 9px; }
+.jg[data-dense="line"] .jg-group__label { font-size: 12px; }
+.jg[data-dense="line"] .jg-head__n { font-size: 11px; }
 .jg[data-dense="line"] .jg-head__d { font-size: 12.5px; }
 .jg[data-dense="line"] .jg-corner__sub { display: none; }
 .jg[data-dense="line"] .jg-stat-head__sub { display: none; }
 .jg[data-dense="line"] .jg-machine__name { font-size: 11.5px; }
-/* narrow columns: drop the session number line, keep the date */
-.jg[data-dense="line"] .jg-head.is-latest .jg-head__tag { font-size: 7.5px; }
+/* The Latest tag stays 11px in the dense 36px head (it was 7.5): the tag,
+   the 12.5px day and the number line are 34.5px of line boxes in the 33px
+   above the underline, and their letters 31.6px, so nothing touches an
+   edge (measured from the fonts' own metrics, phase 13). */
 
 /* compact legend in the Recent Journey toolbar.
    The toolbar has no caption any more (profile audit, Sep 2026): the filter
@@ -2150,7 +2271,8 @@ div.jg-today { cursor: default; }
 /* The key sits on the app's page colour, where the grey "Completed" fill
    all but vanishes. A hairline gives the swatch an edge. */
 .jg-view--journey .jg-legend__swatch--q2 { box-shadow: inset 0 0 0 1px var(--jg-border-strong); }
-.jg-legend--compact { gap: 10px; font-size: 10.5px; }
+/* The legend's own 11.5px, not a smaller copy of it (phase 13). */
+.jg-legend--compact { gap: 10px; }
 .jg-legend--compact .jg-legend__gloss { display: none; }
 .jg-legend--compact .jg-legend__item--quiet { display: none; }
 .jg-legend--compact .jg-legend__swatch { width: 14px; height: 11px; }
@@ -2161,7 +2283,7 @@ div.jg-today { cursor: default; }
 .jg[data-settings="menu"] .jg-cell { padding: 2px 4px; }
 .jg[data-settings="menu"] .jg-stat__btn { padding: 2px 4px; gap: 1px; }
 .jg[data-settings="menu"] .jg-stat__meta { flex-direction: row; gap: 5px; align-items: baseline; }
-.jg[data-settings="menu"] .jg-stat__ctx { font-size: 10px; }
+.jg[data-settings="menu"] .jg-stat__ctx { font-size: 11px; }
 .jg[data-settings="menu"] .jg-stat__older { display: none; }
 .jg[data-settings="menu"] .jg-machine__btn { padding: 2px 26px 2px 10px; }
 
@@ -2210,14 +2332,16 @@ div.jg-today { cursor: default; }
   white-space: normal;
   overflow-wrap: anywhere;
 }
+/* "Session #61 · started 1:19 AM", as written (the rule at the end of this
+   file set it so on Oct 3 2026; the capitals here went in phase 13). */
 .jg-sbar__meta {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--jg-ink-muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -2239,6 +2363,7 @@ div.jg-today { cursor: default; }
 }
 .jg-clock.is-paused { border-color: var(--jg-q-star); background: color-mix(in srgb, var(--jg-q-star) 16%, var(--jg-surface-2)); }
 .jg-clock__btn {
+  position: relative;
   appearance: none;
   flex: none;
   width: 32px;
@@ -2253,23 +2378,38 @@ div.jg-today { cursor: default; }
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
+/* 32px drawn inside the 40px pill, 40px to tap (type and depth, phase 13):
+   the tap area reaches 4px past each side, to the pill's own edge. */
+.jg-clock__btn::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+}
+.jg-clock__btn:active { transform: translateY(1px); }
 .jg-clock.is-paused .jg-clock__btn { background: var(--jg-go); color: var(--jg-go-on); }
 .jg-clock__btn:focus-visible { outline: 2px solid var(--jg-focus-ring); outline-offset: 1px; }
 .jg-clock__read { display: flex; flex-direction: column; line-height: 1; gap: 2px; }
+/* "Elapsed", "Paused" as written, 12/600 (they were 9px capitals at 0.14em,
+   and wider: "Elapsed" is 47px, "ELAPSED" was 51). With the 17px time they
+   are 31px of the pill's 38. */
 .jg-clock__label {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--jg-ink-muted);
 }
 .jg-clock.is-paused .jg-clock__label { color: var(--jg-ink); }
+/* A number that changes every second stays in Geist, whose figures are
+   tabular: the display face has none, so its digits changed width and the
+   bar shifted as the clock ran (type and depth, phase 13; the rule of
+   phase 12). */
 .jg-clock__time {
-  font-family: var(--jg-font-display);
+  font-family: var(--jg-font);
   font-size: 17px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
 .jg-clock.is-paused .jg-clock__time { animation: jg-clock-blink 1.4s steps(1, end) infinite; }
 @keyframes jg-clock-blink { 50% { opacity: 0.35; } }
@@ -2283,16 +2423,17 @@ div.jg-today { cursor: default; }
   gap: 4px;
   min-width: 52px;
 }
+/* "3 of 6", as written, 12/800 (it was 11px capitals). */
 .jg-sbar__progress-text {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--jg-ink-2);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.jg-sbar__progress-text small { font-weight: 700; color: var(--jg-ink-muted); letter-spacing: 0.06em; }
+.jg-sbar__progress-text small { font-size: 12px; font-weight: 700; color: var(--jg-ink-muted); letter-spacing: 0; }
 .jg-sbar__meter { height: 3px; border-radius: 999px; background: var(--jg-border); overflow: hidden; }
 .jg-sbar__meter i { display: block; height: 100%; background: var(--jg-hero); border-radius: inherit; transition: width 240ms ease; }
 
@@ -2349,9 +2490,11 @@ div.jg-today { cursor: default; }
   height: 40px;
   border-radius: 11px;
   font-family: var(--jg-font);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
+  /* The button voice, 14/700 in its own capitalisation (type and depth,
+     phase 13; it was 12/800, and Finish in capitals). */
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -2360,14 +2503,20 @@ div.jg-today { cursor: default; }
 .jg-sbar__btn:focus-visible, .jg-sbar__trash:focus-visible, .jg-sbar__finish:focus-visible {
   outline: 2px solid var(--jg-focus-ring); outline-offset: 1px;
 }
+/* Notes and Pulse: raised on their 3:1 edge, and a press. The hover fill
+   is a pointer's only, so an iPad's kept hover never flattens them. */
 .jg-sbar__btn {
   padding: 0 12px;
   border: 1px solid var(--jg-control-edge);
-  background: var(--jg-surface-2);
+  background: var(--jg-raised);
+  box-shadow: var(--jg-elev-1), inset 0 1px 0 var(--jg-highlight);
   color: var(--jg-ink);
 }
 .jg-sbar__btn svg { color: var(--jg-hero); }
-.jg-sbar__btn:hover { background: var(--jg-surface-3); }
+@media (hover: hover) {
+  .jg-sbar__btn:hover { background: var(--jg-surface-3); }
+}
+.jg-sbar__btn:active { background: var(--jg-surface-3); transform: translateY(1px); box-shadow: var(--jg-press); }
 .jg-sbar__btn span { display: none; }
 @media (min-width: 640px) { .jg-sbar__btn span { display: inline; } }
 
@@ -2380,19 +2529,26 @@ div.jg-today { cursor: default; }
   background: transparent;
   color: var(--jg-ink-muted);
 }
-.jg-sbar__trash:hover { color: var(--jg-q-poor); background: var(--jg-q-poor-fill); }
+@media (hover: hover) {
+  .jg-sbar__trash:hover { color: var(--jg-q-poor); background: var(--jg-q-poor-fill); }
+}
+/* Quiet: no box at rest, so only the press. */
+.jg-sbar__trash:active { transform: translateY(1px); }
+/* Finish takes Go's depth, never Go's slanted capitals (Go is Start session
+   alone): the orange's short glow and a top light, and the press. It says
+   "Finish" as written, in the button voice above. */
 .jg-sbar__finish {
   padding: 0 18px;
   border: 0;
   background: var(--jg-go);
   color: var(--jg-go-on);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  box-shadow: var(--jg-glow-go), var(--jg-go-light);
 }
 /* The one loud action: the logo orange with navy words (--jg-go). Its hover
    restates the fill rather than filtering it, because an iPad keeps :hover
    after a tap and Finish must look the same then as at rest. */
 .jg-sbar__finish:hover { background: var(--jg-go); }
+.jg-sbar__finish:active { transform: translateY(1px); box-shadow: var(--jg-press); }
 
 @media (max-width: 599px) {
   .jg-sbar { gap: 6px; padding: 0 8px; }
@@ -2446,6 +2602,8 @@ div.jg-today { cursor: default; }
   border: 0;
   border-radius: 11px;
   background: var(--jg-live);
+  /* Solid blue: its tinted drop and a top light, and the press (phase 13). */
+  box-shadow: var(--jg-glow-live), var(--jg-solid-light);
   color: var(--jg-live-on);
   font: inherit;
   font-size: 13px;
@@ -2454,6 +2612,7 @@ div.jg-today { cursor: default; }
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
+.jg-order__done:active { transform: translateY(1px); box-shadow: var(--jg-press); }
 .jg-order__body {
   flex: 1;
   min-height: 0;
@@ -2510,13 +2669,15 @@ div.jg-today { cursor: default; }
 .jg-order__row.is-current .jg-order__ord { background: var(--jg-go); color: var(--jg-go-on); }
 .jg-order__id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; padding-left: 4px; }
 .jg-order__name { font-size: 14px; font-weight: 750; line-height: 1.15; }
-.jg-order__settings { font-size: 10.5px; font-weight: 600; color: var(--jg-ink-muted); font-variant-numeric: tabular-nums; }
+.jg-order__settings { font-size: 12px; font-weight: 600; color: var(--jg-ink-muted); font-variant-numeric: tabular-nums; }
+/* "Done", "Now", "Skipped", as written, 12/700 (they were 9.5px capitals;
+   "Practice" is 51px, where "PRACTICE" was 57). */
 .jg-order__status {
   flex: none;
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--jg-ink-muted);
   padding: 0 6px;
 }
@@ -2527,7 +2688,7 @@ div.jg-today { cursor: default; }
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 36px;
+  height: 40px;
   padding: 0 10px;
   border: 1px solid var(--jg-live);
   border-radius: 9px;
@@ -2557,12 +2718,16 @@ div.jg-today { cursor: default; }
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-.jg-order__remove:hover { background: var(--jg-surface-3); color: var(--jg-ink); }
+@media (hover: hover) {
+  .jg-order__remove:hover { background: var(--jg-surface-3); color: var(--jg-ink); }
+}
 .jg-order__empty { margin: 8px 4px; font-size: 12.5px; color: var(--jg-ink-muted); list-style: none; }
 
 .jg-order__floor { margin-top: 16px; }
 .jg-order__floorhead { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.jg-order__kicker { flex: 1; margin: 0; font-size: 10.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--jg-ink-muted); }
+/* "Add from the floor": the label over a list, 14/700 in the second ink
+   (it was 10.5px capitals). */
+.jg-order__kicker { flex: 1; margin: 0; font-size: 14px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--jg-ink-2); }
 .jg-order__find {
   flex: 0 1 220px;
   min-width: 0;
@@ -2618,6 +2783,8 @@ div.jg-today { cursor: default; }
   overscroll-behavior: contain;
   border-top: 0;
   border-left: 2px solid var(--jg-hero);
+  /* The column docks against the grid: its cast goes left, not up. */
+  box-shadow: var(--jg-dock-side);
   grid-template-columns: 1fr;
   grid-template-areas: "head" "flag" "controls" "next";
   grid-template-rows: auto auto auto auto;
@@ -2646,7 +2813,7 @@ div.jg-today { cursor: default; }
 .jg-nb--side .jg-nb__outin { width: 100%; }
 .jg-nb--side .jg-nb__quality { width: 100%; }
 .jg-nb--side .jg-nb__qbtn { flex: 1; }
-.jg-nb--side .jg-nb__next { width: 100%; min-height: 50px; background: var(--jg-live); color: var(--jg-live-on); border-color: var(--jg-live); }
+.jg-nb--side .jg-nb__next { width: 100%; min-height: 50px; background: var(--jg-live); color: var(--jg-live-on); border-color: var(--jg-live); box-shadow: var(--jg-glow-live), var(--jg-solid-light); }
 /* Beside a 312px Now bar the rail has ~700px, not the viewport: keep the
    Key popover, never the inline legend. */
 .jg-stage--side .jg-rail__legend { display: none; }
@@ -2722,7 +2889,7 @@ div.jg-today { cursor: default; }
     box-shadow: 8px 0 12px -8px var(--jg-sticky-shadow);
   }
   .jg-view--journey .jg-corner { padding: 0 8px; }
-  .jg-view--journey .jg-corner__title { font-size: 12px; letter-spacing: 0.04em; }
+  .jg-view--journey .jg-corner__title { font-size: 12px; letter-spacing: 0; }
   .jg-view--journey .jg-machine__btn { padding: 4px 2px 4px 6px; }
   .jg-view--journey .jg-machine__name { font-size: 12px; }
   .jg-view--journey .jg-row .jg-machine__name { padding-right: 14px; }
@@ -2745,7 +2912,7 @@ div.jg-today { cursor: default; }
     padding: 2px 4px;
     border-radius: 11px;
     font-size: 11px;
-    letter-spacing: 0.03em;
+    letter-spacing: 0;
     line-height: 1.1;
     white-space: normal;
   }
@@ -2771,23 +2938,28 @@ div.jg-today { cursor: default; }
   text-align: left;
   font: inherit;
 }
-.jg-corner__filter:hover,
+@media (hover: hover) {
+  .jg-corner__filter:hover { background: var(--jg-surface-3); color: var(--jg-ink); }
+}
 .jg-corner__filter[data-popup-open] { background: var(--jg-surface-3); color: var(--jg-ink); }
-/* One line: the corner is a column wide, and the menu's words are long. */
+/* One line: the corner is a column wide, and the menu's words are long.
+   14px as written (it was 12px capitals at 0.04em): in the session's 184px
+   corner the icon, "All machines", "20 of 20" and the chevron take 174. */
 .jg-corner__filter .jg-corner__title {
   color: inherit;
   flex: 0 1 auto;
   min-width: 0;
   white-space: nowrap;
-  font-size: 12px;
-  letter-spacing: 0.04em;
+  font-size: 14px;
+  letter-spacing: 0;
 }
 .jg-corner__filter-icon { width: 14px; height: 14px; flex: none; opacity: 0.8; }
+/* How many: 12px in the muted ink (it was 10.5px in the faint, 3.2:1). */
 .jg-corner__count {
   font-family: var(--jg-font);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--jg-ink-faint);
+  color: var(--jg-ink-muted);
 }
 .jg-corner__filter-chev { width: 14px; height: 14px; flex: none; margin-left: auto; opacity: 0.7; }
 .jg-toolbar__loading {
@@ -2827,7 +2999,7 @@ div.jg-today { cursor: default; }
   line-height: 1;
   white-space: nowrap;           /* "120 ▲10" stays on its line */
 }
-.jg-look .jg-cell__w .jg-delta { font-size: 9.5px; margin-left: 1px; }
+.jg-look .jg-cell__w .jg-delta { font-size: 11px; margin-left: 1px; }
 .jg-look .jg-cell__r {
   position: absolute;
   bottom: 2px;
@@ -2974,12 +3146,15 @@ div.jg-today { cursor: default; }
   margin-top: 1px;
 }
 .jg-look .jg-machine__meta .jg-setting { border: 0; padding: 0; margin: 0; gap: 1px; }
+/* 11px in the 17px boxes (it was 10.5), and the muted ink: these are the
+   numbers a trainer sets the machine to, never decoration (the faint ink
+   is 3.2:1). The value steps up to the second ink below. */
 .jg-look .jg-machine__meta .jg-setting__k,
 .jg-look .jg-machine__meta .jg-setting__v,
 .jg-look .jg-machine__meta .jg-setting--more {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--jg-ink-faint);
+  color: var(--jg-ink-muted);
   letter-spacing: 0;
   text-transform: none;
 }
@@ -3128,8 +3303,11 @@ div.jg-today { cursor: default; }
 .jg-look .jg-legend__swatch--practice,
 .jg-look .jg-legend__swatch--skipped,
 .jg-look .jg-legend__swatch--flow {
-  width: 16px; height: 16px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 9px; font-weight: 800;
+  width: 16px; height: 16px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11px; font-weight: 800;
 }
+/* A round bubble has no quality edge: the swatch's 3px left edge on a
+   circle was a crescent. Its 1px ring is the inset shadow below. */
+.jg-look .jg-legend__swatch--flow { border: 0; }
 .jg-look .jg-legend__swatch--practice { color: var(--jg-pf-practice); background: var(--jg-pf-practice-bg); box-shadow: inset 0 0 0 1px var(--jg-pf-practice); }
 .jg-look .jg-legend__swatch--skipped { color: var(--jg-pf-skip); background: var(--jg-pf-skip-bg); box-shadow: inset 0 0 0 1px var(--jg-pf-skip); }
 .jg-look .jg-legend__swatch--flow { background: var(--jg-pf-flow-bg); box-shadow: inset 0 0 0 1px var(--jg-pf-flow); }
@@ -3267,8 +3445,9 @@ div.jg-today { cursor: default; }
 .jg-stage__main.jg-look { position: relative; }
 
 /* The session bar: the name bigger, "Session #61 · started 1:19 AM" in
-   sentence case under it. */
-.jg-sbar__name { font-size: 24px; font-weight: 900; }
+   sentence case under it. 800, the display face's heaviest file: it is
+   self-hosted at 700 and 800 only, so 900 drew 800 anyway (phase 13). */
+.jg-sbar__name { font-size: 24px; font-weight: 800; }
 .jg-sbar__meta { font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; margin-top: 2px; }
 
 /* Not reached: a small filled dot on the rail, no box. */
@@ -3292,7 +3471,7 @@ div.jg-today { cursor: default; }
 
 /* Today's order is a centred window now (Oct 3 2026): rounded all round,
    no grab handle. */
-.jg-order { border-bottom: 1px solid var(--jg-border); border-radius: 22px; box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.6); }
+.jg-order { border-bottom: 1px solid var(--jg-border); border-radius: 22px; box-shadow: var(--jg-elev-4); }
 .jg-order__grab { display: none; }
 
 /* The session's single-line rows (data-dense="line") still come out about
@@ -3320,11 +3499,14 @@ div.jg-today { cursor: default; }
 .jg-nb__ord { width: 20px; height: 20px; font-size: 11px; }
 .jg-nb__chip { height: 32px; min-width: 38px; padding: 0 7px; }
 .jg-nb__chip span { font-size: 14px; }
-.jg-nb__chip b { font-size: 8px; }
-.jg-nb__expect { align-items: flex-end; text-align: right; gap: 1px; color: var(--jg-ink-faint); font-size: 11px; font-weight: 600; }
-.jg-nb__expect em { color: var(--jg-ink-muted); font-weight: 700; }
+.jg-nb__chip b { font-size: 11px; }
+/* Still the quiet grey AJ asked for, but the muted grey: the faint one is
+   3.2:1, under the 4.5 words need (type and depth, phase 13). The number
+   steps up to the second ink so it still leads the line. */
+.jg-nb__expect { align-items: flex-end; text-align: right; gap: 1px; color: var(--jg-ink-muted); font-size: 11px; font-weight: 600; }
+.jg-nb__expect em { color: var(--jg-ink-2); font-weight: 700; }
 .jg-nb__readouts { display: inline-flex; gap: 8px; }
-.jg-nb__readout { font-size: 10.5px; color: var(--jg-ink-muted); }
+.jg-nb__readout { font-size: 11px; color: var(--jg-ink-muted); }
 @media (max-width: 899px) {
   .jg-nb--bar .jg-nb__head .jg-nb__sp { display: block; order: 3; }
   .jg-nb--bar .jg-nb__settings { flex: 0 1 auto; }
@@ -3343,3 +3525,8 @@ div.jg-today { cursor: default; }
 /* The load's climb since her start (Oct 3 2026): green, the one colour on
    this line. A drop or no change says nothing. */
 .jg-nb__gain { margin-left: 6px; font-weight: 800; color: var(--jg-pf-gain); }
+
+/* Next presses in, after every rule that paints its lift (type and depth,
+   phase 13), and lies flat while there is nothing next. */
+.jg-nb .jg-nb__next:active { transform: translateY(1px); box-shadow: var(--jg-press); }
+.jg-nb .jg-nb__next:disabled { box-shadow: none; }

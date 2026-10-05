@@ -18,9 +18,10 @@ import { describe, expect, it } from "vitest";
  *      and the run sheet's primary, the Directory's Start, the briefing's
  *      Start session, the Deep Dive's Generate).
  *   2. The display face is set in capitals only on its allow-list: the
- *      brand and Go, the briefing's safety heading (the Stack's safety
- *      voice), and the Active Session's labels, which phase 13 decides one
- *      by one against the grid's fixed rows (AJ's 3B).
+ *      brand and Go, and the briefing's safety heading (the Stack's safety
+ *      voice). The Active Session's eleven capitals left in phase 13 (AJ's
+ *      3B), each measured against the grid's fixed rows: its names, days and
+ *      heads stand upright as written, and its labels are Geist.
  *   3. No faked italics. A rule or class list that slants Geist is a quiet
  *      line on its own allow-list (an empty place, a quoted note, a
  *      placeholder, the information mark), and a quiet line is never a
@@ -178,22 +179,10 @@ const DISPLAY_SLANT: Record<string, string> = {
 };
 
 /** 2. The display face, in capitals: the slanted ones and these. */
-const PHASE_13 = "the Active Session's label: phase 13 measures it against the grid's fixed row and moves it to its own capitalisation where it fits (AJ's 3B)";
 const DISPLAY_CAPS: Record<string, string> = {
   ...DISPLAY_SLANT,
   "features/briefing/briefing.css .br-safe__clear": "the safety heading read before every session (the Stack's safety voice, Oct 3 2026), upright",
   "features/briefing/briefing.css .br-safe__title": "a limit's name in the safety block (the Stack's safety voice, Oct 3 2026), upright",
-  "features/journey-grid/journey-grid.css .jg-corner__title": PHASE_13,
-  "features/journey-grid/journey-grid.css .jg-stat-head__title": PHASE_13,
-  "features/journey-grid/journey-grid.css .jg-head__tag": PHASE_13,
-  "features/journey-grid/journey-grid.css .jg-head__d": PHASE_13,
-  "features/journey-grid/journey-grid.css .jg-head--older .jg-head__btn": PHASE_13,
-  "features/journey-grid/journey-grid.css .jg-older__label": PHASE_13,
-  "features/journey-grid/journey-grid.css .jg-group__label": PHASE_13,
-  "features/journey-grid/journey-grid.css .jg-nb__name": PHASE_13,
-  "features/journey-grid/journey-grid.css .jg-nb__nextname": PHASE_13,
-  "features/journey-grid/journey-grid.css .jg-rail__title": PHASE_13,
-  "features/journey-grid/journey-grid.css .jg-toolbar__title": PHASE_13,
 };
 
 /** 3. Geist, slanted on purpose: quiet lines, never headings. */
@@ -445,6 +434,13 @@ const UPRIGHT_DISPLAY: [file: string, selector: string, weight: number, what: st
   ["features/wiki/wiki.css", ".wk__row-code", 700, "a machine's code, a jersey tag"],
   ["features/client-history/client-history.css", ".hist-routine", 800, "a session's routine letter"],
   ["features/routines/routines.css", ".rt-badge", 800, "a routine's letter"],
+  // the Active Session (phase 13, AJ's 3B): its names, days and heads
+  ["features/journey-grid/journey-grid.css", ".jg-sbar__name", 800, "the client on the session bar"],
+  ["features/journey-grid/journey-grid.css", ".jg-nb__name", 800, "the machine on the Now Bar"],
+  ["features/journey-grid/journey-grid.css", ".jg-nb__nextname", 700, "the next machine on the Now Bar"],
+  ["features/journey-grid/journey-grid.css", ".jg-head__d", 700, "a session's day over its column"],
+  ["features/journey-grid/journey-grid.css", ".jg-corner__title", 700, "the machine column's head"],
+  ["features/journey-grid/journey-grid.css", ".jg-stat-head__title", 800, "the Analytics column's head"],
 ];
 
 describe("4. titles, names, figures and codes: the display face, upright, in their own capitalisation", () => {

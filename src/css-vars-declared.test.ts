@@ -104,6 +104,8 @@ const FILES = [
   // Phase 11: the Hub (its cards, its command bar, its peek).
   "features/hub-schedule/hub-card.css",
   "features/hub-opportunities/layer-switch.css",
+  // Phase 13: the Active Session (its grid, Now Bar, session bar and sheets).
+  "features/journey-grid/journey-grid.css",
 ];
 
 function filesUnder(dir: string, ext: RegExp, out: string[] = []): string[] {

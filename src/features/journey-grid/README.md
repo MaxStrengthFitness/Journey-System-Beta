@@ -226,8 +226,10 @@ The table above was measured again for the Navy Frame (Oct 4 2026), which moved 
 
 ### 1.5 Typography
 
-- **Saira Condensed** (your display face) for dates, the Analytics header, section labels and the LATEST / TODAY tags — condensed type is what lets an 84px column hold "AUG 24" at 15px without wrapping.
-- **Geist** (your app face) for everything else, with `font-variant-numeric: tabular-nums` on every number so columns of weights line up digit-for-digit.
+- **Saira Condensed** (your display face), upright and as written, for the names and heads: the client on the session bar, the machine on the Now Bar and on Next, a session's day over its column ("Aug 24"), the machine column's head and the Analytics head — condensed type is what lets a 56px column hold "Aug 24" at 15px without wrapping.
+- **Geist** (your app face) for everything else, with `font-variant-numeric: tabular-nums` on every number so columns of weights line up digit-for-digit. The session clock is Geist too: the display face has no tabular figures, so a running clock in it changed width every second.
+- **Nothing under 11px and nothing in capitals** (type and depth, phase 13, Oct 4 2026; AJ's answer 3B). The tags (Today, Latest), the Now Bar's kickers (Load · Set · Form · No set?), a setting's name over its value, Reps | Sec, Elapsed, the section labels, the order sheet's statuses and the rail's words are Geist in their own capitalisation, 11 to 14px. Each was measured against the row that holds it before it moved, and every one fitted: the comments beside each rule give the numbers (the tag, the day and the number line are 37px in the 40px head's 37; a skip's reason and its glyph 27.5px in a 36px row). The reps line (`--jg-r-size`) is 11px at every density. `session-depth.test.ts` holds it, with the depth below.
+- **Depth** (phase 13): the grid lifts as one panel (`--jg-elev-2`); the Now Bar docks over it (`--jg-dock`, leftward as the landscape column, `--jg-dock-side`), positioned with no z-index of its own; the steppers, the quality buttons, Reps | Sec and the session bar's Notes and Pulse are raised on their 3:1 `--jg-control-edge` (`--jg-raised`, the lift and a top light) and press in; No set? stays dashed and only presses; Finish takes Go's glow and press in the 14/700 button voice; the menus, the Key and the order sheet lift as popovers in the navy. The stacking order above and every edge in `session-colour-rules.test.ts` are unchanged.
 
 ---
 

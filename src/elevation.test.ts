@@ -292,7 +292,7 @@ describe("the Hub's and the session's depth tokens are index.css's", () => {
     });
   }
   it("the session's shadows are the app's by name", () => {
-    for (const name of ["elev-0", "elev-1", "elev-2", "elev-3", "elev-4", "shelf", "press", "glow-go", "go-light"]) {
+    for (const name of ["elev-0", "elev-1", "elev-2", "elev-3", "elev-4", "shelf", "press", "glow-go", "go-light", "glow-live", "solid-light"]) {
       expect(JG.light[`--jg-${name}`], `--jg-${name}`).toBe(`var(--${name})`);
       expect(JG.dark[`--jg-${name}`], `--jg-${name} in dark`).toBe(`var(--${name})`);
     }
@@ -351,7 +351,7 @@ const LATER: [string, string[]][] = [
   ["features/client-profile/profile-nav.css", ["--psub-edge", "--psub-elev-1", "--psub-glow-live", "--psub-solid-light"]],
   ["features/journey-grid/journey-grid.tokens.css", [
     "--jg-raised", "--jg-highlight", "--jg-elev-1", "--jg-elev-2", "--jg-elev-4", "--jg-shelf", "--jg-press",
-    "--jg-glow-go", "--jg-go-light", "--jg-dock",
+    "--jg-glow-go", "--jg-go-light", "--jg-dock", "--jg-dock-side", "--jg-glow-live", "--jg-solid-light",
   ]],
   ["features/client-codex/codex.tokens.css", [
     "--cx-edge", "--cx-edge-control", "--cx-divider", "--cx-raised", "--cx-highlight", "--cx-elev-0", "--cx-elev-1",

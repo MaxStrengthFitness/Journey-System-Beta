@@ -398,8 +398,11 @@ describe("the session sheets", () => {
     expect(sidebar).toContain('? "bg-primary hover:bg-primary text-primary-foreground"');
     expect(sidebar).not.toMatch(/bg-\(--eq-go\)/);
     expect(tracker).toContain("focus-visible:ring-(--eq-hero) focus-visible:border-(--eq-hero)");
-    // The introductory-session banner: words and icons in the go pair.
-    const banner = tracker.slice(tracker.indexOf("{isIntroSession && ("), tracker.indexOf("NEW CLIENT INTRODUCTORY SESSION"));
+    // The introductory-session banner: words and icons in the go pair. Its
+    // words are written as said since type and depth's phase 13 (they were
+    // typed in capitals), so the slice ends at them in that case.
+    const banner = tracker.slice(tracker.indexOf("{isIntroSession && ("), tracker.indexOf("New client introductory session"));
+    expect(tracker.indexOf("New client introductory session")).toBeGreaterThan(tracker.indexOf("{isIntroSession && ("));
     expect(banner).toMatch(/className="bg-\(--eq-go\) /);
     expect(banner.match(/text-\(--eq-go-on\)/g) ?? []).toHaveLength(2);
     expect(banner).not.toMatch(/text-foreground/);

@@ -277,13 +277,15 @@
 }
 .ph-sides { flex: none; display: flex; gap: 6px; }
 .ph-sides .ph-count { width: 72px; }
+/* "Reps", "Secs", "L", "R": the Active Session on a phone speaks as the
+   iPad's does, 12/700 as written (type and depth, phase 13; it was 11px
+   capitals). */
 .ph-count__label {
   flex: none;
   color: var(--eq-ink-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
 }
 .ph-count__input {
   width: 100%;

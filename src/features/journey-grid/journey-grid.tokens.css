@@ -218,7 +218,13 @@
   --jg-press:          var(--press);
   --jg-glow-go:        var(--glow-go);
   --jg-go-light:       var(--go-light);
+  /* The solid blue's tinted drop and top light (Next, Done), and the Now
+     Bar's dock cast leftward when it is a column beside the grid
+     (phase 13). */
+  --jg-glow-live:      var(--glow-live);
+  --jg-solid-light:    var(--solid-light);
   --jg-dock:           0 -6px 16px -8px rgba(0, 35, 65, 0.45);
+  --jg-dock-side:      -6px 0 16px -8px rgba(0, 35, 65, 0.45);
 
   color-scheme: light;
 }
@@ -317,7 +323,10 @@
   --jg-press:          var(--press);
   --jg-glow-go:        var(--glow-go);
   --jg-go-light:       var(--go-light);
+  --jg-glow-live:      var(--glow-live);
+  --jg-solid-light:    var(--solid-light);
   --jg-dock:           0 -6px 16px -8px rgba(2, 10, 20, 0.60);
+  --jg-dock-side:      -6px 0 16px -8px rgba(2, 10, 20, 0.60);
 
   color-scheme: dark;
 }
@@ -396,7 +405,10 @@
     --jg-press:          var(--press);
     --jg-glow-go:        var(--glow-go);
     --jg-go-light:       var(--go-light);
+    --jg-glow-live:      var(--glow-live);
+    --jg-solid-light:    var(--solid-light);
     --jg-dock:           0 -6px 16px -8px rgba(2, 10, 20, 0.60);
+    --jg-dock-side:      -6px 0 16px -8px rgba(2, 10, 20, 0.60);
     color-scheme: dark;
   }
 }
