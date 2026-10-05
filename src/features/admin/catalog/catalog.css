@@ -69,11 +69,11 @@
 }
 
 .adm-std__outside-title {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--adm-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--adm-ink-2);
 }
 
 .adm-std__none {

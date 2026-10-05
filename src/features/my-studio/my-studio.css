@@ -24,10 +24,16 @@
  * fills with the parts of the day (.msh-sub). It is MyStudioView's, so its
  * rules are here, in the stylesheet MyStudioView and StudioHeader import. */
 
+/* A shelf over the section (type and depth, Oct 4 2026; AJ: "borders and
+   headers just needs a little bit of weight and depth"): the hairline under
+   the header became the shelf's short navy cast, so the work scrolls under
+   the header instead of being cut by a rule. z 10: under the frame (20), over
+   the section's own sticky pieces; its popovers (.msh__pop) hang over the
+   sub-bar at 9. Never animated. */
 .msh {
   flex: none;
   position: relative;
-  z-index: 8;
+  z-index: 10;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -35,7 +41,16 @@
   min-height: 64px;
   padding: 0.5rem 1rem;
   background: var(--st-surface);
-  border-bottom: 1px solid var(--st-border);
+  border-bottom: 1px solid transparent;
+  box-shadow: var(--st-shelf);
+}
+/* With Relay's sub-bar joined under it (the parts of the day, the Tracker's
+   lists) the header and the sub-bar are one band: the hairline between them
+   stays, and the sub-bar casts the shelf. A shadow between the two would
+   split the band. */
+.msh:has(+ .msh-sub:not(:empty)) {
+  border-bottom-color: var(--st-border);
+  box-shadow: none;
 }
 
 .msh__sect-wrap,
@@ -69,9 +84,10 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  /* The eyebrow: the ONE capitals style (type and depth review). */
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--st-ink-muted);
 }
@@ -83,10 +99,10 @@
   font-family: var(--font-display);
   font-size: 17px;
   font-weight: 800;
-  font-style: italic;
+  font-style: normal;
   line-height: 1.1;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  text-transform: none;
+  letter-spacing: 0;
 }
 .msh__sect-name svg { flex: none; color: var(--st-ink-muted); }
 
@@ -136,9 +152,9 @@
   margin: 0;
   padding: 0.5rem 12px 0.25rem;
   font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-muted);
   overflow-wrap: anywhere;
 }
@@ -232,10 +248,10 @@
 .msh__where {
   flex: 1 1 10rem;
   min-width: 0;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-muted);
   text-align: right;
   overflow-wrap: anywhere;
@@ -244,6 +260,16 @@
 /* The sub-bar under it on Relay: the Board's parts of the day, the
    Tracker's lists. Empty (the Journal), it takes no room. */
 .msh-sub:empty { display: none; }
+/* Its own hairline (planner.css's sub-bar rule) gives way to the shelf; z 9,
+   under the header's popovers. Named through .ms, never through that rule's
+   class: css-imports.test.ts would count every host that draws a sub-bar
+   (Openings) as drawing with this sheet. */
+.ms > .msh-sub {
+  position: relative;
+  z-index: 9;
+  border-bottom-color: transparent;
+  box-shadow: var(--st-shelf);
+}
 
 /* A phone (Journey Lite, Oct 2026; features/phone/device.ts): the section,
    what's new, Ask and + on the first row; Relay's three tabs across the
@@ -329,14 +355,14 @@
   flex-direction: column;
   gap: 1.25rem;
 }
-/* The door's section heads are the one heading style (planner.css,
-   .pl__list-head): small upright capitals, 12px. */
+/* The door's section heads sit over a card that carries its own title, so
+   they are the label voice, 14/700 in ink-2 and its own capitalisation (type and depth, phase 10, Oct 4 2026; it was 12px capitals at 0.12em), as planner.css's .pl__list-head. */
 .ms__door-h {
   margin: 0 0 0.25rem;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-2);
 }
 .ms__door-sub {

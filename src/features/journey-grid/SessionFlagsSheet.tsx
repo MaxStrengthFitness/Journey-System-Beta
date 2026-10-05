@@ -24,7 +24,7 @@ import type { SessionFlags } from "./session-flags";
 function WatchOutItem({ watchOut: w, machines }: { watchOut: WatchOut; machines?: string[] }) {
   return (
     <div className="jg-flagcard rounded-xl border p-3" data-tone={w.tone}>
-      <div className="text-[12px] font-black uppercase tracking-wider text-foreground" title={w.conditionFull}>
+      <div className="text-sm font-bold text-foreground" title={w.conditionFull}>
         {w.condition}
       </div>
       {machines && machines.length > 0 && (
@@ -63,10 +63,12 @@ export function SessionFlagsSheet({ clientFirstName, flags, machines, onClose }:
       >
         <div className="flex shrink-0 items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
           <div className="flex flex-col">
-            <h2 className="flex items-center gap-2 text-xl font-black uppercase tracking-tighter text-foreground">
+            {/* A sheet's head: the panel title, 17/700 as written, and its
+                line in the meta voice (type and depth, phase 13). */}
+            <h2 className="flex items-center gap-2 text-[17px] font-bold tracking-[-0.01em] text-foreground">
               <ShieldAlert className="h-5 w-5 text-(--eq-alert)" /> Before you touch the machine
             </h2>
-            <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            <p className="mt-1 text-xs font-medium text-muted-foreground">
               {name} · the same things the briefing showed
             </p>
           </div>
@@ -78,7 +80,7 @@ export function SessionFlagsSheet({ clientFirstName, flags, machines, onClose }:
         <div className="custom-scrollbar flex-1 space-y-5 overflow-y-auto p-5">
           {flags.general.length > 0 && (
             <section className="space-y-2" aria-label="Conditions on every machine">
-              <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">On every machine</span>
+              <span className="text-sm font-bold text-ink-d2">On every machine</span>
               {flags.general.map((w, i) => (
                 <WatchOutItem key={`${w.flagId}-${i}`} watchOut={w} />
               ))}
@@ -90,7 +92,7 @@ export function SessionFlagsSheet({ clientFirstName, flags, machines, onClose }:
               condition was osteoporosis read "1" and opened to nothing. */}
           {flags.onMachines.length > 0 && (
             <section className="space-y-2" aria-label="Conditions on certain machines">
-              <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">On these machines</span>
+              <span className="text-sm font-bold text-ink-d2">On these machines</span>
               {flags.onMachines.map((w, i) => (
                 <WatchOutItem key={`${w.flagId}-${i}`} watchOut={w} machines={w.machines} />
               ))}
@@ -101,7 +103,7 @@ export function SessionFlagsSheet({ clientFirstName, flags, machines, onClose }:
 
           {flags.headsUp.length > 0 && (
             <section className="space-y-2" aria-label="Heads up">
-              <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Heads up</span>
+              <span className="text-sm font-bold text-ink-d2">Heads up</span>
               {flags.headsUp.map((e) => (
                 <JournalEntryCard key={e.id} entry={e} machines={machines} dense />
               ))}

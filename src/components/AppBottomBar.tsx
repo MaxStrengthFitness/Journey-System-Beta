@@ -15,6 +15,14 @@
  * running, come back" and "you're in Operations", in the exact logo orange
  * (--chrome-go) with a navy icon on its solid box. Until then the bar was
  * white in the light theme and its orange Tailwind's orange-500 (2.8:1).
+ *
+ * Its top edge is a CAST (type and depth, Oct 4 2026): the frame's
+ * --frame-up, a line in the deepest navy and a navy shadow up onto the page
+ * (a faint rim and the deepest navy in dark), where a black 5% shadow was
+ * invisible on the navy and a white hairline drew a second edge. The
+ * Operations bar keeps its orange hairline: it says which mode you are in.
+ * z-30 keeps the bar over everything a room pins near its foot, so the cast
+ * falls on it.
  */
 import {
   Building2,
@@ -80,7 +88,7 @@ export function AppBottomBar({
     return (
       <nav
         aria-label="Journey"
-        className="flex-none bg-chrome border-t border-chrome-line shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-1 min-h-14 pb-safe flex items-center justify-around z-30"
+        className="relative flex-none bg-chrome shadow-(--frame-up) px-1 min-h-14 pb-safe flex items-center justify-around z-30"
       >
         <NavButton
           active={!opsOn && currentView === "clients"}
@@ -130,7 +138,7 @@ export function AppBottomBar({
   }
 
   return appMode === "trainer" ? (
-    <nav className="flex-none bg-chrome border-t border-chrome-line shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-safe flex items-center justify-around z-30">
+    <nav className="relative flex-none bg-chrome shadow-(--frame-up) px-2 sm:px-6 min-h-14 sm:min-h-20 pb-safe flex items-center justify-around z-30">
       <NavButton
         active={currentView === "clients"}
         onClick={() => onNavigate("clients")}
@@ -174,10 +182,12 @@ export function AppBottomBar({
       {/*
         LEARNING — the Catalog and the Academy in one slot (Sep 10
         2026). Six buttons again. NavButton takes `flex-1 min-w-0` so
-        they divide the bar evenly and the labels truncate rather than
-        overflowing on a narrow phone; do not shorten the labels, they
-        are how people find the tab. Which of the two it opens is
-        whichever was open last — see lastLearningView in AppContent.
+        they divide the bar evenly, and a label too long for its share
+        wraps (it truncated until Oct 4 2026; names are never cut short,
+        and the session's tab carries the client's first name); do not
+        shorten the labels, they are how people find the tab. Which of
+        the two it opens is whichever was open last — see
+        lastLearningView in AppContent.
       */}
       <NavButton
         active={isLearningView}
@@ -202,7 +212,7 @@ export function AppBottomBar({
       />
     </nav>
   ) : (
-    <nav className="flex-none bg-chrome border-t border-chrome-go/30 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-safe flex items-center justify-around z-30">
+    <nav className="relative flex-none bg-chrome border-t border-chrome-go/30 shadow-(--frame-up) px-2 sm:px-6 min-h-14 sm:min-h-20 pb-safe flex items-center justify-around z-30">
       <NavButton
         active={currentView === "admin-dashboard"}
         onClick={() => onNavigate("admin-dashboard")}

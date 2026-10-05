@@ -64,7 +64,7 @@ export function NothingOnScreen({
             <button
               type="button"
               onClick={onHub}
-              className="min-h-12 rounded-xl border border-border bg-background px-5 text-sm font-bold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="min-h-12 rounded-xl bg-(--raised) border border-input shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) px-5 text-sm font-bold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               Back to the Hub
             </button>

@@ -37,21 +37,11 @@
    only: the composer and the To-file tray are the same components the
    session sheet uses, and keep their own sizes there. The shared Loudness
    control keeps its own (it is one control everywhere). */
-.nx-notes .nc-kicker {
-  font-size: 11px;
-}
 .nx-notes .nc-chip {
   font-size: 14px;
 }
 .nx-notes .nc-chip--small {
   font-size: 12px;
-}
-.nx-notes .nc-btn {
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: none;
-  white-space: normal;
 }
 .nx-notes .nc-sweep__title,
 .nx-notes .nc-sweep__quote,
@@ -89,6 +79,12 @@
 
 /* ---- the composer ------------------------------------------------------ */
 
+/* "Write a note…" (type and depth, phase 9, Oct 4 2026): it opens into a
+   field, so it is drawn as one (rule 2): it SINKS into the well tone with the
+   well's inner shadow, inside the field's solid 3:1 edge (3.1:1 on the well,
+   4.1:1 in dark), the way the Hub's command bar sinks inside its edge. It
+   was a dashed box on the card's fill. The words are ink-2 (7.0:1) and the
+   meta the muted ink (5.2:1) on the well. */
 .nx-compose-bar {
   display: flex;
   align-items: center;
@@ -98,8 +94,9 @@
   min-height: 52px;
   padding: 8px 16px;
   border-radius: 12px;
-  border: 1px dashed var(--eq-border-strong);
-  background: var(--eq-surface);
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
   color: var(--eq-ink-2);
   font-family: inherit;
   font-size: 14px;
@@ -139,11 +136,11 @@
 .nx-compose__title {
   flex: 1 1 auto;
   margin: 0;
-  color: var(--eq-ink-muted);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  color: var(--eq-ink-2);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 /* ---- the filter row ---------------------------------------------------- */
@@ -195,6 +192,10 @@
   color: var(--eq-ink-faint);
 }
 
+/* A choice is a button (type and depth, phase 8, Oct 4 2026; AJ's 2A):
+   raised on its 3:1 edge, which stays, a lighter fill, a contact lift and a
+   white top light, and a press on :active. The picked one is tinted blue on
+   the blue edge, and still lifts. */
 .nx-pick,
 .nx-door {
   display: inline-flex;
@@ -202,9 +203,10 @@
   gap: 7px;
   min-height: 40px;
   padding: 0 13px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface-2);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink-2);
   font-family: inherit;
   font-size: 14px;
@@ -217,6 +219,7 @@
   border-color: var(--eq-live);
   background: var(--eq-live-fill);
   color: var(--eq-live-text);
+  box-shadow: var(--eq-elev-1);
 }
 
 .nx-pick__icon {
@@ -262,10 +265,13 @@
   font-weight: 600;
 }
 
-/* The door leaves the page, so it looks like a way out, not a filter. */
+/* The door leaves the page, so it looks like a way out, not a filter: its
+   dashes on the card's own fill, and no lift (type and depth, phase 8: a
+   dashed control stays quiet and flat, and only presses). */
 .nx-door {
   background: var(--eq-surface);
   border-style: dashed;
+  box-shadow: none;
 }
 
 /* ---- zones -------------------------------------------------------------- */
@@ -320,14 +326,19 @@
 }
 
 /* One line each. The panel clips its rows to its round corners, so it must
-   not shrink in a flex column (KNOWN-TRAPS → Layout): flex none. */
+   not shrink in a flex column (KNOWN-TRAPS → Layout): flex none.
+   A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+   outside, the fill clipped to the padding box, a short navy lift; its rows
+   are divided by the soft hairline. */
 .nx-rows {
   flex: none;
   display: grid;
   min-width: 0;
-  border: 1px solid var(--eq-border);
+  border: 1px solid var(--eq-edge);
   border-radius: 14px;
   background: var(--eq-surface);
+  background-clip: padding-box;
+  box-shadow: var(--eq-elev-2), var(--eq-panel-highlight);
   overflow: hidden;
 }
 
@@ -340,7 +351,7 @@
   min-height: 48px;
   padding: 6px 14px;
   border: 0;
-  border-top: 1px solid var(--eq-border);
+  border-top: 1px solid var(--eq-divider);
   background: transparent;
   color: var(--eq-ink);
   font-family: inherit;
@@ -362,10 +373,10 @@
   align-items: center;
   gap: 6px;
   color: var(--eq-ink-muted);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 /* The kind's words wrap at a space ("COACHING / TIP") in the 112px portrait
@@ -456,12 +467,19 @@
 
 /* ---- empty and the way to FORD ----------------------------------------- */
 
+/* A WELL (type and depth, phase 9): sunk into the well tone, no edge, the
+   codex's empty line (.cx-empty) to the pixel. It was a dashed box. */
+/* On the page ground (the catalog is not a panel), so the tray's tone
+   (AJ's 1A, Oct 5 2026): the well tone is lighter than the page and read
+   raised; the tray is below it in both modes. ink-2 reads 5.95:1 on it. */
 .nx-empty {
   display: grid;
   gap: 6px;
-  padding: 14px 16px;
-  border: 1px dashed var(--eq-border-strong);
+  padding: 16px 18px;
+  border: 0;
   border-radius: 12px;
+  background: var(--eq-tray);
+  box-shadow: var(--eq-elev-0);
   color: var(--eq-ink-2);
 }
 
@@ -513,6 +531,10 @@
    A thread card
    ========================================================================== */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+   outside (--eq-edge, the fill clipped to the padding box) and a short navy
+   lift. The thread's loudness is still its rail on the left (::before), and
+   a Critical one keeps its crimson edge. */
 .nt-card {
   --nt-edge: var(--eq-border-strong);
   position: relative;
@@ -521,9 +543,11 @@
   align-content: start;
   min-width: 0;
   padding: 14px 16px 12px 20px;
-  border: 1px solid var(--eq-border);
+  border: 1px solid var(--eq-edge);
   border-radius: 14px;
   background: var(--eq-surface);
+  background-clip: padding-box;
+  box-shadow: var(--eq-elev-2), var(--eq-panel-highlight);
   color: var(--eq-ink);
 }
 
@@ -569,10 +593,10 @@
   align-items: center;
   gap: 6px;
   color: var(--eq-ink-muted);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .nt-cat__icon {
@@ -604,10 +628,10 @@
   align-items: center;
   padding: 3px 9px;
   border-radius: 999px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .nt-pill[data-tone="warn"] {
@@ -729,7 +753,7 @@
   min-height: 40px;
   margin: 0;
   padding: 0 10px;
-  border: 1px solid var(--eq-border);
+  border: 1px solid var(--eq-border-strong);
   border-radius: 10px;
   background: var(--eq-surface-2);
   color: var(--eq-live-text);
@@ -773,6 +797,11 @@
   gap: 8px;
 }
 
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, on the 3:1
+   edge, which stays; a press on :active. Quiet is words with no box, so no
+   lift; solid is brand blue with a blue-tinted drop; anything that can't
+   be pressed lies flat. */
 .nt-btn {
   display: inline-flex;
   align-items: center;
@@ -781,8 +810,9 @@
   min-height: 40px;
   padding: 0 14px;
   border: 1px solid var(--eq-border-strong);
-  border-radius: 10px;
-  background: var(--eq-surface-2);
+  border-radius: 12px;
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink);
   font-family: inherit;
   font-size: 14px;
@@ -801,18 +831,36 @@
   border-color: transparent;
   background: transparent;
   color: var(--eq-ink-2);
+  box-shadow: none;
 }
 
 .nt-btn--solid {
   border-color: transparent;
   background: var(--eq-live);
   color: var(--eq-live-on);
+  box-shadow: var(--eq-glow-live), var(--eq-solid-light);
 }
 
 /* Archive, confirmed: taken off every screen. Crimson is a critical note's,
    so the confirm is plain ink on a strong edge. */
 .nt-btn--danger {
   border-color: var(--eq-ink-2);
+}
+
+.nt-btn:not(:disabled):active,
+.nx-pick:not(:disabled):active,
+.nx-ask__q:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
+}
+.nx-door:not(:disabled):active {
+  transform: translateY(1px);
+}
+.nt-btn--quiet:not(:disabled):active {
+  box-shadow: none;
+}
+.nt-btn:disabled {
+  box-shadow: none;
 }
 
 .nt-compose {
@@ -845,9 +893,14 @@
 
 @media (hover: hover) {
   .nt-btn:not(:disabled):hover,
-  .nx-pick:hover,
+  .nx-pick:not([aria-pressed="true"]):hover,
   .nx-door:hover {
     background: var(--eq-surface-3);
+  }
+
+  /* A filled button keeps its fill under the pointer. */
+  .nt-btn--solid:not(:disabled):hover {
+    background: var(--eq-live);
   }
 
   .nt-more:hover,
@@ -891,11 +944,11 @@
 
 .nx-ask__kicker {
   margin: 0;
-  color: var(--eq-ink-muted);
-  font-size: 12px;
+  color: var(--eq-ink-2);
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 /* Two across in an upright iPad, more when there is room; a question's
@@ -906,6 +959,7 @@
   gap: 8px;
 }
 
+/* A question is a button: raised on its 3:1 edge (type and depth, phase 8). */
 .nx-ask__q {
   display: flex;
   flex-direction: column;
@@ -914,9 +968,10 @@
   gap: 3px;
   min-height: 56px;
   padding: 9px 13px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface-2);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink-2);
   font-family: inherit;
   text-align: left;
@@ -932,6 +987,7 @@
   border-color: var(--eq-live);
   background: var(--eq-live-fill);
   color: var(--eq-live-text);
+  box-shadow: var(--eq-elev-1);
 }
 
 .nx-ask__question {

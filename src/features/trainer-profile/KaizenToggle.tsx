@@ -131,21 +131,22 @@ export function KaizenToggle({
         }
         aria-label={label}
         className={cn(
-          "inline-flex items-center justify-center gap-1.5 rounded-full border transition-colors shrink-0",
+          "inline-flex items-center justify-center gap-1.5 rounded-full border transition-[color,background-color,border-color,transform] active:translate-y-px shrink-0",
           "disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
           // 44px is the Apple HIG minimum for a touch target and these live on
           // iPads. The icon variant is a square so it can sit in a list row
-          // without changing the row's height.
-          variant === "icon" ? "h-11 w-11" : "h-9 px-3",
+          // without changing the row's height. The button is 40px, nothing
+          // tappable under it (it was 36px until Oct 5 2026).
+          variant === "icon" ? "h-11 w-11" : "h-10 px-3",
           on
             ? "border-[var(--tp-kaizen)] bg-[var(--tp-kaizen-fill)] text-[var(--tp-kaizen-text)]"
-            : "border-div-d text-ink-d3 hover:text-ink-d1 hover:border-ink-d3",
+            : "border-input bg-(--raised) shadow-(--raised-lift) active:shadow-(--press) text-ink-d3 hover:text-ink-d1",
           className,
         )}
       >
         <KaizenMark size={variant === "icon" ? 18 : 15} quiet={!on} />
         {variant === "button" && (
-          <span className="text-[11px] font-black uppercase tracking-widest">
+          <span className="text-[14px] font-bold">
             {on ? "Tracking" : "Track"}
           </span>
         )}
@@ -162,7 +163,7 @@ export function KaizenToggle({
 
           <div className="space-y-4">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-widest text-ink-d3 mb-2">
+              <p className="text-[14px] font-bold text-ink-d2 mb-2">
                 Why are you watching them?
               </p>
               <div className="grid grid-cols-2 gap-2">
@@ -173,21 +174,21 @@ export function KaizenToggle({
                     onClick={() => setReason(r)}
                     aria-pressed={reason === r}
                     className={cn(
-                      "text-left rounded-xl border px-3 py-2 transition-colors cursor-pointer",
+                      "text-left rounded-xl border px-3 py-2 min-h-10 transition-[color,background-color,border-color,transform] active:translate-y-px cursor-pointer",
                       reason === r
                         ? "border-[var(--tp-kaizen)] bg-[var(--tp-kaizen-fill)]"
-                        : "border-div-d hover:border-ink-d3",
+                        : "border-input bg-(--raised) shadow-(--raised-lift) active:shadow-(--press) hover:bg-muted",
                     )}
                   >
                     <span
                       className={cn(
-                        "block text-xs font-black uppercase tracking-widest",
+                        "block text-[14px] font-bold",
                         reason === r ? "text-[var(--tp-kaizen-text)]" : "text-ink-d1",
                       )}
                     >
                       {r}
                     </span>
-                    <span className="block text-[11px] text-ink-d3 leading-tight mt-0.5">
+                    <span className="block text-[12px] text-ink-d3 leading-tight mt-0.5">
                       {KAIZEN_REASON_HINTS[r]}
                     </span>
                   </button>
@@ -198,9 +199,9 @@ export function KaizenToggle({
             <div>
               <label
                 htmlFor="kaizen-note"
-                className="text-[11px] font-black uppercase tracking-widest text-ink-d3 block mb-1.5"
+                className="text-[14px] font-bold text-ink-d2 block mb-1.5"
               >
-                Note <span className="font-bold normal-case tracking-normal">(optional)</span>
+                Note <span className="font-medium">(optional)</span>
               </label>
               <textarea
                 id="kaizen-note"
@@ -208,9 +209,9 @@ export function KaizenToggle({
                 onChange={(e) => setNote(e.target.value.slice(0, NOTE_MAX))}
                 rows={2}
                 placeholder="What specifically are you working on with them?"
-                className="w-full rounded-xl border border-input bg-card px-3 py-2 text-sm text-ink-d1 placeholder:text-ink-d3 focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full rounded-xl border border-input bg-(--well) shadow-(--elev-0) px-3 py-2 text-sm text-ink-d1 placeholder:text-ink-d3 focus:outline-none focus:ring-2 focus:ring-ring"
               />
-              <p className="text-[10px] text-ink-d3 mt-1 text-right tabular">
+              <p className="text-[12px] text-ink-d3 mt-1 text-right tabular">
                 {note.length}/{NOTE_MAX}
               </p>
             </div>
@@ -218,17 +219,17 @@ export function KaizenToggle({
             <div>
               <label
                 htmlFor="kaizen-review"
-                className="text-[11px] font-black uppercase tracking-widest text-ink-d3 block mb-1.5"
+                className="text-[14px] font-bold text-ink-d2 block mb-1.5"
               >
                 Check back on{" "}
-                <span className="font-bold normal-case tracking-normal">(optional)</span>
+                <span className="font-medium">(optional)</span>
               </label>
               <input
                 id="kaizen-review"
                 type="date"
                 value={reviewBy}
                 onChange={(e) => setReviewBy(e.target.value)}
-                className="w-full rounded-xl border border-input bg-card px-3 py-2 text-sm text-ink-d1 focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full rounded-xl border border-input bg-(--well) shadow-(--elev-0) px-3 py-2 text-sm text-ink-d1 focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
           </div>
@@ -237,7 +238,7 @@ export function KaizenToggle({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="h-10 px-4 rounded-xl border border-div-d text-ink-d2 text-[11px] font-black uppercase tracking-widest cursor-pointer hover:border-ink-d3"
+              className="h-10 px-4 rounded-xl border border-input bg-(--raised) shadow-(--raised-lift) text-ink-d2 text-[14px] font-bold cursor-pointer transition-[background-color,transform] hover:bg-muted active:translate-y-px active:shadow-(--press)"
             >
               <X className="w-3.5 h-3.5 inline -mt-0.5 mr-1" />
               Cancel
@@ -246,7 +247,7 @@ export function KaizenToggle({
               type="button"
               onClick={() => void submit()}
               disabled={!reason || saving}
-              className="h-10 px-5 rounded-xl bg-cta hover:bg-cta text-cta-foreground text-[11px] font-black uppercase tracking-widest cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-10 px-5 rounded-xl bg-primary hover:bg-primary text-primary-foreground text-[14px] font-bold shadow-(--solid-lift) transition-transform active:translate-y-px active:shadow-(--press) cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? "Saving…" : "Track"}
             </button>

@@ -322,7 +322,7 @@ export function CorrelationMatrix({ correlations }: { correlations: Correlation[
         .filter((g) => g.items.length)
         .map((g) => (
           <div key={g.title} className="cr-section" style={{ gap: 8 }}>
-            <span className="cr-section__sub" style={{ fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", fontSize: 10.5 }}>
+            <span className="cr-section__sub" style={{ fontWeight: 700, fontSize: 14 }}>
               {g.title}
             </span>
             <div className="cr-matrix">

@@ -58,31 +58,39 @@
   gap: 0.375rem;
   min-height: 40px;
   padding: 0 0.875rem;
-  border-radius: 10px;
-  border: 1px solid var(--eq-border);
-  background: var(--eq-surface-2);
+  border-radius: 12px;
+  /* Raised on the 3:1 edge with a press (AJ's 2A; review fix, Oct 5 2026:
+     it was a flat hairline box beside raised buttons). */
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink);
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
+.fn-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--eq-press); }
 .fn-btn:focus-visible,
 .fn-fold:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
-.fn-btn:disabled { opacity: 0.55; cursor: default; }
+.fn-btn:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
 .fn-btn--primary {
   border-color: var(--eq-live);
   background: var(--eq-live);
   color: var(--eq-live-on);
+  box-shadow: var(--eq-glow-live), var(--eq-solid-light);
 }
 .fn-btn--quiet {
   border-color: transparent;
   background: transparent;
   color: var(--eq-ink-muted);
+  box-shadow: none;
 }
+.fn-btn--quiet:not(:disabled):active { box-shadow: none; }
 .fn-btn--danger {
   border-color: var(--eq-alert);
   background: var(--eq-alert-fill);
   color: var(--eq-alert);
+  box-shadow: var(--eq-elev-1);
 }
 
 .fn-quiet {
@@ -181,11 +189,11 @@
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--eq-ink-muted);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--eq-ink-2);
 }
 
 /* What sits behind More, under the note's two buttons. */

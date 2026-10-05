@@ -113,12 +113,31 @@
 
   --wk-focus-ring: var(--wk-live);
   --wk-shadow:     rgba(25, 45, 65, 0.10);
-  /* Two shadows, never one: a tight contact shadow anchors the card and a
-     wide ambient one gives it height. One alone always reads as either a hard
-     outline or a blur. Same reasoning as --elev-* in index.css, and the same
-     navy tint since the Navy Frame (Oct 4 2026). */
-  --wk-elev-1: 0 1px 2px rgba(25, 45, 65, 0.06), 0 1px 3px rgba(25, 45, 65, 0.08);
-  --wk-elev-2: 0 1px 2px rgba(25, 45, 65, 0.06), 0 4px 12px rgba(25, 45, 65, 0.09);
+  /* Depth (type and depth, phase 3, Oct 4 2026), value for value as
+     equipment.tokens.css. Learning's two elevations were its own until
+     then; they are the app's now, by name, with the hero's (--wk-elev-3)
+     beside them. Two shadows, never one: a tight contact shadow anchors the
+     card and a short ambient one lifts it. */
+  --wk-raised:          #f8fafc;
+  --wk-tray:            #d1dae4;
+  --wk-edge:            rgba(25, 45, 65, 0.13);
+  --wk-edge-control:    rgba(25, 45, 65, 0.26);
+  --wk-divider:         rgba(25, 45, 65, 0.10);
+  --wk-highlight:       rgba(255, 255, 255, 0.70);
+  --wk-elev-0:          var(--elev-0);
+  --wk-elev-1:          var(--elev-1);
+  --wk-elev-2:          var(--elev-2);
+  --wk-elev-3:          var(--elev-3);
+  --wk-elev-4:          var(--elev-4);
+  --wk-elev-5:          var(--elev-5);
+  --wk-elev-card:       var(--elev-card);
+  --wk-shelf:           var(--shelf);
+  --wk-press:           var(--press);
+  --wk-glow-live:       var(--glow-live);
+  --wk-glow-go:         var(--glow-go);
+  --wk-solid-light:     var(--solid-light);
+  --wk-go-light:        var(--go-light);
+  --wk-panel-highlight: var(--panel-highlight);
 
   /* ── category accents ─────────────────────────────────────────────────
      ONE colour per movement family, carried on every surface that mentions
@@ -212,11 +231,28 @@
   --wk-alert-fill: #472024;
 
   --wk-shadow: rgba(2, 10, 20, 0.45);
-  /* On a dark ground a drop shadow is near wasted paint — elevation comes
-     from the surface getting lighter instead. Same call index.css makes,
-     tinted to the navy. */
-  --wk-elev-1: 0 1px 1px rgba(2, 10, 20, 0.30);
-  --wk-elev-2: 0 1px 2px rgba(2, 10, 20, 0.40);
+  /* Depth in dark: a raised fill a step lighter, soft rims, the shadows by
+     name (their dark values are index.css's). */
+  --wk-raised:          #203549;
+  --wk-tray:            #081725;
+  --wk-edge:            rgba(150, 180, 210, 0.11);
+  --wk-edge-control:    rgba(150, 180, 210, 0.16);
+  --wk-divider:         rgba(150, 180, 210, 0.10);
+  --wk-highlight:       rgba(255, 255, 255, 0.07);
+  --wk-elev-0:          var(--elev-0);
+  --wk-elev-1:          var(--elev-1);
+  --wk-elev-2:          var(--elev-2);
+  --wk-elev-3:          var(--elev-3);
+  --wk-elev-4:          var(--elev-4);
+  --wk-elev-5:          var(--elev-5);
+  --wk-elev-card:       var(--elev-card);
+  --wk-shelf:           var(--shelf);
+  --wk-press:           var(--press);
+  --wk-glow-live:       var(--glow-live);
+  --wk-glow-go:         var(--glow-go);
+  --wk-solid-light:     var(--solid-light);
+  --wk-go-light:        var(--go-light);
+  --wk-panel-highlight: var(--panel-highlight);
 
   --wk-cat-push:      #ff6a1f;
   --wk-cat-pull:      #38bdf8;

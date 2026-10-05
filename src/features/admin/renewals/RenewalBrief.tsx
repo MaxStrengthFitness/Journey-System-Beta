@@ -382,7 +382,7 @@ export function RenewalBrief({
                         <th>Every 4 weeks</th>
                         <th>All sessions, monthly</th>
                         <th>Paid in full</th>
-                        <th>vs today's rate</th>
+                        <th>Vs today's rate</th>
                       </tr>
                     </thead>
                     <tbody>

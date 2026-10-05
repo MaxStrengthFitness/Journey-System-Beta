@@ -245,7 +245,6 @@ export function Chip({
   on,
   onClick,
   children,
-  hero,
   small,
 }: {
   /** Declared explicitly: no @types/react in this repo, so JSX does not
@@ -254,9 +253,11 @@ export function Chip({
   on: boolean;
   onClick: () => void;
   children: React.ReactNode;
-  hero?: boolean;
   small?: boolean;
 }) {
+  // A picked chip is the blue, whatever it picks: "Machines that bring it
+  // on" had an orange `hero` chip until AJ's answer of Oct 4 2026 ("a
+  // selection is blue").
   return (
     <button
       type="button"
@@ -265,7 +266,6 @@ export function Chip({
       className={[
         "sr-chip",
         on ? "sr-chip--on" : "",
-        hero ? "sr-chip--hero" : "",
         small ? "sr-chip--sm" : "",
       ]
         .filter(Boolean)

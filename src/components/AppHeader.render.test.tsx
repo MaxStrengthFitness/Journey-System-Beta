@@ -92,7 +92,11 @@ describe("AppHeader — one look in both themes", () => {
       const host = mount(<AppHeader studioName="Westlake" onStudioClick={() => {}} trainerInitials="AJ" />);
       const header = host.querySelector("header")!;
       expect(header.className).toMatch(/(^|\s)bg-chrome(\s|$)/);
-      expect(header.className).toMatch(/(^|\s)border-chrome-line(\s|$)/);
+      // Its edge is the frame's cast, --frame-down, in both themes (type and
+      // depth, Oct 4 2026); it was the white hairline border-chrome-line,
+      // which the cast's own line replaces. No border of its own.
+      expect(header.className).toMatch(/(^|\s)shadow-\(--frame-down\)(\s|$)/);
+      expect(header.className).not.toMatch(/(^|\s)border-(?:b|chrome-line)(\s|$)/);
       expect(studioButton(host).className).toMatch(/(^|\s)text-chrome-ink(\s|$)/);
       const avatar = [...host.querySelectorAll("header button")].find((b) => b.textContent === "AJ")!;
       expect(avatar.className).toMatch(/(^|\s)bg-chrome-here(\s|$)/);

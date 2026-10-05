@@ -85,32 +85,41 @@
   flex-wrap: wrap;
 }
 
+/* Type and depth, phase 8 (Oct 4 2026; AJ's 2A): the button voice, 14/700
+   in ordinary capitalisation (they were 11px spaced capitals at 900), and
+   RAISED: a fill a hair lighter than the card, a contact lift and a white
+   top light, on the 3:1 edge (it was the decorative --cal-border). A press
+   on :active; a disabled button lies flat. The hover is a pointer's only,
+   so an iPad's kept hover never flattens a button. */
 .hist-btn {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  height: 40px;
+  min-height: 40px;
   padding: 0 13px;
   border-radius: 12px;
-  border: 1px solid var(--cal-border);
-  background: var(--cal-surface);
+  border: 1px solid var(--cal-border-strong);
+  background: var(--cal-raised);
+  box-shadow: var(--cal-elev-1), inset 0 1px 0 var(--cal-highlight);
   color: var(--cal-ink);
   font: inherit;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
 }
 .hist-btn svg { color: var(--cal-live-text); flex: 0 0 auto; }
-.hist-btn:hover { background: var(--cal-surface-3); }
+@media (hover: hover) {
+  .hist-btn:hover { background: var(--cal-surface-3); }
+}
 .hist-btn:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 2px; }
-.hist-btn:disabled { opacity: 0.55; cursor: default; }
+.hist-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--cal-press); }
+.hist-btn:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
 
 /* The view switch is the Calendar tab's segmented control, a size up: it is
-   the first control a thumb looks for on this tab. */
-.hist .cal-seg__btn { height: 34px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px; }
+   the first control a thumb looks for on this tab. 40px, the app's floor
+   (it was 34; type and depth, phase 8). */
+.hist .cal-seg__btn { height: 40px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px; }
 
 /* ---------- "Hasn't been in" notice ---------------------------------- */
 
@@ -127,7 +136,7 @@
   font-weight: 700;
 }
 .hist-notice svg { color: var(--eq-warn); flex: 0 0 auto; }
-.hist-notice b { color: var(--eq-warn); font-weight: 900; }
+.hist-notice b { color: var(--eq-warn); font-weight: 800; }
 .hist-notice__away { margin-left: auto; }
 
 /* ---------- Stats ------------------------------------------------------ */
@@ -141,22 +150,37 @@
   .hist-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
+/* The Archive's figures are WELLS (type and depth, phase 9, Oct 4 2026):
+   information, so each sinks with its inner shadow, no edge, radius 12.
+   They were hairline boxes on the card's fill. They speak as the profile
+   header's facts do (the kit's stat): the label 12/600 in its own
+   capitalisation, the figure Saira 22/800 with even-width digits, the unit
+   and the line under it 12px. The label was 10px capitals; the line under
+   it was 11px and cut off with an ellipsis, and now wraps.
+
+   ON THE PAGE GROUND, so the TRAY's tone (AJ's 1A, Oct 5 2026): these sit
+   straight on the page, not in a panel, and the well tone is LIGHTER than
+   the page (1.05:1 in light, 1.07:1 in dark), so the inner shadow sat in a
+   pad that read raised. The tray is below the page in both modes. The
+   muted ink would read 4.42:1 on it in light, so the label, the unit and
+   the line under it take ink-2 (5.95:1; 10.4:1 in dark). */
 .hist-stat {
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 11px 14px 12px;
-  border-radius: var(--cal-radius);
-  border: 1px solid var(--cal-border);
-  background: var(--cal-surface);
+  border-radius: 12px;
+  border: 0;
+  background: var(--cal-tray);
+  box-shadow: var(--cal-elev-0);
 }
 .hist-stat__label {
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--cal-ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--cal-ink-2);
 }
 .hist-stat__value {
   display: flex;
@@ -166,29 +190,35 @@
   min-width: 0;
 }
 .hist-stat__value b {
-  font-size: 26px;
-  font-weight: 900;
-  letter-spacing: -0.03em;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0;
   color: var(--cal-ink);
   font-variant-numeric: tabular-nums;
 }
 .hist-stat__value span {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--cal-ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--cal-ink-2);
   white-space: nowrap;
 }
 .hist-stat__sub {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--cal-ink-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--cal-ink-2);
+  overflow-wrap: anywhere;
 }
-.hist-stat--alert .hist-stat__value b { color: var(--eq-warn); }
+/* A break still going: the plum caution as a straight band down the left,
+   painted as a background layer (the seven rules' third, the briefing's
+   carried regions), and the figure stays in ink. Plum WORDS on the tray
+   would read 4.03:1 in light; the band is a mark (4.0:1 against the tray,
+   over the 3:1 a mark needs), and the line under it says "still going". */
+.hist-stat--alert {
+  background: linear-gradient(var(--eq-warn), var(--eq-warn)) left / 4px 100% no-repeat, var(--cal-tray);
+}
 
 /* ---------- Legend ----------------------------------------------------- */
 
@@ -260,19 +290,20 @@
   background: var(--cal-bg);
 }
 .hist-year__num {
+  font-family: var(--font-display);
   font-size: 22px;
-  font-weight: 900;
-  font-style: italic;
-  letter-spacing: -0.02em;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: 0;
   line-height: 1;
   color: var(--cal-ink);
 }
 .hist-year__meta,
 .hist-lmonth__count {
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
   white-space: nowrap;
 }
@@ -297,13 +328,14 @@
 @container hist (min-width: 860px)  { .hist-months { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @container hist (min-width: 1000px) {
   .hist-months { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
-  .hist-month { padding: 7px 6px 7px; gap: 5px; }
-  .hist-cell { font-size: 9.5px; }
   .hist-month__count b { font-size: 15px; }
 }
 
 /* ---------- Month card -------------------------------------------------- */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): the
+   edge seen from outside (--cal-edge, the fill clipped to the padding box)
+   and a short two-layer navy lift. It was a flat hairline box. */
 .hist-month {
   min-width: 0;
   display: flex;
@@ -311,8 +343,16 @@
   gap: 6px;
   padding: 8px 8px 9px;
   border-radius: var(--cal-radius);
-  border: 1px solid var(--cal-border);
+  border: 1px solid var(--cal-edge);
   background: var(--cal-surface);
+  background-clip: padding-box;
+  box-shadow: var(--cal-elev-2), var(--cal-panel-highlight);
+}
+/* The tighter landscape card, after the base rule so it applies (it sat
+   above it and never did; review fix, Oct 5 2026). Its 9.5px day numbers
+   are not brought back with it: nothing under 11px. */
+@container hist (min-width: 1000px) {
+  .hist-month { padding: 7px 6px 7px; gap: 5px; }
 }
 .hist-month__head {
   display: flex;
@@ -331,9 +371,9 @@
   color: var(--cal-ink);
   font: inherit;
   font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
   border-radius: 6px;
 }
@@ -350,27 +390,27 @@
 }
 .hist-month__count b {
   font-size: 16px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--cal-ink);
 }
 .hist-month__count span {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--cal-ink-faint);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--cal-ink-muted);
 }
 .hist-month--quiet .hist-month__count b { font-size: 14px; color: var(--cal-ink-faint); }
 
 .hist-dow {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
   text-align: center;
-  color: var(--cal-ink-faint);
+  color: var(--cal-ink-muted);
 }
 
 /* The Calendar tab's month grid in miniature: 1px hairlines are the grid's
@@ -396,7 +436,7 @@
   background: var(--cal-surface);
   color: var(--cal-ink-faint);
   font: inherit;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -415,13 +455,13 @@
 .hist-cell--visit {
   background: var(--hist-visit);
   color: var(--hist-visit-ink);
-  font-weight: 900;
+  font-weight: 800;
   cursor: pointer;
 }
 .hist-cell--double { background: var(--hist-visit-2); }
 .hist-cell--visit:hover { filter: brightness(1.08); }
 .hist-cell--visit:focus-visible { outline: 2px solid var(--cal-ink); outline-offset: -2px; }
-.hist-cell--today { box-shadow: inset 0 0 0 2px var(--hist-today); color: var(--cal-ink); font-weight: 900; }
+.hist-cell--today { box-shadow: inset 0 0 0 2px var(--hist-today); color: var(--cal-ink); font-weight: 800; }
 .hist-cell--visit.hist-cell--today { color: var(--hist-visit-ink); }
 /* A client event on this day (progress report, alert, birthday): a corner
    dot, clear of the number at every cell size. The event itself is named
@@ -448,7 +488,7 @@
   background: var(--cal-surface);
   box-shadow: inset 0 0 0 2px var(--hist-booked);
   color: var(--cal-live-text);
-  font-weight: 900;
+  font-weight: 800;
 }
 /* Today, booked later today: today's orange ring outside, the booking's
    blue just inside it. */
@@ -502,7 +542,7 @@
   align-items: center;
   gap: 5px;
   min-width: 0;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--cal-ink-muted);
   white-space: nowrap;
@@ -536,7 +576,7 @@
   align-items: flex-start;
   gap: 5px;
   min-width: 0;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   line-height: 1.35;
   color: var(--cal-ink-muted);
@@ -570,32 +610,36 @@
   font-weight: 700;
   color: var(--cal-ink-muted);
 }
-.hist-foot b { color: var(--cal-ink); font-weight: 900; }
+.hist-foot b { color: var(--cal-ink); font-weight: 800; }
 
 /* ---------- List ------------------------------------------------------- */
 
 .hist-list { display: flex; flex-direction: column; gap: 14px; }
 .hist-lmonth { display: flex; flex-direction: column; gap: 6px; scroll-margin-top: 6px; }
 .hist-lmonth__name {
-  font-size: 18px;
-  font-weight: 900;
-  font-style: italic;
+  font-size: 17px;
+  font-weight: 800;
+  font-style: normal;
   letter-spacing: -0.01em;
-  text-transform: uppercase;
-  line-height: 1;
+  text-transform: none;
+  line-height: 1.25;
   color: var(--cal-ink);
 }
 .hist-lmonth__year {
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
   color: var(--cal-ink-muted);
 }
 
+/* A PANEL too (phase 10), its sessions rows inside it, divided by the
+   soft hairline. */
 .hist-lcard {
   border-radius: var(--cal-radius);
-  border: 1px solid var(--cal-border);
+  border: 1px solid var(--cal-edge);
   background: var(--cal-surface);
+  background-clip: padding-box;
+  box-shadow: var(--cal-elev-2), var(--cal-panel-highlight);
   overflow: hidden;
 }
 
@@ -609,7 +653,7 @@
   min-height: 68px;
   padding: 10px 14px 10px 14px;
   border: 0;
-  border-top: 1px solid var(--cal-border);
+  border-top: 1px solid var(--cal-divider);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -634,16 +678,16 @@
 
 .hist-date { display: flex; flex-direction: column; align-items: center; line-height: 1; }
 .hist-date__dow {
-  font-size: 9.5px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
 }
 .hist-date__num {
   margin-top: 4px;
   font-size: 24px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: -0.03em;
   color: var(--cal-ink);
   font-variant-numeric: tabular-nums;
@@ -666,7 +710,7 @@
   background: var(--cal-live-fill);
   color: var(--cal-live-text);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.04em;
   line-height: 1;
 }
@@ -679,9 +723,9 @@
   border-radius: 6px;
   background: var(--cal-ink);
   color: var(--cal-surface);
-  font-size: 11px;
-  font-weight: 900;
-  font-style: italic;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 800;
   line-height: 1;
 }
 .hist-routine--none { background: var(--cal-surface-3); color: var(--cal-ink-muted); font-style: normal; }
@@ -712,10 +756,10 @@
   border-radius: 999px;
   border: 1px solid var(--cal-border);
   color: var(--cal-ink-muted);
-  font-size: 9.5px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   line-height: 1.3;
   white-space: nowrap;
 }
@@ -746,7 +790,7 @@
   color: var(--cal-ink-muted);
   white-space: nowrap;
 }
-.hist-meta b { color: var(--cal-ink-2); font-weight: 900; }
+.hist-meta b { color: var(--cal-ink-2); font-weight: 800; }
 .hist-meta--star { color: var(--jg-q-star); }
 .hist-meta--kaizen { color: var(--jg-q-poor-text); }
 .hist-meta--up { color: var(--jg-delta-up); }
@@ -772,21 +816,21 @@
   line-height: 1;
 }
 .hist-vol__label {
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--cal-ink-faint);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--cal-ink-muted);
 }
 .hist-vol__num {
   font-size: 17px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--cal-ink);
   font-variant-numeric: tabular-nums;
 }
-.hist-vol__num small { font-size: 10px; font-weight: 800; color: var(--cal-ink-muted); margin-left: 2px; }
-.hist-vol__delta { font-size: 11px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.hist-vol__num small { font-size: 12px; font-weight: 800; color: var(--cal-ink-muted); margin-left: 2px; }
+.hist-vol__delta { font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .hist-vol__delta--up { color: var(--jg-delta-up); }
 .hist-vol__delta--down { color: var(--cal-ink-faint); }
 
@@ -813,9 +857,9 @@
 }
 .hist-break b {
   color: var(--cal-ink);
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .hist-break .hist-tag { margin-left: auto; }
 .hist-break--ongoing {
@@ -859,20 +903,20 @@
 }
 .hsd-head__title { flex: 1 1 220px; min-width: 0; }
 .hsd-head__day {
-  font-size: 18px;
-  font-weight: 900;
-  font-style: italic;
-  letter-spacing: -0.01em;
-  text-transform: uppercase;
-  line-height: 1.1;
+  font-size: 22px;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: -0.015em;
+  text-transform: none;
+  line-height: 1.2;
   color: var(--cal-ink);
 }
 .hsd-head__sub {
   margin-top: 4px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
 }
 .hsd-head__who { display: flex; align-items: center; gap: 8px; }
@@ -890,7 +934,7 @@
   border-bottom: 1px solid var(--cal-border);
 }
 .hsd-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--cal-ink-muted); }
-.hsd-chip b { font-weight: 900; color: var(--cal-ink); }
+.hsd-chip b { font-weight: 800; color: var(--cal-ink); }
 .hsd-chip.hist-q-label--max b,
 .hsd-chip.hist-q-label--poor b { color: inherit; }
 .hsd-chip--end { margin-left: auto; }
@@ -902,22 +946,25 @@
   overflow-x: auto;
   border-bottom: 1px solid var(--cal-border);
 }
+/* A day's sessions, one tab each: 40px to tap, on the 3:1 edge, in the tab
+   voice (14/600, the picked one 700; type and depth review, Oct 5 2026;
+   they were 32px hairline boxes in 11px capitals). */
 .hsd-tab {
   flex: 0 0 auto;
-  height: 32px;
+  min-height: 40px;
   padding: 0 12px;
   border-radius: 9px;
-  border: 1px solid var(--cal-border);
+  border: 1px solid var(--cal-border-strong);
   background: var(--cal-surface);
   color: var(--cal-ink-muted);
   font: inherit;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
 }
-.hsd-tab[aria-selected="true"] { border-color: var(--cal-live); background: var(--cal-live); color: var(--cal-live-on); }
+.hsd-tab[aria-selected="true"] { border-color: var(--cal-live); background: var(--cal-live); color: var(--cal-live-on); font-weight: 700; }
 
 .hsd-body {
   flex: 1;
@@ -939,9 +986,9 @@
   flex: 1;
   min-width: 0;
   font-size: 13px;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink);
   white-space: normal;
   overflow-wrap: anywhere;
@@ -952,30 +999,37 @@
   border: 1px solid var(--cal-border);
   background: var(--cal-surface);
   color: var(--cal-ink-muted);
-  font-size: 9.5px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .hsd-set__value { font-size: 13px; font-weight: 700; color: var(--cal-ink-2); }
-.hsd-set__value b { font-size: 15px; font-weight: 900; color: var(--cal-ink); }
-.hsd-set__quality { font-size: 10.5px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+.hsd-set__value b { font-size: 15px; font-weight: 800; color: var(--cal-ink); }
+.hsd-set__quality { font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; }
 .hsd-set__muted { color: var(--cal-ink-faint); font-style: italic; font-weight: 600; }
 
 .hsd-edit { display: flex; flex-direction: column; gap: 8px; }
+/* TSC, a set held as a timed static contraction: a raised toggle on the
+   3:1 edge, 40px (it was a 28px box on the hairline; type and depth, the
+   sweep, Oct 5 2026). The letters are an abbreviation, so they stay
+   capitals, at 12px with no tracking. */
 .hsd-toggle {
   align-self: flex-start;
-  height: 28px;
-  padding: 0 10px;
-  border-radius: 7px;
-  border: 1px solid var(--cal-border);
-  background: var(--cal-surface);
-  color: var(--cal-ink-muted);
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--cal-border-strong);
+  background: var(--cal-raised);
+  box-shadow: var(--cal-elev-1), inset 0 1px 0 var(--cal-highlight);
+  color: var(--cal-ink-2);
   font: inherit;
-  font-size: 10.5px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
   cursor: pointer;
 }
+.hsd-toggle:not(:disabled):active { transform: translateY(1px); box-shadow: var(--cal-press); }
 .hsd-toggle[aria-pressed="true"] { border-color: var(--cal-live); background: var(--cal-live); color: var(--cal-live-on); }
 .hsd-stepper {
   display: grid;
@@ -1010,21 +1064,22 @@
   text-align: center;
   font: inherit;
   font-size: 20px;
-  font-weight: 900;
+  font-weight: 800;
 }
-.hsd-stepper span { font-size: 9.5px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cal-ink-muted); }
+.hsd-stepper span { font-size: 11px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--cal-ink-muted); }
 .hsd-qbtns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+/* 40px, the app's floor (it was 36; type and depth, phase 8). */
 .hsd-qbtn {
-  height: 36px;
+  min-height: 40px;
   border-radius: 8px;
-  border: 1px solid var(--cal-border);
+  border: 1px solid var(--cal-border-strong);
   background: var(--cal-surface);
   color: var(--cal-ink-muted);
   font: inherit;
-  font-size: 10.5px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
 }
 
@@ -1039,12 +1094,12 @@
   border: 1px solid var(--cal-border);
   background: var(--cal-bg);
 }
-.hsd-panel__title { font-size: 10.5px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cal-ink-muted); }
+.hsd-panel__title { font-size: 14px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--cal-ink-2); }
 .hsd-panel__text { font-size: 13px; line-height: 1.5; color: var(--cal-ink-2); white-space: pre-wrap; }
 .hsd-textarea { min-height: 120px; background: var(--cal-surface); color: var(--cal-ink); border-color: var(--cal-border); }
 .hsd-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 0; }
 .hsd-fact { min-width: 0; }
-.hsd-fact dt { font-size: 9.5px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cal-ink-muted); }
+.hsd-fact dt { font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--cal-ink-muted); }
 .hsd-fact dd { margin: 2px 0 0; font-size: 13px; font-weight: 800; color: var(--cal-ink); text-transform: capitalize; }
 
 .hsd-foot {
@@ -1055,19 +1110,21 @@
   border-top: 1px solid var(--cal-border);
   background: var(--cal-surface-2);
 }
-.hsd-cancel { height: 48px; padding: 0 18px; border-radius: 12px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; font-size: 12px; }
+/* Log past session's Cancel and Save: the button voice, 14/700 (they were
+   12px capitals). Save restates its own fill under a pointer. */
+.hsd-cancel { height: 48px; padding: 0 18px; border-radius: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; font-size: 14px; }
 .hsd-save {
   height: 48px;
   padding: 0 26px;
   border-radius: 12px;
   background: var(--cal-live);
   color: var(--cal-live-on);
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 14px;
 }
-.hsd-save:hover { background: var(--cal-live-text); }
+.hsd-save:hover { background: var(--cal-live); }
 
 /* ── Editing a session that already happened (Sep 17 2026) ─────────────────
    Three states a set can be in while edit mode is open, and none of them may
@@ -1097,11 +1154,11 @@
   border: 1px solid var(--cal-live);
   background: var(--cal-live-fill, transparent);
   color: var(--cal-live-text);
-  font-size: 9.5px;
-  font-weight: 900;
+  font-size: 12px;
+  font-weight: 700;
   font-style: normal;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   vertical-align: middle;
 }
 
@@ -1112,7 +1169,7 @@
 .hsd-set__tag--new {
   border-color: var(--cal-live);
   color: var(--cal-live-text);
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .hsd-set--gone { opacity: 0.55; }
@@ -1161,17 +1218,17 @@
   border: 1px solid var(--cal-live);
   background: var(--cal-live);
   color: var(--cal-live-on);
-  font-size: 11.5px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .hsd-add__btn:focus-visible { outline: 2px solid var(--cal-live-text); outline-offset: 2px; }
 .hsd-add__count {
-  font-size: 10.5px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-live-text);
 }
 .hsd-add__picker {
@@ -1187,10 +1244,10 @@
 .hsd-foot__note {
   margin-right: auto;
   align-self: center;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
 }
 
@@ -1228,10 +1285,10 @@
   border-bottom: none;
   background: var(--cal-surface);
   color: var(--cal-ink-muted);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .lps-step:disabled { opacity: 0.4; }
 .lps-step--done { color: var(--cal-live-text); }
@@ -1239,6 +1296,7 @@
   border-color: var(--cal-live);
   background: var(--cal-live);
   color: var(--cal-live-on);
+  font-weight: 700;
 }
 .lps-step__n {
   display: inline-flex;
@@ -1248,8 +1306,8 @@
   height: 18px;
   border-radius: 999px;
   border: 1px solid currentColor;
-  font-size: 10px;
-  font-weight: 900;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .lps-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 16px 18px; }
@@ -1278,12 +1336,12 @@
   border: 1px solid var(--cal-live);
   background: var(--cal-live-fill);
   color: var(--cal-live-text);
-  font-size: 11.5px;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
-.lps-chip b { font-weight: 900; opacity: 0.75; }
+.lps-chip b { font-weight: 800; opacity: 0.75; }
 .lps-chip:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 2px; }
 
 .lps-cov { max-width: 22rem; }

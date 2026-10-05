@@ -302,7 +302,7 @@ export function ConsultationWizard({
                   <button
                     key={g}
                     onClick={() => setGender(g)}
-                    className={`flex-1 py-5 px-3 rounded-2xl font-black uppercase tracking-tight transition-all duration-200 border-2 ${
+                    className={`flex-1 py-5 px-3 rounded-2xl font-black uppercase tracking-tight transition-[color,background-color,border-color,transform] duration-200 border-2 ${
                       gender === g
                         ? "bg-[#115E8D] text-white border-[#115E8D] shadow-[0_0_20px_rgba(17,94,141,0.4)] scale-105"
                         : "bg-transparent text-[#94A3B8] border-white/10 hover:border-white/30 hover:bg-white/5"
@@ -492,7 +492,7 @@ export function ConsultationWizard({
                   <button
                     key={s}
                     onClick={() => setSkillLevel(s)}
-                    className={`flex-1 py-5 px-1 rounded-2xl font-black uppercase tracking-tight transition-all duration-200 border-2 text-sm ${
+                    className={`flex-1 py-5 px-1 rounded-2xl font-black uppercase tracking-tight transition-[color,background-color,border-color,transform] duration-200 border-2 text-sm ${
                       skillLevel === s
                         ? "bg-[#115E8D] text-white border-[#115E8D] shadow-[0_0_20px_rgba(17,94,141,0.4)] scale-105"
                         : "bg-transparent text-[#94A3B8] border-white/10 hover:border-white/30 hover:bg-white/5"
@@ -506,7 +506,7 @@ export function ConsultationWizard({
           </div>
 
           <div className="bg-[#115E8D]/20 border border-[#115E8D] rounded-xl p-4 mb-6">
-            <p className="text-lg italic font-black uppercase tracking-tight text-[#38BDF8]">
+            <p className="text-lg italic font-bold tracking-tight text-[#38BDF8]">
               "Are you ready to take a look?"
             </p>
           </div>
@@ -546,7 +546,7 @@ export function ConsultationWizard({
                               setRoutine(newRoutine);
                             }}
                           >
-                            <SelectTrigger className="bg-transparent border-none text-3xl font-black uppercase italic tracking-tighter text-[#0F172A] leading-none mb-1 w-full p-0 shadow-none h-auto focus:ring-0 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:ml-2">
+                            <SelectTrigger className="bg-transparent border-none font-display text-3xl font-extrabold text-[#0F172A] leading-none mb-1 w-full p-0 shadow-none h-auto focus:ring-0 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:ml-2">
                               <SelectValue placeholder="Select Machine" />
                             </SelectTrigger>
                             <SelectContent className="max-h-75">
@@ -624,7 +624,7 @@ export function ConsultationWizard({
             <Button
               variant="outline"
               onClick={addMachine}
-              className="w-full mt-4 h-20 rounded-2xl border-2 border-dashed border-[#F06C22]/50 text-[#F06C22] hover:bg-[#F06C22] hover:text-white transition-all font-black uppercase tracking-widest text-sm flex items-center gap-2 bg-transparent"
+              className="w-full mt-4 h-20 rounded-2xl border-2 border-dashed border-[#F06C22]/50 text-[#F06C22] hover:bg-[#F06C22] hover:text-white font-black uppercase tracking-widest text-sm flex items-center gap-2 bg-transparent shadow-none"
             >
               <Plus className="w-6 h-6" />
               Add Machine

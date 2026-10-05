@@ -116,6 +116,10 @@ const TEXT_PAIRS: [string, string, string][] = [
   ["the ladder's second ink on its card", "--ink-d2", "--bg-dark-2"],
   ["the ladder's labels on its card", "--ink-d3", "--bg-dark-2"],
   ["the ladder's labels on its page", "--ink-d3", "--bg-dark"],
+  // Depth (type and depth, Oct 4 2026): a raised button, a well, the tray.
+  ["words on a raised control (an outline button)", "--foreground", "--raised"],
+  ["quiet words in a well", "--muted-foreground", "--well"],
+  ["a tab's words on the tray", "--ink-d2", "--tray"],
 ];
 
 /** A control's own boundary and the focus ring: 3:1 (WCAG 1.4.11). */
@@ -124,6 +128,8 @@ const UI_PAIRS: [string, string, string][] = [
   ["a field's border on the page", "--input", "--background"],
   ["the focus ring on a card", "--ring", "--card"],
   ["the focus ring on the page", "--ring", "--background"],
+  // A raised control keeps its 3:1 edge (AJ's answer 2A, Oct 4 2026).
+  ["a raised control's edge", "--input", "--raised"],
 ];
 
 /** The shadcn destructive button's resting tint: bg-destructive/10, and /20 in dark. */
@@ -177,13 +183,15 @@ describe("the orange is the same in both modes", () => {
 
 describe("easier on the eyes", () => {
   it("light mode has no pure-white surface (AJ: 'the light mode is just so bright')", () => {
-    for (const token of ["--background", "--card", "--popover", "--elevated", "--bg-dark", "--bg-dark-2", "--bg-dark-3", "--surface-1", "--surface-2"]) {
+    // --raised, --well and --tray are the depth surfaces (type and depth,
+    // Oct 4 2026): a raised control is a hair lighter than a card, never white.
+    for (const token of ["--background", "--card", "--popover", "--elevated", "--bg-dark", "--bg-dark-2", "--bg-dark-3", "--surface-1", "--surface-2", "--raised", "--well", "--tray"]) {
       expect(hex("light", token), token).not.toBe("#FFFFFF");
     }
   });
 
   it("dark mode's surfaces are navy, not grey (AJ: 'in our dark mode, it just so gray')", () => {
-    for (const token of ["--background", "--card", "--popover", "--muted", "--bg-dark", "--bg-dark-2", "--bg-dark-3"]) {
+    for (const token of ["--background", "--card", "--popover", "--muted", "--bg-dark", "--bg-dark-2", "--bg-dark-3", "--raised", "--well", "--tray"]) {
       const [r, , b] = rgb(hex("dark", token));
       expect(b - r, `${token} ${hex("dark", token)} has no blue cast`).toBeGreaterThanOrEqual(20);
     }

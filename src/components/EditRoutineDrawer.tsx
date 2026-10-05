@@ -547,8 +547,8 @@ export function EditRoutineDrawer({
         <DialogHeader className="p-5 sm:p-6 pb-4 border-b border-div-l shrink-0 space-y-4 max-h-[42dvh] overflow-y-auto overscroll-contain touch-pan-y">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <DialogTitle className="text-xl font-bold uppercase tracking-tight text-slate-900 dark:text-neutral-100 italic font-display">
-                Edit Routine
+              <DialogTitle className="text-foreground">
+                Edit routine
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500 mt-1">
                 Adjust the machine order, remove/add machines, and provide a
@@ -559,7 +559,7 @@ export function EditRoutineDrawer({
               variant="ghost"
               size="sm"
               onClick={requestClose}
-              className="h-8 w-8 p-0 shrink-0"
+              className="h-10 w-10 p-0 shrink-0"
             >
               <X className="w-5 h-5" />
             </Button>
@@ -585,12 +585,12 @@ export function EditRoutineDrawer({
                           : handleRequestSlot(slot)
                       }
                       className={cn(
-                        "h-11 px-5 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-2",
+                        "h-11 px-5 rounded-xl text-[14px] font-bold border transition-[color,background-color,border-color,transform] active:translate-y-px flex items-center gap-2",
                         activeSlot === slot
-                          ? "bg-primary text-primary-foreground border-transparent shadow-sm shadow-primary/20"
+                          ? "bg-primary text-primary-foreground border-transparent shadow-(--solid-lift)"
                           : inactive
                             ? "bg-slate-50 dark:bg-slate-900/40 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:border-cyan hover:text-cyan dark:hover:text-cyan cursor-pointer"
-                            : "bg-slate-100 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800",
+                            : "bg-(--raised) border-input shadow-(--raised-lift) active:shadow-(--press) text-slate-600 dark:text-slate-300 hover:bg-muted",
                       )}
                       title={
                         inactive
@@ -601,8 +601,8 @@ export function EditRoutineDrawer({
                       {inactive && <Lock className="w-3 h-3" />}
                       {slot}
                       {inactive && (
-                        <span className="text-[9px] font-semibold normal-case tracking-normal opacity-80">
-                          Tap to Activate
+                        <span className="text-[12px] font-semibold opacity-80">
+                          Tap to activate
                         </span>
                       )}
                     </button>
@@ -610,7 +610,7 @@ export function EditRoutineDrawer({
                 })}
               </div>
               {savedFlash && (
-                <span className="text-[11px] font-semibold text-emerald-500">
+                <span className="text-[12px] font-semibold text-emerald-500">
                   &#10003; {savedFlash} saved
                 </span>
               )}
@@ -626,17 +626,17 @@ export function EditRoutineDrawer({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 text-[11px] font-bold uppercase"
+                      className="text-[12px] font-bold"
                       onClick={() => setPendingSlotSwitch(null)}
                     >
                       Cancel
                     </Button>
                     <Button
                       size="sm"
-                      className="h-8 text-[11px] font-bold uppercase bg-amber-500 hover:bg-amber-600 text-white"
+                      className="text-[12px] font-bold bg-amber-500 hover:bg-amber-500 text-cta-foreground shadow-(--elev-1)"
                       onClick={() => loadSlot(pendingSlotSwitch)}
                     >
-                      Discard &amp; Switch
+                      Discard and switch
                     </Button>
                   </div>
                 </div>
@@ -644,17 +644,17 @@ export function EditRoutineDrawer({
             </div>
 
             <div className="flex-1 min-w-0 lg:border-l lg:pl-4 border-div-l/40">
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground font-mono">
-                  Preset Routines
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <h3 className="text-[14px] font-bold text-ink-d2">
+                  Preset routines
                 </h3>
                 {machineIds.length > 0 && !showSavePresetInput && (
                   <button
                     type="button"
                     onClick={() => setShowSavePresetInput(true)}
-                    className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-cyan hover:text-cyan/80 shrink-0"
+                    className="inline-flex min-h-10 items-center gap-1.5 text-[14px] font-bold text-cyan hover:text-cyan/80 shrink-0"
                   >
-                    <Save className="w-3.5 h-3.5" /> Save Current
+                    <Save className="w-3.5 h-3.5" /> Save current
                   </button>
                 )}
               </div>
@@ -666,13 +666,13 @@ export function EditRoutineDrawer({
                     value={presetNameDraft}
                     onChange={(e) => setPresetNameDraft(e.target.value)}
                     placeholder={`e.g., ${studioName || "Studio"} Beginner Circuit`}
-                    className="h-8 rounded-lg text-xs bg-card"
+                    className="h-10 rounded-lg"
                   />
                   <Button
                     size="sm"
                     disabled={!presetNameDraft.trim() || isSavingPreset}
                     onClick={handleSaveStudioPreset}
-                    className="h-8 rounded-lg text-[11px] font-bold uppercase bg-cta text-cta-foreground hover:bg-cta shrink-0"
+                    className="rounded-lg text-[14px] font-bold bg-primary text-primary-foreground hover:bg-primary shrink-0"
                   >
                     {isSavingPreset ? "Saving..." : "Save"}
                   </Button>
@@ -683,7 +683,7 @@ export function EditRoutineDrawer({
                       setShowSavePresetInput(false);
                       setPresetNameDraft("");
                     }}
-                    className="h-8 rounded-lg text-[11px] font-bold uppercase shrink-0"
+                    className="rounded-lg text-[14px] font-bold shrink-0"
                   >
                     Cancel
                   </Button>
@@ -693,13 +693,13 @@ export function EditRoutineDrawer({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2.5">
                 <PresetPillRow
                   icon={<Sparkles className="w-3 h-3" />}
-                  label="Company Standard"
+                  label="Company standard"
                   presets={companyTemplates}
                   onUse={handleUsePreset}
                 />
                 <PresetPillRow
                   icon={<Building2 className="w-3 h-3" />}
-                  label={studioName || "This Studio"}
+                  label={studioName || "This studio"}
                   presets={studioPresets}
                   onUse={handleUsePreset}
                   onDelete={handleDeleteStudioPreset}
@@ -738,14 +738,14 @@ export function EditRoutineDrawer({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 text-[10px] font-bold uppercase"
+                      className="text-[12px] font-bold"
                       onClick={() => setPendingPreset(null)}
                     >
                       Cancel
                     </Button>
                     <Button
                       size="sm"
-                      className="h-7 text-[10px] font-bold uppercase bg-amber-500 hover:bg-amber-600 text-white"
+                      className="text-[12px] font-bold bg-amber-500 hover:bg-amber-500 text-cta-foreground shadow-(--elev-1)"
                       onClick={() => applyPreset(pendingPreset)}
                     >
                       Replace
@@ -802,7 +802,7 @@ export function EditRoutineDrawer({
             visible above an on-screen tablet keyboard. */}
         <div className="border-t border-div-l shrink-0 bg-card">
           <div className="px-5 sm:px-6 pt-4 pb-3">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-neutral-350 mb-2 font-display">
+            <label className="block text-[14px] font-bold text-ink-d2 mb-2">
               Notes — Why are you making this change?{" "}
               <span className="text-red-500">*</span>
             </label>
@@ -813,17 +813,17 @@ export function EditRoutineDrawer({
               onBlur={() => setNotesFocused(false)}
               placeholder="e.g., Decreasing spinal load post L4 herniation flare-up; swapping leg press for leg extension today."
               rows={2}
-              className="rounded-xl border-input bg-card resize-none text-xs text-slate-800 dark:text-neutral-100"
+              className="rounded-xl resize-none text-slate-800 dark:text-neutral-100"
             />
             <div className="flex justify-between items-center mt-2">
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-[12px] text-muted-foreground">
                 Provide a brief clinical rationale for{" "}
                 {client?.firstName ? `${client.firstName}'s` : "the client's"}{" "}
                 profile logs.
               </p>
               <p
                 className={cn(
-                  "text-[10px] font-semibold tracking-wide",
+                  "text-[12px] font-semibold",
                   reason.trim().length >= 3
                     ? "text-emerald-500"
                     : "text-amber-500",
@@ -838,16 +838,16 @@ export function EditRoutineDrawer({
 
           <div className="px-5 sm:px-6 pb-5 sm:pb-6 pt-3 border-t border-div-l/40 flex justify-end gap-3">
             <Button
-              variant="ghost"
+              variant="outline"
               onClick={requestClose}
-              className="rounded-xl uppercase font-bold text-xs"
+              className="rounded-xl text-[14px] font-bold"
             >
               Close
             </Button>
             <Button
               onClick={handleSave}
               disabled={reason.trim().length < 3 || isSaving || !isDirty}
-              className="bg-cta text-cta-foreground hover:bg-cta rounded-xl uppercase font-bold text-xs shadow-md shadow-cta/15"
+              className="bg-primary text-primary-foreground hover:bg-primary rounded-xl text-[14px] font-bold"
             >
               {isSaving ? "Saving Changes..." : `Apply ${activeSlot}`}
             </Button>
@@ -878,28 +878,32 @@ function PresetPillRow({
 }) {
   return (
     <div className="min-w-0">
-      <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
-        {icon} <span className="truncate">{label}</span>
+      {/* The tier's name over its presets: 12/700 in its own capitalisation,
+          and a studio's name wraps, never cut short (the follow-up, Oct 5
+          2026; it was 9px capitals, truncated). */}
+      <div className="flex items-center gap-1.5 text-[12px] font-bold text-ink-d2 mb-1">
+        {icon} <span className="min-w-0 [overflow-wrap:anywhere]">{label}</span>
       </div>
       {presets.length === 0 ? (
-        <p className="text-[10px] text-muted-foreground italic">
+        <p className="text-[12px] text-muted-foreground italic">
           {emptyText || "None yet."}
         </p>
       ) : (
-        <div className="flex flex-wrap gap-1.5 max-h-16 overflow-y-auto">
+        // Two rows of 40px pills show before it scrolls.
+        <div className="flex flex-wrap gap-1.5 max-h-[5.5rem] overflow-y-auto">
           {presets.map((p) => (
             <div
               key={p.id}
-              className="group flex items-center gap-1 pl-2.5 pr-1.5 h-7 rounded-full border border-div-l/50 bg-card text-[10px] font-bold uppercase tracking-tight text-slate-700 dark:text-neutral-300"
+              className="group flex items-center gap-0.5 pl-3 min-h-10 rounded-full border border-input bg-(--raised) shadow-(--raised-lift) has-[button:active]:translate-y-px has-[button:active]:shadow-(--press) text-[12px] font-bold text-slate-700 dark:text-neutral-300"
               title={`${p.machineIds.length} machine${p.machineIds.length === 1 ? "" : "s"}`}
             >
               <button
                 type="button"
                 onClick={() => onUse(p)}
-                className="flex items-center gap-1 hover:text-cyan"
+                className={cn("flex min-h-10 items-center gap-1 hover:text-cyan", onDelete ? "pr-0.5" : "pr-3")}
               >
                 <span className="min-w-0 max-w-32 text-left [overflow-wrap:anywhere]">{p.name}</span>
-                <span className="text-muted-foreground font-mono normal-case">
+                <span className="text-muted-foreground font-mono">
                   ({p.machineIds.length})
                 </span>
               </button>
@@ -907,10 +911,10 @@ function PresetPillRow({
                 <button
                   type="button"
                   onClick={() => onDelete(p)}
-                  className="text-slate-300 hover:text-red-500 rounded-full p-0.5 shrink-0"
+                  className="grid size-10 shrink-0 place-items-center rounded-full text-slate-300 hover:text-red-500"
                   title="Delete preset"
                 >
-                  <X className="w-2.5 h-2.5" />
+                  <X className="w-3 h-3" />
                 </button>
               )}
             </div>

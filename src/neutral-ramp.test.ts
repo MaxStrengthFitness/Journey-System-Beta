@@ -332,8 +332,13 @@ function countBarePaletteUtilities(): number {
  * Oct 4 2026 (the Navy Frame, the review's fixes): 139 -> 137, the count
  * again. Log a conversation, the InBody scan and trend and the report
  * archive draw the theme's blue where they drew Tailwind sky.
+ *
+ * Oct 4 2026 (the colour follow-ups, orange Saves and selections to blue):
+ * 137 -> 127, the count again. A trainer's profile edit draws its label
+ * icons, its Lookup button and its home studio chip in the theme's blue
+ * where they drew Tailwind indigo and orange (10 utilities).
  */
-const BARE_PALETTE_BUDGET = 137;
+const BARE_PALETTE_BUDGET = 127;
 
 describe("colour drift does not creep back", () => {
   it(`has at most ${BARE_PALETTE_BUDGET} non-theme-aware palette utilities`, () => {

@@ -239,7 +239,7 @@ export function StudioEquipmentPanel({
                       <AdminBadge tone="warn">Out of service</AdminBadge>
                     ) : row.entry.status !== "active" ? (
                       <AdminBadge tone="neutral">
-                        {row.entry.status}
+                        {row.entry.status === "inactive" ? "Inactive" : row.entry.status}
                       </AdminBadge>
                     ) : null}
                     {row.upkeep === "overdue" && (

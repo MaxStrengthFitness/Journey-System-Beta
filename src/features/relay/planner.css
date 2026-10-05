@@ -50,10 +50,10 @@
   background: transparent;
   color: var(--st-ink-muted);
   font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -63,6 +63,7 @@
   background: var(--st-surface);
   color: var(--st-live);
   box-shadow: 0 1px 2px var(--st-shadow);
+  font-weight: 700;
 }
 .pl__tab:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 
@@ -123,7 +124,14 @@
  * ------------------------------------------------------------------ */
 
 /* 40px, the iPad's floor, as every control in My Studio is since Sep 27 2026
-   (the hub's pills were 32 to 36; look.test.ts holds the listed ones). */
+   (the hub's pills were 32 to 36; look.test.ts holds the listed ones).
+
+   RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, ON the 3:1
+   edge, which stays: under the gym floor's glare the edge is what keeps a
+   button a button. It presses in on :active (a transform, never an animated
+   shadow), and a button that can't be pressed lies flat. Radius 12, the
+   app's control radius (it was a 999px pill; pills are for chips). */
 .pl__btn {
   display: inline-flex;
   align-items: center;
@@ -131,9 +139,10 @@
   gap: 6px;
   min-height: 40px;
   padding: 0 14px;
-  border-radius: 999px;
+  border-radius: 12px;
   border: 1px solid var(--st-border-strong);
-  background: var(--st-surface);
+  background: var(--st-raised);
+  box-shadow: var(--st-elev-1), inset 0 1px 0 var(--st-highlight);
   color: var(--st-ink-2);
   font: inherit;
   font-size: 14px;
@@ -142,21 +151,26 @@
   cursor: pointer;
 }
 .pl__btn svg { flex: none; }
-.pl__btn:disabled { opacity: 0.5; cursor: default; }
 .pl__btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+/* Solid blue: a blue-tinted drop and a top light. No gradient, no dark foot. */
 .pl__btn--primary {
   background: var(--st-live);
   border-color: var(--st-live);
   color: var(--st-live-on);
+  box-shadow: var(--st-glow-live), var(--st-solid-light);
 }
 /* A destructive confirmation is the app's critical crimson, as the admin
    kit's is (.adm-btn--danger) — never the kaizen red, which is rep quality's
-   alone. It was the caution colour until Sep 27 2026. */
+   alone. It was the caution colour until Sep 27 2026. A tint lifts without
+   the white top light. */
 .pl__btn--danger {
   background: var(--st-alert-fill);
   border-color: var(--st-alert);
   color: var(--st-alert);
+  box-shadow: var(--st-elev-1);
 }
+.pl__btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--st-press); }
+.pl__btn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
 
 /* ------------------------------------------------------------------ *
  * The studio hub, embedded (StudioHubView `embedded`)
@@ -188,15 +202,17 @@
 .pl__panel-titles { min-width: 0; flex: 1 1 18rem; }
 .pl__panel-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
-/* A panel's heading: small upright capitals, My Profile's card-head voice.
-   Slanted capitals are the display face's, and only a page title's. */
+/* A panel's heading: the panel-title voice, Geist 17/700 in ink and its
+   own capitalisation, My Profile's card-head voice (type and depth, phase
+   10, Oct 4 2026; it was 12px capitals at 0.12em). */
 .pl__h2 {
   margin: 0;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--st-ink-2);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--st-ink);
 }
 .pl__sub {
   margin: 0.25rem 0 0;
@@ -207,28 +223,35 @@
 }
 
 .pl__list { margin-top: 1rem; }
+/* A list is a panel (type and depth, phase 10, Oct 4 2026): the edge seen
+   from outside, the fill clipped to the padding box, a short navy lift; its
+   rows are divided by the soft hairline. It was a hairline box. */
 .pl__list ul {
   margin: 0;
   padding: 0;
   list-style: none;
-  border: 1px solid var(--st-border);
+  border: 1px solid var(--st-edge);
   border-radius: var(--st-radius);
   background: var(--st-surface);
+  background-clip: padding-box;
+  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
   overflow: hidden;
 }
 
-/* A section head: the one heading style in My Studio (Sep 27 2026), the same
-   small upright capitals as a card's head (.pl__h2, .rl-h__title,
-   .stm__title, .ms__door-h; My Profile's .tp-card__title). */
+/* A head over a list: the label voice, 14/700 in ink-2 and its own
+   capitalisation (type and depth, phase 10, Oct 4 2026; it was the one
+   heading style of Sep 27 2026, 12px capitals at 0.12em). A head of a card
+   takes the panel-title voice instead (.pl__h2, .stm__title, .tc's
+   .rl-h__title, Just now; My Profile's .tp-card__title). */
 .pl__list-head {
   display: flex;
   align-items: center;
   gap: 0.375rem;
   margin: 0 0 0.5rem;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-2);
 }
 .pl__count {
@@ -254,7 +277,7 @@
   min-height: 56px;
   padding: 0.5rem 0.875rem;
 }
-.pl__task + .pl__task { border-top: 1px solid var(--st-border); }
+.pl__task + .pl__task { border-top: 1px solid var(--st-divider); }
 
 /* 44px: the tick is the whole point of the row. */
 .pl__check {
@@ -289,19 +312,29 @@
 .pl__task-title { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
 .pl__task--done .pl__task-title { color: var(--st-ink-muted); text-decoration: line-through; }
 .pl__task-meta {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-muted);
 }
 .pl__task-detail { font-size: 12px; line-height: 1.45; color: var(--st-ink-muted); overflow-wrap: anywhere; }
 
+/* A WELL (type and depth, phase 9, Oct 4 2026): sunk into the well tone,
+   no edge, radius 12. It was a dashed box. The body's muted ink reads 5.2:1
+   on the well (7.1:1 in dark). */
+/* On the page ground (beside a list's card, never in it: the Tracker's
+   lists and the Journal's), so the tray's tone (AJ's 1A, Oct 5 2026): the
+   well tone is lighter than the page and read raised; the tray is below it
+   in both modes. The body takes ink-2 (5.95:1; the muted ink would read
+   4.42:1 on the tray). */
 .pl__empty {
   margin-top: 1rem;
   padding: 1.25rem;
-  border: 1px dashed var(--st-border-strong);
-  border-radius: var(--st-radius);
+  border: 0;
+  border-radius: 12px;
+  background: var(--st-tray);
+  box-shadow: var(--st-elev-0);
   text-align: center;
 }
 .pl__empty-title { margin: 0 0 0.375rem; font-size: 14px; font-weight: 800; }
@@ -310,7 +343,7 @@
   max-width: 52ch;
   font-size: 14px;
   line-height: 1.6;
-  color: var(--st-ink-muted);
+  color: var(--st-ink-2);
 }
 
 /* ------------------------------------------------------------------ *
@@ -331,10 +364,10 @@
   gap: 1px;
 }
 .pl__when-day {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-muted);
 }
 .pl__when-time {

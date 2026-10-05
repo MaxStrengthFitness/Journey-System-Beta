@@ -74,6 +74,29 @@
 
   --st-radius: 14px;
   --st-shadow: rgba(25, 45, 65, 0.10);
+
+  /* Depth (type and depth, phase 3, Oct 4 2026), value for value as
+     equipment.tokens.css. */
+  --st-raised:          #f8fafc;
+  --st-tray:            #d1dae4;
+  --st-edge:            rgba(25, 45, 65, 0.13);
+  --st-edge-control:    rgba(25, 45, 65, 0.26);
+  --st-divider:         rgba(25, 45, 65, 0.10);
+  --st-highlight:       rgba(255, 255, 255, 0.70);
+  --st-elev-0:          var(--elev-0);
+  --st-elev-1:          var(--elev-1);
+  --st-elev-2:          var(--elev-2);
+  --st-elev-3:          var(--elev-3);
+  --st-elev-4:          var(--elev-4);
+  --st-elev-5:          var(--elev-5);
+  --st-elev-card:       var(--elev-card);
+  --st-shelf:           var(--shelf);
+  --st-press:           var(--press);
+  --st-glow-live:       var(--glow-live);
+  --st-glow-go:         var(--glow-go);
+  --st-solid-light:     var(--solid-light);
+  --st-go-light:        var(--go-light);
+  --st-panel-highlight: var(--panel-highlight);
 }
 
 .dark, [data-theme="dark"] {
@@ -111,6 +134,27 @@
   --st-alert-fill: #472024;
 
   --st-shadow: rgba(2, 10, 20, 0.45);
+
+  --st-raised:          #203549;
+  --st-tray:            #081725;
+  --st-edge:            rgba(150, 180, 210, 0.11);
+  --st-edge-control:    rgba(150, 180, 210, 0.16);
+  --st-divider:         rgba(150, 180, 210, 0.10);
+  --st-highlight:       rgba(255, 255, 255, 0.07);
+  --st-elev-0:          var(--elev-0);
+  --st-elev-1:          var(--elev-1);
+  --st-elev-2:          var(--elev-2);
+  --st-elev-3:          var(--elev-3);
+  --st-elev-4:          var(--elev-4);
+  --st-elev-5:          var(--elev-5);
+  --st-elev-card:       var(--elev-card);
+  --st-shelf:           var(--shelf);
+  --st-press:           var(--press);
+  --st-glow-live:       var(--glow-live);
+  --st-glow-go:         var(--glow-go);
+  --st-solid-light:     var(--solid-light);
+  --st-go-light:        var(--go-light);
+  --st-panel-highlight: var(--panel-highlight);
 }
 
 .st {
@@ -155,11 +199,12 @@
   border-bottom: 1px solid var(--st-border);
 }
 
-/* A page title: the display face's slanted capitals, as the masthead's. */
+/* A page title: the display face upright, in its own capitalisation, as the
+   masthead's (type and depth, phase 12; AJ's 1A). */
 .st__title { margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 800;
-  font-style: italic; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1.1; }
-.st__date { display: block; font-size: 11px; font-weight: 800; letter-spacing: 0.16em;
-  text-transform: uppercase; color: var(--st-ink-muted); }
+  font-style: normal; text-transform: none; letter-spacing: 0; line-height: 1.1; }
+.st__date { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0;
+  text-transform: none; color: var(--st-ink-muted); }
 /* ── rows (the Hub's task rows; the original screen's group cards, selection
    bar, banners and view toggle went with it in the cost round, Sep 2026) ── */
 
@@ -180,22 +225,33 @@
 /* ── buttons ────────────────────────────────────────────────────────────── */
 /* The button voice (Sep 27 2026): 14px, bold, sentence case, at least 40px
    tall. A save is solid blue writing in --st-live-on (--primary); green is
-   for marking a task done and nothing else (--done). */
+   for marking a task done and nothing else (--done).
+   RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, on the 3:1
+   edge, which stays; radius 12; a press on :active, and flat when it can't
+   be pressed. The plain hover is a pointer's only, so an iPad's kept hover
+   never flattens a button. */
 .st__btn { min-height: 40px; padding: 0 0.875rem; border: 1px solid var(--st-border-strong);
-  border-radius: 10px; background: var(--st-surface); color: var(--st-ink); font: inherit;
+  border-radius: 12px; background: var(--st-raised); color: var(--st-ink); font: inherit;
+  box-shadow: var(--st-elev-1), inset 0 1px 0 var(--st-highlight);
   font-size: 14px; font-weight: 700;
   cursor: pointer; white-space: nowrap; }
-.st__btn:hover { background: var(--st-surface-2); }
-.st__btn:disabled { opacity: 0.55; cursor: default; }
+@media (hover: hover) {
+  .st__btn:hover { background: var(--st-surface-2); }
+}
 .st__btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
 /* A filled button keeps its fill under the pointer: the plain hover above
    is a light grey, and an iPad keeps :hover after a tap, so a tapped green
-   button used to turn grey with its white words still on it. */
+   button used to turn grey with its white words still on it. A solid fill
+   drops a shadow tinted its own way and keeps a top light. */
 .st__btn--primary,
-.st__btn--primary:hover { border-color: transparent; background: var(--st-live); color: var(--st-live-on); }
+.st__btn--primary:hover { border-color: transparent; background: var(--st-live); color: var(--st-live-on); box-shadow: var(--st-glow-live), var(--st-solid-light); }
 .st__btn--done,
-.st__btn--done:hover { border-color: transparent; background: var(--st-done); color: var(--st-done-on); }
-.st__btn--ghost { border-color: transparent; background: transparent; color: var(--st-ink-muted); }
+.st__btn--done:hover { border-color: transparent; background: var(--st-done); color: var(--st-done-on); box-shadow: var(--st-elev-1), var(--st-solid-light); }
+.st__btn--ghost { border-color: transparent; background: transparent; color: var(--st-ink-muted); box-shadow: none; }
+.st__btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--st-press); }
+.st__btn--ghost:not(:disabled):active { box-shadow: none; }
+.st__btn:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
 
 /* ==========================================================================
    MACHINE UPKEEP CARD — rendered inside the Catalog's machine page
@@ -220,8 +276,8 @@
 
 .stu__facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem; margin: 0; }
-.stu__facts dt { display: flex; align-items: center; gap: 0.3rem; font-size: 11px;
-  font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+.stu__facts dt { display: flex; align-items: center; gap: 0.3rem; font-size: 12px;
+  font-weight: 700; letter-spacing: 0; text-transform: none;
   color: var(--wk-ink-muted); }
 .stu__facts dd { margin: 0.2rem 0 0; font-size: 12px; font-weight: 700;
   color: var(--wk-ink); overflow-wrap: anywhere; }
@@ -275,24 +331,26 @@
 .stq__head { display: flex; align-items: center; gap: 0.5rem;
   padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--st-border);
   background: var(--st-surface-2); color: var(--st-ink-2); }
-.stq__title { margin: 0; font-size: 11px; font-weight: 800; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--st-ink-2); }
+.stq__title { margin: 0; font-size: 14px; font-weight: 700; letter-spacing: 0;
+  text-transform: none; color: var(--st-ink-2); }
 .stq__count { display: inline-flex; align-items: center; justify-content: center;
   min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
   background: var(--st-live-fill); color: var(--st-live-text);
   font-size: 11px; font-weight: 800; }
 .stq__new { margin-left: auto; display: inline-flex; align-items: center; gap: 0.3rem;
-  min-height: 40px; padding: 0 0.7rem; border: 1px solid var(--st-border);
-  border-radius: 10px; background: var(--st-surface); color: var(--st-ink-2);
+  min-height: 40px; padding: 0 0.7rem; border: 1px solid var(--st-border-strong);
+  border-radius: 12px; background: var(--st-raised); color: var(--st-ink-2);
+  box-shadow: var(--st-elev-1), inset 0 1px 0 var(--st-highlight);
   font: inherit; font-size: 14px; font-weight: 700;
   cursor: pointer; white-space: nowrap; }
+.stq__new:not(:disabled):active { transform: translateY(1px); box-shadow: var(--st-press); }
 .stq__new:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 
 .stq__composer { padding: 0.75rem 0.875rem; border-bottom: 1px solid var(--st-border);
   background: var(--st-surface-2); display: flex; flex-direction: column; gap: 0.5rem; }
 .stq__kinds { display: flex; flex-wrap: wrap; gap: 4px; }
 .stq__kind { display: inline-flex; align-items: center; gap: 0.3rem;
-  min-height: 40px; padding: 0 0.6rem; border: 1px solid var(--st-border);
+  min-height: 40px; padding: 0 0.6rem; border: 1px solid var(--st-border-strong);
   border-radius: 999px; background: var(--st-surface); color: var(--st-ink-muted);
   font: inherit; font-size: 12px; font-weight: 700;
   cursor: pointer; }
@@ -329,27 +387,30 @@
 .stq__item-text { flex: 1; min-width: 12rem; }
 .stq__item-title { display: block; font-size: 14px; font-weight: 700;
   color: var(--st-ink); overflow-wrap: anywhere; }
-.stq__item-sub { display: block; margin-top: 1px; font-size: 11px; font-weight: 700;
-  letter-spacing: 0.06em; color: var(--st-ink-muted); }
+.stq__item-sub { display: block; margin-top: 1px; font-size: 12px; font-weight: 700;
+  letter-spacing: 0; color: var(--st-ink-muted); }
 /* Who an ask is about (Relay room, Sep 28 2026): a client's whole name, wrapped. */
 .stq__item-client { display: block; margin-top: 1px; font-size: 12px; font-weight: 700;
   color: var(--st-ink-2); overflow-wrap: anywhere; }
 
 /* Answered lately: a closed question keeps its answer on screen. */
 .stq__answered { border-top: 1px solid var(--st-border); }
-.stq__answered-h { margin: 0; padding: 0.75rem 0.875rem 0.25rem; font-size: 12px; font-weight: 800;
-  letter-spacing: 0.12em; text-transform: uppercase; color: var(--st-ink-2); }
+/* Answered lately, over its list: the label voice, 14/700 in ink-2 and its own capitalisation (type and depth, phase 10, Oct 4 2026; it was 12px capitals at 0.12em). */
+.stq__answered-h { margin: 0; padding: 0.75rem 0.875rem 0.25rem; font-size: 14px; font-weight: 700;
+  letter-spacing: 0; text-transform: none; color: var(--st-ink-2); }
 .stq__item--answered { padding: 0.6rem 0.875rem; }
 .stq__answer { display: block; margin-top: 4px; font-size: 14px; line-height: 1.5;
   color: var(--st-ink); overflow-wrap: anywhere; }
 
 .stq__act { display: inline-flex; align-items: center; gap: 0.25rem;
-  min-height: 40px; padding: 0 0.6rem; border: 1px solid var(--st-border);
-  border-radius: 10px; background: var(--st-surface-2); color: var(--st-ink-2);
+  min-height: 40px; padding: 0 0.6rem; border: 1px solid var(--st-border-strong);
+  border-radius: 12px; background: var(--st-raised); color: var(--st-ink-2);
+  box-shadow: var(--st-elev-1), inset 0 1px 0 var(--st-highlight);
   font: inherit; font-size: 14px; font-weight: 700;
   cursor: pointer; white-space: nowrap; }
 .stq__act[aria-pressed="true"] { border-color: var(--st-live); color: var(--st-live); }
-.stq__act:disabled { opacity: 0.5; cursor: default; }
+.stq__act:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+.stq__act:not(:disabled):active { transform: translateY(1px); box-shadow: var(--st-press); }
 .stq__act:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 
 .stq__thread { padding: 0 0.875rem 0.75rem 3.25rem; display: flex;
@@ -359,8 +420,8 @@
   flex-direction: column; gap: 0.35rem; }
 .stq__reply { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem;
   padding: 0.4rem 0.6rem; border-radius: 10px; background: var(--st-surface-2); }
-.stq__reply-who { font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--st-live); }
+.stq__reply-who { font-size: 12px; font-weight: 700; letter-spacing: 0;
+  text-transform: none; color: var(--st-live); }
 .stq__reply-body { flex: 1; min-width: 8rem; font-size: 12px; color: var(--st-ink);
   overflow-wrap: anywhere; }
 .stq__reply-when { font-size: 11px; font-weight: 700; color: var(--st-ink-muted); }
@@ -371,8 +432,8 @@
    a heading above it, because a second heading inside a composer that is
    already inside a lane inside a board is one nesting level too many. */
 .stq__expiry-label { display: inline-flex; align-items: center; gap: 0.3rem;
-  align-self: center; margin-right: 0.15rem; font-size: 11px; font-weight: 800;
-  letter-spacing: 0.1em; text-transform: uppercase; color: var(--st-ink-muted); }
+  align-self: center; margin-right: 0.15rem; font-size: 12px; font-weight: 700;
+  letter-spacing: 0; text-transform: none; color: var(--st-ink-muted); }
 
 /* Time remaining, inline in the sub-line. The caution plum, not the alert
    crimson: a request winding down is not a problem, and spending the alert
@@ -380,7 +441,7 @@
 .stq__ttl { display: inline-flex; align-items: center; gap: 0.2rem;
   margin-left: 0.4rem; padding: 1px 5px; border-radius: 999px;
   background: var(--st-flag-fill); color: var(--st-flag);
-  font-size: 11px; font-weight: 800; letter-spacing: 0.06em; }
+  font-size: 12px; font-weight: 800; letter-spacing: 0; }
 
 /* When a cover is needed (it keeps its time since Sep 28 2026): time
    pressure in words, the deep orange the Board uses, never red. */
@@ -392,11 +453,13 @@
 /* 40px, matching every other chip on this screen. A reaction that is smaller
    than the thing next to it invites the mis-tap it is meant to save. */
 .stq__react { display: inline-flex; align-items: center; gap: 0.3rem;
-  min-height: 40px; padding: 0 0.6rem; border: 1px solid var(--st-border);
+  min-height: 40px; padding: 0 0.6rem; border: 1px solid var(--st-border-strong);
   border-radius: 999px; background: var(--st-surface-2); color: var(--st-ink-muted);
-  font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.06em;
+  font: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0;
   cursor: pointer; white-space: nowrap; }
-.stq__react:hover { background: var(--st-surface-3); color: var(--st-ink-2); }
+@media (hover: hover) {
+  .stq__react:hover { background: var(--st-surface-3); color: var(--st-ink-2); }
+}
 .stq__react[aria-pressed="true"] { border-color: var(--st-live);
   background: var(--st-live-fill); color: var(--st-live-text); }
 .stq__react:disabled { opacity: 0.5; cursor: default; }
@@ -431,16 +494,24 @@
 
 .stm { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem; }
 
-.stm__panel { border: 1px solid var(--st-border); border-radius: var(--st-radius);
-  background: var(--st-surface); overflow: hidden; }
+/* A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+   outside, the fill clipped to the padding box, a short navy lift. The head
+   has no band and no rule: the 17/700 title and its 32px icon square carry
+   it, and the hint beside it is the meta voice. It was a header-strip card
+   (a tinted strip cut by a rule, 12px capitals, an 11px capital hint). */
+.stm__panel { border: 1px solid var(--st-edge); border-radius: var(--st-radius);
+  background: var(--st-surface); background-clip: padding-box;
+  box-shadow: var(--st-elev-2), var(--st-panel-highlight); overflow: hidden; }
 
-.stm__head { display: flex; align-items: center; gap: 0.5rem;
-  padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--st-border);
-  background: var(--st-surface-2); color: var(--st-ink-2); }
-.stm__title { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: 0.12em;
-  text-transform: uppercase; }
-.stm__hint { margin-left: auto; font-size: 11px; font-weight: 700;
-  letter-spacing: 0.1em; text-transform: uppercase; color: var(--st-ink-muted); }
+.stm__head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem 0.75rem;
+  padding: 0.875rem 0.875rem 0.5rem; border-bottom: 0;
+  background: transparent; color: var(--st-ink-2); }
+.stm__head > svg { box-sizing: border-box; flex: none; width: 32px; height: 32px;
+  padding: 7px; border-radius: 10px; background: var(--st-surface-2); color: var(--st-ink-2); }
+.stm__title { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.25;
+  letter-spacing: -0.01em; text-transform: none; color: var(--st-ink); }
+.stm__hint { margin-left: auto; font-size: 12px; font-weight: 500;
+  letter-spacing: 0; text-transform: none; color: var(--st-ink-muted); }
 
 .stm__empty { margin: 0; padding: 0.875rem; color: var(--st-ink-muted);
   font-size: 12px; line-height: 1.5; }
@@ -450,17 +521,17 @@
 .stm__scroll { overflow-x: auto; }
 .stm__grid { width: 100%; border-collapse: collapse; }
 .stm__grid th, .stm__grid td { padding: 0.4rem 0.35rem; text-align: center; }
-.stm__grid thead th { font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--st-ink-muted);
+.stm__grid thead th { font-size: 12px; font-weight: 700; letter-spacing: 0;
+  text-transform: none; color: var(--st-ink-muted);
   border-bottom: 1px solid var(--st-border); }
-.stm__grid tbody tr { border-bottom: 1px solid var(--st-border); }
+.stm__grid tbody tr { border-bottom: 1px solid var(--st-divider); }
 .stm__grid tbody tr:last-child { border-bottom: 0; }
 
 .stm__grid-name { text-align: left !important; min-width: 9rem; }
 .stm__grid-title { display: block; font-size: 12px; font-weight: 700;
   color: var(--st-ink); overflow-wrap: anywhere; }
-.stm__grid-sub { display: block; font-size: 11px; font-weight: 700;
-  letter-spacing: 0.08em; text-transform: uppercase; color: var(--st-ink-muted); }
+.stm__grid-sub { display: block; font-size: 12px; font-weight: 700;
+  letter-spacing: 0; text-transform: none; color: var(--st-ink-muted); }
 
 .stm__cell { display: inline-block; width: 14px; height: 14px; border-radius: 4px;
   background: var(--st-surface-3); }
@@ -477,12 +548,12 @@
   white-space: nowrap; }
 
 .stm__list { list-style: none; margin: 0; padding: 0; }
-.stm__item { padding: 0.55rem 0.875rem; border-bottom: 1px solid var(--st-border); }
+.stm__item { padding: 0.55rem 0.875rem; border-bottom: 1px solid var(--st-divider); }
 .stm__item:last-child { border-bottom: 0; }
 .stm__item-title { display: block; font-size: 14px; font-weight: 700;
   color: var(--st-ink); overflow-wrap: anywhere; }
-.stm__item-sub { display: block; margin-top: 1px; font-size: 11px; font-weight: 700;
-  letter-spacing: 0.06em; color: var(--st-ink-muted); }
+.stm__item-sub { display: block; margin-top: 1px; font-size: 12px; font-weight: 700;
+  letter-spacing: 0; color: var(--st-ink-muted); }
 
 /* ── studio task authoring, inside Manage (Sep 6) ───────────────────────── */
 

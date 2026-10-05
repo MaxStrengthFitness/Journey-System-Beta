@@ -76,7 +76,7 @@ export function LeaveConfirmDialog({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[400] flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-[400] flex items-center justify-center bg-(--scrim) p-4"
       role="presentation"
       data-testid="leave-confirm"
       onKeyDown={onKeyDown}
@@ -91,7 +91,7 @@ export function LeaveConfirmDialog({
         aria-describedby={bodyId}
         className="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-2xl"
       >
-        <h2 id={titleId} className="text-lg font-bold text-foreground">
+        <h2 id={titleId} className="text-[17px] font-bold text-foreground">
           {title}
         </h2>
         <p id={bodyId} className="mt-2 text-base leading-relaxed text-foreground">
@@ -103,7 +103,7 @@ export function LeaveConfirmDialog({
             type="button"
             data-action="leave"
             onClick={onLeave}
-            className="min-h-12 rounded-xl border border-border bg-background px-4 text-sm font-bold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="min-h-12 rounded-xl border border-input bg-(--raised) shadow-(--raised-lift) px-4 text-sm font-bold text-foreground transition-[background-color,transform] hover:bg-muted active:translate-y-px active:shadow-(--press) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {leaveLabel}
           </button>
@@ -112,7 +112,7 @@ export function LeaveConfirmDialog({
             type="button"
             data-action="keep-editing"
             onClick={onStay}
-            className="min-h-12 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="min-h-12 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground shadow-(--solid-lift) transition-[background-color,transform] hover:bg-primary active:translate-y-px active:shadow-(--press) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             {stayLabel}
           </button>

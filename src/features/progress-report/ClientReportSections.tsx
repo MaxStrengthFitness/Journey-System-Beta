@@ -122,7 +122,7 @@ export function GoalsCard({ value, clientFirstName }: { value: ReportGoals; clie
             <div className="mb-1 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-white/85">
               <Flag className="h-3 w-3" /> The next 90 days
             </div>
-            <p className="text-base font-black italic leading-tight">{value.nextGoal}</p>
+            <p className="text-base font-black leading-tight">{value.nextGoal}</p>
             {value.nextGoalTargetDate && (
               <p className="mt-2 text-[11px] font-bold uppercase tracking-widest text-white/85">
                 by {fmt(value.nextGoalTargetDate)}
@@ -148,7 +148,7 @@ export function GoalsCard({ value, clientFirstName }: { value: ReportGoals; clie
           {value.followUpDate && (
             <div className="shrink-0 text-left md:text-right">
               <p className="text-[10px] font-black uppercase tracking-widest text-white/60">We check in again</p>
-              <p className="text-lg font-black italic text-[#F06C22]">{fmt(value.followUpDate)}</p>
+              <p className="font-display text-lg font-extrabold text-[#F06C22]">{fmt(value.followUpDate)}</p>
               <p className="text-[11px] text-white/60">See you there, {clientFirstName}.</p>
             </div>
           )}

@@ -57,12 +57,24 @@ describe("the frame draws only in the frame's tokens", () => {
     });
   }
 
-  it("every bar is the frame, with the frame's hairline (the Operations bar's in its orange)", () => {
+  it("every bar is the frame, cast upward in the frame's navy; the Operations bar keeps its orange hairline", () => {
+    // Type and depth, Oct 4 2026: the trainer bars' edge is the frame's cast
+    // (--frame-up), whose own line replaces the white hairline
+    // border-chrome-line they drew; the black 5% shadow was invisible on the
+    // navy. The Operations bar's orange hairline stays: it says which mode
+    // you are in.
     const bar = read("components/AppBottomBar.tsx");
     const navs = [...bar.matchAll(/<nav\b[\s\S]*?className="([^"]*)"/g)].map((m) => m[1]);
     expect(navs).toHaveLength(3);
-    expect(navs.filter((n) => /(^|\s)border-chrome-line(\s|$)/.test(n))).toHaveLength(2);
-    expect(navs.filter((n) => /(^|\s)border-chrome-go\/30(\s|$)/.test(n))).toHaveLength(1);
+    for (const n of navs) {
+      expect(n).toMatch(/(^|\s)bg-chrome(\s|$)/);
+      expect(n).toMatch(/(^|\s)shadow-\(--frame-up\)(\s|$)/);
+      expect(n).not.toMatch(/rgba\(0,\s*0,\s*0/);
+      expect(n).not.toMatch(/(^|\s)border-chrome-line(\s|$)/);
+    }
+    const ops = navs.filter((n) => /(^|\s)border-chrome-go\/30(\s|$)/.test(n));
+    expect(ops).toHaveLength(1);
+    expect(ops[0]).toMatch(/(^|\s)border-t(\s|$)/);
   });
 
   it("the orange tabs are the logo orange with a navy icon on their solid box", () => {
@@ -125,7 +137,11 @@ describe("AppContent's pieces of the frame", () => {
     expect(start).toBeGreaterThan(0);
     const menu = app.slice(start, end);
     for (const s of classStrings(menu)) expect(s).not.toMatch(PALETTE);
-    expect(menu).toMatch(/className="w-56 [^"]*\bbg-popover\b[^"]*\btext-foreground\b/);
+    // w-60 since Oct 5 2026: room for the App mode segments in their own
+    // capitalisation (the type and depth review).
+    expect(menu).toMatch(/className="w-60 [^"]*\bbg-popover\b[^"]*\btext-foreground\b/);
+    // The popover's own lift speaks in dark too: no caller flattens it.
+    expect(menu).not.toMatch(/dark:shadow-none/);
     expect(menu).not.toMatch(/bg-white|bg-bg-dark/);
     expect(menu).toMatch(/variant="destructive"/);
   });

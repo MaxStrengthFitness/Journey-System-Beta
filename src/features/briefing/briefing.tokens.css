@@ -85,6 +85,29 @@
   --br-shadow:          rgba(25, 45, 65, 0.10);
   --br-radius:          14px;
   --br-radius-lg:       18px;
+
+  /* Depth (type and depth, phase 3, Oct 4 2026), value for value as
+     equipment.tokens.css. */
+  --br-raised:          #f8fafc;
+  --br-tray:            #d1dae4;
+  --br-edge:            rgba(25, 45, 65, 0.13);
+  --br-edge-control:    rgba(25, 45, 65, 0.26);
+  --br-divider:         rgba(25, 45, 65, 0.10);
+  --br-highlight:       rgba(255, 255, 255, 0.70);
+  --br-elev-0:          var(--elev-0);
+  --br-elev-1:          var(--elev-1);
+  --br-elev-2:          var(--elev-2);
+  --br-elev-3:          var(--elev-3);
+  --br-elev-4:          var(--elev-4);
+  --br-elev-5:          var(--elev-5);
+  --br-elev-card:       var(--elev-card);
+  --br-shelf:           var(--shelf);
+  --br-press:           var(--press);
+  --br-glow-live:       var(--glow-live);
+  --br-glow-go:         var(--glow-go);
+  --br-solid-light:     var(--solid-light);
+  --br-go-light:        var(--go-light);
+  --br-panel-highlight: var(--panel-highlight);
 }
 
 .dark,
@@ -125,6 +148,27 @@
   --br-critical-border: rgba(242, 113, 140, 0.38);
 
   --br-shadow:          rgba(2, 10, 20, 0.45);
+
+  --br-raised:          #203549;
+  --br-tray:            #081725;
+  --br-edge:            rgba(150, 180, 210, 0.11);
+  --br-edge-control:    rgba(150, 180, 210, 0.16);
+  --br-divider:         rgba(150, 180, 210, 0.10);
+  --br-highlight:       rgba(255, 255, 255, 0.07);
+  --br-elev-0:          var(--elev-0);
+  --br-elev-1:          var(--elev-1);
+  --br-elev-2:          var(--elev-2);
+  --br-elev-3:          var(--elev-3);
+  --br-elev-4:          var(--elev-4);
+  --br-elev-5:          var(--elev-5);
+  --br-elev-card:       var(--elev-card);
+  --br-shelf:           var(--shelf);
+  --br-press:           var(--press);
+  --br-glow-live:       var(--glow-live);
+  --br-glow-go:         var(--glow-go);
+  --br-solid-light:     var(--solid-light);
+  --br-go-light:        var(--go-light);
+  --br-panel-highlight: var(--panel-highlight);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -156,5 +200,25 @@
     --br-critical-fill:   #472024;
     --br-critical-border: rgba(242, 113, 140, 0.38);
     --br-shadow:          rgba(2, 10, 20, 0.45);
+    --br-raised:          #203549;
+    --br-tray:            #081725;
+    --br-edge:            rgba(150, 180, 210, 0.11);
+    --br-edge-control:    rgba(150, 180, 210, 0.16);
+    --br-divider:         rgba(150, 180, 210, 0.10);
+    --br-highlight:       rgba(255, 255, 255, 0.07);
+    --br-elev-0:          var(--elev-0);
+    --br-elev-1:          var(--elev-1);
+    --br-elev-2:          var(--elev-2);
+    --br-elev-3:          var(--elev-3);
+    --br-elev-4:          var(--elev-4);
+    --br-elev-5:          var(--elev-5);
+    --br-elev-card:       var(--elev-card);
+    --br-shelf:           var(--shelf);
+    --br-press:           var(--press);
+    --br-glow-live:       var(--glow-live);
+    --br-glow-go:         var(--glow-go);
+    --br-solid-light:     var(--solid-light);
+    --br-go-light:        var(--go-light);
+    --br-panel-highlight: var(--panel-highlight);
   }
 }

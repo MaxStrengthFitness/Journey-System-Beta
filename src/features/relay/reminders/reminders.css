@@ -17,10 +17,10 @@
   align-items: center;
   gap: 0.375rem;
   padding: 0 0.25rem;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-live);
 }
 .rs__list {
@@ -52,10 +52,10 @@
 .rs__item:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 .rs__item svg { flex: none; color: var(--st-live); }
 .rs__when {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-muted);
 }
 .rs__title { font-size: 12px; font-weight: 700; }

@@ -55,6 +55,30 @@
 
   --cr-radius: 14px;
   --cr-radius-sm: 8px;
+  /* A tooltip's lift (type and depth, Oct 4 2026): the grid's popover
+     shadow, or the app's before the grid's tokens load. */
+  --cr-elev-4: var(--jg-elev-4, var(--elev-4));
+  /* An empty panel's well (type and depth, phase 9): the app's well tone
+     and the grid's inner shadow. Not --cr-surface-2: the grid's surface-2
+     is its header band, which goes LIGHTER than the card in dark (#1b3044
+     on #14293d), so a well drawn in it would rise instead of sink. The
+     well tone is darker than the card in both modes (#e4ebf3, #0d2235). */
+  --cr-well: var(--eq-surface-2, #e4ebf3);
+  /* Below the page in both modes: a well on the page ground (AJ's 1A). */
+  --cr-tray: var(--eq-tray, #d1dae4);
+  --cr-elev-0: var(--jg-elev-0, var(--elev-0));
+  /* Go's depth on Generate (type and depth, phase 8): the grid's orange
+     glow, top light and press, or the app's before the grid's tokens load. */
+  --cr-glow-go: var(--jg-glow-go, var(--glow-go));
+  --cr-go-light: var(--jg-go-light, var(--go-light));
+  --cr-press: var(--jg-press, var(--press));
+  /* A panel's edge, lift and top light, and a control's 3:1 edge (type and
+     depth review, Oct 5 2026): the app's own, since --cr-border-strong is
+     the grid's sticky separator (2.1:1), not a control edge. */
+  --cr-edge: var(--edge);
+  --cr-elev-2: var(--elev-2);
+  --cr-panel-highlight: var(--panel-highlight);
+  --cr-control-edge: var(--jg-control-edge, var(--input));
   --cr-font-display: var(--jg-font-display, "Saira Condensed", system-ui, sans-serif);
 
   color: var(--cr-ink);
@@ -78,9 +102,12 @@
 @media (min-width: 1024px) {
   .cr-gate { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; padding: 32px; }
 }
+/* The eyebrow over the gate's title: the ONE caps style, Geist 12/700 at
+   0.08em (type and depth, phase 12). Capitals are never the display face's
+   outside the brand, Go and the briefing's safety heading. */
 .cr-gate__eyebrow {
   display: inline-flex; align-items: center; gap: 8px;
-  font-family: var(--cr-font-display); font-weight: 700; font-size: 12px; letter-spacing: 0.14em;
+  font-weight: 700; font-size: 12px; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--cr-ink-muted);
 }
 .cr-gate__title {
@@ -96,32 +123,44 @@
 
 /* ---- range picker ------------------------------------------------------ */
 .cr-range { display: flex; flex-direction: column; gap: 10px; }
-.cr-range__label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cr-ink-muted); }
+.cr-range__label { font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--cr-ink-muted); }
 .cr-seg { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .cr-seg__btn {
-  appearance: none; border: 1px solid var(--cr-border); background: var(--cr-surface); color: var(--cr-ink-2);
+  appearance: none; border: 1px solid var(--cr-control-edge); background: var(--cr-surface); color: var(--cr-ink-2);
   height: 40px; padding: 0 14px; border-radius: 10px; font: inherit; font-weight: 700; font-size: 13px; cursor: pointer;
   -webkit-tap-highlight-color: transparent; transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
-.cr-seg__btn:hover { background: var(--cr-surface-2); }
+@media (hover: hover) {
+  .cr-seg__btn:hover { background: var(--cr-surface-2); }
+}
 .cr-seg__btn.is-on { background: var(--cr-live); border-color: var(--cr-live); color: var(--jg-live-on); }
 .cr-range__custom { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; color: var(--cr-ink-2); }
 .cr-range__custom input {
   height: 40px; border: 1px solid var(--cr-border); border-radius: 10px; padding: 0 10px; background: var(--cr-surface); color: var(--cr-ink); font: inherit;
 }
+/* Build the Deep Dive: Go's DEPTH in the button voice (AJ's 2A, Oct 5
+   2026, "1a 2a 3a"). Slanted capitals are the studio's name, Start session,
+   In progress and the front door's display lines, nothing else, so this
+   orange button speaks as every other orange button that is not Start
+   session does: Geist 14/700, upright, in its own capitalisation ("Build
+   the Deep Dive"). It keeps Go's depth: the short orange glow and the white
+   top light (type and depth, phase 8; the old glow blurred 34px, a resting
+   shadow stays at 18 or less), and a press down a pixel into an inset
+   shadow. Only the transform transitions. 52px tall: it holds the range
+   under its words. */
 .cr-generate {
   appearance: none; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent;
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;
   height: 52px; padding: 0 22px; border-radius: 14px; color: var(--jg-go-on);
   background: var(--jg-go);
-  box-shadow: 0 14px 34px -14px color-mix(in srgb, var(--jg-go) 85%, transparent);
-  font-family: var(--cr-font-display); font-style: italic; text-transform: uppercase; letter-spacing: 0.08em; font-size: 17px;
+  box-shadow: var(--cr-glow-go), var(--cr-go-light);
+  font-family: inherit; font-style: normal; font-weight: 700; text-transform: none; letter-spacing: 0; font-size: 14px;
   transition: transform 120ms ease;
 }
 .cr-generate:hover { background: var(--jg-go); color: var(--jg-go-on); }
-.cr-generate:active { transform: scale(0.98); }
-.cr-generate:disabled { opacity: 0.6; cursor: progress; }
-.cr-generate__sub { font-family: inherit; font-style: normal; font-weight: 700; font-size: 10px; letter-spacing: 0.14em; opacity: 0.85; }
+.cr-generate:not(:disabled):active { transform: translateY(1px); box-shadow: var(--cr-press); }
+.cr-generate:disabled { opacity: 0.6; cursor: progress; box-shadow: none; }
+.cr-generate__sub { font-family: inherit; font-style: normal; font-weight: 700; font-size: 12px; letter-spacing: 0; text-transform: none; opacity: 0.85; }
 
 /* ---- report bar --------------------------------------------------------- */
 .cr-bar {
@@ -132,29 +171,39 @@
   backdrop-filter: blur(8px);
 }
 .cr-bar__title { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.cr-bar__name { font-family: var(--cr-font-display); font-weight: 700; font-size: 15px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cr-ink); }
+/* "Kaizen Deep Dive" in its bar: the display face upright, in its own
+   capitalisation (phase 12; AJ's 1A). */
+.cr-bar__name { font-family: var(--cr-font-display); font-weight: 800; font-size: 17px; line-height: 1.1; letter-spacing: 0; color: var(--cr-ink); }
 .cr-bar__meta { font-size: 12px; color: var(--cr-ink-muted); white-space: nowrap; }
 .cr-bar__spacer { flex: 1; }
-.cr-bar .cr-seg__btn { height: 34px; padding: 0 11px; font-size: 12px; }
+/* 40px, the app's floor (they were 34; type and depth, phase 8). */
+.cr-bar .cr-seg__btn { height: 40px; padding: 0 11px; font-size: 12px; }
 .cr-iconbtn {
-  appearance: none; border: 1px solid var(--cr-border); background: var(--cr-surface); color: var(--cr-ink-2);
-  height: 34px; padding: 0 10px; border-radius: 9px; display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+  appearance: none; border: 1px solid var(--cr-control-edge); background: var(--cr-surface); color: var(--cr-ink-2);
+  height: 40px; padding: 0 10px; border-radius: 9px; display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
 }
-.cr-iconbtn:hover { background: var(--cr-surface-2); }
+@media (hover: hover) {
+  .cr-iconbtn:hover { background: var(--cr-surface-2); }
+}
 
 /* ---- sections ---------------------------------------------------------- */
 .cr-section { display: flex; flex-direction: column; gap: 12px; }
 .cr-section__head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+/* A panel's title: Geist 17/700 in ink, in its own capitalisation (the
+   panel-title voice, phase 12). */
 .cr-section__title {
   display: inline-flex; align-items: center; gap: 10px; margin: 0;
-  font-family: var(--cr-font-display); font-weight: 700; font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cr-ink);
+  font-weight: 700; font-size: 17px; line-height: 1.25; letter-spacing: -0.01em; color: var(--cr-ink);
 }
 .cr-section__title::before { content: ""; width: 3px; height: 16px; border-radius: 2px; background: var(--cr-hero); }
 .cr-section__sub { font-size: 12.5px; color: var(--cr-ink-muted); }
 .cr-section__spacer { flex: 1; }
 
+/* A panel (type and depth review): the soft edge seen from outside, the
+   lift and, in dark, the top light. It was a flat hairline box. */
 .cr-card {
-  border: 1px solid var(--cr-border); border-radius: var(--cr-radius); background: var(--cr-surface);
+  border: 1px solid var(--cr-edge); border-radius: var(--cr-radius); background: var(--cr-surface);
+  background-clip: padding-box; box-shadow: var(--cr-elev-2), var(--cr-panel-highlight);
   padding: 14px 16px; min-width: 0;
 }
 .cr-card__title { margin: 0 0 2px; font-size: 13px; font-weight: 800; color: var(--cr-ink); }
@@ -169,7 +218,7 @@
 @media (min-width: 700px)  { .cr-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (min-width: 1180px) { .cr-kpis { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
 .cr-kpi { background: var(--cr-surface); padding: 12px 14px 11px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.cr-kpi__label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cr-ink-muted); line-height: 1.1; }
+.cr-kpi__label { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--cr-ink-muted); line-height: 1.1; }
 .cr-kpi__value { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; color: var(--cr-ink); font-variant-numeric: normal; }
 .cr-kpi__value small { font-size: 12px; font-weight: 700; color: var(--cr-ink-muted); margin-left: 4px; letter-spacing: 0; }
 .cr-kpi__sub { font-size: 11px; color: var(--cr-ink-muted); line-height: 1.2; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -189,11 +238,20 @@
 .cr-insight::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 4px; border-radius: 0 3px 3px 0; background: var(--cr-done); }
 .cr-insight--notable::before { background: var(--cr-poor); }
 .cr-insight--good::before { background: var(--cr-hero); }
-.cr-insight__kind { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cr-ink-muted); display: flex; gap: 8px; align-items: center; }
+.cr-insight__kind { font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--cr-ink-muted); display: flex; gap: 8px; align-items: center; }
 .cr-insight__title { margin: 0; font-size: 14.5px; font-weight: 800; line-height: 1.25; color: var(--cr-ink); }
 .cr-insight__body { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--cr-ink-2); }
 .cr-insight__evidence { font-size: 11px; color: var(--cr-ink-muted); font-weight: 600; }
-.cr-empty { border: 1px dashed var(--cr-border-strong); border-radius: var(--cr-radius); padding: 22px; text-align: center; color: var(--cr-ink-muted); font-size: 13px; }
+/* A WELL (type and depth, phase 9, Oct 4 2026): sunk into the well tone,
+   no edge, radius 12, the sentence in the reading voice (14px, ink-2). It
+   was a dashed box in 13px muted ink. */
+.cr-empty { border: 0; border-radius: 12px; background: var(--cr-well); box-shadow: var(--cr-elev-0); padding: 22px; text-align: center; color: var(--cr-ink-2); font-size: 14px; }
+/* An empty range, or a section with nothing to show, sits straight on the
+   page (the report and its sections are not panels), so the tray's tone
+   (AJ's 1A, Oct 5 2026): the well tone is lighter than the page and read
+   raised there. Inside a card the well tone stays. */
+.cr > .cr-empty,
+.cr-section > .cr-empty { background: var(--cr-tray); }
 
 /* ---- charts ------------------------------------------------------------- */
 .cr-chart { height: 190px; }
@@ -206,7 +264,9 @@
 .cr-legend__swatch--blue { background: var(--cr-live); }
 .cr-tooltip {
   background: var(--cr-surface); border: 1px solid var(--cr-border-strong); border-radius: 10px; padding: 8px 10px; font-size: 12px; color: var(--cr-ink);
-  box-shadow: 0 8px 24px -12px rgba(0,0,0,.35);
+  /* A popover's lift in the logo's navy (type and depth, phase 10, Oct 4
+     2026); it was raw black. */
+  box-shadow: var(--cr-elev-4);
 }
 .cr-tooltip__title { font-weight: 800; margin-bottom: 4px; }
 .cr-tooltip__row { display: flex; justify-content: space-between; gap: 14px; }
@@ -225,7 +285,7 @@
 .cr-level { display: grid; grid-template-columns: minmax(84px, 34%) minmax(0, 1fr) 52px; align-items: center; gap: 8px; font-size: 12px; }
 .cr-level__label { color: var(--cr-ink-2); font-weight: 600; display: flex; align-items: center; gap: 6px; min-width: 0; }
 .cr-level__label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cr-level__n { font-size: 10px; color: var(--cr-ink-faint); font-weight: 700; flex: none; }
+.cr-level__n { font-size: 11px; color: var(--cr-ink-muted); font-weight: 700; flex: none; }
 .cr-level__track { position: relative; height: 16px; background: var(--cr-surface-2); border-radius: 4px; overflow: hidden; }
 .cr-level__bar { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 0 4px 4px 0; background: var(--cr-live); opacity: 0.85; }
 .cr-level__bar--poor { background: var(--cr-poor); }
@@ -246,8 +306,8 @@
 .cr-heat { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .cr-heat__grid { display: grid; gap: 3px; align-items: center; min-width: max-content; }
 .cr-heat__machine { font-size: 12px; font-weight: 700; color: var(--cr-ink); padding-right: 10px; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
-.cr-heat__group { font-size: 10px; color: var(--cr-ink-faint); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
-.cr-heat__colhead { font-size: 10.5px; font-weight: 700; color: var(--cr-ink-muted); text-align: center; white-space: nowrap; padding-bottom: 2px; }
+.cr-heat__group { font-size: 12px; color: var(--cr-ink-muted); font-weight: 600; text-transform: none; letter-spacing: 0; }
+.cr-heat__colhead { font-size: 11px; font-weight: 700; color: var(--cr-ink-muted); text-align: center; white-space: nowrap; padding-bottom: 2px; }
 .cr-heat__cell {
   width: 46px; height: 30px; border-radius: 5px; display: grid; place-items: center;
   font-size: 11px; font-weight: 700; color: var(--cr-ink-2); background: var(--cr-surface-2);
@@ -255,8 +315,8 @@
 .cr-heat__cell--empty { background: transparent; border: 1px dashed var(--cr-border); color: var(--cr-ink-faint); }
 .cr-heat__cell--total { width: 60px; font-weight: 800; }
 .cr-heat__cell.is-ink { color: var(--cr-on-dark); }
-.cr-heat__row--group .cr-heat__machine { color: var(--cr-ink-muted); font-weight: 800; letter-spacing: .04em; text-transform: uppercase; font-size: 11px; }
-.cr-heat__row--group .cr-heat__cell { border-radius: 3px; height: 24px; font-size: 10.5px; }
+.cr-heat__row--group .cr-heat__machine { color: var(--cr-ink-muted); font-weight: 800; letter-spacing: 0; text-transform: none; font-size: 11px; }
+.cr-heat__row--group .cr-heat__cell { border-radius: 3px; height: 24px; font-size: 11px; }
 .cr-heat__divider { grid-column: 1 / -1; height: 1px; background: var(--cr-border); margin: 4px 0; }
 .cr-scale { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--cr-ink-muted); font-weight: 600; }
 .cr-scale__step { width: 22px; height: 12px; border-radius: 3px; }
@@ -268,7 +328,7 @@
 .cr-plateau__spark { height: 44px; width: 120px; }
 .cr-pill {
   display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 999px;
-  font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
+  font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; white-space: nowrap;
 }
 .cr-pill--plateau { background: var(--cr-poor-fill); color: var(--cr-poor-text); }
 .cr-pill--regressing { background: var(--cr-poor-fill); color: var(--cr-poor-text); }
@@ -278,11 +338,17 @@
 .cr-pill--mb { background: var(--cr-live-fill); color: var(--cr-live-text); }
 
 /* ---- the caveat (reporting round) ---------------------------------------- */
+/* The amber is a straight 4px band painted as the first background layer
+   (type and depth, phase 14, Oct 4 2026; the plan's rule 3: a wide
+   border-left on a rounded box tapers into a crescent at its corners). The
+   4px it took is in the padding. */
 .cr-caveat {
   margin: 0; display: flex; gap: 10px; align-items: flex-start;
-  padding: 10px 14px; border-radius: var(--cr-radius-sm);
-  background: var(--cr-amber-fill); color: var(--cr-ink-2);
-  border-left: 4px solid var(--cr-amber);
+  padding: 10px 14px 10px 18px; border-radius: var(--cr-radius-sm);
+  background:
+    linear-gradient(var(--cr-amber), var(--cr-amber)) left / 4px 100% no-repeat,
+    var(--cr-amber-fill);
+  color: var(--cr-ink-2);
   font-size: 12.5px; line-height: 1.45;
 }
 .cr-caveat svg { flex: none; margin-top: 2px; color: var(--cr-amber); }
@@ -300,8 +366,21 @@
 .cr-dim__key { margin-top: 4px; color: var(--cr-ink-faint); }
 
 /* ---- attendance rhythm ------------------------------------------------------ */
-.cr-rhythm { display: flex; flex-direction: column; gap: 6px; border-left: 4px solid var(--cr-live); }
-.cr-rhythm--below { border-left-color: var(--cr-warn); }
+/* The rhythm card is a .cr-card too (panels.tsx), so its rounded corners
+   come from there, where a scan of this rule alone cannot see them. Its
+   colour is a straight 4px band (type and depth, phase 14, Oct 4 2026; the
+   plan's rule 3: a wide border-left on a rounded box tapers into a crescent
+   at its corners). The 3px it took is in the padding. */
+.cr-rhythm {
+  --cr-rhythm-band: var(--cr-live);
+  display: flex; flex-direction: column; gap: 6px;
+  border-left-color: var(--cr-rhythm-band);
+  background:
+    linear-gradient(var(--cr-rhythm-band), var(--cr-rhythm-band)) left / 4px 100% no-repeat border-box,
+    var(--cr-surface) padding-box;
+  padding-left: 19px;
+}
+.cr-rhythm--below { --cr-rhythm-band: var(--cr-warn); }
 .cr-rhythm__sentence { margin: 0; font-size: 15px; font-weight: 800; color: var(--cr-ink); line-height: 1.35; }
 
 /* ---- pain & incidents + Pulse ---------------------------------------------- */

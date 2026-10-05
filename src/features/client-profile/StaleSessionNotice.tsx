@@ -39,7 +39,7 @@ export function StaleSessionNotice({
       <button
         type="button"
         onClick={onDiscard}
-        className="shrink-0 inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-bold uppercase tracking-widest hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+        className="shrink-0 inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-(--raised) border border-input shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) text-red-700 dark:text-red-400 text-[14px] font-bold hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
       >
         <Trash2 className="w-4 h-4" aria-hidden />
         Discard it

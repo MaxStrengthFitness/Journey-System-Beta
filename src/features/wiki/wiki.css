@@ -20,10 +20,13 @@
    Tokens only — no hex values in this file. See wiki.tokens.css, whose
    colours are the app's (equipment.tokens.css) since Sep 27 2026.
 
-   THE APP'S TYPE VOICE (voice review follow-up, Sep 27 2026). Titles are
-   the display face (Saira Condensed) at 800 in italic capitals, the client
-   codex's page-title voice; buttons are 14px bold sentence case; text sits
-   on the codex's scale, 11 / 12 / 14 / 17 / 30, with an input at 16 (below).
+   THE APP'S TYPE VOICE (voice review follow-up, Sep 27 2026; type and
+   depth, Oct 4 2026). Titles are the display face (Saira Condensed) at 800,
+   upright and in their own capitalisation, the client codex's page-title
+   voice (AJ's 1A: slanted capitals are the studio name's and Start
+   session's alone); a section title is Geist 22/800; buttons are 14px bold
+   sentence case; text sits on the codex's scale, 11 / 12 / 14 / 17 / 22 /
+   30, with an input at 16 (below).
    learning-scale.test.ts holds it. The rules are the codex kit's
    (client-codex/kit/kit.css): read them before adding a size here.
    ========================================================================== */
@@ -66,7 +69,13 @@
  * The bar: back, breadcrumb, search
  * ------------------------------------------------------------------ */
 
+/* A shelf over the page (type and depth, Oct 4 2026): the hairline became the
+   shelf's short navy cast, so the page scrolls under the bar instead of being
+   cut by a rule. z 10, one under the masthead (11), whose own shelf falls on
+   this row when both are drawn. Never animated. */
 .wk__bar {
+  position: relative;
+  z-index: 10;
   flex: none;
   display: flex;
   align-items: center;
@@ -74,7 +83,8 @@
   min-height: 52px;
   padding: 0.5rem 1rem;
   background: var(--wk-bg);
-  border-bottom: 1px solid var(--wk-border);
+  border-bottom: 1px solid transparent;
+  box-shadow: var(--wk-shelf);
 }
 
 .wk__up {
@@ -126,10 +136,10 @@
   background: none;
   padding: 0 0.375rem;
   font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--wk-ink-muted);
   cursor: pointer;
 }
@@ -173,7 +183,13 @@
  * WikiShell.tsx for why it is two rows.
  * ------------------------------------------------------------------ */
 
+/* The masthead casts the shelf too (type and depth, Oct 4 2026). Row two
+   (.wk__bar--sub) is the page's own ground, so the masthead's cast falls on
+   it, and row two casts its own onto the page. z 11, one over row two: at
+   the same number the later row would paint over the masthead's shadow. */
 .wk__mast {
+  position: relative;
+  z-index: 11;
   flex: none;
   display: flex;
   align-items: center;
@@ -181,7 +197,8 @@
   min-height: 58px;
   padding: 0.5rem 1rem;
   background: var(--wk-surface);
-  border-bottom: 1px solid var(--wk-border);
+  border-bottom: 1px solid transparent;
+  box-shadow: var(--wk-shelf);
 }
 
 .wk__mast-home {
@@ -204,14 +221,16 @@
 /* The brand orange marks the one thing that is the tab's own. */
 .wk__mast-home svg { flex: none; color: var(--wk-hero-text); }
 
-/* The app's title voice at section size: the tab's name, not a page's. */
+/* A room's own title in its bar: the display face upright at 22, in its
+   own capitalisation (type and depth, phase 12; the kit's .wk__mast-title).
+   The tab's name, not a page's. */
 .wk__mast-title {
   font-family: var(--wk-font-display);
-  font-size: 17px;
+  font-size: 22px;
   font-weight: 800;
-  font-style: italic;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  font-style: normal;
+  text-transform: none;
+  letter-spacing: 0;
   line-height: 1.1;
   white-space: nowrap;
 }
@@ -271,16 +290,17 @@
 
 .wk__index-head { padding: 1rem 0 0.25rem; }
 
-/* The app's page-title voice: the codex's .cx-page-title. */
+/* The app's page-title voice: the codex's .cx-page-title, upright in its
+   own capitalisation (phase 12). */
 .wk__index-title {
   margin: 0;
   font-family: var(--wk-font-display);
   font-size: 30px;
   font-weight: 800;
-  font-style: italic;
-  text-transform: uppercase;
-  letter-spacing: 0.01em;
-  line-height: 1;
+  font-style: normal;
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1.04;
   color: var(--wk-ink);
   overflow-wrap: anywhere;
 }
@@ -306,12 +326,12 @@
   background: var(--wk-surface);
   box-shadow: var(--wk-elev-1);
 }
-/* A big number, as the codex draws one (.cx-big). */
+/* A big number, as the codex draws one (.cx-big): upright (phase 12). */
 .wk__stat-value {
   display: block;
   font-family: var(--wk-font-display);
   font-size: 30px;
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -320,10 +340,10 @@
 .wk__stat-label {
   display: block;
   margin-top: 0.25rem;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--wk-ink-muted);
 }
 /* The grouping switch, when a header carries one. */
@@ -345,10 +365,10 @@
 .wk__section-note,
 .wk__infobox-label {
   margin: 0 0 0.5rem;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--wk-ink-muted);
 }
 
@@ -364,17 +384,24 @@
   align-items: flex-start;
   gap: 0.125rem;
   min-height: 5.5rem;
-  padding: 0.75rem;
-  border: 1px solid var(--wk-border);
+  padding: 0.75rem 0.75rem 0.75rem calc(0.75rem + 2px);
+  border: 1px solid var(--wk-edge);
   /* The category colour, as a left rule. Same device as the row stripe below
-     and the article eyebrow, so one hue means one thing on every surface. */
-  border-left: 3px solid var(--wk-accent, var(--wk-border-strong));
+     and the article eyebrow, so one hue means one thing on every surface.
+     A straight 3px band painted as the first background layer (type and
+     depth, phase 10, Oct 4 2026): a 3px border-left on a rounded box
+     tapered into a crescent at the corners. The 2px it took is in the
+     padding. */
   border-radius: var(--wk-radius);
-  background: var(--wk-surface);
+  background:
+    linear-gradient(var(--wk-accent, var(--wk-border-strong)), var(--wk-accent, var(--wk-border-strong))) left / 3px 100% no-repeat border-box,
+    var(--wk-surface) padding-box;
   box-shadow: var(--wk-elev-1);
   text-align: left;
   cursor: pointer;
-  transition: box-shadow 140ms ease, transform 140ms ease;
+  /* Never the shadow (type and depth, phase 8; the plan's rule 5): a
+     shadow repaints every frame it moves. */
+  transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease;
 }
 .wk__cat:hover { box-shadow: var(--wk-elev-2); transform: translateY(-1px); }
 .wk__cat:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
@@ -397,10 +424,10 @@
   overflow-wrap: anywhere;
 }
 .wk__cat-count {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--wk-ink-muted);
 }
 .wk__cat-notes { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.375rem; }
@@ -429,10 +456,10 @@
   border-bottom: 1px solid var(--wk-border);
   background: var(--wk-accent-fill, var(--wk-surface-2));
   color: var(--wk-accent-text, var(--wk-ink-2));
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .wk__group-label { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .wk__group-count {
@@ -501,10 +528,10 @@
   overflow-wrap: anywhere;
 }
 .wk__row-meta {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--wk-ink-muted);
 }
 .wk__row-badges { flex: none; display: flex; flex-wrap: wrap; gap: 0.25rem; justify-content: flex-end; }
@@ -512,18 +539,22 @@
 
 /* The catalog code chip (Learning + Planner round). Fixed width so the names
    beside a column of codes line up, and in the row's category colour, so
-   "CP" in orange and "CR" in blue already say push and pull. */
+   "CP" in orange and "CR" in blue already say push and pull. A jersey tag
+   since type and depth, phase 12 (the kit's .chip.code): the display face
+   upright at 14/700, ringed inside in its own ink at 22%. */
 .wk__row-code {
   flex: none;
-  min-width: 3.25rem;
-  padding: 0.1875rem 0.375rem;
-  border-radius: 7px;
+  min-width: 48px;
+  padding: 3px 8px;
+  border-radius: 8px;
   background: var(--wk-accent-fill, var(--wk-surface-2));
   color: var(--wk-accent-text, var(--wk-ink-2));
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  line-height: 1.3;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent);
+  font-family: var(--wk-font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
   text-align: center;
   white-space: nowrap;
 }
@@ -555,10 +586,10 @@
   padding: 0.125rem 0.5rem;
   border: 1px solid transparent;
   border-radius: var(--wk-radius-pill);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
 }
 /* Under the badges: a card read before the infobox and the body — the
@@ -586,23 +617,25 @@
   align-items: center;
   gap: 0.375rem;
   margin: 0 0 0.25rem;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  /* The eyebrow: the ONE capitals style (type and depth review). */
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--wk-accent-text, var(--wk-ink-muted));
 }
 
-/* The page title: the app's voice, as the codex's .cx-page-title. */
+/* The page title: the app's voice, as the codex's .cx-page-title, upright
+   in its own capitalisation (phase 12). */
 .wk__h1 {
   margin: 0;
   font-family: var(--wk-font-display);
   font-size: 30px;
   font-weight: 800;
-  font-style: italic;
-  text-transform: uppercase;
-  line-height: 1;
-  letter-spacing: 0.01em;
+  font-style: normal;
+  text-transform: none;
+  line-height: 1.04;
+  letter-spacing: 0;
   color: var(--wk-ink);
   overflow-wrap: anywhere;
 }
@@ -623,25 +656,33 @@
  * Infobox
  * ------------------------------------------------------------------ */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+   outside, the fill clipped to the padding box, a short navy lift. Its 3px
+   accent border-top went (a crescent at the corners): the head paints the
+   accent as a straight band, its first background layer, over its tint. */
 .wk__infobox {
-  border: 1px solid var(--wk-border);
-  border-top: 3px solid var(--wk-accent, var(--wk-border-strong));
+  border: 1px solid var(--wk-edge);
   border-radius: var(--wk-radius);
   background: var(--wk-surface);
-  box-shadow: var(--wk-elev-1);
+  background-clip: padding-box;
+  box-shadow: var(--wk-elev-2), var(--wk-panel-highlight);
   overflow: hidden;
 }
 
+/* The head: its tint and the band, no rule under it, and the label voice,
+   14/700 in its own capitalisation (it was 11px capitals). */
 .wk__infobox-head {
   margin: 0;
-  padding: 0.5rem 0.875rem;
-  border-bottom: 1px solid var(--wk-border);
-  background: var(--wk-accent-fill, var(--wk-surface-2));
+  padding: calc(0.5rem + 2px) 0.875rem 0.5rem;
+  border-bottom: 0;
+  background:
+    linear-gradient(var(--wk-accent, var(--wk-border-strong)), var(--wk-accent, var(--wk-border-strong))) top / 100% 3px no-repeat,
+    var(--wk-accent-fill, var(--wk-surface-2));
   color: var(--wk-accent-text, var(--wk-ink-2));
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .wk__infobox-figure {
@@ -685,10 +726,10 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--wk-ink-muted);
 }
 .wk__fact dd {
@@ -733,15 +774,29 @@
   padding: 0.875rem 1rem 1rem;
 }
 
+/* A section's head: the panel-title voice, Geist 17/700 in ink and its own
+   capitalisation (type and depth, phase 10, Oct 4 2026; it was 12px
+   capitals at 0.12em), its icon in a 32px tinted square. */
 .wk__h2 {
   display: flex;
   align-items: center;
-  gap: 0.4375rem;
+  gap: 12px;
   margin: 0 0 0.5rem;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--wk-ink);
+}
+.wk__h2 > svg {
+  box-sizing: border-box;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 7px;
+  border-radius: 10px;
+  background: var(--wk-surface-2);
   color: var(--wk-ink-2);
 }
 .wk__h2--quiet { color: var(--wk-ink-muted); }
@@ -806,10 +861,10 @@
   cursor: pointer;
   list-style: none;
   color: var(--wk-ink-2);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .wk__fold-summary::-webkit-details-marker { display: none; }
 .wk__fold-summary:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: -2px; }
@@ -825,20 +880,25 @@
 
 .wk__warnings {
   border: 1px solid var(--wk-warn-border);
-  border-left: 3px solid var(--wk-warn-strong);
+  border-left-color: var(--wk-warn-strong);
   border-radius: var(--wk-radius);
-  background: var(--wk-warn-fill);
-  padding: 0.75rem 1rem 0.875rem;
+  /* A straight 3px band (type and depth, phase 14, Oct 4 2026; the plan's
+     rule 3: a wide border-left on a rounded box tapers into a crescent at
+     its corners). The 2px it took is in the padding. */
+  background:
+    linear-gradient(var(--wk-warn-strong), var(--wk-warn-strong)) left / 3px 100% no-repeat border-box,
+    var(--wk-warn-fill) padding-box;
+  padding: 0.75rem 1rem 0.875rem calc(1rem + 2px);
 }
 .wk__warnings-head {
   display: flex;
   align-items: center;
   gap: 0.4375rem;
   margin: 0 0 0.5rem;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--wk-warn);
 }
 .wk__warnings-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.4375rem; }
@@ -886,17 +946,22 @@
   gap: 0.625rem;
   width: 100%;
   min-height: 56px;
-  padding: 0.625rem 0.875rem;
-  border: 1px solid var(--wk-border);
-  border-left: 3px solid var(--wk-accent, var(--wk-live));
+  padding: 0.625rem 0.875rem 0.625rem calc(0.875rem + 2px);
+  border: 1px solid var(--wk-edge);
+  /* The accent at the left: a straight 3px band, the first background layer
+     (type and depth, phase 10, Oct 4 2026; it was a 3px border-left, a
+     crescent at the rounded corners). */
   border-radius: var(--wk-radius);
-  background: var(--wk-surface);
+  background:
+    linear-gradient(var(--wk-accent, var(--wk-live)), var(--wk-accent, var(--wk-live))) left / 3px 100% no-repeat border-box,
+    var(--wk-surface) padding-box;
   box-shadow: var(--wk-elev-1);
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: box-shadow 140ms ease, transform 140ms ease;
+  /* Never the shadow (type and depth, phase 8; rule 5). */
+  transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease;
 }
 .wk__linkcard:hover { box-shadow: var(--wk-elev-2); transform: translateY(-1px); }
 .wk__linkcard:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
@@ -922,7 +987,7 @@
   gap: 0.375rem;
   min-height: 40px;
   padding: 0 0.75rem;
-  border: 1px solid var(--wk-border);
+  border: 1px solid var(--wk-border-strong);
   border-radius: var(--wk-radius-pill);
   background: var(--wk-surface);
   color: var(--wk-ink);
@@ -931,7 +996,9 @@
   font-weight: 600;
   cursor: pointer;
 }
-.wk__chip:hover { border-color: var(--wk-accent, var(--wk-live)); background: var(--wk-accent-fill, var(--wk-live-fill)); }
+@media (hover: hover) {
+  .wk__chip:hover { border-color: var(--wk-accent, var(--wk-live)); background: var(--wk-accent-fill, var(--wk-live-fill)); }
+}
 .wk__chip:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 1px; }
 .wk__chip svg { color: var(--wk-accent-text, var(--wk-ink-muted)); }
 
@@ -941,7 +1008,13 @@
  * Shell furniture rather than catalog furniture: the figure's
  * anterior/posterior switch, the index's grouping switch and (later) the
  * Academy's section switch are the same control, and three copies of it is
- * three chances to drift. Matches the Hub's .st__filters exactly.
+ * three chances to drift.
+ *
+ * The run sheet's switch (type and depth follow-up, Oct 5 2026): a well
+ * inside its 3:1 edge holds the segments, each in the segment voice (14/600
+ * in its own capitalisation, "Overview", "Catalog", "Academy"), and the
+ * picked one is raised in it with the soft ring and 700. It was a hairline
+ * group of 11px tracked capitals, the last such switch in the app.
  * ------------------------------------------------------------------ */
 
 .wk__seg {
@@ -949,9 +1022,10 @@
   flex-wrap: wrap;
   gap: 2px;
   padding: 3px;
-  border: 1px solid var(--wk-border);
+  border: 1px solid var(--wk-border-strong);
   border-radius: 12px;
   background: var(--wk-surface-2);
+  box-shadow: var(--wk-elev-0);
 }
 
 .wk__seg-btn {
@@ -960,20 +1034,22 @@
   border: 0;
   border-radius: 9px;
   background: transparent;
-  color: var(--wk-ink-muted);
+  color: var(--wk-ink-2);
   font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
   cursor: pointer;
 }
 .wk__seg-btn[aria-pressed="true"] {
-  background: var(--wk-surface);
+  background: var(--wk-raised);
   color: var(--wk-ink);
-  box-shadow: 0 1px 2px var(--wk-shadow);
+  font-weight: 700;
+  box-shadow: var(--wk-elev-1), inset 0 0 0 1px var(--wk-edge-control), inset 0 1px 0 var(--wk-highlight);
 }
+.wk__seg-btn:active { transform: translateY(1px); }
 .wk__seg-btn:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 1px; }
 
 .wk__seg-divider {
@@ -1109,11 +1185,11 @@
   justify-content: space-between;
   gap: 0.5rem;
   margin: 0 0 0.5rem;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--wk-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--wk-ink-2);
 }
 .wk__search-count { font-variant-numeric: tabular-nums; color: var(--wk-ink-muted); }
 
@@ -1147,10 +1223,10 @@
 .wk__hit-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .wk__hit-title { font-size: 14px; font-weight: 600; color: var(--wk-ink); overflow-wrap: anywhere; }
 .wk__hit-meta {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--wk-ink-muted);
 }
 
@@ -1160,12 +1236,21 @@
 
 /* The codex's empty state (.cx-empty): a dashed box, a sentence, left-
    aligned, in the reading ink. A blank space centred in grey read as a
-   screen that had not loaded. */
+   screen that had not loaded. A WELL since type and depth (phase 9, Oct 4
+   2026): sunk into the well tone, no edge, the codex's padding. It was a
+   dashed box. The placeholder (a page that is gone or could not load) is
+   the same empty place, so it is the same well. */
+/* Learning's empty places and placeholders sit on the room's own ground
+   (.wk paints --wk-bg), never in a card, so the tray's tone (AJ's 1A,
+   Oct 5 2026): the well tone is lighter than the page and read raised; the
+   tray is below it in both modes. Ink reads 9.95:1 and ink-2 5.95:1 on it. */
 .wk__empty {
   margin: 1rem 0;
-  padding: 14px 16px;
-  border: 1px dashed var(--wk-border-strong);
+  padding: 16px 18px;
+  border: 0;
   border-radius: 12px;
+  background: var(--wk-tray);
+  box-shadow: var(--wk-elev-0);
   font-size: 14px;
   line-height: 1.55;
   color: var(--wk-ink-2);
@@ -1174,9 +1259,11 @@
 .wk__placeholder {
   margin: 1rem 0;
   max-width: var(--wk-measure);
-  padding: 14px 16px;
-  border: 1px dashed var(--wk-border-strong);
+  padding: 16px 18px;
+  border: 0;
   border-radius: 12px;
+  background: var(--wk-tray);
+  box-shadow: var(--wk-elev-0);
 }
 .wk__placeholder-title { margin: 0 0 0.25rem; font-size: 17px; font-weight: 800; color: var(--wk-ink); }
 .wk__placeholder-body { margin: 0; font-size: 14px; line-height: 1.55; color: var(--wk-ink-2); }
@@ -1261,17 +1348,21 @@
    decision nobody asked for. */
 .wk__termcard {
   border: 1px solid var(--wk-live);
-  border-left: 3px solid var(--wk-live);
   border-radius: var(--wk-radius);
-  background: var(--wk-live-fill);
-  padding: 0.75rem 1rem;
+  /* A straight 3px band (type and depth, phase 14, Oct 4 2026; the plan's
+     rule 3: a wide border-left on a rounded box tapers into a crescent at
+     its corners). The 2px it took is in the padding. */
+  background:
+    linear-gradient(var(--wk-live), var(--wk-live)) left / 3px 100% no-repeat border-box,
+    var(--wk-live-fill) padding-box;
+  padding: 0.75rem 1rem 0.75rem calc(1rem + 2px);
 }
 .wk__termcard-term {
   margin: 0 0 0.25rem;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--wk-live-text);
 }
 .wk__termcard-def {
@@ -1353,11 +1444,11 @@
   align-items: center;
   gap: 0.375rem;
   margin: 0 0 0.5rem;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--wk-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--wk-ink-2);
 }
 
 .wk__studio-edit {
@@ -1367,9 +1458,10 @@
   gap: 0.25rem;
   min-height: 40px;
   padding: 0 0.75rem;
-  border: 1px solid var(--wk-border);
-  border-radius: var(--wk-radius-pill);
-  background: var(--wk-surface-2);
+  border: 1px solid var(--wk-border-strong);
+  border-radius: 12px;
+  background: var(--wk-raised);
+  box-shadow: var(--wk-elev-1), inset 0 1px 0 var(--wk-highlight);
   color: var(--wk-ink-2);
   font: inherit;
   font-size: 14px;
@@ -1379,6 +1471,7 @@
   cursor: pointer;
 }
 .wk__studio-edit:hover { border-color: var(--wk-live); color: var(--wk-live-text); }
+.wk__studio-edit:active { transform: translateY(1px); box-shadow: var(--wk-press); }
 
 .wk__studio-by {
   margin: 0.625rem 0 0;
@@ -1418,11 +1511,11 @@
 .wk__field { display: flex; flex-direction: column; gap: 0.25rem; }
 
 .wk__field-label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--wk-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--wk-ink-2);
 }
 
 .wk__field-error { font-size: 12px; font-weight: 600; color: var(--wk-alert); }
@@ -1466,20 +1559,23 @@
 
 .wk__editor-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
-/* The codex's button: 14px bold sentence case, 10px corners. */
+/* The codex's button: 14px bold sentence case, 12px corners, RAISED (type
+   and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair lighter than the
+   card, a contact lift and a white top light, on the 3:1 edge, which stays;
+   a press on :active, and flat when it can't be pressed. */
 .wk__btn {
   min-height: var(--wk-tap);
   padding: 0 1rem;
   border: 1px solid var(--wk-border-strong);
-  border-radius: 10px;
-  background: var(--wk-surface);
+  border-radius: 12px;
+  background: var(--wk-raised);
+  box-shadow: var(--wk-elev-1), inset 0 1px 0 var(--wk-highlight);
   color: var(--wk-ink);
   font: inherit;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
-.wk__btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .wk__btn:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
 /* Save, Publish, Add note: solid brand blue, like every Save in the app
    (voice review follow-up, Sep 27 2026). It was orange for a day; orange is
@@ -1488,13 +1584,18 @@
   border-color: var(--wk-live);
   background: var(--wk-live);
   color: var(--wk-live-on);
+  box-shadow: var(--wk-glow-live), var(--wk-solid-light);
 }
 /* Quiet is quiet: no crimson on hover (an iPad applies :hover on the tap, so
-   a harmless Close flashed red as it closed). */
-.wk__btn--quiet { border-color: transparent; background: transparent; color: var(--wk-ink-muted); }
+   a harmless Close flashed red as it closed), and no box, so no lift. */
+.wk__btn--quiet { border-color: transparent; background: transparent; color: var(--wk-ink-muted); box-shadow: none; }
 .wk__btn--quiet:hover { color: var(--wk-ink); }
-/* Retire: destructive, and it says so before anyone touches it. */
-.wk__btn--danger { border-color: var(--wk-alert); background: var(--wk-alert-fill); color: var(--wk-alert); }
+/* Retire: destructive, and it says so before anyone touches it. A tint
+   lifts without the white top light. */
+.wk__btn--danger { border-color: var(--wk-alert); background: var(--wk-alert-fill); color: var(--wk-alert); box-shadow: var(--wk-elev-1); }
+.wk__btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--wk-press); }
+.wk__btn--quiet:not(:disabled):active { box-shadow: none; }
+.wk__btn:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
 
 /* ------------------------------------------------------------------ *
  * Split layout — 1024px, matching features/equipment's SPLIT_AT and the old

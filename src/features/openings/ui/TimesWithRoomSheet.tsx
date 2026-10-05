@@ -261,7 +261,7 @@ function SheetBody({ data, onClose }: { data: OpeningsData; onClose: () => void 
         <button
           type="button"
           onClick={onClose}
-          className="min-h-11 min-w-11 px-4 rounded-xl border border-div-d bg-bg-dark-3 text-[14px] font-bold text-ink-d1 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+          className="min-h-11 min-w-11 px-4 rounded-xl border border-input bg-(--raised) shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) transition-transform text-[14px] font-bold text-ink-d1 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
         >
           {DONE}
         </button>
@@ -279,7 +279,7 @@ function SheetBody({ data, onClose }: { data: OpeningsData; onClose: () => void 
                   aria-pressed={pressed}
                   onClick={() => setAnyone(c.trainerId === null)}
                   className={`min-h-10 px-4 rounded-full border text-[14px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring) ${
-                    pressed ? "border-(--eq-live) bg-(--eq-live-fill) text-(--eq-live-text)" : "border-div-d bg-bg-dark-3 text-ink-d1"
+                    pressed ? "border-(--eq-live) bg-(--eq-live-fill) text-(--eq-live-text)" : "border-input bg-bg-dark-3 text-ink-d1"
                   }`}
                 >
                   {c.label}
@@ -333,7 +333,7 @@ function TimesPart<T>({ title, testId, part, groups }: { title: string; testId: 
               : null;
   return (
     <section className="flex flex-col gap-2" data-testid={testId}>
-      <h3 className="text-[12px] font-extrabold uppercase tracking-[0.12em] text-ink-d2 break-words">{title}</h3>
+      <h3 className="text-[17px] font-bold text-ink-d1 break-words">{title}</h3>
       {line && <p className="text-[14px] text-ink-d2">{line}</p>}
       {part.kind === "list" && (
         <>

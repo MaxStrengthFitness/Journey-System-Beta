@@ -26,36 +26,48 @@
 
 /* --- shared card ---------------------------------------------------- */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): an
+   edge seen from outside (--tp-edge, the fill clipped to the padding box)
+   and a short two-layer navy lift. It was a hairline and a 1px shadow. */
 .tp-card {
   background: var(--tp-surface);
-  border: 1px solid var(--tp-border);
+  background-clip: padding-box;
+  border: 1px solid var(--tp-edge);
   border-radius: var(--tp-radius);
-  box-shadow: 0 1px 2px var(--tp-shadow);
+  box-shadow: var(--tp-elev-2), var(--tp-panel-highlight);
   overflow: hidden;
 }
 
+/* The head: no band and no rule, the title carries it (it was a tinted
+   strip cut by a hairline). What follows it starts 12px under the title. */
 .tp-card__head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 16px;
-  background: var(--tp-surface-2);
-  border-bottom: 1px solid var(--tp-border);
+  padding: 16px 16px 0;
+  background: transparent;
+  border-bottom: 0;
 }
+.tp-card__head + .tp-card__body { padding-top: 12px; }
+.tp-card__head + .tp-rows,
+.tp-card__head + .tp-stats { margin-top: 12px; }
 
+/* The panel-title voice: Geist 17/700 in ink, its own capitalisation (it
+   was 12px grey capitals at 0.12em). */
 .tp-card__title {
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--tp-ink-2);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--tp-ink);
   margin: 0;
 }
 
 .tp-card__count {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--tp-ink-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -71,9 +83,10 @@
   gap: 16px;
   padding: 16px;
   background: var(--tp-surface);
-  border: 1px solid var(--tp-border);
+  background-clip: padding-box;
+  border: 1px solid var(--tp-edge);
   border-radius: var(--tp-radius);
-  box-shadow: 0 1px 2px var(--tp-shadow);
+  box-shadow: var(--tp-elev-2), var(--tp-panel-highlight);
 }
 
 .tp-avatar {
@@ -150,11 +163,24 @@
   border: 1px solid var(--tp-border);
   background: var(--tp-surface-2);
   color: var(--tp-ink-2);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
+}
+
+/* A chip a trainer TAPS to pick (the Kaizen roster's "Why are you tracking
+   them?"): the firm 3:1 edge buttons have, not the hairline an
+   informational chip keeps (AJ's 3A, Oct 5 2026), and 40px tall (it was a
+   34px inline height). Its fill stays; the picked one keeps the Kaizen
+   tint and takes the Kaizen mark's colour for its edge (below). */
+.tp-chip--pick {
+  height: auto;
+  min-height: 40px;
+  padding: 0 12px;
+  border-color: var(--tp-border-strong);
+  cursor: pointer;
 }
 
 .tp-chip--role   { background: var(--tp-hero-fill); border-color: transparent; color: var(--tp-hero-text); }
@@ -162,25 +188,34 @@
 .tp-chip--ok     { background: var(--tp-ok-fill);   border-color: transparent; color: var(--tp-ok); }
 .tp-chip--warn   { background: var(--tp-warn-fill);  border-color: transparent; color: var(--tp-warn); }
 .tp-chip--kaizen { background: var(--tp-kaizen-fill); border-color: transparent; color: var(--tp-kaizen-text); }
+.tp-chip--pick.tp-chip--kaizen { border-color: var(--tp-kaizen); }
 
 /* --- buttons -------------------------------------------------------- */
 
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, on the 3:1
+   edge, which stays; radius 12; a press on :active, and flat when it can't
+   be pressed. The plain hover is a pointer's only, so an iPad's kept hover
+   never flattens a button. */
 .tp-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   min-height: 40px;
   padding: 0 14px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--tp-border-strong);
-  background: var(--tp-surface);
+  background: var(--tp-raised);
+  box-shadow: var(--tp-elev-1), inset 0 1px 0 var(--tp-highlight);
   color: var(--tp-ink);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
 }
 
-.tp-btn:hover  { background: var(--tp-surface-3); }
+@media (hover: hover) {
+  .tp-btn:hover  { background: var(--tp-surface-3); }
+}
 .tp-btn:focus-visible { outline: 2px solid var(--tp-focus-ring); outline-offset: 2px; }
 
 /* Save on the standing week and the profile: solid brand blue with its
@@ -191,10 +226,15 @@
   background: var(--tp-live);
   border-color: var(--tp-live);
   color: var(--tp-live-on);
+  box-shadow: var(--tp-glow-live), var(--tp-solid-light);
 }
 .tp-btn--primary:hover { filter: brightness(1.06); background: var(--tp-live); }
 
-.tp-btn--ghost { background: transparent; border-color: var(--tp-border); color: var(--tp-ink-2); }
+.tp-btn--ghost { background: transparent; border-color: var(--tp-border); color: var(--tp-ink-2); box-shadow: none; }
+
+.tp-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--tp-press); }
+.tp-btn--ghost:not(:disabled):active { box-shadow: none; }
+.tp-btn:disabled { box-shadow: none; }
 
 /* --- read-only notice ----------------------------------------------- */
 
@@ -235,11 +275,11 @@
 
 .tp-label {
   display: block;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--tp-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--tp-ink-2);
   margin-bottom: 8px;
 }
 
@@ -323,10 +363,10 @@
 .tp-stat--hero .tp-stat__v { color: var(--tp-hero-text); }
 
 .tp-stat__k {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--tp-ink-muted);
 }
 
@@ -344,7 +384,7 @@
   min-height: 52px;
   padding: 8px 16px;
   border: 0;
-  border-top: 1px solid var(--tp-border);
+  border-top: 1px solid var(--tp-divider);
   background: var(--tp-surface);
   color: inherit;
   text-align: left;
@@ -403,10 +443,10 @@
 
 .tp-yw__heading {
   margin: 0;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--tp-ink-2);
 }
 
@@ -483,11 +523,11 @@
   margin: 0;
   padding: 10px 16px 6px;
   border-top: 1px solid var(--tp-border);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--tp-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--tp-ink-2);
 }
 
 .tp-mc__group:first-child { border-top: 0; }

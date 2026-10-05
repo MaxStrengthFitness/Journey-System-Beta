@@ -36,6 +36,8 @@
   --cx-surface:         var(--eq-surface);
   --cx-surface-2:       var(--eq-surface-2);
   --cx-surface-3:       var(--eq-surface-3);
+  /* Below the page in both modes: a well on the page ground (AJ's 1A). */
+  --cx-tray:            var(--eq-tray);
   --cx-line:            var(--eq-border);
   --cx-line-2:          var(--eq-border-strong);
 
@@ -71,6 +73,26 @@
   --cx-focus:           var(--eq-focus-ring);
   --cx-shadow:          var(--eq-shadow);
 
+  /* ---- depth (type and depth, phase 3, Oct 4 2026) --------------------
+     The panel, the well and the raised button, by the Hub's names. */
+  --cx-raised:          var(--eq-raised);
+  --cx-edge:            var(--eq-edge);
+  --cx-edge-control:    var(--eq-edge-control);
+  --cx-divider:         var(--eq-divider);
+  --cx-highlight:       var(--eq-highlight);
+  --cx-elev-0:          var(--eq-elev-0);
+  --cx-elev-1:          var(--eq-elev-1);
+  --cx-elev-2:          var(--eq-elev-2);
+  --cx-elev-3:          var(--eq-elev-3);
+  --cx-elev-4:          var(--eq-elev-4);
+  --cx-elev-card:       var(--eq-elev-card);
+  --cx-panel-highlight: var(--eq-panel-highlight);
+  --cx-press:           var(--eq-press);
+  --cx-glow-live:       var(--eq-glow-live);
+  --cx-solid-light:     var(--eq-solid-light);
+  --cx-glow-go:         var(--eq-glow-go);
+  --cx-go-light:        var(--eq-go-light);
+
   /* ---- the body figure (Where it matters, Sep 26 2026) ------------------
      The Catalog's muscle figure in the codex's own grey and blue: the
      muscles in the faint ink (a shade off the Catalog's slate, and opaque,
@@ -97,10 +119,14 @@
   --cx-dreams-fill:     var(--ford-dreams-fill);
 
   /* ---- type: the whole scale ------------------------------------------- */
+  /* 22 joined on Oct 4 2026 (type and depth, phase 2): a section title, a
+     name in a sheet, a headline figure. A scale step, not an exception;
+     11 stays legal for the rules that use it, and nothing new does. */
   --cx-fs-11:           11px;      /* eyebrows, chip caps, fact labels      */
   --cx-fs-12:           12px;      /* meta, sources, field labels, chips    */
   --cx-fs-14:           14px;      /* body, buttons, inputs                 */
   --cx-fs-17:           17px;      /* ledes, card and section titles        */
+  --cx-fs-22:           22px;      /* section titles, a name in a sheet     */
   --cx-fs-30:           30px;      /* page titles, a big number             */
   /* The app's two faces. The fallbacks matter: these files are not run
      through Tailwind, so they must not depend on it having emitted its

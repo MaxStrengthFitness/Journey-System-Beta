@@ -73,10 +73,10 @@
   outline-offset: 2px;
 }
 .fit-modes__label {
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .fit-modes__blurb {
   font-size: 11px;
@@ -111,6 +111,10 @@
   color: var(--eq-ink-muted);
 }
 
+/* Type and depth, phase 8 (Oct 4 2026; AJ's 2A): a button speaks the
+   button voice, 14/700 in ordinary capitalisation (they were 12.5px spaced
+   capitals), so Save, which takes Go's depth in that voice, reads as one
+   family with Cancel beside it; a chip keeps its 13px. */
 .fit-chip,
 .fit-btn {
   display: inline-flex;
@@ -120,30 +124,37 @@
   min-height: 44px;
   padding: 0 14px;
   border: 1px solid var(--eq-border-strong);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--eq-surface);
   color: var(--eq-ink-2);
-  font-size: 12.5px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
 }
-.fit-chip { text-transform: none; letter-spacing: 0; font-size: 13px; }
+.fit-chip { font-size: 13px; }
 .fit-chip[data-on],
 .fit-btn[data-on] {
   border-color: var(--eq-live);
   background: var(--eq-live-fill);
   color: var(--eq-live-text);
 }
-.fit-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+/* RAISED: the quiet button is a fill a hair lighter than the card, a contact
+   lift and a white top light, on the 3:1 edge, which stays; the blue tint
+   keeps its live edge and lifts without the top light; Save (the hero) takes
+   Go's depth, a short orange glow and a white top light, not Go's slanted
+   words. Each presses in on :active and lies flat when it can't be pressed. */
 .fit-btn--live {
   border-color: var(--eq-live);
   background: var(--eq-live-fill);
   color: var(--eq-live-text);
+  box-shadow: var(--eq-elev-1);
 }
-.fit-btn--quiet { border-color: var(--eq-border-strong); background: transparent; }
+.fit-btn--quiet {
+  border-color: var(--eq-border-strong);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
+}
 /* The one loud action: the logo orange with navy words (Oct 4 2026), its
    fill restated on :hover, which an iPad keeps after a tap. */
 .fit-btn--hero,
@@ -154,12 +165,15 @@
 }
 .fit-btn--hero {
   min-width: 148px;
+  box-shadow: var(--eq-glow-go), var(--eq-go-light);
 }
+.fit-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--eq-press); }
+.fit-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 
 .fit-filter {
   display: inline-flex;
   padding: 3px;
-  border: 1px solid var(--eq-border);
+  border: 1px solid var(--eq-border-strong);
   border-radius: 12px;
   background: var(--eq-surface-2);
 }
@@ -194,15 +208,20 @@
 .fit-switch input { width: 20px; height: 20px; accent-color: var(--eq-live); }
 
 .fit-loading { display: flex; justify-content: center; padding: 6px 0; }
+/* An empty place is a well with a sentence (type and depth, the sweep).
+   Programming's Setup sits on the page ground, so the tray's tone (AJ's 1A,
+   Oct 5 2026): the well tone is lighter than the page and read raised. */
 .fit-empty {
   margin: 0;
   padding: 28px 16px;
-  border: 1px dashed var(--eq-border-strong);
-  border-radius: var(--eq-radius);
+  border: 0;
+  border-radius: 12px;
+  background: var(--eq-tray);
+  box-shadow: var(--eq-elev-0);
   text-align: center;
   font-size: 14px;
   font-weight: 700;
-  color: var(--eq-ink-muted);
+  color: var(--eq-ink-2);
 }
 
 /* ---------- The list ------------------------------------------------------ */
@@ -217,30 +236,38 @@
 }
 
 .fit-row {
+  /* The state is a straight 4px band painted as the first background layer
+     (type and depth, phase 14, Oct 4 2026; the plan's rule 3: a wide
+     border-left on a rounded box tapers into a crescent at its corners).
+     The 3px it took is in the padding. A state sets --fit-band; a row's own
+     fill changes through background-color, which keeps the band. */
+  --fit-band: var(--eq-ok);
   display: grid;
   grid-template-columns: minmax(160px, 210px) minmax(0, 1fr);
   gap: 6px 14px;
-  padding: 8px 12px;
+  padding: 8px 12px 8px 15px;
   border: 1px solid var(--eq-border);
-  border-left: 4px solid var(--eq-ok);
+  border-left-color: var(--fit-band);
   border-radius: var(--eq-radius);
-  background: var(--eq-surface);
+  background:
+    linear-gradient(var(--fit-band), var(--fit-band)) left / 4px 100% no-repeat border-box,
+    var(--eq-surface) padding-box;
   /* The pad and the save bar stick to the bottom; a row scrolled "into view"
      must clear them, not hide underneath. */
   scroll-margin-bottom: 260px;
   scroll-margin-top: 120px;
 }
-.fit-row[data-state="empty"] { border-left-color: var(--eq-border-strong); }
+.fit-row[data-state="empty"] { --fit-band: var(--eq-border-strong); }
 /* Check mode: a machine with nothing saved is one line, not a row of boxes. */
 .fit-row--compact {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  padding: 6px 12px;
-  background: transparent;
+  padding: 6px 12px 6px 15px;
+  background-color: transparent;
 }
 .fit-row--compact .fit-row__name { font-size: 13.5px; color: var(--eq-ink-2); }
-.fit-row[data-state="flag"] { border-left-color: var(--eq-warn); }
-.fit-row[data-dirty] { border-left-color: var(--eq-live); }
+.fit-row[data-state="flag"] { --fit-band: var(--eq-warn); }
+.fit-row[data-dirty] { --fit-band: var(--eq-live); }
 .fit-row__id { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 /* Portrait comes AFTER the base rule it overrides: at equal specificity the
    later rule wins, and the other way round the name sat centred in a column. */
@@ -252,10 +279,10 @@
 .fit-row__name {
   margin: 0;
   font-size: 15px;
-  font-weight: 900;
-  letter-spacing: 0.02em;
+  font-weight: 800;
+  letter-spacing: 0;
   line-height: 1.2;
-  text-transform: uppercase;
+  text-transform: none;
   /* Never truncated: a long name wraps. */
   overflow-wrap: anywhere;
 }
@@ -305,11 +332,11 @@
   /* A long label ("Shoulder Pads") wraps over its box instead of pushing the
      next one along: the boxes stay in a grid a thumb can learn. */
   max-width: 96px;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
   line-height: 1.15;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 .fit-cell--read .fit-cell__label { max-width: none; white-space: nowrap; }
@@ -354,7 +381,7 @@
 }
 button.fit-cell--read { cursor: pointer; }
 .fit-cell--read[data-empty] .fit-cell__value { color: var(--eq-ink-faint); font-weight: 600; }
-.fit-cell__value { display: inline-flex; align-items: center; gap: 5px; font-size: 17px; font-weight: 900; line-height: 1.1; }
+.fit-cell__value { display: inline-flex; align-items: center; gap: 5px; font-size: 17px; font-weight: 800; line-height: 1.1; }
 .fit-cell--read[data-flag="rare"] { border-color: var(--eq-warn); background: var(--eq-warn-fill); }
 .fit-cell--read[data-flag="rare"] .fit-cell__value,
 .fit-cell--read[data-flag="rare"] .fit-cell__label { color: var(--eq-warn); }
@@ -381,10 +408,12 @@ button.fit-cell--read { cursor: pointer; }
 .fit-start__row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .fit-start__stepper { display: inline-flex; align-items: center; gap: 8px; }
 .fit-start__label {
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  /* "Starting weight" as written, 12/700, as a cell's label is (type and
+     depth: no capitals, nothing under 11px). */
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 .fit-start__input {
@@ -416,7 +445,7 @@ button.fit-cell--read { cursor: pointer; }
   background: transparent;
   color: var(--eq-live-text);
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 800;
   cursor: pointer;
 }
 .fit-abc[data-on] { border-style: solid; border-color: var(--eq-live); background: var(--eq-live-fill); }
@@ -456,10 +485,10 @@ button.fit-cell--read { cursor: pointer; }
 .fit-suggest[data-strength="fair"] { background: var(--eq-surface-2); }
 .fit-suggest__kicker {
   margin-right: 8px;
-  font-size: 10.5px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-live-text);
 }
 .fit-suggest[data-strength="fair"] .fit-suggest__kicker { color: var(--eq-ink-muted); }
@@ -493,8 +522,8 @@ button.fit-cell--read { cursor: pointer; }
   cursor: pointer;
 }
 .fit-pick[data-strong] { border-style: solid; }
-.fit-pick b { font-size: 17px; font-weight: 900; color: var(--eq-live-text); }
-.fit-pick__label { color: var(--eq-ink-muted); font-size: 11.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.fit-pick b { font-size: 17px; font-weight: 800; color: var(--eq-live-text); }
+.fit-pick__label { color: var(--eq-ink-muted); font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; }
 .fit-pick__count { color: var(--eq-ink-faint); font-size: 11.5px; font-weight: 700; }
 
 /* ---------- Worth a look -------------------------------------------------- */
@@ -530,7 +559,7 @@ button.fit-cell--read { cursor: pointer; }
 }
 .fit-evidence__who,
 .fit-evidence__note { margin: 0; font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--eq-ink-2); }
-.fit-evidence__who b { font-weight: 900; color: var(--eq-ink); }
+.fit-evidence__who b { font-weight: 800; color: var(--eq-ink); }
 .fit-evidence__note { color: var(--eq-ink-muted); }
 
 .fit-ladder { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
@@ -545,17 +574,17 @@ button.fit-cell--read { cursor: pointer; }
   font-weight: 700;
   color: var(--eq-ink-muted);
 }
-.fit-ladder li b { font-size: 13px; font-weight: 900; color: var(--eq-ink); }
+.fit-ladder li b { font-size: 13px; font-weight: 800; color: var(--eq-ink); }
 .fit-ladder li[data-stop] { border-color: var(--eq-live); background: var(--eq-live-fill); color: var(--eq-live-text); }
 
 .fit-dists { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
 .fit-dist__label {
   display: block;
   margin-bottom: 4px;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 .fit-dist__bars { display: flex; flex-direction: column; gap: 3px; margin: 0; padding: 0; list-style: none; }
@@ -580,7 +609,7 @@ button.fit-cell--read { cursor: pointer; }
   background: var(--eq-surface);
 }
 .fit-match__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.fit-match__title { margin: 0; font-size: 14px; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; }
+.fit-match__title { margin: 0; font-size: 14px; font-weight: 700; letter-spacing: 0; text-transform: none; }
 .fit-match__sub,
 .fit-match__note,
 .fit-match__why,
@@ -599,7 +628,7 @@ button.fit-cell--read { cursor: pointer; }
 .fit-match__row[data-on] { border-color: var(--eq-live); }
 .fit-match__toggle { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
 .fit-match__toggle input { width: 22px; height: 22px; accent-color: var(--eq-live); }
-.fit-match__name { font-size: 14px; font-weight: 900; }
+.fit-match__name { font-size: 14px; font-weight: 800; }
 .fit-match__onfile { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--eq-ink-2); }
 .fit-match__row[data-missing] .fit-match__onfile { font-style: italic; color: var(--eq-ink-faint); }
 .fit-match__reach { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -659,9 +688,9 @@ button.fit-cell--read { cursor: pointer; }
   box-shadow: 0 -6px 22px var(--eq-shadow);
 }
 .fit-pad__context { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
-.fit-pad__machine { font-size: 13px; font-weight: 900; letter-spacing: 0.03em; text-transform: uppercase; }
+.fit-pad__machine { font-size: 13px; font-weight: 800; letter-spacing: 0; text-transform: none; }
 .fit-pad__field { display: inline-flex; align-items: baseline; gap: 8px; font-size: 13px; font-weight: 800; color: var(--eq-ink-muted); }
-.fit-pad__field b { font-size: 20px; font-weight: 900; color: var(--eq-live-text); }
+.fit-pad__field b { font-size: 20px; font-weight: 800; color: var(--eq-live-text); }
 .fit-pad__where { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--eq-ink-faint); }
 
 .fit-pad__keys { display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr) minmax(0, 1.1fr); gap: 10px; }
@@ -695,7 +724,7 @@ button.fit-cell--read { cursor: pointer; }
 .fit-pad__key:active { background: var(--eq-surface-3); }
 .fit-pad__key--option { flex: 1 1 84px; font-size: 16px; }
 .fit-pad__key--option[data-on] { border-color: var(--eq-live); background: var(--eq-live-fill); color: var(--eq-live-text); }
-.fit-pad__key--quiet { flex: 1 1 auto; font-size: 13px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--eq-ink-2); }
+.fit-pad__key--quiet { flex: 1 1 auto; font-size: 14px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--eq-ink-2); }
 .fit-pad__key--offer { flex: 1 1 auto; border-color: var(--eq-live); background: var(--eq-live-fill); color: var(--eq-live-text); font-size: 15px; }
 .fit-pad__key--next {
   flex: 2 1 auto;
@@ -703,8 +732,8 @@ button.fit-cell--read { cursor: pointer; }
   background: var(--eq-live);
   color: var(--eq-live-on);
   font-size: 16px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 @media (max-width: 820px) {
   .fit-pad__keys { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
@@ -726,7 +755,7 @@ button.fit-cell--read { cursor: pointer; }
   box-shadow: 0 -4px 18px var(--eq-shadow);
 }
 .fit-save__count { flex: 1 1 220px; margin: 0; font-size: 13.5px; font-weight: 700; color: var(--eq-ink-2); }
-.fit-save__count b { font-weight: 900; color: var(--eq-ink); }
+.fit-save__count b { font-weight: 800; color: var(--eq-ink); }
 .fit-save__suggested { color: var(--eq-live-text); }
 .fit-save__reason {
   flex: 2 1 260px;

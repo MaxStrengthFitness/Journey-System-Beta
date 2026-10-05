@@ -6,14 +6,29 @@
    ========================================================================== */
 @import "../equipment/equipment.tokens.css";
 
+/* The veil under the peek: the scrim's navy at today's light strength,
+   never raw black (type and depth review, Oct 5 2026). */
 .hp-backdrop {
   position: fixed;
   inset: 0;
   z-index: 60;
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(0, 18, 36, 0.12);
 }
 
+/* A popover, the deepest lift a page holds (type and depth, phase 11):
+   --eq-elev-4, radius 18 (a sheet's), 18px inside. In light the card's own
+   fill on the soft edge, the fill clipped to the padding box so the edge is
+   seen from outside; in dark the popover fill, a step LIGHTER than the card
+   (#22374B, higher is lighter), with a white rim at .055 and a white top
+   light at .07 (equipment.tokens.css, --eq-popover*). It was a 3:1 outline
+   with one 40px blur. Its words read at 4.5:1 on it in both modes (the
+   muted ink 5.33:1 in dark) and its buttons' 3:1 edge at 3.12:1. */
 .hp {
+  /* A raised button on the peek: in dark the popover is lighter than the
+     page's raised fill, so its buttons step up again, their 3:1 edge with
+     them (equipment.tokens.css, --eq-popover-raised and -edge). */
+  --eq-raised: var(--eq-popover-raised);
+  --eq-border-strong: var(--eq-popover-edge);
   position: fixed;
   z-index: 61;
   box-sizing: border-box;
@@ -24,12 +39,13 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--eq-border-strong);
-  border-radius: 16px;
-  background: var(--eq-surface);
+  padding: 18px;
+  border: 1px solid var(--eq-popover-rim);
+  border-radius: 18px;
+  background: var(--eq-popover);
+  background-clip: padding-box;
   color: var(--eq-ink);
-  box-shadow: 0 16px 40px var(--eq-shadow);
+  box-shadow: var(--eq-elev-4), inset 0 1px 0 var(--eq-popover-light);
 }
 
 .hp[data-mode="center"] {
@@ -50,18 +66,24 @@
   gap: 12px;
 }
 
+/* A person's name as a title (AJ's 1A): the display face, upright, 22 at
+   800, in its own capitalisation. Whole, wrapping, never cut. */
 .hp-name {
   margin: 0;
-  font-size: 20px;
+  font-family: var(--font-display);
+  font-size: 22px;
   font-weight: 800;
-  line-height: 1.2;
+  line-height: 1.04;
+  letter-spacing: 0;
   overflow-wrap: anywhere;
 }
 
+/* The time, the trainer and the session under the name: a quiet sentence in
+   a panel, 14 at the body weight in the muted ink (it was 13/600). */
 .hp-sub {
-  margin: 2px 0 0;
-  font-size: 13px;
-  font-weight: 600;
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: var(--fw-body);
   color: var(--eq-ink-muted);
 }
 
@@ -146,7 +168,7 @@
 
 .hp-facts {
   padding-top: 10px;
-  border-top: 1px solid var(--eq-border);
+  border-top: 1px solid var(--eq-divider);
 }
 
 .hp-facts li {
@@ -157,14 +179,19 @@
   line-height: 1.4;
 }
 
+/* "Last in", "Package": the definition voice, as Settings' rows, 14 at 600
+   in the muted ink, in the capitalisation the model types (type and depth,
+   phase 11; they were 11px capitals). The answer beside it is ink-2. */
 .hp-facts dt,
 .hp-fact-label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
   color: var(--eq-ink-muted);
-  padding-top: 2px;
+}
+
+.hp-fact-text {
+  color: var(--eq-ink-2);
 }
 
 .hp-fact-text[data-muted="true"] {
@@ -202,6 +229,11 @@
   gap: 10px;
 }
 
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, on the 3:1
+   edge, which stays. It presses in on :active. The words are the button
+   voice, 14/700, as the recommended kit draws the peek's buttons (they were
+   15/800); a label too long for its half wraps, centred. */
 .hp-btn {
   min-height: 48px;
   display: inline-flex;
@@ -211,11 +243,13 @@
   padding: 0 14px;
   border: 1px solid var(--eq-border-strong);
   border-radius: 12px;
-  background: var(--eq-surface-2);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink);
   font: inherit;
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
   cursor: pointer;
 }
 
@@ -228,6 +262,27 @@
   border-color: var(--eq-go);
   background: var(--eq-go);
   color: var(--eq-go-on);
+}
+/* Go's depth on every primary: a short orange glow and a white top light. */
+.hp-btn[data-primary="true"] {
+  box-shadow: var(--eq-glow-go), var(--eq-go-light);
+}
+/* Go's words (AJ's 1A) only when the primary says Start session: the display
+   face's slanted capitals at 800 and 17, 0.04em, one voice with the profile
+   header's Start session. Open session, Resume or start new, Log past session
+   and Edit session keep the 14/700 button voice under Go's depth (Peek.tsx
+   sets data-go only for a booking still to come). */
+.hp-btn[data-go="true"] {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hp-btn:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
 }
 
 /* Late cancel · session taken (Oct 2 2026): a whole-width quiet button

@@ -169,8 +169,8 @@
   margin-right: 6px;
   color: var(--cx-ink-3);
   font-size: var(--cx-fs-12);
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .cadm-intake__to {

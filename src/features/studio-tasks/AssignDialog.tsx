@@ -99,7 +99,7 @@ export function AssignDialog({
         <DialogHeader>
           <DialogTitle className="text-base">
             Who is on “{group.title}”?
-            <span className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            <span className="block text-[12px] font-semibold text-muted-foreground">
               {SHIFT_LABEL[group.shift]}
               {group.total > 1 ? ` · ${group.total} items` : ""}
             </span>
@@ -130,7 +130,7 @@ export function AssignDialog({
                     className={`flex min-h-11 items-center gap-2.5 rounded-lg border px-3 text-left text-sm ${
                       isChosen
                         ? "border-primary bg-primary/10 font-semibold"
-                        : "border-border"
+                        : "border-input bg-(--raised) shadow-(--raised-lift) active:translate-y-px active:shadow-(--press)"
                     }`}
                     onClick={() => setChosen(isChosen ? null : t.id)}
                   >
@@ -149,7 +149,7 @@ export function AssignDialog({
           )}
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <span className="text-[14px] font-bold text-ink-d2">
               For how long
             </span>
             <div className="flex flex-wrap gap-1.5">
@@ -158,10 +158,10 @@ export function AssignDialog({
                   key={d.days}
                   type="button"
                   aria-pressed={days === d.days}
-                  className={`min-h-9 rounded-full border px-3 text-[11px] font-bold uppercase tracking-wider ${
+                  className={`min-h-10 rounded-full border px-3 text-[12px] font-bold ${
                     days === d.days
                       ? "border-primary bg-primary/10"
-                      : "border-border text-muted-foreground"
+                      : "border-input bg-(--raised) shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) text-ink-d2"
                   }`}
                   onClick={() => setDays(d.days)}
                 >

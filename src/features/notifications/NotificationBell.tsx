@@ -204,7 +204,7 @@ export function NotificationBell({
         }
         className={
           className ??
-          "relative h-9 w-9 sm:h-10 sm:w-10 rounded-full transition-all hover:bg-transparent shrink-0 text-muted-foreground hover:text-slate-900 dark:hover:text-slate-50"
+          "relative h-10 w-10 rounded-full transition-colors hover:bg-transparent shrink-0 text-muted-foreground hover:text-slate-900 dark:hover:text-slate-50"
         }
       >
         <Bell className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -221,10 +221,10 @@ export function NotificationBell({
           className="bg-card p-0 flex flex-col sm:max-w-md"
         >
           <SheetHeader className="px-5 pt-5 pb-3 border-b border-border">
-            <SheetTitle className="text-xl font-black italic tracking-tight uppercase text-foreground">
+            <SheetTitle className="text-[17px] font-bold text-foreground">
               Notifications
             </SheetTitle>
-            <SheetDescription className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest">
+            <SheetDescription className="text-[12px] font-medium text-muted-foreground">
               {badge > 0 ? `${badge} unread` : "All caught up"}
             </SheetDescription>
           </SheetHeader>
@@ -232,7 +232,7 @@ export function NotificationBell({
           <div className="flex-1 overflow-y-auto">
             {announcements.length > 0 && (
               <section aria-label="Studio announcements">
-                <h3 className="px-5 pt-4 pb-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                <h3 className="px-5 pt-4 pb-2 text-[14px] font-bold text-ink-d2 flex items-center gap-1.5">
                   <Megaphone className="w-3.5 h-3.5" />
                   From the studio
                 </h3>
@@ -250,16 +250,16 @@ export function NotificationBell({
                         ].join(" ")}
                       >
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-sm font-black italic uppercase tracking-tight text-foreground">
+                          <span className="text-[14px] font-bold text-foreground">
                             {a.title}
                           </span>
                           {a.priority === "high" && (
-                            <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-amber/15 text-amber">
+                            <span className="text-[12px] font-bold px-2 py-0.5 rounded-full bg-amber/15 text-amber">
                               Urgent
                             </span>
                           )}
                           {isNew && (
-                            <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-(--eq-hero-fill) text-(--eq-hero-text)">
+                            <span className="text-[12px] font-bold px-2 py-0.5 rounded-full bg-(--eq-hero-fill) text-(--eq-hero-text)">
                               New
                             </span>
                           )}
@@ -292,27 +292,27 @@ export function NotificationBell({
                                 );
                                 setOpen(false);
                               }}
-                              className="mt-2 inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-xl border border-cta/40 bg-(--eq-hero-fill) px-3 text-left text-[11px] font-black uppercase tracking-widest text-(--eq-hero-text)"
+                              className="mt-2 inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-xl border border-cta/40 bg-(--eq-hero-fill) px-3 text-left text-[14px] font-bold text-(--eq-hero-text)"
                             >
                               <BookOpen className="w-3.5 h-3.5 shrink-0" />
                               <span className="min-w-0 [overflow-wrap:anywhere]">Open {learningRefLabel(page)}</span>
                             </button>
                           );
                         })()}
-                        <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                        <p className="mt-2 text-[12px] font-medium text-muted-foreground">
                           {a.authorName} · {announcementDate(a.createdAt)} ·{" "}
                           {scopeLabel(a)}
                         </p>
                         {a.asksRead && a.id && (
                           <div className="mt-2 flex flex-wrap items-center gap-2">
                             {acked.has(a.id) ? (
-                              <span className="text-[11px] font-bold text-muted-foreground">You said you&rsquo;ve read it.</span>
+                              <span className="text-[12px] font-semibold text-muted-foreground">You said you&rsquo;ve read it.</span>
                             ) : (
                               <button
                                 type="button"
                                 disabled={acking === a.id}
                                 onClick={() => void ackOne(a.id!)}
-                                className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-border px-3 text-[11px] font-black uppercase tracking-widest text-foreground"
+                                className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-input bg-(--raised) shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) px-3 text-[14px] font-bold text-foreground"
                               >
                                 <CheckCheck className="w-3.5 h-3.5" />
                                 {acking === a.id ? "Saving\u2026" : "I\u2019ve read it"}
@@ -324,7 +324,7 @@ export function NotificationBell({
                                 trainers={trainers}
                                 viewer={authTrainer}
                                 uid={signedInUid}
-                                className="text-[11px] font-bold text-muted-foreground"
+                                className="text-[12px] font-semibold text-muted-foreground"
                               />
                             )}
                           </div>
@@ -334,7 +334,7 @@ export function NotificationBell({
                   })}
                 </ul>
                 {notifications.length > 0 && (
-                  <h3 className="px-5 pt-1 pb-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-t border-border">
+                  <h3 className="px-5 pt-1 pb-2 text-[14px] font-bold text-ink-d2 border-t border-border">
                     <span className="block pt-3">Activity</span>
                   </h3>
                 )}
@@ -379,7 +379,7 @@ export function NotificationBell({
                               {n.body}
                             </span>
                           )}
-                          <span className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">
+                          <span className="block text-[12px] font-medium text-muted-foreground mt-1">
                             {ago(n.createdAt)}
                           </span>
                         </span>
@@ -399,7 +399,7 @@ export function NotificationBell({
               <Button
                 variant="outline"
                 onClick={markAll}
-                className="w-full h-11 rounded-2xl border-border font-black uppercase text-[10px] tracking-widest gap-2"
+                className="w-full h-11 rounded-2xl gap-2"
               >
                 <CheckCheck className="w-4 h-4" />
                 Mark all read

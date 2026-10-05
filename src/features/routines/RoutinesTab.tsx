@@ -373,7 +373,7 @@ export function RoutinesTab({
       <div className="rt-summary">
         <span className="rt-summary__count">
           <b>{total}</b> {total === 1 ? "machine" : "machines"} prescribed
-          {total > 0 && setUp < total ? <span className="rt-summary__warn"> · {total - setUp} not set up</span> : null}
+          {total > 0 && setUp < total ? <span className="rt-summary__warn">{total - setUp} not set up</span> : null}
         </span>
         <span className="rt-summary__facts">
           <span>

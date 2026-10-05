@@ -12,7 +12,7 @@
   padding-top: 1.25rem;
   border-top: 1px solid var(--wk-border);
 }
-.cm .wk__h2 { display: flex; align-items: center; gap: 0.375rem; }
+.cm .wk__h2 { display: flex; align-items: center; gap: 12px; }
 
 .cm__count {
   min-width: 1.5rem;
@@ -193,22 +193,29 @@
 .cm__row-actions { margin-left: auto; display: flex; gap: 0.5rem; }
 .cm__error { font-size: 12px; font-weight: 700; color: var(--wk-alert); }
 
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, on the 3:1
+   edge, which stays; a press on :active, and flat when it can't be pressed.
+   Radius 12, the app's control radius (it was a pill; pills are for chips). */
 .cm__btn {
   display: inline-flex;
   align-items: center;
   min-height: 40px;
   padding: 0 0.875rem;
   border: 1px solid var(--wk-border-strong);
-  border-radius: var(--wk-radius-pill);
-  background: var(--wk-surface);
+  border-radius: 12px;
+  background: var(--wk-raised);
+  box-shadow: var(--wk-elev-1), inset 0 1px 0 var(--wk-highlight);
   color: var(--wk-ink-2);
   font: inherit;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
-/* Post and Save: solid brand blue with its on-colour, like every Save. */
-.cm__btn--primary { border-color: var(--wk-live); background: var(--wk-live); color: var(--wk-live-on); }
-.cm__btn--danger { border-color: var(--wk-alert); background: var(--wk-alert-fill); color: var(--wk-alert); }
-.cm__btn:disabled { opacity: 0.55; cursor: default; }
+/* Post and Save: solid brand blue with its on-colour, like every Save, and a
+   blue-tinted drop. Delete is a tint, which lifts without the top light. */
+.cm__btn--primary { border-color: var(--wk-live); background: var(--wk-live); color: var(--wk-live-on); box-shadow: var(--wk-glow-live), var(--wk-solid-light); }
+.cm__btn--danger { border-color: var(--wk-alert); background: var(--wk-alert-fill); color: var(--wk-alert); box-shadow: var(--wk-elev-1); }
+.cm__btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--wk-press); }
+.cm__btn:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
 .cm__btn:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }

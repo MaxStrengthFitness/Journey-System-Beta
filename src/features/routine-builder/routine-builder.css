@@ -69,10 +69,10 @@
   overflow-wrap: anywhere;
   flex: 0 1 auto;
   font-family: var(--rb-font-display);
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  text-transform: none;
+  letter-spacing: 0;
   font-size: 0.95rem;
   color: var(--rb-ink);
   white-space: normal;
@@ -101,10 +101,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--rb-ink-faint);
+  /* A run of machine codes: a little air so the codes read apart, never
+     the old 0.06em tracking. */
+  letter-spacing: 0.03em;
+  color: var(--rb-ink-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -115,10 +117,10 @@
    be answered by noticing which screen you are on. Today-only is the quieter
    of the two: it is the common case and it is the safe one. */
 .rb-head__scope {
-  font-size: 0.6rem;
-  font-weight: 800;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   padding: 0.15rem 0.45rem;
   border-radius: 999px;
   white-space: nowrap;
@@ -159,8 +161,8 @@
 
 .rb-swap__from {
   font-weight: 800;
-  font-size: 0.68rem;
-  color: var(--rb-ink-faint);
+  font-size: 0.6875rem;
+  color: var(--rb-ink-muted);
   text-decoration: line-through;
   flex: 0 0 auto;
   min-width: 2.5rem;
@@ -170,9 +172,9 @@
   flex: 1 1 auto;
   min-width: 0;
   font-family: var(--rb-font-display);
-  font-style: italic;
+  font-style: normal;
   font-weight: 700;
-  text-transform: uppercase;
+  text-transform: none;
   font-size: 0.78rem;
   letter-spacing: 0.02em;
 }
@@ -266,8 +268,20 @@
 /* A coloured rail on the left edge, not a tinted row. A whole row washed in
    plum reads as "this machine is wrong", when what is wrong is its position
    relative to its neighbour. */
-.rb-row--avoid   { border-left: 4px solid var(--rb-avoid-edge); }
-.rb-row--caution { border-left: 4px solid var(--rb-caution-edge); }
+/* The rail is a straight 4px band painted as the first background layer
+   (type and depth, phase 14, Oct 4 2026; the plan's rule 3: a wide
+   border-left on a rounded box tapers into a crescent at its corners). The
+   3px it took is in the padding. */
+.rb-row--avoid,
+.rb-row--caution {
+  border-left-color: var(--rb-row-band);
+  background:
+    linear-gradient(var(--rb-row-band), var(--rb-row-band)) left / 4px 100% no-repeat border-box,
+    var(--rb-surface) padding-box;
+  padding-left: 3px;
+}
+.rb-row--avoid   { --rb-row-band: var(--rb-avoid-edge); }
+.rb-row--caution { --rb-row-band: var(--rb-caution-edge); }
 .rb-row--focus   { border-color: var(--rb-live); box-shadow: 0 0 0 2px var(--rb-live-fill); }
 
 .rb-row__handle {
@@ -287,7 +301,7 @@
 
 .rb-row__pos {
   font-family: var(--rb-font-display);
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
   font-size: 0.8rem;
   color: var(--rb-hero-text);
@@ -299,11 +313,13 @@
 
 .rb-row__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0.05rem; }
 
+/* A machine's name: the display face upright, in its own capitalisation
+   (type and depth, phase 12; AJ's 1A), as on the rest of the floor. */
 .rb-row__name {
   font-family: var(--rb-font-display);
-  font-style: italic;
+  font-style: normal;
   font-weight: 700;
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0.02em;
   font-size: 0.85rem;
   color: var(--rb-ink);
@@ -315,12 +331,13 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.65rem;
-  color: var(--rb-ink-faint);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  color: var(--rb-ink-muted);
+  letter-spacing: 0;
+  text-transform: none;
   overflow: hidden;
   white-space: nowrap;
+  font-weight: 700;
 }
 
 .rb--dense .rb-row__meta { display: none; }
@@ -339,18 +356,20 @@
   font-variant-numeric: tabular-nums;
   padding-right: 0.15rem;
 }
-.rb-row__hist b { font-size: 0.9rem; font-weight: 800; font-style: italic; color: var(--rb-ink-2); }
-.rb-row__hist span { font-size: 0.6rem; color: var(--rb-ink-faint); text-transform: uppercase; letter-spacing: 0.05em; }
+.rb-row__hist b { font-size: 0.9rem; font-weight: 800; color: var(--rb-ink-2); }
+.rb-row__hist span { font-size: 0.75rem; color: var(--rb-ink-muted); text-transform: none; letter-spacing: 0; font-weight: 700; }
 .rb-row__hist--empty b { color: var(--rb-ink-faint); }
 
 @media (max-width: 480px) { .rb-row__hist { display: none; } }
 
+/* 40px, the app's floor (it was 36; type and depth, phase 8). It still
+   sits inside the 46px in-session row. */
 .rb-row__btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: var(--rb-radius-sm);
   color: var(--rb-ink-muted);
   background: transparent;
@@ -448,7 +467,7 @@
 .rb-warn__detail { padding: 0 0.55rem 0.5rem 1.45rem; }
 .rb-warn__why { color: var(--rb-ink-2); margin: 0 0 0.25rem; }
 .rb-warn__escalate { color: var(--rb-ink-2); margin: 0 0 0.25rem; font-style: italic; }
-.rb-warn__src { color: var(--rb-ink-faint); font-size: 0.65rem; margin: 0.25rem 0 0; word-break: break-word; }
+.rb-warn__src { color: var(--rb-ink-muted); font-size: 0.6875rem; margin: 0.25rem 0 0; word-break: break-word; }
 
 .rb-warn__fixes { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.35rem; }
 
@@ -499,13 +518,13 @@
 .rb-cov__cell--missing-foundational { background: var(--rb-avoid-fill); color: var(--rb-avoid); }
 
 .rb-cov__label {
-  font-size: 0.58rem;
+  font-size: 0.6875rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   line-height: 1;
   white-space: nowrap;
 }
-.rb-cov__n { font-size: 0.62rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; opacity: 0.85; }
+.rb-cov__n { font-size: 0.6875rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; opacity: 0.85; }
 
 /* ── Rail ───────────────────────────────────────────────────────────────── */
 
@@ -536,27 +555,28 @@
   overflow: hidden;
   background: var(--rb-surface-2);
 }
+/* 40px, the app's floor (it was about 30; type and depth, phase 8). */
 .rb-seg__btn {
-  min-height: 1.9rem;
+  min-height: 2.5rem;
   padding: 0 0.7rem;
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--rb-ink-muted);
   background: transparent;
   border: none;
 }
-.rb-seg__btn[aria-pressed="true"] { background: var(--rb-live); color: var(--rb-live-on); }
+.rb-seg__btn[aria-pressed="true"] { background: var(--rb-live); color: var(--rb-live-on); font-weight: 700; }
 .rb-seg__btn:focus-visible { outline: 2px solid var(--rb-focus-ring); outline-offset: -2px; }
 
 .rb-rail__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
 
 .rb-sect__label {
-  font-size: 0.63rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--rb-ink-muted);
   display: flex;
   align-items: center;
@@ -584,9 +604,9 @@
 .rb-sug__body { flex: 1 1 auto; min-width: 0; }
 .rb-sug__name {
   font-family: var(--rb-font-display);
-  font-style: italic;
+  font-style: normal;
   font-weight: 700;
-  text-transform: uppercase;
+  text-transform: none;
   font-size: 0.8rem;
   letter-spacing: 0.02em;
   display: flex;
@@ -597,14 +617,14 @@
    button, so it cannot contain <p>), and inline they ran together —
    "…belongs in every workout.Programming and Progression 1". */
 .rb-sug__body { display: flex; flex-direction: column; }
-.rb-sug__why { display: block; font-size: 0.68rem; color: var(--rb-ink-2); line-height: 1.35; margin-top: 0.1rem; }
-.rb-sug__src { display: block; font-size: 0.6rem; color: var(--rb-ink-faint); margin-top: 0.2rem; }
+.rb-sug__why { display: block; font-size: 0.6875rem; color: var(--rb-ink-2); line-height: 1.35; margin-top: 0.1rem; }
+.rb-sug__src { display: block; font-size: 0.6875rem; color: var(--rb-ink-muted); margin-top: 0.2rem; }
 
 .rb-tag {
-  font-size: 0.57rem;
-  font-weight: 800;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   padding: 0.1rem 0.3rem;
   border-radius: 4px;
   white-space: nowrap;
@@ -623,10 +643,10 @@
 
 .rb-pick__group { display: flex; flex-direction: column; gap: 0.2rem; }
 .rb-pick__grouplabel {
-  font-size: 0.6rem;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--rb-ink-muted);
   padding: 0.15rem 0.1rem;
   position: sticky;
@@ -655,9 +675,9 @@
   flex: 1 1 auto;
   min-width: 0;
   font-family: var(--rb-font-display);
-  font-style: italic;
+  font-style: normal;
   font-weight: 700;
-  text-transform: uppercase;
+  text-transform: none;
   font-size: 0.78rem;
   letter-spacing: 0.02em;
   white-space: normal;
@@ -678,7 +698,7 @@
 
 .rb-rot__gaps { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.4rem; }
 .rb-rot__gap {
-  font-size: 0.63rem;
+  font-size: 0.6875rem;
   font-weight: 700;
   padding: 0.15rem 0.4rem;
   border-radius: 999px;
@@ -687,7 +707,7 @@
   text-transform: capitalize;
 }
 
-.rb-note { font-size: 0.68rem; color: var(--rb-ink-2); line-height: 1.4; }
+.rb-note { font-size: 0.6875rem; color: var(--rb-ink-2); line-height: 1.4; }
 .rb-note--muted { color: var(--rb-ink-faint); }
 
 /* ── Empty state ────────────────────────────────────────────────────────── */
@@ -700,10 +720,18 @@
   gap: 0.5rem;
   padding: 2rem 1rem;
   text-align: center;
-  color: var(--rb-ink-muted);
-  border: 1px dashed var(--rb-border-strong);
-  border-radius: var(--rb-radius);
-  font-size: 0.8rem;
+  color: var(--rb-ink-2);
+  /* A well with a sentence, not a dashed box (type and depth, the sweep).
+     It sits on the builder's own ground (.rb paints --rb-bg behind both
+     panes, and the list column paints nothing), so the tray's tone (AJ's
+     1A, Oct 5 2026): the well tone is lighter than that ground and read
+     raised; the tray is below it in both modes. ink-2 reads 5.95:1 on it
+     (10.4:1 in dark). */
+  border: 0;
+  border-radius: 12px;
+  background: var(--rb-tray);
+  box-shadow: var(--rb-elev-0);
+  font-size: 0.875rem;
 }
 
 /* ── Portrait action bar ────────────────────────────────────────────────── */
@@ -719,6 +747,10 @@
 }
 @media (min-width: 900px) { .rb-bar { display: none; } }
 
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the bar, a contact lift and a white top light, on the 3:1
+   edge, which stays; radius 12; a press on :active. Solid blue drops a
+   blue-tinted shadow; the caution tint lifts without the top light. */
 .rb-bar__btn {
   display: inline-flex;
   align-items: center;
@@ -726,17 +758,20 @@
   gap: 0.3rem;
   min-height: 2.5rem;
   padding: 0 0.7rem;
-  border-radius: var(--rb-radius-sm);
+  border-radius: 12px;
   border: 1px solid var(--rb-border-strong);
-  background: var(--rb-surface);
+  background: var(--rb-raised);
+  box-shadow: var(--rb-elev-1), inset 0 1px 0 var(--rb-highlight);
   color: var(--rb-ink);
   font-size: 0.73rem;
   font-weight: 700;
   flex: 1 1 0;
   min-width: 0;
 }
-.rb-bar__btn--primary { background: var(--rb-live); color: var(--rb-live-on); border-color: var(--rb-live); }
-.rb-bar__btn--warn { color: var(--rb-avoid); border-color: var(--rb-avoid-edge); background: var(--rb-avoid-fill); }
+.rb-bar__btn--primary { background: var(--rb-live); color: var(--rb-live-on); border-color: var(--rb-live); box-shadow: var(--rb-glow-live), var(--rb-solid-light); }
+.rb-bar__btn--warn { color: var(--rb-avoid); border-color: var(--rb-avoid-edge); background: var(--rb-avoid-fill); box-shadow: var(--rb-elev-1); }
+.rb-bar__btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--rb-press); }
+.rb-bar__btn:disabled { box-shadow: none; }
 .rb-bar__btn:focus-visible { outline: 2px solid var(--rb-focus-ring); outline-offset: 1px; }
 
 .rb-sheet { display: flex; flex-direction: column; gap: 0.6rem; min-height: 0; max-height: 70dvh; }

@@ -63,10 +63,10 @@ function Chip({
       aria-pressed={on}
       onClick={onClick}
       className={cn(
-        "min-h-11 rounded-xl border px-3.5 text-[13px] font-bold transition-colors",
+        "min-h-11 rounded-xl border px-3.5 text-[14px] font-bold transition-[color,background-color,border-color,transform] active:translate-y-px",
         on
-          ? "border-primary bg-primary text-primary-foreground"
-          : "border-border bg-card text-slate-700 hover:border-slate-300 dark:text-slate-200",
+          ? "border-primary bg-primary text-primary-foreground shadow-(--solid-lift)"
+          : "border-input bg-(--raised) shadow-(--raised-lift) active:shadow-(--press) text-slate-700 hover:bg-muted dark:text-slate-200",
       )}
     >
       {children}
@@ -74,7 +74,9 @@ function Chip({
   );
 }
 
-const LABEL = "text-[11px] font-bold uppercase tracking-widest text-muted-foreground";
+/* The label voice, 14/700 in ink-2 and its own capitalisation (it was 11px
+   tracked capitals; type and depth follow-up, Oct 5 2026). */
+const LABEL = "text-[14px] font-bold text-ink-d2";
 
 export function LogConversationDialog({
   open,
@@ -135,7 +137,7 @@ export function LogConversationDialog({
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="sm:max-w-xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg font-black">
+          <DialogTitle className="flex items-center gap-2">
             <MessageSquareText className="h-5 w-5 text-primary" />
             Renewal conversation with {firstName}
           </DialogTitle>
@@ -208,7 +210,7 @@ export function LogConversationDialog({
                 value={draft.note}
                 onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))}
                 placeholder="What did they say? e.g. wants to see the InBody first"
-                className="w-full rounded-xl border border-border bg-card p-3 text-sm text-slate-800 outline-none focus:border-ring dark:text-slate-100"
+                className="w-full rounded-xl border border-input bg-(--well) shadow-(--elev-0) p-3 text-sm text-slate-800 outline-none focus:border-ring dark:text-slate-100"
               />
             </div>
 
@@ -217,14 +219,14 @@ export function LogConversationDialog({
               aria-pressed={draft.needsLeader}
               onClick={() => setDraft((d) => ({ ...d, needsLeader: !d.needsLeader }))}
               className={cn(
-                "flex min-h-12 w-full items-center justify-between rounded-xl border px-4 text-left text-sm font-bold transition-colors",
+                "flex min-h-12 w-full items-center justify-between rounded-xl border px-4 text-left text-[14px] font-bold transition-[color,background-color,border-color,transform] active:translate-y-px",
                 draft.needsLeader
                   ? "border-amber-500 bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300"
-                  : "border-border bg-card text-slate-700 dark:text-slate-200",
+                  : "border-input bg-(--raised) shadow-(--raised-lift) active:shadow-(--press) text-slate-700 dark:text-slate-200",
               )}
             >
               <span>A leader should follow up</span>
-              <span className="text-[11px] uppercase tracking-widest">{draft.needsLeader ? "Yes" : "No"}</span>
+              <span className="text-[12px] font-bold">{draft.needsLeader ? "Yes" : "No"}</span>
             </button>
           </div>
         )}
@@ -233,7 +235,7 @@ export function LogConversationDialog({
           <button
             type="button"
             onClick={onClose}
-            className="min-h-11 rounded-xl border border-slate-300 px-5 text-[12px] font-black uppercase tracking-widest text-slate-700 dark:border-slate-700 dark:text-slate-200"
+            className="min-h-11 rounded-xl border border-input bg-(--raised) shadow-(--raised-lift) px-5 text-[14px] font-bold text-slate-700 transition-[background-color,transform] hover:bg-muted active:translate-y-px active:shadow-(--press) dark:text-slate-200"
           >
             Cancel
           </button>
@@ -243,7 +245,7 @@ export function LogConversationDialog({
               onClick={save}
               disabled={Boolean(problem) || saving}
               title={problem ?? undefined}
-              className="min-h-11 rounded-xl bg-cta hover:bg-cta px-6 text-[12px] font-black uppercase tracking-widest text-cta-foreground disabled:opacity-50"
+              className="min-h-11 rounded-xl bg-primary hover:bg-primary px-6 text-[14px] font-bold text-primary-foreground shadow-(--solid-lift) transition-transform active:translate-y-px active:shadow-(--press) disabled:opacity-50"
             >
               {saving ? "Saving…" : problem ? "Pick a leaning" : "Save conversation"}
             </button>

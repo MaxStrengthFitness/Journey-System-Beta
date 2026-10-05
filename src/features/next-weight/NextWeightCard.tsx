@@ -58,7 +58,7 @@ function NextWeightRow({ line, onSave, step }: { line: TodayLine; onSave: SaveNe
 
   const change = nextWeightChangeLine(weight, today);
   const btn =
-    "min-h-11 min-w-11 rounded-xl border border-div-d bg-bg-dark-3 text-ink-d1 flex items-center justify-center hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)";
+    "min-h-11 min-w-11 rounded-xl border border-input bg-(--raised) shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) transition-transform text-ink-d1 flex items-center justify-center hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)";
 
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5 border-b border-div-d last:border-b-0" data-testid="next-weight-row" data-machine={line.machineId}>
@@ -73,7 +73,7 @@ function NextWeightRow({ line, onSave, step }: { line: TodayLine; onSave: SaveNe
         <button type="button" className={btn} aria-label={`Lower ${line.name}'s next weight by ${step} lb`} onClick={() => save(bumpWeight(weight, -1, step))}>
           <Minus size={16} strokeWidth={2.5} />
         </button>
-        <label className="flex items-center gap-1 min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-2">
+        <label className="flex items-center gap-1 min-h-11 rounded-xl border border-input bg-(--well) shadow-(--elev-0) px-2">
           <input
             type="text"
             inputMode="decimal"

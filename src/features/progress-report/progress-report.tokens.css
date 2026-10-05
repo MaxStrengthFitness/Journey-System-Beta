@@ -69,6 +69,13 @@
   --pr-live:            var(--eq-live);
   --pr-live-fill:       var(--eq-live-fill);
 
+  /* Depth (type and depth, phase 3, Oct 4 2026): a quiet button inside a
+     paper card is raised, by the Hub's names. */
+  --pr-raised:          var(--eq-raised);
+  --pr-highlight:       var(--eq-highlight);
+  --pr-elev-1:          var(--eq-elev-1);
+  --pr-press:           var(--eq-press);
+
   /* Print: white paper, navy ink, pale cards. */
   --pr-print-paper:     #ffffff;
   --pr-print-card:      #f1f5f8;
@@ -89,7 +96,11 @@
   --pr-ink-muted:       #94a3b8;
   --pr-border:          #1e293b;
   --pr-border-strong:   #475569;
-  --pr-shadow:          rgba(0, 0, 0, 0.5);
+  --pr-shadow:          rgba(2, 10, 20, 0.5); /* the deepest navy, never black (type and depth, phase 14) */
+  --pr-raised:          var(--eq-raised);
+  --pr-highlight:       var(--eq-highlight);
+  --pr-elev-1:          var(--eq-elev-1);
+  --pr-press:           var(--eq-press);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -102,6 +113,10 @@
     --pr-ink-muted:       #94a3b8;
     --pr-border:          #1e293b;
     --pr-border-strong:   #475569;
-    --pr-shadow:          rgba(0, 0, 0, 0.5);
+    --pr-shadow:          rgba(2, 10, 20, 0.5); /* the deepest navy, never black (type and depth, phase 14) */
+    --pr-raised:          var(--eq-raised);
+    --pr-highlight:       var(--eq-highlight);
+    --pr-elev-1:          var(--eq-elev-1);
+    --pr-press:           var(--eq-press);
   }
 }

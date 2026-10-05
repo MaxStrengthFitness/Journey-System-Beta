@@ -52,9 +52,18 @@
         equipment.tokens.css original. ─────────────────────────────────── */
   --cat-warn:        #a2457e;   /* 5.3:1, 4.8:1 on its fill */
   --cat-warn-fill:   #f4e9f0;
-  --cat-warn-border: #a2457e;   /* 5.3:1 */
 
   --cat-focus-ring: var(--cat-live);
+
+  /* ── depth (type and depth, phase 8, Oct 4 2026): what a raised button
+        and a solid Save are drawn with, the app's own by name. Each key
+        lands with the rule that first reads it (.cat__btn). ─────────────── */
+  --cat-raised:      #f8fafc;
+  --cat-highlight:   rgba(255, 255, 255, 0.70);
+  --cat-elev-1:      var(--elev-1);
+  --cat-press:       var(--press);
+  --cat-glow-live:   var(--glow-live);
+  --cat-solid-light: var(--solid-light);
 }
 
 .dark,
@@ -80,5 +89,12 @@
 
   --cat-warn:        #d98cbd;   /* 6.0:1 on surface */
   --cat-warn-fill:   #402846;
-  --cat-warn-border: rgba(217, 140, 189, 0.32);
+
+  /* Depth in dark: the raised fill a step lighter than the card. */
+  --cat-raised:      #203549;
+  --cat-highlight:   rgba(255, 255, 255, 0.07);
+  --cat-elev-1:      var(--elev-1);
+  --cat-press:       var(--press);
+  --cat-glow-live:   var(--glow-live);
+  --cat-solid-light: var(--solid-light);
 }

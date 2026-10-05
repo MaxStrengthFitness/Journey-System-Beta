@@ -63,18 +63,18 @@
 .cal-nav__label:focus-visible { outline: 2px solid var(--cal-live); outline-offset: -2px; border-radius: 999px; }
 .cal-nav__primary {
   font-size: 14px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink);
   line-height: 1.1;
   white-space: nowrap;
 }
 .cal-nav__secondary {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
   line-height: 1;
   white-space: nowrap;
@@ -83,33 +83,48 @@
 
 /* ---------- Shared bits ---------------------------------------------- */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): the
+   edge seen from outside (--cal-edge, the fill clipped to the padding box)
+   and a short two-layer navy lift. It was a flat hairline box inside a
+   bordered shell. The head has no rule: the 17/700 title carries it, 12px
+   over the body, its sides on the body's 14px inset. */
 .cal-card {
   background: var(--cal-surface);
-  border: 1px solid var(--cal-border);
+  background-clip: padding-box;
+  border: 1px solid var(--cal-edge);
   border-radius: var(--cal-radius);
+  box-shadow: var(--cal-elev-2), var(--cal-panel-highlight);
   overflow: hidden;
 }
 .cal-card__head {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 14px;
-  border-bottom: 1px solid var(--cal-border);
+  padding: 16px 14px 0;
+  background: transparent;
+  border-bottom: 0;
 }
+/* The panel-title voice: Geist 17/700 in ink, its own capitalisation (it
+   was 11px grey capitals at 900). */
 .cal-card__title {
   flex: 1;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--cal-ink);
+}
+/* The meta voice beside the title, 12/500 in the muted ink (it was 11px in
+   the faint ink). */
+.cal-card__note {
+  font-size: 12px;
+  font-weight: 500;
   color: var(--cal-ink-muted);
 }
-.cal-card__note {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--cal-ink-faint);
-}
 .cal-card__body { padding: 14px; }
+.cal-card__head + .cal-card__body { padding-top: 12px; }
+.cal-card__head + .cal-lanes__scroller { margin-top: 12px; }
 
 .cal-avatar {
   display: inline-flex;
@@ -121,7 +136,7 @@
   background: var(--t-solid);
   color: #fff;
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.02em;
   flex: 0 0 auto;
   position: relative;
@@ -162,7 +177,7 @@
   border: 1px solid var(--cal-border-strong);
   color: var(--cal-ink);
   font-size: 9px;
-  font-weight: 900;
+  font-weight: 800;
   line-height: 14px;
   text-align: center;
 }
@@ -178,11 +193,11 @@
   color: var(--cal-ink-faint);
 }
 .cal-empty__title {
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--cal-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--cal-ink-2);
 }
 .cal-empty__hint { font-size: 12px; max-width: 320px; line-height: 1.5; }
 
@@ -204,10 +219,10 @@
   background: var(--cal-surface-2);
   padding: 7px 4px;
   text-align: center;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
 }
 
@@ -239,7 +254,7 @@
 }
 .cal-day__num {
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 800;
   color: var(--cal-ink-2);
   line-height: 1;
 }
@@ -253,16 +268,16 @@
 }
 .cal-day__total b {
   font-size: 19px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--cal-ink);
 }
 .cal-day__total span {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--cal-ink-faint);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--cal-ink-muted);
 }
 .cal-day--quiet .cal-day__total b { color: var(--cal-ink-faint); font-size: 15px; }
 
@@ -274,8 +289,8 @@
 }
 .cal-day__more {
   align-self: center;
-  font-size: 10px;
-  font-weight: 900;
+  font-size: 11px;
+  font-weight: 800;
   color: var(--cal-ink-muted);
 }
 .cal-day__events {
@@ -287,7 +302,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--cal-ink-muted);
   /* A client's name is never cut (FORD dates, Oct 2 2026): the title wraps. */
@@ -346,16 +361,16 @@
 }
 .cal-total__value {
   font-size: 46px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 0.95;
   color: var(--cal-ink);
 }
 .cal-total__label {
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
 }
 .cal-total__delta {
@@ -367,7 +382,7 @@
   font-weight: 800;
   color: var(--cal-ink-muted);
 }
-.cal-total__delta b { font-weight: 900; }
+.cal-total__delta b { font-weight: 800; }
 .cal-total__delta--up b { color: var(--cal-hero-text); }
 .cal-total__delta--down b { color: var(--cal-live-text); }
 
@@ -397,7 +412,7 @@
 .cal-bar:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 2px; border-radius: 8px; }
 .cal-bar__count {
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 800;
   color: var(--cal-ink);
   line-height: 1;
 }
@@ -420,10 +435,10 @@
 .cal-bar--today .cal-bar__fill { background: var(--cal-hero); }
 .cal-bar--peak .cal-bar__fill { background: var(--cal-live); }
 .cal-bar__day {
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
   line-height: 1;
 }
@@ -469,11 +484,11 @@
 .cal-board__fill { height: 100%; border-radius: 999px; background: var(--t-solid); min-width: 3px; }
 .cal-board__count {
   font-size: 15px;
-  font-weight: 900;
+  font-weight: 800;
   color: var(--cal-ink);
   font-variant-numeric: tabular-nums;
 }
-.cal-board__share { font-size: 10px; font-weight: 800; color: var(--cal-ink-faint); }
+.cal-board__share { font-size: 11px; font-weight: 800; color: var(--cal-ink-muted); }
 
 /* Capacity heatmap */
 .cal-heat {
@@ -485,10 +500,10 @@
 .cal-heat__corner { }
 .cal-heat__dow {
   text-align: center;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
   padding-bottom: 2px;
 }
@@ -496,10 +511,10 @@
 .cal-heat__band {
   display: flex;
   align-items: center;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
   padding-right: 6px;
 }
@@ -510,7 +525,7 @@
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   background: var(--cal-heat-0);
   color: var(--cal-heat-ink-lo);
@@ -530,11 +545,11 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--cal-ink-faint);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--cal-ink-muted);
 }
 .cal-legend__swatch { width: 14px; height: 14px; border-radius: 4px; }
 
@@ -580,19 +595,19 @@
   display: flex;
   align-items: center;
   padding: 0 10px;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
 }
 .cal-axis__tick {
   /* Each hour label spans its two half-hour slots. */
   grid-column: span 2;
   padding: 6px 0 5px 6px;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
   color: var(--cal-ink-muted);
   border-left: 1px solid var(--cal-border);
   white-space: nowrap;
@@ -631,7 +646,7 @@
 }
 .cal-lane__count {
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 800;
   color: var(--cal-ink-2);
   font-variant-numeric: tabular-nums;
 }
@@ -675,7 +690,7 @@
 .cal-block:hover { filter: brightness(1.06); }
 .cal-block:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 1px; }
 .cal-block__name {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   color: var(--cal-ink);
   line-height: 1.1;
@@ -683,7 +698,7 @@
   overflow-wrap: anywhere;
 }
 .cal-block__time {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--cal-ink-muted);
   line-height: 1.1;
@@ -725,8 +740,8 @@
 }
 .cal-lane__item:hover { border-color: var(--t-edge); }
 .cal-lane__item:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 1px; }
-.cal-lane__item b { font-size: 11px; font-weight: 900; color: var(--cal-ink); }
-.cal-lane__item span { font-size: 10px; font-weight: 700; color: var(--cal-ink-muted); }
+.cal-lane__item b { font-size: 11px; font-weight: 800; color: var(--cal-ink); }
+.cal-lane__item span { font-size: 11px; font-weight: 700; color: var(--cal-ink-muted); }
 
 .cal-daystat {
   display: flex;
@@ -742,16 +757,16 @@
 }
 .cal-daystat__big b {
   font-size: 26px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--cal-ink);
   line-height: 1;
 }
 .cal-daystat__big span {
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
 }
 .cal-daystat__sep { width: 1px; height: 24px; background: var(--cal-border); }
@@ -761,14 +776,17 @@
    trainer picker's trigger), so the header stops mixing #0284c7 with the brand
    blue and a Tailwind slate with the token slate.                            */
 
+/* No box round the boxes (type and depth, phase 10, Oct 4 2026): the shell
+   drops its border and its fill, so the cards sit on the page with their
+   own lift. Its padding stays, room for that lift. */
 .cal-shell {
   display: flex;
   flex-direction: column;
   gap: 14px;
   padding: 14px;
   border-radius: 22px;
-  border: 1px solid var(--cal-border);
-  background: var(--cal-bg);
+  border: 0;
+  background: transparent;
   min-height: 100%;
 }
 @media (min-width: 768px) { .cal-shell { padding: 20px; gap: 16px; } }
@@ -797,21 +815,25 @@
   color: var(--cal-live-text);
   flex: 0 0 auto;
 }
+/* The calendar's (and History's) own title in its bar: the display face
+   upright at 22, in its own capitalisation (type and depth, phase 12; AJ's
+   1A). It was a Geist 900 slanted by the browser, in capitals. */
 .cal-header__name {
-  font-size: 19px;
-  font-weight: 900;
-  font-style: italic;
-  letter-spacing: -0.02em;
-  text-transform: uppercase;
-  line-height: 1;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.04;
   color: var(--cal-ink);
 }
 .cal-header__sub {
   margin-top: 4px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
 }
 
@@ -821,30 +843,37 @@
   gap: 2px;
   padding: 3px;
   border-radius: 12px;
-  border: 1px solid var(--cal-border);
+  border: 1px solid var(--cal-border-strong);
   background: var(--cal-surface);
   flex: 0 0 auto;
 }
+/* 40px, the app's floor (it was 32; type and depth, phase 8). */
 .cal-seg__btn {
-  height: 32px;
+  height: 40px;
   padding: 0 11px;
   border: 0;
   border-radius: 9px;
   background: transparent;
   color: var(--cal-ink-muted);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  /* The tab voice, 14/600 (the picked one 700), in its own capitalisation
+     (type and depth review, Oct 5 2026; it was 11px capitals). */
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
   white-space: nowrap;
 }
-.cal-seg__btn:hover { color: var(--cal-ink); background: var(--cal-surface-3); }
+@media (hover: hover) {
+  .cal-seg__btn:hover { color: var(--cal-ink); background: var(--cal-surface-3); }
+}
 .cal-seg__btn:focus-visible { outline: 2px solid var(--cal-live); outline-offset: -2px; }
-.cal-seg__btn[aria-pressed="true"] {
+.cal-seg__btn[aria-pressed="true"],
+.cal-seg__btn[aria-pressed="true"]:hover {
   background: var(--cal-live);
   color: var(--cal-live-on);
 }
+.cal-seg__btn[aria-pressed="true"] { font-weight: 700; }
 
 .cal-picker {
   display: inline-flex;
@@ -863,10 +892,10 @@
   border: 0;
   background: transparent;
   color: inherit;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   max-width: 170px;
   cursor: pointer;
 }
@@ -890,25 +919,28 @@
   background: var(--cal-surface);
   flex: 0 0 auto;
 }
+/* 40px, the app's floor (it was 38; type and depth, phase 8). */
 .cal-refresh__btn {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  height: 38px;
+  height: 40px;
   min-width: 40px;
   padding: 0 11px;
   border: 0;
   border-radius: 11px;
   background: transparent;
   color: var(--cal-live-text);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
   white-space: nowrap;
 }
-.cal-refresh__btn:hover { background: var(--cal-surface-3); }
+@media (hover: hover) {
+  .cal-refresh__btn:hover { background: var(--cal-surface-3); }
+}
 .cal-refresh__btn:focus-visible { outline: 2px solid var(--cal-live); outline-offset: -2px; }
 .cal-refresh__btn:disabled { cursor: default; color: var(--cal-ink-muted); }
 .cal-refresh__btn svg { flex: 0 0 auto; }
@@ -919,10 +951,10 @@
 .cal-refresh__btn .lm .lm__sq { --lm-size: 6px; font-size: 0; border-radius: 1px; }
 .cal-refresh__note {
   padding-right: 8px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
   white-space: nowrap;
 }

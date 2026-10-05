@@ -47,11 +47,11 @@
 
 .mt__head {
   margin: 0;
-  font-size: 0.6875rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--cat-ink-muted);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--cat-ink-2);
 }
 
 .mt__group {
@@ -86,10 +86,10 @@
 
 .mt__table thead th {
   text-align: left;
-  font-size: 0.6875rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cat-ink-muted);
   padding: 0.25rem 0.75rem 0.25rem 0;
   border-bottom: 1px solid var(--cat-border);

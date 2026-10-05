@@ -24,18 +24,36 @@
   height: 100%;
   min-height: 0;
   padding: 6px 8px 6px 10px;
-  border: 1px solid var(--eq-border);
+  /* Type and depth, phase 11 (Oct 4 2026; AJ: "borders and headers just
+     needs a little bit of weight and depth"): a booking is told from the
+     grid by an edge seen from OUTSIDE it, the soft --eq-edge with the fill
+     clipped to the padding box, so the edge sits over the grid rather than
+     over the card's own fill. The 4px state rail on the left is untouched.
+     Radius 12, the Hub card's own. The lift is below, on the bookings that
+     lift; the opacity is the only thing that ever animates. */
+  border: 1px solid var(--eq-edge);
   border-left: 4px solid var(--eq-ink-faint);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--eq-surface);
+  background-clip: padding-box;
   color: var(--eq-ink);
   text-align: left;
   cursor: pointer;
   overflow: hidden;
   container-type: inline-size;
-  box-shadow: 0 1px 2px var(--eq-shadow);
   -webkit-tap-highlight-color: transparent;
   transition: opacity 150ms ease;
+}
+
+/* Lifted: a client's booking that isn't over. A small two-layer lift
+   (--eq-elev-card: blur 2px and 8px, the Hub draws 30-60 of them, never
+   animated) and the dark top light. A flat card means past or not a client,
+   so the lift is SCOPED to the one kind that lifts instead of taken back
+   from five: a card that is over, unlinked, pending, unknown or a staff
+   block (which carries neither data-recede nor data-state) never matches.
+   HubCard always sets data-kind and data-recede on a booking. */
+.hs-card[data-kind="client"][data-recede="false"] {
+  box-shadow: var(--eq-elev-card), var(--eq-panel-highlight);
 }
 
 .hs-card:focus-visible {
@@ -56,16 +74,28 @@
 }
 
 /* The one being looked at (its peek is open): blue all round, its edge
-   included, over the coming-up edge above. */
+   included, over the coming-up edge above, and lifted higher (--eq-elev-3,
+   an open card). The third selector outranks the lift above (0,4,0 over
+   0,3,0) and touches only the shadow, so a rail keeps its colour. A card
+   that is over keeps today's flat look when open (its rule below says
+   none). */
 .hs-card[data-open="true"],
 .hs-card[data-kind="client"][data-state="live"][data-open="true"] {
   border-color: var(--eq-live);
-  box-shadow: 0 0 0 2px var(--eq-live);
+  box-shadow: 0 0 0 2px var(--eq-live), var(--eq-elev-3);
 }
 
+.hs-card[data-kind="client"][data-recede="false"][data-open="true"] {
+  box-shadow: 0 0 0 2px var(--eq-live), var(--eq-elev-3);
+}
+
+/* A state that repaints the fill restates the clip: the background shorthand
+   resets background-clip to border-box, and the soft edge would then sit
+   over the card's own fill instead of the grid (phase 11). */
 .hs-card[data-state="in-session"] {
   border-left-color: var(--eq-live);
   background: var(--eq-live-fill);
+  background-clip: padding-box;
 }
 
 /* Over: done, not logged, or nothing to claim. It recedes and drops its
@@ -76,6 +106,7 @@
 .hs-card[data-recede="true"] {
   border-left-color: var(--eq-border-strong);
   background: var(--eq-surface-2);
+  background-clip: padding-box;
   box-shadow: none;
   opacity: 0.7;
 }
@@ -103,11 +134,19 @@
   border-left-color: var(--eq-warn);
 }
 
-/* No Max Strength profile yet: the next sync links it. Inert. */
+/* No Max Strength profile yet: the next sync links it. Inert. Its dashes
+   keep today's hairline (--eq-border), as the Next 30 minutes strip's
+   unlinked item does: the soft edge would fade a dash to nothing, and the
+   3:1 edge would make a booking that isn't a client louder than one that
+   is. Its left keeps whatever edge its state gives it. */
 .hs-card[data-kind="unlinked"] {
   border-style: dashed;
   border-left-width: 1px;
+  border-top-color: var(--eq-border);
+  border-right-color: var(--eq-border);
+  border-bottom-color: var(--eq-border);
   background: var(--eq-surface-2);
+  background-clip: padding-box;
   box-shadow: none;
   cursor: default;
 }
@@ -115,6 +154,7 @@
 /* The roster that would hold her hasn't arrived yet. */
 .hs-card[data-kind="pending"] {
   background: var(--eq-surface-2);
+  background-clip: padding-box;
   box-shadow: none;
   cursor: progress;
 }
@@ -123,6 +163,7 @@
    profile is unknown, so the card says nothing about it. Inert. */
 .hs-card[data-kind="unknown"] {
   background: var(--eq-surface-2);
+  background-clip: padding-box;
   box-shadow: none;
   cursor: default;
 }
@@ -132,6 +173,7 @@
 .hs-card[data-kind="staff"] {
   border-left-color: var(--eq-ink-faint);
   background: repeating-linear-gradient(135deg, var(--eq-surface-2) 0 8px, var(--eq-surface-3) 8px 16px);
+  background-clip: padding-box;
   box-shadow: none;
   cursor: default;
 }

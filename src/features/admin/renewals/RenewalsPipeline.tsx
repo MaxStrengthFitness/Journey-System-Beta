@@ -190,7 +190,7 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief }
   const empty = !loading && rows.length === 0 && !error;
   const showTiles = !empty || (missingCount ?? 0) > 0;
   return (
-    <div className="space-y-4">
+    <div className="adm-pipeline space-y-4">
       {error && <AdminNotice tone="warn">{error}</AdminNotice>}
 
       {showTiles && (

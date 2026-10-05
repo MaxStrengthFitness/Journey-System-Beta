@@ -19,28 +19,35 @@
   padding: 0.875rem 1rem 6rem;
 }
 
+/* A panel (type and depth review, Oct 5 2026): the soft edge seen from
+   outside, the panel's lift and, in dark, its top light, as .tm-card and
+   .pn__card. It was a hairline box. */
 .jtd-card {
   display: flex;
   flex-direction: column;
   gap: 0.625rem;
   padding: 0.875rem 1rem 1rem;
-  border: 1px solid var(--st-border);
+  border: 1px solid var(--st-edge);
   border-radius: var(--st-radius);
   background: var(--st-surface);
+  background-clip: padding-box;
+  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
 }
 
-/* The one heading style: small upright capitals. */
+/* A card's head: the panel-title voice, 17/700 in ink, in its own
+   capitalisation (it was 12px capitals; phase 10 moved the rest of
+   My Studio's heads and missed this one). */
 .jtd-h {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0.25rem 0.5rem;
   margin: 0;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--st-ink-2);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--st-ink);
 }
 .jtd-h__sub {
   font-size: 12px;
@@ -76,6 +83,10 @@
 }
 .jtd-input:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, on the 3:1
+   edge, which stays; a press on :active, and flat when it can't be pressed.
+   The solid blue one drops a blue-tinted shadow instead. */
 .jtd-btn {
   align-self: flex-start;
   display: inline-flex;
@@ -84,8 +95,9 @@
   min-height: 44px;
   padding: 0 14px;
   border: 1px solid var(--st-border-strong);
-  border-radius: 10px;
-  background: var(--st-surface);
+  border-radius: 12px;
+  background: var(--st-raised);
+  box-shadow: var(--st-elev-1), inset 0 1px 0 var(--st-highlight);
   color: var(--st-ink);
   font: inherit;
   font-size: 14px;
@@ -93,8 +105,9 @@
   cursor: pointer;
 }
 .jtd-btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
-.jtd-btn:disabled { opacity: 0.55; cursor: default; }
-.jtd-btn--go { border-color: var(--st-live); background: var(--st-live); color: var(--st-live-on); }
+.jtd-btn--go { border-color: var(--st-live); background: var(--st-live); color: var(--st-live-on); box-shadow: var(--st-glow-live), var(--st-solid-light); }
+.jtd-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--st-press); }
+.jtd-btn:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
 
 .jtd-quiet {
   display: inline-flex;

@@ -324,10 +324,12 @@ const GROUP_TONE: Record<string, string> = {
 };
 const OTHER_TONE = GROUP_TONE.Other;
 
+/** A card's head: the label voice, 14/700 in ink-2, in its own
+ *  capitalisation (type and depth review, Oct 5 2026; it was 12px capitals,
+ *  the pattern the round took out everywhere else). The page's one eyebrow,
+ *  over the h1, keeps the capitals. */
 function Kicker({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="text-[12px] font-extrabold uppercase tracking-[0.12em] text-ink-d2 break-words">{children}</div>
-  );
+  return <div className="text-[14px] font-bold text-ink-d2 break-words">{children}</div>;
 }
 
 function Card({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
@@ -336,7 +338,11 @@ function Card({ children, className = "", delay = 0 }: { children: React.ReactNo
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay, ease: [0.16, 1, 0.3, 1] }}
-      className={`mx-5 p-4 bg-bg-dark-2 border border-div-d rounded-[14px] flex flex-col gap-3 ${className}`}
+      // A panel (type and depth, phase 10, Oct 4 2026): the edge seen from
+      // outside (--edge, the fill clipped to the padding box) and the
+      // panel's lift with its dark top light (--panel-lift, as the profile
+      // header card). It was the divider hairline with no shadow.
+      className={`mx-5 p-4 bg-bg-dark-2 border border-(--edge) bg-clip-padding rounded-[14px] shadow-(--panel-lift) flex flex-col gap-3 ${className}`}
     >
       {children}
     </motion.section>
@@ -389,7 +395,7 @@ function TodayRow({ line, coverage }: { line: TodayLine; coverage: HistoryCovera
           {delta && <span className={`w-20 text-right text-[11px] font-bold whitespace-nowrap ${delta.tone}`}>{delta.text}</span>}
         </>
       ) : (
-        <span className="text-[11px] font-bold uppercase tracking-wider text-ink-d3 whitespace-nowrap">{word}</span>
+        <span className="text-[12px] font-semibold text-ink-d3 whitespace-nowrap">{word}</span>
       )}
     </li>
   );
@@ -737,8 +743,10 @@ export function WrapUpScreen({
         <div className="flex-1 overflow-y-auto no-scrollbar relative z-10 flex flex-col gap-3 pb-6">
           {/* title */}
           <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="px-6 pt-4 pb-1">
-            <Kicker>{savedOnThisIpad ? "Wrap-up · session saved on this iPad" : "Wrap-up · session saved"}</Kicker>
-            <h1 className="font-display font-extrabold italic text-ink-d1 text-[30px] uppercase tracking-[0.01em] leading-none mt-2 mb-2 break-words">
+            <div className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-d2 break-words">
+              {savedOnThisIpad ? "Wrap-up · session saved on this iPad" : "Wrap-up · session saved"}
+            </div>
+            <h1 className="font-display font-extrabold text-ink-d1 text-[30px] leading-[1.04] mt-2 mb-2 break-words">
               {congratulation(session.id ?? `${client.id}-${todayKey}`, clientFirstName(client))}
             </h1>
             {savedOnThisIpad && (
@@ -757,7 +765,7 @@ export function WrapUpScreen({
           <Card delay={0.05}>
             <div className="flex items-baseline justify-between gap-3">
               <Kicker>Today</Kicker>
-              <span className="text-[11px] text-ink-d3 font-semibold">vs last time on each machine</span>
+              <span className="text-[12px] text-ink-d3 font-medium">vs last time on each machine</span>
             </div>
             <ol className="flex flex-col">
               {lines.map((l) => (
@@ -767,7 +775,7 @@ export function WrapUpScreen({
             {byRegion.length > 0 && (
               <div className="pt-2 border-t border-div-d">
                 <div className="flex items-baseline justify-between mb-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-ink-d3">Where the work went</span>
+                  <span className="text-[12px] font-semibold text-ink-d3">Where the work went</span>
                   <span className="font-mono text-[12px] text-ink-d2">{Math.round(tonnage).toLocaleString()} lb moved</span>
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -865,7 +873,7 @@ export function WrapUpScreen({
                   onClick={() => setTimesOpen(true)}
                   data-testid="times-door"
                   data-door="prominent"
-                  className="shrink-0 min-h-11 rounded-xl border border-(--eq-warn)/40 bg-bg-dark-3 px-4 text-[14px] font-bold text-ink-d1 whitespace-nowrap hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+                  className="shrink-0 min-h-11 rounded-xl border border-input bg-(--raised) shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) px-4 text-[14px] font-bold text-ink-d1 whitespace-nowrap hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
                 >
                   <CalendarClock size={16} className="text-(--eq-warn) shrink-0" aria-hidden="true" />
                   {TIMES_WITH_ROOM}
@@ -902,7 +910,7 @@ export function WrapUpScreen({
                   </span>
                 </div>
                 <textarea
-                  className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[14px] text-ink-d1 resize-none outline-none focus:border-(--eq-focus-ring) transition-colors"
+                  className="w-full bg-(--well) border border-input shadow-(--elev-0) rounded-[10px] p-2.5 px-3 min-h-16 text-[14px] text-ink-d1 resize-none outline-none focus:border-(--eq-focus-ring) transition-colors"
                   value={draftText}
                   onChange={(e) => setDraftText(e.target.value)}
                   aria-label="Unsaved note"
@@ -911,7 +919,7 @@ export function WrapUpScreen({
                   {/* A save: solid brand blue, its own on-colour. */}
                   <button
                     type="button"
-                    className="min-h-10 flex-1 rounded-xl bg-(--eq-live) text-(--eq-live-on) text-[14px] font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+                    className="min-h-10 flex-1 rounded-xl bg-(--eq-live) text-(--eq-live-on) shadow-(--solid-lift) active:translate-y-px active:shadow-(--press) text-[14px] font-bold disabled:opacity-50 disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
                     disabled={draftBusy || !draftText.trim()}
                     onClick={async () => {
                       setDraftBusy(true);
@@ -926,7 +934,7 @@ export function WrapUpScreen({
                   </button>
                   <button
                     type="button"
-                    className="min-h-10 px-4 rounded-xl border border-div-d text-ink-d2 text-[14px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+                    className="min-h-10 px-4 rounded-xl border border-input bg-(--raised) shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) text-ink-d2 text-[14px] font-bold disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
                     disabled={draftBusy}
                     onClick={onDropDraft}
                   >
@@ -970,7 +978,7 @@ export function WrapUpScreen({
             </div>
 
             <textarea
-              className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[14px] text-ink-d1 placeholder:text-ink-d3 placeholder:italic resize-none outline-none focus:border-(--eq-focus-ring) transition-colors"
+              className="w-full bg-(--well) border border-input shadow-(--elev-0) rounded-[10px] p-2.5 px-3 min-h-16 text-[14px] text-ink-d1 placeholder:text-ink-d3 placeholder:italic resize-none outline-none focus:border-(--eq-focus-ring) transition-colors"
               placeholder={`Profile note — anything for ${clientFirstName(client)}'s record. It files when you leave this screen.`}
               value={notes}
               onChange={(e) => {
@@ -1000,10 +1008,10 @@ export function WrapUpScreen({
               )}
               {importance !== "standard" && (
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-[11px] text-ink-d3 uppercase tracking-wider font-bold">Matters until (optional)</span>
+                  <span className="text-[14px] font-bold text-ink-d2">Matters until (optional)</span>
                   <input
                     type="date"
-                    className="w-full min-h-11 bg-bg-dark-3 border border-div-d rounded-[10px] px-3 text-[14px] text-ink-d1 outline-none focus:border-(--eq-focus-ring) transition-colors"
+                    className="w-full min-h-11 bg-(--well) border border-input shadow-(--elev-0) rounded-[10px] px-3 text-[14px] text-ink-d1 outline-none focus:border-(--eq-focus-ring) transition-colors"
                     value={effectiveUntil}
                     min={todayKey}
                     aria-label="Matters until"
@@ -1014,11 +1022,15 @@ export function WrapUpScreen({
               )}
             </div>
 
+            {/* The doors are RAISED (type and depth, phase 8, Oct 4 2026; AJ's
+                2A): a fill a hair lighter than the card, a contact lift and a
+                white top light, on the 3:1 --input edge (they drew the
+                decorative divider), and a press. The voice stays 14px bold. */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => setShowPulse(true)}
-                className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 text-[14px] font-bold text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+                className="min-h-11 rounded-xl border border-input bg-(--raised) shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) px-4 text-[14px] font-bold text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
               >
                 <HeartPulse className="w-4 h-4 text-(--eq-live)" />
                 Update Pulse
@@ -1029,10 +1041,12 @@ export function WrapUpScreen({
                 <button
                   type="button"
                   onClick={() => setShowRenewal(true)}
-                  className={`min-h-11 rounded-xl border px-4 py-2 text-[14px] font-bold hover:opacity-90 flex items-center justify-center gap-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring) ${
+                  className={`min-h-11 rounded-xl border px-4 py-2 text-[14px] font-bold hover:opacity-90 active:translate-y-px active:shadow-(--press) flex items-center justify-center gap-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring) ${
+                    // A tint lifts without the top light; the raised door
+                    // takes the lift and the top light.
                     renewalDue && !renewalLogged
-                      ? "border-(--eq-hero)/50 bg-(--eq-hero-fill) text-ink-d1"
-                      : "border-div-d bg-bg-dark-3 text-ink-d1"
+                      ? "border-(--eq-hero)/50 bg-(--eq-hero-fill) text-ink-d1 shadow-(--elev-1)"
+                      : "border-input bg-(--raised) text-ink-d1 shadow-(--raised-lift)"
                   }`}
                 >
                   <MessageSquareText className={`w-4 h-4 shrink-0 ${renewalDue && !renewalLogged ? "text-(--eq-hero-text)" : "text-(--eq-live)"}`} />
@@ -1111,8 +1125,8 @@ export function WrapUpScreen({
               { label: "Lifetime volume", value: `${fmtBig(lifetime.volume)} lb` },
               { label: "Lifetime reps", value: fmtBig(lifetime.reps) },
             ].map((t) => (
-              <div key={t.label} className="rounded-xl border border-div-d bg-bg-dark-2 px-3 py-2">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-ink-d3">{t.label}</div>
+              <div key={t.label} className="rounded-xl border border-(--edge) bg-clip-padding bg-bg-dark-2 shadow-(--panel-lift) px-3 py-2">
+                <div className="text-[12px] font-semibold text-ink-d3">{t.label}</div>
                 <div className="font-mono text-[14px] font-bold text-ink-d2">{t.value}</div>
               </div>
             ))}
@@ -1125,7 +1139,7 @@ export function WrapUpScreen({
               type="button"
               onClick={leave}
               disabled={leaving}
-              className="w-full min-h-[52px] rounded-2xl bg-bg-dark-2 border border-div-d text-ink-d1 text-[14px] font-bold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+              className="w-full min-h-[52px] rounded-2xl bg-(--raised) shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) border border-input text-ink-d1 text-[14px] font-bold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60 disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
             >
               <ArrowLeft size={16} />
               {leaving ? "Leaving…" : "Back to Hub"}
@@ -1207,7 +1221,7 @@ function PackagesCard({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 text-[14px] font-bold text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+          className="min-h-11 rounded-xl border border-input bg-(--raised) shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) px-4 text-[14px] font-bold text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
         >
           {DOOR_BUTTON}
         </button>

@@ -234,6 +234,31 @@ describe("ProfileHeader's running-session menu", () => {
     expect(onContinueSession).toHaveBeenCalledTimes(1);
   });
 
+  it("speaks in its own capitalisation, nothing under 12px (type and depth, phase 7)", async () => {
+    const el = mount(props({ activeInProgressSession: running(), sessionIsMine: true, trainers }));
+    await openMenu(el);
+    const menu = document.body.querySelector('[role="menu"]')!;
+    for (const node of [menu, ...Array.from(menu.querySelectorAll("*"))]) {
+      const c = (node.getAttribute("class") ?? "").split(/\s+/);
+      expect(c, node.textContent ?? "").not.toContain("uppercase");
+      expect(c.some((k) => /^text-\[(?:9|10|11)(?:\.\d+)?px\]$/.test(k)), node.textContent ?? "").toBe(false);
+    }
+    // In progress is Go's other state: Go's words, the slanted capitals at 800,
+    // and Go's depth (type and depth, phase 8): the short glow and top light,
+    // a press, the fill restated on hover, and no raw amber blur or animated
+    // shadow.
+    const trigger = [...el.querySelectorAll("button")].find((b) => b.textContent?.includes("In progress"))!;
+    const tc = trigger.className.split(/\s+/);
+    expect(tc).toEqual(expect.arrayContaining(["font-display", "italic", "uppercase", "font-extrabold"]));
+    expect(tc).toEqual(expect.arrayContaining(["shadow-(--go-lift)", "active:translate-y-px", "active:shadow-(--press)", "hover:bg-amber-500"]));
+    expect(tc.some((k) => /^shadow-\[/.test(k)), "no raw shadow").toBe(false);
+    // Navy words on the amber, never white (2.1:1); the initials too.
+    expect(tc).toContain("text-cta-foreground");
+    expect(tc).not.toContain("text-white");
+    expect(trigger.innerHTML).not.toMatch(/text-white/);
+    expect(tc.some((k) => k === "transition-all" || k === "transition-shadow" || k === "transition-colors"), "only the fill and the move transition").toBe(false);
+  });
+
   it("offers Watch for another trainer's session", async () => {
     const onWatchSession = vi.fn();
     const el = mount(props({ activeInProgressSession: running(), sessionIsMine: false, onWatchSession, trainers }));
@@ -277,5 +302,107 @@ describe("ProfileHeader's row of facts (Oct 2 2026)", () => {
     const strip = el.querySelector<HTMLElement>(".cp-head__strip")!;
     const labels = Array.from(strip.children).map((c) => (c.firstElementChild?.textContent ?? "").trim());
     expect(labels).toEqual(["Sessions", "Last session", "Next session", "Top trainer"]);
+  });
+});
+
+/*
+ * Type and depth, phase 7 (Oct 4 2026; AJ's answers 1A and 2A): the header is
+ * a card, the name a title in the display face, upright, the facts one well,
+ * the quiet tools one raised control on the 3:1 edge, and Start session Go.
+ * jsdom loads no Tailwind, so these read the class lists the header renders.
+ */
+describe("ProfileHeader's look (type and depth, phase 7)", () => {
+  const classes = (node: Element | null) => (node?.getAttribute("class") ?? "").split(/\s+/).filter(Boolean);
+  const sync = { busy: false, onSync: () => {}, label: "Synced 3 days ago", available: true };
+
+  it("is a card: an edge seen from outside, the panel's lift, no line under a band", () => {
+    const c = classes(mount(props()).querySelector("header"));
+    expect(c).toEqual(expect.arrayContaining(["cp-head", "bg-card", "border", "border-(--edge)", "bg-clip-padding", "rounded-xl", "shadow-(--panel-lift)"]));
+    expect(c).not.toContain("border-b");
+    // Tailwind writes "inset" in front of an inset-shadow-(--x) value, and
+    // the dark --panel-highlight already starts with it: "inset inset" would
+    // drop the card's whole shadow in dark.
+    expect(c.some((k) => k.startsWith("inset-shadow-"))).toBe(false);
+    expect(c.some((k) => /^(?:dark:)?border-slate-/.test(k))).toBe(false);
+  });
+
+  it("names the client in the display face, upright, at 30, wrapping and never cut", () => {
+    const c = classes(mount(props()).querySelector("h1"));
+    expect(c).toEqual(expect.arrayContaining(["cp-head__name", "font-display", "font-extrabold", "not-italic", "normal-case", "text-[30px]"]));
+    expect(c).not.toContain("italic");
+    expect(c).not.toContain("uppercase");
+    expect(c).not.toContain("font-black");
+    expect(c).not.toContain("truncate");
+    expect(c).toContain("[overflow-wrap:anywhere]");
+  });
+
+  it("sinks the four facts into one well: --well, never bg-muted, and no fill or capitals on a cell", () => {
+    const el = mount(props({ completedCount: 413, sessionsQuotable: true, scheduledSessions: [] }));
+    const strip = el.querySelector(".cp-head__strip");
+    const c = classes(strip);
+    expect(c).toEqual(expect.arrayContaining(["bg-(--well)", "shadow-(--elev-0)"]));
+    expect(c.some((k) => /(?:^|:)bg-muted\b/.test(k))).toBe(false);
+    expect(c).not.toContain("border");
+    expect(c.some((k) => /^(?:dark:)?bg-slate-/.test(k))).toBe(false);
+    for (const cell of Array.from(strip!.children)) {
+      const cc = classes(cell);
+      expect(cc, cell.textContent ?? "").not.toContain("bg-card");
+      // The stat label: 12/600 in its own capitalisation.
+      const label = classes(cell.firstElementChild);
+      expect(label).toEqual(expect.arrayContaining(["text-[12px]", "font-semibold"]));
+      expect(label).not.toContain("uppercase");
+    }
+    // The headline figure: Saira 22/800, upright, tabular.
+    const figure = classes(el.querySelector('[data-testid="sessions-completed"]'));
+    expect(figure).toEqual(expect.arrayContaining(["font-display", "text-[22px]", "font-extrabold", "tabular-nums"]));
+    expect(figure).not.toContain("italic");
+  });
+
+  it("keeps the late cancels whole, on a line of their own when the cell is narrow", () => {
+    const el = mount(props({ completedCount: 40, lateCancels: 2, sessionsQuotable: true }));
+    const late = el.querySelector('[data-testid="late-cancels"]')!;
+    expect(classes(late)).toContain("whitespace-nowrap");
+    expect(classes(late.parentElement)).toEqual(expect.arrayContaining(["flex", "flex-wrap"]));
+    expect(classes(late.parentElement)).not.toContain("whitespace-nowrap");
+  });
+
+  it("raises the quiet tools as one control on the 3:1 edge, pressing in, never animating a shadow", () => {
+    const el = mount(props({ sync, onQuickNote: () => {}, kaizen: { isOn: false, onToggle: () => {} } }));
+    const group = classes(el.querySelector(".cp-head__tools"));
+    expect(group).toEqual(expect.arrayContaining(["border", "border-input", "bg-(--raised)", "shadow-(--raised-lift)", "divide-(--divider)"]));
+    expect(group.some((k) => /^(?:dark:)?(?:border|divide)-slate-/.test(k))).toBe(false);
+    const tools = Array.from(el.querySelectorAll(".cp-head__tools > button"));
+    expect(tools).toHaveLength(3);
+    for (const t of tools) {
+      const tc = classes(t);
+      // 12 under 768px (the iPad mini upright, where 14 pushed the renewal
+      // line onto a second row), 14 from md, 12 again in the one-band xl.
+      expect(tc).toEqual(expect.arrayContaining(["h-10", "text-[12px]", "md:text-[14px]", "xl:text-[12px]", "font-semibold", "text-ink-d2", "active:shadow-(--press)"]));
+      expect(tc).not.toContain("transition-all");
+    }
+  });
+
+  it("draws Start session as Go: slanted capitals at 800 and 17, the orange lift, a press, no animated shadow", () => {
+    const el = mount(props());
+    const start = el.querySelector(".cp-head__start");
+    const sc = classes(start);
+    expect(sc).toEqual(expect.arrayContaining(["bg-(--eq-go)", "shadow-(--go-lift)", "active:translate-y-px", "active:shadow-(--press)"]));
+    expect(sc).not.toContain("transition-all");
+    expect(sc.some((k) => k.startsWith("hover:shadow-"))).toBe(false);
+    const label = Array.from(start!.querySelectorAll("span")).find((s) => s.textContent === "Start session" && s.children.length === 0)!;
+    expect(classes(label)).toEqual(expect.arrayContaining(["font-display", "italic", "uppercase", "font-extrabold", "text-[17px]", "tracking-[0.04em]"]));
+  });
+
+  it("draws the avatar's initials in the display face, upright, in a well", () => {
+    const el = mount(props());
+    const fallback = el.querySelector('[data-slot="avatar-fallback"]');
+    expect(fallback, "no photo: the initials are drawn").not.toBeNull();
+    expect(fallback!.textContent).toBe("JD");
+    const fc = classes(fallback);
+    expect(fc).toEqual(expect.arrayContaining(["font-display", "font-extrabold", "not-italic", "bg-(--well)", "shadow-(--elev-0)", "text-[22px]"]));
+    expect(fc).not.toContain("italic");
+    const avatar = classes(el.querySelector('[data-slot="avatar"]'));
+    expect(avatar).toContain("bg-(--well)");
+    expect(avatar.some((k) => k.startsWith("ring-"))).toBe(false);
   });
 });

@@ -38,39 +38,72 @@
 }
 .stg-head__lede { margin: 4px 0 0; font-size: 14px; color: var(--eq-ink-muted); }
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): an
+   edge seen from outside the card (--eq-edge over the ground, the fill
+   clipped to the padding box) and a short two-layer navy lift. It was a
+   hairline and a 1px shadow, a flat box cut out of the page. */
 .stg-card {
   background: var(--eq-surface);
-  border: 1px solid var(--eq-border);
+  background-clip: padding-box;
+  border: 1px solid var(--eq-edge);
   border-radius: var(--eq-radius);
-  box-shadow: 0 1px 2px var(--eq-shadow);
+  box-shadow: var(--eq-elev-2), var(--eq-panel-highlight);
   overflow: hidden;
 }
-.stg-card--accent { border-color: var(--eq-hero); }
+/* The orange-flagged card: a straight 3px band painted as the first
+   background layer, never a full orange border (rule 3: a border on a
+   rounded box tapers at the corners). */
+.stg-card--accent {
+  background:
+    linear-gradient(var(--eq-hero), var(--eq-hero)) top / 100% 3px no-repeat border-box,
+    var(--eq-surface) padding-box;
+}
 
+/* The head: no band and no rule; the 17/700 title and its icon square carry
+   it (the kit's .panel-head). It was a tinted strip cut by a hairline. */
 .stg-card__head {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
-  background: var(--eq-surface-2);
-  border-bottom: 1px solid var(--eq-border);
+  padding: 16px 16px 0;
+  background: transparent;
+  border-bottom: 0;
 }
-.stg-card__icon { color: var(--eq-ink-muted); flex: none; }
-.stg-card--accent .stg-card__icon { color: var(--eq-hero-text); }
-.stg-card__title {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+/* The icon leading the head: a 32px tinted square, the glyph 18px in it. */
+.stg-card__icon {
+  box-sizing: border-box;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 7px;
+  border-radius: 10px;
+  background: var(--eq-surface-2);
   color: var(--eq-ink-2);
 }
-.stg-card__sub { margin: 2px 0 0; font-size: 12px; color: var(--eq-ink-muted); }
-.stg-card__body { padding: 16px; display: grid; gap: 12px; }
+.stg-card--accent .stg-card__icon { background: var(--eq-hero-fill); color: var(--eq-hero-text); }
+/* The panel-title voice: Geist 17/700 in ink, its own capitalisation. It
+   was 12px grey capitals at 0.12em. */
+.stg-card__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--eq-ink);
+}
+.stg-card__sub { margin: 2px 0 0; font-size: 12px; font-weight: 500; color: var(--eq-ink-muted); }
+.stg-card__body { padding: 12px 16px 16px; display: grid; gap: 12px; }
 
 .stg-text { margin: 0; font-size: 14px; line-height: 1.55; color: var(--eq-ink-2); }
 
 .stg-kinds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): Bug, UI feedback
+   and Feature idea, and Sign out below, are buttons: a fill a hair lighter
+   than the card, a contact lift and a white top light, on the 3:1 edge,
+   which stays (under glare it is what keeps a button a button). Each presses
+   in on :active. The hover is a pointer's only, so an iPad's kept hover
+   never flattens one. */
 .stg-kind {
   display: flex;
   flex-direction: column;
@@ -80,36 +113,48 @@
   min-height: 72px;
   border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink);
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
 .stg-kind svg { color: var(--eq-hero-text); }
-.stg-kind:hover { background: var(--eq-hero-fill); }
+@media (hover: hover) {
+  .stg-kind:hover { background: var(--eq-hero-fill); }
+}
 
+/* "Your reports · 2 won't fix", over the list: the label voice (type and
+   depth, phase 9, Oct 4 2026; the kit draws this line so), 14/700 in ink-2
+   and its own capitalisation. It was 11px grey capitals. */
 .stg-label {
   margin: 0;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--eq-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--eq-ink-2);
 }
 
 /* The reports could not be read: said in words, in the caution plum. */
 .stg-problem { margin: 0; font-size: 14px; font-weight: 700; color: var(--eq-warn); }
 
-.stg-reports { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+/* ROWS, not boxes (type and depth, phase 9, Oct 4 2026): a report and a
+   door are lines inside the card, divided by a hairline, one fewer box per
+   line. Each was its own bordered box with a gap between. The words keep
+   2px of the card's inset, in line with the card's other words. */
+.stg-reports { list-style: none; margin: -4px 0 0; padding: 0; display: grid; gap: 0; }
 .stg-report {
   display: grid;
   gap: 8px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--eq-border);
+  padding: 10px 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   font-size: 14px;
 }
+.stg-report + .stg-report { border-top: 1px solid var(--eq-divider); }
 .stg-report__row {
   display: flex;
   align-items: baseline;
@@ -155,7 +200,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 9px 0;
-  border-bottom: 1px solid var(--eq-border);
+  border-bottom: 1px solid var(--eq-divider);
   font-size: 14px;
 }
 .stg-fact:last-child { border-bottom: 0; }
@@ -164,22 +209,29 @@
 .stg-ok { color: var(--eq-ok); }
 .stg-warn { color: var(--eq-warn); }
 
-.stg-links { display: grid; gap: 8px; }
+/* A door is a row as well (phase 9): 52px at least, as before, divided
+   from the door above it by the hairline. Operations' door stands alone
+   under its sentence, so the same hairline sets it off from the words. */
+.stg-links { display: grid; gap: 0; }
 .stg-link {
   display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
   min-height: 52px;
-  padding: 8px 14px;
-  border-radius: 12px;
-  border: 1px solid var(--eq-border);
-  background: var(--eq-surface);
+  padding: 8px 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--eq-ink);
   text-align: left;
   cursor: pointer;
 }
-.stg-link:hover { background: var(--eq-surface-2); }
+.stg-link + .stg-link,
+.stg-text + .stg-link { border-top: 1px solid var(--eq-divider); }
+@media (hover: hover) {
+  .stg-link:not(:disabled):hover { background: var(--eq-surface-2); }
+}
 .stg-link:disabled { opacity: 0.5; cursor: default; }
 .stg-link__icon { color: var(--eq-live-text); flex: none; }
 .stg-link__text { flex: 1; min-width: 0; display: grid; gap: 2px; }
@@ -196,13 +248,21 @@
   width: 100%;
   border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink-2);
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
-.stg-signout:hover { background: var(--eq-surface-2); color: var(--eq-ink); }
+@media (hover: hover) {
+  .stg-signout:hover { background: var(--eq-surface-2); color: var(--eq-ink); }
+}
+.stg-kind:active,
+.stg-signout:active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
+}
 
 .stg-kind:focus-visible,
 .stg-link:focus-visible,

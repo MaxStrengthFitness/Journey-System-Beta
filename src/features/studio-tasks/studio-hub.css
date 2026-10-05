@@ -13,11 +13,17 @@
  * The shift strip
  * ------------------------------------------------------------------ */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+   outside, the fill clipped to the padding box, a short navy lift. Its
+   shadow read --st-shadow, a colour with no lengths, so the declaration was
+   invalid and the strip drew no shadow at all. No screen mounts the strip
+   today; it is kept in the recipe for the one that does. */
 .sh__strip {
   background: var(--st-surface);
-  border: 1px solid var(--st-border);
+  background-clip: padding-box;
+  border: 1px solid var(--st-edge);
   border-radius: var(--st-radius);
-  box-shadow: var(--st-shadow);
+  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
   padding: 14px 16px;
   margin-bottom: 18px;
 }
@@ -41,13 +47,16 @@
   margin-bottom: 10px;
 }
 
+/* The strip's head: the panel-title voice, 17/700 in ink (it was 11px
+   capitals in the muted ink). */
 .sh__strip-title {
   margin: 0;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--st-ink-muted);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--st-ink);
 }
 
 .sh__strip-count {
@@ -124,10 +133,10 @@
 }
 
 .sh__group-meta {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-muted);
 }
 
@@ -152,10 +161,10 @@
   padding: 1px 6px;
   border: 1px solid var(--st-border-strong);
   border-radius: 999px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-muted);
   vertical-align: middle;
 }
@@ -310,10 +319,10 @@
 }
 
 .sh__row-skipped {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-muted);
 }
 
@@ -363,10 +372,10 @@
 
 .sh__lane-title {
   flex: 1 1 auto;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .sh__lane-count {
@@ -376,10 +385,10 @@
 }
 
 .sh__lane-stale {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-flag);
   background: var(--st-flag-fill);
   border: 1px solid var(--st-flag-border);
@@ -487,10 +496,10 @@
 
 .sh__entry-label {
   margin: 10px 0 3px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-muted);
 }
 
@@ -519,10 +528,10 @@
 }
 
 .sh__tag {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-muted);
   background: var(--st-surface-3);
   border: 1px solid var(--st-border);
@@ -893,10 +902,10 @@
 }
 
 .ini__you {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-live-text);
   background: var(--st-live-fill);
   border-radius: 999px;

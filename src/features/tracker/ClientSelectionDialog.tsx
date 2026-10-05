@@ -35,10 +35,10 @@ export function ClientSelectionDialog({
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
       <DialogContent className="sm:max-w-112.5 rounded-3xl p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-2">
-          <DialogTitle className="text-2xl font-black uppercase italic tracking-tight">
+          <DialogTitle>
             {title}
           </DialogTitle>
-          <DialogDescription className="font-bold text-xs">
+          <DialogDescription>
             {description}
           </DialogDescription>
         </DialogHeader>
@@ -48,7 +48,7 @@ export function ClientSelectionDialog({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Find client..."
-              className="pl-10 h-11 rounded-xl bg-muted dark:bg-card border-none"
+              className="pl-10 h-11 rounded-xl"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus
@@ -62,13 +62,13 @@ export function ClientSelectionDialog({
               <button
                 key={client.id}
                 onClick={() => onSelect(client.id!)}
-                className="w-full text-left p-4 rounded-2xl border-2 border-transparent hover:border-primary/20 hover:bg-primary/5 transition-all flex items-center justify-between group"
+                className="w-full text-left p-4 min-h-14 rounded-2xl border border-transparent hover:bg-primary/5 transition-colors flex items-center justify-between group"
               >
                 <div>
-                  <p className="font-black text-lg leading-tight uppercase">
+                  <p className="font-bold text-[17px] leading-tight [overflow-wrap:anywhere]">
                     {client.firstName} {client.lastName}
                   </p>
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase opacity-60">
+                  <p className="text-[12px] font-medium text-muted-foreground">
                     {client.height} • {client.weight || "--"} lbs
                   </p>
                 </div>
@@ -76,9 +76,9 @@ export function ClientSelectionDialog({
               </button>
             ))
           ) : (
-            <div className="py-12 text-center opacity-40">
-              <Users className="w-12 h-12 mx-auto mb-2" />
-              <p className="text-xs font-black uppercase">No clients found</p>
+            <div className="py-12 text-center text-muted-foreground">
+              <Users className="w-12 h-12 mx-auto mb-2" aria-hidden />
+              <p className="text-[14px] font-semibold">No clients found</p>
             </div>
           )}
         </div>

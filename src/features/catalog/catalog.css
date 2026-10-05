@@ -88,12 +88,17 @@
   outline-offset: 1px;
 }
 
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, on the 3:1
+   edge, which stays. It presses in on :active, and lies flat when it can't
+   be pressed. */
 .cat__btn {
   min-height: 44px;
   padding: 0 1rem;
   border: 1px solid var(--cat-border-strong);
-  border-radius: 10px;
-  background: var(--cat-surface);
+  border-radius: 12px;
+  background: var(--cat-raised);
+  box-shadow: var(--cat-elev-1), inset 0 1px 0 var(--cat-highlight);
   color: var(--cat-ink);
   font: inherit;
   font-size: 14px;
@@ -101,27 +106,37 @@
   cursor: pointer;
 }
 
-.cat__btn:disabled { opacity: 0.6; cursor: default; }
-
 /* Every Save in the app is solid brand blue with its on-colour (voice review
-   follow-up, Sep 27 2026). White on the dark theme's lighter blue was 2.9:1. */
+   follow-up, Sep 27 2026). White on the dark theme's lighter blue was 2.9:1.
+   A blue-tinted drop and a top light: no gradient, no dark foot. */
 .cat__btn--primary {
   border-color: var(--cat-live);
   background: var(--cat-live);
   color: var(--cat-live-on);
+  box-shadow: var(--cat-glow-live), var(--cat-solid-light);
 }
 
+/* Saved and Couldn't save: tints, which lift without the white top light.
+   A tint that lifts keeps a 3:1 edge in its own ink (type and depth, phase
+   14, Oct 4 2026; AJ's 2A): Saved had none, and Couldn't save drew a 32%
+   pink in dark (under 3:1). The ink is 5.5:1 on the card in light and 8.4:1
+   in dark (ok), 5.3:1 and 6.0:1 (warn). */
 .cat__btn--ok {
-  border-color: transparent;
+  border-color: var(--cat-ok);
   background: var(--cat-ok-fill);
   color: var(--cat-ok);
+  box-shadow: var(--cat-elev-1);
 }
 
 .cat__btn--error {
-  border-color: var(--cat-warn-border);
+  border-color: var(--cat-warn);
   background: var(--cat-warn-fill);
   color: var(--cat-warn);
+  box-shadow: var(--cat-elev-1);
 }
+
+.cat__btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--cat-press); }
+.cat__btn:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
 
 .cat__btn:focus-visible {
   outline: 2px solid var(--cat-focus-ring);
@@ -181,10 +196,10 @@
 .ssc__name {
   flex: 1;
   min-width: 0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cat-ink-2);
   overflow-wrap: anywhere;
 }
@@ -220,12 +235,14 @@
   justify-content: center;
   width: 40px;
   height: 40px;
-  border: 1px solid var(--cat-border);
-  border-radius: 8px;
-  background: var(--cat-surface-2);
+  border: 1px solid var(--cat-border-strong);
+  border-radius: 12px;
+  background: var(--cat-raised);
+  box-shadow: var(--cat-elev-1), inset 0 1px 0 var(--cat-highlight);
   color: var(--cat-ink-muted);
   cursor: pointer;
 }
+.ssc__addbtn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--cat-press); }
 .ssc__remove:hover {
   color: var(--cat-warn);
 }
@@ -365,10 +382,10 @@
 }
 
 .mcat-found__where {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--wk-live-text);
 }
 
@@ -386,15 +403,19 @@
   list-style: none;
   margin: 1rem 0 0;
   padding: 0;
-  border: 1px solid var(--wk-border);
+  /* A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+     outside (--wk-edge, the fill clipped to the padding box) and a short
+     two-layer navy lift; its rows are divided by the soft hairline. */
+  border: 1px solid var(--wk-edge);
   border-radius: var(--wk-radius);
   background: var(--wk-surface);
-  box-shadow: var(--wk-elev-1);
+  background-clip: padding-box;
+  box-shadow: var(--wk-elev-2), var(--wk-panel-highlight);
   overflow: hidden;
 }
 
 .mcat-floor__item + .mcat-floor__item {
-  border-top: 1px solid var(--wk-border);
+  border-top: 1px solid var(--wk-divider);
 }
 
 .mcat-row {
@@ -549,10 +570,10 @@
 
 .mcat-flag__who,
 .mcat-oos__who {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--wk-warn);
 }
 
@@ -583,11 +604,11 @@
 }
 .mcat-removed__head {
   margin: 0 0 0.375rem;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--wk-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--wk-ink-2);
 }
 .mcat-removed__list {
   list-style: none;
@@ -604,10 +625,10 @@
   max-width: var(--wk-measure);
 }
 .mcat-removed__list-name {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--wk-ink-muted);
 }
 .mcat-removed__line {
@@ -631,9 +652,14 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--wk-border);
+  /* A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+     outside (--wk-edge, the fill clipped to the padding box) and a short
+     two-layer navy lift; its rows are divided by the soft hairline. */
+  border: 1px solid var(--wk-edge);
   border-radius: var(--wk-radius);
   background: var(--wk-surface);
+  background-clip: padding-box;
+  box-shadow: var(--wk-elev-2), var(--wk-panel-highlight);
   overflow: hidden;
 }
 
@@ -645,7 +671,7 @@
 }
 
 .mcat-models__item + .mcat-models__item {
-  border-top: 1px solid var(--wk-border);
+  border-top: 1px solid var(--wk-divider);
 }
 
 .mcat-models__name {
@@ -685,10 +711,10 @@
   align-items: center;
   gap: 0.375rem;
   margin: 0 0 0.25rem;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--wk-alert);
 }
 
@@ -711,6 +737,9 @@
   margin: 0 0 0.875rem;
 }
 
+/* A way in is a choice, and a choice is a button: raised on its 3:1 edge
+   (type and depth, phase 8), radius 12 like every control (it was a pill).
+   The one you are in is tinted blue on the blue edge, and still lifts. */
 .mcat-lens__btn {
   display: inline-flex;
   align-items: center;
@@ -718,8 +747,9 @@
   min-height: 44px;
   padding: 0 0.875rem;
   border: 1px solid var(--wk-border-strong);
-  border-radius: var(--wk-radius-pill);
-  background: var(--wk-surface);
+  border-radius: 12px;
+  background: var(--wk-raised);
+  box-shadow: var(--wk-elev-1), inset 0 1px 0 var(--wk-highlight);
   color: var(--wk-ink-2);
   font: inherit;
   font-size: 14px;
@@ -731,7 +761,9 @@
   border-color: var(--wk-live);
   background: var(--wk-live-fill);
   color: var(--wk-live-text);
+  box-shadow: var(--wk-elev-1);
 }
+.mcat-lens__btn:active { transform: translateY(1px); box-shadow: var(--wk-press); }
 .mcat-lens__btn:focus-visible {
   outline: 2px solid var(--wk-focus-ring);
   outline-offset: 2px;
@@ -773,11 +805,11 @@
 
 .mcat-body__group-label {
   margin: 0 0 0.375rem;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--wk-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--wk-ink-2);
 }
 
 .mcat-body__chips {
@@ -840,21 +872,22 @@
   margin: 0;
   font-family: var(--wk-font-display);
   font-size: 30px;
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
-  text-transform: uppercase;
-  line-height: 1;
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1.04;
   color: var(--wk-ink);
   overflow-wrap: anywhere;
 }
 
 .mcat-body__heading {
   margin: 1.25rem 0 0;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--wk-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--wk-ink-2);
 }
 
 .mcat-body__others {
@@ -926,9 +959,14 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--wk-border);
+  /* A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+     outside (--wk-edge, the fill clipped to the padding box) and a short
+     two-layer navy lift; its rows are divided by the soft hairline. */
+  border: 1px solid var(--wk-edge);
   border-radius: var(--wk-radius);
   background: var(--wk-surface);
+  background-clip: padding-box;
+  box-shadow: var(--wk-elev-2), var(--wk-panel-highlight);
 }
 .mcat-changes__item {
   display: flex;
@@ -937,7 +975,7 @@
   padding: 0.625rem 0.875rem;
 }
 .mcat-changes__item + .mcat-changes__item {
-  border-top: 1px solid var(--wk-border);
+  border-top: 1px solid var(--wk-divider);
 }
 .mcat-changes__what {
   font-size: 14px;

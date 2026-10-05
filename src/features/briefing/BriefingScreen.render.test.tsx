@@ -453,7 +453,7 @@ describe("the pre-session briefing mounts", () => {
     const onStart = vi.fn();
     const host = await mount(<Screen onStart={onStart} />);
     await click(buttonByText(host, "Sore spot"));
-    await click(buttonByText(host, "Tag Body Region"));
+    await click(buttonByText(host, "Tag body region"));
     const dialog = document.querySelector('[role="dialog"][aria-label="Body region picker"]')!;
     expect(dialog).toBeTruthy();
     await click(buttonByText(dialog, "Lower Back"));
@@ -485,7 +485,7 @@ describe("the pre-session briefing mounts", () => {
     const onStart = vi.fn();
     const host = await mount(<Screen onStart={onStart} />);
     await click(buttonByText(host, "Sore spot"));
-    await click(buttonByText(host, "Tag Body Region"));
+    await click(buttonByText(host, "Tag body region"));
     const dialog = document.querySelector('[role="dialog"][aria-label="Body region picker"]')!;
     await click(buttonByText(dialog, "Hips"));
     await click(dialog.querySelector('[data-scale="region"] [data-pos="1"]'));

@@ -1573,10 +1573,10 @@ export function ClientProfileView({
               <div className="bg-(--eq-live-fill) border-2 border-(--eq-live)/30 rounded-3xl p-4 flex items-center gap-4 text-(--eq-live-text)">
                 <AlertCircle className="w-6 h-6 shrink-0" />
                 <div className="flex-1">
-                  <p className="text-xs font-bold uppercase tracking-tight">
-                    Profile Setup Needed
+                  <p className="text-[14px] font-bold">
+                    Profile setup needed
                   </p>
-                  <p className="text-[11px] font-bold uppercase tracking-widest mt-0.5">
+                  <p className="text-[14px] font-medium mt-0.5">
                     Set up their routine in Programming, and their details
                     in Notes &amp; Profile.
                   </p>
@@ -1713,9 +1713,19 @@ export function ClientProfileView({
 
             Equal tracks, not content-sized, is still what keeps the row from
             ever scrolling sideways — and four tracks is roomier than seven
-            was: ~208px each at 834pt portrait, where "NOTES & PROFILE" fits
-            at 13px with space to spare. `truncate` is the belt to that
-            suspender. The level below this one is the one sub-toggle
+            was: ~160px each at the iPad mini's 744pt portrait, where
+            "Activity Archive" is 110px at 14px. Nothing truncates: under
+            600px wide (a phone) the words are 12px and a label takes a second
+            line inside the 40px tab, hyphenated where one word is wider than
+            the tab ("Program-ming" on a 375px phone).
+
+            How they look (type and depth, phase 7, Oct 4 2026; AJ's answer
+            1A): Geist 14/600 in the words' own capitalisation, ink-2 (5.9:1
+            on the tray), the open one 700 in ink, RAISED out of the sunk
+            tray (--raised, the lift, a soft ring; the shared TabsTrigger's
+            own look, which this class list no longer overrides). They were
+            the display face's slanted capitals. Only colours transition. The
+            level below this one is the one sub-toggle
             (ProfileSubnav) three of the tabs carry: Programming's four
             segments, Notes & Profile's seven pages and the Activity Archive's
             four segments; see features/client-profile.
@@ -1730,13 +1740,13 @@ export function ClientProfileView({
             chosen tab with data-active, never data-state). */}
         <div className="mb-2 w-full">
           <div className="w-full pb-0.5">
-            <TabsList className="cp-tabs bg-slate-200 dark:bg-slate-800/60 p-1 grid grid-cols-4 w-full h-12! rounded-xl gap-1">
+            <TabsList className="cp-tabs bg-(--tray) shadow-(--elev-0) p-1 grid grid-cols-4 w-full h-12! rounded-xl gap-1">
               {PROFILE_TABS.map((tab) => (
                 <TabsTrigger
                   key={tab.id}
                   value={tab.id}
                   title={tab.blurb}
-                  className="cp-tab relative w-full h-10! px-1 sm:px-2 font-display italic text-[11px] sm:text-[13px] font-bold uppercase tracking-wide sm:tracking-widest text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-all text-center cursor-pointer select-none rounded-lg truncate flex items-center justify-center"
+                  className="cp-tab relative w-full h-10! px-1 sm:px-2 font-sans not-italic normal-case tracking-normal text-[14px] max-[600px]:text-[12px] font-semibold leading-tight text-ink-d2 hover:text-foreground whitespace-normal [overflow-wrap:anywhere] hyphens-auto transition-[color,background-color,border-color] text-center cursor-pointer select-none rounded-lg flex items-center justify-center"
                 >
                   {tab.label}
                   {tab.id === "clinical" && reportDue && (
@@ -1840,7 +1850,7 @@ export function ClientProfileView({
               className="rounded-2xl max-w-md p-6 bg-card border-slate-200 dark:border-slate-800"
             >
               <DialogHeader>
-                <DialogTitle className="text-lg font-bold uppercase tracking-tight text-slate-950 dark:text-white font-display italic">
+                <DialogTitle className="text-foreground">
                   Reason Required for Protocol B Change
                 </DialogTitle>
                 <DialogDescription className="text-xs text-slate-500 mt-1">
@@ -1857,13 +1867,13 @@ export function ClientProfileView({
                   rows={3}
                   className="rounded-xl border-input bg-slate-50/50 dark:bg-slate-950/20 text-xs text-slate-800 dark:text-neutral-200 resize-none"
                 />
-                <div className="flex justify-between items-center text-[10px]">
+                <div className="flex justify-between items-center gap-3 text-[12px]">
                   <span className="text-muted-foreground font-medium">
                     Be brief and clinical for Sandra's logs.
                   </span>
                   <span
                     className={cn(
-                      "font-semibold tracking-wide",
+                      "font-semibold",
                       toggleBReason.trim().length >= 3
                         ? "text-emerald-500"
                         : "text-amber-500",
@@ -1877,16 +1887,16 @@ export function ClientProfileView({
                 <Button
                   variant="ghost"
                   onClick={() => setIsToggleReasonDialogOpen(false)}
-                  className="rounded-xl uppercase font-bold text-xs"
+                  className="rounded-xl"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleConfirmToggleB}
                   disabled={toggleBReason.trim().length < 3 || isSavingToggle}
-                  className="bg-cta text-cta-foreground hover:bg-cta rounded-xl uppercase font-bold text-xs shadow-md shadow-cta/15"
+                  className="bg-primary text-primary-foreground hover:bg-primary rounded-xl"
                 >
-                  {isSavingToggle ? "Saving..." : "Confirm Switch"}
+                  {isSavingToggle ? "Saving..." : "Confirm switch"}
                 </Button>
               </div>
             </DialogContent>
@@ -2021,11 +2031,11 @@ export function ClientProfileView({
         open={!!discardTarget}
         onOpenChange={(v) => !isDiscardingActiveSession && !v && setDiscardTarget(null)}
       >
-        <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
+        <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none">
           <div className="bg-card p-8 text-foreground space-y-3">
             <div
               className={cn(
-                "w-12 h-12 rounded-2xl flex items-center justify-center mb-2 transition-all",
+                "w-12 h-12 rounded-2xl flex items-center justify-center mb-2 transition-colors",
                 isDiscardingActiveSession
                   ? "bg-red-500/20 text-red-500 animate-pulse"
                   : "bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.4)]",
@@ -2037,12 +2047,12 @@ export function ClientProfileView({
                 <Trash2 className="w-6 h-6" />
               )}
             </div>
-            <h3 className="text-2xl font-black italic uppercase tracking-tight">
+            <h3 className="text-[22px] font-extrabold tracking-[-0.015em]">
               {isDiscardingActiveSession
-                ? "Discarding Session..."
+                ? "Discarding session..."
                 : discardTarget && discardTarget.id !== activeInProgressSession?.id
-                  ? "Discard Unfinished Session?"
-                  : "Discard Active Session?"}
+                  ? "Discard unfinished session?"
+                  : "Discard active session?"}
             </h3>
             <p className="text-muted-foreground font-medium text-sm leading-relaxed">
               {isDiscardingActiveSession
@@ -2060,14 +2070,14 @@ export function ClientProfileView({
             <Button
               variant="outline"
               disabled={isDiscardingActiveSession}
-              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-50"
+              className="h-14 rounded-2xl"
               onClick={() => setDiscardTarget(null)}
             >
-              Keep Session
+              Keep session
             </Button>
             <Button
               disabled={isDiscardingActiveSession}
-              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-red-600 text-white shadow-lg shadow-red-200 dark:shadow-none hover:bg-red-700 disabled:opacity-80 flex items-center justify-center gap-2"
+              className="h-14 rounded-2xl bg-red-600 text-white shadow-(--elev-1) hover:bg-red-700 disabled:opacity-80 flex items-center justify-center gap-2"
               onClick={handleDiscardActiveSession}
             >
               {isDiscardingActiveSession ? (
@@ -2076,7 +2086,7 @@ export function ClientProfileView({
                   <span>Discarding...</span>
                 </>
               ) : (
-                "Discard Session"
+                "Discard session"
               )}
             </Button>
           </div>
@@ -2094,17 +2104,17 @@ export function ClientProfileView({
           className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-card shadow-2xl p-6 sm:max-w-xs text-foreground"
         >
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold uppercase italic tracking-tighter">
+            <DialogTitle>
               Sessions before Journey
             </DialogTitle>
-            <DialogDescription className="text-xs uppercase tracking-widest text-primary font-bold">
+            <DialogDescription className="text-[14px] text-muted-foreground">
               What {client.firstName} did before this studio moved onto Journey.
             </DialogDescription>
           </DialogHeader>
           {/* Who said so — and, for anyone the rules will not let write this
               client, whose number it is to change. */}
           {recordedByLine(priorHistory) && (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[12px] text-muted-foreground">
               {recordedByLine(priorHistory)}
             </p>
           )}
@@ -2117,7 +2127,7 @@ export function ClientProfileView({
           )}
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="font-bold text-xs uppercase tracking-widest">
+              <Label className="text-[14px] font-bold text-ink-d2">
                 Sessions completed before Journey
               </Label>
               <Input
@@ -2126,25 +2136,25 @@ export function ClientProfileView({
                 value={sessionCountInput}
                 onChange={(e) => setSessionCountInput(e.target.value)}
                 disabled={!canEditPrior}
-                className="bg-slate-50 dark:bg-slate-800 border-border font-bold text-lg h-12 focus-visible:ring-ring disabled:opacity-100"
+                className="font-bold text-lg h-12 focus-visible:ring-ring disabled:opacity-100"
                 placeholder="0"
               />
               {priorReading.ok === false && priorReading.problem && (
-                <p className="text-[11px] font-bold text-rose-700 dark:text-rose-400">
+                <p className="text-[12px] font-bold text-rose-700 dark:text-rose-400">
                   {priorReading.problem}
                 </p>
               )}
               {/* The app adds its own count on top, so the trainer is never
                   asked for a total they would have to work out — and the
                   reconciler can no longer overwrite what they typed. */}
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[12px] text-muted-foreground">
                 Journey adds the sessions it has recorded itself. Leave this at 0
                 for a client who started here.
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label className="font-bold text-xs uppercase tracking-widest">
+              <Label className="text-[14px] font-bold text-ink-d2">
                 Where that number comes from
               </Label>
               <div className="flex flex-wrap gap-2">
@@ -2156,10 +2166,10 @@ export function ClientProfileView({
                     disabled={!canEditPrior}
                     aria-pressed={priorSource === s}
                     className={cn(
-                      "min-h-10 rounded-xl px-3 text-[11px] font-bold uppercase tracking-widest border transition-colors disabled:cursor-default",
+                      "min-h-10 rounded-xl px-3 text-[12px] font-bold border transition-colors disabled:cursor-default",
                       priorSource === s
                         ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300",
+                        : "border-input bg-(--raised) text-ink-d2",
                     )}
                   >
                     {PRIOR_SOURCE_LABEL[s]}
@@ -2169,7 +2179,7 @@ export function ClientProfileView({
             </div>
 
             <div className="space-y-2">
-              <Label className="font-bold text-xs uppercase tracking-widest">
+              <Label className="text-[14px] font-bold text-ink-d2">
                 Counted up to
               </Label>
               <Input
@@ -2177,22 +2187,22 @@ export function ClientProfileView({
                 value={priorThrough}
                 onChange={(e) => setPriorThrough(e.target.value)}
                 disabled={!canEditPrior}
-                className="bg-slate-50 dark:bg-slate-800 border-border font-bold h-12 focus-visible:ring-ring disabled:opacity-100"
+                className="font-bold h-12 focus-visible:ring-ring disabled:opacity-100"
               />
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[12px] text-muted-foreground">
                 Journey owns everything after this day.
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label className="font-bold text-xs uppercase tracking-widest">
+              <Label className="text-[14px] font-bold text-ink-d2">
                 Note <span className="text-muted-foreground">(optional)</span>
               </Label>
               <Input
                 value={priorNote}
                 onChange={(e) => setPriorNote(e.target.value)}
                 disabled={!canEditPrior}
-                className="bg-slate-50 dark:bg-slate-800 border-border h-12 focus-visible:ring-ring disabled:opacity-100"
+                className="h-12 focus-visible:ring-ring disabled:opacity-100"
                 // Read-only, a placeholder would pass for the note itself.
                 placeholder={canEditPrior ? "Counted from the FileMaker export" : undefined}
               />
@@ -2201,7 +2211,7 @@ export function ClientProfileView({
               <Button
                 variant="outline"
                 onClick={() => setIsEditingSessionCount(false)}
-                className="flex-1 h-11 border-border bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-bold uppercase tracking-widest text-[11px]"
+                className="flex-1 h-11 rounded-xl"
               >
                 {canEditPrior ? "Cancel" : "Close"}
               </Button>
@@ -2209,7 +2219,7 @@ export function ClientProfileView({
                 <Button
                   onClick={handleSaveSessionCount}
                   disabled={!priorCanSave}
-                  className="flex-2 h-11 bg-primary text-primary-foreground hover:bg-primary rounded-full font-bold uppercase tracking-widest text-[11px]"
+                  className="flex-2 h-11 bg-primary text-primary-foreground hover:bg-primary rounded-xl"
                 >
                   Save
                 </Button>

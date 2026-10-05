@@ -1228,10 +1228,12 @@ export default function AppContent({
           {...NAME_SEARCH_PROPS}
           // The frame's own well, the same in both themes (the Navy Frame,
           // Oct 4 2026). Every background is restated with its dark: twin
-          // because <Input> carries `dark:bg-input/30`, which would otherwise
-          // come back in the dark theme as a pale wash in the navy; the
-          // border stays transparent so --input draws no grey box around it.
-          className="h-10 pl-8 pr-8 rounded-lg border border-transparent bg-chrome-field dark:bg-chrome-field focus-visible:bg-chrome-field dark:focus-visible:bg-chrome-field text-sm font-medium text-chrome-ink placeholder:text-chrome-ink-2 focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-chrome-here"
+          // because <Input> carried `dark:bg-input/30`, which would come
+          // back in the dark theme as a pale wash in the navy (since type
+          // and depth, Oct 4, it carries the card's well instead, which this
+          // replaces too); the border stays transparent so --input draws no
+          // grey box around it.
+          className="h-10 pl-8 pr-10 rounded-lg border border-transparent bg-chrome-field dark:bg-chrome-field focus-visible:bg-chrome-field dark:focus-visible:bg-chrome-field text-sm font-medium text-chrome-ink placeholder:text-chrome-ink-2 focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-chrome-here"
         />
         {hubSearchTerm && (
           <button
@@ -1241,7 +1243,7 @@ export default function AppContent({
               setHubSearchTerm("");
               hubSearchInputRef.current?.focus();
             }}
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-md text-chrome-ink-2 hover:text-chrome-ink outline-none focus-visible:ring-2 focus-visible:ring-chrome-here"
+            className="absolute right-0 top-1/2 -translate-y-1/2 h-10 w-10 flex items-center justify-center rounded-md text-chrome-ink-2 hover:text-chrome-ink outline-none focus-visible:ring-2 focus-visible:ring-chrome-here"
           >
             <X className="w-4 h-4" />
           </button>
@@ -1277,9 +1279,9 @@ export default function AppContent({
    * that move into the avatar menu on a phone, which is a theme surface.
    */
   const headerIconClass =
-    "relative h-9 w-9 sm:h-10 sm:w-10 rounded-full shrink-0 inline-flex items-center justify-center transition-colors outline-none hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent text-chrome-ink-2 hover:text-chrome-ink aria-expanded:text-chrome-ink focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-chrome-here disabled:opacity-50";
+    "relative h-10 w-10 rounded-full shrink-0 inline-flex items-center justify-center transition-colors outline-none hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent text-chrome-ink-2 hover:text-chrome-ink aria-expanded:text-chrome-ink focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-chrome-here disabled:opacity-50";
   const menuIconClass =
-    "relative h-9 w-9 sm:h-10 sm:w-10 rounded-full shrink-0 inline-flex items-center justify-center transition-colors outline-none hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent text-muted-foreground hover:text-foreground aria-expanded:text-foreground focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
+    "relative h-10 w-10 rounded-full shrink-0 inline-flex items-center justify-center transition-colors outline-none hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent text-muted-foreground hover:text-foreground aria-expanded:text-foreground focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
 
   const headerRightControls = (
     <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
@@ -1380,26 +1382,32 @@ export default function AppContent({
     <DropdownMenu open={trainerMenuOpen} onOpenChange={setTrainerMenuOpen}>
       {/* Your avatar on the frame: the frame's own blue with navy initials
           (7.5:1), the same in both themes. The logo blue itself would be
-          2.0:1 on the navy. The menu below is a theme surface (a popover). */}
-      <DropdownMenuTrigger aria-label="Your menu" className="w-10 h-10 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-chrome-here text-chrome outline-none focus-visible:ring-2 focus-visible:ring-chrome-ink shrink-0">
+          2.0:1 on the navy. The menu below is a theme surface (a popover).
+          The initials are the display face UPRIGHT at 800 (AJ's answer 1A,
+          Oct 4 2026: the slant is the studio's name and Go's alone), 15px
+          on an iPad as the kit draws them. The press is a transform; no
+          shadow is animated. */}
+      <DropdownMenuTrigger aria-label="Your menu" className="w-10 h-10 sm:w-11 sm:h-11 rounded-full font-display font-extrabold text-xs sm:text-[15px] tracking-[0.02em] flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-chrome-here text-chrome outline-none focus-visible:ring-2 focus-visible:ring-chrome-ink shrink-0">
         {authTrainer.initials}
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-56 rounded-[24px] border border-border bg-popover p-2 shadow-2xl dark:shadow-none text-foreground"
+        className="w-60 rounded-[24px] border border-border bg-popover p-2 shadow-2xl text-foreground"
       >
         <DropdownMenuGroup>
           {canOpenOperations && (
             <div className="px-3 py-2 border-b border-border mb-2">
-              <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground block mb-3">
-                App Mode
+              <Label className="text-[14px] font-bold text-ink-d2 block mb-2">
+                App mode
               </Label>
-              <div className="flex bg-muted dark:bg-background p-1 rounded-xl">
+              {/* A tray below the menu, the picked mode raised in it with its
+                  soft ring (the profile's tab tray; type and depth review). */}
+              <div className="flex bg-(--tray) p-1 rounded-xl">
                 <button
                   onClick={() =>
                     menuNavigate(() => switchAppMode("trainer", "clients"))
                   }
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "trainer" ? "bg-card shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`flex-1 flex items-center justify-center min-h-10 px-1.5 text-[12px] rounded-lg transition-colors ${appMode === "trainer" ? "bg-(--raised) shadow-(--raised-lift) ring-1 ring-(--edge-control) font-bold text-primary" : "font-semibold text-ink-d2 hover:text-foreground"}`}
                 >
                   Trainer
                 </button>
@@ -1407,7 +1415,7 @@ export default function AppContent({
                   onClick={() =>
                     menuNavigate(() => switchAppMode("admin", "admin-dashboard"))
                   }
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "admin" && currentView !== "admins-dashboard" ? "bg-card shadow-sm text-(--eq-hero-text)" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`flex-1 flex items-center justify-center min-h-10 px-1.5 text-[12px] rounded-lg transition-colors ${appMode === "admin" && currentView !== "admins-dashboard" ? "bg-(--raised) shadow-(--raised-lift) ring-1 ring-(--edge-control) font-bold text-(--eq-hero-text)" : "font-semibold text-ink-d2 hover:text-foreground"}`}
                 >
                   {/* Label only: the mode is still "admin" inside (Renewals round, Sep 2026). */}
                   Operations
@@ -1417,7 +1425,7 @@ export default function AppContent({
                     onClick={() =>
                       menuNavigate(() => switchAppMode("admin", "admins-dashboard"))
                     }
-                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "admin" && currentView === "admins-dashboard" ? "bg-card shadow-sm text-(--eq-hero-text)" : "text-muted-foreground hover:text-foreground"}`}
+                    className={`flex-1 flex items-center justify-center min-h-10 px-1.5 text-[12px] rounded-lg transition-colors ${appMode === "admin" && currentView === "admins-dashboard" ? "bg-(--raised) shadow-(--raised-lift) ring-1 ring-(--edge-control) font-bold text-(--eq-hero-text)" : "font-semibold text-ink-d2 hover:text-foreground"}`}
                   >
                     {/* The Admins dashboard (Operations overhaul, Sep 2026): administrators and the founder. */}
                     Admin
@@ -1433,21 +1441,21 @@ export default function AppContent({
                   is here, with the header buttons the phone has no room for. */}
               <DropdownMenuItem
                 onClick={() => menuNavigate(() => switchAppMode("trainer", lastLearningView))}
-                className="rounded-xl flex items-center gap-3 p-3 min-h-11 font-bold uppercase text-[11px] tracking-widest cursor-pointer"
+                className="rounded-xl flex items-center gap-3 p-3 min-h-11 text-[14px] font-semibold cursor-pointer"
               >
                 <GraduationCap className="w-4 h-4 text-primary" />
                 Learning
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => menuNavigate(() => switchAppMode("trainer", "calendar"))}
-                className="rounded-xl flex items-center gap-3 p-3 min-h-11 font-bold uppercase text-[11px] tracking-widest cursor-pointer"
+                className="rounded-xl flex items-center gap-3 p-3 min-h-11 text-[14px] font-semibold cursor-pointer"
               >
                 <CalendarIcon className="w-4 h-4 text-primary" />
                 Calendar
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => menuNavigate(() => setCurrentView("trainer-hub"))}
-                className="rounded-xl flex items-center gap-3 p-3 min-h-11 font-bold uppercase text-[11px] tracking-widest cursor-pointer"
+                className="rounded-xl flex items-center gap-3 p-3 min-h-11 text-[14px] font-semibold cursor-pointer"
               >
                 <Settings className="w-4 h-4 text-muted-foreground" />
                 Settings
@@ -1458,7 +1466,7 @@ export default function AppContent({
                   setTrainerMenuOpen(false);
                   void handleRefreshSchedule();
                 }}
-                className="rounded-xl flex items-center gap-3 p-3 min-h-11 font-bold uppercase text-[11px] tracking-widest cursor-pointer"
+                className="rounded-xl flex items-center gap-3 p-3 min-h-11 text-[14px] font-semibold cursor-pointer"
               >
                 <RefreshCw className={`w-4 h-4 text-muted-foreground ${isRefreshingSchedule ? "animate-spin" : ""}`} />
                 {isRefreshingSchedule ? "Syncing schedule…" : "Refresh schedule"}
@@ -1466,15 +1474,15 @@ export default function AppContent({
               <div className="flex items-center gap-2 px-3 py-1">
                 <ThemeToggle className={menuIconClass} />
                 <FeedbackButton className={menuIconClass} />
-                <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                <span className="text-[12px] font-semibold text-muted-foreground">
                   Theme · Feedback
                 </span>
               </div>
               <DropdownMenuSeparator className="my-2 bg-border" />
             </>
           )}
-          <DropdownMenuLabel className="font-black uppercase text-[11px] tracking-widest px-3 py-2 text-muted-foreground">
-            Active Profile
+          <DropdownMenuLabel className="text-[14px] font-bold px-3 py-2 text-ink-d2">
+            Active profile
           </DropdownMenuLabel>
           <DropdownMenuItem
             onClick={() =>
@@ -1483,10 +1491,10 @@ export default function AppContent({
                 setCurrentView("trainer-profile");
               })
             }
-            className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground"
+            className="rounded-xl flex items-center gap-3 p-3 text-[14px] font-semibold cursor-pointer hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground"
           >
             <UserCircle className="w-4 h-4 text-primary" />
-            View Profile
+            View profile
           </DropdownMenuItem>
         </DropdownMenuGroup>
 
@@ -1495,10 +1503,10 @@ export default function AppContent({
         <DropdownMenuGroup>
           <DropdownMenuItem
             onClick={() => menuNavigate(openStudioPicker)}
-            className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground"
+            className="rounded-xl flex items-center gap-3 p-3 text-[14px] font-semibold cursor-pointer hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground"
           >
             <Building2 className="w-4 h-4 text-primary" />
-            Switch Studio
+            Switch studio
           </DropdownMenuItem>
 
           {/*
@@ -1514,7 +1522,7 @@ export default function AppContent({
           <DropdownMenuItem
             variant="destructive"
             onClick={() => menuNavigate(() => void logOut())}
-            className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest text-destructive hover:bg-destructive/10 focus:bg-destructive/10 focus:text-destructive dark:hover:bg-destructive/20 cursor-pointer"
+            className="rounded-xl flex items-center gap-3 p-3 text-[14px] font-semibold text-destructive hover:bg-destructive/10 focus:bg-destructive/10 focus:text-destructive dark:hover:bg-destructive/20 cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
             Sign out
@@ -2016,17 +2024,17 @@ export default function AppContent({
           open={isReorderingTrainers}
           onOpenChange={setIsReorderingTrainers}
         >
-          <DialogContent className="max-w-md sm:max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none max-h-[85dvh] flex flex-col">
+          <DialogContent className="max-w-md sm:max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl max-h-[85dvh] flex flex-col">
             <DialogHeader className="p-8 bg-card border-b shrink-0">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-primary/10 rounded-2xl">
                   <GripVertical className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <DialogTitle className="text-xl font-black uppercase italic tracking-tighter">
-                    Team Presence Sorting
+                  <DialogTitle>
+                    Team presence sorting
                   </DialogTitle>
-                  <DialogDescription className="text-[11px] font-bold text-muted-foreground uppercase">
+                  <DialogDescription>
                     Organize how trainers appear in the hub grid.
                   </DialogDescription>
                 </div>
@@ -2046,14 +2054,14 @@ export default function AppContent({
                     key={trainer.id}
                     className="flex items-center gap-4 p-4 bg-card rounded-2xl border border-border/50 group"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-background border flex items-center justify-center font-black text-xs text-muted-foreground">
+                    <div className="w-8 h-8 rounded-lg bg-(--well) shadow-(--elev-0) flex items-center justify-center font-bold text-[12px] text-muted-foreground">
                       {idx + 1}
                     </div>
-                    <div className="flex-1">
-                      <p className="font-black uppercase tracking-tighter text-sm">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-[14px] [overflow-wrap:anywhere]">
                         {trainer.fullName}
                       </p>
-                      <p className="text-[11px] font-bold text-muted-foreground uppercase italic">
+                      <p className="text-[12px] font-semibold text-muted-foreground">
                         {trainer.initials}
                       </p>
                     </div>
@@ -2062,7 +2070,7 @@ export default function AppContent({
                         variant="ghost"
                         size="icon"
                         disabled={idx === 0}
-                        className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary disabled:opacity-20"
+                        className="rounded-lg hover:bg-primary/10 hover:text-primary disabled:opacity-20"
                         onClick={async () => {
                           const newSorted = [...studioTrainers];
                           [newSorted[idx], newSorted[idx - 1]] = [
@@ -2085,7 +2093,7 @@ export default function AppContent({
                         variant="ghost"
                         size="icon"
                         disabled={idx === studioTrainers.length - 1}
-                        className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary disabled:opacity-20"
+                        className="rounded-lg hover:bg-primary/10 hover:text-primary disabled:opacity-20"
                         onClick={async () => {
                           const newSorted = [...studioTrainers];
                           [newSorted[idx], newSorted[idx + 1]] = [
@@ -2111,7 +2119,7 @@ export default function AppContent({
             <DialogFooter className="p-6 border-t bg-card shrink-0">
               <Button
                 onClick={() => setIsReorderingTrainers(false)}
-                className="rounded-xl font-bold uppercase tracking-widest w-full h-12"
+                className="rounded-xl text-[14px] font-bold w-full h-12"
               >
                 Done
               </Button>

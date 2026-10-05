@@ -30,6 +30,14 @@
   min-width: 0;
 }
 
+/* The Story's empty line sits straight on the page, not in a card, so it
+   sinks into the tray's tone (AJ's 1A, Oct 5 2026): the kit's well tone is
+   lighter than the page and read raised; the tray is below it in both
+   modes, and ink-2 reads 5.95:1 on it. In a card the kit's well stays. */
+.st-page > .cx-empty {
+  background: var(--cx-tray);
+}
+
 .st-since {
   overflow-wrap: anywhere;
 }
@@ -78,7 +86,7 @@
   color: var(--cx-ink-3);
   font-family: var(--cx-font-display);
   font-size: var(--cx-fs-30);
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
   line-height: 1;
 }

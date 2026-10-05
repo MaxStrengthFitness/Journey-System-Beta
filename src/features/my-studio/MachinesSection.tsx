@@ -779,7 +779,7 @@ function OfferDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="uppercase tracking-tight">Offer {machineName} to the MSF catalog</DialogTitle>
+          <DialogTitle>Offer {machineName} to the MSF catalog</DialogTitle>
         </DialogHeader>
         <div className="adm flex flex-col gap-3">
           <p className="ms__line ms__line--muted">

@@ -41,13 +41,16 @@
 /* SHARED                                                              */
 /* ------------------------------------------------------------------ */
 
+/* A field's label: the label voice, 14/700 in ink-2, in its own
+   capitalisation (type and depth review, Oct 5 2026; it was 10px capitals,
+   and the composer is open in the session's notes and the End dialog). */
 .nc-kicker {
   display: block;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--eq-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--eq-ink-2);
 }
 .nc-muted { color: var(--eq-ink-muted); }
 
@@ -72,6 +75,10 @@
   border-radius: 999px;
 }
 
+/* The composer's buttons (Save note, Clear, Open FORD): raised on the 3:1
+   edge in the button voice, with a press; the solid blue Save restates its
+   fill under a pointer and carries the blue's glow (AJ's 2A; review fix,
+   Oct 5 2026). They were 11px capitals on the hairline, flat. */
 .nc-btn {
   display: inline-flex;
   align-items: center;
@@ -80,22 +87,29 @@
   min-height: 40px;
   padding: 0 0.95rem;
   border-radius: 12px;
-  border: 1px solid var(--eq-border);
-  background: var(--eq-surface-2);
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink-2);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+  text-align: center;
   cursor: pointer;
 }
-.nc-btn:hover:not(:disabled) { background: var(--eq-surface-3); }
+@media (hover: hover) {
+  .nc-btn:hover:not(:disabled) { background: var(--eq-surface-3); }
+}
+.nc-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--eq-press); }
 .nc-btn:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
-.nc-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.nc-btn--primary { background: var(--eq-live); border-color: transparent; color: var(--eq-live-on); }
-.nc-btn--primary:hover:not(:disabled) { background: var(--eq-live); filter: brightness(1.08); }
-.nc-btn--quiet { background: transparent; border-color: transparent; color: var(--eq-ink-muted); }
+.nc-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+.nc-btn--primary,
+.nc-btn--primary:hover:not(:disabled) { background: var(--eq-live); border-color: transparent; color: var(--eq-live-on); }
+.nc-btn--primary { box-shadow: var(--eq-glow-live), var(--eq-solid-light); }
+.nc-btn--quiet { background: transparent; border-color: transparent; color: var(--eq-ink-muted); box-shadow: none; }
+.nc-btn--quiet:not(:disabled):active { box-shadow: none; }
 
 .nc-input {
   width: 100%;
@@ -131,7 +145,7 @@ textarea.nc-input { resize: vertical; }
   min-height: 44px;
   padding: 0 0.9rem;
   border-radius: 12px;
-  border: 1px solid var(--eq-border);
+  border: 1px solid var(--eq-border-strong);
   background: var(--eq-surface);
   color: var(--eq-ink-2);
   font-size: 13px;
@@ -140,7 +154,9 @@ textarea.nc-input { resize: vertical; }
   white-space: nowrap;
   cursor: pointer;
 }
-.nc-chip:hover { background: var(--eq-surface-2); }
+@media (hover: hover) {
+  .nc-chip:hover { background: var(--eq-surface-2); }
+}
 .nc-chip:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
 .nc-chip[aria-pressed="true"] {
   border-color: var(--eq-live);
@@ -234,12 +250,19 @@ textarea.nc-input { resize: vertical; }
 /* THE TO-FILE TRAY                                                    */
 /* ------------------------------------------------------------------ */
 
+/* The unfiled colour is a straight 3px band painted as the first background
+   layer (type and depth, phase 14, Oct 4 2026; rule 3): a 3px border-left on
+   a rounded box tapered into a crescent at both corners. The head's own fill
+   starts 2px in, so the band runs the full height beside it. */
 .nc-sweep {
   flex: none;
   border: 1px solid var(--eq-border);
-  border-left: 3px solid var(--ford-unfiled);
+  border-left-color: var(--ford-unfiled);
   border-radius: var(--eq-radius);
-  background: var(--eq-surface);
+  background:
+    linear-gradient(var(--ford-unfiled), var(--ford-unfiled)) left / 3px 100% no-repeat border-box,
+    var(--eq-surface) padding-box;
+  padding-left: 2px;
   color: var(--eq-ink);
   overflow: hidden;
 }
@@ -289,10 +312,10 @@ textarea.nc-input { resize: vertical; }
   align-items: center;
   border-radius: 999px;
   padding: 0.15rem 0.6rem;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .nc-loud[data-tone="warn"] { background: var(--eq-warn-fill); color: var(--eq-warn); }
 .nc-loud[data-tone="alert"] { background: var(--eq-alert-fill); color: var(--eq-alert); }
@@ -302,10 +325,10 @@ textarea.nc-input { resize: vertical; }
   align-items: center;
   gap: 0.3rem;
   align-self: flex-start;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 .nc-sweep__rows { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -315,11 +338,11 @@ textarea.nc-input { resize: vertical; }
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--eq-ink-faint);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--eq-ink-muted);
 }
 .nc-sweep__done {
   display: flex;
@@ -341,10 +364,10 @@ textarea.nc-input { resize: vertical; }
   background: var(--ford-unfiled-fill);
   color: var(--ford-unfiled);
   padding: 0.25rem 0.5rem;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 /* ------------------------------------------------------------------ */
@@ -402,7 +425,7 @@ textarea.nc-input { resize: vertical; }
   min-height: 40px;
   padding: 0 0.875rem;
   border-radius: 999px;
-  border: 1px solid var(--eq-border);
+  border: 1px solid var(--eq-border-strong);
   background: var(--eq-surface-2);
   color: var(--eq-ink-2);
   font-family: inherit;

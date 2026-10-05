@@ -61,9 +61,9 @@ export function StaleSessionDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onStartNew()}>
-      <DialogContent className="sm:max-w-120 rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
+      <DialogContent className="sm:max-w-120 rounded-[32px] p-0 overflow-hidden border-none">
         <div className="bg-card p-8 text-foreground space-y-3">
-          <DialogTitle className="text-2xl font-black italic uppercase tracking-tight">
+          <DialogTitle>
             {clientFirstName} has an unfinished session
           </DialogTitle>
           <DialogDescription className="text-foreground font-medium text-base leading-relaxed">
@@ -82,7 +82,7 @@ export function StaleSessionDialog({
         >
           <Button
             variant="outline"
-            className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-surface-2"
+            className="h-14 rounded-2xl"
             onClick={onResume}
           >
             Resume it
@@ -90,14 +90,14 @@ export function StaleSessionDialog({
           {onFinishAsItWas && (
             <Button
               variant="outline"
-              className="h-auto min-h-14 whitespace-normal rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-surface-2"
+              className="h-auto min-h-14 whitespace-normal rounded-2xl"
               onClick={onFinishAsItWas}
             >
               Finish it as it was
             </Button>
           )}
           <Button
-            className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-cta text-cta-foreground hover:bg-cta"
+            className="h-14 rounded-2xl bg-cta text-cta-foreground hover:bg-cta shadow-(--go-lift)"
             onClick={onStartNew}
           >
             Start a new session

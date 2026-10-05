@@ -33,7 +33,7 @@ export function NewVersionLine({
           type="button"
           onClick={onLoad}
           disabled={busy}
-          className="min-h-11 flex-none rounded-xl border border-border bg-background px-4 text-sm font-bold text-foreground transition-colors hover:bg-muted disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-11 flex-none rounded-xl bg-(--raised) border border-input shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) px-4 text-sm font-bold text-foreground transition-colors hover:bg-muted disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {busy ? "Loading…" : "Load now"}
         </button>

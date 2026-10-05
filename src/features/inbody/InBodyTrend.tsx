@@ -48,7 +48,7 @@ export function InBodyTrend({ points, measure, label, minSpan, today, variant = 
     <figure className="min-w-0">
       <figcaption
         className={cn(
-          "mb-1 text-[10px] font-black uppercase tracking-[0.14em]",
+          "mb-1 text-[12px] font-bold",
           report ? "text-white/60 print:text-[#0A2E46]/70" : "text-muted-foreground",
         )}
       >

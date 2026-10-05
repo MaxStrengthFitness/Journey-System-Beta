@@ -44,7 +44,7 @@ export function StrongConfirmationModal({
         <div className="p-6">
           <div className="flex justify-between items-start mb-4">
             <div
-              className={`p-3 rounded-full ${isDestructive ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" : "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"}`}
+              className={`p-3 rounded-full ${isDestructive ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" : "bg-(--eq-warn-fill) text-(--eq-warn)"}`}
             >
               <AlertTriangle className="w-6 h-6" />
             </div>
@@ -93,7 +93,7 @@ export function StrongConfirmationModal({
             <button
               onClick={handleConfirm}
               disabled={!isEnabled}
-              className={`flex-1 px-4 py-3 rounded-lg font-bold flex flex-row items-center justify-center gap-2 transition-all ${
+              className={`flex-1 px-4 py-3 rounded-lg font-bold flex flex-row items-center justify-center gap-2 transition-colors ${
                 isEnabled
                   ? "bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20"
                   : "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed"

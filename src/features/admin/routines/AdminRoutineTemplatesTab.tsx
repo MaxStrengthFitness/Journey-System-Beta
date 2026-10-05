@@ -324,7 +324,7 @@ export function AdminRoutineTemplatesTab({
                       <span className="adm-tpl__n">{i + 1}</span>
                       {nameFor(id)}
                       {p.machineNotes?.[id] && (
-                        <span className="adm-tpl__note">note</span>
+                        <span className="adm-tpl__note">Note</span>
                       )}
                     </li>
                   ))}
@@ -386,7 +386,7 @@ export function AdminRoutineTemplatesTab({
       <Dialog open={!!draft} onOpenChange={(o) => !o && close()}>
         <DialogContent className="max-h-[92dvh] sm:max-w-5xl lg:max-w-6xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="uppercase tracking-tight">
+            <DialogTitle>
               {editingId ? `Edit ${draft?.name || "template"}` : "New template"}
             </DialogTitle>
           </DialogHeader>

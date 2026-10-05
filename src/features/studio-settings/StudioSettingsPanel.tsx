@@ -126,7 +126,7 @@ export function StudioSettingsPanel({ studioId, studio, canEdit }: StudioSetting
       )}
       {groups.map(({ g, defs }) => (
         <section key={g} className="mb-4 last:mb-0">
-          <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--adm-ink-muted)" }}>
+          <h4 className="mb-2 text-[14px] font-bold" style={{ color: "var(--adm-ink-muted)" }}>
             {GROUP_LABEL[g]}
           </h4>
           <fieldset disabled={!canEdit || saveDisabled} className="contents">

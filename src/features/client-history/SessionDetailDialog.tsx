@@ -873,7 +873,7 @@ export function SessionDetailDialog({
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent className="max-w-md sm:max-w-md rounded-3xl p-6">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="w-6 h-6 text-red-500" />
               Delete session?
             </DialogTitle>
@@ -884,13 +884,13 @@ export function SessionDetailDialog({
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-3 mt-6">
-            <Button variant="ghost" onClick={() => setConfirmDelete(false)} className="uppercase font-black tracking-widest text-xs h-12 rounded-xl px-6">
+            <Button variant="outline" onClick={() => setConfirmDelete(false)} className="text-[14px] h-12 rounded-xl px-6">
               Cancel
             </Button>
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 text-white uppercase font-black tracking-widest text-xs h-12 rounded-xl px-6"
+              className="bg-red-600 hover:bg-red-600 text-white text-[14px] h-12 rounded-xl px-6 shadow-(--elev-1)"
             >
               {isDeleting ? "Deleting…" : "Delete permanently"}
             </Button>

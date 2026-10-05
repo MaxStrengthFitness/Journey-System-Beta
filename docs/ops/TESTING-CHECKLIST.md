@@ -89,7 +89,7 @@ record items in **Round 14** instead. The Body, Goals, Assessment, Admin and
 
 *Since the machine menu (Oct 4 2026) a machine opens the machine menu, the
 same card in a session and on the profile, and a setting's reason is asked,
-never required: walk **Round 55** instead of the two machine-window items
+never required: walk **Round 57** instead of the two machine-window items
 below.*
 
 - [ ] **Tap all four tabs twice**, then open a machine from the Journey grid, close it, and tap the SAME machine again. The machine window opens both times.
@@ -2829,13 +2829,109 @@ Round document: `docs/rounds/2026-10-04-navy-frame.md`. On an iPad, upright and 
 - [ ] Operations and Admins: a form's "Saved" in the save bar reads in light; done cards on the Board read.
 - [ ] Add a client (from the header): orange section headings read in light; a field you tap rings blue.
 - [ ] The briefing: Start Session is the logo orange with navy words; the Heads up and the safety band in dark are warm amber and maroon, not grey or violet. Pulse (the floor entry): Done reads in dark.
-- [ ] A client profile: the tab tray and the open tab in both modes; the Journey tab's dates and session numbers in the header band read in light and dark (AJ's question 3 in the round document).
+- [ ] A client profile: the tab tray and the open tab in both modes; the Journey tab's dates and session numbers in the header band read in light and dark (retuned in the follow-ups: Round 55).
 - [ ] The Calendar: the Week heat map in dark climbs navy to blue with readable counts; the Activity Archive's visit cells in dark are blue with navy numerals.
 - [ ] Learning → Catalog and a machine's page, and the routine builder: navy in dark, the worked muscles in the logo blue.
 - [ ] Walk notes for AJ: is the 3:1 border on cards and placeholders too heavy in dark (Notes & Profile, the Calendar day view)? Does every field and outline button read as a lighter box in dark (the input fill)? FORD pillars and Pulse's traffic lights in dark? The profile header band in light? In light, does an in-session card stand out in your own column? Is light still "so bright" (the round document has a dimmer step ready)?
 - [ ] Set light, then sign out and sign in again: the app comes back dark (the default), whatever the last person chose.
 
-## Round 55 — The machine menu · *Oct 4 2026, branch `oct4/machine-menu`*
+## Round 55 — The colour follow-ups · *Oct 4 2026, branch `oct4/colour-followups`*
+
+Round document: `docs/rounds/2026-10-04-navy-frame.md`, "Follow-ups". On an iPad, upright and on its side, in light and dark. Nothing to re-add on the Home Screen this time. Every Save below should be solid blue with light words, and stay blue after you tap it (not fade, not turn orange); orange is only Start, Finish and the paused Resume.
+
+- [ ] Saves: Save scan (a client's InBody), Save conversation and the renewal card's Log a conversation, Track (Kaizen, on a trainer profile), Save preset and Apply (the routine drawer), Confirm Switch, Send to the team (the bug button), Create Temporary Profile (Add a client), Save Trainer Profile. Start a new session and Finish are still the logo orange with navy words.
+- [ ] Selections, blue with readable words: the notes sheet's open tab in a session; the feedback kinds; First-time setup's gender and skill chips (a blue glow); the Pulse's Linked, a picked "Machines that bring it on" chip, and a switch that is on (navy, with a light knob); the Equipment tab's picked machine, which stays blue after the tap and on a machine not in use, with "No load yet" readable on it.
+- [ ] Demo Mode's card, Reset: "Yes, reset it" is red words on a pale red with a red edge, readable in both modes. A strong confirmation that isn't a delete shows a plum caution icon, not orange.
+- [ ] Edit a trainer profile: the icons and Lookup are blue, the home studio chip solid blue, the staff ID a quiet grey label, and a ticked box shows its tick with a visible edge.
+- [ ] A client profile's Journey tab, in light and dark: the session number under every date, the newest date in orange and the number under it, and a set's reps on its tile all read, on plain and banded rows. Tap the newest date: its orange words still read on the blue spotlight (AJ's call, question 3 in the round document: keep the orange, or turn it blue?).
+- [ ] The Active Session's Now Bar, in light and dark: the setting chips, the steppers, REPS | SEC, the quality buttons, No set? and its reasons each have an outline you can see against the bar. The session bar's Notes and Pulse, a machine's menu and the Key too. The sticky lines between the rows stay soft.
+- [ ] The routine sheet in light: Find and the dashed add buttons. Note whether their edges are clear enough on the grey-blue page (AJ's call, question 4 in the round document).
+- [ ] The Saves still orange as their screen's one loud action, to judge (question 2 in the round document): a machine's Save setup / Log & save, Confirm and Add note in the session's machine sheet, and machine-fit's Save set-up.
+
+## Round 56 — Type and depth ("Refined Lift") · *Oct 4 2026, branch `oct4/type-depth`*
+
+Round document: `docs/rounds/2026-10-04-type-and-depth.md`. Nothing in this round has been seen on a screen yet: every phase was built and checked without a browser. On an iPad (the mini as well as a full-size one if you have it), upright and on its side, in light, dark and System (the sun and moon in the header; in System, change the iPad's own Appearance in Settings → Display & Brightness and come back). One pass by a bright window or under the gym's lights, for glare. The look to compare against is the comparison page, <https://claude.ai/artifact/D2w7Mnhu7BszS2SKHtNkkN>.
+
+**The fonts**
+- [ ] **Wi-Fi off.** Open Journey once with Wi-Fi on, then turn Wi-Fi off and reopen it: the studio name is still the narrow display face, slanted, and a page title (Settings, Learning, a client's name) is the narrow face upright, never a slanted ordinary font. Turn Wi-Fi back on.
+- [ ] Titles stand upright in their own capitalisation everywhere (Settings, Learning, the briefing's client name, History and the calendar, the Deep Dive, My Studio's header, Relay's sheets); only the studio name and Start session lean. No ordinary text leans except a quoted note, an empty place or a placeholder.
+
+**Buttons and the frame**
+- [ ] Every secondary button in every room has a lighter face, a firm outline and a small lift, and moves down a pixel when you press it. Under glare the outline still reads. A button you can't use lies flat.
+- [ ] Start session is orange with slanted navy capitals and a soft orange glow (the profile, the peek, the Opportunities list, the Directory, the briefing); every other orange button is the same orange in ordinary words.
+- [ ] Operations and Admins: the buttons speak in ordinary words now, not small capitals ("Open the case", "Snooze", "Save the role"), on Today, the case form, Setup's pages and the Admins dashboard. Nothing is cut off or pushed out of its row.
+- [ ] The header casts a shadow onto the page, and each room's top bar (the Hub, My Studio, Learning, Operations) casts one onto what scrolls under it. On an iPad mini the sticky heads scroll without stutter. On a phone at its narrowest, the bottom bar's labels wrap rather than cut ("Operations").
+- [ ] Dialogs and sheets (a Note, Relay's Ask, FORD's detail, Log past session) float over a navy veil with a deep shadow, in both modes.
+
+**Panels, wells and bands**
+- [ ] Panels lift off the page with a soft edge and no band or line under their heads: Notes & Profile (Overview, Notes, FORD, Body & Pulse), Settings, My Profile, My Studio (Team, Openings, the Board, the Tracker, the Journal, the Floor Map), Operations (Today, Week, Month, Clients, Team, Setup), the briefing, the machine sheet, the Calendar, the Directory, Programming, the Archive, Learning and the Catalog, the Wrap-up. Look for a shadow cut off by its container: Team's cards, the Directory's table, the Next 30 minutes strip, the Archive's months, a phone's machine cards.
+- [ ] Empty places are soft sunken wells with a sentence, not dashed boxes (a new client's Notes, Relay, the Journal, Learning, Operations' Today and Trends, the Pulse, the Deep Dive). On the page ground (the Archive's figures, Programming's counts, Openings' times, the clinical strip) say whether the wells are too faint.
+- [ ] Coloured edges are straight bands with clean corners, no thin crescent tapering at the top and bottom: Operations' stops (the dashed Inactive one too), the Pulse's cells, its pain and stress cards and Just now, Learning's tiles, hero, category tiles, clinical warnings and term cards, the briefing's safety band, Critical strip, Heads up and carried regions, the clinical flags in the Pulse, machine fit's rows, the routine builder's avoid and caution rows, FORD's banner, the Deep Dive's caveat and rhythm card, Admins → Limbo.
+- [ ] The tints keep a clear edge: the Catalog editor's Saved and Couldn't save, a blue "live" button on Notes & Profile.
+
+**The client profile**
+- [ ] The header is one card that is no taller than before: FORD's top on the Overview at the same height upright on the mini (744) and on a 10th-gen (820); on its side the Journey tab shows the same number of machine rows (1133 × 744 and 1180 × 820). At 744 upright, a client with renewal words beside "Client since" wraps that line: is it too bulky?
+- [ ] The facts sit in one sunken strip, the tools are one raised group, the tabs drop their capitals (12px on a phone, wrapping); in dark, the facts strip and the raised sub-tab bar still read.
+
+**The Hub**
+- [ ] Thirty to sixty bookings scroll smoothly on an iPad mini with their small lift. A booking that is over, unlinked or a staff block lies flat; an open one keeps its blue ring and lifts higher.
+- [ ] The command bar is a sunken strip with the layer you're on raised out of it; the picked day glows blue; today keeps its orange underline.
+- [ ] Lane heads and hours are the narrow face: with five or more trainers the names wrap, never cut; the hours line up with the rail's dots, the first one under the names row.
+- [ ] The peek, in dark most of all: a lighter panel with a soft rim over the grid; the name large and upright; "Resume or start new" and "Log past session" wrap cleanly.
+- [ ] A half-hour booking's name and number (AJ's call, question 1 in the round document: the name at 800 and the number at 12px?).
+
+**A full session (AJ's 3B)**
+- [ ] Start a session from the briefing (Start session's glow above its sticky bar), log ten sets across several machines, Finish, and the Wrap-up. Nothing jumps or reflows mid-set; the number of machines on screen is the same as before.
+- [ ] The session's words are 11px or larger and in their own capitalisation (Today, Latest, Load, Set, Form, No set?, a setting's name, Reps | Sec, Elapsed), and every label fits its row.
+- [ ] Scroll the grid sideways: the date heads never paint over the corner. The Now Bar docks over the grid's last row with a soft shadow above it (to its left on its side). The steppers and the quality buttons are raised on their firm outline and press in under glare; No set? stays dashed; Finish glows orange.
+- [ ] The clock's pause and the Today column's add are easy to hit in dense rows; the clock's digits don't shift as it counts. The machine sheet's buttons in a session are 40px.
+
+**The review's fixes (Oct 5 2026)**
+- [ ] In dark, open a dialog (Add a client, a Note, the leave question when you leave with typing), a sheet and the avatar menu: Cancel and the other outline buttons sit a step lighter than the panel, raised on a firm outline, never sunk into it.
+- [ ] The Hub's peek: only Start session is in slanted capitals; Open session, Resume or start new, Log past session and Edit session are orange in ordinary words. Open profile and Late cancel are raised in dark too.
+- [ ] In a session, open the machine sheet (labels in ordinary words, the fields on a firm outline; upright, the Machines back button is a raised 40px button), the Pulse slide-over (raised buttons, no tiny capitals), the session's notes (the cards' chips and dates readable) and a note's Save note, Clear and Open FORD (raised, they press in).
+- [ ] In dark, the Now Bar's two quality marks (the stroke and the star) are clearly visible before you tap them.
+- [ ] A dense grid (All machines, on its side, on the mini): tap just above and just below a Today +. Nothing is added unless you hit the + itself, and the "Not in today's routine" band folds when tapped near it.
+- [ ] The briefing: "Before you start" and "Since last time" read as labels, not tiny capitals; Front / Back and Edit / Done are words; the line under the name is readable.
+- [ ] The Wrap-up: its cards' heads are words; the three lifetime tiles lift; the note fields have a firm outline.
+- [ ] A profile with a session running elsewhere: In progress is amber with navy words.
+- [ ] The avatar menu: App mode is a tray with the picked mode raised; every item in ordinary words. The header search's clear (x) is easy to hit. The bell's sheet, a toast (a sentence, its x easy to hit) and the leave question read calmly.
+- [ ] Hub bookings in dark still stand off the grid (their rim is softer than before; say if they float).
+- [ ] A client with late cancels at 744 upright, and at 1366 on its side: the header grows by about 14px at most; count the Journey tab's machine rows.
+
+**The follow-up (Oct 5 2026): the last old words, and the dialogs the review left**
+- [ ] The briefing: "Nothing flagged — clear to go." in the same green narrow face, in ordinary capitalisation; for a client with a flag, the limit's name ("Lower back") as written too. The four readiness questions say "Not asked" in ordinary words until you tap, and the chosen word ("A bit short") the same way.
+- [ ] A note's loudness (Note · Heads up · Critical) is in words, in the Note button's sheet and in the session's notes.
+- [ ] Learning: Overview / Catalog / Academy at the top are words in a sunken strip with the one you're on raised out of it (on a phone, the icons alone). A Catalog machine's figure switch (Front / Back) looks the same.
+- [ ] The feedback drawer (the bug button): the line under its title is a sentence; Bug, UI feedback and Feature idea are raised buttons in words, the picked one blue; "Attached automatically:" and "Send to the team" are in ordinary words.
+- [ ] Edit routine (Programming): Routine A / B are raised buttons in words (B dashed until it is active); Preset routines is a label; a preset is a 40px pill whose x is easy to hit; a studio's long name wraps; Close has a firm outline beside Apply.
+- [ ] An InBody scan (add one, then correct it): the labels are words over sunken fields on a firm outline; More from the printout and Segmental lean are raised; Cancel, Keep it and Remove read as buttons.
+- [ ] My Profile's Kaizen roster: Track is a 40px raised pill; its sheet's reasons are raised choices in words; the note and the date sink.
+- [ ] A client's Renewal card and Log a conversation: the four facts sit in sunken wells; the chips and "A leader should follow up" are raised; Cancel and Close have a firm outline.
+- [ ] Activity Archive: a session's Delete asks with Cancel outlined and Delete permanently solid red, both in words.
+- [ ] Demo Mode: the strip at the top says "Demo Mode — nobody here is real" in ordinary words and still fits one line.
+- [ ] Edit trainer profile (My Profile, and a leader's view of a colleague on My Studio -> Team): every label in words, the fields sunk on a firm outline, a certificate's x easy to hit, Studio involvements & connections a heading; Team presence sorting (the Hub's trainer order) in words.
+
+**The sweep (Oct 5 2026): the rooms no walk had opened**
+- [ ] Activity Archive: the year calendar's month names, counts and day letters are words and readable; a session's pop-up says Session date, Trainer and Session notes as labels and machine names as written; TSC is a 40px raised toggle; Add a machine is in words. Log past session's steps and routine chips are words.
+- [ ] The Calendar (the avatar menu): the day, week and month heads are words; the trainer picker shows names as written; a 15-minute booking on the Day view still shows its name and time (say if they clip).
+- [ ] Relay: a segmented choice (an outcome, Write / Read) in words, the picked one bolder; tags (Finished, Up for grabs) and the Journal's kinds in words; Take back is a raised button; the Requests lane's New ask and its reply buttons are raised and press in.
+- [ ] Learning: a Catalog machine's heads (Trains it most, Never to failure, Clinical warnings), the crumbs, badges and facts, and search's group heads are words; the shared machines' notes sit in a sunken well.
+- [ ] Programming: Setup's labels and machine names as written, Paste a chart and Similar to as heads, the quick pad's Clear / Back / Next; the routine builder's tags (Gap, Goal, Big 5, Order) and its small notes readable, its empty hint a sunken well.
+- [ ] Notes & Profile: Notes' categories and loudness pills in words; Body & Pulse's heads; Pulse's chips, body sides and segments easy to hit; Pulse's Back and client mode's Back / Next raised; the clinical flag picker's x and clear easy to hit.
+- [ ] The briefing's Close (top right) is a raised round button that presses in.
+- [ ] My Profile: the chips, labels, Your week and My clients heads, and the standing week's labels are words.
+- [ ] The Client Directory: the column and section heads are words; Open session and Add client in ordinary words.
+- [ ] First-time setup (a client flagged for a consultation): the title upright, the labels words, the choices raised with the picked one blue, the age field sunk, Start consult workout orange in ordinary words.
+- [ ] Operations and Admins: badges, table heads and field labels in words; the eyebrow over a page's title stays in capitals; a studio's Floor in Admins headed in the section voice.
+- [ ] The Hub: "Next 30 min" (and "Focus" on a phone) in words.
+
+**AJ's three answers (Oct 5 2026): "1a 2a 3a"**
+- [ ] 1A, in light and dark: the Activity Archive's four figures, the clinical strip above the Archive's tabs, Openings' usual week (My Studio → Openings), Notes' "No notes in Journey yet", an empty Story, Learning's empty and loading lines, an Operations page with nothing to show (Limbo with nothing in it, Trends' "Not enough data yet", Clients → Journey's "Too new to judge"), and an empty routine in the routine builder (Edit routine, or the briefing's) each sit a step BELOW the page, never a pale pad; their words read easily. A break still going on the Archive shows a plum band down the left of its figure. An Openings time on the rotation reads "Rotation" in the same tone as a booked time.
+- [ ] 2A: the Deep Dive's Build the Deep Dive is orange with ordinary navy words, upright, with its glow and its press; Start session (the profile, the peek, the briefing, the Directory, the Opportunities list), In progress and the front door's big line keep the slanted capitals.
+- [ ] 3A: chips and toggles have a firm outline in every room: the note composer's chips, the Dial's segments in the briefing, the Pulse's chips and body sides, Relay's Ask tiles, kinds and switches, the Journal's views, Learning's chips, the phone's chips, Operations' day buttons, stops and name chips; the Kaizen roster's "Why are you tracking them?" (My Profile, 40px each), the Wrap-up's Times with room "Whose times", Post an initiative's choices and Submit an initiative's client chips (40px). The Wrap-up's next weight: the minus and plus buttons raised with a press, the number's box sunk; Times with room's Done raised. A picked one still reads as picked (the blue, or its tone). Under glare the outlines still read. Say if any screen now feels too heavy.
+
+## Round 57 — The machine menu · *Oct 4 2026, branch `oct4/machine-menu`*
 
 Round document: `docs/rounds/2026-10-04-machine-menu.md`; the card is `src/features/machine-menu/README.md`. On an iPad upright (the 820-wide iPad Air or an 11-inch, where the card is about 760 wide), then a 13-inch upright (1024 wide), then on its side; in light and in dark; then on a phone. Pick a client with a long history on Leg Press, one with a Critical note on a machine, and one who is new to a machine.
 

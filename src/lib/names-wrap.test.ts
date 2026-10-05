@@ -84,6 +84,20 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   { file: "features/machine-menu/machine-menu.css", cls: "mm-head__client", what: "the client's display name in the menu's header" },
   { file: "features/machine-menu/machine-menu.css", cls: "mm-head__rest", what: "a studio (\"at Solon\") and a trainer (\"Watching Sam's session\") on the header's Last time line" },
   { file: "features/machine-menu/machine-menu.css", cls: "mm-safe__line", what: "a Critical note's author in the safety strip" },
+  // Type and depth, phase 6 (Oct 4 2026): the codex's page title, upright Saira
+  // 30 in its own capitalisation now, wraps like every name.
+  { file: "features/client-codex/kit/kit.css", cls: "cx-page-title", what: "a Notes & Profile page's title (Saira 30, upright)" },
+  // Type and depth, phase 11 (Oct 4 2026): the Hub's names. A lane head and
+  // the peek's title are Saira now (17 and 22, upright); a booking's name was
+  // already whole and wrapping, and is held here with them.
+  { file: "features/hub-schedule/hub-grid.css", cls: "hs-colname", exact: ".hs-colname strong", what: "a trainer's name heading a lane on the Hub (Saira 17)" },
+  { file: "features/hub-schedule/peek.css", cls: "hp-name", what: "the client's name on the Hub's peek (Saira 22)" },
+  { file: "features/hub-schedule/hub-card.css", cls: "hs-card-name", what: "the client's name on a Hub booking" },
+  // Type and depth, phase 12 (Oct 4 2026): names set upright in the display
+  // face, in their own capitalisation, wrap like every name.
+  { file: "features/briefing/briefing.css", cls: "br__name", what: "the client's name on the briefing (Saira 22-30, upright)" },
+  { file: "features/equipment/equipment.css", cls: "eq-detail__name", what: "a machine's name on its detail panel (Saira 22, upright)" },
+  { file: "features/trainer-profile/trainer-profile.css", cls: "tp-identity__name", what: "the trainer's name on My Profile (Saira 22-30, upright)" },
 ];
 
 const rulesFor = (entry: (typeof NAME_RULES)[number]) =>
@@ -136,6 +150,14 @@ describe("names in the stylesheets", () => {
  */
 const NAME_ELEMENTS: { file: string; find: RegExp; what: string }[] = [
   { file: "components/AppHeader.tsx", find: /"(font-display italic[^"]*)"/, what: "the studio's name in the top strip" },
+  // Type and depth, Oct 4 2026: the bottom bar's labels truncated; they wrap
+  // now, and the session's tab carries the client's first name.
+  { file: "components/NavButton.tsx", find: /<span className=\{`(w-full text-center[^`]*)`\}>\s*\{label\}/, what: "a bottom-bar label (the session's tab names the client)" },
+  // Type and depth, phase 7 (Oct 4 2026): the client's name on the profile,
+  // Saira 30 upright now, in the header's card. It wrapped at a space with
+  // break-word before; anywhere also lets the one-band landscape's narrow
+  // name column break a single long word rather than widen.
+  { file: "features/client-profile/ProfileHeader.tsx", find: /className="(cp-head__name [^"]*)"/, what: "the client's name on the profile header" },
   { file: "components/WorkoutTrackerView.tsx", find: /<span className="([^"]*)">\{name\}<\/span>/, what: "a machine in the end-of-session list" },
   { file: "features/trainer-profile/EditTrainerModal.tsx", find: /<span className="([^"]*)">\s*\{s\.fullName\}/, what: "a staff member's full name" },
   { file: "features/trainer-profile/EditTrainerModal.tsx", find: /htmlFor=\{`access-\$\{s\.id\}`\}\s*className="([^"]*)"/, what: "a studio's name on the access checkbox" },

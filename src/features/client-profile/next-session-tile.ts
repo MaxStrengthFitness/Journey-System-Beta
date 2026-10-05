@@ -8,10 +8,22 @@
  * them, and the date plus the booked count sit underneath.
  */
 
-/** "Tomorrow · 4:00 PM", "Wednesday · 12:30 PM", or just the day when the time is unknown. */
+/**
+ * "Tomorrow · 4:00 PM", "Wednesday · 12:30 PM", or just the day when the time
+ * is unknown.
+ *
+ * Two parts, each kept whole (type and depth, phase 7, Oct 4 2026): the day
+ * and its dot are joined by a no-break space, and so are the time and its
+ * AM / PM, so the one place the line may break is between the dot and the
+ * time, "Tomorrow ·" over "7:30 AM", never an orphaned "AM". The time may
+ * already carry a narrow no-break space (U+202F) before AM / PM, which Intl
+ * writes in en-US on some engines (iPad Safari among them); either becomes
+ * a no-break space (U+00A0). Every invisible character here is written as
+ * an escape, never typed.
+ */
 export function nextSessionHeadline(day: string | null, time: string): string | null {
   if (!day) return null;
-  return time ? `${day} · ${time}` : day;
+  return time ? `${day}\u00A0· ${time.replace(/[ \u202F](AM|PM)$/, "\u00A0$1")}` : day;
 }
 
 /** "1 booked", "3 booked" — every booking on the calendar, including this one. */

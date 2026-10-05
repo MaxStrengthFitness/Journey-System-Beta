@@ -90,8 +90,32 @@
   --rb-row-h-dense:    2.875rem;  /* 46px — in-session                       */
   --rb-strip-h:        2.5rem;    /* 40px coverage strip                     */
 
-  --rb-font:         "Geist Variable", "Geist", system-ui, -apple-system, sans-serif;
-  --rb-font-display: "Saira Condensed", var(--rb-font);
+  /* The app's two faces (type and depth, Oct 4 2026), as journey-grid's. */
+  --rb-font:         var(--font-sans);
+  --rb-font-display: var(--font-display);
+
+  /* Depth (type and depth, phase 3, Oct 4 2026), value for value as
+     equipment.tokens.css. */
+  --rb-raised:          #f8fafc;
+  --rb-tray:            #d1dae4;
+  --rb-edge:            rgba(25, 45, 65, 0.13);
+  --rb-edge-control:    rgba(25, 45, 65, 0.26);
+  --rb-divider:         rgba(25, 45, 65, 0.10);
+  --rb-highlight:       rgba(255, 255, 255, 0.70);
+  --rb-elev-0:          var(--elev-0);
+  --rb-elev-1:          var(--elev-1);
+  --rb-elev-2:          var(--elev-2);
+  --rb-elev-3:          var(--elev-3);
+  --rb-elev-4:          var(--elev-4);
+  --rb-elev-5:          var(--elev-5);
+  --rb-elev-card:       var(--elev-card);
+  --rb-shelf:           var(--shelf);
+  --rb-press:           var(--press);
+  --rb-glow-live:       var(--glow-live);
+  --rb-glow-go:         var(--glow-go);
+  --rb-solid-light:     var(--solid-light);
+  --rb-go-light:        var(--go-light);
+  --rb-panel-highlight: var(--panel-highlight);
 }
 
 /* ── Dark ──────────────────────────────────────────────────────────────────
@@ -140,6 +164,27 @@
   --rb-muscle-base:      #4b555c;
 
   --rb-shadow:          rgba(2, 10, 20, 0.45);
+
+  --rb-raised:          #203549;
+  --rb-tray:            #081725;
+  --rb-edge:            rgba(150, 180, 210, 0.11);
+  --rb-edge-control:    rgba(150, 180, 210, 0.16);
+  --rb-divider:         rgba(150, 180, 210, 0.10);
+  --rb-highlight:       rgba(255, 255, 255, 0.07);
+  --rb-elev-0:          var(--elev-0);
+  --rb-elev-1:          var(--elev-1);
+  --rb-elev-2:          var(--elev-2);
+  --rb-elev-3:          var(--elev-3);
+  --rb-elev-4:          var(--elev-4);
+  --rb-elev-5:          var(--elev-5);
+  --rb-elev-card:       var(--elev-card);
+  --rb-shelf:           var(--shelf);
+  --rb-press:           var(--press);
+  --rb-glow-live:       var(--glow-live);
+  --rb-glow-go:         var(--glow-go);
+  --rb-solid-light:     var(--solid-light);
+  --rb-go-light:        var(--go-light);
+  --rb-panel-highlight: var(--panel-highlight);
 }
 
 /* System preference, only when no explicit choice has been stamped: no
@@ -185,5 +230,25 @@
     --rb-muscle-base:      #4b555c;
 
     --rb-shadow:          rgba(2, 10, 20, 0.45);
+    --rb-raised:          #203549;
+    --rb-tray:            #081725;
+    --rb-edge:            rgba(150, 180, 210, 0.11);
+    --rb-edge-control:    rgba(150, 180, 210, 0.16);
+    --rb-divider:         rgba(150, 180, 210, 0.10);
+    --rb-highlight:       rgba(255, 255, 255, 0.07);
+    --rb-elev-0:          var(--elev-0);
+    --rb-elev-1:          var(--elev-1);
+    --rb-elev-2:          var(--elev-2);
+    --rb-elev-3:          var(--elev-3);
+    --rb-elev-4:          var(--elev-4);
+    --rb-elev-5:          var(--elev-5);
+    --rb-elev-card:       var(--elev-card);
+    --rb-shelf:           var(--shelf);
+    --rb-press:           var(--press);
+    --rb-glow-live:       var(--glow-live);
+    --rb-glow-go:         var(--glow-go);
+    --rb-solid-light:     var(--solid-light);
+    --rb-go-light:        var(--go-light);
+    --rb-panel-highlight: var(--panel-highlight);
   }
 }

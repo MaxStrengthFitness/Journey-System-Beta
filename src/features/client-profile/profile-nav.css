@@ -47,6 +47,26 @@
 
   --psub-h:             48px;      /* >= 40px floor, on both axes           */
   --psub-radius:        14px;
+
+  /* Depth (type and depth, phase 3, Oct 4 2026): the seven pages' raised
+     bar and the picked page's glow, by the Hub's names. */
+  --psub-edge:          var(--eq-edge);
+  --psub-elev-1:        var(--eq-elev-1);
+  --psub-glow-live:     var(--eq-glow-live);
+  --psub-solid-light:   var(--eq-solid-light);
+  /* Phase 7: the bar's dark top light, and a word's secondary ink. */
+  --psub-panel-highlight: var(--eq-panel-highlight);
+  --psub-ink-2:         var(--eq-ink-2);       /* an idle segment's label 7.8:1 on the bar */
+  /* Phase 9: the Archive's clinical strip is a well, and its Edit button is
+     raised on the 3:1 edge, pressing in. */
+  --psub-elev-0:        var(--eq-elev-0);
+  --psub-raised:        var(--eq-raised);
+  --psub-highlight:     var(--eq-highlight);
+  --psub-press:         var(--eq-press);
+  --psub-border-strong: var(--eq-border-strong);
+  /* AJ's 1A (Oct 5 2026): the strip sits on the page ground, so it sinks
+     into the tray, below the page in both modes. */
+  --psub-tray:          var(--eq-tray);
 }
 
 .dark,
@@ -62,6 +82,18 @@
   --psub-live-on:       var(--eq-live-on);
   --psub-flag:          var(--eq-alert);
   --psub-page:          var(--background, #0a1c2c);
+  --psub-edge:          var(--eq-edge);
+  --psub-elev-1:        var(--eq-elev-1);
+  --psub-glow-live:     var(--eq-glow-live);
+  --psub-solid-light:   var(--eq-solid-light);
+  --psub-panel-highlight: var(--eq-panel-highlight);
+  --psub-ink-2:         var(--eq-ink-2);
+  --psub-elev-0:        var(--eq-elev-0);
+  --psub-raised:        var(--eq-raised);
+  --psub-highlight:     var(--eq-highlight);
+  --psub-press:         var(--eq-press);
+  --psub-border-strong: var(--eq-border-strong);
+  --psub-tray:          var(--eq-tray);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -77,6 +109,18 @@
     --psub-live-on:     var(--eq-live-on);
     --psub-flag:        var(--eq-alert);
     --psub-page:        var(--background, #0a1c2c);
+    --psub-edge:        var(--eq-edge);
+    --psub-elev-1:      var(--eq-elev-1);
+    --psub-glow-live:   var(--eq-glow-live);
+    --psub-solid-light: var(--eq-solid-light);
+    --psub-panel-highlight: var(--eq-panel-highlight);
+    --psub-ink-2:       var(--eq-ink-2);
+    --psub-elev-0:      var(--eq-elev-0);
+    --psub-raised:      var(--eq-raised);
+    --psub-highlight:   var(--eq-highlight);
+    --psub-press:       var(--eq-press);
+    --psub-border-strong: var(--eq-border-strong);
+    --psub-tray:        var(--eq-tray);
   }
 }
 
@@ -117,14 +161,14 @@
   gap: 6px 14px;
   min-height: 22px;
   padding: 0 2px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.35;
   color: var(--psub-ink-faint);
 }
 .psub-context b {
   color: var(--psub-ink);
-  font-weight: 900;
+  font-weight: 800;
 }
 /* "2 with a clinical watch-out" — the one fact in the line that is a caution. */
 .psub-context__watch,
@@ -142,6 +186,13 @@
 /* --------------------------------------------------------------------------
    The toggle itself. Equal tracks, not content width: the segments have to be
    in the same place every time or the thumb cannot find them without looking.
+
+   A RAISED bar (type and depth, phase 7, Oct 4 2026), so it reads apart from
+   the profile's four tabs, a sunk tray, right above it: the card's fill
+   clipped to the padding box inside a soft edge seen from outside, the
+   control's lift and, in dark, the panel's top light. The picked page is
+   solid blue with the blue glow and a white top light. It was a bordered
+   grey tray, the same look as the tray above it.
    -------------------------------------------------------------------------- */
 .psub {
   display: grid;
@@ -149,9 +200,11 @@
   gap: 4px;
   width: 100%;
   padding: 4px;
-  border: 1px solid var(--psub-border);
+  border: 1px solid var(--psub-edge);
   border-radius: var(--psub-radius);
-  background: var(--psub-bg);
+  background: var(--psub-surface);
+  background-clip: padding-box;
+  box-shadow: var(--psub-elev-1), var(--psub-panel-highlight);
 }
 
 .psub__btn {
@@ -164,16 +217,24 @@
   height: var(--psub-h);
   padding: 0 6px;
   border: 0;
-  border-radius: calc(var(--psub-radius) - 5px);
+  /* 10px: the bar's 14 less its 4px padding, so the picked page's corners
+     run parallel to the bar's. */
+  border-radius: calc(var(--psub-radius) - 4px);
   background: transparent;
-  color: var(--psub-ink-muted);
+  color: var(--psub-ink-2);
   cursor: pointer;
-  transition: background 120ms ease, color 120ms ease;
+  /* Colours only: the picked page's glow is never animated. */
+  transition: background-color 120ms ease, color 120ms ease;
   -webkit-tap-highlight-color: transparent;
 }
-.psub__btn:hover:not([data-on]) {
-  background: var(--psub-surface);
-  color: var(--psub-ink);
+/* Inside (hover: hover) so an iPad, which keeps hover after a tap, never
+   leaves a segment it just left shaded. The hover dips into the well tone,
+   because the bar itself is the card's colour now. */
+@media (hover: hover) {
+  .psub__btn:hover:not([data-on]) {
+    background: var(--psub-bg);
+    color: var(--psub-ink);
+  }
 }
 .psub__btn:focus-visible {
   outline: 2px solid var(--psub-live);
@@ -182,6 +243,7 @@
 .psub__btn[data-on] {
   background: var(--psub-live);
   color: var(--psub-live-on);
+  box-shadow: var(--psub-glow-live), var(--psub-solid-light);
 }
 
 .psub__label {
@@ -190,10 +252,13 @@
   gap: 5px;
   max-width: 100%;
   font-family: inherit;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  /* The sub-tab voice (AJ's answer 1A, Oct 4 2026): Geist 14/700 in the
+     words' own capitalisation, ink-2. It was 12/900 capitals. */
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.2;
   /* Names are never truncated (CLAUDE.md). Two words wrap rather than clip,
      which is why the button is a column and 48px tall rather than 40px. */
   flex-wrap: wrap;
@@ -203,18 +268,19 @@
   overflow-wrap: anywhere;
 }
 
+/* The meta line: 12/500 in the words' own capitalisation, the muted ink
+   (5.8:1 on the bar), quieter than the label by its size, weight and ink.
+   It was 9.5px capitals at 0.72 alpha. On the picked page it takes the
+   page's own ink, white on the blue at full strength. */
 .psub__meta {
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  opacity: 0.72;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--psub-ink-muted);
   white-space: nowrap;
 }
-/* On the selected segment the meta is white on brand blue at 9.5px, which is
-   small text and has to clear 4.5:1 on its own. 0.72 alpha took it under; at
-   0.86 it clears with room. */
-.psub__btn[data-on] .psub__meta { opacity: 0.86; }
+.psub__btn[data-on] .psub__meta { color: inherit; }
 
 .psub__dot {
   width: 6px;
@@ -237,7 +303,7 @@
 /* Below ~420px (a phone held sideways in the office, not the floor case) the
    meta line is the first thing to go — the label is what identifies it. */
 @media (max-width: 420px) {
-  .psub__label { font-size: 11px; letter-spacing: 0.04em; }
+  .psub__label { font-size: 12px; }
   .psub__meta { display: none; }
 }
 
@@ -254,13 +320,14 @@
    while the metas are short, nothing wraps and a segment is still 48px. A
    meta that wraps grows the row too, and it usually lands after the bar has
    drawn, so keep the codex's metas short. The label keeps the other tabs'
-   look, 12px/900 uppercase.
+   look, 14/700 in its own capitalisation since type and depth (it was
+   12px/900 uppercase).
 
    EVERY rule in this block is scoped to [data-wrap]. Programming and the
    Activity Archive do not pass `wrap` and must render exactly as they did —
    don't move any of this into the base rules above.
 
-   Type stays on the codex scale: 11 / 12 / 14 / 17 / 30.
+   Type stays on the codex scale: 11 / 12 / 14 / 17 / 22 / 30.
    -------------------------------------------------------------------------- */
 .psub-shell[data-wrap] .psub__btn {
   height: auto;
@@ -272,7 +339,7 @@
   text-wrap: balance;
   overflow: visible;
   text-align: center;
-  line-height: 1.15;
+  line-height: 1.2;
   /* A line breaks at a space. Only a single word wider than the whole segment
      (a phone — no iPad width does it) breaks inside itself: broken, never
      clipped, and never drawn over the next segment. */
@@ -280,21 +347,20 @@
 }
 .psub-shell[data-wrap] .psub__meta {
   max-width: 100%;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  /* Here the meta is a state ("couldn't load", "3 open · 1 critical"), not a
+     quiet count, so it may take a second line. Its voice is the base meta's,
+     12/500 in the muted ink (5.8:1 on the bar, 6.5:1 in dark), the picked
+     page's own ink on the blue; size, weight and ink keep it quieter than
+     the label. It was 11/700 and, before type and depth, the only meta
+     drawn without the base's 0.72 alpha. */
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
   text-transform: none;
   text-align: center;
   white-space: normal;
   overflow-wrap: anywhere;
   line-height: 1.2;
-  /* Here the meta is a state ("couldn't load", "3 open · 1 critical"), not a
-     quiet count, so it is drawn in the segment's own ink rather than at the
-     0.72 alpha above (about 2.9:1 on the tray): 5.0:1 on the tray, 6.1:1 in
-     dark, 7.4:1 or better on the selected segment. Weight, size and case keep
-     it quieter than the label. This rule comes after the selected segment's
-     0.86 and has the same weight, so it wins there too. */
-  opacity: 1;
 }
 .psub-shell[data-wrap] .psub-context {
   font-size: 12px;
@@ -321,9 +387,6 @@
   .psub-shell[data-wrap] .psub__btn {
     padding: 6px 2px;
   }
-  .psub-shell[data-wrap] .psub__label {
-    letter-spacing: 0.01em;
-  }
 }
 
 /* --------------------------------------------------------------------------
@@ -338,23 +401,41 @@
 /* A read-only fact strip — the Activity Archive's flags, Programming's counts.
    Read-only on purpose: these facts are EDITED in exactly one place (Notes &
    Profile → Body & Pulse, the watch-outs card), and a second editable copy is
-   how two screens start disagreeing. */
+   how two screens start disagreeing.
+
+   A WELL (type and depth, phase 9, Oct 4 2026): the facts are information,
+   so the strip sinks with the well's inner shadow, no edge. It was a
+   hairline box on the card's fill. Its words left 9.5-11.5px capitals for
+   the app's voices: the title is a label (14/700, ink-2), a chip 12/700 on
+   the card's fill so it stands up out of the well, the empty sentence
+   14px, and Edit a raised button on the 3:1 edge. The strip is the same
+   height: Edit's 40px sets it, as before.
+
+   ON THE PAGE GROUND, so the TRAY's tone (AJ's 1A, Oct 5 2026): the strip
+   sits in the sub-toggle's shell, which is painted the page, so the well
+   tone read raised there; the tray is below the page in both modes. The
+   title and the empty sentence read in ink-2 on it (5.95:1; the muted ink
+   would read 4.42:1). */
 .ptab-strip {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 7px;
   padding: 10px 12px;
-  border: 1px solid var(--psub-border);
+  border: 0;
   border-radius: 12px;
-  background: var(--psub-surface);
+  background: var(--psub-tray);
+  box-shadow: var(--psub-elev-0);
 }
 .ptab-strip__title {
-  font-size: 9.5px;
-  font-weight: 900;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--psub-ink-faint);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--psub-ink-2);
   margin-right: 2px;
 }
 .ptab-strip__chip {
@@ -365,10 +446,10 @@
   padding: 0 10px;
   border-radius: 999px;
   border: 1px solid var(--psub-border);
-  background: var(--psub-bg);
+  background: var(--psub-surface);
   color: var(--psub-ink);
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 700;
   white-space: nowrap;
 }
 .ptab-strip__chip[data-tone="alert"] {
@@ -389,27 +470,39 @@
   color: var(--eq-warn);
 }
 .ptab-strip__none {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--psub-ink-faint);
+  font-size: 14px;
+  font-weight: var(--fw-body);
+  color: var(--psub-ink-2);
 }
+/* RAISED (type and depth, phase 9; the phase 8 recipe): a fill a hair
+   lighter than the card, the contact lift and a white top light, on the 3:1
+   edge (3.5:1 on the raised fill; it was the soft hairline, which a control
+   may not have), radius 12, and a press. The button voice, 14/700, in the
+   words' own capitalisation; the blue words read 7:1 on the raised fill. */
 .ptab-strip__edit {
   margin-left: auto;
   /* A tap target: the 40px floor. It was 30px with 10px type. */
   min-height: 40px;
   padding: 0 12px;
-  border: 1px solid var(--psub-border);
-  border-radius: 9px;
-  background: transparent;
+  border: 1px solid var(--psub-border-strong);
+  border-radius: 12px;
+  background: var(--psub-raised);
+  box-shadow: var(--psub-elev-1), inset 0 1px 0 var(--psub-highlight);
   color: var(--psub-live-soft);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
   white-space: nowrap;
 }
-.ptab-strip__edit:hover { background: var(--psub-bg); }
+@media (hover: hover) {
+  .ptab-strip__edit:hover { background: var(--psub-bg); }
+}
+.ptab-strip__edit:active {
+  transform: translateY(1px);
+  box-shadow: var(--psub-press);
+}
 .ptab-strip__edit:focus-visible { outline: 2px solid var(--psub-live); outline-offset: 2px; }
 
 /* A pane that is mounted but not showing. `hidden` rather than unmounting:
@@ -440,10 +533,16 @@
   align-items: center;
   gap: 8px 14px;
   margin-bottom: 12px;
-  padding: 10px 14px;
+  /* The orange is a straight 3px band across the top, painted as the first
+     background layer over the orange tint (type and depth, phase 10, Oct 4
+     2026; rule 3). It was a full orange border round the box. The 2px the
+     band adds is in the padding. */
+  padding: 12px 14px 10px;
   border-radius: 12px;
-  border: 1px solid var(--eq-hero);
-  background: var(--eq-hero-fill);
+  border: 0;
+  background:
+    linear-gradient(var(--eq-hero), var(--eq-hero)) top / 100% 3px no-repeat,
+    var(--eq-hero-fill);
   color: var(--eq-hero-text);
 }
 .ptab-cue p { flex: 1 1 260px; margin: 0; font-size: 12.5px; font-weight: 700; line-height: 1.4; }
@@ -480,7 +579,8 @@
    the name, because identity + four actions on one 360-390px row left the
    name a zero-width column that broke one letter per line. The profile's
    four tabs (cp-tabs) keep their four equal columns and their 40px height;
-   a label takes a second line instead of an ellipsis.
+   a label takes a second line instead of an ellipsis. The header's card
+   (type and depth, phase 7) keeps its padding here; the name is 24px.
    -------------------------------------------------------------------------- */
 @media (max-width: 599px) {
   /* The name and the studio line keep the width beside the avatar; the
@@ -517,15 +617,13 @@
     text-overflow: clip;
     overflow-wrap: anywhere;
   }
-  /* Programming's and the Archive's four segments: "All machines" breaks at
-     its space, not inside "machines". */
+  /* Programming's and the Archive's four segments: "All Machines" stays on
+     one line at 12px (75px in a segment of about 78), so the 48px button
+     holds its label and its meta line. The codex's seven pages take 12px
+     here too, and break a two-word label at its space. */
   .psub__btn { padding: 0 3px; }
-  .psub__label { letter-spacing: 0.02em; }
-  .cp-tab.truncate {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-    line-height: 1.1;
-    letter-spacing: 0.02em;
-  }
+  .psub__label { font-size: 12px; }
+  /* The profile's four tabs (cp-tab) are 12px under 600px wide and wrap on
+     their own (ClientProfileView's class list: whitespace-normal,
+     hyphens-auto, overflow-wrap anywhere); nothing here truncates them. */
 }

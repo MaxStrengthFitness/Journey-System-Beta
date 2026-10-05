@@ -1,8 +1,57 @@
-@import url('https://fonts.googleapis.com/css2?family=Saira+Condensed:ital,wght@0,600;0,700;0,800;1,600;1,700;1,800&family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+
+/* THE DISPLAY FACE, SELF-HOSTED (type and depth, Oct 4 2026).
+   Saira Condensed used to come from Google Fonts through a render-blocking
+   @import on line 1 (with Inter, which nothing used): three hops to a third
+   party, display=swap so headings reflowed on slow studio Wi-Fi, and with
+   Google unreachable every display heading fell back to slanted Geist for
+   the whole visit. These four files are vendored from
+   @fontsource/saira-condensed 5.3.0 (npm pack, not a dependency: the
+   worktrees share node_modules and `npm install` fails here), latin and
+   latin-ext at 700 and 800 only, and Vite bundles them same-origin the way
+   it bundles Geist. Licence: SIL OFL 1.1, beside the files.
+   - 700 and 800 are the only weights: a rule that asks the display face for
+     600, or for no weight, now renders 700; 900 renders 800.
+   - Saira Condensed has NO italic file (Google's response held none, and the
+     package ships none). The slant on the brand moments is the browser's
+     own oblique, as it always was, so no italic face is declared.
+   - latin-ext is fetched only when a character on screen needs it.
+   src/fonts.test.ts holds all of this. */
+@font-face {
+  font-family: "Saira Condensed";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url("./assets/fonts/saira-condensed/saira-condensed-latin-ext-700-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Saira Condensed";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url("./assets/fonts/saira-condensed/saira-condensed-latin-700-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Saira Condensed";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 800;
+  src: url("./assets/fonts/saira-condensed/saira-condensed-latin-ext-800-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Saira Condensed";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 800;
+  src: url("./assets/fonts/saira-condensed/saira-condensed-latin-800-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 @custom-variant dark (&:is(.dark *));
 
@@ -96,6 +145,17 @@
     --color-brand-tile-ink: var(--brand-tile-ink);
 
     --font-display: 'Saira Condensed', var(--font-sans);
+    /* `font-black` is 800, not Tailwind's 900 (type and depth, Oct 4 2026).
+       The display face is loaded at 700 and 800 only, so 900 rendered as
+       800 on Saira anyway; on Geist, 900 was part of the "everything is
+       700-900" weight that made the app shout. 247 uses in 40 files calm
+       at once. */
+    --font-weight-black: 800;
+    /* `tracking-widest` is 0.08em, not Tailwind's 0.1em (type and depth,
+       phase 2): the caps labels written in a class list (about 270) sit a
+       little closer, the spacing of the one caps style the round keeps, the
+       12px eyebrow. */
+    --tracking-widest: 0.08em;
 
     /* ELEVATION.
        These OVERRIDE Tailwind's built-in shadow scale rather than sitting
@@ -103,11 +163,11 @@
        app softens at once with no component edits. Tailwind's defaults are
        pure black at fairly high alpha, which on a light ground reads as a
        dirty smudge — the single biggest reason light mode looked "harsh and
-       dull". Ours are tinted with the ink colour and split into a tight
-       contact shadow plus a wide ambient one, which is what actually reads as
-       a raised surface. In dark mode they collapse to almost nothing (see
-       .dark below) because a shadow on the dark navy ground barely shows
-       anyway; there, elevation comes from the surface getting LIGHTER. */
+       dull". Ours are tinted with the logo navy and split into a tight
+       contact shadow plus a short ambient one, which is what actually reads
+       as a raised surface (the depth scale in :root below, type and depth,
+       Oct 4 2026). In dark mode the shadows are the deepest navy, never
+       black, and elevation comes mostly from the surface getting LIGHTER. */
     --shadow-sm:  var(--elev-1);
     --shadow-md:  var(--elev-2);
     --shadow-lg:  var(--elev-3);
@@ -302,19 +362,133 @@
     --sidebar-ring: #115E8D;
     
     /* ---------------------------------------------------------------
-       ELEVATION SCALE. Two shadows per step on purpose: a tight, darker
-       contact shadow that anchors the element to the surface, and a wide,
-       soft ambient one that gives it height. One shadow alone always reads
-       as either a hard outline or a blur. Tinted with the ink colour
-       (25,45,65, the navy #192D41) rather than pure black so it stays in
-       the palette; a touch stronger since Oct 4 2026, because an off-white
-       card on a grey-blue ground needs a little more lift than white did.
+       DEPTH (type and depth, phase 3, Oct 4 2026). AJ: "a lot of buttons
+       and backgrounds in the app currently have a sharp cutoff look ...
+       borders and headers just needs a little bit of weight and depth ...
+       add some dropshadows". The look he picked is harness/depth's
+       kit-recommended.css, "Refined Lift".
+
+       Every shadow is the logo navy (25,45,65, the ink #192D41) at an
+       alpha, never black, and comes in two layers on purpose: a tight
+       contact shadow that anchors the box and a short ambient one that
+       lifts it. One alone reads as a hard outline or a blur. The ambient
+       layer has a negative spread, so a resting shadow stays inside a
+       scroll parent (--elev-2's blur is 18px at most; elevation.test.ts
+       holds it).
+
+         --elev-0      a well: sunk, inset
+         --elev-1      a control, or a picked tab inside a tray. The
+                       contact layer is .16 so a button still lifts under
+                       gym-floor glare
+         --elev-2      a panel
+         --elev-3      the hero, an open card
+         --elev-4      a popover, the peek, a sheet; --elev-4-up is the
+                       same lift cast upward, for a sheet that rises from
+                       the bottom edge
+         --elev-5      a dialog
+         --elev-card   a Hub booking: small blurs, because a day holds
+                       30 to 60 of them
+         --shelf       a bar over scrolling content (a room's toolbar)
+         --frame-down, --frame-up   under the navy header, over the navy
+                       bottom bar
+         --press       a raised control pressed in, with translateY(1px)
+         --glow-live, --glow-go     a solid blue or orange fill's drop;
+                       --solid-light and --go-light are its top light.
+                       No gradient and no dark foot
+         --panel-highlight          a panel's top light: none in light,
+                       a faint one in dark
+
+       The fills and lines a raised or sunk box is drawn with:
+         --raised      a control's fill, a hair lighter than the card and
+                       never white. It KEEPS the control's own 3:1 edge
+                       (--input, --X-border-strong, --jg-control-edge):
+                       the Navy Frame's "control boundaries 3:1 or more",
+                       and AJ's Oct 4 "yes" to firmer outlines
+         --well        a box inside a panel that holds information: below
+                       the card, in both modes (never bg-muted or
+                       --bg-dark-3, which go LIGHTER in dark)
+         --tray        the profile's tab tray: today's value, below the page
+         --edge        a panel's edge, drawn with background-clip:
+                       padding-box so it is seen from outside the card
+         --edge-control  the soft ring of a picked tab inside a tray (the
+                       tray is the group's boundary)
+         --divider     a row's hairline inside a panel
+         --highlight   a raised control's top light
+         --scrim       the veil under a dialog: navy, not black
+
+       Each feature palette carries these under its own prefix (--eq-*,
+       --adm-*, --st-* and the rest), the shadows as var(--elev-n) and the
+       colours as the same literals, so every copy compares as strings.
        --------------------------------------------------------------- */
-    --elev-1: 0 1px 2px rgba(25,45,65,0.06), 0 1px 3px rgba(25,45,65,0.05);
-    --elev-2: 0 1px 2px rgba(25,45,65,0.06), 0 3px 8px rgba(25,45,65,0.07);
-    --elev-3: 0 2px 4px rgba(25,45,65,0.06), 0 8px 20px rgba(25,45,65,0.10);
-    --elev-4: 0 4px 8px rgba(25,45,65,0.05), 0 16px 32px rgba(25,45,65,0.09);
-    --elev-5: 0 8px 16px rgba(25,45,65,0.06), 0 28px 56px rgba(25,45,65,0.12);
+    --elev-0: inset 0 1px 2px rgba(25,45,65,0.09);
+    --elev-1: 0 1px 2px rgba(25,45,65,0.16), 0 2px 5px -1px rgba(25,45,65,0.08);
+    --elev-2: 0 1px 2px rgba(25,45,65,0.08), 0 6px 18px -6px rgba(25,45,65,0.24);
+    --elev-3: 0 1px 3px rgba(25,45,65,0.09), 0 12px 28px -12px rgba(25,45,65,0.30);
+    --elev-4: 0 2px 6px rgba(25,45,65,0.10), 0 24px 48px -16px rgba(25,45,65,0.34);
+    --elev-4-up: 0 -2px 6px rgba(25,45,65,0.10), 0 -24px 48px -16px rgba(25,45,65,0.34);
+    --elev-5: 0 4px 10px rgba(25,45,65,0.10), 0 32px 64px -20px rgba(25,45,65,0.42);
+    --elev-card: 0 1px 2px rgba(25,45,65,0.09), 0 3px 8px -3px rgba(25,45,65,0.18);
+    --shelf: 0 1px 0 rgba(25,45,65,0.10), 0 6px 14px -10px rgba(25,45,65,0.45);
+    --frame-down: 0 1px 0 rgba(0,18,36,0.22), 0 4px 12px -2px rgba(0,35,65,0.35);
+    --frame-up: 0 -1px 0 rgba(0,18,36,0.22), 0 -10px 26px -12px rgba(0,35,65,0.45);
+    --press: inset 0 1px 3px rgba(25,45,65,0.18);
+    --glow-live: 0 1px 2px rgba(25,45,65,0.18), 0 6px 14px -6px color-mix(in srgb, var(--primary) 65%, transparent);
+    --glow-go: 0 1px 2px rgba(25,45,65,0.16), 0 10px 22px -10px color-mix(in srgb, var(--cta) 80%, transparent);
+    --solid-light: inset 0 1px 0 rgba(255,255,255,0.18);
+    --go-light: inset 0 1px 0 rgba(255,255,255,0.32);
+    --panel-highlight: 0 0 0 0 transparent;
+
+    --raised: #F8FAFC;              /* 3.8:1 under --input, 3.5:1 under --eq-border-strong */
+    --well: #E4EBF3;
+    --tray: #D1DAE4;                /* 1.12:1 off the page; the open tab 1.35:1 on it */
+    --edge: rgba(25,45,65,0.13);
+    --edge-control: rgba(25,45,65,0.26);
+    --divider: rgba(25,45,65,0.10);
+    --highlight: rgba(255,255,255,0.70);
+    --scrim: rgba(0,18,36,0.30);
+    /* A raised control on a popover (a dialog, a sheet, a menu): in light
+       the page's own raised fill and edge; dark steps them up (below). */
+    --popover-raised: var(--raised);
+    --popover-input: var(--input);
+
+    /* A control's whole resting shadow, for a className (type and depth,
+       phase 4, Oct 4 2026). A className reads ONE of these with
+       shadow-(--raised-lift), never shadow-[var(--elev-1),…]:
+       tailwind-merge files an arbitrary shadow that starts with var() as
+       a shadow COLOUR, so a caller's shadow-none or shadow-md would not
+       replace it and a caller's shadow-red-200 would silently drop it.
+       shadow-(--x) it files as a shadow, and Tailwind leaves the value
+       whole (an arbitrary one has its last colour rewritten to
+       --tw-shadow-color). Restated in .dark so a dark subtree resolves
+       them against its own tokens.
+         --raised-lift  a raised control (shadcn's outline Button, a picked
+                        tab): the contact lift and the top light, on the
+                        control's own 3:1 edge
+         --solid-lift   a solid blue fill (shadcn's default Button)
+         --go-lift      a solid orange fill: Go's depth (Start session
+                        takes it with Go's words; every other orange
+                        button takes the depth alone)
+         --panel-lift   a panel drawn in a className (the profile header's
+                        card, phase 7): --elev-2 and, in dark, the top
+                        light. Never inset-shadow-(--panel-highlight):
+                        Tailwind writes "inset" in front of the value, and
+                        the dark token already starts with it. */
+    --raised-lift: var(--elev-1), inset 0 1px 0 var(--highlight);
+    --solid-lift: var(--glow-live), var(--solid-light);
+    --go-lift: var(--glow-go), var(--go-light);
+    --panel-lift: var(--elev-2), var(--panel-highlight);
+
+    /* ---------------------------------------------------------------
+       THE BODY WEIGHT (type and depth, phase 2, Oct 4 2026). The weight
+       ladder is five steps: 450 body, 500 meta, 600 tabs and row labels,
+       700 titles and buttons, 800 display. Body was the browser's 400;
+       Geist is a variable face, so 450 is a real weight, not a rounding.
+       .dark lowers it to 420, because light words on navy read heavier.
+       It reaches ONLY text that inherits the body's weight: a rule or a
+       class that sets its own weight (`font-normal` included) keeps it.
+       src/fonts.test.ts holds the two values and the body rule.
+       --------------------------------------------------------------- */
+    --fw-body: 450;
 
     /* ---------------------------------------------------------------
        JOURNEY SYSTEM BETA TOKENS — LIGHT MODE
@@ -504,16 +678,53 @@
     --sidebar-border: #334155;
     --sidebar-ring: #38BDF8;
 
-    /* On the dark navy ground a drop shadow barely shows — elevation there
-       comes from the SURFACE getting lighter (bg-dark -> -2 -> -3). Left at
-       the light-mode values, every `shadow-xl` in the app would be spending
-       paint on nothing and muddying the edges of dark cards. Tinted with
-       the deepest navy (2,10,20) rather than pure black. */
-    --elev-1: 0 1px 2px rgba(2,10,20,0.30);
-    --elev-2: 0 2px 6px rgba(2,10,20,0.35);
-    --elev-3: 0 6px 16px rgba(2,10,20,0.45);
-    --elev-4: 0 12px 28px rgba(2,10,20,0.45);
-    --elev-5: 0 20px 48px rgba(2,10,20,0.55);
+    /* DEPTH in dark (type and depth, phase 3, Oct 4 2026). On the navy
+       ground, height comes mostly from the SURFACE getting lighter: a
+       raised control is #203549, a step above the card, and a well and the
+       tray sit below it. Edges are soft rims of a pale navy, never a dark
+       line, and a panel gets a faint top light. The shadows are short and
+       in the deepest navy (2,10,20), stronger than light's because a navy
+       shadow on a navy ground shows less, but never a black smudge. */
+    --elev-0: inset 0 1px 2px rgba(2,10,20,0.45);
+    --elev-1: 0 1px 2px rgba(2,10,20,0.50);
+    --elev-2: 0 1px 2px rgba(2,10,20,0.40), 0 6px 16px -8px rgba(2,10,20,0.60);
+    --elev-3: 0 1px 3px rgba(2,10,20,0.45), 0 12px 28px -12px rgba(2,10,20,0.70);
+    --elev-4: 0 2px 6px rgba(2,10,20,0.50), 0 20px 44px -16px rgba(2,10,20,0.80);
+    --elev-4-up: 0 -2px 6px rgba(2,10,20,0.50), 0 -20px 44px -16px rgba(2,10,20,0.80);
+    --elev-5: 0 4px 10px rgba(2,10,20,0.55), 0 28px 56px -20px rgba(2,10,20,0.85);
+    --elev-card: 0 1px 2px rgba(2,10,20,0.45), 0 3px 8px -3px rgba(2,10,20,0.50);
+    --shelf: 0 1px 0 rgba(150,180,210,0.10), 0 6px 14px -10px rgba(2,10,20,0.85);
+    --frame-down: 0 1px 0 rgba(255,255,255,0.05), 0 4px 12px -2px rgba(2,10,20,0.60);
+    --frame-up: 0 -1px 0 rgba(255,255,255,0.05), 0 -10px 24px -12px rgba(2,10,20,0.60);
+    --press: inset 0 1px 3px rgba(2,10,20,0.55);
+    --glow-live: 0 1px 2px rgba(2,10,20,0.45), 0 6px 14px -8px rgba(2,10,20,0.80);
+    --glow-go: 0 1px 2px rgba(2,10,20,0.40), 0 10px 22px -12px color-mix(in srgb, var(--cta) 55%, transparent);
+    --solid-light: inset 0 1px 0 rgba(255,255,255,0.20);
+    --go-light: inset 0 1px 0 rgba(255,255,255,0.28);
+    --panel-highlight: inset 0 1px 0 rgba(255,255,255,0.045);
+
+    --raised: #203549;              /* lighter is higher; 3.2:1 under --input */
+    --well: #0D2235;
+    --tray: #081725;                /* below the page */
+    --edge: rgba(150,180,210,0.11);
+    --edge-control: rgba(150,180,210,0.16);
+    --divider: rgba(150,180,210,0.10);
+    --highlight: rgba(255,255,255,0.07);
+    --scrim: rgba(0,6,14,0.55);
+    /* The popover (#22374B) is a step above the card, lighter than the
+       raised fill, so a raised control on it steps up again: 1.11:1 above
+       the popover, its edge 3.43:1 on the fill and 3.81:1 on the popover,
+       the words 8.8:1 (muted 4.8:1). */
+    --popover-raised: #283E54;
+    --popover-input: #7D92A6;
+    --raised-lift: var(--elev-1), inset 0 1px 0 var(--highlight);
+    --solid-lift: var(--glow-live), var(--solid-light);
+    --go-lift: var(--glow-go), var(--go-light);
+    --panel-lift: var(--elev-2), var(--panel-highlight);
+
+    /* The body weight: light words on the navy read heavier than dark
+       words on a light card, so dark mode's body is a touch lighter. */
+    --fw-body: 420;
 
     /* JOURNEY SYSTEM BETA TOKENS — DARK MODE. The ladder is the same navy
        family as the tokens above: page, card, raised. */
@@ -578,12 +789,26 @@
     --mb-access-foreign:     var(--yellow);
 }
 
+/* A raised control on a popover (review fix, Oct 5 2026). In dark the
+   popover is a step above the card and LIGHTER than the raised fill, so an
+   outline Button (Cancel and its kind) in a dialog, a sheet or a menu read
+   level with it or sunk while its lift said raised. Inside those surfaces
+   the raised fill steps up again and its 3:1 edge moves with it. In light
+   both tokens are the page's own, so nothing changes there. */
+:is([data-slot="dialog-content"], [data-slot="sheet-content"], [data-slot="dropdown-menu-content"], [data-slot="dropdown-menu-sub-content"], [data-slot="select-content"]) {
+    --raised: var(--popover-raised);
+    --input: var(--popover-input);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
     }
   body {
     @apply bg-background text-foreground;
+    /* 450, or 420 in .dark (the tokens above). .dark is on <html>, so the
+       body reads the theme's value. */
+    font-weight: var(--fw-body);
     }
   html {
     @apply font-sans;

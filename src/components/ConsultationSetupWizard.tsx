@@ -76,10 +76,10 @@ export function ConsultationSetupWizard({
     <div className="flex flex-col bg-bg-dark min-h-screen text-ink-d1 pb-48">
       {/* Header */}
       <div className="p-6 sm:p-8 pt-10 sm:pt-12 mb-2 bg-linear-to-b from-transparent dark:from-black/35 to-transparent">
-        <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter text-ink-d1">
-          First-Time Setup
+        <h1 className="font-display font-extrabold text-[30px] leading-[1.04] text-ink-d1 [overflow-wrap:anywhere]">
+          First-time setup
         </h1>
-        <p className="text-cyan uppercase tracking-widest text-xs font-bold mt-2">
+        <p className="text-[14px] text-ink-d2 mt-2">
           Generating baseline protocol for {clientName}
         </p>
       </div>
@@ -89,8 +89,8 @@ export function ConsultationSetupWizard({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
           {/* Gender */}
           <div className="space-y-4">
-            <label className="text-[11px] font-black uppercase tracking-widest text-ink-d3">
-              Biological Gender
+            <label className="text-[14px] font-bold text-ink-d2">
+              Biological gender
             </label>
             <div className="flex gap-3">
               {(["Male", "Female"] as Gender[]).map((g) => (
@@ -98,10 +98,10 @@ export function ConsultationSetupWizard({
                   key={g}
                   onClick={() => setGender(g)}
                   className={cn(
-                    "flex-1 py-4 sm:py-5 px-3 rounded-2xl font-black uppercase tracking-tight transition-all duration-200 border-2 text-sm sm:text-base",
+                    "flex-1 min-h-12 py-3 px-3 rounded-2xl font-bold transition-[color,background-color,border-color,transform] duration-200 border text-[14px]",
                     gender === g
-                      ? "bg-(--eq-hero-fill) text-ink-d1 border-cta shadow-[0_0_20px_var(--cta)] shadow-cta/25 scale-102 sm:scale-105"
-                      : "bg-bg-dark-2 text-ink-d3 border-div-d hover:border-white/20 hover:bg-white/5",
+                      ? "bg-primary text-primary-foreground border-primary shadow-(--solid-lift)"
+                      : "bg-(--raised) border border-input shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) text-ink-d2 hover:bg-muted",
                   )}
                 >
                   {g}
@@ -112,15 +112,15 @@ export function ConsultationSetupWizard({
 
           {/* Age */}
           <div className="space-y-4">
-            <label className="text-[11px] font-black uppercase tracking-widest text-ink-d3">
+            <label className="text-[14px] font-bold text-ink-d2">
               How old are you?
             </label>
-            <div className="flex bg-bg-dark-2 border-2 border-div-d rounded-2xl items-center focus-within:border-cyan transition-colors relative h-14 sm:h-17">
+            <div className="flex bg-(--well) border border-input shadow-(--elev-0) rounded-2xl items-center focus-within:border-cyan transition-colors relative h-14 sm:h-17">
               <input
                 type="number"
                 value={age ?? ""}
                 onChange={(e) => setAge(parseAge(e.target.value))}
-                className="bg-transparent w-full h-full text-ink-d1 text-xl sm:text-2xl font-black px-6 outline-none"
+                className="bg-transparent w-full h-full text-ink-d1 text-xl sm:text-2xl font-bold px-6 outline-none"
                 placeholder="e.g. 45"
               />
             </div>
@@ -128,8 +128,8 @@ export function ConsultationSetupWizard({
 
           {/* Skill Level */}
           <div className="space-y-4">
-            <label className="text-[11px] font-black uppercase tracking-widest text-ink-d3">
-              Prior Experience
+            <label className="text-[14px] font-bold text-ink-d2">
+              Prior experience
             </label>
             <div className="flex gap-3">
               {(["Novice", "Intermediate", "Advanced"] as SkillLevel[]).map(
@@ -138,10 +138,10 @@ export function ConsultationSetupWizard({
                     key={s}
                     onClick={() => setSkillLevel(s)}
                     className={cn(
-                      "flex-1 py-4 sm:py-5 px-1 rounded-2xl font-black uppercase tracking-tight transition-all duration-200 border-2 text-xs sm:text-sm",
+                      "flex-1 min-h-12 py-3 px-1 rounded-2xl font-bold transition-[color,background-color,border-color,transform] duration-200 border text-[14px]",
                       skillLevel === s
-                        ? "bg-(--eq-hero-fill) text-ink-d1 border-cta shadow-[0_0_20px_var(--cta)] shadow-cta/25 scale-102 sm:scale-105"
-                        : "bg-bg-dark-2 text-ink-d3 border-div-d hover:border-white/20 hover:bg-white/5",
+                        ? "bg-primary text-primary-foreground border-primary shadow-(--solid-lift)"
+                        : "bg-(--raised) border border-input shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) text-ink-d2 hover:bg-muted",
                     )}
                   >
                     {s}
@@ -154,9 +154,9 @@ export function ConsultationSetupWizard({
 
         {/* Bottom Section - The Routine */}
         <div className="space-y-6 flex-1">
-          <label className="text-[12px] font-black uppercase tracking-widest text-cyan flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            Suggested Introductory Protocol
+          <label className="text-[14px] font-bold text-ink-d2 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-cyan" />
+            Suggested introductory protocol
           </label>
 
           <div className="space-y-4">
@@ -172,32 +172,32 @@ export function ConsultationSetupWizard({
               return (
                 <Card
                   key={idx}
-                  className="bg-bg-dark-2 border border-div-d shadow-2xl overflow-hidden rounded-[24px]"
+                  className="bg-bg-dark-2 border border-div-d shadow-(--panel-lift) overflow-hidden rounded-[20px]"
                 >
                   <CardContent className="p-0 flex flex-col sm:flex-row items-stretch">
                     <div className="h-2 sm:h-auto sm:w-6 bg-cta shrink-0" />
                     <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between">
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div className="pr-0 sm:pr-4 flex-1">
-                          <h3 className="text-2xl sm:text-3xl font-black uppercase italic tracking-tighter text-ink-d1 leading-none mb-2">
+                          <h3 className="font-display text-2xl sm:text-3xl font-extrabold text-ink-d1 leading-none mb-2">
                             {machine.name}
                           </h3>
-                          <p className="text-xs font-bold text-ink-d3 tracking-wide uppercase flex items-center gap-2 mt-2 leading-relaxed">
+                          <p className="text-[14px] text-ink-d2 flex items-center gap-2 mt-2 leading-relaxed">
                             <Info className="w-4 h-4 text-cyan shrink-0" />
                             {machine.tip}
                           </p>
                         </div>
 
                         <div className="text-left sm:text-right flex sm:flex-col items-center sm:items-end justify-between sm:justify-start w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-t-0 sm:border-l border-div-d">
-                          <span className="text-[11px] font-black uppercase tracking-widest text-ink-d3 sm:mb-2 mr-3 sm:mr-0">
-                            Starting Wt
+                          <span className="text-[12px] font-semibold text-ink-d3 sm:mb-2 mr-3 sm:mr-0">
+                            Starting weight
                           </span>
-                          <div className="bg-black/30 border-2 border-div-d shadow-sm px-5 py-2.5 rounded-xl flex items-baseline gap-1.5">
-                            <span className="text-3xl font-black tracking-tighter text-(--eq-hero-text)">
+                          <div className="bg-(--well) shadow-(--elev-0) px-5 py-2.5 rounded-xl flex items-baseline gap-1.5">
+                            <span className="font-display text-[30px] font-extrabold leading-none text-(--eq-hero-text)">
                               {weight ?? "—"}
                             </span>
                             {weight !== null && (
-                              <span className="text-xs font-bold text-ink-d3 uppercase">
+                              <span className="text-[12px] font-bold text-ink-d3">
                                 lbs
                               </span>
                             )}
@@ -206,8 +206,8 @@ export function ConsultationSetupWizard({
                       </div>
 
                       <div className="mt-5 pt-3 border-t border-div-d flex justify-between items-center">
-                        <button className="bg-bg-dark-3 hover:bg-muted transition-colors py-2 px-3.5 rounded-lg text-[10px] font-black uppercase tracking-widest text-cyan flex items-center gap-2 cursor-pointer">
-                          Setup Info
+                        <button className="min-h-10 bg-(--raised) border border-input shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) hover:bg-muted transition-colors px-3.5 rounded-lg text-[14px] font-bold text-ink-d1 flex items-center gap-2 cursor-pointer">
+                          Setup info
                           <ChevronRight className="w-4.5 h-4.5" />
                         </button>
                       </div>
@@ -227,7 +227,7 @@ export function ConsultationSetupWizard({
             <Button
               variant="ghost"
               onClick={onCancel}
-              className="text-ink-d3 hover:text-ink-d1 hover:bg-white/5 font-bold uppercase tracking-widest text-xs h-12 rounded-xl flex-1 sm:flex-initial"
+              className="text-ink-d2 hover:text-ink-d1 hover:bg-muted text-[14px] font-bold h-12 rounded-xl flex-1 sm:flex-initial"
             >
               Cancel
             </Button>
@@ -235,19 +235,19 @@ export function ConsultationSetupWizard({
           <Button
             variant="ghost"
             onClick={() => onComplete({ gender, age, skillLevel, routine: [] })}
-            className="text-(--eq-hero-text) hover:bg-(--eq-hero-fill) font-black uppercase tracking-widest text-xs px-5 rounded-xl border-2 border-cta/30 flex flex-col items-center justify-center py-2 h-12 flex-1 sm:flex-initial"
+            className="bg-(--raised) border border-input shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) text-ink-d1 hover:bg-muted text-[14px] font-bold px-5 rounded-xl flex flex-col items-center justify-center py-1.5 min-h-12 h-auto flex-1 sm:flex-initial"
           >
-            <span className="leading-none">Skip Setup</span>
-            <span className="text-[9px] opacity-60 font-bold mt-0.5">
-              Manual Profile
+            <span className="leading-none">Skip setup</span>
+            <span className="text-[12px] font-semibold text-ink-d3 mt-0.5">
+              Manual profile
             </span>
           </Button>
         </div>
         <Button
           onClick={() => onComplete({ gender, age, skillLevel, routine })}
-          className="bg-cta hover:bg-cta text-cta-foreground font-black uppercase tracking-widest text-sm sm:text-base h-14 sm:h-16 px-8 sm:px-10 rounded-2xl shadow-[0_10px_30px_var(--cta)] shadow-cta/30 pointer-events-auto items-center justify-center flex gap-2.5 z-20"
+          className="bg-cta hover:bg-cta text-cta-foreground text-[14px] font-bold h-14 sm:h-16 px-8 sm:px-10 rounded-2xl shadow-(--go-lift) active:translate-y-px active:shadow-(--press) pointer-events-auto items-center justify-center flex gap-2.5 z-20"
         >
-          Start Consult Workout
+          Start consult workout
           <Play className="w-5 h-5 fill-current shrink-0" />
         </Button>
       </div>

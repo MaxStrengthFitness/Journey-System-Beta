@@ -132,7 +132,7 @@ export function CreateClientModal({
     // keeps clear of the iPad status bar and home indicator itself
     // (features/home-screen), and the card may use all the height between.
     <div className="fixed inset-0 z-40 flex items-center justify-center px-4 sm:px-6 pt-safe-4 pb-safe-4 sm:pt-safe-6 sm:pb-safe-6 bg-slate-900/60 dark:bg-slate-950/90 backdrop-blur-sm">
-      <Card className="w-full max-w-2xl bg-card border border-slate-200 dark:border-slate-800 shadow-2xl dark:shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col max-h-full rounded-[32px] overflow-hidden relative text-foreground">
+      <Card className="w-full max-w-2xl bg-card border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-full rounded-[32px] overflow-hidden relative text-foreground">
         {duplicateWarning && (
           <div className="absolute inset-0 z-50 bg-slate-950/40 dark:bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-6">
             <div className="bg-card border border-amber-500 rounded-[24px] p-8 max-w-md w-full shadow-2xl relative overflow-hidden">
@@ -142,8 +142,8 @@ export function CreateClientModal({
                   <AlertTriangle className="w-8 h-8 text-amber-500" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-foreground uppercase tracking-tight mb-2">
-                    Duplicate Found
+                  <h3 className="text-[22px] font-extrabold tracking-[-0.015em] text-foreground mb-2">
+                    Duplicate found
                   </h3>
                   <p className="text-muted-foreground font-medium text-sm leading-relaxed">
                     A client named{" "}
@@ -157,7 +157,7 @@ export function CreateClientModal({
                 <div className="flex gap-4 w-full mt-4">
                   <Button
                     variant="outline"
-                    className="flex-1 border-border text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="flex-1 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                     onClick={() => {
                       if (duplicateWarning.id) {
                         onClientCreated(duplicateWarning.id);
@@ -165,13 +165,13 @@ export function CreateClientModal({
                       onClose();
                     }}
                   >
-                    Cancel & View Existing
+                    Cancel and view existing
                   </Button>
                   <Button
-                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-foreground font-black uppercase tracking-wider"
+                    className="flex-1 bg-amber-500 hover:bg-amber-500 text-cta-foreground shadow-(--elev-1)"
                     onClick={() => executeSave(true)}
                   >
-                    Force Create
+                    Force create
                   </Button>
                 </div>
               </div>
@@ -180,7 +180,7 @@ export function CreateClientModal({
         )}
 
         <div className="p-8 pb-4 shrink-0 border-b border-slate-200 dark:border-slate-800 space-y-2">
-          <h2 className="text-xl font-black text-foreground tracking-tight">
+          <h2 className="text-[22px] font-extrabold tracking-[-0.015em] text-foreground">
             Add a client
           </h2>
           <p className="text-sm font-medium text-muted-foreground leading-relaxed">
@@ -193,29 +193,29 @@ export function CreateClientModal({
         <CardContent className="flex-1 p-8 space-y-8 overflow-y-auto custom-scrollbar bg-card">
           {/* Stage 1: Identity & Contact */}
           <div className="space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-widest text-(--eq-hero-text) border-b border-slate-200 dark:border-slate-800 pb-2">
-              Step 1: Contact Information
+            <h3 className="text-[14px] font-bold text-(--eq-hero-text) border-b border-slate-200 dark:border-slate-800 pb-2">
+              Step 1: Contact information
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">
-                  First Name
+                <Label className="text-[14px] font-bold text-ink-d2 ml-1">
+                  First name
                 </Label>
                 <Input
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="h-12 bg-slate-50 dark:bg-slate-800 border-border text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-ring rounded-xl font-bold"
+                  className="h-12 text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-ring rounded-xl font-bold"
                   placeholder="First"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">
-                  Last Name
+                <Label className="text-[14px] font-bold text-ink-d2 ml-1">
+                  Last name
                 </Label>
                 <Input
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="h-12 bg-slate-50 dark:bg-slate-800 border-border text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-ring rounded-xl font-bold"
+                  className="h-12 text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-ring rounded-xl font-bold"
                   placeholder="Last"
                 />
               </div>
@@ -223,25 +223,25 @@ export function CreateClientModal({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">
+                <Label className="text-[14px] font-bold text-ink-d2 ml-1">
                   Phone
                 </Label>
                 <Input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="h-12 bg-slate-50 dark:bg-slate-800 border-border text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-ring rounded-xl font-bold"
+                  className="h-12 text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-ring rounded-xl font-bold"
                   placeholder="555-555-5555"
                   type="tel"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">
-                  Email (Optional)
+                <Label className="text-[14px] font-bold text-ink-d2 ml-1">
+                  Email (optional)
                 </Label>
                 <Input
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-12 bg-slate-50 dark:bg-slate-800 border-border text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-ring rounded-xl font-bold"
+                  className="h-12 text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-ring rounded-xl font-bold"
                   placeholder="name@email.com"
                   type="email"
                 />
@@ -250,13 +250,13 @@ export function CreateClientModal({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">
-                  Gender (Optional)
+                <Label className="text-[14px] font-bold text-ink-d2 ml-1">
+                  Gender (optional)
                 </Label>
                 <select
                   value={gender}
                   onChange={(e) => setGender(e.target.value)}
-                  className="w-full h-12 bg-slate-50 dark:bg-slate-800 border border-border text-foreground focus:border-ring focus:ring-0 rounded-xl font-bold px-3"
+                  className="w-full h-12 bg-(--well) border border-input shadow-(--elev-0) text-foreground focus:border-ring focus:ring-0 rounded-xl font-bold px-3"
                 >
                   <option value="">Select Gender</option>
                   <option value="Male">Male</option>
@@ -266,13 +266,13 @@ export function CreateClientModal({
                 </select>
               </div>
               <div className="space-y-2">
-                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">
-                  Age (Optional)
+                <Label className="text-[14px] font-bold text-ink-d2 ml-1">
+                  Age (optional)
                 </Label>
                 <Input
                   value={age}
                   onChange={(e) => setAge(e.target.value)}
-                  className="h-12 bg-slate-50 dark:bg-slate-800 border-border text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-ring rounded-xl font-bold"
+                  className="h-12 text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-ring rounded-xl font-bold"
                   placeholder="e.g. 40"
                   type="number"
                   min="0"
@@ -283,13 +283,13 @@ export function CreateClientModal({
 
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
-                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">
-                  Home Studio
+                <Label className="text-[14px] font-bold text-ink-d2 ml-1">
+                  Home studio
                 </Label>
                 <select
                   value={homeStudioId}
                   onChange={(e) => setHomeStudioId(e.target.value)}
-                  className="w-full h-12 bg-slate-50 dark:bg-slate-800 border border-border text-foreground focus:border-ring focus:ring-0 rounded-xl font-bold px-3"
+                  className="w-full h-12 bg-(--well) border border-input shadow-(--elev-0) text-foreground focus:border-ring focus:ring-0 rounded-xl font-bold px-3"
                 >
                   <option value="" disabled>
                     Select Studio
@@ -311,30 +311,30 @@ export function CreateClientModal({
 
           {/* Discovery Notes */}
           <div className="space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-widest text-(--eq-hero-text) border-b border-slate-200 dark:border-slate-800 pb-2">
-              Discovery Notes
+            <h3 className="text-[14px] font-bold text-(--eq-hero-text) border-b border-slate-200 dark:border-slate-800 pb-2">
+              Discovery notes
             </h3>
             <div className="space-y-2 mt-4">
-              <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">
-                Initial Context & Questions
+              <Label className="text-[14px] font-bold text-ink-d2 ml-1">
+                Initial context and questions
               </Label>
               <Textarea
                 value={discoveryNotes}
                 onChange={(e) => setDiscoveryNotes(e.target.value)}
                 placeholder="Why are they coming in? What are their initial questions or concerns? Jot down quick notes to reference during the Stage 2 consultation..."
-                className="min-h-30 bg-slate-50 dark:bg-slate-800 border-border text-foreground rounded-xl font-medium placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-ring resize-none"
+                className="min-h-30 text-foreground rounded-xl font-medium placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:border-ring resize-none"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">
+            <Label className="text-[14px] font-bold text-ink-d2 ml-1">
               Why a temporary profile
             </Label>
             <select
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="w-full h-12 bg-slate-50 dark:bg-slate-800 border border-border text-foreground focus:border-ring focus:ring-0 rounded-xl font-bold px-3"
+              className="w-full h-12 bg-(--well) border border-input shadow-(--elev-0) text-foreground focus:border-ring focus:ring-0 rounded-xl font-bold px-3"
             >
               {ADD_CLIENT_REASONS.map((r) => (
                 <option key={r} value={r}>
@@ -347,23 +347,23 @@ export function CreateClientModal({
 
         <div className="p-6 bg-card border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center gap-4 shrink-0 z-50 mt-auto">
           <Button
-            variant="ghost"
+            variant="outline"
             onClick={onClose}
-            className="w-full sm:flex-1 h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border border-slate-200 dark:border-slate-800 cursor-pointer"
+            className="w-full sm:flex-1 h-14 rounded-2xl"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSaveClick}
             disabled={isSubmitting || !canSave}
-            className="w-full sm:flex-2 h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl transition-all active:scale-95 bg-cta hover:bg-cta text-cta-foreground cursor-pointer"
+            className="w-full sm:flex-2 h-14 rounded-2xl bg-primary hover:bg-primary text-primary-foreground"
           >
             {isSubmitting ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <span className="flex items-center justify-center gap-2">
                 <UserPlus className="w-4 h-4" />
-                Create Temporary Profile
+                Create temporary profile
               </span>
             )}
           </Button>

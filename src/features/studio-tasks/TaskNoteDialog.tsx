@@ -74,7 +74,7 @@ export function TaskNoteDialog({
 
         <div className="flex flex-col gap-3 p-1">
           <label className="flex flex-col gap-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <span className="text-[14px] font-bold text-ink-d2">
               Note {requiresNote && <span aria-hidden>· required</span>}
             </span>
             <textarea
@@ -87,7 +87,7 @@ export function TaskNoteDialog({
           </label>
 
           {isMaintenance && (
-            <label className="flex items-start gap-2.5 rounded-lg border border-border p-3">
+            <label className="flex items-start gap-2.5 rounded-lg border border-input p-3">
               <input
                 type="checkbox"
                 checked={flagged}

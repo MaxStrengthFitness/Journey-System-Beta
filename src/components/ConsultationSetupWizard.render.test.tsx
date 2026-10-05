@@ -47,7 +47,7 @@ describe("ConsultationSetupWizard", () => {
     expect(el.textContent).not.toContain("lbs");
     expect(el.textContent).toContain("—");
 
-    act(() => button(el, "Skip Setup").click());
+    act(() => button(el, "Skip setup").click());
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(onComplete.mock.calls[0][0]).toMatchObject({ gender: null, age: null, routine: [] });
   });
@@ -62,7 +62,7 @@ describe("ConsultationSetupWizard", () => {
     expect(el.textContent).toContain("Seated Dip");
     expect(el.textContent).toContain("lbs");
 
-    act(() => button(el, "Start Consult Workout").click());
+    act(() => button(el, "Start consult workout").click());
     const data = onComplete.mock.calls[0][0];
     expect(data.gender).toBe("Female");
     expect(data.age).toBe(55);
@@ -80,14 +80,14 @@ describe("ConsultationSetupWizard", () => {
     type(age, "");
     expect(el.textContent).not.toContain("lbs");
 
-    act(() => button(el, "Start Consult Workout").click());
+    act(() => button(el, "Start consult workout").click());
     expect(onComplete.mock.calls[0][0]).toMatchObject({ gender: "Male", age: null });
   });
 
   it("does not take an unknown gender on file as an answer", () => {
     const onComplete = vi.fn<(d: ConsultationSetupData) => void>();
     const el = mount(<ConsultationSetupWizard clientName="Sam" initialGender="Other" onComplete={onComplete} />);
-    act(() => button(el, "Skip Setup").click());
+    act(() => button(el, "Skip setup").click());
     // null, so the tracker writes nothing and "Other" stays on file.
     expect(onComplete.mock.calls[0][0].gender).toBeNull();
   });

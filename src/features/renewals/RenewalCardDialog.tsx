@@ -57,12 +57,18 @@ const TONE_CLASS: Record<string, string> = {
   neutral: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200",
 };
 
-const LABEL = "text-[11px] font-bold uppercase tracking-widest text-muted-foreground";
+/* The label voice over a list, 14/700 in ink-2; a fact's label is the stat
+   label, 12/600 muted; both in their own capitalisation (they were 11px
+   tracked capitals). A fact holds information, so it sinks into a well
+   rather than drawing a box inside the dialog (type and depth follow-up,
+   Oct 5 2026). */
+const LABEL = "text-[14px] font-bold text-ink-d2";
+const FACT_LABEL = "text-[12px] font-semibold text-muted-foreground";
 
 function Fact({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-card p-3 dark:border-slate-800">
-      <p className={LABEL}>{label}</p>
+    <div className="rounded-xl bg-(--well) shadow-(--elev-0) p-3">
+      <p className={FACT_LABEL}>{label}</p>
       <p className="mt-1 text-[15px] font-bold text-slate-900 dark:text-slate-50">{value}</p>
       {sub && <p className="mt-0.5 text-[12px] text-muted-foreground">{sub}</p>}
     </div>
@@ -142,7 +148,7 @@ export function RenewalCardDialog({ open, onClose, client, trainer, machineNames
       <Dialog open={open && !logging} onOpenChange={(next) => !next && onClose()}>
         <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg font-black">
+            <DialogTitle className="flex items-center gap-2">
               <CalendarClock className="h-5 w-5 text-primary" />
               Renewal · {client.firstName} {client.lastName}
             </DialogTitle>
@@ -213,7 +219,7 @@ export function RenewalCardDialog({ open, onClose, client, trainer, machineNames
             <button
               type="button"
               onClick={onClose}
-              className="min-h-11 rounded-xl border border-slate-300 px-5 text-[12px] font-black uppercase tracking-widest text-slate-700 dark:border-slate-700 dark:text-slate-200"
+              className="min-h-11 rounded-xl border border-input bg-(--raised) shadow-(--raised-lift) px-5 text-[14px] font-bold text-slate-700 transition-[background-color,transform] hover:bg-muted active:translate-y-px active:shadow-(--press) dark:text-slate-200"
             >
               Close
             </button>
@@ -222,7 +228,7 @@ export function RenewalCardDialog({ open, onClose, client, trainer, machineNames
               onClick={() => setLogging(true)}
               disabled={!s?.cycleKey}
               title={s?.cycleKey ? undefined : "No package on file to log it under"}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-cta hover:bg-cta px-5 text-[12px] font-black uppercase tracking-widest text-cta-foreground disabled:opacity-50"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary px-5 text-[14px] font-bold text-primary-foreground shadow-(--solid-lift) transition-transform active:translate-y-px active:shadow-(--press) disabled:opacity-50"
             >
               <MessageSquarePlus className="h-4 w-4" />
               Log a conversation

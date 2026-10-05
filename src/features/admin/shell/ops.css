@@ -89,10 +89,10 @@
 }
 
 .ops-look__label {
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-muted);
 }
 
@@ -314,10 +314,17 @@
   flex-wrap: wrap;
 }
 
+/* The tabs end in a shelf, not a hairline (type and depth, Oct 4 2026): the
+   shelf's own line is where the open tab's underline sits, and its short
+   navy cast falls on the page under it. z 10, under the frame (20). Never
+   animated. */
 .ops-tabs {
+  position: relative;
+  z-index: 10;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr)); /* six pages since Month (Sep 29 2026); five left Setup alone on a second row */
-  border-bottom: 1px solid var(--adm-border);
+  border-bottom: 1px solid transparent;
+  box-shadow: var(--adm-shelf);
 }
 
 .ops-tab {
@@ -442,12 +449,17 @@
 
 /* ---------- Setup's list ----------------------------------------------- */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): the
+   edge seen from outside (--adm-edge, the fill clipped to the padding box)
+   and a short two-layer navy lift. It was a flat hairline box. */
 .ops-setup {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--adm-border);
+  border: 1px solid var(--adm-edge);
   border-radius: var(--adm-radius);
   background: var(--adm-surface);
+  background-clip: padding-box;
+  box-shadow: var(--adm-elev-2), var(--adm-panel-highlight);
   overflow: hidden;
 }
 
@@ -458,7 +470,7 @@
   min-height: 64px;
   padding: 12px 16px;
   border: 0;
-  border-top: 1px solid var(--adm-border);
+  border-top: 1px solid var(--adm-divider);
   background: transparent;
   color: var(--adm-ink);
   text-align: left;
@@ -519,11 +531,13 @@
   flex-wrap: wrap;
 }
 
+/* The eyebrow: the ONE capitals style (type and depth review, Oct 5 2026;
+   it was 10.5/800 at 0.12em). */
 .ops-client__eyebrow {
   display: block;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--adm-ink-muted);
 }
@@ -555,22 +569,29 @@
   margin: 0;
 }
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): the
+   edge seen from outside (--adm-edge, the fill clipped to the padding box)
+   and a short two-layer navy lift. It was a flat hairline box. */
 .ops-fact {
   display: flex;
   flex-direction: column;
   gap: 3px;
   padding: 12px 14px;
-  border: 1px solid var(--adm-border);
+  border: 1px solid var(--adm-edge);
   border-radius: var(--adm-radius);
   background: var(--adm-surface);
+  background-clip: padding-box;
+  box-shadow: var(--adm-elev-2), var(--adm-panel-highlight);
   min-width: 0;
 }
 
+/* A fact's name: the kit's stat label, 12/600 in the muted ink and its own
+   capitalisation (it was 10.5px capitals). */
 .ops-fact__k {
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-muted);
 }
 
@@ -627,9 +648,9 @@
 
 .ops-brief__eyebrow {
   display: block;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--adm-ink-muted);
 }
@@ -824,12 +845,17 @@
   overflow-wrap: anywhere;
 }
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): the
+   edge seen from outside (--adm-edge, the fill clipped to the padding box)
+   and a short two-layer navy lift. It was a flat hairline box. */
 .ops-sec__card {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--adm-border);
+  border: 1px solid var(--adm-edge);
   border-radius: var(--adm-radius);
   background: var(--adm-surface);
+  background-clip: padding-box;
+  box-shadow: var(--adm-elev-2), var(--adm-panel-highlight);
   overflow: hidden;
 }
 
@@ -843,7 +869,7 @@
 .ops-sec__note {
   margin: 0;
   padding: 10px 16px;
-  border-top: 1px solid var(--adm-border);
+  border-top: 1px solid var(--adm-divider);
   font-size: 13px;
   line-height: 1.5;
   color: var(--adm-ink-muted);
@@ -856,7 +882,7 @@
   flex-wrap: wrap;
   gap: 8px;
   padding: 8px 12px;
-  border-top: 1px solid var(--adm-border);
+  border-top: 1px solid var(--adm-divider);
 }
 
 .ops-days {
@@ -905,10 +931,10 @@
   display: grid;
   grid-template-columns: 2fr 1fr 3fr 1fr;
   gap: 8px;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-muted);
 }
 
@@ -928,17 +954,27 @@
   }
 }
 
+/* A stop on the line: its state's colour is a straight 4px band painted as
+   the first background layer (type and depth, phase 10, Oct 4 2026; rule
+   3). It was a 4px border-top on a rounded box, which tapered into a
+   crescent at the corners. The 3px the border took is in the padding, so
+   the words stay where they were. */
 .ops-stop {
+  --ops-stop-band: var(--adm-border-strong);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
   min-height: 84px;
-  padding: 10px 12px;
-  border: 1px solid var(--adm-border);
-  border-top: 4px solid var(--adm-border-strong);
+  padding: 13px 12px 10px;
+  border: 1px solid var(--adm-border-strong);
+  /* The band is the top edge too: the firm edge (AJ's 3A, Oct 5 2026)
+     would otherwise draw a grey line across the band's first pixel. */
+  border-top-color: var(--ops-stop-band);
   border-radius: 12px;
-  background: var(--adm-surface);
+  background:
+    linear-gradient(var(--ops-stop-band), var(--ops-stop-band)) top / 100% 4px no-repeat border-box,
+    var(--adm-surface) padding-box;
   color: var(--adm-ink);
   text-align: left;
   cursor: pointer;
@@ -954,29 +990,35 @@
 
 .ops-stop--new,
 .ops-stop--settling {
-  border-top-color: var(--adm-live);
+  --ops-stop-band: var(--adm-live);
 }
 
 .ops-stop--steady {
-  border-top-color: var(--adm-ok);
+  --ops-stop-band: var(--adm-ok);
 }
 
 .ops-stop--drifting,
 .ops-stop--at-risk {
-  border-top-color: var(--adm-warn);
+  --ops-stop-band: var(--adm-warn);
 }
 
 .ops-stop--lapsed {
-  border-top-color: var(--adm-ink-faint);
+  --ops-stop-band: var(--adm-ink-faint);
 }
 
+/* Inactive: the band dashed, as the border was. */
 .ops-stop--inactive {
-  border-top-color: var(--adm-border-strong);
-  border-top-style: dashed;
+  background:
+    repeating-linear-gradient(90deg, var(--adm-border-strong) 0 6px, transparent 6px 10px) top / 100% 4px no-repeat border-box,
+    var(--adm-surface) padding-box;
 }
 
+/* The stop you are on: the live fill, the live edge and a live band. */
 .ops-stop--on {
-  background: var(--adm-live-fill);
+  --ops-stop-band: var(--adm-live);
+  background:
+    linear-gradient(var(--ops-stop-band), var(--ops-stop-band)) top / 100% 4px no-repeat border-box,
+    var(--adm-live-fill) padding-box;
   border-color: var(--adm-live);
 }
 
@@ -1000,10 +1042,10 @@
 
 .ops-beside__lab {
   align-self: center;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-muted);
 }
 
@@ -1044,7 +1086,7 @@
 }
 
 .ops-jr-list li + li {
-  border-top: 1px solid var(--adm-border);
+  border-top: 1px solid var(--adm-divider);
 }
 
 .ops-jr-row {
@@ -1085,7 +1127,7 @@
 }
 
 .ops-jr-group + .ops-jr-group {
-  border-top: 1px solid var(--adm-border);
+  border-top: 1px solid var(--adm-divider);
 }
 
 .ops-jr-group__h {
@@ -1096,13 +1138,24 @@
   color: var(--adm-ink-2);
 }
 
+/* Too new to judge, and Trends' "not enough data yet": WELLS (type and
+   depth, phase 9, Oct 4 2026), sunk into the well tone with no edge, radius
+   12. Each was a dashed box. The words are ink-2 (7.0:1 on the well).
+
+   Too new to judge sits on the PAGE GROUND (Clients -> Journey lists it in
+   its section under the rows, and a section paints nothing), so the tray's
+   tone (AJ's 1A, Oct 5 2026), as Trends' below: the well tone is lighter
+   than the page and read raised; the tray is below it in both modes. Its
+   head stays ink-2 (5.95:1 on the tray). */
 .ops-toonew {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 12px 14px;
-  border: 1px dashed var(--adm-border-strong);
-  border-radius: var(--adm-radius);
+  border: 0;
+  border-radius: 12px;
+  background: var(--adm-tray);
+  box-shadow: var(--adm-elev-0);
 }
 
 .ops-toonew__h {
@@ -1125,7 +1178,7 @@
   gap: 1px;
   min-height: 44px;
   padding: 6px 12px;
-  border: 1px solid var(--adm-border);
+  border: 1px solid var(--adm-border-strong);
   border-radius: 10px;
   background: var(--adm-surface);
   color: var(--adm-ink);
@@ -1142,15 +1195,19 @@
   color: var(--adm-ink-muted);
 }
 
-/* Her journey and her case, on the client opened inside Operations. */
+/* Her journey and her case, on the client opened inside Operations: a
+   panel (type and depth, phase 10, Oct 4 2026), its title in the
+   panel-title voice, 17/700 in ink (it was 16/800). */
 .ops-case {
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 16px 18px;
-  border: 1px solid var(--adm-border);
+  border: 1px solid var(--adm-edge);
   border-radius: var(--adm-radius);
   background: var(--adm-surface);
+  background-clip: padding-box;
+  box-shadow: var(--adm-elev-2), var(--adm-panel-highlight);
 }
 
 .ops-case__h {
@@ -1162,8 +1219,11 @@
 
 .ops-case__t {
   margin: 0;
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--adm-ink);
 }
 
 .ops-case__body {
@@ -1184,10 +1244,10 @@
 }
 
 .ops-case__lab {
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-muted);
 }
 
@@ -1278,7 +1338,7 @@
   align-items: center;
   gap: 8px 12px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--adm-border);
+  border-bottom: 1px solid var(--adm-divider);
 }
 
 .ops-inrow:last-child {
@@ -1324,7 +1384,7 @@
   flex-direction: column;
   gap: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--adm-border);
+  border-top: 1px solid var(--adm-divider);
 }
 
 .ops-case__fields {
@@ -1350,7 +1410,7 @@
   flex-direction: column;
   gap: 4px;
   padding: 12px 16px;
-  border-top: 1px solid var(--adm-border);
+  border-top: 1px solid var(--adm-divider);
 }
 
 .ops-trend:first-child {
@@ -1388,13 +1448,20 @@
   gap: 8px;
 }
 
+/* A well, as .ops-toonew (type and depth, phase 9), but on the PAGE
+   GROUND (Trends lists it under the quarter's card, not inside it), so the
+   tray's tone (AJ's 1A, Oct 5 2026): the well tone is lighter than the page
+   and read raised; the tray is below it in both modes. Its head is ink-2
+   (5.95:1 on the tray). */
 .ops-trend-wait {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 12px 14px;
-  border: 1px dashed var(--adm-border-strong);
-  border-radius: var(--adm-radius);
+  border: 0;
+  border-radius: 12px;
+  background: var(--adm-tray);
+  box-shadow: var(--adm-elev-0);
 }
 
 .ops-trend-wait__h {
@@ -1406,13 +1473,15 @@
   color: var(--adm-ink-2);
 }
 
+/* The line opened from a name: the card's fill, so it stands up out of the
+   well it sits in (it was the well tone inside a dashed box). */
 .ops-trend-wait__open {
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: var(--adm-surface-2);
+  background: var(--adm-surface);
 }
 
 /* ---------- Setup → Rules ---------------------------------------------- */
@@ -1426,7 +1495,7 @@
   grid-template-columns: minmax(0, 11rem) minmax(0, 1fr);
   gap: 4px 16px;
   padding: 12px 16px;
-  border-top: 1px solid var(--adm-border);
+  border-top: 1px solid var(--adm-divider);
 }
 
 .ops-rule:first-child {
@@ -1474,18 +1543,23 @@
   gap: 12px;
 }
 
+/* A trainer's card: a panel (type and depth, phase 10, Oct 4 2026). A
+   trainer who is off today lies flat in the well tone. */
 .ops-tr {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 14px 16px;
-  border: 1px solid var(--adm-border);
+  border: 1px solid var(--adm-edge);
   border-radius: var(--adm-radius);
   background: var(--adm-surface);
+  background-clip: padding-box;
+  box-shadow: var(--adm-elev-2), var(--adm-panel-highlight);
 }
 
 .ops-tr--off {
   background: var(--adm-surface-2);
+  box-shadow: none;
 }
 
 .ops-tr__h {
@@ -1535,10 +1609,10 @@
 }
 
 .ops-tr__lab {
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-muted);
 }
 
@@ -1558,7 +1632,7 @@
 .ops-tbl th,
 .ops-tbl td {
   padding: 10px 16px;
-  border-top: 1px solid var(--adm-border);
+  border-top: 1px solid var(--adm-divider);
   text-align: left;
   vertical-align: top;
   color: var(--adm-ink);
@@ -1567,10 +1641,10 @@
 
 .ops-tbl thead th {
   border-top: 0;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-muted);
 }
 
@@ -1644,7 +1718,7 @@
   gap: 14px;
   min-height: 96px;
   padding: 16px 18px;
-  border: 1px solid var(--adm-border);
+  border: 1px solid var(--adm-border-strong);
   border-radius: var(--adm-radius);
   background: var(--adm-surface);
   color: var(--adm-ink);

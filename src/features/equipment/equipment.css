@@ -44,7 +44,7 @@
 }
 .eq-summary__count b {
   color: var(--eq-hero-text);
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .eq-summary__regions {
@@ -55,12 +55,10 @@
   color: var(--eq-ink-muted);
   font-size: 12px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 .eq-summary__region b {
   color: var(--eq-ink-2);
-  font-weight: 900;
+  font-weight: 800;
   font-size: 13px;
 }
 .eq-summary__dot {
@@ -114,6 +112,9 @@
   color: var(--eq-ink-muted);
   cursor: pointer;
 }
+/* Drawn 24px inside the field; its ::after reaches 40 to tap (type and
+   depth, the sweep, Oct 5 2026). */
+.eq-summary__clear::after { content: ""; position: absolute; inset: -8px; }
 .eq-summary__clear:hover { background: var(--eq-surface-3); color: var(--eq-ink); }
 
 /* The native search affordance duplicates our clear button. */
@@ -189,10 +190,10 @@
   padding: 7px 14px;
   background: var(--eq-surface-2);
   border-bottom: 1px solid var(--eq-border);
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 
@@ -214,11 +215,17 @@
   outline: 2px solid var(--eq-focus-ring);
   outline-offset: -2px;
 }
-.eq-item--selected {
-  background: var(--eq-hero-fill);
-  border-left-color: var(--eq-hero);
-}
 .eq-item--idle { background: var(--eq-bg); }
+/* The picked machine is the blue (AJ, Oct 4 2026: "a selection is blue");
+   it was the hero orange, which is for now and go. Restated on :hover,
+   which an iPad keeps after the tap that picked it, and on a machine not in
+   use, or the grey of either would hide which one is open. */
+.eq-item--selected,
+.eq-item--selected:hover,
+.eq-item--selected.eq-item--idle {
+  background: var(--eq-live-fill);
+  border-left-color: var(--eq-live);
+}
 .eq-item--idle .eq-item__name { color: var(--eq-ink-2); }
 
 .eq-item__top {
@@ -229,10 +236,12 @@
 .eq-item__name {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
+  /* A machine's name as it is written, as the session's Now Bar says it
+     (type and depth review, Oct 5 2026; it was 13px capitals). */
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink);
   /* Names are never truncated (CLAUDE.md) — a long one wraps. */
   overflow-wrap: anywhere;
@@ -269,7 +278,7 @@
 .eq-item__empty {
   font-size: 12px;
   font-weight: 700;
-  color: var(--eq-ink-faint);
+  color: var(--eq-ink-muted);
   font-style: italic;
 }
 /* Progression since the first set — green up, plum down, muted flat. */
@@ -280,19 +289,21 @@
   border: 1px solid var(--eq-border);
   background: var(--eq-surface-2);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.01em;
   color: var(--eq-ink-muted);
   font-variant-numeric: tabular-nums;
 }
 .eq-item__prog--up   { color: var(--eq-ok);   border-color: var(--eq-ok);   background: var(--eq-ok-fill); }
 .eq-item__prog--down { color: var(--eq-warn); border-color: var(--eq-warn); background: var(--eq-warn-fill); }
-/* "12×" — sessions the machine appeared in. Quiet on purpose. */
+/* "12×" — sessions the machine appeared in. Quiet on purpose: the muted
+   ink, as is "No load yet" above, because both are words (the faint ink is
+   3:1, and 2.5 on the picked machine's blue in dark). */
 .eq-item__count {
   flex: 0 0 auto;
   font-size: 11px;
   font-weight: 800;
-  color: var(--eq-ink-faint);
+  color: var(--eq-ink-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -329,8 +340,8 @@
   border-color: var(--eq-alert);
 }
 .eq-note-dot__count {
-  font-size: 10px;
-  font-weight: 900;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 /* ---------- Detail pane --------------------------------------------- */
@@ -341,22 +352,28 @@
   gap: 10px;
   margin-bottom: 14px;
 }
+/* "Machines" with its chevron, shown under 1024px (every portrait iPad): a
+   raised button on its 3:1 edge, 40px tall, in the button voice (type and
+   depth review, Oct 5 2026; it was 36px on the hairline in 12px capitals). */
 .eq-back {
   display: none;
   align-items: center;
   gap: 4px;
-  height: 36px;
-  padding: 0 10px 0 6px;
-  border-radius: 10px;
-  border: 1px solid var(--eq-border);
-  background: var(--eq-surface);
+  min-height: 40px;
+  padding: 0 12px 0 8px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink-2);
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
 }
+.eq-back:active { transform: translateY(1px); box-shadow: var(--eq-press); }
+.eq-back:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
 @media (max-width: 1023px) { .eq-back { display: inline-flex; } }
 
 .eq-detail__title {
@@ -364,13 +381,15 @@
   min-width: 0;
 }
 .eq-detail__name {
+  font-family: var(--font-display);
   font-size: 22px;
-  font-weight: 900;
-  font-style: italic;
-  letter-spacing: -0.02em;
-  text-transform: uppercase;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: 0;
+  text-transform: none;
   line-height: 1.05;
   color: var(--eq-ink);
+  overflow-wrap: anywhere;
 }
 .eq-detail__sub {
   display: flex;
@@ -384,21 +403,30 @@
   border-radius: 999px;
   border: 1px solid var(--eq-border-strong);
   background: var(--eq-surface-2);
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 .eq-chip--use { color: var(--eq-ok); border-color: var(--eq-ok); background: var(--eq-ok-fill); }
-.eq-chip--idle { color: var(--eq-ink-faint); }
+/* "Not set up": the chip's own muted words at 12px (the faint ink was
+   3.2:1); its word says it, not a paler grey. */
+.eq-chip--idle { color: var(--eq-ink-muted); }
 
 /* ---------- Cards ---------------------------------------------------- */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): the
+   edge seen from outside (--eq-edge, the fill clipped to the padding box)
+   and a short two-layer navy lift. It was a flat hairline box. The head
+   has no rule: the 17/700 title carries it, 12px over the body, and its
+   sides keep the body's 14px inset. */
 .eq-card {
   background: var(--eq-surface);
-  border: 1px solid var(--eq-border);
+  background-clip: padding-box;
+  border: 1px solid var(--eq-edge);
   border-radius: var(--eq-radius);
+  box-shadow: var(--eq-elev-2), var(--eq-panel-highlight);
   margin-bottom: 12px;
   overflow: hidden;
 }
@@ -406,42 +434,59 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--eq-border);
+  padding: 16px 14px 0;
+  background: transparent;
+  border-bottom: 0;
 }
+/* The panel-title voice: Geist 17/700 in ink, its own capitalisation (it
+   was 11px grey capitals at 900). */
 .eq-card__title {
   flex: 1;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--eq-ink-muted);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--eq-ink);
 }
 .eq-card__body { padding: 14px; }
+.eq-card__head + .eq-card__body { padding-top: 12px; }
 
+/* The machine sheet's buttons (Edit, Use standard, Cancel, Save), in the
+   session. Type and depth, phase 8 (Oct 4 2026; AJ's 2A and 3B): 40px tall
+   (they were 34, under the app's floor), the button voice, 14/700 in
+   ordinary capitalisation (they were 12px spaced capitals), and RAISED: a
+   fill a hair lighter than the card, a contact lift and a white top light,
+   on the 3:1 edge, which stays. A press on :active; anything that can't be
+   pressed lies flat. The hover is a pointer's only, so an iPad's kept
+   hover never flattens a button. */
 .eq-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 34px;
+  min-height: 40px;
   padding: 0 12px;
-  border-radius: 9px;
+  border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink-2);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
 }
-.eq-btn:hover { background: var(--eq-surface-3); }
+@media (hover: hover) {
+  .eq-btn:hover { background: var(--eq-surface-3); }
+}
 .eq-btn:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 1px; }
-.eq-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.eq-btn--live { border-color: var(--eq-live); color: var(--eq-live-text); background: var(--eq-live-fill); }
-.eq-btn--ghost { border-color: transparent; background: transparent; }
+/* The blue tint keeps its live edge and lifts, without the white top light. */
+.eq-btn--live { border-color: var(--eq-live); color: var(--eq-live-text); background: var(--eq-live-fill); box-shadow: var(--eq-elev-1); }
+.eq-btn--ghost { border-color: transparent; background: transparent; box-shadow: none; }
+.eq-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--eq-press); }
+.eq-btn--ghost:not(:disabled):active { box-shadow: none; }
+.eq-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
 /* ---------- Guide ---------------------------------------------------- */
 
@@ -454,10 +499,10 @@
 }
 .eq-guide__group + .eq-guide__group { margin-top: 14px; }
 .eq-guide__heading {
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
   margin-bottom: 6px;
 }
@@ -482,18 +527,24 @@
 }
 
 /* A collapsible card header is a button; strip the UA styling but keep the
-   header's own layout. */
+   header's own layout. Folded, it is all the card shows, so it keeps its
+   own foot; open, the body starts 12px under it (phase 10). The hover is a
+   pointer's only. */
 .eq-card__head--button {
   width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
   border: 0;
-  border-bottom: 1px solid var(--eq-border);
-  background: var(--eq-surface);
+  background: transparent;
   color: inherit;
   font: inherit;
   cursor: pointer;
   text-align: left;
 }
-.eq-card__head--button:hover { background: var(--eq-surface-2); }
+.eq-card__head--button + .eq-card__body { padding-top: 0; }
+@media (hover: hover) {
+  .eq-card__head--button:hover { background: var(--eq-surface-2); }
+}
 .eq-card__head--button:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: -2px; }
 .eq-card__chev {
   color: var(--eq-ink-muted);
@@ -526,9 +577,9 @@
 }
 .eq-empty__title {
   font-size: 14px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 .eq-empty__hint { font-size: 13px; max-width: 340px; line-height: 1.5; }
@@ -545,10 +596,10 @@
 .eq-watch__sev {
   padding: 1px 6px;
   border-radius: 6px;
-  font-size: 10.5px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-live-text);
   background: var(--eq-live-fill);
 }
@@ -557,10 +608,10 @@
 .eq-watch__setup { margin: 0; font-size: 12.5px; font-weight: 800; color: var(--eq-ink); }
 .eq-watch__setup span {
   margin-right: 4px;
-  font-size: 10.5px;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 .eq-watch__text { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.4; color: var(--eq-ink-2); }
@@ -573,8 +624,8 @@
   gap: 4px;
   padding: 1px 6px;
   border-radius: 6px;
-  font-size: 10.5px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--eq-live-text);
   background: var(--eq-live-fill);
   white-space: nowrap;
@@ -598,10 +649,10 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 .eq-floornote__text,

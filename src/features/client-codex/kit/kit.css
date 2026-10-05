@@ -7,7 +7,8 @@
    second panel, button, chip or eyebrow — it uses these.
 
    The rules this file keeps, each checked by kit/scale.test.ts:
-     - Text is 11, 12, 14, 17 or 30px (the --cx-fs-* tokens). Nothing else.
+     - Text is 11, 12, 14, 17, 22 or 30px (the --cx-fs-* tokens). Nothing
+       else. (22 joined on Oct 4 2026: the section title.)
      - Colour comes from --cx-* only (codex.tokens.css), never a raw value.
      - Nothing is clipped: no ellipsis, no line clamp, no one-line cut-off.
        Names and labels wrap. (A list ROW in an area may clamp a note body to
@@ -19,6 +20,22 @@
      - Hover only ever adds; it is never the only way to find something, and
        it is behind (hover: hover) so a tap on an iPad does not leave a
        control stuck in its hover look.
+
+   The depth these rules draw (type and depth, phase 6, Oct 4 2026; AJ's
+   "1a 2a 3b"), each held by kit/depth.test.ts:
+     - A panel (card, slot, the Next card) is told from the page by an edge
+       seen from OUTSIDE it (--cx-edge over the ground: background-clip:
+       padding-box) and a short two-layer navy lift (--cx-elev-2).
+     - A box inside a panel is a WELL: sunk (--cx-surface-2, --cx-elev-0),
+       no border and no dashes. Wells hold information.
+     - A button is RAISED: a fill a hair lighter than the card, a contact
+       lift, a white top light, and a press (a transform, never an animated
+       shadow), ON its 3:1 edge (--cx-line-2), which stays (AJ's 2A).
+     - A field keeps its 3:1 edge and sinks.
+     - A panel's head is its title: 17/700 in ink, sentence case, led by a
+       32px tinted square around its icon. The small caps eyebrow is left
+       for the few words that sit OVER something (Next, Done, a list's
+       kicker), at 12/700.
    ========================================================================== */
 
 .cx,
@@ -51,16 +68,19 @@
   min-width: 0;
 }
 
+/* A page title: Saira Condensed, upright, in its own capitalisation ("Goals
+   & Focus"). The slanted capitals are the studio name's and Start
+   session's alone (AJ's 1A, Oct 4 2026). */
 .cx-page-title {
   margin: 0;
   color: var(--cx-ink);
   font-family: var(--cx-font-display);
   font-size: var(--cx-fs-30);
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
-  line-height: 1;
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
+  line-height: 1.04;
+  letter-spacing: 0;
+  text-transform: none;
   overflow-wrap: anywhere;
 }
 
@@ -101,9 +121,11 @@
   min-height: 64px;
   margin-top: 6px;
   padding: 12px 18px;
-  border: 1px solid var(--cx-line);
+  border: 1px solid var(--cx-edge);
   border-radius: var(--cx-radius);
   background: var(--cx-surface);
+  background-clip: padding-box;
+  box-shadow: var(--cx-elev-2), var(--cx-panel-highlight);
   color: var(--cx-ink);
   font-family: inherit;
   font-size: var(--cx-fs-14);
@@ -118,14 +140,15 @@
   min-width: 0;
 }
 
+/* The next page's name is a title: upright, its own capitalisation. */
 .cx-next__label {
   font-family: var(--cx-font-display);
   font-size: var(--cx-fs-17);
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
   line-height: 1.1;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .cx-next__blurb {
@@ -140,30 +163,36 @@
 
 /* ---- panels: card, slot ----------------------------------------------- */
 
+/* A panel lies ON the page: its edge sits over the ground (padding-box), so
+   it is seen from outside the card, and a short navy lift that stays inside
+   a scroll parent (blur 18 with a negative spread). */
 .cx-card {
   display: grid;
   gap: 12px;
   align-content: start;
   min-width: 0;
   padding: 16px 18px;
-  border: 1px solid var(--cx-line);
+  border: 1px solid var(--cx-edge);
   border-radius: var(--cx-radius);
   background: var(--cx-surface);
+  background-clip: padding-box;
+  box-shadow: var(--cx-elev-2), var(--cx-panel-highlight);
 }
 
 /* The frame for a component that already draws its own inner cards: spacing
-   only, so two borders never nest. */
+   only, so two borders, or two lifts, never nest. */
 .cx-card[data-host] {
   padding: 0;
   border: 0;
   background: transparent;
+  box-shadow: none;
 }
 
 .cx-card-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 10px;
+  gap: 8px 12px;
   min-height: 28px;
 }
 
@@ -184,9 +213,11 @@
   align-content: start;
   min-width: 0;
   padding: 16px 18px;
-  border: 1px solid var(--cx-line);
+  border: 1px solid var(--cx-edge);
   border-radius: var(--cx-radius);
   background: var(--cx-surface);
+  background-clip: padding-box;
+  box-shadow: var(--cx-elev-2), var(--cx-panel-highlight);
   color: var(--cx-ink);
   text-align: left;
 }
@@ -204,16 +235,17 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 10px;
+  gap: 8px 12px;
 }
 
+/* "Open ›" on a slot that is one door: the button voice, 14/700. */
 .cx-slot__open {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   color: var(--cx-live-text);
-  font-size: var(--cx-fs-12);
-  font-weight: 800;
+  font-size: var(--cx-fs-14);
+  font-weight: 700;
 }
 
 .cx-slot__body {
@@ -228,24 +260,55 @@
   display: block;
   margin-top: 2px;
   padding-top: 8px;
-  border-top: 1px solid var(--cx-line);
+  border-top: 1px solid var(--cx-divider);
   color: var(--cx-ink-3);
   font-size: var(--cx-fs-12);
 }
 
 /* ---- words ------------------------------------------------------------ */
 
+/* The eyebrow: the ONE small-capitals voice, for the few words that sit
+   over something — Next and Done on the Next card, a list's kicker inside
+   a panel. 12/700 in the second ink (it was 11/800 in grey). */
 .cx-eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   margin: 0;
-  color: var(--cx-ink-3);
-  font-size: var(--cx-fs-11);
-  font-weight: 800;
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-12);
+  font-weight: 700;
   line-height: 1.3;
-  letter-spacing: 0.13em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+/* A panel's head: the eyebrow a Card or Slot renders IS the panel's title.
+   17/700 in ink, sentence case (the words as written: "Who they are ·
+   FORD"), never quieter than the lede beneath it. */
+.cx-card-head > .cx-eyebrow,
+.cx-slot__head > .cx-eyebrow {
+  gap: 12px;
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-17);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+/* Its icon (the Lucide svg the Eyebrow already renders) sits in a 32px
+   tinted square: the glyph draws at 18px inside it. CSS only. */
+.cx-card-head > .cx-eyebrow > svg,
+.cx-slot__head > .cx-eyebrow > svg {
+  box-sizing: border-box;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 7px;
+  border-radius: 10px;
+  background: var(--cx-surface-2);
+  color: var(--cx-ink-2);
 }
 
 .cx-meta {
@@ -273,6 +336,8 @@
   font-size: var(--cx-fs-12);
 }
 
+/* A section title inside a page ("Membership"): Geist 22/800, sentence
+   case. It was Saira 17 in slanted capitals. */
 .cx-section-head {
   display: flex;
   flex-wrap: wrap;
@@ -280,13 +345,13 @@
   gap: 4px 10px;
   margin: 10px 0 0;
   color: var(--cx-ink);
-  font-family: var(--cx-font-display);
-  font-size: var(--cx-fs-17);
-  font-style: italic;
+  font-family: var(--cx-font-body);
+  font-size: var(--cx-fs-22);
+  font-style: normal;
   font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  text-transform: none;
 }
 
 .cx-section-head__aside {
@@ -300,22 +365,28 @@
   text-transform: none;
 }
 
+/* A number that is the fact: Saira, upright, its figures all one width. */
 .cx-big {
   font-family: var(--cx-font-display);
   font-size: var(--cx-fs-30);
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
+/* "No notes in Journey yet." A well, sunk into the panel: no border, no
+   dashes (a dash is kept only where it means something). */
 .cx-empty {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px 14px;
-  padding: 14px 16px;
-  border: 1px dashed var(--cx-line-2);
+  padding: 16px 18px;
+  border: 0;
   border-radius: 12px;
+  background: var(--cx-surface-2);
+  box-shadow: var(--cx-elev-0);
   color: var(--cx-ink-2);
   font-size: var(--cx-fs-14);
 }
@@ -339,7 +410,7 @@
   gap: 4px 12px;
   align-items: baseline;
   padding: 8px 0;
-  border-top: 1px solid var(--cx-line);
+  border-top: 1px solid var(--cx-divider);
 }
 
 .cx-fact:first-child {
@@ -347,13 +418,15 @@
   border-top: 0;
 }
 
+/* The stat-label voice, 12/600 in its own capitalisation (type and depth
+   review, Oct 5 2026; it was 11px capitals, about fifty on Notes & Profile). */
 .cx-fact__label {
   margin: 0;
   color: var(--cx-ink-3);
-  font-size: var(--cx-fs-11);
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: var(--cx-fs-12);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .cx-fact__value {
@@ -466,11 +539,12 @@
   border-radius: 999px;
   background: var(--cx-surface-2);
   color: var(--cx-ink-2);
-  font-size: var(--cx-fs-11);
-  font-weight: 800;
+  /* The chip voice, 12/700 (it was 11px capitals). */
+  font-size: var(--cx-fs-12);
+  font-weight: 700;
   line-height: 1.2;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .cx-loud[data-tone="warn"] {
@@ -487,6 +561,11 @@
 
 /* ---- buttons ---------------------------------------------------------- */
 
+/* RAISED: a fill a hair lighter than the card (never white), a contact
+   lift and a white top light, ON the 3:1 edge (--cx-line-2), which stays:
+   under the gym floor's glare the edge is what keeps a button a button
+   (AJ's 2A, Oct 4 2026). It presses in on :active. Nothing here animates a
+   shadow. */
 .cx-btn {
   display: inline-flex;
   align-items: center;
@@ -496,8 +575,9 @@
   min-height: var(--cx-tap);
   padding: 8px 14px;
   border: 1px solid var(--cx-line-2);
-  border-radius: var(--cx-radius-sm);
-  background: var(--cx-surface-2);
+  border-radius: 12px;
+  background: var(--cx-raised);
+  box-shadow: var(--cx-elev-1), inset 0 1px 0 var(--cx-highlight);
   color: var(--cx-ink);
   font-family: inherit;
   font-size: var(--cx-fs-14);
@@ -507,23 +587,41 @@
   cursor: pointer;
 }
 
+/* The blue tint lifts on a 3:1 edge in its own ink, as every room's blue
+   tint does (.eq-btn--live): type and depth, phase 14, Oct 4 2026, AJ's 2A.
+   It drew the 45% live line, which measures 2.3:1 against the card in light
+   and 2.8:1 in dark; the live ink is 7.3:1 and 6.1:1. */
 .cx-btn[data-variant="live"] {
-  border-color: var(--cx-live-line);
+  border-color: var(--cx-live);
   background: var(--cx-live-fill);
+  box-shadow: var(--cx-elev-1);
   color: var(--cx-live-text);
 }
 
-/* Solid is brand blue. Hero orange is Start Session's, never a Save. */
+/* Solid is brand blue. Hero orange is Start Session's, never a Save. A
+   blue-tinted drop and a top light: no gradient, no dark foot. */
 .cx-btn[data-variant="solid"] {
   border-color: var(--cx-live);
   background: var(--cx-live);
+  box-shadow: var(--cx-glow-live), var(--cx-solid-light);
   color: var(--cx-live-on);
 }
 
+/* Quiet is words in blue: no box, so no lift. */
 .cx-btn[data-variant="quiet"] {
   border-color: transparent;
   background: transparent;
+  box-shadow: none;
   color: var(--cx-live-text);
+}
+
+.cx-btn:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: var(--cx-press);
+}
+
+.cx-btn[data-variant="quiet"]:not(:disabled):active {
+  box-shadow: none;
 }
 
 .cx-btn:disabled,
@@ -601,6 +699,21 @@
   background: var(--cx-surface);
 }
 
+/* A list inside a panel draws no box of its own: the panel is the box, and
+   the rows keep their hairlines. The rows come in to 2px, so their words
+   line up with the panel's own (as Settings' rows do inside their card). */
+.cx-card .cx-rows,
+.cx-slot .cx-rows {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.cx-card .cx-rows > .cx-row,
+.cx-slot .cx-rows > .cx-row {
+  padding-inline: 2px;
+}
+
 .cx-row {
   display: grid;
   grid-template-columns: 128px minmax(0, 1fr) auto;
@@ -610,7 +723,7 @@
   min-height: var(--cx-row);
   padding: 8px 14px;
   border: 0;
-  border-top: 1px solid var(--cx-line);
+  border-top: 1px solid var(--cx-divider);
   background: transparent;
   color: var(--cx-ink);
   font-family: inherit;
@@ -684,6 +797,7 @@
   font-size: var(--cx-fs-12);
 }
 
+/* A field keeps its 3:1 edge (the control's boundary) and SINKS: a well. */
 .cx-input,
 .cx-select,
 .cx-textarea {
@@ -691,8 +805,9 @@
   min-height: var(--cx-tap);
   padding: 8px 12px;
   border: 1px solid var(--cx-line-2);
-  border-radius: var(--cx-radius-sm);
-  background: var(--cx-bg);
+  border-radius: 12px;
+  background: var(--cx-surface-2);
+  box-shadow: var(--cx-elev-0);
   color: var(--cx-ink);
   font-family: inherit;
   font-size: var(--cx-fs-14);
@@ -723,6 +838,8 @@
   gap: 8px;
 }
 
+/* A choice is a button: raised on its 3:1 edge, like .cx-btn. The picked one
+   is tinted blue on the blue edge, and still lifts. */
 .cx-pick {
   display: inline-flex;
   align-items: center;
@@ -730,8 +847,9 @@
   min-height: var(--cx-tap);
   padding: 6px 13px;
   border: 1px solid var(--cx-line-2);
-  border-radius: var(--cx-radius-sm);
-  background: var(--cx-surface-2);
+  border-radius: 12px;
+  background: var(--cx-raised);
+  box-shadow: var(--cx-elev-1), inset 0 1px 0 var(--cx-highlight);
   color: var(--cx-ink-2);
   font-family: inherit;
   font-size: var(--cx-fs-14);
@@ -744,7 +862,21 @@
 .cx-pick[aria-pressed="true"] {
   border-color: var(--cx-live);
   background: var(--cx-live-fill);
+  box-shadow: var(--cx-elev-1);
   color: var(--cx-live-text);
+}
+
+.cx-pick:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: var(--cx-press);
+}
+
+/* Raised means you can press it: a button or a choice that can't be pressed
+   lies flat (a booked day on the packages' week is a fact, not a choice).
+   After every variant, so it wins at equal weight. */
+.cx-btn:disabled,
+.cx-pick:disabled {
+  box-shadow: none;
 }
 
 .cx-pick[data-tall] {

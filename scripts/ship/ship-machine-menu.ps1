@@ -1,7 +1,9 @@
 <#
- SCRIPT-VERSION: v1  (Oct 4 2026, the machine menu)
+ SCRIPT-VERSION: v2  (Oct 5 2026, the machine menu, merged with type and depth)
 
- Ships branch oct4/machine-menu, built on master's e38d29bb (the Navy Frame,
+ Ships branch oct4/machine-menu, AFTER type and depth: the branch carries
+ oct4/type-depth (10ff537a, merged in on Oct 5 2026, the menu in its look)
+ and goes live once master holds it. Built on master's e38d29bb (the Navy Frame,
  what is live): AJ's "ill take all your recommended". Tapping a machine's
  name opens ONE card for that client on that machine, in a session and on
  the profile (and inline on Programming > All Machines): safety, the
@@ -27,7 +29,8 @@
    powershell -ExecutionPolicy Bypass -File .\scripts\ship\ship-machine-menu.ps1 -Stage golive
 
  prepare  changes nothing (it writes only logs\ and the build folder): the
-          branch, a clean tree, the fetch, that master holds e38d29bb, that
+          branch, a clean tree, the fetch, that master holds 10ff537a (type
+          and depth, shipped first with ship-type-depth.ps1), that
           the branch fast-forwards master, what goes live, that functions\,
           the server, the rules, the indexes, index.html and public\ are
           unchanged, that the restore tag is free (or already master), that
@@ -39,7 +42,7 @@
           (restore/2026-10-04-before-machine-menu) and pushes the tag;
           2. pushes the branch to master, fast-forward only: RENDER DEPLOYS
           THE APP. It stops at the first failure. Then it says what to walk
-          on the iPad (Round 55).
+          on the iPad (Round 57).
 
  To undo: push the restore tag to master (ask Claude).
 
@@ -57,8 +60,10 @@ $PreparedFile = Join-Path $Root 'logs\ship-machine-menu.prepared'
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $LogFile) | Out-Null
 $Branch = 'oct4/machine-menu'
 $RestoreTag = 'restore/2026-10-04-before-machine-menu'
-# The Navy Frame's last commit (e38d29bb), master when the round began. The branch is built on it.
-$MustFollow = 'e38d29bb'
+# Type and depth's last commit (10ff537a), merged into the branch on Oct 5 2026. It ships
+# first, with its own script and restore tag; this one follows it. (The round began on
+# the Navy Frame's e38d29bb, which 10ff537a holds.)
+$MustFollow = '10ff537a'
 # 2 since the Hub fixes (Oct 1): clinical-review/charts.tsx and
 # EditTrainerModal.tsx. More is new.
 $TscBaseline = 2
@@ -125,10 +130,10 @@ Log 'Fetching from GitHub (reads only)' 'Cyan'
 if ($LASTEXITCODE -ne 0) { Stop-Here 'could not reach GitHub.' }
 
 & git --no-optional-locks merge-base --is-ancestor $MustFollow $Branch
-if ($LASTEXITCODE -ne 0) { Stop-Here "$Branch is not built on $MustFollow (the Navy Frame). Ask Claude." }
+if ($LASTEXITCODE -ne 0) { Stop-Here "$Branch is not built on $MustFollow (type and depth). Ask Claude." }
 & git --no-optional-locks merge-base --is-ancestor $MustFollow origin/master
-if ($LASTEXITCODE -ne 0) { Stop-Here "master does not have $MustFollow (the Navy Frame) yet. Ask Claude." }
-Log "master already holds $MustFollow (the Navy Frame)." 'Green'
+if ($LASTEXITCODE -ne 0) { Stop-Here "master does not have $MustFollow (type and depth) yet. Ship it first: ship-type-depth.ps1 from .claude\worktrees\type-depth. Then run this again." }
+Log "master already holds $MustFollow (type and depth)." 'Green'
 
 & git --no-optional-locks merge-base --is-ancestor origin/master $Branch
 if ($LASTEXITCODE -ne 0) {
@@ -212,7 +217,7 @@ if ($Stage -eq 'prepare') {
   Log 'THE PLAN (golive, in this order, stopping at the first failure):' 'White'
   Log "  1. Tag master as it is now: $RestoreTag = $($MasterSha.Substring(0, 7)), and push the tag." 'White'
   Log "  2. git push origin ${Branch}:master (fast-forward only). Render deploys the app." 'White'
-  Log '  No rules and no index deploy this round. Then walk Round 55 on the iPad.' 'White'
+  Log '  No rules and no index deploy this round. Then walk Round 57 on the iPad.' 'White'
   Log 'PREPARE PASSED. Next: powershell -ExecutionPolicy Bypass -File .\scripts\ship\ship-machine-menu.ps1 -Stage golive' 'Green'
   exit 0
 }
@@ -262,7 +267,7 @@ Must $push 'the push (Render deploys from it). The app is unchanged'
 Log "GOLIVE COMPLETE. master = $((& git --no-optional-locks rev-parse --short origin/master).Trim())." 'Green'
 Log 'When Render shows the deploy Live, reload Journey on every iPad and front-desk computer' 'Green'
 Log '(an iPad in a session picks the new version up on the Hub afterwards, by itself).' 'Green'
-Log 'Then walk Round 55 of docs\ops\TESTING-CHECKLIST.md: both doors, upright at 820 and 1024 and on its side,' 'Green'
+Log 'Then walk Round 57 of docs\ops\TESTING-CHECKLIST.md: both doors, upright at 820 and 1024 and on its side,' 'Green'
 Log 'a phone, light and dark, a save offline, Undo, the leave question, Load older, a watched session.' 'Green'
 $elapsed = [int]((Get-Date) - $Started).TotalMinutes
 Log "Done in about $elapsed minute(s)." 'Green'

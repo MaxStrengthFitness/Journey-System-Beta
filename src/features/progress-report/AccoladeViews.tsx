@@ -90,7 +90,7 @@ export function AccoladeCards({ slots }: { slots: ProgressReport["highlights"] |
               )}
               <p
                 className={cn(
-                  "pt-2 text-3xl font-black italic tracking-tighter leading-tight drop-shadow-sm",
+                  "pt-2 font-display text-3xl font-extrabold leading-tight drop-shadow-sm",
                   HERO_TONE[c.tone],
                 )}
               >
@@ -272,7 +272,7 @@ export function AccoladeSlotEditor({
             {card.label && (
               <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{card.label}</p>
             )}
-            <p className={cn("mt-1 text-2xl font-black italic tracking-tight", HERO_TONE[card.tone])}>
+            <p className={cn("mt-1 font-display text-2xl font-extrabold", HERO_TONE[card.tone])}>
               {card.hero}
             </p>
             {card.context && <p className="mt-1 text-xs text-slate-300">{card.context}</p>}

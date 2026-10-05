@@ -126,6 +126,26 @@ medium-weight outline button competing with four equal-weight stat tiles.
   identity block sheds detail as width shrinks (studio · client since ·
   level hide at `xl`, return at `2xl`), stat children are flex items with
   per-item `truncate` so a long name never pushes the CTA off-screen.
+- **The look (type and depth, phase 7, Oct 4 2026; AJ's answers 1A and
+  2A).** The header is a CARD: `--edge` seen from outside (the fill
+  clipped to the padding box) and `--panel-lift` (`--elev-2`, and in dark
+  the codex panels' top light). The name is the display face upright,
+  30/800, in its own capitalisation; the avatar a well with Saira
+  initials. The four facts are ONE well (`--well`, never `bg-muted`), the
+  cells without a fill, parted by an inset `--divider`; their labels Geist
+  12/600 (they were 10px capitals), the values 14/700, the count Saira
+  22/800. Note · Track · Sync are one RAISED control on `--input`'s 3:1
+  edge. Start session is Go: slanted capitals at 800 and 17, `--go-lift`,
+  a press. **Height budget** (AJ, Oct 2: "the top of the profiles just
+  feel so bulky"): the card is no taller than the band was. Its padding
+  and margin are 28px (the band's 29), the facts 63.5px (the outlined
+  strip's 64.75), worked out from the class lists and the fonts' own
+  metrics in the commit; the count's line-height is 0.8 so the 22px
+  figure doesn't make its line taller. Keep it so: the Journey grid's
+  machine rows in landscape depend on it. The four tabs under it are a
+  sunk tray in Geist 14/600 (12 on a phone, wrapping), and the codex's
+  seven pages a RAISED bar (`profile-nav.css` `.psub`), the picked page
+  solid blue with a glow.
 - **Logo.** `BrandTiles` — the three-tile mark (blue, orange, slate) at
   9px squares beside the studio name. The AppHeader's studio button also
   gained `min-w-0` + `ch`-based caps + `pe-[0.22em]`: the italic display face
@@ -392,9 +412,11 @@ they stay equal and in place. On every portrait iPad below the 13-inch (744,
 820, 834pt) "Body & Pulse" and "Goals & Focus" take two lines and the row is
 about 75px; in landscape, and on the 13-inch in portrait while the meta lines
 are short, the bar is still 48px (a long meta makes it ~52px). In the wrap
-variant the meta line is sentence case at 11px in the segment's own ink,
-because on the codex it says something ("3 open · 1 critical", "couldn't
-load"). A meta that wraps grows the row too, and the metas usually arrive
+variant the meta line may wrap, because on the codex it says something
+("3 open · 1 critical", "couldn't load"). Since type and depth (phase 7,
+Oct 4 2026) every label is 14/700 and every meta 12/500, both in their own
+capitalisation (they were 12/900 and 9.5px capitals), on a raised bar; the
+two-line row on a portrait iPad is about 8px taller than it was. A meta that wraps grows the row too, and the metas usually arrive
 after the bar has drawn, so a long one moves the page below when it lands:
 keep them to about a dozen characters, or reserve the height. `flagTone:
 "warn"` draws the dot plum (Body & Pulse's watch-outs). `idPrefix` gives each

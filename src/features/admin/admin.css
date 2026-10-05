@@ -124,10 +124,10 @@
    twelve hex literals this round is retiring. */
 
 .adm-nav__group {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--adm-ink-muted);
 }
 
@@ -288,7 +288,7 @@
 
 .adm-shell__striplabel {
   padding: 0 12px;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .adm-shell__main {
@@ -299,11 +299,16 @@
 
 /* ---------- Panel ---------------------------------------------------- */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): an
+   edge seen from outside the card (--adm-edge over the ground, the fill
+   clipped to the padding box) and a short two-layer navy lift. It was a
+   hairline and a 1px shadow. */
 .adm-panel {
   background: var(--adm-surface);
-  border: 1px solid var(--adm-border);
+  background-clip: padding-box;
+  border: 1px solid var(--adm-edge);
   border-radius: var(--adm-radius);
-  box-shadow: 0 1px 2px var(--adm-shadow);
+  box-shadow: var(--adm-elev-2), var(--adm-panel-highlight);
   overflow: hidden;
 }
 
@@ -311,26 +316,45 @@
   box-shadow: none;
 }
 
+/* The head: no band and no rule; the 17/700 title and its icon square carry
+   it (the kit's .panel-head). It was a tinted strip cut by a hairline. Its
+   sides keep the body's 14px inset, so the title stands over the words. */
 .adm-panel__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 14px;
-  background: var(--adm-surface-2);
-  border-bottom: 1px solid var(--adm-border);
+  padding: 16px 14px 0;
+  background: transparent;
+  border-bottom: 0;
 }
 
+/* The panel-title voice: Geist 17/700 in ink, its own capitalisation (it
+   was 13px capitals at 0.07em). */
 .adm-panel__title {
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-transform: none;
+  letter-spacing: -0.01em;
   color: var(--adm-ink);
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+}
+
+/* The icon leading a title: a 32px tinted square, the glyph 18px in it,
+   whatever size the caller drew it. */
+.adm-panel__title > svg {
+  box-sizing: border-box;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 7px;
+  border-radius: 10px;
+  background: var(--adm-surface-2);
+  color: var(--adm-ink-2);
 }
 
 .adm-panel__sub {
@@ -354,13 +378,24 @@
   padding: 14px;
 }
 
+/* Under a head, the body starts 12px below the title (the head has no
+   bottom padding of its own); a flush body, a run of rows, 4px. */
+.adm-panel__head + .adm-panel__body {
+  padding-top: 12px;
+}
+
 .adm-panel__body--flush {
   padding: 0;
 }
 
-/* A run of rows inside a panel body that should read as one list. */
+.adm-panel__head + .adm-panel__body--flush {
+  padding-top: 4px;
+}
+
+/* A run of rows inside a panel body that should read as one list, divided
+   by the soft hairline (type and depth, phase 10). */
 .adm-rows > * + * {
-  border-top: 1px solid var(--adm-border);
+  border-top: 1px solid var(--adm-divider);
 }
 
 .adm-row {
@@ -428,11 +463,11 @@
 }
 
 .adm-label {
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--adm-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--adm-ink-2);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -440,7 +475,7 @@
 
 .adm-label__req {
   color: var(--adm-hero-text);
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .adm-hint {
@@ -525,6 +560,13 @@
 
 /* ---------- Buttons -------------------------------------------------- */
 
+/* The button voice, 14/700 in the label's own capitalisation, as every other
+   room's button speaks it (type and depth, phase 14, Oct 4 2026; AJ's 1A:
+   capitals are for places only). It was 12px/800 capitals at 0.06em. Every
+   AdminButton's words are written in sentence case, so nothing reads
+   differently but the shouting: measured from the font, a label is about 12%
+   NARROWER in this voice ("Approve and create the account" 252px -> 224px),
+   so nowrap never pushes one out of its row. */
 .adm-btn {
   display: inline-flex;
   align-items: center;
@@ -532,11 +574,12 @@
   gap: 7px;
   min-height: 40px;
   padding: 0 14px;
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  /* Said, not inherited: preflight hands a button its parent's tracking. */
+  letter-spacing: 0;
+  text-transform: none;
+  border-radius: 12px;
   border: 1px solid transparent;
   cursor: pointer;
   white-space: nowrap;
@@ -548,73 +591,111 @@
   outline-offset: 2px;
 }
 
+/* Raised means you can press it: a button that can't be pressed lies flat
+   (type and depth, phase 8). */
 .adm-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 /* The one loud action on a screen. There should never be two.
 
    The logo orange with navy words (6.05:1), the same in both modes, as the
    Hub's Start (the Navy Frame, Oct 4 2026). No white words sit on any
-   orange: white on the light --adm-hero is 3.99:1, under AA for a 12px
-   uppercase label. --adm-hero stays where it belongs: accent bars, icon
+   orange: white on the light --adm-hero is 3.99:1, under AA for a 14px
+   label. --adm-hero stays where it belongs: accent bars, icon
    washes, chart marks. The fill is restated on :hover rather than darkened,
    because an iPad keeps :hover after a tap and a darker orange would lower
-   the navy label's contrast at the moment it is aimed at. */
+   the navy label's contrast at the moment it is aimed at.
+
+   Go's depth, not Go's words (type and depth, phase 8, Oct 4 2026): Go's
+   short orange glow and white top light, and a press, in the button voice
+   every .adm-btn speaks (phase 14). The slanted capitals are Start
+   session's alone. */
 .adm-btn--hero,
 .adm-btn--hero:not(:disabled):hover {
   background: var(--adm-go);
   color: var(--adm-go-on);
 }
+.adm-btn--hero {
+  box-shadow: var(--adm-glow-go), var(--adm-go-light);
+}
 
+/* Solid blue: a blue-tinted drop and a top light. No gradient, no dark foot. */
 .adm-btn--primary {
   background: var(--adm-live);
   color: var(--adm-live-on);
+  box-shadow: var(--adm-glow-live), var(--adm-solid-light);
 }
+/* A filled button restates its own fill under a pointer (an iPad keeps
+   :hover after a tap; review fix, Oct 5 2026: it changed to the live text
+   colour). */
 .adm-btn--primary:not(:disabled):hover {
-  background: var(--adm-live-text);
+  background: var(--adm-live);
 }
 
+/* RAISED (AJ's 2A): a fill a hair lighter than the card, a contact lift and
+   a white top light, on the 3:1 edge (it was the decorative --adm-border).
+   The hover is a pointer's only, so an iPad's kept hover never flattens it. */
 .adm-btn--quiet {
-  background: var(--adm-surface-2);
+  background: var(--adm-raised);
   color: var(--adm-ink-2);
-  border-color: var(--adm-border);
+  border-color: var(--adm-border-strong);
+  box-shadow: var(--adm-elev-1), inset 0 1px 0 var(--adm-highlight);
 }
-.adm-btn--quiet:not(:disabled):hover {
-  background: var(--adm-surface-3);
-  color: var(--adm-ink);
+@media (hover: hover) {
+  .adm-btn--quiet:not(:disabled):hover {
+    background: var(--adm-surface-3);
+    color: var(--adm-ink);
+  }
 }
 
 .adm-btn--ghost {
   background: transparent;
   color: var(--adm-ink-muted);
 }
-.adm-btn--ghost:not(:disabled):hover {
-  background: var(--adm-surface-3);
-  color: var(--adm-ink);
+@media (hover: hover) {
+  .adm-btn--ghost:not(:disabled):hover {
+    background: var(--adm-surface-3);
+    color: var(--adm-ink);
+  }
 }
 
 .adm-btn--danger {
   background: var(--adm-alert-fill);
   color: var(--adm-alert);
   border-color: var(--adm-alert);
+  box-shadow: var(--adm-elev-1);
 }
-.adm-btn--danger:not(:disabled):hover {
-  background: var(--adm-alert);
-  color: var(--adm-surface);
+@media (hover: hover) {
+  .adm-btn--danger:not(:disabled):hover {
+    background: var(--adm-alert);
+    color: var(--adm-surface);
+  }
+}
+
+/* The press: down a pixel into an inset shadow, never an animated one. A
+   ghost has no box to press into. */
+.adm-btn:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: var(--adm-press);
+}
+.adm-btn--ghost:not(:disabled):active {
+  box-shadow: none;
 }
 
 /* The small button is still a TAP TARGET. It was 34px, under the app's own
    floor ("nothing tappable under 40px", CLAUDE.md) — and it is not a rare
    control: it is the button on the catalog rows, the Overview's panels and
    the attendance watch, all of them operated one-thumbed on an iPad while
-   the other hand holds it. Small here means the type and the padding, never
-   the target. */
+   the other hand holds it. Small here means the padding, never the target
+   and never the voice: since phase 14 of type and depth (Oct 4 2026) its
+   words are the button voice's 14/700 too (they were 11px capitals, and a
+   label in this voice is within 2px of that width). */
 .adm-btn--sm {
   min-height: 40px;
   padding: 0 10px;
-  font-size: 11px;
 }
 
 .adm-btn--icon {
@@ -670,10 +751,10 @@
   gap: 5px;
   padding: 3px 8px;
   border-radius: 999px;
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 
@@ -716,16 +797,16 @@
 }
 
 .adm-tile__label {
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--adm-ink-muted);
 }
 
 .adm-tile__value {
   font-size: 28px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.05;
   color: var(--adm-ink);
@@ -749,11 +830,30 @@
   gap: 6px;
   padding: 28px 18px;
   text-align: center;
-  /* Decorative container, like a panel hairline — the title and body carry
-     the meaning, so this is not a control boundary needing 3:1. */
-  border: 1px dashed var(--adm-border);
-  border-radius: var(--adm-radius);
+  /* A WELL (type and depth, phase 9, Oct 4 2026): sunk into the well tone,
+     no edge, radius 12. It was a dashed hairline box. The title and body
+     carry the meaning, so it needs no 3:1 boundary; the muted ink reads
+     5.2:1 on the well (7.1:1 in dark). */
+  border: 0;
+  border-radius: 12px;
+  background: var(--adm-surface-2);
+  box-shadow: var(--adm-elev-0);
   color: var(--adm-ink-muted);
+}
+
+/* On the PAGE GROUND (AJ's 1A, Oct 5 2026): an empty place that is a
+   screen's own line, not inside a panel (No studio, Nothing in Limbo, No
+   models recorded yet, a studio still to pick, the pipeline before its
+   first night), sinks into the tray, below the page in both modes; the well
+   tone is lighter than the page and read raised there. Its words take ink-2
+   (5.95:1 on the tray; the muted ink would read 4.42:1). Inside a panel, a
+   dialog or a sheet the well tone stays. */
+.adm-screen > .adm-empty,
+.ops-page > .adm-empty,
+.adm-pipeline > .adm-empty,
+.adm-fit__detail > .adm-empty {
+  background: var(--adm-tray);
+  color: var(--adm-ink-2);
 }
 
 .adm-empty__title {
@@ -926,10 +1026,10 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--adm-ok);
 }
 
@@ -1007,10 +1107,10 @@
 }
 
 .adm-week__label {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--adm-ink-muted);
 }
 
@@ -1339,10 +1439,10 @@
 }
 
 .adm-diag dt {
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
   color: var(--adm-ink-muted);
   padding-top: 1px;
 }
@@ -1367,10 +1467,10 @@
 }
 
 .adm-bug-errors__title {
-  font-size: 10.5px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--adm-alert);
   margin-bottom: 6px;
 }
@@ -1391,10 +1491,10 @@
 }
 
 .adm-bug-errors__type {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--adm-alert);
   flex-shrink: 0;
 }
@@ -1545,10 +1645,10 @@
 }
 
 .adm-ins-table thead th {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-muted);
   border-bottom: 1px solid var(--adm-border);
 }
@@ -1581,10 +1681,10 @@
   padding: 1px 5px;
   border-radius: 999px;
   background: var(--adm-surface-3);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-muted);
 }
 
@@ -1647,14 +1747,18 @@
 }
 
 /* A segmented control for switching between two views of one screen. Distinct
-   from .adm-nav, which moves between screens — same app, different question. */
+   from .adm-nav, which moves between screens — same app, different question.
+   A well inside its 3:1 edge holding the segments, the picked one raised in
+   it with the soft ring, as the run sheet's switch (type and depth review,
+   Oct 5 2026; it was a hairline group with 11px capitals). */
 .adm-segmented {
   display: inline-flex;
   gap: 2px;
   padding: 3px;
-  border: 1px solid var(--adm-border);
+  border: 1px solid var(--adm-border-strong);
   border-radius: 12px;
   background: var(--adm-surface-2);
+  box-shadow: var(--adm-elev-0);
 }
 
 .adm-seg {
@@ -1667,11 +1771,11 @@
   border: 0;
   border-radius: 9px;
   background: transparent;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--adm-ink-muted);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--adm-ink-2);
   white-space: nowrap;
   cursor: pointer;
 }
@@ -1681,9 +1785,10 @@
 }
 
 .adm-seg[aria-selected="true"] {
-  background: var(--adm-surface);
+  background: var(--adm-raised);
   color: var(--adm-ink);
-  box-shadow: 0 1px 2px var(--adm-shadow);
+  font-weight: 700;
+  box-shadow: var(--adm-elev-1), inset 0 0 0 1px var(--adm-edge-control), inset 0 1px 0 var(--adm-highlight);
 }
 
 .adm-seg:focus-visible {
@@ -1755,7 +1860,7 @@
   place-items: center;
   border-radius: 999px;
   background: var(--adm-surface-3);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   color: var(--adm-ink-muted);
   font-variant-numeric: tabular-nums;
@@ -1766,10 +1871,10 @@
   border-radius: 999px;
   background: var(--adm-warn-fill);
   color: var(--adm-warn);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .adm-tpl__actions {
@@ -1814,13 +1919,19 @@
   gap: 10px;
 }
 
+/* The warn colour is a straight 3px band painted as the first background
+   layer (type and depth, phase 14, Oct 4 2026; the plan's rule 3): a 3px
+   border-left on a rounded box tapered into a crescent at both corners. The
+   2px it took is in the padding, so the words stay where they were. */
 .adm-limbo {
   border: 1px solid var(--adm-border);
-  border-left: 3px solid var(--adm-warn);
+  border-left-color: var(--adm-warn);
   border-radius: var(--adm-radius);
-  background: var(--adm-surface);
+  background:
+    linear-gradient(var(--adm-warn), var(--adm-warn)) left / 3px 100% no-repeat border-box,
+    var(--adm-surface) padding-box;
   box-shadow: 0 1px 2px var(--adm-shadow);
-  padding: 14px;
+  padding: 14px 14px 14px 16px;
 }
 
 .adm-limbo__head {
@@ -1973,7 +2084,7 @@
 .adm-hrs-count {
   display: block;
   margin-top: 1px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--adm-ink-muted);
 }
@@ -2003,10 +2114,10 @@
 
 .adm-hrs-total th {
   text-align: left;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink);
 }
 
@@ -2015,7 +2126,7 @@
 .adm-hrs-measured {
   display: block;
   margin-top: 1px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--adm-ink-muted);
 }
@@ -2043,10 +2154,10 @@
 }
 
 .adm-scope__label {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-muted);
   white-space: nowrap;
 }

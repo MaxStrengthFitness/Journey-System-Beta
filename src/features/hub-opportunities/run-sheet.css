@@ -38,12 +38,16 @@
   overflow-wrap: anywhere;
 }
 
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, on the 3:1
+   edge, which stays, and a press on :active (below). */
 .ho-trainer-btn {
   min-height: 44px;
   padding: 0 14px;
   border: 1px solid var(--eq-border-strong);
   border-radius: 12px;
-  background: var(--eq-surface);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink);
   font: inherit;
   font-size: 15px;
@@ -65,36 +69,44 @@
   padding: 10px 12px 6px;
 }
 
+/* A segmented switch is a control group (type and depth, phase 8): it keeps
+   its 3:1 edge, like a field, and sinks into a well inside it; the picked
+   segment is raised out of the well, its words blue and bolder, ringed in
+   the soft control edge. Segments are 40px and 14/600 (the picked one 700),
+   the tabs' voice; they were 44px at 15px, divided by hairlines. */
 .ho-seg {
   display: inline-flex;
   flex-wrap: wrap;
+  gap: 3px;
+  padding: 3px;
   border: 1px solid var(--eq-border-strong);
   border-radius: 12px;
-  overflow: hidden;
-  background: var(--eq-surface);
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
 }
 
 .ho-seg-btn {
-  min-height: 44px;
+  min-height: 40px;
   padding: 0 14px;
   border: 0;
-  border-right: 1px solid var(--eq-border);
+  border-radius: 9px;
   background: transparent;
   color: var(--eq-ink-2);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
 }
 
-.ho-seg-btn:last-child {
-  border-right: 0;
+.ho-seg-btn[aria-pressed="true"] {
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 0 0 1px var(--eq-edge-control), inset 0 1px 0 var(--eq-highlight);
+  color: var(--eq-live-text);
+  font-weight: 700;
 }
 
-.ho-seg-btn[aria-pressed="true"] {
-  background: var(--eq-live-fill);
-  color: var(--eq-live-text);
-  font-weight: 800;
+.ho-seg-btn:active {
+  transform: translateY(1px);
 }
 
 .ho-filters {
@@ -106,6 +118,9 @@
   scrollbar-width: none;
 }
 
+/* A filter is a chip, so it keeps its pill; raised on its 3:1 edge like a
+   button (type and depth, phase 8), the picked one tinted blue on the blue
+   edge and still lifted. */
 .ho-filter {
   flex: none;
   min-height: 40px;
@@ -115,7 +130,8 @@
   gap: 6px;
   border: 1px solid var(--eq-border-strong);
   border-radius: 999px;
-  background: var(--eq-surface);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink-2);
   font-size: 14px;
   font-weight: 700;
@@ -126,6 +142,7 @@
   border-color: var(--eq-live);
   background: var(--eq-live-fill);
   color: var(--eq-live-text);
+  box-shadow: var(--eq-elev-1);
 }
 
 .ho-line {
@@ -161,10 +178,12 @@
   border-bottom: 1px solid var(--eq-border);
   background: var(--eq-surface-2);
   color: var(--eq-ink-2);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  /* The label voice in its own capitalisation (type and depth review,
+     Oct 5 2026; it was 12px capitals). */
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   text-align: left;
   cursor: pointer;
 }
@@ -294,19 +313,24 @@
   gap: 10px;
 }
 
+/* A WELL (type and depth, phase 9, Oct 4 2026): what to say in each slot
+   is information, so it sinks into the well tone with its inner shadow and
+   no edge. It was a hairline box on the card's fill. Its title, the muted
+   ink, reads 5.2:1 on the well (7.1:1 in dark). */
 .ho-slot {
   padding: 10px 12px;
-  border: 1px solid var(--eq-border);
+  border: 0;
   border-radius: 12px;
-  background: var(--eq-surface);
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
 }
 
 .ho-slot-title {
   margin: 0 0 6px;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 
@@ -352,12 +376,14 @@
   margin-top: 10px;
 }
 
+/* Open profile: raised on its blue edge (type and depth, phase 8). */
 .ho-action {
   min-height: 44px;
   padding: 0 16px;
   border: 1px solid var(--eq-live);
-  border-radius: 10px;
-  background: var(--eq-surface);
+  border-radius: 12px;
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-live-text);
   font-size: 15px;
   font-weight: 700;
@@ -371,6 +397,26 @@
   border-color: var(--eq-go);
   background: var(--eq-go);
   color: var(--eq-go-on);
+}
+/* Go (AJ's 1A, type and depth phase 8): the display face's slanted
+   capitals at 800 and 17, 0.04em, one voice with the profile header's and
+   the peek's Start session; a short orange glow and a white top light. */
+.ho-action[data-primary="true"] {
+  box-shadow: var(--eq-glow-go), var(--eq-go-light);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* The press: down a pixel into an inset shadow, never an animated one. */
+.ho-trainer-btn:active,
+.ho-filter:active,
+.ho-action:active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
 }
 
 .ho-empty {

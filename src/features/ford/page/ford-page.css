@@ -144,7 +144,7 @@ button.fordpg-cu {
   color: var(--cx-ink-2);
   font-family: var(--cx-font-display);
   font-size: var(--cx-fs-30);
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
   line-height: 1;
 }
@@ -153,11 +153,11 @@ button.fordpg-cu {
   margin-top: 3px;
   color: var(--cx-ink-3);
   font-family: var(--cx-font-body);
-  font-size: var(--cx-fs-11);
+  font-size: var(--cx-fs-12);
   font-style: normal;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .fordpg-cu__what {

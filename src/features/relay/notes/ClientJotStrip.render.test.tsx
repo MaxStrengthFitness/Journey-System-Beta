@@ -206,7 +206,8 @@ describe("the jot strip's stylesheet", () => {
     const jot = css.slice(css.indexOf("/* The jot strip on a client's record"));
     expect(jot).toMatch(/\.jot__open \{[^}]*min-height: 40px/);
     for (const m of jot.matchAll(/font-size:\s*(\d+(?:\.\d+)?)px/g)) {
-      expect([11, 12, 14, 17, 30]).toContain(Number(m[1]));
+      // 22 joined the codex scale on Oct 4 2026 (type and depth, phase 2).
+      expect([11, 12, 14, 17, 22, 30]).toContain(Number(m[1]));
     }
     expect(jot).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });

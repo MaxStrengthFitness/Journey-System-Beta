@@ -33,12 +33,24 @@ import { describe, expect, it } from "vitest";
  *   - Critical is the one crimson (--eq-alert) on its own fill;
  *   - the record has no sky or teal hex left.
  *
+ * THE FOLLOW-UP (AJ's answer, Oct 4 2026: "yes"). The recorded rule is
+ * "every Save is solid blue" and "a selection is blue"; orange is only now
+ * and go (Start, Finish, the paused Resume). So the Saves the phase left on
+ * the logo orange (InBody, the renewal conversation, Track, the routine
+ * drawer, Confirm Switch, Send to the team, Create Temporary Profile, Save
+ * Trainer Profile) are the theme's blue with its own words, the fill kept on
+ * hover; the selections (the notes sheet's open tab, the feedback kinds,
+ * First-time setup's chips, a trainer's studios) are the blue too; the demo
+ * card's "Yes, reset it" is a destructive confirm; and a caution icon is
+ * plum. The lists below hold each one by name.
+ *
  * Every pair a rule leans on is measured on the real token files, in both
  * modes: index.css (uppercase) and equipment.tokens.css (lowercase).
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const read = (rel: string) => readFileSync(join(HERE, rel), "utf8");
+/** A file with its line endings made \n: a Windows checkout (core.autocrlf) has \r\n. */
+const read = (rel: string) => readFileSync(join(HERE, rel), "utf8").replace(/\r\n/g, "\n");
 
 /* ---------------------------------------------------------------------------
    The tokens, read from both files
@@ -206,6 +218,15 @@ const PAIRS = [
 const has = (body: string, cls: string) =>
   new RegExp(`(?:^|\\s)${cls.replace(/[()[\]\\/.-]/g, (c) => "\\" + c)}(?=\\s|$)`).test(body);
 
+/**
+ * Does some class string in `file` carry every one of `tokens`? A set, not a
+ * spelling (the type and depth review, Oct 5 2026): a pin on a whole string's
+ * exact text broke on every unrelated class added beside it, and pushed new
+ * classes into a second expression to keep it green.
+ */
+const someStringHas = (file: string, tokens: string[]) =>
+  classStrings(read(file), file).some((s) => tokens.every((t) => has(s.body, t)));
+
 /** A word colour a button could carry. */
 const WORD_COLOUR = /(?:^|\s)text-(?:white|black|foreground|primary-foreground|cta-foreground|cta|ink-d\d|slate-\d+|\(--[\w-]+\))(?=[\s/]|$)/g;
 
@@ -229,21 +250,11 @@ describe("a solid logo-orange button has navy words and keeps its fill on hover"
     });
   }
 
+  // Orange is now and go: these stay the logo orange.
   it.each([
-    ["Save scan (InBody)", "features/inbody/InBodyScanDialog.tsx", 1],
-    ["Save conversation", "features/renewals/LogConversationDialog.tsx", 1],
-    ["Log a conversation (the renewal card)", "features/renewals/RenewalCardDialog.tsx", 1],
     ["Start a new session (a stale session)", "features/tracker/StaleSessionDialog.tsx", 1],
-    ["Track (the Kaizen toggle)", "features/trainer-profile/KaizenToggle.tsx", 1],
-    ["Yes, reset it (the demo card)", "features/demo-mode/SetUpDemoCard.tsx", 1],
-    ["Confirm Switch (routine B)", "components/ClientProfileView.tsx", 1],
-    ["Save preset and Apply (the routine drawer)", "components/EditRoutineDrawer.tsx", 2],
     ["Finish session (the End Session dialog)", "components/WorkoutTrackerView.tsx", 1],
-    ["Resume (the paused session timer)", "components/ActiveSessionTimer.tsx", 1],
-    ["Send to the team (feedback)", "features/feedback/FeedbackDrawer.tsx", 1],
-    ["Start Consult Workout", "components/ConsultationSetupWizard.tsx", 1],
-    ["Create Temporary Profile (add a client)", "components/CreateClientModal.tsx", 1],
-    ["Save Trainer Profile", "features/trainer-profile/EditTrainerModal.tsx", 1],
+    ["Start consult workout", "components/ConsultationSetupWizard.tsx", 1],
   ])("%s is the logo orange with navy words, restated on hover", (_name, file, count) => {
     const strings = classStrings(read(file), file).filter(
       (s) => has(s.body, "bg-cta") && has(s.body, "text-cta-foreground") && has(s.body, "hover:bg-cta"),
@@ -260,10 +271,13 @@ describe("a solid logo-orange button has navy words and keeps its fill on hover"
     ]) {
       expect(read(file), file).not.toMatch(/rgba\((?:240,\s*108,\s*34|239,\s*83,\s*2)/);
     }
-    // The Start Consult Workout glow (whether the wizard's selected chips stay
-    // orange or turn blue is AJ's audit).
+    // The Start consult workout glow: Go's depth, the token (type and depth,
+    // the sweep, Oct 5 2026; it was a 30px arbitrary glow, past the round's
+    // short resting shadows). The wizard's picked chips are the blue since
+    // AJ's answer of Oct 4 2026, with the blue's own lift.
     const wizard = read("components/ConsultationSetupWizard.tsx");
-    expect(wizard).toContain("shadow-[0_10px_30px_var(--cta)] shadow-cta/30");
+    expect(wizard).toContain("shadow-(--go-lift)");
+    expect(wizard).not.toContain("shadow-[0_10px_30px_var(--cta)]");
   });
 
   it("First-time setup (in the session for a prospect) writes in the theme's ink, never white or the logo orange", () => {
@@ -331,7 +345,7 @@ describe("the End Session question", () => {
   });
 
   it("marks a machine's outcome as picked in the theme's blue, never a white chip in dark", () => {
-    expect(tracker).toContain('? "bg-primary text-primary-foreground border-primary"');
+    expect(someStringHas("components/WorkoutTrackerView.tsx", ["bg-primary", "text-primary-foreground", "border-primary", "shadow-(--solid-lift)"])).toBe(true);
     expect(tracker).not.toMatch(/dark:bg-white(?![\w/-])/);
   });
 });
@@ -346,12 +360,19 @@ describe("the profile header", () => {
   it("has no raw hex: its orange marks, its count and the Kaizen toggle are tokens", () => {
     expect(header).not.toMatch(/#[0-9a-f]{6}\b/i);
     expect(header.match(/bg-\(--eq-hero\)/g) ?? []).toHaveLength(2);
-    expect(header).toMatch(/className="text-\(--eq-hero-text\) tabular-nums" data-testid="sessions-completed"/);
+    // Moved on purpose (type and depth, phase 7, Oct 4 2026): the count is
+    // the headline figure, Saira 22/800 upright, still in the hero's text
+    // orange and still tabular.
+    expect(header).toMatch(
+      /className="font-display text-\[22px\] font-extrabold leading-\[0\.8\] text-\(--eq-hero-text\) tabular-nums" data-testid="sessions-completed"/,
+    );
     expect(header).toContain(
       'kaizen.isOn && "text-(--eq-live-text) bg-(--eq-live-fill) hover:text-(--eq-live-text) hover:bg-(--eq-live-fill) dark:hover:bg-(--eq-live-fill)"',
     );
     for (const t of BOTH) {
       expect(ratio(colour(t, "--eq-hero-text"), colour(t, "--card")), `${t}: the count`).toBeGreaterThanOrEqual(4.5);
+      // Phase 7: the facts sit in one well now, so the count is read there.
+      expect(ratio(colour(t, "--eq-hero-text"), colour(t, "--well")), `${t}: the count, in the facts' well`).toBeGreaterThanOrEqual(4.5);
       expect(ratio(colour(t, "--eq-live-text"), colour(t, "--eq-live-fill")), `${t}: Tracking`).toBeGreaterThanOrEqual(4.5);
     }
   });
@@ -384,10 +405,15 @@ describe("the session sheets", () => {
     }
     expect(sidebar.match(/className="h-5 w-5 text-\(--eq-hero\)"/g) ?? []).toHaveLength(3);
     expect(tracker).toContain('<HeartPulse className="h-5 w-5 text-(--eq-hero)" /> Pulse');
-    expect(sidebar).toContain('? "bg-(--eq-go) hover:bg-(--eq-go) text-(--eq-go-on)"');
+    // The open tab is a selection, so it is the blue (AJ, Oct 4 2026).
+    expect(sidebar).toContain('? "bg-primary hover:bg-primary text-primary-foreground"');
+    expect(sidebar).not.toMatch(/bg-\(--eq-go\)/);
     expect(tracker).toContain("focus-visible:ring-(--eq-hero) focus-visible:border-(--eq-hero)");
-    // The introductory-session banner: words and icons in the go pair.
-    const banner = tracker.slice(tracker.indexOf("{isIntroSession && ("), tracker.indexOf("NEW CLIENT INTRODUCTORY SESSION"));
+    // The introductory-session banner: words and icons in the go pair. Its
+    // words are written as said since type and depth's phase 13 (they were
+    // typed in capitals), so the slice ends at them in that case.
+    const banner = tracker.slice(tracker.indexOf("{isIntroSession && ("), tracker.indexOf("New client introductory session"));
+    expect(tracker.indexOf("New client introductory session")).toBeGreaterThan(tracker.indexOf("{isIntroSession && ("));
     expect(banner).toMatch(/className="bg-\(--eq-go\) /);
     expect(banner.match(/text-\(--eq-go-on\)/g) ?? []).toHaveLength(2);
     expect(banner).not.toMatch(/text-foreground/);
@@ -413,7 +439,9 @@ describe("the blue that selects", () => {
 
   it("the routine slot that is picked is the theme's blue with its own words", () => {
     const drawer = read("components/EditRoutineDrawer.tsx");
-    expect(drawer).toContain('? "bg-primary text-primary-foreground border-transparent shadow-sm shadow-primary/20"');
+    // A set of tokens, not a spelling: the follow-up (Oct 5 2026) gave the
+    // picked slot the solid blue's own lift in place of a blue shadow-sm.
+    expect(someStringHas("components/EditRoutineDrawer.tsx", ["bg-primary", "text-primary-foreground", "border-transparent", "shadow-(--solid-lift)"])).toBe(true);
     expect(drawer).not.toMatch(/bg-cyan text-white/);
     expect(THEMED.filter((s) => has(s.body, "bg-cyan") && /text-white/.test(s.body)).map(where)).toEqual([]);
   });
@@ -465,7 +493,7 @@ describe("the client record has no sky or teal left", () => {
     expect(record).not.toMatch(/(?:^|[\s"'`:])(?:bg|text|border|ring)-sky-\d/);
     expect(record).toContain("bg-(--eq-live-fill) border-2 border-(--eq-live)/30 rounded-3xl p-4 flex items-center gap-4 text-(--eq-live-text)");
     expect(record).toContain('? "border-primary bg-primary/10 text-primary"');
-    expect(record).toMatch(/bg-primary text-primary-foreground hover:bg-primary rounded-full/);
+    expect(record).toMatch(/bg-primary text-primary-foreground hover:bg-primary rounded-xl/);
   });
 
   it("the setup banner and the picked source read in both modes", () => {
@@ -496,7 +524,9 @@ describe("the renewal conversation, InBody and the report archive draw the brand
   });
 
   it("a picked choice in Log a conversation is the theme's blue with its own words", () => {
-    expect(read("features/renewals/LogConversationDialog.tsx")).toContain('"border-primary bg-primary text-primary-foreground"');
+    // A set of tokens, not a spelling (the follow-up, Oct 5 2026, gave the
+    // picked chip the solid blue's own lift).
+    expect(someStringHas("features/renewals/LogConversationDialog.tsx", ["border-primary", "bg-primary", "text-primary-foreground", "shadow-(--solid-lift)"])).toBe(true);
     for (const t of BOTH) {
       expect(ratio(colour(t, "--primary-foreground"), colour(t, "--primary")), t).toBeGreaterThanOrEqual(4.5);
     }
@@ -517,12 +547,133 @@ describe("Add a client has no retired orange", () => {
 describe("the Wrap-up's renewal-due button", () => {
   it("is the opaque orange fill with the deep orange icon, never a wash (one over the navy greys out)", () => {
     const wrap = read("components/WrapUpScreen.tsx");
-    expect(wrap).toContain('"border-(--eq-hero)/50 bg-(--eq-hero-fill) text-ink-d1"');
+    expect(someStringHas("components/WrapUpScreen.tsx", ["border-(--eq-hero)/50", "bg-(--eq-hero-fill)", "text-ink-d1", "shadow-(--elev-1)"])).toBe(true);
     expect(wrap).toContain('"text-(--eq-hero-text)" : "text-(--eq-live)"');
     expect(wrap).not.toMatch(/bg-cta\/\d/);
     for (const t of BOTH) {
       expect(ratio(colour(t, "--eq-hero-text"), colour(t, "--eq-hero-fill")), `${t}: the icon`).toBeGreaterThanOrEqual(3);
       expect(ratio(colour(t, "--ink-d1"), colour(t, "--eq-hero-fill")), `${t}: the words`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
+/* ---------------------------------------------------------------------------
+   Every Save is solid blue, and a selection is blue (AJ, Oct 4 2026: "yes")
+   --------------------------------------------------------------------------- */
+
+/** A class string with a solid orange fill (the go pair, the logo orange or a Tailwind orange). */
+const orangeFills = (file: string) => classStrings(read(file), file).filter((s) => ORANGE_FILL.test(s.body));
+
+describe("every Save is solid blue", () => {
+  it.each([
+    ["Save scan and Save correction (InBody)", "features/inbody/InBodyScanDialog.tsx", 1],
+    ["Save conversation", "features/renewals/LogConversationDialog.tsx", 1],
+    ["Log a conversation (the renewal card, the door to Save conversation)", "features/renewals/RenewalCardDialog.tsx", 1],
+    ["Track (the Kaizen toggle)", "features/trainer-profile/KaizenToggle.tsx", 1],
+    ["Confirm Switch (routine B) and the prior sessions' Save", "components/ClientProfileView.tsx", 2],
+    ["Save preset and Apply (the routine drawer)", "components/EditRoutineDrawer.tsx", 2],
+    ["Send to the team (feedback)", "features/feedback/FeedbackDrawer.tsx", 1],
+    ["Create Temporary Profile (add a client)", "components/CreateClientModal.tsx", 1],
+    ["Save Trainer Profile", "features/trainer-profile/EditTrainerModal.tsx", 1],
+  ])("%s is the theme's blue with its own words, the fill kept on hover, and nothing there is orange", (_name, file, count) => {
+    const strings = classStrings(read(file), file).filter(
+      (s) => has(s.body, "bg-primary") && has(s.body, "text-primary-foreground") && has(s.body, "hover:bg-primary"),
+    );
+    expect(strings.length).toBeGreaterThanOrEqual(count);
+    // A blue Save never fades or brightens on hover (an iPad keeps the hover after a tap).
+    expect(strings.filter((s) => /(?:^|\s)hover:(?:opacity|brightness|bg-primary\/)/.test(s.body)).map(where)).toEqual([]);
+    expect(orangeFills(file).map(where)).toEqual([]);
+  });
+
+  it("the blue's words, its edge on a card and its glow read in both modes", () => {
+    for (const t of BOTH) {
+      const primary = colour(t, "--primary");
+      expect(ratio(colour(t, "--primary-foreground"), primary), `${t}: the words`).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(primary, colour(t, "--card")), `${t}: on a card`).toBeGreaterThanOrEqual(3);
+      expect(ratio(primary, colour(t, "--popover")), `${t}: on a sheet`).toBeGreaterThanOrEqual(3);
+    }
+    // Save Trainer Profile kept its glow, in the blue's own colour.
+    expect(read("features/trainer-profile/EditTrainerModal.tsx")).toContain("shadow-[0_0_20px_var(--primary)] shadow-primary/30");
+  });
+
+  it("Yes, reset it (the demo card) is a destructive confirm: red words on the red tint, the tint kept on hover", () => {
+    const card = read("features/demo-mode/SetUpDemoCard.tsx");
+    expect(card).toContain(
+      '? "bg-destructive/10 hover:bg-destructive/10 dark:bg-destructive/20 dark:hover:bg-destructive/20 text-destructive border border-destructive"',
+    );
+    expect(orangeFills("features/demo-mode/SetUpDemoCard.tsx").map(where)).toEqual([]);
+    for (const t of BOTH) {
+      const red = colour(t, "--destructive");
+      const ground = colour(t, "--bg-dark-2");
+      const tint = over(red, ground, t === "light" ? 0.1 : 0.2);
+      expect(ratio(red, tint), `${t}: the words on the tint`).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(red, ground), `${t}: the edge on the card`).toBeGreaterThanOrEqual(3);
+    }
+  });
+});
+
+describe("a selection is blue", () => {
+  it("the notes sheet's open tab", () => {
+    const sidebar = read("components/journal/SessionJournalSidebar.tsx");
+    expect(sidebar).toContain('? "bg-primary hover:bg-primary text-primary-foreground"');
+    for (const t of BOTH) {
+      expect(ratio(colour(t, "--primary"), colour(t, "--background")), `${t}: the tab on the sheet`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("the feedback kinds: the picked one is the blue, its icon in the blue's words", () => {
+    const drawer = read("features/feedback/FeedbackDrawer.tsx");
+    // A set of tokens, not a spelling (the follow-up, Oct 5 2026, gave the
+    // picked kind the solid blue's own lift in place of shadow-sm).
+    expect(someStringHas("features/feedback/FeedbackDrawer.tsx", ["bg-primary", "border-primary", "text-primary-foreground"])).toBe(true);
+    expect(drawer).toContain('kind === k ? "text-primary-foreground" : "opacity-50"');
+    expect(drawer).not.toMatch(/--eq-hero|(?:bg|text|border)-cta/);
+  });
+
+  it("First-time setup's gender and skill chips: the picked one is the blue, with the blue's glow", () => {
+    const wizard = read("components/ConsultationSetupWizard.tsx");
+    // The sweep (Oct 5 2026) gave the picked chip the solid blue's own lift
+    // in place of a 20px arbitrary glow and a scale, and the unpicked ones the
+    // raised recipe on the 3:1 edge (they were the ground's own tone).
+    const picked = '"bg-primary text-primary-foreground border-primary shadow-(--solid-lift)"';
+    expect(wizard.split(picked)).toHaveLength(3);
+    expect(wizard).not.toMatch(/border-cta shadow/);
+    for (const t of BOTH) {
+      expect(ratio(colour(t, "--primary"), colour(t, "--bg-dark")), `${t}: a chip on the ground`).toBeGreaterThanOrEqual(3);
+      expect(ratio(colour(t, "--primary"), colour(t, "--raised")), `${t}: beside the unpicked, raised chip`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("a trainer's studios and their profile edit: no retired orange, no Tailwind orange or indigo", () => {
+    const modal = read("features/trainer-profile/EditTrainerModal.tsx");
+    // Every colour in a class is a token. (The profile colour's default is a
+    // stored value for a colour input, not a class, and stays as it is.)
+    expect(modal).not.toMatch(/-\[#[0-9a-f]{6}\]|\[#[0-9a-f]{6}\]\//i);
+    expect(modal).not.toMatch(/(?:bg|text|border|ring)-(?:orange|indigo)-\d/);
+    // Base UI marks a ticked box data-checked, so a data-[state=checked]
+    // override never drew; the Checkbox's own blue and its 3:1 edge do.
+    expect(modal).not.toMatch(/data-\[state=checked\]/);
+    expect(read("components/ui/checkbox.tsx")).toMatch(/data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground/);
+    // The home studio's chip is the blue with its words; the staff ID is a quiet label.
+    // A set of tokens, not a spelling: the follow-up (Oct 5 2026) set the
+    // chip's word at 12/700 as written (it was 9px capitals).
+    expect(someStringHas("features/trainer-profile/EditTrainerModal.tsx", ["rounded", "text-[12px]", "bg-primary", "text-primary-foreground"])).toBe(true);
+    expect(modal).toContain("font-mono text-xs text-muted-foreground font-bold shrink-0 bg-muted");
+    for (const t of BOTH) {
+      expect(ratio(colour(t, "--primary"), colour(t, "--card")), `${t}: the icons`).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(colour(t, "--input"), colour(t, "--card")), `${t}: an unticked box's edge`).toBeGreaterThanOrEqual(3);
+      expect(ratio(colour(t, "--muted-foreground"), colour(t, "--muted")), `${t}: the staff ID`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
+describe("a caution icon is plum", () => {
+  it("the strong confirmation's warning, when it is not destructive", () => {
+    const modal = read("components/StrongConfirmationModal.tsx");
+    expect(modal).toContain(': "bg-(--eq-warn-fill) text-(--eq-warn)"');
+    expect(modal).not.toMatch(/orange-\d/);
+    for (const t of BOTH) {
+      expect(ratio(colour(t, "--eq-warn"), colour(t, "--eq-warn-fill")), t).toBeGreaterThanOrEqual(3);
     }
   });
 });

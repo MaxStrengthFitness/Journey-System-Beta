@@ -138,14 +138,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 <IconComponent
                   className={`w-5 h-5 shrink-0 mt-0.5 ${iconColor}`}
                 />
-                <div className="flex-1 text-xs font-bold uppercase tracking-wider leading-relaxed">
+                {/* A whole sentence, said as a sentence (type and depth
+                    review, Oct 5 2026; it was 12px bold capitals). */}
+                <div className="flex-1 text-[14px] font-semibold leading-snug">
                   {t.message}
                 </div>
+                {/* 40px to tap, the toast's own words' colour (the grey was
+                    about 2.5:1 on the dark toasts). */}
                 <button
+                  type="button"
+                  aria-label="Dismiss"
                   onClick={() => removeToast(t.id)}
-                  className="text-muted-foreground hover:text-slate-200 transition-colors p-0.5 rounded-lg hover:bg-white/5"
+                  className="-my-2.5 -mr-2.5 h-10 w-10 shrink-0 grid place-items-center rounded-lg text-current opacity-80 hover:opacity-100 transition-opacity hover:bg-white/5"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-4 h-4" aria-hidden />
                 </button>
               </motion.div>
             );

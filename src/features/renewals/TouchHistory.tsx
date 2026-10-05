@@ -29,7 +29,7 @@ export function TouchHistory({
   if (!enabled) return null;
   return (
     <div className="space-y-2">
-      {title && <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{title}</p>}
+      {title && <p className="text-[14px] font-bold text-ink-d2">{title}</p>}
       {error && <p className="text-[12px] text-amber-700 dark:text-amber-300">{error}</p>}
       {touches.length === 0 ? (
         <p className="text-[13px] text-muted-foreground">Nobody has logged a conversation yet — you're first.</p>
@@ -41,7 +41,7 @@ export function TouchHistory({
                 {leaningLabel(t.leaning)}
                 {t.concerns.length > 0 && ` — ${t.concerns.map(concernLabel).join(", ").toLowerCase()}`}
                 {t.needsLeader && (
-                  <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
+                  <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[12px] font-bold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
                     Needs a leader
                   </span>
                 )}

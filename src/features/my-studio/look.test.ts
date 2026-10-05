@@ -15,9 +15,13 @@ import { describe, expect, it } from "vitest";
  *      person's, a client's, a machine's or a task's name.
  *   3. The listed controls are at least 40px tall.
  *   4. Slanted capitals are the display face's alone (a page, a masthead or
- *      a dialog title); a card or section head is small upright capitals.
- *   5. Text sizes are counted against the 11 / 12 / 14 / 17 / 30 scale, and
- *      the count only goes down.
+ *      a dialog title). Since type and depth, phase 10 (Oct 4 2026), a
+ *      card's head speaks the panel-title voice (17/700 in ink) and a head
+ *      over a list the label voice (14/700 in ink-2), both in their own
+ *      capitalisation; until then both were small upright capitals.
+ *   5. Text sizes are counted against the 11 / 12 / 14 / 17 / 22 / 30 scale
+ *      (22 since Oct 4 2026, a step of the scale), and the count only goes
+ *      down.
  *
  * If one of these fails, the fix is the stylesheet, not the test.
  */
@@ -475,35 +479,74 @@ describe("My Studio's type", () => {
     }
   });
 
+  // Moved on purpose (type and depth, phase 12, Oct 4 2026; AJ's 1A): the
+  // section name was the display face's slanted capitals. It is the display
+  // face UPRIGHT now, in its own capitalisation ("Relay", "Openings"); the
+  // slant is the studio name's and Start session's alone.
   it("titles the header's section in the page-title voice (it was the masthead's title until Sep 28 2026)", () => {
     const [title] = rulesFor("msh__sect-name").filter((r) => r.selectors.includes(".msh__sect-name"));
     expect(declared(title.body, "font-family")).toEqual(["var(--font-display)"]);
     expect(declared(title.body, "font-weight")).toEqual(["800"]);
-    expect(declared(title.body, "font-style")).toEqual(["italic"]);
-    expect(declared(title.body, "text-transform")).toEqual(["uppercase"]);
+    expect(declared(title.body, "font-style")).toEqual(["normal"]);
+    expect(declared(title.body, "text-transform")).toEqual(["none"]);
   });
 
-  it("heads a panel in small upright capitals", () => {
+  /*
+   * Type and depth, phase 10 (Oct 4 2026; AJ's 1A, Refined Lift). The one
+   * heading style of Sep 27 2026 (12px, 800, 0.12em, upright capitals) moved
+   * on purpose, class by class: the head of a CARD takes the panel-title
+   * voice, Geist 17/700 in ink; a head over a LIST (or a form, or a card that
+   * carries its own title) takes the label voice, 14/700 in ink-2. Both in
+   * their own capitalisation. My Profile's .tp-card__title is a card head.
+   */
+  const PANEL_TITLES: [cls: string, selector: string][] = [
+    ["pl__h2", ".pl__h2"], // a Relay tab's panel head ("Your team", "Journal")
+    ["stm__title", ".stm__title"], // the standing duties' cards
+    ["rjn__title", ".rjn__title"], // Just now
+    ["rl-h__title", ".tc .rl-h__title"], // Team's open loops and vault
+    ["rsy__title", ".rsy__head .rsy__title"], // Since you were in
+    ["jtd-h", ".jtd-h"], // the Journal's Today: Things to carry today, One line for yourself
+  ];
+  const LABELS = ["pl__list-head", "rl-h__title", "ms__door-h", "stw-team__head", "stw-away__head", "rbd-h", "rak-form__h", "stq__answered-h"];
+
+  it("heads a panel in the panel-title voice: 17/700 in ink, its own capitalisation", () => {
     const [head] = rulesFor("pl__h2");
     expect(declared(head.body, "font-style")).toEqual([]);
-    expect(declared(head.body, "text-transform")).toEqual(["uppercase"]);
-    expect(px(declared(head.body, "font-size")[0])).toBeLessThanOrEqual(12);
+    expect(declared(head.body, "text-transform")).toEqual(["none"]);
+    expect(px(declared(head.body, "font-size")[0])).toBe(17);
   });
 
-  it("has one heading style for every card and section head (Sep 27 2026)", () => {
-    // My Profile's card head (.tp-card__title): 12px, 800, 0.12em, upright capitals.
-    for (const cls of ["pl__h2", "pl__list-head", "rl-h__title", "stm__title", "ms__door-h", "stw-team__head", "stw-away__head", "rjn__title", "rbd-h", "rak-form__h", "stq__answered-h"]) {
-      const [head] = rulesFor(cls).filter((r) => r.selectors.includes(`.${cls}`));
-      expect(head, cls).toBeDefined();
-      expect(declared(head.body, "font-size"), cls).toEqual(["12px"]);
-      expect(declared(head.body, "font-weight"), cls).toEqual(["800"]);
-      expect(declared(head.body, "letter-spacing"), cls).toEqual(["0.12em"]);
-      expect(declared(head.body, "text-transform"), cls).toEqual(["uppercase"]);
-      expect(declared(head.body, "font-style"), cls).toEqual([]);
-    }
+  it.each(PANEL_TITLES)("a card's head, %s (%s), speaks the panel-title voice", (cls, selector) => {
+    const rules = RULES.filter((r) => r.selectors.includes(selector));
+    expect(rules.length, selector).toBeGreaterThan(0);
+    const body = rules.map((r) => r.body).join(";");
+    expect(declared(body, "font-size").at(-1), cls).toBe("17px");
+    expect(declared(body, "letter-spacing").at(-1), cls).toBe("-0.01em");
+    expect(declared(body, "color").at(-1), cls).toBe("var(--st-ink)");
+    // The weight is 700, its own or the label voice's it builds on.
+    const base = rulesFor(cls).filter((r) => r.selectors.includes(`.${cls}`)).map((r) => r.body).join(";");
+    expect(declared(body, "font-weight").at(-1) ?? declared(base, "font-weight").at(-1), cls).toBe("700");
+    expect(declared(body + ";" + base, "text-transform").filter((v) => v !== "none"), cls).toEqual([]);
+    expect(declared(body + ";" + base, "font-style"), cls).toEqual([]);
   });
 
-  it("draws Team's cards as header-strip cards: one border, 14px corners, a tinted head (Sep 27 2026)", () => {
+  it.each(LABELS)("a head over a list, .%s, speaks the label voice: 14/700 in ink-2", (cls) => {
+    const [head] = rulesFor(cls).filter((r) => r.selectors.includes(`.${cls}`));
+    expect(head, cls).toBeDefined();
+    expect(declared(head.body, "font-size"), cls).toEqual(["14px"]);
+    expect(declared(head.body, "font-weight"), cls).toEqual(["700"]);
+    expect(declared(head.body, "letter-spacing"), cls).toEqual(["0"]);
+    expect(declared(head.body, "text-transform"), cls).toEqual(["none"]);
+    expect(declared(head.body, "font-style"), cls).toEqual([]);
+    expect(declared(head.body, "color")[0], cls).toMatch(/^var\(--(st|eq)-ink-2\)$/);
+  });
+
+  it("draws Team's cards as panels: the edge, 14px corners, a lift, and a head with no band and no rule (type and depth, phase 10)", () => {
+    // Until Oct 4 2026 these were header-strip cards: one 1px --st-border,
+    // a tinted head (--st-surface-2) cut by a 1px rule. They moved on
+    // purpose to the panel recipe (plan.md, phase 10). overflow: hidden
+    // stays; it never clips the card's own lift, and the cards' gaps and
+    // the scroller's 16px sides leave room for it.
     const cards: [card: string, head: string][] = [
       [".tm-card", ".tm-card__head"], // a person's week
       [".tc", ".tc > .rl-h"], // open loops, the vault
@@ -513,11 +556,13 @@ describe("My Studio's type", () => {
     for (const [card, head] of cards) {
       const c = RULES.find((r) => r.selectors.includes(card));
       const h = RULES.find((r) => r.selectors.includes(head));
-      expect(c && declared(c.body, "border"), card).toEqual(["1px solid var(--st-border)"]);
+      expect(c && declared(c.body, "border"), card).toEqual(["1px solid var(--st-edge)"]);
+      expect(c && declared(c.body, "background-clip"), card).toEqual(["padding-box"]);
+      expect(c && declared(c.body, "box-shadow"), card).toEqual(["var(--st-elev-2), var(--st-panel-highlight)"]);
       expect(c && declared(c.body, "border-radius"), card).toEqual(["var(--st-radius)"]);
       expect(c && declared(c.body, "overflow"), card).toEqual(["hidden"]);
-      expect(h && declared(h.body, "background"), head).toEqual(["var(--st-surface-2)"]);
-      expect(h && declared(h.body, "border-bottom"), head).toEqual(["1px solid var(--st-border)"]);
+      expect(h && declared(h.body, "background"), head).toEqual(["transparent"]);
+      expect(h && declared(h.body, "border-bottom"), head).toEqual(["0"]);
     }
   });
 
@@ -537,8 +582,10 @@ describe("My Studio's type", () => {
     expect(tab && declared(tab.body, "text-transform")).toEqual(["none"]);
   });
 
-  it("keeps text on the 11 / 12 / 14 / 17 / 30 scale, within a budget that only goes down", () => {
-    const SCALE = new Set([11, 12, 14, 17, 30]);
+  it("keeps text on the 11 / 12 / 14 / 17 / 22 / 30 scale, within a budget that only goes down", () => {
+    // 22 joined the scale on Oct 4 2026 (type and depth, phase 2), on
+    // purpose; the budget below did not rise with it.
+    const SCALE = new Set([11, 12, 14, 17, 22, 30]);
     const off: string[] = [];
     for (const file of FILES) {
       if (SIZES_COUNTED_ELSEWHERE.has(file)) continue;

@@ -22,9 +22,13 @@ import { describe, expect, it } from "vitest";
  *     modes, the copies' own pigments included (FORD's pillars, the Pulse's
  *     traffic lights, the builder's avoid and caution, the heat map);
  *   - the rules that put words on a solid colour use an on-colour token, and
- *     the one loud orange (Start Session, Generate, the Pulse's orange
- *     selections) is the logo orange with navy words, its fill restated on
- *     :hover; nothing puts white words on an orange.
+ *     the one loud orange (Start Session, Generate) is the logo orange with
+ *     navy words, its fill restated on :hover; nothing puts white words on
+ *     an orange;
+ *   - a selection is the blue: the Pulse's linked note and its "Machines
+ *     that bring it on" were the go pair until AJ's answer of Oct 4 2026
+ *     ("a selection is blue"), and the Pulse keeps no orange with words;
+ *     a switch that is on is the blue too, so no Pulse rule reads the orange.
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -152,6 +156,20 @@ interface Copy {
 const NEUTRALS = ["bg", "surface", "surface-2", "surface-3", "border", "border-strong", "ink", "ink-2", "ink-muted", "ink-faint"];
 const same = (prefix: string, names: string[]): [string, string][] => names.map((n) => [`--${prefix}-${n}`, `--eq-${n}`]);
 
+/**
+ * The depth tokens (type and depth, phase 3, Oct 4 2026): the fills and lines
+ * a raised or sunk box is drawn with, and the app's shadows by name. Every
+ * copy carries them, so a copy that misses one, in either mode or in its
+ * fallback, fails here. The Pulse leaves out the orange's two (it keeps no
+ * orange button).
+ */
+const DEPTH = [
+  "raised", "tray", "edge", "edge-control", "divider", "highlight",
+  "elev-0", "elev-1", "elev-2", "elev-3", "elev-4", "elev-5", "elev-card",
+  "shelf", "press", "glow-live", "glow-go", "solid-light", "go-light", "panel-highlight",
+];
+const NO_ORANGE = (name: string) => name !== "glow-go" && name !== "go-light";
+
 const COPIES: Copy[] = [
   {
     name: "the briefing (--br-*)",
@@ -159,7 +177,7 @@ const COPIES: Copy[] = [
     dark: DARK,
     fallback: FALLBACK,
     mirrors: [
-      ...same("br", [...NEUTRALS, "hero", "hero-text", "hero-fill", "go", "go-on", "live", "live-text", "live-fill", "live-on", "ok", "ok-fill", "shadow"]),
+      ...same("br", [...NEUTRALS, "hero", "hero-text", "hero-fill", "go", "go-on", "live", "live-text", "live-fill", "live-on", "ok", "ok-fill", "shadow", ...DEPTH]),
       ["--br-critical", "--eq-alert"],
       ["--br-critical-fill", "--eq-alert-fill"],
     ],
@@ -169,7 +187,7 @@ const COPIES: Copy[] = [
     file: "features/subjective-report/subjective-report.css",
     dark: DARK,
     fallback: null,
-    mirrors: same("sr", [...NEUTRALS, "hero", "hero-text", "hero-fill"]),
+    mirrors: same("sr", [...NEUTRALS, "hero", "hero-text", "hero-fill", ...DEPTH.filter(NO_ORANGE)]),
   },
   {
     name: "FORD (--ford-*)",
@@ -177,7 +195,7 @@ const COPIES: Copy[] = [
     dark: DARK,
     fallback: FALLBACK,
     mirrors: [
-      ...same("ford", [...NEUTRALS, "shadow"]),
+      ...same("ford", [...NEUTRALS, "shadow", ...DEPTH]),
       ["--ford-now", "--eq-hero-text"],
       ["--ford-now-fill", "--eq-hero-fill"],
       ["--ford-soon", "--eq-live-text"],
@@ -191,7 +209,7 @@ const COPIES: Copy[] = [
     file: "features/calendar/calendar.tokens.css",
     dark: DARK,
     fallback: FALLBACK,
-    mirrors: same("cal", [...NEUTRALS, "hero", "hero-text", "hero-fill", "live", "live-text", "live-fill", "live-on", "shadow"]),
+    mirrors: same("cal", [...NEUTRALS, "hero", "hero-text", "hero-fill", "live", "live-text", "live-fill", "live-on", "shadow", ...DEPTH]),
     darkMirrors: [
       ["--cal-heat-0", "--eq-surface-2"],
       ["--cal-heat-5", "--eq-live"],
@@ -207,6 +225,7 @@ const COPIES: Copy[] = [
       "hero", "hero-text", "hero-fill", "hero-on",
       "live", "live-text", "live-fill", "live-on",
       "ok", "ok-fill", "warn", "warn-fill", "alert", "alert-fill", "shadow",
+      ...DEPTH,
     ]),
     darkMirrors: [
       ["--tp-kaizen", "--eq-live"],
@@ -220,7 +239,7 @@ const COPIES: Copy[] = [
     file: "features/routine-builder/routine-builder.tokens.css",
     dark: '\n:root.dark,\n:root[data-theme="dark"] {',
     fallback: ":root:not(.dark):not(.light):not([data-theme]) {",
-    mirrors: same("rb", [...NEUTRALS, "hero", "hero-text", "hero-fill", "hero-on", "live", "live-text", "live-fill", "live-on", "ok", "ok-fill", "shadow"]),
+    mirrors: same("rb", [...NEUTRALS, "hero", "hero-text", "hero-fill", "hero-on", "live", "live-text", "live-fill", "live-on", "ok", "ok-fill", "shadow", ...DEPTH]),
   },
 ];
 
@@ -355,7 +374,6 @@ const PAIRS: [string, string, string, number][] = [
   ["features/subjective-report/subjective-report.css", "--sr-watch", "--sr-surface", 4.5],
   ["features/subjective-report/subjective-report.css", "--sr-watch", "--sr-watch-fill", 4.5],
   ["features/subjective-report/subjective-report.css", "--sr-hero-text", "--sr-hero-fill", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-go-on", "--sr-go", 4.5],
   ["features/subjective-report/subjective-report.css", "--sr-hero", "--sr-surface", 3],
   ["features/subjective-report/subjective-report.css", "--sr-border-strong", "--sr-surface", 3],
   // FORD: the urgency chips, the pillar marks and the unfiled tray.
@@ -450,7 +468,6 @@ describe("words read at 4.5:1 and marks at 3:1, in both modes", () => {
 
 describe("the one loud orange is the logo orange with navy words", () => {
   const briefing = stylesheet("features/briefing/briefing.css");
-  const pulse = stylesheet("features/subjective-report/subjective-report.css");
   const review = stylesheet("features/clinical-review/clinical-review.css");
 
   it("Start Session on the briefing, with its fill restated on :hover and no filter", () => {
@@ -470,20 +487,6 @@ describe("the one loud orange is the logo orange with navy words", () => {
     }
   });
 
-  it("the Pulse's two orange selections (a linked note, a machine that brings it on)", () => {
-    for (const selector of [".sr-btn--primary", ".sr-chip--hero.sr-chip--on"]) {
-      const body = declared(pulse, selector);
-      expect(body.background, selector).toBe("var(--sr-go)");
-      expect(body.color, selector).toBe("var(--sr-go-on)");
-    }
-  });
-
-  it("the Pulse's go pair is the Hub's", () => {
-    const sr = block(pulse, LIGHT);
-    expect(sr["--sr-go"]).toBe(EQ.light["--eq-go"]);
-    expect(sr["--sr-go-on"]).toBe(EQ.light["--eq-go-on"]);
-  });
-
   it("the Deep Dive's Generate, with its fill restated on :hover and no filter or raw hex", () => {
     const body = declared(review, ".cr-generate");
     expect(body.background).toBe("var(--jg-go)");
@@ -492,6 +495,50 @@ describe("the one loud orange is the logo orange with navy words", () => {
     const hover = declared(review, ".cr-generate:hover");
     expect(hover.background).toBe("var(--jg-go)");
     expect(hover.filter).toBeUndefined();
+  });
+});
+
+describe("a selection in the Pulse is the blue (AJ, Oct 4 2026: \"a selection is blue\")", () => {
+  const pulse = stylesheet("features/subjective-report/subjective-report.css");
+  const step = readFileSync(join(HERE, "features/subjective-report/SubjectiveStep.tsx"), "utf8");
+  const ui = readFileSync(join(HERE, "features/subjective-report/ui.tsx"), "utf8");
+
+  it("a linked note is the navy button, its words the on-colour", () => {
+    expect(step).toContain('className={`sr-btn sr-btn--sm${on ? " sr-btn--navy" : ""}`}');
+    const body = declared(pulse, ".sr-btn--navy");
+    expect(body.background).toBe("var(--sr-navy)");
+    expect(body.color).toBe("var(--sr-on)");
+  });
+
+  it("a machine that brings it on is an ordinary picked chip, the navy with the on-colour", () => {
+    const body = declared(pulse, ".sr-chip--on");
+    expect(body.background).toBe("var(--sr-navy)");
+    expect(body.color).toBe("var(--sr-on)");
+    // The orange `hero` chip is gone with its prop.
+    expect(ui).not.toMatch(/sr-chip--hero|hero\?: boolean/);
+    expect(step).not.toMatch(/^\s*hero\s*$/m);
+  });
+
+  it("the Pulse keeps no orange with words: no go pair, no orange button or chip rule", () => {
+    expect(pulse).not.toMatch(/--sr-go\b|sr-btn--primary|sr-chip--hero/);
+    for (const r of rules(pulse)) {
+      if (r.body.background === "var(--sr-hero)") expect(r.body.color, r.selectors.join(", ")).toBeUndefined();
+    }
+  });
+
+  it("a switch that is on is the blue, its knob the on-colour, as the app's own Switch", () => {
+    // It was the hero orange, the last orange in the Pulse (review of the
+    // follow-ups, Oct 4 2026): a switch that is on is picked, not now or go.
+    expect(declared(pulse, ".sr-switch--on").background).toBe("var(--sr-navy)");
+    expect(declared(pulse, ".sr-switch--on::after").background).toBe("var(--sr-on)");
+    expect(ui).toContain('className={`sr-switch${on ? " sr-switch--on" : ""}`}');
+  });
+
+  it("no Pulse rule paints with the orange: the hero tokens are only the Hub's copy", () => {
+    const readers = rules(pulse)
+      .filter((r) => Object.values(r.body).some((v) => /var\(--sr-hero/.test(v)))
+      .flatMap((r) => r.selectors);
+    expect(readers).toEqual([]);
   });
 });
 
@@ -572,6 +619,21 @@ describe("one crimson, one blue", () => {
       "--psub-live-soft": "var(--eq-live-text)",
       "--psub-live-on": "var(--eq-live-on)",
       "--psub-flag": "var(--eq-alert)",
+      // Depth (type and depth, phase 3): the seven pages' raised bar.
+      "--psub-edge": "var(--eq-edge)",
+      "--psub-elev-1": "var(--eq-elev-1)",
+      "--psub-glow-live": "var(--eq-glow-live)",
+      "--psub-solid-light": "var(--eq-solid-light)",
+      // Phase 7: the raised bar's dark top light, and an idle page's ink.
+      "--psub-panel-highlight": "var(--eq-panel-highlight)",
+      "--psub-ink-2": "var(--eq-ink-2)",
+      // Phase 9: the Archive's clinical strip is a well, and its Edit button
+      // is raised on the 3:1 edge and presses in.
+      "--psub-elev-0": "var(--eq-elev-0)",
+      "--psub-raised": "var(--eq-raised)",
+      "--psub-highlight": "var(--eq-highlight)",
+      "--psub-press": "var(--eq-press)",
+      "--psub-border-strong": "var(--eq-border-strong)",
     };
     for (const selector of [LIGHT, DARK, FALLBACK]) {
       const tokens = block(nav, selector);
@@ -585,7 +647,17 @@ describe("one crimson, one blue", () => {
     expect(contrast(eq("--eq-ink-muted"), eq("--eq-surface-2"))).toBeGreaterThanOrEqual(4.5);
     expect(contrast(eq("--eq-ink-muted"), eq("--eq-bg"))).toBeGreaterThanOrEqual(4.5);
     expect(contrast(eq("--eq-live-text"), eq("--eq-surface"))).toBeGreaterThanOrEqual(4.5);
-    // .psub__btn[data-on] .psub__meta: the on-colour at 0.86 over the blue.
+    // Type and depth, phase 7: the seven pages' bar is RAISED on the card's
+    // fill (--psub-surface), so an idle page's label (ink-2) and its meta
+    // (the muted ink, no alpha any more) are measured there, and on the well
+    // tone a hover dips into.
+    for (const ground of ["--eq-surface", "--eq-surface-2"]) {
+      expect(contrast(eq("--eq-ink-2"), eq(ground)), `ink-2 on ${ground}`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(eq("--eq-ink-muted"), eq(ground)), `muted on ${ground}`).toBeGreaterThanOrEqual(4.5);
+    }
+    // .psub__btn[data-on] .psub__meta: the on-colour, at full strength now
+    // (it was 0.86 alpha), over the blue; the 0.86 floor still holds.
+    expect(contrast(eq("--eq-live-on"), eq("--eq-live"))).toBeGreaterThanOrEqual(4.5);
     const meta = over([...eq("--eq-live-on").slice(0, 3), 0.86] as Rgba, eq("--eq-live"));
     expect(contrast(meta, eq("--eq-live"))).toBeGreaterThanOrEqual(4.5);
   });

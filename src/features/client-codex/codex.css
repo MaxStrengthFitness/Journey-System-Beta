@@ -198,17 +198,20 @@
 
 /* A pillar is one button: its whole tile opens the pillar's card on FORD.
    The text alignment is set here, not left to the browser's centred button
-   (KNOWN-TRAPS → Layout and CSS). */
+   (KNOWN-TRAPS → Layout and CSS). A well inside the FORD panel (type and
+   depth, phase 6): sunk, its border kept transparent so the hover's blue
+   line has somewhere to draw and the tile never changes size. */
 .cx-ov-pillar {
   display: grid;
   gap: 6px;
   align-content: start;
   min-width: 0;
   min-height: 112px;
-  padding: 12px;
-  border: 1px solid var(--cx-line);
+  padding: 14px;
+  border: 1px solid transparent;
   border-radius: 12px;
   background: var(--cx-surface-2);
+  box-shadow: var(--cx-elev-0);
   color: var(--cx-ink-2);
   font-family: inherit;
   font-size: var(--cx-fs-14);
@@ -229,7 +232,13 @@
   gap: 8px;
   color: var(--cx-ink);
   font-size: var(--cx-fs-14);
-  font-weight: 800;
+  font-weight: 700;
+}
+
+/* The pillar's letter: a small raised disc on the well, ringed so each
+   letter's tint reads in dark too (Occupation's pale "O" included). */
+.cx-ov-pillar .cx-mark {
+  box-shadow: var(--cx-elev-1), inset 0 0 0 1px var(--cx-edge-control);
 }
 
 .cx-ov-pillar__lead,
@@ -267,8 +276,18 @@
 .cx-ov-mini {
   display: grid;
   align-content: start;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
+}
+
+/* A list's head inside the FORD panel ("Coming up", "Above and beyond"):
+   the label voice, 14/700 in the second ink, sentence case. */
+.cx-ov-mini > .cx-eyebrow {
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .cx-ov-mini__row {

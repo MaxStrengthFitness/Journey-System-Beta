@@ -67,31 +67,43 @@
   animation: cp-in 220ms ease-out;
 }
 @keyframes cp-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+/* The sheet's head (type and depth, phase 10, Oct 4 2026): no rule under
+   it; it casts the shelf onto the body that scrolls beneath it instead, so
+   it stacks over that body. */
 .cp__head {
   flex: none;
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   min-height: 52px;
   padding: 0.5rem 0.75rem 0.5rem 1rem;
-  border-bottom: 1px solid var(--st-border);
+  border-bottom: 0;
+  box-shadow: var(--st-shelf);
 }
+/* The sheet's title: the panel-title voice, 17/700 in ink (it was 14/900). */
 .cp__title {
   flex: 1;
   min-width: 0;
   margin: 0;
-  font-size: 14px;
-  font-weight: 900;
+  font-size: 17px;
+  font-weight: 700;
   line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--st-ink);
   overflow-wrap: anywhere;
 }
+/* What the sheet is ("Machine", "The usual week"), over its title: the label
+   voice, 14/700 in ink-2 and its own capitalisation (it was 11px capitals
+   at 0.12em in the muted ink). */
 .cp__kicker {
   display: block;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--st-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--st-ink-2);
 }
 .cp__close {
   flex: none;
@@ -176,12 +188,16 @@
   gap: 0.75rem;
   margin: 1rem 0 0.5rem;
 }
+/* A section's head inside a Relay tab is the label voice, 14/700 in ink-2
+   and its own capitalisation (type and depth, phase 10, Oct 4 2026; it was
+   12px capitals at 0.12em). Where it heads a panel (Team's open loops and
+   vault, .tc) it takes the panel-title voice below. */
 .rl-h__title {
   margin: 0;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-2);
 }
 .rl-h__sub { font-size: 12px; color: var(--st-ink-muted); }
@@ -241,10 +257,10 @@
   align-items: center;
   padding: 0 1rem;
   border-radius: var(--st-radius);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   pointer-events: none;
 }
 .sw__under--right { left: 0; right: 0; justify-content: flex-start; background: var(--st-done); color: var(--st-done-on); }
@@ -327,7 +343,7 @@
 .shr__ring--closed .shr__svg { animation: shr-close 600ms ease-out 1; }
 @keyframes shr-close { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .shr__ring--closed .shr__svg { animation: none; } .shr__fill { transition: none; } }
-.shr__label { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.shr__label { font-size: 14px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--st-ink-2); }
 .shr__count { font-size: 12px; font-weight: 800; color: var(--st-ink); font-variant-numeric: tabular-nums; }
 
 /* ------------------------------------------------------------------ *
@@ -335,7 +351,10 @@
  * ------------------------------------------------------------------ */
 
 .fm { margin-top: 0.5rem; }
-/* The floor's one line, folded or open (the Relay Board rebuild, Oct 3 2026): a 44px tap across the width. */
+/* The floor's one line, folded or open (the Relay Board rebuild, Oct 3 2026): a 44px tap across the width.
+   A door, so RAISED (type and depth, phase 10, Oct 4 2026; AJ's 2A): a fill
+   a hair lighter than the card, a contact lift and a white top light, on
+   the 3:1 edge (it drew the decorative hairline), radius 12, and a press. */
 .fm__head {
   display: flex;
   align-items: center;
@@ -345,30 +364,38 @@
   min-height: 44px;
   margin: 0;
   padding: 0 12px;
-  border: 1px solid var(--st-border);
-  border-radius: var(--st-radius);
-  background: var(--st-surface);
+  border: 1px solid var(--st-border-strong);
+  border-radius: 12px;
+  background: var(--st-raised);
+  box-shadow: var(--st-elev-1), inset 0 1px 0 var(--st-highlight);
   color: var(--st-ink-2);
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
+.fm__head:active { transform: translateY(1px); box-shadow: var(--st-press); }
 .fm__head:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
 .fm__head[aria-expanded="true"] { margin-bottom: 0.5rem; }
 .fm__group { margin-bottom: 0.75rem; }
+/* A group's head over its tiles: the label voice, 14/700 in ink-2 (it was
+   11px capitals in the muted ink). */
 .fm__group-title {
   margin: 0 0 0.375rem;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--st-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--st-ink-2);
 }
 .fm__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
   gap: 0.5rem;
 }
+/* A machine's tile is a tappable PANEL (type and depth, phase 10, Oct 4
+   2026): the edge seen from outside, the fill clipped to the padding box, a
+   short navy lift, and a press. Its heat and its flags still colour the
+   edge. The transition never lists the shadow. */
 .fm__tile {
   position: relative;
   display: flex;
@@ -376,9 +403,11 @@
   gap: 4px;
   min-height: 72px;
   padding: 0.5rem 0.625rem 0.625rem;
-  border: 1px solid var(--st-border);
+  border: 1px solid var(--st-edge);
   border-radius: 12px;
   background: var(--st-surface);
+  background-clip: padding-box;
+  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
   color: var(--st-ink);
   font: inherit;
   text-align: left;
@@ -386,12 +415,22 @@
   overflow: hidden;
   transition: background 500ms ease-out, border-color 300ms;
 }
+.fm__tile:active { transform: translateY(1px); box-shadow: var(--st-press); }
 .fm__tile:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 /* The tile warms with touches: the heat ramp (--rl-heat-*, one orange). */
 .fm__tile--heat1 { background: var(--rl-heat-1); }
 .fm__tile--heat2 { background: var(--rl-heat-2); border-color: var(--rl-heat-2-edge); }
 .fm__tile--heat3 { background: var(--rl-heat-3); border-color: var(--st-hero); }
-.fm__tile--flagged { border-color: var(--st-flag); box-shadow: inset 3px 0 0 var(--st-flag); }
+/* Flagged: a straight 3px band at the left, painted as a background layer
+   over the tile's own fill (an inset shadow on a rounded tile tapered into
+   a crescent at the corners). */
+.fm__tile--flagged {
+  border-color: var(--st-flag);
+  background-image: linear-gradient(var(--st-flag), var(--st-flag));
+  background-size: 3px 100%;
+  background-position: left;
+  background-repeat: no-repeat;
+}
 .fm__name { font-size: 12px; font-weight: 800; line-height: 1.25; }
 .fm__facts { display: flex; align-items: center; gap: 6px; margin-top: auto; }
 .fm__touches {
@@ -451,29 +490,42 @@
  * (Sep 27 2026), with their styles
  * ------------------------------------------------------------------ */
 
-/* Team's two panels are header-strip cards, like the standing duties
-   (.stm__panel) and every Operations-kit panel on the page: one border,
-   14px corners, the title in a tinted strip. Until Sep 27 2026 they were
-   loose headings over loose lists. */
+/* Team's two panels are panels, like the standing duties (.stm__panel) and
+   every Operations-kit panel on the page: an edge seen from outside
+   (--st-edge, the fill clipped to the padding box), a short navy lift
+   (--st-elev-2), 14px corners, the title at the top (type and depth, phase
+   10, Oct 4 2026; they were header-strip cards, the title in a tinted strip
+   cut by a rule). Until Sep 27 2026 they were loose headings over loose
+   lists. */
 .tc {
   display: flex;
   flex-direction: column;
   margin-top: 0.75rem;
-  border: 1px solid var(--st-border);
+  border: 1px solid var(--st-edge);
   border-radius: var(--st-radius);
   background: var(--st-surface);
+  background-clip: padding-box;
+  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
   overflow: hidden;
 }
 .tc > .rl-h {
   flex-wrap: wrap;
   margin: 0;
-  padding: 0.625rem 0.875rem;
-  background: var(--st-surface-2);
-  border-bottom: 1px solid var(--st-border);
+  padding: 0.875rem 0.875rem 0;
+  background: transparent;
+  border-bottom: 0;
 }
 .tc > :not(.rl-h) { margin: 0.75rem 0.875rem 0; }
 .tc > :last-child:not(.rl-h) { margin-bottom: 0.875rem; }
-.tc .rl-h__title { display: inline-flex; align-items: center; gap: 0.375rem; }
+.tc .rl-h__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 17px;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--st-ink);
+}
 .tc__loops, .vault__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.375rem; }
 .tc__loop {
   display: grid;
@@ -486,7 +538,7 @@
   border-radius: 12px;
   background: var(--st-flag-fill);
 }
-.tc__loop-kind { grid-area: kind; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--st-flag); white-space: nowrap; }
+.tc__loop-kind { grid-area: kind; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--st-flag); white-space: nowrap; }
 .tc__loop-title { grid-area: title; font-size: 14px; font-weight: 800; }
 .tc__loop-sub { grid-area: sub; font-size: 12px; color: var(--st-ink-2); }
 .tc__loop .pl__btn { grid-area: action; }

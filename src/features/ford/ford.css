@@ -70,6 +70,13 @@
 .ford-when--later { background: var(--ford-later-fill); color: var(--ford-later); }
 .ford-when--past  { background: transparent; color: var(--ford-ink-faint); }
 
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, on the 3:1
+   edge, which stays. Radius 12, the app's control radius (it was 9). It
+   presses in on :active (a transform; the transition below never lists the
+   shadow) and lies flat when it can't be pressed. Solid blue drops a
+   blue-tinted shadow; a ghost has no box, so no lift. The hovers that change
+   a fill are a pointer's only, so an iPad's kept hover never flattens one. */
 .ford-btn {
   display: inline-flex;
   align-items: center;
@@ -77,16 +84,19 @@
   gap: 0.4rem;
   min-height: 40px;
   padding: 0 0.85rem;
-  border-radius: var(--ford-radius-sm);
+  border-radius: 12px;
   border: 1px solid var(--ford-border-strong);
-  background: var(--ford-surface);
+  background: var(--ford-raised);
+  box-shadow: var(--ford-elev-1), inset 0 1px 0 var(--ford-highlight);
   color: var(--ford-ink-2);
   font-size: 0.8125rem;
   font-weight: 700;
   cursor: pointer;
   transition: background 120ms ease, border-color 120ms ease;
 }
-.ford-btn:hover { background: var(--ford-surface-3); }
+@media (hover: hover) {
+  .ford-btn:hover { background: var(--ford-surface-3); }
+}
 .ford-btn:focus-visible {
   outline: 2px solid var(--ford-focus-ring);
   outline-offset: 2px;
@@ -95,11 +105,16 @@
   background: var(--ford-soon);
   border-color: var(--ford-soon);
   color: var(--ford-surface);
+  box-shadow: var(--ford-glow-live), var(--ford-solid-light);
 }
 .ford-btn--primary:hover { filter: brightness(1.08); background: var(--ford-soon); }
-.ford-btn--ghost { border-color: transparent; background: transparent; }
-.ford-btn--ghost:hover { background: var(--ford-surface-3); }
-.ford-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.ford-btn--ghost { border-color: transparent; background: transparent; box-shadow: none; }
+@media (hover: hover) {
+  .ford-btn--ghost:hover { background: var(--ford-surface-3); }
+}
+.ford-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--ford-press); }
+.ford-btn--ghost:not(:disabled):active { box-shadow: none; }
+.ford-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 
 /* ------------------------------------------------------------------ */
 /* THE BRIEFING ROW, THE QUEUE'S BANNER, AND SHARED BITS               */
@@ -156,11 +171,16 @@
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  padding: 0.55rem 0.85rem;
+  padding: 0.55rem 0.85rem 0.55rem calc(0.85rem + 2px);
   border: 1px solid var(--ford-border);
-  border-left: 3px solid var(--ford-unfiled);
+  border-left-color: var(--ford-unfiled);
   border-radius: var(--ford-radius-sm);
-  background: var(--ford-unfiled-fill);
+  /* A straight 3px band (type and depth, phase 14, Oct 4 2026; the plan's
+     rule 3: a wide border-left on a rounded box tapers into a crescent at
+     its corners). The 2px it took is in the padding. */
+  background:
+    linear-gradient(var(--ford-unfiled), var(--ford-unfiled)) left / 3px 100% no-repeat border-box,
+    var(--ford-unfiled-fill) padding-box;
   color: var(--ford-ink-2);
   font-size: 0.8125rem;
 }
@@ -268,7 +288,7 @@
   gap: 0.2rem;
   min-height: 60px;
   padding: 0.4rem 0.2rem;
-  border: 1px solid var(--ford-border);
+  border: 1px solid var(--ford-border-strong);
   border-radius: var(--ford-radius-sm);
   background: var(--ford-surface);
   cursor: pointer;
@@ -390,11 +410,11 @@
 
 .ford-queue { display: flex; flex-direction: column; gap: 0.6rem; }
 .ford-queue__group-label {
-  font-size: 0.6875rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ford-ink-muted);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ford-ink-2);
   padding: 0.35rem 0 0.15rem;
 }
 .ford-queue__row {

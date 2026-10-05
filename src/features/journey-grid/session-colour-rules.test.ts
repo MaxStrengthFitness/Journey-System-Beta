@@ -18,7 +18,10 @@ import { describe, expect, it } from "vitest";
  *   - an elevated flag is an opaque amber, never an rgba amber wash (over
  *     the dark navy the wash turns grey-teal);
  *   - the session's neutrals, ink and accents are the Hub's, value for value
- *     (the dark header band and Today column are the session's own steps).
+ *     (the dark header band and Today column are the session's own steps);
+ *   - every control draws its edge in --jg-control-edge, the Hub's 3:1
+ *     control edge, and the sticky separators keep the softer line (AJ,
+ *     Oct 4 2026: "yes" to firmer outlines).
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -219,5 +222,64 @@ describe("small words on every machine read in the muted ink, never the faint", 
 
   it("the Dial (rating.css) sets no word in the faint ink", () => {
     expect(stylesheet("features/rating/rating.css")).not.toMatch(/(^|[\s;{])color:\s*var\(--eq-ink-faint\)/);
+  });
+});
+
+/**
+ * A control's edge (AJ, Oct 4 2026: "yes" to firmer outlines on the Active
+ * Session's buttons). The Navy Frame left every control on the separators'
+ * soft line, 1.87:1 on the Now Bar in light and 2.05 in dark. contrast.test.ts
+ * holds the control edge at 3:1 on the bar and on a control's fill; this
+ * holds which rules draw with it.
+ */
+const CONTROLS = [
+  [".jg-nb__chip", "solid", "the Now Bar's setting chips"],
+  [".jg-nb__sbtn", "solid", "the Now Bar's steppers"],
+  [".jg-nb__unit", "solid", "the Now Bar's REPS | SEC switch"],
+  [".jg-nb__qbtn", "solid", "the Now Bar's quality buttons"],
+  [".jg-nb__obtn", "dashed", "the Now Bar's No set? buttons"],
+  [".jg-nb__reason", "solid", "a skip reason"],
+  [".jg-nb__where", "solid", "where the pain is"],
+  [".jg-sbar__btn", "solid", "the session bar's Notes and Pulse"],
+  [".jg-today__add", "dashed", "the Today column's add"],
+  [".jg-order__find", "solid", "the routine sheet's Find"],
+  [".jg-order__add", "dashed", "the routine sheet's add from the floor"],
+  [".jg-keypop", "solid", "the Key"],
+  [".jg-keypop__close", "solid", "the Key's Close"],
+  [".jg-btn", "solid", "the grid's button"],
+  [".jg-seg2", "solid", "the rail's two-way switch"],
+  [".jg-rail__edit", "solid", "the rail's Edit"],
+  [".jg-rail__older", "solid", "the rail's Older"],
+] as const;
+
+describe("a control's edge", () => {
+  it.each(CONTROLS)("%s draws a %s edge in the control edge (%s)", (selector, style) => {
+    expect(declared(SESSION, selector).border).toBe(`1px ${style} var(--jg-control-edge)`);
+  });
+
+  it("only the controls read it, so the separators and the rail never harden", () => {
+    const readers = rules(SESSION)
+      .filter((r) => Object.values(r.body).some((v) => v.includes("--jg-control-edge")))
+      .flatMap((r) => r.selectors);
+    expect([...readers].sort()).toEqual(CONTROLS.map(([selector]) => selector).sort());
+  });
+
+  it.each([
+    [".jg-head", "border-bottom"],
+    [".jg-corner", "border-right"],
+    [".jg-machine", "border-right"],
+    [".jg-stat", "border-right"],
+    [".jg-head--live", "border-left"],
+  ])("the sticky separator %s keeps the soft %s", (selector, side) => {
+    expect(declared(SESSION, selector)[side]).toBe("1px solid var(--jg-border-strong)");
+  });
+
+  it.each(["light", "dark"] as const)("is the Hub's control edge in %s mode", (theme) => {
+    expect(resolve(grid[theme], "--jg-control-edge")).toMatch(/^#[0-9a-f]{6}$/);
+    expect(resolve(grid[theme], "--jg-control-edge")).toBe(resolve(hub[theme], "--eq-border-strong"));
+  });
+
+  it("the system-preference copy carries the dark value", () => {
+    expect(block(GRID_TOKENS, FALLBACK_BLOCK)["--jg-control-edge"]).toBe(grid.dark["--jg-control-edge"]);
   });
 });

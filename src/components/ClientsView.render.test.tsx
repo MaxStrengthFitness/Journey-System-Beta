@@ -547,6 +547,11 @@ describe("the Hub: the peek follows what happened", () => {
     act(() => cardOf(el, "Hamfast Gamgee")!.click());
     expect(document.querySelector(".hp-state")?.textContent).toBe("In session");
     expect(peekButtons()).toEqual(["Open profile", "Open session"]);
+    // Go's slanted capitals belong to Start session alone (AJ's 1A): the
+    // other primaries keep Go's depth in the button voice (peek.css).
+    const open = [...document.querySelectorAll<HTMLButtonElement>(".hp-btn")].find((b) => b.textContent === "Open session")!;
+    expect(open.dataset.primary).toBe("true");
+    expect(open.dataset.go).toBeUndefined();
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     });
@@ -576,6 +581,8 @@ describe("the Hub: the peek follows what happened", () => {
     act(() => cardOf(el, "Laura Grubb")!.click());
     expect(document.querySelector(".hp-state")).toBeNull();
     expect(peekButtons()).toEqual(["Open profile", "Start session"]);
+    const start = [...document.querySelectorAll<HTMLButtonElement>(".hp-btn")].find((b) => b.textContent === "Start session")!;
+    expect(start.dataset.go).toBe("true");
   });
 });
 

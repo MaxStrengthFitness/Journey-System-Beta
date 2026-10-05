@@ -19,12 +19,12 @@ import { Plus } from "lucide-react";
 import type { ReasonKind, Suggestion } from "./engine";
 
 const TAG: Partial<Record<ReasonKind, { text: string; cls: string }>> = {
-  "foundational-gap": { text: "gap", cls: "rb-tag--gap" },
+  "foundational-gap": { text: "Gap", cls: "rb-tag--gap" },
   "frequency-gap": { text: "2×/wk", cls: "rb-tag--freq" },
-  template: { text: "goal", cls: "rb-tag--goal" },
-  "category-gap": { text: "gap", cls: "rb-tag--gap" },
-  pair: { text: "pairs", cls: "rb-tag--pair" },
-  "big-five": { text: "big 5", cls: "rb-tag--pair" },
+  template: { text: "Goal", cls: "rb-tag--goal" },
+  "category-gap": { text: "Gap", cls: "rb-tag--gap" },
+  pair: { text: "Pairs", cls: "rb-tag--pair" },
+  "big-five": { text: "Big 5", cls: "rb-tag--pair" },
 };
 
 export interface SuggestionRailProps {
@@ -67,7 +67,7 @@ export function SuggestionRail({
               <span className="rb-sug__name">
                 {machineName(s.machineId)}
                 {tag && <span className={`rb-tag ${tag.cls}`}>{tag.text}</span>}
-                {s.conflictsAtEnd && <span className="rb-tag rb-tag--clash">order</span>}
+                {s.conflictsAtEnd && <span className="rb-tag rb-tag--clash">Order</span>}
               </span>
               <span className="rb-sug__why">{s.headline}</span>
               {lead?.source && <span className="rb-sug__src">{lead.source}</span>}

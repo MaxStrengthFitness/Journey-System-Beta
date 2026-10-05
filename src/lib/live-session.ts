@@ -277,9 +277,14 @@ export function staleSessionStartedLine(session: StaleSessionFacts, todayKey: st
   return `Started${dayPart}${time ? ` at ${time}` : ""}${by ? ` by ${by}` : ""}.`;
 }
 
-/** "Judy" from "Judy Daus" — the tab has room for one word. */
+/**
+ * "Judy" from "Judy Daus" — the tab has room for one word. "Start session"
+ * in ordinary capitalisation, as every Start session button says it: the bar
+ * drew its labels in capitals until Oct 4 2026 (type and depth), so how this
+ * was written never showed. "Active Session" is the screen's name.
+ */
 export function liveSessionTabLabel(session: LiveSessionLike | undefined): string {
-  if (!session) return "Start Session";
+  if (!session) return "Start session";
   const first = (session.clientName || "").trim().split(/\s+/)[0];
   return first ? `Session · ${first}` : "Active Session";
 }

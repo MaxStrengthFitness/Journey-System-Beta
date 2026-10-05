@@ -17,9 +17,11 @@
 }
 .rk-sheet *, .rk-sheet *::before, .rk-sheet *::after { box-sizing: border-box; }
 
-/* A dialog's title is its page title: the display face's slanted capitals,
-   as the header's section name (my-studio.css .msh__sect-name). It was a faked italic of the
-   body face until Sep 27 2026. */
+/* A dialog's title is its page title: the display face upright, in its own
+   capitalisation, as the header's section name (my-studio.css
+   .msh__sect-name). It was a faked italic of the body face until Sep 27
+   2026, and the display face's slanted capitals until type and depth,
+   phase 12 (AJ's 1A: the slant is the studio name's and Start session's). */
 .rk-title {
   display: flex;
   align-items: center;
@@ -28,10 +30,10 @@
   font-family: var(--font-display);
   font-size: 17px;
   font-weight: 800;
-  font-style: italic;
+  font-style: normal;
   line-height: 1.1;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--st-ink);
   overflow-wrap: anywhere;
 }
@@ -60,11 +62,11 @@
 .rk-row > .rk-field { flex: 1 1 12rem; }
 
 .rk-label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--st-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--st-ink-2);
 }
 .rk-hint {
   margin: 0;
@@ -106,7 +108,7 @@
   display: flex;
   gap: 2px;
   padding: 2px;
-  border: 1px solid var(--st-border);
+  border: 1px solid var(--st-border-strong);
   border-radius: 12px;
   background: var(--st-surface-2);
 }
@@ -123,10 +125,10 @@
   background: transparent;
   color: var(--st-ink-muted);
   font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
   text-align: center;
 }
@@ -134,6 +136,7 @@
   background: var(--st-surface);
   color: var(--st-live);
   box-shadow: 0 1px 2px var(--st-shadow);
+  font-weight: 700;
 }
 .rk-seg > button:focus-visible { outline: 2px solid var(--st-live); outline-offset: -2px; }
 .rk-seg > button svg { flex: none; }
@@ -177,7 +180,7 @@
   background: var(--st-surface-3);
   color: var(--st-ink-2);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.02em;
 }
 .rk-chip[aria-pressed="true"] .rk-avatar { background: var(--st-live); color: var(--st-live-on); }
@@ -193,7 +196,7 @@
   width: 100%;
   min-height: 52px;
   padding: 0.625rem 0.75rem;
-  border: 1px solid var(--st-border);
+  border: 1px solid var(--st-border-strong);
   border-radius: 12px;
   background: var(--st-surface);
   color: var(--st-ink);
@@ -282,10 +285,10 @@
   border: 1px solid var(--st-border);
   background: var(--st-surface-2);
   color: var(--st-ink-2);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
 }
 .rk-tag svg { flex: none; }
@@ -308,10 +311,10 @@
   background: transparent;
   color: var(--st-ink-muted);
   font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   text-align: left;
   cursor: pointer;
 }
@@ -328,15 +331,28 @@
 .rk-step[aria-current="step"]::before { background: var(--st-live); }
 .rk-step:disabled { cursor: default; }
 
+/* A WELL (type and depth, phase 9, Oct 4 2026): sunk into the well tone, no
+   edge, the sentence in the reading voice (14px, ink-2, 7.0:1 on the well),
+   as the kit draws an empty line. It was a dashed box in 12px muted ink. */
 .rk-empty {
   margin: 0;
   padding: 1rem;
-  border: 1px dashed var(--st-border-strong);
+  border: 0;
   border-radius: 12px;
+  background: var(--st-surface-2);
+  box-shadow: var(--st-elev-0);
   text-align: center;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.55;
-  color: var(--st-ink-muted);
+  color: var(--st-ink-2);
+}
+/* On the page ground (My Studio → Team's own lines, not inside a card), the
+   tray's tone (AJ's 1A, Oct 5 2026): the well tone is lighter than the page
+   and read raised; the tray is below it in both modes, and ink-2 reads
+   5.95:1 on it. In the board's cards and in a sheet the well tone stays. */
+.st__scroll > .rk-empty,
+.tm-people > .rk-empty {
+  background: var(--st-tray);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -440,7 +456,7 @@
   min-width: 0;
   min-height: 84px;
   padding: 10px 14px;
-  border: 1px solid var(--st-border);
+  border: 1px solid var(--st-border-strong);
   border-radius: var(--st-radius);
   background: var(--st-surface);
   color: var(--st-ink);
@@ -457,10 +473,10 @@
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-muted);
 }
 .gb__label svg { color: var(--st-live); }
@@ -472,8 +488,8 @@
   font-family: var(--font-display);
   font-size: 17px;
   font-weight: 800;
-  font-style: italic;
-  letter-spacing: 0.02em;
+  font-style: normal;
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
