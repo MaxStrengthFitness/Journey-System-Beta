@@ -69,7 +69,9 @@ which the Active Session turns off. **Edit Routine** moved down from the
 session bar, off the edge it shared with DISCARD. Two in-session modals
 became one **machine sheet** (`features/equipment/MachineSheet.tsx`), opened
 by the machine's name, writing through `features/equipment/mutations.ts` so
-a mid-session change reaches the client's Equipment tab and Journal. And the
+a mid-session change reaches the client's Equipment tab and Journal (since
+Oct 4 2026 the sheet is the **machine menu**, `features/machine-menu`, the
+same card the profile opens — §2.6). And the
 session bar gained an **Assessment** slide-over onto the running 90-day
 check-in draft.
 
@@ -80,12 +82,15 @@ the column width (84 → 56px) that puts at least ten of the fourteen loaded
 sessions across. Under 36px rows the cell goes single-line ("116 · 12↓"),
 the Analytics cell drops its context line, the group divider shrinks to
 24px, and machine settings fold into a ⋯ menu (`settingsDisplay="menu"`) so
-the machine column narrows to 150px. The legend rides in the toolbar so the
+the machine column narrows to 150px (the 22px ⋯ popover retired with the
+machine menu, Oct 4 2026: under `"menu"` the name alone shows, and tapping it
+opens the menu, which has the settings). The legend rides in the toolbar so the
 grid can reach the nav. Result on the 13" iPad: 21 machines × 12 sessions in
 portrait at ~41px rows, 21 × 13 in landscape at 26px rows. The Active
 Session keeps `fit="fixed"` and the inline settings rail — a trainer reads
 those numbers walking up to the machine. The first Firestore page is 15
-sessions (was 10) so fourteen columns arrive with the profile.
+sessions (was 10) so fourteen columns arrive with the profile. (It is 50
+since: `SESSION_PAGE` in `components/ClientProfileView.tsx`.)
 
 **v4 (Sep 4) — the Now bar.** Today's column stopped being the input. It is a
 read-only 84px cell the same width and shape as a history cell; all entry
@@ -281,7 +286,7 @@ Interaction rules that make it work on a gym floor:
 Two more header taps, both blue because both are interactive:
 
 - **Tap a date header → spotlight** that column (blue ring, inverted header). Tap again to clear.
-- **Tap a machine name → trace** its row (blue rules top and bottom). Tap again to clear.
+- **Tap a machine name → the machine menu opens, and its row is traced** (blue rules top and bottom). The menu opens on EVERY tap (`onOpenMachine`); the trace toggles beside it (`onSelectMachine`), so a second tap clears the trace and still opens the machine.
 
 ### 2.6 The Today column (Active Session)
 
@@ -293,7 +298,9 @@ The input cell reads in the order the set happens:
 
 Rows for today's routine are numbered and sit first; every other machine is folded under "Not in today's routine" with an *Add to session* button. The current machine (focus) gets an orange edge on its name, an orange trace across its whole row, and a blue ring on its input; `Next: …` in the session bar advances it.
 
-Tapping a machine's **name** opens the unified machine sheet (`features/equipment/MachineSheet.tsx`) — high-importance notes, the dials, the reason box, the note composer, the set-up guide and the change history, in one bottom sheet. It replaced a settings dialog and a notes dialog that used to be two separate targets on the same row. Every write goes through `features/equipment/mutations.ts`, so a mid-session change lands on the client's Equipment tab and in their Journal.
+Tapping a machine's **name** opens the **machine menu** (`features/machine-menu`, Oct 4 2026) — one centred card for this client on this machine, the same card the profile opens: safety, the dial tiles, the note box (the session's one note draft), the Staircase, the set-up guide and Setting changes. The phone's machine card and the Now Bar's flag open it too, and the watching grid opens it read only. It replaced the machine sheet (`features/equipment/MachineSheet.tsx`), which had replaced a settings dialog and a notes dialog that used to be two separate targets on the same row. Every write goes through `features/equipment/mutations.ts`, so a mid-session change lands on the client's Equipment tab and in their Journal, and nothing waits on the server. `src/features/machine-menu/README.md` is the card.
+
+The machine-name mark beside a name says how loud the machine's open notes are, in the one note key (machine menu, Oct 4 2026): a plum `AlertCircle` for a Heads up, the Hub's crimson `AlertTriangle` for Critical (`machineNoteLoudness`, `JourneyMachine.alert`), never rep quality's red. The corner's notebook glyph is the plain has-notes mark.
 
 ### 2.7 Density
 

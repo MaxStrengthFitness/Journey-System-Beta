@@ -35,6 +35,14 @@ know about the selected machine.
 
 ## 2. UX layout
 
+*Since the machine menu (Oct 4 2026) the right pane is the machine menu's
+body, inline (`features/machine-menu/MachineMenuBody.tsx`): the same card a
+machine's name opens on the Journey grid and in a session — safety, the dial
+tiles, notes, the Staircase, the set-up guide and Setting changes. The
+Prescription, Settings, Notes and Change history cards in the sketch below
+are how the pane was first built; they retired with it.
+`src/features/machine-menu/README.md` is the card.*
+
 ### 2.1 Landscape (the primary case — iPad Pro on a floor stand)
 
 ```
@@ -44,7 +52,7 @@ know about the selected machine.
 │  EquipmentSummaryBar                                                      │
 │  14 of 20 machines in use   ·  6 Upper  6 Lower  2 Core   [ search... ]   │
 ├──────────────────────────┬────────────────────────────────────────────────┤
-│ MachineRail   (320px)    │ MachineDetailPanel            (fills, scrolls) │
+│ MachineRail   (320px)    │ MachineMenuBody, inline       (fills, scrolls) │
 │ ┌──────────────────────┐ │ ┌────────────────────────────────────────────┐ │
 │ │ IN USE — 14          │ │ │ HIP ADDUCTION              SIMPLE PULL   ▤ │ │
 │ ├──────────────────────┤ │ ├────────────────────────────────────────────┤ │
@@ -146,8 +154,7 @@ readable for a colour-blind trainer and at arm's length on a gym floor.
 ClientProfileView                                  (existing, one line changes)
 └── EquipmentTab                                   props identical to the old
     │                                              ClientEquipmentPrescriptions
-    │   owns: selectedMachineId, search, isSplit,
-    │         edit mode of the detail panel
+    │   owns: selectedId, search, isSplit, pane
     │
     ├── EquipmentSummaryBar                        usage sentence + search
     │
@@ -155,21 +162,25 @@ ClientProfileView                                  (existing, one line changes)
     │   └── MachineRailItem  × n                   memoised
     │       └── NoteIndicator
     │
-    └── MachineDetailPanel                         right pane, own scroller
-        ├── DetailHeader                           name, class chip, back btn,
-        │                                          NoteIndicator
-        ├── PrescriptionCard                       start / current / delta
-        │   └── WeightUpdatePanel                  inline, replaces the modal
-        ├── SettingsCard                           current values, read mode
-        │   └── SettingsEditor                     catalog-driven fields
-        │       ├── SettingField × n               ghosted placeholders
-        │       └── AuditReasonField               asked when values change, never required
-        ├── SetupGuide                             catalog cues, collapsible
-        ├── MachineNotes                           list + composer
-        │   └── NoteRow × n
-        └── ChangeHistory                          settingHistory, newest first
+    └── MachineMenuBody (inline)                   right pane, own scroller,
+        │                                          in a leave scope
+        │                                          (features/machine-menu)
+        ├── MenuHeader                             names, Last time, Back
+        ├── SafetyStrip                            Critical notes, WatchOutCard,
+        │                                          the floor's notes (FloorNoteCard)
+        ├── DialTiles                              the settings: ±, positions,
+        │                                          the change strip, Undo
+        ├── MenuNotes                              one note box, the list, threads
+        ├── MachineTimeline                        the Staircase
+        ├── SetupGuide                             catalog cues, folded
+        └── SettingChanges                         settingHistory, newest first
 
 ```
+
+The pane's cards before the machine menu (`MachineDetailPanel`,
+`PrescriptionCard`, `SettingsCard`, `MachineNotes`, `ChangeHistory`,
+`MachineUsageCard`, `LoadProgressionCard`) retired with it on Oct 4 2026;
+what replaced each, and why, is the machine menu's README → "What retired".
 
 ### 3.1 Files
 
@@ -180,21 +191,20 @@ ClientProfileView                                  (existing, one line changes)
 | `mutations.ts` | Every Firestore write this tab makes, in one place |
 | `equipment.tokens.css` | Semantic colours, light + dark |
 | `equipment.css` | Layout, sticky rails, drill-in transition |
-| `EquipmentTab.tsx` | Shell, selection state, responsive mode |
+| `EquipmentTab.tsx` | Shell, selection state, responsive mode; the right pane is the machine menu's body, inline (`menuHost`) |
 | `EquipmentSummaryBar.tsx` | Usage sentence + search |
 | `MachineRail.tsx` | Sectioned list + `MachineRailItem` |
-| `MachineDetailPanel.tsx` | Right pane composition |
-| `PrescriptionCard.tsx` | Weights + inline `WeightUpdatePanel` |
-| `SettingsCard.tsx` | Read + `SettingsEditor` + `AuditReasonField` |
-| `SetupGuide.tsx` | Catalog setup / execution cues |
-| `MachineNotes.tsx` | Notes list + composer |
-| `NoteIndicator.tsx` | The three-state icon |
-| `ChangeHistory.tsx` | `machines/{id}/settingHistory` for this client |
-| `MachineUsageCard.tsx` | First / times / last performed + progression (§3.7) |
+| `SetupGuide.tsx` | Catalog setup / execution cues (`part`: the whole guide, or its set-up or execution half) |
+| `NoteIndicator.tsx` | The note icon, in the one note key (§2.6) |
+| `WatchOutCard.tsx` | The client's clinical watch-outs for one machine, quoted from the matrix (the machine menu's safety strip draws it compact) |
+| `FloorNoteCard.tsx` | The studio's notes on the unit and the Relay flag (`useFloorNote`, the one read; `FloorNoteLines`, the lines the safety strip draws) |
+| `machine-notes.ts` | Notes about the client on one machine, as ONE list (`machineNotesFor`, `machineNoteLoudness`) |
+| `useMachineJournal.ts` | The client's machine notes from the journal (`machineJournalOf` over a host's stream, or its own read for a host that has none) |
+| `setting-suggestions.ts` · `useMachineTrend.ts` | The height-band line in an empty dial's editor, from `machineTrends/{id}` (one read per machine, cached) |
 | `useMachineStats.ts` | Reads `client.machineStats`; one-time history backfill |
-| `ClientMachineWindow.tsx` | The profile's one machine window (§3.8) |
-| `LoadProgressionCard.tsx` · `progression.ts` | Load per session, performed sets only (§3.8) |
 | `author.ts` | Who a write is attributed to (the Auth uid) |
+
+Retired with the machine menu (Oct 4 2026): `MachineDetailPanel`, `PrescriptionCard`, `SettingsCard`, `MachineNotes`, `ChangeHistory`, `MachineUsageCard`, `ClientMachineWindow`, `LoadProgressionCard` · `progression.ts`, and `MachineSheet`, the session's sheet that lived here too.
 
 ### 3.2 The `EquipmentMachine` adapter — why it exists
 
@@ -230,7 +240,7 @@ ClientProfileView
         ├─ adapters.toEquipmentMachines(...)  ──►  EquipmentMachine[]
         ├─ adapters.summarise(...)            ──►  EquipmentSummary
         │
-        └─ mutations.saveWeights / saveSettings / addNote / deleteNote
+        └─ mutations.saveSettings / addMachineNote   (from the machine menu's body)
                  │
                  ├─► clientMachineSettings/{clientId}_{machineId}   (merge)
                  ├─► machines/{machineId}/settingHistory            (audit)
@@ -250,7 +260,7 @@ cannot be forgotten by a future call site.
 |---|---|
 | Settings changed with an audit reason | `kind: "equipment"`, `machineId`, body = `"Gap 8 → 9. Needs more ROM."`, importance `standard` |
 | Machine note added | `kind: "equipment"`, `machineId`, body = the note |
-| Machine note flagged for maintenance | same, importance `critical` — which puts it in the **pre-session briefing** |
+| Machine note flagged for maintenance | same, importance `critical` — which puts it in the **pre-session briefing**. *The checkbox retired with the old notes card (Oct 4 2026); no screen passes `isMaintenance` now, and old entries still read as Critical* |
 | Machine note from the machine menu (Oct 4 2026) | filed by what it is for (`storedNoteOf`: kind, category, body parts) at the loudness the note box chose |
 | Weight updated | **no journal entry** |
 
@@ -281,8 +291,11 @@ either only through `settleOrQueue` (`features/session-record/finish-wait.ts`).
 Retired. `SetupPromptDialog` opened before the old performance entry pop-up
 on a machine with nothing recorded; when that pop-up lost its trigger the
 prompt died with it, and both files were deleted on Oct 2 2026. The machine
-sheet's own first-time section (`firstTime`, "Nothing recorded on this
-machine" unless her whole story is in Journey) does the job now.
+menu's first-time state does the job now (Oct 4 2026; it was the machine
+sheet's `firstTime` section before): with nothing recorded in what was read
+and no settings saved, the set-up guide's set-up part opens above the tiles,
+and the header says `noMachineHistoryLine` ("Nothing recorded on this
+machine" unless the client's whole story is in Journey).
 
 ### 3.6 Deliberately left for later
 
@@ -298,6 +311,14 @@ machine" unless her whole story is in Journey) does the job now.
 Each machine now carries **Date first performed**, **Times performed** and
 **Progression %** — in the rail as a `+29%` chip and a quiet `10×`, in the
 detail pane as the History card under the prescription.
+
+*Since the machine menu (Oct 4 2026) the detail pane's History card
+(`MachineUsageCard`) is gone: the pane is the machine menu's body, whose count
+is the performed sessions in the columns read and whose green % is
+`machine-menu/progress-figure.ts` (from the starting weight on file, AJ's
+Q2 (a)). The rail's `+29%` chip still reads `usage.progressionPct` below, from
+the first load performed: a second progress definition beside the menu's,
+left open for AJ (the round document's open items).*
 
 Where the numbers come from, in order of trust:
 
@@ -324,6 +345,12 @@ stays muted — a `0%` after ten sessions is a plateau worth seeing, so it is
 not hidden.
 
 ### 3.8 One machine window (profile round, Sep 2026)
+
+*Retired on Oct 4 2026: every machine tap on the profile now opens the
+machine menu (`features/machine-menu`), the same card the session opens, and
+`ClientMachineWindow`, `LoadProgressionCard` and `progression.ts` are gone
+(the Staircase's model absorbed `progression.ts`). Kept below as the history
+of why there is one machine screen.*
 
 Tapping a machine on the profile — its name on the Journey grid, or its row
 in Routine A / B — used to open `components/MachineSettingsDashboardModal`, a
@@ -354,6 +381,8 @@ with the full-screen chart that last used it (Oct 2 2026: neither had a door).
 
 AJ (the Atlas answers): notes about her on one machine live in her journal and show on the machine sheet. A new machine note is a journal entry carrying `machineId` and nothing else (`addMachineNote`; only a host with no journal context still writes the old `clientMachineSettings.machineNotes` list). Every reader takes `machine-notes.ts` (`machineNotesFor`, `hasImportantMachineNote`): her journal's notes on that machine, not archived, plus the old list's items with no journal copy, so a double-written note shows once and archiving its journal copy takes it off the sheet. `useMachineJournal` reads her journal with the same query `useClientJournal` streams (one shared listener, the existing index). Removing a journal note archives it. Programming → Setup's bulk save still writes its note to the old list (an atomic batch), which the one list reads.
 
+*Since the machine menu (Oct 4 2026) the sheet is the machine menu, in both doors: its Notes block lists the one list (the open notes grouped Open · Standing context · Resolved, an old-list note with no journal copy read only, settings copies left out), and the grid, the phone card and the rail draw how loud a machine's notes are from it (`machineNoteLoudness`, the one note key). A note written there is filed by what it is for (`storedNoteOf`) at the loudness the Loudness control chose.*
+
 ## The floor's note on this machine, in the session (Oct 3 2026)
 
 *Since AJ's answer 2A the same day, the floor's notes are one dated list per
@@ -363,6 +392,13 @@ of its own: the Enterprise edition refuses single-field index settings), each
 with its latest update, at most four, then the
 old Studio notes below while nobody has copied them into the list. The text
 below is how it began.*
+
+*Since the machine menu (Oct 4 2026) the same read feeds the menu's safety
+strip in BOTH doors (`useFloorNote` once per open, drawn by `FloorNoteLines`),
+so the profile reads it too. And a fault with the unit is written from the
+menu itself: its note box's "The machine itself" adds it to the studio's
+floor notes (`addFloorNote`), never a Relay flag (AJ accepted it with "ill take
+all your recommended"); flagging stays on Relay.*
 
 `FloorNoteCard.tsx`, on the session's machine sheet under the watch-outs. A
 studio's own knowledge of the unit in its building (`studios/{s}/machineNotes/

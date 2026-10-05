@@ -222,7 +222,7 @@ Seventeen `View` values are routed. Rank is the floor-loop rank from §1.4 the s
 
 | Tab | Component | Shows |
 | --- | --- | --- |
-| **Journey** (default) | `RecentJourneyView` (`features/journey-grid`) | Sessions × machines grid, pinned to the newest session, with the cycling analytics column and the machine window |
+| **Journey** (default) | `RecentJourneyView` (`features/journey-grid`) | Sessions × machines grid, pinned to the newest session, with the cycling analytics column; a machine's name opens the machine menu (`features/machine-menu`, Oct 4 2026) |
 | **Programming** | `ProgrammingTab` (`features/client-profile`) — Routine A · Routine B · All Machines · Setup | The two prescriptions (`features/routines`; **the only place a routine is permanently changed**), every machine's settings and load (`features/equipment`), and machine fit's set-up (`features/machine-fit`) |
 | **Notes & Profile** (tab id `record`) | `ClientCodex` (`features/client-codex`) — the client codex, Sep 24 2026 | The whole non-training record as an Overview and six pages, below. It always opens on the Overview |
 | **Activity Archive** (tab id `clinical`) | `ClinicalHistoryTab` (`features/client-profile`) — Calendar · Sessions · Deep Dive · Reports | Every month since the first visit and the richer list (`features/client-history`), the Kaizen Deep Dive on request (`features/clinical-review`), and the shelf of filed progress reports |
@@ -342,7 +342,7 @@ The ownership rule is fixed (`docs/business/data-sources.md`): **Mindbody owns i
 | Renewal conversations, stage, outcome | Journey | Trainers and leaders; outcomes also by the job | `studios/{s}/renewals/{cycle}`, `…/touches` |
 | Workouts | Journey | The iPad during the session | `sessions`, `exerciseLogs`; totals in `client.machineStats`, `client.trainerTally` |
 | Machine settings per client | Journey | Trainers | `clientMachineSettings` |
-| Coaching notes, focuses, incidents | Journey | Journal composer, in-session notes, the machine sheet | `journalEntries`, `clientFocuses` |
+| Coaching notes, focuses, incidents | Journey | Journal composer, in-session notes, the machine menu | `journalEntries`, `clientFocuses` |
 | Check-ins and how the client felt | Journey | The briefing and the Wrap-up | fields on `sessions`; `progressReports` (`isCheckInOnly`) |
 | InBody body composition | InBody | Typed in from the printout | `clients/{id}/inbodyScans`; summary on `client.inbodySummary` |
 | History before Journey | FileMaker | The legacy importer now; the full import after beta launch | `sessions`, `exerciseLogs` |

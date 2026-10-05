@@ -87,6 +87,11 @@ If any of these is wrong, stop and fix it before continuing — everything downs
 record items in **Round 14** instead. The Body, Goals, Assessment, Admin and
 "Portrait, record tab" items below describe the old long scroll.*
 
+*Since the machine menu (Oct 4 2026) a machine opens the machine menu, the
+same card in a session and on the profile, and a setting's reason is asked,
+never required: walk **Round 55** instead of the two machine-window items
+below.*
+
 - [ ] **Tap all four tabs twice**, then open a machine from the Journey grid, close it, and tap the SAME machine again. The machine window opens both times.
 - [ ] **Journey:** no "Recent journey" caption, no blue Latest column. Scroll the grid left: older sessions appear on their own and the rail says "Start of history" at the end. The Active Session grid still shows its Today and Latest columns.
 - [ ] **Machine window on a client with a disc or knee flag:** the watch-out card leads; change a setting — it asks for a reason and the change appears in the history and the journal.
@@ -2829,3 +2834,31 @@ Round document: `docs/rounds/2026-10-04-navy-frame.md`. On an iPad, upright and 
 - [ ] Learning → Catalog and a machine's page, and the routine builder: navy in dark, the worked muscles in the logo blue.
 - [ ] Walk notes for AJ: is the 3:1 border on cards and placeholders too heavy in dark (Notes & Profile, the Calendar day view)? Does every field and outline button read as a lighter box in dark (the input fill)? FORD pillars and Pulse's traffic lights in dark? The profile header band in light? In light, does an in-session card stand out in your own column? Is light still "so bright" (the round document has a dimmer step ready)?
 - [ ] Set light, then sign out and sign in again: the app comes back dark (the default), whatever the last person chose.
+
+## Round 55 — The machine menu · *Oct 4 2026, branch `oct4/machine-menu`*
+
+Round document: `docs/rounds/2026-10-04-machine-menu.md`; the card is `src/features/machine-menu/README.md`. On an iPad upright (the 820-wide iPad Air or an 11-inch, where the card is about 760 wide), then a 13-inch upright (1024 wide), then on its side; in light and in dark; then on a phone. Pick a client with a long history on Leg Press, one with a Critical note on a machine, and one who is new to a machine.
+
+- [ ] **The session door.** Start a session and tap a machine's name on the grid: one centred card, titled with the machine and the client's display name (no "· None", no height, no age). Close it and tap the SAME name again: it opens again. The Now Bar's flag opens the same card.
+- [ ] **The order in a session:** the safety strip (only when there is something), the settings, then Notes right under them, then "How {name} has done here", then Set-up guide and Setting changes, folded.
+- [ ] **The profile door.** The same client's profile, Journey tab: tap the machine's name. The same card, with Notes AFTER the chart and nothing else moved. Programming → Routine A, tap a row: the same card. Programming → All Machines: the right pane is the card's body, inline.
+- [ ] **Before Journey has loaded:** open the profile on Programming and tap a routine row first. The card says "Loading {name}'s sessions on Leg Press…", never "First time".
+- [ ] **A setting in two taps.** Tap + on Seat: the tile turns blue with "was 4", and the strip under the tiles says "Seat 4 → 5" and "Why? (optional)". Save without a reason: "Seat 5 saved · Undo". Tap Undo within ten seconds: Seat is back to 4, Setting changes lists both rows, and "Last changed" skips them.
+- [ ] **A big jump and an empty dial.** Tap the number itself: a row of positions with "now" under the saved one; pick one and Save. On the new client's machine an empty dial reads "Not set" with Use and "Studio standard N", and has no ±.
+- [ ] **Pain or discomfort.** Save a change with that chip: "Add a Health note" appears under the strip; tap it: the note box opens filed as Health · Injury or pain with the change already typed. Nothing makes you send it.
+- [ ] **A save offline.** Turn the Wi-Fi off (do NOT reload Journey while offline) and save a setting: "Seat 5 saved on this iPad · it sends when the Wi-Fi is back". Turn the Wi-Fi back on: Setting changes lists the row with its reason, and the card's Notes list does not show it as a note.
+- [ ] **The leave question.** Change a setting and, without saving, tap Close, then press Escape on a keyboard if one is attached, then tap outside the card: each asks "You have unsaved changes to Leg Press settings for {name}. Leave without saving?". Keep editing keeps the change; Leave drops it. On All Machines, tap another machine with a change unsaved: it asks first.
+- [ ] **A note about the client, in a session.** Type in the note box: About {name}, Filed as Coaching & equipment · Set-up, the Loudness at Note; Add note: it heads the list at once. Type another and leave it unsent, then Finish: the Wrap-up offers it as the session's note.
+- [ ] **A note about the machine itself.** Switch About to "The machine itself": the title says "{Studio}'s notes on Leg Press · everyone at {Studio} sees it", and the button "Add to {Studio}'s notes". Add one: Learning → Catalog → Leg Press shows it in the studio's notes, and the client's Notes do not. Type another, leave it unsent, and Finish: the Wrap-up offers "Add to {Studio}'s notes" or Drop it.
+- [ ] **A Critical note on the machine** leads the safety strip. Scroll down: the header shows "1 thing to know first"; tap it: back to the strip. On the grid the machine's name carries the crimson triangle (a Heads up: the plum circle), never the red of the kaizen ring.
+- [ ] **The Staircase.** On the long history: the newest 12 columns (13 on the 13-inch, 10 in landscape, 5 on a phone), the weight as steps, the reps in the grid's own boxes with the star and the ring. Tap a column: the box above fills (the day, the trainer's initials, the set, the settings as saved, one event) and the chart does not move. ‹ › step one session and cross pages; ‹ Older / Newer › page; the strip under the chart takes a tap and a drag.
+- [ ] **Load older.** At the oldest page, ‹ Older becomes Load older: "Loading…", then older columns; once every session is read, the "First in Journey" wall. Offline, it says "Can't load older sessions offline". Try it in a session and on the profile.
+- [ ] **A long break** is a folded column marked "7 wk" (or "10 d"); its words say "weeks away" only for a client whose whole story is in Journey, else how many visits fell in between, or plain dates.
+- [ ] **Every session and Weight by weight** open under the chart, in both doors.
+- [ ] **A watched session.** On a second iPad, Watch session on the running session and tap a machine's name: the card is read only (values, no buttons, no note box), and Last time ends "Watching {trainer}'s session, read only".
+- [ ] **The Now Bar's figure.** On a machine with a starting weight on file the Now Bar says "Starting weight 80 lb" and a green +% only when the weight is up; the card's readout says the same figure.
+- [ ] **Correct the starting weight.** Programming → Setup → Set up, on a machine with a start: "Starting weight 84 lb" with Correct the starting weight. Step to 80 and Save. The card's readout and the Now Bar both say "Starting weight 80 lb", and the card's Setting changes lists "Starting weight 84 → 80 lb". Check shows no such button.
+- [ ] **On its side** (landscape): the safety strip full width, then two columns: the settings two tiles a row with Notes under them in a session (at the foot of that column on the profile), and the chart on the right.
+- [ ] **A phone:** the card full width, one tile a row, five columns on the chart, the box above the chart growing instead of cutting words.
+- [ ] **Light and dark:** Save and Add note are the logo orange with navy words; a changed tile is blue; no word you need is in faint grey; the set-up lane uses the sliders mark, never the wrench.
+- [ ] **Names:** a long machine name and a long client name wrap in the header and the chart's heading, never cut short.
