@@ -560,6 +560,13 @@
 
 /* ---------- Buttons -------------------------------------------------- */
 
+/* The button voice, 14/700 in the label's own capitalisation, as every other
+   room's button speaks it (type and depth, phase 14, Oct 4 2026; AJ's 1A:
+   capitals are for places only). It was 12px/800 capitals at 0.06em. Every
+   AdminButton's words are written in sentence case, so nothing reads
+   differently but the shouting: measured from the font, a label is about 12%
+   NARROWER in this voice ("Approve and create the account" 252px -> 224px),
+   so nowrap never pushes one out of its row. */
 .adm-btn {
   display: inline-flex;
   align-items: center;
@@ -567,10 +574,11 @@
   gap: 7px;
   min-height: 40px;
   padding: 0 14px;
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 14px;
+  font-weight: 700;
+  /* Said, not inherited: preflight hands a button its parent's tracking. */
+  letter-spacing: 0;
+  text-transform: none;
   border-radius: 12px;
   border: 1px solid transparent;
   cursor: pointer;
@@ -595,15 +603,15 @@
 
    The logo orange with navy words (6.05:1), the same in both modes, as the
    Hub's Start (the Navy Frame, Oct 4 2026). No white words sit on any
-   orange: white on the light --adm-hero is 3.99:1, under AA for a 12px
-   uppercase label. --adm-hero stays where it belongs: accent bars, icon
+   orange: white on the light --adm-hero is 3.99:1, under AA for a 14px
+   label. --adm-hero stays where it belongs: accent bars, icon
    washes, chart marks. The fill is restated on :hover rather than darkened,
    because an iPad keeps :hover after a tap and a darker orange would lower
    the navy label's contrast at the moment it is aimed at.
 
    Go's depth, not Go's words (type and depth, phase 8, Oct 4 2026): Go's
-   short orange glow and white top light, and a press, in the button voice,
-   14/700 in ordinary capitalisation. The slanted capitals are Start
+   short orange glow and white top light, and a press, in the button voice
+   every .adm-btn speaks (phase 14). The slanted capitals are Start
    session's alone. */
 .adm-btn--hero,
 .adm-btn--hero:not(:disabled):hover {
@@ -612,10 +620,6 @@
 }
 .adm-btn--hero {
   box-shadow: var(--adm-glow-go), var(--adm-go-light);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: none;
 }
 
 /* Solid blue: a blue-tinted drop and a top light. No gradient, no dark foot. */
@@ -678,12 +682,13 @@
    floor ("nothing tappable under 40px", CLAUDE.md) — and it is not a rare
    control: it is the button on the catalog rows, the Overview's panels and
    the attendance watch, all of them operated one-thumbed on an iPad while
-   the other hand holds it. Small here means the type and the padding, never
-   the target. */
+   the other hand holds it. Small here means the padding, never the target
+   and never the voice: since phase 14 of type and depth (Oct 4 2026) its
+   words are the button voice's 14/700 too (they were 11px capitals, and a
+   label in this voice is within 2px of that width). */
 .adm-btn--sm {
   min-height: 40px;
   padding: 0 10px;
-  font-size: 11px;
 }
 
 .adm-btn--icon {
@@ -1887,13 +1892,19 @@
   gap: 10px;
 }
 
+/* The warn colour is a straight 3px band painted as the first background
+   layer (type and depth, phase 14, Oct 4 2026; the plan's rule 3): a 3px
+   border-left on a rounded box tapered into a crescent at both corners. The
+   2px it took is in the padding, so the words stay where they were. */
 .adm-limbo {
   border: 1px solid var(--adm-border);
-  border-left: 3px solid var(--adm-warn);
+  border-left-color: var(--adm-warn);
   border-radius: var(--adm-radius);
-  background: var(--adm-surface);
+  background:
+    linear-gradient(var(--adm-warn), var(--adm-warn)) left / 3px 100% no-repeat border-box,
+    var(--adm-surface) padding-box;
   box-shadow: 0 1px 2px var(--adm-shadow);
-  padding: 14px;
+  padding: 14px 14px 14px 16px;
 }
 
 .adm-limbo__head {

@@ -1919,7 +1919,7 @@ export function ClientProfileView({
           <div className="bg-card p-8 text-foreground space-y-3">
             <div
               className={cn(
-                "w-12 h-12 rounded-2xl flex items-center justify-center mb-2 transition-all",
+                "w-12 h-12 rounded-2xl flex items-center justify-center mb-2 transition-colors",
                 isDiscardingActiveSession
                   ? "bg-red-500/20 text-red-500 animate-pulse"
                   : "bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.4)]",

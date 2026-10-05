@@ -116,16 +116,20 @@
   box-shadow: var(--cat-glow-live), var(--cat-solid-light);
 }
 
-/* Saved and Couldn't save: tints, which lift without the white top light. */
+/* Saved and Couldn't save: tints, which lift without the white top light.
+   A tint that lifts keeps a 3:1 edge in its own ink (type and depth, phase
+   14, Oct 4 2026; AJ's 2A): Saved had none, and Couldn't save drew a 32%
+   pink in dark (under 3:1). The ink is 5.5:1 on the card in light and 8.4:1
+   in dark (ok), 5.3:1 and 6.0:1 (warn). */
 .cat__btn--ok {
-  border-color: transparent;
+  border-color: var(--cat-ok);
   background: var(--cat-ok-fill);
   color: var(--cat-ok);
   box-shadow: var(--cat-elev-1);
 }
 
 .cat__btn--error {
-  border-color: var(--cat-warn-border);
+  border-color: var(--cat-warn);
   background: var(--cat-warn-fill);
   color: var(--cat-warn);
   box-shadow: var(--cat-elev-1);

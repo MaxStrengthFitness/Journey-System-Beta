@@ -251,15 +251,21 @@
 /* The one place on this screen allowed to shout. A trainer is ten seconds
    from loading a machine; a contraindication that reads like a form label has
    failed at the only job it has. */
+/* Its colour is a straight 4px band painted as the first background layer
+   (type and depth, phase 14, Oct 4 2026; rule 3): a 4px border-left on a
+   rounded box tapered into a crescent at both corners. The 3px it took is
+   in the padding. */
 .br__critical {
   display: flex;
   flex-direction: column;
   gap: 6px;
   border: 1px solid var(--br-critical-border);
-  border-left: 4px solid var(--br-critical);
+  border-left-color: var(--br-critical);
   border-radius: var(--br-radius);
-  background: var(--br-critical-fill);
-  padding: 12px 14px;
+  background:
+    linear-gradient(var(--br-critical), var(--br-critical)) left / 4px 100% no-repeat border-box,
+    var(--br-critical-fill) padding-box;
+  padding: 12px 14px 12px 17px;
 }
 
 .br__critical .br__label { color: var(--br-critical); }
@@ -717,10 +723,13 @@
   flex-direction: column;
   gap: 6px;
   border: 1px solid var(--br-border);
-  border-left: 4px solid var(--br-warn);
+  border-left-color: var(--br-warn);
   border-radius: var(--br-radius);
-  background: var(--br-surface-2);
-  padding: 8px 12px 10px;
+  /* The warn edge as a straight 4px band (phase 14; rule 3), not a crescent. */
+  background:
+    linear-gradient(var(--br-warn), var(--br-warn)) left / 4px 100% no-repeat border-box,
+    var(--br-surface-2) padding-box;
+  padding: 8px 12px 10px 15px;
 }
 .br__headsup .br__label { color: var(--br-warn); }
 

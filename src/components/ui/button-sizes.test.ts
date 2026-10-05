@@ -31,8 +31,11 @@ import { buttonVariants } from "./button";
  *      fields keep their 3:1 edge and sink into a well (never bg-muted,
  *      which goes LIGHTER in dark).
  *   6. A shadow in a className is shadow-(--token) or a named size, never
- *      shadow-[var(...)...]: tailwind-merge files that as a shadow COLOUR,
- *      so a caller's shadow-none would not remove it.
+ *      an arbitrary shadow whose value starts with var(: tailwind-merge
+ *      files that as a shadow COLOUR, so a caller's shadow-none would not
+ *      remove it. (Never spelled out here as a class: Tailwind reads this
+ *      file's words for class names, and a made-up one breaks its CSS
+ *      optimiser with two warnings at every build. Type and depth, phase 14.)
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -390,7 +393,7 @@ describe("no caller shrinks a Button under 40px or animates its shadow", () => {
   });
 });
 
-describe("a className never writes a shadow as shadow-[var(...)]", () => {
+describe("a className never writes an arbitrary shadow that starts with var(", () => {
   it("tailwind-merge would file it as a colour; use shadow-(--token)", () => {
     const bad = tsxFiles(SRC).flatMap((p) => {
       // Comments may name the trap; code may not. A block comment keeps its

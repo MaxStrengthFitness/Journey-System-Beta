@@ -234,12 +234,19 @@ textarea.nc-input { resize: vertical; }
 /* THE TO-FILE TRAY                                                    */
 /* ------------------------------------------------------------------ */
 
+/* The unfiled colour is a straight 3px band painted as the first background
+   layer (type and depth, phase 14, Oct 4 2026; rule 3): a 3px border-left on
+   a rounded box tapered into a crescent at both corners. The head's own fill
+   starts 2px in, so the band runs the full height beside it. */
 .nc-sweep {
   flex: none;
   border: 1px solid var(--eq-border);
-  border-left: 3px solid var(--ford-unfiled);
+  border-left-color: var(--ford-unfiled);
   border-radius: var(--eq-radius);
-  background: var(--eq-surface);
+  background:
+    linear-gradient(var(--ford-unfiled), var(--ford-unfiled)) left / 3px 100% no-repeat border-box,
+    var(--eq-surface) padding-box;
+  padding-left: 2px;
   color: var(--eq-ink);
   overflow: hidden;
 }

@@ -53,16 +53,25 @@
  * centres its own text (docs/KNOWN-TRAPS.md, Layout and CSS; FORD round).
  */
 .cfl-toggle {
+  /* The tone is a straight 3px band painted as the first background layer
+     (type and depth, phase 14, Oct 4 2026; the plan's rule 3: a wide
+     border-left on a rounded box tapers into a crescent at its corners).
+     The 2px it took is in the padding. A state sets --cfl-band and
+     background-color, never the background shorthand, which would wipe the
+     band. */
+  --cfl-band: var(--eq-border);
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 10px;
   min-height: 44px;
-  padding: 7px 10px 7px 9px;
+  padding: 7px 10px 7px 11px;
   border-radius: 10px;
   border: 1px solid var(--eq-border);
-  border-left: 3px solid var(--eq-border);
-  background: var(--eq-surface-2);
+  border-left-color: var(--cfl-band);
+  background:
+    linear-gradient(var(--cfl-band), var(--cfl-band)) left / 3px 100% no-repeat border-box,
+    var(--eq-surface-2) padding-box;
   color: var(--eq-ink-2);
   font-size: 14px;
   font-weight: 700;
@@ -72,8 +81,8 @@
   position: relative;
   cursor: pointer;
 }
-.cfl-toggle[data-tone="alert"] { border-left-color: var(--eq-alert); }
-.cfl-toggle[data-tone="caution"] { border-left-color: var(--eq-warn); }
+.cfl-toggle[data-tone="alert"] { --cfl-band: var(--eq-alert); }
+.cfl-toggle[data-tone="caution"] { --cfl-band: var(--eq-warn); }
 .cfl-toggle:focus-visible, .cfl-chip__x:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
 .cfl-toggle__mark {
   display: grid;
@@ -92,11 +101,11 @@
   color: var(--eq-ink-muted);
   overflow-wrap: anywhere;
 }
-.cfl-toggle--on { border-color: var(--eq-live); background: var(--eq-live-fill); color: var(--eq-live-text); }
+.cfl-toggle--on { --cfl-band: var(--eq-live); border-color: var(--eq-live); background-color: var(--eq-live-fill); color: var(--eq-live-text); }
 .cfl-toggle--on .cfl-toggle__mark { border-color: var(--eq-live); background: var(--eq-live); color: var(--eq-live-on); }
-.cfl-toggle--on[data-tone="caution"] { border-color: var(--eq-warn); background: var(--eq-warn-fill); color: var(--eq-warn); }
+.cfl-toggle--on[data-tone="caution"] { --cfl-band: var(--eq-warn); border-color: var(--eq-warn); background-color: var(--eq-warn-fill); color: var(--eq-warn); }
 .cfl-toggle--on[data-tone="caution"] .cfl-toggle__mark { border-color: var(--eq-warn); background: var(--eq-warn); color: var(--eq-surface); }
-.cfl-toggle--on[data-tone="alert"] { border-color: var(--eq-alert); background: var(--eq-alert-fill); color: var(--eq-alert); }
+.cfl-toggle--on[data-tone="alert"] { --cfl-band: var(--eq-alert); border-color: var(--eq-alert); background-color: var(--eq-alert-fill); color: var(--eq-alert); }
 .cfl-toggle--on[data-tone="alert"] .cfl-toggle__mark { border-color: var(--eq-alert); background: var(--eq-alert); color: var(--eq-surface); }
 
 /* The severity word: short, boxed, never wraps. */

@@ -114,7 +114,7 @@ export function FeedbackDrawer({
                 onClick={() => setKind(k)}
                 aria-pressed={kind === k}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1.5 h-16 sm:h-20 rounded-2xl border transition-all font-black uppercase text-[9px] sm:text-[10px] tracking-widest",
+                  "flex flex-col items-center justify-center gap-1.5 h-16 sm:h-20 rounded-2xl border transition-colors font-black uppercase text-[9px] sm:text-[10px] tracking-widest",
                   kind === k
                     ? "bg-primary border-primary text-primary-foreground shadow-sm"
                     : "bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted",

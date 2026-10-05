@@ -122,7 +122,7 @@ export const ActiveSessionTimer = memo(function ActiveSessionTimer({
   return (
     <div
       className={cn(
-        "flex items-center transition-all backdrop-blur-md shrink-0 select-none",
+        "flex items-center transition-colors backdrop-blur-md shrink-0 select-none",
         isMobile
           ? "gap-2 bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800/80 px-2.5 py-1 rounded-xl shadow-sm"
           : "gap-3.5 bg-slate-100/95 dark:bg-slate-900/95 border-2 border-slate-200/90 dark:border-slate-800/90 px-4 py-2 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
@@ -136,7 +136,7 @@ export const ActiveSessionTimer = memo(function ActiveSessionTimer({
             onTogglePause();
           }}
           className={cn(
-            "flex items-center justify-center transition-all cursor-pointer select-none active:scale-95 shrink-0",
+            "flex items-center justify-center transition-[color,background-color,border-color,transform] cursor-pointer select-none active:scale-95 shrink-0",
             isMobile ? "w-7 h-7 rounded-lg" : "w-10 h-10 rounded-xl",
             isPaused
               ? "bg-cta hover:bg-cta text-cta-foreground shadow-[0_0_12px_var(--cta)] shadow-cta/40"

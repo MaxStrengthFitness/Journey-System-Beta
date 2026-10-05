@@ -106,6 +106,11 @@ const FILES = [
   "features/hub-opportunities/layer-switch.css",
   // Phase 13: the Active Session (its grid, Now Bar, session bar and sheets).
   "features/journey-grid/journey-grid.css",
+  // Phase 14: the crescents turned into bands (each band's colour is a
+  // custom property its states set: --cfl-band, --fit-band, --rb-row-band,
+  // --sr-anchor-band, --cr-rhythm-band).
+  "features/clinical-flags/clinical-flags.css",
+  "features/client-notes/notes.css",
 ];
 
 function filesUnder(dir: string, ext: RegExp, out: string[] = []): string[] {

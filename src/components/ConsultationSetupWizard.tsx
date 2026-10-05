@@ -98,7 +98,7 @@ export function ConsultationSetupWizard({
                   key={g}
                   onClick={() => setGender(g)}
                   className={cn(
-                    "flex-1 py-4 sm:py-5 px-3 rounded-2xl font-black uppercase tracking-tight transition-all duration-200 border-2 text-sm sm:text-base",
+                    "flex-1 py-4 sm:py-5 px-3 rounded-2xl font-black uppercase tracking-tight transition-[color,background-color,border-color,transform] duration-200 border-2 text-sm sm:text-base",
                     gender === g
                       ? "bg-primary text-primary-foreground border-primary shadow-[0_0_20px_var(--primary)] shadow-primary/25 scale-102 sm:scale-105"
                       : "bg-bg-dark-2 text-ink-d3 border-div-d hover:border-white/20 hover:bg-white/5",
@@ -138,7 +138,7 @@ export function ConsultationSetupWizard({
                     key={s}
                     onClick={() => setSkillLevel(s)}
                     className={cn(
-                      "flex-1 py-4 sm:py-5 px-1 rounded-2xl font-black uppercase tracking-tight transition-all duration-200 border-2 text-xs sm:text-sm",
+                      "flex-1 py-4 sm:py-5 px-1 rounded-2xl font-black uppercase tracking-tight transition-[color,background-color,border-color,transform] duration-200 border-2 text-xs sm:text-sm",
                       skillLevel === s
                         ? "bg-primary text-primary-foreground border-primary shadow-[0_0_20px_var(--primary)] shadow-primary/25 scale-102 sm:scale-105"
                         : "bg-bg-dark-2 text-ink-d3 border-div-d hover:border-white/20 hover:bg-white/5",

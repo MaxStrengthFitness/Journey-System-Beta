@@ -302,7 +302,7 @@ export function ConsultationWizard({
                   <button
                     key={g}
                     onClick={() => setGender(g)}
-                    className={`flex-1 py-5 px-3 rounded-2xl font-black uppercase tracking-tight transition-all duration-200 border-2 ${
+                    className={`flex-1 py-5 px-3 rounded-2xl font-black uppercase tracking-tight transition-[color,background-color,border-color,transform] duration-200 border-2 ${
                       gender === g
                         ? "bg-[#115E8D] text-white border-[#115E8D] shadow-[0_0_20px_rgba(17,94,141,0.4)] scale-105"
                         : "bg-transparent text-[#94A3B8] border-white/10 hover:border-white/30 hover:bg-white/5"
@@ -492,7 +492,7 @@ export function ConsultationWizard({
                   <button
                     key={s}
                     onClick={() => setSkillLevel(s)}
-                    className={`flex-1 py-5 px-1 rounded-2xl font-black uppercase tracking-tight transition-all duration-200 border-2 text-sm ${
+                    className={`flex-1 py-5 px-1 rounded-2xl font-black uppercase tracking-tight transition-[color,background-color,border-color,transform] duration-200 border-2 text-sm ${
                       skillLevel === s
                         ? "bg-[#115E8D] text-white border-[#115E8D] shadow-[0_0_20px_rgba(17,94,141,0.4)] scale-105"
                         : "bg-transparent text-[#94A3B8] border-white/10 hover:border-white/30 hover:bg-white/5"

@@ -93,7 +93,7 @@ export function StrongConfirmationModal({
             <button
               onClick={handleConfirm}
               disabled={!isEnabled}
-              className={`flex-1 px-4 py-3 rounded-lg font-bold flex flex-row items-center justify-center gap-2 transition-all ${
+              className={`flex-1 px-4 py-3 rounded-lg font-bold flex flex-row items-center justify-center gap-2 transition-colors ${
                 isEnabled
                   ? "bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20"
                   : "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed"

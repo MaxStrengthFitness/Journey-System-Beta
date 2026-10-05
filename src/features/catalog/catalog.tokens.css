@@ -52,7 +52,6 @@
         equipment.tokens.css original. ─────────────────────────────────── */
   --cat-warn:        #a2457e;   /* 5.3:1, 4.8:1 on its fill */
   --cat-warn-fill:   #f4e9f0;
-  --cat-warn-border: #a2457e;   /* 5.3:1 */
 
   --cat-focus-ring: var(--cat-live);
 
@@ -90,7 +89,6 @@
 
   --cat-warn:        #d98cbd;   /* 6.0:1 on surface */
   --cat-warn-fill:   #402846;
-  --cat-warn-border: rgba(217, 140, 189, 0.32);
 
   /* Depth in dark: the raised fill a step lighter than the card. */
   --cat-raised:      #203549;

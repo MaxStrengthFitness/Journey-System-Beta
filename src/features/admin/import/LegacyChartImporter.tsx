@@ -758,7 +758,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
             <button
               type="button"
               onClick={onComplete}
-              className="h-10 w-10 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-all shrink-0 shadow-sm"
+              className="h-10 w-10 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-colors shrink-0 shadow-sm"
               title="Back to Client Profile"
             >
               <ArrowLeft className="w-5 h-5 text-[#F06C22]" />

@@ -2101,7 +2101,7 @@ export function ClientProgressReportView({
                         })
                       }
                       className={cn(
-                        "p-4 rounded-2xl border-2 text-left transition-all",
+                        "p-4 rounded-2xl border-2 text-left transition-colors",
                         report.roadmap?.trackType === track.id
                           ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/20"
                           : "bg-slate-50 border-slate-100 text-slate-400 hover:border-slate-200",

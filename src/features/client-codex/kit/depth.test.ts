@@ -195,8 +195,11 @@ describe("a button is raised on its 3:1 edge (AJ's 2A), and presses in", () => {
     expect(decl(KIT, sel, "box-shadow")).toBe("var(--cx-press)");
   });
 
-  it("the blue tint keeps its 45% live edge and lifts; solid blue glows; quiet has no box", () => {
-    expect(decl(KIT, '.cx-btn[data-variant="live"]', "border-color")).toBe("var(--cx-live-line)");
+  // Phase 14 (Oct 4 2026): the tint's edge was the 45% live line, 2.3:1 on
+  // the card in light and 2.8:1 in dark. A raised control keeps a 3:1 edge
+  // (AJ's 2A), so it is the live ink, as every room's blue tint draws it.
+  it("the blue tint lifts on its own 3:1 live edge; solid blue glows; quiet has no box", () => {
+    expect(decl(KIT, '.cx-btn[data-variant="live"]', "border-color")).toBe("var(--cx-live)");
     expect(decl(KIT, '.cx-btn[data-variant="live"]', "box-shadow")).toBe("var(--cx-elev-1)");
     expect(decl(KIT, '.cx-btn[data-variant="solid"]', "box-shadow")).toBe("var(--cx-glow-live), var(--cx-solid-light)");
     expect(decl(KIT, '.cx-btn[data-variant="quiet"]', "box-shadow")).toBe("none");

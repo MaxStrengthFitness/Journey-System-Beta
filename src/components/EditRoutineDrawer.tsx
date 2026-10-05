@@ -585,7 +585,7 @@ export function EditRoutineDrawer({
                           : handleRequestSlot(slot)
                       }
                       className={cn(
-                        "h-11 px-5 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-2",
+                        "h-11 px-5 rounded-xl text-xs font-bold uppercase tracking-wider border transition-colors flex items-center gap-2",
                         activeSlot === slot
                           ? "bg-primary text-primary-foreground border-transparent shadow-sm shadow-primary/20"
                           : inactive

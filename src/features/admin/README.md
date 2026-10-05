@@ -157,6 +157,38 @@ Two contrast facts worth knowing before you style something:
 
 ---
 
+## Type and depth (Oct 4 2026)
+
+AJ: "sharp white boxes all over the place ... borders and headers just needs
+a little bit of weight and depth"; his answers "1a 2a 3b"
+(`docs/rounds/2026-10-04-type-and-depth.md`). What it means in the kit:
+
+- **A button speaks the button voice**, 14/700 in the label's own
+  capitalisation, like every other room's (phase 14). `.adm-btn` was 12px/800
+  capitals at 0.06em; it is one rule, so all 260 `AdminButton`s moved
+  together, `size="sm"` included (small means the padding, never the voice or
+  the target). With the capitals gone the words show as written, so a label
+  is written in sentence case: `src/type-voice.test.ts` reads every
+  `AdminButton`'s words and fails on "Save Order" or "SAVE" (a place, the
+  company, a system or an acronym may keep its capitals: My Studio, Journal,
+  Max Strength, Mindbody, MSF, CSV, URL).
+- **A quiet button is raised on its 3:1 edge** (`--adm-raised`,
+  `--adm-elev-1` and a white top light, on `--adm-border-strong`), presses
+  in with a transform, and lies flat when disabled; the hero takes Go's
+  orange glow in the button voice, never Go's slanted capitals (phase 8).
+- **A panel is an edge seen from outside and a short lift** (`--adm-edge`
+  with `background-clip: padding-box`, `--adm-elev-2`); its head has no band
+  and no rule, and its title is 17/700 in ink with a 32px icon square
+  (phase 10). A row inside a panel is divided by `--adm-divider`, never a box
+  in a box; an empty place is a well (`--adm-surface-2`, `--adm-elev-0`, no
+  dashes; phase 9).
+- **A coloured edge on a rounded box is a straight band** painted as the
+  first background layer, never a border wider than 1px (Today's stops,
+  Limbo's warn edge): a wide side border tapers into a crescent at the
+  corners. `src/elevation.test.ts` scans every stylesheet for one.
+
+---
+
 ## Touch
 
 The app runs on 10"–13" iPads on a gym floor. Nothing interactive is under

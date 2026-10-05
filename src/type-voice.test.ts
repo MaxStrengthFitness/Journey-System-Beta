@@ -33,6 +33,13 @@ import { describe, expect, it } from "vitest";
  *   6. No dialog or sheet title asks for the display face, a slant or
  *      capitals in its class list: the shared DialogTitle's voice (17/700)
  *      speaks, or a class whose rule is held here.
+ *   7. The panel heads the plan names (the codex's slot head, Settings, My
+ *      Profile, Operations, the machine sheet, the Calendar) are 17/700 with
+ *      no capitals (phase 14).
+ *   8. Operations' buttons speak the button voice every room speaks: 14/700
+ *      in the label's own capitalisation (phase 14; AJ's 1A, capitals are for
+ *      places only). With the capitals gone the words show as they are
+ *      written, so every AdminButton's label is held to sentence case too.
  *
  * The allow-lists are exact both ways: an entry that no longer slants (or
  * no longer exists) fails as well, so they shrink with the code. The plan's
@@ -525,5 +532,132 @@ describe("6. a dialog's or a sheet's title asks for no display face, slant or ca
     expect(title).toMatch(/text-\[17px\]/);
     expect(title).toMatch(/font-bold/);
     expect(hasSlant(title) || hasCaps(title) || hasDisplay(title)).toBe(false);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* 7. The panel heads the plan names                                    */
+/* ------------------------------------------------------------------ */
+
+const PANEL_HEADS: [file: string, selector: string, what: string][] = [
+  ["features/client-codex/kit/kit.css", ".cx-slot__head > .cx-eyebrow", "a Notes & Profile panel's title"],
+  ["features/settings/settings.css", ".stg-card__title", "a Settings card's title"],
+  ["features/admin/admin.css", ".adm-panel__title", "an Operations panel's title"],
+  ["features/trainer-profile/trainer-profile.css", ".tp-card__title", "a My Profile card's title"],
+  ["features/equipment/equipment.css", ".eq-card__title", "a machine sheet card's title"],
+  ["features/calendar/calendar.css", ".cal-card__title", "a Calendar card's title"],
+];
+
+describe("7. the panel heads the plan names speak the panel-title voice: 17/700, never in capitals", () => {
+  it.each(PANEL_HEADS)("%s %s", (file, selector, what) => {
+    const rules = rulesFor(file, selector);
+    const sizes = rules.flatMap((r) => declared(r.body, "font-size").map(sizeOf));
+    const weights = rules.flatMap((r) => declared(r.body, "font-weight").flatMap((w) => weightsOf(w)));
+    expect(sizes.at(-1), `${what}: size`).toBe(17);
+    expect(weights.at(-1), `${what}: weight`).toBe(700);
+    for (const r of rules) {
+      expect(capitals(r.body), `${what}: capitals`).toBe(false);
+      expect(slants(r.body), `${what}: slanted`).toBe(false);
+      expect(inDisplayFace(r.body), `${what}: the display face`).toBe(false);
+    }
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* 8. Operations' buttons: the button voice                             */
+/* ------------------------------------------------------------------ */
+
+describe("8. Operations' buttons speak the button voice, 14/700 in the label's own capitalisation", () => {
+  const ADMIN_CSS = "features/admin/admin.css";
+  const ADM_BTN = ALL_RULES.filter((r) => r.file === ADMIN_CSS && r.selectors.some((s) => /(^|\s)\.adm-btn(?![\w-]*__)/.test(s)));
+
+  it("every AdminButton draws .adm-btn, the one rule that sets the voice", () => {
+    const base = rulesFor(ADMIN_CSS, ".adm-btn").find((r) => r.prelude === ".adm-btn")!;
+    expect(declared(base.body, "font-size")).toEqual(["14px"]);
+    expect(declared(base.body, "font-weight")).toEqual(["700"]);
+    // Said, not inherited: preflight hands a button its parent's tracking.
+    expect(declared(base.body, "letter-spacing")).toEqual(["0"]);
+    expect(declared(base.body, "text-transform")).toEqual(["none"]);
+  });
+
+  it("no variant or size takes it back: no capitals, no tracking, no other size, nothing heavier than 700", () => {
+    expect(ADM_BTN.length).toBeGreaterThan(10);
+    const found: string[] = [];
+    for (const r of ADM_BTN) {
+      if (capitals(r.body)) found.push(`${r.prelude}: capitals`);
+      for (const v of declared(r.body, "letter-spacing")) if (v !== "0") found.push(`${r.prelude}: letter-spacing ${v}`);
+      for (const v of declared(r.body, "font-size")) if (v !== "14px") found.push(`${r.prelude}: font-size ${v}`);
+      for (const v of declared(r.body, "font-weight")) if (weightsOf(v).some((w) => w > 700)) found.push(`${r.prelude}: font-weight ${v}`);
+    }
+    expect(found).toEqual([]);
+  });
+
+  /** The words of every <AdminButton>: its JSX text and its string literals, its class lists left out. */
+  function adminButtonLabels(): { where: string; label: string }[] {
+    const out: { where: string; label: string }[] = [];
+    for (const file of TSX_FILES) {
+      const src = read(file);
+      let at = 0;
+      while ((at = src.indexOf("<AdminButton", at)) >= 0) {
+        let depth = 0;
+        let i = at;
+        for (; i < src.length; i++) {
+          const c = src[i];
+          if (c === "{") depth++;
+          else if (c === "}") depth--;
+          else if (c === ">" && depth === 0) break;
+        }
+        const where = `${file}:${src.slice(0, at).split("\n").length}`;
+        if (src[i - 1] === "/") {
+          at = i;
+          continue;
+        }
+        const close = src.indexOf("</AdminButton>", i);
+        const body = src.slice(i + 1, close).replace(/className=(?:"[^"]*"|\{[^{}]*\})/g, " ");
+        const text = body.replace(/<[^>]*>/g, " ").replace(/\{[^{}]*\}/g, " ").replace(/&apos;/g, "'").replace(/\s+/g, " ").trim();
+        if (text) out.push({ where, label: text });
+        for (const m of body.matchAll(/"([^"\n]*)"|`([^`\n]*)`/g)) out.push({ where, label: (m[1] ?? m[2]).replace(/\$\{[^}]*\}/g, "x") });
+        at = close;
+      }
+    }
+    return out;
+  }
+
+  /** Names the words may capitalise mid-label: a place (My Studio, Relay's Journal), the company, a system, an acronym, "I". */
+  const PROPER = /^(?:My Studio|Journal|Max Strength(?:'s)?|Mindbody|MSF|CSV|URL|I)\b/;
+
+  /** What in a label shows it was written for the capitals: a shouted word, or a word capitalised mid-phrase. */
+  function notSentenceCase(label: string): string[] {
+    const out: string[] = [];
+    // Each phrase starts again after an arrow, a middle dot or a colon (a place's path, a pair, a choice).
+    for (const phrase of label.split(/\s*[\u2192\u00B7:]\s*/)) {
+      const words = phrase.split(/\s+/).filter(Boolean);
+      for (let k = 1; k < words.length; k++) {
+        const rest = words.slice(k).join(" ");
+        if (PROPER.test(rest)) {
+          k += (rest.match(PROPER)![0].split(" ").length - 1);
+          continue;
+        }
+        if (/^[A-Z]{3,}\b/.test(words[k]) || /^[A-Z][a-z]/.test(words[k])) out.push(words[k]);
+      }
+      if (/^[A-Z]{3,}$/.test(words[0] ?? "") && !PROPER.test(words[0])) out.push(words[0]);
+    }
+    return out;
+  }
+
+  it("every AdminButton's label is written in sentence case, since nothing shouts it any more", () => {
+    const labels = adminButtonLabels();
+    expect(labels.length, "the scan reads the buttons").toBeGreaterThan(200);
+    const found = labels.flatMap(({ where, label }) => notSentenceCase(label).map((w) => `${where} "${label}": ${w}`));
+    expect(found).toEqual([]);
+  });
+
+  it("the case reader passes a sentence and a place, and catches a title or a shout", () => {
+    expect(notSentenceCase("Open My Studio \u2192 Studio")).toEqual([]);
+    expect(notSentenceCase("Use Max Strength's defaults")).toEqual([]);
+    expect(notSentenceCase("Add all x from the MSF standard")).toEqual([]);
+    expect(notSentenceCase("Dismiss: I know why")).toEqual([]);
+    expect(notSentenceCase("Save Order")).toEqual(["Order"]);
+    expect(notSentenceCase("SAVE")).toEqual(["SAVE"]);
   });
 });

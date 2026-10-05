@@ -3757,7 +3757,7 @@ export function WorkoutTrackerView({
         <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none">
           <div className="bg-card p-8 text-foreground space-y-3">
             <div
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-2 transition-all ${isDeletingSession ? "bg-red-500/20 text-red-500 animate-pulse" : "bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.4)]"}`}
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-2 transition-colors ${isDeletingSession ? "bg-red-500/20 text-red-500 animate-pulse" : "bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.4)]"}`}
             >
               {isDeletingSession ? (
                 <Loader2 className="w-6 h-6 animate-spin text-red-500" />
