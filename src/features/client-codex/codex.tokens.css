@@ -36,6 +36,8 @@
   --cx-surface:         var(--eq-surface);
   --cx-surface-2:       var(--eq-surface-2);
   --cx-surface-3:       var(--eq-surface-3);
+  /* Below the page in both modes: a well on the page ground (AJ's 1A). */
+  --cx-tray:            var(--eq-tray);
   --cx-line:            var(--eq-border);
   --cx-line-2:          var(--eq-border-strong);
 

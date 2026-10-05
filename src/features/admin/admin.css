@@ -841,6 +841,21 @@
   color: var(--adm-ink-muted);
 }
 
+/* On the PAGE GROUND (AJ's 1A, Oct 5 2026): an empty place that is a
+   screen's own line, not inside a panel (No studio, Nothing in Limbo, No
+   models recorded yet, a studio still to pick, the pipeline before its
+   first night), sinks into the tray, below the page in both modes; the well
+   tone is lighter than the page and read raised there. Its words take ink-2
+   (5.95:1 on the tray; the muted ink would read 4.42:1). Inside a panel, a
+   dialog or a sheet the well tone stays. */
+.adm-screen > .adm-empty,
+.ops-page > .adm-empty,
+.adm-pipeline > .adm-empty,
+.adm-fit__detail > .adm-empty {
+  background: var(--adm-tray);
+  color: var(--adm-ink-2);
+}
+
 .adm-empty__title {
   font-size: 13px;
   font-weight: 800;

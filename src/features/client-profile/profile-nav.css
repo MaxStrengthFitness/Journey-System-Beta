@@ -64,6 +64,9 @@
   --psub-highlight:     var(--eq-highlight);
   --psub-press:         var(--eq-press);
   --psub-border-strong: var(--eq-border-strong);
+  /* AJ's 1A (Oct 5 2026): the strip sits on the page ground, so it sinks
+     into the tray, below the page in both modes. */
+  --psub-tray:          var(--eq-tray);
 }
 
 .dark,
@@ -90,6 +93,7 @@
   --psub-highlight:     var(--eq-highlight);
   --psub-press:         var(--eq-press);
   --psub-border-strong: var(--eq-border-strong);
+  --psub-tray:          var(--eq-tray);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -116,6 +120,7 @@
     --psub-highlight:   var(--eq-highlight);
     --psub-press:       var(--eq-press);
     --psub-border-strong: var(--eq-border-strong);
+    --psub-tray:        var(--eq-tray);
   }
 }
 
@@ -399,13 +404,18 @@
    how two screens start disagreeing.
 
    A WELL (type and depth, phase 9, Oct 4 2026): the facts are information,
-   so the strip sinks into the well tone with its inner shadow, no edge. It
-   was a hairline box on the card's fill. Its words left 9.5-11.5px capitals
-   for the app's voices: the title is a label (14/700, ink-2, 7.0:1 on the
-   well), a chip 12/700 on the card's fill so it stands up out of the well,
-   the empty sentence 14px in the muted ink (5.2:1), and Edit a raised
-   button on the 3:1 edge. The strip is the same height: Edit's 40px sets
-   it, as before. */
+   so the strip sinks with the well's inner shadow, no edge. It was a
+   hairline box on the card's fill. Its words left 9.5-11.5px capitals for
+   the app's voices: the title is a label (14/700, ink-2), a chip 12/700 on
+   the card's fill so it stands up out of the well, the empty sentence
+   14px, and Edit a raised button on the 3:1 edge. The strip is the same
+   height: Edit's 40px sets it, as before.
+
+   ON THE PAGE GROUND, so the TRAY's tone (AJ's 1A, Oct 5 2026): the strip
+   sits in the sub-toggle's shell, which is painted the page, so the well
+   tone read raised there; the tray is below the page in both modes. The
+   title and the empty sentence read in ink-2 on it (5.95:1; the muted ink
+   would read 4.42:1). */
 .ptab-strip {
   display: flex;
   flex-wrap: wrap;
@@ -414,7 +424,7 @@
   padding: 10px 12px;
   border: 0;
   border-radius: 12px;
-  background: var(--psub-bg);
+  background: var(--psub-tray);
   box-shadow: var(--psub-elev-0);
 }
 .ptab-strip__title {
@@ -462,7 +472,7 @@
 .ptab-strip__none {
   font-size: 14px;
   font-weight: var(--fw-body);
-  color: var(--psub-ink-muted);
+  color: var(--psub-ink-2);
 }
 /* RAISED (type and depth, phase 9; the phase 8 recipe): a fill a hair
    lighter than the card, the contact lift and a white top light, on the 3:1

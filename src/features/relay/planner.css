@@ -323,12 +323,17 @@
 /* A WELL (type and depth, phase 9, Oct 4 2026): sunk into the well tone,
    no edge, radius 12. It was a dashed box. The body's muted ink reads 5.2:1
    on the well (7.1:1 in dark). */
+/* On the page ground (beside a list's card, never in it: the Tracker's
+   lists and the Journal's), so the tray's tone (AJ's 1A, Oct 5 2026): the
+   well tone is lighter than the page and read raised; the tray is below it
+   in both modes. The body takes ink-2 (5.95:1; the muted ink would read
+   4.42:1 on the tray). */
 .pl__empty {
   margin-top: 1rem;
   padding: 1.25rem;
   border: 0;
   border-radius: 12px;
-  background: var(--st-surface-2);
+  background: var(--st-tray);
   box-shadow: var(--st-elev-0);
   text-align: center;
 }
@@ -338,7 +343,7 @@
   max-width: 52ch;
   font-size: 14px;
   line-height: 1.6;
-  color: var(--st-ink-muted);
+  color: var(--st-ink-2);
 }
 
 /* ------------------------------------------------------------------ *

@@ -64,6 +64,8 @@
      on #14293d), so a well drawn in it would rise instead of sink. The
      well tone is darker than the card in both modes (#e4ebf3, #0d2235). */
   --cr-well: var(--eq-surface-2, #e4ebf3);
+  /* Below the page in both modes: a well on the page ground (AJ's 1A). */
+  --cr-tray: var(--eq-tray, #d1dae4);
   --cr-elev-0: var(--jg-elev-0, var(--elev-0));
   /* Go's depth on Generate (type and depth, phase 8): the grid's orange
      glow, top light and press, or the app's before the grid's tokens load. */
@@ -240,6 +242,12 @@
    no edge, radius 12, the sentence in the reading voice (14px, ink-2). It
    was a dashed box in 13px muted ink. */
 .cr-empty { border: 0; border-radius: 12px; background: var(--cr-well); box-shadow: var(--cr-elev-0); padding: 22px; text-align: center; color: var(--cr-ink-2); font-size: 14px; }
+/* An empty range, or a section with nothing to show, sits straight on the
+   page (the report and its sections are not panels), so the tray's tone
+   (AJ's 1A, Oct 5 2026): the well tone is lighter than the page and read
+   raised there. Inside a card the well tone stays. */
+.cr > .cr-empty,
+.cr-section > .cr-empty { background: var(--cr-tray); }
 
 /* ---- charts ------------------------------------------------------------- */
 .cr-chart { height: 190px; }

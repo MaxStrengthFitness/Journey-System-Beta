@@ -24,9 +24,16 @@
 /* ---------- Summary bar --------------------------------------------- */
 
 /* A WELL (type and depth, phase 9, Oct 4 2026): the counts are information,
-   so they sink into the well tone with its inner shadow, no edge, radius 12.
-   It was a hairline box on the card's fill. On the well the muted ink reads
-   5.2:1, the plum warning 4.7:1 and today's orange words 4.9:1. */
+   so they sink with the well's inner shadow, no edge, radius 12. It was a
+   hairline box on the card's fill.
+
+   ON THE PAGE GROUND, so the TRAY's tone (AJ's 1A, Oct 5 2026): the bar
+   sits straight on the page, where the well tone is lighter than the page
+   and read raised; the tray is below it in both modes. On the tray the
+   muted ink would read 4.42:1 in light, so the facts and "No routine
+   chosen" take ink-2 (5.95:1), and the count is a figure in ink (9.95:1;
+   the orange words read 4.15:1 there). "Not set up" keeps its plum on its
+   own fill, a chip (4.8:1), and today's routine its orange chip. */
 .rt-summary {
   display: flex;
   align-items: center;
@@ -35,7 +42,7 @@
   padding: 10px 14px;
   border: 0;
   border-radius: 12px;
-  background: var(--eq-surface-2);
+  background: var(--eq-tray);
   box-shadow: var(--eq-elev-0);
 }
 .rt-summary__count {
@@ -44,8 +51,13 @@
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
-.rt-summary__count b { color: var(--eq-hero-text); font-weight: 800; }
+.rt-summary__count b { color: var(--eq-ink); font-weight: 800; }
 .rt-summary__warn {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--eq-warn-fill);
   color: var(--eq-warn);
   font-size: 12px;
   font-weight: 700;
@@ -56,7 +68,7 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  color: var(--eq-ink-muted);
+  color: var(--eq-ink-2);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0;
@@ -90,13 +102,13 @@
   letter-spacing: 0;
   white-space: nowrap;
 }
-/* Words, so the muted ink (5.2:1 on the well): the faint ink is for marks
-   only, and read 2.9:1 there. */
+/* Words, so ink-2 on the tray (5.95:1; the muted ink would read 4.42:1):
+   the faint ink is for marks only. */
 .rt-summary__none {
   font-size: 12px;
   font-weight: 700;
   font-style: italic;
-  color: var(--eq-ink-muted);
+  color: var(--eq-ink-2);
 }
 
 /* ---------- Buttons (Equipment's) ------------------------------------ */

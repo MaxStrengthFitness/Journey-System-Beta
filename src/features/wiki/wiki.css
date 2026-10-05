@@ -1238,12 +1238,16 @@
    2026): sunk into the well tone, no edge, the codex's padding. It was a
    dashed box. The placeholder (a page that is gone or could not load) is
    the same empty place, so it is the same well. */
+/* Learning's empty places and placeholders sit on the room's own ground
+   (.wk paints --wk-bg), never in a card, so the tray's tone (AJ's 1A,
+   Oct 5 2026): the well tone is lighter than the page and read raised; the
+   tray is below it in both modes. Ink reads 9.95:1 and ink-2 5.95:1 on it. */
 .wk__empty {
   margin: 1rem 0;
   padding: 16px 18px;
   border: 0;
   border-radius: 12px;
-  background: var(--wk-surface-2);
+  background: var(--wk-tray);
   box-shadow: var(--wk-elev-0);
   font-size: 14px;
   line-height: 1.55;
@@ -1256,7 +1260,7 @@
   padding: 16px 18px;
   border: 0;
   border-radius: 12px;
-  background: var(--wk-surface-2);
+  background: var(--wk-tray);
   box-shadow: var(--wk-elev-0);
 }
 .wk__placeholder-title { margin: 0 0 0.25rem; font-size: 17px; font-weight: 800; color: var(--wk-ink); }

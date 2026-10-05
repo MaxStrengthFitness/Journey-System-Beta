@@ -30,6 +30,14 @@ import { describe, expect, it } from "vitest";
  *   5. The words on a well read at 4.5:1 or more, light and dark, measured
  *      on the well's own fill; the labels this phase touched are 12px or
  *      more, in their own capitalisation.
+ *   8. A well on the PAGE GROUND sinks into the TRAY (AJ's 1A, Oct 5 2026:
+ *      "1a 2a 3a"). The well tone is darker than a card but LIGHTER than the
+ *      page (1.05:1 in light, 1.07:1 in dark), so a well that sits straight
+ *      on the page, not in a panel, read as a raised pad with a shadow
+ *      inside it. The tray (--X-tray) is below the page in both modes; the
+ *      inner shadow stays, and words that were in the muted ink (4.42:1 on
+ *      the tray in light) take ink-2. A coloured word keeps its colour on a
+ *      fill of its own (a chip) or as a band, never as words on the tray.
  *   6. A ROW instead of a box: Settings' reports and doors, and the notes to
  *      review on Operations → Today, are lines inside their panel divided by
  *      the soft hairline (--X-divider), with no box of their own.
@@ -182,16 +190,16 @@ type Well = {
 
 const WELLS: Well[] = [
   // Empty places (map #3: "Dashed empty boxes inside panels").
-  { file: "features/client-notes/notes-page.css", sel: ".nx-empty", p: "eq", words: [[".nx-empty"], [".nx-empty", ".nx-empty__text"]] },
+  { file: "features/client-notes/notes-page.css", sel: ".nx-empty", p: "eq", fill: "var(--eq-tray)", card: "var(--eq-bg)", words: [[".nx-empty"], [".nx-empty", ".nx-empty__text"]] },
   { file: "features/relay/kit.css", sel: ".rk-empty", p: "st", words: [[".rk-empty"]] },
-  { file: "features/relay/planner.css", sel: ".pl__empty", p: "st", words: [[".pl__empty-body"]] },
+  { file: "features/relay/planner.css", sel: ".pl__empty", p: "st", fill: "var(--st-tray)", card: "var(--st-bg)", words: [[".pl__empty-body"]] },
   { file: "features/briefing/briefing.css", sel: ".br__empty", p: "br", words: [[".br__empty-text"]] },
-  { file: "features/wiki/wiki.css", sel: ".wk__empty", p: "wk", words: [[".wk__empty"]] },
-  { file: "features/wiki/wiki.css", sel: ".wk__placeholder", p: "wk", words: [[".wk__placeholder-title"], [".wk__placeholder-body"]] },
+  { file: "features/wiki/wiki.css", sel: ".wk__empty", p: "wk", fill: "var(--wk-tray)", card: "var(--wk-bg)", words: [[".wk__empty"]] },
+  { file: "features/wiki/wiki.css", sel: ".wk__placeholder", p: "wk", fill: "var(--wk-tray)", card: "var(--wk-bg)", words: [[".wk__placeholder-title"], [".wk__placeholder-body"]] },
   { file: "features/admin/admin.css", sel: ".adm-empty", p: "adm", words: [[".adm-empty"]] },
   { file: "features/subjective-report/subjective-report.css", sel: ".sr-empty", p: "sr", words: [[".sr-empty"]] },
   { file: "features/admin/shell/ops.css", sel: ".ops-toonew", p: "adm", words: [[".ops-toonew__h"]] },
-  { file: "features/admin/shell/ops.css", sel: ".ops-trend-wait", p: "adm", words: [[".ops-trend-wait__h"]] },
+  { file: "features/admin/shell/ops.css", sel: ".ops-trend-wait", p: "adm", fill: "var(--adm-tray)", card: "var(--adm-bg)", words: [[".ops-trend-wait__h"]] },
   // The Deep Dive draws its well in the app's well tone: the grid's surface-2 is a
   // header band that goes LIGHTER than the card in dark.
   { file: "features/clinical-review/clinical-review.css", sel: ".cr-empty", p: "cr", fill: "var(--cr-well)", card: "var(--cr-surface)", words: [[".cr-empty"]] },
@@ -202,15 +210,27 @@ const WELLS: Well[] = [
     file: "features/client-history/client-history.css",
     sel: ".hist-stat",
     p: "cal",
+    fill: "var(--cal-tray)",
+    card: "var(--cal-bg)",
     words: [[".hist-stat__label"], [".hist-stat__value b"], [".hist-stat__value span"], [".hist-stat__sub"]],
   },
   {
     file: "features/routines/routines.css",
     sel: ".rt-summary",
     p: "eq",
-    words: [[".rt-summary__facts"], [".rt-summary__warn"], [".rt-summary__none"], [".rt-summary__count b"]],
+    fill: "var(--eq-tray)",
+    card: "var(--eq-bg)",
+    words: [[".rt-summary__facts"], [".rt-summary__none"], [".rt-summary__count b"]],
   },
-  { file: "features/openings/openings.css", sel: ".op-cell", p: "st", transparentEdge: true, words: [[".op-cell"], [".op-cell", ".op-cell--none"], [".op-cell__mark"]] },
+  {
+    file: "features/openings/openings.css",
+    sel: ".op-cell",
+    p: "st",
+    fill: "var(--st-tray)",
+    card: "var(--st-bg)",
+    transparentEdge: true,
+    words: [[".op-cell"], [".op-cell", ".op-cell--none"], [".op-cell__mark"]],
+  },
   {
     file: "features/hub-opportunities/run-sheet.css",
     sel: ".ho-slot",
@@ -221,13 +241,15 @@ const WELLS: Well[] = [
     file: "features/client-profile/profile-nav.css",
     sel: ".ptab-strip",
     p: "psub",
-    fill: "var(--psub-bg)",
-    card: "var(--psub-surface)",
+    fill: "var(--psub-tray)",
+    card: "var(--psub-page)",
     words: [[".ptab-strip__title"], [".ptab-strip__none"]],
   },
 ];
 
 const fillOf = (w: Well) => w.fill ?? `var(--${w.p}-surface-2)`;
+/** A well whose fill is its family's tray sits on the page ground (AJ's 1A). */
+const onPage = (w: Well) => fillOf(w) === `var(--${w.p}-tray)`;
 const cardOf = (w: Well) => w.card ?? `var(--${w.p}-surface)`;
 
 describe("a box inside a panel is a well: the well tone, its inner shadow, no edge, radius 12", () => {
@@ -329,6 +351,118 @@ describe("a control that sinks keeps its 3:1 edge", () => {
 /* ------------------------------------------------------------------ */
 /* 3. Dashes stay only where they mean something                       */
 /* ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------ */
+/* 1A. A well on the page ground sinks into the tray                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * AJ's 1A (Oct 5 2026). Each well here sits straight on a page's ground:
+ * the Archive's figures, Programming's counts, Openings' times, the
+ * clinical strip, Trends' "Not enough data yet", Notes' empty places,
+ * Learning's empty places, placeholders and notes, Setup's empty line,
+ * Relay's empty lists, and (by where they sit) the Story's empty line, a
+ * screen's own empty place in Operations and the Admins dashboard, the Deep
+ * Dive's empty range and sections, and Team's empty lines. A shared class
+ * that is a well in a card elsewhere takes the tray only where it is a
+ * child of the page's own column, so a well in a panel keeps the well tone.
+ */
+const PAGE_WELLS: { file: string; sel: string; p: string; page: string; words?: string[] }[] = [
+  ...WELLS.filter(onPage).map((w) => ({ file: w.file, sel: w.sel, p: w.p, page: cardOf(w) })),
+  { file: "features/machine-db/machine-db.css", sel: ".mdb-note", p: "wk", page: "var(--wk-bg)", words: [".mdb-note"] },
+  { file: "features/machine-fit/ui/machine-fit.css", sel: ".fit-empty", p: "eq", page: "var(--eq-bg)", words: [".fit-empty"] },
+];
+
+/** Each shared well on the page, by where it sits: [file, selector, family, the page, its words]. */
+const PLACED: [string, string, string, string, string][] = [
+  ["features/client-story/story.css", ".st-page > .cx-empty", "cx", "var(--eq-bg)", "var(--cx-ink-2)"],
+  ["features/admin/admin.css", ".adm-screen > .adm-empty", "adm", "var(--adm-bg)", "var(--adm-ink-2)"],
+  ["features/admin/admin.css", ".ops-page > .adm-empty", "adm", "var(--adm-bg)", "var(--adm-ink-2)"],
+  ["features/admin/admin.css", ".adm-pipeline > .adm-empty", "adm", "var(--adm-bg)", "var(--adm-ink-2)"],
+  ["features/admin/admin.css", ".adm-fit__detail > .adm-empty", "adm", "var(--adm-bg)", "var(--adm-ink-2)"],
+  ["features/clinical-review/clinical-review.css", ".cr > .cr-empty", "cr", "var(--cr-bg)", "var(--cr-ink-2)"],
+  ["features/clinical-review/clinical-review.css", ".cr-section > .cr-empty", "cr", "var(--cr-bg)", "var(--cr-ink-2)"],
+  ["features/relay/kit.css", ".st__scroll > .rk-empty", "st", "var(--st-bg)", "var(--st-ink-2)"],
+  ["features/relay/kit.css", ".tm-people > .rk-empty", "st", "var(--st-bg)", "var(--st-ink-2)"],
+];
+
+describe("AJ's 1A: a well on the page ground sinks into the tray, below the page", () => {
+  it.each(PAGE_WELLS.map((w) => [w.sel, w] as const))("%s takes its family's tray and keeps the inner shadow", (_sel, w) => {
+    const own = merged(w.file, w.sel);
+    expect(own.background, "the tray").toBe(`var(--${w.p}-tray)`);
+    expect(own["box-shadow"], "the well's inner shadow").toBe(`var(--${w.p}-elev-0)`);
+    for (const [mode, map] of Object.entries(MODES)) {
+      expect(luminance(resolve(map, `var(--${w.p}-tray)`)), `${w.p} tray below ${w.page}, ${mode}`).toBeLessThan(luminance(resolve(map, w.page)));
+    }
+    for (const sel of w.words ?? []) {
+      const words = merged(w.file, sel).color;
+      for (const [mode, map] of Object.entries(MODES)) {
+        expect(ratio(resolve(map, words), resolve(map, `var(--${w.p}-tray)`)), `${sel} ${mode}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it.each(PLACED)("%s %s: the tray where it sits on the page, words at 4.5:1", (file, sel, p, page, words) => {
+    const placed = merged(file, sel);
+    expect(placed.background).toBe(`var(--${p}-tray)`);
+    const said = placed.color ?? words;
+    expect(said).toBe(words);
+    for (const [mode, map] of Object.entries(MODES)) {
+      expect(luminance(resolve(map, `var(--${p}-tray)`)), `${mode}: below the page`).toBeLessThan(luminance(resolve(map, page)));
+      expect(ratio(resolve(map, said), resolve(map, `var(--${p}-tray)`)), `${mode}: the words`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("a shared well keeps the well tone in a panel: the base rules are unchanged", () => {
+    expect(merged("features/client-codex/kit/kit.css", ".cx-empty").background).toBe("var(--cx-surface-2)");
+    expect(merged("features/admin/admin.css", ".adm-empty").background).toBe("var(--adm-surface-2)");
+    expect(merged("features/clinical-review/clinical-review.css", ".cr-empty").background).toBe("var(--cr-well)");
+    expect(merged("features/relay/kit.css", ".rk-empty").background).toBe("var(--st-surface-2)");
+  });
+
+  it("the muted ink would fall under 4.5:1 on the tray in light, which is why the words moved to ink-2", () => {
+    expect(ratio(resolve(MODES.light, "var(--eq-ink-muted)"), resolve(MODES.light, "var(--eq-tray)"))).toBeLessThan(4.5);
+    expect(ratio(resolve(MODES.light, "var(--eq-ink-2)"), resolve(MODES.light, "var(--eq-tray)"))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("no word on a page-ground well is in the muted or faint ink", () => {
+    for (const w of PAGE_WELLS) {
+      for (const r of rulesOf(w.file).filter((r) => r.selectors.some((s) => s.startsWith(w.sel)))) {
+        expect(declared(r.body, "color").join(" "), r.selectors.join(", ")).not.toMatch(/ink-muted|ink-faint/);
+      }
+    }
+  });
+
+  it("an Openings time on the rotation, booked or mixed shares the tray, and differs by its word", () => {
+    for (const tone of ["mixed", "booked", "rotation"]) {
+      expect(merged("features/openings/openings.css", `.op-cell--${tone}`).background, tone).toBe("var(--st-tray)");
+    }
+  });
+
+  it("a break still going is a plum band down the left of its figure, painted as a background layer, the figure in ink", () => {
+    const file = "features/client-history/client-history.css";
+    const alert = merged(file, ".hist-stat--alert");
+    expect(alert.background).toBe("linear-gradient(var(--eq-warn), var(--eq-warn)) left / 4px 100% no-repeat, var(--cal-tray)");
+    expect(alert["border-left"]).toBeUndefined();
+    expect(rulesOf(file).some((r) => r.selectors.some((s) => s.startsWith(".hist-stat--alert ")))).toBe(false);
+    for (const [mode, map] of Object.entries(MODES)) {
+      expect(ratio(resolve(map, "var(--eq-warn)"), resolve(map, "var(--cal-tray)")), `${mode}: the band, a mark`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("Programming's 'not set up' keeps its plum on its own fill, a chip, at 4.5:1", () => {
+    const warn = merged("features/routines/routines.css", ".rt-summary__warn");
+    expect(warn.background).toBe("var(--eq-warn-fill)");
+    expect(warn["border-radius"]).toBe("999px");
+    for (const [mode, map] of Object.entries(MODES)) {
+      expect(ratio(resolve(map, warn.color), resolve(map, warn.background)), mode).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("the RenewalsPipeline's root carries the class its page-ground empty is placed by", () => {
+    expect(read("features/admin/renewals/RenewalsPipeline.tsx")).toMatch(/<div className="adm-pipeline space-y-4">/);
+  });
+});
 
 describe("dashes stay only where they mean something", () => {
   it("an Openings time nobody is in: a dashed hairline, no fill, not sunk (an empty place, still a button)", () => {

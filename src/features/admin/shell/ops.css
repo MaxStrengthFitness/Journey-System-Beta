@@ -1439,7 +1439,11 @@
   gap: 8px;
 }
 
-/* A well, as .ops-toonew (type and depth, phase 9). */
+/* A well, as .ops-toonew (type and depth, phase 9), but on the PAGE
+   GROUND (Trends lists it under the quarter's card, not inside it), so the
+   tray's tone (AJ's 1A, Oct 5 2026): the well tone is lighter than the page
+   and read raised; the tray is below it in both modes. Its head is ink-2
+   (5.95:1 on the tray). */
 .ops-trend-wait {
   display: flex;
   flex-direction: column;
@@ -1447,7 +1451,7 @@
   padding: 12px 14px;
   border: 0;
   border-radius: 12px;
-  background: var(--adm-surface-2);
+  background: var(--adm-tray);
   box-shadow: var(--adm-elev-0);
 }
 

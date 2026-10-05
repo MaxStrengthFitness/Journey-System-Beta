@@ -151,13 +151,19 @@
 }
 
 /* The Archive's figures are WELLS (type and depth, phase 9, Oct 4 2026):
-   information, so each sinks into the well tone with its inner shadow, no
-   edge, radius 12. They were hairline boxes on the card's fill. They speak
-   as the profile header's facts do (the kit's stat): the label 12/600 in
-   its own capitalisation, the figure Saira 22/800 with even-width digits,
-   the unit and the line under it 12px in the muted ink (5.2:1 on the well,
-   7.1:1 in dark). The label was 10px capitals; the line under it was 11px
-   and cut off with an ellipsis, and now wraps. */
+   information, so each sinks with its inner shadow, no edge, radius 12.
+   They were hairline boxes on the card's fill. They speak as the profile
+   header's facts do (the kit's stat): the label 12/600 in its own
+   capitalisation, the figure Saira 22/800 with even-width digits, the unit
+   and the line under it 12px. The label was 10px capitals; the line under
+   it was 11px and cut off with an ellipsis, and now wraps.
+
+   ON THE PAGE GROUND, so the TRAY's tone (AJ's 1A, Oct 5 2026): these sit
+   straight on the page, not in a panel, and the well tone is LIGHTER than
+   the page (1.05:1 in light, 1.07:1 in dark), so the inner shadow sat in a
+   pad that read raised. The tray is below the page in both modes. The
+   muted ink would read 4.42:1 on it in light, so the label, the unit and
+   the line under it take ink-2 (5.95:1; 10.4:1 in dark). */
 .hist-stat {
   min-width: 0;
   display: flex;
@@ -166,7 +172,7 @@
   padding: 11px 14px 12px;
   border-radius: 12px;
   border: 0;
-  background: var(--cal-surface-2);
+  background: var(--cal-tray);
   box-shadow: var(--cal-elev-0);
 }
 .hist-stat__label {
@@ -174,7 +180,7 @@
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--cal-ink-muted);
+  color: var(--cal-ink-2);
 }
 .hist-stat__value {
   display: flex;
@@ -196,16 +202,23 @@
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--cal-ink-muted);
+  color: var(--cal-ink-2);
   white-space: nowrap;
 }
 .hist-stat__sub {
   font-size: 12px;
   font-weight: 500;
-  color: var(--cal-ink-muted);
+  color: var(--cal-ink-2);
   overflow-wrap: anywhere;
 }
-.hist-stat--alert .hist-stat__value b { color: var(--eq-warn); }
+/* A break still going: the plum caution as a straight band down the left,
+   painted as a background layer (the seven rules' third, the briefing's
+   carried regions), and the figure stays in ink. Plum WORDS on the tray
+   would read 4.03:1 in light; the band is a mark (4.0:1 against the tray,
+   over the 3:1 a mark needs), and the line under it says "still going". */
+.hist-stat--alert {
+  background: linear-gradient(var(--eq-warn), var(--eq-warn)) left / 4px 100% no-repeat, var(--cal-tray);
+}
 
 /* ---------- Legend ----------------------------------------------------- */
 

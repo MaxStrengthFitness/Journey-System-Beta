@@ -346,6 +346,14 @@
   line-height: 1.55;
   color: var(--st-ink-2);
 }
+/* On the page ground (My Studio → Team's own lines, not inside a card), the
+   tray's tone (AJ's 1A, Oct 5 2026): the well tone is lighter than the page
+   and read raised; the tray is below it in both modes, and ink-2 reads
+   5.95:1 on it. In the board's cards and in a sheet the well tone stays. */
+.st__scroll > .rk-empty,
+.tm-people > .rk-empty {
+  background: var(--st-tray);
+}
 
 @media (prefers-reduced-motion: reduce) {
   .rk-toggle__knob,
