@@ -63,6 +63,9 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   { file: "features/trainer-profile/trainer-profile.css", cls: "tp-row__name", what: "a person or client on a My Profile row" },
   { file: "features/client-profile/profile-nav.css", cls: "psub__label", what: "a profile sub-tab's label (two words wrap, as its comment says)" },
   { file: "features/hub-schedule/next-strip.css", cls: "hn-with", what: '"with {trainer}" on the Next 30 minutes strip' },
+  // Type and depth, phase 6 (Oct 4 2026): the codex's page title, upright Saira
+  // 30 in its own capitalisation now, wraps like every name.
+  { file: "features/client-codex/kit/kit.css", cls: "cx-page-title", what: "a Notes & Profile page's title (Saira 30, upright)" },
 ];
 
 const rulesFor = (entry: (typeof NAME_RULES)[number]) =>

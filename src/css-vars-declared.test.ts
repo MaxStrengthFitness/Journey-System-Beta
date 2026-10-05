@@ -56,6 +56,9 @@ const FILES = [
   "features/my-studio/my-studio.css",
   "features/wiki/wiki.css",
   "features/admin/shell/ops.css",
+  // Phase 6: the codex kit's panels, heads, wells and buttons.
+  "features/client-codex/kit/kit.css",
+  "features/client-codex/codex.css",
 ];
 
 function filesUnder(dir: string, ext: RegExp, out: string[] = []): string[] {
