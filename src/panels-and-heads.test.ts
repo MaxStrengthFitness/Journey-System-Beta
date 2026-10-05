@@ -233,6 +233,22 @@ describe("a panel: the edge seen from outside, the fill clipped to the padding b
     for (const t of [`--${x.p}-edge`, `--${x.p}-elev-2`, `--${x.p}-panel-highlight`]) expect(DECLARED.has(t), t).toBe(true);
   });
 
+  it("the machine menu's card: the edge seen from outside, a dialog's lift as the popover, a panel's inline", () => {
+    const file = "features/machine-menu/machine-menu.css";
+    const card = merged(file, ".mm-card");
+    expect(card.border).toBe("1px solid var(--eq-edge)");
+    expect(card["background-clip"]).toBe("padding-box");
+    // Inline on Programming it is a panel: the panel's short lift.
+    expect(merged(file, ".mm-card", '.mm-card[data-inline="true"]')["box-shadow"]).toBe("var(--eq-elev-2), var(--eq-panel-highlight)");
+    // As a dialog it is the popover: --eq-elev-5, a white rim and top light in dark.
+    const dialog = merged(file, '.mm-card:not([data-inline="true"])');
+    expect(dialog["box-shadow"]).toBe("var(--eq-elev-5), inset 0 1px 0 var(--eq-popover-light)");
+    expect(dialog["border-color"]).toBe("var(--eq-popover-rim)");
+    expect(dialog["--eq-surface"]).toBe("var(--eq-popover)");
+    expect(dialog["--eq-raised"]).toBe("var(--eq-popover-raised)");
+    expect(dialog["--eq-border-strong"]).toBe("var(--eq-popover-edge)");
+  });
+
   it("the edge is the soft navy edge, never the hairline or the 3:1 control edge it replaced", () => {
     for (const x of PANELS) {
       const bodies = rulesOf(x.file).filter((r) => r.at.length === 0 && r.selectors.includes(x.sel)).map((r) => r.body).join(";");
@@ -325,6 +341,14 @@ describe("a panel's head has no band and no rule: the title carries it", () => {
     expect(head["box-shadow"]).toBe("var(--st-shelf)");
     expect(head.position).toBe("relative");
     expect(Number(head["z-index"])).toBeGreaterThan(0);
+  });
+
+  it("the machine menu's head casts the shelf over what scrolls under it, instead of a rule", () => {
+    const mm = merged("features/machine-menu/machine-menu.css", ".mm-head");
+    expect(mm["border-bottom"]).toBe("0");
+    expect(mm["box-shadow"]).toBe("var(--eq-shelf)");
+    expect(mm.position).toBe("relative");
+    expect(Number(mm["z-index"])).toBeGreaterThan(0);
   });
 
   it("a head with no foot of its own still has one where it is all the card shows (folded)", () => {

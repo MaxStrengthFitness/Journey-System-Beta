@@ -425,7 +425,7 @@ button.fit-cell--read { cursor: pointer; }
   /* A field keeps its 3:1 edge and sinks (type and depth, rule 2). */
   border: 1px solid var(--eq-border-strong);
   border-radius: 10px;
-  background: var(--eq-bg);
+  background: var(--eq-surface-2);
   box-shadow: var(--eq-elev-0);
   color: var(--eq-ink);
   font-size: 18px;

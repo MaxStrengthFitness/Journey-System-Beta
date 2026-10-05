@@ -249,6 +249,18 @@ const WELLS: Well[] = [
   { file: "features/machine-menu/machine-menu.css", sel: ".mm-note", p: "eq", words: [[".mm-note__meta"], [".mm-thread__file"]] },
   { file: "features/machine-menu/machine-menu.css", sel: ".mm-sess-scroll", p: "eq", words: [[".mm-sess__h"]] },
   { file: "features/machine-menu/machine-menu.css", sel: ".mm-status", p: "eq", words: [[".mm-status"]] },
+  // The merge with the machine menu (Oct 5 2026): the set-up guide and the
+  // watch-outs (equipment's .eq-card) are wells inside the menu's card (their
+  // words are measured below: their colours live in equipment.css); a safety
+  // line that couldn't be read and the floor's note are information, so wells.
+  { file: "features/machine-menu/machine-menu.css", sel: ".mm-card .eq-card", p: "eq", transparentEdge: true, words: [] },
+  { file: "features/machine-menu/machine-menu.css", sel: '.mm-safe__line[data-failed="true"]', p: "eq", transparentEdge: true, words: [[".mm-safe__line"]] },
+  {
+    file: "features/equipment/equipment.css",
+    sel: ".eq-floornote",
+    p: "eq",
+    words: [[".eq-floornote__kicker"], [".eq-floornote__text"], [".eq-floornote i"], [".eq-floornote__more"]],
+  },
   {
     file: "features/client-profile/profile-nav.css",
     sel: ".ptab-strip",
@@ -460,6 +472,47 @@ describe("AJ's 1A: a well on the page ground sinks into the tray, below the page
     expect(rulesOf(file).some((r) => r.selectors.some((s) => s.startsWith(".hist-stat--alert ")))).toBe(false);
     for (const [mode, map] of Object.entries(MODES)) {
       expect(ratio(resolve(map, "var(--eq-warn)"), resolve(map, "var(--cal-tray)")), `${mode}: the band, a mark`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("a watch-out in the machine menu is a well with its tone a straight band painted on it, 3:1 or more on the well", () => {
+    const menu = "features/machine-menu/machine-menu.css";
+    const eq = "features/equipment/equipment.css";
+    const watch = merged(menu, ".mm-card .eq-watch");
+    expect(watch.background).toBe("linear-gradient(var(--eq-watch-band), var(--eq-watch-band)) left / 4px 100% no-repeat, var(--eq-surface-2)");
+    expect(watch["border-left"]).toBeUndefined();
+    expect(watch["border-left-width"]).toBeUndefined();
+    const tones: [string, string][] = [
+      [".eq-watch", "var(--eq-live)"],
+      ['.eq-watch[data-tone="alert"]', "var(--eq-alert)"],
+      ['.eq-watch[data-tone="caution"]', "var(--eq-warn)"],
+    ];
+    for (const [sel, band] of tones) {
+      expect(merged(eq, sel)["--eq-watch-band"], sel).toBe(band);
+      for (const [mode, map] of Object.entries(MODES)) {
+        expect(ratio(resolve(map, band), resolve(map, "var(--eq-surface-2)")), `${sel} ${mode}: the band, a mark`).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
+  it("the set-up guide's and the watch-outs' words read at 4.5:1 on the well they sit in inside the menu", () => {
+    const eq = "features/equipment/equipment.css";
+    for (const chain of [
+      [".eq-card__title"],
+      [".eq-guide__lead"],
+      [".eq-guide__heading"],
+      [".eq-guide__list li"],
+      [".eq-guide__list--warn li"],
+      [".eq-watch__line"],
+      [".eq-watch__setup"],
+      [".eq-watch__setup span"],
+      [".eq-watch__text"],
+    ]) {
+      const words = merged(eq, ...chain).color;
+      expect(words, `${chain.at(-1)} says its colour`).toBeDefined();
+      for (const [mode, map] of Object.entries(MODES)) {
+        expect(ratio(resolve(map, words), resolve(map, "var(--eq-surface-2)")), `${chain.at(-1)} ${mode}`).toBeGreaterThanOrEqual(4.5);
+      }
     }
   });
 

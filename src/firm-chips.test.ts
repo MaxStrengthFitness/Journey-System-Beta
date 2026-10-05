@@ -196,6 +196,12 @@ const CHIPS: Chip[] = [
   ["features/subjective-report/subjective-report.css", ".sr-seg", "var(--sr-border-strong)", null, null],
   // Learning.
   ["features/wiki/wiki.css", ".wk__chip", "var(--wk-border-strong)", null, null],
+  // The machine menu: the reason, value and filing chips, the "1 thing to
+  // know first" pill and the About switch. None says cursor: pointer, so the
+  // sweep below can't see them; this list holds them.
+  ["features/machine-menu/machine-menu.css", ".mm-choice", "var(--eq-border-strong)", null, '.mm-choice[aria-pressed="true"]'],
+  ["features/machine-menu/machine-menu.css", ".mm-head__pill", "var(--eq-border-strong)", null, null],
+  ["features/machine-menu/machine-menu.css", ".mm-seg", "var(--eq-border-strong)", null, null],
 ];
 
 /** The colour a rule's edge is drawn in: the shorthand's var(), or border-color. */
@@ -330,6 +336,8 @@ describe("the sweep: nothing a trainer taps keeps the hairline but on purpose", 
     ["features/relay/kit.css", ".rk-tag"],
     ["features/client-history/client-history.css", ".hist-tag"],
     ["features/client-profile/profile-nav.css", ".ptab-strip__chip"],
+    // A dial's letter beside its name: a tag, not another key beside the ±.
+    ["features/machine-menu/machine-menu.css", ".mm-letter"],
   ])("an informational chip keeps the soft edge and no pointer: %s %s", (file, sel) => {
     const own = merged(file, sel);
     expect(edgeOf(own) ?? "", sel).toMatch(/-border\)|-line\)/);

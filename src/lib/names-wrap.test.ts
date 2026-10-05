@@ -96,7 +96,6 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   // Type and depth, phase 12 (Oct 4 2026): names set upright in the display
   // face, in their own capitalisation, wrap like every name.
   { file: "features/briefing/briefing.css", cls: "br__name", what: "the client's name on the briefing (Saira 22-30, upright)" },
-  { file: "features/equipment/equipment.css", cls: "eq-detail__name", what: "a machine's name on its detail panel (Saira 22, upright)" },
   { file: "features/trainer-profile/trainer-profile.css", cls: "tp-identity__name", what: "the trainer's name on My Profile (Saira 22-30, upright)" },
 ];
 

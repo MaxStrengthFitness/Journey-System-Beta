@@ -344,60 +344,8 @@
   font-weight: 700;
 }
 
-/* ---------- Detail pane --------------------------------------------- */
+/* ---------- Chips (the set-up guide's) ------------------------------ */
 
-.eq-detail__head {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-/* "Machines" with its chevron, shown under 1024px (every portrait iPad): a
-   raised button on its 3:1 edge, 40px tall, in the button voice (type and
-   depth review, Oct 5 2026; it was 36px on the hairline in 12px capitals). */
-.eq-back {
-  display: none;
-  align-items: center;
-  gap: 4px;
-  min-height: 40px;
-  padding: 0 12px 0 8px;
-  border-radius: 12px;
-  border: 1px solid var(--eq-border-strong);
-  background: var(--eq-raised);
-  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
-  color: var(--eq-ink-2);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: none;
-  cursor: pointer;
-}
-.eq-back:active { transform: translateY(1px); box-shadow: var(--eq-press); }
-.eq-back:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
-@media (max-width: 1023px) { .eq-back { display: inline-flex; } }
-
-.eq-detail__title {
-  flex: 1;
-  min-width: 0;
-}
-.eq-detail__name {
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 800;
-  font-style: normal;
-  letter-spacing: 0;
-  text-transform: none;
-  line-height: 1.05;
-  color: var(--eq-ink);
-  overflow-wrap: anywhere;
-}
-.eq-detail__sub {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 5px;
-  flex-wrap: wrap;
-}
 .eq-chip {
   padding: 2px 8px;
   border-radius: 999px;
@@ -410,9 +358,6 @@
   color: var(--eq-ink-muted);
 }
 .eq-chip--use { color: var(--eq-ok); border-color: var(--eq-ok); background: var(--eq-ok-fill); }
-/* "Not set up": the chip's own muted words at 12px (the faint ink was
-   3.2:1); its word says it, not a paler grey. */
-.eq-chip--idle { color: var(--eq-ink-muted); }
 
 /* ---------- Cards ---------------------------------------------------- */
 
@@ -451,42 +396,6 @@
 }
 .eq-card__body { padding: 14px; }
 .eq-card__head + .eq-card__body { padding-top: 12px; }
-
-/* The machine sheet's buttons (Edit, Use standard, Cancel, Save), in the
-   session. Type and depth, phase 8 (Oct 4 2026; AJ's 2A and 3B): 40px tall
-   (they were 34, under the app's floor), the button voice, 14/700 in
-   ordinary capitalisation (they were 12px spaced capitals), and RAISED: a
-   fill a hair lighter than the card, a contact lift and a white top light,
-   on the 3:1 edge, which stays. A press on :active; anything that can't be
-   pressed lies flat. The hover is a pointer's only, so an iPad's kept
-   hover never flattens a button. */
-.eq-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 40px;
-  padding: 0 12px;
-  border-radius: 12px;
-  border: 1px solid var(--eq-border-strong);
-  background: var(--eq-raised);
-  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
-  color: var(--eq-ink-2);
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-}
-@media (hover: hover) {
-  .eq-btn:hover { background: var(--eq-surface-3); }
-}
-.eq-btn:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 1px; }
-/* The blue tint keeps its live edge and lifts, without the white top light. */
-.eq-btn--live { border-color: var(--eq-live); color: var(--eq-live-text); background: var(--eq-live-fill); box-shadow: var(--eq-elev-1); }
-.eq-btn--ghost { border-color: transparent; background: transparent; box-shadow: none; }
-.eq-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--eq-press); }
-.eq-btn--ghost:not(:disabled):active { box-shadow: none; }
-.eq-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
 /* ---------- Guide ---------------------------------------------------- */
 
@@ -585,9 +494,18 @@
 .eq-empty__hint { font-size: 13px; max-width: 340px; line-height: 1.5; }
 
 /* ---------- Clinical watch-outs ----------------------------------------- */
-.eq-watch { border-left: 3px solid var(--eq-live); }
-.eq-watch[data-tone="alert"] { border-left-color: var(--eq-alert); }
-.eq-watch[data-tone="caution"] { border-left-color: var(--eq-warn); }
+.eq-watch {
+  /* A straight 3px band (the plan's rule 3: a wide border-left on a rounded
+     card tapers into a crescent). The 2px it took is in the padding. */
+  --eq-watch-band: var(--eq-live);
+  border-left-color: var(--eq-watch-band);
+  background:
+    linear-gradient(var(--eq-watch-band), var(--eq-watch-band)) left / 3px 100% no-repeat border-box,
+    var(--eq-surface) padding-box;
+  padding-left: 2px;
+}
+.eq-watch[data-tone="alert"] { --eq-watch-band: var(--eq-alert); }
+.eq-watch[data-tone="caution"] { --eq-watch-band: var(--eq-warn); }
 .eq-watch__title { display: inline-flex; align-items: center; gap: 6px; }
 .eq-watch__list { list-style: none; margin: 0; padding: 4px 14px 12px; display: flex; flex-direction: column; gap: 10px; }
 .eq-watch__item { display: flex; flex-direction: column; gap: 3px; }
@@ -637,9 +555,10 @@
    2026; FloorNoteCard.tsx). Read-only: it is the studio's, not the
    client's. Neutral, under the watch-outs; a Relay flag reads first. */
 .eq-floornote {
-  border: 1px solid var(--eq-border);
+  border: 0;
+  border-radius: 12px;
   background: var(--eq-surface-2);
-  border-radius: var(--eq-radius);
+  box-shadow: var(--eq-elev-0);
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
@@ -682,13 +601,5 @@
 .eq-floornote__more {
   margin: 0;
   font-size: 11.5px;
-  color: var(--eq-ink-muted);
-}
-
-/* Under a client's machine note: a fault with the unit is the floor's (Oct 3 2026). */
-.eq-composer__whose {
-  margin: 0;
-  font-size: 11.5px;
-  line-height: 1.4;
   color: var(--eq-ink-muted);
 }

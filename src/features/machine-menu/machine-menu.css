@@ -717,11 +717,6 @@
   cursor: pointer;
 }
 
-.mm-list-btn:active {
-  transform: translateY(1px);
-  box-shadow: var(--eq-press);
-}
-
 /* Open: the blue tint keeps its live edge and lifts, without the top light. */
 .mm-list-btn[aria-expanded="true"],
 .mm-list-btn[aria-expanded="true"]:hover {
@@ -729,6 +724,14 @@
   border-color: var(--eq-live);
   color: var(--eq-live-text);
   box-shadow: var(--eq-elev-1);
+}
+
+/* The press comes after the open state and outweighs it, so an open list's
+   button presses in too (KNOWN-TRAPS, "a press that must beat a picked state
+   needs the weight"). */
+.mm-list-btn:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
 }
 
 .mm-listbody {
@@ -966,7 +969,7 @@
 .mm-save {
   min-height: 56px;
   padding: 0 24px;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 0;
   background: var(--eq-go);
   color: var(--eq-go-on);
@@ -986,7 +989,7 @@
 .mm-add {
   min-height: 56px;
   padding: 0 24px;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 0;
   background: var(--eq-go);
   color: var(--eq-go-on);
@@ -1104,8 +1107,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--eq-ink-2);
   overflow-wrap: anywhere;
 }
@@ -1118,7 +1121,7 @@
   height: 24px;
   padding: 0 4px;
   border-radius: 6px;
-  border: 1px solid var(--eq-border-strong);
+  border: 1px solid var(--eq-border);
   background: var(--eq-surface);
   font-size: 14px;
   font-weight: 700;
@@ -1271,9 +1274,9 @@
 }
 
 .mm-pos__title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
-  color: var(--eq-ink);
+  color: var(--eq-ink-2);
   overflow-wrap: anywhere;
 }
 
@@ -1313,22 +1316,17 @@
   border: 1px solid var(--eq-border-strong);
   background: var(--eq-raised);
   box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
-  font-size: 17px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--eq-ink);
   overflow-wrap: anywhere;
 }
 
-.mm-pos__btn:active,
-.mm-opt:active {
-  transform: translateY(1px);
-  box-shadow: var(--eq-press);
-}
-
-/* What is saved: a ring, and "now" under it. Its gap is the well's tone. */
+/* What is saved: a ring, and "now" under it. Its gap is the well's tone. It
+   keeps its lift and top light under the ring: it can still be pressed. */
 .mm-pos__btn[data-now="true"],
 .mm-opt[data-now="true"] {
-  box-shadow: 0 0 0 2px var(--eq-surface-2), 0 0 0 4px var(--eq-ink-2);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight), 0 0 0 2px var(--eq-surface-2), 0 0 0 4px var(--eq-ink-2);
 }
 
 /* The one picked: filled blue. */
@@ -1340,6 +1338,14 @@
   background: var(--eq-live);
   color: var(--eq-live-on);
   box-shadow: var(--eq-glow-live), var(--eq-solid-light);
+}
+
+/* The press comes after the saved and picked states and outweighs them, so
+   every position presses in. */
+.mm-pos__btn:not(:disabled):active,
+.mm-opt:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
 }
 
 .mm-pos__now {
@@ -1370,7 +1376,7 @@
   padding: 0 14px;
   border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-bg);
+  background: var(--eq-surface-2);
   box-shadow: var(--eq-elev-0);
   font-size: 17px;
   font-weight: 400;
@@ -1398,14 +1404,15 @@
   border-radius: 22px;
   border: 1px solid var(--eq-border-strong);
   background: var(--eq-surface);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--eq-ink);
   overflow-wrap: anywhere;
 }
 
-.mm-choice[aria-pressed="true"],
-.mm-choice[aria-pressed="true"]:hover {
+/* The pointer's hover never reaches the picked chip (the block at the end),
+   so its solid blue needs no :hover of its own here. */
+.mm-choice[aria-pressed="true"] {
   border-color: var(--eq-live);
   background: var(--eq-live);
   color: var(--eq-live-on);
@@ -1453,7 +1460,7 @@
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--eq-live-fill);
 }
 
@@ -1509,7 +1516,7 @@
   display: flex;
   flex-direction: column;
   border: 1px solid var(--eq-border-strong);
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--eq-surface-2);
   box-shadow: var(--eq-elev-0);
 }
@@ -1536,7 +1543,7 @@
   min-height: 56px;
   padding: 16px;
   border: 0;
-  border-radius: 14px;
+  border-radius: 12px;
   background: transparent;
   resize: none;
   font-size: 17px;
@@ -1576,8 +1583,8 @@
 
 .mm-cmp__lbl {
   min-width: 76px;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--eq-ink-2);
 }
 
@@ -1726,6 +1733,16 @@
   padding: 4px 14px 14px 42px;
 }
 
+/* Inside a note's well the confirmation is a plain line, not a second well
+   (a box in a box in the same tone). */
+.mm-note .mm-status {
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .mm-thread__file {
   margin: 0;
   font-size: 14px;
@@ -1767,7 +1784,7 @@
   padding: 0 12px;
   border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-bg);
+  background: var(--eq-surface-2);
   box-shadow: var(--eq-elev-0);
   font-size: 16px;
   color: var(--eq-ink);
@@ -1823,10 +1840,10 @@
   border: 1px solid var(--eq-border-strong);
   background: var(--eq-raised);
   box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   text-align: left;
-  color: var(--eq-ink);
+  color: var(--eq-ink-2);
 }
 
 .mm-drawer:active {
@@ -1894,14 +1911,16 @@
 
 /* The dialog: min(820px, 100vw - 60px) wide, 88dvh tall (machine menu
    design §B). Landscape and the phone are the two blocks at the end. This
-   sits outside Tailwind's layers, so it wins over the dialog's own sizes. */
+   sits outside Tailwind's layers, so it wins over the dialog's own sizes.
+   It never clips: the card fills it edge to edge and draws the dialog's
+   lift outside its own box, so an overflow: hidden here would cut the lift
+   away. The card clips its own corners. */
 .mm-dialog {
   width: min(820px, calc(100vw - 60px));
   max-width: none;
   height: 88dvh;
   max-height: 88dvh;
   padding: 0;
-  overflow: hidden;
   border-radius: 20px;
 }
 
@@ -1922,12 +1941,25 @@
   box-shadow: var(--eq-elev-5), var(--eq-panel-highlight);
 }
 
+/* As a dialog it is the popover (the depth table: a dialog in dark is a step
+   lighter than a card, with a white rim and a top light), as the Hub's peek
+   is. The tokens are remapped rather than the fills set, so the header, the
+   chart's rings and every fill drawn "in the card's fill" move with it, and
+   a raised button steps up again with its 3:1 edge. Light is unchanged. */
+.mm-card:not([data-inline="true"]) {
+  --eq-surface: var(--eq-popover);
+  --eq-raised: var(--eq-popover-raised);
+  --eq-border-strong: var(--eq-popover-edge);
+  border-color: var(--eq-popover-rim);
+  box-shadow: var(--eq-elev-5), inset 0 1px 0 var(--eq-popover-light);
+}
+
 /* Inline (Programming -> All Machines): the pane scrolls, the card grows. On
    the page it is a panel: the same edge and a panel's short lift. */
 .mm-card[data-inline="true"] {
   height: auto;
   overflow: visible;
-  border-radius: 16px;
+  border-radius: 14px;
   box-shadow: var(--eq-elev-2), var(--eq-panel-highlight);
 }
 
@@ -1957,7 +1989,7 @@
   position: sticky;
   top: calc(var(--scroll-pad-top, 0px) + var(--psub-stuck-h, 0px));
   z-index: 2;
-  border-radius: 16px 16px 0 0;
+  border-radius: 14px 14px 0 0;
 }
 
 .mm-head__row {
@@ -2091,9 +2123,12 @@
   color: var(--eq-ink);
 }
 
-/* "skipped (pain)" is words, not figures: a step quieter. */
+/* "skipped (pain)" is words, not figures: Geist, a step quieter (the
+   display face is for titles, names, figures and codes). */
 .mm-head__last[data-kind="uncounted"] .mm-head__num {
+  font-family: inherit;
   font-size: 22px;
+  font-weight: 700;
 }
 
 .mm-head__words,
@@ -2194,9 +2229,12 @@
   overflow-wrap: anywhere;
 }
 
+/* A line that couldn't be read is information, not a control: a well. */
 .mm-safe__line[data-failed="true"] {
-  border-color: var(--eq-border-strong);
+  border: 1px solid transparent;
+  border-radius: 12px;
   background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
 }
 
 .mm-safe__crit {
@@ -2224,7 +2262,6 @@
   font-size: 15px;
 }
 
-.mm-safe .eq-card__title,
 .mm-safe .eq-watch__sev,
 .mm-safe .eq-watch__setup span,
 .mm-safe .eq-floornote__kicker,
@@ -2243,17 +2280,28 @@
 }
 
 /* The set-up guide (equipment/SetupGuide, reused) at the card's in-hand
-   floor: a 52px fold row in plain words, nothing under 14px inside. */
+   floor: a 52px fold row in plain words, nothing under 14px inside. Its
+   title, and the watch-outs', keep the panel-title voice, 17/700, the
+   menu's own heads' (equipment.css's .eq-card__title); only what is inside
+   them is lifted here. */
 .mm-card .eq-card__head--button {
   min-height: 52px;
 }
 
-.mm-card .eq-card__title {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: normal;
-  text-transform: none;
-  color: var(--eq-ink);
+/* The set-up guide and the watch-outs (equipment's .eq-card) sit inside the
+   card, and the card is the panel: here each is a WELL (the well tone, an
+   inner shadow, no edge), never a lifted panel in a panel. */
+.mm-card .eq-card {
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
+}
+
+/* The watch-out keeps its tone, as a straight band painted on the well (type
+   and depth, rule 3); --eq-watch-band is its tone's colour (equipment.css). */
+.mm-card .eq-watch {
+  background: linear-gradient(var(--eq-watch-band), var(--eq-watch-band)) left / 4px 100% no-repeat, var(--eq-surface-2);
 }
 
 .mm-card .eq-chip,
@@ -2384,8 +2432,13 @@
   }
 
   .mm-link:hover,
-  .mm-choice:hover {
+  .mm-choice:not([aria-pressed="true"]):hover {
     background: var(--eq-surface-2);
+  }
+
+  /* The guide's fold row is on a well now, so its hover goes a step deeper. */
+  .mm-card .eq-card__head--button:hover {
+    background: var(--eq-tray);
   }
 
   .mm-tile__val:hover {

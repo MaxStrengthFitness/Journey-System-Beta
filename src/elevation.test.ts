@@ -736,6 +736,10 @@ const PHASE_14_BANDS: [string, string, number][] = [
   ["features/subjective-report/subjective-report.css", ".sra-justnow", 3],
   ["features/wiki/wiki.css", ".wk__warnings", 3],
   ["features/wiki/wiki.css", ".wk__termcard", 3],
+  // The clinical watch-out on a machine (the merge with the machine menu,
+  // Oct 5 2026): it was .eq-card with a 3px border-left, a two-class crescent
+  // the scan above reads one selector at a time and so missed.
+  ["features/equipment/equipment.css", ".eq-watch", 3],
 ];
 
 describe("11b. the callouts that tapered are straight bands now", () => {
@@ -753,6 +757,8 @@ describe("11b. the callouts that tapered are straight bands now", () => {
     ["features/subjective-report/subjective-report.css", ".sr-pain--resolved", "--sr-anchor-band", "var(--sr-green)"],
     ["features/subjective-report/subjective-report.css", ".sr-stress--high", "--sr-anchor-band", "var(--sr-red)"],
     ["features/clinical-review/clinical-review.css", ".cr-rhythm--below", "--cr-rhythm-band", "var(--cr-warn)"],
+    ["features/equipment/equipment.css", '.eq-watch[data-tone="alert"]', "--eq-watch-band", "var(--eq-alert)"],
+    ["features/equipment/equipment.css", '.eq-watch[data-tone="caution"]', "--eq-watch-band", "var(--eq-warn)"],
   ])("a state names its band's colour: %s %s", (file, sel, prop, value) => {
     expect(merged(file, sel)[prop]).toBe(value);
   });
@@ -798,7 +804,7 @@ describe("12. nothing tappable under 40px", () => {
   it("no rule that names a button, a tab or a back button sets a height under 40px", () => {
     // Widened on Oct 5 2026 (the review): the scan named "btn" only, and so
     // missed the session pop-up's tabs (.hsd-tab, 32px) and the machine
-    // sheet's back button (.eq-back, 36px).
+    // sheet's back button (.eq-back, 36px; retired with the machine menu).
     const found: string[] = [];
     for (const r of ALL_RULES) {
       const sel = r.selectors.find((s) => /btn\b|(?:__|-)(?:tab|back)\b/.test(s));

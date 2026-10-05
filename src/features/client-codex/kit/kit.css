@@ -588,7 +588,7 @@
 }
 
 /* The blue tint lifts on a 3:1 edge in its own ink, as every room's blue
-   tint does (.eq-btn--live): type and depth, phase 14, Oct 4 2026, AJ's 2A.
+   tint does (.mm-btn--live): type and depth, phase 14, Oct 4 2026, AJ's 2A.
    It drew the 45% live line, which measures 2.3:1 against the card in light
    and 2.8:1 in dark; the live ink is 7.3:1 and 6.1:1. */
 .cx-btn[data-variant="live"] {

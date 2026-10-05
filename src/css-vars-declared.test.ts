@@ -108,7 +108,7 @@ const FILES = [
   "features/journey-grid/journey-grid.css",
   // Phase 14: the crescents turned into bands (each band's colour is a
   // custom property its states set: --cfl-band, --fit-band, --rb-row-band,
-  // --sr-anchor-band, --cr-rhythm-band).
+  // --sr-anchor-band, --cr-rhythm-band, and equipment.css's --eq-watch-band).
   "features/clinical-flags/clinical-flags.css",
   "features/client-notes/notes.css",
 ];

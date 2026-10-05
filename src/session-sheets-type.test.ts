@@ -112,20 +112,19 @@ describe("the sheets a session opens: no label under 11px, words as written", ()
   });
 
   it("draws the machine menu's fields and the Pulse slide-over's buttons on their 3:1 edge", () => {
-    const eq = rulesOf("features/equipment/equipment.css");
-    const field = (sel: string) => eq.filter((r) => r.selectors.includes(sel)).map((r) => r.body).join(";");
     // The machine menu's own fields (it replaced the machine sheet, whose
-    // .eq-field__input, .eq-step__input and composer went with it): a dial's
-    // value typed in, a note's update, and the note box.
+    // .eq-field__input, .eq-step__input, composer and back button went with
+    // it): a dial's value typed in, a note's update, and the note box. Each
+    // sinks on the well tone, where the 3:1 edge is 3:1 in light (on the
+    // page tone, --eq-bg, it was 2.94:1). The menu's back button is .mm-btn,
+    // held by buttons-depth.test.ts (its edge) and elevation.test.ts (40px).
     const mm = rulesOf("features/machine-menu/machine-menu.css");
     const menuField = (sel: string) => mm.filter((r) => r.selectors.includes(sel)).map((r) => r.body).join(";");
     for (const sel of [".mm-field__input", ".mm-upd__input", ".mm-cmp"]) {
       expect(declared(menuField(sel), "border").at(-1), sel).toBe("1px solid var(--eq-border-strong)");
       expect(declared(menuField(sel), "box-shadow").at(-1), `${sel} sinks`).toBe("var(--eq-elev-0)");
+      expect(declared(menuField(sel), "background").at(-1), `${sel} on the well tone`).toBe("var(--eq-surface-2)");
     }
-    const back = field(".eq-back");
-    expect(declared(back, "min-height")).toEqual(["40px"]);
-    expect(declared(back, "border")).toEqual(["1px solid var(--eq-border-strong)"]);
     const sr = rulesOf("features/subjective-report/subjective-report.css");
     const btn = sr.filter((r) => r.selectors.includes(".sra-btn")).map((r) => r.body).join(";");
     expect(declared(btn, "border")).toEqual(["1px solid var(--sr-border-strong)"]);

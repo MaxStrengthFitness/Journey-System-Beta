@@ -469,7 +469,6 @@ const UPRIGHT_DISPLAY: [file: string, selector: string, weight: number, what: st
   // names
   ["features/briefing/briefing.css", ".br__name", 800, "the client's name on the briefing"],
   ["features/trainer-profile/trainer-profile.css", ".tp-identity__name", 800, "the trainer's name on My Profile"],
-  ["features/equipment/equipment.css", ".eq-detail__name", 800, "a machine's name on its detail panel"],
   ["features/machine-menu/machine-menu.css", ".mm-head__machine", 800, "a machine's name, the machine menu's title"],
   ["features/hub-schedule/peek.css", ".hp-name", 800, "the client's name on the peek"],
   ["features/hub-schedule/hub-grid.css", ".hs-colname strong", 800, "a trainer's name heading a lane"],

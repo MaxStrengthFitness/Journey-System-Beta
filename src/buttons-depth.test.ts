@@ -140,10 +140,13 @@ const RAISED: Raised[] = [
   { file: "features/client-notes/notes-page.css", sel: ".nx-pick", p: "eq" },
   { file: "features/client-notes/notes-page.css", sel: ".nx-ask__q", p: "eq" },
   { file: "features/client-notes/critical-line.css", sel: ".nx-critline__btn", p: "eq" },
-  { file: "features/equipment/equipment.css", sel: ".eq-btn", p: "eq" },
-  // The machine menu (Oct 2026) replaced the machine sheet and its weight
-  // steppers (.eq-step__btn): its ± and its everyday buttons, raised out of
-  // the card and the tiles' wells (type and depth, brought onto the menu).
+  // The machine menu (Oct 2026) replaced the machine sheet, its buttons
+  // (.eq-btn) and its weight steppers (.eq-step__btn): its ± and its everyday
+  // buttons, raised out of the card and the tiles' wells (type and depth,
+  // brought onto the menu), with the readout's arrows, Try again, Show more,
+  // Resolved and a word dial's options. elevation.test.ts's section 13 scan
+  // skips .mm-retry and .mm-opt (no "btn" in their names), so this list is
+  // their only guard.
   { file: "features/machine-menu/machine-menu.css", sel: ".mm-step", p: "eq" },
   { file: "features/machine-menu/machine-menu.css", sel: ".mm-btn", p: "eq" },
   { file: "features/machine-menu/machine-menu.css", sel: ".mm-quiet", p: "eq" },
@@ -152,6 +155,11 @@ const RAISED: Raised[] = [
   { file: "features/machine-menu/machine-menu.css", sel: ".mm-list-btn", p: "eq" },
   { file: "features/machine-menu/machine-menu.css", sel: ".mm-drawer", p: "eq" },
   { file: "features/machine-menu/machine-menu.css", sel: ".mm-pos__btn", p: "eq" },
+  { file: "features/machine-menu/machine-menu.css", sel: ".mm-ro__btn", p: "eq" },
+  { file: "features/machine-menu/machine-menu.css", sel: ".mm-retry", p: "eq" },
+  { file: "features/machine-menu/machine-menu.css", sel: ".mm-more-btn", p: "eq" },
+  { file: "features/machine-menu/machine-menu.css", sel: ".mm-grp-btn", p: "eq" },
+  { file: "features/machine-menu/machine-menu.css", sel: ".mm-opt", p: "eq" },
   { file: "features/routines/routines.css", sel: ".rt-btn", p: "eq" },
   { file: "features/client-history/client-history.css", sel: ".hist-btn", p: "cal" },
   { file: "features/openings/openings.css", sel: ".op-btn", p: "st" },
@@ -318,11 +326,13 @@ const FLAT_WHEN_DISABLED: [string, string][] = [
   ["features/catalog/catalog.css", ".cat__btn"],
   ["features/relay/board/board.css", ".rbd-btn"],
   ["features/client-notes/notes-page.css", ".nt-btn"],
-  ["features/equipment/equipment.css", ".eq-btn"],
   ["features/machine-menu/machine-menu.css", ".mm-step"],
   ["features/machine-menu/machine-menu.css", ".mm-btn"],
   ["features/machine-menu/machine-menu.css", ".mm-pg-btn"],
   ["features/machine-menu/machine-menu.css", ".mm-ro__btn"],
+  ["features/machine-menu/machine-menu.css", ".mm-quiet"],
+  ["features/machine-menu/machine-menu.css", ".mm-save"],
+  ["features/machine-menu/machine-menu.css", ".mm-add"],
   ["features/routines/routines.css", ".rt-btn"],
   ["features/client-history/client-history.css", ".hist-btn"],
   ["features/openings/openings.css", ".op-btn"],
@@ -344,7 +354,6 @@ const FLAT_WHEN_DISABLED: [string, string][] = [
 
 const QUIET: [string, string][] = [
   ["features/client-notes/notes-page.css", ".nt-btn--quiet"],
-  ["features/equipment/equipment.css", ".eq-btn--ghost"],
   ["features/studio-tasks/studio-tasks.css", ".st__btn--ghost"],
   ["features/subjective-report/subjective-report.css", ".sr-btn--ghost"],
   ["features/trainer-profile/trainer-profile.css", ".tp-btn--ghost"],
@@ -479,7 +488,6 @@ const LIFTED_TO_40: [string, string][] = [
   ["features/clinical-review/clinical-review.css", ".cr-bar .cr-seg__btn"],
   ["features/clinical-review/clinical-review.css", ".cr-iconbtn"],
   ["features/subjective-report/subjective-report.css", ".sr-btn--sm"],
-  ["features/equipment/equipment.css", ".eq-btn"],
   ["features/routines/routines.css", ".rt-btn"],
   // Found by the scan below, beyond the plan's list: the routine builder's
   // row tools (36) and its switch (about 30).
@@ -491,6 +499,9 @@ const LIFTED_TO_40: [string, string][] = [
 const FILES = [...new Set([...RAISED, ...GO.map(([file]) => ({ file })), ...LIFTED_TO_40.map(([file]) => ({ file }))].map((r) => r.file))].concat([
   "features/relay/notes/notes.css",
   "features/admins/admins.css",
+  // The machine sheet's .eq-btn went with the machine menu; the stylesheet
+  // still holds the set-up guide, the watch-outs and the All Machines rail.
+  "features/equipment/equipment.css",
 ]);
 
 /** A length in px (a rem is 16px), or null for anything else (a var(), a percentage). */

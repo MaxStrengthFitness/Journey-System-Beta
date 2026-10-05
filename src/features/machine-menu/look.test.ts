@@ -103,6 +103,15 @@ describe("the machine menu's colours", () => {
   });
 });
 
+/** A rule's own declarations, merged in source order (the later wins). */
+const ownOf = (sel: string): Record<string, string> => {
+  const out: Record<string, string> = {};
+  for (const r of BASE_RULES.filter((r) => r.selectors.length === 1 && r.selectors[0] === sel)) {
+    for (const m of r.body.matchAll(/(?:^|;)\s*([\w-]+)\s*:\s*([^;]+)/g)) out[m[1]] = m[2].trim().replace(/\s+/g, " ");
+  }
+  return out;
+};
+
 describe("the machine menu's type", () => {
   it("is never under 14px, and always in px", () => {
     const sizes = [...CSS.matchAll(/(?:^|[;{\s])font-size\s*:\s*([^;}]+)/g)].map((m) => m[1].trim());
@@ -143,6 +152,37 @@ const CONTROLS = [
   "mm-close",
   "mm-head__pill",
 ] as const;
+
+describe("the machine menu's voices (the merge with type and depth, Oct 5 2026)", () => {
+  it("speaks the label voice (14/700 in ink-2) over a value or a field, and the segment voice (14/600) on a chip or a switch's side", () => {
+    for (const sel of [".mm-field", ".mm-pos__title", ".mm-tile__label", ".mm-cmp__lbl", ".mm-grp-h", ".mm-drawer"]) {
+      const own = ownOf(sel);
+      expect([own["font-size"], own["font-weight"], own.color], sel).toEqual(["14px", "700", "var(--eq-ink-2)"]);
+    }
+    for (const sel of [".mm-choice", ".mm-seg__opt"]) {
+      const own = ownOf(sel);
+      expect([own["font-size"], own["font-weight"]], sel).toEqual(["14px", "600"]);
+    }
+  });
+
+  it("leaves the set-up guide's and the watch-outs' titles in the panel-title voice (equipment.css's 17/700)", () => {
+    const named = RULES.filter((r) => r.selectors.some((s) => /\.eq-card__title(?![\w-])/.test(s))).map((r) => r.selectors.join(", "));
+    expect(named).toEqual([]);
+  });
+
+  it("says \"skipped (pain)\" in Geist: words, not a figure in the display face", () => {
+    const [words] = BASE_RULES.filter((r) => r.selectors.includes('.mm-head__last[data-kind="uncounted"] .mm-head__num'));
+    expect(declared(words.body, "font-family")).toEqual(["inherit"]);
+    expect(declared(words.body, "font-weight")).toEqual(["700"]);
+  });
+
+  it("never clips the dialog's lift: the dialog does not hide its overflow while the card draws its shadow outside", () => {
+    const dialog = rulesFor(RULES, "mm-dialog").flatMap((r) => declared(r.body, "overflow"));
+    expect(dialog.filter((v) => /hidden|clip/.test(v))).toEqual([]);
+    const card = ownOf('.mm-card:not([data-inline="true"])');
+    expect(card["box-shadow"]).toMatch(/^var\(--eq-elev-5\)/);
+  });
+});
 
 describe("the machine menu's controls", () => {
   it("are at least 40px tall wherever their size is set", () => {
