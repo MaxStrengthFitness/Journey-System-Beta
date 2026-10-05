@@ -723,7 +723,8 @@ Six of these rounds still carry an open **Verify on the iPad** box. Those boxes 
 
 - [ ] `scripts/ship/ship-type-depth.ps1 -Stage prepare`, then `-Stage golive`, from `.claude\worktrees\type-depth` (the restore tag `restore/2026-10-05-before-type-depth`, then the push). Master at `e38d29bb` or `6340109a`: at `e38d29bb` the colour follow-ups go with it, so `ship-colour-followups.ps1` is not run as well. No Home Screen icon re-add.
 - [ ] Walk Round 56 of `docs/ops/TESTING-CHECKLIST.md` on the iPad, upright and on its side, in light, dark and System (the Wi-Fi-off font check, every room, a full session, the review's fixes, the follow-up, the sweep); Round 55 too if the follow-ups went with it.
-- [ ] AJ: the open questions in the round document (the Hub card's name at 800 and number at 12, the profile header at 744 portrait, wells on the page ground, a 15px body, Go or brand, the colour and layout calls, Hub bookings in dark, the codex's list kickers, chips on a hairline, First-time setup's Setup info).
+- [x] AJ answered three of the open questions, "1a 2a 3a" (Oct 5 2026), built as three commits on the branch: wells on the page ground sink into the tray (`c3ce57d1`); Build the Deep Dive stands upright in the button voice, slanted capitals the studio's name, Start session, In progress and the front door (`46595f24`); chips and toggles a trainer taps take the firm 3:1 edge (`550d7f51`). 11,066 passing in 677 files, typecheck 2.
+- [ ] AJ: the open questions still in the round document (the Hub card's name at 800 and number at 12, the profile header at 744 portrait, a 15px body, the colour and layout calls, Hub bookings in dark, the codex's list kickers, First-time setup's Setup info).
 
 ### 🎨 Built — The colour follow-ups (Oct 4) — branch `oct4/colour-followups`, four commits and the docs on `e38d29bb`, waiting for AJ's go
 
