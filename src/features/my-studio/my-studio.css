@@ -24,10 +24,16 @@
  * fills with the parts of the day (.msh-sub). It is MyStudioView's, so its
  * rules are here, in the stylesheet MyStudioView and StudioHeader import. */
 
+/* A shelf over the section (type and depth, Oct 4 2026; AJ: "borders and
+   headers just needs a little bit of weight and depth"): the hairline under
+   the header became the shelf's short navy cast, so the work scrolls under
+   the header instead of being cut by a rule. z 10: under the frame (20), over
+   the section's own sticky pieces; its popovers (.msh__pop) hang over the
+   sub-bar at 9. Never animated. */
 .msh {
   flex: none;
   position: relative;
-  z-index: 8;
+  z-index: 10;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -35,7 +41,16 @@
   min-height: 64px;
   padding: 0.5rem 1rem;
   background: var(--st-surface);
-  border-bottom: 1px solid var(--st-border);
+  border-bottom: 1px solid transparent;
+  box-shadow: var(--st-shelf);
+}
+/* With Relay's sub-bar joined under it (the parts of the day, the Tracker's
+   lists) the header and the sub-bar are one band: the hairline between them
+   stays, and the sub-bar casts the shelf. A shadow between the two would
+   split the band. */
+.msh:has(+ .msh-sub:not(:empty)) {
+  border-bottom-color: var(--st-border);
+  box-shadow: none;
 }
 
 .msh__sect-wrap,
@@ -244,6 +259,16 @@
 /* The sub-bar under it on Relay: the Board's parts of the day, the
    Tracker's lists. Empty (the Journal), it takes no room. */
 .msh-sub:empty { display: none; }
+/* Its own hairline (planner.css's sub-bar rule) gives way to the shelf; z 9,
+   under the header's popovers. Named through .ms, never through that rule's
+   class: css-imports.test.ts would count every host that draws a sub-bar
+   (Openings) as drawing with this sheet. */
+.ms > .msh-sub {
+  position: relative;
+  z-index: 9;
+  border-bottom-color: transparent;
+  box-shadow: var(--st-shelf);
+}
 
 /* A phone (Journey Lite, Oct 2026; features/phone/device.ts): the section,
    what's new, Ask and + on the first row; Relay's three tabs across the

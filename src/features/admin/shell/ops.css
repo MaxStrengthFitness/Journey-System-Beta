@@ -314,10 +314,17 @@
   flex-wrap: wrap;
 }
 
+/* The tabs end in a shelf, not a hairline (type and depth, Oct 4 2026): the
+   shelf's own line is where the open tab's underline sits, and its short
+   navy cast falls on the page under it. z 10, under the frame (20). Never
+   animated. */
 .ops-tabs {
+  position: relative;
+  z-index: 10;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr)); /* six pages since Month (Sep 29 2026); five left Setup alone on a second row */
-  border-bottom: 1px solid var(--adm-border);
+  border-bottom: 1px solid transparent;
+  box-shadow: var(--adm-shelf);
 }
 
 .ops-tab {

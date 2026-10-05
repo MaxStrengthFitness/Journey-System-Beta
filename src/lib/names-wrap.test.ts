@@ -115,6 +115,9 @@ describe("names in the stylesheets", () => {
  */
 const NAME_ELEMENTS: { file: string; find: RegExp; what: string }[] = [
   { file: "components/AppHeader.tsx", find: /"(font-display italic[^"]*)"/, what: "the studio's name in the top strip" },
+  // Type and depth, Oct 4 2026: the bottom bar's labels truncated; they wrap
+  // now, and the session's tab carries the client's first name.
+  { file: "components/NavButton.tsx", find: /<span className=\{`(w-full text-center[^`]*)`\}>\s*\{label\}/, what: "a bottom-bar label (the session's tab names the client)" },
   { file: "components/WorkoutTrackerView.tsx", find: /<span className="([^"]*)">\{name\}<\/span>/, what: "a machine in the end-of-session list" },
   { file: "features/trainer-profile/EditTrainerModal.tsx", find: /<span className="([^"]*)">\s*\{s\.fullName\}/, what: "a staff member's full name" },
   { file: "features/trainer-profile/EditTrainerModal.tsx", find: /htmlFor=\{`access-\$\{s\.id\}`\}\s*className="([^"]*)"/, what: "a studio's name on the access checkbox" },

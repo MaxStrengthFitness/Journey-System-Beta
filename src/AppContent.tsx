@@ -1382,8 +1382,12 @@ export default function AppContent({
     <DropdownMenu open={trainerMenuOpen} onOpenChange={setTrainerMenuOpen}>
       {/* Your avatar on the frame: the frame's own blue with navy initials
           (7.5:1), the same in both themes. The logo blue itself would be
-          2.0:1 on the navy. The menu below is a theme surface (a popover). */}
-      <DropdownMenuTrigger aria-label="Your menu" className="w-10 h-10 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-chrome-here text-chrome outline-none focus-visible:ring-2 focus-visible:ring-chrome-ink shrink-0">
+          2.0:1 on the navy. The menu below is a theme surface (a popover).
+          The initials are the display face UPRIGHT at 800 (AJ's answer 1A,
+          Oct 4 2026: the slant is the studio's name and Go's alone), 15px
+          on an iPad as the kit draws them. The press is a transform; no
+          shadow is animated. */}
+      <DropdownMenuTrigger aria-label="Your menu" className="w-10 h-10 sm:w-11 sm:h-11 rounded-full font-display font-extrabold text-xs sm:text-[15px] tracking-[0.02em] flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-chrome-here text-chrome outline-none focus-visible:ring-2 focus-visible:ring-chrome-ink shrink-0">
         {authTrainer.initials}
       </DropdownMenuTrigger>
       <DropdownMenuContent

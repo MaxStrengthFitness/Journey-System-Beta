@@ -66,7 +66,13 @@
  * The bar: back, breadcrumb, search
  * ------------------------------------------------------------------ */
 
+/* A shelf over the page (type and depth, Oct 4 2026): the hairline became the
+   shelf's short navy cast, so the page scrolls under the bar instead of being
+   cut by a rule. z 10, one under the masthead (11), whose own shelf falls on
+   this row when both are drawn. Never animated. */
 .wk__bar {
+  position: relative;
+  z-index: 10;
   flex: none;
   display: flex;
   align-items: center;
@@ -74,7 +80,8 @@
   min-height: 52px;
   padding: 0.5rem 1rem;
   background: var(--wk-bg);
-  border-bottom: 1px solid var(--wk-border);
+  border-bottom: 1px solid transparent;
+  box-shadow: var(--wk-shelf);
 }
 
 .wk__up {
@@ -173,7 +180,13 @@
  * WikiShell.tsx for why it is two rows.
  * ------------------------------------------------------------------ */
 
+/* The masthead casts the shelf too (type and depth, Oct 4 2026). Row two
+   (.wk__bar--sub) is the page's own ground, so the masthead's cast falls on
+   it, and row two casts its own onto the page. z 11, one over row two: at
+   the same number the later row would paint over the masthead's shadow. */
 .wk__mast {
+  position: relative;
+  z-index: 11;
   flex: none;
   display: flex;
   align-items: center;
@@ -181,7 +194,8 @@
   min-height: 58px;
   padding: 0.5rem 1rem;
   background: var(--wk-surface);
-  border-bottom: 1px solid var(--wk-border);
+  border-bottom: 1px solid transparent;
+  box-shadow: var(--wk-shelf);
 }
 
 .wk__mast-home {

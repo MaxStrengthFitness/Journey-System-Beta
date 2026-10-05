@@ -241,6 +241,8 @@ describe("liveSessionTabLabel", () => {
   it("names the client by first name", () => {
     expect(liveSessionTabLabel({ clientName: "Judy Daus" })).toBe("Session · Judy");
     expect(liveSessionTabLabel({ clientName: "" })).toBe("Active Session");
-    expect(liveSessionTabLabel(undefined)).toBe("Start Session");
+    // Ordinary capitalisation since the bar stopped drawing capitals (type
+    // and depth, Oct 4 2026), as every Start session button says it.
+    expect(liveSessionTabLabel(undefined)).toBe("Start session");
   });
 });

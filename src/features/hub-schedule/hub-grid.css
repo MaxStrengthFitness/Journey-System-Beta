@@ -31,14 +31,20 @@
 
 /* ---- the trainer row ---- */
 
+/* A shelf over the day (type and depth, Oct 4 2026): the hard 3:1 line under
+   the names row became the soft edge plus the shelf's short navy cast, so the
+   grid scrolls UNDER the row instead of being cut by a rule. z 8: under the
+   Hub's top (10), over every card, the now line and the sticky axis (7 and
+   below). The shadow is never animated. */
 .hs-head {
   position: sticky;
   top: 0;
   z-index: 8;
   display: flex;
   min-height: var(--hs-head);
-  border-bottom: 1px solid var(--eq-border-strong);
+  border-bottom: 1px solid var(--eq-edge);
   background: var(--eq-surface-2);
+  box-shadow: var(--eq-shelf);
 }
 
 .hs-corner {

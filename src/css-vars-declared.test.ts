@@ -50,6 +50,12 @@ const FILES = [
   "features/client-codex/codex.tokens.css",
   "features/progress-report/progress-report.tokens.css",
   "features/clinical-review/clinical-review.css",
+  // Phase 5: the rooms' shelves.
+  "features/hub-schedule/day-header.css",
+  "features/hub-schedule/hub-grid.css",
+  "features/my-studio/my-studio.css",
+  "features/wiki/wiki.css",
+  "features/admin/shell/ops.css",
 ];
 
 function filesUnder(dir: string, ext: RegExp, out: string[] = []): string[] {

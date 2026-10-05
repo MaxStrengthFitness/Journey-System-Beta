@@ -20,6 +20,14 @@
  *
  * A host may pass its own active colours (AppBottomBar's orange tabs);
  * they are frame tokens too.
+ *
+ * The label (type and depth, Oct 4 2026; AJ's answer 1A): Geist 12/600 in
+ * ordinary capitalisation, the tab you're on 700; 11 on a phone, where five
+ * tabs share the bar. It was 900 capitals at 9px on a phone and 11 elsewhere,
+ * squeezed with tracking-tighter and cut short with `truncate`. A label too
+ * long for its share now WRAPS (names are never truncated, and the session's
+ * tab carries the client's first name). Only colour and the active tab's
+ * scale transition; the weight changes at once.
  */
 import React from "react";
 import { motion } from "motion/react";
@@ -53,7 +61,7 @@ export function NavButton({
   return (
     <button
       onClick={onClick}
-      className={`flex flex-1 min-w-0 flex-col items-center gap-0.5 transition-all duration-300 relative ${tone}`}
+      className={`flex flex-1 min-w-0 flex-col items-center gap-0.5 transition-[color,transform] duration-300 relative ${tone}`}
     >
       <div
         className={`relative p-1 sm:p-1.5 rounded-lg transition-colors ${active ? activeBg : attention ? "bg-chrome-go-fill" : "bg-transparent"}`}
@@ -66,7 +74,7 @@ export function NavButton({
           />
         )}
       </div>
-      <span className="w-full text-center truncate text-[9px] sm:text-[11px] font-black uppercase tracking-tighter">
+      <span className={`w-full text-center text-[11px] sm:text-[12px] leading-tight [overflow-wrap:anywhere] ${active ? "font-bold" : "font-semibold"}`}>
         {label}
       </span>
       {active && (

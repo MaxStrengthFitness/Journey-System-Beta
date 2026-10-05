@@ -21,6 +21,21 @@
   color: var(--eq-ink);
 }
 
+/* The top as a whole is a SHELF over the grid (type and depth, Oct 4 2026;
+   AJ: "borders and headers just needs a little bit of weight and depth").
+   ClientsView wraps the bar and the day-in-words line (.hd-sum, when it is
+   drawn) in .hd-top, and the wrapper casts: a shadow between the bar and its
+   own line would split one band in two. Its last child's hairline gives way
+   to the shelf's own line; the hairline between the two stays. z 10: under
+   the frame (20), over the grid's sticky names row (8), so the cast falls on
+   the grid rather than under it. Never animated. */
+.hd-top {
+  position: relative;
+  z-index: 10;
+  box-shadow: var(--eq-shelf);
+}
+.hd-top > :last-child { border-bottom-color: transparent; }
+
 /* ---- the command bar (Oct 3 2026) ----
    One surface: [ Schedule | Opportunities ] | the chips ......... | Today
    Tasks Key. A hairline between the three groups instead of a border round

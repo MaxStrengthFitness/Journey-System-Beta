@@ -10,6 +10,13 @@ import { cn } from "@/lib/utils";
  * white in the light theme (the studio's name 2.56:1, its hairlines white on
  * white) and a host that guessed the theme wrong drew white on white.
  * `theme-color.ts` copies the same --chrome into the status bar.
+ *
+ * Its edge is a CAST, not a hairline (type and depth, Oct 4 2026; AJ:
+ * "borders and headers just needs a little bit of weight and depth"): the
+ * frame's --frame-down, a line in the deepest navy and a short navy shadow on
+ * the page in light, a faint rim and the deepest navy in dark. z-20 keeps it
+ * over every room's shelf (9 to 11) and the Hub's names row (8), so the cast
+ * falls on them; `relative` makes the number hold whatever the parent is.
  */
 interface AppHeaderProps {
   trainerInitials?: string;
@@ -58,7 +65,7 @@ export function AppHeader({
   const name = studioName?.trim() ?? "";
 
   return (
-    <header className="h-14 shrink-0 border-b flex items-center justify-between px-4 z-20 bg-chrome border-chrome-line">
+    <header className="relative h-14 shrink-0 flex items-center justify-between px-4 z-20 bg-chrome shadow-(--frame-down)">
       {/* min-w-0 is what lets this cluster shrink at all. Without it the flex
           item refuses to go below its content width, so a long studio name
           CLIPS instead of truncating — which is how the end of a name went
@@ -133,9 +140,12 @@ export function AppHeader({
 
         <div className="w-px h-6 bg-chrome-line" />
 
+        {/* Your initials: the display face UPRIGHT at 800 (AJ's answer 1A,
+            Oct 4 2026: the slant is the studio's name and Go's alone), at
+            the kit's 15px on an iPad, and 40px on a phone (it was 32). */}
         {trainerDropdown || (
           <button
-            className="w-8 h-8 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto shrink-0 bg-chrome-here text-chrome"
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full font-display font-extrabold text-xs sm:text-[15px] tracking-[0.02em] flex items-center justify-center cursor-pointer shadow-sm mx-auto shrink-0 bg-chrome-here text-chrome"
           >
             {trainerInitials}
           </button>
