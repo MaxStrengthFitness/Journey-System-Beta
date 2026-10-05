@@ -172,8 +172,11 @@
   --jg-pf-gain:          #15803d;   /* the load climbing since her start (Now bar) */
   --jg-radius:         10px;
   --jg-radius-sm:      6px;
-  --jg-font:           "Geist Variable", "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --jg-font-display:   "Saira Condensed", var(--jg-font);
+  /* The app's two faces, never a second copy of their names (type and
+     depth, Oct 4 2026): Saira Condensed is self-hosted in index.css, and a
+     literal here would quietly keep its own fallbacks if the faces moved. */
+  --jg-font:           var(--font-sans);
+  --jg-font-display:   var(--font-display);
 
   /* ---- 3. PROFILE — LIGHT (the client profile's Journey tab) ----------- *
      The profile grid is read for minutes at a time on a bright white page;

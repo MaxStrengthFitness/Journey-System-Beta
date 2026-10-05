@@ -107,7 +107,10 @@ export function AppHeader({
             // room to land; the taller line box stops the vertical clip.
             // Names are never truncated (CLAUDE.md, Sep 29 2026): a long name
             // wraps onto a second line within the cap instead of ellipsising.
-            "font-display italic text-xs sm:text-lg md:text-xl leading-tight uppercase justify-center transition-opacity text-left whitespace-normal [overflow-wrap:anywhere] min-h-10 pe-[0.22em] max-w-[14ch] sm:max-w-[20ch] lg:max-w-[28ch]",
+            // font-extrabold (Oct 4 2026): the display face is self-hosted at
+            // 700 and 800 only. The name asked for no weight and rendered
+            // Google's 600; it is the frame's brand moment, so it asks for 800.
+            "font-display italic font-extrabold text-xs sm:text-lg md:text-xl leading-tight uppercase justify-center transition-opacity text-left whitespace-normal [overflow-wrap:anywhere] min-h-10 pe-[0.22em] max-w-[14ch] sm:max-w-[20ch] lg:max-w-[28ch]",
             "text-chrome-ink",
             onStudioClick
               ? "hover:opacity-75 cursor-pointer"

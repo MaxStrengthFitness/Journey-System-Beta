@@ -90,8 +90,9 @@
   --rb-row-h-dense:    2.875rem;  /* 46px — in-session                       */
   --rb-strip-h:        2.5rem;    /* 40px coverage strip                     */
 
-  --rb-font:         "Geist Variable", "Geist", system-ui, -apple-system, sans-serif;
-  --rb-font-display: "Saira Condensed", var(--rb-font);
+  /* The app's two faces (type and depth, Oct 4 2026), as journey-grid's. */
+  --rb-font:         var(--font-sans);
+  --rb-font-display: var(--font-display);
 }
 
 /* ── Dark ──────────────────────────────────────────────────────────────────

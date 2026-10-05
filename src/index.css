@@ -1,8 +1,57 @@
-@import url('https://fonts.googleapis.com/css2?family=Saira+Condensed:ital,wght@0,600;0,700;0,800;1,600;1,700;1,800&family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+
+/* THE DISPLAY FACE, SELF-HOSTED (type and depth, Oct 4 2026).
+   Saira Condensed used to come from Google Fonts through a render-blocking
+   @import on line 1 (with Inter, which nothing used): three hops to a third
+   party, display=swap so headings reflowed on slow studio Wi-Fi, and with
+   Google unreachable every display heading fell back to slanted Geist for
+   the whole visit. These four files are vendored from
+   @fontsource/saira-condensed 5.3.0 (npm pack, not a dependency: the
+   worktrees share node_modules and `npm install` fails here), latin and
+   latin-ext at 700 and 800 only, and Vite bundles them same-origin the way
+   it bundles Geist. Licence: SIL OFL 1.1, beside the files.
+   - 700 and 800 are the only weights: a rule that asks the display face for
+     600, or for no weight, now renders 700; 900 renders 800.
+   - Saira Condensed has NO italic file (Google's response held none, and the
+     package ships none). The slant on the brand moments is the browser's
+     own oblique, as it always was, so no italic face is declared.
+   - latin-ext is fetched only when a character on screen needs it.
+   src/fonts.test.ts holds all of this. */
+@font-face {
+  font-family: "Saira Condensed";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url("./assets/fonts/saira-condensed/saira-condensed-latin-ext-700-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Saira Condensed";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url("./assets/fonts/saira-condensed/saira-condensed-latin-700-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Saira Condensed";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 800;
+  src: url("./assets/fonts/saira-condensed/saira-condensed-latin-ext-800-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Saira Condensed";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 800;
+  src: url("./assets/fonts/saira-condensed/saira-condensed-latin-800-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 @custom-variant dark (&:is(.dark *));
 
@@ -96,6 +145,12 @@
     --color-brand-tile-ink: var(--brand-tile-ink);
 
     --font-display: 'Saira Condensed', var(--font-sans);
+    /* `font-black` is 800, not Tailwind's 900 (type and depth, Oct 4 2026).
+       The display face is loaded at 700 and 800 only, so 900 rendered as
+       800 on Saira anyway; on Geist, 900 was part of the "everything is
+       700-900" weight that made the app shout. 247 uses in 40 files calm
+       at once. */
+    --font-weight-black: 800;
 
     /* ELEVATION.
        These OVERRIDE Tailwind's built-in shadow scale rather than sitting
