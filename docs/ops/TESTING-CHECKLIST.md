@@ -2906,3 +2906,17 @@ Round document: `docs/rounds/2026-10-04-type-and-depth.md`. Nothing in this roun
 - [ ] Activity Archive: a session's Delete asks with Cancel outlined and Delete permanently solid red, both in words.
 - [ ] Demo Mode: the strip at the top says "Demo Mode — nobody here is real" in ordinary words and still fits one line.
 - [ ] Edit trainer profile (My Profile, and a leader's view of a colleague on My Studio -> Team): every label in words, the fields sunk on a firm outline, a certificate's x easy to hit, Studio involvements & connections a heading; Team presence sorting (the Hub's trainer order) in words.
+
+**The sweep (Oct 5 2026): the rooms no walk had opened**
+- [ ] Activity Archive: the year calendar's month names, counts and day letters are words and readable; a session's pop-up says Session date, Trainer and Session notes as labels and machine names as written; TSC is a 40px raised toggle; Add a machine is in words. Log past session's steps and routine chips are words.
+- [ ] The Calendar (the avatar menu): the day, week and month heads are words; the trainer picker shows names as written; a 15-minute booking on the Day view still shows its name and time (say if they clip).
+- [ ] Relay: a segmented choice (an outcome, Write / Read) in words, the picked one bolder; tags (Finished, Up for grabs) and the Journal's kinds in words; Take back is a raised button; the Requests lane's New ask and its reply buttons are raised and press in.
+- [ ] Learning: a Catalog machine's heads (Trains it most, Never to failure, Clinical warnings), the crumbs, badges and facts, and search's group heads are words; the shared machines' notes sit in a sunken well.
+- [ ] Programming: Setup's labels and machine names as written, Paste a chart and Similar to as heads, the quick pad's Clear / Back / Next; the routine builder's tags (Gap, Goal, Big 5, Order) and its small notes readable, its empty hint a sunken well.
+- [ ] Notes & Profile: Notes' categories and loudness pills in words; Body & Pulse's heads; Pulse's chips, body sides and segments easy to hit; Pulse's Back and client mode's Back / Next raised; the clinical flag picker's x and clear easy to hit.
+- [ ] The briefing's Close (top right) is a raised round button that presses in.
+- [ ] My Profile: the chips, labels, Your week and My clients heads, and the standing week's labels are words.
+- [ ] The Client Directory: the column and section heads are words; Open session and Add client in ordinary words.
+- [ ] First-time setup (a client flagged for a consultation): the title upright, the labels words, the choices raised with the picked one blue, the age field sunk, Start consult workout orange in ordinary words.
+- [ ] Operations and Admins: badges, table heads and field labels in words; the eyebrow over a page's title stays in capitals; a studio's Floor in Admins headed in the section voice.
+- [ ] The Hub: "Next 30 min" (and "Focus" on a phone) in words.
