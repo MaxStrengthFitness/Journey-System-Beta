@@ -66,6 +66,12 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   // Type and depth, phase 6 (Oct 4 2026): the codex's page title, upright Saira
   // 30 in its own capitalisation now, wraps like every name.
   { file: "features/client-codex/kit/kit.css", cls: "cx-page-title", what: "a Notes & Profile page's title (Saira 30, upright)" },
+  // Type and depth, phase 11 (Oct 4 2026): the Hub's names. A lane head and
+  // the peek's title are Saira now (17 and 22, upright); a booking's name was
+  // already whole and wrapping, and is held here with them.
+  { file: "features/hub-schedule/hub-grid.css", cls: "hs-colname", exact: ".hs-colname strong", what: "a trainer's name heading a lane on the Hub (Saira 17)" },
+  { file: "features/hub-schedule/peek.css", cls: "hp-name", what: "the client's name on the Hub's peek (Saira 22)" },
+  { file: "features/hub-schedule/hub-card.css", cls: "hs-card-name", what: "the client's name on a Hub booking" },
 ];
 
 const rulesFor = (entry: (typeof NAME_RULES)[number]) =>

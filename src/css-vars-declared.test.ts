@@ -101,6 +101,9 @@ const FILES = [
   "features/studio-tasks/studio-hub.css",
   "features/hub-schedule/next-strip.css",
   "features/phone/phone.css",
+  // Phase 11: the Hub (its cards, its command bar, its peek).
+  "features/hub-schedule/hub-card.css",
+  "features/hub-opportunities/layer-switch.css",
 ];
 
 function filesUnder(dir: string, ext: RegExp, out: string[] = []): string[] {

@@ -107,9 +107,12 @@ describe("the week", () => {
   });
 
   it("raises the layer you're on as a chip on the bar, not a tint alone", () => {
+    // Moved on purpose (type and depth, phase 11): the chip is RAISED out of
+    // the bar's well now, the raised fill a hair lighter than the card and
+    // the control's lift (it was the card's fill and a 1px shadow).
     const on = declared(TOP, '.hd-bar .hl-btn[aria-pressed="true"]');
-    expect(on.background).toBe("var(--eq-surface)");
-    expect(on["box-shadow"]).toContain("var(--eq-shadow)");
+    expect(on.background).toBe("var(--eq-raised)");
+    expect(on["box-shadow"]).toContain("var(--eq-elev-1)");
   });
 });
 

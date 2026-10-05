@@ -40,7 +40,12 @@
    One surface: [ Schedule | Opportunities ] | the chips ......... | Today
    Tasks Key. A hairline between the three groups instead of a border round
    every control. On an iPad it never wraps: the chips give up room and
-   scroll before anything else moves. */
+   scroll before anything else moves.
+   A WELL inside its edge (type and depth, phase 11, Oct 4 2026): the bar is
+   a group of controls, so it keeps its 3:1 edge as a field does (3.08:1 on
+   the well, 3.42 on the top's card in light; 4.13 and 3.79 dark) and sinks
+   inside it, the well tone and its inner shadow, radius 12 (a control's).
+   Its padding stays 3px, so the Hub's top keeps its height. */
 .hd-bar {
   display: flex;
   align-items: center;
@@ -48,30 +53,44 @@
   min-width: 0;
   padding: 3px;
   border: 1px solid var(--eq-border-strong);
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
 }
 
+/* In the bar the switch is no box of its own, and it must not clip: the
+   layer you're on lifts out of it (layer-switch.css clips its own corners). */
 .hd-bar .hl-switch {
   border: 0;
-  border-radius: 11px;
+  border-radius: 10px;
   background: transparent;
+  overflow: visible;
 }
 
 .hd-bar .hl-btn {
-  border-radius: 11px;
+  border-radius: 10px;
+  font-weight: 600;
 }
 
 .hd-bar .hl-btn + .hl-btn {
   border-left: 0;
 }
 
-/* The layer you're on is a raised chip on the bar, not a tint alone: a
-   pale blue on the bar's own grey-blue was told apart by colour only
-   (Oct 4 2026). Its words stay the blue of what you chose. */
+/* The layer you're on is RAISED out of the well, not a tint alone: a pale
+   blue on the bar's own grey-blue was told apart by colour only (Oct 4
+   2026). A fill a hair lighter than the card, the contact lift, a soft ring
+   (the well is the group's boundary, so the chip needs no 3:1 edge of its
+   own) and the top light; its words the blue of what you chose, at 700
+   (the others 600, a segment's voice). It presses in like any control. */
 .hd-bar .hl-btn[aria-pressed="true"] {
-  background: var(--eq-surface);
-  box-shadow: 0 1px 2px var(--eq-shadow);
+  background: var(--eq-raised);
+  color: var(--eq-live-text);
+  font-weight: 700;
+  box-shadow: var(--eq-elev-1), inset 0 0 0 1px var(--eq-edge-control), inset 0 1px 0 var(--eq-highlight);
+}
+
+.hd-bar .hl-btn:active {
+  transform: translateY(1px);
 }
 
 .hd-rule {
@@ -103,7 +122,7 @@
   justify-content: center;
   gap: 1px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 12px;
   background: transparent;
   color: var(--eq-ink-2);
   font: inherit;
@@ -117,9 +136,14 @@
   white-space: nowrap;
 }
 
+/* The day's numeral is a headline figure: the display face, upright, 17 at
+   800 with tabular digits (type and depth, phase 11). Its line is about 3px
+   taller than at 14, and the pill still fits its 44px. */
 .hd-day-name strong {
-  font-size: 14px;
+  font-family: var(--font-display);
+  font-size: 17px;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
   color: var(--eq-ink);
 }
 
@@ -154,10 +178,14 @@
   color: var(--eq-hero-text);
 }
 
+/* The picked day lifts as a solid blue does: a blue-tinted drop and a top
+   light (type and depth, phase 11). Today AND picked keeps exactly its
+   orange underline below instead (that rule outranks this one). */
 .hd-day[aria-selected="true"] {
   border-color: var(--eq-live);
   background: var(--eq-live);
   color: var(--eq-live-on);
+  box-shadow: var(--eq-glow-live), var(--eq-solid-light);
 }
 
 .hd-day[aria-selected="true"] .hd-day-name strong,
@@ -239,19 +267,27 @@
 }
 
 /* In the bar a tool is borderless: the bar is the frame, so it has no box
-   of its own to lift or press into. */
+   of its own to lift or press into. A quiet button in a well speaks 600
+   (phase 11). */
 .hd-bar .hd-btn,
 .hd-bar .hd-btn:active {
   border-color: transparent;
   background: transparent;
   box-shadow: none;
   padding: 0 10px;
-  border-radius: 11px;
+  border-radius: 10px;
 }
 
-.hd-bar .hd-btn:hover,
-.hd-bar .hd-chip:hover {
-  background: var(--eq-surface-3);
+.hd-bar .hd-btn {
+  font-weight: 600;
+}
+
+/* A pointer's only (rule 6): an iPad keeps :hover after a tap. */
+@media (hover: hover) {
+  .hd-bar .hd-btn:hover,
+  .hd-bar .hd-chip:hover {
+    background: var(--eq-surface-3);
+  }
 }
 
 /* Tasks' count, as a small pill beside its icon. */
@@ -316,7 +352,7 @@
   gap: 6px;
   padding: 0 10px;
   border: 0;
-  border-radius: 11px;
+  border-radius: 10px;
   background: transparent;
   color: var(--eq-ink-2);
   font: inherit;
@@ -471,13 +507,13 @@
   color: var(--eq-ink);
 }
 
+/* A head over a list speaks the label voice, 14/700 in ink-2, in its own
+   capitalisation (type and depth, phase 11; it was 13px capitals). */
 .hd-key-h {
   margin: 18px 0 0;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--eq-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--eq-ink-2);
 }
 
 .hd-swatch {

@@ -13,6 +13,14 @@
   background: rgba(0, 0, 0, 0.12);
 }
 
+/* A popover, the deepest lift a page holds (type and depth, phase 11):
+   --eq-elev-4, radius 18 (a sheet's), 18px inside. In light the card's own
+   fill on the soft edge, the fill clipped to the padding box so the edge is
+   seen from outside; in dark the popover fill, a step LIGHTER than the card
+   (#22374B, higher is lighter), with a white rim at .055 and a white top
+   light at .07 (equipment.tokens.css, --eq-popover*). It was a 3:1 outline
+   with one 40px blur. Its words read at 4.5:1 on it in both modes (the
+   muted ink 5.33:1 in dark) and its buttons' 3:1 edge at 3.12:1. */
 .hp {
   position: fixed;
   z-index: 61;
@@ -24,12 +32,13 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--eq-border-strong);
-  border-radius: 16px;
-  background: var(--eq-surface);
+  padding: 18px;
+  border: 1px solid var(--eq-popover-rim);
+  border-radius: 18px;
+  background: var(--eq-popover);
+  background-clip: padding-box;
   color: var(--eq-ink);
-  box-shadow: 0 16px 40px var(--eq-shadow);
+  box-shadow: var(--eq-elev-4), inset 0 1px 0 var(--eq-popover-light);
 }
 
 .hp[data-mode="center"] {
@@ -50,18 +59,24 @@
   gap: 12px;
 }
 
+/* A person's name as a title (AJ's 1A): the display face, upright, 22 at
+   800, in its own capitalisation. Whole, wrapping, never cut. */
 .hp-name {
   margin: 0;
-  font-size: 20px;
+  font-family: var(--font-display);
+  font-size: 22px;
   font-weight: 800;
-  line-height: 1.2;
+  line-height: 1.04;
+  letter-spacing: 0;
   overflow-wrap: anywhere;
 }
 
+/* The time, the trainer and the session under the name: a quiet sentence in
+   a panel, 14 at the body weight in the muted ink (it was 13/600). */
 .hp-sub {
-  margin: 2px 0 0;
-  font-size: 13px;
-  font-weight: 600;
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: var(--fw-body);
   color: var(--eq-ink-muted);
 }
 
@@ -146,7 +161,7 @@
 
 .hp-facts {
   padding-top: 10px;
-  border-top: 1px solid var(--eq-border);
+  border-top: 1px solid var(--eq-divider);
 }
 
 .hp-facts li {
@@ -157,14 +172,19 @@
   line-height: 1.4;
 }
 
+/* "Last in", "Package": the definition voice, as Settings' rows, 14 at 600
+   in the muted ink, in the capitalisation the model types (type and depth,
+   phase 11; they were 11px capitals). The answer beside it is ink-2. */
 .hp-facts dt,
 .hp-fact-label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
   color: var(--eq-ink-muted);
-  padding-top: 2px;
+}
+
+.hp-fact-text {
+  color: var(--eq-ink-2);
 }
 
 .hp-fact-text[data-muted="true"] {

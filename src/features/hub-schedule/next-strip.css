@@ -99,9 +99,13 @@
   border-left-color: var(--eq-rail-booked);
 }
 
+/* A state that repaints the fill restates the clip (phase 11): the
+   background shorthand resets background-clip, and the soft edge would sit
+   over the item's own fill instead of the strip. */
 .hn-item[data-when="in-session"] {
   border-left-color: var(--eq-live);
   background: var(--eq-live-fill);
+  background-clip: padding-box;
 }
 
 .hn-item[data-when="now"] {
@@ -114,6 +118,7 @@
   border-color: var(--eq-border);
   border-left-color: var(--eq-ink-faint); /* the grid's unlinked edge, whatever its time */
   background: var(--eq-surface-2);
+  background-clip: padding-box;
   box-shadow: none;
   cursor: default;
 }

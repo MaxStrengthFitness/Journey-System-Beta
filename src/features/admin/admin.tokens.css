@@ -80,6 +80,9 @@
   --adm-edge-control:    rgba(25, 45, 65, 0.26);
   --adm-divider:         rgba(25, 45, 65, 0.10);
   --adm-highlight:       rgba(255, 255, 255, 0.70);
+  --adm-popover:         var(--adm-surface);
+  --adm-popover-rim:     var(--adm-edge);
+  --adm-popover-light:   rgba(255, 255, 255, 0);
   --adm-elev-0:          var(--elev-0);
   --adm-elev-1:          var(--elev-1);
   --adm-elev-2:          var(--elev-2);
@@ -146,6 +149,9 @@
   --adm-edge-control:    rgba(150, 180, 210, 0.16);
   --adm-divider:         rgba(150, 180, 210, 0.10);
   --adm-highlight:       rgba(255, 255, 255, 0.07);
+  --adm-popover:         #22374b;
+  --adm-popover-rim:     rgba(255, 255, 255, 0.055);
+  --adm-popover-light:   rgba(255, 255, 255, 0.07);
   --adm-elev-0:          var(--elev-0);
   --adm-elev-1:          var(--elev-1);
   --adm-elev-2:          var(--elev-2);
@@ -200,6 +206,9 @@
     --adm-edge-control:    rgba(150, 180, 210, 0.16);
     --adm-divider:         rgba(150, 180, 210, 0.10);
     --adm-highlight:       rgba(255, 255, 255, 0.07);
+    --adm-popover:         #22374b;
+    --adm-popover-rim:     rgba(255, 255, 255, 0.055);
+    --adm-popover-light:   rgba(255, 255, 255, 0.07);
     --adm-elev-0:          var(--elev-0);
     --adm-elev-1:          var(--elev-1);
     --adm-elev-2:          var(--elev-2);

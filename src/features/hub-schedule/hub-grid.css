@@ -127,26 +127,36 @@ button.hs-colhead:focus-visible {
   line-height: 1.2;
 }
 
+/* A lane head names a person, so it speaks as a name does (type and depth,
+   phase 11; AJ's 1A): the display face, upright, 17 at 800, in its own
+   capitalisation. Saira 17 is narrower than Geist 14 at 800 ("Christopher"
+   72px against 86), and it wraps, never clips; the head grows from its
+   56px minimum when it must. */
 .hs-colname strong {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-family: var(--font-display);
+  font-size: 17px;
   font-weight: 800;
+  letter-spacing: 0.005em;
+  line-height: 1.1;
   color: var(--eq-ink);
   overflow-wrap: anywhere;
 }
 
+/* The You tag stays in the text face, 12 at 700, in its own capitalisation
+   ("You"): no label under 11px, and capitals are the eyebrow's alone. */
 .hs-you {
   flex: none;
   padding: 1px 5px;
   border-radius: 5px;
   background: var(--eq-live-fill);
   color: var(--eq-live-text);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 /* On your blue head the YOU tag is a card-coloured chip, so it stands off
@@ -222,9 +232,18 @@ button.hs-colhead:focus-visible {
   transform: translateY(2px);
 }
 
+/* The hours are headline figures: the display face, upright, 17 at 800,
+   4px further off the rail (type and depth, phase 11). "10 AM" is 37px of
+   the label's 46. The half hours stay the text face, at 12 (they were 11). */
+.hs-tick[data-hour="true"] {
+  font-family: var(--font-display);
+  font-size: 17px;
+  padding-right: 4px;
+}
+
 .hs-tick[data-hour="false"] {
   font-weight: 600;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--eq-ink-muted);
 }
 
