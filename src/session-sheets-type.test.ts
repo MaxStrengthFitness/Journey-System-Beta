@@ -55,6 +55,9 @@ function pxOf(value: string): number | null {
 /** [stylesheet, which of its rules (all, or those whose selector starts so)]. */
 const SHEETS: [string, RegExp | null][] = [
   ["features/equipment/equipment.css", null],
+  // The machine menu (Oct 2026): a machine's name in the session opens it,
+  // in place of the machine sheet.
+  ["features/machine-menu/machine-menu.css", null],
   ["features/client-notes/notes.css", null],
   ["features/briefing/briefing.css", null],
   ["features/relay/notes/journal-today.css", null],
@@ -108,9 +111,18 @@ describe("the sheets a session opens: no label under 11px, words as written", ()
     expect(Object.keys(CAPITALS).filter((k) => !caps.includes(k)), "an exception that no longer sets capitals").toEqual([]);
   });
 
-  it("draws the Machines back button and the Pulse slide-over's buttons on their 3:1 edge", () => {
+  it("draws the machine menu's fields and the Pulse slide-over's buttons on their 3:1 edge", () => {
     const eq = rulesOf("features/equipment/equipment.css");
     const field = (sel: string) => eq.filter((r) => r.selectors.includes(sel)).map((r) => r.body).join(";");
+    // The machine menu's own fields (it replaced the machine sheet, whose
+    // .eq-field__input, .eq-step__input and composer went with it): a dial's
+    // value typed in, a note's update, and the note box.
+    const mm = rulesOf("features/machine-menu/machine-menu.css");
+    const menuField = (sel: string) => mm.filter((r) => r.selectors.includes(sel)).map((r) => r.body).join(";");
+    for (const sel of [".mm-field__input", ".mm-upd__input", ".mm-cmp"]) {
+      expect(declared(menuField(sel), "border").at(-1), sel).toBe("1px solid var(--eq-border-strong)");
+      expect(declared(menuField(sel), "box-shadow").at(-1), `${sel} sinks`).toBe("var(--eq-elev-0)");
+    }
     const back = field(".eq-back");
     expect(declared(back, "min-height")).toEqual(["40px"]);
     expect(declared(back, "border")).toEqual(["1px solid var(--eq-border-strong)"]);

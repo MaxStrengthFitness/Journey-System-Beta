@@ -470,6 +470,7 @@ const UPRIGHT_DISPLAY: [file: string, selector: string, weight: number, what: st
   ["features/briefing/briefing.css", ".br__name", 800, "the client's name on the briefing"],
   ["features/trainer-profile/trainer-profile.css", ".tp-identity__name", 800, "the trainer's name on My Profile"],
   ["features/equipment/equipment.css", ".eq-detail__name", 800, "a machine's name on its detail panel"],
+  ["features/machine-menu/machine-menu.css", ".mm-head__machine", 800, "a machine's name, the machine menu's title"],
   ["features/hub-schedule/peek.css", ".hp-name", 800, "the client's name on the peek"],
   ["features/hub-schedule/hub-grid.css", ".hs-colname strong", 800, "a trainer's name heading a lane"],
   ["features/briefing/briefing.css", ".br__routine-name", 800, "a routine's name on the briefing"],
@@ -479,6 +480,7 @@ const UPRIGHT_DISPLAY: [file: string, selector: string, weight: number, what: st
   ["features/routine-builder/routine-builder.css", ".rb-swap__to", 700, "the machine a swap brings in"],
   // headline figures
   ["features/client-codex/kit/kit.css", ".cx-big", 800, "a big number in the codex"],
+  ["features/machine-menu/machine-menu.css", ".mm-head__num", 800, "the last time on a machine, in the machine menu's header"],
   ["features/wiki/wiki.css", ".wk__stat-value", 800, "a big number in Learning"],
   ["features/learning/learning.css", ".lh__facts strong", 800, "Learning's facts"],
   ["features/client-story/story.css", ".st-year__title", 800, "a year on the Story"],
@@ -532,6 +534,8 @@ const GEIST_HEADS: [file: string, selector: string, size: number, weight: number
   ["features/admin/admin.css", ".adm-panel__title", 17, 700, "an Operations panel's head"],
   ["features/trainer-profile/trainer-profile.css", ".tp-card__title", 17, 700, "a My Profile card's head"],
   ["features/equipment/equipment.css", ".eq-card__title", 17, 700, "a machine sheet card's head"],
+  ["features/machine-menu/machine-menu.css", ".mm-h", 17, 700, "a machine menu block's head (Settings, Notes)"],
+  ["features/machine-menu/machine-menu.css", ".mm-chart__title", 17, 700, "the machine menu's chart head"],
   ["features/calendar/calendar.css", ".cal-card__title", 17, 700, "a calendar card's head"],
   ["features/clinical-review/clinical-review.css", ".cr-section__title", 17, 700, "a Deep Dive panel's title"],
   ["features/subjective-report/subjective-report.css", ".sra-head__title", 17, 700, "the Pulse panel's title"],
@@ -595,6 +599,7 @@ const PANEL_HEADS: [file: string, selector: string, what: string][] = [
   ["features/admin/admin.css", ".adm-panel__title", "an Operations panel's title"],
   ["features/trainer-profile/trainer-profile.css", ".tp-card__title", "a My Profile card's title"],
   ["features/equipment/equipment.css", ".eq-card__title", "a machine sheet card's title"],
+  ["features/machine-menu/machine-menu.css", ".mm-h", "a machine menu block's title"],
   ["features/calendar/calendar.css", ".cal-card__title", "a Calendar card's title"],
 ];
 

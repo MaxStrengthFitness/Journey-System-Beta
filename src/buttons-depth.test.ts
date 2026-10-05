@@ -141,6 +141,17 @@ const RAISED: Raised[] = [
   { file: "features/client-notes/notes-page.css", sel: ".nx-ask__q", p: "eq" },
   { file: "features/client-notes/critical-line.css", sel: ".nx-critline__btn", p: "eq" },
   { file: "features/equipment/equipment.css", sel: ".eq-btn", p: "eq" },
+  // The machine menu (Oct 2026) replaced the machine sheet and its weight
+  // steppers (.eq-step__btn): its ± and its everyday buttons, raised out of
+  // the card and the tiles' wells (type and depth, brought onto the menu).
+  { file: "features/machine-menu/machine-menu.css", sel: ".mm-step", p: "eq" },
+  { file: "features/machine-menu/machine-menu.css", sel: ".mm-btn", p: "eq" },
+  { file: "features/machine-menu/machine-menu.css", sel: ".mm-quiet", p: "eq" },
+  { file: "features/machine-menu/machine-menu.css", sel: ".mm-close", p: "eq" },
+  { file: "features/machine-menu/machine-menu.css", sel: ".mm-pg-btn", p: "eq" },
+  { file: "features/machine-menu/machine-menu.css", sel: ".mm-list-btn", p: "eq" },
+  { file: "features/machine-menu/machine-menu.css", sel: ".mm-drawer", p: "eq" },
+  { file: "features/machine-menu/machine-menu.css", sel: ".mm-pos__btn", p: "eq" },
   { file: "features/routines/routines.css", sel: ".rt-btn", p: "eq" },
   { file: "features/client-history/client-history.css", sel: ".hist-btn", p: "cal" },
   { file: "features/openings/openings.css", sel: ".op-btn", p: "st" },
@@ -308,6 +319,10 @@ const FLAT_WHEN_DISABLED: [string, string][] = [
   ["features/relay/board/board.css", ".rbd-btn"],
   ["features/client-notes/notes-page.css", ".nt-btn"],
   ["features/equipment/equipment.css", ".eq-btn"],
+  ["features/machine-menu/machine-menu.css", ".mm-step"],
+  ["features/machine-menu/machine-menu.css", ".mm-btn"],
+  ["features/machine-menu/machine-menu.css", ".mm-pg-btn"],
+  ["features/machine-menu/machine-menu.css", ".mm-ro__btn"],
   ["features/routines/routines.css", ".rt-btn"],
   ["features/client-history/client-history.css", ".hist-btn"],
   ["features/openings/openings.css", ".op-btn"],
@@ -370,6 +385,8 @@ const SOLID: [string, string, string][] = [
   ["features/wiki/wiki.css", ".wk__btn--primary", "wk"],
   ["features/routine-builder/routine-builder.css", ".rb-bar__btn--primary", "rb"],
   ["features/hub-schedule/day-header.css", '.hd-btn[data-primary="true"]', "eq"],
+  ["features/machine-menu/machine-menu.css", ".mm-btn--live", "eq"],
+  ["features/machine-menu/machine-menu.css", '.mm-add[data-quiet="true"]', "eq"],
 ];
 
 describe("a solid blue button drops a blue-tinted shadow and keeps a top light", () => {
@@ -402,6 +419,9 @@ const GO: [string, string, string, string?][] = [
 /** Every other orange button: Go's depth in the button voice. */
 const GO_DEPTH: [string, string, string, string][] = [
   ["features/admin/admin.css", ".adm-btn--hero", ".adm-btn", "adm"],
+  // The machine menu's Save and Add note (the sheet's .eq-btn--hero went with it).
+  ["features/machine-menu/machine-menu.css", ".mm-save", ".mm-save", "eq"],
+  ["features/machine-menu/machine-menu.css", ".mm-add", ".mm-add", "eq"],
   ["features/machine-fit/ui/machine-fit.css", ".fit-btn--hero", ".fit-btn", "eq"],
   ["features/routines/routines.css", ".rt-btn--hero", ".rt-btn", "eq"],
   // AJ's 2A (Oct 5 2026): upright, 14/700, with Go's glow, top light and press.
@@ -540,6 +560,8 @@ describe("a hover that changes a fill is a pointer's only", () => {
 
   it.each([
     ["features/client-notes/notes-page.css", ".nt-btn--solid", "var(--eq-live)"],
+    ["features/machine-menu/machine-menu.css", ".mm-save", "var(--eq-go)"],
+    ["features/machine-menu/machine-menu.css", ".mm-add", "var(--eq-go)"],
     ["features/routines/routines.css", ".rt-btn--hero", "var(--eq-go)"],
     ["features/studio-tasks/studio-tasks.css", ".st__btn--primary", "var(--st-live)"],
     ["features/studio-tasks/studio-tasks.css", ".st__btn--done", "var(--st-done)"],

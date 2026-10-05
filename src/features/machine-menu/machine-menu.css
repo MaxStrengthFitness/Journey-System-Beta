@@ -12,6 +12,30 @@
    nothing under 14px (the in-hand floor), every control at least 40px and
    44px by default, the readout's slot a fixed 128px, the plot pan-y.
    lib/names-wrap.test.ts holds the classes that carry a name: they wrap.
+
+   The Refined Lift look (type and depth, Oct 5 2026; AJ's "1a 2a 3b" and
+   "1a 2a 3a", docs/rounds/2026-10-04-type-and-depth.md), brought onto the
+   card when the two rounds met:
+     - the card is a dialog: an edge seen from outside and --eq-elev-5 (a
+       panel's --eq-elev-2 inline on Programming); the header is a shelf
+       that casts onto the scroller instead of ending in a hairline;
+     - the machine's name is the display face, upright, 22/800, and the
+       last-time figure a headline figure in it; the block heads speak the
+       panel-title voice, 17/700; nothing is in capitals;
+     - every button is RAISED on its 3:1 edge (a fill a hair lighter than
+       the card, a contact lift and a top light) and presses in; Save and
+       Add note take Go's depth in the 14/700 button voice; a solid blue
+       its own glow; a text button never lifts;
+     - a box inside the card is a WELL (the well tone, an inner shadow, no
+       edge): the setting tiles, a big jump's positions, a note, Every
+       session's table, a status line; a field keeps its 3:1 edge and sinks;
+     - a hover that changes a fill is a pointer's only (the block at the end
+       of the file, after the phone's and landscape's).
+   The chart keeps its own ground: its SVG draws folds, bands and rings in
+   the card's fill, and the readout's fixed slot is measured to the pixel,
+   so neither is a well. The tile values, the readout's figure and the
+   plot's numbers stay in Geist: Saira has no tabular figures, and they
+   change in place.
    ========================================================================== */
 @import "../equipment/equipment.tokens.css";
 @import "../journey-grid/journey-grid.tokens.css";
@@ -34,11 +58,13 @@
   min-height: 24px;
 }
 
+/* A block's title: the panel-title voice, 17/700 in ink (type and depth). */
 .mm-chart__title {
   margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.5;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
   color: var(--eq-ink);
   overflow-wrap: anywhere;
 }
@@ -190,28 +216,32 @@
   gap: 6px;
 }
 
+/* Raised on the 3:1 edge, with a press (type and depth). */
 .mm-ro__btn {
   min-width: 44px;
   height: 44px;
   padding: 0 10px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface-2);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   display: inline-grid;
   place-items: center;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--eq-ink);
   cursor: pointer;
 }
 
-.mm-ro__btn:not(:disabled):hover {
-  background: var(--eq-surface-3);
+.mm-ro__btn:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
 }
 
 .mm-ro__btn:disabled {
   opacity: 0.4;
   cursor: default;
+  box-shadow: none;
 }
 
 .mm-ro__btn:focus-visible,
@@ -567,26 +597,29 @@
   min-width: 112px;
   min-height: 44px;
   padding: 0 12px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface-2);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--eq-ink);
   cursor: pointer;
 }
 
-.mm-pg-btn:not(:disabled):hover {
-  background: var(--eq-surface-3);
+.mm-pg-btn:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
 }
 
 .mm-pg-btn:disabled {
   opacity: 0.4;
   cursor: default;
+  box-shadow: none;
 }
 
 .mm-ctrl__msg {
@@ -648,17 +681,19 @@
 .mm-retry {
   min-height: 44px;
   padding: 0 14px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface-2);
-  font-size: 15px;
-  font-weight: 600;
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
+  font-size: 14px;
+  font-weight: 700;
   color: var(--eq-ink);
   cursor: pointer;
 }
 
-.mm-retry:hover {
-  background: var(--eq-surface-3);
+.mm-retry:active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
 }
 
 .mm-lists {
@@ -674,22 +709,26 @@
   padding: 0 12px;
   border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface-2);
-  font-size: 16px;
-  font-weight: 600;
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
+  font-size: 14px;
+  font-weight: 700;
   color: var(--eq-ink);
   cursor: pointer;
 }
 
-.mm-list-btn:hover {
-  background: var(--eq-surface-3);
+.mm-list-btn:active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
 }
 
+/* Open: the blue tint keeps its live edge and lifts, without the top light. */
 .mm-list-btn[aria-expanded="true"],
 .mm-list-btn[aria-expanded="true"]:hover {
   background: var(--eq-live-fill);
   border-color: var(--eq-live);
   color: var(--eq-live-text);
+  box-shadow: var(--eq-elev-1);
 }
 
 .mm-listbody {
@@ -702,13 +741,16 @@
 }
 
 /* Every session: a table, newest first. Its own box scrolls sideways on a
-   phone; the card never does. */
+   phone; the card never does. A well (type and depth): the well tone, an
+   inner shadow and no edge, its lines the soft divider. */
 .mm-sess-scroll {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
-  border: 1px solid var(--eq-border);
+  border: 0;
   border-radius: 12px;
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
 }
 
 .mm-sess {
@@ -724,10 +766,10 @@
   padding: 0 10px;
   text-align: left;
   font-size: 14px;
-  font-weight: 600;
-  color: var(--eq-ink-muted);
-  background: var(--eq-surface-2);
-  border-bottom: 1px solid var(--eq-border);
+  font-weight: 700;
+  color: var(--eq-ink-2);
+  background: transparent;
+  border-bottom: 1px solid var(--eq-divider);
 }
 
 .mm-sess__c {
@@ -735,7 +777,7 @@
   padding: 4px 10px;
   text-align: left;
   vertical-align: middle;
-  border-bottom: 1px solid var(--eq-border);
+  border-bottom: 1px solid var(--eq-divider);
   overflow-wrap: anywhere;
 }
 
@@ -748,17 +790,19 @@
 .mm-more-btn {
   min-height: 44px;
   padding: 0 14px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface-2);
-  font-size: 15px;
-  font-weight: 600;
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
+  font-size: 14px;
+  font-weight: 700;
   color: var(--eq-ink);
   cursor: pointer;
 }
 
-.mm-more-btn:hover {
-  background: var(--eq-surface-3);
+.mm-more-btn:active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
 }
 
 /* Weight by weight: one line a run, newest first. */
@@ -773,7 +817,7 @@
 
 .mm-run {
   padding: 10px 2px;
-  border-bottom: 1px solid var(--eq-border);
+  border-bottom: 1px solid var(--eq-divider);
   font-size: 16px;
   line-height: 1.45;
   font-variant-numeric: tabular-nums;
@@ -817,7 +861,8 @@
 
 /* ---------- the blocks around the chart: settings, notes, the folds ----- */
 
-/* Section headings 15px/600, blocks 12px apart (machine menu design §B). */
+/* Blocks 12px apart (machine menu design §B); their headings the panel-title
+   voice, 17/700 (type and depth; they were 15/600). */
 .mm-blk {
   display: flex;
   flex-direction: column;
@@ -837,8 +882,10 @@
 
 .mm-h {
   margin: 0;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
   color: var(--eq-ink);
 }
 
@@ -848,7 +895,8 @@
   overflow-wrap: anywhere;
 }
 
-/* A text button: "Last changed Aug 18 · Back pad 3 → 2 ›", "All notes (3)". */
+/* A text button: "Last changed Aug 18 · Back pad 3 → 2 ›", "All notes (3)".
+   Words with no box, so it never lifts. */
 .mm-link {
   min-height: 44px;
   padding: 0 4px;
@@ -862,34 +910,33 @@
   overflow-wrap: anywhere;
 }
 
-.mm-link:hover {
-  background: var(--eq-surface-2);
-}
-
-/* The everyday button: Use, Change, Done, Undo, Add update, More. */
+/* The everyday button: Use, Change, Done, Undo, Add update, More. RAISED
+   (type and depth; AJ's 2A): a fill a hair lighter than the card, a contact
+   lift and a white top light, on the 3:1 edge, which stays, in the button
+   voice, 14/700 (it was 15/600 on the well tone, flat). A press on :active;
+   a disabled one lies flat. */
 .mm-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   min-height: 44px;
   padding: 0 14px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface-2);
-  font-size: 15px;
-  font-weight: 600;
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
+  font-size: 14px;
+  font-weight: 700;
   color: var(--eq-ink);
   overflow-wrap: anywhere;
 }
 
-.mm-btn:hover {
-  background: var(--eq-surface-3);
-}
-
+/* The solid blue drops a blue-tinted shadow with a top light. */
 .mm-btn--live {
   border-color: var(--eq-live);
   background: var(--eq-live);
   color: var(--eq-live-on);
+  box-shadow: var(--eq-glow-live), var(--eq-solid-light);
 }
 
 /* A filled variant restates its fill: an iPad keeps :hover after a tap. */
@@ -898,30 +945,24 @@
   color: var(--eq-live-on);
 }
 
-.mm-btn:disabled,
-.mm-quiet:disabled,
-.mm-save:disabled,
-.mm-add:disabled {
-  opacity: 0.45;
-}
-
-/* Cancel: quiet, on the left. */
+/* Cancel: quiet, on the left, and raised like every outlined button (the
+   round's dialogs: Cancel outlined beside the one loud action). */
 .mm-quiet {
   min-height: 44px;
   padding: 0 18px;
   border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: transparent;
-  font-size: 16px;
-  font-weight: 600;
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
+  font-size: 14px;
+  font-weight: 700;
   color: var(--eq-ink-2);
 }
 
-.mm-quiet:hover {
-  background: var(--eq-surface-2);
-}
-
-/* The one loud action: Save on the change strip, the logo orange with navy words. */
+/* The one loud action: Save on the change strip, the logo orange with navy
+   words, in Go's depth (a short orange glow and a white top light), never
+   Go's words: the slanted capitals are Start session's alone. The button
+   voice, 14/700 (it was 17/700), at its 56px. */
 .mm-save {
   min-height: 56px;
   padding: 0 24px;
@@ -929,7 +970,8 @@
   border: 0;
   background: var(--eq-go);
   color: var(--eq-go-on);
-  font-size: 17px;
+  box-shadow: var(--eq-glow-go), var(--eq-go-light);
+  font-size: 14px;
   font-weight: 700;
   overflow-wrap: anywhere;
 }
@@ -939,7 +981,8 @@
   color: var(--eq-go-on);
 }
 
-/* Add note: loud too, and blue while a settings change is unsaved (one loud action at a time). */
+/* Add note: loud too, and blue while a settings change is unsaved (one loud
+   action at a time), each in its own colour's depth. */
 .mm-add {
   min-height: 56px;
   padding: 0 24px;
@@ -947,7 +990,8 @@
   border: 0;
   background: var(--eq-go);
   color: var(--eq-go-on);
-  font-size: 17px;
+  box-shadow: var(--eq-glow-go), var(--eq-go-light);
+  font-size: 14px;
   font-weight: 700;
   overflow-wrap: anywhere;
 }
@@ -961,6 +1005,24 @@
 .mm-add[data-quiet="true"]:hover {
   background: var(--eq-live);
   color: var(--eq-live-on);
+  box-shadow: var(--eq-glow-live), var(--eq-solid-light);
+}
+
+/* Each presses in: a transform, never an animated shadow. */
+.mm-btn:not(:disabled):active,
+.mm-quiet:not(:disabled):active,
+.mm-save:not(:disabled):active,
+.mm-add:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
+}
+
+.mm-btn:disabled,
+.mm-quiet:disabled,
+.mm-save:disabled,
+.mm-add:disabled {
+  opacity: 0.45;
+  box-shadow: none;
 }
 
 .mm-btn:focus-visible,
@@ -1013,6 +1075,10 @@
   gap: 12px;
 }
 
+/* A tile is a WELL (type and depth): the well tone, its inner shadow, no
+   edge (kept transparent, so a changed tile's blue edge moves nothing),
+   radius 12. Its ± are raised out of it. It was a box on the 3:1 edge
+   inside the card. */
 .mm-tile {
   display: flex;
   flex-direction: column;
@@ -1020,9 +1086,10 @@
   min-width: 0;
   min-height: 112px;
   padding: 10px 12px 12px;
-  border: 1px solid var(--eq-border-strong);
-  border-radius: 14px;
-  background: var(--eq-surface);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
 }
 
 /* A changed tile: blue, with "was 4" under it. */
@@ -1052,7 +1119,7 @@
   padding: 0 4px;
   border-radius: 6px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface-2);
+  background: var(--eq-surface);
   font-size: 14px;
   font-weight: 700;
   color: var(--eq-ink);
@@ -1065,28 +1132,32 @@
   gap: 6px;
 }
 
-/* ± : 56px, never repeating when held. */
+/* ± : 56px, never repeating when held. Raised out of the tile's well on the
+   3:1 edge, with a press (type and depth). */
 .mm-step {
   display: grid;
   place-items: center;
   flex: none;
   width: 56px;
   height: 56px;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface-2);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   font-size: 30px;
   font-weight: 500;
   line-height: 1;
   color: var(--eq-ink);
 }
 
-.mm-step:not(:disabled):hover {
-  background: var(--eq-surface-3);
+.mm-step:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
 }
 
 .mm-step:disabled {
   opacity: 0.4;
+  box-shadow: none;
 }
 
 /* The value, read with the iPad set down: 36px tabular. Tapping it opens the positions. */
@@ -1105,10 +1176,6 @@
   /* A value never breaks mid-number ("1" over "0" reads as two values). */
   white-space: nowrap;
   overflow-wrap: normal;
-}
-
-.mm-tile__val:hover {
-  background: var(--eq-surface-2);
 }
 
 .mm-tile[data-changed="true"] .mm-tile__val,
@@ -1182,14 +1249,17 @@
 
 /* ---------- a big jump: positions, options, a field --------------------- */
 
+/* A well (type and depth): the positions are raised out of it, the keys of
+   a keypad in its tray. It was a box on the 3:1 edge inside the card. */
 .mm-pos {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 12px;
-  border: 1px solid var(--eq-border-strong);
-  border-radius: 14px;
-  background: var(--eq-surface);
+  border: 0;
+  border-radius: 12px;
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
 }
 
 .mm-pos__head {
@@ -1202,7 +1272,7 @@
 
 .mm-pos__title {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--eq-ink);
   overflow-wrap: anywhere;
 }
@@ -1226,7 +1296,8 @@
   height: 48px;
   border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface-2);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   font-size: 24px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -1240,17 +1311,24 @@
   padding: 0 14px;
   border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface-2);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   font-size: 17px;
   font-weight: 600;
   color: var(--eq-ink);
   overflow-wrap: anywhere;
 }
 
-/* What is saved: a ring, and "now" under it. */
+.mm-pos__btn:active,
+.mm-opt:active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
+}
+
+/* What is saved: a ring, and "now" under it. Its gap is the well's tone. */
 .mm-pos__btn[data-now="true"],
 .mm-opt[data-now="true"] {
-  box-shadow: 0 0 0 2px var(--eq-surface), 0 0 0 4px var(--eq-ink-2);
+  box-shadow: 0 0 0 2px var(--eq-surface-2), 0 0 0 4px var(--eq-ink-2);
 }
 
 /* The one picked: filled blue. */
@@ -1261,6 +1339,7 @@
   border-color: var(--eq-live);
   background: var(--eq-live);
   color: var(--eq-live-on);
+  box-shadow: var(--eq-glow-live), var(--eq-solid-light);
 }
 
 .mm-pos__now {
@@ -1275,21 +1354,26 @@
   color: var(--eq-ink-muted);
 }
 
+/* A field's label: the label voice, 14/700 in ink-2. */
 .mm-field {
   display: flex;
   flex-direction: column;
   gap: 4px;
   font-size: 14px;
-  color: var(--eq-ink-muted);
+  font-weight: 700;
+  color: var(--eq-ink-2);
 }
 
+/* A field keeps its 3:1 edge and sinks (type and depth, rule 2). */
 .mm-field__input {
   min-height: 52px;
   padding: 0 14px;
   border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface);
+  background: var(--eq-bg);
+  box-shadow: var(--eq-elev-0);
   font-size: 17px;
+  font-weight: 400;
   color: var(--eq-ink);
 }
 
@@ -1306,6 +1390,8 @@
   gap: 8px;
 }
 
+/* A chip a trainer taps: its pill and fill on the firm 3:1 edge (AJ's 3A),
+   in the segment voice, the picked one 700 in the solid blue. */
 .mm-choice {
   min-height: 44px;
   padding: 0 16px;
@@ -1313,13 +1399,9 @@
   border: 1px solid var(--eq-border-strong);
   background: var(--eq-surface);
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--eq-ink);
   overflow-wrap: anywhere;
-}
-
-.mm-choice:hover {
-  background: var(--eq-surface-2);
 }
 
 .mm-choice[aria-pressed="true"],
@@ -1327,6 +1409,7 @@
   border-color: var(--eq-live);
   background: var(--eq-live);
   color: var(--eq-live-on);
+  font-weight: 700;
 }
 
 /* The height-band line, with its own Use. */
@@ -1419,24 +1502,30 @@
 
 /* ---------- the note box ------------------------------------------------- */
 
+/* "Write a note…" opens into a field, so it sinks like one, inside its firm
+   3:1 edge (type and depth, rule 2; the notes page's compose bar). Open, its
+   edge turns blue and a second blue line rings it. */
 .mm-cmp {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--eq-border-strong);
   border-radius: 14px;
-  background: var(--eq-surface);
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
 }
 
 .mm-cmp[data-open="true"] {
   border-color: var(--eq-live);
-  box-shadow: 0 0 0 1px var(--eq-live);
+  box-shadow: var(--eq-elev-0), 0 0 0 1px var(--eq-live);
 }
 
+/* Its title: the label voice's weight and ink, 700 in ink-2, at the card's
+   15px (a name in it wraps). */
 .mm-cmp__title {
   margin: 0;
   padding: 12px 16px 0;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--eq-ink-2);
   overflow-wrap: anywhere;
 }
@@ -1488,7 +1577,8 @@
 .mm-cmp__lbl {
   min-width: 76px;
   font-size: 15px;
-  color: var(--eq-ink-muted);
+  font-weight: 600;
+  color: var(--eq-ink-2);
 }
 
 .mm-cmp__val {
@@ -1519,7 +1609,10 @@
   padding-top: 4px;
 }
 
-/* About [ Avery | The machine itself ]: one switch, two sides. */
+/* About [ Avery | The machine itself ]: one switch, two sides. It sinks
+   inside its 3:1 edge (type and depth); a side speaks the segment voice,
+   14/600 in its own words, the picked one 700 in the solid blue with its
+   glow. */
 .mm-seg {
   display: inline-flex;
   flex-wrap: wrap;
@@ -1528,6 +1621,7 @@
   border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
   background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
 }
 
 .mm-seg__opt {
@@ -1536,7 +1630,7 @@
   border: 0;
   border-radius: 10px;
   background: transparent;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--eq-ink-2);
   overflow-wrap: anywhere;
@@ -1546,12 +1640,15 @@
 .mm-seg__opt[aria-checked="true"]:hover {
   background: var(--eq-live);
   color: var(--eq-live-on);
+  font-weight: 700;
+  box-shadow: var(--eq-glow-live), var(--eq-solid-light);
 }
 
 .mm-seg__opt:disabled {
   opacity: 0.45;
 }
 
+/* A well: a note's confirmation, what it is and where it went. */
 .mm-status {
   display: flex;
   flex-wrap: wrap;
@@ -1559,8 +1656,10 @@
   gap: 8px 12px;
   margin: 8px 0 0;
   padding: 10px 12px;
-  border-radius: 10px;
+  border: 0;
+  border-radius: 12px;
   background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
   font-size: 15px;
   color: var(--eq-ink-2);
   overflow-wrap: anywhere;
@@ -1574,10 +1673,13 @@
   gap: 8px;
 }
 
+/* A note is a well (type and depth): the well tone, an inner shadow and no
+   edge. It was its own hairline box, one under another. */
 .mm-note {
-  border: 1px solid var(--eq-border);
+  border: 0;
   border-radius: 12px;
-  background: var(--eq-surface);
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
 }
 
 .mm-note__row {
@@ -1658,19 +1760,21 @@
   gap: 8px;
 }
 
+/* A field keeps its 3:1 edge and sinks into the note's well (rule 2). */
 .mm-upd__input {
   flex: 1 1 220px;
   min-height: 48px;
   padding: 0 12px;
   border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface);
+  background: var(--eq-bg);
+  box-shadow: var(--eq-elev-0);
   font-size: 16px;
   color: var(--eq-ink);
 }
 
 /* Open · Standing context: the label voice, 14/700 in ink-2, in their own
-   words (type and depth: one capitals style; they were capitals, tracked). */
+   words (they were capitals, tracked wide). */
 .mm-grp-h {
   margin: 6px 0 0;
   font-size: 14px;
@@ -1680,6 +1784,8 @@
   color: var(--eq-ink-2);
 }
 
+/* "Resolved (3)": raised on the firm 3:1 edge (AJ's 3A; it was flat on the
+   hairline), with a press. */
 .mm-grp-btn {
   display: inline-flex;
   align-items: center;
@@ -1687,16 +1793,24 @@
   align-self: flex-start;
   min-height: 44px;
   padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid var(--eq-border);
-  background: var(--eq-surface-2);
-  font-size: 15px;
-  font-weight: 600;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
+  font-size: 14px;
+  font-weight: 700;
   color: var(--eq-ink-2);
+}
+
+.mm-grp-btn:active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
 }
 
 /* ---------- the folded rows: Setting changes ---------------------------- */
 
+/* "Setting changes": a fold you press, so raised on the firm 3:1 edge
+   (AJ's 3A; it was flat on the hairline), its words the label voice. */
 .mm-drawer {
   display: flex;
   align-items: center;
@@ -1706,16 +1820,18 @@
   min-height: 52px;
   padding: 0 14px;
   border-radius: 12px;
-  border: 1px solid var(--eq-border);
-  background: var(--eq-surface);
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   text-align: left;
   color: var(--eq-ink);
 }
 
-.mm-drawer:hover {
-  background: var(--eq-surface-2);
+.mm-drawer:active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
 }
 
 .mm-drawer[aria-expanded="true"] .mm-drawer__chev {
@@ -1742,7 +1858,7 @@
   flex-direction: column;
   gap: 2px;
   padding: 10px 2px;
-  border-bottom: 1px solid var(--eq-border);
+  border-bottom: 1px solid var(--eq-divider);
 }
 
 .mm-chg__what {
@@ -1789,37 +1905,47 @@
   border-radius: 20px;
 }
 
+/* The card is a dialog (type and depth): an edge seen from outside (the
+   fill clipped to the padding box) and the dialog's lift, --eq-elev-5, in
+   the navy, with the dark top light. It was a hairline and a raw blur. */
 .mm-card {
   display: flex;
   flex-direction: column;
   min-width: 0;
   height: 100%;
   overflow: hidden;
-  border: 1px solid var(--eq-border);
+  border: 1px solid var(--eq-edge);
   border-radius: 20px;
   background: var(--eq-surface);
+  background-clip: padding-box;
   color: var(--eq-ink);
-  box-shadow: 0 30px 70px -28px var(--eq-shadow), 0 2px 6px var(--eq-shadow);
+  box-shadow: var(--eq-elev-5), var(--eq-panel-highlight);
 }
 
-/* Inline (Programming -> All Machines): the pane scrolls, the card grows. */
+/* Inline (Programming -> All Machines): the pane scrolls, the card grows. On
+   the page it is a panel: the same edge and a panel's short lift. */
 .mm-card[data-inline="true"] {
   height: auto;
   overflow: visible;
   border-radius: 16px;
-  box-shadow: none;
+  box-shadow: var(--eq-elev-2), var(--eq-panel-highlight);
 }
 
-/* The header never scrolls away in the dialog; it grows when a name wraps. */
+/* The header never scrolls away in the dialog; it grows when a name wraps.
+   A shelf (type and depth): it casts a short shadow onto what scrolls under
+   it instead of ending in a hairline, so it sits above the scroller. */
 .mm-head {
   flex: none;
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-height: 76px;
   padding: 12px 24px 10px;
-  border-bottom: 1px solid var(--eq-border);
+  border-bottom: 0;
   background: var(--eq-surface);
+  box-shadow: var(--eq-shelf);
   border-radius: 20px 20px 0 0;
 }
 
@@ -1853,9 +1979,17 @@
   line-height: 1.3;
 }
 
+/* The machine's name is the card's title: the display face, upright, in
+   its own capitalisation, 22/800 (type and depth, AJ's 1A), as a machine's
+   name is on its detail panel. */
 .mm-head__machine {
+  font-family: var(--font-display);
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.15;
   color: var(--eq-ink);
   overflow-wrap: anywhere;
 }
@@ -1867,7 +2001,7 @@
   overflow-wrap: anywhere;
 }
 
-/* Close: 48 x 48, out of the corner's edge. */
+/* Close: 48 x 48, out of the corner's edge, raised on its 3:1 edge. */
 .mm-close {
   flex: none;
   display: grid;
@@ -1877,12 +2011,14 @@
   margin: -2px -8px 0 0;
   border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface-2);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink);
 }
 
-.mm-close:hover {
-  background: var(--eq-surface-3);
+.mm-close:active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
 }
 
 .mm-close:focus-visible,
@@ -1939,15 +2075,19 @@
 
 .mm-head__lbl {
   font-size: 15px;
-  font-weight: 600;
-  color: var(--eq-ink-muted);
+  font-weight: 700;
+  color: var(--eq-ink-2);
 }
 
+/* "100 lb × 11": a headline figure, the display face upright at 800 (type
+   and depth). It does not change in place, so Saira's figures serve. */
 .mm-head__num {
-  font-size: 28px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.15;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: 0;
+  line-height: 1.1;
   color: var(--eq-ink);
 }
 
@@ -2140,7 +2280,6 @@
 
 .mm-card .rt--loud .rt__seg {
   font-size: 14px;
-  letter-spacing: 0.04em;
 }
 
 .mm-card .nc-kicker,
@@ -2219,5 +2358,37 @@
 @media (orientation: landscape) and (min-width: 1000px) {
   .mm-dialog {
     width: min(1080px, calc(100vw - 64px));
+  }
+}
+
+/* ---------- a hover is a pointer's only (type and depth, rule 6) -------- */
+
+/* A hover that changes a fill sits here, so an iPad's kept hover after a tap
+   never flattens a raised button or leaves a fill behind. Last in the file:
+   look.test.ts reads the phone's block as the first @media. */
+@media (hover: hover) {
+  .mm-ro__btn:not(:disabled):hover,
+  .mm-pg-btn:not(:disabled):hover,
+  .mm-retry:hover,
+  .mm-list-btn:hover,
+  .mm-more-btn:hover,
+  .mm-btn:not(.mm-btn--live):not(:disabled):hover,
+  .mm-quiet:not(:disabled):hover,
+  .mm-step:not(:disabled):hover,
+  .mm-pos__btn:hover,
+  .mm-opt:hover,
+  .mm-grp-btn:hover,
+  .mm-drawer:hover,
+  .mm-close:hover {
+    background: var(--eq-surface-3);
+  }
+
+  .mm-link:hover,
+  .mm-choice:hover {
+    background: var(--eq-surface-2);
+  }
+
+  .mm-tile__val:hover {
+    background: var(--eq-surface-3);
   }
 }

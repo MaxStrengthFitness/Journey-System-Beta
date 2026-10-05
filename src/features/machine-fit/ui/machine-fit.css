@@ -398,7 +398,9 @@ button.fit-cell--read { cursor: pointer; }
   flex-direction: column;
   gap: 6px;
   padding-top: 8px;
-  border-top: 1px dashed var(--eq-border);
+  /* A line inside the row, the soft divider (type and depth: a dash means
+     "nothing here", and this is a part of the row). */
+  border-top: 1px solid var(--eq-divider);
 }
 .fit-start[data-open="false"] { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 .fit-start__onfile { font-size: 13px; font-weight: 800; color: var(--eq-ink-2); }
@@ -420,9 +422,11 @@ button.fit-cell--read { cursor: pointer; }
   width: 96px;
   height: 48px;
   padding: 0 6px;
+  /* A field keeps its 3:1 edge and sinks (type and depth, rule 2). */
   border: 1px solid var(--eq-border-strong);
   border-radius: 10px;
   background: var(--eq-bg);
+  box-shadow: var(--eq-elev-0);
   color: var(--eq-ink);
   font-size: 18px;
   font-weight: 800;
@@ -633,6 +637,8 @@ button.fit-cell--read { cursor: pointer; }
 .fit-match__row[data-missing] .fit-match__onfile { font-style: italic; color: var(--eq-ink-faint); }
 .fit-match__reach { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .fit-match__value { font-size: 13.5px; font-weight: 800; color: var(--eq-live-text); }
+/* The − and + of a stepper (the starting weight, the match panel's reach):
+   raised on the 3:1 edge with a press (type and depth; they were flat). */
 .fit-step {
   display: inline-flex;
   align-items: center;
@@ -640,12 +646,17 @@ button.fit-cell--read { cursor: pointer; }
   width: 44px;
   height: 44px;
   border: 1px solid var(--eq-border-strong);
-  border-radius: 10px;
-  background: var(--eq-surface);
+  border-radius: 12px;
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink);
   cursor: pointer;
 }
-.fit-step:disabled { opacity: 0.4; cursor: not-allowed; }
+@media (hover: hover) {
+  .fit-step:not(:disabled):hover { background: var(--eq-surface-3); }
+}
+.fit-step:not(:disabled):active { transform: translateY(1px); box-shadow: var(--eq-press); }
+.fit-step:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 
 .fit-paste__text {
   width: 100%;
