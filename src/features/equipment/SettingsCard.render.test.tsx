@@ -10,9 +10,15 @@ import { createRoot, type Root } from "react-dom/client";
 import type { EquipmentMachine } from "./types";
 
 const trendCalls = vi.hoisted(() => ({ enabled: [] as boolean[] }));
+const saves = vi.hoisted(() => ({ calls: [] as Array<Record<string, unknown>> }));
 
 vi.mock("../../firebase", () => ({ db: {}, auth: { currentUser: null } }));
-vi.mock("./mutations", () => ({ saveSettings: async () => null }));
+vi.mock("./mutations", () => ({
+  saveSettings: async (args: Record<string, unknown>) => {
+    saves.calls.push(args);
+    return null;
+  },
+}));
 vi.mock("./useMachineTrend", () => ({
   useMachineTrend: (_id: string, enabled: boolean) => {
     trendCalls.enabled.push(enabled);
@@ -82,6 +88,7 @@ afterEach(() => {
   root = null;
   host = null;
   trendCalls.enabled.length = 0;
+  saves.calls.length = 0;
 });
 
 describe("SettingsCard suggestions", () => {
@@ -123,6 +130,26 @@ describe("SettingsCard suggestions", () => {
     trendCalls.enabled.length = 0;
     mount(<SettingsCard machine={machine()} clientId="c1" author={null} startEditing />);
     expect(trendCalls.enabled.every((e) => e === false)).toBe(true);
+  });
+});
+
+describe("SettingsCard reason", () => {
+  it("asks why, never requires it: a change saves with the reason left empty", async () => {
+    const el = mount(
+      <SettingsCard machine={machine({ Seat: "4" })} clientId="c1" author={{ id: "uid-ana", fullName: "Ana Cole" }} startEditing />,
+    );
+    const input = el.querySelector("input") as HTMLInputElement;
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "5");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(el.textContent).toContain("Reason for change (optional)");
+    expect(el.textContent).not.toContain("(required)");
+    const save = [...el.querySelectorAll("button")].find((b) => b.textContent?.includes("Log & save")) as HTMLButtonElement;
+    expect(save.disabled).toBe(false);
+    await act(async () => save.click());
+    expect(saves.calls).toHaveLength(1);
+    expect(saves.calls[0]).toMatchObject({ reason: "", draft: { Seat: "5" }, isInitialSetup: false });
   });
 });
 

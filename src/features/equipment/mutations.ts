@@ -12,12 +12,25 @@
  * Two documents are touched on every settings change:
  *   clientMachineSettings/{clientId}_{machineId}   the value trainers read
  *   machines/{machineId}/settingHistory/{auto}     the audit trail
+ *
+ * THE FLOOR NEVER WAITS ON THE SERVER (machine menu, Oct 4 2026). A write is
+ * on the iPad the moment it is made; its promise waits for the database's
+ * answer, which offline never comes. `saveSettings` used to await its three
+ * writes one after another, so offline the history row and the journal copy
+ * were never even started, and a reload dropped them. Now every write a save
+ * makes is ISSUED before anything is awaited — the settings and their history
+ * row as one batch, the journal copy and the machine-fit row beside it — so
+ * the iPad's own copy of the database holds all of them through a reload or
+ * a new version. `addMachineNote` likewise issues its write and hands the
+ * caller the database's answer to wait on, briefly, through session-record's
+ * `settleOrQueue` (KNOWN-TRAPS, "Never await the database's answer on the
+ * floor").
  */
 
-import { addDoc, collection, doc, setDoc } from "firebase/firestore";
+import { addDoc, collection, doc, setDoc, writeBatch } from "firebase/firestore";
 import { db } from "../../firebase";
 import { createJournalEntry } from "../../hooks/useClientJournal";
-import type { JournalOrigin } from "../../types/journal";
+import type { JournalEntry, JournalImportance, JournalKind, JournalOrigin, NoteBodyMark } from "../../types/journal";
 import type { MachineNote } from "../../types";
 import { upsertFitRow } from "../machine-fit/fit-store";
 import { nextSettings, nextSources } from "../machine-fit/settings-write";
@@ -53,6 +66,11 @@ export interface JournalContext {
  * part of it. If the Journal write fails the setting is still saved and the
  * audit trail still has it, and the trainer should not be told their setup
  * did not stick when it did.
+ *
+ * The write itself is issued the moment this is called (nothing is awaited
+ * before it), so a caller that does not await it still has it on the iPad.
+ * `occurredAt` is the save's own moment: the settings copy is recognised by
+ * it sitting beside its history row (machine-menu/settings-copy.ts).
  */
 async function fileToJournal(
   clientId: string,
@@ -60,7 +78,8 @@ async function fileToJournal(
   ctx: JournalContext | undefined,
   body: string,
   machineId: string,
-  importance: "standard" | "elevated" | "critical",
+  importance: JournalImportance,
+  occurredAt?: Date,
 ): Promise<void> {
   if (!ctx || !body.trim()) return;
   try {
@@ -79,6 +98,7 @@ async function fileToJournal(
         sessionNumber: ctx.sessionNumber ?? null,
         sessionDay: ctx.sessionDay ?? null,
         origin: ctx.origin,
+        ...(occurredAt ? { occurredAt } : {}),
       },
     );
   } catch (err) {
@@ -133,13 +153,25 @@ export interface SaveSettingsArgs {
   fields: SettingFieldSpec[];
   saved: Record<string, string>;
   draft: Record<string, string>;
-  reason: string;
+  /**
+   * Why, when the trainer said. Asked, never required (machine menu, Oct 4
+   * 2026: "never block a save"): left empty, the history row and the journal
+   * copy say "Initial setup" or "Settings update".
+   */
+  reason?: string;
   author: MutationAuthor;
   /** First time this machine has ever been set up for this client. */
   isInitialSetup: boolean;
   /** Machine name, for a journal entry that reads on its own. */
   machineName: string;
   journal?: JournalContext;
+  /**
+   * File the journal copy (default true). The menu's Undo passes false: the
+   * copy of the save it undoes stands, and its history row ("Undone") is the
+   * record, so there is no second copy (machine-menu/setting-draft.ts
+   * `undoPayload`).
+   */
+  fileNote?: boolean;
   /**
    * Machine fit (Sep 2026). `changedSources` says where each CHANGED value
    * came from ("suggested" when the trainer tapped Use and left it alone);
@@ -158,14 +190,39 @@ export interface SaveSettingsResult {
   changes: SettingsChange[];
   summary: string;
   reason: string;
+  /**
+   * The settings map as written, whole — what Undo puts its dials back from
+   * (machine-menu/setting-draft.ts `undoPayload`'s `after`). A caller whose
+   * save was only queued can build the same map with `nextSettings`
+   * (machine-fit/settings-write.ts), which is what this is.
+   */
+  settings: Record<string, string>;
+  /** The sources map as written, whole. */
+  sources: Record<string, SettingSource>;
 }
 
 /**
  * Save machine settings.
  *
- * Returns the change list so the caller can hand the same sentence to the
- * journal without recomputing it — and so a no-op save can be detected without
- * a second diff.
+ * Every write is ISSUED before anything is awaited, in this order, all in
+ * the call's own tick:
+ *
+ *   1. ONE BATCH: the settings document and its settingHistory row, the
+ *      history ref made up front (as machine-fit/setup-save.ts does). All or
+ *      nothing: a change with no audit row, or an audit row for a change
+ *      that never landed, can't happen.
+ *   2. The journal copy, NOT in the batch: a refused journal write must never
+ *      fail a settings save (`fileToJournal`'s rule, and setup-save's). Its
+ *      `occurredAt` is the very moment the history row's `timestamp` holds.
+ *      Caught.
+ *   3. The studio's machine-fit row, a copy the rebuild script can always
+ *      remake, so it is never the reason a save fails. Caught.
+ *
+ * The returned promise is the batch's answer: it resolves (with the change
+ * list, so a no-op save is told apart without a second diff) once the
+ * database has the settings and their row, and rejects if it refuses them.
+ * On the floor the caller waits on it only through `settleOrQueue`
+ * (session-record/finish-wait.ts): offline it is already saved on the iPad.
  */
 export async function saveSettings({
   clientId,
@@ -173,11 +230,12 @@ export async function saveSettings({
   fields,
   saved,
   draft,
-  reason,
+  reason = "",
   author,
   isInitialSetup,
   machineName,
   journal,
+  fileNote = true,
   changedSources,
   existingSources,
   homeStudioId,
@@ -187,35 +245,35 @@ export async function saveSettings({
   if (changes.length === 0) return null;
 
   const summary = describeChanges(changes);
-  const actualReason = reason.trim() || (isInitialSetup ? "Initial setup" : "Settings update");
+  const actualReason = (reason ?? "").trim() || (isInitialSetup ? "Initial setup" : "Settings update");
 
   const settings = nextSettings(fields, saved, draft);
   const sources = nextSources(fields, saved, settings, existingSources, changedSources);
 
+  // One moment for the whole save: the document's updatedAt, the history
+  // row's timestamp and the journal copy's occurredAt are the same instant.
+  const now = new Date();
+
+  const batch = writeBatch(db);
   // `mergeFields`, not `merge: true`. A merge walks INTO a map, so a cleared
   // field was never actually removed — it came back on the next load. Naming
   // the fields replaces `settings` and `sources` whole and still leaves the
   // weights, the notes and the fit reviews on the document alone.
-  await setDoc(
+  batch.set(
     doc(db, "clientMachineSettings", `${clientId}_${machineId}`),
     {
       clientId,
       machineId,
       settings,
       sources,
-      updatedAt: new Date(),
+      updatedAt: now,
       updatedBy: author.id,
     },
     { mergeFields: ["clientId", "machineId", "settings", "sources", "updatedAt", "updatedBy"] },
   );
-
-  // The studio's machine-fit index: who is set to what. Never awaited into
-  // the result and never thrown — the settings above are the record.
-  void upsertFitRow({ homeStudioId, machineId, clientId, settings, sources, acks: existingAcks });
-
-  await writeHistory(machineId, {
+  batch.set(doc(collection(db, "machines", machineId, "settingHistory")), {
     clientId,
-    timestamp: new Date().toISOString(),
+    timestamp: now.toISOString(),
     trainerId: author.id,
     trainerName: author.fullName,
     changeType: isInitialSetup ? "INITIAL_SETUP" : "SETTINGS",
@@ -223,20 +281,29 @@ export async function saveSettings({
     newValue: changes.map((c) => `${c.label}: ${c.to || "—"}`).join(", "),
     reason: actualReason,
   });
+  const committed = batch.commit();
 
   // Box 10: the audit reason a trainer just typed is coaching knowledge, not
   // just compliance. It belongs in the one place anyone looks for this
-  // client's history.
-  await fileToJournal(
-    clientId,
-    author,
-    journal,
-    `${machineName} — ${summary}. ${actualReason}`,
-    machineId,
-    "standard",
-  );
+  // client's history. Issued now, never awaited into the result.
+  if (fileNote) {
+    void fileToJournal(
+      clientId,
+      author,
+      journal,
+      `${machineName} — ${summary}. ${actualReason}`,
+      machineId,
+      "standard",
+      now,
+    );
+  }
 
-  return { changes, summary, reason: actualReason };
+  // The studio's machine-fit index: who is set to what. Never awaited into
+  // the result and never thrown — the settings above are the record.
+  void upsertFitRow({ homeStudioId, machineId, clientId, settings, sources, acks: existingAcks, at: now.getTime() });
+
+  await committed;
+  return { changes, summary, reason: actualReason, settings, sources };
 }
 
 /* ------------------------------------------------------------------ *
@@ -329,13 +396,39 @@ export async function saveWeights({
  * Machine notes
  * ------------------------------------------------------------------ */
 
+/**
+ * Where a machine note is filed: the notes catalog's one answer,
+ * `storedNoteOf` (client-notes/note-catalog.ts) — the kind, the category and
+ * the parts of the body (Health and Incident only).
+ */
+export interface MachineNoteFiling {
+  kind: JournalKind;
+  category: JournalEntry["category"];
+  bodyParts?: NoteBodyMark[] | null;
+}
+
 export interface AddNoteArgs {
   clientId: string;
   machineId: string;
   machineName: string;
   existingNotes: MachineNote[];
   content: string;
-  isMaintenance: boolean;
+  /**
+   * The filing (`storedNoteOf`'s answer). Left out, the note files as it
+   * always did: Coaching & equipment · Set-up (`kind: "equipment"`).
+   */
+  filing?: MachineNoteFiling | null;
+  /**
+   * How loud, from the one Loudness control. Left out, the old checkbox
+   * answers: Critical when `isMaintenance`, else Note.
+   */
+  importance?: JournalImportance | null;
+  /**
+   * The old "flag as important (maintenance or safety)" checkbox, read only
+   * when no `importance` is given (the machine sheet's notes, until the
+   * machine menu retires them).
+   */
+  isMaintenance?: boolean;
   author: MutationAuthor;
   journal?: JournalContext;
 }
@@ -343,28 +436,45 @@ export interface AddNoteArgs {
 /**
  * Add a machine-specific note (box 11).
  *
- * Written twice, on purpose:
- *   clientMachineSettings.machineNotes   the machine-scoped list the Equipment
- *                                        tab, the Entry HUD and the Journey
- *                                        Grid's alert icon all already read
- *   journalEntries                       the client-scoped timeline
+ * ONE LIST (the Atlas answers, Oct 2 2026): the note lives in her journal
+ * only, carrying `machineId`, and every reader takes `machineNotesFor`
+ * (machine-notes.ts), which reads the journal plus the old `machineNotes`
+ * list for data written before. Only a host that gives no journal context
+ * (no studio to file it under) still writes the old list.
  *
- * A maintenance flag files as `critical`, which is what puts it in the
- * PRE-SESSION BRIEFING — so "seat sticks on the compound row" reaches the next
- * trainer before they walk the client up to it, rather than after.
+ * Filed by what it is for (machine menu, Oct 4 2026): the caller passes the
+ * filing and the loudness the note box chose, and the parts of the body for
+ * Health or Incident. A Critical note is what puts it in the PRE-SESSION
+ * BRIEFING and on the Hub card, so "hip pain if the pace is too fast"
+ * reaches the next trainer before they walk the client up to the machine.
+ *
+ * NOT ASYNC, on purpose. The write is issued the moment this is called and
+ * the promise handed back is the database's answer: the note (its id the
+ * journal entry's) once the database has it, a rejection if it refuses it.
+ * Offline that answer never comes, so on the floor a caller waits on it only
+ * through `settleOrQueue` (session-record/finish-wait.ts) and keeps the words
+ * only when it says "failed". The note is in the client's journal stream at
+ * once either way: the stream shows the iPad's own write.
  */
-export async function addMachineNote({
+export function addMachineNote({
   clientId,
   machineId,
   machineName,
   existingNotes,
   content,
-  isMaintenance,
+  filing = null,
+  importance = null,
+  isMaintenance = false,
   author,
   journal,
 }: AddNoteArgs): Promise<MachineNote | null> {
-  const body = content.trim();
-  if (!body) return null;
+  const body = (content ?? "").trim();
+  if (!body) return Promise.resolve(null);
+
+  // The loudness the note box chose; without one, the old checkbox's answer.
+  // Only the old checkbox still writes "maintenance:" into the words.
+  const loudness: JournalImportance = importance ?? (isMaintenance ? "critical" : "standard");
+  const maintenance = !importance && isMaintenance;
 
   const note: MachineNote = {
     id: Date.now().toString(),
@@ -372,28 +482,20 @@ export async function addMachineNote({
     authorId: author.id,
     authorName: author.fullName,
     timestamp: new Date().toISOString(),
-    isImportant: isMaintenance,
+    isImportant: loudness !== "standard",
   };
 
-  /*
-   * ONE LIST (the Atlas answers, Oct 2 2026): the note lives in her journal
-   * only, carrying `machineId`, and every reader takes
-   * `machineNotesFor` (machine-notes.ts), which reads the journal plus the old
-   * `machineNotes` list for data written before. The journal write is awaited
-   * and its failure thrown, so the sheet keeps the words rather than saying
-   * "saved" over a note that went nowhere. Only a host that gives no journal
-   * context (no studio to file it under) still writes the old list.
-   */
   if (journal) {
-    const id = await createJournalEntry(
+    const sent = createJournalEntry(
       clientId,
       journal.studioId,
       { id: author.id, initials: author.initials || "??", fullName: author.fullName },
       {
-        kind: "equipment",
-        category: null,
-        body: isMaintenance ? `${machineName} — maintenance: ${body}` : `${machineName} — ${body}`,
-        importance: isMaintenance ? "critical" : "standard",
+        kind: filing?.kind ?? "equipment",
+        category: filing ? filing.category : null,
+        bodyParts: filing?.bodyParts ?? null,
+        body: maintenance ? `${machineName} — maintenance: ${body}` : `${machineName} — ${body}`,
+        importance: loudness,
         machineId,
         focusId: null,
         sessionId: journal.sessionId ?? null,
@@ -402,10 +504,10 @@ export async function addMachineNote({
         origin: journal.origin,
       },
     );
-    return { ...note, id: id ? `journal:${id}` : note.id };
+    return sent.then((id) => ({ ...note, id: id ? `journal:${id}` : note.id }));
   }
 
-  await setDoc(
+  return setDoc(
     doc(db, "clientMachineSettings", `${clientId}_${machineId}`),
     {
       clientId,
@@ -415,8 +517,7 @@ export async function addMachineNote({
       updatedBy: author.id,
     },
     { merge: true },
-  );
-  return note;
+  ).then(() => note);
 }
 
 export interface DeleteNoteArgs {

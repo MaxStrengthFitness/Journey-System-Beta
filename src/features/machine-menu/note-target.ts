@@ -50,10 +50,11 @@ import type { Door } from "./doors";
 export type NoteTarget = "client" | "floor";
 
 /**
- * The note box's draft: the session's draft shape, plus the floor switch.
- * (`toFloor` is optional and only ever `true` for a floor note.)
+ * The note box's draft: the session's draft shape, floor switch included
+ * (`toFloor` is optional on `SessionNoteDraft` and only ever `true` for a
+ * floor note).
  */
-export type MenuNoteDraft = SessionNoteDraft & { toFloor?: boolean };
+export type MenuNoteDraft = SessionNoteDraft;
 
 /** A note about the client on a machine starts filed as Coaching & equipment · Set-up. */
 export const DEFAULT_FILING: { category: FilingCategory; flavour: NoteFlavour } = { category: "coaching", flavour: "Setup" };

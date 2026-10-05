@@ -52,6 +52,14 @@ export interface SessionNoteDraft {
   machineId: string | null;
   /** In a session: whether "About <machine>" was left on. */
   aboutMachine: boolean;
+  /**
+   * The machine menu's switch, About: [ client | The machine itself ]
+   * (Oct 4 2026): true when the words are for the studio's floor notes on
+   * this unit, not the client's record. Only ever `true` or absent: it lives
+   * in sessionStorage, so it is read defensively (`currentDraftOf`) and
+   * anything else is a note about the client.
+   */
+  toFloor?: boolean;
 }
 
 export const EMPTY_SESSION_DRAFT: SessionNoteDraft = {
@@ -86,17 +94,21 @@ export function isSessionNoteDraft(v: unknown): v is SessionNoteDraft {
  * A draft read back off storage, in today's words: a category id from before
  * Oct 3 2026 (Equipment, Injury) read as today's, the old `p` as the
  * flavour, and anything that does not belong dropped rather than written.
+ * `toFloor` is kept only when it is exactly `true` (default false: a note
+ * about the client).
  */
 export function currentDraftOf(raw: Partial<SessionNoteDraft> & { body: string }): SessionNoteDraft {
   const { category, flavour: legacyFlavour } = currentCategoryOf(raw.category);
   const flavour = flavourFor(category, raw.flavour ?? legacyFlavour ?? (category === "coaching" ? raw.p : null));
+  const { toFloor, ...rest } = raw;
   return {
     ...EMPTY_SESSION_DRAFT,
-    ...raw,
+    ...rest,
     category,
     flavour,
     p: undefined,
     bodyParts: normaliseBodyMarks(raw.bodyParts ?? []),
+    ...(toFloor === true ? { toFloor: true } : {}),
   };
 }
 

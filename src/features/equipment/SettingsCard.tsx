@@ -34,9 +34,10 @@ import { useMachineTrend } from "./useMachineTrend";
  * of about that height use on this machine (setting-suggestions.ts), with a
  * "Use" button. Still rule 1: nothing is filled until the trainer taps it.
  *
- * The audit reason (box 10) is required only when there were settings to
- * change. A first-time setup is not an override of anything, so demanding a
- * justification for it is friction with no audit value.
+ * The audit reason (box 10) is ASKED when there were settings to change, and
+ * never required (machine menu, Oct 4 2026: "never block a save"). Left
+ * empty, saveSettings writes its own default ("Settings update"). A first-time
+ * setup is not an override of anything, so it is not even asked.
  */
 
 function seedDraft(machine: EquipmentMachine): Record<string, string> {
@@ -169,8 +170,8 @@ export function SettingsCard({
     [draft, machine.fields, machine.settings],
   );
 
-  const needsReason = dirty && !isInitialSetup;
-  const canSave = dirty && (!needsReason || reason.trim().length > 0);
+  const asksReason = dirty && !isInitialSetup;
+  const canSave = dirty;
 
   const handleSave = async () => {
     if (!author) {
@@ -305,10 +306,10 @@ export function SettingsCard({
               })}
             </div>
 
-            {needsReason && (
+            {asksReason && (
               <div className="eq-reason">
                 <label className="eq-reason__label" htmlFor={`eq-reason-${machine.id}`}>
-                  Reason for change (required)
+                  Reason for change (optional)
                 </label>
                 <input
                   id={`eq-reason-${machine.id}`}

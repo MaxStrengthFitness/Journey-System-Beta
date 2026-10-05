@@ -44,4 +44,21 @@ AJ's decisions (Oct 4 2026): the **Staircase** chart only (Q1 (a)); the green % 
 - **The Health filing asks where on the body, and so does Incident**: the notes catalog's one rule (`asksBodyPart`), not the design's Health-only line.
 - **The header's loading line is "Last time: loading…"** (the design gives none); a running total is not used while the first read is out, so nothing flips from "not loaded" to "loaded" for no reason.
 - **The Health note after a pain save never replaces words already in the box** (`healthNoteAfterPain` returns null and the box opens as it is): one draft per session.
-- **`toFloor` lives on the menu's own draft type for now** (`MenuNoteDraft`); adding it to `SessionNoteDraft` belongs with the writes.
+- **`toFloor` lived on the menu's own draft type in phase 2** (`MenuNoteDraft`); since phase 3 it is on `SessionNoteDraft`, and `MenuNoteDraft` is the same type.
+
+## Phase 3 — the writes
+
+No new collection, Firestore field, index or rule: the same documents as before, written so the floor never waits on the server and nothing is lost offline (KNOWN-TRAPS, "Never await the database's answer on the floor").
+
+| File | What changed |
+| --- | --- |
+| `equipment/mutations.ts` `saveSettings` | ONE `writeBatch` holds the settings document and its `settingHistory` row (the history ref made up front, as `machine-fit/setup-save.ts` does). The journal copy is issued in the same tick, never awaited before the batch, caught, and its `occurredAt` is the very moment the history row's `timestamp` holds (so `settings-copy.ts` pairs them). The machine-fit row is issued beside them, caught, as before. The promise is the batch's answer: the floor wraps it in `settleOrQueue`. `reason` is optional (the default "Settings update" / "Initial setup" as before); `fileNote: false` (Undo) files no second journal copy. The result also carries the `settings` and `sources` maps as written |
+| `equipment/mutations.ts` `addMachineNote` | Takes the filing (`storedNoteOf`'s kind, category and body parts) and the loudness. Not async: the write is issued at once and the promise handed back is the database's answer, for `settleOrQueue`. Without a filing or loudness it files as it always did (Set-up; Critical only with the old checkbox) |
+| `client-notes/session-draft.ts` | `toFloor?: boolean` on `SessionNoteDraft` (sessionStorage only). `currentDraftOf` keeps it only when it is exactly `true`; anything else is a note about the client. `MenuNoteDraft` is now the same type |
+| `equipment/SettingsCard.tsx` | No longer refuses a save without a reason (it was `:172-173`): "Reason for change (optional)". The card retires with phase 6 |
+
+### Decisions made in phase 3 where the spec met the code
+
+- **The machine-fit row is issued with the batch, not after it answers.** Before, it went only once the settings document had landed, which offline meant never. It is a copy the rebuild script can always remake, and it is caught, so it goes beside the other writes, before anything is awaited.
+- **`addMachineNote` hands back a promise rather than a note.** The journal entry's id is only known once the database answers, and the note heads the list at once anyway (the client's journal stream shows the iPad's own write). So the floor waits on the answer through `settleOrQueue` and clears the words unless it says "failed".
+- **The old "maintenance:" words are written only by the old checkbox** (the machine sheet's notes, until they retire). A loudness from the Loudness control writes none.

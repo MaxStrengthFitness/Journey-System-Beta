@@ -160,7 +160,7 @@ ClientProfileView                                  (existing, one line changes)
         ├── SettingsCard                           current values, read mode
         │   └── SettingsEditor                     catalog-driven fields
         │       ├── SettingField × n               ghosted placeholders
-        │       └── AuditReasonField               required when values change
+        │       └── AuditReasonField               asked when values change, never required
         ├── SetupGuide                             catalog cues, collapsible
         ├── MachineNotes                           list + composer
         │   └── NoteRow × n
@@ -248,6 +248,7 @@ cannot be forgotten by a future call site.
 | Settings changed with an audit reason | `kind: "equipment"`, `machineId`, body = `"Gap 8 → 9. Needs more ROM."`, importance `standard` |
 | Machine note added | `kind: "equipment"`, `machineId`, body = the note |
 | Machine note flagged for maintenance | same, importance `critical` — which puts it in the **pre-session briefing** |
+| Machine note from the machine menu (Oct 4 2026) | filed by what it is for (`storedNoteOf`: kind, category, body parts) at the loudness the note box chose |
 | Weight updated | **no journal entry** |
 
 That last row is a deliberate exclusion. Weights move most sessions; journaling
@@ -259,6 +260,15 @@ already tells that story better. The audit trail for weights stays in
 `origin` is `"profile"` from the Equipment tab and `"in_session"` from the setup
 prompt, so the Journal can still tell where a note was written without the
 trainer having to say.
+
+**Nothing here waits on the server** (machine menu, Oct 4 2026). `saveSettings`
+writes the settings and their `settingHistory` row as ONE batch and issues the
+journal copy (with the history row's own moment as `occurredAt`) and the
+machine-fit row in the same tick, before anything is awaited, so offline all
+of them are on the iPad and survive a reload; the reason is optional, and
+`fileNote: false` (the menu's Undo) files no second copy. `addMachineNote`
+issues its write and hands back the database's answer; on the floor wait on
+either only through `settleOrQueue` (`features/session-record/finish-wait.ts`).
 
 ### 3.5 In-session prompt (phase 6)
 
