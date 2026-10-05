@@ -6,7 +6,7 @@
  * wall, and nothing is read until the segment has been opened.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { Client, ClientMachineSetting, Machine, Routine } from "../../../types";
 import { compoundRowStudio } from "../fixtures";
@@ -47,6 +47,7 @@ vi.mock("../fit-store", async () => {
 });
 
 import { SetupView } from "./SetupView";
+import { UnsavedChangesProvider, useUnsavedStatus } from "../../unsaved-changes";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -66,12 +67,13 @@ let root: Root | null = null;
 let host: HTMLDivElement | null = null;
 const reviews: (number | null)[] = [];
 
-function mount(clientSettings: Record<string, ClientMachineSetting> = {}, active = true) {
+function mount(clientSettings: Record<string, ClientMachineSetting> = {}, active = true, wrap: (n: ReactNode) => ReactNode = (n) => n) {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
   act(() =>
     root!.render(
+      wrap(
       <SetupView
         client={JUDY}
         clientId="judy"
@@ -85,6 +87,7 @@ function mount(clientSettings: Record<string, ClientMachineSetting> = {}, active
         active={active}
         onReviewCount={(n) => reviews.push(n)}
       />,
+      ),
     ),
   );
   return host;
@@ -275,5 +278,98 @@ describe("the Setup screen", () => {
     const el = mount({}, false);
     expect(spy.enabled.every((e) => e === false)).toBe(true);
     expect(el.textContent).not.toContain("Loading what similar clients use");
+  });
+});
+
+describe("Correct the starting weight (AJ, Oct 4 2026, Q3 (a))", () => {
+  /** Compound Row set up, with a starting weight of 84 and today's 100 on file. */
+  const withStart = (): Record<string, ClientMachineSetting> => {
+    const settings = saved({ Gap: "0", Seat: "4", Chest: "3" });
+    settings["m-compound-row"].startingWeight = 84;
+    settings["m-compound-row"].currentWeight = 100;
+    return settings;
+  };
+  const openButton = (el: HTMLElement) => el.querySelector('button[aria-label="Correct the starting weight on Compound Row"]') as HTMLButtonElement | null;
+  const startBox = (el: HTMLElement) => cell(el, "Compound Row starting weight in pounds");
+  const step = (el: HTMLElement, dir: "lighter" | "heavier") =>
+    el.querySelector(`button[aria-label="Compound Row: starting weight 2 lb ${dir}"]`) as HTMLButtonElement;
+
+  it("is offered in Set up and Quick entry for a machine with a starting weight on file, never in Check", () => {
+    const el = mount(withStart());
+    expect(el.querySelector(".fit")?.getAttribute("data-mode")).toBe("check");
+    expect(openButton(el)).toBeNull();
+    click(button(el, /^Set up/));
+    expect(openButton(el)).not.toBeNull();
+    expect(el.textContent).toContain("Starting weight 84 lb");
+    // Leg Press has no start on file: its load stamps one, there is nothing to correct.
+    expect(el.querySelector('button[aria-label="Correct the starting weight on Leg Press"]')).toBeNull();
+    click(button(el, /^Quick entry/));
+    expect(openButton(el)).not.toBeNull();
+  });
+
+  it("steps 2 lb a tap, says what it was, and saves with the set-up — no reason asked", async () => {
+    const el = mount(withStart());
+    click(button(el, /^Set up/));
+    click(openButton(el)!);
+    expect(startBox(el).value).toBe("84");
+    expect(el.querySelector(".fit-save")).toBeNull(); // opening is not a change
+
+    click(step(el, "heavier"));
+    expect(startBox(el).value).toBe("86");
+    click(step(el, "lighter"));
+    click(step(el, "lighter"));
+    expect(startBox(el).value).toBe("82");
+    expect(el.textContent).toContain("was 84 lb");
+    expect(startBox(el).hasAttribute("data-dirty")).toBe(true);
+    expect(el.textContent).toContain("1 unsaved change on 1 machine");
+    expect(el.querySelector(".fit-save__reason")).toBeNull();
+    expect((button(el, "Save set-up") as HTMLButtonElement).disabled).toBe(false);
+
+    await clickAsync(button(el, "Save set-up"));
+    expect(spy.commits).toHaveLength(1);
+    expect(spy.commits[0].plan.entries).toEqual([
+      expect.objectContaining({ machineId: "m-compound-row", start: { from: 84, to: 82, currentFrom: 100, currentTo: 100 } }),
+    ]);
+    expect(spy.commits[0].plan.entries[0].settings).toBeUndefined();
+    // Saved: the control shuts on the number on file (the listener brings the new one).
+    expect(startBox(el)).toBeNull();
+    expect(openButton(el)).not.toBeNull();
+  });
+
+  it("takes a typed weight; a box with no weight writes nothing and says the number on file stands", () => {
+    const el = mount(withStart());
+    click(button(el, /^Set up/));
+    click(openButton(el)!);
+    type(startBox(el), "");
+    expect(startBox(el).getAttribute("aria-invalid")).toBe("true");
+    expect(el.textContent).toContain("Type the weight in pounds. Until then the starting weight stays 84 lb.");
+    expect((button(el, "Save set-up") as HTMLButtonElement).disabled).toBe(true); // nothing to write
+    type(startBox(el), "60");
+    expect(el.textContent).toContain("was 84 lb");
+    expect((button(el, "Save set-up") as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("is a draft the leave warning knows about, and Keep puts the number on file back", () => {
+    let status: { anyDirty: () => boolean } | null = null;
+    function Probe() {
+      status = useUnsavedStatus();
+      return null;
+    }
+    const el = mount(withStart(), true, (n) => (
+      <UnsavedChangesProvider>
+        {n}
+        <Probe />
+      </UnsavedChangesProvider>
+    ));
+    click(button(el, /^Set up/));
+    click(openButton(el)!);
+    expect(status!.anyDirty()).toBe(false);
+    click(step(el, "lighter"));
+    expect(status!.anyDirty()).toBe(true);
+
+    click(button(el, "Keep 84 lb"));
+    expect(startBox(el)).toBeNull();
+    expect(el.querySelector(".fit-save")).toBeNull();
+    expect(status!.anyDirty()).toBe(false);
   });
 });

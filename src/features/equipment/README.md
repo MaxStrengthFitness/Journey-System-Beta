@@ -257,8 +257,11 @@ cannot be forgotten by a future call site.
 That last row is a deliberate exclusion. Weights move most sessions; journaling
 them would bury coaching notes under progression noise, and the Journey Grid
 already tells that story better. The audit trail for weights stays in
-`settingHistory`. If you want them journaled later it is one line in
-`mutations.saveWeights`.
+`settingHistory`. `saveWeights` retired with the Prescription card (machine
+menu, Oct 4 2026): a starting weight already on file is corrected on
+Programming → Setup ("Correct the starting weight", AJ's Q3 (a)), which writes
+the same `startingWeight` and the same WEIGHT row in Setup's one batch
+(`machine-fit/setup-save.ts`), and journals nothing either.
 
 `origin` is `"profile"` from the Equipment tab and `"in_session"` from the setup
 prompt, so the Journal can still tell where a note was written without the

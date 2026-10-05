@@ -18,7 +18,9 @@
  *   reason      what the trainer typed, else "Settings update" / "Initial setup"
  *   timestamp   device time, ISO
  * A WEIGHT row is "Start: 84, Current: 92" → "Start: 80, Current: 92" from
- * the Prescription card, or "Current: 92" → "Current: 94" from Setup. Only a
+ * the retired Prescription card and from Setup's "Correct the starting
+ * weight" (machine-fit/setup-plan.ts `weightRowOf`, Q3 (a)), or "Current:
+ * 92" → "Current: 94" from a load saved on Setup. Only a
  * row that moves the STARTING weight is kept: the progress figure counts from
  * it (AJ, Oct 4 2026, Q2 (a)). One that moves only today's weight is left
  * out; the Now Bar and the Wrap-up set that weight every session.

@@ -17,6 +17,13 @@
  *     values that were already saved does — once, for the whole Save.
  *   · A load typed here is the CURRENT weight. It becomes the starting weight
  *     too only when the client has none, the way the Equipment tab does it.
+ *   · A starting weight already on file is changed only by "Correct the
+ *     starting weight" (AJ, Oct 4 2026, Q3 (a): the old Prescription card's
+ *     job, now that the card is gone). It is the number the green % counts
+ *     from (machine-menu/progress-figure.ts), so it leaves a WEIGHT audit row
+ *     in the Prescription card's own words ("Start: 84, Current: 100" →
+ *     "Start: 80, Current: 100"), the row the machine menu's Setting changes
+ *     lists. It needs no reason and is never journalled, like every weight.
  *   · Anything the shorthand reader could not place is kept as a note on the
  *     machine. Nothing is dropped.
  *   · ONE journal entry for the Save, not one per machine: thirty "initial
@@ -46,6 +53,12 @@ export interface SetupMachineInput {
   savedCurrentWeight: number | null;
   /** The load typed on this screen; undefined or "" means untouched. */
   draftWeight?: string;
+  /**
+   * "Correct the starting weight": the starting weight typed or stepped on
+   * this screen. Read only when one is already on file (`savedStartingWeight`);
+   * undefined, or anything that isn't a weight, means untouched.
+   */
+  draftStart?: string;
   /** Text to keep as a note on the machine (the shorthand reader's leftovers). */
   note?: string;
 }
@@ -67,6 +80,12 @@ export interface SetupPlanEntry {
   sources?: Record<string, SettingSource>;
   /** Present when the load changed. */
   weight?: { current: number; starting: number | null; stampStart: boolean; from: number | null };
+  /**
+   * Present when the starting weight on file was corrected. `currentFrom` /
+   * `currentTo` are today's weight before and after this Save (the same
+   * number when only the start moved), for the audit row.
+   */
+  start?: { from: number; to: number; currentFrom: number | null; currentTo: number | null };
   note?: string;
 }
 
@@ -80,11 +99,24 @@ export interface SetupPlan {
 
 const clean = (v: unknown): string => (v ?? "").toString().trim();
 
+/** The heaviest load either box takes, in lb. */
+export const MAX_LOAD_LB = 2000;
+
 export function parseWeight(text: string | undefined): number | null {
   const t = clean(text);
   if (!t) return null;
   const n = Number(t);
-  return Number.isFinite(n) && n >= 0 && n <= 2000 ? n : null;
+  return Number.isFinite(n) && n >= 0 && n <= MAX_LOAD_LB ? n : null;
+}
+
+/**
+ * A starting weight is a load someone began at, so it is above 0: a 0 or a
+ * blank is never written over the number on file (the green % has nothing
+ * to count from a 0 — progress-figure.ts reads only a load above 0).
+ */
+export function parseStartingWeight(text: string | undefined): number | null {
+  const n = parseWeight(text);
+  return n !== null && n > 0 ? n : null;
 }
 
 export function planSetupSave(machines: readonly SetupMachineInput[]): SetupPlan {
@@ -107,8 +139,11 @@ export function planSetupSave(machines: readonly SetupMachineInput[]): SetupPlan
 
     const weightTyped = parseWeight(m.draftWeight);
     const weightMoved = weightTyped !== null && weightTyped !== m.savedCurrentWeight;
+    // Only a start already on file is corrected; with none, the load stamps it.
+    const startTyped = m.savedStartingWeight !== null ? parseStartingWeight(m.draftStart) : null;
+    const startMoved = startTyped !== null && startTyped !== m.savedStartingWeight;
     const note = clean(m.note);
-    if (changes.length === 0 && !weightMoved && !note) continue;
+    if (changes.length === 0 && !weightMoved && !startMoved && !note) continue;
 
     const hadSettings = m.fields.some((f) => clean(m.saved[f.key]) !== "");
     const entry: SetupPlanEntry = {
@@ -134,8 +169,16 @@ export function planSetupSave(machines: readonly SetupMachineInput[]): SetupPlan
         stampStart,
         from: m.savedCurrentWeight,
       };
-      weightsChanged += 1;
     }
+    if (startMoved) {
+      entry.start = {
+        from: m.savedStartingWeight as number,
+        to: startTyped as number,
+        currentFrom: m.savedCurrentWeight,
+        currentTo: weightMoved ? (weightTyped as number) : m.savedCurrentWeight,
+      };
+    }
+    if (weightMoved || startMoved) weightsChanged += 1;
     if (note) entry.note = note;
     entries.push(entry);
   }
@@ -156,9 +199,33 @@ export function reasonFor(entry: SetupPlanEntry, typedReason: string, legacy: bo
   return entry.isInitialSetup ? "Initial setup" : "Settings update";
 }
 
+/**
+ * The machine's ONE WEIGHT audit row for this Save, or null when no weight
+ * moved. A corrected start is written the way the Prescription card wrote
+ * every weight ("Start: 84, Current: 100" → "Start: 80, Current: 100", and a
+ * load moved in the same Save goes on the same row), because that is the
+ * row machine-menu/setting-history.ts reads as "Starting weight 84 → 80 lb".
+ * A load alone keeps Setup's own "Current: 100" → "Current: 112".
+ */
+export function weightRowOf(entry: SetupPlanEntry, legacy: boolean): { oldValue: string; newValue: string; reason: string } | null {
+  const reason = legacy ? "Copied from the FileMaker chart" : "Weight update";
+  if (entry.start) {
+    const { from, to, currentFrom, currentTo } = entry.start;
+    return {
+      oldValue: `Start: ${from}, Current: ${currentFrom ?? "None"}`,
+      newValue: `Start: ${to}, Current: ${currentTo ?? "None"}`,
+      reason,
+    };
+  }
+  if (entry.weight) {
+    return { oldValue: `Current: ${entry.weight.from ?? "None"}`, newValue: `Current: ${entry.weight.current}`, reason };
+  }
+  return null;
+}
+
 const JOURNAL_LIMIT = 900;
 
-/** The ONE journal entry for the Save, or "" when no setting changed (weights are never journalled). */
+/** The ONE journal entry for the Save, or "" when no setting changed (weights, a corrected start too, are never journalled). */
 export function journalBodyFor(plan: SetupPlan, typedReason: string, legacy: boolean): string {
   const withSettings = plan.entries.filter((e) => e.changes.length > 0);
   if (withSettings.length === 0) return "";

@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { nextSettings, nextSources } from "./settings-write";
-import { journalBodyFor, parseWeight, planSetupSave, reasonFor, type SetupMachineInput } from "./setup-plan";
+import { parseSettingHistory } from "../machine-menu/setting-history";
+import {
+  journalBodyFor,
+  parseStartingWeight,
+  parseWeight,
+  planSetupSave,
+  reasonFor,
+  weightRowOf,
+  type SetupMachineInput,
+} from "./setup-plan";
 
 const FIELDS = [
   { key: "Seat", label: "Seat" },
@@ -123,5 +132,72 @@ describe("planning the Setup screen's Save", () => {
     expect(body.startsWith("Machine set-up copied from the FileMaker chart — 30 machines.")).toBe(true);
     expect(body.length).toBeLessThan(1000);
     expect(body).toMatch(/… and \d+ more\.$/);
+  });
+});
+
+describe("Correct the starting weight (AJ, Oct 4 2026, Q3 (a))", () => {
+  const onFile = (over: Partial<SetupMachineInput> = {}) =>
+    machine({ savedStartingWeight: 84, savedCurrentWeight: 100, ...over });
+
+  it("corrects a start on file without touching today's weight, and asks no reason", () => {
+    const plan = planSetupSave([onFile({ draftStart: "80" })]);
+    expect(plan.entries).toHaveLength(1);
+    expect(plan.entries[0].start).toEqual({ from: 84, to: 80, currentFrom: 100, currentTo: 100 });
+    expect(plan.entries[0].weight).toBeUndefined();
+    expect(plan.entries[0].settings).toBeUndefined();
+    expect(plan.needsReason).toBe(false);
+    expect(plan.weightsChanged).toBe(1);
+    expect(plan.settingsChanged).toBe(0);
+  });
+
+  it("is only a correction: with no start on file the box is ignored (the load stamps one instead)", () => {
+    expect(planSetupSave([machine({ draftStart: "80" })]).entries).toEqual([]);
+  });
+
+  it("writes nothing for the number already on file, or for a box that holds no weight", () => {
+    expect(planSetupSave([onFile({ draftStart: "84" })]).entries).toEqual([]);
+    expect(planSetupSave([onFile({ draftStart: "84.0" })]).entries).toEqual([]);
+    expect(planSetupSave([onFile({ draftStart: "" })]).entries).toEqual([]);
+    expect(planSetupSave([onFile({ draftStart: "0" })]).entries).toEqual([]);
+    expect(planSetupSave([onFile({ draftStart: "heavy" })]).entries).toEqual([]);
+    expect(planSetupSave([onFile({ draftStart: "2001" })]).entries).toEqual([]);
+    expect(parseStartingWeight("0")).toBeNull();
+    expect(parseStartingWeight(" 37.5 ")).toBe(37.5);
+  });
+
+  it("carries a load moved in the same Save, and counts the machine once", () => {
+    const plan = planSetupSave([onFile({ draftStart: "80", draftWeight: "112" })]);
+    expect(plan.entries[0].start).toEqual({ from: 84, to: 80, currentFrom: 100, currentTo: 112 });
+    expect(plan.entries[0].weight).toEqual({ current: 112, starting: 84, stampStart: false, from: 100 });
+    expect(plan.weightsChanged).toBe(1);
+  });
+
+  it("writes the Prescription card's WEIGHT row, the one the machine menu reads as the starting weight", () => {
+    const [entry] = planSetupSave([onFile({ draftStart: "80" })]).entries;
+    const row = weightRowOf(entry, false);
+    expect(row).toEqual({ oldValue: "Start: 84, Current: 100", newValue: "Start: 80, Current: 100", reason: "Weight update" });
+    const [parsed] = parseSettingHistory([{ id: "w1", clientId: "c1", changeType: "WEIGHT", timestamp: "2026-10-04T10:00:00-04:00", ...row }], "c1");
+    expect(parsed.kind).toBe("start-weight");
+    expect(parsed.pairs).toEqual([{ label: "Starting weight", from: "84", to: "80" }]);
+
+    const [both] = planSetupSave([onFile({ draftStart: "80", draftWeight: "112" })]).entries;
+    expect(weightRowOf(both, true)).toEqual({
+      oldValue: "Start: 84, Current: 100",
+      newValue: "Start: 80, Current: 112",
+      reason: "Copied from the FileMaker chart",
+    });
+    const [noLoad] = planSetupSave([onFile({ savedCurrentWeight: null, draftStart: "80" })]).entries;
+    expect(weightRowOf(noLoad, false)).toMatchObject({ oldValue: "Start: 84, Current: None", newValue: "Start: 80, Current: None" });
+  });
+
+  it("leaves a load alone in Setup's own words, and writes no row when no weight moved", () => {
+    const [load] = planSetupSave([onFile({ draftWeight: "112" })]).entries;
+    expect(weightRowOf(load, false)).toEqual({ oldValue: "Current: 100", newValue: "Current: 112", reason: "Weight update" });
+    const [settings] = planSetupSave([machine({ saved: { Seat: "4" }, draft: { Seat: "5" } })]).entries;
+    expect(weightRowOf(settings, false)).toBeNull();
+  });
+
+  it("is never journalled, like every weight", () => {
+    expect(journalBodyFor(planSetupSave([onFile({ draftStart: "80" })]), "", false)).toBe("");
   });
 });

@@ -7,7 +7,9 @@
  *   1. ONE BATCH: every changed clientMachineSettings document and its audit
  *      row in machines/{id}/settingHistory. All or nothing — a Save that half
  *      landed would leave a client set up on some machines and not others
- *      with no way to tell which.
+ *      with no way to tell which. A corrected starting weight (Q3 (a), Oct 4
+ *      2026) rides in the same batch: `startingWeight` and one WEIGHT row,
+ *      the fields the retired Prescription card's saveWeights wrote.
  *   2. The studio's machine-fit index, as a second batch. CAUGHT: the index
  *      is a copy (scripts/rebuild-machine-fit.ts can always rebuild it), and
  *      the rules may refuse it for a trainer covering at a studio that is not
@@ -29,7 +31,7 @@ import { createJournalEntry } from "../../hooks/useClientJournal";
 import type { MachineNote } from "../../types";
 import type { JournalOrigin } from "../../types/journal";
 import { ackFitRow, queueFitRow } from "./fit-store";
-import { describeFieldChanges, journalBodyFor, reasonFor, type SetupPlan } from "./setup-plan";
+import { describeFieldChanges, journalBodyFor, reasonFor, weightRowOf, type SetupPlan } from "./setup-plan";
 
 export interface SetupAuthor {
   /** The Auth uid — the journalEntries rule pins authorId to it. */
@@ -117,15 +119,23 @@ export async function commitSetupSave({
         data.startingWeightDate = now;
         fields.push("startingWeight", "startingWeightDate");
       }
+    }
+    // "Correct the starting weight" (Q3 (a)): the number changes, the day it
+    // was first recorded does not — `startingWeightDate` is stamped only when
+    // a start is first written, as the Prescription card's saveWeights did.
+    if (entry.start) {
+      data.startingWeight = entry.start.to;
+      fields.push("startingWeight");
+    }
+    const weightRow = weightRowOf(entry, legacy);
+    if (weightRow) {
       batch.set(doc(history), {
         clientId,
         timestamp: iso,
         trainerId: author.id,
         trainerName: author.fullName,
         changeType: "WEIGHT",
-        oldValue: `Current: ${entry.weight.from ?? "None"}`,
-        newValue: `Current: ${entry.weight.current}`,
-        reason: legacy ? "Copied from the FileMaker chart" : "Weight update",
+        ...weightRow,
       });
     }
 

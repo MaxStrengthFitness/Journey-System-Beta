@@ -15,6 +15,10 @@
  *           FileMaker shorthand. No suggestions: this mode is for copying
  *           what a chart already says.
  *
+ * In both editing modes a machine with a starting weight on file also offers
+ * "Correct the starting weight" (AJ, Oct 4 2026, Q3 (a); StartingWeight.tsx),
+ * outside the keypad's run of cells, so Quick entry's order stays the chart's.
+ *
  * The machine's name is never truncated (CLAUDE.md), and every target is at
  * least 44px.
  */
@@ -24,6 +28,7 @@ import { Check, ChevronDown, ChevronUp, Diamond, Undo2 } from "lucide-react";
 import type { FitFlag, FlagLevel } from "../types";
 import { chainSentence, cohortPhrase, flagSentence, missingPhrase, noSuggestionSentence, suggestionSentence } from "./sentences";
 import { shownValue, type FitField } from "./field-values";
+import { StartingWeight } from "./StartingWeight";
 import type { SetupMode } from "./setup-draft";
 import type { SetupRowModel } from "./useSetupModel";
 
@@ -39,11 +44,19 @@ export interface SetupRowProps {
   systemCell: string | null;
   weightShown: string;
   weightDirty: boolean;
+  /** "Correct the starting weight": the draft (undefined when untouched) and whether the control is open. */
+  startDraft: string | undefined;
+  startOpen: boolean;
   note: string | undefined;
   evidenceOpen: boolean;
   onActivate: (id: string) => void;
   onChange: (key: string, value: string) => void;
   onWeight: (value: string) => void;
+  onOpenStart: () => void;
+  onStart: (value: string) => void;
+  onKeepStart: () => void;
+  /** The starting weight's box took focus. */
+  onStartFocus: () => void;
   onEnter: () => void;
   onUse: (keys?: string[]) => void;
   onShorthand: (text: string) => void;
@@ -67,11 +80,17 @@ function SetupRowImpl({
   systemCell,
   weightShown,
   weightDirty,
+  startDraft,
+  startOpen,
   note,
   evidenceOpen,
   onActivate,
   onChange,
   onWeight,
+  onOpenStart,
+  onStart,
+  onKeepStart,
+  onStartFocus,
   onEnter,
   onUse,
   onShorthand,
@@ -92,7 +111,7 @@ function SetupRowImpl({
     },
   };
 
-  const hasDraft = row.dirty.size > 0 || weightDirty || !!note;
+  const hasDraft = row.dirty.size > 0 || weightDirty || startDraft !== undefined || !!note;
   const rare = row.audit?.flags.filter((f) => f.level === "rare") ?? [];
   const editing = mode !== "check";
   const suggestion = row.suggestion;
@@ -285,6 +304,19 @@ function SetupRowImpl({
             </div>
           ) : null}
         </div>
+
+        {editing && machine.startingWeight !== null ? (
+          <StartingWeight
+            machineName={machine.name}
+            saved={machine.startingWeight}
+            draft={startDraft}
+            open={startOpen}
+            onOpen={onOpenStart}
+            onChange={onStart}
+            onKeep={onKeepStart}
+            onFocus={onStartFocus}
+          />
+        ) : null}
 
         {mode === "quick" && shorthandOpen ? (
           <form

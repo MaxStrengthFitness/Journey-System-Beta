@@ -99,6 +99,24 @@ five — often six people. A value is only marked when it is also rare across th
 widest band the ladder could reach (`Cohort.wide`). A confident wrong mark is
 worse than a missing one.
 
+**A starting weight on file is corrected here, and nowhere else** (AJ, Oct 4
+2026, Q3 (a): "ill take all your recommended"). The load typed on a machine
+with no start stamps one; a start already on file changes only through
+**Correct the starting weight**, on each such machine in Set up and Quick
+entry (`ui/StartingWeight.tsx`, every word in `ui/starting-weight.ts`). It took
+over from the Prescription card, which retired with the machine menu. It is the
+number the green % counts from (`machine-menu/progress-figure.ts`, shared with
+the Now Bar), so: ± move it 2 lb and it can be typed; it is a draft until Save
+set-up and one unsaved change (`setup-draft.ts` `start`); it asks no reason and
+blocks nothing (a box with no weight is simply not written, and says the number
+on file stands); and the Save writes `startingWeight` and ONE WEIGHT row in the
+Prescription card's words, "Start: 84, Current: 100" → "Start: 80, Current:
+100" (`setup-plan.ts` `weightRowOf`), which the machine menu's Setting changes
+lists as "Starting weight 84 → 80 lb". `startingWeightDate` is left alone: it
+says when a start was first recorded, and a correction changes the number, not
+that day. Never journalled, like every weight. It lives outside the keypad's
+run of cells, so Quick entry keeps the chart's order.
+
 **Sentences, not scores.** `MIN_CLIENTS` (5) is the named minimum, from machine
 trends. Below it a suggestion says how many similar clients there are instead of
 quoting them; a report average is `null` and the screen says "not enough data

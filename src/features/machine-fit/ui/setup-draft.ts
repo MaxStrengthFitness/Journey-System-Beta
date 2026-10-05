@@ -23,6 +23,8 @@ export interface MachineDraft {
   /** Where each drafted value came from. */
   sources: Record<string, SettingSource>;
   weight?: string;
+  /** "Correct the starting weight": the start on screen, when it differs from the one on file. */
+  start?: string;
   note?: string;
 }
 
@@ -47,13 +49,14 @@ export type SetupDraftAction =
       note?: string;
     }
   | { type: "weight"; machineId: string; value: string; saved: string }
+  | { type: "start"; machineId: string; value: string; saved: string }
   | { type: "revert"; machineId: string }
   | { type: "reset" };
 
 const EMPTY_DRAFT: MachineDraft = { values: {}, sources: {} };
 
 function isEmpty(d: MachineDraft): boolean {
-  return Object.keys(d.values).length === 0 && d.weight === undefined && !d.note;
+  return Object.keys(d.values).length === 0 && d.weight === undefined && d.start === undefined && !d.note;
 }
 
 function put(state: SetupDraftState, machineId: string, draft: MachineDraft): Record<string, MachineDraft> {
@@ -131,6 +134,14 @@ export function setupDraftReducer(state: SetupDraftState, action: SetupDraftActi
       else next.weight = action.value;
       return { drafts: put(state, action.machineId, next), lastAccept: state.lastAccept };
     }
+    case "start": {
+      // Back to the number on file is no draft at all, the load's rule.
+      const current = state.drafts[action.machineId] ?? EMPTY_DRAFT;
+      const next: MachineDraft = { ...current };
+      if (action.value.trim() === action.saved.trim()) delete next.start;
+      else next.start = action.value;
+      return { drafts: put(state, action.machineId, next), lastAccept: state.lastAccept };
+    }
     case "revert": {
       if (!state.drafts[action.machineId]) return state;
       const drafts = { ...state.drafts };
@@ -160,7 +171,8 @@ export function countDrafts(state: SetupDraftState): DraftCounts {
   let fields = 0;
   let suggested = 0;
   for (const d of Object.values(state.drafts)) {
-    fields += Object.keys(d.values).length + (d.weight !== undefined ? 1 : 0) + (d.note ? 1 : 0);
+    fields +=
+      Object.keys(d.values).length + (d.weight !== undefined ? 1 : 0) + (d.start !== undefined ? 1 : 0) + (d.note ? 1 : 0);
     suggested += Object.values(d.sources).filter((s) => s === "suggested").length;
   }
   return { fields, machines: Object.keys(state.drafts).length, suggested };

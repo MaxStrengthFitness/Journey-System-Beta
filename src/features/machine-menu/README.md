@@ -166,3 +166,24 @@ The fixes the design lists in §F, outside the card:
 - **The one-list count still counts a settings save's journal copy** on the grid and the rail: telling a copy from a typed Set-up note needs the machine's setting changes (`settings-copy.ts`), one read per machine, which a list of every machine can't make. A copy is a plain note, so the loudness is never touched by one.
 - **The window counts the watched session as running**, so a second iPad watching a session reads the same 30 ids as the iPad recording it.
 - **The row trace still toggles beside the open**, as it did on the profile: the menu opens on every tap, and the blue rules come and go with it.
+
+## Phase 8 — Correct the starting weight (Q3 (a))
+
+AJ's Q3 (a): once the Prescription card retired with the menu (phase 6), nothing could change a starting weight already on file, and that is the number the green % counts from (Q2 (a)). **Programming → Setup gains "Correct the starting weight"**; the menu stays the same in both doors apart from the notes.
+
+| Where | What changed |
+| --- | --- |
+| `machine-fit/setup-plan.ts` | `draftStart` on a machine's input, read only when a start is on file (`parseStartingWeight`: above 0, at most 2000 lb). A corrected start is `entry.start {from, to, currentFrom, currentTo}`; it asks no reason and is never journalled. `weightRowOf` is the machine's ONE WEIGHT row: a corrected start in the Prescription card's words ("Start: 84, Current: 100" → "Start: 80, Current: 100", a load moved in the same Save on the same row), a load alone in Setup's own "Current:" words |
+| `machine-fit/setup-save.ts` | The start rides in Setup's one batch: `startingWeight` (by `mergeFields`) and that row. `startingWeightDate` is not touched (see below) |
+| `machine-fit/ui/setup-draft.ts` | `start` on a machine's draft (the `start` action), one unsaved change; back at the number on file it is no draft |
+| `machine-fit/ui/starting-weight.ts` + `StartingWeight.tsx` | The control: shut, "Starting weight 84 lb" and the button; open, − 2 lb, the box (typed, for a long way), + 2 lb, "was 84 lb", Keep 84 lb. Never 0 or below. A box with no weight is not written and says the number on file stands. In Set up and Quick entry only, outside the keypad's run of cells |
+| `machine-fit/ui/SetupView.tsx`, `SetupRow.tsx` | Which controls are open (forgotten on a client change, a Save and Discard); the box's focus moves the docked keypad aside. The draft is in the reducer, so `useUnsavedChanges` already covers it |
+
+`setup-save.test.ts` follows the written fields through both hosts' adapters (`toEquipmentMachines` for the menu, `toJourneyRows` for the Now Bar) into `progress-figure.ts`: both say "Starting weight 80 lb, +25%" after 84 → 80. Both hosts read `clientMachineSettings` through a live listener, so the corrected number arrives without a reload. The rules already allow it: `clientMachineSettings` and `settingHistory` create/update are any trainer's (`isAnyAuthenticatedTrainer`), the same as the Setup save and the card's `saveWeights` before it.
+
+### Decisions made in phase 8 where the spec met the code
+
+- **`startingWeightDate` stays.** The spec lists it among the fields `saveWeights` wrote; `saveWeights` stamped it only when a start was first recorded (none on file), and the correction exists only for a machine that has one. It says when the start was first recorded, and a trainer copying the true start from a paper chart changes the number, not that day. Setup's load still stamps it with a first start, as before.
+- **One WEIGHT row a machine.** A corrected start and a load moved in the same Save go on one row in the Prescription card's format, so the Setting changes list reads it as the start and the row still says the load. A load alone keeps Setup's own format (unchanged).
+- **Set up and Quick entry only, never Check.** Check is read only; the control sits beside the load those modes already edit.
+- **No reason box for it.** "Nothing blocks a save": a start-only Save needs no reason. The existing rule for changing saved SETTINGS (a reason) is unchanged. A box holding no weight leaves Save as it would be without it (disabled when nothing else changed, as a load that isn't a number does today).

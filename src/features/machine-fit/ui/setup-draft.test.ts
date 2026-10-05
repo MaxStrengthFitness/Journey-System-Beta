@@ -84,4 +84,19 @@ describe("the Setup screen's drafts", () => {
     expect(Object.keys(run([{ type: "revert", machineId: "m-row" }], state).drafts)).toEqual(["m-abs"]);
     expect(run([{ type: "reset" }], state)).toBe(EMPTY_DRAFTS);
   });
+
+  it("drafts a corrected starting weight as one change, and forgets it back at the number on file", () => {
+    const state = run([{ type: "start", machineId: "m-row", value: "80", saved: "84" }]);
+    expect(state.drafts["m-row"]).toEqual({ values: {}, sources: {}, start: "80" });
+    expect(countDrafts(state)).toEqual({ fields: 1, machines: 1, suggested: 0 });
+    // Alongside a load, it is a second change on the same machine.
+    const both = run([{ type: "weight", machineId: "m-row", value: "112", saved: "100" }], state);
+    expect(countDrafts(both)).toEqual({ fields: 2, machines: 1, suggested: 0 });
+
+    expect(run([{ type: "start", machineId: "m-row", value: "84 ", saved: "84" }], state).drafts).toEqual({});
+    expect(run([{ type: "revert", machineId: "m-row" }], both).drafts).toEqual({});
+    expect(run([{ type: "reset" }], both)).toBe(EMPTY_DRAFTS);
+    // A box emptied to type a new number is still a draft: what is on screen differs.
+    expect(run([{ type: "start", machineId: "m-row", value: "", saved: "84" }]).drafts["m-row"].start).toBe("");
+  });
 });

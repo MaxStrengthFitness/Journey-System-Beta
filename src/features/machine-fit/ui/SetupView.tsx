@@ -27,6 +27,10 @@
  *   · NO FETCH UNTIL LOOKED AT. `active` gates every read; the component
  *     stays mounted afterwards so drafts survive a look at Routine A.
  *   · Inline panels, no dialogs: nothing for the iPad to get stuck behind.
+ *   · A STARTING WEIGHT ON FILE IS CORRECTED HERE (AJ, Oct 4 2026, Q3 (a)):
+ *     "Correct the starting weight" on each machine that has one, in Set up
+ *     and Quick entry, a draft like any box and written by the same Save
+ *     (StartingWeight.tsx, starting-weight.ts). No reason is asked for it.
  */
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
@@ -138,6 +142,8 @@ export function SetupView({
   const [panel, setPanel] = useState<"match" | "paste" | null>(null);
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
+  /** Machines whose "Correct the starting weight" is open. One holding a draft is open regardless. */
+  const [startOpen, setStartOpen] = useState<Record<string, true>>({});
   /** The next pad key replaces the cell's value (a spreadsheet's rule). */
   const freshRef = useRef(true);
 
@@ -153,6 +159,7 @@ export function SetupView({
     setPanel(null);
     setReason("");
     setFilter("all");
+    setStartOpen({});
   }, [clientId]);
   // …and it opens in the mode that client needs, once her settings have
   // arrived — unless the Machine fit report sent the leader here to look at a
@@ -241,6 +248,11 @@ export function SetupView({
     if (d?.weight !== undefined) return d.weight;
     return row.machine.currentWeight !== null ? String(row.machine.currentWeight) : "";
   };
+
+  const writeStart = useCallback((row: SetupRowModel, value: string) => {
+    if (row.machine.startingWeight === null) return;
+    dispatch({ type: "start", machineId: row.machine.id, value, saved: String(row.machine.startingWeight) });
+  }, []);
 
   const writeCell = useCallback(
     (row: SetupRowModel, key: string, value: string) => {
@@ -418,6 +430,7 @@ export function SetupView({
       onDiscard: () => {
         dispatch({ type: "reset" });
         setReason("");
+        setStartOpen({});
       },
     },
   );
@@ -437,6 +450,7 @@ export function SetupView({
         savedStartingWeight: row.machine.startingWeight,
         savedCurrentWeight: row.machine.currentWeight,
         draftWeight: d.weight,
+        draftStart: d.start,
         note: d.note,
       });
     }
@@ -475,6 +489,7 @@ export function SetupView({
       dispatch({ type: "reset" });
       setReason("");
       setActiveCell(null);
+      setStartOpen({});
     } catch (err) {
       console.error(err);
       toastError("Could not save the set-up. Nothing was changed.");
@@ -665,6 +680,8 @@ export function SetupView({
                 systemCell={systemCell}
                 weightShown={weightShownOf(row)}
                 weightDirty={d?.weight !== undefined}
+                startDraft={d?.start}
+                startOpen={!!startOpen[row.machine.id]}
                 note={d?.note}
                 evidenceOpen={evidenceFor === row.machine.id}
                 onActivate={(id) => {
@@ -681,6 +698,22 @@ export function SetupView({
                 onWeight={(value) => {
                   freshRef.current = false;
                   writeCell(row, WEIGHT_KEY, value);
+                }}
+                onOpenStart={() => setStartOpen((o) => ({ ...o, [row.machine.id]: true }))}
+                onStart={(value) => writeStart(row, value)}
+                onKeepStart={() => {
+                  writeStart(row, String(row.machine.startingWeight ?? ""));
+                  setStartOpen((o) => {
+                    const next = { ...o };
+                    delete next[row.machine.id];
+                    return next;
+                  });
+                }}
+                // The docked keypad types into the grid's cells only; it steps
+                // aside while the starting weight is typed.
+                onStartFocus={() => {
+                  setActiveCell(null);
+                  setSystemCell(null);
                 }}
                 onEnter={() => move(1)}
                 onUse={(keys) => acceptRow(row, keys)}
@@ -749,6 +782,7 @@ export function SetupView({
                 onClick={() => {
                   dispatch({ type: "reset" });
                   setReason("");
+                  setStartOpen({});
                 }}
               >
                 Discard
