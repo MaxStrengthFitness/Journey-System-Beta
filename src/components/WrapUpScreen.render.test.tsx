@@ -1002,7 +1002,8 @@ describe("the Wrap-up follows the theme, and keeps its confetti", () => {
     for (const f of ["WrapUpScreen.tsx", "../features/openings/ui/TimesWithRoomSheet.tsx"]) {
       const src = readFileSync(join(here, f), "utf8");
       const sizes = new Set([...src.matchAll(/text-\[(\d+(?:\.\d+)?)px\]/g)].map((m) => Number(m[1])));
-      expect([...sizes].filter((n) => ![11, 12, 14, 17, 30].includes(n)), f).toEqual([]);
+      // 22 joined the codex scale on Oct 4 2026 (type and depth, phase 2).
+      expect([...sizes].filter((n) => ![11, 12, 14, 17, 22, 30].includes(n)), f).toEqual([]);
       expect(src, f).not.toMatch(/ring-cyan|border-cyan/);
       expect(src.split(/["'`]/).filter((s) => PALETTE.test(s)), f).toEqual([]);
     }

@@ -97,10 +97,14 @@
   --cx-dreams-fill:     var(--ford-dreams-fill);
 
   /* ---- type: the whole scale ------------------------------------------- */
+  /* 22 joined on Oct 4 2026 (type and depth, phase 2): a section title, a
+     name in a sheet, a headline figure. A scale step, not an exception;
+     11 stays legal for the rules that use it, and nothing new does. */
   --cx-fs-11:           11px;      /* eyebrows, chip caps, fact labels      */
   --cx-fs-12:           12px;      /* meta, sources, field labels, chips    */
   --cx-fs-14:           14px;      /* body, buttons, inputs                 */
   --cx-fs-17:           17px;      /* ledes, card and section titles        */
+  --cx-fs-22:           22px;      /* section titles, a name in a sheet     */
   --cx-fs-30:           30px;      /* page titles, a big number             */
   /* The app's two faces. The fallbacks matter: these files are not run
      through Tailwind, so they must not depend on it having emitted its

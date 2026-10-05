@@ -16,8 +16,9 @@ import { describe, expect, it } from "vitest";
  *   3. The listed controls are at least 40px tall.
  *   4. Slanted capitals are the display face's alone (a page, a masthead or
  *      a dialog title); a card or section head is small upright capitals.
- *   5. Text sizes are counted against the 11 / 12 / 14 / 17 / 30 scale, and
- *      the count only goes down.
+ *   5. Text sizes are counted against the 11 / 12 / 14 / 17 / 22 / 30 scale
+ *      (22 since Oct 4 2026, a step of the scale), and the count only goes
+ *      down.
  *
  * If one of these fails, the fix is the stylesheet, not the test.
  */
@@ -537,8 +538,10 @@ describe("My Studio's type", () => {
     expect(tab && declared(tab.body, "text-transform")).toEqual(["none"]);
   });
 
-  it("keeps text on the 11 / 12 / 14 / 17 / 30 scale, within a budget that only goes down", () => {
-    const SCALE = new Set([11, 12, 14, 17, 30]);
+  it("keeps text on the 11 / 12 / 14 / 17 / 22 / 30 scale, within a budget that only goes down", () => {
+    // 22 joined the scale on Oct 4 2026 (type and depth, phase 2), on
+    // purpose; the budget below did not rise with it.
+    const SCALE = new Set([11, 12, 14, 17, 22, 30]);
     const off: string[] = [];
     for (const file of FILES) {
       if (SIZES_COUNTED_ELSEWHERE.has(file)) continue;

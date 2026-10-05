@@ -29,6 +29,9 @@ import { describe, expect, it } from "vitest";
  *      900 moved to 800 in this phase, so this lands green.
  *   5. `font-black` is 800, and the studio's name on the frame (the brand
  *      moment that asked for no weight and so rendered 600) asks for 800.
+ *   6. (Phase 2) The weight ladder's foot: the body's weight is a token,
+ *      450 in :root and 420 in .dark, and the body reads it; and
+ *      `tracking-widest` is 0.08em, the one caps style's spacing.
  *
  * If one of these fails, the fix is the stylesheet, not the test.
  */
@@ -305,5 +308,31 @@ describe("the weight ladder's top", () => {
     const name = header.match(/"(font-display italic[^"]*)"/);
     expect(name, "the studio name's class list").not.toBeNull();
     expect(name![1].split(/\s+/)).toContain("font-extrabold");
+  });
+});
+
+/** The custom properties one top-level block of index.css declares (`:root`, `.dark`). */
+function indexBlock(selector: string): Record<string, string> {
+  const i = INDEX_RULES.indexOf(`\n${selector} {`);
+  if (i < 0) throw new Error(`index.css: no ${selector} block`);
+  const body = INDEX_RULES.slice(i, INDEX_RULES.indexOf("\n}", i));
+  const out: Record<string, string> = {};
+  for (const m of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) out[m[1]] = m[2].trim();
+  return out;
+}
+
+describe("the weight ladder's foot (phase 2)", () => {
+  it("the body's weight is 450, and 420 in dark mode", () => {
+    expect(indexBlock(":root")["--fw-body"]).toBe("450");
+    expect(indexBlock(".dark")["--fw-body"]).toBe("420");
+  });
+
+  it("the body reads it, so every line that inherits its weight follows the theme", () => {
+    const body = rulesOf("index.css").filter((r) => r.prelude === "body");
+    expect(body.flatMap((r) => declared(r.body, "font-weight"))).toEqual(["var(--fw-body)"]);
+  });
+
+  it("tracking-widest is 0.08em, the eyebrow's spacing", () => {
+    expect(declared(INDEX_RULES, "--tracking-widest")).toEqual(["0.08em"]);
   });
 });

@@ -84,7 +84,8 @@ describe("profile-nav.css: the wrap variant", () => {
   it("stays on the codex's type scale and uses no raw colour", () => {
     const sizes = [...stripComments(WRAP).matchAll(/font-size:\s*([\d.]+)px/g)].map((m) => Number(m[1]));
     expect(sizes.length).toBeGreaterThan(0);
-    for (const px of sizes) expect([11, 12, 14, 17, 30]).toContain(px);
+    // 22 joined the codex scale on Oct 4 2026 (type and depth, phase 2).
+    for (const px of sizes) expect([11, 12, 14, 17, 22, 30]).toContain(px);
     expect(stripComments(WRAP)).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 

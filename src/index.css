@@ -151,6 +151,11 @@
        700-900" weight that made the app shout. 247 uses in 40 files calm
        at once. */
     --font-weight-black: 800;
+    /* `tracking-widest` is 0.08em, not Tailwind's 0.1em (type and depth,
+       phase 2): the caps labels written in a class list (about 270) sit a
+       little closer, the spacing of the one caps style the round keeps, the
+       12px eyebrow. */
+    --tracking-widest: 0.08em;
 
     /* ELEVATION.
        These OVERRIDE Tailwind's built-in shadow scale rather than sitting
@@ -372,6 +377,18 @@
     --elev-5: 0 8px 16px rgba(25,45,65,0.06), 0 28px 56px rgba(25,45,65,0.12);
 
     /* ---------------------------------------------------------------
+       THE BODY WEIGHT (type and depth, phase 2, Oct 4 2026). The weight
+       ladder is five steps: 450 body, 500 meta, 600 tabs and row labels,
+       700 titles and buttons, 800 display. Body was the browser's 400;
+       Geist is a variable face, so 450 is a real weight, not a rounding.
+       .dark lowers it to 420, because light words on navy read heavier.
+       It reaches ONLY text that inherits the body's weight: a rule or a
+       class that sets its own weight (`font-normal` included) keeps it.
+       src/fonts.test.ts holds the two values and the body rule.
+       --------------------------------------------------------------- */
+    --fw-body: 450;
+
+    /* ---------------------------------------------------------------
        JOURNEY SYSTEM BETA TOKENS — LIGHT MODE
 
        THE LADDER WAS UPSIDE DOWN. In dark mode these read
@@ -570,6 +587,10 @@
     --elev-4: 0 12px 28px rgba(2,10,20,0.45);
     --elev-5: 0 20px 48px rgba(2,10,20,0.55);
 
+    /* The body weight: light words on the navy read heavier than dark
+       words on a light card, so dark mode's body is a touch lighter. */
+    --fw-body: 420;
+
     /* JOURNEY SYSTEM BETA TOKENS — DARK MODE. The ladder is the same navy
        family as the tokens above: page, card, raised. */
     --bg-dark:     #0A1C2C;
@@ -639,6 +660,9 @@
     }
   body {
     @apply bg-background text-foreground;
+    /* 450, or 420 in .dark (the tokens above). .dark is on <html>, so the
+       body reads the theme's value. */
+    font-weight: var(--fw-body);
     }
   html {
     @apply font-sans;

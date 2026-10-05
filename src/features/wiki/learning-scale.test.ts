@@ -182,13 +182,14 @@ const typeRule = (selector: string) => {
 const FIELD = /(input|textarea|__value|__draft)/;
 
 describe("Learning's text is on the codex's scale", () => {
-  it("sets every size to 11, 12, 14, 17 or 30, and a field to 16", () => {
+  it("sets every size to 11, 12, 14, 17, 22 or 30, and a field to 16", () => {
     const off: string[] = [];
     for (const rule of TYPE_RULES) {
       const size = declared(rule.body, "font-size");
       if (size === null) continue;
       const field = rule.selectors.every((s) => FIELD.test(s));
-      if (![11, 12, 14, 17, 30].includes(size) && !(field && size === 16)) {
+      // 22 joined the codex scale on Oct 4 2026 (type and depth, phase 2).
+      if (![11, 12, 14, 17, 22, 30].includes(size) && !(field && size === 16)) {
         off.push(`${rule.sheet} ${rule.selectors.join(", ")}: ${size}px`);
       }
     }

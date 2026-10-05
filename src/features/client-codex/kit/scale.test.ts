@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
  * and clipped names because nothing checked. The codex's contract is small and
  * this test holds every codex file to it:
  *
- *   1. Text is 11, 12, 14, 17 or 30px (or the --cx-fs-* token for one of
+ *   1. Text is 11, 12, 14, 17, 22 or 30px (or the --cx-fs-* token for one of
  *      them, or `inherit`) — in a stylesheet's `font-size` and `font`, and in
  *      a component's `fontSize` and `font`. No Tailwind text-size utility in
  *      a component.
@@ -298,7 +298,12 @@ const NOTES_CSS_NOT_ON_THE_PAGE: Readonly<Record<string, string>> = {
   ".nc-tofile": "the dense entry card's To-file mark; the Notes page draws no JournalEntryCard",
 };
 
-const SCALE_PX = [11, 12, 14, 17, 30] as const;
+/**
+ * The scale. 22 joined on Oct 4 2026 (type and depth, phase 2: a section
+ * title, a name in a sheet, a headline figure), on purpose and as a step of
+ * the scale, not an exception: HOSTED_OFF_SCALE_BUDGET did not rise with it.
+ */
+const SCALE_PX = [11, 12, 14, 17, 22, 30] as const;
 
 /* ------------------------------------------------------------------ */
 /* The checker                                                         */
@@ -559,6 +564,12 @@ describe("the scale checker", () => {
     expect(offScaleSizes(".a { font-size: var(--cx-fs-13); }", "css")).toHaveLength(1);
     expect(offScaleSizes(".a { font: 12px sans-serif; }", "css")).toEqual([]);
     expect(offScaleSizes(".a { font-size: var(--cx-fs-17); font: inherit; }", "css")).toEqual([]);
+    // 22 is a step of the scale since Oct 4 2026, in every spelling; 21 and 23 are not.
+    expect(offScaleSizes(".a { font-size: 22px; }", "css")).toEqual([]);
+    expect(offScaleSizes(".a { font-size: var(--cx-fs-22); }", "css")).toEqual([]);
+    expect(offScaleSizes(".a { font: 800 22px/1.1 var(--cx-font-display); }", "css")).toEqual([]);
+    expect(offScaleSizes(".a { font-size: 21px; }", "css")).toHaveLength(1);
+    expect(offScaleSizes(".a { font-size: 23px; }", "css")).toHaveLength(1);
     expect(offScaleSizes(".a { --x-font-size: 13px; }", "css")).toEqual([]);
   });
 
