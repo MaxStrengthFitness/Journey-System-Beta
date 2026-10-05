@@ -20,14 +20,20 @@
  * machine menu (settings, notes) opens from a machine's name, as on the iPad.
  */
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, ChevronRight, ListOrdered, Minus, Plus } from "lucide-react";
+import { ChevronRight, ListOrdered, Minus, Plus } from "lucide-react";
 import type { JourneyRow, JourneySession, LiveSet, RepQuality } from "../journey-grid/types";
+import type { Client } from "../../types";
+import type { HistoryCoverage } from "../../lib/prior-history";
+import { studioTodayKey } from "../../lib/studio-time";
 import { QualityMark } from "../journey-grid/QualityMark";
+import { knownElsewhere } from "../machine-menu/header-words";
+import { noteKey } from "../machine-menu/note-key";
 import {
   cardLogged,
   countsSeconds,
   lastPerformed,
   lastTimes,
+  noPastWords,
   parseCount,
   parseWeight,
   stepWeight,
@@ -53,6 +59,15 @@ export interface PhoneSessionStageProps {
   /** Reorder, add or take off a machine (the iPad's RoutineOrderSheet). */
   onReorder: () => void;
   step?: number;
+  /**
+   * What a card with no past times may say (machine menu, Oct 2026): every
+   * one of the client's sessions has had its sets read, the client's
+   * coverage, and the running totals that know a machine was done before
+   * (evidence only, never a count). Each defaults to the cautious answer.
+   */
+  everythingRead?: boolean;
+  coverage?: HistoryCoverage;
+  totals?: Pick<Client, "machineStats" | "currentMachineMetrics"> | null;
 }
 
 export function PhoneSessionStage({
@@ -66,8 +81,12 @@ export function PhoneSessionStage({
   onOpenMachine,
   onReorder,
   step = 2,
+  everythingRead = false,
+  coverage = "unknown",
+  totals = null,
 }: PhoneSessionStageProps) {
   const listRef = useRef<HTMLDivElement>(null);
+  const today = studioTodayKey();
 
   // The card in hand comes into view when it changes (Next, or a tap on
   // another card), never while the trainer is typing into it.
@@ -111,6 +130,14 @@ export function PhoneSessionStage({
                 }}
                 onChange={(patch) => onChange(id, patch)}
                 onOpenMachine={() => onOpenMachine(id)}
+                noPast={noPastWords({
+                  knownElsewhere: knownElsewhere(
+                    { metric: totals?.currentMachineMetrics?.[id] ?? null, stat: totals?.machineStats?.[id] ?? null },
+                    today,
+                  ),
+                  everythingRead,
+                  coverage,
+                })}
               />
             );
           })}
@@ -136,6 +163,7 @@ function MachineCard({
   onNext,
   onChange,
   onOpenMachine,
+  noPast,
 }: {
   order: number;
   row: JourneyRow;
@@ -148,6 +176,8 @@ function MachineCard({
   onNext: () => void;
   onChange: (patch: Partial<LiveSet>) => void;
   onOpenMachine: () => void;
+  /** What the strip says with no past times on the card (`noPastWords`). */
+  noPast: string;
 }) {
   const { machine } = row;
   const past = lastTimes(row, history);
@@ -181,9 +211,7 @@ function MachineCard({
         </span>
         <button type="button" className="ph-card__name" onClick={onOpenMachine}>
           <span>{machine.name}</span>
-          {machine.alert && (
-            <AlertTriangle size={14} className="ph-card__alert" aria-label="Important machine note" />
-          )}
+          {machine.alert && <NoteLoudnessMark level={machine.alert} />}
           <ChevronRight size={16} className="ph-card__chev" aria-hidden />
         </button>
       </div>
@@ -198,7 +226,7 @@ function MachineCard({
         </p>
       )}
 
-      <PastStrip cells={past} />
+      <PastStrip cells={past} none={noPast} />
 
       {outcome === "practice" || outcome === "skipped" ? (
         <p className="ph-card__outcome">
@@ -335,10 +363,22 @@ function MachineCard({
   );
 }
 
+/**
+ * The mark beside the name: the loudest open note about the client on this
+ * machine, in the one note key (machine-menu/note-key.ts), as on the iPad's
+ * grid: a plum circle for a Heads up, the Hub's crimson triangle for
+ * Critical (machine menu, Oct 2026).
+ */
+function NoteLoudnessMark({ level }: { level: "elevated" | "critical" }) {
+  const key = noteKey(level);
+  const Glyph = key.glyph;
+  return <Glyph size={14} className="ph-card__alert" data-level={level} aria-label={`${key.word} note on this machine`} />;
+}
+
 /** The machine's last five times, newest on the right. */
-function PastStrip({ cells }: { cells: PastCell[] }) {
+function PastStrip({ cells, none }: { cells: PastCell[]; none: string }) {
   if (cells.length === 0) {
-    return <p className="ph-past ph-past--none">First time on this machine in Journey.</p>;
+    return <p className="ph-past ph-past--none">{none}</p>;
   }
   return (
     <ol className="ph-past" aria-label={`Last ${cells.length === 1 ? "time" : `${cells.length} times`}`}>

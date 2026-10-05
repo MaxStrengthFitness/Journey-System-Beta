@@ -106,8 +106,11 @@ export function EquipmentTab({
         studioMachineSettings: activeStudio?.machineSettings,
         machineStats,
         sessions,
+        // The rail's note marks read the one list: the profile's one
+        // journal read, the same one the menu is handed.
+        journal: menuHost?.journal ?? null,
       }),
-    [machines, clientSettings, allLogs, catalogById, activeStudio, machineStats, sessions],
+    [machines, clientSettings, allLogs, catalogById, activeStudio, machineStats, sessions, menuHost?.journal],
   );
 
   const summary = useMemo(() => summarise(equipment), [equipment]);

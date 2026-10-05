@@ -110,7 +110,10 @@
   cursor: pointer;
 }
 .ph-card__name > span { min-width: 0; }
-.ph-card__alert { flex: none; color: var(--jg-q-poor); }
+/* The one note key (machine-menu/note-key.ts): a Heads up plum, Critical
+   crimson. Never the kaizen red, which is rep quality's. */
+.ph-card__alert { flex: none; color: var(--eq-warn); }
+.ph-card__alert[data-level="critical"] { color: var(--eq-alert); }
 .ph-card__chev { flex: none; margin-left: auto; color: var(--eq-ink-faint); }
 
 .ph-card__settings {

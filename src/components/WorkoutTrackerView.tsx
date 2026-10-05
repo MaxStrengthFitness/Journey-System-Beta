@@ -208,6 +208,7 @@ import {
   type SessionNoteDraft,
 } from "../features/client-notes/session-draft";
 import { floorCarryOf } from "../features/machine-menu/note-target";
+import { hasOlderToRead, logsWindowIds } from "../features/machine-menu/older-read";
 import { addFloorNote } from "../features/floor-notes/store";
 import { ActiveSessionTimer } from "./ActiveSessionTimer";
 import { MachineMenu } from "../features/machine-menu/MachineMenu";
@@ -233,8 +234,8 @@ import { sessionLinkOf } from "../features/client-notes/session-link";
 import { clientDisplayName, clientFirstName } from "../lib/client-name";
 import { isNextWeightLive, nextWeightMark, nextWeightSourceLine } from "../features/next-weight/next-weight";
 import { saveNextWeight } from "../features/next-weight/store";
-import { machineNotesFor } from "../features/equipment/machine-notes";
-import { useMachineJournalRead } from "../features/equipment/useMachineJournal";
+import { machineNoteLoudness, machineNotesFor } from "../features/equipment/machine-notes";
+import { machineJournalOf } from "../features/equipment/useMachineJournal";
 import { sessionNoteStudioId } from "../features/client-notes/note-studio";
 import { ClientSelectionDialog } from "../features/tracker/ClientSelectionDialog";
 type RoutineType = "A" | "B" | "Free";
@@ -863,10 +864,12 @@ export function WorkoutTrackerView({
     [selectedClient?.clinicalFlags, flagJournal.criticalEntries, flagJournal.headsUpEntries, floorMachines],
   );
   const flags = useMemo(() => sessionFlags(flagSources), [flagSources]);
-  /* Her journal's notes that name a machine, for the grid's note marks (one
-     list since Oct 2 2026; the same query as the journal above, so one
-     listener). */
-  const machineJournalRead = useMachineJournalRead(selectedClient?.id ?? null);
+  /* Her journal's notes that name a machine, for the grid's note marks and
+     the machine menu (one list since Oct 2 2026). Taken from the journal
+     above, never a subscription of their own: the session holds ONE journal
+     listener (machine menu design §F 8; it held three). */
+  const flagJournalStream = flagJournal.journalStream;
+  const machineJournalRead = useMemo(() => machineJournalOf(flagJournalStream), [flagJournalStream]);
   const machineJournal = machineJournalRead.entries;
   const draftSessionRef = React.useRef<string | null>(null);
   useEffect(() => {
@@ -1219,17 +1222,21 @@ export function WorkoutTrackerView({
      session whose sets were read, says "loading" until they are, and a
      failed read is unknown, never "nothing on this machine". */
   const [logsWindow, setLogsWindow] = useState<{ key: string; ids: string[]; state: "ready" | "cache-only" | "failed" } | null>(null);
+  /* The window itself (machine-menu/older-read.ts): the running session, the
+     one recorded here or the one being watched, and the newest past sessions,
+     30 ids in all. The past sessions get 30 places, less one only when the
+     running session takes one, and the grid draws exactly those (gridHistory
+     below), so every past column it draws has its sets. It used to be the
+     newest 30 ids with the running session among them, against 30 past
+     columns, which left the oldest column drawn without its sets. */
+  const logsPlan = useMemo(
+    () => logsWindowIds(sessions.map((s) => s.id), currentSession?.id ?? watchedSession?.id ?? null),
+    [sessions, currentSession?.id, watchedSession?.id],
+  );
+  const logsPlanKey = logsPlan.ids.join(",");
   useEffect(() => {
-    const allSessionIds = new Set<string>();
-    sessions.forEach((s) => {
-      if (s.id) allSessionIds.add(s.id);
-    });
-    if (currentSession?.id) {
-      allSessionIds.add(currentSession.id);
-    }
-
-    const sessionIds = Array.from(allSessionIds).filter(Boolean).slice(0, 30);
-    const windowKey = sessionIds.join(",");
+    const sessionIds = logsPlan.ids;
+    const windowKey = logsPlanKey;
     const noteWindow = (state: "ready" | "cache-only" | "failed") =>
       setLogsWindow((prev) => (prev && prev.key === windowKey && prev.state === state ? prev : { key: windowKey, ids: sessionIds, state }));
     // A new window is unread until its own snapshot answers.
@@ -1263,12 +1270,9 @@ export function WorkoutTrackerView({
       );
       return () => unsubscribeLogs();
     }
-  }, [
-    sessions
-      .map((s) => s.id)
-      .sort()
-      .join(",") + `_${currentSession?.id || ""}`,
-  ]);
+    // The window's ids are the whole of what this listens to.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logsPlanKey]);
 
   // Routine Alternation Logic & Historical Lifts Fetching
   useEffect(() => {
@@ -2697,16 +2701,11 @@ export function WorkoutTrackerView({
   );
   const shownMachineIds = watchedSession && !currentSession ? watchedMachineIds : activeMachineIds;
 
-  /** Past sessions, oldest → newest. Capped at the 30 the logs listener covers. */
-  const gridHistory = useMemo(
-    () =>
-      toJourneySessions(
-        sessions
-          .filter((s) => (shownSession ? s.id !== shownSession.id : true))
-          .slice(0, 30),
-      ),
-    [sessions, shownSession],
-  );
+  /** Past sessions, oldest → newest: exactly the past sessions the logs listener's window reads (logsPlan). */
+  const gridHistory = useMemo(() => {
+    const past = new Set(logsPlan.past);
+    return toJourneySessions(sessions.filter((s) => !!s.id && past.has(s.id)));
+  }, [sessions, logsPlan]);
 
   const [gridVisible, setGridVisible] = useState(6);
   /* Scrolling back to the oldest day loads more by itself (AJ, Oct 3 2026:
@@ -2751,6 +2750,8 @@ export function WorkoutTrackerView({
     const orderIndex = new Map<string, number>(
       gridHistory.map((s, i) => [s.id, i] as const),
     );
+    // Which notes are open is a studio-day question (client-notes/threads.ts).
+    const noteDay = studioTodayKey();
     return toJourneyRows(ordered, historyLogs, clientMachineSettings, starred).map(
       (row) => {
         const machine = ordered.find((m) => m.id === row.machine.id);
@@ -2775,12 +2776,13 @@ export function WorkoutTrackerView({
         }
         // One list (Oct 2 2026): her journal's notes on the machine plus the
         // old list's (features/equipment/machine-notes.ts).
-        const notes = machineNotesFor({
+        const noteInput = {
           machineId: machine.id!,
           machineName: machine.name,
           legacy: setting?.machineNotes,
           journal: machineJournal,
-        });
+        };
+        const notes = machineNotesFor(noteInput);
         // Where today's weight came from, when a trainer set it at the last
         // Wrap-up and no session has logged the machine since (next-weight).
         const nextMark = setting?.nextWeight;
@@ -2807,7 +2809,9 @@ export function WorkoutTrackerView({
             settingLabels: entries.length
               ? Object.fromEntries(entries.map(([k, , full]) => [k, full]))
               : undefined,
-            alert: notes.some((n) => n.isImportant),
+            // The mark beside the name: the loudest open note, in the one
+            // note key (machine menu, Oct 2026).
+            alert: machineNoteLoudness({ ...noteInput, today: noteDay }) ?? undefined,
             noteCount: notes.length,
             sides: isSidesMachine(machine),
           },
@@ -3140,6 +3144,11 @@ export function WorkoutTrackerView({
    */
   const menuSession = currentSession ?? watchedSession;
   const menuReadIds = useMemo(() => (logsWindow ? new Set(logsWindow.ids) : new Set<string>()), [logsWindow]);
+  /* Every one of the client's sessions has had its sets read by the window
+     (no older session unread, the read not failed): only then may the Now
+     Bar's start fall back to the first counted set, and the phone's strip
+     say what nothing on record means (machine-menu/progress-figure.ts). */
+  const sessionsAllRead = !!logsWindow && logsWindow.state !== "failed" && !hasOlderToRead(sessions, menuReadIds);
   const menuLogs = useMemo(() => Object.values(logs) as ExerciseLog[], [logs]);
   const menuFloorStudioId = currentSession?.hostedAtStudioId || contextActiveStudioId || null;
   const menuWatching =
@@ -3901,6 +3910,12 @@ export function WorkoutTrackerView({
           onOpenMachine={(id) => setMenuMachineId(id)}
           onReorder={() => setIsOrderSheetOpen(true)}
           step={2}
+          /* A card with no past times says what that means, the machine
+             menu's way: never "first time" for a machine a running total
+             knows, or while older sessions are unread. */
+          everythingRead={sessionsAllRead}
+          coverage={clientCoverage}
+          totals={selectedClient}
         />
       ) : (
       <div className={`jg-stage ${nowBarSide ? "jg-stage--side" : ""}`}>
@@ -3969,6 +3984,9 @@ export function WorkoutTrackerView({
       {gridLive && (
         <SessionNowBar
           coverage={clientCoverage}
+          /* The start falls back to the first counted set only once every
+             session's sets are read (machine-menu/progress-figure.ts). */
+          everythingRead={sessionsAllRead}
           row={gridFocusRow}
           orderNumber={gridFocusOrder}
           value={gridFocusMachineId ? gridLiveValues[gridFocusMachineId] : undefined}

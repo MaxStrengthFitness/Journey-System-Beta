@@ -130,7 +130,10 @@ existed — invisible. Now it is a three-state, colour-and-shape indicator:
 |----------------------|----------------------|--------------------|
 | No notes             | outline clipboard    | the faint ink (`--eq-ink-faint`) |
 | Has notes            | filled clipboard + count badge | live blue |
-| Flagged maintenance  | filled + wrench glyph | the logo orange, solid, navy count (`--eq-go` / `--eq-go-on`, Oct 4 2026) |
+| A Heads up open      | `AlertCircle` + count | plum on its fill (`--eq-warn` / `--eq-warn-fill`) |
+| A Critical note open | the Hub's `AlertTriangle` + count | crimson on its fill (`--eq-alert` / `--eq-alert-fill`) |
+
+The count and the loudness are the one list's (`machine-notes.ts`: `machineNotesFor`, `machineNoteLoudness`), read from the journal the profile's host already holds, and the loud states are the one note key (`machine-menu/note-key.ts`; machine menu, Oct 2026). The old "Flagged maintenance" chip (an orange chip with a wrench, for the old list's checkbox) is gone with the checkbox; the wrench is the Relay flag's alone.
 
 Colour alone never carries the meaning — the glyph changes too, which keeps it
 readable for a colour-blind trainer and at arm's length on a gym floor.

@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { AlertCircle, ChevronDown, ChevronUp, ChevronsRight, NotebookPen, Plus, X } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronsRight, NotebookPen, Plus, X } from "lucide-react";
 import type { JourneyRow, JourneySession, JourneySet, LiveColumn, LiveSet, StatMetric } from "./types";
 import {
   computeRowStats,
@@ -27,6 +27,7 @@ import {
 } from "./older-autoload";
 import { historyStartWords, sessionNumberTag } from "../../lib/history-claims";
 import type { HistoryCoverage } from "../../lib/prior-history";
+import { noteKey } from "../machine-menu/note-key";
 
 /* ------------------------------------------------------------------ *
  * Public props
@@ -204,6 +205,27 @@ interface RowProps {
   band?: boolean;
 }
 
+/**
+ * The mark beside a machine's name: how loud the loudest open note about the
+ * client on it is, in the one note key (machine-menu/note-key.ts) — a plum
+ * AlertCircle for a Heads up, the Hub's crimson AlertTriangle for Critical.
+ * It was a red AlertCircle for any important note, rep quality's red and a
+ * shape that didn't say how loud (machine menu design §F 12, Oct 2026).
+ */
+function NoteLoudnessMark({ level }: { level: "elevated" | "critical" }) {
+  const key = noteKey(level);
+  const Glyph = key.glyph;
+  return (
+    <Glyph
+      className="jg-machine__alert"
+      data-level={level}
+      size={13}
+      strokeWidth={2.5}
+      aria-label={`${key.word} note on this machine`}
+    />
+  );
+}
+
 function RowImpl({
   row,
   sessions,
@@ -281,7 +303,7 @@ function RowImpl({
           type="button"
           className="jg-machine__btn"
           aria-pressed={isSelected}
-          aria-label={`${machine.name}.${spokenSettings} ${journeySummary(row, history)}. ${
+          aria-label={`${machine.name}.${machine.alert ? ` ${noteKey(machine.alert).word} note on this machine.` : ""}${spokenSettings} ${journeySummary(row, history)}. ${
             opensMachine ? "Tap to open this machine." : "Tap to trace this row."
           }`}
           onClick={() => onSelect(machine.id)}
@@ -289,9 +311,7 @@ function RowImpl({
           <span className="jg-machine__name">
             {orderNumber !== undefined && <span className="jg-machine__order">{orderNumber}</span>}
             <span className="jg-machine__label">{machine.name}</span>
-            {machine.alert && (
-              <AlertCircle className="jg-machine__alert" size={13} strokeWidth={2.5} aria-label="important machine note" />
-            )}
+            {machine.alert && <NoteLoudnessMark level={machine.alert} />}
           </span>
           {/* Drawn in both modes: "menu" hides it by CSS, except on the
               profile's chart, which shows it as one quiet line (AJ, Oct 2
@@ -357,7 +377,7 @@ function RowImpl({
         {onNote && !(live?.reorder && !liveInactive) ? (
           <button
             type="button"
-            className={`jg-machine__note ${machine.alert ? "is-alert" : machine.noteCount ? "has-notes" : ""}`}
+            className={`jg-machine__note ${machine.alert || machine.noteCount ? "has-notes" : ""}`}
             aria-label={`${machine.name} notes${machine.noteCount ? ` (${machine.noteCount})` : ""}`}
             onClick={() => onNote(machine.id)}
           >
@@ -365,13 +385,12 @@ function RowImpl({
           </button>
         ) : !onNote && (machine.alert || machine.noteCount) ? (
           /* No separate note target (the Active Session: the name opens the
-             sheet with the notes in it). The glyph stays as a MARK — this
-             machine has notes — so the cell is one tap target, not two that
-             look alike (tracker round, Sep 2026). */
-          <span
-            className={`jg-machine__note is-mark ${machine.alert ? "is-alert" : "has-notes"}`}
-            aria-hidden="true"
-          >
+             machine menu with the notes in it). The glyph stays as a MARK —
+             this machine has notes — so the cell is one tap target, not two
+             that look alike (tracker round, Sep 2026). It is the note key's
+             plain Note glyph in its quiet colour: how loud the loudest note
+             is, the mark beside the name says (machine menu, Oct 2026). */
+          <span className="jg-machine__note is-mark has-notes" aria-hidden="true">
             <NotebookPen size={13} strokeWidth={2.25} />
           </span>
         ) : null}

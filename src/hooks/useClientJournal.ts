@@ -942,6 +942,16 @@ export interface JournalLoadState {
   sessions: JournalLoad;
 }
 
+/**
+ * The journalEntries stream itself, as its listener delivered it: every
+ * native entry, archived ones and thread updates included, or null until it
+ * has answered for THIS client (and after it failed), with that state.
+ */
+export interface JournalStream {
+  entries: JournalEntry[] | null;
+  state: JournalLoad;
+}
+
 /** Which listener belongs to which group. */
 const LOAD_GROUPS: Record<keyof JournalLoadState, readonly string[]> = {
   notes: ["journalEntries", "sessionNotes", "clinicalIncidents"],
@@ -1025,6 +1035,16 @@ export interface UseClientJournalResult {
    * `loadState`.
    */
   recentSessions?: WorkoutSession[];
+  /**
+   * The journalEntries stream itself (machine menu, Oct 2026): every native
+   * entry, archived ones and thread updates included, null until it has
+   * answered for THIS client. A screen that also needs the client's machine
+   * notes reads them from here (equipment/useMachineJournal's
+   * `machineJournalOf`) rather than opening a second subscription on the
+   * same query: the Active Session holds one journal listener, not three.
+   * Optional on the TYPE only, like `loadState`.
+   */
+  journalStream?: JournalStream;
 }
 
 export function useClientJournal({
@@ -1435,6 +1455,12 @@ export function useClientJournal({
     return entries.filter((e) => isHeadsUpLive(e, now, headsUpContextOf(e.id)));
   }, [entries, headsUpContextOf]);
 
+  const streamState: JournalLoad = loadFor.journalEntries ?? "loading";
+  const journalStream = useMemo<JournalStream>(
+    () => ({ entries: streamState === "ready" ? native : null, state: streamState }),
+    [streamState, native],
+  );
+
   const capped = Object.values(cappedBy).some(Boolean);
   const loadState = useMemo<JournalLoadState>(
     () => ({
@@ -1463,5 +1489,6 @@ export function useClientJournal({
     // lands a render after the client changes). The rows and their "ready"
     // are set in the same callback, so they arrive together.
     recentSessions: loadFor.sessions === "ready" ? legacySessions : NO_SESSIONS,
+    journalStream,
   };
 }

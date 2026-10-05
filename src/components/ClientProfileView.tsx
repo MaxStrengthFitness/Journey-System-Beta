@@ -144,7 +144,7 @@ import { useRenewalSettings } from "../features/renewals/useRenewalSettings";
 import { buildPackageNameIndex } from "../features/renewals/settings";
 import { sessionsSplit } from "../features/client-admin/account";
 import { recordStudioIdOf } from "../features/client-codex/access";
-import { hasImportantMachineNote } from "../features/equipment/machine-notes";
+import { machineNoteLoudness } from "../features/equipment/machine-notes";
 import { useMachineJournalRead } from "../features/equipment/useMachineJournal";
 import { isSuperAdminRole } from "../features/admin/franchise/scope";
 
@@ -1167,6 +1167,8 @@ export function ClientProfileView({
     // Marker 7: the Big Five star is gone from the grid. Every machine in
     // this method is a core lift; a star on five of them said the other
     // sixteen were optional, which is not what the prescription means.
+    // Which notes are open is a studio-day question (client-notes/threads.ts).
+    const noteDay = studioTodayKey();
     return toJourneyRows(ordered, allLogs, clientSettings).map((row) => {
       const machine = ordered.find((m) => m.id === row.machine.id);
       if (!machine) return row;
@@ -1190,12 +1192,16 @@ export function ClientProfileView({
           settingLabels: entries.length
             ? Object.fromEntries(entries.map(([k, , full]) => [k, full]))
             : undefined,
-          alert: hasImportantMachineNote({
-            machineId: machine.id!,
-            machineName: machine.name,
-            legacy: clientSettings[machine.id!]?.machineNotes,
-            journal: machineJournal,
-          }),
+          // The mark beside the name: the loudest open note, in the one
+          // note key (machine menu, Oct 2026).
+          alert:
+            machineNoteLoudness({
+              machineId: machine.id!,
+              machineName: machine.name,
+              legacy: clientSettings[machine.id!]?.machineNotes,
+              journal: machineJournal,
+              today: noteDay,
+            }) ?? undefined,
         },
       };
     });

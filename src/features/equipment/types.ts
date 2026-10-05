@@ -145,9 +145,21 @@ export interface EquipmentMachine {
   sources?: Record<string, "typed" | "suggested" | "legacy">;
   /** A trainer's "this is right for her" on a value the set-up check marked, by normalised field key. */
   fitAcks?: Record<string, { value: string; by: string; byName: string; at: string; note?: string }>;
+  /** The OLD `clientMachineSettings.machineNotes` list, as stored (read, never written). */
   notes: MachineNote[];
-  /** A note someone ticked "Flag for Maintenance" on. */
-  hasMaintenanceFlag: boolean;
+  /**
+   * How many notes are on the one list (machine-notes.ts `machineNotesFor`):
+   * her journal's notes on this machine plus the old list's with no journal
+   * copy. The old list alone when the journal wasn't handed in.
+   */
+  noteCount: number;
+  /**
+   * The loudest OPEN note on the one list, when louder than a plain note
+   * (`machineNoteLoudness`), drawn in the one note key. It replaced
+   * `hasMaintenanceFlag`, which read the old list's checkbox alone (machine
+   * menu, Oct 2026: that checkbox and its second vocabulary are gone).
+   */
+  noteLoudness: "elevated" | "critical" | null;
   loggedSetCount: number;
   /** First performed · times performed · progression. */
   usage: MachineUsage;

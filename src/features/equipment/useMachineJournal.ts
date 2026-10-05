@@ -11,6 +11,8 @@
  * the legacy list alone, never "no notes". `useMachineJournalRead` says
  * which of the two it is, for a screen that must tell "couldn't be read"
  * from "not answered yet" (the machine menu's safety strip and notes lane).
+ * A screen that holds `useClientJournal` already takes `machineJournalOf` its
+ * `journalStream` instead, and opens no subscription here at all.
  */
 import { useEffect, useState } from "react";
 import { collection, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
@@ -27,6 +29,10 @@ export interface MachineJournalRead {
   state: MachineJournalState;
 }
 
+/** Only the entries that name a machine. */
+const onMachines = (entries: readonly JournalEntry[]): JournalEntry[] =>
+  entries.filter((e) => typeof e?.machineId === "string" && e.machineId !== "");
+
 export function useMachineJournalRead(clientId: string | null | undefined, given?: readonly JournalEntry[] | null): MachineJournalRead {
   const skip = given !== undefined || !clientId;
   const [held, setHeld] = useState<{ clientId: string; entries: JournalEntry[] | null; failed: boolean } | null>(null);
@@ -37,9 +43,7 @@ export function useMachineJournalRead(clientId: string | null | undefined, given
       (snap) => {
         setHeld({
           clientId,
-          entries: snap.docs
-            .map((d) => ({ id: d.id, ...d.data() }) as JournalEntry)
-            .filter((e) => typeof e.machineId === "string" && e.machineId !== ""),
+          entries: onMachines(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as JournalEntry)),
           failed: false,
         });
       },
@@ -56,4 +60,18 @@ export function useMachineJournalRead(clientId: string | null | undefined, given
 
 export function useMachineJournal(clientId: string | null | undefined, given?: readonly JournalEntry[] | null): JournalEntry[] | null {
   return useMachineJournalRead(clientId, given).entries;
+}
+
+/**
+ * Her machine notes from a journal stream a screen ALREADY holds
+ * (`useClientJournal`'s `journalStream`), reading nothing of its own (machine
+ * menu, Oct 2026): the Active Session's grid marks and its machine menu take
+ * them from the session's one journal listener, so the session holds one
+ * subscription, never a second on the same query. Keeps the stream's state:
+ * "failed" is never an empty list. Pure; memoise it on the stream.
+ */
+export function machineJournalOf(stream: { entries: readonly JournalEntry[] | null; state: MachineJournalState } | null | undefined): MachineJournalRead {
+  if (!stream) return { entries: null, state: "loading" };
+  if (stream.state !== "ready" || !stream.entries) return { entries: null, state: stream.state === "failed" ? "failed" : "loading" };
+  return { entries: onMachines(stream.entries), state: "ready" };
 }

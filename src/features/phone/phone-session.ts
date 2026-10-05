@@ -22,6 +22,8 @@
  */
 import type { JourneyRow, JourneySession, JourneySet, LiveSet, RepQuality } from "../journey-grid/types";
 import type { SetOutcome } from "../../lib/set-outcome";
+import { noMachineHistoryLine } from "../../lib/history-claims";
+import type { HistoryCoverage } from "../../lib/prior-history";
 
 /** How many past times a card shows. */
 export const PAST_SHOWN = 5;
@@ -78,6 +80,26 @@ export function lastTimes(row: JourneyRow, history: JourneySession[], n = PAST_S
     });
   }
   return out.reverse();
+}
+
+/**
+ * What the strip says when the sessions loaded here hold no time on the
+ * machine: the machine menu's rule (machine-menu/header-words.ts, design
+ * §F 5). It said "First time on this machine in Journey." whatever the read
+ * held, so a machine done in an older session the phone hadn't read, or one
+ * a running total knows, was called new.
+ *
+ *   - A running total knows it (`client.machineStats` or
+ *     `currentMachineMetrics`; evidence only, never a count): done before,
+ *     not in the sessions loaded here.
+ *   - Every session read: `noMachineHistoryLine` — "First time on this
+ *     machine" only when Journey holds the client's whole story.
+ *   - Older sessions unread: nothing in the sessions loaded here.
+ */
+export function noPastWords(opts: { knownElsewhere: boolean; everythingRead: boolean; coverage?: HistoryCoverage }): string {
+  if (opts.knownElsewhere) return "Done here in Journey before · not in the sessions loaded here.";
+  if (opts.everythingRead) return `${noMachineHistoryLine(opts.coverage ?? "unknown")}.`;
+  return `${noMachineHistoryLine("unknown")} in the sessions loaded here.`;
 }
 
 /** Her newest PERFORMED set on this machine: the ghost under today's count. */

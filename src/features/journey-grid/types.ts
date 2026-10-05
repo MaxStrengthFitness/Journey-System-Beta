@@ -63,8 +63,14 @@ export interface JourneyMachine {
   settingLabels?: Record<string, string>;
   /** The ★ "core lift" flag in the current UI. */
   starred?: boolean;
-  /** True when the client has an important machine note — shows an alert glyph. */
-  alert?: boolean;
+  /**
+   * How loud the loudest open note about the client on this machine is, when
+   * it is louder than a plain note (`machineNoteLoudness`, equipment/
+   * machine-notes.ts). The mark beside the name follows the one note key
+   * (machine-menu/note-key.ts): a plum circle for a Heads up, the Hub's
+   * crimson triangle for Critical — never rep quality's red ring.
+   */
+  alert?: "elevated" | "critical";
   /** Number of machine notes on file — shows the note button when > 0 (or when onMachineNote is wired). */
   noteCount?: number;
   /** Unilateral machine (Torso Rotation): today's input logs Left and Right separately. */

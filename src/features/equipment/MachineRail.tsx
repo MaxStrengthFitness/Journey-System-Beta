@@ -71,7 +71,7 @@ const RailItem = memo(function RailItem({ machine, selected, onSelect, clinicalF
             <span className="sr-only">Clinical watch-out</span>
           </span>
         )}
-        <NoteIndicator count={machine.notes.length} hasMaintenanceFlag={machine.hasMaintenanceFlag} />
+        <NoteIndicator count={machine.noteCount} loudness={machine.noteLoudness} />
       </span>
 
       <span className="eq-item__meta">

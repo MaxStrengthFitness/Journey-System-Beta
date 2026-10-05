@@ -21,6 +21,7 @@
  */
 import type { MachineNote } from "../../types";
 import type { JournalEntry } from "../../types/journal";
+import { assembleThreads, zoneOf } from "../client-notes/threads";
 
 /** A note on the machine sheet, from either store. */
 export interface MachineNoteView extends MachineNote {
@@ -102,7 +103,45 @@ export function machineNotesFor(input: {
   return [...fromJournal, ...oldOnly].sort((a, b) => millis(b.timestamp) - millis(a.timestamp));
 }
 
-/** Any note on this machine the team marked important (the grid's alert). */
+/** Any note on this machine the team marked important, on the one list. */
 export function hasImportantMachineNote(input: Parameters<typeof machineNotesFor>[0]): boolean {
   return machineNotesFor(input).some((n) => n.isImportant);
+}
+
+/** How loud the one mark beside a machine's name is: Heads up or Critical, never a plain note. */
+export type MachineNoteLoudness = "elevated" | "critical";
+
+/**
+ * How loud the loudest OPEN note on this machine is, for the one mark that
+ * stands for them all: the Journey grid's machine name, the phone's card and
+ * All Machines' rail. Drawn in the one note key (machine-menu/note-key.ts):
+ * Critical is the Hub's triangle in crimson, a Heads up a circle in plum, so
+ * a note is never drawn in rep quality's red ring (machine menu, Oct 2026).
+ *
+ *   - Her journal: an OPEN thread root on this machine, by the notes' one
+ *     zone rule (client-notes/threads.ts, the rule the machine menu's safety
+ *     strip and notes read), at its own loudness. A resolved or archived
+ *     note is quiet; an update's loudness lives on its root.
+ *   - The old list: an item with no journal copy, flagged important, is
+ *     Critical, the loudness `addMachineNote` gave its journal copy.
+ *   - Her journal unread (null): the old list alone, never "nothing".
+ *
+ * Null when nothing open is louder than a plain note.
+ */
+export function machineNoteLoudness(
+  input: Parameters<typeof machineNotesFor>[0] & { today: string },
+): MachineNoteLoudness | null {
+  let loudest: MachineNoteLoudness | null = null;
+  if (input.journal) {
+    const mine = input.journal.filter(
+      (e) => e && e.machineId === input.machineId && !e.isArchived && (e.body ?? "").trim() !== "",
+    );
+    for (const thread of assembleThreads(mine)) {
+      if (zoneOf(thread, input.today) !== "open") continue;
+      if (thread.root.importance === "critical") return "critical";
+      if (thread.root.importance === "elevated") loudest = "elevated";
+    }
+  }
+  const oldFlagged = machineNotesFor(input).some((n) => !n.journalEntryId && n.isImportant);
+  return oldFlagged ? "critical" : loudest;
 }

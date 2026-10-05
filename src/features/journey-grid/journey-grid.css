@@ -19,6 +19,10 @@
    ========================================================================== */
 
 @import "./journey-grid.tokens.css";
+/* The Hub's palette, for the few marks the grid shares with it: the note key
+   beside a machine's name and the flag cards (--eq-warn, --eq-alert). A
+   stylesheet imports what it draws with (KNOWN-TRAPS, Layout and CSS). */
+@import "../equipment/equipment.tokens.css";
 
 .jg {
   /* ---- one tuned density. There is no switch any more: three row
@@ -602,7 +606,6 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-machine__note:active { background: var(--jg-surface-3); }
 .jg-machine__note.is-mark { pointer-events: none; cursor: default; }
 .jg-machine__note.has-notes { color: var(--jg-live-text); }
-.jg-machine__note.is-alert { color: var(--jg-q-poor); }
 .jg-machine__btn {
   appearance: none;
   border: 0;
@@ -644,7 +647,11 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
    so the NAME row reserves room for it. The settings row underneath runs
    the full width -- five settings need every pixel of it. */
 .jg-row .jg-machine__name { padding-right: 20px; }
-.jg-machine__alert { color: var(--jg-q-poor); flex: none; }
+/* The loudest open note beside the name, in the one note key (machine-menu/
+   note-key.ts): a Heads up plum, Critical crimson in the Hub's triangle. Never
+   --jg-q-poor: the red kaizen mark is rep quality's (machine menu, Oct 2026). */
+.jg-machine__alert { flex: none; color: var(--eq-warn); }
+.jg-machine__alert[data-level="critical"] { color: var(--eq-alert); }
 .jg-machine__order {
   flex: none;
   width: 17px;

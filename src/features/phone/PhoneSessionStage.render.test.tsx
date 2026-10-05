@@ -121,8 +121,37 @@ describe("PhoneSessionStage", () => {
     expect(p.onReorder).toHaveBeenCalled();
   });
 
-  it("says when a machine is new to her in Journey", () => {
-    mount({ rows: [{ machine: { id: "neck", name: "Neck Flexion", group: "Neck" }, sets: {}, prescribedWeight: 20 }] });
-    expect(host!.textContent).toContain("First time on this machine in Journey.");
+  it("says first time only with every session read and the whole story in Journey (machine menu, Oct 2026)", () => {
+    const neck: JourneyRow = { machine: { id: "neck", name: "Neck Flexion", group: "Neck" }, sets: {}, prescribedWeight: 20 };
+    mount({ rows: [neck], everythingRead: true, coverage: "complete" });
+    expect(host!.textContent).toContain("First time on this machine.");
+  });
+
+  it("never says first time while older sessions are unread, or for a machine a running total knows", () => {
+    const neck: JourneyRow = { machine: { id: "neck", name: "Neck Flexion", group: "Neck" }, sets: {}, prescribedWeight: 20 };
+    mount({ rows: [neck], coverage: "complete" });
+    expect(host!.textContent).toContain("Nothing recorded on this machine in the sessions loaded here.");
+    expect(host!.textContent).not.toContain("First time");
+    act(() => root?.unmount());
+    host?.remove();
+    mount({
+      rows: [neck],
+      everythingRead: true,
+      coverage: "complete",
+      totals: { machineStats: { neck: { timesPerformed: 40, lastPerformedDate: "2026-03-02" } as never } },
+    });
+    expect(host!.textContent).toContain("Done here in Journey before · not in the sessions loaded here.");
+    expect(host!.textContent).not.toContain("First time");
+  });
+
+  it("marks a machine's loudest open note in the one note key, never the kaizen red", () => {
+    const rows: JourneyRow[] = [
+      { ...ROWS[0], machine: { ...ROWS[0].machine, alert: "critical" } },
+      { ...ROWS[1], machine: { ...ROWS[1].machine, alert: "elevated" } },
+    ];
+    mount({ rows });
+    const marks = [...host!.querySelectorAll(".ph-card__alert")];
+    expect(marks.map((m) => m.getAttribute("data-level"))).toEqual(["critical", "elevated"]);
+    expect(marks.map((m) => m.getAttribute("aria-label"))).toEqual(["Critical note on this machine", "Heads up note on this machine"]);
   });
 });

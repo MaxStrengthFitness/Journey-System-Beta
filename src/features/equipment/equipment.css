@@ -313,12 +313,19 @@
   background: var(--eq-live-fill);
   border-color: var(--eq-live);
 }
-/* An orange chip with words: the logo orange with navy words, never white
-   on orange (the Navy Frame, Oct 4 2026). */
-.eq-note-dot--flag {
-  color: var(--eq-go-on);
-  background: var(--eq-go);
-  border-color: var(--eq-go);
+/* The loudest open note, in the one note key (machine-menu/note-key.ts;
+   machine menu, Oct 2026): a Heads up plum, Critical crimson, each on its
+   own fill. It was an orange chip with a wrench for the old "Flag
+   maintenance" checkbox; the wrench is the Relay flag's alone. */
+.eq-note-dot--loud {
+  color: var(--eq-warn);
+  background: var(--eq-warn-fill);
+  border-color: var(--eq-warn);
+}
+.eq-note-dot--loud[data-level="critical"] {
+  color: var(--eq-alert);
+  background: var(--eq-alert-fill);
+  border-color: var(--eq-alert);
 }
 .eq-note-dot__count {
   font-size: 10px;

@@ -5,6 +5,7 @@ import {
   OLDER_PAGE,
   hasOlderToRead,
   joinLogsToSessions,
+  logsWindowIds,
   newestFirst,
   nextOlderSessionIds,
   olderSetsFor,
@@ -44,6 +45,37 @@ describe("choosing what Load older reads", () => {
   it("never asks for more than Firestore's 30 in one query", () => {
     expect(nextOlderSessionIds(all.sessions, new Set(), 50)).toHaveLength(30);
     expect(nextOlderSessionIds(all.sessions, new Set(), 5)).toHaveLength(5);
+  });
+});
+
+describe("the tracker's window: every past column the grid draws has its sets (§F 6)", () => {
+  const ids = Array.from({ length: 40 }, (_, i) => `s${40 - i}`); // newest first
+
+  it("gives the past sessions 30 places when nothing is running", () => {
+    const w = logsWindowIds(ids, null);
+    expect(w.past).toEqual(ids.slice(0, 30));
+    expect(w.ids).toEqual(w.past);
+  });
+
+  it("gives them 29 when the running session takes the first place, so the query still asks for 30", () => {
+    const running = ids[0];
+    const w = logsWindowIds(ids, running);
+    expect(w.ids).toHaveLength(OLDER_PAGE);
+    expect(w.ids[0]).toBe(running);
+    expect(w.past).toEqual(ids.slice(1, 30));
+    expect(w.past).not.toContain(running);
+  });
+
+  it("keeps a running session the sessions list hasn't caught up with, rather than slicing it off the end", () => {
+    const w = logsWindowIds(ids, "just-started");
+    expect(w.ids[0]).toBe("just-started");
+    expect(w.ids).toHaveLength(OLDER_PAGE);
+    expect(w.past).toEqual(ids.slice(0, 29));
+  });
+
+  it("skips empty and repeated ids, and takes fewer than 30 when there are fewer", () => {
+    expect(logsWindowIds(["a", "", null, "b", "a", undefined], "b")).toEqual({ ids: ["b", "a"], past: ["a"] });
+    expect(logsWindowIds([], null)).toEqual({ ids: [], past: [] });
   });
 });
 

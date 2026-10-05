@@ -159,29 +159,64 @@ describe("SessionNowBar's Blood flow (Oct 3 2026)", () => {
   });
 });
 
-describe("SessionNowBar's start and gain (Oct 3 2026)", () => {
-  it("says where she started and the load's climb in place of Last and Best", () => {
-    const sessions = [
-      { id: "a", sessionNumber: 1, date: "2026-08-01", trainerInitials: "AJ" },
-      { id: "b", sessionNumber: 2, date: "2026-09-01", trainerInitials: "AJ" },
-    ];
-    const grown: JourneyRow = {
-      ...row,
-      sets: {
-        a: { sessionId: "a", outcome: "performed", weight: 100, reps: 10, quality: 2 },
-        b: { sessionId: "b", outcome: "performed", weight: 125, reps: 9, quality: 2 },
-      },
-    };
+describe("SessionNowBar's start and gain (Oct 3 2026; the machine menu's one figure since Oct 4 2026)", () => {
+  const sessions = [
+    { id: "a", sessionNumber: 1, date: "2026-08-01", trainerInitials: "AJ" },
+    { id: "b", sessionNumber: 2, date: "2026-09-01", trainerInitials: "AJ" },
+  ];
+  const grown: JourneyRow = {
+    ...row,
+    sets: {
+      a: { sessionId: "a", outcome: "performed", weight: 100, reps: 10, quality: 2 },
+      b: { sessionId: "b", outcome: "performed", weight: 125, reps: 9, quality: 2 },
+    },
+  };
+  const draw = (props: Partial<Parameters<typeof SessionNowBar>[0]>) =>
+    act(() => root!.render(<SessionNowBar row={grown} history={sessions} onChange={() => {}} {...props} />));
+  const start = () => host!.querySelector('[data-testid="nb-start"]')?.textContent ?? null;
+  const gain = () => host!.querySelector('[data-testid="nb-gain"]')?.textContent ?? null;
+
+  function open() {
     host = document.createElement("div");
     document.body.appendChild(host);
     root = createRoot(host);
-    act(() => root!.render(<SessionNowBar row={grown} history={sessions} onChange={() => {}} coverage="complete" />));
-    expect(host.querySelector('[data-testid="nb-start"]')?.textContent).toContain("Started 100 lb");
-    expect(host.querySelector('[data-testid="nb-gain"]')?.textContent).toBe("+25%");
-    expect(host.textContent).not.toContain("Best");
-    act(() => root!.render(<SessionNowBar row={grown} history={sessions} onChange={() => {}} coverage="partial" />));
-    expect(host.querySelector('[data-testid="nb-start"]')?.textContent).toContain("First in Journey 100 lb");
-    act(() => root?.unmount());
-    host.remove();
+  }
+
+  it("counts from the starting weight on file, labelled Starting weight, never First in Journey (AJ's Q2 (a))", () => {
+    open();
+    draw({ row: { ...grown, startingWeight: 80 }, coverage: "partial" });
+    expect(start()).toContain("Starting weight 80 lb");
+    expect(start()).not.toContain("First in Journey");
+    expect(gain()).toBe("+56%");
+    expect(host!.textContent).not.toContain("Best");
+    // A typed start counts whether or not the older sessions were read.
+    draw({ row: { ...grown, startingWeight: 80 }, coverage: "complete", everythingRead: true });
+    expect(start()).toContain("Starting weight 80 lb");
+    expect(start()).not.toContain("Started");
+  });
+
+  it("falls back to the first counted set only once every session has been read, with the history words", () => {
+    open();
+    draw({ coverage: "complete", everythingRead: true });
+    expect(start()).toContain("First performed 100 lb");
+    expect(gain()).toBe("+25%");
+    draw({ coverage: "partial", everythingRead: true });
+    expect(start()).toContain("First in Journey 100 lb");
+  });
+
+  it("says no start and no % when nothing is on file and older sessions are unread: the oldest loaded is not where anyone began", () => {
+    open();
+    draw({ coverage: "partial" });
+    expect(start()).toBeNull();
+    expect(gain()).toBeNull();
+    draw({ coverage: "complete", everythingRead: false });
+    expect(start()).toBeNull();
+  });
+
+  it("shows the start but no % when the weight isn't up", () => {
+    open();
+    draw({ row: { ...grown, startingWeight: 130 } });
+    expect(start()).toContain("Starting weight 130 lb");
+    expect(gain()).toBeNull();
   });
 });

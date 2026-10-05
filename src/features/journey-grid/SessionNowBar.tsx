@@ -9,10 +9,10 @@ import {
   type SkipReason, BLOOD_FLOW_GLOSS, BLOOD_FLOW_LABEL } from "../../lib/set-outcome";
 import type { TraineeLevel } from "../routine-builder/academy";
 import type { JourneyRow, JourneySession, LiveSet, RepQuality } from "./types";
-import { computeRowStats, formatSeconds, orderedSets } from "./stats";
+import { formatSeconds, orderedSets } from "./stats";
 import { QualityMark, QUALITY_MARK_LABEL } from "./QualityMark";
 import type { HistoryCoverage } from "../../lib/prior-history";
-import { noMachineHistoryLine } from "../../lib/history-claims";
+import { gainWords, progressFromSets } from "../machine-menu/progress-figure";
 
 /* ------------------------------------------------------------------ *
  * Bar
@@ -24,8 +24,16 @@ export interface SessionNowBarProps {
   /** Its 1-based place in today's routine. */
   orderNumber?: number;
   value?: LiveSet;
-  /** Every loaded session, oldest -> newest. Drives "last" and "best". */
+  /** Every loaded session, oldest -> newest. Drives "last" and the start. */
   history: JourneySession[];
+  /**
+   * Every one of the client's sessions has had its sets read, so the first
+   * counted set in `history` really is Journey's first on this machine. Only
+   * then may the start fall back to it when no starting weight is on file
+   * (progress-figure.ts). Optional, defaulting to the cautious answer: no
+   * fallback, so no start and no % without a starting weight on file.
+   */
+  everythingRead?: boolean;
   onChange: (machineId: string, patch: Partial<LiveSet>) => void;
   /**
    * The trainer has finished typing into a field on this machine: left it,
@@ -76,7 +84,11 @@ export interface SessionNowBarProps {
    * come across from FileMaker, so a woman who has used this machine four
    * hundred times arrives with nothing on it - and the bar told her trainer
    * she had never touched it. Anything short of `complete` says "Nothing
-   * recorded", which is a claim about our RECORDS and is always true.
+   * recorded", which is a claim about our RECORDS and is always true. Since
+   * the machine menu (Oct 2026) it decides the start's label when the start
+   * is Journey's first counted set ("First in Journey", or "First performed"
+   * with the whole story); a starting weight on file is always "Starting
+   * weight".
    *
    * Optional, defaulting to the cautious answer: a caller who forgets it
    * gets the safe sentence, never the confident one.
@@ -323,6 +335,7 @@ function SessionNowBarImpl({
   flagLine = null,
   onOpenFlag,
   coverage = "unknown",
+  everythingRead = false,
   layout = "bar",
 }: SessionNowBarProps) {
   const machine = row?.machine;
@@ -343,20 +356,19 @@ function SessionNowBarImpl({
     if (!row) return null;
     const sets = orderedSets(row, history);
     const last = sets[sets.length - 1];
-    const stats = computeRowStats(row, history);
-    const best = stats.mostReps ?? stats.high;
     /* Where she started on this machine and how far the load has come (AJ,
        Oct 3 2026: "show the starting weight and then next to that a green %
-       increase"). Performed sets only; the start is the row's recorded
-       starting weight, else her first set here. */
-    const start = row.startingWeight ?? sets[0]?.weight;
-    const now = last?.weight;
-    const gain =
-      typeof start === "number" && start > 0 && typeof now === "number"
-        ? Math.round(((now - start) / start) * 100)
-        : null;
-    return { last, best: best?.set, start: typeof start === "number" && start > 0 ? start : null, gain };
-  }, [row, history]);
+       increase"). The machine menu says the same figure from the same module
+       (machine-menu/progress-figure.ts; AJ, Oct 4 2026, Q2 (a)), so the two
+       can never disagree: the starting weight ON FILE, labelled "Starting
+       weight"; with none on file, the first counted set only once every
+       session has been read (labelled "First in Journey", or "First
+       performed" with the whole story); otherwise no start and no %. It
+       used to call a typed starting weight, and the oldest of the sessions
+       loaded, "First in Journey". Performed sets only. */
+    const progress = progressFromSets(sets, { startingWeight: row.startingWeight, everythingRead, coverage });
+    return { last, progress };
+  }, [row, history, everythingRead, coverage]);
   /* The ghost in the count field: what she did last time, in grey, so the
      eye can stay at the bottom of the iPad instead of climbing the chart.
      A placeholder, never a value — tapping Next with it showing logs
@@ -534,14 +546,15 @@ function SessionNowBarImpl({
           <span className="jg-nb__expect">
             {/* No "Last · Best" here (AJ, Oct 3 2026: "the last isn't really
                 needed, or even best"): the grid's row says both. */}
-            {expect.start !== null && (
+            {expect.progress && (
               <span className="jg-nb__expectline" data-testid="nb-start">
-                {/* Journey's first weight is her start only when Journey holds
-                    her whole story (docs/business/migration-and-prior-history.md). */}
-                {coverage === "complete" ? "Started" : "First in Journey"} <em>{expect.start} lb</em>
-                {expect.gain !== null && expect.gain > 0 && (
+                {/* "Starting weight" for the number on file; Journey's first
+                    set is "First performed" only when Journey holds her
+                    whole story (docs/business/migration-and-prior-history.md). */}
+                {expect.progress.startLabel} <em>{expect.progress.start} lb</em>
+                {gainWords(expect.progress) && (
                   <span className="jg-nb__gain" data-testid="nb-gain">
-                    +{expect.gain}%
+                    {gainWords(expect.progress)}
                   </span>
                 )}
               </span>

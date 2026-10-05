@@ -183,7 +183,6 @@ const GO: Array<[string, string, string | null, string]> = [
   ["features/hub-opportunities/run-sheet.css", '.ho-action[data-primary="true"]', '.ho-action[data-primary="true"]:hover', "eq"],
   ["features/client-directory/client-directory.css", ".cd-start", ".cd-start:hover", "eq"],
   ["features/admin/admin.css", ".adm-btn--hero", ".adm-btn--hero:not(:disabled):hover", "adm"],
-  ["features/equipment/equipment.css", ".eq-note-dot--flag", null, "eq"],
   ["features/machine-fit/ui/machine-fit.css", ".fit-btn--hero", ".fit-btn--hero:hover", "eq"],
   ["features/machine-menu/machine-menu.css", ".mm-save", ".mm-save:hover", "eq"],
   ["features/machine-menu/machine-menu.css", ".mm-add", ".mm-add:hover", "eq"],

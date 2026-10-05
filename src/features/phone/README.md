@@ -32,14 +32,20 @@ only need to tighten use `@media (max-width: 599px)` or a container query.
 Each card, in the order the floor needs it (the-floor.md, "Where the eye goes"):
 
 1. **The machine**: its order number and its name, whole. The name opens the
-   machine sheet (settings, notes), as on the iPad. An important machine
-   note shows the alert mark.
+   machine menu (settings, notes, how the client has done), as on the iPad.
+   The loudest open note on the machine shows beside the name in the one
+   note key (`machine-menu/note-key.ts`): a plum circle for a Heads up, the
+   Hub's crimson triangle for Critical.
 2. **Its settings**, the short keys the grid uses, each speaking its full name.
 3. **Its last five times**, side by side, newest on the right (`lastTimes`):
    the date, the weight, the count, the star or the kaizen. They are the
    machine's own last five times, not her last five sessions: a card stands
    alone, with no column beside it to line up with. A not-reached set is not
    a time she did it; a practice set is drawn grey with a P, a skip says Skip.
+   With no times to show, the card says what the machine menu's header would
+   (`noPastWords`): "First time on this machine." only with every session
+   read and the whole story in Journey, never for a machine a running total
+   knows, and "in the sessions loaded here" while older ones are unread.
 4. **Today**: the weight, pre-filled with the iPad's own pre-fill (the
    prescription, else the last performed load) and stepped by 2 lb, and the
    count, **never pre-filled**: last time's count is a ghost. A machine she

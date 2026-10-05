@@ -5,6 +5,7 @@ import {
   countsSeconds,
   lastPerformed,
   lastTimes,
+  noPastWords,
   parseCount,
   parseWeight,
   shortDate,
@@ -88,6 +89,25 @@ describe("lastTimes", () => {
   it("is empty for a machine she has never done", () => {
     expect(lastTimes(row([]), history)).toEqual([]);
     expect(lastTimes(row([set("s1")]), [])).toEqual([]);
+  });
+});
+
+describe("noPastWords: what a card with no past times says (machine menu, Oct 2026)", () => {
+  it("says first time only with every session read and the whole story in Journey", () => {
+    expect(noPastWords({ knownElsewhere: false, everythingRead: true, coverage: "complete" })).toBe("First time on this machine.");
+    expect(noPastWords({ knownElsewhere: false, everythingRead: true, coverage: "partial" })).toBe("Nothing recorded on this machine.");
+  });
+
+  it("says nothing is in the sessions loaded here while older ones are unread", () => {
+    expect(noPastWords({ knownElsewhere: false, everythingRead: false, coverage: "complete" })).toBe(
+      "Nothing recorded on this machine in the sessions loaded here.",
+    );
+  });
+
+  it("never calls a machine a running total knows new, and quotes no count", () => {
+    const words = noPastWords({ knownElsewhere: true, everythingRead: true, coverage: "complete" });
+    expect(words).toBe("Done here in Journey before · not in the sessions loaded here.");
+    expect(words).not.toMatch(/[0-9]/);
   });
 });
 

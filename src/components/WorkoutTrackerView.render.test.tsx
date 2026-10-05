@@ -168,8 +168,12 @@ const SETTINGS_DOCS = [
 ];
 
 const writes: { path: string; data: any; merge?: boolean }[] = [];
-/** Every listener the screen opened, so a test can send it a new snapshot (another iPad's write). */
-const snapshotListeners: { path: string; emit: () => void }[] = [];
+/**
+ * Every listener the screen opened, so a test can send it a new snapshot
+ * (another iPad's write). `live` turns false when the screen unsubscribes,
+ * so a test can count the listeners still open (machine menu, Oct 2026).
+ */
+const snapshotListeners: { path: string; emit: () => void; live: boolean }[] = [];
 /** Finish's database, per test (session record, Sep 26 2026): does the commit answer, and what does the server say the session is? */
 const finishCtl = { commit: "ok" as "ok" | "hang", serverStatus: undefined as string | undefined };
 
@@ -214,8 +218,11 @@ vi.mock("firebase/firestore", async (importOriginal) => {
         });
       };
       emit();
-      snapshotListeners.push({ path: at, emit });
-      return () => {};
+      const listener = { path: at, emit, live: true };
+      snapshotListeners.push(listener);
+      return () => {
+        listener.live = false;
+      };
     },
     getDocs: async (q: any) => {
       const docs = docsFor(q?.__path ?? "");
@@ -373,6 +380,12 @@ describe("the Active Session mounts and draws this studio's floor", () => {
     // The thing that had never been proven: the Rank 1 screen renders.
     expect(host.textContent).toBeTruthy();
     expect(host.querySelector(".jg-sbar")).toBeTruthy();
+  });
+
+  it("holds ONE journal listener while a session runs, not three (machine menu design §F 8)", async () => {
+    await mount(<Tracker />);
+    const open = snapshotListeners.filter((l) => l.live && l.path === "journalEntries");
+    expect(open).toHaveLength(1);
   });
 
   it("shows the STUDIO's name for its own unit, not the catalog's", async () => {

@@ -292,6 +292,35 @@ describe("the Active Session's grid is unchanged", () => {
     await act(async () => root.unmount());
   });
 
+  it("marks a machine's loudest open note in the one note key, and says it in the name's words (machine menu, Oct 2026)", async () => {
+    const sessions = sessionsOf(3);
+    const [leg, chest] = rowsFor(sessions);
+    const rows: JourneyRow[] = [
+      { ...leg, machine: { ...leg.machine, alert: "critical", noteCount: 2 } },
+      { ...chest, machine: { ...chest.machine, alert: "elevated", noteCount: 1 } },
+    ];
+    const live: LiveColumn = {
+      session: { id: "today", sessionNumber: 4, date: "2026-03-01", trainerInitials: "AJ" },
+      routineMachineIds: ["leg-press", "chest-press"],
+      values: {},
+      onChange: () => {},
+    };
+    const { host, root } = await mount(
+      <JourneyGrid sessions={sessions} sections={[{ id: "r", label: "Today", rows }]} live={live} showStats={false} layout="fill" onOpenMachine={() => {}} />,
+    );
+    const marks = [...host.querySelectorAll(".jg-machine__alert")];
+    expect(marks.map((m) => m.getAttribute("data-level"))).toEqual(["critical", "elevated"]);
+    // The Hub's triangle for Critical, a circle for a Heads up (lucide's own class names).
+    expect(marks[0].getAttribute("class")).toContain("lucide-triangle-alert");
+    expect(marks[1].getAttribute("class")).toContain("lucide-circle-alert");
+    const names = [...host.querySelectorAll<HTMLButtonElement>(".jg-machine__btn")].map((b) => b.getAttribute("aria-label") ?? "");
+    expect(names[0]).toContain("Critical note on this machine.");
+    expect(names[1]).toContain("Heads up note on this machine.");
+    // The corner's note glyph is the plain Note mark; how loud is the name's mark.
+    expect(host.querySelector(".jg-machine__note.is-alert")).toBeNull();
+    await act(async () => root.unmount());
+  });
+
   it("numbers today's column only through the gate", async () => {
     const sessions = sessionsOf(2);
     const live: LiveColumn = {

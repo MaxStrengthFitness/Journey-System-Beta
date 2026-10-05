@@ -29,6 +29,9 @@
 
 import type { Machine, ClientMachineSetting, ClientMachineStat, ExerciseLog, WorkoutSession } from "../../types";
 import type { MachineCatalogEntry, MachineSettingField } from "../../types/machines";
+import type { JournalEntry } from "../../types/journal";
+import { studioTodayKey } from "../../lib/studio-time";
+import { machineNoteLoudness, machineNotesFor } from "./machine-notes";
 import { MACHINE_DATABASE, type MachineKnowledge } from "../../data/machine-database";
 import { CANONICAL_TO_DB_KEY, canonicalMachineId } from "../catalog/machine-identity";
 import { toIsoDay } from "../../lib/client-rollups";
@@ -420,6 +423,12 @@ export interface ToEquipmentMachinesArgs {
   machineStats?: Record<string, ClientMachineStat> | null;
   /** The sessions `allLogs` belong to — needed only for the partial fallback. */
   sessions?: WorkoutSession[];
+  /**
+   * Her journal's entries that name a machine (a host's one journal read),
+   * for the rail's note mark: the one list (machine-notes.ts). Null or absent
+   * while unread, and then the old list alone, never "no notes".
+   */
+  journal?: readonly JournalEntry[] | null;
 }
 
 export function toEquipmentMachines({
@@ -430,7 +439,10 @@ export function toEquipmentMachines({
   studioMachineSettings,
   machineStats,
   sessions = [],
+  journal = null,
 }: ToEquipmentMachinesArgs): EquipmentMachine[] {
+  // Which notes are open is a studio-day question (client-notes/threads.ts).
+  const today = studioTodayKey();
   /* Performed sets only, decided once for every figure below: "sets logged",
      first / last / times performed, the TUT average. A practice set or a
      skipped machine is history, not usage (src/lib/set-outcome.ts). */
@@ -456,6 +468,9 @@ export function toEquipmentMachines({
 
     const settings = setting?.settings || {};
     const notes = setting?.machineNotes || [];
+    // The one list (machine-notes.ts): her journal's notes on the machine
+    // plus the old list's, never the old list alone (design §F 4).
+    const noteInput = { machineId: id, machineName: machine.name, legacy: notes, journal: journal ?? null };
     const startingWeight = asNumber(setting?.startingWeight);
     const currentWeight = asNumber(setting?.currentWeight);
     const loggedSetCount = logCounts.get(id) || 0;
@@ -492,7 +507,8 @@ export function toEquipmentMachines({
       sources: setting?.sources,
       fitAcks: setting?.fitAcks,
       notes,
-      hasMaintenanceFlag: notes.some((n) => n?.isImportant),
+      noteCount: machineNotesFor(noteInput).length,
+      noteLoudness: machineNoteLoudness({ ...noteInput, today }),
       loggedSetCount,
       usage,
       inUse: startingWeight !== null || currentWeight !== null || isConfigured || loggedSetCount > 0 || usage.timesPerformed > 0,

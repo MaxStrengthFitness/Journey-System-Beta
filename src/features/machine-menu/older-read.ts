@@ -25,6 +25,42 @@ import { isDrawableLog, type TimelineLogInput, type TimelineSessionInput } from 
 /** Firestore's limit on one `in` query, and the tracker's window. */
 export const OLDER_PAGE = 30;
 
+/** The tracker's window: the ids its logs listener asks for, and the past sessions among them. */
+export interface LogsWindow {
+  /** Every id the one `in` query asks for: the running session first, when there is one. */
+  ids: string[];
+  /** The past sessions in it, in the order given: what the grid draws as history. */
+  past: string[];
+}
+
+/**
+ * The tracker's window (machine menu design §F 6): the sessions whose sets
+ * its logs listener reads, in ONE `in` query, so at most `OLDER_PAGE` ids.
+ * The running session (the one recorded here, or the one being watched)
+ * takes the first place when there is one; the past sessions take the rest,
+ * newest first: 30 places, less one only when the running session is among
+ * the ids. It used to take the newest 30 ids with the running session one of
+ * them, while the grid drew 30 past columns, so the oldest column it drew
+ * had no sets read. `past` is what the grid draws, so every column it draws
+ * has its sets. `sessionIds` come in the tracker's order, newest first.
+ */
+export function logsWindowIds(
+  sessionIds: readonly (string | null | undefined)[],
+  runningId: string | null | undefined,
+): LogsWindow {
+  const running = runningId || null;
+  const room = OLDER_PAGE - (running ? 1 : 0);
+  const seen = new Set<string>();
+  const past: string[] = [];
+  for (const id of sessionIds) {
+    if (past.length >= room) break;
+    if (!id || id === running || seen.has(id)) continue;
+    seen.add(id);
+    past.push(id);
+  }
+  return { ids: running ? [running, ...past] : past, past };
+}
+
 type SessionWithId = TimelineSessionInput & { id: string };
 
 /** Newest first, by the session's own day, then its number: the tracker's order. */
