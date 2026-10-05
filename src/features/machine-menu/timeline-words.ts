@@ -20,7 +20,7 @@
  *
  * PURE.
  */
-import { machineUsageSentence, sessionNumberTag } from "../../lib/history-claims";
+import { machineUsageSentence, machineUsageWords, sessionNumberTag } from "../../lib/history-claims";
 import type { HistoryCoverage } from "../../lib/prior-history";
 import { MINDBODY_GUESS_WORDS, beforeJourneyGuess, type SessionTotal } from "../../lib/session-total";
 import { BLOOD_FLOW_GLOSS, BLOOD_FLOW_LABEL, SKIP_REASON_LABEL, SKIP_REASON_SHORT } from "../../lib/set-outcome";
@@ -168,7 +168,7 @@ export function stateLine(state: ChartState, model: TimelineModel, ctx: WordsCon
     case "uncounted":
       return past === 1 ? `Once ${where}, not counted.` : `${past} times ${where}, none counted yet.`;
     case "one":
-      return `${usageLine(model, ctx, progress)}. The chart starts at the second time.`;
+      return `${usageLine(model, ctx, progress)}. ${ONE_SESSION_TAIL}`;
     default:
       return null;
   }
@@ -187,6 +187,83 @@ export const CACHE_ONLY_LINE = "From what this iPad has saved; couldn't check fo
 export const NOTES_UNREAD_LINE = "Notes couldn't be loaded";
 export const REASON_UNREAD = "reason couldn't be loaded";
 export const OLDER_NOT_LOADED = "Older sessions aren't loaded yet";
+/** The same words in two lines, for the room left of the chart's oldest column. */
+export const OLDER_NOT_LOADED_LINES: readonly [string, string] = ["Older sessions", "aren't loaded yet"];
+/** What the one-session sentence ends with. */
+export const ONE_SESSION_TAIL = "The chart starts at the second time.";
+
+/* ------------------------------------------------------------------ *
+ * The block's own words: its heading, its buttons, its lists
+ * ------------------------------------------------------------------ */
+
+/** The chart block's heading: "How Avery has done here". */
+export function chartHeading(name: string): string {
+  return `How ${name} has done here`;
+}
+
+/** The two list buttons under the chart. */
+export const sessionsButtonLabel = (n: number): string => `Every session (${n})`;
+export const runsButtonLabel = (n: number): string => `Weight by weight (${n})`;
+
+/** The controls row under the chart, and Load older's states. */
+export const PAGING_WORDS = {
+  older: "Older",
+  newer: "Newer",
+  loadOlder: "Load older",
+  loading: "Loading…",
+  failed: "Couldn't load older sessions",
+  offline: "Can't load older sessions offline",
+  /** The "a running total knows it" state's button. */
+  loadThem: "Load them",
+} as const;
+
+/** The readout's buttons, as a screen reader hears them. */
+export const READOUT_WORDS = {
+  openNote: "Open note",
+  older: "Older session",
+  newer: "Newer session",
+  close: "Back to the summary",
+} as const;
+
+/** The plot, as a screen reader hears it before the arrow keys. */
+export const PLOT_LABEL = "Chart of every loaded session. Left and right arrow keys step through sessions.";
+
+/**
+ * The start wall's label in two lines, from the history words ("First in /
+ * Journey", or "First / performed" for a client Journey holds the whole
+ * story of).
+ */
+export function wallLines(coverage?: HistoryCoverage): [string, string] {
+  const words = machineUsageWords(coverage).first;
+  const at = words.lastIndexOf(" ");
+  return at > 0 ? [words.slice(0, at), words.slice(at + 1)] : [words, ""];
+}
+
+/** The overview strip, said: what it spans and what its box is. */
+export function overviewLabel(model: TimelineModel, today: string): string {
+  const first = model.columns[0];
+  if (!first) return "";
+  return `Every loaded session on calendar time, ${shortWithYear(first.day, today)} to today. The box is what the chart shows; tap or drag to move it.`;
+}
+
+/** Every session's table: its caption and its column heads. */
+export const sessionsCaption = (machineName: string): string => `Every session on ${machineName}, newest first`;
+export const SESSION_HEADS = {
+  day: "Day",
+  number: "Session",
+  lb: "lb",
+  effort: "Reps",
+  mark: "Mark",
+  outcome: "Outcome",
+  setup: "Set-up",
+  trainer: "Trainer",
+  notes: "Notes",
+} as const;
+export const showMoreLabel = (n: number): string => `Show ${n} more`;
+
+/** Weight by weight's list, as a screen reader hears it, and the line under it. */
+export const RUNS_LIST_LABEL = "Weight by weight, newest first";
+export const RUNS_FOOT = "Counts only: practice and skips are noted, never counted.";
 
 /* ------------------------------------------------------------------ *
  * The key
@@ -311,7 +388,17 @@ export function clipQuoted(head: string, quote: string, max: number = EVENT_MAX_
   if (whole.length <= max) return whole;
   const room = max - head.length - 3;
   if (room <= 0) return `${head}“…”`;
-  return `${head}“${quote.slice(0, room).trimEnd()}…”`;
+  return `${head}“${cutAt(quote, room)}…”`;
+}
+
+/**
+ * The first `room` characters, ending at a word where one ends in the second
+ * half of the room ("the toes…", not "the toes n…").
+ */
+function cutAt(words: string, room: number): string {
+  const cut = words.slice(0, room);
+  const space = cut.lastIndexOf(" ");
+  return (space >= room / 2 && /\S/.test(words.charAt(room)) ? cut.slice(0, space) : cut).trimEnd();
 }
 
 /** A line with a clippable middle: the head and the tail (a name) are kept whole. */
@@ -319,7 +406,7 @@ function clipMiddle(head: string, middle: string, tail: string, max: number): st
   const whole = `${head}${middle}${tail}`;
   if (whole.length <= max) return whole;
   const room = max - head.length - tail.length - 1;
-  return room <= 0 ? `${head}…${tail}` : `${head}${middle.slice(0, room).trimEnd()}…${tail}`;
+  return room <= 0 ? `${head}…${tail}` : `${head}${cutAt(middle, room)}…${tail}`;
 }
 
 const NOTE_WORD: Record<LaneNote["loudness"], string> = { critical: "Critical", elevated: "Heads up", standard: "Note" };

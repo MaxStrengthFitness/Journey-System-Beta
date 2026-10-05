@@ -9,11 +9,27 @@ import { buildTimelineModel, type TimelineInput, type TimelineLogInput, type Tim
 import {
   CACHE_ONLY_LINE,
   EVENT_MAX_CHARS,
+  OLDER_NOT_LOADED,
+  OLDER_NOT_LOADED_LINES,
+  ONE_SESSION_TAIL,
+  RUNS_LIST_LABEL,
+  PAGING_WORDS,
+  PLOT_LABEL,
+  READOUT_WORDS,
+  RUNS_FOOT,
+  SESSION_HEADS,
   beforeJourneyLine,
   boundaryWords,
   chartDescription,
+  chartHeading,
   chartState,
   chartTitle,
+  overviewLabel,
+  runsButtonLabel,
+  sessionsButtonLabel,
+  sessionsCaption,
+  showMoreLabel,
+  wallLines,
   clipQuoted,
   columnDateLabel,
   columnFigures,
@@ -296,6 +312,13 @@ describe("the readout for a tapped session", () => {
     expect(b.endsWith("… · Theo")).toBe(true);
   });
 
+  it("cuts at the end of a word where one is near, so a narrow readout never says half a word", () => {
+    const quote = "Pushes through the toes near the end of the set; cue heels down.";
+    expect(clipQuoted("Heads up · Ana: ", quote, 44)).toBe("Heads up · Ana: “Pushes through the toes…”");
+    // One long word: cut where the room ends, as before.
+    expect(clipQuoted("Note · ", "x".repeat(60), 20)).toBe(`Note · “${"x".repeat(10)}…”`);
+  });
+
   it("says a change the snapshots show without a recorded reason, or one that couldn't be read", () => {
     const base = { index: 1, changes: [{ label: "Seat", from: "4", to: "5" }], reason: null, trainerName: null, sameDay: false, fromHistory: false, fromSnapshot: true };
     expect(boundaryWords({ ...base, reasonUnread: false })).toBe("Set-up differs from the session before: Seat 4 → 5 (no reason recorded)");
@@ -406,6 +429,40 @@ describe("before Journey: about the client, never one machine", () => {
   });
 });
 
+describe("the block's own words", () => {
+  it("heads the block with the client's display name and no pronoun", () => {
+    expect(chartHeading("Avery")).toBe("How Avery has done here");
+  });
+
+  it("counts the two lists on their buttons", () => {
+    expect(sessionsButtonLabel(26)).toBe("Every session (26)");
+    expect(runsButtonLabel(11)).toBe("Weight by weight (11)");
+    expect(showMoreLabel(20)).toBe("Show 20 more");
+  });
+
+  it("says the unread older sessions in two lines that read as the one sentence", () => {
+    expect(OLDER_NOT_LOADED_LINES.join(" ")).toBe(OLDER_NOT_LOADED);
+  });
+
+  it("labels the start wall with the history words, in two lines", () => {
+    expect(wallLines("partial")).toEqual(["First in", "Journey"]);
+    expect(wallLines("complete")).toEqual(["First", "performed"]);
+    expect(wallLines()).toEqual(["First in", "Journey"]);
+  });
+
+  it("says what the overview strip spans, from the oldest loaded column to today", () => {
+    expect(overviewLabel(avery(21), TODAY)).toBe(
+      "Every loaded session on calendar time, Dec 15 2025 to today. The box is what the chart shows; tap or drag to move it.",
+    );
+    expect(overviewLabel(small([]), TODAY)).toBe("");
+  });
+
+  it("ends the one-session sentence the same way the state line does", () => {
+    const one = small([["2026-09-24", { outcome: "performed" }]]);
+    expect(stateLine("one", one, CTX)).toBe(`Once in the sessions loaded here (Thu Sep 24 2026). ${ONE_SESSION_TAIL}`);
+  });
+});
+
 describe("guard words: a log, never a coach", () => {
   const FORBIDDEN = /\b(best|started|her|she|should|try|ready)\b|next weight|increase to/i;
 
@@ -429,6 +486,12 @@ describe("guard words: a log, never a coach", () => {
       said.push(stateLine(s, avery(1), CTX) ?? "");
     }
     said.push(beforeJourneyLine(sessionTotalOf({ sessionCount: 70, clientsNumberOfVisitsAtSite: 372, firstSessionDate: "x" }, "partial"), "partial") ?? "");
+    // The block's own words (the chart block, phase 4). Retry buttons say
+    // "Try again" — a button, not advice — and are not scanned here.
+    said.push(chartHeading("Avery"), sessionsButtonLabel(26), runsButtonLabel(11), showMoreLabel(20), ONE_SESSION_TAIL, PLOT_LABEL, RUNS_FOOT, RUNS_LIST_LABEL);
+    said.push(...OLDER_NOT_LOADED_LINES);
+    said.push(...Object.values(PAGING_WORDS), ...Object.values(READOUT_WORDS), ...Object.values(SESSION_HEADS));
+    said.push(...wallLines("partial"), ...wallLines("complete"), overviewLabel(avery(21), TODAY), sessionsCaption("Leg Press"));
     const all = said.join("\n");
     expect(all.length).toBeGreaterThan(1000);
     expect(all).not.toMatch(FORBIDDEN);

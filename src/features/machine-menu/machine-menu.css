@@ -1,0 +1,816 @@
+/* ==========================================================================
+   THE MACHINE MENU — one card for a client on one machine (Oct 2026).
+
+   Drawn in equipment.tokens.css's --eq-* colours and the Journey grid's
+   --jg-q-* quality fills (a rep chip is the grid's own box: gold star, red
+   kaizen ring) and --jg-pf-* (practice, blood flow, the Now Bar's green %).
+   Imported by every component that draws with it, because the session chunk
+   and the profile chunk both mount the card (KNOWN-TRAPS → Layout and CSS,
+   "A component imports the stylesheet it draws with").
+
+   machine-menu/look.test.ts holds it: no raw hex, no words in the faint ink,
+   nothing under 14px (the in-hand floor), every control at least 40px and
+   44px by default, the readout's slot a fixed 128px, the plot pan-y.
+   lib/names-wrap.test.ts holds the classes that carry a name: they wrap.
+   ========================================================================== */
+@import "../equipment/equipment.tokens.css";
+@import "../journey-grid/journey-grid.tokens.css";
+
+/* ---------- the chart block ------------------------------------------- */
+
+.mm-chart {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--eq-ink);
+}
+
+.mm-chart__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 12px;
+  min-height: 24px;
+}
+
+.mm-chart__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+/* A line the block says in place of a chart, or beside one. */
+.mm-chart__state {
+  margin: 4px 0 0;
+  font-size: 17px;
+  line-height: 1.45;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+.mm-chart__note {
+  margin: 4px 0 0;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--eq-ink-muted);
+}
+
+.mm-chart__retry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 8px;
+}
+
+/* The Now Bar's green: the % since the starting weight (AJ, Oct 3 2026). */
+.mm-gain {
+  color: var(--jg-pf-gain);
+  font-weight: 700;
+}
+
+/* ---------- the readout: a fixed slot above the plot ------------------ */
+
+/* Never under the finger and never changing height, so the plot never moves
+   when a session is tapped (44 + 40 + 40 + 4px of gaps). On a phone the
+   first row wraps, so the slot grows there (under 600px only). */
+.mm-readout {
+  height: 128px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding-block: 2px;
+  min-width: 0;
+}
+
+/* Its rows never squeeze: a row that wraps (a narrow card) scrolls the slot
+   rather than drawing over the row below. */
+.mm-readout > * {
+  flex: none;
+}
+
+.mm-ro__l1 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.4;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+.mm-ro__l2 {
+  margin: 4px 0 0;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--eq-ink-muted);
+}
+
+.mm-key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 14px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  color: var(--eq-ink-2);
+}
+
+.mm-key__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 22px;
+}
+
+.mm-key__shade {
+  display: inline-block;
+  width: 18px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--eq-surface-2);
+  border: 1px solid var(--eq-border-strong);
+}
+
+.mm-key__ring {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2.5px solid var(--jg-pf-practice);
+}
+
+.mm-key__ring--flow {
+  border-color: var(--jg-pf-flow);
+}
+
+.mm-key__zig {
+  fill: none;
+  stroke: var(--eq-border-strong);
+  stroke-width: 1.6;
+}
+
+.mm-ro__a {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 8px;
+  min-height: 44px;
+}
+
+.mm-ro__a-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--eq-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.mm-ro__btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mm-ro__btn {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  display: inline-grid;
+  place-items: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--eq-ink);
+  cursor: pointer;
+}
+
+.mm-ro__btn:not(:disabled):hover {
+  background: var(--eq-surface-3);
+}
+
+.mm-ro__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.mm-ro__btn:focus-visible,
+.mm-pg-btn:focus-visible,
+.mm-list-btn:focus-visible,
+.mm-more-btn:focus-visible,
+.mm-retry:focus-visible {
+  outline: 2px solid var(--eq-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Row B is the set in 32px, on one 40px line; row C two 20px lines under it
+   (44 + 40 + 40 + 4px of padding = the slot's 128). */
+.mm-ro__b {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 12px;
+  min-height: 40px;
+}
+
+.mm-ro__fig {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 40px;
+  font-variant-numeric: tabular-nums;
+  color: var(--eq-ink);
+}
+
+.mm-ro__mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--eq-ink-2);
+}
+
+.mm-ro__c {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--eq-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.mm-ro__event {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--eq-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.mm-ro__event > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* ---------- glyph colours (the note key, the set-up sliders) ---------- */
+
+.mm-g--ink2 {
+  color: var(--eq-ink-2);
+}
+
+.mm-g--warn {
+  color: var(--eq-warn);
+}
+
+.mm-g--alert {
+  color: var(--eq-alert);
+}
+
+.mm-g--muted {
+  color: var(--eq-ink-muted);
+}
+
+.mm-star {
+  color: var(--jg-q-star);
+}
+
+.mm-kaizen {
+  color: var(--jg-q-poor);
+}
+
+/* ---------- the plot -------------------------------------------------- */
+
+/* A vertical drag scrolls the card; nothing else is a gesture here. */
+.mm-plot {
+  margin-top: 4px;
+  touch-action: pan-y;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  border-radius: 8px;
+}
+
+.mm-plot:focus-visible {
+  outline: 2px solid var(--eq-focus-ring);
+  outline-offset: 2px;
+}
+
+.mm-plot svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* Words in the plot: the gutter, the lanes, the wall. */
+.mm-t {
+  font-size: 14px;
+  fill: var(--eq-ink-muted);
+}
+
+.mm-t--ink2 {
+  fill: var(--eq-ink-2);
+}
+
+.mm-t--bold {
+  font-weight: 700;
+}
+
+.mm-t--practice {
+  fill: var(--jg-pf-practice);
+}
+
+.mm-t--flow {
+  fill: var(--jg-pf-flow);
+}
+
+/* The load printed above its dot. */
+.mm-wl {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  fill: var(--eq-live-text);
+}
+
+/* A rep count, printed as the mark. */
+.mm-cn {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  fill: var(--eq-ink);
+}
+
+.mm-cn--side {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.mm-cn--hold {
+  font-size: 18px;
+}
+
+.mm-cn--muted {
+  fill: var(--eq-ink-muted);
+}
+
+/* The date row. */
+.mm-dl {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  fill: var(--eq-ink-2);
+}
+
+.mm-dl--today {
+  fill: var(--eq-hero-text);
+  font-weight: 600;
+}
+
+.mm-dl--on {
+  fill: var(--eq-live-on);
+  font-weight: 600;
+}
+
+.mm-today-bar {
+  fill: var(--eq-hero);
+}
+
+/* The rep chips: the grid's own boxes. */
+.mm-chip--done {
+  fill: var(--jg-q-done-fill);
+  stroke: var(--jg-q-done-edge);
+  stroke-width: 1;
+}
+
+.mm-chip--max {
+  fill: var(--jg-q-max-fill);
+  stroke: var(--jg-q-max-edge);
+  stroke-width: 1;
+}
+
+.mm-chip--poor {
+  fill: var(--jg-q-poor-fill);
+}
+
+.mm-chip__poor-edge {
+  fill: none;
+  stroke: var(--jg-q-poor);
+  stroke-width: 2;
+}
+
+.mm-hatch-line {
+  stroke: var(--jg-q-poor-hatch);
+}
+
+.mm-chip--practice {
+  fill: var(--eq-surface);
+  stroke: var(--eq-border-strong);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+}
+
+/* The weight line and its dots. */
+.mm-line {
+  fill: none;
+  stroke: var(--eq-live);
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.mm-line--carry {
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+  stroke-linecap: butt;
+}
+
+.mm-dot {
+  fill: var(--eq-live);
+}
+
+.mm-ring--practice {
+  fill: var(--eq-surface);
+  stroke: var(--jg-pf-practice);
+  stroke-width: 2.5;
+}
+
+.mm-ring--flow {
+  fill: var(--eq-surface);
+  stroke: var(--jg-pf-flow);
+  stroke-width: 2.5;
+}
+
+.mm-hair {
+  fill: none;
+  stroke: var(--eq-border-strong);
+  stroke-width: 1.5;
+}
+
+.mm-bar {
+  fill: none;
+  stroke: var(--eq-border-strong);
+  stroke-width: 2;
+}
+
+/* The selected session: washed, outlined, its date in a pill. */
+.mm-wash {
+  fill: var(--eq-live-fill);
+}
+
+.mm-sel {
+  fill: none;
+  stroke: var(--eq-live);
+  stroke-width: 2;
+}
+
+.mm-pill {
+  fill: var(--eq-live);
+}
+
+/* Set-up: alternate stretches shaded, the band, the boundary's rule. */
+.mm-shade {
+  fill: var(--eq-surface-2);
+}
+
+.mm-band {
+  fill: var(--eq-surface-2);
+  stroke: var(--eq-border-strong);
+  stroke-width: 1;
+}
+
+.mm-band--away {
+  fill: var(--eq-surface);
+}
+
+.mm-hatch-away {
+  stroke: var(--eq-border-strong);
+}
+
+.mm-cell {
+  fill: var(--eq-surface);
+}
+
+.mm-rule {
+  fill: none;
+  stroke: var(--eq-border-strong);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+/* A folded gap and the start wall. */
+.mm-fold {
+  fill: var(--eq-surface);
+}
+
+.mm-zig {
+  fill: none;
+  stroke: var(--eq-border-strong);
+  stroke-width: 1.5;
+}
+
+.mm-wall {
+  fill: none;
+  stroke: var(--eq-border-strong);
+  stroke-width: 2;
+}
+
+/* Two items in one lane column: the loudest glyph and a count. */
+.mm-badge {
+  fill: var(--eq-ink-2);
+}
+
+.mm-badge-t {
+  font-size: 14px;
+  font-weight: 700;
+  fill: var(--eq-surface);
+}
+
+/* A whole-column tap target: 52px wide, the plot's full height. */
+.mm-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+
+/* ---------- the controls row: Older, the overview strip, Newer -------- */
+
+.mm-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  margin-top: 8px;
+}
+
+.mm-pg-btn {
+  flex: none;
+  min-width: 112px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--eq-ink);
+  cursor: pointer;
+}
+
+.mm-pg-btn:not(:disabled):hover {
+  background: var(--eq-surface-3);
+}
+
+.mm-pg-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.mm-ctrl__msg {
+  margin: 4px 0 0;
+  font-size: 15px;
+  color: var(--eq-ink-2);
+}
+
+/* The overview strip: calendar time, oldest loaded to today. */
+.mm-ov {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border-radius: 8px;
+  touch-action: pan-y;
+  cursor: pointer;
+}
+
+.mm-ov svg {
+  display: block;
+}
+
+.mm-ov__line {
+  fill: none;
+  stroke: var(--eq-live);
+  stroke-width: 1.5;
+}
+
+.mm-ov__tick {
+  fill: var(--eq-ink-2);
+}
+
+.mm-ov__tick--uncounted {
+  fill: var(--eq-ink-muted);
+}
+
+.mm-ov__under {
+  fill: var(--eq-live-fill);
+}
+
+/* Only the box is dragged, so only the box takes the finger. */
+.mm-ov__box {
+  fill: none;
+  stroke: var(--eq-live);
+  stroke-width: 2;
+  touch-action: none;
+}
+
+/* ---------- before Journey, and the two lists ------------------------- */
+
+.mm-before {
+  margin: 8px 0 0;
+  min-height: 40px;
+  font-size: 15px;
+  line-height: 1.35;
+  color: var(--eq-ink-2);
+}
+
+.mm-retry {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--eq-ink);
+  cursor: pointer;
+}
+
+.mm-retry:hover {
+  background: var(--eq-surface-3);
+}
+
+.mm-lists {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.mm-list-btn {
+  flex: 1 1 200px;
+  min-height: 48px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--eq-ink);
+  cursor: pointer;
+}
+
+.mm-list-btn:hover {
+  background: var(--eq-surface-3);
+}
+
+.mm-list-btn[aria-expanded="true"],
+.mm-list-btn[aria-expanded="true"]:hover {
+  background: var(--eq-live-fill);
+  border-color: var(--eq-live);
+  color: var(--eq-live-text);
+}
+
+.mm-listbody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 10px;
+  min-width: 0;
+}
+
+/* Every session: a table, newest first. Its own box scrolls sideways on a
+   phone; the card never does. */
+.mm-sess-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--eq-border);
+  border-radius: 12px;
+}
+
+.mm-sess {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 15px;
+  color: var(--eq-ink);
+}
+
+.mm-sess__h {
+  height: 40px;
+  padding: 0 10px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--eq-ink-muted);
+  background: var(--eq-surface-2);
+  border-bottom: 1px solid var(--eq-border);
+}
+
+.mm-sess__c {
+  height: 48px;
+  padding: 4px 10px;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--eq-border);
+  overflow-wrap: anywhere;
+}
+
+.mm-sess__num {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.mm-more-btn {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--eq-ink);
+  cursor: pointer;
+}
+
+.mm-more-btn:hover {
+  background: var(--eq-surface-3);
+}
+
+/* Weight by weight: one line a run, newest first. */
+.mm-runs {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.mm-run {
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--eq-border);
+  font-size: 16px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+.mm-run__w {
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.mm-run-div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 14px;
+  color: var(--eq-ink-muted);
+}
+
+.mm-run-div::before,
+.mm-run-div::after {
+  content: "";
+  flex: 1;
+  border-top: 1px dashed var(--eq-border-strong);
+}
+
+.mm-run-div__t {
+  flex: none;
+  max-width: 80%;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.mm-runs__foot {
+  margin: 0;
+  font-size: 14px;
+  color: var(--eq-ink-muted);
+}
+
+/* ---------- a phone (under 600px): the same card, tightened ------------ */
+
+@media (max-width: 599px) {
+  .mm-readout {
+    height: auto;
+    min-height: 128px;
+    overflow-y: visible;
+  }
+
+  .mm-pg-btn {
+    min-width: 0;
+  }
+}

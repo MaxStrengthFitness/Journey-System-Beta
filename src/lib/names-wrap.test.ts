@@ -63,6 +63,14 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   { file: "features/trainer-profile/trainer-profile.css", cls: "tp-row__name", what: "a person or client on a My Profile row" },
   { file: "features/client-profile/profile-nav.css", cls: "psub__label", what: "a profile sub-tab's label (two words wrap, as its comment says)" },
   { file: "features/hub-schedule/next-strip.css", cls: "hn-with", what: '"with {trainer}" on the Next 30 minutes strip' },
+  // The machine menu (Oct 2026): the chart block's heading, its sentences,
+  // the tapped session's readout and the two lists.
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-chart__title", what: "the client's name in \"How Avery has done here\"" },
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-chart__state", what: "the client's and the machine's names in the chart's state line" },
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-ro__a-text", what: "the tapped session's trainer and studio in the readout" },
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-ro__event", what: "a note's author and a machine's name in the readout's event line" },
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-sess__c", what: "a trainer and a set-up in Every session's rows" },
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-run-div__t", what: "the machine's name in a fold between Weight by weight's runs" },
 ];
 
 const rulesFor = (entry: (typeof NAME_RULES)[number]) =>
