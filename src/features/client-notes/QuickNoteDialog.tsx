@@ -90,7 +90,7 @@ export function QuickNoteDialog({ open, onOpenChange, client, machines, authTrai
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-2xl max-w-2xl p-6 bg-card border-slate-200 dark:border-slate-800 max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg font-bold uppercase tracking-tight text-foreground font-display italic">
+          <DialogTitle className="flex items-center gap-2 text-foreground">
             <NotebookPen className="h-5 w-5" aria-hidden />
             A note about {clientDisplayName(client, "this client")}
           </DialogTitle>

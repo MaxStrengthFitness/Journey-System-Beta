@@ -734,7 +734,7 @@ export function WrapUpScreen({
           {/* title */}
           <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="px-6 pt-4 pb-1">
             <Kicker>{savedOnThisIpad ? "Wrap-up · session saved on this iPad" : "Wrap-up · session saved"}</Kicker>
-            <h1 className="font-display font-extrabold italic text-ink-d1 text-[30px] uppercase tracking-[0.01em] leading-none mt-2 mb-2 break-words">
+            <h1 className="font-display font-extrabold text-ink-d1 text-[30px] leading-[1.04] mt-2 mb-2 break-words">
               {congratulation(session.id ?? `${client.id}-${todayKey}`, clientFirstName(client))}
             </h1>
             {savedOnThisIpad && (

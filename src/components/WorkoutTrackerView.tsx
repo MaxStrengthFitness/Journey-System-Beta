@@ -3348,7 +3348,7 @@ export function WorkoutTrackerView({
       {isIntroSession && (
         <div className="bg-(--eq-go) p-3 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-(color:--eq-go)/20 border border-white/20 animate-pulse mt-2 mx-4 relative z-40">
           <Sparkles className="w-5 h-5 text-(--eq-go-on)" />
-          <span className="text-(--eq-go-on) font-black uppercase italic tracking-[0.15em] text-xs">
+          <span className="text-(--eq-go-on) font-black uppercase tracking-[0.15em] text-xs">
             NEW CLIENT INTRODUCTORY SESSION: CONVERSATIONAL BASELINE
           </span>
           <Sparkles className="w-5 h-5 text-(--eq-go-on)" />
@@ -3549,7 +3549,7 @@ export function WorkoutTrackerView({
             <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-2">
               <AlertCircle className="w-6 h-6 text-primary-foreground" />
             </div>
-            <h3 className="text-2xl font-black italic uppercase tracking-tight">
+            <h3 className="text-2xl font-black tracking-tight">
               End Session?
             </h3>
             <p className="text-primary-foreground/90 font-medium text-sm leading-relaxed">
@@ -3582,7 +3582,7 @@ export function WorkoutTrackerView({
                   Unassigned Session Actions
                 </p>
                 <Button
-                  className="w-full h-14 rounded-2xl font-black italic uppercase tracking-widest text-sm shadow-lg shadow-primary/20"
+                  className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-sm shadow-lg shadow-primary/20"
                   onClick={() => {
                     setShowEndConfirmation(false);
                     setShowAssignDialog(true);
@@ -3592,7 +3592,7 @@ export function WorkoutTrackerView({
                 </Button>
                 <Button
                   variant="outline"
-                  className="w-full h-14 rounded-2xl font-black italic uppercase tracking-widest text-sm border-2"
+                  className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-sm border-2"
                   onClick={() => {
                     setShowEndConfirmation(false);
                     setPendingAssignSession(currentSession);
@@ -3613,7 +3613,7 @@ export function WorkoutTrackerView({
                 </div>
                 <Button
                   variant="ghost"
-                  className="w-full h-14 rounded-2xl font-black italic uppercase tracking-widest text-sm text-red-600 hover:text-red-700 hover:bg-red-50"
+                  className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-sm text-red-600 hover:text-red-700 hover:bg-red-50"
                   onClick={() => deleteSession(currentSession!.id!)}
                 >
                   <Trash2 className="w-4 h-4 mr-3" /> Delete Session
@@ -3757,7 +3757,7 @@ export function WorkoutTrackerView({
                 <Trash2 className="w-6 h-6" />
               )}
             </div>
-            <h3 className="text-2xl font-black italic uppercase tracking-tight">
+            <h3 className="text-2xl font-black tracking-tight">
               {isDeletingSession
                 ? "Deleting Session..."
                 : "Scrap Active Session?"}

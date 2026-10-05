@@ -765,7 +765,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
             </button>
           )}
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase italic text-white flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tighter text-white flex items-center gap-2">
               OCR Legacy Pipeline
             </h1>
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">
@@ -987,7 +987,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                       <div className="w-20 h-20 bg-slate-900/50 rounded-full flex items-center justify-center mb-6">
                         <History className="w-10 h-10 text-slate-700" />
                       </div>
-                      <h3 className="text-lg font-black text-slate-500 uppercase tracking-widest mb-2 italic">Idle - Waiting for Feed</h3>
+                      <h3 className="text-lg font-black text-slate-500 mb-2">Idle - Waiting for Feed</h3>
                       <p className="text-xs text-slate-600 max-w-xs leading-relaxed">
                         Enter target session count and upload high-resolution scans to initiate the multimodal clinical extraction pipeline.
                       </p>
@@ -1105,7 +1105,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                         <thead>
                           <tr>
                             <th className="sticky left-0 z-20 bg-[#0A2E46] border-r border-b border-slate-700 w-50 p-2 text-left">
-                              <span className="text-[11px] font-black italic uppercase text-[#F06C22]">Machine / Session</span>
+                              <span className="text-[11px] font-black uppercase text-[#F06C22]">Machine / Session</span>
                             </th>
                             {validationSessions.map(session => (
                               <th key={session.id} className={cn(

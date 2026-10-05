@@ -322,7 +322,7 @@ export function EditTrainerModal({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-137.5 bg-card text-foreground border border-slate-200 dark:border-slate-800 shadow-2xl rounded-3xl overflow-y-auto max-h-[90dvh]">
         <DialogHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
-          <DialogTitle className="text-2xl font-black italic uppercase text-foreground tracking-widest flex items-center gap-2">
+          <DialogTitle className="text-foreground flex items-center gap-2">
             <Users2 className="w-6 h-6 text-primary" />
             Edit Trainer Profile
           </DialogTitle>
@@ -773,7 +773,7 @@ export function EditTrainerModal({
 
               {/* Complex Studio Involvements */}
               <div className="space-y-4 pt-2">
-                <h4 className="text-xs font-black uppercase italic tracking-widest text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-1.5 flex items-center gap-1.5">
+                <h4 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-1.5 flex items-center gap-1.5">
                   <Building2 className="w-4 h-4 text-primary" />
                   Studio Involvements & Connections
                 </h4>

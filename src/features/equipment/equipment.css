@@ -364,13 +364,15 @@
   min-width: 0;
 }
 .eq-detail__name {
+  font-family: var(--font-display);
   font-size: 22px;
-  font-weight: 900;
-  font-style: italic;
-  letter-spacing: -0.02em;
-  text-transform: uppercase;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: 0;
+  text-transform: none;
   line-height: 1.05;
   color: var(--eq-ink);
+  overflow-wrap: anywhere;
 }
 .eq-detail__sub {
   display: flex;

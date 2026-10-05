@@ -98,10 +98,10 @@
   font-family: var(--font-display);
   font-size: 17px;
   font-weight: 800;
-  font-style: italic;
+  font-style: normal;
   line-height: 1.1;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  text-transform: none;
+  letter-spacing: 0;
 }
 .msh__sect-name svg { flex: none; color: var(--st-ink-muted); }
 

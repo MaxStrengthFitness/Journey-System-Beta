@@ -479,12 +479,16 @@ describe("My Studio's type", () => {
     }
   });
 
+  // Moved on purpose (type and depth, phase 12, Oct 4 2026; AJ's 1A): the
+  // section name was the display face's slanted capitals. It is the display
+  // face UPRIGHT now, in its own capitalisation ("Relay", "Openings"); the
+  // slant is the studio name's and Start session's alone.
   it("titles the header's section in the page-title voice (it was the masthead's title until Sep 28 2026)", () => {
     const [title] = rulesFor("msh__sect-name").filter((r) => r.selectors.includes(".msh__sect-name"));
     expect(declared(title.body, "font-family")).toEqual(["var(--font-display)"]);
     expect(declared(title.body, "font-weight")).toEqual(["800"]);
-    expect(declared(title.body, "font-style")).toEqual(["italic"]);
-    expect(declared(title.body, "text-transform")).toEqual(["uppercase"]);
+    expect(declared(title.body, "font-style")).toEqual(["normal"]);
+    expect(declared(title.body, "text-transform")).toEqual(["none"]);
   });
 
   /*

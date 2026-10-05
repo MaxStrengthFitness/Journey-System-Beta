@@ -866,10 +866,11 @@
   margin: 0;
   font-family: var(--wk-font-display);
   font-size: 30px;
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
-  text-transform: uppercase;
-  line-height: 1;
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1.04;
   color: var(--wk-ink);
   overflow-wrap: anywhere;
 }

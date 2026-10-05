@@ -873,7 +873,7 @@ export function SessionDetailDialog({
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent className="max-w-md sm:max-w-md rounded-3xl p-6">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="w-6 h-6 text-red-500" />
               Delete session?
             </DialogTitle>

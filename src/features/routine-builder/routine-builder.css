@@ -69,10 +69,10 @@
   overflow-wrap: anywhere;
   flex: 0 1 auto;
   font-family: var(--rb-font-display);
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  text-transform: none;
+  letter-spacing: 0;
   font-size: 0.95rem;
   color: var(--rb-ink);
   white-space: normal;
@@ -170,9 +170,9 @@
   flex: 1 1 auto;
   min-width: 0;
   font-family: var(--rb-font-display);
-  font-style: italic;
+  font-style: normal;
   font-weight: 700;
-  text-transform: uppercase;
+  text-transform: none;
   font-size: 0.78rem;
   letter-spacing: 0.02em;
 }
@@ -287,7 +287,7 @@
 
 .rb-row__pos {
   font-family: var(--rb-font-display);
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
   font-size: 0.8rem;
   color: var(--rb-hero-text);
@@ -299,11 +299,13 @@
 
 .rb-row__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0.05rem; }
 
+/* A machine's name: the display face upright, in its own capitalisation
+   (type and depth, phase 12; AJ's 1A), as on the rest of the floor. */
 .rb-row__name {
   font-family: var(--rb-font-display);
-  font-style: italic;
+  font-style: normal;
   font-weight: 700;
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0.02em;
   font-size: 0.85rem;
   color: var(--rb-ink);
@@ -339,7 +341,7 @@
   font-variant-numeric: tabular-nums;
   padding-right: 0.15rem;
 }
-.rb-row__hist b { font-size: 0.9rem; font-weight: 800; font-style: italic; color: var(--rb-ink-2); }
+.rb-row__hist b { font-size: 0.9rem; font-weight: 800; color: var(--rb-ink-2); }
 .rb-row__hist span { font-size: 0.6rem; color: var(--rb-ink-faint); text-transform: uppercase; letter-spacing: 0.05em; }
 .rb-row__hist--empty b { color: var(--rb-ink-faint); }
 
@@ -587,9 +589,9 @@
 .rb-sug__body { flex: 1 1 auto; min-width: 0; }
 .rb-sug__name {
   font-family: var(--rb-font-display);
-  font-style: italic;
+  font-style: normal;
   font-weight: 700;
-  text-transform: uppercase;
+  text-transform: none;
   font-size: 0.8rem;
   letter-spacing: 0.02em;
   display: flex;
@@ -658,9 +660,9 @@
   flex: 1 1 auto;
   min-width: 0;
   font-family: var(--rb-font-display);
-  font-style: italic;
+  font-style: normal;
   font-weight: 700;
-  text-transform: uppercase;
+  text-transform: none;
   font-size: 0.78rem;
   letter-spacing: 0.02em;
   white-space: normal;

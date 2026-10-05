@@ -72,6 +72,11 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   { file: "features/hub-schedule/hub-grid.css", cls: "hs-colname", exact: ".hs-colname strong", what: "a trainer's name heading a lane on the Hub (Saira 17)" },
   { file: "features/hub-schedule/peek.css", cls: "hp-name", what: "the client's name on the Hub's peek (Saira 22)" },
   { file: "features/hub-schedule/hub-card.css", cls: "hs-card-name", what: "the client's name on a Hub booking" },
+  // Type and depth, phase 12 (Oct 4 2026): names set upright in the display
+  // face, in their own capitalisation, wrap like every name.
+  { file: "features/briefing/briefing.css", cls: "br__name", what: "the client's name on the briefing (Saira 22-30, upright)" },
+  { file: "features/equipment/equipment.css", cls: "eq-detail__name", what: "a machine's name on its detail panel (Saira 22, upright)" },
+  { file: "features/trainer-profile/trainer-profile.css", cls: "tp-identity__name", what: "the trainer's name on My Profile (Saira 22-30, upright)" },
 ];
 
 const rulesFor = (entry: (typeof NAME_RULES)[number]) =>

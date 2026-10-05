@@ -277,10 +277,11 @@
   background: var(--cal-bg);
 }
 .hist-year__num {
+  font-family: var(--font-display);
   font-size: 22px;
-  font-weight: 900;
-  font-style: italic;
-  letter-spacing: -0.02em;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: 0;
   line-height: 1;
   color: var(--cal-ink);
 }
@@ -599,12 +600,12 @@
 .hist-list { display: flex; flex-direction: column; gap: 14px; }
 .hist-lmonth { display: flex; flex-direction: column; gap: 6px; scroll-margin-top: 6px; }
 .hist-lmonth__name {
-  font-size: 18px;
-  font-weight: 900;
-  font-style: italic;
+  font-size: 17px;
+  font-weight: 800;
+  font-style: normal;
   letter-spacing: -0.01em;
-  text-transform: uppercase;
-  line-height: 1;
+  text-transform: none;
+  line-height: 1.25;
   color: var(--cal-ink);
 }
 .hist-lmonth__year {
@@ -705,9 +706,9 @@
   border-radius: 6px;
   background: var(--cal-ink);
   color: var(--cal-surface);
-  font-size: 11px;
-  font-weight: 900;
-  font-style: italic;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 800;
   line-height: 1;
 }
 .hist-routine--none { background: var(--cal-surface-3); color: var(--cal-ink-muted); font-style: normal; }
@@ -885,12 +886,12 @@
 }
 .hsd-head__title { flex: 1 1 220px; min-width: 0; }
 .hsd-head__day {
-  font-size: 18px;
-  font-weight: 900;
-  font-style: italic;
-  letter-spacing: -0.01em;
-  text-transform: uppercase;
-  line-height: 1.1;
+  font-size: 22px;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: -0.015em;
+  text-transform: none;
+  line-height: 1.2;
   color: var(--cal-ink);
 }
 .hsd-head__sub {

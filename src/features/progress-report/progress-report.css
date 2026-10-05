@@ -86,12 +86,10 @@
 /* Never `text-overflow: ellipsis` here: a name that doesn't fit wraps. */
 .pr-step__title {
   min-width: 0;
-  font-size: 13px;
-  font-weight: 900;
-  font-style: italic;
-  text-transform: uppercase;
-  letter-spacing: -0.01em;
-  line-height: 1.1;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.2;
   white-space: normal;
   overflow-wrap: normal;
 }
@@ -109,7 +107,7 @@
 }
 @media (max-width: 480px) {
   .pr-step { padding: 8px 6px; }
-  .pr-step__title { font-size: 11px; }
+  .pr-step__title { font-size: 12px; }
   .pr-step__n { width: 18px; height: 18px; font-size: 10px; }
 }
 
@@ -254,11 +252,10 @@
   align-items: center;
   gap: 12px;
   margin: 0 0 24px;
-  font-size: 24px;
-  font-weight: 700;
-  font-style: italic;
-  text-transform: uppercase;
-  letter-spacing: -0.04em;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
   color: var(--pr-ink);
 }
 .pr-card__title > svg { flex: none; color: var(--pr-accent, var(--pr-hero)); }
@@ -425,7 +422,6 @@
   margin-top: 12px;
   font-size: 15px;
   font-weight: 900;
-  font-style: italic;
   letter-spacing: 0.02em;
   color: var(--pr-on-navy-muted);
 }

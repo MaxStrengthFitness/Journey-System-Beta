@@ -1734,7 +1734,7 @@ export function ClientProfileView({
               className="rounded-2xl max-w-md p-6 bg-card border-slate-200 dark:border-slate-800"
             >
               <DialogHeader>
-                <DialogTitle className="text-lg font-bold uppercase tracking-tight text-slate-950 dark:text-white font-display italic">
+                <DialogTitle className="text-foreground">
                   Reason Required for Protocol B Change
                 </DialogTitle>
                 <DialogDescription className="text-xs text-slate-500 mt-1">
@@ -1931,7 +1931,7 @@ export function ClientProfileView({
                 <Trash2 className="w-6 h-6" />
               )}
             </div>
-            <h3 className="text-2xl font-black italic uppercase tracking-tight">
+            <h3 className="text-2xl font-black tracking-tight">
               {isDiscardingActiveSession
                 ? "Discarding Session..."
                 : discardTarget && discardTarget.id !== activeInProgressSession?.id
@@ -2006,7 +2006,7 @@ export function ClientProfileView({
           className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-card shadow-2xl p-6 sm:max-w-xs text-foreground"
         >
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold uppercase italic tracking-tighter">
+            <DialogTitle>
               Sessions before Journey
             </DialogTitle>
             <DialogDescription className="text-xs uppercase tracking-widest text-primary font-bold">

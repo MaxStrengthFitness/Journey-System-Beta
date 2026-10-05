@@ -78,7 +78,7 @@
   color: var(--cx-ink-3);
   font-family: var(--cx-font-display);
   font-size: var(--cx-fs-30);
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
   line-height: 1;
 }

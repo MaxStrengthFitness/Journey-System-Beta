@@ -63,7 +63,7 @@ export function StaleSessionDialog({
     <Dialog open={open} onOpenChange={(v) => !v && onStartNew()}>
       <DialogContent className="sm:max-w-120 rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
         <div className="bg-card p-8 text-foreground space-y-3">
-          <DialogTitle className="text-2xl font-black italic uppercase tracking-tight">
+          <DialogTitle>
             {clientFirstName} has an unfinished session
           </DialogTitle>
           <DialogDescription className="text-foreground font-medium text-base leading-relaxed">

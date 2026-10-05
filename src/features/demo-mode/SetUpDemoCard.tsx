@@ -92,7 +92,7 @@ export function SetUpDemoCard({
         <FlaskConical className="w-4 h-4" />
       </span>
 
-      <h4 className="font-extrabold uppercase italic tracking-tight text-lg text-ink-d1 mb-1 leading-tight break-words">
+      <h4 className="font-extrabold tracking-tight text-lg text-ink-d1 mb-1 leading-tight break-words">
         {DEMO_STUDIO_NAME}
       </h4>
 

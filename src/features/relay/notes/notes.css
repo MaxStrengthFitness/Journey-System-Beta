@@ -1123,7 +1123,7 @@
   border-top: 1px solid var(--st-border);
 }
 .ne__publish-head > svg { flex: none; margin-top: 2px; color: var(--st-live); }
-/* A section head: small upright capitals (slanted ones are a page title's). */
+/* A section head: small upright capitals. */
 .ne__publish-title {
   margin: 0;
   font-size: 12px;

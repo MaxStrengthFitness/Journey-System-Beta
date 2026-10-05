@@ -35,7 +35,7 @@ export function ClientSelectionDialog({
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
       <DialogContent className="sm:max-w-112.5 rounded-3xl p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-2">
-          <DialogTitle className="text-2xl font-black uppercase italic tracking-tight">
+          <DialogTitle>
             {title}
           </DialogTitle>
           <DialogDescription className="font-bold text-xs">

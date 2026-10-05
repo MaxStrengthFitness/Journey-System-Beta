@@ -144,7 +144,7 @@ button.fordpg-cu {
   color: var(--cx-ink-2);
   font-family: var(--cx-font-display);
   font-size: var(--cx-fs-30);
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
   line-height: 1;
 }

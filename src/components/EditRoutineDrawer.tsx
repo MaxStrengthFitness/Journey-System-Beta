@@ -547,7 +547,7 @@ export function EditRoutineDrawer({
         <DialogHeader className="p-5 sm:p-6 pb-4 border-b border-div-l shrink-0 space-y-4 max-h-[42dvh] overflow-y-auto overscroll-contain touch-pan-y">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <DialogTitle className="text-xl font-bold uppercase tracking-tight text-slate-900 dark:text-neutral-100 italic font-display">
+              <DialogTitle className="text-foreground">
                 Edit Routine
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500 mt-1">
@@ -802,7 +802,7 @@ export function EditRoutineDrawer({
             visible above an on-screen tablet keyboard. */}
         <div className="border-t border-div-l shrink-0 bg-card">
           <div className="px-5 sm:px-6 pt-4 pb-3">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-neutral-350 mb-2 font-display">
+            <label className="block text-[14px] font-bold text-ink-d2 mb-2">
               Notes — Why are you making this change?{" "}
               <span className="text-red-500">*</span>
             </label>

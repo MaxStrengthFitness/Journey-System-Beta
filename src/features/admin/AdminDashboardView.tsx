@@ -383,7 +383,7 @@ function OperationsShell({
           return (
             <div className="flex flex-col gap-4">
               {/* The calm round (Oct 3 2026): how a detail becomes a gesture is the empty list's own line, not a paragraph above it too. */}
-              <h2 className="font-display text-xl font-black uppercase italic tracking-tight text-foreground">Moments</h2>
+              <h2 className="text-[22px] font-extrabold leading-tight tracking-[-0.015em] text-foreground">Moments</h2>
               {ops.scope.kind === "all" ? (
                 <PickOneStudio what="The Delight queue" />
               ) : (

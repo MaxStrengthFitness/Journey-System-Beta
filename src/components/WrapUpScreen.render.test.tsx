@@ -1005,9 +1005,13 @@ describe("the Wrap-up follows the theme, and keeps its confetti", () => {
   it("heads its cards in small upright capitals, and titles the page in the codex voice", async () => {
     const host = await mount(<FullScreen />);
     const title = host.querySelector("h1")!;
-    expect(title.className.split(/\s+/)).toEqual(
-      expect.arrayContaining(["font-display", "font-extrabold", "italic", "uppercase", "text-[30px]", "break-words"]),
-    );
+    // Moved on purpose (type and depth, phase 12, Oct 4 2026; AJ's 1A): the
+    // title was the display face's slanted capitals. It is the codex's page
+    // title now, the display face upright at 30/800 in its own capitalisation.
+    const titleClasses = title.className.split(/\s+/);
+    expect(titleClasses).toEqual(expect.arrayContaining(["font-display", "font-extrabold", "text-[30px]", "break-words"]));
+    expect(titleClasses).not.toContain("italic");
+    expect(titleClasses).not.toContain("uppercase");
     const head = Array.from(host.querySelectorAll("div")).find((d) => d.textContent === "The journey")!;
     const cls = head.className.split(/\s+/);
     expect(cls).toEqual(expect.arrayContaining(["uppercase", "font-extrabold", "text-[12px]", "text-ink-d2"]));

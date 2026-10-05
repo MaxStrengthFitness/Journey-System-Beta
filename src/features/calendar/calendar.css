@@ -815,13 +815,17 @@
   color: var(--cal-live-text);
   flex: 0 0 auto;
 }
+/* The calendar's (and History's) own title in its bar: the display face
+   upright at 22, in its own capitalisation (type and depth, phase 12; AJ's
+   1A). It was a Geist 900 slanted by the browser, in capitals. */
 .cal-header__name {
-  font-size: 19px;
-  font-weight: 900;
-  font-style: italic;
-  letter-spacing: -0.02em;
-  text-transform: uppercase;
-  line-height: 1;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.04;
   color: var(--cal-ink);
 }
 .cal-header__sub {

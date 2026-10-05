@@ -506,7 +506,7 @@ export function ConsultationWizard({
           </div>
 
           <div className="bg-[#115E8D]/20 border border-[#115E8D] rounded-xl p-4 mb-6">
-            <p className="text-lg italic font-black uppercase tracking-tight text-[#38BDF8]">
+            <p className="text-lg italic font-bold tracking-tight text-[#38BDF8]">
               "Are you ready to take a look?"
             </p>
           </div>
@@ -546,7 +546,7 @@ export function ConsultationWizard({
                               setRoutine(newRoutine);
                             }}
                           >
-                            <SelectTrigger className="bg-transparent border-none text-3xl font-black uppercase italic tracking-tighter text-[#0F172A] leading-none mb-1 w-full p-0 shadow-none h-auto focus:ring-0 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:ml-2">
+                            <SelectTrigger className="bg-transparent border-none font-display text-3xl font-extrabold text-[#0F172A] leading-none mb-1 w-full p-0 shadow-none h-auto focus:ring-0 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:ml-2">
                               <SelectValue placeholder="Select Machine" />
                             </SelectTrigger>
                             <SelectContent className="max-h-75">

@@ -179,7 +179,7 @@ export function ConsultationSetupWizard({
                     <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between">
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div className="pr-0 sm:pr-4 flex-1">
-                          <h3 className="text-2xl sm:text-3xl font-black uppercase italic tracking-tighter text-ink-d1 leading-none mb-2">
+                          <h3 className="font-display text-2xl sm:text-3xl font-extrabold text-ink-d1 leading-none mb-2">
                             {machine.name}
                           </h3>
                           <p className="text-xs font-bold text-ink-d3 tracking-wide uppercase flex items-center gap-2 mt-2 leading-relaxed">

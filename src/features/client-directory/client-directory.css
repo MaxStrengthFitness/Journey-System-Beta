@@ -689,6 +689,9 @@
   cursor: pointer;
 }
 
+/* The information mark: a lower-case "i" set italic IS the sign, the one
+   slant in Geist that is not a fake (type and depth, phase 12). 700, a quiet
+   line's weight, not a heading's. */
 .cd-why-mark {
   display: inline-flex;
   align-items: center;
@@ -699,7 +702,7 @@
   border: 1.5px solid var(--eq-live);
   color: var(--eq-live-text);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   font-style: italic;
 }
 

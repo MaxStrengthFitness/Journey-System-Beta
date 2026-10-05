@@ -96,7 +96,7 @@ export function FeedbackDrawer({
         className="rounded-t-[28px] border-t border-border bg-card p-0 max-h-[92dvh] overflow-y-auto"
       >
         <SheetHeader className="px-5 pt-5 pb-3 sm:px-7">
-          <SheetTitle className="text-xl sm:text-2xl font-black italic tracking-tight uppercase text-foreground">
+          <SheetTitle className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
             Help us build this
           </SheetTitle>
           <SheetDescription className="text-muted-foreground font-bold uppercase text-[10px] sm:text-[11px] tracking-widest">

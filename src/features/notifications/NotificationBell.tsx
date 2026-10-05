@@ -221,7 +221,7 @@ export function NotificationBell({
           className="bg-card p-0 flex flex-col sm:max-w-md"
         >
           <SheetHeader className="px-5 pt-5 pb-3 border-b border-border">
-            <SheetTitle className="text-xl font-black italic tracking-tight uppercase text-foreground">
+            <SheetTitle className="text-xl font-black tracking-tight text-foreground">
               Notifications
             </SheetTitle>
             <SheetDescription className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest">
@@ -250,7 +250,7 @@ export function NotificationBell({
                         ].join(" ")}
                       >
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-sm font-black italic uppercase tracking-tight text-foreground">
+                          <span className="text-sm font-black tracking-tight text-foreground">
                             {a.title}
                           </span>
                           {a.priority === "high" && (

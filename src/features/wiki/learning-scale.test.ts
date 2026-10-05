@@ -204,16 +204,57 @@ describe("Learning's text is on the codex's scale", () => {
     },
   );
 
-  it.each([".wk__mast-title", ".wk__index-title", ".wk__h1", ".lh__title", ".lh__h2", ".mcat-body__title"])(
-    "gives the title %s the display face at 800, in italic capitals",
+  /*
+   * Moved on purpose (type and depth, phase 12, Oct 4 2026; AJ's 1A): these
+   * titles were the display face in italic capitals. A page title, a room's
+   * title and a region's title are now the display face UPRIGHT, in their own
+   * capitalisation; the slanted capitals are the studio name's and Start
+   * session's alone. The section title (.lh__h2) left the display face for
+   * Geist 22/800, the codex's .cx-section-head.
+   */
+  it.each([".wk__mast-title", ".wk__index-title", ".wk__h1", ".lh__title", ".mcat-body__title"])(
+    "gives the title %s the display face at 800, upright, in its own capitalisation",
     (selector) => {
       const body = typeRule(selector).body;
       expect(body).toMatch(/font-family:\s*var\(--wk-font-display\)/);
       expect(body).toMatch(/font-weight:\s*800/);
-      expect(body).toMatch(/font-style:\s*italic/);
-      expect(body).toMatch(/text-transform:\s*uppercase/);
+      expect(body).toMatch(/font-style:\s*normal/);
+      expect(body).toMatch(/text-transform:\s*none/);
+      expect(body).not.toMatch(/italic|uppercase/);
     },
   );
+
+  it("sizes the page titles 30 and the masthead's room title 22", () => {
+    for (const sel of [".wk__index-title", ".wk__h1", ".lh__title", ".mcat-body__title"]) {
+      expect(declared(typeRule(sel).body, "font-size"), sel).toBe(30);
+    }
+    expect(declared(typeRule(".wk__mast-title").body, "font-size")).toBe(22);
+  });
+
+  it("writes the section title .lh__h2 in Geist 22/800, in its own capitalisation", () => {
+    const body = typeRule(".lh__h2").body;
+    expect(body).not.toMatch(/font-family/);
+    expect(declared(body, "font-size")).toBe(22);
+    expect(body).toMatch(/font-weight:\s*800/);
+    expect(body).not.toMatch(/italic|uppercase/);
+  });
+
+  it("draws Learning's facts as headline figures: the display face at 22/800, the words Geist 12", () => {
+    const strong = typeRule(".lh__facts strong").body;
+    expect(strong).toMatch(/font-family:\s*var\(--wk-font-display\)/);
+    expect(declared(strong, "font-size")).toBe(22);
+    expect(strong).toMatch(/font-weight:\s*800/);
+    expect(declared(typeRule(".lh__facts").body, "font-size")).toBe(12);
+  });
+
+  it("draws a machine's code as a jersey tag: the display face at 14/700, ringed in its own ink", () => {
+    const body = typeRule(".wk__row-code").body;
+    expect(body).toMatch(/font-family:\s*var\(--wk-font-display\)/);
+    expect(declared(body, "font-size")).toBe(14);
+    expect(body).toMatch(/font-weight:\s*700/);
+    expect(body).toMatch(/box-shadow:\s*inset 0 0 0 1px color-mix\(in srgb, currentColor 22%, transparent\)/);
+    expect(body).not.toMatch(/italic|uppercase/);
+  });
 
   it("gives Settings' title the display face, upright, as My Profile writes a name", () => {
     const body = typeRule(".stg-head__title").body;

@@ -2029,7 +2029,7 @@ export default function AppContent({
                   <GripVertical className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <DialogTitle className="text-xl font-black uppercase italic tracking-tighter">
+                  <DialogTitle>
                     Team Presence Sorting
                   </DialogTitle>
                   <DialogDescription className="text-[11px] font-bold text-muted-foreground uppercase">
@@ -2059,7 +2059,7 @@ export default function AppContent({
                       <p className="font-black uppercase tracking-tighter text-sm">
                         {trainer.fullName}
                       </p>
-                      <p className="text-[11px] font-bold text-muted-foreground uppercase italic">
+                      <p className="text-[11px] font-bold text-muted-foreground uppercase">
                         {trainer.initials}
                       </p>
                     </div>

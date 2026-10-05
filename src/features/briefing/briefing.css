@@ -152,16 +152,20 @@
   gap: 12px;
 }
 
+/* The client's name: the display face upright, in its own capitalisation
+   (type and depth, phase 12; AJ's 1A). Slanted capitals are the studio's
+   name and Start session's alone. It wraps, never clips. */
 .br__name {
   margin: 0;
   font-family: var(--font-display, inherit);
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
-  text-transform: uppercase;
-  line-height: 1.05;
-  letter-spacing: -0.01em;
+  text-transform: none;
+  line-height: 1.04;
+  letter-spacing: 0;
   font-size: clamp(22px, 3.4vw, 30px);
   color: var(--br-ink);
+  overflow-wrap: anywhere;
 }
 
 .br__meta {
@@ -340,13 +344,14 @@
   color: var(--br-ink);
 }
 
+/* "Routine A": a routine's name, the display face upright (phase 12). */
 .br__routine-name {
   font-family: var(--font-display, inherit);
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
   font-size: 14px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
   color: inherit;
 }
 
@@ -897,10 +902,13 @@
 .br-safe--clear .br__before-head,
 .br-safe--clear .br__before-head svg { color: var(--br-ok); }
 
+/* The safety heading read before every session keeps its capitals (the
+   Stack's safety voice, Oct 3 2026) and stands upright (phase 12): the
+   slant is the brand's, and this is a warning, not the brand. */
 .br-safe__clear {
   margin: 0;
   font-family: var(--font-display, inherit);
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
   text-transform: uppercase;
   font-size: 22px;
@@ -958,7 +966,7 @@
 .br-safe__title {
   margin: 0;
   font-family: var(--font-display, inherit);
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
   text-transform: uppercase;
   font-size: 22px;

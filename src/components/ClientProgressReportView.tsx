@@ -175,7 +175,7 @@ function StatValue({
   return (
     <p className={className}>
       {value.toLocaleString()}
-      {unit && <span className="text-[11px] text-(--pr-slate) ml-1 not-italic">{unit}</span>}
+      {unit && <span className="font-sans font-bold text-[11px] text-(--pr-slate) ml-1">{unit}</span>}
     </p>
   );
 }
@@ -944,7 +944,7 @@ export function ClientProgressReportView({
           >
             <Award className="w-12 h-12 text-(--pr-hero)" />
           </motion.div>
-          <h2 className="text-4xl font-bold uppercase italic tracking-tighter text-white">
+          <h2 className="text-4xl font-bold tracking-tighter text-white">
             Initialize Report
           </h2>
           <p className="text-(--pr-slate) font-bold uppercase text-xs tracking-widest leading-relaxed">
@@ -968,7 +968,7 @@ export function ClientProgressReportView({
             <div className="w-14 h-14 rounded-2xl bg-(--pr-hero) flex items-center justify-center mb-6 shadow-lg shadow-(color:--pr-hero)/20 group-hover:scale-110 transition-transform">
               <Zap className="w-7 h-7 text-white" />
             </div>
-            <h3 className="text-xl font-bold uppercase italic mb-2 text-white">
+            <h3 className="text-xl font-bold mb-2 text-white">
               Auto-Populate
             </h3>
             <p className="text-[11px] text-(--pr-slate) font-bold uppercase tracking-widest leading-relaxed">
@@ -989,7 +989,7 @@ export function ClientProgressReportView({
             <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
               <FileText className="w-7 h-7 text-white/40" />
             </div>
-            <h3 className="text-xl font-bold uppercase italic mb-2 text-white">
+            <h3 className="text-xl font-bold mb-2 text-white">
               Manual Entry
             </h3>
             <p className="text-[11px] text-(--pr-slate) font-bold uppercase tracking-widest leading-relaxed">
@@ -1070,7 +1070,7 @@ export function ClientProgressReportView({
               onClick={onBack}
               aria-label="Back to Reports"
               title="Back to Reports"
-              className="h-12 text-white hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
+              className="h-12 text-white hover:bg-white/10 rounded-2xl gap-2 font-bold px-6"
             >
               <ArrowLeft className="w-5 h-5" /> Back
             </Button>
@@ -1088,7 +1088,7 @@ export function ClientProgressReportView({
                     setActiveStep("celebrate");
                     setMode("editing");
                   }}
-                  className="h-12 bg-white text-(--pr-navy) hover:bg-white/90 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6 shadow-none"
+                  className="h-12 bg-white text-(--pr-navy) hover:bg-white/90 rounded-2xl gap-2 font-bold px-6 shadow-none"
                 >
                   <Flag className="w-5 h-5" /> Build the full report
                 </Button>
@@ -1096,7 +1096,7 @@ export function ClientProgressReportView({
                 <Button
                   onClick={() => setMode("editing")}
                   variant="outline"
-                  className="h-12 text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6 shadow-none"
+                  className="h-12 text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-bold px-6 shadow-none"
                 >
                   Edit Data
                 </Button>
@@ -1119,14 +1119,14 @@ export function ClientProgressReportView({
                   window.location.href = `mailto:${client.email || ""}?subject=${subject}&body=${body}`;
                 }}
                 variant="outline"
-                className="h-12 text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6 shadow-none"
+                className="h-12 text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-bold px-6 shadow-none"
                 title="Opens your mail app with the subject filled in — print to PDF first and attach it"
               >
                 <Mail className="w-5 h-5" /> Email
               </Button>
               <Button
                 onClick={() => window.print()}
-                className="h-12 bg-(--pr-hero) hover:bg-(--pr-hero-hover) text-white rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-8 shadow-lg shadow-(color:--pr-hero)/20"
+                className="h-12 bg-(--pr-hero) hover:bg-(--pr-hero-hover) text-white rounded-2xl gap-2 font-bold px-8 shadow-lg shadow-(color:--pr-hero)/20"
               >
                 <Printer className="w-5 h-5" /> Print Report
               </Button>
@@ -1177,7 +1177,7 @@ export function ClientProgressReportView({
             <header className="space-y-3 break-inside-avoid">
               <div className="flex flex-col md:flex-row md:items-end justify-between border-b-2 border-(--pr-hero) pb-4 gap-4">
                 <div>
-                  <h1 className="text-4xl font-bold uppercase italic tracking-tighter leading-none mb-3 print:text-(--pr-navy)">
+                  <h1 className="text-4xl font-bold tracking-tighter leading-none mb-3 print:text-(--pr-navy)">
                     {report.isCheckInOnly ? (
                       <>
                         Client <br />
@@ -1246,7 +1246,7 @@ export function ClientProgressReportView({
                   <p className="text-[7px] font-bold uppercase tracking-[0.4em] text-(--pr-slate) mb-1">
                     Authenticated By
                   </p>
-                  <p className="text-base font-bold uppercase italic tracking-tight print:text-(--pr-navy) leading-none mb-1">
+                  <p className="text-base font-bold tracking-tight print:text-(--pr-navy) leading-none mb-1">
                     {trainer.fullName}
                   </p>
                   <div className="bg-(--pr-hero) px-2 py-0.5 rounded-md">
@@ -1265,7 +1265,7 @@ export function ClientProgressReportView({
                     <div className="bg-(--pr-hero) p-6 rounded-[25px] text-white flex flex-col justify-center items-center text-center shadow-xl shadow-(color:--pr-hero)/30 relative overflow-hidden group min-w-50">
                       <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
                       <Award className="w-8 h-8 mb-2 opacity-50 relative z-10" />
-                      <p className="text-5xl font-bold italic tracking-tighter leading-none relative z-10">
+                      <p className="font-display text-5xl font-extrabold leading-none relative z-10">
                         {realStat(report.attendance.totalSessions)?.toLocaleString() ?? "—"}
                       </p>
                       <p className="text-[11px] font-bold uppercase tracking-widest opacity-90 mt-2 relative z-10">
@@ -1280,7 +1280,7 @@ export function ClientProgressReportView({
                         <p className="text-[11px] font-bold uppercase tracking-widest text-white/80">
                           {sessionWords.first}
                         </p>
-                        <p className="text-[11px] font-bold uppercase tracking-tighter opacity-100 italic">
+                        <p className="text-[11px] font-bold uppercase tracking-tighter opacity-100">
                           {report.attendance.firstSessionDate
                             ? new Date(
                                 parseSessionDate(
@@ -1295,7 +1295,7 @@ export function ClientProgressReportView({
 
                   <div className="flex-1 bg-white/5 backdrop-blur-md p-6 rounded-[25px] border border-white/10 flex flex-col justify-center relative">
                     <Quote className="w-12 h-12 text-(--pr-hero) absolute top-4 right-4 opacity-10" />
-                    <p className="text-lg md:text-xl font-bold italic uppercase tracking-tight leading-tight text-white print:text-(--pr-navy) max-w-[90%]">
+                    <p className="text-lg md:text-xl font-bold italic tracking-tight leading-tight text-white print:text-(--pr-navy) max-w-[90%]">
                       "
                       {report.attendance.narrative ||
                         `Incredible work, ${client.firstName}. Your dedication to this clinical protocol is exactly what drives meaningful biological change.`}
@@ -1314,7 +1314,7 @@ export function ClientProgressReportView({
                       <StatValue
                         value={realStat(report.attendance.totalVolume)}
                         unit="lbs"
-                        className="text-2xl font-bold text-(--pr-navy) italic"
+                        className="font-display text-2xl font-extrabold text-(--pr-navy)"
                       />
                     </div>
                   )}
@@ -1325,7 +1325,7 @@ export function ClientProgressReportView({
                       </h4>
                       <StatValue
                         value={realStat(report.attendance.totalReps)}
-                        className="text-2xl font-bold text-(--pr-navy) italic"
+                        className="font-display text-2xl font-extrabold text-(--pr-navy)"
                       />
                     </div>
                   )}
@@ -1336,7 +1336,7 @@ export function ClientProgressReportView({
                       </h4>
                       <StatValue
                         value={realStat(report.attendance.totalGoodReps)}
-                        className="text-2xl font-bold text-emerald-600 italic"
+                        className="font-display text-2xl font-extrabold text-emerald-600"
                         why="No top-quality sets rated in this window."
                       />
                     </div>
@@ -1349,7 +1349,7 @@ export function ClientProgressReportView({
                       <StatValue
                         value={realStat(report.attendance.avgRestDays)}
                         unit="days"
-                        className="text-2xl font-bold text-(--pr-navy) italic"
+                        className="font-display text-2xl font-extrabold text-(--pr-navy)"
                         why={`Needs ${AVG_REST_MIN_GAPS + 1} sessions in the window.`}
                       />
                     </div>
@@ -1362,7 +1362,7 @@ export function ClientProgressReportView({
                       <StatValue
                         value={realStat(report.attendance.avgDuration)}
                         unit="mins"
-                        className="text-2xl font-bold text-(--pr-navy) italic"
+                        className="font-display text-2xl font-extrabold text-(--pr-navy)"
                         why={`Needs ${AVG_DURATION_MIN_SESSIONS} sessions with a recorded start and end.`}
                       />
                     </div>
@@ -1678,7 +1678,7 @@ export function ClientProgressReportView({
                     {report.id?.slice(-8).toUpperCase() || "SYSTEM-NEW"}
                   </div>
                   <div className="h-px bg-(--pr-hero)/20 w-3/4 ml-auto" />
-                  <div className="text-[12px] font-bold italic text-(--pr-hero) uppercase tracking-[0.2em] leading-none pt-1">
+                  <div className="text-[12px] font-bold text-(--pr-hero) uppercase tracking-[0.2em] leading-none pt-1">
                     Max Strength <br />
                     Professional
                   </div>
@@ -1715,7 +1715,7 @@ export function ClientProgressReportView({
               <ArrowLeft className="w-6 h-6" />
             </Button>
             <div>
-              <h1 className="text-xl font-bold uppercase italic tracking-tighter text-white">
+              <h1 className="text-xl font-bold tracking-tight text-white">
                 Progress Report
               </h1>
               <p className="text-[11px] font-bold text-(--pr-slate) uppercase tracking-widest mt-0.5">
@@ -2121,7 +2121,7 @@ export function ClientProgressReportView({
               {/* Track 1: Maintenance */}
               {report.roadmap?.trackType === "maintenance" && (
                 <div className="bg-white dark:bg-slate-900 border-2 border-blue-500/20 p-6 rounded-[32px] space-y-6">
-                  <h3 className="text-lg font-bold uppercase italic tracking-tighter text-blue-900 dark:text-blue-100 mb-4">
+                  <h3 className="text-lg font-bold tracking-tight text-blue-900 dark:text-blue-100 mb-4">
                     Maintenance Track: Longevity
                   </h3>
 
@@ -2227,7 +2227,7 @@ export function ClientProgressReportView({
               {/* Track 2: Goals */}
               {report.roadmap?.trackType === "goals" && (
                 <div className="bg-white dark:bg-slate-900 border-2 border-blue-500/20 p-6 rounded-[32px] space-y-6">
-                  <h3 className="text-lg font-bold uppercase italic tracking-tighter text-blue-900 dark:text-blue-100 mb-4">
+                  <h3 className="text-lg font-bold tracking-tight text-blue-900 dark:text-blue-100 mb-4">
                     Goal Setting Track: Performance
                   </h3>
 
@@ -2376,7 +2376,7 @@ export function ClientProgressReportView({
               {/* Track 3: Refinement */}
               {report.roadmap?.trackType === "refinement" && (
                 <div className="bg-white dark:bg-slate-900 border-2 border-blue-500/20 p-6 rounded-[32px] space-y-6">
-                  <h3 className="text-lg font-bold uppercase italic tracking-tighter text-blue-900 dark:text-blue-100 mb-4">
+                  <h3 className="text-lg font-bold tracking-tight text-blue-900 dark:text-blue-100 mb-4">
                     Refinement Track: Form & Technique
                   </h3>
 

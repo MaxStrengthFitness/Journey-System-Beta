@@ -17,9 +17,11 @@
 }
 .rk-sheet *, .rk-sheet *::before, .rk-sheet *::after { box-sizing: border-box; }
 
-/* A dialog's title is its page title: the display face's slanted capitals,
-   as the header's section name (my-studio.css .msh__sect-name). It was a faked italic of the
-   body face until Sep 27 2026. */
+/* A dialog's title is its page title: the display face upright, in its own
+   capitalisation, as the header's section name (my-studio.css
+   .msh__sect-name). It was a faked italic of the body face until Sep 27
+   2026, and the display face's slanted capitals until type and depth,
+   phase 12 (AJ's 1A: the slant is the studio name's and Start session's). */
 .rk-title {
   display: flex;
   align-items: center;
@@ -28,10 +30,10 @@
   font-family: var(--font-display);
   font-size: 17px;
   font-weight: 800;
-  font-style: italic;
+  font-style: normal;
   line-height: 1.1;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--st-ink);
   overflow-wrap: anywhere;
 }
@@ -477,8 +479,8 @@
   font-family: var(--font-display);
   font-size: 17px;
   font-weight: 800;
-  font-style: italic;
-  letter-spacing: 0.02em;
+  font-style: normal;
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }

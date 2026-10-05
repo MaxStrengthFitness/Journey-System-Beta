@@ -1057,7 +1057,7 @@
 @media (min-width: 700px) { .pq-dialog__panel { border-radius: 18px; } }
 .pq-dialog__head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--sr-border); background: var(--sr-surface); }
 .pq-dialog__mark { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: var(--sr-navy-fill); color: var(--sr-navy); flex: none; }
-.pq-dialog__title { margin: 0; font-size: 15px; font-weight: 900; text-transform: uppercase; font-style: italic; letter-spacing: -0.01em; color: var(--sr-ink); }
+.pq-dialog__title { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.25; letter-spacing: -0.01em; color: var(--sr-ink); }
 .pq-dialog__sub { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sr-ink-muted); }
 .pq-dialog__close { margin-left: auto; flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: none; border-radius: 12px; background: var(--sr-surface-2); color: var(--sr-ink-2); cursor: pointer; }
 .pq-dialog__body { min-height: 0; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 14px; }
@@ -1092,12 +1092,10 @@
 .sra-head__text { min-width: 0; flex: 1 1 240px; }
 .sra-head__title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 900;
-  font-style: italic;
-  text-transform: uppercase;
+  font-size: 17px;
+  font-weight: 700;
   letter-spacing: -0.01em;
-  line-height: 1.1;
+  line-height: 1.25;
   color: var(--sr-ink);
 }
 .sra-head__meta {
