@@ -105,7 +105,7 @@ export const SETTINGS: readonly SettingDef[] = [
     max: 5,
     appDefault: 2,
     help: "A client is Drifting after being away this many times the usual gap between visits, with nothing booked.",
-    readers: ["features/admin/journey/states.ts"],
+    readers: ["features/admin/journey/states.ts", "features/machine-menu/timeline-model.ts"],
   },
   {
     key: "driftMinDays",
@@ -117,7 +117,7 @@ export const SETTINGS: readonly SettingDef[] = [
     max: 60,
     appDefault: 7,
     help: "However short the usual gap, Drifting waits at least this many days.",
-    readers: ["features/admin/journey/states.ts"],
+    readers: ["features/admin/journey/states.ts", "features/machine-menu/timeline-model.ts"],
   },
   {
     key: "lapsedDays",

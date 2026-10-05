@@ -109,6 +109,74 @@ export function machineUsageWords(coverage: HistoryCoverage = "unknown"): Machin
 }
 
 /* ------------------------------------------------------------------ *
+ * How often one machine was done (the machine menu, Oct 2026)
+ * ------------------------------------------------------------------ */
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "Tue Sep 9 2025" (or "Sep 9 2025" without the weekday), read from the key itself, never through a time zone. */
+function dayWords(key: string, weekday: boolean): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if (!m) return key;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  const month = MONTHS[mo - 1];
+  if (!month) return key;
+  const dow = WEEKDAYS[new Date(Date.UTC(y, mo - 1, d)).getUTCDay()];
+  return `${weekday ? `${dow} ` : ""}${month} ${d} ${y}`;
+}
+
+/** "Apr 2 – Oct 1 2026", or "Dec 15 2025 – Oct 1 2026" across a year. */
+function rangeWords(from: string, to: string): string {
+  if (from === to) return dayWords(from, false);
+  const a = dayWords(from, false);
+  const b = dayWords(to, false);
+  return from.slice(0, 4) === to.slice(0, 4) ? `${a.slice(0, -5)} – ${b}` : `${a} – ${b}`;
+}
+
+export interface MachineUsageInput {
+  /**
+   * Performed sessions on the machine in what was READ, before today. Never
+   * a running total (`machineStats`): those count only since they began to
+   * be kept, which is exactly the migration client (`canQuoteLifetime`).
+   */
+  count: number;
+  /** The first and the last of those sessions, as studio days (yyyy-mm-dd). */
+  firstDay: string | null;
+  lastDay: string | null;
+  /** Every Journey session has been read, so the count is Journey's whole count. */
+  everythingRead: boolean;
+  coverage?: HistoryCoverage;
+}
+
+/**
+ * THE MACHINE MENU'S ONE COUNT (Oct 2026). It names the sample it stands on,
+ * because "16 sessions loaded here" once read as the client's whole story:
+ *
+ *   - every session read, whole story:  "34 times since Tue Sep 9 2025, the first time here"
+ *   - every session read:               "34 times in Journey since Tue Sep 9 2025"
+ *   - some still unread:                "24 times in the sessions loaded here, Dec 15 2025 – Oct 1 2026"
+ *
+ * Null when there is nothing counted to say.
+ */
+export function machineUsageSentence(input: MachineUsageInput): string | null {
+  const n = Number.isFinite(input.count) ? Math.trunc(input.count) : 0;
+  if (n < 1 || !input.firstDay) return null;
+  const first = dayWords(input.firstDay, true);
+  if (input.everythingRead) {
+    if ((input.coverage ?? "unknown") === "complete") {
+      return n === 1 ? `Once, on ${first}, the first time here` : `${n} times since ${first}, the first time here`;
+    }
+    return n === 1 ? `Once in Journey, on ${first}` : `${n} times in Journey since ${first}`;
+  }
+  return n === 1
+    ? `Once in the sessions loaded here (${first})`
+    : `${n} times in the sessions loaded here, ${rangeWords(input.firstDay, input.lastDay ?? input.firstDay)}`;
+}
+
+/* ------------------------------------------------------------------ *
  * Session numbers and counts
  * ------------------------------------------------------------------ */
 

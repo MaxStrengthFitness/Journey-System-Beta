@@ -8,6 +8,7 @@ import {
   firstTimeTag,
   historyStartWords,
   isEstablishedClient,
+  machineUsageSentence,
   machineUsageWords,
   newMachinesPhrase,
   noMachineHistoryBody,
@@ -86,6 +87,54 @@ describe("a machine with nothing on it", () => {
       expect(w.times).toBe("Times in Journey");
       expect(w.since).toBe("since first set in Journey");
     }
+  });
+});
+
+describe("machineUsageSentence - one machine, counted from what was read (machine menu)", () => {
+  const base = { count: 24, firstDay: "2025-12-15", lastDay: "2026-10-01", everythingRead: false } as const;
+
+  it("names the sample while older sessions are unread, whatever the coverage", () => {
+    for (const c of ["complete", "partial", "unknown"] as HistoryCoverage[]) {
+      expect(machineUsageSentence({ ...base, coverage: c })).toBe(
+        "24 times in the sessions loaded here, Dec 15 2025 – Oct 1 2026",
+      );
+    }
+    expect(machineUsageSentence({ ...base, count: 15, firstDay: "2026-04-02" })).toBe(
+      "15 times in the sessions loaded here, Apr 2 – Oct 1 2026",
+    );
+  });
+
+  it("says Journey's whole count once everything is read, and the first time only on a whole story", () => {
+    const all = { count: 34, firstDay: "2025-09-09", lastDay: "2026-10-01", everythingRead: true };
+    expect(machineUsageSentence(all)).toBe("34 times in Journey since Tue Sep 9 2025");
+    for (const c of NOT_COMPLETE) {
+      expect(machineUsageSentence({ ...all, coverage: c })).toBe("34 times in Journey since Tue Sep 9 2025");
+    }
+    expect(machineUsageSentence({ ...all, coverage: "complete" })).toBe(
+      "34 times since Tue Sep 9 2025, the first time here",
+    );
+    expect(machineUsageSentence({ ...all, count: 3, firstDay: "2026-09-08" })).toBe(
+      "3 times in Journey since Tue Sep 8 2026",
+    );
+  });
+
+  it('says once, never "1 times"', () => {
+    const one = { count: 1, firstDay: "2026-09-24", lastDay: "2026-09-24" };
+    expect(machineUsageSentence({ ...one, everythingRead: false })).toBe(
+      "Once in the sessions loaded here (Thu Sep 24 2026)",
+    );
+    expect(machineUsageSentence({ ...one, everythingRead: true })).toBe("Once in Journey, on Thu Sep 24 2026");
+  });
+
+  it("says nothing with nothing counted, and never a progression word", () => {
+    expect(machineUsageSentence({ count: 0, firstDay: null, lastDay: null, everythingRead: true })).toBeNull();
+    expect(machineUsageSentence({ ...base, firstDay: null })).toBeNull();
+    const all = [
+      machineUsageSentence(base),
+      machineUsageSentence({ ...base, everythingRead: true }),
+      machineUsageSentence({ ...base, everythingRead: true, coverage: "complete" }),
+    ].join(" ");
+    expect(all).not.toMatch(/\b(best|started|her|she|should|try|ready)\b|next weight|increase to/i);
   });
 });
 
