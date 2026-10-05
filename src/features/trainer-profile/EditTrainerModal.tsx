@@ -324,10 +324,14 @@ export function EditTrainerModal({
         <DialogHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
           <DialogTitle className="text-foreground flex items-center gap-2">
             <Users2 className="w-6 h-6 text-primary" />
-            Edit Trainer Profile
+            Edit trainer profile
           </DialogTitle>
-          <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">
-            Updating: {trainer?.fullName || "Staff Profile"}
+          {/* The meta voice, 12/500 muted, as written (type and depth
+              follow-up, Oct 5 2026: every label, line and button in this
+              dialog was 10-12px heavy capitals, and its fields drew a
+              decorative edge over the shared field's 3:1 edge and sink). */}
+          <p className="text-[12px] text-muted-foreground font-medium mt-1">
+            Updating: {trainer?.fullName || "Staff profile"}
           </p>
         </DialogHeader>
 
@@ -336,9 +340,9 @@ export function EditTrainerModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {isAdminMode && (
             <div className="space-y-2">
-              <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
+              <Label className="text-[14px] font-bold text-ink-d2 flex items-center gap-1">
                 <UserIcon className="w-3 h-3 text-primary" />
-                Full Name
+                Full name
               </Label>
               <Input
                 value={fullName}
@@ -355,20 +359,20 @@ export function EditTrainerModal({
                     setInitials("");
                   }
                 }}
-                className="bg-slate-50 dark:bg-slate-800 border-border text-foreground rounded-xl h-11"
+                className="text-foreground rounded-xl h-11"
                 placeholder="e.g. Amanda Jones"
               />
             </div>
             )}
 
             <div className="space-y-2">
-              <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
+              <Label className="text-[14px] font-bold text-ink-d2 flex items-center gap-1">
                 Nickname
               </Label>
               <Input
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-800 border-border text-foreground rounded-xl h-11"
+                className="text-foreground rounded-xl h-11"
                 placeholder="e.g. Mandy"
               />
             </div>
@@ -377,28 +381,28 @@ export function EditTrainerModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {isAdminMode && (
             <div className="space-y-2">
-              <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
+              <Label className="text-[14px] font-bold text-ink-d2 flex items-center gap-1">
                 <Mail className="w-3 h-3 text-primary" />
-                Email Address
+                Email address
               </Label>
               <Input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-800 border-border text-foreground rounded-xl h-11"
+                className="text-foreground rounded-xl h-11"
                 placeholder="trainer@example.com"
               />
             </div>
             )}
 
             <div className="space-y-2">
-              <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest">
+              <Label className="text-[14px] font-bold text-ink-d2">
                 Initials
               </Label>
               <Input
                 value={initials}
                 onChange={(e) => setInitials(e.target.value.toUpperCase())}
-                className="bg-slate-50 dark:bg-slate-800 border-border text-foreground rounded-xl h-11 uppercase font-bold"
+                className="text-foreground rounded-xl h-11 font-bold"
                 placeholder="AJ"
                 maxLength={3}
               />
@@ -412,7 +416,7 @@ export function EditTrainerModal({
           */}
           <div className="space-y-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30">
             <div className="space-y-2">
-              <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest">
+              <Label className="text-[14px] font-bold text-ink-d2">
                 About
               </Label>
               <textarea
@@ -421,15 +425,15 @@ export function EditTrainerModal({
                 rows={3}
                 onChange={(e) => setBio(e.target.value)}
                 placeholder="A couple of sentences that would mean something to a client reading it."
-                className="w-full bg-card dark:bg-slate-800 border border-border text-foreground rounded-xl p-3 text-sm resize-y"
+                className="w-full bg-(--well) shadow-(--elev-0) border border-input text-foreground rounded-xl p-3 text-sm resize-y"
               />
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold text-right">
+              <p className="text-[12px] text-muted-foreground font-medium text-right">
                 {bio.length} / 600
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest">
+              <Label className="text-[14px] font-bold text-ink-d2">
                 Certifications
               </Label>
               {certifications.length > 0 && (
@@ -437,7 +441,7 @@ export function EditTrainerModal({
                   {certifications.map((cert) => (
                     <span
                       key={cert}
-                      className="inline-flex items-center gap-1.5 h-8 pl-3 pr-1.5 rounded-full bg-card dark:bg-slate-800 border border-border text-xs font-bold text-slate-700 dark:text-slate-200"
+                      className="inline-flex items-center gap-0.5 min-h-10 pl-3 rounded-full bg-card dark:bg-slate-800 border border-border text-[12px] font-bold text-slate-700 dark:text-slate-200"
                     >
                       {cert}
                       <button
@@ -446,7 +450,7 @@ export function EditTrainerModal({
                           setCertifications((prev) => prev.filter((c) => c !== cert))
                         }
                         aria-label={`Remove ${cert}`}
-                        className="w-5 h-5 rounded-full grid place-items-center text-muted-foreground hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-700"
+                        className="size-10 shrink-0 rounded-full grid place-items-center text-muted-foreground hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-700"
                       >
                         ×
                       </button>
@@ -467,14 +471,14 @@ export function EditTrainerModal({
                     }
                   }}
                   placeholder="e.g. NASM-CPT, Precision Nutrition L1"
-                  className="bg-card dark:bg-slate-800 border-border text-foreground rounded-xl h-11"
+                  className="text-foreground rounded-xl h-11"
                 />
                 <Button
                   type="button"
                   variant="outline"
                   onClick={addCertification}
                   disabled={!certDraft.trim()}
-                  className="h-11 rounded-xl font-black uppercase text-[11px] tracking-widest shrink-0"
+                  className="h-11 rounded-xl text-[14px] shrink-0"
                 >
                   Add
                 </Button>
@@ -482,7 +486,7 @@ export function EditTrainerModal({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
+              <Label className="text-[14px] font-bold text-ink-d2 flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-primary" />
                 Started
               </Label>
@@ -490,27 +494,27 @@ export function EditTrainerModal({
                 type="date"
                 value={employmentStartDate}
                 onChange={(e) => setEmploymentStartDate(e.target.value)}
-                className="bg-card dark:bg-slate-800 border-border text-foreground rounded-xl h-11"
+                className="text-foreground rounded-xl h-11"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest">
-                Profile Color (Calendar)
+              <Label className="text-[14px] font-bold text-ink-d2">
+                Profile color (calendar)
               </Label>
               <div className="flex items-center gap-2">
                 <Input
                   type="color"
                   value={brandColor}
                   onChange={(e) => setBrandColor(e.target.value)}
-                  className="p-1 h-11 w-16 bg-slate-50 dark:bg-slate-800 border-border rounded-xl cursor-pointer"
+                  className="p-1 h-11 w-16 rounded-xl cursor-pointer"
                 />
                 <Input
                   value={brandColor}
                   onChange={(e) => setBrandColor(e.target.value)}
-                  className="bg-slate-50 dark:bg-slate-800 border-border text-foreground rounded-xl h-11 font-mono text-sm"
+                  className="text-foreground rounded-xl h-11 font-mono text-sm"
                   placeholder="#000000"
                 />
               </div>
@@ -519,10 +523,10 @@ export function EditTrainerModal({
             {isAdminMode && (
             <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div className="space-y-0.5">
-                <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  Mindbody Linked
+                <span className="text-[14px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  Mindbody linked
                 </span>
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+                <p className="text-[12px] text-muted-foreground font-medium">
                   Is this account synced with Mindbody
                 </p>
               </div>
@@ -541,7 +545,7 @@ export function EditTrainerModal({
           */}
           <div className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30">
             <span
-              className="relative w-14 h-14 rounded-2xl overflow-hidden shrink-0 grid place-items-center bg-card dark:bg-slate-800 border border-border text-lg font-black tracking-wider"
+              className="relative w-14 h-14 rounded-2xl overflow-hidden shrink-0 grid place-items-center bg-card dark:bg-slate-800 border border-border text-lg font-extrabold"
               style={{ color: brandColor || undefined }}
               aria-hidden="true"
             >
@@ -557,10 +561,10 @@ export function EditTrainerModal({
             </span>
 
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
+              <p className="text-[14px] font-bold text-ink-d2">
                 Profile photo
               </p>
-              <p className="text-[11px] text-muted-foreground font-bold mt-0.5">
+              <p className="text-[12px] text-muted-foreground font-medium mt-0.5">
                 {photoUrl ? "From Mindbody" : "Initials will be used"}
               </p>
             </div>
@@ -571,7 +575,7 @@ export function EditTrainerModal({
                 variant="outline"
                 onClick={handleFetchPhoto}
                 disabled={fetchingPhoto || !mindbodyStaffId.trim()}
-                className="h-10 rounded-xl font-black uppercase text-[10px] tracking-widest"
+                className="h-10 rounded-xl text-[14px]"
               >
                 {fetchingPhoto ? "Fetching..." : photoUrl ? "Refresh" : "Pull photo"}
               </Button>
@@ -580,7 +584,7 @@ export function EditTrainerModal({
                   type="button"
                   variant="ghost"
                   onClick={() => setPhotoUrl(null)}
-                  className="h-10 rounded-xl font-black uppercase text-[10px] tracking-widest"
+                  className="h-10 rounded-xl text-[14px]"
                 >
                   Clear
                 </Button>
@@ -592,7 +596,7 @@ export function EditTrainerModal({
           {isAdminMode ? (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
+              <Label className="text-[14px] font-bold text-ink-d2 flex items-center gap-1">
                 <Eye className="w-3 h-3 text-primary" />
                 Mindbody Staff ID
               </Label>
@@ -602,7 +606,7 @@ export function EditTrainerModal({
                 size="sm"
                 onClick={handleFetchStaff}
                 disabled={fetchingStaff}
-                className="text-[10px] font-black uppercase text-primary hover:text-primary px-2"
+                className="text-[14px] text-primary hover:text-primary px-2"
               >
                 {fetchingStaff ? "Fetching..." : "Lookup from Mindbody"}
               </Button>
@@ -614,7 +618,7 @@ export function EditTrainerModal({
                   setMindbodyStaffId(val);
                 }}
               >
-                <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-border text-foreground rounded-xl h-11 text-sm font-bold w-full">
+                <SelectTrigger className="text-foreground rounded-xl h-11 text-sm font-bold w-full">
                   <SelectValue
                     placeholder={
                       fetchingStaff
@@ -640,7 +644,7 @@ export function EditTrainerModal({
                     >
                       <div className="flex items-center justify-between w-full gap-3 text-xs sm:text-sm">
                         <span className="flex items-center gap-2.5 min-w-0">
-                          <span className="relative w-7 h-7 rounded-lg overflow-hidden shrink-0 grid place-items-center bg-slate-100 dark:bg-slate-800 text-[10px] font-black text-slate-500">
+                          <span className="relative w-7 h-7 rounded-lg overflow-hidden shrink-0 grid place-items-center bg-slate-100 dark:bg-slate-800 text-[12px] font-bold text-slate-500">
                             {s.fullName?.[0] || "?"}
                             {s.imageUrl && (
                               <img
@@ -668,17 +672,17 @@ export function EditTrainerModal({
                 onChange={(e) =>
                   setMindbodyStaffId(e.target.value.replace(/[^0-9]/g, ""))
                 }
-                className="bg-slate-50 dark:bg-slate-800 border-border text-foreground rounded-xl h-11 font-mono text-sm"
+                className="text-foreground rounded-xl h-11 font-mono text-sm"
                 placeholder="e.g. 100000123"
               />
             )}
-            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">
+            <p className="text-[12px] text-muted-foreground font-medium">
               Select or enter the Staff ID assigned in Mindbody. Required for
               API schedule sync.
             </p>
           </div>
           ) : (
-            <p className="text-[11px] text-muted-foreground font-bold" data-testid="leader-fields-note">
+            <p className="text-[12px] text-muted-foreground font-medium" data-testid="leader-fields-note">
               Full name, email and the Mindbody Staff ID are kept by the studio&rsquo;s leaders, on My Studio &rarr; Team.
             </p>
           )}
@@ -688,15 +692,15 @@ export function EditTrainerModal({
               {/* Role selector & visibility */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
+                  <Label className="text-[14px] font-bold text-ink-d2 flex items-center gap-1">
                     <Shield className="w-3 h-3 text-primary" />
-                    Permissions Role
+                    Permissions role
                   </Label>
                   <Select
                     value={role}
                     onValueChange={(val) => setRole(val as UserRole)}
                   >
-                    <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-border text-foreground rounded-xl h-11 text-sm font-bold">
+                    <SelectTrigger className="text-foreground rounded-xl h-11 text-sm font-bold">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-card text-foreground border-border font-sans">
@@ -720,15 +724,15 @@ export function EditTrainerModal({
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1">
+                  <Label className="text-[14px] font-bold text-ink-d2 flex items-center gap-1">
                     <Building2 className="w-3 h-3 text-primary" />
-                    Primary Studio
+                    Primary studio
                   </Label>
                   <Select
                     value={primaryHomeStudioId}
                     onValueChange={setPrimaryHomeStudioId}
                   >
-                    <SelectTrigger className="bg-slate-50 dark:bg-slate-800 border-border text-foreground rounded-xl h-11 text-sm font-bold">
+                    <SelectTrigger className="text-foreground rounded-xl h-11 text-sm font-bold">
                       <SelectValue placeholder="Select primary home studio">
                         {studios.find(
                           (s) =>
@@ -756,11 +760,11 @@ export function EditTrainerModal({
               {/* Visibility and custom toggles */}
               <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <span className="text-[14px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                     <Calendar className="w-4 h-4 text-primary" /> Display on
-                    Calendar
+                    calendar
                   </span>
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+                  <p className="text-[12px] text-muted-foreground font-medium">
                     Should clients/staff see this trainer on the booking
                     calendar
                   </p>
@@ -773,17 +777,17 @@ export function EditTrainerModal({
 
               {/* Complex Studio Involvements */}
               <div className="space-y-4 pt-2">
-                <h4 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-1.5 flex items-center gap-1.5">
+                <h4 className="text-[17px] font-bold tracking-[-0.01em] text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-1.5 flex items-center gap-1.5">
                   <Building2 className="w-4 h-4 text-primary" />
-                  Studio Involvements & Connections
+                  Studio involvements & connections
                 </h4>
 
                 {/* Permanent Accessible Studios */}
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest">
-                    Permanent Staff Access (Accessible Studios)
+                  <Label className="text-[14px] font-bold text-ink-d2">
+                    Permanent staff access (accessible studios)
                   </Label>
-                  <p className="text-[10px] text-muted-foreground font-bold uppercase mb-2">
+                  <p className="text-[12px] text-muted-foreground font-medium mb-2">
                     Allows editing, clock-in, and full scheduling control at
                     these facilities.
                   </p>
@@ -795,7 +799,7 @@ export function EditTrainerModal({
                       return (
                         <div
                           key={`access-${s.id}`}
-                          className={`flex items-center gap-2.5 p-2 rounded-xl border transition-all ${
+                          className={`flex items-center gap-2.5 p-2 rounded-xl border transition-colors ${
                             isPrimary
                               ? "bg-primary/5 border-primary/30 opacity-80"
                               : isChecked
@@ -818,7 +822,7 @@ export function EditTrainerModal({
                           >
                             {s.name}
                             {isPrimary && (
-                              <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] bg-primary text-primary-foreground font-extrabold uppercase">
+                              <span className="ml-1.5 px-1.5 py-0.5 rounded text-[12px] bg-primary text-primary-foreground font-bold">
                                 Home
                               </span>
                             )}
@@ -831,10 +835,10 @@ export function EditTrainerModal({
 
                 {/* Temporary/Active Guest Involvements */}
                 <div className="space-y-2 pt-2">
-                  <Label className="text-[11px] font-black uppercase text-muted-foreground tracking-widest">
-                    Active Guest Access (Guest Studios)
+                  <Label className="text-[14px] font-bold text-ink-d2">
+                    Active guest access (guest studios)
                   </Label>
-                  <p className="text-[10px] text-muted-foreground font-bold uppercase mb-2">
+                  <p className="text-[12px] text-muted-foreground font-medium mb-2">
                     Temporary access or subbing privileges at designated
                     studios.
                   </p>
@@ -846,7 +850,7 @@ export function EditTrainerModal({
                       return (
                         <div
                           key={`guest-${s.id}`}
-                          className={`flex items-center gap-2.5 p-2 rounded-xl border transition-all ${
+                          className={`flex items-center gap-2.5 p-2 rounded-xl border transition-colors ${
                             isChecked
                               ? "bg-slate-100/80 dark:bg-slate-800 border-border"
                               : "bg-card border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700"
@@ -878,19 +882,19 @@ export function EditTrainerModal({
 
         <DialogFooter className="border-t border-slate-100 dark:border-slate-800 pt-4 mt-2">
           <Button
-            variant="ghost"
+            variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={saving}
-            className="text-[11px] font-black uppercase tracking-widest h-12 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+            className="text-[14px] h-12 rounded-xl"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSave}
             disabled={saving || (isAdminMode && !fullName) || !initials}
-            className="bg-primary hover:bg-primary text-primary-foreground font-black uppercase text-xs h-12 rounded-xl shadow-[0_0_20px_var(--primary)] shadow-primary/30 min-w-37.5"
+            className="bg-primary hover:bg-primary text-primary-foreground text-[14px] font-bold h-12 rounded-xl shadow-[0_0_20px_var(--primary)] shadow-primary/30 min-w-37.5"
           >
-            {saving ? "Saving Changes..." : "Save Trainer Profile"}
+            {saving ? "Saving changes..." : "Save trainer profile"}
           </Button>
         </DialogFooter>
       </DialogContent>

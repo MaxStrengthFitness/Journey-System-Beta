@@ -58,16 +58,22 @@ const SHEETS: [string, RegExp | null][] = [
   ["features/client-notes/notes.css", null],
   ["features/briefing/briefing.css", null],
   ["features/relay/notes/journal-today.css", null],
+  // The Dial and Loudness: the briefing's four readiness questions, the
+  // note sheet's loudness and the Pulse (the follow-up, Oct 5 2026: the
+  // lead saw "NOT ASKED" in 11px capitals on the briefing).
+  ["features/rating/rating.css", null],
   // The Pulse slide-over (.sra) and its quick log (.pq); the profile's full
   // Pulse (.sr, .pcm) is not a session sheet.
   ["features/subjective-report/subjective-report.css", /^\.(?:sra|pq)[-_]/],
 ];
 
-/** Capitals that stay, each with its reason. */
+/**
+ * Capitals that stay, each with its reason. The briefing's safety heading
+ * and a limit's name left this list on Oct 5 2026 (AJ's 1A: a title is
+ * upright and as written; capitals are the studio's name and Go's alone).
+ */
 const CAPITALS: Record<string, string> = {
   "features/briefing/briefing.css .br__cta": "Go: Start session's own voice (AJ's 1A)",
-  "features/briefing/briefing.css .br-safe__clear": "the safety heading read before every session (the Stack's safety voice, Oct 3 2026)",
-  "features/briefing/briefing.css .br-safe__title": "a limit's name in the safety block (the Stack's safety voice, Oct 3 2026)",
 };
 
 function sheetRules(): [string, Rule][] {
@@ -93,7 +99,7 @@ describe("the sheets a session opens: no label under 11px, words as written", ()
     expect(small).toEqual([]);
   });
 
-  it("sets nothing in capitals but Go and the briefing's safety voice", () => {
+  it("sets nothing in capitals but Go", () => {
     const caps: string[] = [];
     for (const [file, r] of sheetRules()) {
       if (declared(r.body, "text-transform").some((v) => /uppercase/.test(v))) caps.push(`${file} ${r.selectors.join(", ")}`);

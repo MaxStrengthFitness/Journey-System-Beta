@@ -436,7 +436,9 @@ describe("the blue that selects", () => {
 
   it("the routine slot that is picked is the theme's blue with its own words", () => {
     const drawer = read("components/EditRoutineDrawer.tsx");
-    expect(drawer).toContain('? "bg-primary text-primary-foreground border-transparent shadow-sm shadow-primary/20"');
+    // A set of tokens, not a spelling: the follow-up (Oct 5 2026) gave the
+    // picked slot the solid blue's own lift in place of a blue shadow-sm.
+    expect(someStringHas("components/EditRoutineDrawer.tsx", ["bg-primary", "text-primary-foreground", "border-transparent", "shadow-(--solid-lift)"])).toBe(true);
     expect(drawer).not.toMatch(/bg-cyan text-white/);
     expect(THEMED.filter((s) => has(s.body, "bg-cyan") && /text-white/.test(s.body)).map(where)).toEqual([]);
   });
@@ -519,7 +521,9 @@ describe("the renewal conversation, InBody and the report archive draw the brand
   });
 
   it("a picked choice in Log a conversation is the theme's blue with its own words", () => {
-    expect(read("features/renewals/LogConversationDialog.tsx")).toContain('"border-primary bg-primary text-primary-foreground"');
+    // A set of tokens, not a spelling (the follow-up, Oct 5 2026, gave the
+    // picked chip the solid blue's own lift).
+    expect(someStringHas("features/renewals/LogConversationDialog.tsx", ["border-primary", "bg-primary", "text-primary-foreground", "shadow-(--solid-lift)"])).toBe(true);
     for (const t of BOTH) {
       expect(ratio(colour(t, "--primary-foreground"), colour(t, "--primary")), t).toBeGreaterThanOrEqual(4.5);
     }
@@ -616,7 +620,9 @@ describe("a selection is blue", () => {
 
   it("the feedback kinds: the picked one is the blue, its icon in the blue's words", () => {
     const drawer = read("features/feedback/FeedbackDrawer.tsx");
-    expect(drawer).toContain('? "bg-primary border-primary text-primary-foreground shadow-sm"');
+    // A set of tokens, not a spelling (the follow-up, Oct 5 2026, gave the
+    // picked kind the solid blue's own lift in place of shadow-sm).
+    expect(someStringHas("features/feedback/FeedbackDrawer.tsx", ["bg-primary", "border-primary", "text-primary-foreground"])).toBe(true);
     expect(drawer).toContain('kind === k ? "text-primary-foreground" : "opacity-50"');
     expect(drawer).not.toMatch(/--eq-hero|(?:bg|text|border)-cta/);
   });
@@ -644,7 +650,9 @@ describe("a selection is blue", () => {
     expect(modal).not.toMatch(/data-\[state=checked\]/);
     expect(read("components/ui/checkbox.tsx")).toMatch(/data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground/);
     // The home studio's chip is the blue with its words; the staff ID is a quiet label.
-    expect(modal).toContain("rounded text-[9px] bg-primary text-primary-foreground font-extrabold uppercase");
+    // A set of tokens, not a spelling: the follow-up (Oct 5 2026) set the
+    // chip's word at 12/700 as written (it was 9px capitals).
+    expect(someStringHas("features/trainer-profile/EditTrainerModal.tsx", ["rounded", "text-[12px]", "bg-primary", "text-primary-foreground"])).toBe(true);
     expect(modal).toContain("font-mono text-xs text-muted-foreground font-bold shrink-0 bg-muted");
     for (const t of BOTH) {
       expect(ratio(colour(t, "--primary"), colour(t, "--card")), `${t}: the icons`).toBeGreaterThanOrEqual(4.5);

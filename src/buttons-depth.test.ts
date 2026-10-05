@@ -641,3 +641,63 @@ describe("the parser itself", () => {
     expect(declared(rules[0].body, "color")).toEqual(["red"]);
   });
 });
+
+/* ---------------------------------------------------------------------------
+   The dialogs the review deferred (the follow-up, Oct 5 2026)
+   --------------------------------------------------------------------------- */
+
+/**
+ * The review's fix left these dialogs' buttons on the old flat outline (a
+ * decorative slate or hairline edge round the card's own fill) or a
+ * ghost in place of a secondary button. The follow-up raised them through
+ * class lists, so this reads the class lists: every list that raises a
+ * control (bg-(--raised)) draws it on the 3:1 edge with the lift, and each
+ * file presses its raised controls in. A secondary button may also be the
+ * shared Button's outline variant, which is the same recipe.
+ */
+const RAISED_IN_DIALOGS: [file: string, atLeast: number][] = [
+  ["features/feedback/FeedbackDrawer.tsx", 1],
+  ["components/EditRoutineDrawer.tsx", 2],
+  ["features/inbody/InBodyScanDialog.tsx", 1],
+  ["features/trainer-profile/KaizenToggle.tsx", 3],
+  ["features/renewals/LogConversationDialog.tsx", 3],
+  ["features/renewals/RenewalCardDialog.tsx", 1],
+];
+const OUTLINE_IN_DIALOGS: [file: string, atLeast: number][] = [
+  ["components/EditRoutineDrawer.tsx", 1],
+  ["features/client-history/SessionDetailDialog.tsx", 1],
+  ["features/trainer-profile/EditTrainerModal.tsx", 3],
+];
+
+/** Every string literal in a source file with two tokens or more. */
+const listsOf = (file: string) =>
+  [...read(file).matchAll(/"([^"\n]*)"|`([^`]*)`/g)].map((m) => (m[1] ?? m[2] ?? "").trim()).filter((s) => s.split(/\s+/).length >= 2);
+const tokens = (list: string) => list.split(/\s+/);
+
+describe("the dialogs the review deferred: a secondary button is raised on its 3:1 edge", () => {
+  it.each(RAISED_IN_DIALOGS)("%s raises its controls on the 3:1 edge with the lift, and presses them in", (file, atLeast) => {
+    const raised = listsOf(file).filter((l) => tokens(l).includes("bg-(--raised)"));
+    expect(raised.length, "the scan reads them").toBeGreaterThanOrEqual(atLeast);
+    for (const l of raised) {
+      expect(tokens(l), l).toContain("border-input");
+      expect(tokens(l), l).toContain("shadow-(--raised-lift)");
+    }
+    expect(read(file), "a press").toMatch(/(?:^|[\s"`])(?:[\w-]+:)*active:shadow-\(--press\)|has-\[button:active\]:shadow-\(--press\)/m);
+  });
+
+  it.each(OUTLINE_IN_DIALOGS)("%s uses the outline variant for its secondary buttons", (file, atLeast) => {
+    expect(read(file).match(/variant="outline"/g)?.length ?? 0).toBeGreaterThanOrEqual(atLeast);
+  });
+
+  it("no button among them is the old flat outline: a slate or hairline edge round the card's own fill", () => {
+    const found: string[] = [];
+    for (const [file] of [...RAISED_IN_DIALOGS, ...OUTLINE_IN_DIALOGS]) {
+      for (const l of listsOf(file)) {
+        const t = tokens(l);
+        if (t.includes("border-slate-300") && t.some((x) => /^min-h-1[01]$/.test(x))) found.push(`${file}: ${l}`);
+        if (t.includes("border-div-d") && t.some((x) => /^(?:h|min-h)-(?:9|10|11)$/.test(x))) found.push(`${file}: ${l}`);
+      }
+    }
+    expect(found).toEqual([]);
+  });
+});

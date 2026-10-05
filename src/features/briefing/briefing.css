@@ -917,15 +917,19 @@
 .br-safe--clear .br__before-head,
 .br-safe--clear .br__before-head svg { color: var(--br-ok); }
 
-/* The safety heading read before every session keeps its capitals (the
-   Stack's safety voice, Oct 3 2026) and stands upright (phase 12): the
-   slant is the brand's, and this is a warning, not the brand. */
+/* The safety heading read before every session keeps the Stack's safety
+   voice (Oct 3 2026): the display face at 22/800 in its own colour. It
+   stands upright (phase 12: the slant is the brand's, and this is a
+   warning, not the brand), and since the type and depth follow-up (Oct 5
+   2026, AJ's 1A: titles upright in their own capitalisation, capitals only
+   on the studio's name and Start session) it says its words as written:
+   "Nothing flagged — clear to go." */
 .br-safe__clear {
   margin: 0;
   font-family: var(--font-display, inherit);
   font-style: normal;
   font-weight: 800;
-  text-transform: uppercase;
+  text-transform: none;
   font-size: 22px;
   line-height: 1.1;
   color: var(--br-ok);
@@ -978,12 +982,14 @@
   flex-direction: column;
   gap: 4px;
 }
+/* A limit's name: the same voice as the heading above it, a title in the
+   display face, upright and as written (AJ's 1A). */
 .br-safe__title {
   margin: 0;
   font-family: var(--font-display, inherit);
   font-style: normal;
   font-weight: 800;
-  text-transform: uppercase;
+  text-transform: none;
   font-size: 22px;
   line-height: 1.1;
   color: var(--br-ink);

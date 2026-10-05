@@ -18,8 +18,9 @@ import { describe, expect, it } from "vitest";
  *      and the run sheet's primary, the Directory's Start, the briefing's
  *      Start session, the Deep Dive's Generate).
  *   2. The display face is set in capitals only on its allow-list: the
- *      brand and Go, and the briefing's safety heading (the Stack's safety
- *      voice). The Active Session's eleven capitals left in phase 13 (AJ's
+ *      brand and Go. (The briefing's safety heading kept its capitals until
+ *      the follow-up of Oct 5 2026; it now says its words as written.) The
+ *      Active Session's eleven capitals left in phase 13 (AJ's
  *      3B), each measured against the grid's fixed rows: its names, days and
  *      heads stand upright as written, and its labels are Geist.
  *   3. No faked italics. A rule or class list that slants Geist is a quiet
@@ -185,11 +186,14 @@ const DISPLAY_SLANT: Record<string, string> = {
   "features/front-door/front-door.css .fd-display": `${BRAND}: the front door's display line (Oct 3 2026)`,
 };
 
-/** 2. The display face, in capitals: the slanted ones and these. */
+/**
+ * 2. The display face, in capitals: the slanted ones, and nothing else.
+ * The briefing's safety heading and a limit's name were here until the type
+ * and depth follow-up (Oct 5 2026): AJ's 1A sets titles upright in their own
+ * capitalisation, so "Nothing flagged — clear to go." reads as written.
+ */
 const DISPLAY_CAPS: Record<string, string> = {
   ...DISPLAY_SLANT,
-  "features/briefing/briefing.css .br-safe__clear": "the safety heading read before every session (the Stack's safety voice, Oct 3 2026), upright",
-  "features/briefing/briefing.css .br-safe__title": "a limit's name in the safety block (the Stack's safety voice, Oct 3 2026), upright",
 };
 
 /** 3. Geist, slanted on purpose: quiet lines, never headings. */
@@ -331,10 +335,12 @@ describe("2. the display face is set in capitals only on its allow-list", () => 
     expect(found.sort()).toEqual(Object.keys(DISPLAY_CAPS).sort());
   });
 
-  it("the briefing's safety heading stands upright", () => {
+  it("the briefing's safety heading stands upright and says its words as written", () => {
     for (const sel of [".br-safe__clear", ".br-safe__title"]) {
       const rule = ALL_RULES.find((r) => r.file === "features/briefing/briefing.css" && r.prelude === sel)!;
       expect(declared(rule.body, "font-style"), sel).toEqual(["normal"]);
+      expect(declared(rule.body, "text-transform"), sel).toEqual(["none"]);
+      expect(declared(rule.body, "font-weight"), `${sel} keeps the Stack's weight`).toEqual(["800"]);
     }
   });
 
@@ -659,5 +665,130 @@ describe("8. Operations' buttons speak the button voice, 14/700 in the label's o
     expect(notSentenceCase("Dismiss: I know why")).toEqual([]);
     expect(notSentenceCase("Save Order")).toEqual(["Order"]);
     expect(notSentenceCase("SAVE")).toEqual(["SAVE"]);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* 9. The places the review deferred, and the leftovers the lead saw   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The follow-up (Oct 5 2026). The review's fix left a list of lower-traffic
+ * dialogs in the old voice (10-12px heavy capitals at wide tracking, fields
+ * that drew a decorative edge over the shared field's 3:1 edge and sink),
+ * and the lead, walking the real app, saw three more leftovers: Learning's
+ * Overview / Catalog / Academy switch in tracked capitals, the Dial's "NOT
+ * ASKED", and the briefing's "NOTHING FLAGGED" (held in section 2 above).
+ * These hold the dialogs and the switch where the follow-up left them.
+ */
+const DEFERRED_DIALOGS = [
+  "features/feedback/FeedbackDrawer.tsx",
+  "components/EditRoutineDrawer.tsx",
+  "features/inbody/InBodyScanDialog.tsx",
+  "features/trainer-profile/KaizenToggle.tsx",
+  "features/renewals/LogConversationDialog.tsx",
+  "features/renewals/RenewalCardDialog.tsx",
+  "features/client-history/SessionDetailDialog.tsx",
+  "features/demo-mode/DemoBanner.tsx",
+  "features/trainer-profile/EditTrainerModal.tsx",
+];
+
+/** AppContent's trainer reorder dialog, the one dialog of its own in that file. */
+function reorderDialog(): string[] {
+  const app = read("AppContent.tsx");
+  const start = app.indexOf("{/* Trainer Reordering Dialog */}");
+  const end = app.indexOf("</Dialog>", start);
+  if (start < 0 || end < 0) throw new Error("the trainer reorder dialog moved");
+  const out: string[] = [];
+  for (const m of app.slice(start, end).matchAll(/"([^"\n]*)"|'([^'\n]*)'|`([^`]*)`/g)) {
+    const s = (m[1] ?? m[2] ?? m[3] ?? "").trim();
+    if (s.split(/\s+/).length >= 2) out.push(s);
+  }
+  return out;
+}
+
+const DEFERRED_LISTS: { file: string; lists: string[] }[] = [
+  ...DEFERRED_DIALOGS.map((file) => ({ file, lists: classLists(file) })),
+  { file: "AppContent.tsx (the trainer reorder dialog)", lists: reorderDialog() },
+];
+
+const TRACKED = /(?:^|:)tracking-(?:wide|wider|widest|tighter|\[0?\.\d+em\])$/;
+const UNDER_11 = /(?:^|:)text-\[(?:[0-9]|10)(?:\.\d+)?px\]$/;
+
+describe("9. the dialogs the review deferred speak the round's voice", () => {
+  it("finds their class lists (the scan is reading something)", () => {
+    for (const { file, lists } of DEFERRED_LISTS) expect(lists.length, file).toBeGreaterThan(3);
+  });
+
+  it.each(DEFERRED_LISTS.map((d) => [d.file, d] as const))(
+    "%s: no capitals, no tracking, nothing under 11px, nothing at 900, no flattened dark",
+    (_file, { lists }) => {
+      const found: string[] = [];
+      for (const l of lists) {
+        const tokens = tokensOf(l);
+        if (hasCaps(l)) found.push(`capitals: ${l}`);
+        if (tokens.some((t) => TRACKED.test(t))) found.push(`tracked: ${l}`);
+        if (tokens.some((t) => UNDER_11.test(t))) found.push(`under 11px: ${l}`);
+        if (tokens.some((t) => /(?:^|:)font-black$/.test(t))) found.push(`font-black: ${l}`);
+        if (tokens.includes("dark:shadow-none")) found.push(`flattened in dark: ${l}`);
+      }
+      expect(found).toEqual([]);
+    },
+  );
+
+  it("their fields keep the shared 3:1 edge and sink: no field paints its own ground or a decorative edge", () => {
+    const found: string[] = [];
+    let fields = 0;
+    for (const file of DEFERRED_DIALOGS) {
+      const src = read(file);
+      // An attribute may hold an arrow function, so "=>" does not end the tag.
+      for (const m of src.matchAll(/<(Input|Textarea|textarea|input|SelectTrigger)\b(?:=>|[^>])*?className="([^"]*)"/g)) {
+        fields++;
+        const tokens = tokensOf(m[2]);
+        const bad = tokens.filter((t) => /^(?:dark:)?(?:bg-(?:card|background|slate-50|slate-800|slate-900)|border-border)$/.test(t));
+        if (bad.length) found.push(`${file} <${m[1]}>: ${bad.join(" ")}`);
+      }
+    }
+    expect(fields, "the scan reads the fields").toBeGreaterThan(15);
+    expect(found).toEqual([]);
+    // InBody's fields are one constant: the well, the sink and the 3:1 edge.
+    const inbody = read("features/inbody/InBodyScanDialog.tsx");
+    expect(inbody).toMatch(/const INPUT =\s*"[^"]*bg-\(--well\) shadow-\(--elev-0\)/);
+    expect(inbody).toContain('const INPUT_OK = "border-input";');
+  });
+
+  it("a solid red button keeps its fill under a pointer", () => {
+    const found: string[] = [];
+    for (const { file, lists } of DEFERRED_LISTS) {
+      for (const l of lists) {
+        const tokens = tokensOf(l);
+        for (const fill of tokens.filter((t) => /^bg-(?:red|rose)-\d00$/.test(t))) {
+          if (!tokens.includes(`hover:${fill}`)) found.push(`${file}: ${l}`);
+        }
+      }
+    }
+    expect(found).toEqual([]);
+  });
+});
+
+describe("10. Learning's switch is the segment voice in a well", () => {
+  const rule = (sel: string) => ALL_RULES.filter((r) => r.file === "features/wiki/wiki.css" && r.selectors.includes(sel)).map((r) => r.body).join(";");
+
+  it("each segment 14/600 as written, the picked one 700 and raised with the soft ring", () => {
+    const seg = rule(".wk__seg-btn");
+    expect(declared(seg, "font-size")).toEqual(["14px"]);
+    expect(declared(seg, "font-weight")).toEqual(["600"]);
+    expect(declared(seg, "text-transform")).toEqual(["none"]);
+    expect(declared(seg, "letter-spacing")).toEqual(["0"]);
+    const picked = rule('.wk__seg-btn[aria-pressed="true"]');
+    expect(declared(picked, "font-weight")).toEqual(["700"]);
+    expect(declared(picked, "background")).toEqual(["var(--wk-raised)"]);
+    expect(declared(picked, "box-shadow")[0]).toMatch(/^var\(--wk-elev-1\), inset 0 0 0 1px var\(--wk-edge-control\)/);
+  });
+
+  it("the group is a well inside its 3:1 edge", () => {
+    const group = rule(".wk__seg");
+    expect(declared(group, "border")).toEqual(["1px solid var(--wk-border-strong)"]);
+    expect(declared(group, "box-shadow")).toEqual(["var(--wk-elev-0)"]);
   });
 });

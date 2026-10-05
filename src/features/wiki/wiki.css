@@ -1006,7 +1006,13 @@
  * Shell furniture rather than catalog furniture: the figure's
  * anterior/posterior switch, the index's grouping switch and (later) the
  * Academy's section switch are the same control, and three copies of it is
- * three chances to drift. Matches the Hub's .st__filters exactly.
+ * three chances to drift.
+ *
+ * The run sheet's switch (type and depth follow-up, Oct 5 2026): a well
+ * inside its 3:1 edge holds the segments, each in the segment voice (14/600
+ * in its own capitalisation, "Overview", "Catalog", "Academy"), and the
+ * picked one is raised in it with the soft ring and 700. It was a hairline
+ * group of 11px tracked capitals, the last such switch in the app.
  * ------------------------------------------------------------------ */
 
 .wk__seg {
@@ -1014,9 +1020,10 @@
   flex-wrap: wrap;
   gap: 2px;
   padding: 3px;
-  border: 1px solid var(--wk-border);
+  border: 1px solid var(--wk-border-strong);
   border-radius: 12px;
   background: var(--wk-surface-2);
+  box-shadow: var(--wk-elev-0);
 }
 
 .wk__seg-btn {
@@ -1025,20 +1032,22 @@
   border: 0;
   border-radius: 9px;
   background: transparent;
-  color: var(--wk-ink-muted);
+  color: var(--wk-ink-2);
   font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
   cursor: pointer;
 }
 .wk__seg-btn[aria-pressed="true"] {
-  background: var(--wk-surface);
+  background: var(--wk-raised);
   color: var(--wk-ink);
-  box-shadow: 0 1px 2px var(--wk-shadow);
+  font-weight: 700;
+  box-shadow: var(--wk-elev-1), inset 0 0 0 1px var(--wk-edge-control), inset 0 1px 0 var(--wk-highlight);
 }
+.wk__seg-btn:active { transform: translateY(1px); }
 .wk__seg-btn:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 1px; }
 
 .wk__seg-divider {

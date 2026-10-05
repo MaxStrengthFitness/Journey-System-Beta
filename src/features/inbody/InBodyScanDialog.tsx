@@ -36,13 +36,23 @@ import {
 import { deleteInBodyScan, saveInBodyScan } from "./useInBodyScans";
 import { INBODY_SEGMENTS, type InBodyScan } from "./types";
 
-const LABEL = "text-[11px] font-bold uppercase tracking-widest text-muted-foreground";
+/*
+ * The voice (type and depth follow-up, Oct 5 2026): a field's label is the
+ * label voice, 14/700 in ink-2 and its own capitalisation (it was 11px
+ * tracked capitals); a field keeps its 3:1 edge (--input) and sinks into the
+ * well; a problem line is 12px; the buttons are the button voice, 14/700,
+ * raised on the 3:1 edge or a solid fill kept on hover.
+ */
+const LABEL = "text-[14px] font-bold text-ink-d2";
 const INPUT =
-  "h-11 w-full rounded-xl border bg-card px-3 text-sm font-semibold tabular-nums text-slate-900 outline-none " +
-  "focus:border-ring dark:bg-slate-900 dark:text-slate-100";
-const INPUT_OK = "border-border";
+  "h-11 w-full rounded-xl border bg-(--well) shadow-(--elev-0) px-3 text-sm font-semibold tabular-nums text-slate-900 outline-none " +
+  "focus:border-ring dark:text-slate-100";
+const INPUT_OK = "border-input";
 const INPUT_BAD = "border-rose-400 dark:border-rose-500";
-const PROBLEM = "text-[11px] font-semibold text-rose-600 dark:text-rose-400";
+const PROBLEM = "text-[12px] font-semibold text-rose-600 dark:text-rose-400";
+/** A secondary button: raised on its 3:1 edge, pressing in. */
+const RAISED =
+  "min-h-11 rounded-xl border border-input bg-(--raised) shadow-(--raised-lift) text-[14px] font-bold transition-[background-color,transform] hover:bg-muted active:translate-y-px active:shadow-(--press)";
 
 export interface InBodyScanDialogProps {
   open: boolean;
@@ -194,11 +204,11 @@ export function InBodyScanDialog({ open, onClose, client, scan, scans, authTrain
       type="button"
       onClick={onClick}
       aria-expanded={expanded}
-      className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-border px-3 text-left text-[12px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800/60"
+      className={cn(RAISED, "flex w-full items-center gap-2 px-3 text-left text-slate-600 dark:text-slate-300")}
     >
       {expanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
       <span>{label}</span>
-      <span className="ml-auto text-[10.5px] font-semibold normal-case tracking-normal text-muted-foreground">{hint}</span>
+      <span className="ml-auto text-[12px] font-semibold text-muted-foreground">{hint}</span>
     </button>
   );
 
@@ -206,7 +216,7 @@ export function InBodyScanDialog({ open, onClose, client, scan, scans, authTrain
     <Dialog open={open} onOpenChange={(next) => !next && !saving && onClose()}>
       <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg font-black">
+          <DialogTitle className="flex items-center gap-2">
             <Scale className="h-5 w-5 text-primary" />
             {scan ? `Correct the ${scanDateLabel(scan.testedAt, today)} scan` : `InBody scan for ${firstName}`}
           </DialogTitle>
@@ -336,7 +346,7 @@ export function InBodyScanDialog({ open, onClose, client, scan, scans, authTrain
                   type="button"
                   onClick={() => setConfirmRemove(false)}
                   disabled={saving}
-                  className="min-h-11 rounded-xl border border-slate-300 px-4 text-[12px] font-black uppercase tracking-widest text-slate-700 dark:border-slate-700 dark:text-slate-200"
+                  className={cn(RAISED, "px-4 text-slate-700 dark:text-slate-200")}
                 >
                   Keep it
                 </button>
@@ -344,7 +354,7 @@ export function InBodyScanDialog({ open, onClose, client, scan, scans, authTrain
                   type="button"
                   onClick={remove}
                   disabled={saving}
-                  className="min-h-11 rounded-xl bg-rose-600 px-4 text-[12px] font-black uppercase tracking-widest text-white disabled:opacity-50"
+                  className="min-h-11 rounded-xl bg-rose-600 hover:bg-rose-600 px-4 text-[14px] font-bold text-white shadow-(--elev-1) transition-transform active:translate-y-px active:shadow-(--press) disabled:opacity-50"
                 >
                   {saving ? "Removing…" : "Remove"}
                 </button>
@@ -354,7 +364,7 @@ export function InBodyScanDialog({ open, onClose, client, scan, scans, authTrain
                 type="button"
                 onClick={() => setConfirmRemove(true)}
                 disabled={saving}
-                className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-[12px] font-black uppercase tracking-widest text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-500/10"
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-bold text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-500/10"
               >
                 <Trash2 className="h-4 w-4" />
                 Remove scan
@@ -369,7 +379,7 @@ export function InBodyScanDialog({ open, onClose, client, scan, scans, authTrain
                 type="button"
                 onClick={onClose}
                 disabled={saving}
-                className="min-h-11 rounded-xl border border-slate-300 px-5 text-[12px] font-black uppercase tracking-widest text-slate-700 dark:border-slate-700 dark:text-slate-200"
+                className={cn(RAISED, "px-5 text-slate-700 dark:text-slate-200")}
               >
                 Cancel
               </button>
@@ -377,7 +387,7 @@ export function InBodyScanDialog({ open, onClose, client, scan, scans, authTrain
                 type="button"
                 onClick={save}
                 disabled={saving}
-                className="min-h-11 rounded-xl bg-primary hover:bg-primary px-6 text-[12px] font-black uppercase tracking-widest text-primary-foreground disabled:opacity-50"
+                className="min-h-11 rounded-xl bg-primary hover:bg-primary px-6 text-[14px] font-bold text-primary-foreground shadow-(--solid-lift) transition-transform active:translate-y-px active:shadow-(--press) disabled:opacity-50"
               >
                 {saving ? "Saving…" : scan ? "Save correction" : "Save scan"}
               </button>

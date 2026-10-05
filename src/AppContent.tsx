@@ -2024,7 +2024,7 @@ export default function AppContent({
           open={isReorderingTrainers}
           onOpenChange={setIsReorderingTrainers}
         >
-          <DialogContent className="max-w-md sm:max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none max-h-[85dvh] flex flex-col">
+          <DialogContent className="max-w-md sm:max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl max-h-[85dvh] flex flex-col">
             <DialogHeader className="p-8 bg-card border-b shrink-0">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-primary/10 rounded-2xl">
@@ -2032,9 +2032,9 @@ export default function AppContent({
                 </div>
                 <div>
                   <DialogTitle>
-                    Team Presence Sorting
+                    Team presence sorting
                   </DialogTitle>
-                  <DialogDescription className="text-[11px] font-bold text-muted-foreground uppercase">
+                  <DialogDescription>
                     Organize how trainers appear in the hub grid.
                   </DialogDescription>
                 </div>
@@ -2054,14 +2054,14 @@ export default function AppContent({
                     key={trainer.id}
                     className="flex items-center gap-4 p-4 bg-card rounded-2xl border border-border/50 group"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-background border flex items-center justify-center font-black text-xs text-muted-foreground">
+                    <div className="w-8 h-8 rounded-lg bg-(--well) shadow-(--elev-0) flex items-center justify-center font-bold text-[12px] text-muted-foreground">
                       {idx + 1}
                     </div>
-                    <div className="flex-1">
-                      <p className="font-black uppercase tracking-tighter text-sm">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-[14px] [overflow-wrap:anywhere]">
                         {trainer.fullName}
                       </p>
-                      <p className="text-[11px] font-bold text-muted-foreground uppercase">
+                      <p className="text-[12px] font-semibold text-muted-foreground">
                         {trainer.initials}
                       </p>
                     </div>
@@ -2119,7 +2119,7 @@ export default function AppContent({
             <DialogFooter className="p-6 border-t bg-card shrink-0">
               <Button
                 onClick={() => setIsReorderingTrainers(false)}
-                className="rounded-xl font-bold uppercase tracking-widest w-full h-12"
+                className="rounded-xl text-[14px] font-bold w-full h-12"
               >
                 Done
               </Button>

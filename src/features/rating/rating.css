@@ -49,8 +49,9 @@
   min-width: 0;
 }
 
+/* The question, in the label voice (14/700; it was 13). */
 .rt__ask {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--eq-ink);
   line-height: 1.2;
@@ -59,19 +60,22 @@
 
 .rt__ask small {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--eq-ink-muted);
   margin-top: 1px;
 }
 
-/* The word for the chosen position. Coloured by tone, never by identity. */
+/* The word for the chosen position. Coloured by tone, never by identity.
+   The chip voice, 12/700 in its own capitalisation ("Not asked", "As
+   usual"): it was 11px capitals at 800 (type and depth follow-up, Oct 5
+   2026; AJ's 1A, capitals are the studio's name and Go's alone). */
 .rt__word {
   flex: none;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
   white-space: nowrap;
 }
@@ -103,8 +107,8 @@
   background: var(--eq-surface-2);
   color: var(--eq-ink-2);
   font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  letter-spacing: 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -174,7 +178,9 @@
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 3px;
-  font-size: 10px;
+  /* 11px, the floor for a label (AJ's 3B; it was 10): five words share the
+     bar's width, so the legend stays a step under the chip voice. */
+  font-size: 11px;
   font-weight: 700;
   line-height: 1.15;
   color: var(--eq-ink-muted);
@@ -192,7 +198,10 @@
 /* ------------------------------------------------------------------ */
 
 .rt--loud .rt__bar { gap: 3px; }
-.rt--loud .rt__seg { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+/* The segment voice, 14/600 and the picked one 700, in the words' own
+   capitalisation: "Note", "Heads up", "Critical" (they were 11px capitals). */
+.rt--loud .rt__seg { font-size: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.rt--loud .rt__seg[aria-checked="true"] { font-weight: 700; }
 .rt--loud .rt__seg[aria-checked="true"][data-tone="quiet"] {
   background: var(--eq-live-fill);
   border-color: var(--eq-live);
@@ -200,7 +209,7 @@
 }
 
 .rt__hint {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--eq-ink-muted);
   line-height: 1.3;
 }

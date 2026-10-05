@@ -20,6 +20,9 @@ import { DEMO_STUDIO_NAME } from "./constants";
  *    on an iPad in portrait, so this is ~26px and never wraps.
  *  - Dashed, like the card on the selection screen. Dashed means demo
  *    everywhere in this app, so the signal is learned once.
+ *  - Its words are 12px in their own capitalisation, "Demo Mode — nobody
+ *    here is real" (type and depth follow-up, Oct 5 2026: they were 10px
+ *    capitals). 12px still sits in the 26px line.
  *
  * The way out is on it, because the way out of Demo Mode is otherwise the
  * studio picker in a header this screen may not be showing.
@@ -31,7 +34,7 @@ export function DemoBanner({ onLeave }: { onLeave?: () => void }) {
       className="flex-none flex items-center justify-center gap-2 px-3 h-[26px] border-b border-dashed border-slate-400 dark:border-slate-600 bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 select-none"
     >
       <FlaskConical className="w-3 h-3 shrink-0" aria-hidden="true" />
-      <p className="text-[10px] font-black uppercase tracking-widest truncate">
+      <p className="text-[12px] font-bold truncate">
         {DEMO_STUDIO_NAME}
         <span className="hidden sm:inline font-bold">
           {" "}
@@ -42,7 +45,7 @@ export function DemoBanner({ onLeave }: { onLeave?: () => void }) {
         <button
           type="button"
           onClick={onLeave}
-          className="shrink-0 text-[10px] font-black uppercase tracking-widest underline underline-offset-2 hover:text-slate-900 dark:hover:text-slate-200 cursor-pointer"
+          className="shrink-0 text-[12px] font-bold underline underline-offset-2 hover:text-slate-900 dark:hover:text-slate-200 cursor-pointer"
         >
           Leave
         </button>

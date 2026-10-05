@@ -96,16 +96,20 @@ export function FeedbackDrawer({
         className="rounded-t-[28px] border-t border-border bg-card p-0 max-h-[92dvh] overflow-y-auto"
       >
         <SheetHeader className="px-5 pt-5 pb-3 sm:px-7">
-          <SheetTitle className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
+          <SheetTitle className="text-[22px] font-extrabold tracking-[-0.015em] text-foreground">
             Help us build this
           </SheetTitle>
-          <SheetDescription className="text-muted-foreground font-bold uppercase text-[10px] sm:text-[11px] tracking-widest">
+          <SheetDescription className="text-[14px] font-medium text-muted-foreground">
             You are in beta. Nothing is too small to mention.
           </SheetDescription>
         </SheetHeader>
 
         <div className="px-5 pb-6 sm:px-7 space-y-4">
-          {/* Kind — three targets, min h-14, chosen for gloved/sweaty taps. */}
+          {/* Kind — three targets, min h-14, chosen for gloved/sweaty taps.
+              Raised on the 3:1 edge and pressing in, in the button voice
+              (14/700, the words as written: "UI feedback"); the picked one is
+              the solid blue with its own lift (type and depth follow-up,
+              Oct 5 2026). */}
           <div className="grid grid-cols-3 gap-2">
             {KINDS.map(({ kind: k, icon: Icon }) => (
               <button
@@ -114,10 +118,10 @@ export function FeedbackDrawer({
                 onClick={() => setKind(k)}
                 aria-pressed={kind === k}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1.5 h-16 sm:h-20 rounded-2xl border transition-colors font-black uppercase text-[9px] sm:text-[10px] tracking-widest",
+                  "flex flex-col items-center justify-center gap-1.5 h-16 sm:h-20 rounded-2xl border text-[14px] font-bold transition-[color,background-color,border-color,transform] active:translate-y-px active:shadow-(--press)",
                   kind === k
-                    ? "bg-primary border-primary text-primary-foreground shadow-sm"
-                    : "bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted",
+                    ? "bg-primary border-primary text-primary-foreground shadow-(--solid-lift)"
+                    : "bg-(--raised) border-input shadow-(--raised-lift) text-muted-foreground hover:text-foreground hover:bg-muted",
                 )}
               >
                 <Icon
@@ -132,7 +136,7 @@ export function FeedbackDrawer({
           </div>
 
           <div className="space-y-2">
-            <p className="text-sm sm:text-base font-bold text-foreground">
+            <p className="text-[14px] font-bold text-ink-d2">
               {FEEDBACK_KIND_LABEL[kind]}
             </p>
             <Textarea
@@ -141,14 +145,14 @@ export function FeedbackDrawer({
               placeholder={FEEDBACK_KIND_PLACEHOLDER[kind]}
               rows={5}
               autoFocus
-              className="rounded-2xl bg-background border-border text-foreground text-base resize-none min-h-[120px]"
+              className="rounded-2xl text-foreground text-base resize-none min-h-[120px]"
             />
           </div>
 
           {/* Shown, not hidden: a trainer should know what leaves their iPad. */}
           {summary && (
-            <p className="text-[10px] sm:text-[11px] text-muted-foreground font-medium leading-relaxed">
-              <span className="font-black uppercase tracking-widest">
+            <p className="text-[12px] text-muted-foreground font-medium leading-relaxed">
+              <span className="font-bold">
                 Attached automatically:
               </span>{" "}
               {summary}
@@ -158,7 +162,7 @@ export function FeedbackDrawer({
           <Button
             onClick={send}
             disabled={!description.trim() || busy || sent}
-            className="w-full h-12 sm:h-14 rounded-2xl bg-primary hover:bg-primary text-primary-foreground font-black uppercase text-[11px] sm:text-xs tracking-widest gap-2 disabled:opacity-40"
+            className="w-full h-12 sm:h-14 rounded-2xl bg-primary hover:bg-primary text-primary-foreground text-[14px] font-bold gap-2 disabled:opacity-40"
           >
             {sent ? (
               <>
