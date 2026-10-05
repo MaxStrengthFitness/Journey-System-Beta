@@ -87,7 +87,7 @@ export function TaskNoteDialog({
           </label>
 
           {isMaintenance && (
-            <label className="flex items-start gap-2.5 rounded-lg border border-border p-3">
+            <label className="flex items-start gap-2.5 rounded-lg border border-input p-3">
               <input
                 type="checkbox"
                 checked={flagged}

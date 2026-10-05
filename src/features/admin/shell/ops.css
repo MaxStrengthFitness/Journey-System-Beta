@@ -967,7 +967,10 @@
   gap: 2px;
   min-height: 84px;
   padding: 13px 12px 10px;
-  border: 1px solid var(--adm-border);
+  border: 1px solid var(--adm-border-strong);
+  /* The band is the top edge too: the firm edge (AJ's 3A, Oct 5 2026)
+     would otherwise draw a grey line across the band's first pixel. */
+  border-top-color: var(--ops-stop-band);
   border-radius: 12px;
   background:
     linear-gradient(var(--ops-stop-band), var(--ops-stop-band)) top / 100% 4px no-repeat border-box,
@@ -1169,7 +1172,7 @@
   gap: 1px;
   min-height: 44px;
   padding: 6px 12px;
-  border: 1px solid var(--adm-border);
+  border: 1px solid var(--adm-border-strong);
   border-radius: 10px;
   background: var(--adm-surface);
   color: var(--adm-ink);
@@ -1709,7 +1712,7 @@
   gap: 14px;
   min-height: 96px;
   padding: 16px 18px;
-  border: 1px solid var(--adm-border);
+  border: 1px solid var(--adm-border-strong);
   border-radius: var(--adm-radius);
   background: var(--adm-surface);
   color: var(--adm-ink);

@@ -349,7 +349,7 @@
   height: 40px;
   padding: 0 12px;
   border-radius: 999px;
-  border: 1.5px solid var(--sr-border);
+  border: 1.5px solid var(--sr-border-strong);
   background: var(--sr-surface);
   color: var(--sr-ink-2);
   font-size: 13px;
@@ -427,17 +427,20 @@
 @media (min-width: 640px) { .sr-body { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .sr-body__group { display: flex; flex-direction: column; gap: 6px; }
 .sr-body__group h5 { margin: 0 0 2px; font-size: 14px; font-weight: 700; text-transform: none; letter-spacing: 0; color: var(--sr-ink-2); }
+/* A region is the row its side buttons sit in, not a button, so it keeps
+   the soft edge and no pointer; its sides take the firm 3:1 edge (AJ's 3A,
+   Oct 5 2026). */
 .sr-body__region {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   min-height: var(--sr-tap); padding: 6px 10px 6px 12px;
   border-radius: var(--sr-radius-sm); border: 1.5px solid var(--sr-border);
-  background: var(--sr-surface); font-size: 14px; font-weight: 700; cursor: pointer;
+  background: var(--sr-surface); font-size: 14px; font-weight: 700;
 }
 .sr-body__region--has { border-color: var(--sr-red); background: var(--sr-red-fill); }
 .sr-body__sides { display: flex; gap: 4px; }
 .sr-body__side {
   height: 40px; min-width: 40px; padding: 0 8px; border-radius: 7px;
-  border: 1px solid var(--sr-border); background: var(--sr-surface-2);
+  border: 1px solid var(--sr-border-strong); background: var(--sr-surface-2);
   color: var(--sr-ink-muted); font-size: 12px; font-weight: 800; cursor: pointer;
 }
 .sr-body__side--on { background: var(--sr-red); border-color: var(--sr-red); color: var(--sr-on); }
@@ -521,7 +524,7 @@
 
 /* ---------- Segmented control --------------------------------------- */
 
-.sr-seg { display: inline-flex; border: 1.5px solid var(--sr-border); border-radius: var(--sr-radius-sm); overflow: hidden; background: var(--sr-surface-2); }
+.sr-seg { display: inline-flex; border: 1.5px solid var(--sr-border-strong); border-radius: var(--sr-radius-sm); overflow: hidden; background: var(--sr-surface-2); }
 .sr-seg button {
   height: 40px; padding: 0 12px; border: 0; background: transparent;
   color: var(--sr-ink-2); font-size: 12.5px; font-weight: 800; cursor: pointer;
@@ -974,7 +977,7 @@
   gap: 2px;
   min-height: 56px;
   padding: 8px 12px;
-  border: 1px solid var(--sr-border);
+  border: 1px solid var(--sr-border-strong);
   border-radius: 12px;
   background: var(--sr-surface);
   color: var(--sr-ink);
@@ -982,7 +985,9 @@
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.pq__tile:hover { background: var(--sr-surface-2); }
+@media (hover: hover) {
+  .pq__tile:hover { background: var(--sr-surface-2); }
+}
 .pq__tile:focus-visible { outline: 2px solid var(--sr-navy); outline-offset: 2px; }
 .pq__tile-title { font-size: 13px; font-weight: 700; line-height: 1.2; }
 .pq__tile-when { font-size: 11px; color: var(--sr-ink-muted); }

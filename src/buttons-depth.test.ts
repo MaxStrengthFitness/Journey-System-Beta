@@ -600,10 +600,10 @@ describe("what stays quiet stays quiet", () => {
     expect(doorPress.flatMap((r) => declared(r.body, "box-shadow"))).toEqual([]);
   });
 
-  it("a Journal view is a filter chip: its pill, its soft edge and its fill, with the depth only", () => {
+  it("a Journal view is a filter chip: its pill, the firm edge (AJ's 3A) and its fill, with the depth", () => {
     const view = merged("features/relay/notes/notes.css", ".pn__view");
     expect(view["border-radius"]).toBe("999px");
-    expect(view.border).toBe("1px solid var(--st-border)");
+    expect(view.border).toBe("1px solid var(--st-border-strong)");
     expect(view.background).toBe("var(--st-surface)");
     expect(view["box-shadow"]).toBe("var(--st-elev-1), inset 0 1px 0 var(--st-highlight)");
     expect(merged("features/relay/notes/notes.css", '.pn__view[aria-pressed="true"]')["box-shadow"]).toBe("var(--st-elev-1)");

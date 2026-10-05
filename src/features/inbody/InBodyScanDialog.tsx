@@ -318,7 +318,7 @@ export function InBodyScanDialog({ open, onClose, client, scan, scans, authTrain
           )}
 
           {weightOffer && (
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-border px-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-input px-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
               <input
                 type="checkbox"
                 checked={updateWeight}

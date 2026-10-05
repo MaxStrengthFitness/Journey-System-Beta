@@ -317,7 +317,7 @@
 .ph-mark {
   width: 44px;
   height: 40px;
-  border: 1px solid var(--eq-border);
+  border: 1px solid var(--eq-border-strong);
   border-radius: 10px;
   background: var(--eq-surface);
   color: var(--eq-ink-faint);
@@ -333,7 +333,7 @@
 .ph-chip {
   min-height: 40px;
   padding: 0 12px;
-  border: 1px solid var(--eq-border);
+  border: 1px solid var(--eq-border-strong);
   border-radius: 999px;
   background: var(--eq-surface);
   color: var(--eq-ink-2);

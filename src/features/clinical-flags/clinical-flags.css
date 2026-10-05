@@ -59,7 +59,7 @@
      The 2px it took is in the padding. A state sets --cfl-band and
      background-color, never the background shorthand, which would wipe the
      band. */
-  --cfl-band: var(--eq-border);
+  --cfl-band: transparent;
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr) auto;
   align-items: center;
@@ -67,8 +67,7 @@
   min-height: 44px;
   padding: 7px 10px 7px 11px;
   border-radius: 10px;
-  border: 1px solid var(--eq-border);
-  border-left-color: var(--cfl-band);
+  border: 1px solid var(--eq-border-strong);
   background:
     linear-gradient(var(--cfl-band), var(--cfl-band)) left / 3px 100% no-repeat border-box,
     var(--eq-surface-2) padding-box;
@@ -83,6 +82,10 @@
 }
 .cfl-toggle[data-tone="alert"] { --cfl-band: var(--eq-alert); }
 .cfl-toggle[data-tone="caution"] { --cfl-band: var(--eq-warn); }
+/* A tone's band is the left edge too (AJ's 3A, Oct 5 2026). */
+.cfl-toggle[data-tone="alert"],
+.cfl-toggle[data-tone="caution"],
+.cfl-toggle--on { border-left-color: var(--cfl-band); }
 .cfl-toggle:focus-visible, .cfl-chip__x:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
 .cfl-toggle__mark {
   display: grid;

@@ -145,7 +145,7 @@ textarea.nc-input { resize: vertical; }
   min-height: 44px;
   padding: 0 0.9rem;
   border-radius: 12px;
-  border: 1px solid var(--eq-border);
+  border: 1px solid var(--eq-border-strong);
   background: var(--eq-surface);
   color: var(--eq-ink-2);
   font-size: 13px;
@@ -154,7 +154,9 @@ textarea.nc-input { resize: vertical; }
   white-space: nowrap;
   cursor: pointer;
 }
-.nc-chip:hover { background: var(--eq-surface-2); }
+@media (hover: hover) {
+  .nc-chip:hover { background: var(--eq-surface-2); }
+}
 .nc-chip:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
 .nc-chip[aria-pressed="true"] {
   border-color: var(--eq-live);
@@ -423,7 +425,7 @@ textarea.nc-input { resize: vertical; }
   min-height: 40px;
   padding: 0 0.875rem;
   border-radius: 999px;
-  border: 1px solid var(--eq-border);
+  border: 1px solid var(--eq-border-strong);
   background: var(--eq-surface-2);
   color: var(--eq-ink-2);
   font-family: inherit;

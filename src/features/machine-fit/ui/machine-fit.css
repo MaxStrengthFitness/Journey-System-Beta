@@ -173,7 +173,7 @@
 .fit-filter {
   display: inline-flex;
   padding: 3px;
-  border: 1px solid var(--eq-border);
+  border: 1px solid var(--eq-border-strong);
   border-radius: 12px;
   background: var(--eq-surface-2);
 }
