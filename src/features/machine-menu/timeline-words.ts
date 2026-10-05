@@ -243,7 +243,8 @@ function sidesFigures(w: number | null, L: ColumnSide | null, R: ColumnSide | nu
   return `${w === null ? "" : `${w} lb · `}${part(L, "L")} · ${part(R, "R")}`;
 }
 
-function setFigures(weight: number | null, reps: number | null, seconds: number | null): string {
+/** One set's figures: "100 lb × 9", "94 lb · held 1:30", "100 lb". */
+export function setFigures(weight: number | null, reps: number | null, seconds: number | null): string {
   if (weight === null) return effortOf(reps, seconds) ?? "No load recorded";
   if (seconds !== null) return `${weight} lb · held ${formatSeconds(seconds)}`;
   return reps !== null ? `${weight} lb × ${reps}` : `${weight} lb`;
