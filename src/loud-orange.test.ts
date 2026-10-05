@@ -254,7 +254,7 @@ describe("a solid logo-orange button has navy words and keeps its fill on hover"
   it.each([
     ["Start a new session (a stale session)", "features/tracker/StaleSessionDialog.tsx", 1],
     ["Finish session (the End Session dialog)", "components/WorkoutTrackerView.tsx", 1],
-    ["Start Consult Workout", "components/ConsultationSetupWizard.tsx", 1],
+    ["Start consult workout", "components/ConsultationSetupWizard.tsx", 1],
   ])("%s is the logo orange with navy words, restated on hover", (_name, file, count) => {
     const strings = classStrings(read(file), file).filter(
       (s) => has(s.body, "bg-cta") && has(s.body, "text-cta-foreground") && has(s.body, "hover:bg-cta"),
@@ -271,10 +271,13 @@ describe("a solid logo-orange button has navy words and keeps its fill on hover"
     ]) {
       expect(read(file), file).not.toMatch(/rgba\((?:240,\s*108,\s*34|239,\s*83,\s*2)/);
     }
-    // The Start Consult Workout glow. (The wizard's picked chips are the blue
-    // since AJ's answer of Oct 4 2026; their glow is the blue's own.)
+    // The Start consult workout glow: Go's depth, the token (type and depth,
+    // the sweep, Oct 5 2026; it was a 30px arbitrary glow, past the round's
+    // short resting shadows). The wizard's picked chips are the blue since
+    // AJ's answer of Oct 4 2026, with the blue's own lift.
     const wizard = read("components/ConsultationSetupWizard.tsx");
-    expect(wizard).toContain("shadow-[0_10px_30px_var(--cta)] shadow-cta/30");
+    expect(wizard).toContain("shadow-(--go-lift)");
+    expect(wizard).not.toContain("shadow-[0_10px_30px_var(--cta)]");
   });
 
   it("First-time setup (in the session for a prospect) writes in the theme's ink, never white or the logo orange", () => {
@@ -629,13 +632,15 @@ describe("a selection is blue", () => {
 
   it("First-time setup's gender and skill chips: the picked one is the blue, with the blue's glow", () => {
     const wizard = read("components/ConsultationSetupWizard.tsx");
-    const picked =
-      '"bg-primary text-primary-foreground border-primary shadow-[0_0_20px_var(--primary)] shadow-primary/25 scale-102 sm:scale-105"';
+    // The sweep (Oct 5 2026) gave the picked chip the solid blue's own lift
+    // in place of a 20px arbitrary glow and a scale, and the unpicked ones the
+    // raised recipe on the 3:1 edge (they were the ground's own tone).
+    const picked = '"bg-primary text-primary-foreground border-primary shadow-(--solid-lift)"';
     expect(wizard.split(picked)).toHaveLength(3);
     expect(wizard).not.toMatch(/border-cta shadow/);
     for (const t of BOTH) {
       expect(ratio(colour(t, "--primary"), colour(t, "--bg-dark")), `${t}: a chip on the ground`).toBeGreaterThanOrEqual(3);
-      expect(ratio(colour(t, "--primary"), colour(t, "--bg-dark-2")), `${t}: beside the unpicked chip`).toBeGreaterThanOrEqual(3);
+      expect(ratio(colour(t, "--primary"), colour(t, "--raised")), `${t}: beside the unpicked, raised chip`).toBeGreaterThanOrEqual(3);
     }
   });
 

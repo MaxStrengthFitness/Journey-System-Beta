@@ -41,6 +41,12 @@ import { describe, expect, it } from "vitest";
  *      in the label's own capitalisation (phase 14; AJ's 1A, capitals are for
  *      places only). With the capitals gone the words show as they are
  *      written, so every AdminButton's label is held to sentence case too.
+ *   9. The dialogs the review deferred (the follow-up, Oct 5 2026).
+ *  10. Learning's switch, the segment voice in a well (the follow-up).
+ *  11. The whole of src (the sweep, Oct 5 2026): capitals only on the
+ *      eyebrow, Go and the brand, a first letter and the progress report;
+ *      no text under 11px but initials and counts in their dots; no wide
+ *      tracking but on those capitals; the class lists by file and count.
  *
  * The allow-lists are exact both ways: an entry that no longer slants (or
  * no longer exists) fails as well, so they shrink with the code. The plan's
@@ -790,5 +796,156 @@ describe("10. Learning's switch is the segment voice in a well", () => {
     const group = rule(".wk__seg");
     expect(declared(group, "border")).toEqual(["1px solid var(--wk-border-strong)"]);
     expect(declared(group, "box-shadow")).toEqual(["var(--wk-elev-0)"]);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* 11. One capitals style, held across the whole of src (the sweep)    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The finish round's sweep (Oct 5 2026) read every stylesheet and class list
+ * in src for the old voice and found about two hundred and fifty rules the
+ * phases had not reached: labels, tags, table heads and tabs in 9-12px
+ * capitals at wide tracking, in rooms no mock and no walk had opened (the
+ * Activity Archive, the Calendar, Relay, Learning, Programming, Pulse, My
+ * Profile, Operations, Admins). They speak the round's voice now, and this
+ * section holds all of src to AJ's 1A, so a new rule can't bring the old
+ * voice back unseen:
+ *
+ *   - capitals only on the eyebrow over a page title (12/700 at 0.08em, the
+ *     one capitals style), Go and the brand, a sentence's first letter, and
+ *     the progress report (printed and handed to the client; its own voice);
+ *   - no text under 11px, but initials and a count in their dots, and the
+ *     report;
+ *   - no words tracked at 0.06em or wider, but the capitals above;
+ *   - in the class lists, the same three, by file and count: the brand, Go,
+ *     the eyebrow, initials, a count badge, and the screens the round leaves
+ *     on purpose (the progress report, the always-dark error, import and
+ *     front door screens, and two components no screen mounts).
+ *
+ * The lists are exact both ways, so they shrink with the code.
+ */
+const EYEBROW_STYLE = "the eyebrow over a page title, the one capitals style";
+const REPORT = "the progress report: printed and handed to the client, in its own voice";
+const NOT_MOUNTED = "no screen mounts it";
+const EYEBROWS: Record<string, string> = {
+  "features/admin/shell/ops.css .ops-client__eyebrow": `${EYEBROW_STYLE} (Operations' client page and Setup)`,
+  "features/admin/shell/ops.css .ops-brief__eyebrow": `${EYEBROW_STYLE} (Today and the huddle)`,
+  "features/admins/admins.css .hq-home__eyebrow": `${EYEBROW_STYLE} (Admins' Home)`,
+  "features/client-codex/kit/kit.css .cx-eyebrow": `${EYEBROW_STYLE} (the codex's pages; its list kickers inside panels are AJ's call)`,
+  "features/clinical-review/clinical-review.css .cr-gate__eyebrow": `${EYEBROW_STYLE} (the Deep Dive)`,
+  "features/learning/learning.css .lh__eyebrow": `${EYEBROW_STYLE} (Learning's home)`,
+  "features/learning/learning.css .lh__kicker": `${EYEBROW_STYLE} (over each of Learning's section titles)`,
+  "features/my-studio/my-studio.css .msh__kicker": `${EYEBROW_STYLE} (My Studio's masthead)`,
+  "features/subjective-report/subjective-report.css .pcm__kicker": `${EYEBROW_STYLE} (Pulse's client mode, over the area's title)`,
+  "features/wiki/wiki.css .wk__eyebrow": `${EYEBROW_STYLE} (a Learning page)`,
+};
+const REPORT_CAPITALS = [".pr-guide__label", ".pr-nav__where", ".pr-btn", ".pr-label", ".pr-p__title", ".pr-p__def", ".pr-p__include", ".pr-pcard__title", ".pr-pulse__title"];
+const CAPITALS_ON_PURPOSE: Record<string, string> = {
+  ...EYEBROWS,
+  ...DISPLAY_CAPS,
+  "features/front-door/front-door.css .fd-eyebrow": `${BRAND}: the front door's eyebrow, always dark (Oct 3 2026)`,
+  "features/client-directory/client-directory.css .cd-sort-dirbtn::first-letter": "a sentence's first letter: the sort's way is written in lower case so it reads inside a sentence elsewhere",
+  ...Object.fromEntries(REPORT_CAPITALS.map((s) => [`features/progress-report/progress-report.css ${s}`, REPORT])),
+};
+
+/** Text under 11px in a stylesheet, on purpose. */
+const SMALL_ON_PURPOSE: Record<string, string> = {
+  "features/calendar/calendar.css .cal-avatar": "a trainer's initials in a 26px dot",
+  "features/calendar/calendar.css .cal-avatar--sm": "a trainer's initials in a 22px dot",
+  "features/calendar/calendar.css .cal-who__badge": "a count in the 16px badge on a trainer's dot",
+  "features/progress-report/progress-report.css .pr-step__n": REPORT,
+  "features/progress-report/progress-report.css .pr-guide__label": REPORT,
+};
+
+/** A font-size in px: px, rem, or the codex's `var(--cx-fs-N)`. */
+function textPx(value: string): number | null {
+  const own = sizeOf(value);
+  if (own !== null) return own;
+  const rem = value.match(/^(\d*\.?\d+)rem$/);
+  return rem ? Number(rem[1]) * 16 : null;
+}
+
+/** Class lists in the old voice on purpose: [capitals, wide tracking, under 11px] per file. */
+const TSX_OLD_VOICE: Record<string, { counts: [number, number, number]; why: string }> = {
+  "components/AppHeader.tsx": { counts: [1, 0, 0], why: `${BRAND}: the studio's name on the frame` },
+  "features/client-profile/ProfileHeader.tsx": { counts: [2, 0, 0], why: `${GO}: Start session and In progress (Go or brand is AJ's call)` },
+  "components/WrapUpScreen.tsx": { counts: [1, 1, 0], why: `${EYEBROW_STYLE}, over the Wrap-up's title` },
+  "components/MaxStrengthLogo.tsx": { counts: [2, 2, 0], why: `${BRAND}: the logo's words` },
+  "components/ui/avatar.tsx": { counts: [1, 1, 0], why: "a person's initials in their avatar" },
+  "components/ui/dropdown-menu.tsx": { counts: [0, 1, 0], why: "a menu item's keyboard shortcut, set apart (no menu draws one today)" },
+  "features/notifications/NotificationBell.tsx": { counts: [0, 0, 1], why: "the unread count in the bell's 16px dot" },
+  "components/ClientProgressReportView.tsx": { counts: [67, 60, 6], why: REPORT },
+  "features/progress-report/AccoladeViews.tsx": { counts: [16, 16, 0], why: REPORT },
+  "features/progress-report/ClientReportSections.tsx": { counts: [8, 8, 7], why: REPORT },
+  "features/progress-report/GoalsBlock.tsx": { counts: [5, 5, 0], why: REPORT },
+  "features/progress-report/MachineProgressionStep.tsx": { counts: [5, 5, 1], why: REPORT },
+  "features/progress-report/ReportNotOpened.tsx": { counts: [1, 1, 0], why: `${REPORT} (its own could-not-open screen)` },
+  "features/inbody/InBodyReportSection.tsx": { counts: [2, 2, 1], why: `${REPORT} (the InBody section)` },
+  "components/ErrorBoundary.tsx": { counts: [3, 3, 0], why: "the error screen: always dark, its own palette (the Navy Frame's NOT_THIS_ROUND)" },
+  "features/admin/import/LegacyChartImporter.tsx": { counts: [39, 19, 12], why: "the legacy chart importer: always dark, its own palette (the Navy Frame's NOT_THIS_ROUND)" },
+  "features/demo-mode/SetUpDemoCard.tsx": { counts: [10, 10, 3], why: "on the front door's studio picker: always dark, the front door's own voice (Oct 3 2026)" },
+  "components/ConsultationWizard.tsx": { counts: [25, 16, 0], why: NOT_MOUNTED },
+  "components/anatomy/MuscleSelector.tsx": { counts: [1, 1, 1], why: NOT_MOUNTED },
+};
+
+const WIDE = /(?:^|:)tracking-(?:wide|wider|widest|\[0?\.(?:0[6-9]|[1-9])\d*em\])$/;
+
+describe("11. one capitals style, held across the whole of src", () => {
+  it("in the stylesheets: capitals only on the list (the eyebrow, Go and the brand, a first letter, the report)", () => {
+    const found = [...new Set(ALL_RULES.filter((r) => capitals(r.body)).map(keyOf))].sort();
+    expect(found).toEqual(Object.keys(CAPITALS_ON_PURPOSE).sort());
+  });
+
+  it("the eyebrows are one style: 12px, 700, 0.08em", () => {
+    for (const key of Object.keys(EYEBROWS)) {
+      const body = ALL_RULES.filter((r) => keyOf(r) === key).map((r) => r.body).join(";");
+      expect(body, key).not.toBe("");
+      expect(declared(body, "font-size").map(textPx), key).toContain(12);
+      expect(declared(body, "font-weight").flatMap((w) => weightsOf(w)), key).toContain(700);
+      expect(declared(body, "letter-spacing"), key).toContain("0.08em");
+    }
+  });
+
+  it("no stylesheet sets text under 11px but initials and a count in their dots, and the report", () => {
+    const found = [
+      ...new Set(
+        ALL_RULES.filter((r) => declared(r.body, "font-size").some((v) => {
+          const n = textPx(v);
+          return n !== null && n > 0 && n < 11;
+        })).map(keyOf),
+      ),
+    ].sort();
+    expect(found).toEqual(Object.keys(SMALL_ON_PURPOSE).sort());
+  });
+
+  it("no stylesheet tracks words at 0.06em or wider but the capitals on the list", () => {
+    const found = [
+      ...new Set(
+        ALL_RULES.filter((r) => declared(r.body, "letter-spacing").some((v) => {
+          const m = /^(-?\d*\.?\d+)em$/.exec(v);
+          return !!m && Number(m[1]) >= 0.06;
+        })).map(keyOf),
+      ),
+    ];
+    expect(found.filter((k) => !(k in CAPITALS_ON_PURPOSE))).toEqual([]);
+  });
+
+  it("in the class lists: capitals, wide tracking and text under 11px only on the list, by file and count", () => {
+    const found: Record<string, [number, number, number]> = {};
+    for (const { file, lists } of TSX_LISTS) {
+      let caps = 0;
+      let wide = 0;
+      let small = 0;
+      for (const l of lists) {
+        const tokens = tokensOf(l);
+        if (hasCaps(l)) caps++;
+        if (tokens.some((t) => WIDE.test(t))) wide++;
+        if (tokens.some((t) => UNDER_11.test(t))) small++;
+      }
+      if (caps || wide || small) found[file] = [caps, wide, small];
+    }
+    expect(found).toEqual(Object.fromEntries(Object.entries(TSX_OLD_VOICE).map(([f, v]) => [f, v.counts])));
   });
 });

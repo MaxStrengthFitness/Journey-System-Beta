@@ -318,10 +318,10 @@
   background: var(--adm-surface-2);
 }
 .adm-ov__snooze-label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-muted);
 }
 .adm-ov__snooze-date .adm-input { min-height: 40px; }
@@ -351,10 +351,10 @@
   flex-wrap: wrap;
 }
 .adm-ov__day-label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink);
 }
 .adm-ov__day-date {
@@ -394,10 +394,10 @@
 .adm-ov__unbooked-title {
   display: block;
   padding: 10px 14px 4px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-muted);
 }
 
@@ -417,10 +417,10 @@
 }
 .adm-ov__team thead th {
   border-top: 0;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-muted);
 }
 .adm-ov__team tbody th {
@@ -472,10 +472,10 @@
   flex: 1;
 }
 .adm-ov__line-label {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-muted);
 }
 .adm-ov__line-text {
@@ -518,10 +518,10 @@
 .adm-ch__day:focus-visible { outline: 2px solid var(--adm-focus-ring); outline-offset: 2px; }
 .adm-ch__day--on { border-color: var(--adm-live); box-shadow: inset 0 0 0 1px var(--adm-live); }
 .adm-ch__day-label {
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink);
 }
 .adm-ch__day-date { font-size: 11px; font-weight: 600; color: var(--adm-ink-muted); }

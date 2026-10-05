@@ -12,10 +12,10 @@
 .adm-mx__railgroup {
   display: block;
   margin: 10px 10px 2px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-muted);
 }
 

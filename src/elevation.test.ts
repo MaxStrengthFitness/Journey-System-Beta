@@ -782,6 +782,19 @@ const UNDER_40_ON_PURPOSE: Record<string, string> = {
   "features/admins/admins.css .hq-tab svg": "the icon inside an Admins tab",
 };
 
+/** A pointer target drawn under 40px, whatever its name: each with why. */
+const SMALL_TAP_ON_PURPOSE: Record<string, string> = {
+  "features/calendar/calendar.css .cal-block": "a booking on the Calendar's day is as tall as its time (a 15-minute one is 30px); its lane opens it too",
+  "features/equipment/equipment.css .eq-summary__clear": "drawn 24px inside the search field; its ::after reaches 40 (the sweep)",
+  "features/journey-grid/journey-grid.css .jg-machine__note": "AJ's call (the review): the note mark in a machine's cell, 20px",
+  "features/journey-grid/journey-grid.css .jg-machine__more": "AJ's call (the review): a machine's menu dots, 22px",
+  "features/journey-grid/journey-grid.css .jg-today__add": "its ::after takes the tap 6px to each side and to its own row's height (the review)",
+  "features/journey-grid/journey-grid.css .jg-clock__btn": "32px drawn inside the clock's 40px pill; its ::after reaches 40",
+  "features/journey-grid/journey-grid.css .jg-rail__edit": "no screen draws it today; session-colour-rules pins its edge",
+  "features/studio-tasks/studio-hub.css .sh__row-tick": "no screen draws it today",
+  "features/subjective-report/subjective-report.css .sr-switch": "a switch, 46 by 28, like the shared Switch (a trade-off the round names)",
+};
+
 describe("12. nothing tappable under 40px", () => {
   it("no rule that names a button, a tab or a back button sets a height under 40px", () => {
     // Widened on Oct 5 2026 (the review): the scan named "btn" only, and so
@@ -798,6 +811,24 @@ describe("12. nothing tappable under 40px", () => {
     }
     expect([...new Set(found)].filter((f) => !(f in UNDER_40_ON_PURPOSE))).toEqual([]);
     expect(Object.keys(UNDER_40_ON_PURPOSE).filter((k) => !found.includes(k)), "an exception that is no longer under 40").toEqual([]);
+  });
+
+  it("a rule that sets cursor: pointer sets no height under 40px, whatever its name, but on the list", () => {
+    // Widened again in the sweep (Oct 5 2026): the name scan above missed a
+    // session's TSC toggle (.hsd-toggle, 28px), the clinical flag chip's
+    // remove (32px) and Pulse's chips and segments (30-38px), none of them
+    // named btn, tab or back.
+    const found: string[] = [];
+    for (const r of ALL_RULES) {
+      if (!declared(r.body, "cursor").includes("pointer")) continue;
+      const heights = [...declared(r.body, "height"), ...declared(r.body, "min-height")].map(px);
+      if (heights.some((n) => n !== null && n >= 40)) continue;
+      // min-height: 0 is a flex child let shrink, not a size.
+      if (heights.some((n) => n !== null && n > 0 && n < 40)) found.push(`${r.file} ${r.selectors.join(", ")}`);
+    }
+    const unique = [...new Set(found)];
+    expect(unique.filter((f) => !(f in SMALL_TAP_ON_PURPOSE))).toEqual([]);
+    expect(Object.keys(SMALL_TAP_ON_PURPOSE).filter((k) => !unique.includes(k)), "an exception that is no longer under 40").toEqual([]);
   });
 
   it("the session clock's pause reaches 40px through its ::after", () => {

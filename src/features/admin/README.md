@@ -172,6 +172,14 @@ a little bit of weight and depth"; his answers "1a 2a 3b"
   `AdminButton`'s words and fails on "Save Order" or "SAVE" (a place, the
   company, a system or an acronym may keep its capitals: My Studio, Journal,
   Max Strength, Mindbody, MSF, CSV, URL).
+- **A label speaks words, not capitals** (the sweep, Oct 5 2026). A field's
+  label (`.adm-label`) is the 14/700 label in ink-2; a badge, a table's
+  head, a fact's or a group's name is 12px words at 700 (a tile's stat label
+  12/600). The eyebrow over a page title (`.ops-brief__eyebrow`,
+  `.ops-client__eyebrow`, `.hq-home__eyebrow`) is the one capitals style
+  left, and `type-voice.test.ts` holds every other rule in `src` to it. A
+  badge's words are written in sentence case: "Inactive", "Small sample",
+  never a raw value in lower case.
 - **A quiet button is raised on its 3:1 edge** (`--adm-raised`,
   `--adm-elev-1` and a white top light, on `--adm-border-strong`), presses
   in with a transform, and lies flat when disabled; the hero takes Go's

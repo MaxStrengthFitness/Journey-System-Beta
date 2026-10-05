@@ -324,7 +324,7 @@ export function AdminRoutineTemplatesTab({
                       <span className="adm-tpl__n">{i + 1}</span>
                       {nameFor(id)}
                       {p.machineNotes?.[id] && (
-                        <span className="adm-tpl__note">note</span>
+                        <span className="adm-tpl__note">Note</span>
                       )}
                     </li>
                   ))}

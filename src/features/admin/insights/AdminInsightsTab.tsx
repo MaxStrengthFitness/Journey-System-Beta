@@ -339,7 +339,7 @@ function TrainerRow({ t }: { t: TrainerMetrics }) {
         {t.label}
         {!t.enoughToJudge && (
           <span className="adm-ins-thin" title="Too few sessions to read rates from">
-            small sample
+            Small sample
           </span>
         )}
       </th>

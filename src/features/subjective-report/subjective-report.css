@@ -508,7 +508,7 @@
 .sr-btn--ghost { border-color: transparent; background: transparent; color: var(--sr-ink-muted); box-shadow: none; }
 .sr-btn--sm { height: 40px; padding: 0 10px; font-size: 12px; }
 .sr-btn--danger { color: var(--sr-red); border-color: var(--sr-red); }
-.sr-btn--tall { height: 48px; padding: 0 20px; font-size: 12px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 14px; }
+.sr-btn--tall { height: 48px; padding: 0 20px; font-size: 14px; font-weight: 700; letter-spacing: 0; text-transform: none; border-radius: 14px; }
 .sr-btn--navy { background: var(--sr-navy); border-color: var(--sr-navy); color: var(--sr-on); box-shadow: var(--sr-elev-1), var(--sr-solid-light); }
 .sr-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--sr-press); }
 .sr-btn--ghost:not(:disabled):active { box-shadow: none; }

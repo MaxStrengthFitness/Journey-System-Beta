@@ -101,10 +101,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--rb-ink-faint);
+  /* A run of machine codes: a little air so the codes read apart, never
+     the old 0.06em tracking. */
+  letter-spacing: 0.03em;
+  color: var(--rb-ink-muted);
   font-variant-numeric: tabular-nums;
 }
 

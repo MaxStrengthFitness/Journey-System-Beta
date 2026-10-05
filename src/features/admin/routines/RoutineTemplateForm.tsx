@@ -62,7 +62,7 @@ export function RoutineTemplateForm({
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3">
         <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+          <span className="text-[14px] font-bold text-ink-d2">
             Template name
           </span>
           <Input
@@ -74,7 +74,7 @@ export function RoutineTemplateForm({
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+          <span className="text-[14px] font-bold text-ink-d2">
             When to use it
           </span>
           <Textarea

@@ -159,7 +159,7 @@ describe("Clients → Trends", () => {
   it("keeps Insights below, with By trainer in name order and no red", async () => {
     const el = await mount();
     expect(el.textContent).toContain("What stands out");
-    const rows = [...el.querySelectorAll(".adm-ins-table tbody th")].map((th) => th.textContent?.replace("small sample", "").trim());
+    const rows = [...el.querySelectorAll(".adm-ins-table tbody th")].map((th) => th.textContent?.replace("Small sample", "").trim());
     expect(rows).toEqual(["Anborn Ranger", "Beregond Guard"]);
     expect(el.querySelector(".adm-ins-bad")).toBeNull();
   });

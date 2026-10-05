@@ -203,8 +203,8 @@
    masthead's (type and depth, phase 12; AJ's 1A). */
 .st__title { margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 800;
   font-style: normal; text-transform: none; letter-spacing: 0; line-height: 1.1; }
-.st__date { display: block; font-size: 11px; font-weight: 800; letter-spacing: 0.16em;
-  text-transform: uppercase; color: var(--st-ink-muted); }
+.st__date { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0;
+  text-transform: none; color: var(--st-ink-muted); }
 /* ── rows (the Hub's task rows; the original screen's group cards, selection
    bar, banners and view toggle went with it in the cost round, Sep 2026) ── */
 

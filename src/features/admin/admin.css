@@ -124,10 +124,10 @@
    twelve hex literals this round is retiring. */
 
 .adm-nav__group {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--adm-ink-muted);
 }
 
@@ -288,7 +288,7 @@
 
 .adm-shell__striplabel {
   padding: 0 12px;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .adm-shell__main {
@@ -463,11 +463,11 @@
 }
 
 .adm-label {
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--adm-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--adm-ink-2);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -751,10 +751,10 @@
   gap: 5px;
   padding: 3px 8px;
   border-radius: 999px;
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 
@@ -797,10 +797,10 @@
 }
 
 .adm-tile__label {
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--adm-ink-muted);
 }
 
@@ -1011,10 +1011,10 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--adm-ok);
 }
 
@@ -1092,10 +1092,10 @@
 }
 
 .adm-week__label {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--adm-ink-muted);
 }
 
@@ -1424,10 +1424,10 @@
 }
 
 .adm-diag dt {
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
   color: var(--adm-ink-muted);
   padding-top: 1px;
 }
@@ -1452,10 +1452,10 @@
 }
 
 .adm-bug-errors__title {
-  font-size: 10.5px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--adm-alert);
   margin-bottom: 6px;
 }
@@ -1476,10 +1476,10 @@
 }
 
 .adm-bug-errors__type {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--adm-alert);
   flex-shrink: 0;
 }
@@ -1630,10 +1630,10 @@
 }
 
 .adm-ins-table thead th {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-muted);
   border-bottom: 1px solid var(--adm-border);
 }
@@ -1666,10 +1666,10 @@
   padding: 1px 5px;
   border-radius: 999px;
   background: var(--adm-surface-3);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-muted);
 }
 
@@ -1845,7 +1845,7 @@
   place-items: center;
   border-radius: 999px;
   background: var(--adm-surface-3);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   color: var(--adm-ink-muted);
   font-variant-numeric: tabular-nums;
@@ -1856,10 +1856,10 @@
   border-radius: 999px;
   background: var(--adm-warn-fill);
   color: var(--adm-warn);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .adm-tpl__actions {
@@ -2069,7 +2069,7 @@
 .adm-hrs-count {
   display: block;
   margin-top: 1px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--adm-ink-muted);
 }
@@ -2099,10 +2099,10 @@
 
 .adm-hrs-total th {
   text-align: left;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink);
 }
 
@@ -2111,7 +2111,7 @@
 .adm-hrs-measured {
   display: block;
   margin-top: 1px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--adm-ink-muted);
 }
@@ -2139,10 +2139,10 @@
 }
 
 .adm-scope__label {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-muted);
   white-space: nowrap;
 }
