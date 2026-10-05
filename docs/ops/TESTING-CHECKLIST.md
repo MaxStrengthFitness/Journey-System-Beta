@@ -2880,3 +2880,16 @@ Round document: `docs/rounds/2026-10-04-type-and-depth.md`. Nothing in this roun
 - [ ] The session's words are 11px or larger and in their own capitalisation (Today, Latest, Load, Set, Form, No set?, a setting's name, Reps | Sec, Elapsed), and every label fits its row.
 - [ ] Scroll the grid sideways: the date heads never paint over the corner. The Now Bar docks over the grid's last row with a soft shadow above it (to its left on its side). The steppers and the quality buttons are raised on their firm outline and press in under glare; No set? stays dashed; Finish glows orange.
 - [ ] The clock's pause and the Today column's add are easy to hit in dense rows; the clock's digits don't shift as it counts. The machine sheet's buttons in a session are 40px.
+
+**The review's fixes (Oct 5 2026)**
+- [ ] In dark, open a dialog (Add a client, a Note, the leave question when you leave with typing), a sheet and the avatar menu: Cancel and the other outline buttons sit a step lighter than the panel, raised on a firm outline, never sunk into it.
+- [ ] The Hub's peek: only Start session is in slanted capitals; Open session, Resume or start new, Log past session and Edit session are orange in ordinary words. Open profile and Late cancel are raised in dark too.
+- [ ] In a session, open the machine sheet (labels in ordinary words, the fields on a firm outline; upright, the Machines back button is a raised 40px button), the Pulse slide-over (raised buttons, no tiny capitals), the session's notes (the cards' chips and dates readable) and a note's Save note, Clear and Open FORD (raised, they press in).
+- [ ] In dark, the Now Bar's two quality marks (the stroke and the star) are clearly visible before you tap them.
+- [ ] A dense grid (All machines, on its side, on the mini): tap just above and just below a Today +. Nothing is added unless you hit the + itself, and the "Not in today's routine" band folds when tapped near it.
+- [ ] The briefing: "Before you start" and "Since last time" read as labels, not tiny capitals; Front / Back and Edit / Done are words; the line under the name is readable.
+- [ ] The Wrap-up: its cards' heads are words; the three lifetime tiles lift; the note fields have a firm outline.
+- [ ] A profile with a session running elsewhere: In progress is amber with navy words.
+- [ ] The avatar menu: App mode is a tray with the picked mode raised; every item in ordinary words. The header search's clear (x) is easy to hit. The bell's sheet, a toast (a sentence, its x easy to hit) and the leave question read calmly.
+- [ ] Hub bookings in dark still stand off the grid (their rim is softer than before; say if they float).
+- [ ] A client with late cancels at 744 upright, and at 1366 on its side: the header grows by about 14px at most; count the Journey tab's machine rows.
