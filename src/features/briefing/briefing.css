@@ -599,14 +599,19 @@
   font-family: var(--font-display, inherit);
   font-style: italic;
   font-weight: 800;
-  font-size: 18px;
-  letter-spacing: 0.06em;
+  font-size: 17px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  box-shadow: 0 6px 20px var(--br-shadow);
+  box-shadow: var(--br-glow-go), var(--br-go-light);
   transition: transform 120ms ease;
 }
+/* Go (type and depth, phase 8, Oct 4 2026; AJ's 1A): the most-tapped
+   Start session speaks Go's one voice, the display face's slanted capitals
+   at 800 and 17, 0.04em (it was 18 at 0.06em), with Go's short orange glow
+   and a white top light (a 20px navy blur before), and presses down a pixel
+   into an inset shadow. Only the transform transitions. */
 .br__cta:hover { background: var(--br-go); color: var(--br-go-on); }
-.br__cta:active { transform: scale(0.99); }
+.br__cta:active { transform: translateY(1px); box-shadow: var(--br-press); }
 .br__cta:focus-visible { outline: 2px solid var(--br-hero); outline-offset: 3px; }
 
 @media (prefers-reduced-motion: reduce) {

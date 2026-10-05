@@ -195,6 +195,10 @@
   color: var(--eq-ink-faint);
 }
 
+/* A choice is a button (type and depth, phase 8, Oct 4 2026; AJ's 2A):
+   raised on its 3:1 edge, which stays, a lighter fill, a contact lift and a
+   white top light, and a press on :active. The picked one is tinted blue on
+   the blue edge, and still lifts. */
 .nx-pick,
 .nx-door {
   display: inline-flex;
@@ -202,9 +206,10 @@
   gap: 7px;
   min-height: 40px;
   padding: 0 13px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface-2);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink-2);
   font-family: inherit;
   font-size: 14px;
@@ -217,6 +222,7 @@
   border-color: var(--eq-live);
   background: var(--eq-live-fill);
   color: var(--eq-live-text);
+  box-shadow: var(--eq-elev-1);
 }
 
 .nx-pick__icon {
@@ -262,10 +268,13 @@
   font-weight: 600;
 }
 
-/* The door leaves the page, so it looks like a way out, not a filter. */
+/* The door leaves the page, so it looks like a way out, not a filter: its
+   dashes on the card's own fill, and no lift (type and depth, phase 8: a
+   dashed control stays quiet and flat, and only presses). */
 .nx-door {
   background: var(--eq-surface);
   border-style: dashed;
+  box-shadow: none;
 }
 
 /* ---- zones -------------------------------------------------------------- */
@@ -773,6 +782,11 @@
   gap: 8px;
 }
 
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, on the 3:1
+   edge, which stays; a press on :active. Quiet is words with no box, so no
+   lift; solid is brand blue with a blue-tinted drop; anything that can't
+   be pressed lies flat. */
 .nt-btn {
   display: inline-flex;
   align-items: center;
@@ -781,8 +795,9 @@
   min-height: 40px;
   padding: 0 14px;
   border: 1px solid var(--eq-border-strong);
-  border-radius: 10px;
-  background: var(--eq-surface-2);
+  border-radius: 12px;
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink);
   font-family: inherit;
   font-size: 14px;
@@ -801,18 +816,36 @@
   border-color: transparent;
   background: transparent;
   color: var(--eq-ink-2);
+  box-shadow: none;
 }
 
 .nt-btn--solid {
   border-color: transparent;
   background: var(--eq-live);
   color: var(--eq-live-on);
+  box-shadow: var(--eq-glow-live), var(--eq-solid-light);
 }
 
 /* Archive, confirmed: taken off every screen. Crimson is a critical note's,
    so the confirm is plain ink on a strong edge. */
 .nt-btn--danger {
   border-color: var(--eq-ink-2);
+}
+
+.nt-btn:not(:disabled):active,
+.nx-pick:not(:disabled):active,
+.nx-ask__q:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
+}
+.nx-door:not(:disabled):active {
+  transform: translateY(1px);
+}
+.nt-btn--quiet:not(:disabled):active {
+  box-shadow: none;
+}
+.nt-btn:disabled {
+  box-shadow: none;
 }
 
 .nt-compose {
@@ -845,9 +878,14 @@
 
 @media (hover: hover) {
   .nt-btn:not(:disabled):hover,
-  .nx-pick:hover,
+  .nx-pick:not([aria-pressed="true"]):hover,
   .nx-door:hover {
     background: var(--eq-surface-3);
+  }
+
+  /* A filled button keeps its fill under the pointer. */
+  .nt-btn--solid:not(:disabled):hover {
+    background: var(--eq-live);
   }
 
   .nt-more:hover,
@@ -906,6 +944,7 @@
   gap: 8px;
 }
 
+/* A question is a button: raised on its 3:1 edge (type and depth, phase 8). */
 .nx-ask__q {
   display: flex;
   flex-direction: column;
@@ -914,9 +953,10 @@
   gap: 3px;
   min-height: 56px;
   padding: 9px 13px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface-2);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink-2);
   font-family: inherit;
   text-align: left;
@@ -932,6 +972,7 @@
   border-color: var(--eq-live);
   background: var(--eq-live-fill);
   color: var(--eq-live-text);
+  box-shadow: var(--eq-elev-1);
 }
 
 .nx-ask__question {

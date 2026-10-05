@@ -647,8 +647,12 @@ export function ProfileHeader({
           <DropdownMenu>
             {/* Go's other state, so Go's words: the display face's slanted
                 capitals at 800 and 17 (14 on a phone), 0.04em (type and
-                depth, phase 7). Its depth comes with Go's, in phase 8. */}
-            <DropdownMenuTrigger className="inline-flex items-center gap-2 h-12 px-4 sm:px-5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-display italic uppercase font-extrabold tracking-[0.04em] text-[14px] sm:text-[17px] shadow-[0_10px_30px_-12px_rgba(245,158,11,.8)] transition-colors">
+                depth, phase 7), and Go's depth (phase 8): the short glow and
+                white top light of --go-lift instead of a 30px amber blur, a
+                press down a pixel into an inset shadow, and the fill
+                restated on hover (an iPad keeps hover after a tap). Only the
+                fill and the move transition, never the shadow. */}
+            <DropdownMenuTrigger className="inline-flex items-center gap-2 h-12 px-4 sm:px-5 rounded-2xl bg-amber-500 hover:bg-amber-500 text-white font-display italic uppercase font-extrabold tracking-[0.04em] text-[14px] sm:text-[17px] shadow-(--go-lift) active:translate-y-px active:shadow-(--press) transition-[background-color,transform]">
               <Clock className="w-4 h-4 animate-pulse" />
               <span className="hidden sm:inline">In progress</span>
               <span className="text-white/80 text-xs not-italic font-sans font-bold">({activeInProgressSession.trainerInitials})</span>

@@ -76,6 +76,10 @@
 }
 .jtd-input:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, on the 3:1
+   edge, which stays; a press on :active, and flat when it can't be pressed.
+   The solid blue one drops a blue-tinted shadow instead. */
 .jtd-btn {
   align-self: flex-start;
   display: inline-flex;
@@ -84,8 +88,9 @@
   min-height: 44px;
   padding: 0 14px;
   border: 1px solid var(--st-border-strong);
-  border-radius: 10px;
-  background: var(--st-surface);
+  border-radius: 12px;
+  background: var(--st-raised);
+  box-shadow: var(--st-elev-1), inset 0 1px 0 var(--st-highlight);
   color: var(--st-ink);
   font: inherit;
   font-size: 14px;
@@ -93,8 +98,9 @@
   cursor: pointer;
 }
 .jtd-btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
-.jtd-btn:disabled { opacity: 0.55; cursor: default; }
-.jtd-btn--go { border-color: var(--st-live); background: var(--st-live); color: var(--st-live-on); }
+.jtd-btn--go { border-color: var(--st-live); background: var(--st-live); color: var(--st-live-on); box-shadow: var(--st-glow-live), var(--st-solid-light); }
+.jtd-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--st-press); }
+.jtd-btn:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
 
 .jtd-quiet {
   display: inline-flex;

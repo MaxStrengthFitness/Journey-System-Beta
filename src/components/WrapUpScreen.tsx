@@ -857,7 +857,7 @@ export function WrapUpScreen({
                   onClick={() => setTimesOpen(true)}
                   data-testid="times-door"
                   data-door="prominent"
-                  className="shrink-0 min-h-11 rounded-xl border border-(--eq-warn)/40 bg-bg-dark-3 px-4 text-[14px] font-bold text-ink-d1 whitespace-nowrap hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+                  className="shrink-0 min-h-11 rounded-xl border border-input bg-(--raised) shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) px-4 text-[14px] font-bold text-ink-d1 whitespace-nowrap hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
                 >
                   <CalendarClock size={16} className="text-(--eq-warn) shrink-0" aria-hidden="true" />
                   {TIMES_WITH_ROOM}
@@ -901,7 +901,7 @@ export function WrapUpScreen({
                   {/* A save: solid brand blue, its own on-colour. */}
                   <button
                     type="button"
-                    className="min-h-10 flex-1 rounded-xl bg-(--eq-live) text-(--eq-live-on) text-[14px] font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+                    className="min-h-10 flex-1 rounded-xl bg-(--eq-live) text-(--eq-live-on) shadow-(--solid-lift) active:translate-y-px active:shadow-(--press) text-[14px] font-bold disabled:opacity-50 disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
                     disabled={draftBusy || !draftText.trim()}
                     onClick={async () => {
                       setDraftBusy(true);
@@ -916,7 +916,7 @@ export function WrapUpScreen({
                   </button>
                   <button
                     type="button"
-                    className="min-h-10 px-4 rounded-xl border border-div-d text-ink-d2 text-[14px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+                    className="min-h-10 px-4 rounded-xl border border-input bg-(--raised) shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) text-ink-d2 text-[14px] font-bold disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
                     disabled={draftBusy}
                     onClick={onDropDraft}
                   >
@@ -1002,11 +1002,15 @@ export function WrapUpScreen({
               )}
             </div>
 
+            {/* The doors are RAISED (type and depth, phase 8, Oct 4 2026; AJ's
+                2A): a fill a hair lighter than the card, a contact lift and a
+                white top light, on the 3:1 --input edge (they drew the
+                decorative divider), and a press. The voice stays 14px bold. */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => setShowPulse(true)}
-                className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 text-[14px] font-bold text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+                className="min-h-11 rounded-xl border border-input bg-(--raised) shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) px-4 text-[14px] font-bold text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
               >
                 <HeartPulse className="w-4 h-4 text-(--eq-live)" />
                 Update Pulse
@@ -1017,10 +1021,14 @@ export function WrapUpScreen({
                 <button
                   type="button"
                   onClick={() => setShowRenewal(true)}
-                  className={`min-h-11 rounded-xl border px-4 py-2 text-[14px] font-bold hover:opacity-90 flex items-center justify-center gap-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring) ${
+                  className={`min-h-11 rounded-xl border px-4 py-2 text-[14px] font-bold hover:opacity-90 active:translate-y-px active:shadow-(--press) flex items-center justify-center gap-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring) ${
                     renewalDue && !renewalLogged
                       ? "border-(--eq-hero)/50 bg-(--eq-hero-fill) text-ink-d1"
-                      : "border-div-d bg-bg-dark-3 text-ink-d1"
+                      : "border-input bg-(--raised) text-ink-d1"
+                  } ${
+                    // A tint lifts without the top light; the raised door
+                    // takes the lift and the top light.
+                    renewalDue && !renewalLogged ? "shadow-(--elev-1)" : "shadow-(--raised-lift)"
                   }`}
                 >
                   <MessageSquareText className={`w-4 h-4 shrink-0 ${renewalDue && !renewalLogged ? "text-(--eq-hero-text)" : "text-(--eq-live)"}`} />
@@ -1113,7 +1121,7 @@ export function WrapUpScreen({
               type="button"
               onClick={leave}
               disabled={leaving}
-              className="w-full min-h-[52px] rounded-2xl bg-bg-dark-2 border border-div-d text-ink-d1 text-[14px] font-bold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+              className="w-full min-h-[52px] rounded-2xl bg-(--raised) shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) border border-input text-ink-d1 text-[14px] font-bold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60 disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
             >
               <ArrowLeft size={16} />
               {leaving ? "Leaving…" : "Back to Hub"}
@@ -1195,7 +1203,7 @@ function PackagesCard({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 text-[14px] font-bold text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+          className="min-h-11 rounded-xl border border-input bg-(--raised) shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) px-4 text-[14px] font-bold text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
         >
           {DOOR_BUTTON}
         </button>

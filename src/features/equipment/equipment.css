@@ -419,38 +419,52 @@
 }
 .eq-card__body { padding: 14px; }
 
+/* The machine sheet's buttons (Edit, Use standard, Cancel, Save), in the
+   session. Type and depth, phase 8 (Oct 4 2026; AJ's 2A and 3B): 40px tall
+   (they were 34, under the app's floor), the button voice, 14/700 in
+   ordinary capitalisation (they were 12px spaced capitals), and RAISED: a
+   fill a hair lighter than the card, a contact lift and a white top light,
+   on the 3:1 edge, which stays. A press on :active; anything that can't be
+   pressed lies flat. The hover is a pointer's only, so an iPad's kept
+   hover never flattens a button. */
 .eq-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 34px;
+  min-height: 40px;
   padding: 0 12px;
-  border-radius: 9px;
+  border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink-2);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
 }
-.eq-btn:hover { background: var(--eq-surface-3); }
+@media (hover: hover) {
+  .eq-btn:hover { background: var(--eq-surface-3); }
+}
 .eq-btn:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 1px; }
-.eq-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.eq-btn--live { border-color: var(--eq-live); color: var(--eq-live-text); background: var(--eq-live-fill); }
+/* The blue tint keeps its live edge and lifts, without the white top light. */
+.eq-btn--live { border-color: var(--eq-live); color: var(--eq-live-text); background: var(--eq-live-fill); box-shadow: var(--eq-elev-1); }
 /* The one loud action: the logo orange with navy words. The fill is
-   restated on :hover, or .eq-btn:hover would paint it grey with an iPad's
-   kept hover after a tap. */
+   restated on :hover, or .eq-btn:hover would paint it grey with a mouse
+   over it. Go's depth (a short orange glow and a white top light), not Go's
+   words: the slanted capitals are Start session's alone. */
 .eq-btn--hero,
 .eq-btn--hero:hover {
   border-color: var(--eq-go);
   background: var(--eq-go);
   color: var(--eq-go-on);
 }
-.eq-btn--ghost { border-color: transparent; background: transparent; }
+.eq-btn--hero { box-shadow: var(--eq-glow-go), var(--eq-go-light); }
+.eq-btn--ghost { border-color: transparent; background: transparent; box-shadow: none; }
+.eq-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--eq-press); }
+.eq-btn--ghost:not(:disabled):active { box-shadow: none; }
+.eq-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
 /* ---------- Prescription -------------------------------------------- */
 
@@ -623,20 +637,26 @@
   gap: 6px;
   margin-top: 4px;
 }
+/* Raised on its 3:1 edge, with a press (type and depth, phase 8). */
 .eq-step__btn {
   flex: 0 0 auto;
   width: 44px;
   height: 44px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink-2);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
 }
-.eq-step__btn:hover { background: var(--eq-surface-3); color: var(--eq-ink); }
+@media (hover: hover) {
+  .eq-step__btn:hover { background: var(--eq-surface-3); color: var(--eq-ink); }
+}
+.eq-step__btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--eq-press); }
+.eq-step__btn:disabled { box-shadow: none; }
 .eq-step__btn:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 1px; }
 .eq-step__input {
   flex: 1;

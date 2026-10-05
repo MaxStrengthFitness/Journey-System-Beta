@@ -123,7 +123,14 @@
  * ------------------------------------------------------------------ */
 
 /* 40px, the iPad's floor, as every control in My Studio is since Sep 27 2026
-   (the hub's pills were 32 to 36; look.test.ts holds the listed ones). */
+   (the hub's pills were 32 to 36; look.test.ts holds the listed ones).
+
+   RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, ON the 3:1
+   edge, which stays: under the gym floor's glare the edge is what keeps a
+   button a button. It presses in on :active (a transform, never an animated
+   shadow), and a button that can't be pressed lies flat. Radius 12, the
+   app's control radius (it was a 999px pill; pills are for chips). */
 .pl__btn {
   display: inline-flex;
   align-items: center;
@@ -131,9 +138,10 @@
   gap: 6px;
   min-height: 40px;
   padding: 0 14px;
-  border-radius: 999px;
+  border-radius: 12px;
   border: 1px solid var(--st-border-strong);
-  background: var(--st-surface);
+  background: var(--st-raised);
+  box-shadow: var(--st-elev-1), inset 0 1px 0 var(--st-highlight);
   color: var(--st-ink-2);
   font: inherit;
   font-size: 14px;
@@ -142,21 +150,26 @@
   cursor: pointer;
 }
 .pl__btn svg { flex: none; }
-.pl__btn:disabled { opacity: 0.5; cursor: default; }
 .pl__btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+/* Solid blue: a blue-tinted drop and a top light. No gradient, no dark foot. */
 .pl__btn--primary {
   background: var(--st-live);
   border-color: var(--st-live);
   color: var(--st-live-on);
+  box-shadow: var(--st-glow-live), var(--st-solid-light);
 }
 /* A destructive confirmation is the app's critical crimson, as the admin
    kit's is (.adm-btn--danger) — never the kaizen red, which is rep quality's
-   alone. It was the caution colour until Sep 27 2026. */
+   alone. It was the caution colour until Sep 27 2026. A tint lifts without
+   the white top light. */
 .pl__btn--danger {
   background: var(--st-alert-fill);
   border-color: var(--st-alert);
   color: var(--st-alert);
+  box-shadow: var(--st-elev-1);
 }
+.pl__btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--st-press); }
+.pl__btn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
 
 /* ------------------------------------------------------------------ *
  * The studio hub, embedded (StudioHubView `embedded`)

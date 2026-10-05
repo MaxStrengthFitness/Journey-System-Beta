@@ -388,7 +388,9 @@
   box-shadow: var(--wk-elev-1);
   text-align: left;
   cursor: pointer;
-  transition: box-shadow 140ms ease, transform 140ms ease;
+  /* Never the shadow (type and depth, phase 8; the plan's rule 5): a
+     shadow repaints every frame it moves. */
+  transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease;
 }
 .wk__cat:hover { box-shadow: var(--wk-elev-2); transform: translateY(-1px); }
 .wk__cat:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
@@ -910,7 +912,8 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: box-shadow 140ms ease, transform 140ms ease;
+  /* Never the shadow (type and depth, phase 8; rule 5). */
+  transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease;
 }
 .wk__linkcard:hover { box-shadow: var(--wk-elev-2); transform: translateY(-1px); }
 .wk__linkcard:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
@@ -1480,20 +1483,23 @@
 
 .wk__editor-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
-/* The codex's button: 14px bold sentence case, 10px corners. */
+/* The codex's button: 14px bold sentence case, 12px corners, RAISED (type
+   and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair lighter than the
+   card, a contact lift and a white top light, on the 3:1 edge, which stays;
+   a press on :active, and flat when it can't be pressed. */
 .wk__btn {
   min-height: var(--wk-tap);
   padding: 0 1rem;
   border: 1px solid var(--wk-border-strong);
-  border-radius: 10px;
-  background: var(--wk-surface);
+  border-radius: 12px;
+  background: var(--wk-raised);
+  box-shadow: var(--wk-elev-1), inset 0 1px 0 var(--wk-highlight);
   color: var(--wk-ink);
   font: inherit;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
-.wk__btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .wk__btn:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
 /* Save, Publish, Add note: solid brand blue, like every Save in the app
    (voice review follow-up, Sep 27 2026). It was orange for a day; orange is
@@ -1502,13 +1508,18 @@
   border-color: var(--wk-live);
   background: var(--wk-live);
   color: var(--wk-live-on);
+  box-shadow: var(--wk-glow-live), var(--wk-solid-light);
 }
 /* Quiet is quiet: no crimson on hover (an iPad applies :hover on the tap, so
-   a harmless Close flashed red as it closed). */
-.wk__btn--quiet { border-color: transparent; background: transparent; color: var(--wk-ink-muted); }
+   a harmless Close flashed red as it closed), and no box, so no lift. */
+.wk__btn--quiet { border-color: transparent; background: transparent; color: var(--wk-ink-muted); box-shadow: none; }
 .wk__btn--quiet:hover { color: var(--wk-ink); }
-/* Retire: destructive, and it says so before anyone touches it. */
-.wk__btn--danger { border-color: var(--wk-alert); background: var(--wk-alert-fill); color: var(--wk-alert); }
+/* Retire: destructive, and it says so before anyone touches it. A tint
+   lifts without the white top light. */
+.wk__btn--danger { border-color: var(--wk-alert); background: var(--wk-alert-fill); color: var(--wk-alert); box-shadow: var(--wk-elev-1); }
+.wk__btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--wk-press); }
+.wk__btn--quiet:not(:disabled):active { box-shadow: none; }
+.wk__btn:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
 
 /* ------------------------------------------------------------------ *
  * Split layout — 1024px, matching features/equipment's SPLIT_AT and the old

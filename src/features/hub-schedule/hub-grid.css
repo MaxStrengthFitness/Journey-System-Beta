@@ -480,19 +480,28 @@ button.hs-colhead:focus-visible {
   line-height: 1.35;
 }
 
+/* Try again: RAISED (type and depth, phase 8; AJ's 2A), a fill a hair
+   lighter than the card, a contact lift and a white top light, on the 3:1
+   edge, which stays; radius 12; a press on :active. */
 .hs-notice-btn {
   flex: none;
   min-height: 40px;
   min-width: 40px;
   padding: 0 14px;
   border: 1px solid var(--eq-border-strong);
-  border-radius: 10px;
-  background: var(--eq-surface);
+  border-radius: 12px;
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink);
   font: inherit;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.hs-notice-btn:active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
 }
 
 .hs-notice-btn:focus-visible {

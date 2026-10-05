@@ -58,6 +58,11 @@
   /* A tooltip's lift (type and depth, Oct 4 2026): the grid's popover
      shadow, or the app's before the grid's tokens load. */
   --cr-elev-4: var(--jg-elev-4, var(--elev-4));
+  /* Go's depth on Generate (type and depth, phase 8): the grid's orange
+     glow, top light and press, or the app's before the grid's tokens load. */
+  --cr-glow-go: var(--jg-glow-go, var(--glow-go));
+  --cr-go-light: var(--jg-go-light, var(--go-light));
+  --cr-press: var(--jg-press, var(--press));
   --cr-font-display: var(--jg-font-display, "Saira Condensed", system-ui, sans-serif);
 
   color: var(--cr-ink);
@@ -112,18 +117,24 @@
 .cr-range__custom input {
   height: 40px; border: 1px solid var(--cr-border); border-radius: 10px; padding: 0 10px; background: var(--cr-surface); color: var(--cr-ink); font: inherit;
 }
+/* Generate is Go (type and depth, phase 8, Oct 4 2026; AJ's 1A): the
+   display face's slanted capitals at 800 and 17, 0.04em (it asked for no
+   weight and drew 700, at 0.08em), a short orange glow and a white top
+   light (the old glow blurred 34px; a resting shadow stays at 18 or
+   less), and a press
+   down a pixel into an inset shadow. Only the transform transitions. */
 .cr-generate {
   appearance: none; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent;
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;
   height: 52px; padding: 0 22px; border-radius: 14px; color: var(--jg-go-on);
   background: var(--jg-go);
-  box-shadow: 0 14px 34px -14px color-mix(in srgb, var(--jg-go) 85%, transparent);
-  font-family: var(--cr-font-display); font-style: italic; text-transform: uppercase; letter-spacing: 0.08em; font-size: 17px;
+  box-shadow: var(--cr-glow-go), var(--cr-go-light);
+  font-family: var(--cr-font-display); font-style: italic; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; font-size: 17px;
   transition: transform 120ms ease;
 }
 .cr-generate:hover { background: var(--jg-go); color: var(--jg-go-on); }
-.cr-generate:active { transform: scale(0.98); }
-.cr-generate:disabled { opacity: 0.6; cursor: progress; }
+.cr-generate:not(:disabled):active { transform: translateY(1px); box-shadow: var(--cr-press); }
+.cr-generate:disabled { opacity: 0.6; cursor: progress; box-shadow: none; }
 .cr-generate__sub { font-family: inherit; font-style: normal; font-weight: 700; font-size: 10px; letter-spacing: 0.14em; opacity: 0.85; }
 
 /* ---- report bar --------------------------------------------------------- */
@@ -138,10 +149,11 @@
 .cr-bar__name { font-family: var(--cr-font-display); font-weight: 700; font-size: 15px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cr-ink); }
 .cr-bar__meta { font-size: 12px; color: var(--cr-ink-muted); white-space: nowrap; }
 .cr-bar__spacer { flex: 1; }
-.cr-bar .cr-seg__btn { height: 34px; padding: 0 11px; font-size: 12px; }
+/* 40px, the app's floor (they were 34; type and depth, phase 8). */
+.cr-bar .cr-seg__btn { height: 40px; padding: 0 11px; font-size: 12px; }
 .cr-iconbtn {
   appearance: none; border: 1px solid var(--cr-border); background: var(--cr-surface); color: var(--cr-ink-2);
-  height: 34px; padding: 0 10px; border-radius: 9px; display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+  height: 40px; padding: 0 10px; border-radius: 9px; display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
 }
 .cr-iconbtn:hover { background: var(--cr-surface-2); }
 

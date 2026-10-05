@@ -111,6 +111,10 @@
   color: var(--eq-ink-muted);
 }
 
+/* Type and depth, phase 8 (Oct 4 2026; AJ's 2A): a button speaks the
+   button voice, 14/700 in ordinary capitalisation (they were 12.5px spaced
+   capitals), so Save, which takes Go's depth in that voice, reads as one
+   family with Cancel beside it; a chip keeps its 13px. */
 .fit-chip,
 .fit-btn {
   display: inline-flex;
@@ -120,30 +124,37 @@
   min-height: 44px;
   padding: 0 14px;
   border: 1px solid var(--eq-border-strong);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--eq-surface);
   color: var(--eq-ink-2);
-  font-size: 12.5px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
 }
-.fit-chip { text-transform: none; letter-spacing: 0; font-size: 13px; }
+.fit-chip { font-size: 13px; }
 .fit-chip[data-on],
 .fit-btn[data-on] {
   border-color: var(--eq-live);
   background: var(--eq-live-fill);
   color: var(--eq-live-text);
 }
-.fit-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+/* RAISED: the quiet button is a fill a hair lighter than the card, a contact
+   lift and a white top light, on the 3:1 edge, which stays; the blue tint
+   keeps its live edge and lifts without the top light; Save (the hero) takes
+   Go's depth, a short orange glow and a white top light, not Go's slanted
+   words. Each presses in on :active and lies flat when it can't be pressed. */
 .fit-btn--live {
   border-color: var(--eq-live);
   background: var(--eq-live-fill);
   color: var(--eq-live-text);
+  box-shadow: var(--eq-elev-1);
 }
-.fit-btn--quiet { border-color: var(--eq-border-strong); background: transparent; }
+.fit-btn--quiet {
+  border-color: var(--eq-border-strong);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
+}
 /* The one loud action: the logo orange with navy words (Oct 4 2026), its
    fill restated on :hover, which an iPad keeps after a tap. */
 .fit-btn--hero,
@@ -154,7 +165,10 @@
 }
 .fit-btn--hero {
   min-width: 148px;
+  box-shadow: var(--eq-glow-go), var(--eq-go-light);
 }
+.fit-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--eq-press); }
+.fit-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 
 .fit-filter {
   display: inline-flex;

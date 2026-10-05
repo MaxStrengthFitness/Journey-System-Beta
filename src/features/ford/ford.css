@@ -70,6 +70,13 @@
 .ford-when--later { background: var(--ford-later-fill); color: var(--ford-later); }
 .ford-when--past  { background: transparent; color: var(--ford-ink-faint); }
 
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, on the 3:1
+   edge, which stays. Radius 12, the app's control radius (it was 9). It
+   presses in on :active (a transform; the transition below never lists the
+   shadow) and lies flat when it can't be pressed. Solid blue drops a
+   blue-tinted shadow; a ghost has no box, so no lift. The hovers that change
+   a fill are a pointer's only, so an iPad's kept hover never flattens one. */
 .ford-btn {
   display: inline-flex;
   align-items: center;
@@ -77,16 +84,19 @@
   gap: 0.4rem;
   min-height: 40px;
   padding: 0 0.85rem;
-  border-radius: var(--ford-radius-sm);
+  border-radius: 12px;
   border: 1px solid var(--ford-border-strong);
-  background: var(--ford-surface);
+  background: var(--ford-raised);
+  box-shadow: var(--ford-elev-1), inset 0 1px 0 var(--ford-highlight);
   color: var(--ford-ink-2);
   font-size: 0.8125rem;
   font-weight: 700;
   cursor: pointer;
   transition: background 120ms ease, border-color 120ms ease;
 }
-.ford-btn:hover { background: var(--ford-surface-3); }
+@media (hover: hover) {
+  .ford-btn:hover { background: var(--ford-surface-3); }
+}
 .ford-btn:focus-visible {
   outline: 2px solid var(--ford-focus-ring);
   outline-offset: 2px;
@@ -95,11 +105,16 @@
   background: var(--ford-soon);
   border-color: var(--ford-soon);
   color: var(--ford-surface);
+  box-shadow: var(--ford-glow-live), var(--ford-solid-light);
 }
 .ford-btn--primary:hover { filter: brightness(1.08); background: var(--ford-soon); }
-.ford-btn--ghost { border-color: transparent; background: transparent; }
-.ford-btn--ghost:hover { background: var(--ford-surface-3); }
-.ford-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.ford-btn--ghost { border-color: transparent; background: transparent; box-shadow: none; }
+@media (hover: hover) {
+  .ford-btn--ghost:hover { background: var(--ford-surface-3); }
+}
+.ford-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--ford-press); }
+.ford-btn--ghost:not(:disabled):active { box-shadow: none; }
+.ford-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 
 /* ------------------------------------------------------------------ */
 /* THE BRIEFING ROW, THE QUEUE'S BANNER, AND SHARED BITS               */

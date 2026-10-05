@@ -126,6 +126,10 @@
   color: var(--wk-ink-muted);
 }
 
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, on the 3:1
+   edge, which stays; a press on :active, and flat when it can't be pressed.
+   Radius 12, the app's control radius (it was a pill). */
 .mdb-btn {
   display: inline-flex;
   align-items: center;
@@ -133,8 +137,9 @@
   min-height: 40px;
   padding: 0 0.875rem;
   border: 1px solid var(--wk-border-strong);
-  border-radius: var(--wk-radius-pill);
-  background: var(--wk-surface);
+  border-radius: 12px;
+  background: var(--wk-raised);
+  box-shadow: var(--wk-elev-1), inset 0 1px 0 var(--wk-highlight);
   color: var(--wk-live-text);
   font: inherit;
   font-size: 12px;
@@ -147,8 +152,10 @@
   border-color: var(--wk-live);
   background: var(--wk-live);
   color: var(--wk-surface);
+  box-shadow: var(--wk-glow-live), var(--wk-solid-light);
 }
-.mdb-btn:disabled { opacity: 0.55; cursor: default; }
+.mdb-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--wk-press); }
+.mdb-btn:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
 .mdb-btn:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
 
 /* ── a quiet line on the index ────────────────────────────────────────── */

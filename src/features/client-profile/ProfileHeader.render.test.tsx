@@ -243,9 +243,16 @@ describe("ProfileHeader's running-session menu", () => {
       expect(c, node.textContent ?? "").not.toContain("uppercase");
       expect(c.some((k) => /^text-\[(?:9|10|11)(?:\.\d+)?px\]$/.test(k)), node.textContent ?? "").toBe(false);
     }
-    // In progress is Go's other state: Go's words, the slanted capitals at 800.
+    // In progress is Go's other state: Go's words, the slanted capitals at 800,
+    // and Go's depth (type and depth, phase 8): the short glow and top light,
+    // a press, the fill restated on hover, and no raw amber blur or animated
+    // shadow.
     const trigger = [...el.querySelectorAll("button")].find((b) => b.textContent?.includes("In progress"))!;
-    expect(trigger.className.split(/\s+/)).toEqual(expect.arrayContaining(["font-display", "italic", "uppercase", "font-extrabold"]));
+    const tc = trigger.className.split(/\s+/);
+    expect(tc).toEqual(expect.arrayContaining(["font-display", "italic", "uppercase", "font-extrabold"]));
+    expect(tc).toEqual(expect.arrayContaining(["shadow-(--go-lift)", "active:translate-y-px", "active:shadow-(--press)", "hover:bg-amber-500"]));
+    expect(tc.some((k) => /^shadow-\[/.test(k)), "no raw shadow").toBe(false);
+    expect(tc.some((k) => k === "transition-all" || k === "transition-shadow" || k === "transition-colors"), "only the fill and the move transition").toBe(false);
   });
 
   it("offers Watch for another trainer's session", async () => {

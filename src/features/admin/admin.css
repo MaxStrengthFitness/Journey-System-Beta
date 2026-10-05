@@ -536,7 +536,7 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid transparent;
   cursor: pointer;
   white-space: nowrap;
@@ -548,9 +548,12 @@
   outline-offset: 2px;
 }
 
+/* Raised means you can press it: a button that can't be pressed lies flat
+   (type and depth, phase 8). */
 .adm-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 /* The one loud action on a screen. There should never be two.
@@ -561,29 +564,49 @@
    uppercase label. --adm-hero stays where it belongs: accent bars, icon
    washes, chart marks. The fill is restated on :hover rather than darkened,
    because an iPad keeps :hover after a tap and a darker orange would lower
-   the navy label's contrast at the moment it is aimed at. */
+   the navy label's contrast at the moment it is aimed at.
+
+   Go's depth, not Go's words (type and depth, phase 8, Oct 4 2026): Go's
+   short orange glow and white top light, and a press, in the button voice,
+   14/700 in ordinary capitalisation. The slanted capitals are Start
+   session's alone. */
 .adm-btn--hero,
 .adm-btn--hero:not(:disabled):hover {
   background: var(--adm-go);
   color: var(--adm-go-on);
 }
+.adm-btn--hero {
+  box-shadow: var(--adm-glow-go), var(--adm-go-light);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
 
+/* Solid blue: a blue-tinted drop and a top light. No gradient, no dark foot. */
 .adm-btn--primary {
   background: var(--adm-live);
   color: var(--adm-live-on);
+  box-shadow: var(--adm-glow-live), var(--adm-solid-light);
 }
 .adm-btn--primary:not(:disabled):hover {
   background: var(--adm-live-text);
 }
 
+/* RAISED (AJ's 2A): a fill a hair lighter than the card, a contact lift and
+   a white top light, on the 3:1 edge (it was the decorative --adm-border).
+   The hover is a pointer's only, so an iPad's kept hover never flattens it. */
 .adm-btn--quiet {
-  background: var(--adm-surface-2);
+  background: var(--adm-raised);
   color: var(--adm-ink-2);
-  border-color: var(--adm-border);
+  border-color: var(--adm-border-strong);
+  box-shadow: var(--adm-elev-1), inset 0 1px 0 var(--adm-highlight);
 }
-.adm-btn--quiet:not(:disabled):hover {
-  background: var(--adm-surface-3);
-  color: var(--adm-ink);
+@media (hover: hover) {
+  .adm-btn--quiet:not(:disabled):hover {
+    background: var(--adm-surface-3);
+    color: var(--adm-ink);
+  }
 }
 
 .adm-btn--ghost {
@@ -599,10 +622,21 @@
   background: var(--adm-alert-fill);
   color: var(--adm-alert);
   border-color: var(--adm-alert);
+  box-shadow: var(--adm-elev-1);
 }
 .adm-btn--danger:not(:disabled):hover {
   background: var(--adm-alert);
   color: var(--adm-surface);
+}
+
+/* The press: down a pixel into an inset shadow, never an animated one. A
+   ghost has no box to press into. */
+.adm-btn:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: var(--adm-press);
+}
+.adm-btn--ghost:not(:disabled):active {
+  box-shadow: none;
 }
 
 /* The small button is still a TAP TARGET. It was 34px, under the app's own

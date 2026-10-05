@@ -545,8 +545,14 @@
   text-align: left;
   cursor: pointer;
 }
-.hq-row__open:hover {
-  background: var(--adm-surface-2);
+/* A row opens what it names; it is a row in its panel, not a button box
+   (type and depth, phase 8: the recommended kit draws a tappable row as a
+   divided row, as Settings' are). Its hover is a pointer's only, so an
+   iPad's kept hover never leaves a row tinted after a tap. */
+@media (hover: hover) {
+  .hq-row__open:hover {
+    background: var(--adm-surface-2);
+  }
 }
 .hq-row__open:focus-visible {
   outline: 2px solid var(--adm-focus-ring);
@@ -828,8 +834,12 @@
   text-align: left;
   cursor: pointer;
 }
-.hq-home__asidebtn:hover {
-  background: var(--adm-surface-2);
+/* "Set aside · N" is the panel's last row, a disclosure under a divider,
+   not a button box (type and depth, phase 8); a pointer's hover only. */
+@media (hover: hover) {
+  .hq-home__asidebtn:hover {
+    background: var(--adm-surface-2);
+  }
 }
 .hq-home__asidebtn:focus-visible {
   outline: 2px solid var(--adm-focus-ring);

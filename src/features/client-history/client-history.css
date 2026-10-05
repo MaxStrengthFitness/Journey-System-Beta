@@ -85,32 +85,41 @@
   flex-wrap: wrap;
 }
 
+/* Type and depth, phase 8 (Oct 4 2026; AJ's 2A): the button voice, 14/700
+   in ordinary capitalisation (they were 11px spaced capitals at 900), and
+   RAISED: a fill a hair lighter than the card, a contact lift and a white
+   top light, on the 3:1 edge (it was the decorative --cal-border). A press
+   on :active; a disabled button lies flat. The hover is a pointer's only,
+   so an iPad's kept hover never flattens a button. */
 .hist-btn {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  height: 40px;
+  min-height: 40px;
   padding: 0 13px;
   border-radius: 12px;
-  border: 1px solid var(--cal-border);
-  background: var(--cal-surface);
+  border: 1px solid var(--cal-border-strong);
+  background: var(--cal-raised);
+  box-shadow: var(--cal-elev-1), inset 0 1px 0 var(--cal-highlight);
   color: var(--cal-ink);
   font: inherit;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
 }
 .hist-btn svg { color: var(--cal-live-text); flex: 0 0 auto; }
-.hist-btn:hover { background: var(--cal-surface-3); }
+@media (hover: hover) {
+  .hist-btn:hover { background: var(--cal-surface-3); }
+}
 .hist-btn:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 2px; }
-.hist-btn:disabled { opacity: 0.55; cursor: default; }
+.hist-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--cal-press); }
+.hist-btn:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
 
 /* The view switch is the Calendar tab's segmented control, a size up: it is
-   the first control a thumb looks for on this tab. */
-.hist .cal-seg__btn { height: 34px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px; }
+   the first control a thumb looks for on this tab. 40px, the app's floor
+   (it was 34; type and depth, phase 8). */
+.hist .cal-seg__btn { height: 40px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px; }
 
 /* ---------- "Hasn't been in" notice ---------------------------------- */
 
@@ -1014,8 +1023,9 @@
 }
 .hsd-stepper span { font-size: 9.5px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cal-ink-muted); }
 .hsd-qbtns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+/* 40px, the app's floor (it was 36; type and depth, phase 8). */
 .hsd-qbtn {
-  height: 36px;
+  min-height: 40px;
   border-radius: 8px;
   border: 1px solid var(--cal-border);
   background: var(--cal-surface);

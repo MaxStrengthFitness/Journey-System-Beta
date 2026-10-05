@@ -715,14 +715,28 @@
   color: var(--eq-go-on);
 }
 
+/* Go (type and depth, phase 8, Oct 4 2026; AJ's 1A): the display face's
+   slanted capitals at 800 and 17, 0.04em, one voice with the profile
+   header's, the peek's and the run sheet's Start session (it was Geist
+   15/800); a short orange glow and a white top light, and a press down a
+   pixel into an inset shadow. Radius 12, the control radius. */
 .cd-start {
   min-height: 44px;
   padding: 0 14px;
   border: 0;
-  border-radius: 10px;
-  font-size: 15px;
+  border-radius: 12px;
+  box-shadow: var(--eq-glow-go), var(--eq-go-light);
+  font-family: var(--font-display);
+  font-size: 17px;
   font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
+}
+.cd-start:active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
 }
 
 .cd-empty {

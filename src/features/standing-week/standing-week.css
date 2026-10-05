@@ -256,16 +256,24 @@
   justify-content: center;
   min-height: 40px;
   padding: 0 14px;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
 .stw-btn:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
-.stw-btn:disabled { opacity: 0.45; cursor: default; }
-.stw-btn--save { border: 1px solid var(--eq-live); background: var(--eq-live); color: var(--eq-live-on); }
-.stw-btn--quiet { border: 1px solid var(--eq-border-strong); background: transparent; color: var(--eq-ink-2); }
-.stw-btn--quiet:hover { background: var(--eq-surface-2); }
+/* Type and depth, phase 8 (Oct 4 2026; AJ's 2A): the quiet button is
+   RAISED, a fill a hair lighter than the card, a contact lift and a white top
+   light, on the 3:1 edge, which stays; Save is solid blue with a blue-tinted
+   drop. Each presses in on :active and lies flat when it can't be pressed.
+   The hover is a pointer's only, so an iPad's kept hover never flattens one. */
+.stw-btn--save { border: 1px solid var(--eq-live); background: var(--eq-live); color: var(--eq-live-on); box-shadow: var(--eq-glow-live), var(--eq-solid-light); }
+.stw-btn--quiet { border: 1px solid var(--eq-border-strong); background: var(--eq-raised); color: var(--eq-ink-2); box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight); }
+@media (hover: hover) {
+  .stw-btn--quiet:hover { background: var(--eq-surface-2); }
+}
+.stw-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--eq-press); }
+.stw-btn:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
 
 /* Team: who is away in the next seven days, said once each. */
 .stw-away-lines { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }

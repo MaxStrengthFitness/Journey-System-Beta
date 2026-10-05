@@ -983,6 +983,25 @@ describe("the Wrap-up follows the theme, and keeps its confetti", () => {
     }
   });
 
+  it("raises its doors on the 3:1 edge with a lift and a press, and lifts Save in solid blue (type and depth, phase 8)", async () => {
+    const host = await mount(<FullScreen />);
+    const doors = ["Drop it", "Update Pulse", "Renewal conversation", "Back to Hub"].map((label) => buttonByText(host, label)!);
+    for (const b of doors) {
+      expect(b).toBeTruthy();
+      const cls = b.className.split(/\s+/);
+      expect(cls, b.textContent ?? "").toEqual(
+        expect.arrayContaining(["border-input", "bg-(--raised)", "shadow-(--raised-lift)", "active:translate-y-px", "active:shadow-(--press)"]),
+      );
+      // The decorative divider edge and the old flat fills are gone, and no
+      // shadow is animated.
+      for (const gone of ["border-div-d", "bg-bg-dark-3", "bg-bg-dark-2", "transition-all", "transition-shadow"]) {
+        expect(cls, `${b.textContent}: ${gone}`).not.toContain(gone);
+      }
+    }
+    const save = buttonByText(host.querySelector('[data-testid="unsaved-draft"]')!, "Save note")!;
+    expect(save.className.split(/\s+/)).toEqual(expect.arrayContaining(["shadow-(--solid-lift)", "active:translate-y-px", "disabled:shadow-none"]));
+  });
+
   it("heads its cards in small upright capitals, and titles the page in the codex voice", async () => {
     const host = await mount(<FullScreen />);
     const title = host.querySelector("h1")!;

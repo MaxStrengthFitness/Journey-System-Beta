@@ -200,9 +200,22 @@
 }
 .pr-btn--hero:hover:not(:disabled) { background: var(--pr-hero-hover); }
 
-/* Inside a paper card. */
-.pr-btn--outline { border-color: var(--pr-border-strong); background: transparent; color: var(--pr-ink); }
+/* Inside a paper card: RAISED (type and depth, phase 8, Oct 4 2026; AJ's
+   2A), the app's raised fill, a contact lift and a white top light, and a
+   press on :active. Its edge is the app's 3:1 control edge, 3.5:1 on the
+   raised fill (3.2:1 in dark): the report's own --pr-border-strong is a
+   card's hairline at 1.4:1, under the 3:1 a control's boundary needs. The
+   report's paper card is still pure white in light, so the raised fill
+   sits a hair under it there; the lift and the edge carry the button. */
+.pr-btn--outline {
+  border-color: var(--eq-border-strong);
+  background: var(--pr-raised);
+  box-shadow: var(--pr-elev-1), inset 0 1px 0 var(--pr-highlight);
+  color: var(--pr-ink);
+}
 .pr-btn--outline:hover:not(:disabled) { border-color: var(--pr-ink); }
+.pr-btn--outline:not(:disabled):active { transform: translateY(1px); box-shadow: var(--pr-press); }
+.pr-btn--outline:disabled { box-shadow: none; }
 .pr-btn--sm { min-height: 44px; padding: 0 14px; font-size: 11px; }
 
 /* ------------------------------------------------------------------ */

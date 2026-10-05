@@ -478,24 +478,33 @@
 
 /* ---------- Buttons ------------------------------------------------- */
 
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, on the 3:1
+   edge, which stays; radius 12; a press on :active, and flat when it can't
+   be pressed. A ghost has no box, so no lift; the navy one, a selection, is
+   a solid fill with a top light. The small one is 40px, the app's floor (it
+   was 32); small means its type and padding, never its target. */
 .sr-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  height: 40px; padding: 0 14px; border-radius: var(--sr-radius-sm);
-  border: 1.5px solid var(--sr-border-strong); background: var(--sr-surface);
+  height: 40px; padding: 0 14px; border-radius: 12px;
+  border: 1.5px solid var(--sr-border-strong); background: var(--sr-raised);
+  box-shadow: var(--sr-elev-1), inset 0 1px 0 var(--sr-highlight);
   color: var(--sr-ink); font-size: 13px; font-weight: 800; cursor: pointer;
   white-space: nowrap;
 }
-.sr-btn--ghost { border-color: transparent; background: transparent; color: var(--sr-ink-muted); }
-.sr-btn--sm { height: 32px; padding: 0 10px; font-size: 12px; }
+.sr-btn--ghost { border-color: transparent; background: transparent; color: var(--sr-ink-muted); box-shadow: none; }
+.sr-btn--sm { height: 40px; padding: 0 10px; font-size: 12px; }
 .sr-btn--danger { color: var(--sr-red); border-color: var(--sr-red); }
 .sr-btn--tall { height: 48px; padding: 0 20px; font-size: 12px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 14px; }
-.sr-btn--navy { background: var(--sr-navy); border-color: var(--sr-navy); color: var(--sr-on); }
+.sr-btn--navy { background: var(--sr-navy); border-color: var(--sr-navy); color: var(--sr-on); box-shadow: var(--sr-elev-1), var(--sr-solid-light); }
+.sr-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--sr-press); }
+.sr-btn--ghost:not(:disabled):active { box-shadow: none; }
 .sr-mark {
   display: inline-flex; align-items: center; justify-content: center; flex: none;
   width: 40px; height: 40px; border-radius: 12px;
   background: var(--sr-navy-fill); color: var(--sr-navy);
 }
-.sr-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.sr-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
 /* ---------- Segmented control --------------------------------------- */
 

@@ -161,15 +161,21 @@
   min-height: var(--wk-tap);
   padding: 0 0.875rem;
   border: 1px solid var(--wk-border-strong);
-  border-radius: 10px;
-  background: var(--wk-surface);
+  border-radius: 12px;
+  background: var(--wk-raised);
+  box-shadow: var(--wk-elev-1), inset 0 1px 0 var(--wk-highlight);
   color: var(--wk-live-text);
   font: inherit;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
-.lh__more:hover { border-color: var(--wk-live); }
+/* Raised (type and depth, phase 8; AJ's 2A): a lighter fill, a lift and a
+   top light on the 3:1 edge, which stays; it presses in on :active. */
+.lh__more:active { transform: translateY(1px); box-shadow: var(--wk-press); }
+@media (hover: hover) {
+  .lh__more:hover { border-color: var(--wk-live); }
+}
 .lh__more:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 1px; }
 
 /* "On the floor today": the catalog's numbers worth acting on, one tap from

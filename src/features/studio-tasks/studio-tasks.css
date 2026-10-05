@@ -224,22 +224,33 @@
 /* ── buttons ────────────────────────────────────────────────────────────── */
 /* The button voice (Sep 27 2026): 14px, bold, sentence case, at least 40px
    tall. A save is solid blue writing in --st-live-on (--primary); green is
-   for marking a task done and nothing else (--done). */
+   for marking a task done and nothing else (--done).
+   RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, on the 3:1
+   edge, which stays; radius 12; a press on :active, and flat when it can't
+   be pressed. The plain hover is a pointer's only, so an iPad's kept hover
+   never flattens a button. */
 .st__btn { min-height: 40px; padding: 0 0.875rem; border: 1px solid var(--st-border-strong);
-  border-radius: 10px; background: var(--st-surface); color: var(--st-ink); font: inherit;
+  border-radius: 12px; background: var(--st-raised); color: var(--st-ink); font: inherit;
+  box-shadow: var(--st-elev-1), inset 0 1px 0 var(--st-highlight);
   font-size: 14px; font-weight: 700;
   cursor: pointer; white-space: nowrap; }
-.st__btn:hover { background: var(--st-surface-2); }
-.st__btn:disabled { opacity: 0.55; cursor: default; }
+@media (hover: hover) {
+  .st__btn:hover { background: var(--st-surface-2); }
+}
 .st__btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
 /* A filled button keeps its fill under the pointer: the plain hover above
    is a light grey, and an iPad keeps :hover after a tap, so a tapped green
-   button used to turn grey with its white words still on it. */
+   button used to turn grey with its white words still on it. A solid fill
+   drops a shadow tinted its own way and keeps a top light. */
 .st__btn--primary,
-.st__btn--primary:hover { border-color: transparent; background: var(--st-live); color: var(--st-live-on); }
+.st__btn--primary:hover { border-color: transparent; background: var(--st-live); color: var(--st-live-on); box-shadow: var(--st-glow-live), var(--st-solid-light); }
 .st__btn--done,
-.st__btn--done:hover { border-color: transparent; background: var(--st-done); color: var(--st-done-on); }
-.st__btn--ghost { border-color: transparent; background: transparent; color: var(--st-ink-muted); }
+.st__btn--done:hover { border-color: transparent; background: var(--st-done); color: var(--st-done-on); box-shadow: var(--st-elev-1), var(--st-solid-light); }
+.st__btn--ghost { border-color: transparent; background: transparent; color: var(--st-ink-muted); box-shadow: none; }
+.st__btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--st-press); }
+.st__btn--ghost:not(:disabled):active { box-shadow: none; }
+.st__btn:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
 
 /* ==========================================================================
    MACHINE UPKEEP CARD — rendered inside the Catalog's machine page

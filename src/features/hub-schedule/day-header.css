@@ -198,6 +198,9 @@
   gap: 2px;
 }
 
+/* RAISED outside the bar (type and depth, phase 8, Oct 4 2026; AJ's 2A):
+   a fill a hair lighter than the card, a contact lift and a white top light,
+   on the 3:1 edge, which stays; radius 12; a press on :active. */
 .hd-btn {
   min-height: 40px;
   display: inline-flex;
@@ -205,8 +208,9 @@
   gap: 6px;
   padding: 0 12px;
   border: 1px solid var(--eq-border-strong);
-  border-radius: 10px;
-  background: var(--eq-surface);
+  border-radius: 12px;
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink-2);
   font: inherit;
   font-size: 14px;
@@ -221,16 +225,26 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Solid blue: a blue-tinted drop and a top light. */
 .hd-btn[data-primary="true"] {
   border-color: var(--eq-live);
   background: var(--eq-live);
   color: var(--eq-live-on);
+  box-shadow: var(--eq-glow-live), var(--eq-solid-light);
 }
 
-/* In the bar a tool is borderless: the bar is the frame. */
-.hd-bar .hd-btn {
+.hd-btn:active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
+}
+
+/* In the bar a tool is borderless: the bar is the frame, so it has no box
+   of its own to lift or press into. */
+.hd-bar .hd-btn,
+.hd-bar .hd-btn:active {
   border-color: transparent;
   background: transparent;
+  box-shadow: none;
   padding: 0 10px;
   border-radius: 11px;
 }

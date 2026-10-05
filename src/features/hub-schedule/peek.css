@@ -202,6 +202,11 @@
   gap: 10px;
 }
 
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, on the 3:1
+   edge, which stays. It presses in on :active. The words are the button
+   voice, 14/700, as the recommended kit draws the peek's buttons (they were
+   15/800); a label too long for its half wraps, centred. */
 .hp-btn {
   min-height: 48px;
   display: inline-flex;
@@ -211,11 +216,13 @@
   padding: 0 14px;
   border: 1px solid var(--eq-border-strong);
   border-radius: 12px;
-  background: var(--eq-surface-2);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink);
   font: inherit;
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
   cursor: pointer;
 }
 
@@ -228,6 +235,22 @@
   border-color: var(--eq-go);
   background: var(--eq-go);
   color: var(--eq-go-on);
+}
+/* Go (AJ's 1A): the display face's slanted capitals at 800 and 17, 0.04em,
+   one voice with the profile header's Start session; a short orange glow and
+   a white top light. */
+.hp-btn[data-primary="true"] {
+  box-shadow: var(--eq-glow-go), var(--eq-go-light);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hp-btn:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
 }
 
 /* Late cancel · session taken (Oct 2 2026): a whole-width quiet button

@@ -71,6 +71,12 @@
 .stg-text { margin: 0; font-size: 14px; line-height: 1.55; color: var(--eq-ink-2); }
 
 .stg-kinds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): Bug, UI feedback
+   and Feature idea, and Sign out below, are buttons: a fill a hair lighter
+   than the card, a contact lift and a white top light, on the 3:1 edge,
+   which stays (under glare it is what keeps a button a button). Each presses
+   in on :active. The hover is a pointer's only, so an iPad's kept hover
+   never flattens one. */
 .stg-kind {
   display: flex;
   flex-direction: column;
@@ -80,14 +86,17 @@
   min-height: 72px;
   border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink);
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
 .stg-kind svg { color: var(--eq-hero-text); }
-.stg-kind:hover { background: var(--eq-hero-fill); }
+@media (hover: hover) {
+  .stg-kind:hover { background: var(--eq-hero-fill); }
+}
 
 .stg-label {
   margin: 0;
@@ -196,13 +205,21 @@
   width: 100%;
   border-radius: 12px;
   border: 1px solid var(--eq-border-strong);
-  background: var(--eq-surface);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink-2);
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
-.stg-signout:hover { background: var(--eq-surface-2); color: var(--eq-ink); }
+@media (hover: hover) {
+  .stg-signout:hover { background: var(--eq-surface-2); color: var(--eq-ink); }
+}
+.stg-kind:active,
+.stg-signout:active {
+  transform: translateY(1px);
+  box-shadow: var(--eq-press);
+}
 
 .stg-kind:focus-visible,
 .stg-link:focus-visible,

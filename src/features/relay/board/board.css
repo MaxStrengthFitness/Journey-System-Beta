@@ -325,6 +325,9 @@
 .rbd-part__who { flex: none; font-size: 12px; font-weight: 700; color: var(--st-done); }
 
 .rbd-foot { display: flex; flex-wrap: wrap; gap: 8px; }
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a lighter fill, a
+   contact lift and a white top light, on the 3:1 edge, which stays; a press
+   on :active. The solid blue one drops a blue-tinted shadow instead. */
 .rbd-btn {
   display: inline-flex;
   align-items: center;
@@ -333,8 +336,9 @@
   min-height: 44px;
   padding: 0 14px;
   border: 1px solid var(--st-border-strong);
-  border-radius: 10px;
-  background: var(--st-surface);
+  border-radius: 12px;
+  background: var(--st-raised);
+  box-shadow: var(--st-elev-1), inset 0 1px 0 var(--st-highlight);
   color: var(--st-ink);
   font: inherit;
   font-size: 14px;
@@ -342,7 +346,9 @@
   cursor: pointer;
 }
 .rbd-btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
-.rbd-btn--primary { border-color: var(--st-live); background: var(--st-live); color: var(--st-live-on); }
+.rbd-btn--primary { border-color: var(--st-live); background: var(--st-live); color: var(--st-live-on); box-shadow: var(--st-glow-live), var(--st-solid-light); }
+.rbd-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--st-press); }
+.rbd-btn:disabled { box-shadow: none; }
 
 /* A leader's "Put a name on it", under an ask. */
 .rbd-who { margin-top: 1rem; }

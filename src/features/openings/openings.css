@@ -358,7 +358,11 @@
 }
 .op-person__body .stw-read { margin: 0; }
 
-/* The button voice (look.test.ts): 14px, bold, sentence case, 40px. */
+/* The button voice (look.test.ts): 14px, bold, sentence case, 40px.
+   RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the card, a contact lift and a white top light, on the 3:1
+   edge, which stays; a press on :active. Radius 12, the app's control
+   radius (it was a pill; pills are for chips). */
 .op-btn {
   justify-self: start;
   display: inline-flex;
@@ -367,8 +371,9 @@
   min-height: 40px;
   padding: 0 14px;
   border: 1px solid var(--st-border-strong);
-  border-radius: 999px;
-  background: var(--st-surface);
+  border-radius: 12px;
+  background: var(--st-raised);
+  box-shadow: var(--st-elev-1), inset 0 1px 0 var(--st-highlight);
   color: var(--st-live);
   font: inherit;
   font-size: 14px;
@@ -376,6 +381,8 @@
   cursor: pointer;
 }
 .op-btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+.op-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--st-press); }
+.op-btn:disabled { box-shadow: none; }
 
 /* ------------------------------------------------------------------ *
  * A time's sheet, in the Context Panel

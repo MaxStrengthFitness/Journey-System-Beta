@@ -825,8 +825,9 @@
   background: var(--cal-surface);
   flex: 0 0 auto;
 }
+/* 40px, the app's floor (it was 32; type and depth, phase 8). */
 .cal-seg__btn {
-  height: 32px;
+  height: 40px;
   padding: 0 11px;
   border: 0;
   border-radius: 9px;
@@ -890,11 +891,12 @@
   background: var(--cal-surface);
   flex: 0 0 auto;
 }
+/* 40px, the app's floor (it was 38; type and depth, phase 8). */
 .cal-refresh__btn {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  height: 38px;
+  height: 40px;
   min-width: 40px;
   padding: 0 11px;
   border: 0;

@@ -345,12 +345,14 @@
 
 @media (max-width: 480px) { .rb-row__hist { display: none; } }
 
+/* 40px, the app's floor (it was 36; type and depth, phase 8). It still
+   sits inside the 46px in-session row. */
 .rb-row__btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: var(--rb-radius-sm);
   color: var(--rb-ink-muted);
   background: transparent;
@@ -536,8 +538,9 @@
   overflow: hidden;
   background: var(--rb-surface-2);
 }
+/* 40px, the app's floor (it was about 30; type and depth, phase 8). */
 .rb-seg__btn {
-  min-height: 1.9rem;
+  min-height: 2.5rem;
   padding: 0 0.7rem;
   font-size: 0.68rem;
   font-weight: 800;
@@ -719,6 +722,10 @@
 }
 @media (min-width: 900px) { .rb-bar { display: none; } }
 
+/* RAISED (type and depth, phase 8, Oct 4 2026; AJ's 2A): a fill a hair
+   lighter than the bar, a contact lift and a white top light, on the 3:1
+   edge, which stays; radius 12; a press on :active. Solid blue drops a
+   blue-tinted shadow; the caution tint lifts without the top light. */
 .rb-bar__btn {
   display: inline-flex;
   align-items: center;
@@ -726,17 +733,20 @@
   gap: 0.3rem;
   min-height: 2.5rem;
   padding: 0 0.7rem;
-  border-radius: var(--rb-radius-sm);
+  border-radius: 12px;
   border: 1px solid var(--rb-border-strong);
-  background: var(--rb-surface);
+  background: var(--rb-raised);
+  box-shadow: var(--rb-elev-1), inset 0 1px 0 var(--rb-highlight);
   color: var(--rb-ink);
   font-size: 0.73rem;
   font-weight: 700;
   flex: 1 1 0;
   min-width: 0;
 }
-.rb-bar__btn--primary { background: var(--rb-live); color: var(--rb-live-on); border-color: var(--rb-live); }
-.rb-bar__btn--warn { color: var(--rb-avoid); border-color: var(--rb-avoid-edge); background: var(--rb-avoid-fill); }
+.rb-bar__btn--primary { background: var(--rb-live); color: var(--rb-live-on); border-color: var(--rb-live); box-shadow: var(--rb-glow-live), var(--rb-solid-light); }
+.rb-bar__btn--warn { color: var(--rb-avoid); border-color: var(--rb-avoid-edge); background: var(--rb-avoid-fill); box-shadow: var(--rb-elev-1); }
+.rb-bar__btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--rb-press); }
+.rb-bar__btn:disabled { box-shadow: none; }
 .rb-bar__btn:focus-visible { outline: 2px solid var(--rb-focus-ring); outline-offset: 1px; }
 
 .rb-sheet { display: flex; flex-direction: column; gap: 0.6rem; min-height: 0; max-height: 70dvh; }

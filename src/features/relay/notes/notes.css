@@ -60,6 +60,11 @@
   padding: 0 1rem 0.75rem;
 }
 
+/* A view is a filter chip: it keeps its pill, its soft edge and its fill,
+   and takes the depth only (type and depth, phase 8, Oct 4 2026): a contact
+   lift and a white top light, and a press. The picked one is tinted blue on
+   the blue edge, and still lifts; "New folder" is dashed, an empty place to
+   add one, so it lies flat. */
 .pn__view {
   display: inline-flex;
   align-items: center;
@@ -70,6 +75,7 @@
   border: 1px solid var(--st-border);
   border-radius: 999px;
   background: var(--st-surface);
+  box-shadow: var(--st-elev-1), inset 0 1px 0 var(--st-highlight);
   color: var(--st-ink-2);
   font: inherit;
   font-size: 12px;
@@ -83,9 +89,12 @@
   background: var(--st-live-fill);
   border-color: var(--st-live);
   color: var(--st-live-text);
+  box-shadow: var(--st-elev-1);
 }
 .pn__view:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
-.pn__view--add { border-style: dashed; color: var(--st-ink-muted); }
+.pn__view--add { border-style: dashed; color: var(--st-ink-muted); box-shadow: none; }
+.pn__view:not(:disabled):active { transform: translateY(1px); box-shadow: var(--st-press); }
+.pn__view--add:not(:disabled):active { box-shadow: none; }
 /* Between the built-in views and the trainer's own folders. */
 .pn__views-sep {
   align-self: center;
@@ -100,7 +109,7 @@
 @media (max-width: 599px) {
   .pn__views-sep { flex-basis: 100%; width: auto; height: 0; margin: 0; background: none; }
 }
-.pn__view:disabled { opacity: 0.5; cursor: default; }
+.pn__view:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
 .pn__view-n {
   font-size: 11px;
   font-weight: 800;
@@ -687,6 +696,9 @@
 .ne__chip-open:focus-visible,
 .ne__chip-x:focus-visible { outline: 2px solid var(--st-live); outline-offset: -2px; }
 
+/* "Link a client", "Add a link": dashed on its 3:1 edge, an empty place to
+   add something, so it stays quiet and flat (as the session's No set? does)
+   and only takes the press (type and depth, phase 8). */
 .ne__link-btn {
   display: inline-flex;
   align-items: center;
@@ -702,6 +714,7 @@
   font-weight: 800;
   cursor: pointer;
 }
+.ne__link-btn:not(:disabled):active { transform: translateY(1px); }
 .ne__hint {
   margin: 0.5rem 0 0;
   font-size: 12px;
