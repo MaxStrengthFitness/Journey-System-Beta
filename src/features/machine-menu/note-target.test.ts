@@ -6,25 +6,33 @@ import {
   HEALTH_NOTE_BUTTON,
   LEADERS_LINE,
   NOTE_SAVE_WORDS,
+  THREAD_WORDS,
   aboutChoices,
   aboutWords,
   addButtonLabel,
+  allNotesLabel,
   asksWhereOnBody,
+  carriedFloorWords,
   chipOf,
   clientNoteOf,
   composerPlaceholder,
+  composerTitle,
   draftOwnerOf,
-  fileDraft,
   filedAsWords,
+  fileDraft,
+  floorCarryOf,
   floorConfirmation,
   floorNoteOf,
+  floorQueuedWords,
   floorTitle,
   healthNoteAfterPain,
   loudnessAfterFiling,
   makeItAbout,
   makeItAboutWords,
   noteOrigin,
+  noteSaveLine,
   reachesLeaders,
+  resolvedLabel,
   setTarget,
   showsFiling,
   startingLoudness,
@@ -216,5 +224,48 @@ describe("the rest of the words", () => {
       unsavedNoteLabel("Leg Press", ""),
     ].join("\n");
     expect(all).not.toMatch(/\b(her|she|his|he)\b/i);
+  });
+});
+
+describe("the Wrap-up's carried draft", () => {
+  const floor: MenuNoteDraft = { ...EMPTY_SESSION_DRAFT, body: "Seat pin sticks at 7", machineId: "leg-press", toFloor: true };
+
+  it("goes on the machine's floor notes only when it is a floor draft with words and a machine", () => {
+    expect(floorCarryOf(floor)).toEqual({ machineId: "leg-press" });
+    expect(floorCarryOf({ ...floor, toFloor: undefined })).toBeNull();
+    // sessionStorage is user-writable: anything but true is a note about the client.
+    expect(floorCarryOf({ ...floor, toFloor: "true" as unknown as boolean })).toBeNull();
+    expect(floorCarryOf({ ...floor, body: "  " })).toBeNull();
+    // No machine to put it on: filed as a note about the client instead, never lost.
+    expect(floorCarryOf({ ...floor, machineId: null })).toBeNull();
+    expect(floorCarryOf(null)).toBeNull();
+  });
+
+  it("says where it goes and that nothing is lost", () => {
+    expect(carriedFloorWords("Westlake", "Leg Press")).toEqual({
+      title: "You started a note for Westlake's notes on Leg Press and didn't add it",
+      button: "Add to Westlake's notes",
+      foot: "Left as it is, it is added to Westlake's notes when you leave. Nothing you wrote is lost.",
+    });
+    expect(carriedFloorWords(null, null).button).toBe("Add to the studio's notes");
+    expect(Object.values(carriedFloorWords("", "")).join("\n")).not.toMatch(/\b(her|she|his|he)\b/i);
+  });
+});
+
+describe("the box's own words and the list's", () => {
+  it("titles the open box and draws Try again as a button of its own", () => {
+    expect(composerTitle("Avery", "Leg Press")).toBe("Note about Avery on Leg Press");
+    expect(noteSaveLine("failed")).toEqual({ text: "Couldn't save. Your words are still here", retry: true });
+    expect(noteSaveLine("queued")).toEqual({ text: "Saved on this iPad · sends when online", retry: false });
+    expect(noteSaveLine("saved")).toEqual({ text: "Saved", retry: false });
+    expect(floorQueuedWords("Westlake", "Leg Press")).toBe(
+      "On Westlake's notes for Leg Press. Everyone at Westlake sees it here and on the Catalog. Saved on this iPad · sends when online.",
+    );
+  });
+
+  it("counts the notes and the folded zone, and never guesses a pronoun", () => {
+    expect(allNotesLabel(3)).toBe("All notes (3)");
+    expect(resolvedLabel(2)).toBe("Resolved (2)");
+    expect([...Object.values(THREAD_WORDS), composerTitle("", "")].join("\n")).not.toMatch(/\b(her|she|his|he)\b/i);
   });
 });

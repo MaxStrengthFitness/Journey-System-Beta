@@ -206,6 +206,8 @@ import {
   writeSessionDraft,
   type SessionNoteDraft,
 } from "../features/client-notes/session-draft";
+import { floorCarryOf } from "../features/machine-menu/note-target";
+import { addFloorNote } from "../features/floor-notes/store";
 import { ActiveSessionTimer } from "./ActiveSessionTimer";
 import { MachineSheet } from "../features/equipment/MachineSheet";
 /* Lazy, and the reason is measurable: the assessment panel is a 162 kB
@@ -2278,6 +2280,28 @@ export function WorkoutTrackerView({
     const body = text.trim();
     if (!snap || !body || !user?.uid) return;
     const d = snap.draft;
+    // Words the machine menu was writing for the studio's floor notes on a
+    // machine ("The machine itself", Oct 4 2026) go there — the session's
+    // studio, where the unit is — and never onto the client's record. A
+    // floor draft with no machine falls through and is filed as a note
+    // about the client: nothing a trainer wrote is lost.
+    const floor = floorCarryOf(d);
+    const floorStudioId = snap.session.hostedAtStudioId || contextActiveStudioId || null;
+    if (floor && floorStudioId) {
+      const machineName = floorMachines.find((m) => m.id === floor.machineId)?.name;
+      await noteOrSay(
+        addFloorNote({
+          studioId: floorStudioId,
+          machineId: floor.machineId,
+          machineName,
+          body,
+          writer: { name: authTrainer?.fullName || "" },
+        }),
+        "That note could not be added to the studio's notes — add it from Learning → Catalog → the machine.",
+      );
+      setPostSession((s) => (s ? { ...s, draft: null } : s));
+      return;
+    }
     // The same answer the composer writes (note-catalog's storedNoteOf), so a
     // draft filed on the way out is the note it would have been.
     // Where the box said it would go: the trainer's pick, else what the words

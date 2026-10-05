@@ -319,6 +319,10 @@ const WORDS: [string, string, string[]][] = [
   ["the now pill (navy words on the hero orange)", "--eq-go-on", ["--eq-hero"]],
   ["a labelled chip on the deep orange", "--eq-hero-on", ["--eq-hero-text"]],
   ["the peek's Critical box", "--eq-ink", ["--eq-surface", "--eq-alert-fill"]],
+  // The machine menu (Oct 4 2026): its change strip and a changed tile are
+  // the in-session pairs above; these are the two it adds.
+  ["the machine menu's fit line (words on the plum fill)", "--eq-ink", ["--eq-surface", "--eq-warn-fill"]],
+  ["the machine menu's quiet switch side and fold buttons", "--eq-ink-2", ["--eq-surface-2"]],
 ];
 
 /** A chip's words on its own fill, wherever the Hub draws the chip. */

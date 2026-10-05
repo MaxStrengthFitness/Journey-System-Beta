@@ -21,6 +21,7 @@ import {
   seedDraft,
   suggestedSources,
   tileState,
+  undoOutcomeWords,
   undoPayload,
   unsavedSettingsLabel,
   wasWords,
@@ -95,6 +96,24 @@ describe("Seat 4 → 5", () => {
     expect(saveOutcomeWords(changes, false, "saved")).toBe("Seat 5 saved · Undo");
     expect(saveOutcomeWords(changes, false, "queued")).toBe("Seat 5 saved on this iPad · it sends when the Wi-Fi is back · Undo");
     expect(saveOutcomeWords(changes, false, "failed")).toBe("Couldn't save Seat 5 · Try again");
+  });
+
+  it("leaves Undo and Try again off for a strip that draws them as buttons", () => {
+    const changes = draftChanges(LEG_PRESS, SAVED, draft);
+    expect(saveOutcomeWords(changes, false, "saved", false)).toBe("Seat 5 saved");
+    expect(saveOutcomeWords(changes, false, "queued", false)).toBe("Seat 5 saved on this iPad · it sends when the Wi-Fi is back");
+    expect(saveOutcomeWords(changes, false, "failed", false)).toBe("Couldn't save Seat 5");
+  });
+
+  it("says what Undo did", () => {
+    const changes = draftChanges(LEG_PRESS, SAVED, draft);
+    expect(undoOutcomeWords(changes, false, "saved")).toBe("Seat back to 4");
+    expect(undoOutcomeWords(changes, false, "queued")).toBe("Seat back to 4 on this iPad · it sends when the Wi-Fi is back");
+    expect(undoOutcomeWords(changes, false, "failed")).toBe("Couldn't undo Seat 5");
+    const two = draftChanges(LEG_PRESS, SAVED, { ...SAVED, seat: "5", backPad: "2" });
+    expect(undoOutcomeWords(two, false, "saved")).toBe("2 changes undone");
+    expect(undoOutcomeWords([{ label: "Seat", from: "", to: "4" }], false, "saved")).toBe("Seat back to not set");
+    expect(undoOutcomeWords(two, true, "saved")).toBe("Set-up undone");
   });
 
   it("isn't dirty once it is back at 4, and ignores trailing spaces", () => {

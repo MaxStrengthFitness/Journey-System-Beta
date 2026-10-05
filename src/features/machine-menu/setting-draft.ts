@@ -215,17 +215,45 @@ export type SaveOutcome = "saved" | "queued" | "failed";
 /**
  * What the strip turns into after Save: "Seat 5 saved · Undo", "Seat 5
  * saved on this iPad · it sends when the Wi-Fi is back · Undo", or "Couldn't
- * save Seat 5 · Try again" (the draft is kept).
+ * save Seat 5 · Try again" (the draft is kept). `withAction: false` leaves
+ * the last part off, for a strip that draws Undo or Try again as a button of
+ * its own (and drops Undo once its ten seconds are up).
  */
-export function saveOutcomeWords(changes: readonly SettingPair[], firstSetup: boolean, outcome: SaveOutcome): string {
+export function saveOutcomeWords(
+  changes: readonly SettingPair[],
+  firstSetup: boolean,
+  outcome: SaveOutcome,
+  withAction = true,
+): string {
   const name = changeName(changes, firstSetup);
   switch (outcome) {
     case "saved":
-      return `${capitalise(name)} saved · Undo`;
+      return `${capitalise(name)} saved${withAction ? " · Undo" : ""}`;
     case "queued":
-      return `${capitalise(name)} saved on this iPad · it sends when the Wi-Fi is back · Undo`;
+      return `${capitalise(name)} saved on this iPad · it sends when the Wi-Fi is back${withAction ? " · Undo" : ""}`;
     case "failed":
-      return `Couldn't save ${name} · Try again`;
+      return `Couldn't save ${name}${withAction ? " · Try again" : ""}`;
+  }
+}
+
+/**
+ * What the strip says once Undo has been tapped: "Seat back to 4" (or "back
+ * to not set"), "2 changes undone", "Set-up undone"; the same "on this iPad"
+ * tail as a save; "Couldn't undo Seat 5" with Try again beside it.
+ */
+export function undoOutcomeWords(changes: readonly SettingPair[], firstSetup: boolean, outcome: SaveOutcome): string {
+  const what = firstSetup
+    ? "Set-up undone"
+    : changes.length === 1
+      ? `${changes[0].label} back to ${changes[0].from || "not set"}`
+      : `${changes.length} changes undone`;
+  switch (outcome) {
+    case "saved":
+      return what;
+    case "queued":
+      return `${what} on this iPad · it sends when the Wi-Fi is back`;
+    case "failed":
+      return `Couldn't undo ${changeName(changes, firstSetup)}`;
   }
 }
 

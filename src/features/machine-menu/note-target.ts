@@ -269,6 +269,11 @@ export function composerPlaceholder(clientFirstName: string, machineName: string
   return `Note about ${clean(clientFirstName) || "the client"} on ${clean(machineName) || "this machine"}…`;
 }
 
+/** The open box's title over a note about the client: "Note about Avery on Leg Press". */
+export function composerTitle(clientFirstName: string, machineName: string): string {
+  return composerPlaceholder(clientFirstName, machineName).replace(/…$/, "");
+}
+
 /** The switch's two sides. */
 export function aboutChoices(clientFirstName: string): [string, string] {
   return [clean(clientFirstName) || "The client", "The machine itself"];
@@ -298,6 +303,56 @@ export const NOTE_SAVE_WORDS = {
   failed: "Couldn't save. Your words are still here · Try again",
 } as const;
 
+/**
+ * The line under a note as the box draws it, its "Try again" a button of
+ * its own (the words stay in the box, so tapping it sends them again).
+ */
+export function noteSaveLine(kind: keyof typeof NOTE_SAVE_WORDS): { text: string; retry: boolean } {
+  const words: string = NOTE_SAVE_WORDS[kind];
+  return kind === "failed" ? { text: words.replace(/ · Try again$/, ""), retry: true } : { text: words, retry: false };
+}
+
+/** A floor note saved on this iPad, the database not yet answered. */
+export function floorQueuedWords(studioName: string | null | undefined, machineName: string): string {
+  return `${floorConfirmation(studioName, machineName)} Saved on this iPad · sends when online.`;
+}
+
+/** What the list and a note's thread say (machine menu design §C, "The list"). */
+export const THREAD_WORDS = {
+  none: "No notes on this machine yet.",
+  loading: "Loading notes…",
+  fewer: "Fewer notes",
+  standing: "Standing context",
+  open: "Open",
+  resolved: "Resolved",
+  earlier: "Earlier notes",
+  noUpdates: "No updates yet.",
+  addUpdate: "Add update",
+  updatePlaceholder: "What happened since?",
+  saveUpdate: "Save update",
+  more: "More",
+  close: "Close it",
+  reopen: "Reopen",
+  hush: "No need to remind me",
+  hushed: "Off your next briefing. Only you can see that.",
+  off: "Take it off the list",
+  offDone: "Taken off the list",
+  undo: "Undo",
+  updateFailed: "Couldn't save the update. Your words are still here",
+  actionFailed: "Couldn't change that note just now",
+  notAboutMachine: "Not about any machine yet",
+} as const;
+
+/** "All notes (3)". */
+export function allNotesLabel(count: number): string {
+  return `All notes (${count})`;
+}
+
+/** "Resolved (2)", the folded zone. */
+export function resolvedLabel(count: number): string {
+  return `Resolved (${count})`;
+}
+
 /** "About Chest Press", over a draft about another machine. */
 export function aboutWords(machineName: string): string {
   return `About ${clean(machineName)}`;
@@ -310,6 +365,39 @@ export function makeItAboutWords(machineName: string): string {
 
 /** The button after a save for pain or discomfort. */
 export const HEALTH_NOTE_BUTTON = "Add a Health note";
+
+/* ------------------------------------------------------------------ *
+ * The Wrap-up's carried draft
+ * ------------------------------------------------------------------ */
+
+/**
+ * A session draft left unsent at Finish that was for the studio's floor
+ * notes: the machine it goes on, or null. Null for a note about the client,
+ * and for a floor draft with no machine (it can't go on a machine's list, so
+ * it is filed as a note about the client instead: nothing a trainer wrote is
+ * lost). `toFloor` is read defensively, as everywhere.
+ */
+export function floorCarryOf(draft: MenuNoteDraft | null | undefined): { machineId: string } | null {
+  if (!draft || !hasDraftText(draft) || targetOf(draft) !== "floor") return null;
+  const machineId = clean(draft.machineId);
+  return machineId ? { machineId } : null;
+}
+
+/**
+ * The Wrap-up's card for a carried floor draft: what it says, its button,
+ * and what happens if it is left there.
+ */
+export function carriedFloorWords(
+  studioName: string | null | undefined,
+  machineName: string | null | undefined,
+): { title: string; button: string; foot: string } {
+  const machine = clean(machineName) || "this machine";
+  return {
+    title: `You started a note for ${possessive(studioName)} notes on ${machine} and didn't add it`,
+    button: addButtonLabel("floor", studioName),
+    foot: `Left as it is, it is added to ${possessive(studioName)} notes when you leave. Nothing you wrote is lost.`,
+  };
+}
 
 /** What the app's leave question names on the profile: "Leg Press note for Avery". */
 export function unsavedNoteLabel(machineName: string, clientFirstName: string): string {

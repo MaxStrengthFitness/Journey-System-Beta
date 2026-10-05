@@ -801,6 +801,961 @@
   color: var(--eq-ink-muted);
 }
 
+/* ---------- the blocks around the chart: settings, notes, the folds ----- */
+
+/* Section headings 15px/600, blocks 12px apart (machine menu design §B). */
+.mm-blk {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  color: var(--eq-ink);
+}
+
+.mm-blk-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 12px;
+  min-height: 44px;
+}
+
+.mm-h {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--eq-ink);
+}
+
+.mm-blk-head__note {
+  font-size: 15px;
+  color: var(--eq-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+/* A text button: "Last changed Aug 18 · Back pad 3 → 2 ›", "All notes (3)". */
+.mm-link {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: right;
+  color: var(--eq-live-text);
+  overflow-wrap: anywhere;
+}
+
+.mm-link:hover {
+  background: var(--eq-surface-2);
+}
+
+/* The everyday button: Use, Change, Done, Undo, Add update, More. */
+.mm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+.mm-btn:hover {
+  background: var(--eq-surface-3);
+}
+
+.mm-btn--live {
+  border-color: var(--eq-live);
+  background: var(--eq-live);
+  color: var(--eq-live-on);
+}
+
+/* A filled variant restates its fill: an iPad keeps :hover after a tap. */
+.mm-btn--live:hover {
+  background: var(--eq-live);
+  color: var(--eq-live-on);
+}
+
+.mm-btn:disabled,
+.mm-quiet:disabled,
+.mm-save:disabled,
+.mm-add:disabled {
+  opacity: 0.45;
+}
+
+/* Cancel: quiet, on the left. */
+.mm-quiet {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: transparent;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--eq-ink-2);
+}
+
+.mm-quiet:hover {
+  background: var(--eq-surface-2);
+}
+
+/* The one loud action: Save on the change strip, the logo orange with navy words. */
+.mm-save {
+  min-height: 56px;
+  padding: 0 24px;
+  border-radius: 14px;
+  border: 0;
+  background: var(--eq-go);
+  color: var(--eq-go-on);
+  font-size: 17px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.mm-save:hover {
+  background: var(--eq-go);
+  color: var(--eq-go-on);
+}
+
+/* Add note: loud too, and blue while a settings change is unsaved (one loud action at a time). */
+.mm-add {
+  min-height: 56px;
+  padding: 0 24px;
+  border-radius: 14px;
+  border: 0;
+  background: var(--eq-go);
+  color: var(--eq-go-on);
+  font-size: 17px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.mm-add:hover {
+  background: var(--eq-go);
+  color: var(--eq-go-on);
+}
+
+.mm-add[data-quiet="true"],
+.mm-add[data-quiet="true"]:hover {
+  background: var(--eq-live);
+  color: var(--eq-live-on);
+}
+
+.mm-btn:focus-visible,
+.mm-quiet:focus-visible,
+.mm-save:focus-visible,
+.mm-add:focus-visible,
+.mm-link:focus-visible,
+.mm-step:focus-visible,
+.mm-tile__val:focus-visible,
+.mm-tile__empty:focus-visible,
+.mm-pos__btn:focus-visible,
+.mm-opt:focus-visible,
+.mm-choice:focus-visible,
+.mm-seg__opt:focus-visible,
+.mm-note__row:focus-visible,
+.mm-grp-btn:focus-visible,
+.mm-drawer:focus-visible {
+  outline: 2px solid var(--eq-focus-ring);
+  outline-offset: 2px;
+}
+
+.mm-none {
+  margin: 0;
+  padding: 4px 2px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--eq-ink-muted);
+}
+
+/* Read by a screen reader only. */
+.mm-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- the settings tiles ----------------------------------------- */
+
+/* Three to a row in portrait; fewer dials, fewer columns. One a row on a phone. */
+.mm-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mm-tiles[data-count="1"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.mm-tiles[data-count="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mm-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  min-height: 112px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 14px;
+  background: var(--eq-surface);
+}
+
+/* A changed tile: blue, with "was 4" under it. */
+.mm-tile[data-changed="true"] {
+  padding: 9px 11px 11px;
+  border: 2px solid var(--eq-live);
+  background: var(--eq-live-fill);
+}
+
+.mm-tile__label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--eq-ink-2);
+  overflow-wrap: anywhere;
+}
+
+/* The unit's dial letter (codex v2), when it has one. */
+.mm-letter {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
+  border-radius: 6px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--eq-ink);
+}
+
+.mm-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+/* ± : 56px, never repeating when held. */
+.mm-step {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--eq-ink);
+}
+
+.mm-step:not(:disabled):hover {
+  background: var(--eq-surface-3);
+}
+
+.mm-step:disabled {
+  opacity: 0.4;
+}
+
+/* The value, read with the iPad set down: 36px tabular. Tapping it opens the positions. */
+.mm-tile__val {
+  flex: 1;
+  min-width: 0;
+  min-height: 56px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+.mm-tile__val:hover {
+  background: var(--eq-surface-2);
+}
+
+.mm-tile[data-changed="true"] .mm-tile__val,
+.mm-tile[data-changed="true"] .mm-tile__word {
+  color: var(--eq-live-text);
+}
+
+/* A watched session's value: no buttons. */
+.mm-tile__num {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+.mm-tile__wordrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 56px;
+}
+
+.mm-tile__word {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+/* "Not set": the empty dial, a button that opens its editor. */
+.mm-tile__empty {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  font-size: 24px;
+  text-align: left;
+  color: var(--eq-ink-muted);
+}
+
+.mm-tile__notset {
+  font-size: 24px;
+  color: var(--eq-ink-muted);
+}
+
+.mm-tile__use {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.mm-tile__std,
+.mm-tile__was,
+.mm-tile__fixed {
+  font-size: 14px;
+  color: var(--eq-ink-muted);
+}
+
+.mm-tile__was {
+  text-align: center;
+}
+
+/* ---------- a big jump: positions, options, a field --------------------- */
+
+.mm-pos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 14px;
+  background: var(--eq-surface);
+}
+
+.mm-pos__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mm-pos__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+/* 48×48, 8px apart, wrapping: never a sideways scroll. */
+.mm-pos__btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mm-pos__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.mm-pos__btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--eq-ink);
+}
+
+/* An option the field offers: as tall as a position, as wide as its word. */
+.mm-opt {
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+/* What is saved: a ring, and "now" under it. */
+.mm-pos__btn[data-now="true"],
+.mm-opt[data-now="true"] {
+  box-shadow: 0 0 0 2px var(--eq-surface), 0 0 0 4px var(--eq-ink-2);
+}
+
+/* The one picked: filled blue. */
+.mm-pos__btn[aria-pressed="true"],
+.mm-pos__btn[aria-pressed="true"]:hover,
+.mm-opt[aria-pressed="true"],
+.mm-opt[aria-pressed="true"]:hover {
+  border-color: var(--eq-live);
+  background: var(--eq-live);
+  color: var(--eq-live-on);
+}
+
+.mm-pos__now {
+  min-height: 20px;
+  font-size: 14px;
+  color: var(--eq-ink-muted);
+}
+
+.mm-pos__std {
+  margin: 0;
+  font-size: 14px;
+  color: var(--eq-ink-muted);
+}
+
+.mm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--eq-ink-muted);
+}
+
+.mm-field__input {
+  min-height: 52px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface);
+  font-size: 17px;
+  color: var(--eq-ink);
+}
+
+.mm-field__input:focus-visible,
+.mm-upd__input:focus-visible {
+  outline: 2px solid var(--eq-focus-ring);
+  outline-offset: 1px;
+}
+
+/* Chips: the reasons on the change strip, a word dial's values, the filing. */
+.mm-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mm-choice {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 22px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+.mm-choice:hover {
+  background: var(--eq-surface-2);
+}
+
+.mm-choice[aria-pressed="true"],
+.mm-choice[aria-pressed="true"]:hover {
+  border-color: var(--eq-live);
+  background: var(--eq-live);
+  color: var(--eq-live-on);
+}
+
+/* The height-band line, with its own Use. */
+.mm-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--eq-ink-2);
+}
+
+/* ---------- machine fit's line ------------------------------------------ */
+
+.mm-fit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: 52px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--eq-warn-fill);
+}
+
+.mm-fit__text {
+  flex: 1 1 240px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- the change strip -------------------------------------------- */
+
+.mm-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--eq-live-fill);
+}
+
+.mm-strip__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin: 0;
+}
+
+.mm-strip__what {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+.mm-strip__why {
+  font-size: 15px;
+  color: var(--eq-ink-muted);
+}
+
+/* Save sits at least 24px below the nearest ± (the strip's own padding and gap). */
+.mm-strip__btns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.mm-strip__msg,
+.mm-strip__alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- the note box ------------------------------------------------- */
+
+.mm-cmp {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 14px;
+  background: var(--eq-surface);
+}
+
+.mm-cmp[data-open="true"] {
+  border-color: var(--eq-live);
+  box-shadow: 0 0 0 1px var(--eq-live);
+}
+
+.mm-cmp__title {
+  margin: 0;
+  padding: 12px 16px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--eq-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.mm-cmp__text {
+  display: block;
+  width: 100%;
+  min-height: 56px;
+  padding: 16px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  resize: none;
+  font-size: 17px;
+  line-height: 1.4;
+  color: var(--eq-ink);
+}
+
+.mm-cmp__text::placeholder {
+  color: var(--eq-ink-muted);
+}
+
+.mm-cmp__text:focus-visible {
+  outline: none;
+}
+
+.mm-cmp[data-open="true"] .mm-cmp__text {
+  min-height: 96px;
+  padding-top: 8px;
+}
+
+.mm-cmp__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+
+.mm-cmp__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.mm-cmp__lbl {
+  min-width: 76px;
+  font-size: 15px;
+  color: var(--eq-ink-muted);
+}
+
+.mm-cmp__val {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--eq-ink);
+}
+
+.mm-cmp__other {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--eq-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.mm-cmp__reach {
+  margin: 0;
+  font-size: 15px;
+  color: var(--eq-ink-2);
+}
+
+.mm-cmp__btns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+/* About [ Avery | The machine itself ]: one switch, two sides. */
+.mm-seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+}
+
+.mm-seg__opt {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--eq-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.mm-seg__opt[aria-checked="true"],
+.mm-seg__opt[aria-checked="true"]:hover {
+  background: var(--eq-live);
+  color: var(--eq-live-on);
+}
+
+.mm-seg__opt:disabled {
+  opacity: 0.45;
+}
+
+.mm-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--eq-surface-2);
+  font-size: 15px;
+  color: var(--eq-ink-2);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- the notes on this machine ----------------------------------- */
+
+.mm-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mm-note {
+  border: 1px solid var(--eq-border);
+  border-radius: 12px;
+  background: var(--eq-surface);
+}
+
+.mm-note__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 14px 2px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  text-align: left;
+  color: var(--eq-ink);
+}
+
+.mm-note__row > svg {
+  flex: none;
+  margin-top: 3px;
+}
+
+.mm-note__text {
+  font-size: 17px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.mm-note__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 6px;
+  min-height: 28px;
+  padding: 0 14px 6px 42px;
+  font-size: 14px;
+  color: var(--eq-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.mm-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 14px 14px 42px;
+}
+
+.mm-thread__file {
+  margin: 0;
+  font-size: 14px;
+  color: var(--eq-ink-muted);
+}
+
+.mm-ups {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0 0 0 12px;
+  list-style: none;
+  border-left: 2px solid var(--eq-border-strong);
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.mm-up__meta {
+  display: block;
+  font-size: 14px;
+  color: var(--eq-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.mm-thread__btns,
+.mm-menu-row,
+.mm-upd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.mm-upd__input {
+  flex: 1 1 220px;
+  min-height: 48px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface);
+  font-size: 16px;
+  color: var(--eq-ink);
+}
+
+.mm-grp-h {
+  margin: 6px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--eq-ink-muted);
+}
+
+.mm-grp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--eq-border);
+  background: var(--eq-surface-2);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--eq-ink-2);
+}
+
+/* ---------- the folded rows: Setting changes ---------------------------- */
+
+.mm-drawer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border);
+  background: var(--eq-surface);
+  font-size: 16px;
+  font-weight: 600;
+  text-align: left;
+  color: var(--eq-ink);
+}
+
+.mm-drawer:hover {
+  background: var(--eq-surface-2);
+}
+
+.mm-drawer[aria-expanded="true"] .mm-drawer__chev {
+  transform: rotate(180deg);
+}
+
+.mm-drawer__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.mm-chg {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mm-chg__row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--eq-border);
+}
+
+.mm-chg__what {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+.mm-chg__detail {
+  font-size: 14px;
+  color: var(--eq-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.mm-chg__failed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0;
+  font-size: 15px;
+  color: var(--eq-ink);
+}
+
+.mm-chg__foot {
+  margin: 0;
+  font-size: 14px;
+  color: var(--eq-ink-muted);
+}
+
 /* ---------- a phone (under 600px): the same card, tightened ------------ */
 
 @media (max-width: 599px) {
@@ -812,5 +1767,11 @@
 
   .mm-pg-btn {
     min-width: 0;
+  }
+
+  /* One tile a row: a 358px tile still fits 56px ± and a 36px value. */
+  .mm-tiles,
+  .mm-tiles[data-count="2"] {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

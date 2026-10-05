@@ -912,6 +912,67 @@ describe("the post-session screen's small honesty fixes (packages round)", () =>
 });
 
 /*
+ * THE MACHINE MENU'S FLOOR NOTE, CARRIED (Oct 4 2026). A session draft the
+ * machine menu was writing for the studio's notes on a machine ("The machine
+ * itself") offers to go there — never onto the client's record — or to be
+ * dropped; left there, the host adds it on the way out (nothing is lost).
+ */
+describe("a carried draft for the studio's floor notes", () => {
+  const floorDraft = {
+    body: "Seat pin sticks at 7",
+    category: null,
+    flavour: null,
+    bodyParts: [],
+    importance: "standard",
+    machineId: "m1",
+    aboutMachine: true,
+    toFloor: true,
+  } as any;
+
+  function FloorScreen({ onSaveDraft, onDropDraft, draft = floorDraft }: { onSaveDraft: (t: string) => void; onDropDraft?: () => void; draft?: any }) {
+    return (
+      <WrapUpScreen
+        client={client}
+        session={session}
+        logs={[]}
+        lines={[]}
+        journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
+        schedules={[]}
+        authTrainer={trainer}
+        onEffort={vi.fn()}
+        onLeave={vi.fn()}
+        unsavedDraft={draft}
+        onSaveDraft={onSaveDraft}
+        onDropDraft={onDropDraft}
+        studioName="Westlake"
+        machines={[{ id: "m1", name: "Leg Press" } as any]}
+      />
+    );
+  }
+
+  it("offers Add to Westlake's notes or Drop it, and says where it goes if left", async () => {
+    const onSaveDraft = vi.fn();
+    const onDropDraft = vi.fn();
+    const host = await mount(<FloorScreen onSaveDraft={onSaveDraft} onDropDraft={onDropDraft} />);
+    const card = host.querySelector('[data-testid="unsaved-draft"]')!;
+    expect(card.textContent).toContain("You started a note for Westlake's notes on Leg Press and didn't add it");
+    expect(card.textContent).toContain("Left as it is, it is added to Westlake's notes when you leave. Nothing you wrote is lost.");
+    expect(buttonByText(card, "Save note")).toBeUndefined();
+    await click(buttonByText(card, "Add to Westlake's notes"));
+    expect(onSaveDraft).toHaveBeenCalledWith("Seat pin sticks at 7");
+    await click(buttonByText(card, "Drop it"));
+    expect(onDropDraft).toHaveBeenCalled();
+  });
+
+  it("reads the switch defensively: anything but true is a note about the client", async () => {
+    const host = await mount(<FloorScreen onSaveDraft={vi.fn()} draft={{ ...floorDraft, toFloor: "true" }} />);
+    const card = host.querySelector('[data-testid="unsaved-draft"]')!;
+    expect(card.textContent).toContain("You started a note during the session and didn't save it");
+    expect(buttonByText(card, "Save note")).toBeTruthy();
+  });
+});
+
+/*
  * THE LOOK (voice review follow-up, Sep 27 2026). The Wrap-up follows the app
  * theme, all of it, and every colour is a token that reads in both themes.
  * The confetti burst stays: AJ, "I like it keep it."

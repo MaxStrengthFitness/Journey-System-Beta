@@ -186,6 +186,8 @@ const GO: Array<[string, string, string | null, string]> = [
   ["features/equipment/equipment.css", ".eq-btn--hero", ".eq-btn--hero:hover", "eq"],
   ["features/equipment/equipment.css", ".eq-note-dot--flag", null, "eq"],
   ["features/machine-fit/ui/machine-fit.css", ".fit-btn--hero", ".fit-btn--hero:hover", "eq"],
+  ["features/machine-menu/machine-menu.css", ".mm-save", ".mm-save:hover", "eq"],
+  ["features/machine-menu/machine-menu.css", ".mm-add", ".mm-add:hover", "eq"],
   ["features/routines/routines.css", ".rt-btn--hero", ".rt-btn--hero:hover", "eq"],
   ["features/routines/routines.css", ".rt-routine--today .rt-badge", null, "eq"],
   ["features/routines/routines.css", ".rt-today", null, "eq"],

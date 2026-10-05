@@ -22,6 +22,7 @@ import { NoteSweep, discardUnfiledEntry, fileUnfiledEntry, isUnfiled } from "../
 import { isNextTrainerNote, type NextTrainerNoteMark } from "../features/client-notes/note-catalog";
 import { Dial, EFFORT_SCALE, Loudness } from "../features/rating";
 import type { SessionNoteDraft } from "../features/client-notes/session-draft";
+import { carriedFloorWords, floorCarryOf } from "../features/machine-menu/note-target";
 import { ArrowLeft, CalendarCheck2, CalendarClock, CalendarSearch, CalendarX2, Check, HeartPulse, MessageSquareText, Star } from "lucide-react";
 import {
   LogConversationDialog,
@@ -435,6 +436,13 @@ export function WrapUpScreen({
   // The unfinished mid-session note, editable here so a last word can be added.
   const [draftText, setDraftText] = useState(unsavedDraft?.body ?? "");
   const [draftBusy, setDraftBusy] = useState(false);
+  // A draft written for the studio's floor notes on a machine (the machine
+  // menu's "The machine itself", Oct 4 2026) offers to go there, never onto
+  // the client's record; left here, the host adds it there on the way out.
+  const floorCarry = floorCarryOf(unsavedDraft);
+  const floorWords = floorCarry
+    ? carriedFloorWords(studioName, machines.find((m) => m.id === floorCarry.machineId)?.name ?? null)
+    : null;
 
   // This session's journal entries, for the To-file tray: one single-field
   // equality query (no composite index), the same stream the Active Session
@@ -889,7 +897,9 @@ export function WrapUpScreen({
               >
                 <div className="flex items-center gap-2">
                   <MessageSquareText size={16} className="text-(--eq-warn) shrink-0" aria-hidden="true" />
-                  <span className="text-[14px] font-bold text-ink-d1">You started a note during the session and didn't save it</span>
+                  <span className="text-[14px] font-bold text-ink-d1 break-words min-w-0" data-floor-draft={floorWords ? "" : undefined}>
+                    {floorWords ? floorWords.title : "You started a note during the session and didn't save it"}
+                  </span>
                 </div>
                 <textarea
                   className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[14px] text-ink-d1 resize-none outline-none focus:border-(--eq-focus-ring) transition-colors"
@@ -912,7 +922,7 @@ export function WrapUpScreen({
                       }
                     }}
                   >
-                    Save note
+                    {floorWords ? floorWords.button : "Save note"}
                   </button>
                   <button
                     type="button"
@@ -923,7 +933,9 @@ export function WrapUpScreen({
                     Drop it
                   </button>
                 </div>
-                <span className="text-[11px] text-ink-d3">Left as it is, it is saved unfiled when you leave — nothing you wrote is lost.</span>
+                <span className="text-[11px] text-ink-d3">
+                  {floorWords ? floorWords.foot : "Left as it is, it is saved unfiled when you leave — nothing you wrote is lost."}
+                </span>
               </div>
             )}
 

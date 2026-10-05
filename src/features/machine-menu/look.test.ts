@@ -115,8 +115,32 @@ describe("the machine menu's type", () => {
   });
 });
 
-/** Every control the chart block draws. */
-const CONTROLS = ["mm-ro__btn", "mm-pg-btn", "mm-list-btn", "mm-more-btn", "mm-retry", "mm-ov"] as const;
+/** Every control the card draws: the chart block, the settings, the notes and the folds. */
+const CONTROLS = [
+  "mm-ro__btn",
+  "mm-pg-btn",
+  "mm-list-btn",
+  "mm-more-btn",
+  "mm-retry",
+  "mm-ov",
+  "mm-link",
+  "mm-btn",
+  "mm-quiet",
+  "mm-save",
+  "mm-add",
+  "mm-step",
+  "mm-tile__val",
+  "mm-tile__empty",
+  "mm-pos__btn",
+  "mm-opt",
+  "mm-field__input",
+  "mm-choice",
+  "mm-seg__opt",
+  "mm-note__row",
+  "mm-upd__input",
+  "mm-grp-btn",
+  "mm-drawer",
+] as const;
 
 describe("the machine menu's controls", () => {
   it("are at least 40px tall wherever their size is set", () => {
@@ -191,5 +215,35 @@ describe("the machine menu's components", () => {
 
   it("are not loaded lazily: the session's warm-up covers them", () => {
     for (const file of COMPONENTS) expect(read(file), file).not.toMatch(/React\.lazy|\blazy\(/);
+  });
+});
+
+describe("the settings and the notes", () => {
+  const own = (cls: string) => BASE_RULES.filter((r) => r.selectors.length === 1 && r.selectors[0] === `.${cls}`);
+  const heights = (cls: string) =>
+    own(cls)
+      .flatMap((r) => [...declared(r.body, "min-height"), ...declared(r.body, "height")])
+      .map(px)
+      .filter((n): n is number => n !== null);
+
+  it("give ± 56px, Save and Add note 56px, and the positions 48px (machine menu design §B)", () => {
+    expect(Math.max(...heights("mm-step"))).toBe(56);
+    expect(declared(own("mm-step")[0].body, "width")).toEqual(["56px"]);
+    expect(Math.max(...heights("mm-save"))).toBe(56);
+    expect(Math.max(...heights("mm-add"))).toBe(56);
+    expect(Math.max(...heights("mm-pos__btn"))).toBe(48);
+  });
+
+  it("read the tile values at 36px with the iPad set down, and a word at 24px", () => {
+    expect(declared(own("mm-tile__val")[0].body, "font-size")).toEqual(["36px"]);
+    expect(declared(own("mm-tile__word")[0].body, "font-size")).toEqual(["24px"]);
+    expect(heights("mm-tile")).toContain(112);
+  });
+
+  it("put one tile a row on a phone, and only under 600px", () => {
+    const media = CSS.slice(BASE.length);
+    const phone = rulesOf(media).filter((r) => r.selectors.includes(".mm-tiles"));
+    expect(phone.length).toBe(1);
+    expect(declared(phone[0].body, "grid-template-columns")).toEqual(["minmax(0, 1fr)"]);
   });
 });

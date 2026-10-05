@@ -76,6 +76,15 @@ describe("the session note draft", () => {
     expect(read).toEqual({ ...EMPTY_SESSION_DRAFT, body: "ask about the knee", machineId: "leg-press" });
   });
 
+  it("takes a floor draft back to the client when the session's note sidebar edits it (it has no floor switch)", () => {
+    writeSessionDraft("s1", { ...EMPTY_SESSION_DRAFT, body: "seat pin sticks", machineId: "leg-press", toFloor: true });
+    // The sidebar's composer reports what its box would save: a note about the client.
+    writeSessionDraft("s1", { ...EMPTY_SESSION_DRAFT, body: "seat pin sticks, and the knee", machineId: "leg-press" });
+    const read = readSessionDraft("s1");
+    expect(read?.body).toBe("seat pin sticks, and the knee");
+    expect(read && "toFloor" in read).toBe(false);
+  });
+
   it("gives up quietly without storage", () => {
     delete (globalThis as { window?: unknown }).window;
     expect(readSessionDraft("s1")).toBeNull();

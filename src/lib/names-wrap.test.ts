@@ -71,6 +71,15 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   { file: "features/machine-menu/machine-menu.css", cls: "mm-ro__event", what: "a note's author and a machine's name in the readout's event line" },
   { file: "features/machine-menu/machine-menu.css", cls: "mm-sess__c", what: "a trainer and a set-up in Every session's rows" },
   { file: "features/machine-menu/machine-menu.css", cls: "mm-run-div__t", what: "the machine's name in a fold between Weight by weight's runs" },
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-cmp__title", what: "the client's, the machine's and the studio's names over the open note box" },
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-cmp__other", what: "another machine's name over a session draft about it (\"About Chest Press\")" },
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-seg__opt", what: "the client's name on the note box's About switch" },
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-btn", what: "a machine's name on \"Make it about Leg Press\"" },
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-add", what: "the studio's name on \"Add to Westlake's notes\"" },
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-status", what: "the studio's and the machine's names in a floor note's confirmation" },
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-note__meta", what: "a note's author in the machine's notes" },
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-up__meta", what: "an update's author in a note's thread" },
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-chg__detail", what: "the trainer who saved a setting change" },
 ];
 
 const rulesFor = (entry: (typeof NAME_RULES)[number]) =>
