@@ -108,6 +108,7 @@ const PALETTES: [string, string, string | null][] = [
   ["features/calendar/calendar.tokens.css", "\n:root {", '[data-theme="dark"] {'],
   ["features/subjective-report/subjective-report.css", "\n:root {", '[data-theme="dark"] {'],
   ["features/ford/ford.tokens.css", "\n:root {", '[data-theme="dark"] {'],
+  ["features/trainer-profile/trainer-profile.tokens.css", "\n:root {", '[data-theme="dark"] {'],
   ["features/client-codex/codex.tokens.css", ".cx-kit {", null],
 ];
 const LIGHT: Record<string, string> = {};
@@ -245,6 +246,31 @@ describe("AJ's 3A: a chip or a toggle a trainer taps draws the firm 3:1 edge", (
     expect(region.cursor).toBeUndefined();
   });
 
+  /**
+   * The Kaizen roster's "Why are you tracking them?" (the review of AJ's 3A):
+   * the informational .tp-chip as a button, on the hairline and an inline
+   * 34px. A chip a trainer taps is .tp-chip--pick: the firm edge, 40px, a
+   * pointer; the picked one keeps the Kaizen tint and its edge is the Kaizen
+   * mark's colour. The base chip stays informational (section 3).
+   */
+  it("the Kaizen roster's reason chips are picks: the firm edge on their fill, 40px, the picked one in the Kaizen colour", () => {
+    const file = "features/trainer-profile/trainer-profile.css";
+    const pick = merged(file, ".tp-chip", ".tp-chip--pick");
+    expect(edgeOf(pick)).toBe("var(--tp-border-strong)");
+    expect(parseFloat(pick["min-height"])).toBeGreaterThanOrEqual(40);
+    expect(pick.height).toBe("auto");
+    expect(pick.cursor).toBe("pointer");
+    for (const [mode, map] of Object.entries(MODES)) {
+      expect(ratio(resolve(map, "var(--tp-border-strong)"), resolve(map, fillOf(pick)!)), `${mode}: the edge on its fill`).toBeGreaterThanOrEqual(3);
+      expect(ratio(resolve(map, "var(--tp-kaizen)"), resolve(map, "var(--tp-kaizen-fill)")), `${mode}: the picked edge`).toBeGreaterThanOrEqual(3);
+    }
+    // Two classes, so it outranks the Kaizen tone's transparent edge wherever it sits.
+    expect(merged(file, ".tp-chip--pick.tp-chip--kaizen")["border-color"]).toBe("var(--tp-kaizen)");
+    const dialog = read("features/trainer-profile/AddToRosterDialog.tsx");
+    expect(dialog).toMatch(/"tp-chip tp-chip--pick tp-chip--kaizen" : "tp-chip tp-chip--pick"/);
+    expect(dialog).toMatch(/aria-pressed=\{r === reason\}/);
+    expect(dialog).not.toMatch(/height:\s*34/);
+  });
 });
 
 /* ------------------------------------------------------------------ */
@@ -343,6 +369,102 @@ describe("the two check rows drawn in class lists take the control edge", () => 
   it("--input is 3:1 on a dialog's fill in both modes", () => {
     for (const [mode, map] of Object.entries(MODES)) {
       expect(ratio(resolve(map, "var(--input)"), resolve(map, "var(--popover)")), mode).toBeGreaterThanOrEqual(3);
+    }
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* 6. The class lists (the review of AJ's 3A)                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The sweep in section 3 reads stylesheets, so chips drawn in a class list
+ * escaped it: the Wrap-up's Times with room "Whose times", Post an
+ * initiative's choices, Submit an initiative's client chips (32px too), and
+ * the Wrap-up's next weight (its steppers flat on the hairline, its field on
+ * the hairline in the raised tone). Each now draws the app's control edge,
+ * --input (inside a dialog or a sheet, --popover-input in dark), the
+ * steppers raised and the field sunk. This holds every element a trainer
+ * taps whose class list draws a hairline edge to an exact list.
+ */
+function tsxFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const name of readdirSync(dir)) {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) out.push(...tsxFiles(path));
+    else if (name.endsWith(".tsx") && !/\.test\.tsx$/.test(name)) out.push(path);
+  }
+  return out;
+}
+
+/** Their own palette and voice (the round's NOT_THIS_ROUND), or not mounted. */
+const NOT_THIS_ROUND = /ClientProgressReportView|ConsultationWizard\.tsx|LegacyChartImporter|ErrorBoundary|MuscleSelector|[\\/]progress-report[\\/]/;
+const HAIRLINE_CLASS =
+  /(?<![\w:-])border-(?:border|div-d|slate-(?:100|200|300)|\(--(?:divider|edge|[a-z]+-border|[a-z]+-line|[a-z]+-divider)\))(?:\/\d+)?(?![\w-])/;
+/** An opening tag with up to three levels of braces in its attributes. */
+const TAG = /<([A-Za-z][\w.]*)((?:[^<>{}]|\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\})*)>/g;
+const TAPPABLE_TAG = /^(?:button|label|a|summary|select|Button|DropdownMenuTrigger|TabsTrigger|ToggleGroupItem|SelectTrigger)$/;
+const TAPPABLE_ATTR = /\brole="(?:button|radio|switch|tab|checkbox|option)"|\baria-pressed=/;
+
+const CLASS_LIST_ON_PURPOSE: Record<string, string> = {
+  "components/EditRoutineDrawer.tsx <button>": "Routine B dashed until it is turned on: a dash means nothing here yet (the follow-up)",
+  "features/demo-mode/SetUpDemoCard.tsx <Button>": "the front door's Demo card: always dark, its own palette and voice",
+};
+
+describe("6. the class lists: nothing a trainer taps keeps a hairline edge but on purpose", () => {
+  it("every tappable element whose class list draws a hairline edge is on the list, and the list is exact", () => {
+    const found = new Set<string>();
+    for (const path of tsxFiles(SRC)) {
+      const file = relative(SRC, path).replace(/\\/g, "/");
+      if (NOT_THIS_ROUND.test(file)) continue;
+      for (const m of read(file).matchAll(TAG)) {
+        const [, tag, attrs] = m;
+        if (!HAIRLINE_CLASS.test(attrs)) continue;
+        if (TAPPABLE_TAG.test(tag) || TAPPABLE_ATTR.test(attrs)) found.add(`${file} <${tag}>`);
+      }
+    }
+    expect([...found].sort()).toEqual(Object.keys(CLASS_LIST_ON_PURPOSE).sort());
+  });
+
+  it("the sweep sees a hairline chip when there is one (a check on the check)", () => {
+    const sample = `<button type="button" aria-pressed={on} className={cn("min-h-10 border", on ? "border-(--eq-live)" : "border-div-d bg-card")}>x</button>`;
+    const m = [...sample.matchAll(TAG)][0];
+    expect(m[1]).toBe("button");
+    expect(HAIRLINE_CLASS.test(m[2])).toBe(true);
+    expect(HAIRLINE_CLASS.test('className="border border-input bg-card"')).toBe(false);
+    expect(HAIRLINE_CLASS.test('className="border border-(--eq-border-strong)"')).toBe(false);
+  });
+
+  it.each([
+    ["features/openings/ui/TimesWithRoomSheet.tsx", /: "border-input bg-bg-dark-3 text-ink-d1"/, 1],
+    ["features/studio-tasks/PostInitiativeDialog.tsx", /: "border-input bg-card text-ink-d2"/g, 3],
+  ])("%s: its choices draw --input on their fill", (file, pattern, count) => {
+    expect(read(file).match(new RegExp(pattern.source, "g"))?.length).toBe(count);
+  });
+
+  it("Submit an initiative's client chips: --input, 40px", () => {
+    expect(read("features/studio-tasks/SubmitInitiativeDialog.tsx")).toMatch(
+      /className="inline-flex min-h-10 items-center gap-1\.5 rounded-full border border-input bg-bg-dark-3 /,
+    );
+  });
+
+  it("Times with room's Done and the next weight's steppers are raised on --input with a press; the next weight's field sinks", () => {
+    const raised = /border border-input bg-\(--raised\) shadow-\(--raised-lift\) active:translate-y-px active:shadow-\(--press\) transition-transform /;
+    expect(read("features/openings/ui/TimesWithRoomSheet.tsx")).toMatch(raised);
+    const card = read("features/next-weight/NextWeightCard.tsx");
+    expect(card).toMatch(raised);
+    expect(card).toMatch(/<label className="[^"]*\bborder border-input bg-\(--well\) shadow-\(--elev-0\)/);
+    expect(card).not.toMatch(/border-div-d bg-bg-dark-3/);
+  });
+
+  it("--input is 3:1 on those fills in both modes (in a dialog or a sheet, --popover-input in dark)", () => {
+    const fills = ["var(--bg-dark-3)", "var(--card)", "var(--well)", "var(--raised)"];
+    for (const fill of fills) {
+      expect(ratio(resolve(MODES.light, "var(--input)"), resolve(MODES.light, fill)), `light on ${fill}`).toBeGreaterThanOrEqual(3);
+      expect(ratio(resolve(MODES.dark, "var(--input)"), resolve(MODES.dark, fill)), `dark on ${fill}`).toBeGreaterThanOrEqual(3);
+    }
+    for (const fill of ["var(--bg-dark-3)", "var(--card)", "var(--popover-raised)"]) {
+      expect(ratio(resolve(MODES.dark, "var(--popover-input)"), resolve(MODES.dark, fill)), `dark, on a popover, on ${fill}`).toBeGreaterThanOrEqual(3);
     }
   });
 });

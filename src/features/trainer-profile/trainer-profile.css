@@ -170,11 +170,25 @@
   white-space: nowrap;
 }
 
+/* A chip a trainer TAPS to pick (the Kaizen roster's "Why are you tracking
+   them?"): the firm 3:1 edge buttons have, not the hairline an
+   informational chip keeps (AJ's 3A, Oct 5 2026), and 40px tall (it was a
+   34px inline height). Its fill stays; the picked one keeps the Kaizen
+   tint and takes the Kaizen mark's colour for its edge (below). */
+.tp-chip--pick {
+  height: auto;
+  min-height: 40px;
+  padding: 0 12px;
+  border-color: var(--tp-border-strong);
+  cursor: pointer;
+}
+
 .tp-chip--role   { background: var(--tp-hero-fill); border-color: transparent; color: var(--tp-hero-text); }
 .tp-chip--live   { background: var(--tp-live-fill); border-color: transparent; color: var(--tp-live-text); }
 .tp-chip--ok     { background: var(--tp-ok-fill);   border-color: transparent; color: var(--tp-ok); }
 .tp-chip--warn   { background: var(--tp-warn-fill);  border-color: transparent; color: var(--tp-warn); }
 .tp-chip--kaizen { background: var(--tp-kaizen-fill); border-color: transparent; color: var(--tp-kaizen-text); }
+.tp-chip--pick.tp-chip--kaizen { border-color: var(--tp-kaizen); }
 
 /* --- buttons -------------------------------------------------------- */
 

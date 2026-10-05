@@ -1140,7 +1140,13 @@
 
 /* Too new to judge, and Trends' "not enough data yet": WELLS (type and
    depth, phase 9, Oct 4 2026), sunk into the well tone with no edge, radius
-   12. Each was a dashed box. The words are ink-2 (7.0:1 on the well). */
+   12. Each was a dashed box. The words are ink-2 (7.0:1 on the well).
+
+   Too new to judge sits on the PAGE GROUND (Clients -> Journey lists it in
+   its section under the rows, and a section paints nothing), so the tray's
+   tone (AJ's 1A, Oct 5 2026), as Trends' below: the well tone is lighter
+   than the page and read raised; the tray is below it in both modes. Its
+   head stays ink-2 (5.95:1 on the tray). */
 .ops-toonew {
   display: flex;
   flex-direction: column;
@@ -1148,7 +1154,7 @@
   padding: 12px 14px;
   border: 0;
   border-radius: 12px;
-  background: var(--adm-surface-2);
+  background: var(--adm-tray);
   box-shadow: var(--adm-elev-0);
 }
 

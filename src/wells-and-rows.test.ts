@@ -136,6 +136,7 @@ const PALETTES: [string, string, string | null][] = [
   ["features/briefing/briefing.tokens.css", "\n:root {", '[data-theme="dark"] {'],
   ["features/journey-grid/journey-grid.tokens.css", "\n:root {", '[data-theme="dark"] {'],
   ["features/client-profile/profile-nav.css", "\n:root {", '[data-theme="dark"] {'],
+  ["features/routine-builder/routine-builder.tokens.css", "\n:root {", '[data-theme="dark"] {'],
   ["features/client-codex/codex.tokens.css", ".cx-kit {", null],
   ["features/clinical-review/clinical-review.css", "\n.cr {", null],
 ];
@@ -198,7 +199,10 @@ const WELLS: Well[] = [
   { file: "features/wiki/wiki.css", sel: ".wk__placeholder", p: "wk", fill: "var(--wk-tray)", card: "var(--wk-bg)", words: [[".wk__placeholder-title"], [".wk__placeholder-body"]] },
   { file: "features/admin/admin.css", sel: ".adm-empty", p: "adm", words: [[".adm-empty"]] },
   { file: "features/subjective-report/subjective-report.css", sel: ".sr-empty", p: "sr", words: [[".sr-empty"]] },
-  { file: "features/admin/shell/ops.css", sel: ".ops-toonew", p: "adm", words: [[".ops-toonew__h"]] },
+  // On the page ground: Clients -> Journey's section paints nothing (AJ's 1A, the review).
+  { file: "features/admin/shell/ops.css", sel: ".ops-toonew", p: "adm", fill: "var(--adm-tray)", card: "var(--adm-bg)", words: [[".ops-toonew__h"]] },
+  // On the routine builder's own ground: .rb paints --rb-bg, the list column nothing (AJ's 1A, the review).
+  { file: "features/routine-builder/routine-builder.css", sel: ".rb-empty", p: "rb", fill: "var(--rb-tray)", card: "var(--rb-bg)", words: [[".rb-empty"]] },
   { file: "features/admin/shell/ops.css", sel: ".ops-trend-wait", p: "adm", fill: "var(--adm-tray)", card: "var(--adm-bg)", words: [[".ops-trend-wait__h"]] },
   // The Deep Dive draws its well in the app's well tone: the grid's surface-2 is a
   // header band that goes LIGHTER than the card in dark.
@@ -359,7 +363,8 @@ describe("a control that sinks keeps its 3:1 edge", () => {
 /**
  * AJ's 1A (Oct 5 2026). Each well here sits straight on a page's ground:
  * the Archive's figures, Programming's counts, Openings' times, the
- * clinical strip, Trends' "Not enough data yet", Notes' empty places,
+ * clinical strip, Trends' "Not enough data yet", Clients -> Journey's "Too
+ * new to judge", the routine builder's empty list, Notes' empty places,
  * Learning's empty places, placeholders and notes, Setup's empty line,
  * Relay's empty lists, and (by where they sit) the Story's empty line, a
  * screen's own empty place in Operations and the Admins dashboard, the Deep

@@ -134,7 +134,7 @@ export function PostInitiativeDialog({
                     "min-h-10 rounded-xl border px-3 text-[12px] font-bold",
                     action === a
                       ? "border-[var(--st-live)] bg-[var(--st-live-fill)] text-[var(--st-live-text)]"
-                      : "border-div-d bg-card text-ink-d2",
+                      : "border-input bg-card text-ink-d2",
                   )}
                 >
                   {CLIENT_ACTION_LABEL[a]}
@@ -158,7 +158,7 @@ export function PostInitiativeDialog({
                     "min-h-10 min-w-10 rounded-xl border px-3 text-[14px] font-black tabular",
                     perTrainer === n
                       ? "border-[var(--st-live)] bg-[var(--st-live-fill)] text-[var(--st-live-text)]"
-                      : "border-div-d bg-card text-ink-d2",
+                      : "border-input bg-card text-ink-d2",
                   )}
                 >
                   {n}
@@ -177,7 +177,7 @@ export function PostInitiativeDialog({
                   "min-h-10 rounded-xl border px-3 text-[12px] font-bold",
                   perTrainer === 0
                     ? "border-[var(--st-live)] bg-[var(--st-live-fill)] text-[var(--st-live-text)]"
-                    : "border-div-d bg-card text-ink-d2",
+                    : "border-input bg-card text-ink-d2",
                 )}
               >
                 No number

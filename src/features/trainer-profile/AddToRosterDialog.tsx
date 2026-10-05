@@ -174,8 +174,8 @@ export function AddToRosterDialog({
                     <button
                       key={r}
                       type="button"
-                      className={r === reason ? "tp-chip tp-chip--kaizen" : "tp-chip"}
-                      style={{ height: 34, cursor: "pointer" }}
+                      className={r === reason ? "tp-chip tp-chip--pick tp-chip--kaizen" : "tp-chip tp-chip--pick"}
+                      aria-pressed={r === reason}
                       onClick={() => setReason(r)}
                       title={KAIZEN_REASON_HINTS[r]}
                     >

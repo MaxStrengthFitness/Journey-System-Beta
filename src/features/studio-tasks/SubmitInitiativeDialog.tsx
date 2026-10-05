@@ -134,7 +134,7 @@ export function SubmitInitiativeDialog({
                     onClick={() =>
                       setDraft((prev) => withoutEntry(prev, e.clientId))
                     }
-                    className="inline-flex items-center gap-1.5 rounded-full border border-div-d bg-bg-dark-3 px-3 py-1.5 text-[12px] text-ink-d1"
+                    className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-input bg-bg-dark-3 px-3 py-1.5 text-[12px] text-ink-d1"
                   >
                     {e.clientName}
                     <X size={12} aria-hidden />

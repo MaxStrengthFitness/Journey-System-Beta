@@ -721,10 +721,15 @@
   padding: 2rem 1rem;
   text-align: center;
   color: var(--rb-ink-2);
-  /* A well with a sentence, not a dashed box (type and depth, the sweep). */
+  /* A well with a sentence, not a dashed box (type and depth, the sweep).
+     It sits on the builder's own ground (.rb paints --rb-bg behind both
+     panes, and the list column paints nothing), so the tray's tone (AJ's
+     1A, Oct 5 2026): the well tone is lighter than that ground and read
+     raised; the tray is below it in both modes. ink-2 reads 5.95:1 on it
+     (10.4:1 in dark). */
   border: 0;
   border-radius: 12px;
-  background: var(--rb-surface-2);
+  background: var(--rb-tray);
   box-shadow: var(--rb-elev-0);
   font-size: 0.875rem;
 }
