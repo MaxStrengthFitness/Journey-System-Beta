@@ -461,10 +461,18 @@
                         tab): the contact lift and the top light, on the
                         control's own 3:1 edge
          --solid-lift   a solid blue fill (shadcn's default Button)
-         --go-lift      a solid orange fill that is not Start session */
+         --go-lift      a solid orange fill: Go's depth (Start session
+                        takes it with Go's words; every other orange
+                        button takes the depth alone)
+         --panel-lift   a panel drawn in a className (the profile header's
+                        card, phase 7): --elev-2 and, in dark, the top
+                        light. Never inset-shadow-(--panel-highlight):
+                        Tailwind writes "inset" in front of the value, and
+                        the dark token already starts with it. */
     --raised-lift: var(--elev-1), inset 0 1px 0 var(--highlight);
     --solid-lift: var(--glow-live), var(--solid-light);
     --go-lift: var(--glow-go), var(--go-light);
+    --panel-lift: var(--elev-2), var(--panel-highlight);
 
     /* ---------------------------------------------------------------
        THE BODY WEIGHT (type and depth, phase 2, Oct 4 2026). The weight
@@ -702,6 +710,7 @@
     --raised-lift: var(--elev-1), inset 0 1px 0 var(--highlight);
     --solid-lift: var(--glow-live), var(--solid-light);
     --go-lift: var(--glow-go), var(--go-light);
+    --panel-lift: var(--elev-2), var(--panel-highlight);
 
     /* The body weight: light words on the navy read heavier than dark
        words on a light card, so dark mode's body is a touch lighter. */

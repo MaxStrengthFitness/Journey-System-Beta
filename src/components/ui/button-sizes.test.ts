@@ -146,7 +146,7 @@ describe("the outline Button is raised on its 3:1 edge (AJ's 2A)", () => {
     );
   });
 
-  it("index.css declares the three lifts a className reads, in :root and .dark", () => {
+  it("index.css declares the four lifts a className reads, in :root and .dark", () => {
     const css = read("index.css").replace(/\/\*[\s\S]*?\*\//g, "");
     const root = css.slice(css.indexOf("\n:root {"), css.indexOf("\n}", css.indexOf("\n:root {")));
     const dark = css.slice(css.indexOf("\n.dark {"), css.indexOf("\n}", css.indexOf("\n.dark {")));
@@ -154,6 +154,8 @@ describe("the outline Button is raised on its 3:1 edge (AJ's 2A)", () => {
       "--raised-lift": "var(--elev-1), inset 0 1px 0 var(--highlight)",
       "--solid-lift": "var(--glow-live), var(--solid-light)",
       "--go-lift": "var(--glow-go), var(--go-light)",
+      // Phase 7: a panel drawn in a className (the profile header's card).
+      "--panel-lift": "var(--elev-2), var(--panel-highlight)",
     };
     for (const [name, value] of Object.entries(LIFTS)) {
       expect(root, `${name} in :root`).toContain(`${name}: ${value};`);
@@ -397,6 +399,24 @@ describe("a className never writes a shadow as shadow-[var(...)]", () => {
         .replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, " "))
         .replace(/^\s*\/\/.*$/gm, "");
       return [...source.matchAll(/(?<![\w-])(?:[\w-]+:)*(?:inset-)?shadow-\[var\(/g)].map(
+        (m) => `${p.slice(SRC.length + 1).split("\\").join("/")}:${source.slice(0, m.index).split("\n").length}`,
+      );
+    });
+    expect(bad).toEqual([]);
+  });
+
+  it("never reads a token through inset-shadow-(--token): Tailwind writes \"inset\" in front of it", () => {
+    // Type and depth, phase 7 (Oct 4 2026): inset-shadow-(--panel-highlight)
+    // compiled to "--tw-inset-shadow: inset var(--panel-highlight)", and the
+    // dark --panel-highlight already starts with "inset", so the whole
+    // box-shadow was "inset inset ..." and dropped: the box went flat in dark
+    // with no warning. A token that carries its own inset is read whole with
+    // shadow-(--token) instead (--panel-lift, --raised-lift).
+    const bad = tsxFiles(SRC).flatMap((p) => {
+      const source = readFileSync(p, "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, " "))
+        .replace(/^\s*\/\/.*$/gm, "");
+      return [...source.matchAll(/(?<![\w-])(?:[\w-]+:)*inset-shadow-\(/g)].map(
         (m) => `${p.slice(SRC.length + 1).split("\\").join("/")}:${source.slice(0, m.index).split("\n").length}`,
       );
     });

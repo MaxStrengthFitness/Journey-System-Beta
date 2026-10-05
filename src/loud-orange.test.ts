@@ -349,12 +349,19 @@ describe("the profile header", () => {
   it("has no raw hex: its orange marks, its count and the Kaizen toggle are tokens", () => {
     expect(header).not.toMatch(/#[0-9a-f]{6}\b/i);
     expect(header.match(/bg-\(--eq-hero\)/g) ?? []).toHaveLength(2);
-    expect(header).toMatch(/className="text-\(--eq-hero-text\) tabular-nums" data-testid="sessions-completed"/);
+    // Moved on purpose (type and depth, phase 7, Oct 4 2026): the count is
+    // the headline figure, Saira 22/800 upright, still in the hero's text
+    // orange and still tabular.
+    expect(header).toMatch(
+      /className="font-display text-\[22px\] font-extrabold leading-\[0\.8\] text-\(--eq-hero-text\) tabular-nums" data-testid="sessions-completed"/,
+    );
     expect(header).toContain(
       'kaizen.isOn && "text-(--eq-live-text) bg-(--eq-live-fill) hover:text-(--eq-live-text) hover:bg-(--eq-live-fill) dark:hover:bg-(--eq-live-fill)"',
     );
     for (const t of BOTH) {
       expect(ratio(colour(t, "--eq-hero-text"), colour(t, "--card")), `${t}: the count`).toBeGreaterThanOrEqual(4.5);
+      // Phase 7: the facts sit in one well now, so the count is read there.
+      expect(ratio(colour(t, "--eq-hero-text"), colour(t, "--well")), `${t}: the count, in the facts' well`).toBeGreaterThanOrEqual(4.5);
       expect(ratio(colour(t, "--eq-live-text"), colour(t, "--eq-live-fill")), `${t}: Tracking`).toBeGreaterThanOrEqual(4.5);
     }
   });

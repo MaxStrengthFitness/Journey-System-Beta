@@ -214,12 +214,38 @@ describe("the profile's tabs still show which one is open", () => {
     expect(trayFill, "the tray keeps slate-200's light value").toBe(hex(ROOT, "--n-200"));
     expect(ratio(trayFill, page)).toBeGreaterThanOrEqual(1.1);
     expect(ratio(open, trayFill)).toBeGreaterThanOrEqual(1.25);
-    // The words: the profile's idle tabs are slate-600 on the tray, shadcn's
-    // own idle tabs ink-d2, and the open one ink on the raised fill.
+    // The words: idle tabs are ink-d2 on the tray (the profile's were
+    // slate-600 until type and depth, phase 7; they are shadcn's own idle
+    // ink now), and the open one ink on the raised fill.
     expect(ratio(hex(ROOT, "--n-600"), trayFill)).toBeGreaterThanOrEqual(4.5);
     expect(tabs).toMatch(/(?<![\w:-])text-ink-d2(?![\w/-])/);
     expect(ratio(hex(ROOT, "--ink-d2"), trayFill)).toBeGreaterThanOrEqual(4.5);
     expect(ratio(hex(ROOT, "--foreground"), open)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("the profile's four tabs speak in the tab voice and only their colours move (type and depth, phase 7)", () => {
+    // AJ's answer 1A (Oct 4 2026): Geist 14/600 in the words' own
+    // capitalisation (12 on a phone), the open one 700 from the shared
+    // trigger; the display face's slanted capitals are the studio's name and
+    // Go's alone. The tab no longer repaints its words in slate over the
+    // shared trigger's ink, no longer truncates, and no longer animates
+    // everything (which took in the open tab's lift).
+    const view = read("components/ClientProfileView.tsx");
+    const trigger = view.match(/<TabsTrigger[\s\S]*?className="(cp-tab [^"]*)"/)?.[1] ?? "";
+    expect(trigger, "the profile's tab trigger").not.toBe("");
+    const words = trigger.split(/\s+/);
+    for (const gone of ["font-display", "italic", "uppercase", "truncate", "transition-all", "font-bold"]) {
+      expect(words, gone).not.toContain(gone);
+    }
+    expect(trigger).not.toMatch(/(?:^|\s)(?:dark:|hover:)*text-slate-\d/);
+    expect(trigger).not.toMatch(/tracking-wide/);
+    for (const kept of ["font-sans", "not-italic", "normal-case", "text-[14px]", "max-[600px]:text-[12px]", "font-semibold", "text-ink-d2", "whitespace-normal", "transition-[color,background-color,border-color]"]) {
+      expect(words, kept).toContain(kept);
+    }
+    // The tray stays sunk, and the tab is still 40px in a 48px tray.
+    const tray = view.match(/<TabsList className="cp-tabs ([^"]*)"/)?.[1] ?? "";
+    expect(tray.split(/\s+/)).toEqual(expect.arrayContaining(["bg-(--tray)", "shadow-(--elev-0)", "h-12!"]));
+    expect(words).toContain("h-10!");
   });
 
   it("the profile header's hovers show on its card in dark", () => {

@@ -1600,9 +1600,19 @@ export function ClientProfileView({
 
             Equal tracks, not content-sized, is still what keeps the row from
             ever scrolling sideways — and four tracks is roomier than seven
-            was: ~208px each at 834pt portrait, where "NOTES & PROFILE" fits
-            at 13px with space to spare. `truncate` is the belt to that
-            suspender. The level below this one is the one sub-toggle
+            was: ~160px each at the iPad mini's 744pt portrait, where
+            "Activity Archive" is 110px at 14px. Nothing truncates: under
+            600px wide (a phone) the words are 12px and a label takes a second
+            line inside the 40px tab, hyphenated where one word is wider than
+            the tab ("Program-ming" on a 375px phone).
+
+            How they look (type and depth, phase 7, Oct 4 2026; AJ's answer
+            1A): Geist 14/600 in the words' own capitalisation, ink-2 (5.9:1
+            on the tray), the open one 700 in ink, RAISED out of the sunk
+            tray (--raised, the lift, a soft ring; the shared TabsTrigger's
+            own look, which this class list no longer overrides). They were
+            the display face's slanted capitals. Only colours transition. The
+            level below this one is the one sub-toggle
             (ProfileSubnav) three of the tabs carry: Programming's four
             segments, Notes & Profile's seven pages and the Activity Archive's
             four segments; see features/client-profile.
@@ -1617,13 +1627,13 @@ export function ClientProfileView({
             chosen tab with data-active, never data-state). */}
         <div className="mb-2 w-full">
           <div className="w-full pb-0.5">
-            <TabsList className="cp-tabs bg-(--tray) p-1 grid grid-cols-4 w-full h-12! rounded-xl gap-1">
+            <TabsList className="cp-tabs bg-(--tray) shadow-(--elev-0) p-1 grid grid-cols-4 w-full h-12! rounded-xl gap-1">
               {PROFILE_TABS.map((tab) => (
                 <TabsTrigger
                   key={tab.id}
                   value={tab.id}
                   title={tab.blurb}
-                  className="cp-tab relative w-full h-10! px-1 sm:px-2 font-display italic text-[11px] sm:text-[13px] font-bold uppercase tracking-wide sm:tracking-widest text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-all text-center cursor-pointer select-none rounded-lg truncate flex items-center justify-center"
+                  className="cp-tab relative w-full h-10! px-1 sm:px-2 font-sans not-italic normal-case tracking-normal text-[14px] max-[600px]:text-[12px] font-semibold leading-tight text-ink-d2 hover:text-foreground whitespace-normal [overflow-wrap:anywhere] hyphens-auto transition-[color,background-color,border-color] text-center cursor-pointer select-none rounded-lg flex items-center justify-center"
                 >
                   {tab.label}
                   {tab.id === "clinical" && reportDue && (

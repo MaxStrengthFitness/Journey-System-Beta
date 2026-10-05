@@ -54,6 +54,9 @@
   --psub-elev-1:        var(--eq-elev-1);
   --psub-glow-live:     var(--eq-glow-live);
   --psub-solid-light:   var(--eq-solid-light);
+  /* Phase 7: the bar's dark top light, and a word's secondary ink. */
+  --psub-panel-highlight: var(--eq-panel-highlight);
+  --psub-ink-2:         var(--eq-ink-2);       /* an idle segment's label 7.8:1 on the bar */
 }
 
 .dark,
@@ -73,6 +76,8 @@
   --psub-elev-1:        var(--eq-elev-1);
   --psub-glow-live:     var(--eq-glow-live);
   --psub-solid-light:   var(--eq-solid-light);
+  --psub-panel-highlight: var(--eq-panel-highlight);
+  --psub-ink-2:         var(--eq-ink-2);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -92,6 +97,8 @@
     --psub-elev-1:      var(--eq-elev-1);
     --psub-glow-live:   var(--eq-glow-live);
     --psub-solid-light: var(--eq-solid-light);
+    --psub-panel-highlight: var(--eq-panel-highlight);
+    --psub-ink-2:       var(--eq-ink-2);
   }
 }
 
@@ -157,6 +164,13 @@
 /* --------------------------------------------------------------------------
    The toggle itself. Equal tracks, not content width: the segments have to be
    in the same place every time or the thumb cannot find them without looking.
+
+   A RAISED bar (type and depth, phase 7, Oct 4 2026), so it reads apart from
+   the profile's four tabs, a sunk tray, right above it: the card's fill
+   clipped to the padding box inside a soft edge seen from outside, the
+   control's lift and, in dark, the panel's top light. The picked page is
+   solid blue with the blue glow and a white top light. It was a bordered
+   grey tray, the same look as the tray above it.
    -------------------------------------------------------------------------- */
 .psub {
   display: grid;
@@ -164,9 +178,11 @@
   gap: 4px;
   width: 100%;
   padding: 4px;
-  border: 1px solid var(--psub-border);
+  border: 1px solid var(--psub-edge);
   border-radius: var(--psub-radius);
-  background: var(--psub-bg);
+  background: var(--psub-surface);
+  background-clip: padding-box;
+  box-shadow: var(--psub-elev-1), var(--psub-panel-highlight);
 }
 
 .psub__btn {
@@ -179,16 +195,24 @@
   height: var(--psub-h);
   padding: 0 6px;
   border: 0;
-  border-radius: calc(var(--psub-radius) - 5px);
+  /* 10px: the bar's 14 less its 4px padding, so the picked page's corners
+     run parallel to the bar's. */
+  border-radius: calc(var(--psub-radius) - 4px);
   background: transparent;
-  color: var(--psub-ink-muted);
+  color: var(--psub-ink-2);
   cursor: pointer;
-  transition: background 120ms ease, color 120ms ease;
+  /* Colours only: the picked page's glow is never animated. */
+  transition: background-color 120ms ease, color 120ms ease;
   -webkit-tap-highlight-color: transparent;
 }
-.psub__btn:hover:not([data-on]) {
-  background: var(--psub-surface);
-  color: var(--psub-ink);
+/* Inside (hover: hover) so an iPad, which keeps hover after a tap, never
+   leaves a segment it just left shaded. The hover dips into the well tone,
+   because the bar itself is the card's colour now. */
+@media (hover: hover) {
+  .psub__btn:hover:not([data-on]) {
+    background: var(--psub-bg);
+    color: var(--psub-ink);
+  }
 }
 .psub__btn:focus-visible {
   outline: 2px solid var(--psub-live);
@@ -197,6 +221,7 @@
 .psub__btn[data-on] {
   background: var(--psub-live);
   color: var(--psub-live-on);
+  box-shadow: var(--psub-glow-live), var(--psub-solid-light);
 }
 
 .psub__label {
@@ -205,10 +230,13 @@
   gap: 5px;
   max-width: 100%;
   font-family: inherit;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  /* The sub-tab voice (AJ's answer 1A, Oct 4 2026): Geist 14/700 in the
+     words' own capitalisation, ink-2. It was 12/900 capitals. */
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.2;
   /* Names are never truncated (CLAUDE.md). Two words wrap rather than clip,
      which is why the button is a column and 48px tall rather than 40px. */
   flex-wrap: wrap;
@@ -218,18 +246,19 @@
   overflow-wrap: anywhere;
 }
 
+/* The meta line: 12/500 in the words' own capitalisation, the muted ink
+   (5.8:1 on the bar), quieter than the label by its size, weight and ink.
+   It was 9.5px capitals at 0.72 alpha. On the picked page it takes the
+   page's own ink, white on the blue at full strength. */
 .psub__meta {
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  opacity: 0.72;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--psub-ink-muted);
   white-space: nowrap;
 }
-/* On the selected segment the meta is white on brand blue at 9.5px, which is
-   small text and has to clear 4.5:1 on its own. 0.72 alpha took it under; at
-   0.86 it clears with room. */
-.psub__btn[data-on] .psub__meta { opacity: 0.86; }
+.psub__btn[data-on] .psub__meta { color: inherit; }
 
 .psub__dot {
   width: 6px;
@@ -252,7 +281,7 @@
 /* Below ~420px (a phone held sideways in the office, not the floor case) the
    meta line is the first thing to go — the label is what identifies it. */
 @media (max-width: 420px) {
-  .psub__label { font-size: 11px; letter-spacing: 0.04em; }
+  .psub__label { font-size: 12px; }
   .psub__meta { display: none; }
 }
 
@@ -269,13 +298,14 @@
    while the metas are short, nothing wraps and a segment is still 48px. A
    meta that wraps grows the row too, and it usually lands after the bar has
    drawn, so keep the codex's metas short. The label keeps the other tabs'
-   look, 12px/900 uppercase.
+   look, 14/700 in its own capitalisation since type and depth (it was
+   12px/900 uppercase).
 
    EVERY rule in this block is scoped to [data-wrap]. Programming and the
    Activity Archive do not pass `wrap` and must render exactly as they did —
    don't move any of this into the base rules above.
 
-   Type stays on the codex scale: 11 / 12 / 14 / 17 / 30.
+   Type stays on the codex scale: 11 / 12 / 14 / 17 / 22 / 30.
    -------------------------------------------------------------------------- */
 .psub-shell[data-wrap] .psub__btn {
   height: auto;
@@ -287,7 +317,7 @@
   text-wrap: balance;
   overflow: visible;
   text-align: center;
-  line-height: 1.15;
+  line-height: 1.2;
   /* A line breaks at a space. Only a single word wider than the whole segment
      (a phone — no iPad width does it) breaks inside itself: broken, never
      clipped, and never drawn over the next segment. */
@@ -295,21 +325,20 @@
 }
 .psub-shell[data-wrap] .psub__meta {
   max-width: 100%;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  /* Here the meta is a state ("couldn't load", "3 open · 1 critical"), not a
+     quiet count, so it may take a second line. Its voice is the base meta's,
+     12/500 in the muted ink (5.8:1 on the bar, 6.5:1 in dark), the picked
+     page's own ink on the blue; size, weight and ink keep it quieter than
+     the label. It was 11/700 and, before type and depth, the only meta
+     drawn without the base's 0.72 alpha. */
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
   text-transform: none;
   text-align: center;
   white-space: normal;
   overflow-wrap: anywhere;
   line-height: 1.2;
-  /* Here the meta is a state ("couldn't load", "3 open · 1 critical"), not a
-     quiet count, so it is drawn in the segment's own ink rather than at the
-     0.72 alpha above (about 2.9:1 on the tray): 5.0:1 on the tray, 6.1:1 in
-     dark, 7.4:1 or better on the selected segment. Weight, size and case keep
-     it quieter than the label. This rule comes after the selected segment's
-     0.86 and has the same weight, so it wins there too. */
-  opacity: 1;
 }
 .psub-shell[data-wrap] .psub-context {
   font-size: 12px;
@@ -335,9 +364,6 @@
   }
   .psub-shell[data-wrap] .psub__btn {
     padding: 6px 2px;
-  }
-  .psub-shell[data-wrap] .psub__label {
-    letter-spacing: 0.01em;
   }
 }
 
@@ -495,7 +521,8 @@
    the name, because identity + four actions on one 360-390px row left the
    name a zero-width column that broke one letter per line. The profile's
    four tabs (cp-tabs) keep their four equal columns and their 40px height;
-   a label takes a second line instead of an ellipsis.
+   a label takes a second line instead of an ellipsis. The header's card
+   (type and depth, phase 7) keeps its padding here; the name is 24px.
    -------------------------------------------------------------------------- */
 @media (max-width: 599px) {
   /* The name and the studio line keep the width beside the avatar; the
@@ -532,15 +559,13 @@
     text-overflow: clip;
     overflow-wrap: anywhere;
   }
-  /* Programming's and the Archive's four segments: "All machines" breaks at
-     its space, not inside "machines". */
+  /* Programming's and the Archive's four segments: "All Machines" stays on
+     one line at 12px (75px in a segment of about 78), so the 48px button
+     holds its label and its meta line. The codex's seven pages take 12px
+     here too, and break a two-word label at its space. */
   .psub__btn { padding: 0 3px; }
-  .psub__label { letter-spacing: 0.02em; }
-  .cp-tab.truncate {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-    line-height: 1.1;
-    letter-spacing: 0.02em;
-  }
+  .psub__label { font-size: 12px; }
+  /* The profile's four tabs (cp-tab) are 12px under 600px wide and wrap on
+     their own (ClientProfileView's class list: whitespace-normal,
+     hyphens-auto, overflow-wrap anywhere); nothing here truncates them. */
 }

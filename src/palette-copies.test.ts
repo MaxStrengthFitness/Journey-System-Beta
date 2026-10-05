@@ -624,6 +624,9 @@ describe("one crimson, one blue", () => {
       "--psub-elev-1": "var(--eq-elev-1)",
       "--psub-glow-live": "var(--eq-glow-live)",
       "--psub-solid-light": "var(--eq-solid-light)",
+      // Phase 7: the raised bar's dark top light, and an idle page's ink.
+      "--psub-panel-highlight": "var(--eq-panel-highlight)",
+      "--psub-ink-2": "var(--eq-ink-2)",
     };
     for (const selector of [LIGHT, DARK, FALLBACK]) {
       const tokens = block(nav, selector);
@@ -637,7 +640,17 @@ describe("one crimson, one blue", () => {
     expect(contrast(eq("--eq-ink-muted"), eq("--eq-surface-2"))).toBeGreaterThanOrEqual(4.5);
     expect(contrast(eq("--eq-ink-muted"), eq("--eq-bg"))).toBeGreaterThanOrEqual(4.5);
     expect(contrast(eq("--eq-live-text"), eq("--eq-surface"))).toBeGreaterThanOrEqual(4.5);
-    // .psub__btn[data-on] .psub__meta: the on-colour at 0.86 over the blue.
+    // Type and depth, phase 7: the seven pages' bar is RAISED on the card's
+    // fill (--psub-surface), so an idle page's label (ink-2) and its meta
+    // (the muted ink, no alpha any more) are measured there, and on the well
+    // tone a hover dips into.
+    for (const ground of ["--eq-surface", "--eq-surface-2"]) {
+      expect(contrast(eq("--eq-ink-2"), eq(ground)), `ink-2 on ${ground}`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(eq("--eq-ink-muted"), eq(ground)), `muted on ${ground}`).toBeGreaterThanOrEqual(4.5);
+    }
+    // .psub__btn[data-on] .psub__meta: the on-colour, at full strength now
+    // (it was 0.86 alpha), over the blue; the 0.86 floor still holds.
+    expect(contrast(eq("--eq-live-on"), eq("--eq-live"))).toBeGreaterThanOrEqual(4.5);
     const meta = over([...eq("--eq-live-on").slice(0, 3), 0.86] as Rgba, eq("--eq-live"));
     expect(contrast(meta, eq("--eq-live"))).toBeGreaterThanOrEqual(4.5);
   });

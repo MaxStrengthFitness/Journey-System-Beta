@@ -237,18 +237,24 @@ function Stat({
     <Tag
       {...(onClick ? { type: "button" as const, onClick, "aria-label": ariaLabel } : {})}
       className={cn(
-        "relative min-w-0 bg-card px-3 xl:px-2.5 py-2 flex flex-col justify-center gap-0.5",
+        // A cell of the facts well (type and depth, phase 7): no fill of its
+        // own, so the well shows through; the strip draws the dividers.
+        "relative min-w-0 px-3 xl:px-2.5 py-[7px] flex flex-col justify-center gap-0.5",
         pct !== null && "pb-2.5",
         onClick && "text-left min-h-10 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
         className,
       )}
     >
-      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">{label}</span>
-      <span className="flex items-center gap-2 min-w-0 text-[15px] font-bold leading-tight text-slate-900 dark:text-slate-50">
-        {icon && <span className="shrink-0 text-slate-400 dark:text-slate-500 [&>svg]:w-4 [&>svg]:h-4">{icon}</span>}
+      {/* A stat label: Geist 12/600 in the words' own capitalisation (it was
+          10px capitals), the muted ink, 5.3:1 on the well. */}
+      <span className="text-[12px] font-semibold text-muted-foreground leading-none">{label}</span>
+      <span className="flex items-center gap-2 min-w-0 text-[14px] font-bold leading-tight text-slate-900 dark:text-slate-50">
+        {/* `flex`, so the 16px icon is a box of its own height, centred on
+            the line, and never makes the line taller than its words. */}
+        {icon && <span className="flex shrink-0 text-slate-400 dark:text-slate-500 [&>svg]:w-4 [&>svg]:h-4">{icon}</span>}
         <span className="min-w-0 flex items-center gap-2 [&>.truncate]:min-w-0">{children}</span>
       </span>
-      {sub && <span className="text-[11px] font-medium leading-none text-slate-500 dark:text-slate-400 min-w-0 flex items-center [&>*]:min-w-0 [&>span:not(.inline-flex)]:truncate">{sub}</span>}
+      {sub && <span className="text-[12px] font-medium leading-none text-slate-500 dark:text-slate-400 min-w-0 flex items-center [&>*]:min-w-0 [&>span:not(.inline-flex)]:truncate">{sub}</span>}
       {pct !== null && (
         <span
           className="absolute inset-x-0 bottom-0 h-1 bg-slate-200/80 dark:bg-slate-800 overflow-hidden"
@@ -318,29 +324,41 @@ function SessionsTile({
         : {})}
       data-testid="sessions-tile"
       className={cn(
-        "relative min-w-0 bg-card px-3 xl:px-2.5 py-2 flex flex-col justify-center gap-0.5 text-left",
+        "relative min-w-0 px-3 xl:px-2.5 py-[7px] flex flex-col justify-center gap-0.5 text-left",
         renewal && "min-h-10 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
       )}
     >
-      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
+      <span className="flex items-center gap-1.5 text-[12px] font-semibold text-muted-foreground leading-none">
         Sessions
         {renewal?.attention && <span className={cn("w-1.5 h-1.5 rounded-full bg-current shrink-0", RENEWAL_TONE[renewal.tone])} aria-hidden="true" />}
       </span>
-      <span className="text-[15px] font-bold leading-tight text-slate-900 dark:text-slate-50 whitespace-nowrap">
-        <span className="text-(--eq-hero-text) tabular-nums" data-testid="sessions-completed">
+      <span className="text-[14px] font-bold leading-tight text-slate-900 dark:text-slate-50 whitespace-nowrap">
+        {/* The headline figure: the display face, upright, 22/800 (type and
+            depth, phase 7). Its line-height is 0.8 so the 22px figure sits
+            in the 14px line without making the facts taller than they were:
+            the profile's top has a height budget (AJ, Oct 2 2026: "the top
+            of the profiles just feel so bulky"). The digits are drawn the
+            same; only the box the line keeps for them is shorter. */}
+        <span className="font-display text-[22px] font-extrabold leading-[0.8] text-(--eq-hero-text) tabular-nums" data-testid="sessions-completed">
           {completed === null ? "\u2014" : completed}
         </span>{" "}
         <span className="font-semibold">{completedWord}</span>
       </span>
-      <span className="text-[11px] font-medium leading-none text-slate-500 dark:text-slate-400 whitespace-nowrap">
-        <span className="font-bold text-slate-700 dark:text-slate-200 tabular-nums" data-testid="sessions-remaining">
-          {remaining === null ? "\u2014" : remaining}
-        </span>{" "}
-        remaining
+      {/* Each part kept whole, and the late cancels take a line of their own
+          when the cell is too narrow (the iPad mini in portrait). With no
+          fill on the cells any more, one long line would be drawn over the
+          next cell's words instead of hidden under its fill. */}
+      <span className="flex flex-wrap gap-x-1 gap-y-1 text-[12px] font-medium leading-none text-slate-500 dark:text-slate-400">
+        <span className="whitespace-nowrap">
+          <span className="font-bold text-slate-700 dark:text-slate-200 tabular-nums" data-testid="sessions-remaining">
+            {remaining === null ? "\u2014" : remaining}
+          </span>{" "}
+          remaining
+        </span>
         {typeof lateCancels === "number" && lateCancels > 0 && (
           <>
             {" "}
-            <span data-testid="late-cancels">{`\u00b7 ${lateCancelCount(lateCancels)}`}</span>
+            <span className="whitespace-nowrap" data-testid="late-cancels">{`\u00b7 ${lateCancelCount(lateCancels)}`}</span>
           </>
         )}
       </span>
@@ -444,14 +462,31 @@ export function ProfileHeader({
   const legalName = clientLegalName(client);
   const nick = goesByNickname(client);
 
+  // One of the three quiet tools, inside the raised group below. Words in the
+  // tab voice, 14/600 in ink-2 (they were 12px muted), 12px in the one-band
+  // landscape (xl), where the band is tight. Each tool presses in on its own;
+  // only colours transition, never the shadow (type and depth, phase 7).
+  // px-2.5 rather than 3: the bigger words would otherwise widen the group by
+  // 15px and take it from the name and the "Client since" line beside it.
   const toolBtn =
-    "inline-flex items-center justify-center gap-1.5 h-10 min-w-10 px-3 text-[12px] font-semibold text-muted-foreground hover:text-foreground hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+    "inline-flex items-center justify-center gap-1.5 h-10 min-w-10 px-2.5 text-[14px] xl:text-[12px] font-semibold text-ink-d2 hover:text-foreground hover:bg-slate-50 dark:hover:bg-slate-700 active:shadow-(--press) transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
     <header
       className={cn(
         // cp-head*: hooks for the phone layout only (profile-nav.css, Journey Lite).
-        "cp-head bg-card border-b border-slate-200 dark:border-slate-800/60 pb-3 mb-3 pt-1",
+        //
+        // A CARD (type and depth, phase 7, Oct 4 2026): the edge seen from
+        // outside (`--edge` with the fill clipped to the padding box) and the
+        // panel's lift, where it was a band with a line under it. Tight on
+        // purpose, to a height budget: AJ, Oct 2 2026, "the top of the
+        // profiles just feel so bulky". Its padding and margin (28px) are a
+        // pixel less than the band's (29px), and the facts strip inside is a
+        // little shorter, so the card is no taller than the band was and the
+        // Journey grid keeps every machine row in landscape. Its shadow is
+        // --panel-lift: the panel's --elev-2 and, in dark, the same top light
+        // every codex panel below it has.
+        "cp-head bg-card border border-(--edge) bg-clip-padding rounded-xl shadow-(--panel-lift) px-3.5 pt-2 pb-2.5 mb-2 xl:pt-2 xl:pb-2 xl:mb-2",
         // AJ, Oct 2 2026: "the first thing that should grab the eye is the
         // name of the client ... the top of the profiles just feel so bulky".
         // Track, Note, Sync and Start Session used to share the name's row,
@@ -486,16 +521,24 @@ export function ProfileHeader({
         <ChevronLeft className="w-6 h-6" />
       </button>
 
-      <Avatar size="xl" className="[grid-area:avatar] ring-2 ring-slate-200 dark:ring-slate-800 bg-slate-100 dark:bg-slate-800 shrink-0 size-14 xl:size-12 2xl:size-14">
+      {/* The avatar sits IN the card as a well (sunk, never a raised disc),
+          its initials in the display face, upright (type and depth, phase 7;
+          the kit's identity block). A photo covers the well. */}
+      <Avatar size="xl" className="[grid-area:avatar] bg-(--well) shrink-0 size-14 xl:size-12 2xl:size-14">
         {client.photoUrl && <AvatarImage src={client.photoUrl} alt={displayName} />}
-        <AvatarFallback className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-lg">
+        <AvatarFallback className="bg-(--well) shadow-(--elev-0) text-ink-d2 font-display font-extrabold not-italic text-[22px] tracking-[0.02em]">
           {initials || <User className="w-7 h-7" />}
         </AvatarFallback>
       </Avatar>
 
       <h1
-        // Names are never truncated (CLAUDE.md): a long one wraps, at a space.
-        className="cp-head__name [grid-area:name] self-end min-w-0 xl:max-w-[240px] 2xl:max-w-[320px] text-[26px] md:text-[30px] xl:text-[28px] font-black tracking-tight leading-[1.05] text-foreground [overflow-wrap:break-word]"
+        // Names are never truncated (CLAUDE.md): a long one wraps, at a space,
+        // and a single word too long for the line breaks rather than spills.
+        // The client's name is a title (AJ's answer 1A, Oct 4 2026): the
+        // display face, upright, 30/800, in the name's own capitalisation.
+        // Saira Condensed is narrower than Geist 900 ("Sruthi Ramakrishnan"
+        // is 228px against 321px at 30), so a name wraps less than it did.
+        className="cp-head__name [grid-area:name] self-end min-w-0 xl:max-w-[240px] 2xl:max-w-[320px] font-display font-extrabold not-italic normal-case text-[30px] leading-[1.04] text-foreground [overflow-wrap:anywhere]"
         title={nick ? `${displayName} (legal name ${legalName})` : displayName}
       >
         {displayName}
@@ -515,9 +558,13 @@ export function ProfileHeader({
             )}
           </span>
           {hasFlags && (
-            <span className="hidden sm:inline-flex xl:hidden 2xl:inline-flex items-center gap-1.5 rounded px-2 py-0.5 border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+            // A chip: Geist 12/700 in its own capitalisation (it was 10px
+            // capitals), on one line of its own height so the studio line
+            // is no taller with it than without. Amber 700 on amber 50 is
+            // 4.8:1 (amber 600 was 3.1:1, too faint for words).
+            <span className="hidden sm:inline-flex xl:hidden 2xl:inline-flex items-center gap-1.5 rounded px-2 py-0.5 border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 shrink-0">
               <AlertTriangle className="w-3 h-3" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Clinical notes</span>
+              <span className="text-[12px] font-bold leading-none">Clinical notes</span>
             </span>
           )}
         </div>
@@ -540,8 +587,12 @@ export function ProfileHeader({
         )}
       </div>
 
-      {/* ---------- the quiet tools: one small group under Start ---------- */}
-      <div className="cp-head__tools [grid-area:tools] justify-self-end self-start xl:self-center flex items-stretch rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden divide-x divide-slate-200 dark:divide-slate-800">
+      {/* ---------- the quiet tools: one small group under Start ----------
+          One RAISED control on the 3:1 edge (AJ's answer 2A, Oct 4 2026): a
+          fill a hair lighter than the card, the contact lift and a top
+          light, on --input, which a control keeps (the old slate-200 edge
+          was decorative, 1.2:1). The tools are split by soft dividers. */}
+      <div className="cp-head__tools [grid-area:tools] justify-self-end self-start xl:self-center flex items-stretch rounded-[12px] border border-input bg-(--raised) shadow-(--raised-lift) overflow-hidden divide-x divide-(--divider)">
         {onQuickNote && (
           <button type="button" onClick={onQuickNote} title="Add a note — it goes to their Notes" aria-label="Add a note" className={toolBtn}>
             <NotebookPen className="w-4 h-4" aria-hidden />
@@ -594,32 +645,39 @@ export function ProfileHeader({
       <div className="cp-head__cta [grid-area:start] justify-self-end flex items-center">
         {activeInProgressSession ? (
           <DropdownMenu>
-            <DropdownMenuTrigger className="inline-flex items-center gap-2 h-12 px-4 sm:px-5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-display italic uppercase tracking-wider text-sm sm:text-base shadow-[0_10px_30px_-12px_rgba(245,158,11,.8)] transition-colors">
+            {/* Go's other state, so Go's words: the display face's slanted
+                capitals at 800 and 17 (14 on a phone), 0.04em (type and
+                depth, phase 7). Its depth comes with Go's, in phase 8. */}
+            <DropdownMenuTrigger className="inline-flex items-center gap-2 h-12 px-4 sm:px-5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-display italic uppercase font-extrabold tracking-[0.04em] text-[14px] sm:text-[17px] shadow-[0_10px_30px_-12px_rgba(245,158,11,.8)] transition-colors">
               <Clock className="w-4 h-4 animate-pulse" />
               <span className="hidden sm:inline">In progress</span>
               <span className="text-white/80 text-xs not-italic font-sans font-bold">({activeInProgressSession.trainerInitials})</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2 bg-card border-slate-200 dark:border-slate-800">
+              {/* The menu's words in their own capitalisation (AJ's answer
+                  1A): the head a 12/700 label, the line under it 12/600,
+                  each item 14/700 (they were 11px and 12px capitals). The
+                  head is amber 700 now: amber 500 at 11px was 2.2:1. */}
               <div className="px-3 py-2 mb-2 border-b border-slate-200 dark:border-slate-800">
-                <p className="text-[11px] font-medium uppercase text-amber-500 tracking-widest">Active session detected</p>
-                <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200 mt-1" data-testid="session-started-line">
+                <p className="text-[12px] font-bold text-amber-700 dark:text-amber-400">Active session detected</p>
+                <p className="text-[12px] font-semibold text-slate-800 dark:text-slate-200 mt-1" data-testid="session-started-line">
                   {sessionStartedLine(activeInProgressSession, trainers)}
                 </p>
               </div>
               {sessionIsMine ? (
                 <DropdownMenuItem onClick={onContinueSession} className="rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/20 cursor-pointer flex items-center gap-2 p-3 text-amber-700 dark:text-amber-500">
                   <Play className="w-4 h-4" />
-                  <span className="font-bold uppercase text-xs">Continue session</span>
+                  <span className="font-bold text-[14px]">Continue session</span>
                 </DropdownMenuItem>
               ) : (
                 <DropdownMenuItem onClick={onWatchSession} className="rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer flex items-center gap-2 p-3 text-slate-700 dark:text-slate-300">
                   <Eye className="w-4 h-4" />
-                  <span className="font-bold uppercase text-xs">Watch session</span>
+                  <span className="font-bold text-[14px]">Watch session</span>
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={onDiscardSession} className="rounded-xl hover:bg-red-50 dark:hover:bg-red-500/20 cursor-pointer flex items-center gap-2 p-3 text-red-600 dark:text-red-500">
                 <Trash2 className="w-4 h-4" />
-                <span className="font-bold uppercase text-xs">Discard session</span>
+                <span className="font-bold text-[14px]">Discard session</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -633,10 +691,15 @@ export function ProfileHeader({
               // orange with navy words, the fill restated on hover (an iPad
               // keeps hover after a tap). White on the old gradient was 2.99
               // to 3.55:1.
+              //
+              // Go (type and depth, phase 7, Oct 4 2026): a short orange glow
+              // and a white top light (--go-lift: --glow-go and --go-light),
+              // and a press that moves it down a pixel into an inset shadow.
+              // Only the fill, the move and the fade transition, never the
+              // shadow; the hover keeps the same lift.
               "cp-head__start group relative shrink-0 inline-flex items-center gap-3 h-12 xl:h-[52px] pl-1.5 pr-3 sm:pr-5 rounded-2xl text-(--eq-go-on)",
-              "bg-(--eq-go) hover:bg-(--eq-go) ring-1 ring-white/25 ring-inset",
-              "shadow-[0_14px_34px_-14px_var(--eq-go)] hover:shadow-[0_18px_40px_-14px_var(--eq-go)] shadow-(color:--eq-go)/40",
-              "active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-wait",
+              "bg-(--eq-go) hover:bg-(--eq-go) shadow-(--go-lift)",
+              "active:translate-y-px active:shadow-(--press) transition-[background-color,transform,opacity] disabled:opacity-60 disabled:cursor-wait",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-card focus-visible:ring-(--eq-focus-ring)",
             )}
           >
@@ -644,19 +707,29 @@ export function ProfileHeader({
               <Play className="w-4 h-4 xl:w-[18px] xl:h-[18px] fill-current translate-x-px" />
             </span>
             <span className="cp-head__startlabel hidden sm:flex flex-col items-start leading-none">
-              <span className="font-display italic uppercase tracking-wider text-base xl:text-lg">
+              {/* Go's words, and Start session is Go (AJ's answer 1A): the
+                  display face's slanted capitals at 800 and 17, 0.04em. It
+                  asked for no weight before and drew 700. */}
+              <span className="font-display italic uppercase font-extrabold tracking-[0.04em] text-[17px]">
                 {isCheckingActiveSession ? "Checking…" : "Start session"}
               </span>
               {!isCheckingActiveSession && nextDate && daysUntil(nextDate) === "today" && (
-                <span className="text-[10px] font-bold uppercase tracking-widest text-(--eq-go-on) mt-1">Booked today{nextTime ? ` · ${nextTime}` : ""}</span>
+                <span className="text-[12px] font-semibold text-(--eq-go-on) mt-1">Booked today{nextTime ? ` · ${nextTime}` : ""}</span>
               )}
             </span>
           </button>
         )}
       </div>
 
-      {/* ---------- the four facts, hairline-divided ---------- */}
-      <div className="cp-head__strip [grid-area:strip] mt-2 xl:mt-0 min-w-0 grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-200 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+      {/* ---------- the four facts: ONE well ----------
+          Type and depth, phase 7: the facts are information, so they sink
+          into one well (--well and its inset shadow; never bg-muted, which
+          goes lighter than the card in dark) with no outer border, where
+          they were four boxes in an outlined strip. The cells have no fill;
+          a soft divider (an inset line, which takes no room) parts them: on
+          the left of every cell after the first, and on a phone, where the
+          four sit two by two, on top of the second row as well. */}
+      <div className="cp-head__strip [grid-area:strip] mt-2 xl:mt-0 min-w-0 grid grid-cols-2 sm:grid-cols-4 rounded-[12px] overflow-hidden bg-(--well) shadow-(--elev-0) [&>*+*]:shadow-[inset_1px_0_0_var(--divider)] max-sm:[&>:nth-child(3)]:shadow-[inset_0_1px_0_var(--divider)] max-sm:[&>:nth-child(4)]:shadow-[inset_1px_0_0_var(--divider),inset_0_1px_0_var(--divider)]">
         {/* Read left to right (AJ, Oct 2 2026): her sessions, under the
             dates they go with, then the last visit, the next one, and who
             trains her most. */}
@@ -687,7 +760,7 @@ export function ProfileHeader({
                     ? daysUntil(nextDate)
                     : `${MONTHS[nextDate.getMonth()]} ${nextDate.getDate()}`}
                 </span>
-                <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 tracking-wide whitespace-nowrap">
+                <span className="shrink-0 text-[12px] font-bold leading-none px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 whitespace-nowrap">
                   {bookedLabel(scheduledSessions.length)}
                 </span>
               </span>
@@ -730,17 +803,20 @@ export function ProfileHeader({
           with no named area lands it in a fresh implicit row, in normal
           flow, pushing everything below it down. */}
       {showTrainers && trainerRows.length > 0 && (
-        <div className="col-span-full mt-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-card px-3 py-2" role="region" aria-label="Trainers who have trained this client">
+        // Information inside the card, so a well like the facts above it; a
+        // label over the list (14/700 in ink-2, it was 10px capitals) and a
+        // Close that is a 40px target (it was 32).
+        <div className="col-span-full mt-2 rounded-[12px] bg-(--well) shadow-(--elev-0) px-3 py-2" role="region" aria-label="Trainers who have trained this client">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Trained by</span>
-            <button type="button" className="text-[11px] font-bold text-muted-foreground min-h-8 px-2" onClick={() => setShowTrainers(false)}>
+            <span className="text-[14px] font-bold text-ink-d2">Trained by</span>
+            <button type="button" className="text-[14px] font-bold text-muted-foreground hover:text-foreground min-h-10 px-3 -mr-2" onClick={() => setShowTrainers(false)}>
               Close
             </button>
           </div>
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="divide-y divide-(--divider)">
             {trainerRows.map((t) => (
               <li key={t.key} className="flex items-center gap-3 py-1.5">
-                <span className="flex-1 min-w-0 break-words text-[13px] font-semibold text-slate-800 dark:text-slate-100">{t.name}</span>
+                <span className="flex-1 min-w-0 break-words text-[14px] font-semibold text-slate-800 dark:text-slate-100">{t.name}</span>
                 <span className="w-24 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
                   <span className="block h-full bg-(--eq-hero)" style={{ width: `${Math.round(t.share * 100)}%` }} />
                 </span>

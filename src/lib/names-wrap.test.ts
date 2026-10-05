@@ -121,6 +121,11 @@ const NAME_ELEMENTS: { file: string; find: RegExp; what: string }[] = [
   // Type and depth, Oct 4 2026: the bottom bar's labels truncated; they wrap
   // now, and the session's tab carries the client's first name.
   { file: "components/NavButton.tsx", find: /<span className=\{`(w-full text-center[^`]*)`\}>\s*\{label\}/, what: "a bottom-bar label (the session's tab names the client)" },
+  // Type and depth, phase 7 (Oct 4 2026): the client's name on the profile,
+  // Saira 30 upright now, in the header's card. It wrapped at a space with
+  // break-word before; anywhere also lets the one-band landscape's narrow
+  // name column break a single long word rather than widen.
+  { file: "features/client-profile/ProfileHeader.tsx", find: /className="(cp-head__name [^"]*)"/, what: "the client's name on the profile header" },
   { file: "components/WorkoutTrackerView.tsx", find: /<span className="([^"]*)">\{name\}<\/span>/, what: "a machine in the end-of-session list" },
   { file: "features/trainer-profile/EditTrainerModal.tsx", find: /<span className="([^"]*)">\s*\{s\.fullName\}/, what: "a staff member's full name" },
   { file: "features/trainer-profile/EditTrainerModal.tsx", find: /htmlFor=\{`access-\$\{s\.id\}`\}\s*className="([^"]*)"/, what: "a studio's name on the access checkbox" },
