@@ -1016,12 +1016,15 @@
   justify-content: center;
   width: 44px;
   height: 44px;
-  border: 1px solid var(--sr-border);
+  /* Raised on the 3:1 edge with a press (the sweep). */
+  border: 1px solid var(--sr-border-strong);
   border-radius: 12px;
-  background: var(--sr-surface);
+  background: var(--sr-raised);
+  box-shadow: var(--sr-elev-1), inset 0 1px 0 var(--sr-highlight);
   color: var(--sr-ink-2);
   cursor: pointer;
 }
+.pq__back:not(:disabled):active { transform: translateY(1px); box-shadow: var(--sr-press); }
 .pq__area-title { margin: 0; font-size: 15px; font-weight: 800; line-height: 1.2; color: var(--sr-ink); }
 .pq__area-prompt { margin: 2px 0 0; font-size: 12px; line-height: 1.35; color: var(--sr-ink-muted); }
 .pq__save { margin-left: auto; flex: none; font-size: 12px; font-weight: 700; letter-spacing: 0; color: var(--sr-ink-muted); }
@@ -1332,9 +1335,11 @@
   justify-content: center;
   gap: 8px;
   min-height: 48px;
-  border: 1px solid var(--sr-border);
+  /* Raised on the 3:1 edge (the sweep); the primary below keeps its fill. */
+  border: 1px solid var(--sr-border-strong);
   border-radius: 12px;
-  background: var(--sr-surface-2);
+  background: var(--sr-raised);
+  box-shadow: var(--sr-elev-1), inset 0 1px 0 var(--sr-highlight);
   color: var(--sr-ink-2);
   font-size: 14px;
   font-weight: 700;
@@ -1343,5 +1348,6 @@
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.pcm__nav:disabled { opacity: 0.4; cursor: default; }
+.pcm__nav:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
+.pcm__nav:not(:disabled):active { transform: translateY(1px); box-shadow: var(--sr-press); }
 .pcm__nav--primary { flex: 2 1 0; border-color: var(--sr-navy); background: var(--sr-navy); color: var(--sr-on); }

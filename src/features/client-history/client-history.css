@@ -1005,7 +1005,7 @@
   align-self: flex-start;
   min-height: 40px;
   padding: 0 12px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--cal-border-strong);
   background: var(--cal-raised);
   box-shadow: var(--cal-elev-1), inset 0 1px 0 var(--cal-highlight);

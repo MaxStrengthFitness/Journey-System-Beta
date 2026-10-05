@@ -165,6 +165,15 @@ const RAISED: Raised[] = [
   { file: "features/routine-builder/routine-builder.css", sel: ".rb-bar__btn", p: "rb" },
   { file: "features/hub-schedule/day-header.css", sel: ".hd-btn", p: "eq" },
   { file: "features/hub-schedule/hub-grid.css", sel: ".hs-notice-btn", p: "eq" },
+  // The sweep (Oct 5 2026): flat boxes on the hairline that the phases had
+  // not reached, now raised on the 3:1 edge with a press.
+  { file: "features/client-history/client-history.css", sel: ".hsd-toggle", p: "cal" },
+  { file: "features/relay/notes/notes.css", sel: ".jn-icon-btn", p: "st" },
+  { file: "features/briefing/briefing.css", sel: ".br__close", p: "br", pill: true },
+  { file: "features/subjective-report/subjective-report.css", sel: ".pq__back", p: "sr" },
+  { file: "features/subjective-report/subjective-report.css", sel: ".pcm__nav", p: "sr" },
+  { file: "features/studio-tasks/studio-tasks.css", sel: ".stq__new", p: "st" },
+  { file: "features/studio-tasks/studio-tasks.css", sel: ".stq__act", p: "st" },
 ];
 
 describe("a secondary button is raised on its 3:1 edge, and presses in", () => {
@@ -223,6 +232,7 @@ const PALETTES: [string, string, string][] = [
   ["features/ford/ford.tokens.css", "\n:root {", '[data-theme="dark"] {'],
   ["features/subjective-report/subjective-report.css", "\n:root {", '[data-theme="dark"] {'],
   ["features/progress-report/progress-report.tokens.css", "\n:root {", '[data-theme="dark"] {'],
+  ["features/briefing/briefing.tokens.css", "\n:root {", '[data-theme="dark"] {'],
 ];
 const LIGHT: Record<string, string> = {};
 const DARK_OWN: Record<string, string> = {};

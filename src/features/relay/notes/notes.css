@@ -1395,12 +1395,16 @@
   justify-content: center;
   min-width: 44px;
   min-height: 44px;
-  border: 1px solid var(--st-border);
-  border-radius: 10px;
-  background: var(--st-surface);
-  color: var(--st-ink-muted);
+  /* Raised on the 3:1 edge with a press, like Relay's .pl__btn (type and
+     depth, the sweep; it was a flat box on the hairline). */
+  border: 1px solid var(--st-border-strong);
+  border-radius: 12px;
+  background: var(--st-raised);
+  box-shadow: var(--st-elev-1), inset 0 1px 0 var(--st-highlight);
+  color: var(--st-ink-2);
   cursor: pointer;
 }
+.jn-icon-btn:not(:disabled):active { transform: translateY(1px); box-shadow: var(--st-press); }
 .jn-icon-btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 
 .jn-studio { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; padding: 0.875rem; border: 1px solid var(--st-border); border-radius: 12px; background: var(--st-surface-2); }

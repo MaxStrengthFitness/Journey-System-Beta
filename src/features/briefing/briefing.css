@@ -188,14 +188,20 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--br-border);
+  /* Raised on the 3:1 edge with a press (type and depth, the sweep; it was
+     a flat disc on the hairline). */
+  border: 1px solid var(--br-border-strong);
   border-radius: 999px;
-  background: var(--br-surface-2);
+  background: var(--br-raised);
+  box-shadow: var(--br-elev-1), inset 0 1px 0 var(--br-highlight);
   color: var(--br-ink-2);
   cursor: pointer;
   transition: background 120ms ease, color 120ms ease;
 }
-.br__close:hover { background: var(--br-surface-3); color: var(--br-ink); }
+.br__close:not(:disabled):active { transform: translateY(1px); box-shadow: var(--br-press); }
+@media (hover: hover) {
+  .br__close:hover { background: var(--br-surface-3); color: var(--br-ink); }
+}
 .br__close:focus-visible { outline: 2px solid var(--br-focus-ring); outline-offset: 2px; }
 
 .br__flags { display: flex; flex-wrap: wrap; gap: 6px; }
