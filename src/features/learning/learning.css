@@ -22,14 +22,19 @@
 
 .lh__hero {
   margin-top: 1rem;
-  padding: 1.25rem 1.25rem 1.125rem;
-  border: 1px solid var(--wk-border);
+  padding: calc(1.25rem + 2px) 1.25rem 1.125rem;
+  /* The HERO (type and depth, phase 10, Oct 4 2026; the kit's .hero): the
+     edge seen from outside, the hero lift (--wk-elev-3), and the brand rule
+     along the top, the one place the front page says MSF in colour rather
+     than in words, as a straight 3px band painted as the first background
+     layer. It was a 3px border-top, which tapered into a crescent at the
+     rounded corners. The 2px the border took is in the padding. */
+  border: 1px solid var(--wk-edge);
   border-radius: var(--wk-radius-lg);
-  background: var(--wk-surface);
-  box-shadow: var(--wk-elev-1);
-  /* The brand rule along the top: the one place the front page says MSF in
-     colour rather than in words. */
-  border-top: 3px solid var(--wk-hero);
+  background:
+    linear-gradient(var(--wk-hero), var(--wk-hero)) top / 100% 3px no-repeat border-box,
+    var(--wk-surface) padding-box;
+  box-shadow: var(--wk-elev-3), var(--wk-panel-highlight);
 }
 
 .lh__eyebrow {
@@ -215,46 +220,67 @@
   gap: 0.625rem;
 }
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): the
+   edge seen from outside, the fill clipped to the padding box, a short
+   two-layer navy lift. Its 3px category border-top went (it tapered into a
+   crescent at the corners): the head paints the category band. */
 .lh__tile {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--wk-border);
-  border-top: 3px solid var(--wk-accent, var(--wk-border-strong));
+  border: 1px solid var(--wk-edge);
   border-radius: var(--wk-radius);
   background: var(--wk-surface);
-  box-shadow: var(--wk-elev-1);
+  background-clip: padding-box;
+  box-shadow: var(--wk-elev-2), var(--wk-panel-highlight);
   overflow: hidden;
 }
 
+/* The category's head keeps its fill and loses its rule; the 3px category
+   band is its first background layer, straight across the top (the kit's
+   .lh__tile-head, 60px). */
 .lh__tile-head {
   display: flex;
   align-items: center;
   gap: 0.625rem;
   width: 100%;
-  min-height: 56px;
-  padding: 0.625rem 0.75rem;
+  min-height: 60px;
+  padding: calc(0.625rem + 3px) 0.75rem 0.625rem;
   border: 0;
-  border-bottom: 1px solid var(--wk-border);
-  background: var(--wk-accent-fill, var(--wk-surface-2));
+  background:
+    linear-gradient(var(--wk-accent, var(--wk-border-strong)), var(--wk-accent, var(--wk-border-strong))) top / 100% 3px no-repeat,
+    var(--wk-accent-fill, var(--wk-surface-2));
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
 .lh__tile-head:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: -2px; }
-.lh__tile-head .wk__cat-icon { margin-bottom: 0; background: var(--wk-surface); }
+/* The category's icon: a raised 32px tile on its band. */
+.lh__tile-head .wk__cat-icon {
+  width: 32px;
+  height: 32px;
+  margin-bottom: 0;
+  border-radius: 10px;
+  background: var(--wk-raised);
+  box-shadow: var(--wk-elev-1), inset 0 0 0 1px var(--wk-edge-control), inset 0 1px 0 var(--wk-highlight);
+}
 .lh__tile-titles { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+/* The panel-title voice, 17/700 in ink (it was 14/800). */
 .lh__tile-label {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
   color: var(--wk-ink);
   overflow-wrap: anywhere;
 }
+/* The meta under it in the category's ink, 12/600 and its own
+   capitalisation (it was 11px capitals). */
 .lh__tile-count {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--wk-accent-text, var(--wk-ink-muted));
 }
 .lh__tile-go { flex: none; color: var(--wk-ink-faint); }

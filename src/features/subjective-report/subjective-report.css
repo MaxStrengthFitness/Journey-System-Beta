@@ -575,15 +575,22 @@
 
 .sr-ragrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 @media (min-width: 640px) { .sr-ragrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* Its colour is a straight 5px band across the top, painted as the first
+   background layer (type and depth, phase 10, Oct 4 2026; rule 3): a 5px
+   border-top on a rounded cell tapered into a crescent at the corners. The
+   3.5px the border took is in the padding. */
 .sr-ragrid__cell {
+  --sr-cell-band: var(--sr-border);
   display: flex; flex-direction: column; gap: 6px;
-  padding: 12px; border-radius: var(--sr-radius-sm);
-  border: 1.5px solid var(--sr-border); border-top-width: 5px;
-  background: var(--sr-surface);
+  padding: 15.5px 12px 12px; border-radius: var(--sr-radius-sm);
+  border: 1.5px solid var(--sr-border);
+  background:
+    linear-gradient(var(--sr-cell-band), var(--sr-cell-band)) top / 100% 5px no-repeat border-box,
+    var(--sr-surface) padding-box;
 }
-.sr-ragrid__cell--green  { border-top-color: var(--sr-green); }
-.sr-ragrid__cell--yellow { border-top-color: var(--sr-yellow); }
-.sr-ragrid__cell--red    { border-top-color: var(--sr-red); }
+.sr-ragrid__cell--green  { --sr-cell-band: var(--sr-green); }
+.sr-ragrid__cell--yellow { --sr-cell-band: var(--sr-yellow); }
+.sr-ragrid__cell--red    { --sr-cell-band: var(--sr-red); }
 .sr-ragrid__title { font-size: 12px; font-weight: 800; line-height: 1.2; }
 .sr-ragrid__score { font-size: 22px; font-weight: 900; letter-spacing: -0.02em; line-height: 1; }
 .sr-ragrid__score small { font-size: 12px; font-weight: 700; color: var(--sr-ink-muted); }
@@ -722,15 +729,19 @@
   gap: 8px;
   margin-bottom: 12px;
 }
+/* A straight 4px band across the top, as the grid's cells (phase 10); the
+   3px the border took is in the padding. */
 .sra-ends__cell {
-  padding: 8px 10px;
+  --sr-cell-band: var(--sr-border);
+  padding: 11px 10px 8px;
   border-radius: var(--sr-radius-sm);
   border: 1px solid var(--sr-border);
-  border-top-width: 4px;
-  background: var(--sr-surface);
+  background:
+    linear-gradient(var(--sr-cell-band), var(--sr-cell-band)) top / 100% 4px no-repeat border-box,
+    var(--sr-surface) padding-box;
 }
-.sra-ends__cell--bad  { border-top-color: var(--sr-red); }
-.sra-ends__cell--good { border-top-color: var(--sr-green); }
+.sra-ends__cell--bad  { --sr-cell-band: var(--sr-red); }
+.sra-ends__cell--good { --sr-cell-band: var(--sr-green); }
 .sra-ends__cell:last-child { text-align: right; }
 .sra-ends__label {
   display: block;
@@ -1037,7 +1048,10 @@
   max-height: min(88dvh, 760px);
   border-radius: 18px 18px 0 0;
   background: var(--sr-bg);
-  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.25);
+  /* A sheet from the foot of the screen casts the app's sheet shadow
+     upward, in the logo's navy (type and depth, phase 10, Oct 4 2026). It
+     was a raw black 40px blur. */
+  box-shadow: var(--elev-4-up);
   overflow: hidden;
 }
 @media (min-width: 700px) { .pq-dialog__panel { border-radius: 18px; } }

@@ -320,13 +320,18 @@
 
 /* ---------- Search ------------------------------------------------------ */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): the
+   edge seen from outside (--adm-edge, the fill clipped to the padding box)
+   and a short two-layer navy lift. It was a flat hairline box. */
 .hq-search {
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 14px;
   background: var(--adm-surface);
-  border: 1px solid var(--adm-border);
+  background-clip: padding-box;
+  box-shadow: var(--adm-elev-2), var(--adm-panel-highlight);
+  border: 1px solid var(--adm-edge);
   border-radius: var(--adm-radius);
 }
 
@@ -381,14 +386,17 @@
   flex-direction: column;
   gap: 2px;
 }
+/* A head over a list: the label voice, 14/700 in ink-2 and its own
+   capitalisation (type and depth, phase 10, Oct 4 2026; it was 12px
+   capitals). */
 .hq-search__grouptitle {
   margin: 4px 0 2px;
   padding: 0 8px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--adm-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--adm-ink-2);
 }
 
 .hq-result {
@@ -502,11 +510,16 @@
 
 /* ---------- Rows: the whole name, one sentence, one action --------------- */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): the
+   edge seen from outside (--adm-edge, the fill clipped to the padding box)
+   and a short two-layer navy lift. It was a flat hairline box. */
 .hq-rows {
   display: flex;
   flex-direction: column;
   background: var(--adm-surface);
-  border: 1px solid var(--adm-border);
+  background-clip: padding-box;
+  box-shadow: var(--adm-elev-2), var(--adm-panel-highlight);
+  border: 1px solid var(--adm-edge);
   border-radius: var(--adm-radius);
   overflow: hidden;
 }
@@ -519,7 +532,7 @@
   padding: 0 14px 0 0;
 }
 .hq-row + .hq-row {
-  border-top: 1px solid var(--adm-border);
+  border-top: 1px solid var(--adm-divider);
 }
 .hq-row--on {
   background: var(--adm-live-fill);
@@ -607,12 +620,15 @@
   gap: 2px 12px;
   margin: 6px 2px -6px;
 }
+/* A head over a list: the label voice, 14/700 in ink-2 and its own
+   capitalisation (type and depth, phase 10, Oct 4 2026; it was 12px
+   capitals). */
 .hq-grouphead__title {
   margin: 0;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-2);
 }
 .hq-grouphead__note {
@@ -628,13 +644,16 @@
   flex-direction: column;
   gap: 6px;
 }
+/* Over the page's headline: the eyebrow voice, the one capitals style left,
+   12/700 at 0.08em in ink-2 (type and depth, phase 10, Oct 4 2026; it was
+   800 at 0.09em in the muted ink). */
 .hq-home__eyebrow {
   margin: 0;
   font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.09em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--adm-ink-muted);
+  color: var(--adm-ink-2);
 }
 .hq-home__headline {
   margin: 0;
@@ -988,14 +1007,20 @@
 
 /* ---------- A page held open for what is coming -------------------------- */
 
+/* A note set apart (where something is decided instead; switching an
+   account off): a PANEL (type and depth, phase 10, Oct 4 2026), the edge
+   seen from outside and a short navy lift. It was a dashed box in the 3:1
+   edge, which read as a control. */
 .hq-held {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 18px;
-  border: 1px dashed var(--adm-border-strong);
+  border: 1px solid var(--adm-edge);
   border-radius: var(--adm-radius);
   background: var(--adm-surface);
+  background-clip: padding-box;
+  box-shadow: var(--adm-elev-2), var(--adm-panel-highlight);
 }
 .hq-held__title {
   margin: 0;
@@ -1107,21 +1132,26 @@
   gap: 14px;
 }
 
+/* A head over a list: the label voice, 14/700 in ink-2 and its own
+   capitalisation (type and depth, phase 10, Oct 4 2026; it was 12px
+   capitals). */
 .hq-settings__title {
   margin: 0;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--adm-ink-2);
 }
 
+/* A setting is a row in its panel, divided by the soft hairline (a box per
+   setting inside the panel would be a box in a box). */
 .hq-setting {
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--adm-border);
+  border-bottom: 1px solid var(--adm-divider);
 }
 .hq-setting:last-child {
   padding-bottom: 0;
@@ -1264,15 +1294,20 @@
   color: var(--adm-ink);
 }
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): the
+   edge seen from outside (--adm-edge, the fill clipped to the padding box)
+   and a short two-layer navy lift. It was a flat hairline box. */
 .hq-items {
   display: flex;
   flex-direction: column;
   margin: 0;
   padding: 0;
   list-style: none;
-  border: 1px solid var(--adm-border);
+  border: 1px solid var(--adm-edge);
   border-radius: var(--adm-radius);
   background: var(--adm-surface);
+  background-clip: padding-box;
+  box-shadow: var(--adm-elev-2), var(--adm-panel-highlight);
 }
 
 .hq-item {
@@ -1283,7 +1318,7 @@
   padding: 11px 14px;
 }
 .hq-item + .hq-item {
-  border-top: 1px solid var(--adm-border);
+  border-top: 1px solid var(--adm-divider);
 }
 
 .hq-item__mark {
@@ -1395,16 +1430,27 @@
   flex-direction: column;
   gap: 10px;
   padding: 14px 16px;
-  border: 1px solid var(--adm-border);
+  /* A tappable PANEL (type and depth, phase 10, Oct 4 2026): the edge seen
+     from outside, the fill clipped to the padding box, a short navy lift,
+     and a press. */
+  border: 1px solid var(--adm-edge);
   border-radius: var(--adm-radius);
   background: var(--adm-surface);
+  background-clip: padding-box;
+  box-shadow: var(--adm-elev-2), var(--adm-panel-highlight);
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
-.hq-launch:hover {
-  background: var(--adm-surface-2);
+@media (hover: hover) {
+  .hq-launch:hover {
+    background: var(--adm-surface-2);
+  }
+}
+.hq-launch:active {
+  transform: translateY(1px);
+  box-shadow: var(--adm-press);
 }
 .hq-launch:focus-visible {
   outline: 2px solid var(--adm-focus-ring);

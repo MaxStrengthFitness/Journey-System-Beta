@@ -304,13 +304,18 @@
  * ------------------------------------------------------------------ */
 
 .op-offers { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+/* A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+   outside, the fill clipped to the padding box, a short navy lift (it was
+   a flat hairline box). */
 .op-offer {
   display: grid;
   gap: 4px;
   padding: 10px 12px;
-  border: 1px solid var(--st-border);
+  border: 1px solid var(--st-edge);
   border-radius: var(--st-radius);
   background: var(--st-surface);
+  background-clip: padding-box;
+  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
 }
 .op-offer__text {
   margin: 0;
@@ -342,17 +347,22 @@
 @container op-page (min-width: 760px) {
   .op-people { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 }
-/* Team's header-strip card: one border, the radius, a tinted head. */
+/* Team's panel (type and depth, phase 10, Oct 4 2026): an edge seen from
+   outside, the fill clipped to the padding box, a short navy lift, the
+   radius, and the person at the top with no band and no rule (it was a
+   header-strip card: one hairline, a tinted head cut by a rule). */
 .op-person {
-  border: 1px solid var(--st-border);
+  border: 1px solid var(--st-edge);
   border-radius: var(--st-radius);
   background: var(--st-surface);
+  background-clip: padding-box;
+  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
   overflow: hidden;
 }
 .op-person__head {
-  padding: 10px 14px;
-  background: var(--st-surface-2);
-  border-bottom: 1px solid var(--st-border);
+  padding: 14px 14px 0;
+  background: transparent;
+  border-bottom: 0;
 }
 /* A person's name: never cut short. */
 .op-person__name {

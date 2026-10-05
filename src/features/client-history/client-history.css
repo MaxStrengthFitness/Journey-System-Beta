@@ -321,6 +321,9 @@
 
 /* ---------- Month card -------------------------------------------------- */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): the
+   edge seen from outside (--cal-edge, the fill clipped to the padding box)
+   and a short two-layer navy lift. It was a flat hairline box. */
 .hist-month {
   min-width: 0;
   display: flex;
@@ -328,8 +331,10 @@
   gap: 6px;
   padding: 8px 8px 9px;
   border-radius: var(--cal-radius);
-  border: 1px solid var(--cal-border);
+  border: 1px solid var(--cal-edge);
   background: var(--cal-surface);
+  background-clip: padding-box;
+  box-shadow: var(--cal-elev-2), var(--cal-panel-highlight);
 }
 .hist-month__head {
   display: flex;
@@ -609,10 +614,14 @@
   color: var(--cal-ink-muted);
 }
 
+/* A PANEL too (phase 10), its sessions rows inside it, divided by the
+   soft hairline. */
 .hist-lcard {
   border-radius: var(--cal-radius);
-  border: 1px solid var(--cal-border);
+  border: 1px solid var(--cal-edge);
   background: var(--cal-surface);
+  background-clip: padding-box;
+  box-shadow: var(--cal-elev-2), var(--cal-panel-highlight);
   overflow: hidden;
 }
 
@@ -626,7 +635,7 @@
   min-height: 68px;
   padding: 10px 14px 10px 14px;
   border: 0;
-  border-top: 1px solid var(--cal-border);
+  border-top: 1px solid var(--cal-divider);
   background: transparent;
   color: inherit;
   font: inherit;

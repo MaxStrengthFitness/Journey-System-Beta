@@ -378,13 +378,18 @@
   align-items: flex-start;
   gap: 0.125rem;
   min-height: 5.5rem;
-  padding: 0.75rem;
-  border: 1px solid var(--wk-border);
+  padding: 0.75rem 0.75rem 0.75rem calc(0.75rem + 2px);
+  border: 1px solid var(--wk-edge);
   /* The category colour, as a left rule. Same device as the row stripe below
-     and the article eyebrow, so one hue means one thing on every surface. */
-  border-left: 3px solid var(--wk-accent, var(--wk-border-strong));
+     and the article eyebrow, so one hue means one thing on every surface.
+     A straight 3px band painted as the first background layer (type and
+     depth, phase 10, Oct 4 2026): a 3px border-left on a rounded box
+     tapered into a crescent at the corners. The 2px it took is in the
+     padding. */
   border-radius: var(--wk-radius);
-  background: var(--wk-surface);
+  background:
+    linear-gradient(var(--wk-accent, var(--wk-border-strong)), var(--wk-accent, var(--wk-border-strong))) left / 3px 100% no-repeat border-box,
+    var(--wk-surface) padding-box;
   box-shadow: var(--wk-elev-1);
   text-align: left;
   cursor: pointer;
@@ -639,25 +644,33 @@
  * Infobox
  * ------------------------------------------------------------------ */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+   outside, the fill clipped to the padding box, a short navy lift. Its 3px
+   accent border-top went (a crescent at the corners): the head paints the
+   accent as a straight band, its first background layer, over its tint. */
 .wk__infobox {
-  border: 1px solid var(--wk-border);
-  border-top: 3px solid var(--wk-accent, var(--wk-border-strong));
+  border: 1px solid var(--wk-edge);
   border-radius: var(--wk-radius);
   background: var(--wk-surface);
-  box-shadow: var(--wk-elev-1);
+  background-clip: padding-box;
+  box-shadow: var(--wk-elev-2), var(--wk-panel-highlight);
   overflow: hidden;
 }
 
+/* The head: its tint and the band, no rule under it, and the label voice,
+   14/700 in its own capitalisation (it was 11px capitals). */
 .wk__infobox-head {
   margin: 0;
-  padding: 0.5rem 0.875rem;
-  border-bottom: 1px solid var(--wk-border);
-  background: var(--wk-accent-fill, var(--wk-surface-2));
+  padding: calc(0.5rem + 2px) 0.875rem 0.5rem;
+  border-bottom: 0;
+  background:
+    linear-gradient(var(--wk-accent, var(--wk-border-strong)), var(--wk-accent, var(--wk-border-strong))) top / 100% 3px no-repeat,
+    var(--wk-accent-fill, var(--wk-surface-2));
   color: var(--wk-accent-text, var(--wk-ink-2));
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .wk__infobox-figure {
@@ -749,15 +762,29 @@
   padding: 0.875rem 1rem 1rem;
 }
 
+/* A section's head: the panel-title voice, Geist 17/700 in ink and its own
+   capitalisation (type and depth, phase 10, Oct 4 2026; it was 12px
+   capitals at 0.12em), its icon in a 32px tinted square. */
 .wk__h2 {
   display: flex;
   align-items: center;
-  gap: 0.4375rem;
+  gap: 12px;
   margin: 0 0 0.5rem;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--wk-ink);
+}
+.wk__h2 > svg {
+  box-sizing: border-box;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 7px;
+  border-radius: 10px;
+  background: var(--wk-surface-2);
   color: var(--wk-ink-2);
 }
 .wk__h2--quiet { color: var(--wk-ink-muted); }
@@ -902,11 +929,15 @@
   gap: 0.625rem;
   width: 100%;
   min-height: 56px;
-  padding: 0.625rem 0.875rem;
-  border: 1px solid var(--wk-border);
-  border-left: 3px solid var(--wk-accent, var(--wk-live));
+  padding: 0.625rem 0.875rem 0.625rem calc(0.875rem + 2px);
+  border: 1px solid var(--wk-edge);
+  /* The accent at the left: a straight 3px band, the first background layer
+     (type and depth, phase 10, Oct 4 2026; it was a 3px border-left, a
+     crescent at the rounded corners). */
   border-radius: var(--wk-radius);
-  background: var(--wk-surface);
+  background:
+    linear-gradient(var(--wk-accent, var(--wk-live)), var(--wk-accent, var(--wk-live))) left / 3px 100% no-repeat border-box,
+    var(--wk-surface) padding-box;
   box-shadow: var(--wk-elev-1);
   color: inherit;
   font: inherit;

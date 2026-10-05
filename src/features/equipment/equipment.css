@@ -395,10 +395,17 @@
 
 /* ---------- Cards ---------------------------------------------------- */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): the
+   edge seen from outside (--eq-edge, the fill clipped to the padding box)
+   and a short two-layer navy lift. It was a flat hairline box. The head
+   has no rule: the 17/700 title carries it, 12px over the body, and its
+   sides keep the body's 14px inset. */
 .eq-card {
   background: var(--eq-surface);
-  border: 1px solid var(--eq-border);
+  background-clip: padding-box;
+  border: 1px solid var(--eq-edge);
   border-radius: var(--eq-radius);
+  box-shadow: var(--eq-elev-2), var(--eq-panel-highlight);
   margin-bottom: 12px;
   overflow: hidden;
 }
@@ -406,18 +413,23 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--eq-border);
+  padding: 16px 14px 0;
+  background: transparent;
+  border-bottom: 0;
 }
+/* The panel-title voice: Geist 17/700 in ink, its own capitalisation (it
+   was 11px grey capitals at 900). */
 .eq-card__title {
   flex: 1;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--eq-ink-muted);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--eq-ink);
 }
 .eq-card__body { padding: 14px; }
+.eq-card__head + .eq-card__body { padding-top: 12px; }
 
 /* The machine sheet's buttons (Edit, Use standard, Cancel, Save), in the
    session. Type and depth, phase 8 (Oct 4 2026; AJ's 2A and 3B): 40px tall
@@ -813,18 +825,24 @@
 }
 
 /* A collapsible card header is a button; strip the UA styling but keep the
-   header's own layout. */
+   header's own layout. Folded, it is all the card shows, so it keeps its
+   own foot; open, the body starts 12px under it (phase 10). The hover is a
+   pointer's only. */
 .eq-card__head--button {
   width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
   border: 0;
-  border-bottom: 1px solid var(--eq-border);
-  background: var(--eq-surface);
+  background: transparent;
   color: inherit;
   font: inherit;
   cursor: pointer;
   text-align: left;
 }
-.eq-card__head--button:hover { background: var(--eq-surface-2); }
+.eq-card__head--button + .eq-card__body { padding-top: 0; }
+@media (hover: hover) {
+  .eq-card__head--button:hover { background: var(--eq-surface-2); }
+}
 .eq-card__head--button:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: -2px; }
 .eq-card__chev {
   color: var(--eq-ink-muted);

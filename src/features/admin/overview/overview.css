@@ -17,23 +17,31 @@
 
 /* ---------- Needs you ------------------------------------------------- */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+   outside, the fill clipped to the padding box, a short navy lift. No
+   screen mounts the strip since the calm round (Oct 3 2026); it keeps the
+   recipe for the one that does. */
 .adm-ov__needs {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px 14px;
   padding: 12px 14px;
-  border: 1px solid var(--adm-border);
+  border: 1px solid var(--adm-edge);
   border-radius: var(--adm-radius);
   background: var(--adm-surface);
+  background-clip: padding-box;
+  box-shadow: var(--adm-elev-2), var(--adm-panel-highlight);
 }
 
+/* The strip's head over its chips: the label voice, 14/700 in ink-2 and
+   its own capitalisation (it was 12px capitals). */
 .adm-ov__needs-title {
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--adm-ink);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--adm-ink-2);
   white-space: nowrap;
 }
 
@@ -86,11 +94,14 @@
 
 /* ---------- The chase list under the tiles ---------------------------- */
 
+/* A panel too (phase 10), its rows inside it. */
 .adm-ov__chase {
   margin-top: 12px;
-  border: 1px solid var(--adm-border);
+  border: 1px solid var(--adm-edge);
   border-radius: var(--adm-radius);
   background: var(--adm-surface);
+  background-clip: padding-box;
+  box-shadow: var(--adm-elev-2), var(--adm-panel-highlight);
   overflow: hidden;
 }
 
@@ -126,6 +137,9 @@
 }
 
 .adm-ov__panel--folded .adm-panel__body { display: none; }
+/* Folded, the head is all there is: it keeps its own foot (a head has no
+   bottom padding since phase 10). */
+.adm-ov__panel--folded .adm-panel__head { padding-bottom: 16px; }
 
 .adm-ov__foot-line {
   padding: 8px 10px;

@@ -317,17 +317,28 @@
   gap: 4px;
   min-height: 56px;
   padding: 0.75rem 0.875rem;
-  border: 1px solid var(--st-border);
+  /* A tappable PANEL (type and depth, phase 10, Oct 4 2026): the edge seen
+     from outside, the fill clipped to the padding box, a short navy lift,
+     and a press. It was a flat hairline box. */
+  border: 1px solid var(--st-edge);
   border-radius: 12px;
   background: var(--st-surface);
+  background-clip: padding-box;
+  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
   color: var(--st-ink);
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
+.pn__card:active { transform: translateY(1px); box-shadow: var(--st-press); }
+/* The open one: the live edge and a straight 3px live band at the left,
+   painted as the first background layer (an inset shadow on a rounded card
+   tapered into a crescent at the corners). It keeps its lift. */
 .pn__card[aria-current="true"] {
   border-color: var(--st-live);
-  box-shadow: inset 3px 0 0 var(--st-live);
+  background:
+    linear-gradient(var(--st-live), var(--st-live)) left / 3px 100% no-repeat border-box,
+    var(--st-surface) padding-box;
 }
 .pn__card:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 

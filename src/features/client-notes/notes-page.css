@@ -336,14 +336,19 @@
 }
 
 /* One line each. The panel clips its rows to its round corners, so it must
-   not shrink in a flex column (KNOWN-TRAPS → Layout): flex none. */
+   not shrink in a flex column (KNOWN-TRAPS → Layout): flex none.
+   A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+   outside, the fill clipped to the padding box, a short navy lift; its rows
+   are divided by the soft hairline. */
 .nx-rows {
   flex: none;
   display: grid;
   min-width: 0;
-  border: 1px solid var(--eq-border);
+  border: 1px solid var(--eq-edge);
   border-radius: 14px;
   background: var(--eq-surface);
+  background-clip: padding-box;
+  box-shadow: var(--eq-elev-2), var(--eq-panel-highlight);
   overflow: hidden;
 }
 
@@ -356,7 +361,7 @@
   min-height: 48px;
   padding: 6px 14px;
   border: 0;
-  border-top: 1px solid var(--eq-border);
+  border-top: 1px solid var(--eq-divider);
   background: transparent;
   color: var(--eq-ink);
   font-family: inherit;
@@ -533,6 +538,10 @@
    A thread card
    ========================================================================== */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+   outside (--eq-edge, the fill clipped to the padding box) and a short navy
+   lift. The thread's loudness is still its rail on the left (::before), and
+   a Critical one keeps its crimson edge. */
 .nt-card {
   --nt-edge: var(--eq-border-strong);
   position: relative;
@@ -541,9 +550,11 @@
   align-content: start;
   min-width: 0;
   padding: 14px 16px 12px 20px;
-  border: 1px solid var(--eq-border);
+  border: 1px solid var(--eq-edge);
   border-radius: 14px;
   background: var(--eq-surface);
+  background-clip: padding-box;
+  box-shadow: var(--eq-elev-2), var(--eq-panel-highlight);
   color: var(--eq-ink);
 }
 

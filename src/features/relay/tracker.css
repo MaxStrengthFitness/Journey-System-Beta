@@ -48,27 +48,34 @@
 .rtk-acts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; margin-left: auto; }
 .rtk-top .rtk-acts { margin-left: 0; }
 
-/* Each row a card, as on the Board: one border, the studio's corners, a gap between. */
+/* Each row a card, as on the Board: the edge seen from outside, the fill
+   clipped to the padding box, the short navy lift, the studio's corners, a
+   gap between (type and depth, phase 10, Oct 4 2026: the Board's .rbc took
+   the panel recipe, and the Tracker's cards are the same cards). A done
+   one lies flat. */
 .rtk .pl__list ul {
   display: flex;
   flex-direction: column;
   gap: 8px;
   border: 0;
   background: transparent;
+  box-shadow: none;
   overflow: visible;
 }
 .rtk .pl__task {
   flex-wrap: wrap;
   min-height: 64px;
   padding: 6px 10px 6px 12px;
-  border: 1px solid var(--st-border-strong);
+  border: 1px solid var(--st-edge);
   border-radius: var(--st-radius);
   background: var(--st-surface);
+  background-clip: padding-box;
+  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
 }
-.rtk .pl__task + .pl__task { border-top: 1px solid var(--st-border-strong); }
+.rtk .pl__task + .pl__task { border-top: 1px solid var(--st-edge); }
 .rtk .pl__task-main { flex: 1 1 14rem; }
-.rtk .pl__task--done { border-color: var(--st-border); background: var(--st-surface-2); }
-.rtk .pl__task--done + .pl__task { border-top-color: var(--st-border-strong); }
+.rtk .pl__task--done { border-color: var(--st-border); background: var(--st-surface-2); box-shadow: none; }
+.rtk .pl__task--done + .pl__task { border-top-color: var(--st-edge); }
 /* The box, as the Board's: a 24px square, green and ticked once done. */
 .rtk .pl__check { color: var(--st-done-on); }
 .rtk .pl__check[aria-pressed="true"]::before { border-color: var(--st-done); background: var(--st-done); }

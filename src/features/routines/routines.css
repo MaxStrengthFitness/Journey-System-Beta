@@ -166,14 +166,24 @@
 .rt[data-view="single"] .rt-body { grid-template-columns: minmax(0, 1fr); }
 .rt[data-view="single"] .rt-routine { max-width: 860px; }
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): the
+   edge seen from outside (--eq-edge, the fill clipped to the padding box)
+   and a short two-layer navy lift. It was a flat hairline box. Today's
+   routine keeps its orange ring, on top of the lift; a routine that is off
+   lies flat on the page's tone. */
 .rt-routine {
   background: var(--eq-surface);
-  border: 1px solid var(--eq-border);
+  background-clip: padding-box;
+  border: 1px solid var(--eq-edge);
   border-radius: var(--eq-radius);
+  box-shadow: var(--eq-elev-2), var(--eq-panel-highlight);
   overflow: hidden;
 }
-.rt-routine--today { border-color: var(--eq-hero); box-shadow: inset 0 0 0 1px var(--eq-hero); }
-.rt-routine--off { background: var(--eq-bg); }
+.rt-routine--today {
+  border-color: var(--eq-hero);
+  box-shadow: inset 0 0 0 1px var(--eq-hero), var(--eq-elev-2), var(--eq-panel-highlight);
+}
+.rt-routine--off { background: var(--eq-bg); box-shadow: none; }
 .rt-routine--off .rt-routine__name { color: var(--eq-ink-muted); }
 .rt-routine--off .rt-badge { background: var(--eq-surface-3); color: var(--eq-ink-muted); }
 
@@ -183,7 +193,9 @@
   gap: 10px;
   flex-wrap: wrap;
   padding: 9px 12px;
-  border-bottom: 1px solid var(--eq-border);
+  /* The head keeps its tint (today's is orange) and loses its rule: the
+     change of fill is the edge (the kit's .lh__tile-head). */
+  border-bottom: 0;
   background: var(--eq-surface-2);
 }
 .rt-routine--today .rt-routine__head { background: var(--eq-hero-fill); }
@@ -283,7 +295,7 @@
 /* ---------- Rows ----------------------------------------------------- */
 
 .rt-list { list-style: none; margin: 0; padding: 0; }
-.rt-row { border-bottom: 1px solid var(--eq-border); }
+.rt-row { border-bottom: 1px solid var(--eq-divider); }
 .rt-row:last-child { border-bottom: 0; }
 
 .rt-row__hit {
@@ -427,10 +439,13 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
 
 /* ---------- Changes -------------------------------------------------- */
 
+/* A PANEL too (phase 10). */
 .rt-changes {
   background: var(--eq-surface);
-  border: 1px solid var(--eq-border);
+  background-clip: padding-box;
+  border: 1px solid var(--eq-edge);
   border-radius: var(--eq-radius);
+  box-shadow: var(--eq-elev-2), var(--eq-panel-highlight);
   overflow: hidden;
 }
 .rt-changes__head {
@@ -447,14 +462,19 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
   text-align: left;
   cursor: pointer;
 }
-.rt-changes__head:hover { background: var(--eq-surface-2); }
+@media (hover: hover) {
+  .rt-changes__head:hover { background: var(--eq-surface-2); }
+}
 .rt-changes__head:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: -2px; }
+/* The panel-title voice, 17/700 in ink and its own capitalisation (it was
+   11px grey capitals at 900). */
 .rt-changes__title {
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--eq-ink-muted);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--eq-ink);
 }
 .rt-changes__meta {
   margin-left: auto;
@@ -472,7 +492,7 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
   list-style: none;
   margin: 0;
   padding: 0 14px;
-  border-top: 1px solid var(--eq-border);
+  border-top: 1px solid var(--eq-divider);
   max-height: 360px;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -481,7 +501,7 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
   display: flex;
   gap: 12px;
   padding: 9px 0;
-  border-bottom: 1px solid var(--eq-border);
+  border-bottom: 1px solid var(--eq-divider);
   font-size: 12px;
 }
 .rt-change:last-child { border-bottom: 0; }

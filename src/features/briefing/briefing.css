@@ -71,11 +71,15 @@
 
 /* --- shared surfaces -------------------------------------------------- */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): the
+   edge seen from outside (--br-edge, the fill clipped to the padding box)
+   and a short two-layer navy lift. It was a hairline and a 1px shadow. */
 .br-card {
   background: var(--br-surface);
-  border: 1px solid var(--br-border);
+  background-clip: padding-box;
+  border: 1px solid var(--br-edge);
   border-radius: var(--br-radius-lg);
-  box-shadow: 0 1px 2px var(--br-shadow);
+  box-shadow: var(--br-elev-2), var(--br-panel-highlight);
   padding: 14px;
 }
 
@@ -90,19 +94,32 @@
   min-height: 32px;
 }
 
+/* A card's head: the panel-title voice, Geist 17/700 in ink and its own
+   capitalisation (type and depth, phase 10, Oct 4 2026; it was 12px
+   capitals at 0.12em), its icon in a 32px tinted square. */
 .br-section__title {
   margin: 0;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--br-ink-2);
+  gap: 12px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--br-ink);
 }
 
-.br-section__title svg { color: var(--br-live); flex: none; }
+.br-section__title > svg {
+  box-sizing: border-box;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 7px;
+  border-radius: 10px;
+  background: var(--br-surface-2);
+  color: var(--br-ink-2);
+}
 
 .br-section__hint {
   font-size: 10px;
@@ -509,11 +526,13 @@
   flex-wrap: wrap;
 }
 
+/* "Optional" beside a card's title: the meta voice, 12/500 in the muted
+   ink and its own capitalisation (it was 10px capitals). */
 .br__optional {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--br-ink-muted);
 }
 
@@ -854,19 +873,26 @@
 
 /* --- 2. before you start: the safety band ------------------------------ */
 
+/* The safety band's colour is a straight 4px band at the left, painted as
+   the first background layer, with the card's lift (type and depth, phase
+   10, Oct 4 2026). It was an inset 4px shadow, which follows the card's
+   rounded corners and tapers into a crescent there (rule 3). */
 .br-safe {
+  --br-safe-band: var(--br-warn);
   display: flex;
   flex-direction: column;
   gap: 12px;
   border-color: var(--br-warn);
-  box-shadow: inset 4px 0 0 var(--br-warn), 0 1px 2px var(--br-shadow);
+  background:
+    linear-gradient(var(--br-safe-band), var(--br-safe-band)) left / 4px 100% no-repeat border-box,
+    var(--br-surface) padding-box;
 }
 .br-safe .br__before-head,
 .br-safe .br__before-head svg { color: var(--br-warn); }
 
 .br-safe--clear {
-  border-color: var(--br-border);
-  box-shadow: inset 4px 0 0 var(--br-ok), 0 1px 2px var(--br-shadow);
+  --br-safe-band: var(--br-ok);
+  border-color: var(--br-edge);
 }
 .br-safe--clear .br__before-head,
 .br-safe--clear .br__before-head svg { color: var(--br-ok); }

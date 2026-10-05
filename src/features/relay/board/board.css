@@ -45,17 +45,20 @@
   padding: 0.875rem 0 0;
 }
 
-/* The one heading style (planner.css .pl__list-head): small upright capitals. */
+/* A head over a list (a column of the board, Put a name on it): the label
+   voice, 14/700 in ink-2 and its own capitalisation (type and depth, phase
+   10, Oct 4 2026; it was 12px capitals at 0.12em). The head of a panel
+   (Since you were in) takes the panel-title voice below. */
 .rbd-h {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0.25rem 0.5rem;
   margin: 0 0 0.5rem;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-2);
 }
 .rbd-h__sub {
@@ -180,15 +183,22 @@
  * One card: the box, the words, the bar
  * ------------------------------------------------------------------ */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026): an edge seen from
+   outside (--st-edge, the fill clipped to the padding box) and a short navy
+   lift. It was outlined in the 3:1 strong edge, a thin dark line round a
+   flat card; the card is not a control, its box and its words are, and the
+   box keeps its 2px strong edge. */
 .rbc {
   display: flex;
   align-items: flex-start;
   gap: 2px;
   min-height: 64px;
   padding: 2px 10px 8px 2px;
-  border: 1px solid var(--st-border-strong);
+  border: 1px solid var(--st-edge);
   border-radius: var(--st-radius);
   background: var(--st-surface);
+  background-clip: padding-box;
+  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
 }
 
 /* The box: 44px to tap, a 24px square to see. */
@@ -279,7 +289,8 @@
 .rbc[data-state="waiting"] .rbc__line { color: var(--st-hero-text); font-weight: 800; }
 .rbc[data-state="taken"] .rbc__line,
 .rbc[data-state="started"] .rbc__line { color: var(--st-live); font-weight: 700; }
-.rbc[data-state="done"] { border-color: var(--st-border); background: var(--st-surface-2); }
+/* Done lies flat: the well tone, no lift, its hairline kept. */
+.rbc[data-state="done"] { border-color: var(--st-border); background: var(--st-surface-2); box-shadow: none; }
 .rbc[data-state="done"] .rbc__t { color: var(--st-ink-muted); text-decoration: line-through; text-decoration-color: var(--st-ink-faint); }
 .rbc[data-state="done"] .rbc__line { color: var(--st-done); font-weight: 700; }
 .rbc[data-state="later"] { opacity: 0.6; }
@@ -453,12 +464,17 @@
  * Just now — what the team did today, still and whole
  * ------------------------------------------------------------------ */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026): the edge, the fill
+   clipped to the padding box, the lift; the head has no band and no rule,
+   the title carries it. It was a header-strip card. */
 .rjn {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--st-border);
+  border: 1px solid var(--st-edge);
   border-radius: var(--st-radius);
   background: var(--st-surface);
+  background-clip: padding-box;
+  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
   overflow: hidden;
 }
 
@@ -467,19 +483,21 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0.25rem 0.625rem;
-  padding: 0.625rem 0.875rem 0.5rem;
-  background: var(--st-surface-2);
-  border-bottom: 1px solid var(--st-border);
+  padding: 0.875rem 0.875rem 0.375rem;
+  background: transparent;
+  border-bottom: 0;
 }
 
-/* The one heading style (planner.css .pl__list-head): small upright capitals. */
+/* The panel-title voice: 17/700 in ink, its own capitalisation (it was
+   12px capitals at 0.12em). */
 .rjn__title {
   margin: 0;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--st-ink-2);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--st-ink);
 }
 .rjn__sub { font-size: 12px; color: var(--st-ink-muted); }
 
@@ -492,7 +510,7 @@
   min-height: 52px;
   padding: 0.375rem 0.625rem 0.375rem 0.875rem;
 }
-.rjn__item + .rjn__item { border-top: 1px solid var(--st-border); }
+.rjn__item + .rjn__item { border-top: 1px solid var(--st-divider); }
 
 /* A teammate's name and what they did: it wraps, never an ellipsis. */
 .rjn__line {
@@ -548,12 +566,15 @@
  * colour of alarm. Names wrap and are never cut.
  * ------------------------------------------------------------------ */
 
+/* A PANEL, as Just now (type and depth, phase 10, Oct 4 2026). */
 .rsy {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--st-border);
+  border: 1px solid var(--st-edge);
   border-radius: var(--st-radius);
   background: var(--st-surface);
+  background-clip: padding-box;
+  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
   overflow: hidden;
 }
 .rsy__head {
@@ -562,17 +583,25 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 0.25rem 0.625rem;
-  padding: 0.625rem 0.875rem 0.5rem;
-  background: var(--st-surface-2);
-  border-bottom: 1px solid var(--st-border);
+  padding: 0.875rem 0.875rem 0.375rem;
+  background: transparent;
+  border-bottom: 0;
 }
-.rsy__head .rsy__title { margin: 0; }
+/* The head of a panel: the panel-title voice, 17/700 in ink. */
+.rsy__head .rsy__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--st-ink);
+}
 .rsy__count { font-size: 12px; font-weight: 800; color: var(--st-live); }
 .rsy__count--zero { color: var(--st-ink-muted); font-weight: 700; }
 
 .rsy__list { list-style: none; margin: 0; padding: 0; }
 .rsy__item { display: flex; flex-direction: column; gap: 0.375rem; padding: 0 0.625rem 0.375rem 0; }
-.rsy__item + .rsy__item { border-top: 1px solid var(--st-border); }
+.rsy__item + .rsy__item { border-top: 1px solid var(--st-divider); }
 .rsy__tap {
   display: flex;
   align-items: flex-start;

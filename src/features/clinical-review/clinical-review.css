@@ -231,7 +231,9 @@
 .cr-legend__swatch--blue { background: var(--cr-live); }
 .cr-tooltip {
   background: var(--cr-surface); border: 1px solid var(--cr-border-strong); border-radius: 10px; padding: 8px 10px; font-size: 12px; color: var(--cr-ink);
-  box-shadow: 0 8px 24px -12px rgba(0,0,0,.35);
+  /* A popover's lift in the logo's navy (type and depth, phase 10, Oct 4
+     2026); it was raw black. */
+  box-shadow: var(--cr-elev-4);
 }
 .cr-tooltip__title { font-weight: 800; margin-bottom: 4px; }
 .cr-tooltip__row { display: flex; justify-content: space-between; gap: 14px; }

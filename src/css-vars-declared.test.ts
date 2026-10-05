@@ -93,6 +93,14 @@ const FILES = [
   "features/relay/kit.css",
   "features/client-codex/body/body.css",
   "features/admin/overview/overview.css",
+  // Phase 10: panels and heads across the rooms.
+  "features/relay/team/team.css",
+  "features/relay/board/relay.css",
+  "features/relay/board/ask.css",
+  "features/relay/tracker.css",
+  "features/studio-tasks/studio-hub.css",
+  "features/hub-schedule/next-strip.css",
+  "features/phone/phone.css",
 ];
 
 function filesUnder(dir: string, ext: RegExp, out: string[] = []): string[] {

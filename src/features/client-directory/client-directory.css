@@ -436,9 +436,16 @@
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   margin: 0 16px 16px;
-  border: 1px solid var(--eq-border);
+  /* A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+     outside, the fill clipped to the padding box, a short navy lift (it was
+     a flat hairline box). The margins, 12px at the least, leave room for
+     the lift; the shadow sits outside the scroller, so its own scrolling
+     never clips it. */
+  border: 1px solid var(--eq-edge);
   border-radius: var(--eq-radius);
   background: var(--eq-surface);
+  background-clip: padding-box;
+  box-shadow: var(--eq-elev-2), var(--eq-panel-highlight);
 }
 
 .cd-grid {

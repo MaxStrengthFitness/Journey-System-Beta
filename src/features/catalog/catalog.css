@@ -397,15 +397,19 @@
   list-style: none;
   margin: 1rem 0 0;
   padding: 0;
-  border: 1px solid var(--wk-border);
+  /* A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+     outside (--wk-edge, the fill clipped to the padding box) and a short
+     two-layer navy lift; its rows are divided by the soft hairline. */
+  border: 1px solid var(--wk-edge);
   border-radius: var(--wk-radius);
   background: var(--wk-surface);
-  box-shadow: var(--wk-elev-1);
+  background-clip: padding-box;
+  box-shadow: var(--wk-elev-2), var(--wk-panel-highlight);
   overflow: hidden;
 }
 
 .mcat-floor__item + .mcat-floor__item {
-  border-top: 1px solid var(--wk-border);
+  border-top: 1px solid var(--wk-divider);
 }
 
 .mcat-row {
@@ -642,9 +646,14 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--wk-border);
+  /* A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+     outside (--wk-edge, the fill clipped to the padding box) and a short
+     two-layer navy lift; its rows are divided by the soft hairline. */
+  border: 1px solid var(--wk-edge);
   border-radius: var(--wk-radius);
   background: var(--wk-surface);
+  background-clip: padding-box;
+  box-shadow: var(--wk-elev-2), var(--wk-panel-highlight);
   overflow: hidden;
 }
 
@@ -656,7 +665,7 @@
 }
 
 .mcat-models__item + .mcat-models__item {
-  border-top: 1px solid var(--wk-border);
+  border-top: 1px solid var(--wk-divider);
 }
 
 .mcat-models__name {
@@ -943,9 +952,14 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--wk-border);
+  /* A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+     outside (--wk-edge, the fill clipped to the padding box) and a short
+     two-layer navy lift; its rows are divided by the soft hairline. */
+  border: 1px solid var(--wk-edge);
   border-radius: var(--wk-radius);
   background: var(--wk-surface);
+  background-clip: padding-box;
+  box-shadow: var(--wk-elev-2), var(--wk-panel-highlight);
 }
 .mcat-changes__item {
   display: flex;
@@ -954,7 +968,7 @@
   padding: 0.625rem 0.875rem;
 }
 .mcat-changes__item + .mcat-changes__item {
-  border-top: 1px solid var(--wk-border);
+  border-top: 1px solid var(--wk-divider);
 }
 .mcat-changes__what {
   font-size: 14px;

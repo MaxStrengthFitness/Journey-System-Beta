@@ -201,15 +201,17 @@
 .pl__panel-titles { min-width: 0; flex: 1 1 18rem; }
 .pl__panel-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
-/* A panel's heading: small upright capitals, My Profile's card-head voice.
-   Slanted capitals are the display face's, and only a page title's. */
+/* A panel's heading: the panel-title voice, Geist 17/700 in ink and its
+   own capitalisation, My Profile's card-head voice (type and depth, phase
+   10, Oct 4 2026; it was 12px capitals at 0.12em). */
 .pl__h2 {
   margin: 0;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--st-ink-2);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--st-ink);
 }
 .pl__sub {
   margin: 0.25rem 0 0;
@@ -220,28 +222,35 @@
 }
 
 .pl__list { margin-top: 1rem; }
+/* A list is a panel (type and depth, phase 10, Oct 4 2026): the edge seen
+   from outside, the fill clipped to the padding box, a short navy lift; its
+   rows are divided by the soft hairline. It was a hairline box. */
 .pl__list ul {
   margin: 0;
   padding: 0;
   list-style: none;
-  border: 1px solid var(--st-border);
+  border: 1px solid var(--st-edge);
   border-radius: var(--st-radius);
   background: var(--st-surface);
+  background-clip: padding-box;
+  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
   overflow: hidden;
 }
 
-/* A section head: the one heading style in My Studio (Sep 27 2026), the same
-   small upright capitals as a card's head (.pl__h2, .rl-h__title,
-   .stm__title, .ms__door-h; My Profile's .tp-card__title). */
+/* A head over a list: the label voice, 14/700 in ink-2 and its own
+   capitalisation (type and depth, phase 10, Oct 4 2026; it was the one
+   heading style of Sep 27 2026, 12px capitals at 0.12em). A head of a card
+   takes the panel-title voice instead (.pl__h2, .stm__title, .tc's
+   .rl-h__title, Just now; My Profile's .tp-card__title). */
 .pl__list-head {
   display: flex;
   align-items: center;
   gap: 0.375rem;
   margin: 0 0 0.5rem;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--st-ink-2);
 }
 .pl__count {
@@ -267,7 +276,7 @@
   min-height: 56px;
   padding: 0.5rem 0.875rem;
 }
-.pl__task + .pl__task { border-top: 1px solid var(--st-border); }
+.pl__task + .pl__task { border-top: 1px solid var(--st-divider); }
 
 /* 44px: the tick is the whole point of the row. */
 .pl__check {

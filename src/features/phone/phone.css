@@ -53,17 +53,23 @@
   flex-direction: column;
   gap: 8px;
   padding: 10px 12px 12px;
-  border: 1px solid var(--eq-border);
+  /* A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+     outside (--eq-edge, the fill clipped to the padding box) and a short
+     navy lift; the 4px state rail on the left stays. The machine in hand
+     lifts as an open card (--eq-elev-3). */
+  border: 1px solid var(--eq-edge);
   border-left: 4px solid var(--eq-border-strong);
   border-radius: var(--eq-radius);
   background: var(--eq-surface);
+  background-clip: padding-box;
+  box-shadow: var(--eq-elev-2), var(--eq-panel-highlight);
   scroll-margin: 12px;
 }
 .ph-card.is-logged { border-left-color: var(--eq-ok); }
 .ph-card.is-in-hand {
   border-color: var(--eq-live);
   border-left-color: var(--eq-live);
-  box-shadow: 0 2px 10px var(--eq-shadow);
+  box-shadow: var(--eq-elev-3), var(--eq-panel-highlight);
 }
 
 .ph-card__head {

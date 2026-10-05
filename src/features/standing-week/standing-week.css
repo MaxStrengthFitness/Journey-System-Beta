@@ -202,12 +202,13 @@
 /* --- My Studio -> Team: the next seven days, and each person's week ---- */
 
 .stw-team { display: grid; gap: 18px; }
+/* A head over a list (The next seven days, Each week): the label voice, 14/700 in ink-2 and its own capitalisation (type and depth, phase 10, Oct 4 2026; it was 12px capitals at 0.12em). */
 .stw-team__head {
   margin: 0 0 8px;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-2);
 }
 
@@ -223,12 +224,13 @@
 /* --- away: the days a trainer is away (voice review follow-up) ---------- */
 
 .stw-away { display: grid; gap: 8px; padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--eq-border); }
+/* Away, over its list of days: the label voice too. */
 .stw-away__head {
   margin: 0;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-2);
 }
 .stw-away__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }

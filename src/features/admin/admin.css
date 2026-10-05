@@ -299,11 +299,16 @@
 
 /* ---------- Panel ---------------------------------------------------- */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): an
+   edge seen from outside the card (--adm-edge over the ground, the fill
+   clipped to the padding box) and a short two-layer navy lift. It was a
+   hairline and a 1px shadow. */
 .adm-panel {
   background: var(--adm-surface);
-  border: 1px solid var(--adm-border);
+  background-clip: padding-box;
+  border: 1px solid var(--adm-edge);
   border-radius: var(--adm-radius);
-  box-shadow: 0 1px 2px var(--adm-shadow);
+  box-shadow: var(--adm-elev-2), var(--adm-panel-highlight);
   overflow: hidden;
 }
 
@@ -311,26 +316,45 @@
   box-shadow: none;
 }
 
+/* The head: no band and no rule; the 17/700 title and its icon square carry
+   it (the kit's .panel-head). It was a tinted strip cut by a hairline. Its
+   sides keep the body's 14px inset, so the title stands over the words. */
 .adm-panel__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 14px;
-  background: var(--adm-surface-2);
-  border-bottom: 1px solid var(--adm-border);
+  padding: 16px 14px 0;
+  background: transparent;
+  border-bottom: 0;
 }
 
+/* The panel-title voice: Geist 17/700 in ink, its own capitalisation (it
+   was 13px capitals at 0.07em). */
 .adm-panel__title {
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-transform: none;
+  letter-spacing: -0.01em;
   color: var(--adm-ink);
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+}
+
+/* The icon leading a title: a 32px tinted square, the glyph 18px in it,
+   whatever size the caller drew it. */
+.adm-panel__title > svg {
+  box-sizing: border-box;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 7px;
+  border-radius: 10px;
+  background: var(--adm-surface-2);
+  color: var(--adm-ink-2);
 }
 
 .adm-panel__sub {
@@ -354,13 +378,24 @@
   padding: 14px;
 }
 
+/* Under a head, the body starts 12px below the title (the head has no
+   bottom padding of its own); a flush body, a run of rows, 4px. */
+.adm-panel__head + .adm-panel__body {
+  padding-top: 12px;
+}
+
 .adm-panel__body--flush {
   padding: 0;
 }
 
-/* A run of rows inside a panel body that should read as one list. */
+.adm-panel__head + .adm-panel__body--flush {
+  padding-top: 4px;
+}
+
+/* A run of rows inside a panel body that should read as one list, divided
+   by the soft hairline (type and depth, phase 10). */
 .adm-rows > * + * {
-  border-top: 1px solid var(--adm-border);
+  border-top: 1px solid var(--adm-divider);
 }
 
 .adm-row {

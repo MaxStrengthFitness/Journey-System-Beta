@@ -13,11 +13,17 @@
  * The shift strip
  * ------------------------------------------------------------------ */
 
+/* A PANEL (type and depth, phase 10, Oct 4 2026): the edge seen from
+   outside, the fill clipped to the padding box, a short navy lift. Its
+   shadow read --st-shadow, a colour with no lengths, so the declaration was
+   invalid and the strip drew no shadow at all. No screen mounts the strip
+   today; it is kept in the recipe for the one that does. */
 .sh__strip {
   background: var(--st-surface);
-  border: 1px solid var(--st-border);
+  background-clip: padding-box;
+  border: 1px solid var(--st-edge);
   border-radius: var(--st-radius);
-  box-shadow: var(--st-shadow);
+  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
   padding: 14px 16px;
   margin-bottom: 18px;
 }
@@ -41,13 +47,16 @@
   margin-bottom: 10px;
 }
 
+/* The strip's head: the panel-title voice, 17/700 in ink (it was 11px
+   capitals in the muted ink). */
 .sh__strip-title {
   margin: 0;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--st-ink-muted);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--st-ink);
 }
 
 .sh__strip-count {

@@ -33,18 +33,24 @@
 }
 .tm-cards > li { display: flex; min-width: 0; }
 
-/* A person's card is a header-strip card, like every other card on Team
-   (the standing duties, the open loops, the vault, the Operations-kit
-   panels): one border, 14px corners, the person in a tinted strip, the
-   week's lines under it. Until Sep 27 2026 it was a plain padded box. */
+/* A person's card is a panel, like every other card on Team (the standing
+   duties, the open loops, the vault, the Operations-kit panels): an edge
+   seen from outside (--st-edge, the fill clipped to the padding box), a
+   short navy lift (--st-elev-2), 14px corners, the person at the top and
+   the week's lines under them (type and depth, phase 10, Oct 4 2026; it was
+   a header-strip card: one hairline, the person in a tinted strip cut by a
+   rule, no lift). The cards' grid gap (10px) and the scroller's 16px sides
+   leave room for the lift. */
 .tm-card {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  border: 1px solid var(--st-border);
+  border: 1px solid var(--st-edge);
   border-radius: var(--st-radius);
   background: var(--st-surface);
+  background-clip: padding-box;
+  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
   overflow: hidden;
 }
 
@@ -52,9 +58,9 @@
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  padding: 10px 14px;
-  background: var(--st-surface-2);
-  border-bottom: 1px solid var(--st-border);
+  padding: 14px 14px 0;
+  background: transparent;
+  border-bottom: 0;
 }
 .tm-card__head .rk-avatar { width: 34px; height: 34px; font-size: 12px; }
 .tm-card__who { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }

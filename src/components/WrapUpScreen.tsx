@@ -335,7 +335,11 @@ function Card({ children, className = "", delay = 0 }: { children: React.ReactNo
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay, ease: [0.16, 1, 0.3, 1] }}
-      className={`mx-5 p-4 bg-bg-dark-2 border border-div-d rounded-[14px] flex flex-col gap-3 ${className}`}
+      // A panel (type and depth, phase 10, Oct 4 2026): the edge seen from
+      // outside (--edge, the fill clipped to the padding box) and the
+      // panel's lift with its dark top light (--panel-lift, as the profile
+      // header card). It was the divider hairline with no shadow.
+      className={`mx-5 p-4 bg-bg-dark-2 border border-(--edge) bg-clip-padding rounded-[14px] shadow-(--panel-lift) flex flex-col gap-3 ${className}`}
     >
       {children}
     </motion.section>
