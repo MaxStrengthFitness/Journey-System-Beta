@@ -170,7 +170,7 @@ export function BodyStateTracker({
                 onClick={() => handleRemoveTag(tag.region)}
                 style={chipStyle(dial)}
                 className={cn(
-                  'inline-flex items-center gap-2 h-11 min-w-[140px] px-3 rounded-xl border text-[13px] font-medium uppercase tracking-wide transition-all active:scale-95',
+                  'inline-flex items-center gap-2 h-11 min-w-[140px] px-3 rounded-xl border text-[14px] font-semibold transition-[color,background-color,transform] active:scale-95',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 )}
                 aria-label={`Remove ${tag.region} (${word}${untilText ? `, ${untilText}` : ''})`}
@@ -179,7 +179,7 @@ export function BodyStateTracker({
                 <span className="pointer-events-none text-[11px] opacity-70">·</span>
                 <span className="pointer-events-none">{word}</span>
                 {untilText && (
-                  <span className="pointer-events-none text-[11px] normal-case tracking-normal opacity-80">
+                  <span className="pointer-events-none text-[12px] opacity-80">
                     {untilText}
                   </span>
                 )}
@@ -198,8 +198,8 @@ export function BodyStateTracker({
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          'flex items-center justify-between w-full h-11 px-4 rounded-xl bg-surface-2 border border-div-d text-ink-d2 text-[13px] font-medium uppercase tracking-wide transition-all',
-          'hover:bg-bg-dark-3 hover:text-white',
+          'flex items-center justify-between w-full h-11 px-4 rounded-xl bg-(--raised) shadow-(--raised-lift) border border-input text-ink-d2 text-[14px] font-semibold transition-[color,background-color,transform] active:translate-y-px active:shadow-(--press)',
+          'hover:bg-bg-dark-3 hover:text-foreground',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           open && 'ring-2 ring-ring'
@@ -209,7 +209,7 @@ export function BodyStateTracker({
       >
         <span className="flex items-center gap-2">
           <Plus className="w-4 h-4" />
-          Tag Body Region
+          Tag body region
         </span>
         <ChevronDown
           className={cn(
@@ -222,7 +222,7 @@ export function BodyStateTracker({
       {/* Modal Overlay */}
       {open && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-(--scrim) backdrop-blur-sm"
           onClick={closePopover}
         >
           <div
@@ -234,10 +234,10 @@ export function BodyStateTracker({
             {view === 'region' ? (
               <div className="flex flex-col h-full overflow-hidden">
                 <div className="px-4 py-3 border-b border-div-d flex-shrink-0 flex items-center justify-between">
-                  <span className="text-[11px] uppercase tracking-widest text-ink-d2 font-bold">
-                    Select Region
+                  <span className="text-[14px] font-bold text-ink-d2">
+                    Select a region
                   </span>
-                  <button type="button" onClick={closePopover} className="flex items-center justify-center w-11 h-11 -mr-2 text-ink-d2 hover:text-white transition-colors" aria-label="Close">
+                  <button type="button" onClick={closePopover} className="flex items-center justify-center w-11 h-11 -mr-2 text-ink-d2 hover:text-foreground transition-colors" aria-label="Close">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -257,7 +257,7 @@ export function BodyStateTracker({
                       >
                         <span>{region}</span>
                         {isTagged && (
-                          <span className="text-[10px] uppercase tracking-widest text-cyan font-bold">
+                          <span className="text-[12px] font-bold text-cyan">
                             Update
                           </span>
                         )}
@@ -282,11 +282,11 @@ export function BodyStateTracker({
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
-                  <span className="text-[13px] font-medium uppercase tracking-wide text-ink-d1">
+                  <span className="text-[14px] font-bold text-ink-d1">
                     {pendingRegion}
                   </span>
                   <div className="ml-auto flex items-center">
-                    <button type="button" onClick={closePopover} className="flex items-center justify-center w-11 h-11 text-ink-d2 hover:text-white transition-colors" aria-label="Close">
+                    <button type="button" onClick={closePopover} className="flex items-center justify-center w-11 h-11 text-ink-d2 hover:text-foreground transition-colors" aria-label="Close">
                       <X className="w-5 h-5" />
                     </button>
                   </div>
@@ -302,15 +302,15 @@ export function BodyStateTracker({
 
                   {pendingDial !== null && pendingDial < 0 && (
                     <label className="flex flex-col gap-1.5" data-testid="body-until">
-                      <span className="text-[11px] uppercase tracking-widest text-ink-d2 font-bold">
-                        Matters until <span className="normal-case tracking-normal font-medium opacity-80">(optional)</span>
+                      <span className="text-[14px] font-bold text-ink-d2">
+                        Matters until <span className="font-medium opacity-80">(optional)</span>
                       </span>
                       <input
                         type="date"
                         min={todayKey}
                         value={pendingUntil}
                         onChange={(e) => setPendingUntil(e.target.value)}
-                        className="h-11 px-3 rounded-lg border border-div-d bg-surface-2 text-ink-d1 text-[14px]"
+                        className="h-11 px-3 rounded-lg border border-input bg-(--well) shadow-(--elev-0) text-ink-d1 text-[14px]"
                         aria-label="Matters until"
                       />
                       <span className="text-[12px] text-ink-d2">Keeps showing on the briefing until then</span>
@@ -321,7 +321,7 @@ export function BodyStateTracker({
                     type="button"
                     onClick={handleSave}
                     disabled={pendingDial === null}
-                    className="inline-flex w-full h-12 items-center justify-center gap-2 rounded-xl bg-primary text-[14px] font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="inline-flex w-full h-12 items-center justify-center gap-2 rounded-xl bg-primary text-[14px] font-bold text-primary-foreground shadow-(--solid-lift) disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed active:translate-y-px active:shadow-(--press) transition-[background-color,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <Check className="w-4 h-4" aria-hidden />
                     {pendingDial === null ? 'Tap how it is today' : `Save · ${dialWord(REGION_SCALE, pendingDial)}`}

@@ -374,6 +374,30 @@ describe("the peek", () => {
     }
   });
 
+  it("raises its buttons above the popover in dark too, their 3:1 edge moving with them (review fix, Oct 5 2026)", () => {
+    const peek = merged(PEEK, ".hp");
+    expect(peek["--eq-raised"]).toBe("var(--eq-popover-raised)");
+    expect(peek["--eq-border-strong"]).toBe("var(--eq-popover-edge)");
+    for (const theme of BOTH) {
+      const fill = resolve(theme, "--eq-popover");
+      const raised = resolve(theme, "--eq-popover-raised");
+      const edge = resolve(theme, "--eq-popover-edge");
+      // Lighter means higher: a raised button is never darker than the peek.
+      expect({ theme, higher: luminance(rgb(raised)) >= luminance(rgb(fill)) }).toEqual({ theme, higher: true });
+      expect({ theme, onFill: contrast(edge, raised) >= 3, onPeek: contrast(edge, fill) >= 3 }).toEqual({ theme, onFill: true, onPeek: true });
+      for (const ink of ["--eq-ink", "--eq-ink-2", "--eq-ink-muted"]) {
+        expect({ theme, ink, pass: contrast(resolve(theme, ink), raised) >= 4.5 }).toEqual({ theme, ink, pass: true });
+      }
+    }
+    // index.css's own pair, which dialogs, sheets and menus read.
+    expect(CORE.light["--popover-raised"]).toBe("var(--raised)");
+    expect(CORE.light["--popover-input"]).toBe("var(--input)");
+    expect(luminance(rgb(CORE.dark["--popover-raised"]))).toBeGreaterThan(luminance(rgb(CORE.dark["--popover"])));
+    expect(contrast(CORE.dark["--popover-input"], CORE.dark["--popover-raised"])).toBeGreaterThanOrEqual(3);
+    expect(contrast(CORE.dark["--popover-input"], CORE.dark["--popover"])).toBeGreaterThanOrEqual(3);
+    expect(INDEX).toMatch(/\[data-slot="dialog-content"\][^{]*\{\s*--raised: var\(--popover-raised\);\s*--input: var\(--popover-input\);/);
+  });
+
   it("titles the client in the display face at 22, upright, whole and wrapping", () => {
     const name = merged(PEEK, ".hp-name");
     display(name, "22px");

@@ -83,6 +83,8 @@
   --adm-popover:         var(--adm-surface);
   --adm-popover-rim:     var(--adm-edge);
   --adm-popover-light:   rgba(255, 255, 255, 0);
+  --adm-popover-raised:  var(--adm-raised);
+  --adm-popover-edge:    var(--adm-border-strong);
   --adm-elev-0:          var(--elev-0);
   --adm-elev-1:          var(--elev-1);
   --adm-elev-2:          var(--elev-2);
@@ -152,6 +154,8 @@
   --adm-popover:         #22374b;
   --adm-popover-rim:     rgba(255, 255, 255, 0.055);
   --adm-popover-light:   rgba(255, 255, 255, 0.07);
+  --adm-popover-raised:  #283e54;
+  --adm-popover-edge:    #7d92a6;
   --adm-elev-0:          var(--elev-0);
   --adm-elev-1:          var(--elev-1);
   --adm-elev-2:          var(--elev-2);
@@ -209,6 +213,8 @@
     --adm-popover:         #22374b;
     --adm-popover-rim:     rgba(255, 255, 255, 0.055);
     --adm-popover-light:   rgba(255, 255, 255, 0.07);
+    --adm-popover-raised:  #283e54;
+    --adm-popover-edge:    #7d92a6;
     --adm-elev-0:          var(--elev-0);
     --adm-elev-1:          var(--elev-1);
     --adm-elev-2:          var(--elev-2);

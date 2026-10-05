@@ -218,6 +218,15 @@ const PAIRS = [
 const has = (body: string, cls: string) =>
   new RegExp(`(?:^|\\s)${cls.replace(/[()[\]\\/.-]/g, (c) => "\\" + c)}(?=\\s|$)`).test(body);
 
+/**
+ * Does some class string in `file` carry every one of `tokens`? A set, not a
+ * spelling (the type and depth review, Oct 5 2026): a pin on a whole string's
+ * exact text broke on every unrelated class added beside it, and pushed new
+ * classes into a second expression to keep it green.
+ */
+const someStringHas = (file: string, tokens: string[]) =>
+  classStrings(read(file), file).some((s) => tokens.every((t) => has(s.body, t)));
+
 /** A word colour a button could carry. */
 const WORD_COLOUR = /(?:^|\s)text-(?:white|black|foreground|primary-foreground|cta-foreground|cta|ink-d\d|slate-\d+|\(--[\w-]+\))(?=[\s/]|$)/g;
 
@@ -245,7 +254,6 @@ describe("a solid logo-orange button has navy words and keeps its fill on hover"
   it.each([
     ["Start a new session (a stale session)", "features/tracker/StaleSessionDialog.tsx", 1],
     ["Finish session (the End Session dialog)", "components/WorkoutTrackerView.tsx", 1],
-    ["Resume (the paused session timer)", "components/ActiveSessionTimer.tsx", 1],
     ["Start Consult Workout", "components/ConsultationSetupWizard.tsx", 1],
   ])("%s is the logo orange with navy words, restated on hover", (_name, file, count) => {
     const strings = classStrings(read(file), file).filter(
@@ -334,7 +342,7 @@ describe("the End Session question", () => {
   });
 
   it("marks a machine's outcome as picked in the theme's blue, never a white chip in dark", () => {
-    expect(tracker).toContain('? "bg-primary text-primary-foreground border-primary"');
+    expect(someStringHas("components/WorkoutTrackerView.tsx", ["bg-primary", "text-primary-foreground", "border-primary", "shadow-(--solid-lift)"])).toBe(true);
     expect(tracker).not.toMatch(/dark:bg-white(?![\w/-])/);
   });
 });
@@ -480,7 +488,7 @@ describe("the client record has no sky or teal left", () => {
     expect(record).not.toMatch(/(?:^|[\s"'`:])(?:bg|text|border|ring)-sky-\d/);
     expect(record).toContain("bg-(--eq-live-fill) border-2 border-(--eq-live)/30 rounded-3xl p-4 flex items-center gap-4 text-(--eq-live-text)");
     expect(record).toContain('? "border-primary bg-primary/10 text-primary"');
-    expect(record).toMatch(/bg-primary text-primary-foreground hover:bg-primary rounded-full/);
+    expect(record).toMatch(/bg-primary text-primary-foreground hover:bg-primary rounded-xl/);
   });
 
   it("the setup banner and the picked source read in both modes", () => {
@@ -532,7 +540,7 @@ describe("Add a client has no retired orange", () => {
 describe("the Wrap-up's renewal-due button", () => {
   it("is the opaque orange fill with the deep orange icon, never a wash (one over the navy greys out)", () => {
     const wrap = read("components/WrapUpScreen.tsx");
-    expect(wrap).toContain('"border-(--eq-hero)/50 bg-(--eq-hero-fill) text-ink-d1"');
+    expect(someStringHas("components/WrapUpScreen.tsx", ["border-(--eq-hero)/50", "bg-(--eq-hero-fill)", "text-ink-d1", "shadow-(--elev-1)"])).toBe(true);
     expect(wrap).toContain('"text-(--eq-hero-text)" : "text-(--eq-live)"');
     expect(wrap).not.toMatch(/bg-cta\/\d/);
     for (const t of BOTH) {

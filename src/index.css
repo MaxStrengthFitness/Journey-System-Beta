@@ -446,6 +446,10 @@
     --divider: rgba(25,45,65,0.10);
     --highlight: rgba(255,255,255,0.70);
     --scrim: rgba(0,18,36,0.30);
+    /* A raised control on a popover (a dialog, a sheet, a menu): in light
+       the page's own raised fill and edge; dark steps them up (below). */
+    --popover-raised: var(--raised);
+    --popover-input: var(--input);
 
     /* A control's whole resting shadow, for a className (type and depth,
        phase 4, Oct 4 2026). A className reads ONE of these with
@@ -707,6 +711,12 @@
     --divider: rgba(150,180,210,0.10);
     --highlight: rgba(255,255,255,0.07);
     --scrim: rgba(0,6,14,0.55);
+    /* The popover (#22374B) is a step above the card, lighter than the
+       raised fill, so a raised control on it steps up again: 1.11:1 above
+       the popover, its edge 3.43:1 on the fill and 3.81:1 on the popover,
+       the words 8.8:1 (muted 4.8:1). */
+    --popover-raised: #283E54;
+    --popover-input: #7D92A6;
     --raised-lift: var(--elev-1), inset 0 1px 0 var(--highlight);
     --solid-lift: var(--glow-live), var(--solid-light);
     --go-lift: var(--glow-go), var(--go-light);
@@ -777,6 +787,17 @@
     /* --- MINDBODY INTEGRATION TOKENS — append to existing .dark { } --- */
     --mb-state-early-cancel: var(--ink-d3);
     --mb-access-foreign:     var(--yellow);
+}
+
+/* A raised control on a popover (review fix, Oct 5 2026). In dark the
+   popover is a step above the card and LIGHTER than the raised fill, so an
+   outline Button (Cancel and its kind) in a dialog, a sheet or a menu read
+   level with it or sunk while its lift said raised. Inside those surfaces
+   the raised fill steps up again and its 3:1 edge moves with it. In light
+   both tokens are the page's own, so nothing changes there. */
+:is([data-slot="dialog-content"], [data-slot="sheet-content"], [data-slot="dropdown-menu-content"], [data-slot="dropdown-menu-sub-content"], [data-slot="select-content"]) {
+    --raised: var(--popover-raised);
+    --input: var(--popover-input);
 }
 
 @layer base {

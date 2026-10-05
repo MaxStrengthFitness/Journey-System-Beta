@@ -70,6 +70,13 @@
   --cr-glow-go: var(--jg-glow-go, var(--glow-go));
   --cr-go-light: var(--jg-go-light, var(--go-light));
   --cr-press: var(--jg-press, var(--press));
+  /* A panel's edge, lift and top light, and a control's 3:1 edge (type and
+     depth review, Oct 5 2026): the app's own, since --cr-border-strong is
+     the grid's sticky separator (2.1:1), not a control edge. */
+  --cr-edge: var(--edge);
+  --cr-elev-2: var(--elev-2);
+  --cr-panel-highlight: var(--panel-highlight);
+  --cr-control-edge: var(--jg-control-edge, var(--input));
   --cr-font-display: var(--jg-font-display, "Saira Condensed", system-ui, sans-serif);
 
   color: var(--cr-ink);
@@ -117,11 +124,13 @@
 .cr-range__label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cr-ink-muted); }
 .cr-seg { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .cr-seg__btn {
-  appearance: none; border: 1px solid var(--cr-border); background: var(--cr-surface); color: var(--cr-ink-2);
+  appearance: none; border: 1px solid var(--cr-control-edge); background: var(--cr-surface); color: var(--cr-ink-2);
   height: 40px; padding: 0 14px; border-radius: 10px; font: inherit; font-weight: 700; font-size: 13px; cursor: pointer;
   -webkit-tap-highlight-color: transparent; transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
-.cr-seg__btn:hover { background: var(--cr-surface-2); }
+@media (hover: hover) {
+  .cr-seg__btn:hover { background: var(--cr-surface-2); }
+}
 .cr-seg__btn.is-on { background: var(--cr-live); border-color: var(--cr-live); color: var(--jg-live-on); }
 .cr-range__custom { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; color: var(--cr-ink-2); }
 .cr-range__custom input {
@@ -145,7 +154,7 @@
 .cr-generate:hover { background: var(--jg-go); color: var(--jg-go-on); }
 .cr-generate:not(:disabled):active { transform: translateY(1px); box-shadow: var(--cr-press); }
 .cr-generate:disabled { opacity: 0.6; cursor: progress; box-shadow: none; }
-.cr-generate__sub { font-family: inherit; font-style: normal; font-weight: 700; font-size: 10px; letter-spacing: 0.14em; opacity: 0.85; }
+.cr-generate__sub { font-family: inherit; font-style: normal; font-weight: 700; font-size: 12px; letter-spacing: 0; text-transform: none; opacity: 0.85; }
 
 /* ---- report bar --------------------------------------------------------- */
 .cr-bar {
@@ -164,10 +173,12 @@
 /* 40px, the app's floor (they were 34; type and depth, phase 8). */
 .cr-bar .cr-seg__btn { height: 40px; padding: 0 11px; font-size: 12px; }
 .cr-iconbtn {
-  appearance: none; border: 1px solid var(--cr-border); background: var(--cr-surface); color: var(--cr-ink-2);
+  appearance: none; border: 1px solid var(--cr-control-edge); background: var(--cr-surface); color: var(--cr-ink-2);
   height: 40px; padding: 0 10px; border-radius: 9px; display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
 }
-.cr-iconbtn:hover { background: var(--cr-surface-2); }
+@media (hover: hover) {
+  .cr-iconbtn:hover { background: var(--cr-surface-2); }
+}
 
 /* ---- sections ---------------------------------------------------------- */
 .cr-section { display: flex; flex-direction: column; gap: 12px; }
@@ -182,8 +193,11 @@
 .cr-section__sub { font-size: 12.5px; color: var(--cr-ink-muted); }
 .cr-section__spacer { flex: 1; }
 
+/* A panel (type and depth review): the soft edge seen from outside, the
+   lift and, in dark, the top light. It was a flat hairline box. */
 .cr-card {
-  border: 1px solid var(--cr-border); border-radius: var(--cr-radius); background: var(--cr-surface);
+  border: 1px solid var(--cr-edge); border-radius: var(--cr-radius); background: var(--cr-surface);
+  background-clip: padding-box; box-shadow: var(--cr-elev-2), var(--cr-panel-highlight);
   padding: 14px 16px; min-width: 0;
 }
 .cr-card__title { margin: 0 0 2px; font-size: 13px; font-weight: 800; color: var(--cr-ink); }

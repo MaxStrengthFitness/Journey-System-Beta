@@ -54,10 +54,10 @@ export function CriticalStrip({
           <AlertTriangle className="h-4 w-4" />
         </span>
         <div className="min-w-0">
-          <h3 className="font-mono text-[11px] font-black uppercase tracking-[0.14em] text-(--eq-alert)">
+          <h3 className="text-[14px] font-bold text-(--eq-alert)">
             {title}
           </h3>
-          <p className="text-[11px] text-(--eq-ink-muted)">
+          <p className="text-[12px] text-(--eq-ink-muted)">
             {entries.length} critical {entries.length === 1 ? "note" : "notes"} · also shown in the pre-session briefing
           </p>
         </div>
@@ -76,7 +76,7 @@ export function CriticalStrip({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="mt-2 inline-flex h-10 items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-(--eq-alert) transition-colors hover:text-(--eq-alert)"
+          className="mt-2 inline-flex h-10 items-center gap-1 text-[14px] font-bold text-(--eq-alert) transition-colors hover:text-(--eq-alert)"
         >
           <ChevronDown className={cn("h-3 w-3 transition-transform", expanded && "rotate-180")} />
           {expanded ? "Show fewer" : `${hidden} more`}

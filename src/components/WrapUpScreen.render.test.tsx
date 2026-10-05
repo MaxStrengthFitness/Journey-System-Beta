@@ -1002,7 +1002,7 @@ describe("the Wrap-up follows the theme, and keeps its confetti", () => {
     expect(save.className.split(/\s+/)).toEqual(expect.arrayContaining(["shadow-(--solid-lift)", "active:translate-y-px", "disabled:shadow-none"]));
   });
 
-  it("heads its cards in small upright capitals, and titles the page in the codex voice", async () => {
+  it("heads its cards in the label voice, and titles the page in the codex voice", async () => {
     const host = await mount(<FullScreen />);
     const title = host.querySelector("h1")!;
     // Moved on purpose (type and depth, phase 12, Oct 4 2026; AJ's 1A): the
@@ -1012,9 +1012,13 @@ describe("the Wrap-up follows the theme, and keeps its confetti", () => {
     expect(titleClasses).toEqual(expect.arrayContaining(["font-display", "font-extrabold", "text-[30px]", "break-words"]));
     expect(titleClasses).not.toContain("italic");
     expect(titleClasses).not.toContain("uppercase");
+    // Moved on purpose (type and depth review, Oct 5 2026; AJ's 1A and 3B):
+    // a card's head was 12px capitals, the pattern the round took out
+    // everywhere else. It is the label voice now, 14/700 in ink-2.
     const head = Array.from(host.querySelectorAll("div")).find((d) => d.textContent === "The journey")!;
     const cls = head.className.split(/\s+/);
-    expect(cls).toEqual(expect.arrayContaining(["uppercase", "font-extrabold", "text-[12px]", "text-ink-d2"]));
+    expect(cls).toEqual(expect.arrayContaining(["text-[14px]", "font-bold", "text-ink-d2"]));
+    expect(cls).not.toContain("uppercase");
     expect(cls).not.toContain("italic");
     expect(cls).not.toContain("font-display");
   });

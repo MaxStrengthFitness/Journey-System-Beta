@@ -46,7 +46,7 @@ export function ProgressReportArchive({
         <button
           type="button"
           onClick={onNew}
-          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 px-3 text-[10px] font-black uppercase tracking-wider text-primary transition-colors hover:bg-primary/20"
+          className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 px-3 text-[14px] font-bold text-primary transition-colors hover:bg-primary/20"
         >
           <Plus className="h-3 w-3" /> New
         </button>
@@ -120,7 +120,7 @@ export function ProgressReportArchive({
                 type="button"
                 onClick={() => onDelete(r)}
                 aria-label="Delete report"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-300 opacity-0 transition-all hover:bg-rose-500/10 hover:text-rose-500 group-hover:opacity-100 dark:text-slate-600"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-rose-500/10 hover:text-rose-500"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>

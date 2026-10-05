@@ -137,7 +137,11 @@ describe("AppContent's pieces of the frame", () => {
     expect(start).toBeGreaterThan(0);
     const menu = app.slice(start, end);
     for (const s of classStrings(menu)) expect(s).not.toMatch(PALETTE);
-    expect(menu).toMatch(/className="w-56 [^"]*\bbg-popover\b[^"]*\btext-foreground\b/);
+    // w-60 since Oct 5 2026: room for the App mode segments in their own
+    // capitalisation (the type and depth review).
+    expect(menu).toMatch(/className="w-60 [^"]*\bbg-popover\b[^"]*\btext-foreground\b/);
+    // The popover's own lift speaks in dark too: no caller flattens it.
+    expect(menu).not.toMatch(/dark:shadow-none/);
     expect(menu).not.toMatch(/bg-white|bg-bg-dark/);
     expect(menu).toMatch(/variant="destructive"/);
   });

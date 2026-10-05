@@ -1177,11 +1177,19 @@ div.jg-today { cursor: default; }
 }
 /* 28px drawn, 40px to tap (type and depth, phase 13): the row's height is
    fixed by the grid's fit, so the box stays and its tap area reaches 6px
-   past each side. */
+   past each side. Never above or below its own row (review fix, Oct 5
+   2026): in a dense fit (rows of 26-34px) a 40px area reached into the row
+   above and the "Not in today's routine" band, so a tap meant for them
+   added a machine to the live session. Up and down it reaches at most half
+   of what the row has spare: 40px tall in a 44px row, the row's own height
+   in a shorter one (--jg-row-h is set on .jg). */
 .jg-today__add::after {
   content: "";
   position: absolute;
-  inset: -6px;
+  left: -6px;
+  right: -6px;
+  top: max(-6px, calc((28px - var(--jg-row-h)) / 2));
+  bottom: max(-6px, calc((28px - var(--jg-row-h)) / 2));
 }
 
 /* ==========================================================================
@@ -1574,7 +1582,11 @@ div.jg-today { cursor: default; }
   border-radius: var(--jg-radius-sm);
   background: var(--jg-raised);
   box-shadow: var(--jg-elev-1), inset 0 1px 0 var(--jg-highlight);
-  color: var(--jg-ink-faint);
+  /* The mark is the button's only words (the kaizen stroke, the star), so
+     it reads at 3:1 or more on the raised fill: the muted ink (5.5:1 dark,
+     6.0:1 light; the faint ink was 2.9:1 in dark). Still grey; red still
+     means a picked poor rep. */
+  color: var(--jg-ink-muted);
   font-size: 17px;
   line-height: 1;
   display: grid;

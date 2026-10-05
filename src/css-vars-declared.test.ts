@@ -166,6 +166,21 @@ describe("every var() a touched stylesheet reads without a fallback is declared"
     const missing = [...new Set(readWithoutFallback(read(join(SRC, file))))].filter((name) => !DECLARED.has(name));
     expect(missing, `${file} reads tokens nothing declares`).toEqual([]);
   });
+
+  // Widened to every stylesheet in src (the type and depth review, Oct 5
+  // 2026): FILES grew with the round, so a sheet the round never opened was
+  // never read. Every one of them passed when it was widened.
+  it("and every other stylesheet in src", () => {
+    const missing: string[] = [];
+    for (const path of filesUnder(SRC, /\.css$/)) {
+      const file = relative(SRC, path).replace(/\\/g, "/");
+      if (FILES.includes(file)) continue;
+      for (const name of new Set(readWithoutFallback(read(path)))) {
+        if (!DECLARED.has(name)) missing.push(`${file}: ${name}`);
+      }
+    }
+    expect(missing).toEqual([]);
+  });
 });
 
 describe("the scanner itself", () => {

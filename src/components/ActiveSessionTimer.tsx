@@ -12,10 +12,11 @@ interface ActiveSessionTimerProps {
   /** Milliseconds accumulated across previous pauses. */
   totalPausedMs?: number;
   onTogglePause?: () => void;
-  isMobile?: boolean;
-  /** "bar" renders the session-bar clock pill (jg-clock, journey-grid.css):
-      a 40px pause target and an amber PAUSED state you cannot miss. */
-  variant?: "card" | "bar";
+  /** The session-bar clock pill (jg-clock, journey-grid.css): a 40px pause
+      target and an amber PAUSED state you cannot miss. The only look since
+      Oct 5 2026: the old "card" variant had no caller left and kept 8-10px
+      capitals and a raw black shadow (type and depth review). */
+  variant?: "bar";
 }
 
 /**
@@ -63,8 +64,6 @@ export const ActiveSessionTimer = memo(function ActiveSessionTimer({
   pausedAt,
   totalPausedMs = 0,
   onTogglePause,
-  isMobile = false,
-  variant = "card",
 }: ActiveSessionTimerProps) {
   // Re-render once a second; the value itself is computed, never accumulated.
   const [, setTick] = useState(0);
@@ -90,95 +89,29 @@ export const ActiveSessionTimer = memo(function ActiveSessionTimer({
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  if (variant === "bar") {
-    return (
-      <div className={cn("jg-clock", isPaused && "is-paused")} role="timer" aria-live="off">
-        {onTogglePause && (
-          <button
-            type="button"
-            className="jg-clock__btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              onTogglePause();
-            }}
-            aria-label={isPaused ? "Resume session" : "Pause session"}
-            title={isPaused ? "Resume session" : "Pause session"}
-          >
-            {isPaused ? (
-              <Play size={16} strokeWidth={2.5} className="fill-current ml-0.5" />
-            ) : (
-              <Pause size={16} strokeWidth={2.5} className="fill-current" />
-            )}
-          </button>
-        )}
-        <div className="jg-clock__read">
-          <span className="jg-clock__label">{isPaused ? "Paused" : "Elapsed"}</span>
-          <span className="jg-clock__time">{formatTime(elapsed)}</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div
-      className={cn(
-        "flex items-center transition-colors backdrop-blur-md shrink-0 select-none",
-        isMobile
-          ? "gap-2 bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800/80 px-2.5 py-1 rounded-xl shadow-sm"
-          : "gap-3.5 bg-slate-100/95 dark:bg-slate-900/95 border-2 border-slate-200/90 dark:border-slate-800/90 px-4 py-2 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
-      )}
-    >
+    <div className={cn("jg-clock", isPaused && "is-paused")} role="timer" aria-live="off">
       {onTogglePause && (
         <button
           type="button"
+          className="jg-clock__btn"
           onClick={(e) => {
             e.stopPropagation();
             onTogglePause();
           }}
-          className={cn(
-            "flex items-center justify-center transition-[color,background-color,border-color,transform] cursor-pointer select-none active:scale-95 shrink-0",
-            isMobile ? "w-7 h-7 rounded-lg" : "w-10 h-10 rounded-xl",
-            isPaused
-              ? "bg-cta hover:bg-cta text-cta-foreground shadow-[0_0_12px_var(--cta)] shadow-cta/40"
-              : "bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200",
-          )}
-          title={isPaused ? "Resume Session" : "Pause Session"}
+          aria-label={isPaused ? "Resume session" : "Pause session"}
+          title={isPaused ? "Resume session" : "Pause session"}
         >
           {isPaused ? (
-            <Play
-              className={
-                isMobile
-                  ? "w-3 h-3 fill-current ml-0.5"
-                  : "w-4 h-4 fill-current ml-0.5"
-              }
-            />
+            <Play size={16} strokeWidth={2.5} className="fill-current ml-0.5" />
           ) : (
-            <Pause
-              className={
-                isMobile ? "w-3 h-3 fill-current" : "w-4 h-4 fill-current"
-              }
-            />
+            <Pause size={16} strokeWidth={2.5} className="fill-current" />
           )}
         </button>
       )}
-      <div className="flex flex-col items-start leading-none justify-center">
-        <span
-          className={cn(
-            "font-black uppercase tracking-wider text-muted-foreground mb-0.5",
-            isMobile ? "text-[8px]" : "text-[10px]",
-          )}
-        >
-          {isPaused ? "PAUSED" : "ELAPSED"}
-        </span>
-        <span
-          className={cn(
-            "tabular-nums font-mono font-black leading-none",
-            isPaused ? "text-amber-500" : "text-slate-800 dark:text-slate-100",
-            isMobile ? "text-[15px]" : "text-xl sm:text-2xl",
-          )}
-        >
-          {formatTime(elapsed)}
-        </span>
+      <div className="jg-clock__read">
+        <span className="jg-clock__label">{isPaused ? "Paused" : "Elapsed"}</span>
+        <span className="jg-clock__time">{formatTime(elapsed)}</span>
       </div>
     </div>
   );

@@ -376,9 +376,14 @@ describe("a solid blue button drops a blue-tinted shadow and keeps a top light",
 /* 5. Go                                                               */
 /* ------------------------------------------------------------------ */
 
-/** Start session, wherever it is drawn in CSS, and the Deep Dive's Generate. */
-const GO: [string, string, string][] = [
-  ["features/hub-schedule/peek.css", '.hp-btn[data-primary="true"]', "eq"],
+/**
+ * Start session, wherever it is drawn in CSS, and the Deep Dive's Generate.
+ * The peek's primary carries Go's depth in every state but Go's words only
+ * when it says Start session (data-go): [stylesheet, selector, palette, the
+ * rule that holds the words when it is another one].
+ */
+const GO: [string, string, string, string?][] = [
+  ["features/hub-schedule/peek.css", '.hp-btn[data-primary="true"]', "eq", '.hp-btn[data-go="true"]'],
   ["features/hub-opportunities/run-sheet.css", '.ho-action[data-primary="true"]', "eq"],
   ["features/client-directory/client-directory.css", ".cd-start", "eq"],
   ["features/briefing/briefing.css", ".br__cta", "br"],
@@ -394,8 +399,8 @@ const GO_DEPTH: [string, string, string, string][] = [
 ];
 
 describe("Go is Start session: one voice and one depth", () => {
-  it.each(GO)("%s %s: slanted capitals at 800 and 17, 0.04em, the orange glow and top light, a press", (file, sel, p) => {
-    const own = merged(file, sel);
+  it.each(GO)("%s %s: slanted capitals at 800 and 17, 0.04em, the orange glow and top light, a press", (file, sel, p, words) => {
+    const own = merged(file, sel, ...(words ? [words] : []));
     expect(own["font-family"]).toMatch(/^var\(--(?:cr-)?font-display\b/);
     expect(own["font-weight"]).toBe("800");
     expect(own["font-style"]).toBe("italic");

@@ -6,11 +6,13 @@
    ========================================================================== */
 @import "../equipment/equipment.tokens.css";
 
+/* The veil under the peek: the scrim's navy at today's light strength,
+   never raw black (type and depth review, Oct 5 2026). */
 .hp-backdrop {
   position: fixed;
   inset: 0;
   z-index: 60;
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(0, 18, 36, 0.12);
 }
 
 /* A popover, the deepest lift a page holds (type and depth, phase 11):
@@ -22,6 +24,11 @@
    with one 40px blur. Its words read at 4.5:1 on it in both modes (the
    muted ink 5.33:1 in dark) and its buttons' 3:1 edge at 3.12:1. */
 .hp {
+  /* A raised button on the peek: in dark the popover is lighter than the
+     page's raised fill, so its buttons step up again, their 3:1 edge with
+     them (equipment.tokens.css, --eq-popover-raised and -edge). */
+  --eq-raised: var(--eq-popover-raised);
+  --eq-border-strong: var(--eq-popover-edge);
   position: fixed;
   z-index: 61;
   box-sizing: border-box;
@@ -256,11 +263,16 @@
   background: var(--eq-go);
   color: var(--eq-go-on);
 }
-/* Go (AJ's 1A): the display face's slanted capitals at 800 and 17, 0.04em,
-   one voice with the profile header's Start session; a short orange glow and
-   a white top light. */
+/* Go's depth on every primary: a short orange glow and a white top light. */
 .hp-btn[data-primary="true"] {
   box-shadow: var(--eq-glow-go), var(--eq-go-light);
+}
+/* Go's words (AJ's 1A) only when the primary says Start session: the display
+   face's slanted capitals at 800 and 17, 0.04em, one voice with the profile
+   header's Start session. Open session, Resume or start new, Log past session
+   and Edit session keep the 14/700 button voice under Go's depth (Peek.tsx
+   sets data-go only for a booking still to come). */
+.hp-btn[data-go="true"] {
   font-family: var(--font-display);
   font-size: 17px;
   font-weight: 800;

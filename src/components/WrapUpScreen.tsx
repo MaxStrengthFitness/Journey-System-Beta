@@ -323,10 +323,12 @@ const GROUP_TONE: Record<string, string> = {
 };
 const OTHER_TONE = GROUP_TONE.Other;
 
+/** A card's head: the label voice, 14/700 in ink-2, in its own
+ *  capitalisation (type and depth review, Oct 5 2026; it was 12px capitals,
+ *  the pattern the round took out everywhere else). The page's one eyebrow,
+ *  over the h1, keeps the capitals. */
 function Kicker({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="text-[12px] font-extrabold uppercase tracking-[0.12em] text-ink-d2 break-words">{children}</div>
-  );
+  return <div className="text-[14px] font-bold text-ink-d2 break-words">{children}</div>;
 }
 
 function Card({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
@@ -392,7 +394,7 @@ function TodayRow({ line, coverage }: { line: TodayLine; coverage: HistoryCovera
           {delta && <span className={`w-20 text-right text-[11px] font-bold whitespace-nowrap ${delta.tone}`}>{delta.text}</span>}
         </>
       ) : (
-        <span className="text-[11px] font-bold uppercase tracking-wider text-ink-d3 whitespace-nowrap">{word}</span>
+        <span className="text-[12px] font-semibold text-ink-d3 whitespace-nowrap">{word}</span>
       )}
     </li>
   );
@@ -733,7 +735,9 @@ export function WrapUpScreen({
         <div className="flex-1 overflow-y-auto no-scrollbar relative z-10 flex flex-col gap-3 pb-6">
           {/* title */}
           <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="px-6 pt-4 pb-1">
-            <Kicker>{savedOnThisIpad ? "Wrap-up · session saved on this iPad" : "Wrap-up · session saved"}</Kicker>
+            <div className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-d2 break-words">
+              {savedOnThisIpad ? "Wrap-up · session saved on this iPad" : "Wrap-up · session saved"}
+            </div>
             <h1 className="font-display font-extrabold text-ink-d1 text-[30px] leading-[1.04] mt-2 mb-2 break-words">
               {congratulation(session.id ?? `${client.id}-${todayKey}`, clientFirstName(client))}
             </h1>
@@ -753,7 +757,7 @@ export function WrapUpScreen({
           <Card delay={0.05}>
             <div className="flex items-baseline justify-between gap-3">
               <Kicker>Today</Kicker>
-              <span className="text-[11px] text-ink-d3 font-semibold">vs last time on each machine</span>
+              <span className="text-[12px] text-ink-d3 font-medium">vs last time on each machine</span>
             </div>
             <ol className="flex flex-col">
               {lines.map((l) => (
@@ -763,7 +767,7 @@ export function WrapUpScreen({
             {byRegion.length > 0 && (
               <div className="pt-2 border-t border-div-d">
                 <div className="flex items-baseline justify-between mb-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-ink-d3">Where the work went</span>
+                  <span className="text-[12px] font-semibold text-ink-d3">Where the work went</span>
                   <span className="font-mono text-[12px] text-ink-d2">{Math.round(tonnage).toLocaleString()} lb moved</span>
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -896,7 +900,7 @@ export function WrapUpScreen({
                   <span className="text-[14px] font-bold text-ink-d1">You started a note during the session and didn't save it</span>
                 </div>
                 <textarea
-                  className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[14px] text-ink-d1 resize-none outline-none focus:border-(--eq-focus-ring) transition-colors"
+                  className="w-full bg-(--well) border border-input shadow-(--elev-0) rounded-[10px] p-2.5 px-3 min-h-16 text-[14px] text-ink-d1 resize-none outline-none focus:border-(--eq-focus-ring) transition-colors"
                   value={draftText}
                   onChange={(e) => setDraftText(e.target.value)}
                   aria-label="Unsaved note"
@@ -962,7 +966,7 @@ export function WrapUpScreen({
             </div>
 
             <textarea
-              className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[14px] text-ink-d1 placeholder:text-ink-d3 placeholder:italic resize-none outline-none focus:border-(--eq-focus-ring) transition-colors"
+              className="w-full bg-(--well) border border-input shadow-(--elev-0) rounded-[10px] p-2.5 px-3 min-h-16 text-[14px] text-ink-d1 placeholder:text-ink-d3 placeholder:italic resize-none outline-none focus:border-(--eq-focus-ring) transition-colors"
               placeholder={`Profile note — anything for ${clientFirstName(client)}'s record. It files when you leave this screen.`}
               value={notes}
               onChange={(e) => {
@@ -992,10 +996,10 @@ export function WrapUpScreen({
               )}
               {importance !== "standard" && (
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-[11px] text-ink-d3 uppercase tracking-wider font-bold">Matters until (optional)</span>
+                  <span className="text-[14px] font-bold text-ink-d2">Matters until (optional)</span>
                   <input
                     type="date"
-                    className="w-full min-h-11 bg-bg-dark-3 border border-div-d rounded-[10px] px-3 text-[14px] text-ink-d1 outline-none focus:border-(--eq-focus-ring) transition-colors"
+                    className="w-full min-h-11 bg-(--well) border border-input shadow-(--elev-0) rounded-[10px] px-3 text-[14px] text-ink-d1 outline-none focus:border-(--eq-focus-ring) transition-colors"
                     value={effectiveUntil}
                     min={todayKey}
                     aria-label="Matters until"
@@ -1026,13 +1030,11 @@ export function WrapUpScreen({
                   type="button"
                   onClick={() => setShowRenewal(true)}
                   className={`min-h-11 rounded-xl border px-4 py-2 text-[14px] font-bold hover:opacity-90 active:translate-y-px active:shadow-(--press) flex items-center justify-center gap-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring) ${
-                    renewalDue && !renewalLogged
-                      ? "border-(--eq-hero)/50 bg-(--eq-hero-fill) text-ink-d1"
-                      : "border-input bg-(--raised) text-ink-d1"
-                  } ${
                     // A tint lifts without the top light; the raised door
                     // takes the lift and the top light.
-                    renewalDue && !renewalLogged ? "shadow-(--elev-1)" : "shadow-(--raised-lift)"
+                    renewalDue && !renewalLogged
+                      ? "border-(--eq-hero)/50 bg-(--eq-hero-fill) text-ink-d1 shadow-(--elev-1)"
+                      : "border-input bg-(--raised) text-ink-d1 shadow-(--raised-lift)"
                   }`}
                 >
                   <MessageSquareText className={`w-4 h-4 shrink-0 ${renewalDue && !renewalLogged ? "text-(--eq-hero-text)" : "text-(--eq-live)"}`} />
@@ -1111,8 +1113,8 @@ export function WrapUpScreen({
               { label: "Lifetime volume", value: `${fmtBig(lifetime.volume)} lb` },
               { label: "Lifetime reps", value: fmtBig(lifetime.reps) },
             ].map((t) => (
-              <div key={t.label} className="rounded-xl border border-div-d bg-bg-dark-2 px-3 py-2">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-ink-d3">{t.label}</div>
+              <div key={t.label} className="rounded-xl border border-(--edge) bg-clip-padding bg-bg-dark-2 shadow-(--panel-lift) px-3 py-2">
+                <div className="text-[12px] font-semibold text-ink-d3">{t.label}</div>
                 <div className="font-mono text-[14px] font-bold text-ink-d2">{t.value}</div>
               </div>
             ))}

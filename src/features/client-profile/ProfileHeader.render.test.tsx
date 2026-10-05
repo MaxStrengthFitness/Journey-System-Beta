@@ -252,6 +252,10 @@ describe("ProfileHeader's running-session menu", () => {
     expect(tc).toEqual(expect.arrayContaining(["font-display", "italic", "uppercase", "font-extrabold"]));
     expect(tc).toEqual(expect.arrayContaining(["shadow-(--go-lift)", "active:translate-y-px", "active:shadow-(--press)", "hover:bg-amber-500"]));
     expect(tc.some((k) => /^shadow-\[/.test(k)), "no raw shadow").toBe(false);
+    // Navy words on the amber, never white (2.1:1); the initials too.
+    expect(tc).toContain("text-cta-foreground");
+    expect(tc).not.toContain("text-white");
+    expect(trigger.innerHTML).not.toMatch(/text-white/);
     expect(tc.some((k) => k === "transition-all" || k === "transition-shadow" || k === "transition-colors"), "only the fill and the move transition").toBe(false);
   });
 
@@ -371,7 +375,9 @@ describe("ProfileHeader's look (type and depth, phase 7)", () => {
     expect(tools).toHaveLength(3);
     for (const t of tools) {
       const tc = classes(t);
-      expect(tc).toEqual(expect.arrayContaining(["h-10", "text-[14px]", "font-semibold", "text-ink-d2", "active:shadow-(--press)"]));
+      // 12 under 768px (the iPad mini upright, where 14 pushed the renewal
+      // line onto a second row), 14 from md, 12 again in the one-band xl.
+      expect(tc).toEqual(expect.arrayContaining(["h-10", "text-[12px]", "md:text-[14px]", "xl:text-[12px]", "font-semibold", "text-ink-d2", "active:shadow-(--press)"]));
       expect(tc).not.toContain("transition-all");
     }
   });

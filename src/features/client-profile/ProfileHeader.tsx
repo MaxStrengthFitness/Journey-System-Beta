@@ -348,7 +348,7 @@ function SessionsTile({
           when the cell is too narrow (the iPad mini in portrait). With no
           fill on the cells any more, one long line would be drawn over the
           next cell's words instead of hidden under its fill. */}
-      <span className="flex flex-wrap gap-x-1 gap-y-1 text-[12px] font-medium leading-none text-slate-500 dark:text-slate-400">
+      <span className="flex flex-wrap gap-x-1 gap-y-0.5 text-[12px] font-medium leading-none text-slate-500 dark:text-slate-400">
         <span className="whitespace-nowrap">
           <span className="font-bold text-slate-700 dark:text-slate-200 tabular-nums" data-testid="sessions-remaining">
             {remaining === null ? "\u2014" : remaining}
@@ -469,7 +469,7 @@ export function ProfileHeader({
   // px-2.5 rather than 3: the bigger words would otherwise widen the group by
   // 15px and take it from the name and the "Client since" line beside it.
   const toolBtn =
-    "inline-flex items-center justify-center gap-1.5 h-10 min-w-10 px-2.5 text-[14px] xl:text-[12px] font-semibold text-ink-d2 hover:text-foreground hover:bg-slate-50 dark:hover:bg-slate-700 active:shadow-(--press) transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+    "inline-flex items-center justify-center gap-1.5 h-10 min-w-10 px-2.5 text-[12px] md:text-[14px] xl:text-[12px] font-semibold text-ink-d2 hover:text-foreground hover:bg-slate-50 dark:hover:bg-slate-700 active:shadow-(--press) transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
     <header
@@ -651,11 +651,14 @@ export function ProfileHeader({
                 white top light of --go-lift instead of a 30px amber blur, a
                 press down a pixel into an inset shadow, and the fill
                 restated on hover (an iPad keeps hover after a tap). Only the
-                fill and the move transition, never the shadow. */}
-            <DropdownMenuTrigger className="inline-flex items-center gap-2 h-12 px-4 sm:px-5 rounded-2xl bg-amber-500 hover:bg-amber-500 text-white font-display italic uppercase font-extrabold tracking-[0.04em] text-[14px] sm:text-[17px] shadow-(--go-lift) active:translate-y-px active:shadow-(--press) transition-[background-color,transform]">
+                fill and the move transition, never the shadow. Navy words on
+                the amber, as on every orange (the Navy Frame: no white words
+                on orange; white was 2.1:1, navy is 8.5:1; review fix, Oct 5
+                2026). */}
+            <DropdownMenuTrigger className="inline-flex items-center gap-2 h-12 px-4 sm:px-5 rounded-2xl bg-amber-500 hover:bg-amber-500 text-cta-foreground font-display italic uppercase font-extrabold tracking-[0.04em] text-[14px] sm:text-[17px] shadow-(--go-lift) active:translate-y-px active:shadow-(--press) transition-[background-color,transform]">
               <Clock className="w-4 h-4 animate-pulse" />
               <span className="hidden sm:inline">In progress</span>
-              <span className="text-white/80 text-xs not-italic font-sans font-bold">({activeInProgressSession.trainerInitials})</span>
+              <span className="text-cta-foreground text-xs not-italic font-sans font-bold">({activeInProgressSession.trainerInitials})</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2 bg-card border-slate-200 dark:border-slate-800">
               {/* The menu's words in their own capitalisation (AJ's answer

@@ -53,7 +53,7 @@ afterEach(() => {
 });
 
 const saveButton = (el: HTMLElement) =>
-  [...el.querySelectorAll("button")].find((b) => b.textContent?.includes("Create Temporary Profile"))! as HTMLButtonElement;
+  [...el.querySelectorAll("button")].find((b) => b.textContent?.includes("Create temporary profile"))! as HTMLButtonElement;
 
 describe("CreateClientModal", () => {
   it("starts the home studio on this iPad's studio and saves only what was answered", async () => {
@@ -73,8 +73,8 @@ describe("CreateClientModal", () => {
       [...s.options].some((o) => o.value === "westlake"),
     )!;
     expect(studioSelect.value).toBe("westlake");
-    expect(el.textContent).toContain("Home Studio");
-    expect(el.textContent).not.toContain("Home Studio (Optional)");
+    expect(el.textContent).toContain("Home studio");
+    expect(el.textContent).not.toContain("Home studio (optional)");
 
     const save = saveButton(el);
     expect(save.disabled).toBe(false);

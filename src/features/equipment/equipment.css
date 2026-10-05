@@ -44,7 +44,7 @@
 }
 .eq-summary__count b {
   color: var(--eq-hero-text);
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .eq-summary__regions {
@@ -55,12 +55,10 @@
   color: var(--eq-ink-muted);
   font-size: 12px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 .eq-summary__region b {
   color: var(--eq-ink-2);
-  font-weight: 900;
+  font-weight: 800;
   font-size: 13px;
 }
 .eq-summary__dot {
@@ -188,10 +186,10 @@
   padding: 7px 14px;
   background: var(--eq-surface-2);
   border-bottom: 1px solid var(--eq-border);
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 
@@ -234,10 +232,12 @@
 .eq-item__name {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
+  /* A machine's name as it is written, as the session's Now Bar says it
+     (type and depth review, Oct 5 2026; it was 13px capitals). */
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink);
   /* Names are never truncated (CLAUDE.md) — a long one wraps. */
   overflow-wrap: anywhere;
@@ -285,7 +285,7 @@
   border: 1px solid var(--eq-border);
   background: var(--eq-surface-2);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.01em;
   color: var(--eq-ink-muted);
   font-variant-numeric: tabular-nums;
@@ -329,8 +329,8 @@
   border-color: var(--eq-go);
 }
 .eq-note-dot__count {
-  font-size: 10px;
-  font-weight: 900;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 /* ---------- Detail pane --------------------------------------------- */
@@ -341,22 +341,28 @@
   gap: 10px;
   margin-bottom: 14px;
 }
+/* "Machines" with its chevron, shown under 1024px (every portrait iPad): a
+   raised button on its 3:1 edge, 40px tall, in the button voice (type and
+   depth review, Oct 5 2026; it was 36px on the hairline in 12px capitals). */
 .eq-back {
   display: none;
   align-items: center;
   gap: 4px;
-  height: 36px;
-  padding: 0 10px 0 6px;
-  border-radius: 10px;
-  border: 1px solid var(--eq-border);
-  background: var(--eq-surface);
+  min-height: 40px;
+  padding: 0 12px 0 8px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
   color: var(--eq-ink-2);
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
 }
+.eq-back:active { transform: translateY(1px); box-shadow: var(--eq-press); }
+.eq-back:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
 @media (max-width: 1023px) { .eq-back { display: inline-flex; } }
 
 .eq-detail__title {
@@ -386,14 +392,16 @@
   border-radius: 999px;
   border: 1px solid var(--eq-border-strong);
   background: var(--eq-surface-2);
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 .eq-chip--use { color: var(--eq-ok); border-color: var(--eq-ok); background: var(--eq-ok-fill); }
-.eq-chip--idle { color: var(--eq-ink-faint); }
+/* "Not set up": the chip's own muted words at 12px (the faint ink was
+   3.2:1); its word says it, not a paler grey. */
+.eq-chip--idle { color: var(--eq-ink-muted); }
 
 /* ---------- Cards ---------------------------------------------------- */
 
@@ -502,16 +510,16 @@
 }
 .eq-rx__label {
   display: block;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
   margin-bottom: 3px;
 }
 .eq-rx__value {
   font-size: 26px;
-  font-weight: 900;
+  font-weight: 800;
   line-height: 1;
   color: var(--eq-ink);
   letter-spacing: -0.02em;
@@ -525,7 +533,7 @@
 .eq-rx__value--empty { color: var(--eq-ink-faint); font-size: 20px; }
 .eq-rx__delta {
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 800;
   color: var(--eq-ok);
 }
 .eq-rx__delta--down { color: var(--eq-warn); }
@@ -561,7 +569,7 @@
 .eq-use__value {
   margin: 0;
   font-size: 17px;
-  font-weight: 900;
+  font-weight: 800;
   line-height: 1.15;
   letter-spacing: -0.01em;
   color: var(--eq-ink);
@@ -592,11 +600,11 @@
   overflow-wrap: anywhere;
 }
 .eq-use__partial {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--eq-ink-faint);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--eq-ink-muted);
   white-space: nowrap;
 }
 .eq-use__never {
@@ -632,7 +640,7 @@
   font-variant-numeric: tabular-nums;
 }
 .eq-prog__tip span { color: var(--eq-ink-muted); }
-.eq-prog__tip b { font-size: 15px; font-weight: 900; color: var(--eq-live-text); }
+.eq-prog__tip b { font-size: 15px; font-weight: 800; color: var(--eq-live-text); }
 
 /* ---------- Weight steppers ------------------------------------------ */
 
@@ -677,11 +685,13 @@
   min-width: 0;
   height: 44px;
   border-radius: 10px;
-  border: 1px solid var(--eq-border);
-  background: var(--eq-surface);
+  /* A field sinks inside its 3:1 edge (type and depth, rule 2). */
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
   color: var(--eq-ink);
   font-size: 22px;
-  font-weight: 900;
+  font-weight: 800;
   text-align: center;
   letter-spacing: -0.02em;
 }
@@ -698,10 +708,10 @@
 .eq-field { min-width: 0; }
 .eq-field__label {
   display: block;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
   margin-bottom: 4px;
 }
@@ -711,8 +721,10 @@
   height: 46px;
   padding: 0 11px;
   border-radius: 10px;
-  border: 1px solid var(--eq-border);
+  /* A field sinks inside its 3:1 edge (type and depth, rule 2). */
+  border: 1px solid var(--eq-border-strong);
   background: var(--eq-bg);
+  box-shadow: var(--eq-elev-0);
   color: var(--eq-ink);
   font-size: 17px;
   font-weight: 800;
@@ -747,7 +759,7 @@
   background: var(--eq-bg);
   border: 1px solid var(--eq-border);
 }
-.eq-field__read b { font-size: 18px; font-weight: 900; color: var(--eq-ink); }
+.eq-field__read b { font-size: 18px; font-weight: 800; color: var(--eq-ink); }
 .eq-field__read i { font-style: italic; color: var(--eq-ink-faint); font-weight: 600; font-size: 13px; }
 
 .eq-reason {
@@ -757,10 +769,10 @@
 }
 .eq-reason__label {
   display: block;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-hero-text);
   margin-bottom: 5px;
 }
@@ -799,10 +811,10 @@
 }
 .eq-guide__group + .eq-guide__group { margin-top: 14px; }
 .eq-guide__heading {
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
   margin-bottom: 6px;
 }
@@ -883,9 +895,7 @@
 }
 .eq-note__flag {
   color: var(--eq-hero-text);
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-weight: 700;
 }
 .eq-note__del {
   margin-left: auto;
@@ -904,8 +914,9 @@
   min-height: 62px;
   padding: 10px 11px;
   border-radius: 10px;
-  border: 1px solid var(--eq-border);
+  border: 1px solid var(--eq-border-strong);
   background: var(--eq-bg);
+  box-shadow: var(--eq-elev-0);
   color: var(--eq-ink);
   font-size: 14px;
   resize: vertical;
@@ -966,9 +977,9 @@
 }
 .eq-empty__title {
   font-size: 14px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 .eq-empty__hint { font-size: 13px; max-width: 340px; line-height: 1.5; }
@@ -1078,10 +1089,10 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-alert);
   margin-bottom: 6px;
 }
@@ -1097,10 +1108,10 @@
   display: block;
   margin-top: 2px;
   font-style: normal;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 
@@ -1117,10 +1128,10 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-live-text);
   margin-bottom: 4px;
 }
@@ -1178,7 +1189,7 @@
   line-height: 1.3;
   color: var(--eq-ink-2);
 }
-.eq-suggest__text b { color: var(--eq-live-text); font-weight: 900; }
+.eq-suggest__text b { color: var(--eq-live-text); font-weight: 800; }
 .eq-suggest__use {
   min-height: 40px;
   padding: 0 12px;
@@ -1220,10 +1231,10 @@
 .eq-watch__sev {
   padding: 1px 6px;
   border-radius: 6px;
-  font-size: 10.5px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-live-text);
   background: var(--eq-live-fill);
 }
@@ -1232,10 +1243,10 @@
 .eq-watch__setup { margin: 0; font-size: 12.5px; font-weight: 800; color: var(--eq-ink); }
 .eq-watch__setup span {
   margin-right: 4px;
-  font-size: 10.5px;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 .eq-watch__text { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.4; color: var(--eq-ink-2); }
@@ -1248,8 +1259,8 @@
   gap: 4px;
   padding: 1px 6px;
   border-radius: 6px;
-  font-size: 10.5px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--eq-live-text);
   background: var(--eq-live-fill);
   white-space: nowrap;
@@ -1273,10 +1284,10 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 .eq-floornote__text,

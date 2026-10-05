@@ -37,21 +37,11 @@
    only: the composer and the To-file tray are the same components the
    session sheet uses, and keep their own sizes there. The shared Loudness
    control keeps its own (it is one control everywhere). */
-.nx-notes .nc-kicker {
-  font-size: 11px;
-}
 .nx-notes .nc-chip {
   font-size: 14px;
 }
 .nx-notes .nc-chip--small {
   font-size: 12px;
-}
-.nx-notes .nc-btn {
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: none;
-  white-space: normal;
 }
 .nx-notes .nc-sweep__title,
 .nx-notes .nc-sweep__quote,

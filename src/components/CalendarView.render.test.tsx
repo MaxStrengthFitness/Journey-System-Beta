@@ -108,7 +108,7 @@ describe("CalendarView — Refresh asks Mindbody for the days on screen", () => 
     const pullFromMindbody = vi.fn(() => Promise.resolve());
     mount(controls({ pullFromMindbody }));
     const weekButton = [...host!.querySelectorAll<HTMLButtonElement>(".cal-seg__btn")].find(
-      (b) => b.textContent === "week",
+      (b) => b.textContent === "Week",
     )!;
     act(() => weekButton.click());
 

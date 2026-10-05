@@ -216,7 +216,13 @@ export function Peek({ entry, sessionNumber, timeText = null, extras, anchor, on
               {"Open profile"}
             </button>
             {primaryShown && primary && (
-              <button type="button" className="hp-btn" data-primary="true" onClick={() => runPrimary(id)}>
+              <button
+                type="button"
+                className="hp-btn"
+                data-primary="true"
+                data-go={primary.kind === "start" ? "true" : undefined}
+                onClick={() => runPrimary(id)}
+              >
                 {primary.kind === "edit" ? <Pencil size={18} aria-hidden /> : primary.kind === "log-past" ? <History size={18} aria-hidden /> : <Play size={18} aria-hidden />}
                 {primary.label}
               </button>

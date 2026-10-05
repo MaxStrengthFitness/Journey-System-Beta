@@ -3661,9 +3661,8 @@ export function WorkoutTrackerView({
                                   className={cn(
                                     "h-10 px-3 rounded-xl text-xs font-bold border transition-colors active:translate-y-px active:shadow-(--press)",
                                     choice === opt
-                                      ? "bg-primary text-primary-foreground border-primary"
+                                      ? "bg-primary text-primary-foreground border-primary shadow-(--solid-lift)"
                                       : "border-input bg-(--raised) text-foreground shadow-(--raised-lift)",
-                                    choice === opt && "shadow-(--solid-lift)",
                                   )}
                                 >
                                   {OUTCOME_LABEL[opt]}
@@ -3972,7 +3971,7 @@ export function WorkoutTrackerView({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsShowingAssessment(false)}
-              className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm"
+              className="absolute inset-0 bg-(--scrim) backdrop-blur-sm"
             />
             <motion.div
               initial={{ x: "100%" }}

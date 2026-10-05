@@ -97,7 +97,7 @@
 .adm-fit-report__name {
   margin: 0;
   font-size: 20px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.01em;
   line-height: 1.15;
   text-transform: uppercase;
@@ -253,7 +253,7 @@
   min-width: 1.6em;
   margin-right: 8px;
   font-size: 16px;
-  font-weight: 900;
+  font-weight: 800;
   color: var(--adm-ink);
 }
 
@@ -323,6 +323,6 @@
 }
 
 .adm-fit-chip b {
-  font-weight: 900;
+  font-weight: 800;
   color: var(--adm-ink);
 }

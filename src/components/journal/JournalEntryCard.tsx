@@ -154,7 +154,7 @@ export function JournalEntryCard({
         <div className="flex flex-wrap items-center gap-1.5 min-w-0">
           <span
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-black uppercase tracking-wider",
+              "inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[12px] font-bold",
               visual.chip,
             )}
           >
@@ -171,13 +171,13 @@ export function JournalEntryCard({
           )}
 
           {entry.kind === "life" && entry.category && (
-            <span className={cn("rounded-lg border px-2 py-1 text-[10px] font-black uppercase tracking-wider", visual.chip)}>
+            <span className={cn("rounded-lg border px-2 py-1 text-[12px] font-bold", visual.chip)}>
               {entry.category}
             </span>
           )}
 
           {machine && (
-            <span className="inline-flex items-center gap-1 rounded-lg border border-slate-300/60 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/70 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+            <span className="inline-flex items-center gap-1 rounded-lg border border-slate-300/60 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/70 px-2 py-1 text-[12px] font-bold text-slate-600 dark:text-slate-300">
               <Dumbbell className="h-3 w-3" />
               {machine.name}
             </span>
@@ -186,7 +186,7 @@ export function JournalEntryCard({
           {hasWindow && (
             <span
               className={cn(
-                "inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold uppercase tracking-wide",
+                "inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[12px] font-bold",
                 isExpired
                   ? "border-slate-300/60 dark:border-slate-700 text-slate-500"
                   : "border-violet-500/25 bg-violet-500/10 text-violet-600 dark:text-violet-300",
@@ -207,7 +207,7 @@ export function JournalEntryCard({
           {entry.importance !== "standard" && !isResolved && (
             <span
               className={cn(
-                "rounded-lg border px-2 py-1 text-[10px] font-black uppercase tracking-wider",
+                "rounded-lg border px-2 py-1 text-[12px] font-bold",
                 importance.chip,
               )}
             >
@@ -215,7 +215,7 @@ export function JournalEntryCard({
             </span>
           )}
           {isResolved && (
-            <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-300">
+            <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-[12px] font-bold text-emerald-600 dark:text-emerald-300">
               <Check className="h-3 w-3" /> Resolved
             </span>
           )}
@@ -292,7 +292,7 @@ export function JournalEntryCard({
 
       {/* Provenance, deliberately quiet. */}
       {!dense && (
-        <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
+        <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12px] font-medium text-muted-foreground">
           <span className="font-bold text-muted-foreground">
             {entry.authorInitials}
           </span>

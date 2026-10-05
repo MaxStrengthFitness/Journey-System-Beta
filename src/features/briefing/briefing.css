@@ -122,23 +122,27 @@
 }
 
 .br-section__hint {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--br-ink-muted);
 }
 
-/* Small caps label used above every field and inside every inset. */
+/* The label over every field and inside every inset, and the only head of
+   "Before you start" and "Since last time": the label voice, 14/700 in
+   ink-2, in its own capitalisation (type and depth review, Oct 5 2026; it
+   was 10px capitals beside "On the way in"'s 17/700 title). The warn, ok
+   and critical colours below still override it. */
 .br__label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--br-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--br-ink-2);
 }
 
 /* --- 1. client hero ---------------------------------------------------- */
@@ -170,10 +174,10 @@
 
 .br__meta {
   margin: 4px 0 0;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--br-ink-muted);
 }
 
@@ -221,10 +225,10 @@
   min-height: 40px;
   align-self: flex-start;
   font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--br-ink-muted);
   cursor: pointer;
 }
@@ -298,10 +302,10 @@
 }
 
 .br__focus-target {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--br-live-text);
 }
 
@@ -462,10 +466,10 @@
   border-radius: 999px;
   background: var(--br-live-fill);
   color: var(--br-live-text);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
   transition: background 120ms ease;
 }
@@ -804,13 +808,15 @@
   color: var(--eq-ink-muted);
 }
 
+/* "Latest · N" over a heads-up note: 12/700 in the muted ink (the faint
+   ink was 3.2:1, under the 4.5:1 text rule). */
 .br__notefoot-kicker {
   display: block;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--eq-ink-faint);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--eq-ink-muted);
 }
 
 .br__notefoot-hush {
@@ -946,10 +952,10 @@
   margin: 0;
 }
 .br-safe__fig figcaption {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--br-ink-muted);
 }
 /* The figure is drawn into a box of its own shape (the model is twice as
@@ -1078,13 +1084,14 @@
   background: var(--br-surface);
   color: var(--br-ink-2);
   font: inherit;
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
 }
 .br-cap__sides button[aria-pressed="true"] {
+  font-weight: 700;
   border-color: var(--br-live);
   background: var(--br-live-fill);
   color: var(--br-live-text);
@@ -1113,7 +1120,7 @@
   cursor: pointer;
 }
 .br-routine__what { font-size: 15px; font-weight: 600; }
-.br-routine__what b { font-weight: 900; }
+.br-routine__what b { font-weight: 800; }
 .br-routine__codes {
   grid-column: 1;
   font-size: 13px;
@@ -1137,10 +1144,10 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--br-live-text);
 }
 .br-routine__edit svg { transition: transform 150ms ease; }
@@ -1155,6 +1162,8 @@
 }
 .br-also .br__quote { margin: 0; font-size: 13px; }
 
+/* Now the same as .br__meta (it was its quiet version when that one
+   spoke in capitals). */
 .br__meta--quiet { text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 600; }
 
 /* --- 8. Start: a solid bar, never a button floating over the page ------ */

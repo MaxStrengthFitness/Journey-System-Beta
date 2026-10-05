@@ -505,6 +505,7 @@ describe("My Studio's type", () => {
     ["rjn__title", ".rjn__title"], // Just now
     ["rl-h__title", ".tc .rl-h__title"], // Team's open loops and vault
     ["rsy__title", ".rsy__head .rsy__title"], // Since you were in
+    ["jtd-h", ".jtd-h"], // the Journal's Today: Things to carry today, One line for yourself
   ];
   const LABELS = ["pl__list-head", "rl-h__title", "ms__door-h", "stw-team__head", "stw-away__head", "rbd-h", "rak-form__h", "stq__answered-h"];
 

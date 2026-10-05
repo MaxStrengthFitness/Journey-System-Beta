@@ -418,7 +418,7 @@ export function CalendarView({
               aria-pressed={viewMode === m}
               onClick={() => setViewMode(m)}
             >
-              {m}
+              {m === "month" ? "Month" : m === "week" ? "Week" : "Day"}
             </button>
           ))}
         </div>

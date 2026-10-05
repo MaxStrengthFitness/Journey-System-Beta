@@ -418,13 +418,15 @@
   border-top: 0;
 }
 
+/* The stat-label voice, 12/600 in its own capitalisation (type and depth
+   review, Oct 5 2026; it was 11px capitals, about fifty on Notes & Profile). */
 .cx-fact__label {
   margin: 0;
   color: var(--cx-ink-3);
-  font-size: var(--cx-fs-11);
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: var(--cx-fs-12);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .cx-fact__value {
@@ -537,11 +539,12 @@
   border-radius: 999px;
   background: var(--cx-surface-2);
   color: var(--cx-ink-2);
-  font-size: var(--cx-fs-11);
-  font-weight: 800;
+  /* The chip voice, 12/700 (it was 11px capitals). */
+  font-size: var(--cx-fs-12);
+  font-weight: 700;
   line-height: 1.2;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .cx-loud[data-tone="warn"] {

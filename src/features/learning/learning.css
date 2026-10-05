@@ -37,11 +37,13 @@
   box-shadow: var(--wk-elev-3), var(--wk-panel-highlight);
 }
 
+/* The ONE capitals style, the eyebrow over a page title: 12/700 at 0.08em
+   (type and depth; review fix, Oct 5 2026; it was 11/800 at 0.16em). */
 .lh__eyebrow {
   margin: 0;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--wk-hero-text);
 }
@@ -146,9 +148,9 @@
 
 .lh__kicker {
   margin: 0;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--wk-ink-muted);
 }

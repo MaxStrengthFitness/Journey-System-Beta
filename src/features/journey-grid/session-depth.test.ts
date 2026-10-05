@@ -448,9 +448,27 @@ describe("no black, no animated shadow, no kept hover", () => {
 /* ------------------------------------------------------------------ */
 
 describe("nothing tappable under 40px", () => {
+  it("the Today column's add is drawn at 28px and reaches 40 to its sides, but never past its own row (a tap there added a machine mid-session)", () => {
+    const body = merged(".jg-today__add");
+    expect(body.position).toBe("relative");
+    expect(body.height).toBe("28px");
+    const after = merged(".jg-today__add::after");
+    expect(after.position).toBe("absolute");
+    expect(after.inset, "never a bare negative inset").toBeUndefined();
+    expect(after.left).toBe("-6px");
+    expect(after.right).toBe("-6px");
+    for (const side of ["top", "bottom"]) {
+      expect(after[side], side).toBe("max(-6px, calc((28px - var(--jg-row-h)) / 2))");
+    }
+    // The area, row by row: 40px in a 44px row, the row itself when shorter.
+    const tall = (row: number) => 28 - 2 * Math.max(-6, (28 - row) / 2);
+    expect(tall(44)).toBe(40);
+    expect(tall(34)).toBe(34);
+    expect(tall(26)).toBeLessThanOrEqual(26 + 2);
+  });
+
   it.each([
     [".jg-clock__btn", 32, "-4px", "the clock's pause, inside its 40px pill"],
-    [".jg-today__add", 28, "-6px", "the Today column's add, in a row whose height the fit sets"],
   ])("%s is drawn at %ipx and reaches 40 through an ::after (%s)", (sel, drawn, inset) => {
     const body = merged(sel);
     expect(body.position).toBe("relative");
@@ -513,7 +531,7 @@ describe.each(BOTH)("the words and the edge on what they sit on, %s", (theme) =>
     expect(colour(theme, "--jg-raised").toLowerCase()).not.toBe("#ffffff");
   });
 
-  it.each([".jg-nb__expect", ".jg-stat__older", ".jg-group__count", ".jg-corner__count", ".jg-legend__gloss", ".jg-cell__skip-why", ".jg-today__skip-why"])(
+  it.each([".jg-nb__qbtn", ".jg-nb__expect", ".jg-stat__older", ".jg-group__count", ".jg-corner__count", ".jg-legend__gloss", ".jg-cell__skip-why", ".jg-today__skip-why"])(
     "%s reads in the muted ink, never the faint (3.2:1)",
     (sel) => {
       expect(merged(sel).color).toBe("var(--jg-ink-muted)");

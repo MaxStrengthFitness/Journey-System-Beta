@@ -156,14 +156,14 @@
   gap: 6px 14px;
   min-height: 22px;
   padding: 0 2px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.35;
   color: var(--psub-ink-faint);
 }
 .psub-context b {
   color: var(--psub-ink);
-  font-weight: 900;
+  font-weight: 800;
 }
 /* "2 with a clinical watch-out" — the one fact in the line that is a caution. */
 .psub-context__watch,

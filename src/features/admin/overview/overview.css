@@ -85,7 +85,7 @@
   padding: 0 8px;
   border-radius: 999px;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 800;
   background: var(--adm-surface-2);
   color: var(--adm-ink);
 }
@@ -365,7 +365,7 @@
 .adm-ov__day-big {
   margin-top: 4px;
   font-size: 26px;
-  font-weight: 900;
+  font-weight: 800;
   line-height: 1.1;
   color: var(--adm-ink);
 }
@@ -525,5 +525,5 @@
   color: var(--adm-ink);
 }
 .adm-ch__day-date { font-size: 11px; font-weight: 600; color: var(--adm-ink-muted); }
-.adm-ch__day-count { font-size: 20px; font-weight: 900; line-height: 1.1; color: var(--adm-ink-muted); }
+.adm-ch__day-count { font-size: 20px; font-weight: 800; line-height: 1.1; color: var(--adm-ink-muted); }
 .adm-ch__day--has .adm-ch__day-count { color: var(--adm-warn); }

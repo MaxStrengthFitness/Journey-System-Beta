@@ -178,10 +178,12 @@
   border-bottom: 1px solid var(--eq-border);
   background: var(--eq-surface-2);
   color: var(--eq-ink-2);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  /* The label voice in its own capitalisation (type and depth review,
+     Oct 5 2026; it was 12px capitals). */
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   text-align: left;
   cursor: pointer;
 }
@@ -325,10 +327,10 @@
 
 .ho-slot-title {
   margin: 0 0 6px;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 

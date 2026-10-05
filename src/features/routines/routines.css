@@ -44,13 +44,12 @@
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
-.rt-summary__count b { color: var(--eq-hero-text); font-weight: 900; }
+.rt-summary__count b { color: var(--eq-hero-text); font-weight: 800; }
 .rt-summary__warn {
   color: var(--eq-warn);
-  font-size: 11.5px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 .rt-summary__facts {
   display: flex;
@@ -60,10 +59,9 @@
   color: var(--eq-ink-muted);
   font-size: 12px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0;
 }
-.rt-summary__facts b { color: var(--eq-ink-2); font-weight: 900; font-size: 13px; }
+.rt-summary__facts b { color: var(--eq-ink-2); font-weight: 800; font-size: 13px; }
 .rt-summary__dot {
   width: 3px;
   height: 3px;
@@ -87,9 +85,9 @@
   background: var(--eq-hero-fill);
   color: var(--eq-hero-text);
   font-size: 12px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 /* Words, so the muted ink (5.2:1 on the well): the faint ink is for marks
@@ -218,15 +216,18 @@
 .rt-routine--today .rt-badge { background: var(--eq-go); color: var(--eq-go-on); }
 
 .rt-routine__title { flex: 1 1 140px; min-width: 0; }
+/* The routine panel's head: the panel-title voice, 17/700, in its own
+   capitalisation (type and depth review, Oct 5 2026; it was 14px/900
+   capitals). */
 .rt-routine__name {
   display: flex;
   align-items: center;
   gap: 8px;
   margin: 0;
-  font-size: 14px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: none;
   color: var(--eq-ink);
 }
 .rt-today {
@@ -237,18 +238,18 @@
   border-radius: 999px;
   background: var(--eq-go);
   color: var(--eq-go-on);
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 .rt-off {
   padding: 1px 7px;
   border-radius: 999px;
   border: 1px solid var(--eq-border-strong);
   color: var(--eq-ink-muted);
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 .rt-routine__sub {
   margin: 2px 0 0;
@@ -285,10 +286,10 @@
   align-items: center;
   gap: 6px;
   margin-right: 4px;
-  font-size: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 
@@ -319,7 +320,7 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
 
 .rt-row__n {
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 800;
   color: var(--eq-ink-faint);
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -340,10 +341,11 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
 .rt-row__name {
   flex: 0 1 auto;
   min-width: 0;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
+  /* Names as written, as the session's Now Bar says them (review fix). */
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink);
   /* Names are never truncated (CLAUDE.md) — a long one wraps. */
   overflow-wrap: anywhere;
@@ -355,8 +357,8 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
   border-radius: 5px;
   background: var(--eq-surface-2);
   border: 1px solid var(--eq-border);
-  font-size: 10.5px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--eq-ink-2);
   white-space: nowrap;
 }
@@ -372,10 +374,10 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
 }
 .rt-row__sub:empty { display: none; }
 .rt-row__region {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
 }
 .rt-row__note {
@@ -399,7 +401,7 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
   color: var(--eq-ink);
   white-space: nowrap;
 }
-.rt-row__load b { font-size: 15px; font-weight: 900; color: var(--eq-hero-text); }
+.rt-row__load b { font-size: 15px; font-weight: 800; color: var(--eq-hero-text); }
 .rt-row__load small { font-size: 11px; font-weight: 700; color: var(--eq-ink-muted); }
 .rt-row__start { font-size: 12px; font-weight: 700; color: var(--eq-ink-faint); }
 .rt-row__outcome {
@@ -428,10 +430,10 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
   color: var(--eq-ink-faint);
 }
 .rt-empty__title {
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--eq-ink-muted);
 }
 .rt-empty__hint { font-size: 12.5px; max-width: 320px; line-height: 1.5; }
@@ -483,7 +485,7 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
   color: var(--eq-ink-muted);
   white-space: nowrap;
 }
-.rt-changes__meta b { color: var(--eq-ink-2); font-weight: 900; }
+.rt-changes__meta b { color: var(--eq-ink-2); font-weight: 800; }
 .rt-changes__chev { color: var(--eq-ink-faint); transition: transform 150ms ease; }
 .rt-changes__chev--open { transform: rotate(180deg); }
 @media (prefers-reduced-motion: reduce) { .rt-changes__chev { transition: none; } }
@@ -523,7 +525,7 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
   color: var(--eq-ink-2);
 }
 .rt-change__what > b { color: var(--eq-ink); font-weight: 800; }
-.rt-change__diff i { font-style: normal; font-weight: 900; margin-right: 2px; }
+.rt-change__diff i { font-style: normal; font-weight: 800; margin-right: 2px; }
 .rt-change__diff--add i { color: var(--eq-ok); }
 .rt-change__diff--rm i { color: var(--eq-warn); }
 .rt-change__why { color: var(--eq-ink-muted); font-style: italic; }
@@ -539,7 +541,7 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
   border: 1px solid var(--eq-border);
   background: var(--eq-surface-2);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 800;
   color: var(--eq-ink-2);
 }
 .rt-changes__none {

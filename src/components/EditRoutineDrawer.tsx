@@ -626,17 +626,17 @@ export function EditRoutineDrawer({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-[11px] font-bold uppercase"
+                      className="text-[12px] font-bold"
                       onClick={() => setPendingSlotSwitch(null)}
                     >
                       Cancel
                     </Button>
                     <Button
                       size="sm"
-                      className="text-[11px] font-bold uppercase bg-amber-500 hover:bg-amber-600 text-white shadow-(--elev-1)"
+                      className="text-[12px] font-bold bg-amber-500 hover:bg-amber-500 text-cta-foreground shadow-(--elev-1)"
                       onClick={() => loadSlot(pendingSlotSwitch)}
                     >
-                      Discard &amp; Switch
+                      Discard and switch
                     </Button>
                   </div>
                 </div>
@@ -738,14 +738,14 @@ export function EditRoutineDrawer({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-[10px] font-bold uppercase"
+                      className="text-[12px] font-bold"
                       onClick={() => setPendingPreset(null)}
                     >
                       Cancel
                     </Button>
                     <Button
                       size="sm"
-                      className="text-[10px] font-bold uppercase bg-amber-500 hover:bg-amber-600 text-white shadow-(--elev-1)"
+                      className="text-[12px] font-bold bg-amber-500 hover:bg-amber-500 text-cta-foreground shadow-(--elev-1)"
                       onClick={() => applyPreset(pendingPreset)}
                     >
                       Replace

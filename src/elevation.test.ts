@@ -778,13 +778,18 @@ const UNDER_40_ON_PURPOSE: Record<string, string> = {
   "features/calendar/calendar.css .cal-refresh__btn .lm": "the loading mark drawn inside the 40px Refresh button",
   "features/front-door/front-door.css .fd-btn svg": "the icon inside a front-door button",
   "features/journey-grid/journey-grid.css .jg-clock__btn": "32px drawn inside the clock's 40px pill; its ::after reaches 40 to tap",
+  "features/admin/shell/ops.css .ops-tab--on::after": "the open tab's 3px underline, drawn inside the tab",
+  "features/admins/admins.css .hq-tab svg": "the icon inside an Admins tab",
 };
 
 describe("12. nothing tappable under 40px", () => {
-  it("no rule that names a button sets a height under 40px", () => {
+  it("no rule that names a button, a tab or a back button sets a height under 40px", () => {
+    // Widened on Oct 5 2026 (the review): the scan named "btn" only, and so
+    // missed the session pop-up's tabs (.hsd-tab, 32px) and the machine
+    // sheet's back button (.eq-back, 36px).
     const found: string[] = [];
     for (const r of ALL_RULES) {
-      const sel = r.selectors.find((s) => /btn\b/.test(s));
+      const sel = r.selectors.find((s) => /btn\b|(?:__|-)(?:tab|back)\b/.test(s));
       if (!sel) continue;
       for (const v of [...declared(r.body, "height"), ...declared(r.body, "min-height")]) {
         const n = px(v);
@@ -850,6 +855,7 @@ const RAISED_CONTROL = /(__|-)btn\b|-seg\b|__filter\b/;
 const SEGMENTS_IN_A_WELL: Record<string, string> = {
   'features/hub-opportunities/run-sheet.css .ho-seg-btn[aria-pressed="true"]': "the run sheet's switch: the well inside its 3:1 edge holds the segments (buttons-depth.test.ts)",
   'features/hub-schedule/day-header.css .hd-bar .hl-btn[aria-pressed="true"]': "the Hub's command bar: the well inside its 3:1 edge holds the layers (hub-depth.test.ts)",
+  'features/admin/admin.css .adm-seg[aria-selected="true"]': "Operations' segmented control: the well inside its 3:1 edge (.adm-segmented) holds the segments, the picked one raised with the soft ring",
 };
 
 type Edge = { where: string; edge: string; shadow: string };

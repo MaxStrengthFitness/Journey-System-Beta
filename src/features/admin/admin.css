@@ -475,7 +475,7 @@
 
 .adm-label__req {
   color: var(--adm-hero-text);
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .adm-hint {
@@ -628,8 +628,11 @@
   color: var(--adm-live-on);
   box-shadow: var(--adm-glow-live), var(--adm-solid-light);
 }
+/* A filled button restates its own fill under a pointer (an iPad keeps
+   :hover after a tap; review fix, Oct 5 2026: it changed to the live text
+   colour). */
 .adm-btn--primary:not(:disabled):hover {
-  background: var(--adm-live-text);
+  background: var(--adm-live);
 }
 
 /* RAISED (AJ's 2A): a fill a hair lighter than the card, a contact lift and
@@ -652,9 +655,11 @@
   background: transparent;
   color: var(--adm-ink-muted);
 }
-.adm-btn--ghost:not(:disabled):hover {
-  background: var(--adm-surface-3);
-  color: var(--adm-ink);
+@media (hover: hover) {
+  .adm-btn--ghost:not(:disabled):hover {
+    background: var(--adm-surface-3);
+    color: var(--adm-ink);
+  }
 }
 
 .adm-btn--danger {
@@ -663,9 +668,11 @@
   border-color: var(--adm-alert);
   box-shadow: var(--adm-elev-1);
 }
-.adm-btn--danger:not(:disabled):hover {
-  background: var(--adm-alert);
-  color: var(--adm-surface);
+@media (hover: hover) {
+  .adm-btn--danger:not(:disabled):hover {
+    background: var(--adm-alert);
+    color: var(--adm-surface);
+  }
 }
 
 /* The press: down a pixel into an inset shadow, never an animated one. A
@@ -799,7 +806,7 @@
 
 .adm-tile__value {
   font-size: 28px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.05;
   color: var(--adm-ink);
@@ -1005,7 +1012,7 @@
   align-items: center;
   gap: 5px;
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--adm-ok);
@@ -1725,14 +1732,18 @@
 }
 
 /* A segmented control for switching between two views of one screen. Distinct
-   from .adm-nav, which moves between screens — same app, different question. */
+   from .adm-nav, which moves between screens — same app, different question.
+   A well inside its 3:1 edge holding the segments, the picked one raised in
+   it with the soft ring, as the run sheet's switch (type and depth review,
+   Oct 5 2026; it was a hairline group with 11px capitals). */
 .adm-segmented {
   display: inline-flex;
   gap: 2px;
   padding: 3px;
-  border: 1px solid var(--adm-border);
+  border: 1px solid var(--adm-border-strong);
   border-radius: 12px;
   background: var(--adm-surface-2);
+  box-shadow: var(--adm-elev-0);
 }
 
 .adm-seg {
@@ -1745,11 +1756,11 @@
   border: 0;
   border-radius: 9px;
   background: transparent;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--adm-ink-muted);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--adm-ink-2);
   white-space: nowrap;
   cursor: pointer;
 }
@@ -1759,9 +1770,10 @@
 }
 
 .adm-seg[aria-selected="true"] {
-  background: var(--adm-surface);
+  background: var(--adm-raised);
   color: var(--adm-ink);
-  box-shadow: 0 1px 2px var(--adm-shadow);
+  font-weight: 700;
+  box-shadow: var(--adm-elev-1), inset 0 0 0 1px var(--adm-edge-control), inset 0 1px 0 var(--adm-highlight);
 }
 
 .adm-seg:focus-visible {

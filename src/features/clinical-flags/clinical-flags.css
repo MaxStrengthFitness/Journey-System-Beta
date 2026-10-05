@@ -7,7 +7,7 @@
 .cfl-block { display: flex; flex-direction: column; gap: 8px; }
 .cfl-kicker {
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--eq-ink-muted);
@@ -118,7 +118,7 @@
   border-radius: 999px;
   border: 1px solid currentColor;
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;

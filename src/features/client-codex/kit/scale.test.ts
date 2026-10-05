@@ -295,7 +295,8 @@ const CODEX_MOUNTED_FILES: readonly string[] = ["features/ford/FordDetailDialog.
  * selectors the Notes page never draws, and why.
  */
 const NOTES_CSS_NOT_ON_THE_PAGE: Readonly<Record<string, string>> = {
-  ".nc-tofile": "the dense entry card's To-file mark; the Notes page draws no JournalEntryCard",
+  // Empty since Oct 5 2026: the To-file mark (.nc-tofile), the one entry,
+  // came onto the scale at 12px with the session sheets' type pass.
 };
 
 /**

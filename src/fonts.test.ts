@@ -303,6 +303,16 @@ describe("the weight ladder's top", () => {
     expect(declared(INDEX_RULES, "--font-weight-black")).toEqual(["800"]);
   });
 
+  it("no stylesheet asks for 900 either: Geist is a variable face, so a rule that wrote 900 drew heavier than every class list (review fix, Oct 5 2026)", () => {
+    const found: string[] = [];
+    for (const rule of ALL_RULES) {
+      for (const w of declared(rule.body, "font-weight").flatMap((v) => weightsOf(v))) {
+        if (Number(w) >= 900) found.push(`${rule.file}: ${rule.prelude} asks for ${w}`);
+      }
+    }
+    expect(found).toEqual([]);
+  });
+
   it("the studio's name on the frame asks for 800", () => {
     const header = read("components/AppHeader.tsx");
     const name = header.match(/"(font-display italic[^"]*)"/);

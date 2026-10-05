@@ -24,8 +24,11 @@ import { cn } from "@/lib/utils"
  * - Every size is at least 40px tall (44 for lg), the icon sizes included:
  *   nothing tappable under 40px. xs and sm keep their small padding and
  *   type; only the tap area grew. button-sizes.test.ts holds all of this.
- * - The shadows are shadow-(--token), never shadow-[var(…),…], which
- *   tailwind-merge files as a shadow colour (index.css, --raised-lift).
+ * - The shadows are shadow-(--token), never an arbitrary shadow that
+ *   starts with var() inside square brackets, which tailwind-merge files as
+ *   a shadow colour (index.css, --raised-lift). Tailwind reads comments
+ *   too, so the bracket form is not written out here: it built an invalid
+ *   class and a CSS-optimiser warning.
  */
 const buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-bold whitespace-nowrap transition-[color,background-color,border-color,opacity,transform] outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",

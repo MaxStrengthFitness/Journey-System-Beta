@@ -333,7 +333,7 @@ function TimesPart<T>({ title, testId, part, groups }: { title: string; testId: 
               : null;
   return (
     <section className="flex flex-col gap-2" data-testid={testId}>
-      <h3 className="text-[12px] font-extrabold uppercase tracking-[0.12em] text-ink-d2 break-words">{title}</h3>
+      <h3 className="text-[17px] font-bold text-ink-d1 break-words">{title}</h3>
       {line && <p className="text-[14px] text-ink-d2">{line}</p>}
       {part.kind === "list" && (
         <>

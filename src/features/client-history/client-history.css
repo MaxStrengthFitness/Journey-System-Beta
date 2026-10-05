@@ -136,7 +136,7 @@
   font-weight: 700;
 }
 .hist-notice svg { color: var(--eq-warn); flex: 0 0 auto; }
-.hist-notice b { color: var(--eq-warn); font-weight: 900; }
+.hist-notice b { color: var(--eq-warn); font-weight: 800; }
 .hist-notice__away { margin-left: auto; }
 
 /* ---------- Stats ------------------------------------------------------ */
@@ -288,7 +288,7 @@
 .hist-year__meta,
 .hist-lmonth__count {
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--cal-ink-muted);
@@ -315,8 +315,6 @@
 @container hist (min-width: 860px)  { .hist-months { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @container hist (min-width: 1000px) {
   .hist-months { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
-  .hist-month { padding: 7px 6px 7px; gap: 5px; }
-  .hist-cell { font-size: 9.5px; }
   .hist-month__count b { font-size: 15px; }
 }
 
@@ -337,6 +335,12 @@
   background-clip: padding-box;
   box-shadow: var(--cal-elev-2), var(--cal-panel-highlight);
 }
+/* The tighter landscape card, after the base rule so it applies (it sat
+   above it and never did; review fix, Oct 5 2026). Its 9.5px day numbers
+   are not brought back with it: nothing under 11px. */
+@container hist (min-width: 1000px) {
+  .hist-month { padding: 7px 6px 7px; gap: 5px; }
+}
 .hist-month__head {
   display: flex;
   align-items: center;
@@ -354,7 +358,7 @@
   color: var(--cal-ink);
   font: inherit;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;
@@ -373,7 +377,7 @@
 }
 .hist-month__count b {
   font-size: 16px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--cal-ink);
 }
@@ -390,7 +394,7 @@
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   font-size: 9px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.06em;
   text-align: center;
   color: var(--cal-ink-faint);
@@ -438,13 +442,13 @@
 .hist-cell--visit {
   background: var(--hist-visit);
   color: var(--hist-visit-ink);
-  font-weight: 900;
+  font-weight: 800;
   cursor: pointer;
 }
 .hist-cell--double { background: var(--hist-visit-2); }
 .hist-cell--visit:hover { filter: brightness(1.08); }
 .hist-cell--visit:focus-visible { outline: 2px solid var(--cal-ink); outline-offset: -2px; }
-.hist-cell--today { box-shadow: inset 0 0 0 2px var(--hist-today); color: var(--cal-ink); font-weight: 900; }
+.hist-cell--today { box-shadow: inset 0 0 0 2px var(--hist-today); color: var(--cal-ink); font-weight: 800; }
 .hist-cell--visit.hist-cell--today { color: var(--hist-visit-ink); }
 /* A client event on this day (progress report, alert, birthday): a corner
    dot, clear of the number at every cell size. The event itself is named
@@ -471,7 +475,7 @@
   background: var(--cal-surface);
   box-shadow: inset 0 0 0 2px var(--hist-booked);
   color: var(--cal-live-text);
-  font-weight: 900;
+  font-weight: 800;
 }
 /* Today, booked later today: today's orange ring outside, the booking's
    blue just inside it. */
@@ -593,7 +597,7 @@
   font-weight: 700;
   color: var(--cal-ink-muted);
 }
-.hist-foot b { color: var(--cal-ink); font-weight: 900; }
+.hist-foot b { color: var(--cal-ink); font-weight: 800; }
 
 /* ---------- List ------------------------------------------------------- */
 
@@ -610,7 +614,7 @@
 }
 .hist-lmonth__year {
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.14em;
   color: var(--cal-ink-muted);
 }
@@ -662,7 +666,7 @@
 .hist-date { display: flex; flex-direction: column; align-items: center; line-height: 1; }
 .hist-date__dow {
   font-size: 9.5px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--cal-ink-muted);
@@ -670,7 +674,7 @@
 .hist-date__num {
   margin-top: 4px;
   font-size: 24px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: -0.03em;
   color: var(--cal-ink);
   font-variant-numeric: tabular-nums;
@@ -693,7 +697,7 @@
   background: var(--cal-live-fill);
   color: var(--cal-live-text);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.04em;
   line-height: 1;
 }
@@ -740,7 +744,7 @@
   border: 1px solid var(--cal-border);
   color: var(--cal-ink-muted);
   font-size: 9.5px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   line-height: 1.3;
@@ -773,7 +777,7 @@
   color: var(--cal-ink-muted);
   white-space: nowrap;
 }
-.hist-meta b { color: var(--cal-ink-2); font-weight: 900; }
+.hist-meta b { color: var(--cal-ink-2); font-weight: 800; }
 .hist-meta--star { color: var(--jg-q-star); }
 .hist-meta--kaizen { color: var(--jg-q-poor-text); }
 .hist-meta--up { color: var(--jg-delta-up); }
@@ -800,20 +804,20 @@
 }
 .hist-vol__label {
   font-size: 9px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--cal-ink-faint);
 }
 .hist-vol__num {
   font-size: 17px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--cal-ink);
   font-variant-numeric: tabular-nums;
 }
 .hist-vol__num small { font-size: 10px; font-weight: 800; color: var(--cal-ink-muted); margin-left: 2px; }
-.hist-vol__delta { font-size: 11px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.hist-vol__delta { font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .hist-vol__delta--up { color: var(--jg-delta-up); }
 .hist-vol__delta--down { color: var(--cal-ink-faint); }
 
@@ -840,7 +844,7 @@
 }
 .hist-break b {
   color: var(--cal-ink);
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -917,7 +921,7 @@
   border-bottom: 1px solid var(--cal-border);
 }
 .hsd-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--cal-ink-muted); }
-.hsd-chip b { font-weight: 900; color: var(--cal-ink); }
+.hsd-chip b { font-weight: 800; color: var(--cal-ink); }
 .hsd-chip.hist-q-label--max b,
 .hsd-chip.hist-q-label--poor b { color: inherit; }
 .hsd-chip--end { margin-left: auto; }
@@ -929,22 +933,25 @@
   overflow-x: auto;
   border-bottom: 1px solid var(--cal-border);
 }
+/* A day's sessions, one tab each: 40px to tap, on the 3:1 edge, in the tab
+   voice (14/600, the picked one 700; type and depth review, Oct 5 2026;
+   they were 32px hairline boxes in 11px capitals). */
 .hsd-tab {
   flex: 0 0 auto;
-  height: 32px;
+  min-height: 40px;
   padding: 0 12px;
   border-radius: 9px;
-  border: 1px solid var(--cal-border);
+  border: 1px solid var(--cal-border-strong);
   background: var(--cal-surface);
   color: var(--cal-ink-muted);
   font: inherit;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
 }
-.hsd-tab[aria-selected="true"] { border-color: var(--cal-live); background: var(--cal-live); color: var(--cal-live-on); }
+.hsd-tab[aria-selected="true"] { border-color: var(--cal-live); background: var(--cal-live); color: var(--cal-live-on); font-weight: 700; }
 
 .hsd-body {
   flex: 1;
@@ -966,7 +973,7 @@
   flex: 1;
   min-width: 0;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--cal-ink);
@@ -980,12 +987,12 @@
   background: var(--cal-surface);
   color: var(--cal-ink-muted);
   font-size: 9.5px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.08em;
 }
 .hsd-set__value { font-size: 13px; font-weight: 700; color: var(--cal-ink-2); }
-.hsd-set__value b { font-size: 15px; font-weight: 900; color: var(--cal-ink); }
-.hsd-set__quality { font-size: 10.5px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+.hsd-set__value b { font-size: 15px; font-weight: 800; color: var(--cal-ink); }
+.hsd-set__quality { font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
 .hsd-set__muted { color: var(--cal-ink-faint); font-style: italic; font-weight: 600; }
 
 .hsd-edit { display: flex; flex-direction: column; gap: 8px; }
@@ -999,7 +1006,7 @@
   color: var(--cal-ink-muted);
   font: inherit;
   font-size: 10.5px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.08em;
   cursor: pointer;
 }
@@ -1037,22 +1044,22 @@
   text-align: center;
   font: inherit;
   font-size: 20px;
-  font-weight: 900;
+  font-weight: 800;
 }
-.hsd-stepper span { font-size: 9.5px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cal-ink-muted); }
+.hsd-stepper span { font-size: 9.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cal-ink-muted); }
 .hsd-qbtns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
 /* 40px, the app's floor (it was 36; type and depth, phase 8). */
 .hsd-qbtn {
   min-height: 40px;
   border-radius: 8px;
-  border: 1px solid var(--cal-border);
+  border: 1px solid var(--cal-border-strong);
   background: var(--cal-surface);
   color: var(--cal-ink-muted);
   font: inherit;
-  font-size: 10.5px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
 }
 
@@ -1067,12 +1074,12 @@
   border: 1px solid var(--cal-border);
   background: var(--cal-bg);
 }
-.hsd-panel__title { font-size: 10.5px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cal-ink-muted); }
+.hsd-panel__title { font-size: 10.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cal-ink-muted); }
 .hsd-panel__text { font-size: 13px; line-height: 1.5; color: var(--cal-ink-2); white-space: pre-wrap; }
 .hsd-textarea { min-height: 120px; background: var(--cal-surface); color: var(--cal-ink); border-color: var(--cal-border); }
 .hsd-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 0; }
 .hsd-fact { min-width: 0; }
-.hsd-fact dt { font-size: 9.5px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cal-ink-muted); }
+.hsd-fact dt { font-size: 9.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cal-ink-muted); }
 .hsd-fact dd { margin: 2px 0 0; font-size: 13px; font-weight: 800; color: var(--cal-ink); text-transform: capitalize; }
 
 .hsd-foot {
@@ -1083,19 +1090,21 @@
   border-top: 1px solid var(--cal-border);
   background: var(--cal-surface-2);
 }
-.hsd-cancel { height: 48px; padding: 0 18px; border-radius: 12px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; font-size: 12px; }
+/* Log past session's Cancel and Save: the button voice, 14/700 (they were
+   12px capitals). Save restates its own fill under a pointer. */
+.hsd-cancel { height: 48px; padding: 0 18px; border-radius: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; font-size: 14px; }
 .hsd-save {
   height: 48px;
   padding: 0 26px;
   border-radius: 12px;
   background: var(--cal-live);
   color: var(--cal-live-on);
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 14px;
 }
-.hsd-save:hover { background: var(--cal-live-text); }
+.hsd-save:hover { background: var(--cal-live); }
 
 /* ── Editing a session that already happened (Sep 17 2026) ─────────────────
    Three states a set can be in while edit mode is open, and none of them may
@@ -1126,7 +1135,7 @@
   background: var(--cal-live-fill, transparent);
   color: var(--cal-live-text);
   font-size: 9.5px;
-  font-weight: 900;
+  font-weight: 800;
   font-style: normal;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1140,7 +1149,7 @@
 .hsd-set__tag--new {
   border-color: var(--cal-live);
   color: var(--cal-live-text);
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .hsd-set--gone { opacity: 0.55; }
@@ -1190,14 +1199,14 @@
   background: var(--cal-live);
   color: var(--cal-live-on);
   font-size: 11.5px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 .hsd-add__btn:focus-visible { outline: 2px solid var(--cal-live-text); outline-offset: 2px; }
 .hsd-add__count {
   font-size: 10.5px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--cal-live-text);
@@ -1257,7 +1266,7 @@
   background: var(--cal-surface);
   color: var(--cal-ink-muted);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -1277,7 +1286,7 @@
   border-radius: 999px;
   border: 1px solid currentColor;
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .lps-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 16px 18px; }
@@ -1307,11 +1316,11 @@
   background: var(--cal-live-fill);
   color: var(--cal-live-text);
   font-size: 11.5px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.lps-chip b { font-weight: 900; opacity: 0.75; }
+.lps-chip b { font-weight: 800; opacity: 0.75; }
 .lps-chip:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 2px; }
 
 .lps-cov { max-width: 22rem; }

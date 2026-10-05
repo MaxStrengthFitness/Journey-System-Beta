@@ -105,6 +105,11 @@
   --eq-popover:         var(--eq-surface);
   --eq-popover-rim:     var(--eq-edge);
   --eq-popover-light:   rgba(255, 255, 255, 0);
+  /* A raised control on the peek (review fix, Oct 5 2026): the page's own
+     fill and edge in light; in dark a step above the popover, its edge
+     moving with it (index.css, --popover-raised). */
+  --eq-popover-raised:  var(--eq-raised);
+  --eq-popover-edge:    var(--eq-border-strong);
   --eq-elev-0:          var(--elev-0);
   --eq-elev-1:          var(--elev-1);
   --eq-elev-2:          var(--elev-2);
@@ -181,6 +186,8 @@
   --eq-popover:         #22374b;
   --eq-popover-rim:     rgba(255, 255, 255, 0.055);
   --eq-popover-light:   rgba(255, 255, 255, 0.07);
+  --eq-popover-raised:  #283e54;
+  --eq-popover-edge:    #7d92a6;
   --eq-elev-0:          var(--elev-0);
   --eq-elev-1:          var(--elev-1);
   --eq-elev-2:          var(--elev-2);
@@ -238,6 +245,8 @@
     --eq-popover:         #22374b;
     --eq-popover-rim:     rgba(255, 255, 255, 0.055);
     --eq-popover-light:   rgba(255, 255, 255, 0.07);
+    --eq-popover-raised:  #283e54;
+    --eq-popover-edge:    #7d92a6;
     --eq-elev-0:          var(--elev-0);
     --eq-elev-1:          var(--elev-1);
     --eq-elev-2:          var(--elev-2);

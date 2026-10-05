@@ -158,7 +158,7 @@ export function AssignDialog({
                   key={d.days}
                   type="button"
                   aria-pressed={days === d.days}
-                  className={`min-h-9 rounded-full border px-3 text-[11px] font-bold uppercase tracking-wider ${
+                  className={`min-h-10 rounded-full border px-3 text-[12px] font-bold ${
                     days === d.days
                       ? "border-primary bg-primary/10"
                       : "border-border text-muted-foreground"

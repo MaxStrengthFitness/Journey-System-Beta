@@ -617,9 +617,10 @@
   align-items: center;
   gap: 0.375rem;
   margin: 0 0 0.25rem;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  /* The eyebrow: the ONE capitals style (type and depth review). */
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--wk-accent-text, var(--wk-ink-muted));
 }
@@ -1442,9 +1443,10 @@
   gap: 0.25rem;
   min-height: 40px;
   padding: 0 0.75rem;
-  border: 1px solid var(--wk-border);
-  border-radius: var(--wk-radius-pill);
-  background: var(--wk-surface-2);
+  border: 1px solid var(--wk-border-strong);
+  border-radius: 12px;
+  background: var(--wk-raised);
+  box-shadow: var(--wk-elev-1), inset 0 1px 0 var(--wk-highlight);
   color: var(--wk-ink-2);
   font: inherit;
   font-size: 14px;
@@ -1454,6 +1456,7 @@
   cursor: pointer;
 }
 .wk__studio-edit:hover { border-color: var(--wk-live); color: var(--wk-live-text); }
+.wk__studio-edit:active { transform: translateY(1px); box-shadow: var(--wk-press); }
 
 .wk__studio-by {
   margin: 0.625rem 0 0;

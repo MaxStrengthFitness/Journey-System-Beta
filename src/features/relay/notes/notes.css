@@ -564,7 +564,7 @@
   color: var(--st-ink);
   font: inherit;
   font-size: 17px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: -0.01em;
 }
 .ne__title:focus-visible { border-bottom-color: var(--st-live); box-shadow: 0 1px 0 var(--st-live); }
@@ -1160,7 +1160,7 @@
 .sv__title {
   margin: 0.625rem 0 0;
   font-size: 17px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: -0.01em;
   line-height: 1.25;
   overflow-wrap: anywhere;

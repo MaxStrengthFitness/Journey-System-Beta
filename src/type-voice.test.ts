@@ -181,7 +181,7 @@ const DISPLAY_SLANT: Record<string, string> = {
   "features/clinical-review/clinical-review.css .cr-generate": `${GO} (the Deep Dive's Generate)`,
   "features/client-directory/client-directory.css .cd-start": `${GO} (the Directory's Start)`,
   'features/hub-opportunities/run-sheet.css .ho-action[data-primary="true"]': `${GO} (the run sheet's primary)`,
-  'features/hub-schedule/peek.css .hp-btn[data-primary="true"]': `${GO} (the peek's primary)`,
+  'features/hub-schedule/peek.css .hp-btn[data-go="true"]': `${GO} (the peek's primary when it says Start session; its other labels keep the button voice)`,
   "features/front-door/front-door.css .fd-display": `${BRAND}: the front door's display line (Oct 3 2026)`,
 };
 

@@ -531,11 +531,13 @@
   flex-wrap: wrap;
 }
 
+/* The eyebrow: the ONE capitals style (type and depth review, Oct 5 2026;
+   it was 10.5/800 at 0.12em). */
 .ops-client__eyebrow {
   display: block;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--adm-ink-muted);
 }
@@ -646,9 +648,9 @@
 
 .ops-brief__eyebrow {
   display: block;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--adm-ink-muted);
 }

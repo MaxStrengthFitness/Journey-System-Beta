@@ -1460,10 +1460,10 @@ export function ClientProfileView({
               <div className="bg-(--eq-live-fill) border-2 border-(--eq-live)/30 rounded-3xl p-4 flex items-center gap-4 text-(--eq-live-text)">
                 <AlertCircle className="w-6 h-6 shrink-0" />
                 <div className="flex-1">
-                  <p className="text-xs font-bold uppercase tracking-tight">
-                    Profile Setup Needed
+                  <p className="text-[14px] font-bold">
+                    Profile setup needed
                   </p>
-                  <p className="text-[11px] font-bold uppercase tracking-widest mt-0.5">
+                  <p className="text-[14px] font-medium mt-0.5">
                     Set up their routine in Programming, and their details
                     in Notes &amp; Profile.
                   </p>
@@ -1771,16 +1771,16 @@ export function ClientProfileView({
                 <Button
                   variant="ghost"
                   onClick={() => setIsToggleReasonDialogOpen(false)}
-                  className="rounded-xl uppercase font-bold text-xs"
+                  className="rounded-xl"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleConfirmToggleB}
                   disabled={toggleBReason.trim().length < 3 || isSavingToggle}
-                  className="bg-primary text-primary-foreground hover:bg-primary rounded-xl uppercase font-bold text-xs shadow-md shadow-primary/15"
+                  className="bg-primary text-primary-foreground hover:bg-primary rounded-xl"
                 >
-                  {isSavingToggle ? "Saving..." : "Confirm Switch"}
+                  {isSavingToggle ? "Saving..." : "Confirm switch"}
                 </Button>
               </div>
             </DialogContent>
@@ -1915,7 +1915,7 @@ export function ClientProfileView({
         open={!!discardTarget}
         onOpenChange={(v) => !isDiscardingActiveSession && !v && setDiscardTarget(null)}
       >
-        <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
+        <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none">
           <div className="bg-card p-8 text-foreground space-y-3">
             <div
               className={cn(
@@ -1931,12 +1931,12 @@ export function ClientProfileView({
                 <Trash2 className="w-6 h-6" />
               )}
             </div>
-            <h3 className="text-2xl font-black tracking-tight">
+            <h3 className="text-[22px] font-extrabold tracking-[-0.015em]">
               {isDiscardingActiveSession
-                ? "Discarding Session..."
+                ? "Discarding session..."
                 : discardTarget && discardTarget.id !== activeInProgressSession?.id
-                  ? "Discard Unfinished Session?"
-                  : "Discard Active Session?"}
+                  ? "Discard unfinished session?"
+                  : "Discard active session?"}
             </h3>
             <p className="text-muted-foreground font-medium text-sm leading-relaxed">
               {isDiscardingActiveSession
@@ -1954,14 +1954,14 @@ export function ClientProfileView({
             <Button
               variant="outline"
               disabled={isDiscardingActiveSession}
-              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-50"
+              className="h-14 rounded-2xl"
               onClick={() => setDiscardTarget(null)}
             >
-              Keep Session
+              Keep session
             </Button>
             <Button
               disabled={isDiscardingActiveSession}
-              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-red-600 text-white shadow-lg shadow-red-200 dark:shadow-none hover:bg-red-700 disabled:opacity-80 flex items-center justify-center gap-2"
+              className="h-14 rounded-2xl bg-red-600 text-white shadow-(--elev-1) hover:bg-red-700 disabled:opacity-80 flex items-center justify-center gap-2"
               onClick={handleDiscardActiveSession}
             >
               {isDiscardingActiveSession ? (
@@ -1970,7 +1970,7 @@ export function ClientProfileView({
                   <span>Discarding...</span>
                 </>
               ) : (
-                "Discard Session"
+                "Discard session"
               )}
             </Button>
           </div>
@@ -2009,14 +2009,14 @@ export function ClientProfileView({
             <DialogTitle>
               Sessions before Journey
             </DialogTitle>
-            <DialogDescription className="text-xs uppercase tracking-widest text-primary font-bold">
+            <DialogDescription className="text-[14px] text-muted-foreground">
               What {client.firstName} did before this studio moved onto Journey.
             </DialogDescription>
           </DialogHeader>
           {/* Who said so — and, for anyone the rules will not let write this
               client, whose number it is to change. */}
           {recordedByLine(priorHistory) && (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[12px] text-muted-foreground">
               {recordedByLine(priorHistory)}
             </p>
           )}
@@ -2029,7 +2029,7 @@ export function ClientProfileView({
           )}
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="font-bold text-xs uppercase tracking-widest">
+              <Label className="text-[14px] font-bold text-ink-d2">
                 Sessions completed before Journey
               </Label>
               <Input
@@ -2038,25 +2038,25 @@ export function ClientProfileView({
                 value={sessionCountInput}
                 onChange={(e) => setSessionCountInput(e.target.value)}
                 disabled={!canEditPrior}
-                className="bg-slate-50 dark:bg-slate-800 border-border font-bold text-lg h-12 focus-visible:ring-ring disabled:opacity-100"
+                className="font-bold text-lg h-12 focus-visible:ring-ring disabled:opacity-100"
                 placeholder="0"
               />
               {priorReading.ok === false && priorReading.problem && (
-                <p className="text-[11px] font-bold text-rose-700 dark:text-rose-400">
+                <p className="text-[12px] font-bold text-rose-700 dark:text-rose-400">
                   {priorReading.problem}
                 </p>
               )}
               {/* The app adds its own count on top, so the trainer is never
                   asked for a total they would have to work out — and the
                   reconciler can no longer overwrite what they typed. */}
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[12px] text-muted-foreground">
                 Journey adds the sessions it has recorded itself. Leave this at 0
                 for a client who started here.
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label className="font-bold text-xs uppercase tracking-widest">
+              <Label className="text-[14px] font-bold text-ink-d2">
                 Where that number comes from
               </Label>
               <div className="flex flex-wrap gap-2">
@@ -2068,10 +2068,10 @@ export function ClientProfileView({
                     disabled={!canEditPrior}
                     aria-pressed={priorSource === s}
                     className={cn(
-                      "min-h-10 rounded-xl px-3 text-[11px] font-bold uppercase tracking-widest border transition-colors disabled:cursor-default",
+                      "min-h-10 rounded-xl px-3 text-[12px] font-bold border transition-colors disabled:cursor-default",
                       priorSource === s
                         ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300",
+                        : "border-input bg-(--raised) text-ink-d2",
                     )}
                   >
                     {PRIOR_SOURCE_LABEL[s]}
@@ -2081,7 +2081,7 @@ export function ClientProfileView({
             </div>
 
             <div className="space-y-2">
-              <Label className="font-bold text-xs uppercase tracking-widest">
+              <Label className="text-[14px] font-bold text-ink-d2">
                 Counted up to
               </Label>
               <Input
@@ -2089,22 +2089,22 @@ export function ClientProfileView({
                 value={priorThrough}
                 onChange={(e) => setPriorThrough(e.target.value)}
                 disabled={!canEditPrior}
-                className="bg-slate-50 dark:bg-slate-800 border-border font-bold h-12 focus-visible:ring-ring disabled:opacity-100"
+                className="font-bold h-12 focus-visible:ring-ring disabled:opacity-100"
               />
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[12px] text-muted-foreground">
                 Journey owns everything after this day.
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label className="font-bold text-xs uppercase tracking-widest">
+              <Label className="text-[14px] font-bold text-ink-d2">
                 Note <span className="text-muted-foreground">(optional)</span>
               </Label>
               <Input
                 value={priorNote}
                 onChange={(e) => setPriorNote(e.target.value)}
                 disabled={!canEditPrior}
-                className="bg-slate-50 dark:bg-slate-800 border-border h-12 focus-visible:ring-ring disabled:opacity-100"
+                className="h-12 focus-visible:ring-ring disabled:opacity-100"
                 // Read-only, a placeholder would pass for the note itself.
                 placeholder={canEditPrior ? "Counted from the FileMaker export" : undefined}
               />
@@ -2113,7 +2113,7 @@ export function ClientProfileView({
               <Button
                 variant="outline"
                 onClick={() => setIsEditingSessionCount(false)}
-                className="flex-1 h-11 border-border bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-bold uppercase tracking-widest text-[11px]"
+                className="flex-1 h-11 rounded-xl"
               >
                 {canEditPrior ? "Cancel" : "Close"}
               </Button>
@@ -2121,7 +2121,7 @@ export function ClientProfileView({
                 <Button
                   onClick={handleSaveSessionCount}
                   disabled={!priorCanSave}
-                  className="flex-2 h-11 bg-primary text-primary-foreground hover:bg-primary rounded-full font-bold uppercase tracking-widest text-[11px]"
+                  className="flex-2 h-11 bg-primary text-primary-foreground hover:bg-primary rounded-xl"
                 >
                   Save
                 </Button>
