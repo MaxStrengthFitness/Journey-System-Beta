@@ -36,10 +36,10 @@ export function isStandalone(win: Window = window): boolean {
   return (win.navigator as Navigator & { standalone?: boolean }).standalone === true;
 }
 
-/** What `100dvh` resolves to right now, measured on a probe; null where dvh is unknown. */
-function dvhNow(doc: Document): number | null {
+/** What `100<unit>` resolves to right now, measured on a probe; null where the unit is unknown. */
+function unitNow(doc: Document, unit: "dvh" | "lvh"): number | null {
   const probe = doc.createElement("div");
-  probe.style.cssText = "position:fixed;top:0;left:0;width:0;height:100dvh;visibility:hidden;pointer-events:none";
+  probe.style.cssText = `position:fixed;top:0;left:0;width:0;height:100${unit};visibility:hidden;pointer-events:none`;
   doc.body.appendChild(probe);
   const h = probe.getBoundingClientRect().height;
   probe.remove();
@@ -49,7 +49,20 @@ function dvhNow(doc: Document): number | null {
 /** The heights iPadOS reports right now. Exported for the Settings line. */
 export function reportedHeights(win: Window = window): { inner: number; client: number; dvh: number | null } {
   const doc = win.document;
-  return { inner: win.innerHeight, client: doc.documentElement.clientHeight, dvh: dvhNow(doc) };
+  return { inner: win.innerHeight, client: doc.documentElement.clientHeight, dvh: unitNow(doc, "dvh") };
+}
+
+/**
+ * Two more numbers for the Settings line only (Oct 5 2026), never for the
+ * shell: what `100lvh` resolves to and the screen's own height in the way it
+ * is held. Other web apps on iOS 26 found every height above short by the
+ * status bar and only `100lvh` whole; a photo of the line says whether that
+ * is so on our iPads before the shell trusts it.
+ */
+export function moreHeights(win: Window = window): { lvh: number | null; screen: number | null } {
+  const s = win.screen;
+  const held = s ? (win.innerWidth > win.innerHeight ? Math.min(s.width, s.height) : Math.max(s.width, s.height)) : 0;
+  return { lvh: unitNow(win.document, "lvh"), screen: held > 0 ? held : null };
 }
 
 let watching = false;

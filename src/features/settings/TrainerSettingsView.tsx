@@ -34,7 +34,7 @@
  * where it is read.
  */
 
-import { isStandalone, reportedHeights, visibleHeight } from "../home-screen/app-height";
+import { isStandalone, moreHeights, reportedHeights, visibleHeight } from "../home-screen/app-height";
 import {
   Bug,
   ChevronRight,
@@ -158,12 +158,15 @@ export function TrainerSettingsView({
     .filter((name): name is string => !!name);
 
   // In the Home Screen app only: the heights iPadOS reports, so a photo of
-  // this screen says why the bottom bar sits where it does (Oct 3 2026).
+  // this screen says why the bottom bar sits where it does (Oct 3 2026;
+  // lvh and the screen's height since Oct 5 2026).
   const screenLine = useMemo(() => {
     if (typeof window === "undefined" || !isStandalone()) return null;
     const r = reportedHeights();
+    const m = moreHeights();
     const shell = visibleHeight([r.inner, r.client, r.dvh]);
-    return `Home Screen app · window ${r.inner} · page ${r.client} · dvh ${r.dvh === null ? "?" : Math.round(r.dvh)} · app ${shell ?? "?"}`;
+    const n = (h: number | null) => (h === null ? "?" : Math.round(h));
+    return `Home Screen app · window ${r.inner} · page ${r.client} · dvh ${n(r.dvh)} · lvh ${n(m.lvh)} · screen ${n(m.screen)} · app ${shell ?? "?"}`;
   }, []);
 
   // Team's own rule for who works here, so this count and My Studio -> Team

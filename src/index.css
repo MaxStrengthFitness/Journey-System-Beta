@@ -944,7 +944,17 @@
    the strip. Under the shell the page's ground is the bar's colour, so if
    iPadOS does draw a sliver below it reads as the bar, not a gap. The bar
    is the frame (--chrome) since the Navy Frame, Oct 4 2026: the same navy
-   in both themes, so one rule covers both. */
+   in both themes, so one rule covers both.
+   The ground is <body> as well as <html> (Oct 5 2026). AJ's iPad, the
+   Home Screen app with the `default` status bar, light theme: a light strip
+   about a status bar tall under the bar. iPadOS drew it (it was the light
+   page ground, #DEE6EE), so the strip was there to paint; but the rule
+   painted only <html>, and <body> lies over it with the theme's own ground
+   (bg-background, near the navy in the dark theme, which is why only the
+   light theme showed it). And it is also keyed on data-app-h, which
+   app-height.ts sets from navigator.standalone too: the media query alone
+   may not match in iPadOS 26's Home Screen app. The shell paints its own
+   ground, so nothing inside it changes. */
 .app-shell { height: 100vh; }
 @supports (height: 100dvh) {
   .app-shell { height: 100dvh; }
@@ -952,8 +962,11 @@
 html[data-app-h] .app-shell { height: var(--app-h); }
 @media (display-mode: standalone) {
   html,
-  html.dark { background-color: var(--chrome); }
+  html.dark,
+  html body { background-color: var(--chrome); }
 }
+html[data-app-h],
+html[data-app-h] body { background-color: var(--chrome); }
 
 /* pt-safe / pb-safe: exactly the inset. pt-safe-4 / pb-safe-6: the inset
    PLUS that much of the spacing scale, for an edge that needs breathing

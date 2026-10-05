@@ -31,3 +31,16 @@ describe("the shell's height", () => {
     expect(css).toMatch(/html\[data-app-h\] \.app-shell\s*\{\s*height:\s*var\(--app-h\);/);
   });
 });
+
+describe("the ground under the shell (Oct 5 2026)", () => {
+  const css = readFileSync(join(SRC, "index.css"), "utf8");
+
+  it("is the frame's navy on <body> too, which lies over <html> with the theme's light ground", () => {
+    expect(css).toMatch(/@media \(display-mode: standalone\)\s*\{[^}]*html body\s*\{\s*background-color:\s*var\(--chrome\);/);
+    expect(css).toMatch(/html\[data-app-h\] body\s*\{\s*background-color:\s*var\(--chrome\);/);
+  });
+
+  it("follows app-height.ts's own Home Screen check, not only the media query", () => {
+    expect(css).toMatch(/\nhtml\[data-app-h\],\s*\nhtml\[data-app-h\] body\s*\{/);
+  });
+});
