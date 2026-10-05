@@ -98,27 +98,36 @@
   .stg-kind:hover { background: var(--eq-hero-fill); }
 }
 
+/* "Your reports · 2 won't fix", over the list: the label voice (type and
+   depth, phase 9, Oct 4 2026; the kit draws this line so), 14/700 in ink-2
+   and its own capitalisation. It was 11px grey capitals. */
 .stg-label {
   margin: 0;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--eq-ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--eq-ink-2);
 }
 
 /* The reports could not be read: said in words, in the caution plum. */
 .stg-problem { margin: 0; font-size: 14px; font-weight: 700; color: var(--eq-warn); }
 
-.stg-reports { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+/* ROWS, not boxes (type and depth, phase 9, Oct 4 2026): a report and a
+   door are lines inside the card, divided by a hairline, one fewer box per
+   line. Each was its own bordered box with a gap between. The words keep
+   2px of the card's inset, in line with the card's other words. */
+.stg-reports { list-style: none; margin: -4px 0 0; padding: 0; display: grid; gap: 0; }
 .stg-report {
   display: grid;
   gap: 8px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--eq-border);
+  padding: 10px 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   font-size: 14px;
 }
+.stg-report + .stg-report { border-top: 1px solid var(--eq-divider); }
 .stg-report__row {
   display: flex;
   align-items: baseline;
@@ -173,22 +182,29 @@
 .stg-ok { color: var(--eq-ok); }
 .stg-warn { color: var(--eq-warn); }
 
-.stg-links { display: grid; gap: 8px; }
+/* A door is a row as well (phase 9): 52px at least, as before, divided
+   from the door above it by the hairline. Operations' door stands alone
+   under its sentence, so the same hairline sets it off from the words. */
+.stg-links { display: grid; gap: 0; }
 .stg-link {
   display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
   min-height: 52px;
-  padding: 8px 14px;
-  border-radius: 12px;
-  border: 1px solid var(--eq-border);
-  background: var(--eq-surface);
+  padding: 8px 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--eq-ink);
   text-align: left;
   cursor: pointer;
 }
-.stg-link:hover { background: var(--eq-surface-2); }
+.stg-link + .stg-link,
+.stg-text + .stg-link { border-top: 1px solid var(--eq-divider); }
+@media (hover: hover) {
+  .stg-link:not(:disabled):hover { background: var(--eq-surface-2); }
+}
 .stg-link:disabled { opacity: 0.5; cursor: default; }
 .stg-link__icon { color: var(--eq-live-text); flex: none; }
 .stg-link__text { flex: 1; min-width: 0; display: grid; gap: 2px; }

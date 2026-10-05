@@ -311,11 +311,16 @@
   gap: 10px;
 }
 
+/* A WELL (type and depth, phase 9, Oct 4 2026): what to say in each slot
+   is information, so it sinks into the well tone with its inner shadow and
+   no edge. It was a hairline box on the card's fill. Its title, the muted
+   ink, reads 5.2:1 on the well (7.1:1 in dark). */
 .ho-slot {
   padding: 10px 12px;
-  border: 1px solid var(--eq-border);
+  border: 0;
   border-radius: 12px;
-  background: var(--eq-surface);
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
 }
 
 .ho-slot-title {

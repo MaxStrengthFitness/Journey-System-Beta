@@ -150,21 +150,30 @@
   .hist-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
+/* The Archive's figures are WELLS (type and depth, phase 9, Oct 4 2026):
+   information, so each sinks into the well tone with its inner shadow, no
+   edge, radius 12. They were hairline boxes on the card's fill. They speak
+   as the profile header's facts do (the kit's stat): the label 12/600 in
+   its own capitalisation, the figure Saira 22/800 with even-width digits,
+   the unit and the line under it 12px in the muted ink (5.2:1 on the well,
+   7.1:1 in dark). The label was 10px capitals; the line under it was 11px
+   and cut off with an ellipsis, and now wraps. */
 .hist-stat {
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 11px 14px 12px;
-  border-radius: var(--cal-radius);
-  border: 1px solid var(--cal-border);
-  background: var(--cal-surface);
+  border-radius: 12px;
+  border: 0;
+  background: var(--cal-surface-2);
+  box-shadow: var(--cal-elev-0);
 }
 .hist-stat__label {
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
 }
 .hist-stat__value {
@@ -175,27 +184,26 @@
   min-width: 0;
 }
 .hist-stat__value b {
-  font-size: 26px;
-  font-weight: 900;
-  letter-spacing: -0.03em;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0;
   color: var(--cal-ink);
   font-variant-numeric: tabular-nums;
 }
 .hist-stat__value span {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--cal-ink-muted);
   white-space: nowrap;
 }
 .hist-stat__sub {
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--cal-ink-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 .hist-stat--alert .hist-stat__value b { color: var(--eq-warn); }
 

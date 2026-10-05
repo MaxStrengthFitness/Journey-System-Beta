@@ -783,10 +783,14 @@
   gap: 6px;
   padding: 28px 18px;
   text-align: center;
-  /* Decorative container, like a panel hairline — the title and body carry
-     the meaning, so this is not a control boundary needing 3:1. */
-  border: 1px dashed var(--adm-border);
-  border-radius: var(--adm-radius);
+  /* A WELL (type and depth, phase 9, Oct 4 2026): sunk into the well tone,
+     no edge, radius 12. It was a dashed hairline box. The title and body
+     carry the meaning, so it needs no 3:1 boundary; the muted ink reads
+     5.2:1 on the well (7.1:1 in dark). */
+  border: 0;
+  border-radius: 12px;
+  background: var(--adm-surface-2);
+  box-shadow: var(--adm-elev-0);
   color: var(--adm-ink-muted);
 }
 

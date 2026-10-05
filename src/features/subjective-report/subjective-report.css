@@ -559,9 +559,13 @@
 .sr-spark { display: block; width: 100%; height: 132px; }
 .sr-spark text { font-size: 11px; font-weight: 800; fill: var(--sr-ink-2); }
 
+/* A WELL (type and depth, phase 9, Oct 4 2026): sunk into the well tone,
+   no edge, radius 12, the sentence in the reading voice (14px, ink-2: 7.0:1
+   on the well). It was a dashed box in 13px faint ink, 2.9:1. */
 .sr-empty {
-  padding: 16px; text-align: center; font-size: 13px; color: var(--sr-ink-faint);
-  border: 1px dashed var(--sr-border-strong); border-radius: var(--sr-radius-sm);
+  padding: 16px; text-align: center; font-size: 14px; color: var(--sr-ink-2);
+  border: 0; border-radius: 12px;
+  background: var(--sr-surface-2); box-shadow: var(--sr-elev-0);
 }
 
 /* ---------- Client copy (finalized view + print) -------------------- */

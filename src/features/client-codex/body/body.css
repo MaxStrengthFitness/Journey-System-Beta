@@ -390,28 +390,39 @@
   grid-column: 1 / -1;
 }
 
+/* A machine on the floor: a WELL (type and depth, phase 9, Oct 4 2026),
+   sunk into the well tone with its inner shadow and no edge, the kit's tile
+   (padding 14, the name 14/700 in ink). It was a hairline box inside the
+   card. The edge stays transparent so the wide tile below can dash it. */
 .bp-tile {
   display: grid;
   gap: 8px;
   align-content: start;
   min-width: 0;
-  padding: 12px 14px;
-  border: 1px solid var(--cx-line);
+  padding: 14px;
+  border: 1px solid transparent;
   border-radius: 12px;
   background: var(--cx-surface-2);
+  box-shadow: var(--cx-elev-0);
 }
 
+/* "Clients built like them" is other clients' record, not this client's,
+   so it keeps the codex's dashed edge for a record that is not their own
+   (the years before Journey, an import) on the card's fill, and does not
+   sink. */
 .bp-tile[data-wide] {
   grid-column: 1 / -1;
+  border-color: var(--cx-line);
   border-style: dashed;
   background: var(--cx-surface);
+  box-shadow: none;
 }
 
 .bp-tile__name {
   margin: 0;
   color: var(--cx-ink);
   font-size: var(--cx-fs-14);
-  font-weight: 800;
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 

@@ -57,6 +57,13 @@
   /* Phase 7: the bar's dark top light, and a word's secondary ink. */
   --psub-panel-highlight: var(--eq-panel-highlight);
   --psub-ink-2:         var(--eq-ink-2);       /* an idle segment's label 7.8:1 on the bar */
+  /* Phase 9: the Archive's clinical strip is a well, and its Edit button is
+     raised on the 3:1 edge, pressing in. */
+  --psub-elev-0:        var(--eq-elev-0);
+  --psub-raised:        var(--eq-raised);
+  --psub-highlight:     var(--eq-highlight);
+  --psub-press:         var(--eq-press);
+  --psub-border-strong: var(--eq-border-strong);
 }
 
 .dark,
@@ -78,6 +85,11 @@
   --psub-solid-light:   var(--eq-solid-light);
   --psub-panel-highlight: var(--eq-panel-highlight);
   --psub-ink-2:         var(--eq-ink-2);
+  --psub-elev-0:        var(--eq-elev-0);
+  --psub-raised:        var(--eq-raised);
+  --psub-highlight:     var(--eq-highlight);
+  --psub-press:         var(--eq-press);
+  --psub-border-strong: var(--eq-border-strong);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -99,6 +111,11 @@
     --psub-solid-light: var(--eq-solid-light);
     --psub-panel-highlight: var(--eq-panel-highlight);
     --psub-ink-2:       var(--eq-ink-2);
+    --psub-elev-0:      var(--eq-elev-0);
+    --psub-raised:      var(--eq-raised);
+    --psub-highlight:   var(--eq-highlight);
+    --psub-press:       var(--eq-press);
+    --psub-border-strong: var(--eq-border-strong);
   }
 }
 
@@ -379,23 +396,36 @@
 /* A read-only fact strip — the Activity Archive's flags, Programming's counts.
    Read-only on purpose: these facts are EDITED in exactly one place (Notes &
    Profile → Body & Pulse, the watch-outs card), and a second editable copy is
-   how two screens start disagreeing. */
+   how two screens start disagreeing.
+
+   A WELL (type and depth, phase 9, Oct 4 2026): the facts are information,
+   so the strip sinks into the well tone with its inner shadow, no edge. It
+   was a hairline box on the card's fill. Its words left 9.5-11.5px capitals
+   for the app's voices: the title is a label (14/700, ink-2, 7.0:1 on the
+   well), a chip 12/700 on the card's fill so it stands up out of the well,
+   the empty sentence 14px in the muted ink (5.2:1), and Edit a raised
+   button on the 3:1 edge. The strip is the same height: Edit's 40px sets
+   it, as before. */
 .ptab-strip {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 7px;
   padding: 10px 12px;
-  border: 1px solid var(--psub-border);
+  border: 0;
   border-radius: 12px;
-  background: var(--psub-surface);
+  background: var(--psub-bg);
+  box-shadow: var(--psub-elev-0);
 }
 .ptab-strip__title {
-  font-size: 9.5px;
-  font-weight: 900;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--psub-ink-faint);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--psub-ink-2);
   margin-right: 2px;
 }
 .ptab-strip__chip {
@@ -406,10 +436,10 @@
   padding: 0 10px;
   border-radius: 999px;
   border: 1px solid var(--psub-border);
-  background: var(--psub-bg);
+  background: var(--psub-surface);
   color: var(--psub-ink);
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 700;
   white-space: nowrap;
 }
 .ptab-strip__chip[data-tone="alert"] {
@@ -430,27 +460,39 @@
   color: var(--eq-warn);
 }
 .ptab-strip__none {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--psub-ink-faint);
+  font-size: 14px;
+  font-weight: var(--fw-body);
+  color: var(--psub-ink-muted);
 }
+/* RAISED (type and depth, phase 9; the phase 8 recipe): a fill a hair
+   lighter than the card, the contact lift and a white top light, on the 3:1
+   edge (3.5:1 on the raised fill; it was the soft hairline, which a control
+   may not have), radius 12, and a press. The button voice, 14/700, in the
+   words' own capitalisation; the blue words read 7:1 on the raised fill. */
 .ptab-strip__edit {
   margin-left: auto;
   /* A tap target: the 40px floor. It was 30px with 10px type. */
   min-height: 40px;
   padding: 0 12px;
-  border: 1px solid var(--psub-border);
-  border-radius: 9px;
-  background: transparent;
+  border: 1px solid var(--psub-border-strong);
+  border-radius: 12px;
+  background: var(--psub-raised);
+  box-shadow: var(--psub-elev-1), inset 0 1px 0 var(--psub-highlight);
   color: var(--psub-live-soft);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
   white-space: nowrap;
 }
-.ptab-strip__edit:hover { background: var(--psub-bg); }
+@media (hover: hover) {
+  .ptab-strip__edit:hover { background: var(--psub-bg); }
+}
+.ptab-strip__edit:active {
+  transform: translateY(1px);
+  box-shadow: var(--psub-press);
+}
 .ptab-strip__edit:focus-visible { outline: 2px solid var(--psub-live); outline-offset: 2px; }
 
 /* A pane that is mounted but not showing. `hidden` rather than unmounting:

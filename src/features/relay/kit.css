@@ -328,15 +328,20 @@
 .rk-step[aria-current="step"]::before { background: var(--st-live); }
 .rk-step:disabled { cursor: default; }
 
+/* A WELL (type and depth, phase 9, Oct 4 2026): sunk into the well tone, no
+   edge, the sentence in the reading voice (14px, ink-2, 7.0:1 on the well),
+   as the kit draws an empty line. It was a dashed box in 12px muted ink. */
 .rk-empty {
   margin: 0;
   padding: 1rem;
-  border: 1px dashed var(--st-border-strong);
+  border: 0;
   border-radius: 12px;
+  background: var(--st-surface-2);
+  box-shadow: var(--st-elev-0);
   text-align: center;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.55;
-  color: var(--st-ink-muted);
+  color: var(--st-ink-2);
 }
 
 @media (prefers-reduced-motion: reduce) {

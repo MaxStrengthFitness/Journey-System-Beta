@@ -58,6 +58,13 @@
   /* A tooltip's lift (type and depth, Oct 4 2026): the grid's popover
      shadow, or the app's before the grid's tokens load. */
   --cr-elev-4: var(--jg-elev-4, var(--elev-4));
+  /* An empty panel's well (type and depth, phase 9): the app's well tone
+     and the grid's inner shadow. Not --cr-surface-2: the grid's surface-2
+     is its header band, which goes LIGHTER than the card in dark (#1b3044
+     on #14293d), so a well drawn in it would rise instead of sink. The
+     well tone is darker than the card in both modes (#e4ebf3, #0d2235). */
+  --cr-well: var(--eq-surface-2, #e4ebf3);
+  --cr-elev-0: var(--jg-elev-0, var(--elev-0));
   /* Go's depth on Generate (type and depth, phase 8): the grid's orange
      glow, top light and press, or the app's before the grid's tokens load. */
   --cr-glow-go: var(--jg-glow-go, var(--glow-go));
@@ -208,7 +215,10 @@
 .cr-insight__title { margin: 0; font-size: 14.5px; font-weight: 800; line-height: 1.25; color: var(--cr-ink); }
 .cr-insight__body { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--cr-ink-2); }
 .cr-insight__evidence { font-size: 11px; color: var(--cr-ink-muted); font-weight: 600; }
-.cr-empty { border: 1px dashed var(--cr-border-strong); border-radius: var(--cr-radius); padding: 22px; text-align: center; color: var(--cr-ink-muted); font-size: 13px; }
+/* A WELL (type and depth, phase 9, Oct 4 2026): sunk into the well tone,
+   no edge, radius 12, the sentence in the reading voice (14px, ink-2). It
+   was a dashed box in 13px muted ink. */
+.cr-empty { border: 0; border-radius: 12px; background: var(--cr-well); box-shadow: var(--cr-elev-0); padding: 22px; text-align: center; color: var(--cr-ink-2); font-size: 14px; }
 
 /* ---- charts ------------------------------------------------------------- */
 .cr-chart { height: 190px; }

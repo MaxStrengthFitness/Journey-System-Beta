@@ -627,6 +627,13 @@ describe("one crimson, one blue", () => {
       // Phase 7: the raised bar's dark top light, and an idle page's ink.
       "--psub-panel-highlight": "var(--eq-panel-highlight)",
       "--psub-ink-2": "var(--eq-ink-2)",
+      // Phase 9: the Archive's clinical strip is a well, and its Edit button
+      // is raised on the 3:1 edge and presses in.
+      "--psub-elev-0": "var(--eq-elev-0)",
+      "--psub-raised": "var(--eq-raised)",
+      "--psub-highlight": "var(--eq-highlight)",
+      "--psub-press": "var(--eq-press)",
+      "--psub-border-strong": "var(--eq-border-strong)",
     };
     for (const selector of [LIGHT, DARK, FALLBACK]) {
       const tokens = block(nav, selector);

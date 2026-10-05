@@ -89,6 +89,12 @@
 
 /* ---- the composer ------------------------------------------------------ */
 
+/* "Write a note…" (type and depth, phase 9, Oct 4 2026): it opens into a
+   field, so it is drawn as one (rule 2): it SINKS into the well tone with the
+   well's inner shadow, inside the field's solid 3:1 edge (3.1:1 on the well,
+   4.1:1 in dark), the way the Hub's command bar sinks inside its edge. It
+   was a dashed box on the card's fill. The words are ink-2 (7.0:1) and the
+   meta the muted ink (5.2:1) on the well. */
 .nx-compose-bar {
   display: flex;
   align-items: center;
@@ -98,8 +104,9 @@
   min-height: 52px;
   padding: 8px 16px;
   border-radius: 12px;
-  border: 1px dashed var(--eq-border-strong);
-  background: var(--eq-surface);
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
   color: var(--eq-ink-2);
   font-family: inherit;
   font-size: 14px;
@@ -465,12 +472,16 @@
 
 /* ---- empty and the way to FORD ----------------------------------------- */
 
+/* A WELL (type and depth, phase 9): sunk into the well tone, no edge, the
+   codex's empty line (.cx-empty) to the pixel. It was a dashed box. */
 .nx-empty {
   display: grid;
   gap: 6px;
-  padding: 14px 16px;
-  border: 1px dashed var(--eq-border-strong);
+  padding: 16px 18px;
+  border: 0;
   border-radius: 12px;
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
   color: var(--eq-ink-2);
 }
 

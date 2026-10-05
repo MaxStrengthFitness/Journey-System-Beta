@@ -1103,13 +1103,18 @@
   color: var(--adm-ink-2);
 }
 
+/* Too new to judge, and Trends' "not enough data yet": WELLS (type and
+   depth, phase 9, Oct 4 2026), sunk into the well tone with no edge, radius
+   12. Each was a dashed box. The words are ink-2 (7.0:1 on the well). */
 .ops-toonew {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 12px 14px;
-  border: 1px dashed var(--adm-border-strong);
-  border-radius: var(--adm-radius);
+  border: 0;
+  border-radius: 12px;
+  background: var(--adm-surface-2);
+  box-shadow: var(--adm-elev-0);
 }
 
 .ops-toonew__h {
@@ -1395,13 +1400,16 @@
   gap: 8px;
 }
 
+/* A well, as .ops-toonew (type and depth, phase 9). */
 .ops-trend-wait {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 12px 14px;
-  border: 1px dashed var(--adm-border-strong);
-  border-radius: var(--adm-radius);
+  border: 0;
+  border-radius: 12px;
+  background: var(--adm-surface-2);
+  box-shadow: var(--adm-elev-0);
 }
 
 .ops-trend-wait__h {
@@ -1413,13 +1421,15 @@
   color: var(--adm-ink-2);
 }
 
+/* The line opened from a name: the card's fill, so it stands up out of the
+   well it sits in (it was the well tone inside a dashed box). */
 .ops-trend-wait__open {
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: var(--adm-surface-2);
+  background: var(--adm-surface);
 }
 
 /* ---------- Setup → Rules ---------------------------------------------- */

@@ -89,6 +89,10 @@ const FILES = [
   "features/calendar/calendar.css",
   "features/client-directory/client-directory.css",
   "features/briefing/briefing.css",
+  // Phase 9: wells and rows across the rooms.
+  "features/relay/kit.css",
+  "features/client-codex/body/body.css",
+  "features/admin/overview/overview.css",
 ];
 
 function filesUnder(dir: string, ext: RegExp, out: string[] = []): string[] {

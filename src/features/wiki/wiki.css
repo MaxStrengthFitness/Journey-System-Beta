@@ -1177,12 +1177,17 @@
 
 /* The codex's empty state (.cx-empty): a dashed box, a sentence, left-
    aligned, in the reading ink. A blank space centred in grey read as a
-   screen that had not loaded. */
+   screen that had not loaded. A WELL since type and depth (phase 9, Oct 4
+   2026): sunk into the well tone, no edge, the codex's padding. It was a
+   dashed box. The placeholder (a page that is gone or could not load) is
+   the same empty place, so it is the same well. */
 .wk__empty {
   margin: 1rem 0;
-  padding: 14px 16px;
-  border: 1px dashed var(--wk-border-strong);
+  padding: 16px 18px;
+  border: 0;
   border-radius: 12px;
+  background: var(--wk-surface-2);
+  box-shadow: var(--wk-elev-0);
   font-size: 14px;
   line-height: 1.55;
   color: var(--wk-ink-2);
@@ -1191,9 +1196,11 @@
 .wk__placeholder {
   margin: 1rem 0;
   max-width: var(--wk-measure);
-  padding: 14px 16px;
-  border: 1px dashed var(--wk-border-strong);
+  padding: 16px 18px;
+  border: 0;
   border-radius: 12px;
+  background: var(--wk-surface-2);
+  box-shadow: var(--wk-elev-0);
 }
 .wk__placeholder-title { margin: 0 0 0.25rem; font-size: 17px; font-weight: 800; color: var(--wk-ink); }
 .wk__placeholder-body { margin: 0; font-size: 14px; line-height: 1.55; color: var(--wk-ink-2); }

@@ -310,11 +310,16 @@
 }
 .pl__task-detail { font-size: 12px; line-height: 1.45; color: var(--st-ink-muted); overflow-wrap: anywhere; }
 
+/* A WELL (type and depth, phase 9, Oct 4 2026): sunk into the well tone,
+   no edge, radius 12. It was a dashed box. The body's muted ink reads 5.2:1
+   on the well (7.1:1 in dark). */
 .pl__empty {
   margin-top: 1rem;
   padding: 1.25rem;
-  border: 1px dashed var(--st-border-strong);
-  border-radius: var(--st-radius);
+  border: 0;
+  border-radius: 12px;
+  background: var(--st-surface-2);
+  box-shadow: var(--st-elev-0);
   text-align: center;
 }
 .pl__empty-title { margin: 0 0 0.375rem; font-size: 14px; font-weight: 800; }

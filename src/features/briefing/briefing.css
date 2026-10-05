@@ -286,6 +286,13 @@
   gap: 10px;
 }
 
+/* Routine A and Routine B are WELLS (type and depth, phase 9, Oct 4 2026):
+   each says when it last ran and how many machines it holds, so it sinks
+   into the well tone with its inner shadow, radius 12, the edge kept
+   transparent so the picked one can colour it. They were hairline boxes on
+   the card's fill. The muted ink reads 5.2:1 on the well. A pointer's
+   hover shows the firm edge; an iPad, which keeps a hover after a tap,
+   never leaves it on the one just left. */
 .br__routine {
   min-height: 60px;
   display: flex;
@@ -295,13 +302,16 @@
   padding: 10px 14px;
   text-align: left;
   cursor: pointer;
-  border: 1px solid var(--br-border);
-  border-radius: var(--br-radius);
-  background: var(--br-surface);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--br-surface-2);
+  box-shadow: var(--br-elev-0);
   color: var(--br-ink-muted);
   transition: border-color 120ms ease, background 120ms ease;
 }
-.br__routine:hover { border-color: var(--br-border-strong); }
+@media (hover: hover) {
+  .br__routine:hover { border-color: var(--br-border-strong); }
+}
 .br__routine:focus-visible { outline: 2px solid var(--br-focus-ring); outline-offset: 2px; }
 
 /* Selection is carried by border + fill + ink, not by a glow. A 0.25-alpha
@@ -323,11 +333,13 @@
   color: inherit;
 }
 
+/* "Last run Sep 30 · 7 machines": the meta voice, 12/600 in the words' own
+   capitalisation (phase 9; it was 10px capitals). */
 .br__routine-sub {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--br-ink-muted);
 }
 
@@ -432,6 +444,8 @@
 .br__link-btn:hover { background: var(--br-surface-3); }
 .br__link-btn:focus-visible { outline: 2px solid var(--br-focus-ring); outline-offset: 2px; }
 
+/* A WELL (type and depth, phase 9, Oct 4 2026): sunk into the well tone,
+   no edge, radius 12. It was a dashed box on the card's fill. */
 .br__empty {
   display: flex;
   flex-direction: column;
@@ -439,9 +453,10 @@
   justify-content: center;
   gap: 10px;
   padding: 40px 20px;
-  border: 1px dashed var(--br-border-strong);
-  border-radius: var(--br-radius-lg);
-  background: var(--br-surface);
+  border: 0;
+  border-radius: 12px;
+  background: var(--br-surface-2);
+  box-shadow: var(--br-elev-0);
   text-align: center;
 }
 
@@ -685,38 +700,51 @@
 }
 .br__headsup .br__label { color: var(--br-warn); }
 
-/* One sentence per region, coloured by urgency, never by region. */
+/* One sentence per region, coloured by urgency, never by region.
+
+   Each region is a WELL (type and depth, phase 9, Oct 4 2026): sunk into
+   its fill with the well's inner shadow, no edge, radius 12. Its urgency is
+   a straight 4px band painted as the first background layer (rule 3): a
+   4px left border on a rounded box tapered into a crescent at both corners.
+   The fill and the band are set per tone below; the words are 14px (13
+   before), and "last session" is the meta voice, 12px in its own
+   capitalisation (10px capitals before). Measured on each fill, light and
+   dark: ink-2 6.9:1 or more, the muted ink 5.1:1 or more. */
 .br__carried { display: flex; flex-direction: column; gap: 4px; }
 .br__carried-row {
+  --br-carried-band: var(--br-border);
+  --br-carried-fill: var(--br-surface-2);
   display: flex;
   align-items: center;
   gap: 6px;
   min-height: 36px;
-  padding: 0 12px;
-  border: 1px solid var(--br-border);
-  border-left-width: 4px;
-  border-radius: var(--br-radius);
-  background: var(--br-surface-2);
-  font-size: 13px;
+  padding: 0 12px 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background:
+    linear-gradient(var(--br-carried-band), var(--br-carried-band)) left / 4px 100% no-repeat,
+    var(--br-carried-fill);
+  box-shadow: var(--br-elev-0);
+  font-size: 14px;
   font-weight: 600;
   color: var(--br-ink-2);
 }
 .br__carried-row strong { color: var(--br-ink); font-weight: 800; }
 .br__carried-from {
   margin-left: auto;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--br-ink-muted);
 }
-.br__carried-row[data-tone="warn"] { border-left-color: var(--br-warn); background: var(--br-warn-fill); }
+.br__carried-row[data-tone="warn"] { --br-carried-band: var(--br-warn); --br-carried-fill: var(--br-warn-fill); }
 .br__carried-row[data-tone="warn"] strong { color: var(--br-warn); }
-.br__carried-row[data-tone="alert"] { border-left-color: var(--br-critical); background: var(--br-critical-fill); }
+.br__carried-row[data-tone="alert"] { --br-carried-band: var(--br-critical); --br-carried-fill: var(--br-critical-fill); }
 .br__carried-row[data-tone="alert"] strong { color: var(--br-critical); }
 .br__carried-row[data-tone="ok"],
-.br__carried-row[data-tone="ok-strong"] { border-left-color: var(--br-ok); }
-.br__carried-row[data-tone="live"] { border-left-color: var(--br-live); }
+.br__carried-row[data-tone="ok-strong"] { --br-carried-band: var(--br-ok); }
+.br__carried-row[data-tone="live"] { --br-carried-band: var(--br-live); }
 
 /* ------------------------------------------------------------------ *
  * THE LINE UNDER A NOTE (Notes round, Sep 2026)

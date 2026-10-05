@@ -165,7 +165,14 @@
   text-align: right;
 }
 
-/* A time: a 40px button showing its word. */
+/* A time: a 40px button showing its word. A WELL (type and depth, phase 9,
+   Oct 4 2026): what the studio's weeks say about this time is information,
+   so the cell sinks into the well tone with its inner shadow, radius 12. It
+   was a hairline box on the card's fill. The edge is kept transparent so a
+   hot, cold or always time can still colour it, and the focus ring and the
+   open time's blue ring stay. Every cell says its word ("3 booked", "Mixed",
+   "–"), so a booked time and a time too new to judge share the well tone
+   and differ in their words and ink. */
 .op-cell {
   display: flex;
   flex-direction: column;
@@ -175,9 +182,10 @@
   min-width: 0;
   min-height: 40px;
   padding: 4px 6px;
-  border: 1px solid var(--st-border);
-  border-radius: 8px;
-  background: var(--st-surface);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--st-surface-2);
+  box-shadow: var(--st-elev-0);
   color: var(--st-ink-2);
   font: inherit;
   font-size: 12px;
@@ -188,7 +196,7 @@
   cursor: pointer;
 }
 .op-cell:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
-.op-cell[aria-current="true"] { box-shadow: 0 0 0 2px var(--st-live); }
+.op-cell[aria-current="true"] { box-shadow: 0 0 0 2px var(--st-live), var(--st-elev-0); }
 .op-cell__word { display: block; }
 .op-cell__mark {
   display: block;
@@ -215,10 +223,14 @@
 .op-cell--booked { background: var(--st-surface-2); }
 .op-cell--rotation { background: var(--st-surface-3); }
 .op-cell--none { color: var(--st-ink-muted); }
-/* Nothing booked and nobody in: a quiet outline, still a button. */
+/* Nothing booked and nobody in: a quiet outline, still a button. The dash
+   means "nothing here" (an empty place, not information), so this one
+   time is not sunk: no fill, no inner shadow, a dashed hairline. */
 .op-cell--blank {
   background: transparent;
+  border-color: var(--st-border);
   border-style: dashed;
+  box-shadow: none;
 }
 
 .op-grid__gap { min-height: 40px; }

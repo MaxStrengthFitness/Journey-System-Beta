@@ -23,15 +23,20 @@
 
 /* ---------- Summary bar --------------------------------------------- */
 
+/* A WELL (type and depth, phase 9, Oct 4 2026): the counts are information,
+   so they sink into the well tone with its inner shadow, no edge, radius 12.
+   It was a hairline box on the card's fill. On the well the muted ink reads
+   5.2:1, the plum warning 4.7:1 and today's orange words 4.9:1. */
 .rt-summary {
   display: flex;
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
   padding: 10px 14px;
-  border: 1px solid var(--eq-border);
-  border-radius: var(--eq-radius);
-  background: var(--eq-surface);
+  border: 0;
+  border-radius: 12px;
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
 }
 .rt-summary__count {
   font-size: 15px;
@@ -87,11 +92,13 @@
   letter-spacing: 0.06em;
   white-space: nowrap;
 }
+/* Words, so the muted ink (5.2:1 on the well): the faint ink is for marks
+   only, and read 2.9:1 there. */
 .rt-summary__none {
   font-size: 12px;
   font-weight: 700;
   font-style: italic;
-  color: var(--eq-ink-faint);
+  color: var(--eq-ink-muted);
 }
 
 /* ---------- Buttons (Equipment's) ------------------------------------ */

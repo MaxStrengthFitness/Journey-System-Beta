@@ -139,13 +139,16 @@
   padding: 0;
   list-style: none;
 }
-.adm-ov__rows--bordered {
-  border: 1px solid var(--adm-border);
-  border-radius: var(--adm-radius);
-  overflow: hidden;
-}
+/* The notes to review (type and depth, phase 9, Oct 4 2026): the rows sit in
+   the dialog's own panel, divided by the soft line; the outer box they were
+   drawn in is gone, and their words keep 2px of the panel's inset, in line
+   with its title. The class keeps its name; it draws no border now. */
+.adm-ov__rows--bordered .adm-ov__row-btn { padding-inline: 2px; }
+.adm-ov__rows--bordered .adm-ov__why { padding-inline: 2px; }
 
-.adm-ov__row + .adm-ov__row { border-top: 1px solid var(--adm-border); }
+/* A row's hairline inside a panel is the soft divider (phase 9), as the
+   codex's rows and Settings' are. */
+.adm-ov__row + .adm-ov__row { border-top: 1px solid var(--adm-divider); }
 
 /* The whole row opens the client. A <button> centres its own text, so the
    alignment lives here. 44px at least. */
@@ -165,8 +168,12 @@
   min-width: 0;
 }
 .adm-ov__row-btn:disabled { cursor: default; }
-.adm-ov__row-btn:not(:disabled):hover { background: var(--adm-surface-2); }
+@media (hover: hover) {
+  .adm-ov__row-btn:not(:disabled):hover { background: var(--adm-surface-2); }
+}
 .adm-ov__row-btn:focus-visible { outline: 2px solid var(--adm-focus-ring); outline-offset: -2px; }
+/* With the words 2px in, the ring sits just outside the row instead of over them. */
+.adm-ov__rows--bordered .adm-ov__row-btn:focus-visible { outline-offset: 0; }
 
 /* A row with buttons: the name button on the left, the actions on the right,
    never one inside the other. */
