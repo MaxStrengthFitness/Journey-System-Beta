@@ -109,6 +109,16 @@ describe("noPastWords: what a card with no past times says (machine menu, Oct 20
     expect(words).toBe("Done here in Journey before · not in the sessions loaded here.");
     expect(words).not.toMatch(/[0-9]/);
   });
+
+  it("says loading while the sets are out, and couldn't load when the read failed — never empty", () => {
+    expect(noPastWords({ knownElsewhere: false, everythingRead: false, state: "loading" })).toBe("Loading past times…");
+    expect(noPastWords({ knownElsewhere: false, everythingRead: false, state: "failed" })).toBe("Couldn't load past times.");
+    // The read's state wins over a running total: "not in the sessions loaded here" would say they were read.
+    expect(noPastWords({ knownElsewhere: true, everythingRead: false, state: "failed" })).toBe("Couldn't load past times.");
+    expect(noPastWords({ knownElsewhere: false, everythingRead: false, state: "cache-only" })).toBe(
+      "Nothing recorded on this machine in the sessions loaded here.",
+    );
+  });
 });
 
 describe("lastPerformed and countsSeconds", () => {

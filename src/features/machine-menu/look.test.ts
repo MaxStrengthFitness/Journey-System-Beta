@@ -174,6 +174,18 @@ describe("the chart's touch and its fixed readout", () => {
     expect(rulesOf(media).some((r) => r.selectors.includes(".mm-readout"))).toBe(true);
   });
 
+  it("gives landscape's narrower chart column a slot one line taller, still fixed", () => {
+    const [slot] = BASE_RULES.filter((r) => r.selectors.includes('.mm-card[data-layout="landscape"] .mm-readout'));
+    expect(declared(slot.body, "height")).toEqual(["148px"]);
+  });
+
+  it("keeps the tapped session's row A one row: the words beside the buttons, never under them", () => {
+    const [row] = BASE_RULES.filter((r) => r.selectors.length === 1 && r.selectors[0] === ".mm-ro__a");
+    expect(declared(row.body, "flex-wrap")).toEqual(["nowrap"]);
+    const [btns] = BASE_RULES.filter((r) => r.selectors.length === 1 && r.selectors[0] === ".mm-ro__btns");
+    expect(declared(btns.body, "flex")).toEqual(["none"]);
+  });
+
   it("lets a vertical drag scroll the card, with no callout and no text selection on the plot", () => {
     const [plot] = BASE_RULES.filter((r) => r.selectors.length === 1 && r.selectors[0] === ".mm-plot");
     expect(declared(plot.body, "touch-action")).toEqual(["pan-y"]);
@@ -242,10 +254,47 @@ describe("the settings and the notes", () => {
     expect(heights("mm-tile")).toContain(112);
   });
 
+  it("never squeeze a value until it breaks mid-number: a tile is 224px or wider, and a value stays on one line", () => {
+    const [tiles] = own("mm-tiles");
+    const track = declared(tiles.body, "grid-template-columns")[0] ?? "";
+    const min = /minmax\(min\(100%, (\d+)px\)/.exec(track);
+    expect(min, track).not.toBeNull();
+    expect(Number(min![1])).toBeGreaterThanOrEqual(224);
+    for (const cls of ["mm-tile__val", "mm-tile__num"]) expect(declared(own(cls)[0].body, "white-space"), cls).toEqual(["nowrap"]);
+  });
+
   it("put one tile a row on a phone, and only under 600px", () => {
     const media = CSS.slice(BASE.length);
     const phone = rulesOf(media).filter((r) => r.selectors.includes(".mm-tiles"));
     expect(phone.length).toBe(1);
     expect(declared(phone[0].body, "grid-template-columns")).toEqual(["minmax(0, 1fr)"]);
+  });
+});
+
+/**
+ * The components the card mounts from elsewhere draw with their own
+ * stylesheets, which this file's scan never reads: each is lifted to the
+ * card's 14px floor (and the 44px default) by a rule scoped to the card.
+ */
+const FOREIGN = ["rt__ask", "rt__seg", "nc-kicker", "nc-hint", "nc-chip--small", "lm__label"] as const;
+
+describe("the components the card mounts from elsewhere", () => {
+  it("are lifted to the card's 14px floor inside the card", () => {
+    for (const cls of FOREIGN) {
+      const lifted = RULES.filter((r) => r.selectors.some((sel) => sel.startsWith(".mm-card ") && new RegExp(`\\.${cls}(?![\\w-])`).test(sel)));
+      expect(lifted.length, cls).toBeGreaterThan(0);
+      const sizes = lifted.flatMap((r) => declared(r.body, "font-size")).map(px);
+      expect(sizes.length, cls).toBeGreaterThan(0);
+      for (const n of sizes) expect(n!, cls).toBeGreaterThanOrEqual(14);
+    }
+    const chips = RULES.filter((r) => r.selectors.includes(".mm-card .nc-chip--small"));
+    expect(chips.flatMap((r) => declared(r.body, "min-height"))).toEqual(["44px"]);
+  });
+});
+
+describe("the note box", () => {
+  it("shows where focus is: the words get a ring of their own", () => {
+    const [ring] = BASE_RULES.filter((r) => r.selectors.includes(".mm-cmp__text:focus-visible"));
+    expect(declared(ring.body, "outline")[0]).toMatch(/2px solid var\(--eq-focus-ring\)/);
   });
 });

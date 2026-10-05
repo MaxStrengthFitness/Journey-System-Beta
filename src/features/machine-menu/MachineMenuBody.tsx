@@ -16,8 +16,24 @@
  *   - "Add a Health note" after a pain save opens the note box;
  *   - while a settings change is unsaved, Add note steps down to blue (one
  *     loud action at a time);
+ *   - a note about the machine itself, once added, reads the studio's notes
+ *     on the unit again, so the safety strip shows it;
  *   - the header's pill shows while the safety strip is scrolled away, and
  *     brings it back.
+ *
+ * ONE TREE IN EVERY LAYOUT. The blocks always sit in the same two columns
+ * (`.mm-cols` → lead and trail); in portrait and on a phone the trail is
+ * empty and the columns stack. So turning the iPad moves only the chart,
+ * which holds no typing: the settings and the notes keep their place, and
+ * their unsaved drafts with it. (It used to swap a one-column tree for a
+ * two-column one, which remounted both blocks and dropped their drafts
+ * without the leave question.) `blockOrder` keeps the trail empty outside
+ * landscape.
+ *
+ * Inline on Programming → All Machines the header sticks to the app's page
+ * scroller, under the Programming sub-toggle (`useScrollerPad`,
+ * `--psub-stuck-h`), and the pill is decided from the two elements
+ * themselves (`stripScrolledAway`), whichever box scrolls.
  *
  * Everything it reads comes through useMachineMenuData.
  */
@@ -25,12 +41,14 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ElementType } f
 import { noMachineHistoryBody, noMachineHistoryLine } from "../../lib/history-claims";
 import type { MachineCatalogEntry } from "../../types/machines";
 import { SetupGuide } from "../equipment/SetupGuide";
+import { useScrollerPad } from "../client-profile/use-scroller-pad";
 import { usePhone } from "../phone/device";
 import { DialTiles } from "./DialTiles";
 import { blockOrder, menuLayoutFor, type BlockId, type MenuLayout } from "./doors";
 import { MachineTimeline } from "./MachineTimeline";
 import { MenuHeader } from "./MenuHeader";
 import { MenuNotes } from "./MenuNotes";
+import { stripScrolledAway } from "./safety";
 import { SafetyStrip } from "./SafetyStrip";
 import { placeRows, type SettingRow } from "./setting-history";
 import { SettingChanges } from "./SettingChanges";
@@ -82,7 +100,9 @@ function useViewport(): { width: number; height: number } {
 }
 
 export function MachineMenuBody({ host, machineId, catalogById, onClose, onBack, titleAs, inline = false, layout: forcedLayout }: MachineMenuBodyProps) {
-  const data = useMachineMenuData(host, machineId, catalogById);
+  // A new number reads the studio's notes on the unit again (a floor note was added here).
+  const [floorRound, setFloorRound] = useState(0);
+  const data = useMachineMenuData(host, machineId, catalogById, floorRound);
   const { equipment, model } = data;
   const isPhone = usePhone();
   const viewport = useViewport();
@@ -95,29 +115,39 @@ export function MachineMenuBody({ host, machineId, catalogById, onClose, onBack,
 
   /* ---------------- the safety pill ---------------- */
 
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const safetyRef = useRef<HTMLElement | null>(null);
   const chartRef = useRef<HTMLDivElement | null>(null);
   const [safetyAway, setSafetyAway] = useState(false);
   const hasSafety = data.safety.count > 0;
   const drawn = !!equipment && !!model;
+  // Inline, the header sticks to the page's scroller: its padding, negated.
+  useScrollerPad(cardRef, inline && drawn);
+  // Away once the strip's bottom has gone up past the header's, measured on
+  // every scroll of any box (rAF-throttled): the dialog's own scroller, or
+  // the app's page inline, whose top is not the window's.
   useEffect(() => {
-    const el = safetyRef.current;
-    if (!hasSafety || !el || typeof IntersectionObserver !== "function") {
+    const strip = safetyRef.current;
+    const head = cardRef.current?.querySelector<HTMLElement>(".mm-head") ?? null;
+    if (!hasSafety || !strip || !head || typeof window === "undefined") {
       setSafetyAway(false);
       return;
     }
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry) return;
-        // Away only once it has scrolled up past the header, not before it first shows.
-        const above = entry.boundingClientRect.bottom <= (entry.rootBounds?.top ?? 0) + 1;
-        setSafetyAway(!entry.isIntersecting && above);
-      },
-      { root: inline ? null : scrollRef.current, threshold: 0 },
-    );
-    io.observe(el);
-    return () => io.disconnect();
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      setSafetyAway(stripScrolledAway(strip.getBoundingClientRect().bottom, head.getBoundingClientRect().bottom));
+    };
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(measure);
+    };
+    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      document.removeEventListener("scroll", onScroll, { capture: true });
+      window.removeEventListener("resize", onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
   }, [hasSafety, inline, drawn]);
   const showSafety = useCallback(() => {
     const el = safetyRef.current;
@@ -146,6 +176,7 @@ export function MachineMenuBody({ host, machineId, catalogById, onClose, onBack,
   const onAddHealthNote = useCallback((changeWords: string) => {
     setHealthNote((h) => ({ changeWords, nonce: (h?.nonce ?? 0) + 1 }));
   }, []);
+  const onFloorNoteAdded = useCallback(() => setFloorRound((r) => r + 1), []);
 
   const order = useMemo(
     () => blockOrder(host.door, layout, { safety: data.safety.count > 0, firstTime: data.firstTime }),
@@ -237,6 +268,7 @@ export function MachineMenuBody({ host, machineId, catalogById, onClose, onBack,
             healthNote={healthNote}
             onOpenSession={host.door === "profile" ? host.onOpenSession : undefined}
             focusNote={focusNote}
+            onFloorNoteAdded={onFloorNoteAdded}
           />
         );
       case "chart":
@@ -275,7 +307,7 @@ export function MachineMenuBody({ host, machineId, catalogById, onClose, onBack,
   };
 
   return (
-    <div className="mm-card" data-door={host.door} data-layout={layout} data-inline={inline ? "true" : undefined}>
+    <div ref={cardRef} className="mm-card" data-door={host.door} data-layout={layout} data-inline={inline ? "true" : undefined}>
       <MenuHeader
         machineName={equipment.name}
         clientName={data.clientName}
@@ -287,16 +319,13 @@ export function MachineMenuBody({ host, machineId, catalogById, onClose, onBack,
         pillVisible={safetyAway}
         onPill={showSafety}
       />
-      <div className="mm-scroll" ref={scrollRef}>
+      <div className="mm-scroll">
         {order.top.map(block)}
-        {order.layout === "landscape" ? (
-          <div className="mm-cols">
-            <div className="mm-col mm-col--lead">{order.leading.map(block)}</div>
-            <div className="mm-col mm-col--trail">{order.trailing.map(block)}</div>
-          </div>
-        ) : (
-          <div className="mm-col">{order.leading.map(block)}</div>
-        )}
+        {/* One tree in every layout (see the header): a turn moves only the chart. */}
+        <div className="mm-cols">
+          <div className="mm-col mm-col--lead">{order.leading.map(block)}</div>
+          <div className="mm-col mm-col--trail">{order.trailing.map(block)}</div>
+        </div>
       </div>
     </div>
   );

@@ -98,7 +98,14 @@ function beatsHigh(set: JourneySet, best: JourneySet): boolean {
   return countedReps(set) >= countedReps(best);
 }
 
-/** "40 → 66 lb (+65%)" — the machine cell's readout. */
+/**
+ * "Last 66 lb" — the machine button's spoken summary: the newest performed
+ * load, and nothing it was measured from. A start and a % are the Now Bar's
+ * and the machine menu's alone (machine-menu/progress-figure.ts, AJ's Q2
+ * (a)), which hold them back until a start is on file or every session has
+ * been read; this label used to count a % from the oldest set loaded, a
+ * confident number those two would refuse.
+ */
 export function journeySummary(row: JourneyRow, history: JourneySession[]): string {
   const sets = orderedSets(row, history);
   // "No history" reads as a fact about the CLIENT. During the migration it is
@@ -106,12 +113,7 @@ export function journeySummary(row: JourneyRow, history: JourneySession[]): stri
   // (lib/prior-history.ts, NEVER_LABEL). Safe whatever the coverage, so this
   // one needs no gate.
   if (sets.length === 0) return row.prescribedWeight ? `Next ${row.prescribedWeight} lb` : "Nothing recorded";
-  const start = row.startingWeight ?? sets[0].weight;
-  const now = sets[sets.length - 1].weight;
-  if (!start || start === now) return `${now} lb`;
-  const pct = Math.round(((now - start) / start) * 100);
-  const sign = pct > 0 ? "+" : "";
-  return `${start} → ${now} lb (${sign}${pct}%)`;
+  return `Last ${sets[sets.length - 1].weight} lb`;
 }
 
 /** Trend of a set vs the previous logged set on the same machine. */

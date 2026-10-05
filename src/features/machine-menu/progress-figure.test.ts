@@ -9,7 +9,9 @@ import {
   progressWords,
   startWords,
 } from "./progress-figure";
-import { buildTimelineModel } from "./timeline-model";
+import { buildTimelineModel, type TimelineLogInput } from "./timeline-model";
+import { toJourneyRows, toJourneySessions } from "../journey-grid/adapters";
+import { orderedSets } from "../journey-grid/stats";
 
 function avery(from: number) {
   return buildTimelineModel({
@@ -130,5 +132,57 @@ describe("the Now Bar's door: the grid's performed sets", () => {
     expect(progressFromSets(sets, { everythingRead: false })).toBeNull();
     expect(progressWords(progressFromSets(sets, { everythingRead: true, coverage: "partial" }))).toBe("First in Journey 84 lb, +19%");
     expect(progressFromSets([], { everythingRead: true })).toBeNull();
+  });
+});
+
+describe("one side at a time: the card and the Now Bar count from the same set (Q2 (a))", () => {
+  const sessions = [
+    { id: "a", date: "2026-09-08", status: "Completed", sessionNumber: 1, trainerInitials: "AJ" },
+    { id: "b", date: "2026-09-17", status: "Completed", sessionNumber: 2, trainerInitials: "AJ" },
+  ];
+  const both = (logs: TimelineLogInput[], start: number) => {
+    const model = buildTimelineModel({
+      machineId: "m",
+      machineName: "Torso Rotation",
+      sessions,
+      logs,
+      today: TODAY,
+      everythingRead: true,
+      moreToLoad: false,
+      history: [],
+      journal: [],
+    });
+    const [row] = toJourneyRows([{ id: "m", name: "Torso Rotation" }], logs as never[], { m: { startingWeight: start } } as never);
+    const card = progressFromModel(model, start, "partial");
+    const nowBar = progressFromSets(orderedSets(row, toJourneySessions(sessions)), { startingWeight: start, everythingRead: true, coverage: "partial" });
+    return { card, nowBar };
+  };
+
+  it("takes the Left side the grid's row keeps, never the heavier Right", () => {
+    const { card, nowBar } = both(
+      [
+        { sessionId: "a", machineId: "m", weight: "40", reps: "10", outcome: "performed", side: "Left" },
+        { sessionId: "a", machineId: "m", weight: "40", reps: "10", outcome: "performed", side: "Right" },
+        { sessionId: "b", machineId: "m", weight: "40", reps: "11", outcome: "performed", side: "Left" },
+        { sessionId: "b", machineId: "m", weight: "44", reps: "9", outcome: "performed", side: "Right" },
+      ],
+      40,
+    );
+    expect(card).toMatchObject({ start: 40, last: 40, gain: 0, up: false });
+    expect(nowBar).toMatchObject({ start: 40, last: 40, gain: 0, up: false });
+  });
+
+  it("adds nothing from a session whose Left side wasn't performed, as the grid's row drops it", () => {
+    const { card, nowBar } = both(
+      [
+        { sessionId: "a", machineId: "m", weight: "40", reps: "10", outcome: "performed", side: "Left" },
+        { sessionId: "b", machineId: "m", weight: "44", outcome: "skipped", skipReason: "pain_injury", side: "Left" },
+        { sessionId: "b", machineId: "m", weight: "44", reps: "9", outcome: "performed", side: "Right" },
+      ],
+      36,
+    );
+    expect(card?.last).toBe(40);
+    expect(nowBar?.last).toBe(40);
+    expect(progressWords(card)).toBe(progressWords(nowBar));
   });
 });

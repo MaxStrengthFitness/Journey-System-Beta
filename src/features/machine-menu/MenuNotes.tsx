@@ -37,7 +37,11 @@
  *   waits a moment at most, and the line under the box says "Saved", "Saved
  *   on this iPad · sends when online", or "Couldn't save. Your words are
  *   still here" with Try again. The words clear only once the iPad has the
- *   note. A note written in a session carries the session link.
+ *   note, and the box holds still while the moment lasts (typing then would
+ *   be cleared with the saved words). A refusal that comes after "saved on
+ *   this iPad" is still heard (late-refusal.ts): the words come back while
+ *   the box is empty, and the app's toast says it once the card has closed.
+ *   A note written in a session carries the session link.
  *
  *   THE LIST. The newest open note that isn't already in the safety strip
  *   (an open Critical note is), else the newest standing one; "All notes
@@ -95,9 +99,11 @@ import {
   floorQueuedWords,
   floorTitle,
   healthNoteAfterPain,
+  machineNoteBody,
   makeItAbout,
   makeItAboutWords,
   noteOrigin,
+  noteRefusedLaterWords,
   noteSaveLine,
   reachesLeaders,
   resolvedLabel,
@@ -106,9 +112,12 @@ import {
   targetOf,
   typeInto,
   unsavedNoteLabel,
+  updateRefusedLaterWords,
   withMenuDefaults,
   type MenuNoteDraft,
+  type NoteTarget,
 } from "./note-target";
+import { sayAfterClose, whenRefusedLater } from "./late-refusal";
 import { withoutSettingsCopies } from "./settings-copy";
 import type { SettingRow } from "./setting-history";
 import { GLYPH_CLASS } from "./TimelineReadout";
@@ -163,6 +172,8 @@ export interface MenuNotesProps {
    * root's journal id); a new `nonce` opens it again.
    */
   focusNote?: { id: string; nonce: number } | null;
+  /** A note about the machine itself is on the iPad: the card reads the studio's notes on the unit again. */
+  onFloorNoteAdded?: () => void;
 }
 
 type Status = { text: string; retry: boolean } | null;
@@ -200,13 +211,29 @@ export function MenuNotes({
   healthNote = null,
   onOpenSession,
   focusNote = null,
+  onFloorNoteAdded,
 }: MenuNotesProps) {
   const controlled = door === "session" && !!onDraftChange;
+  const [busy, setBusy] = useState(false);
   // The card's own draft: everything on the profile; in a session, only the
   // choices made before the first word (the tracker keeps a draft with words).
   const [local, setLocal] = useState<MenuNoteDraft>(() => withMenuDefaults(null, machineId));
   const effective: MenuNoteDraft = controlled && hasDraftText(draft) ? (draft as MenuNoteDraft) : local;
+  // What the box holds now, for a refusal that comes later (its closure is older).
+  const effectiveRef = useRef(effective);
+  effectiveRef.current = effective;
+  // Whether the card is still open, for the same.
+  const live = useRef(true);
+  useEffect(() => {
+    live.current = true;
+    return () => {
+      live.current = false;
+    };
+  }, []);
+  // A change drawn while a save waits is refused: the save's own clear (its
+  // closure was made before it waited) would wipe it with the saved words.
   const commit = (next: MenuNoteDraft) => {
+    if (busy) return;
     if (!controlled) {
       setLocal(next);
       return;
@@ -219,7 +246,6 @@ export function MenuNotes({
   const [open, setOpen] = useState(false);
   const [filingOpen, setFilingOpen] = useState(false);
   const [bodyOpen, setBodyOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<Status>(null);
   const textRef = useRef<HTMLTextAreaElement | null>(null);
   const aboutId = useId();
@@ -263,6 +289,28 @@ export function MenuNotes({
 
   /* ---------------- writing ---------------- */
 
+  /**
+   * A note the card said was saved on this iPad, refused later. While the
+   * card is open: the words come back when the box is still empty (never
+   * over words typed since), with Try again; otherwise the line says what
+   * couldn't be saved. Once it has closed: the app's toast.
+   */
+  const refusedLater = (d: MenuNoteDraft, target: NoteTarget, err: unknown) => {
+    console.error("[machine menu] note refused after it was saved on this iPad", err);
+    const words = noteRefusedLaterWords(target, floorStudio.name, machineName);
+    if (!live.current) {
+      sayAfterClose(words);
+      return;
+    }
+    if (hasDraftText(effectiveRef.current)) {
+      setStatus({ text: words, retry: false });
+      return;
+    }
+    commit(d);
+    setOpen(true);
+    setStatus(noteSaveLine("failed"));
+  };
+
   const add = async () => {
     if (!author || readOnly || busy || !ours) return;
     const d = effective;
@@ -283,6 +331,7 @@ export function MenuNotes({
         setStatus(noteSaveLine("failed"));
         return;
       }
+      if (outcome.kind === "queued") whenRefusedLater(write, (err) => refusedLater(d, "floor", err), (id) => !id);
       setStatus({
         text: outcome.kind === "saved" ? floorConfirmation(floorStudio.name, machineName) : floorQueuedWords(floorStudio.name, machineName),
         retry: false,
@@ -291,6 +340,8 @@ export function MenuNotes({
       setOpen(false);
       setFilingOpen(false);
       setBodyOpen(false);
+      // The safety strip reads the studio's notes again (a queued note is in this iPad's copy).
+      onFloorNoteAdded?.();
       return;
     }
     const w = clientNoteOf(d);
@@ -302,7 +353,8 @@ export function MenuNotes({
         machineId,
         machineName,
         existingNotes: [...(legacyNotes ?? [])],
-        content: w.body,
+        // Room left for the "{machine} — " the journal copy carries, under the journal's rule.
+        content: machineNoteBody(w.body, machineName),
         filing: { kind: w.kind, category: w.category, bodyParts: w.bodyParts },
         importance: w.importance,
         author,
@@ -319,6 +371,7 @@ export function MenuNotes({
       setStatus(noteSaveLine("failed"));
       return;
     }
+    if (outcome.kind === "queued") whenRefusedLater(write, (err) => refusedLater(d, "client", err), (note) => !note);
     setStatus(noteSaveLine(outcome.kind));
     commit(fresh());
     setOpen(false);
@@ -338,10 +391,13 @@ export function MenuNotes({
   /* ---------------- the list ---------------- */
 
   const names = useMemo(() => (machineNames && machineNames.length ? [...machineNames] : [machineName]), [machineNames, machineName]);
-  const threads = useMemo(() => {
-    if (!journal) return null;
+  const { threads, copiesLeftOut } = useMemo(() => {
+    if (!journal) return { threads: null, copiesLeftOut: false };
     const mine = journal.filter((e) => e && e.machineId === machineId && !e.isArchived && (e.body ?? "").trim() !== "");
-    return assembleThreads(withoutSettingsCopies(mine, history, names));
+    const notes = withoutSettingsCopies(mine, history, names);
+    // The rail and the grid count a settings save's copy (they can't tell
+    // one without the setting changes); the empty line says where they are.
+    return { threads: assembleThreads(notes), copiesLeftOut: notes.length < mine.length };
   }, [journal, machineId, history, names]);
   const zones = useMemo(() => (threads ? threadsByZone(threads, today) : null), [threads, today]);
   // The old list's notes that have no journal copy: shown, never written.
@@ -362,6 +418,8 @@ export function MenuNotes({
   const [moreFor, setMoreFor] = useState<string | null>(null);
   const [updFor, setUpdFor] = useState<string | null>(null);
   const [updText, setUpdText] = useState("");
+  const updTextRef = useRef(updText);
+  updTextRef.current = updText;
   const [threadStatus, setThreadStatus] = useState<{ id: string; text: string } | null>(null);
   const [offList, setOffList] = useState<NoteThread | null>(null);
   const blockRef = useRef<HTMLElement | null>(null);
@@ -416,6 +474,28 @@ export function MenuNotes({
     if (outcome.kind === "failed") {
       say(t.id, THREAD_WORDS.updateFailed);
       return;
+    }
+    if (outcome.kind === "queued") {
+      // Refused after "saved on this iPad": the words come back while the update box is empty.
+      whenRefusedLater(
+        write,
+        (err) => {
+          console.error("[machine menu] update refused after it was saved on this iPad", err);
+          if (!live.current) {
+            sayAfterClose(updateRefusedLaterWords(machineName));
+            return;
+          }
+          setOpenThread(t.id);
+          if (updTextRef.current.trim()) {
+            say(t.id, updateRefusedLaterWords(machineName));
+            return;
+          }
+          setUpdFor(t.id);
+          setUpdText(body);
+          say(t.id, THREAD_WORDS.updateFailed);
+        },
+        (id) => !id,
+      );
     }
     setUpdText("");
     setUpdFor(null);
@@ -567,8 +647,10 @@ export function MenuNotes({
     );
   };
 
+  // An old-list note flagged important is Critical, as the safety strip, the
+  // chart's lane and the grid's mark all say it (safety.ts, machine-notes.ts).
   const earlierRow = (n: (typeof earlier)[number]) => {
-    const key = noteKey(n.isImportant ? "elevated" : "standard");
+    const key = noteKey(n.isImportant ? "critical" : "standard");
     const Glyph = key.glyph;
     const day = n.timestamp ? studioDateKey(new Date(n.timestamp)) : null;
     return (
@@ -588,10 +670,12 @@ export function MenuNotes({
     if (!zones) {
       return <p className="mm-none">{journalFailed ? NOTES_UNREAD_LINE : THREAD_WORDS.loading}</p>;
     }
-    if (count === 0) return <p className="mm-none">{THREAD_WORDS.none}</p>;
+    if (count === 0) return <p className="mm-none">{copiesLeftOut ? THREAD_WORDS.noneButCopies : THREAD_WORDS.none}</p>;
     if (!all) {
       if (head) return row(head, zones.open.includes(head) ? "open" : "standing");
-      return earlier[0] ? earlierRow(earlier[0]) : null;
+      // An important old note is already in the safety strip, as an open Critical thread is.
+      const quiet = earlier.find((n) => !n.isImportant);
+      return quiet ? earlierRow(quiet) : null;
     }
     return (
       <>
@@ -649,6 +733,9 @@ export function MenuNotes({
             placeholder={composerPlaceholder(clientFirstName, machineName)}
             aria-label={title}
             value={effective.body}
+            // Held still while a save waits (at most a moment): readOnly, not
+            // disabled, so the iPad keeps the focus and the keyboard.
+            readOnly={busy}
             onFocus={() => {
               setOpen(true);
               keepAboveKeyboard();
@@ -663,7 +750,7 @@ export function MenuNotes({
               {!ours ? (
                 <div className="mm-cmp__row">
                   <span className="mm-cmp__other">{owner === "other" ? aboutWords(otherName ?? "another machine") : THREAD_WORDS.notAboutMachine}</span>
-                  <button type="button" className="mm-btn" onClick={() => commit(makeItAbout(effective, machineId))}>
+                  <button type="button" className="mm-btn" disabled={busy} onClick={() => commit(makeItAbout(effective, machineId))}>
                     {makeItAboutWords(machineName)}
                   </button>
                 </div>
@@ -679,6 +766,7 @@ export function MenuNotes({
                         role="radio"
                         className="mm-seg__opt"
                         aria-checked={target === "client"}
+                        disabled={busy}
                         onClick={() => commit(setTarget(effective, "client"))}
                       >
                         {clientChoice}
@@ -688,7 +776,7 @@ export function MenuNotes({
                         role="radio"
                         className="mm-seg__opt"
                         aria-checked={target === "floor"}
-                        disabled={!floorStudio.id}
+                        disabled={busy || !floorStudio.id}
                         onClick={() => commit(setTarget(effective, "floor"))}
                       >
                         {machineChoice}
@@ -702,7 +790,7 @@ export function MenuNotes({
                         <span className="mm-cmp__val" data-filed="">
                           {filedAsWords(effective.category, effective.flavour)}
                         </span>
-                        <button type="button" className="mm-btn" aria-expanded={filingOpen} onClick={() => setFilingOpen((o) => !o)}>
+                        <button type="button" className="mm-btn" aria-expanded={filingOpen} disabled={busy} onClick={() => setFilingOpen((o) => !o)}>
                           Change
                         </button>
                       </div>
@@ -713,6 +801,7 @@ export function MenuNotes({
                               key={chip.id}
                               type="button"
                               className="mm-choice"
+                              disabled={busy}
                               aria-pressed={chipOf(effective.category, effective.flavour)?.id === chip.id}
                               onClick={() => {
                                 commit(fileDraft(effective, chip, pickedByHand));
@@ -730,14 +819,14 @@ export function MenuNotes({
                           <BodyPartPicker value={effective.bodyParts} onChange={(parts) => commit({ ...effective, bodyParts: parts })} />
                         ) : (
                           <div className="mm-cmp__row">
-                            <button type="button" className="mm-btn" onClick={() => setBodyOpen(true)}>
+                            <button type="button" className="mm-btn" disabled={busy} onClick={() => setBodyOpen(true)}>
                               Where on the body (optional)
                             </button>
                           </div>
                         )
                       ) : null}
                       <div className="mm-cmp__loud">
-                        <Loudness compact hint={false} value={effective.importance} onChange={(lvl) => commit({ ...effective, importance: lvl })} />
+                        <Loudness compact hint={false} disabled={busy} value={effective.importance} onChange={(lvl) => commit({ ...effective, importance: lvl })} />
                       </div>
                     </>
                   ) : null}

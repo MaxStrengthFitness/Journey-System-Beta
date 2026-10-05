@@ -68,6 +68,12 @@ export interface PhoneSessionStageProps {
   everythingRead?: boolean;
   coverage?: HistoryCoverage;
   totals?: Pick<Client, "machineStats" | "currentMachineMetrics"> | null;
+  /**
+   * How far the read of the past sets has got (the tracker's logs window):
+   * while it is out, or when it failed, a card says so rather than "nothing
+   * recorded". Defaults to an answered read.
+   */
+  historyState?: "loading" | "ready" | "cache-only" | "failed";
 }
 
 export function PhoneSessionStage({
@@ -84,6 +90,7 @@ export function PhoneSessionStage({
   everythingRead = false,
   coverage = "unknown",
   totals = null,
+  historyState = "ready",
 }: PhoneSessionStageProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const today = studioTodayKey();
@@ -137,6 +144,7 @@ export function PhoneSessionStage({
                   ),
                   everythingRead,
                   coverage,
+                  state: historyState,
                 })}
               />
             );

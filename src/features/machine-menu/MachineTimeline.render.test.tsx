@@ -258,6 +258,9 @@ describe("the Staircase at 712px", () => {
     const { host } = await mount(<MachineTimeline model={avery(21)} ctx={CTX} width={W} />);
     const plot = q(host, ".mm-plot")!;
     expect(plot.getAttribute("tabindex")).toBe("0");
+    // A group, so its name and the keys it takes are announced (a role-less div's label is dropped).
+    expect(plot.getAttribute("role")).toBe("group");
+    expect(plot.getAttribute("aria-label")).toBe("Chart of every loaded session. Left and right arrow keys step through sessions.");
     await key(plot, "ArrowLeft");
     expect(readout(host).getAttribute("data-readout")).toBe("s-2026-10-01");
     await key(plot, "ArrowLeft");
@@ -322,7 +325,7 @@ describe("the Staircase at 712px", () => {
     expect(q(other.host, "[data-overview]")).toBeNull();
     expect(q(other.host, "[data-page]")).toBeNull();
     expect(cols(other.host)).toHaveLength(3);
-    expect(q(other.host, "[data-wall]")?.textContent).toBe("First inJourney");
+    expect(q(other.host, "[data-wall]")?.textContent).toBe("Start ofJourney");
   });
 
   it("opens Every session and Weight by weight in place", async () => {

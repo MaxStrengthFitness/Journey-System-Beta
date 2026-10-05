@@ -111,6 +111,11 @@ export function columnWidthsFor(dialogWidth: number, layout: MenuLayout): { cont
  * "notes" sits: right after "settings" in a session; after the chart on the
  * profile (in landscape, at the foot of the leading column, after the
  * folded guide and setting changes, since the chart has a column of its own).
+ *
+ * The settings and the notes are in `leading` in EVERY layout, and outside
+ * landscape `trailing` is empty: the body draws the same two columns in
+ * every layout (stacked outside landscape), so a turn of the iPad moves only
+ * the chart and never remounts a block holding an unsaved draft.
  */
 export function blockOrder(door: Door, layout: MenuLayout, state: BlockState): BlockOrder {
   const top: BlockId[] = state.safety ? ["safety"] : [];

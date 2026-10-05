@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasImportantMachineNote, journalNotesOnMachine, machineNoteLoudness, machineNoteWords, machineNotesFor } from "./machine-notes";
+import { hasImportantMachineNote, journalNotesOnMachine, machineNoteCount, machineNoteLoudness, machineNoteWords, machineNotesFor } from "./machine-notes";
 import type { JournalEntry } from "../../types/journal";
 
 const entry = (over: Partial<JournalEntry>): JournalEntry =>
@@ -91,5 +91,27 @@ describe("how loud the one mark beside a machine's name is (machine menu, Oct 20
     const legacy = [{ id: "1", content: "seat sticks", authorName: "Ana", timestamp: "2026-08-01T10:00:00Z", isImportant: true }];
     expect(loud(null, legacy)).toBe("critical");
     expect(loud(null, [])).toBeNull();
+  });
+});
+
+describe("machineNoteCount: the rail's and the grid's count, the card's way", () => {
+  it("counts a note with two updates once, and the old list's notes with no journal copy", () => {
+    const journal = [
+      entry({ id: "root" }),
+      entry({ id: "u1", threadId: "root", body: "Leg Press — better today" }),
+      entry({ id: "u2", threadId: "root", body: "Leg Press — fine again" }),
+      entry({ id: "other", machineId: "chest" }),
+      entry({ id: "gone", isArchived: true, body: "Leg Press — old" }),
+    ];
+    const legacy = [{ id: "1", content: "needs the thick pad", authorName: "Ana", timestamp: "2026-08-01T10:00:00Z", isImportant: false }];
+    expect(machineNoteCount({ machineId: "leg", machineName: "Leg Press", legacy, journal })).toBe(2);
+    // The plain list still has each update as its own row: the count is not its length.
+    expect(machineNotesFor({ machineId: "leg", machineName: "Leg Press", legacy, journal })).toHaveLength(4);
+  });
+
+  it("counts the old list alone while the journal is unread", () => {
+    const legacy = [{ id: "1", content: "a", authorName: "Ana", timestamp: "", isImportant: false }];
+    expect(machineNoteCount({ machineId: "leg", machineName: "Leg Press", legacy, journal: null })).toBe(1);
+    expect(machineNoteCount({ machineId: "leg", machineName: "Leg Press", legacy: null, journal: [] })).toBe(0);
   });
 });

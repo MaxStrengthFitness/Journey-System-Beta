@@ -13,21 +13,25 @@
  *   - Load older: on the profile, the host's own next page
  *     (`handleLoadMoreHistory`); in a session, the next 30 sessions' sets by
  *     `sessionId` (older-read.ts — the tracker's window query run again for
- *     older ids, no new index), kept for the rest of the session in a
- *     per-client memory forgotten at sign-out. Only ever on a tap.
+ *     older ids, no new index), kept for the rest of the session in a memory
+ *     keyed by the client and the running session, forgotten at sign-out.
+ *     Only ever on a tap, and an answer only this iPad's cache gave is a
+ *     failed read (`fetchSetsOf`), never remembered.
  *   - The journal: the host's ONE listener, passed down — never a second.
  *   - The setting changes: ONE `getDocs` when the card opens
  *     (useSettingHistory), shared by the chart, "Last changed", Setting
  *     changes and the settings-copy filter. It replaces a live listener.
  *   - The floor's notes on the unit: ONE read when the card opens
  *     (equipment/FloorNoteCard's `useFloorNote`), shared by the safety strip
- *     and the header's pill.
+ *     and the header's pill, and read again after the card adds one
+ *     (`floorRound`), keeping the strip on screen in between.
  *   - Machine fit: `useFitData` with the studio's roster (cached and shared),
  *     for the dials' rule 3 and the rare fit line.
  *
  * A read that failed is "failed", never empty; a read that hasn't answered
  * is "loading", never "nothing" (so the header never says "First time" while
- * the first page is still out). No Mindbody call, no new listener.
+ * the first page is still out); a read only the cache answered is drawn but
+ * never counts as every session read. No Mindbody call, no new listener.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";
@@ -58,7 +62,7 @@ import type { TileField } from "./DialTiles";
 import type { Door } from "./doors";
 import { knownElsewhere as totalsKnowIt, lastTimeLine, type HeaderLine } from "./header-words";
 import type { OlderLoad } from "./MachineTimeline";
-import { hasOlderToRead, olderSetsFor, readOlderSets, rememberOlderSets } from "./older-read";
+import { hasOlderToRead, olderMemoryKey, olderSetsFor, readOlderSets, rememberOlderSets, trustedReadIds } from "./older-read";
 import { progressFromModel, type ProgressFigure } from "./progress-figure";
 import { criticalLinesOf, safetySummary, type CriticalRead, type SafetySummary } from "./safety";
 import type { SettingRow } from "./setting-history";
@@ -159,16 +163,28 @@ export interface MachineMenuData {
 
 const NO_LOGS: TimelineLogInput[] = [];
 
-/** The Firestore half of older-read.ts: the tracker's window query, run again for older ids. */
+/**
+ * The Firestore half of older-read.ts: the tracker's window query, run again
+ * for older ids. With the persistent cache, `getDocs` offline answers from
+ * whatever this iPad holds (usually nothing for sessions it never opened)
+ * instead of failing; that answer is refused here, so Load older says it
+ * couldn't load and remembers nothing, and the next tap reads them again.
+ */
 async function fetchSetsOf(ids: string[]): Promise<ExerciseLog[]> {
   const snap = await getDocs(query(collection(db, "exerciseLogs"), where("sessionId", "in", ids)));
+  if (snap.metadata?.fromCache) throw new Error("older sets answered from the cache only");
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ExerciseLog);
 }
 
+/**
+ * @param floorRound A new number reads the studio's notes on the unit again
+ *   (the card added one); the last answer stays drawn until the new one comes.
+ */
 export function useMachineMenuData(
   host: MachineMenuHost,
   machineId: string | null,
   catalogById: Readonly<Record<string, MachineCatalogEntry>>,
+  floorRound = 0,
 ): MachineMenuData {
   const { activeStudio, studios } = useActiveStudio();
   const { online } = useSendState();
@@ -211,18 +227,20 @@ export function useMachineMenuData(
 
   const [olderRound, setOlderRound] = useState(0);
   const [olderState, setOlderState] = useState<"idle" | "loading" | "failed">("idle");
-  // What Load older has read in this session, for this client (older-read.ts).
+  // What Load older has read for this client in this running session (older-read.ts).
+  const memoryKey = olderMemoryKey(clientId, host.session?.id ?? null);
   const remembered = useMemo(
-    () => (door === "session" ? olderSetsFor(clientId) : { ids: new Set<string>() as ReadonlySet<string>, logs: NO_LOGS }),
+    () => (door === "session" ? olderSetsFor(memoryKey) : { ids: new Set<string>() as ReadonlySet<string>, logs: NO_LOGS }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [door, clientId, olderRound],
+    [door, memoryKey, olderRound],
   );
 
+  // The window's sessions, and what Load older read only while it joins on
+  // to the window (a moved window never leaves a session neither read).
   const readIds = useMemo<ReadonlySet<string>>(() => {
+    if (host.readIds) return trustedReadIds(host.sessions, host.readIds, remembered.ids);
     const ids = new Set<string>();
-    if (host.readIds) for (const id of host.readIds) ids.add(id);
-    else for (const s of host.sessions) if (s.id) ids.add(s.id);
-    for (const id of remembered.ids) ids.add(id);
+    for (const s of host.sessions) if (s.id) ids.add(s.id);
     return ids;
   }, [host.readIds, host.sessions, remembered]);
 
@@ -239,13 +257,17 @@ export function useMachineMenuData(
   const reading = host.historyState === "loading";
   const moreToLoad =
     host.historyState === "failed" ? false : door === "session" ? hasOlderToRead(host.sessions, readIds) : !!host.moreOnServer;
-  const everythingRead = !reading && host.historyState !== "failed" && !moreToLoad;
+  // Only a read the server answered counts as every session read: a
+  // cache-only one may be partial (offline, or the cache's first answer), so
+  // it is drawn, hedged, and never claims a start, a first time or a wall.
+  // The tracker's `sessionsAllRead` (the Now Bar's) is the same rule.
+  const everythingRead = host.historyState === "ready" && !moreToLoad;
 
   /* ---------------- the card's own reads ---------------- */
 
   const history = useSettingHistory(machine?.id ?? null, clientId, !!machine?.id);
   const historyRows = history.state === "ready" || history.state === "cache-only" ? history.rows : null;
-  const floor = useFloorNote(host.floorStudio.id, machine?.id ?? null);
+  const floor = useFloorNote(host.floorStudio.id, machine?.id ?? null, floorRound);
   const fit = useFitData(host.activeStudioId, machine?.id ? [machine.id] : [], host.roster, !!machine?.id && !host.watching);
   const fitTarget = useMemo(() => factorsOf(client ?? null), [client]);
   const settingsStudio = client?.homeStudioId || host.activeStudioId;
@@ -359,7 +381,7 @@ export function useMachineMenuData(
       setOlderState("loading");
       try {
         const read = await readOlderSets(fetchSetsOf, sessions, readIds);
-        rememberOlderSets(clientId, read);
+        rememberOlderSets(memoryKey, read);
         setOlderRound((r) => r + 1);
         setOlderState("idle");
       } catch (err) {
@@ -376,7 +398,7 @@ export function useMachineMenuData(
     } catch {
       setOlderState("failed");
     }
-  }, [door, sessions, readIds, clientId, loadOlderHost]);
+  }, [door, sessions, readIds, memoryKey, loadOlderHost]);
 
   const canLoadOlder = moreToLoad && (door === "session" || !!loadOlderHost);
   const olderBusy = olderState === "loading" || (door === "profile" && !!host.loadingOlder);

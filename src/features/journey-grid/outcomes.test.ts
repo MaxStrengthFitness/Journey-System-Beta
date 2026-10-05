@@ -63,8 +63,11 @@ describe("the row's numbers read performed sets only", () => {
     expect(stats.mostReps?.set.reps).toBe(10); // not the practice set's 15
   });
 
-  it("the summary runs from the first performed load to the last", () => {
-    expect(journeySummary(row, sessions)).toBe("100 → 104 lb (+4%)");
+  it("the spoken summary says the newest performed load, and never a % from the oldest set loaded", () => {
+    expect(journeySummary(row, sessions)).toBe("Last 104 lb");
+    // A start on file doesn't make it a progress claim either: that is the Now Bar's and the menu's.
+    expect(journeySummary({ ...row, startingWeight: 80 }, sessions)).toBe("Last 104 lb");
+    expect(journeySummary({ ...row, startingWeight: 80 }, sessions)).not.toMatch(/%|→/);
   });
 
   it("the cells themselves are all present, so the row still tells the whole story", () => {

@@ -93,6 +93,13 @@
   flex: none;
 }
 
+/* Landscape's chart column is narrower (488 to 608px), so a settings line or
+   a long event line takes a second line there: its slot is one 20px line
+   taller, still fixed, so the plot still never moves under a finger. */
+.mm-card[data-layout="landscape"] .mm-readout {
+  height: 148px;
+}
+
 .mm-ro__l1 {
   margin: 0;
   font-size: 17px;
@@ -154,9 +161,12 @@
   stroke-width: 1.6;
 }
 
+/* Row A stays one 44px row: the words take two 20px lines beside the
+   buttons rather than pushing them onto a line of their own, which hid the
+   settings and the event under the slot's edge. */
 .mm-ro__a {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
   gap: 4px 8px;
@@ -164,15 +174,19 @@
 }
 
 .mm-ro__a-text {
+  flex: 1 1 0;
+  min-width: 0;
   font-size: 15px;
   font-weight: 600;
+  line-height: 20px;
   color: var(--eq-ink-2);
   overflow-wrap: anywhere;
 }
 
 .mm-ro__btns {
+  flex: none;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
 }
 
@@ -988,19 +1002,15 @@
 
 /* ---------- the settings tiles ----------------------------------------- */
 
-/* Three to a row in portrait; fewer dials, fewer columns. One a row on a phone. */
+/* As many to a row as fit at 224px or wider: a tile that wide leaves the
+   value at least 74px between its 56px ± buttons, enough for "10A", "12.5"
+   or any two-digit value at 36px on one line. Three a row in the portrait
+   dialog, two on an iPad mini, one in landscape's 400px column; fewer dials
+   stretch across the row (auto-fit). One a row on a phone. */
 .mm-tiles {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 224px), 1fr));
   gap: 12px;
-}
-
-.mm-tiles[data-count="1"] {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.mm-tiles[data-count="2"] {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .mm-tile {
@@ -1092,7 +1102,9 @@
   line-height: 1;
   font-variant-numeric: tabular-nums;
   color: var(--eq-ink);
-  overflow-wrap: anywhere;
+  /* A value never breaks mid-number ("1" over "0" reads as two values). */
+  white-space: nowrap;
+  overflow-wrap: normal;
 }
 
 .mm-tile__val:hover {
@@ -1111,7 +1123,8 @@
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
   color: var(--eq-ink);
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow-wrap: normal;
 }
 
 .mm-tile__wordrow {
@@ -1446,8 +1459,11 @@
   color: var(--eq-ink-muted);
 }
 
+/* Inset, so it sits inside the box's open border; it follows real focus,
+   so tabbing back into an open box shows it again. */
 .mm-cmp__text:focus-visible {
-  outline: none;
+  outline: 2px solid var(--eq-focus-ring);
+  outline-offset: -4px;
 }
 
 .mm-cmp[data-open="true"] .mm-cmp__text {
@@ -1805,9 +1821,13 @@
   border-radius: 20px 20px 0 0;
 }
 
+/* Inline it sticks to the app's page scroller (the pane itself never
+   scrolls), inside that scroller's padding (--scroll-pad-top, from
+   useScrollerPad) and just under the Programming sub-toggle, which publishes
+   its height on the profile's tab as --psub-stuck-h. */
 .mm-card[data-inline="true"] .mm-head {
   position: sticky;
-  top: 0;
+  top: calc(var(--scroll-pad-top, 0px) + var(--psub-stuck-h, 0px));
   z-index: 2;
   border-radius: 16px 16px 0 0;
 }
@@ -1869,7 +1889,12 @@
   outline-offset: 2px;
 }
 
-/* "1 thing to know first": shown only while the strip is scrolled away. */
+/* "1 thing to know first": shown only while the strip is scrolled away.
+   Its place is kept while it isn't, so the names never rewrap mid-drag. */
+.mm-head__pill:not([data-shown]) {
+  visibility: hidden;
+}
+
 .mm-head__pill {
   flex: none;
   display: inline-flex;
@@ -1964,17 +1989,26 @@
   min-width: 0;
 }
 
-/* Landscape: a 400px leading column and the chart beside it. */
+/* The same two columns in every layout (MachineMenuBody): stacked, with the
+   empty trailing column gone, outside landscape; side by side in it. A turn
+   of the iPad then moves only the chart. */
 .mm-cols {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.mm-col--trail:empty {
+  display: none;
+}
+
+/* Landscape: a 400px leading column and the chart beside it. */
+.mm-card[data-layout="landscape"] .mm-cols {
   display: grid;
   grid-template-columns: 400px minmax(0, 1fr);
   gap: 24px;
   align-items: start;
-}
-
-/* Two tiles a row in the 400px column (194px each still fits 56px ± and a two-digit value). */
-.mm-col--lead .mm-tiles:not([data-count="1"]) {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .mm-chart-slot {
@@ -2093,6 +2127,35 @@
   line-height: 1.45;
 }
 
+/* The note box's Loudness, the body map and the chart's loading mark, lifted
+   to the card's 14px floor and 44px default inside the card only; each keeps
+   its own sizes everywhere else (Loudness is one control everywhere). The
+   Loudness selectors outrank rating.css's whatever order the chunks load. */
+.mm-card .rt--compact .rt__ask,
+.mm-card .rt--compact .rt__ask small {
+  font-size: 14px;
+}
+
+.mm-card .rt--loud .rt__seg {
+  font-size: 14px;
+  letter-spacing: 0.04em;
+}
+
+.mm-card .nc-kicker,
+.mm-card .nc-hint {
+  font-size: 14px;
+}
+
+.mm-card .nc-chip--small {
+  font-size: 14px;
+  min-height: 44px;
+}
+
+.mm-card .lm__label {
+  font-size: 14px;
+  color: var(--eq-ink-2);
+}
+
 /* ---------- a phone (under 600px): the same card, tightened ------------ */
 
 @media (max-width: 599px) {
@@ -2102,14 +2165,38 @@
     overflow-y: visible;
   }
 
+  /* Row A wraps here, its buttons under the words (the spec's phone note). */
+  .mm-ro__a {
+    flex-wrap: wrap;
+  }
+
+  .mm-ro__a-text {
+    flex: 0 1 auto;
+  }
+
   .mm-pg-btn {
     min-width: 0;
   }
 
   /* One tile a row: a 358px tile still fits 56px ± and a 36px value. */
-  .mm-tiles,
-  .mm-tiles[data-count="2"] {
+  .mm-tiles {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* The names and Close fill the first line; the pill has a row of its own,
+     always there when the strip has something, so the names never break
+     mid-word beside it and the header never changes height under a drag. */
+  .mm-head__row {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .mm-head__title {
+    flex-basis: calc(100% - 58px);
+  }
+
+  .mm-head__pill {
+    order: 3;
   }
 
   /* A full-width sheet with a 16px inset. */

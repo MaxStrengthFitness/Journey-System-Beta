@@ -106,6 +106,24 @@ export function seedDraft(fields: readonly DraftField[], saved: Values): Record<
   return draft;
 }
 
+/**
+ * The draft once what it was seeded from moved underneath it: the catalog's
+ * fields arriving after the card opened (a catalog-only dial, a fixed dial's
+ * catalog default), a catalog edit, or another iPad saving the settings. A
+ * dial nobody has touched follows the new seed; a dial changed by hand keeps
+ * its value. Without it the draft held the old seed, so the change strip
+ * opened on its own ("Gap — → 0"), Close asked about a change nobody made,
+ * and Save wrote back values nobody chose (an untouched dial's old value, or
+ * an empty one that erased a saved setting).
+ */
+export function rebaseDraft(draft: Values, oldSeed: Values, newSeed: Readonly<Record<string, string>>): Record<string, string> {
+  const next: Record<string, string> = { ...newSeed };
+  for (const k of Object.keys(newSeed)) {
+    if (k in oldSeed && clean(draft[k]) !== clean(oldSeed[k])) next[k] = draft[k] ?? "";
+  }
+  return next;
+}
+
 /** The draft differs from what the card opened with. Opening the card is never dirty. */
 export function isDraftDirty(fields: readonly DraftField[], draft: Values, saved: Values): boolean {
   const seed = seedDraft(fields, saved);
@@ -302,6 +320,24 @@ export function undoPayload(fields: readonly DraftField[], before: Values, after
     if (was !== clean(after[f.key])) draft[f.key] = was;
   }
   return { saved, draft, reason: UNDO_REASON, isInitialSetup: false, fileNote: false };
+}
+
+/**
+ * A save the card said was "saved on this iPad" that the database refused
+ * later, once the card had closed: the app's toast says it ("Leg Press for
+ * Avery: couldn't save Seat 5. Set it again on the machine's card.").
+ */
+export function refusedLaterWords(
+  machineName: string,
+  clientFirstName: string,
+  changes: readonly SettingPair[],
+  firstSetup: boolean,
+  undo = false,
+): string {
+  const machine = clean(machineName) || "This machine";
+  const who = clean(clientFirstName);
+  const what = undo ? `undo ${changeName(changes, firstSetup)}` : `save ${changeName(changes, firstSetup)}`;
+  return `${machine}${who ? ` for ${who}` : ""}: couldn't ${what}. Set it again on the machine's card.`;
 }
 
 /* ------------------------------------------------------------------ *

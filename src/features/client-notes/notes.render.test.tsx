@@ -824,6 +824,46 @@ describe("the entry card says the Loudness words", () => {
 });
 
 describe("the Active Session notes sheet mounts", () => {
+  it("never takes a draft the machine menu filed for the floor's notes: the words read only, no Save, the draft untouched", async () => {
+    const onDraftChange = vi.fn();
+    const onOpenMachine = vi.fn();
+    const draft = {
+      body: "Seat pin sticks",
+      category: "coaching" as const,
+      flavour: "Setup" as const,
+      bodyParts: null,
+      importance: "standard" as const,
+      machineId: "leg-press",
+      aboutMachine: true,
+      toFloor: true,
+    };
+    const host = await mount(
+      <SessionJournalSidebar
+        session={{ id: "sess1" } as WorkoutSession}
+        clientId="c1"
+        clientFirstName="Judy"
+        studioId="s1"
+        author={{ id: "uid-jane", initials: "JC", fullName: "Jane Coach" }}
+        machines={[{ id: "leg-press", name: "Leg Press" } as any]}
+        draft={draft}
+        onDraftChange={onDraftChange}
+        floorStudioName="Westlake"
+        onOpenMachine={onOpenMachine}
+        onClose={() => {}}
+      />,
+    );
+    expect(host.querySelector('[data-testid="note-composer"]')).toBeNull();
+    const card = host.querySelector('[data-testid="floor-draft"]')!;
+    expect(card.textContent).toContain("For Westlake's notes on Leg Press");
+    expect(card.textContent).toContain("Seat pin sticks");
+    expect(card.querySelector("textarea")).toBeNull();
+    expect(buttonByText(host, "Save")).toBeUndefined();
+    await click(buttonByText(card, "Open Leg Press"));
+    expect(onOpenMachine).toHaveBeenCalledWith("leg-press");
+    expect(onDraftChange).not.toHaveBeenCalled();
+    expect(writes).toHaveLength(0);
+  });
+
   it("shows the same category chips, and FORD / Life switches to Remember this", async () => {
     const host = await mount(
       <SessionJournalSidebar

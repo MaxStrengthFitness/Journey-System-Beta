@@ -11,9 +11,16 @@
  *   - session order comes from the sessions, never from a log's `createdAt`,
  *     which a set entered after the fact stamps with the day it was typed;
  *   - every machine's sets come back (about 200 documents), so they are kept
- *     for the rest of the session in a per-client memory, and every
- *     machine's card draws them without another read. The memory is
- *     forgotten at sign-out, like every other module memory on a shared iPad.
+ *     for the rest of the session in a memory keyed by the client AND the
+ *     running session, and every machine's card draws them without another
+ *     read. A new session starts with nothing remembered; the memory is
+ *     forgotten at sign-out, like every other module memory on a shared iPad;
+ *   - a read only this iPad's cache answered is a FAILED read, never an empty
+ *     one: the hook's query refuses a `fromCache` answer, so nothing is
+ *     remembered and the next tap reads those sessions again;
+ *   - what is remembered counts as read only while it joins on to the
+ *     tracker's window (`trustedReadIds`), so a window that moved never
+ *     leaves a session between the two that neither read.
  *
  * The Firestore call itself is injected (`fetchSets`), so this file stays a
  * pure, testable half; the menu's data hook passes the real query.
@@ -89,6 +96,30 @@ export function nextOlderSessionIds(
     .map((s) => s.id);
 }
 
+/**
+ * The sessions whose sets may be drawn: every session in the tracker's
+ * window, and a session Load older read only while no session newer than it
+ * is unread. Walking newest first, the first session in neither stops the
+ * remembered ones from counting, so a window that moved by one (a new
+ * session, or a back-dated one logged elsewhere) never leaves a hole the
+ * model would take for "every session between two columns was read". Load
+ * older then reads the hole first, being the newest unread session.
+ */
+export function trustedReadIds(
+  sessions: readonly TimelineSessionInput[],
+  windowIds: ReadonlySet<string>,
+  rememberedIds: ReadonlySet<string>,
+): Set<string> {
+  const out = new Set<string>(windowIds);
+  let gap = false;
+  for (const s of newestFirst(sessions)) {
+    if (windowIds.has(s.id)) continue;
+    if (!gap && rememberedIds.has(s.id)) out.add(s.id);
+    else gap = true;
+  }
+  return out;
+}
+
 /** Are there sessions whose sets haven't been read? Load older shows only then. */
 export function hasOlderToRead(sessions: readonly TimelineSessionInput[], readIds: ReadonlySet<string>): boolean {
   return sessions.some((s) => !!s?.id && !readIds.has(s.id));
@@ -148,7 +179,12 @@ export async function readOlderSets<L extends TimelineLogInput>(
 }
 
 /* ------------------------------------------------------------------ *
- * The per-client memory, for the rest of the session
+ * The memory, for the rest of the session
+ *
+ * Keyed by `olderMemoryKey(clientId, sessionId)`: one client in one running
+ * session. The next session (or the next day's, on an iPad left signed in)
+ * starts with nothing remembered, so a remembered read never outlives the
+ * session it was made in, nor goes stale behind a later edit.
  * ------------------------------------------------------------------ */
 
 interface Remembered {
@@ -164,17 +200,22 @@ forgetOnSignOut(() => {
 
 const logKey = (l: TimelineLogInput): string => l.id ?? `${l.sessionId}_${l.machineId}${l.side ? `_${l.side}` : ""}`;
 
-/** Keep an older read for this client. A later read of the same set replaces it. */
-export function rememberOlderSets(clientId: string, read: OlderRead<TimelineLogInput>): void {
-  if (!clientId) return;
-  const kept = memory.get(clientId) ?? { ids: new Set<string>(), logs: new Map<string, TimelineLogInput>() };
-  for (const id of read.ids) kept.ids.add(id);
-  for (const l of read.logs) kept.logs.set(logKey(l), l);
-  memory.set(clientId, kept);
+/** The memory's key: this client, in this running session (none running: the empty id). */
+export function olderMemoryKey(clientId: string, sessionId: string | null | undefined): string {
+  return clientId ? `${clientId}|${sessionId ?? ""}` : "";
 }
 
-/** What has been read for this client by Load older, so far this session. */
-export function olderSetsFor(clientId: string): { ids: ReadonlySet<string>; logs: TimelineLogInput[] } {
-  const kept = memory.get(clientId);
+/** Keep an older read under its key. A later read of the same set replaces it. */
+export function rememberOlderSets(key: string, read: OlderRead<TimelineLogInput>): void {
+  if (!key) return;
+  const kept = memory.get(key) ?? { ids: new Set<string>(), logs: new Map<string, TimelineLogInput>() };
+  for (const id of read.ids) kept.ids.add(id);
+  for (const l of read.logs) kept.logs.set(logKey(l), l);
+  memory.set(key, kept);
+}
+
+/** What Load older has read under this key, so far this session. */
+export function olderSetsFor(key: string): { ids: ReadonlySet<string>; logs: TimelineLogInput[] } {
+  const kept = memory.get(key);
   return { ids: kept ? new Set(kept.ids) : new Set<string>(), logs: kept ? [...kept.logs.values()] : [] };
 }

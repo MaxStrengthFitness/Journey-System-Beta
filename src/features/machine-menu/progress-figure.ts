@@ -21,7 +21,10 @@
  *     no start, and so no %: the oldest set loaded is not where anyone began.
  *   - The % runs from the start to the newest COUNTED (performed) load and
  *     is shown only when it is up (rounded above 0) — the Now Bar's rule.
- *     Only a performed set moves it (lib/set-outcome.ts).
+ *     Only a performed set moves it (lib/set-outcome.ts), and each session
+ *     gives it the set the Journey grid's row keeps (`rowLoadOf`: Left when
+ *     a machine was logged one side at a time), never the chart's heavier
+ *     side, so the card and the Now Bar read the same sets.
  *
  * Nothing here suggests a weight. A % is a consequence, never a target.
  *
@@ -29,7 +32,7 @@
  */
 import { machineUsageWords } from "../../lib/history-claims";
 import type { HistoryCoverage } from "../../lib/prior-history";
-import { lastCounted, type TimelineModel } from "./timeline-model";
+import type { TimelineColumn, TimelineModel } from "./timeline-model";
 
 /** What the label says when the start is the starting weight on file. */
 export const STARTING_WEIGHT_LABEL = "Starting weight";
@@ -110,17 +113,34 @@ export function progressWords(fig: ProgressFigure | null): string | null {
   return fig && gain ? `${startWords(fig)}, ${gain}` : null;
 }
 
-/** The figure for the card, from the timeline model (counted columns only). */
+/**
+ * The load a column gives the figure: the SAME set the Journey grid's row
+ * keeps for that session, so the card and the Now Bar (which reads the row)
+ * count from the same sets. The row keeps the Left log when a machine was
+ * logged one side at a time (`journey-grid/adapters.ts` `toJourneyRows`:
+ * Left wins), and counts it only when it was performed; a column with only
+ * a Right side keeps its own load. The chart's line still draws the heavier
+ * side; only the % follows the row. (Two performed logs with no side in one
+ * session are left as the row has them: a known edge.)
+ */
+export function rowLoadOf(column: Pick<TimelineColumn, "counted" | "weight" | "sides">): number | null {
+  if (!column.counted) return null;
+  const left = column.sides?.L ?? null;
+  if (left) return left.outcome === "performed" ? left.weight : null;
+  return column.weight;
+}
+
+/** The figure for the card, from the timeline model: counted columns, at the grid row's load. */
 export function progressFromModel(
   model: Pick<TimelineModel, "columns" | "everythingRead">,
   startingWeight: unknown,
   coverage?: HistoryCoverage,
 ): ProgressFigure | null {
-  const first = model.columns.find((c) => c.counted && c.weight !== null) ?? null;
+  const loads = model.columns.map(rowLoadOf).filter((w): w is number => w !== null);
   return progressFigure({
     startingWeight,
-    firstCounted: first?.weight ?? null,
-    lastCounted: lastCounted(model)?.weight ?? null,
+    firstCounted: loads[0] ?? null,
+    lastCounted: loads[loads.length - 1] ?? null,
     everythingRead: model.everythingRead,
     coverage,
   });

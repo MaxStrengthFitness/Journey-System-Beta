@@ -8,9 +8,11 @@ import {
   logsWindowIds,
   newestFirst,
   nextOlderSessionIds,
+  olderMemoryKey,
   olderSetsFor,
   readOlderSets,
   rememberOlderSets,
+  trustedReadIds,
 } from "./older-read";
 import type { TimelineLogInput } from "./timeline-model";
 
@@ -127,20 +129,67 @@ describe("readOlderSets: the injected query", () => {
   });
 });
 
-describe("the per-client memory", () => {
+describe("the memory, for the rest of the session", () => {
+  const key = olderMemoryKey("avery", "s-71");
+
   it("keeps every machine's older sets for the rest of the session, one copy each", () => {
     const logs = all.logs.filter((l) => l.sessionId === "s-2026-03-12");
-    rememberOlderSets("avery", { ids: ["s-2026-03-12"], logs });
-    rememberOlderSets("avery", { ids: ["s-2026-03-12"], logs });
-    const kept = olderSetsFor("avery");
+    rememberOlderSets(key, { ids: ["s-2026-03-12"], logs });
+    rememberOlderSets(key, { ids: ["s-2026-03-12"], logs });
+    const kept = olderSetsFor(key);
     expect([...kept.ids]).toEqual(["s-2026-03-12"]);
     expect(kept.logs).toHaveLength(logs.length);
-    expect(olderSetsFor("someone-else").logs).toEqual([]);
+    expect(olderSetsFor(olderMemoryKey("someone-else", "s-71")).logs).toEqual([]);
+  });
+
+  it("starts empty in the client's next session, so a read never outlives the session it was made in", () => {
+    rememberOlderSets(key, { ids: ["s-2026-03-12"], logs: [] });
+    expect(olderSetsFor(olderMemoryKey("avery", "s-72")).ids.size).toBe(0);
+    expect(olderMemoryKey("avery", null)).toBe("avery|");
+    expect(olderMemoryKey("", "s-71")).toBe("");
   });
 
   it("is forgotten at sign-out", () => {
-    rememberOlderSets("avery", { ids: ["x"], logs: [] });
+    rememberOlderSets(key, { ids: ["x"], logs: [] });
     forgetPersonalMemory();
-    expect(olderSetsFor("avery").ids.size).toBe(0);
+    expect(olderSetsFor(key).ids.size).toBe(0);
+  });
+
+  it("remembers nothing when the read fails, so the next tap reads the same sessions again", async () => {
+    // The hook's query throws on an answer only this iPad's cache gave.
+    const cacheOnly = async (): Promise<TimelineLogInput[]> => {
+      throw new Error("older sets answered from the cache only");
+    };
+    await readOlderSets(cacheOnly, all.sessions, windowIds)
+      .then((read) => rememberOlderSets(key, read))
+      .catch(() => undefined);
+    expect(olderSetsFor(key).ids.size).toBe(0);
+    expect(nextOlderSessionIds(all.sessions, windowIds)[0]).toBe("s-2026-03-13");
+  });
+});
+
+describe("trustedReadIds: what was remembered counts only while it joins on to the window", () => {
+  const sessions = Array.from({ length: 60 }, (_, i) => ({ id: `p${i + 1}`, date: `2026-0${1 + Math.floor(i / 28)}-${String((27 - (i % 28)) + 1).padStart(2, "0")}`, sessionNumber: 60 - i }));
+  const byAge = newestFirst(sessions).map((s) => s.id);
+
+  it("counts the window and the remembered block behind it", () => {
+    const win = new Set(byAge.slice(0, 30));
+    const kept = new Set(byAge.slice(30, 60));
+    expect(trustedReadIds(sessions, win, kept).size).toBe(60);
+  });
+
+  it("drops the remembered block when the window moved by one, so the hole is read first", () => {
+    // A new session came in: the window lost its oldest session (the 30th newest).
+    const fresh = [{ id: "new", date: "2026-12-01", sessionNumber: 61 }, ...sessions];
+    const win = new Set(["new", ...byAge.slice(0, 29)]);
+    const kept = new Set(byAge.slice(30, 60));
+    const read = trustedReadIds(fresh, win, kept);
+    for (const id of kept) expect(read.has(id)).toBe(false);
+    expect(read.has(byAge[29])).toBe(false);
+    expect(nextOlderSessionIds(fresh, read)[0]).toBe(byAge[29]);
+  });
+
+  it("keeps an id the window holds that the sessions list hasn't caught up with", () => {
+    expect(trustedReadIds([], new Set(["just-started"]), new Set()).has("just-started")).toBe(true);
   });
 });

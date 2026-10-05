@@ -20,7 +20,7 @@
  *
  * PURE.
  */
-import { machineUsageSentence, machineUsageWords, sessionNumberTag } from "../../lib/history-claims";
+import { historyStartWords, machineUsageSentence, sessionNumberTag } from "../../lib/history-claims";
 import type { HistoryCoverage } from "../../lib/prior-history";
 import { MINDBODY_GUESS_WORDS, beforeJourneyGuess, type SessionTotal } from "../../lib/session-total";
 import { BLOOD_FLOW_GLOSS, BLOOD_FLOW_LABEL, SKIP_REASON_LABEL, SKIP_REASON_SHORT } from "../../lib/set-outcome";
@@ -229,12 +229,15 @@ export const READOUT_WORDS = {
 export const PLOT_LABEL = "Chart of every loaded session. Left and right arrow keys step through sessions.";
 
 /**
- * The start wall's label in two lines, from the history words ("First in /
- * Journey", or "First / performed" for a client Journey holds the whole
- * story of).
+ * The start wall's label in two lines: the start of the RECORD, in the
+ * history words the Journey grid's rail uses ("Start of / Journey", or
+ * "Start of / history" for a client Journey holds the whole story of). It
+ * marks where the record begins, never a set: the column beside it may be a
+ * practice or a skip, so it never says "First performed" (the readout's
+ * count names the first counted day).
  */
 export function wallLines(coverage?: HistoryCoverage): [string, string] {
-  const words = machineUsageWords(coverage).first;
+  const words = historyStartWords(coverage).label;
   const at = words.lastIndexOf(" ");
   return at > 0 ? [words.slice(0, at), words.slice(at + 1)] : [words, ""];
 }

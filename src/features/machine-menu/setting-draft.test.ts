@@ -16,6 +16,8 @@ import {
   isFixedDial,
   offersHealthNote,
   reasonOf,
+  rebaseDraft,
+  refusedLaterWords,
   saveLabel,
   saveOutcomeWords,
   seedDraft,
@@ -215,5 +217,43 @@ describe("the rest", () => {
   it("names the draft for the app's leave question", () => {
     expect(unsavedSettingsLabel("Leg Press", "Avery")).toBe("Leg Press settings for Avery");
     expect(unsavedSettingsLabel("Leg Press", "")).toBe("Leg Press settings");
+  });
+});
+
+describe("rebaseDraft: the seed moved under the draft", () => {
+  const seat: DraftField = { key: "seat", label: "Seat" };
+  const gap: DraftField = { key: "gap", label: "Gap", ghost: null };
+
+  it("lets an untouched dial follow the catalog arriving: a fixed gap 0 → its catalog 2, and a catalog-only dial its saved value", () => {
+    const before = seedDraft([gap], {});
+    expect(before).toEqual({ gap: "0" });
+    const after = seedDraft([{ ...gap, ghost: "2" }, seat], { seat: "5" });
+    const draft = rebaseDraft(before, before, after);
+    expect(draft).toEqual({ gap: "2", seat: "5" });
+    expect(isDraftDirty([{ ...gap, ghost: "2" }, seat], draft, { seat: "5" })).toBe(false);
+  });
+
+  it("keeps a dial changed by hand, and moves the rest to another iPad's save", () => {
+    const fields = [seat, { key: "backPad", label: "Back pad" }];
+    const oldSeed = seedDraft(fields, { seat: "4", backPad: "2" });
+    const mine = { ...oldSeed, seat: "5" };
+    const newSeed = seedDraft(fields, { seat: "4", backPad: "3" });
+    const draft = rebaseDraft(mine, oldSeed, newSeed);
+    expect(draft).toEqual({ seat: "5", backPad: "3" });
+    // Save writes only the trainer's change, never Back pad 3 → 2.
+    expect(draftChanges(fields, { seat: "4", backPad: "3" }, draft)).toEqual([{ label: "Seat", from: "4", to: "5" }]);
+  });
+
+  it("changes nothing when the seed didn't move", () => {
+    const seed = seedDraft([seat], { seat: "4" });
+    expect(rebaseDraft({ seat: "6" }, seed, seed)).toEqual({ seat: "6" });
+  });
+});
+
+describe("a save refused after the card closed", () => {
+  it("says the machine, the client and the change, and where to set it again", () => {
+    const changes = [{ label: "Seat", from: "4", to: "5" }];
+    expect(refusedLaterWords("Leg Press", "Avery", changes, false)).toBe("Leg Press for Avery: couldn't save Seat 5. Set it again on the machine's card.");
+    expect(refusedLaterWords("Leg Press", "", changes, false, true)).toBe("Leg Press: couldn't undo Seat 5. Set it again on the machine's card.");
   });
 });

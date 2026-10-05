@@ -32,11 +32,17 @@ vi.mock("../../firebase", () => ({ db: { __fake: true }, auth: { currentUser: { 
 const writes = vi.hoisted(() => ({
   machineNotes: [] as Record<string, unknown>[],
   floorNotes: [] as Record<string, unknown>[],
-  answer: "ok" as "ok" | "never" | "refuse",
+  answer: "ok" as "ok" | "never" | "refuse" | "later",
   thread: [] as [string, ...unknown[]][],
+  /** "later": each write's own answer, given by the test. */
+  pending: [] as { resolve: (v: unknown) => void; reject: (e: unknown) => void }[],
 }));
-const answer = <T,>(value: T): Promise<T> =>
-  writes.answer === "never" ? new Promise<T>(() => {}) : writes.answer === "refuse" ? Promise.reject(new Error("refused")) : Promise.resolve(value);
+const answer = <T,>(value: T): Promise<T> => {
+  if (writes.answer === "later") {
+    return new Promise<T>((resolve, reject) => writes.pending.push({ resolve: () => resolve(value), reject }));
+  }
+  return writes.answer === "never" ? new Promise<T>(() => {}) : writes.answer === "refuse" ? Promise.reject(new Error("refused")) : Promise.resolve(value);
+};
 
 vi.mock("../equipment/mutations", () => ({
   addMachineNote: (args: Record<string, unknown>) => {
@@ -123,6 +129,7 @@ beforeEach(() => {
   writes.machineNotes = [];
   writes.floorNotes = [];
   writes.thread = [];
+  writes.pending = [];
   writes.answer = "ok";
   window.sessionStorage.clear();
 });
@@ -425,5 +432,134 @@ describe("a watched session", () => {
     await click(host.querySelector('[data-note="n3"] .mm-note__row'));
     expect(byText(host, "Add update")).toBeNull();
     expect(byText(host, "More")).toBeNull();
+  });
+});
+
+describe("a refusal that comes after 'saved on this iPad'", () => {
+  it("puts the words back in the session's draft while the box is empty, and says it couldn't save", async () => {
+    writes.answer = "later";
+    const onChange = vi.fn();
+    const host = await mount(<Session onChange={onChange} online={false} />);
+    await type(box(host), "Knee tracks in at the top");
+    await click(byText(host, "Add note"));
+    expect(host.textContent).toContain("Saved on this iPad · sends when online");
+    expect(box(host).value).toBe("");
+
+    await act(async () => {
+      writes.pending[0].reject(new Error("permission-denied"));
+    });
+    expect(box(host).value).toBe("Knee tracks in at the top");
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ body: "Knee tracks in at the top", machineId: "leg-press" }));
+    expect(host.textContent).toContain("Couldn't save. Your words are still here");
+    expect(byText(host, "Try again")).not.toBeNull();
+  });
+
+  it("never writes over words typed since: the line says what couldn't be saved", async () => {
+    writes.answer = "later";
+    const host = await mount(<MenuNotes {...base({ online: false })} />);
+    await type(box(host), "First note");
+    await click(byText(host, "Add note"));
+    await type(box(host), "A second thought");
+    await act(async () => {
+      writes.pending[0].reject(new Error("permission-denied"));
+    });
+    expect(box(host).value).toBe("A second thought");
+    expect(host.textContent).toContain("A note on Leg Press couldn't be saved. Write it again from the machine's card.");
+  });
+
+  it("says it in the app's toast once the card has closed", async () => {
+    writes.answer = "later";
+    const show = vi.fn();
+    (window as unknown as { __showToast?: typeof show }).__showToast = show;
+    try {
+      const host = await mount(<MenuNotes {...base({ online: false })} />);
+      await focus(box(host));
+      await type(box(host), "Seat pin sticks at 7");
+      await click(radio(host, "The machine itself"));
+      await click(byText(host, "Add to Westlake's notes"));
+      const m = mounted.pop()!;
+      await act(async () => m.root.unmount());
+      m.host.remove();
+      await act(async () => {
+        writes.pending[0].reject(new Error("permission-denied"));
+      });
+      expect(show).toHaveBeenCalledWith(
+        "A note for Westlake's notes on Leg Press couldn't be saved. Write it again from the machine's card.",
+        "error",
+        8000,
+      );
+    } finally {
+      delete (window as unknown as { __showToast?: unknown }).__showToast;
+    }
+  });
+
+  it("cuts a long note to fit the journal's rule with the machine's name in front", async () => {
+    const host = await mount(<MenuNotes {...base()} />);
+    await type(box(host), "y".repeat(6000));
+    await click(byText(host, "Add note"));
+    expect(`Leg Press — ${writes.machineNotes[0].content as string}`.length).toBe(5000);
+  });
+});
+
+describe("while a save waits", () => {
+  it("holds the box still, so nothing typed then is cleared with the saved words", async () => {
+    writes.answer = "later";
+    const onChange = vi.fn();
+    const host = await mount(<Session onChange={onChange} />);
+    await type(box(host), "Knee tracks in");
+    await click(byText(host, "Add note"));
+    expect(box(host).readOnly).toBe(true);
+    const calls = onChange.mock.calls.length;
+    await type(box(host), "Knee tracks in and the left foot rolls");
+    expect(onChange.mock.calls.length).toBe(calls);
+    expect(box(host).value).toBe("Knee tracks in");
+
+    await act(async () => {
+      writes.pending[0].resolve(undefined);
+    });
+    expect(writes.machineNotes[0].content).toBe("Knee tracks in");
+    expect(box(host).value).toBe("");
+    expect(box(host).readOnly).toBe(false);
+  });
+});
+
+describe("the floor's notes read again after one is added", () => {
+  it("tells the card once the note is on the iPad, never after a refusal", async () => {
+    const onFloorNoteAdded = vi.fn();
+    const host = await mount(<MenuNotes {...base({ onFloorNoteAdded })} />);
+    await focus(box(host));
+    await type(box(host), "Seat pin sticks at 7");
+    await click(radio(host, "The machine itself"));
+    writes.answer = "refuse";
+    await click(byText(host, "Add to Westlake's notes"));
+    expect(onFloorNoteAdded).not.toHaveBeenCalled();
+    writes.answer = "ok";
+    await click(byText(host, "Add to Westlake's notes"));
+    expect(onFloorNoteAdded).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("the old list's notes, and settings copies", () => {
+  const flagged = { id: "old-1", content: "Seat sticks; flag maintenance", authorName: "Ana Cole", timestamp: "2026-05-01T10:00:00-04:00", isImportant: true };
+  const quiet = { id: "old-2", content: "Likes the thick pad", authorName: "Ana Cole", timestamp: "2026-04-01T10:00:00-04:00", isImportant: false };
+
+  it("draws an old note flagged important as Critical, the strip's word, and leaves it out of the collapsed head", async () => {
+    const host = await mount(<MenuNotes {...base({ journal: [], legacyNotes: [flagged, quiet] })} />);
+    // Collapsed: the strip already says the flagged one, so the head is the quiet one.
+    expect([...host.querySelectorAll("[data-note]")].map((r) => r.getAttribute("data-note"))).toEqual(["old-2"]);
+    await click(byText(host, "All notes (2)"));
+    const row = host.querySelector('[data-note="old-1"]')!;
+    expect(row.textContent).toContain("Critical");
+    expect(row.querySelector("svg.mm-g--alert")).not.toBeNull();
+    expect(row.textContent).not.toContain("Heads up");
+  });
+
+  it("says where the setting saves are when they are all there is", async () => {
+    const copies = LEG_PRESS_JOURNAL.filter((e) => e.id.startsWith("copy-"));
+    const host = await mount(<MenuNotes {...base({ journal: copies })} />);
+    expect(host.textContent).toContain("No notes on this machine yet. Its setting saves are under Setting changes.");
+    const none = await mount(<MenuNotes {...base({ journal: [] })} />);
+    expect(none.textContent).toContain("No notes on this machine yet.");
+    expect(none.textContent).not.toContain("Setting changes");
   });
 });

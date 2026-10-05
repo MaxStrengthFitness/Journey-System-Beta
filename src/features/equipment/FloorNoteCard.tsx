@@ -23,7 +23,7 @@
  * nothing, and a read that failed says so rather than looking like "no
  * notes".
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { Wrench } from "lucide-react";
 import { db } from "../../firebase";
@@ -65,16 +65,25 @@ const nameOf = (by: unknown): string | null => {
   return typeof n === "string" && n.trim() ? n.trim().split(/\s+/)[0] : null;
 };
 
-/** Read the floor's notes and the Relay flag for one machine, once. */
-export function useFloorNote(studioId: string | null, machineId: string | null): FloorRead {
+/**
+ * Read the floor's notes and the Relay flag for one machine, once. A new
+ * `round` reads them again (the machine menu, after it adds a floor note):
+ * the last answer stays on screen until the new one comes, and a read again
+ * that fails keeps it, so nothing drawn from it flickers away.
+ */
+export function useFloorNote(studioId: string | null, machineId: string | null, round = 0): FloorRead {
   const [read, setRead] = useState<FloorRead>({ status: "loading" });
+  const lastKey = useRef<string | null>(null);
   useEffect(() => {
     let cancelled = false;
+    const key = `${studioId ?? ""}|${machineId ?? ""}`;
+    const again = lastKey.current === key;
+    lastKey.current = key;
     if (!studioId || !machineId) {
       setRead({ status: "ready", open: [], note: null, flag: null });
       return;
     }
-    setRead({ status: "loading" });
+    if (!again) setRead({ status: "loading" });
     // Inside a promise, so even a read that throws as it starts is a failed read, never a crash.
     Promise.resolve()
       .then(() =>
@@ -112,12 +121,12 @@ export function useFloorNote(studioId: string | null, machineId: string | null):
         });
       })
       .catch(() => {
-        if (!cancelled) setRead({ status: "failed" });
+        if (!cancelled) setRead((prev) => (again && prev.status === "ready" ? prev : { status: "failed" }));
       });
     return () => {
       cancelled = true;
     };
-  }, [studioId, machineId]);
+  }, [studioId, machineId, round]);
   return read;
 }
 

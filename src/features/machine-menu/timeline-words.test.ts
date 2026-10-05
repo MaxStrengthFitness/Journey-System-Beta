@@ -444,10 +444,12 @@ describe("the block's own words", () => {
     expect(OLDER_NOT_LOADED_LINES.join(" ")).toBe(OLDER_NOT_LOADED);
   });
 
-  it("labels the start wall with the history words, in two lines", () => {
-    expect(wallLines("partial")).toEqual(["First in", "Journey"]);
-    expect(wallLines("complete")).toEqual(["First", "performed"]);
-    expect(wallLines()).toEqual(["First in", "Journey"]);
+  it("labels the start wall as the start of the record, in two lines, never a set", () => {
+    expect(wallLines("partial")).toEqual(["Start of", "Journey"]);
+    expect(wallLines("complete")).toEqual(["Start of", "history"]);
+    expect(wallLines()).toEqual(["Start of", "Journey"]);
+    // The column beside the wall may be a practice set: the wall never claims a counted one.
+    for (const c of ["complete", "partial", "unknown"] as const) expect(wallLines(c).join(" ")).not.toMatch(/First|performed/);
   });
 
   it("says what the overview strip spans, from the oldest loaded column to today", () => {

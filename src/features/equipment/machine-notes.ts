@@ -103,6 +103,26 @@ export function machineNotesFor(input: {
   return [...fromJournal, ...oldOnly].sort((a, b) => millis(b.timestamp) - millis(a.timestamp));
 }
 
+/**
+ * How many notes the one list holds on this machine, counted the way the
+ * machine menu's Notes block counts them: each of the journal's threads once
+ * (its updates belong to it), plus the old list's items with no journal
+ * copy. With the journal unread, the old list alone, as the list shows.
+ *
+ * A settings save's journal copy is still counted here: telling one from a
+ * typed Set-up note needs that machine's setting changes, one read per
+ * machine, which a list of every machine (the rail, the grid) can't make. The
+ * card leaves them out and says where they are when that is all there is.
+ */
+export function machineNoteCount(input: Parameters<typeof machineNotesFor>[0]): number {
+  if (!input.journal) return (input.legacy ?? []).length;
+  const mine = input.journal.filter(
+    (e) => e && e.machineId === input.machineId && !e.isArchived && (e.body ?? "").trim() !== "",
+  );
+  const oldOnly = machineNotesFor(input).filter((n) => !n.journalEntryId).length;
+  return assembleThreads(mine).length + oldOnly;
+}
+
 /** Any note on this machine the team marked important, on the one list. */
 export function hasImportantMachineNote(input: Parameters<typeof machineNotesFor>[0]): boolean {
   return machineNotesFor(input).some((n) => n.isImportant);

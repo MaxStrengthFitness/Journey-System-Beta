@@ -136,3 +136,15 @@ export function safetySummary(input: { critical: CriticalRead; watchOuts: number
 
 /** The line a failed journal read puts in the strip. */
 export const CRITICAL_UNREAD = "Critical notes couldn't be checked";
+
+/**
+ * Is the strip scrolled away, so the header's pill should show? Its bottom
+ * has gone up past the header's bottom: scrolled out of the dialog's
+ * scroller, or under the inline pane's sticky header. Measured from the two
+ * elements themselves, so it holds whichever box scrolls (the dialog's own,
+ * or the app's page on Programming → All Machines, whose top is not the
+ * window's) and however tall a wrapping name makes the header.
+ */
+export function stripScrolledAway(stripBottom: number, headBottom: number): boolean {
+  return Number.isFinite(stripBottom) && Number.isFinite(headBottom) && stripBottom <= headBottom + 1;
+}

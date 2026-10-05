@@ -3,7 +3,8 @@
  *
  * Line 1: the unit's floor name at 22px and the client's display name at
  * 17px (nickname-aware, the same in both doors), both wrapping; the safety
- * pill while the strip is scrolled out of view; Close (48×48, "Close Leg
+ * pill while the strip is scrolled out of view (its place kept, hidden,
+ * while it isn't, and a row of its own on a phone); Close (48×48, "Close Leg
  * Press"), which goes through the unsaved gate (the host's `onClose`).
  * Line 2 is the SET-DOWN read, header-words.ts's `lastTimeLine`: "Last time"
  * at 15px, the figures at 28px tabular, the grid's QualityMark only when the
@@ -52,7 +53,11 @@ export function MenuHeader({
   pillVisible,
   onPill,
 }: MenuHeaderProps) {
-  const pill = safety.count > 0 && pillVisible ? safetyPillWords(safety.count) : null;
+  // The pill keeps its place whenever the strip has something, hidden while
+  // the strip is in view: showing it never narrows the names nor changes the
+  // header's height under a finger mid-drag (on a phone it has a row of its
+  // own). Hidden, nothing can reach it.
+  const pill = safety.count > 0 ? safetyPillWords(safety.count) : null;
   return (
     <header className="mm-head">
       <div className="mm-head__row">
@@ -70,8 +75,11 @@ export function MenuHeader({
             type="button"
             className="mm-head__pill"
             data-critical={safety.critical ? "true" : undefined}
+            data-shown={pillVisible ? "true" : undefined}
+            aria-hidden={pillVisible ? undefined : true}
+            tabIndex={pillVisible ? undefined : -1}
             aria-label={pill.ariaLabel}
-            onClick={onPill}
+            onClick={pillVisible ? onPill : undefined}
           >
             {safety.critical ? <AlertTriangle size={18} strokeWidth={2.4} className="mm-head__crit" aria-hidden /> : null}
             <span>{pill.label}</span>

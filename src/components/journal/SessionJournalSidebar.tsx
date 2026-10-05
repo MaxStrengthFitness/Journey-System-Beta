@@ -40,6 +40,17 @@
  * unfiled; under "This session" it comes back as a To-file card
  * (`NoteSweep`) — one tap files it between machines — and the filed notes
  * of the session are listed beneath.
+ *
+ * A DRAFT FOR THE FLOOR'S NOTES (machine menu, Oct 2026). The machine menu
+ * writes into this same draft, and its "The machine itself" switch marks it
+ * `toFloor`: words for the studio's notes on the unit, never the client's
+ * record. The composer here has no such switch, saves to the client's
+ * journal, and rebuilds the draft from its own fields on every keystroke,
+ * so mounted on that draft it would either file a machine fault on the
+ * client or quietly drop the mark. So on a floor draft the Note tab shows
+ * the words read only, says where they go, and opens the machine's card,
+ * where they are added or made about the client. The Wrap-up still carries
+ * them to the floor's notes at Finish.
  */
 import { useEffect, useMemo, useState } from "react";
 import { X, NotebookPen, Loader2, Heart, HeartPulse } from "lucide-react";
@@ -64,6 +75,7 @@ import { sessionLinkOf } from "../../features/client-notes/session-link";
 import { studioTodayKey } from "../../lib/studio-time";
 import { PulseQuickLog } from "../../features/subjective-report";
 import type { SessionNoteDraft } from "../../features/client-notes/session-draft";
+import { floorDraftElsewhereWords, targetOf } from "../../features/machine-menu/note-target";
 // Its FORD notice draws with ford.css; a component imports the stylesheet it
 // draws with rather than lean on a neighbour in the same chunk (ford-css.test.ts).
 import "../../features/ford/ford.css";
@@ -88,6 +100,10 @@ export interface SessionJournalSidebarProps {
   /** For the Pulse tab. Without them the tab says "Open the client to update Pulse". */
   client?: Client | null;
   trainer?: Trainer | null;
+  /** Where a floor draft goes (the session's studio): named on the Note tab while the draft is one. */
+  floorStudioName?: string | null;
+  /** A floor draft is finished on its machine's card: open it (the sheet closes first). */
+  onOpenMachine?: (machineId: string) => void;
   onClose: () => void;
 }
 
@@ -106,6 +122,8 @@ export function SessionJournalSidebar({
   trainer = null,
   draft = null,
   onDraftChange,
+  floorStudioName = null,
+  onOpenMachine,
   onClose,
 }: SessionJournalSidebarProps) {
   const [mode, setMode] = useState<SidebarMode>(defaultMode);
@@ -159,6 +177,13 @@ export function SessionJournalSidebar({
     () => (defaultMachineId ? machines.find((m) => m.id === defaultMachineId)?.name : undefined),
     [machines, defaultMachineId],
   );
+
+  // A draft the machine menu marked for the floor's notes: never this composer's (see the header).
+  const floorDraft = draft && targetOf(draft) === "floor" && (draft.body ?? "").trim() !== "" ? draft : null;
+  const floorMachineId = floorDraft?.machineId ?? null;
+  const floorWords = floorDraft
+    ? floorDraftElsewhereWords(floorStudioName, machines.find((m) => m.id === floorMachineId)?.name ?? null, clientFirstName)
+    : null;
 
   const handleSubmit = async (draft: JournalDraft) => {
     await createJournalEntry(clientId, studioId, author, {
@@ -314,16 +339,37 @@ export function SessionJournalSidebar({
               focus change destroyed whatever the trainer was typing. The
               "About <machine>" toggle reads the current machine live; the
               draft belongs to the session. */}
-          <JournalComposer
-            clientFirstName={clientFirstName}
-            machines={machines}
-            defaultMachineId={defaultMachineId ?? undefined}
-            origin="in_session"
-            onSubmit={handleSubmit}
-            onPickFord={() => setMode("ford")}
-            draft={draft}
-            onDraftChange={onDraftChange}
-          />
+          {floorDraft && floorWords ? (
+            <div
+              className="space-y-3 rounded-2xl border border-(--eq-border-strong) bg-(--eq-surface) p-4"
+              role="note"
+              data-testid="floor-draft"
+            >
+              <p className="text-sm font-bold text-(--eq-ink-2) [overflow-wrap:anywhere]">{floorWords.title}</p>
+              <p className="whitespace-pre-wrap text-base text-(--eq-ink) [overflow-wrap:anywhere]">{floorDraft.body}</p>
+              <p className="text-sm text-(--eq-ink-2) [overflow-wrap:anywhere]">{floorWords.foot}</p>
+              {onOpenMachine && floorMachineId ? (
+                <button
+                  type="button"
+                  onClick={() => onOpenMachine(floorMachineId)}
+                  className="min-h-11 rounded-xl border border-(--eq-border-strong) bg-(--eq-surface-2) px-4 text-sm font-bold text-(--eq-ink) [overflow-wrap:anywhere]"
+                >
+                  {floorWords.button}
+                </button>
+              ) : null}
+            </div>
+          ) : (
+            <JournalComposer
+              clientFirstName={clientFirstName}
+              machines={machines}
+              defaultMachineId={defaultMachineId ?? undefined}
+              origin="in_session"
+              onSubmit={handleSubmit}
+              onPickFord={() => setMode("ford")}
+              draft={draft}
+              onDraftChange={onDraftChange}
+            />
+          )}
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">

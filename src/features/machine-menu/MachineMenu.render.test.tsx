@@ -31,23 +31,32 @@ import type { Client, ClientMachineSetting, ExerciseLog, Machine, WorkoutSession
 import type { JournalEntry } from "../../types/journal";
 
 const calls = vi.hoisted(() => ({ catalog: 0, subscribed: 0, unsubscribed: 0 }));
+/** What the inert database answers: whether only the cache answers, and the studio's floor notes. */
+const store = vi.hoisted(() => ({ cacheOnly: false, floorNotes: [] as { id: string; data: Record<string, unknown> }[] }));
 
 vi.mock("../../firebase", () => ({ db: { __fake: true }, auth: { currentUser: { uid: "uid-sam" } } }));
 vi.mock("firebase/firestore", async (importOriginal) => {
   const real = await importOriginal<typeof import("firebase/firestore")>();
+  const path = (...parts: unknown[]) => parts.filter((x) => typeof x === "string").join("/");
   return {
     ...real,
-    collection: () => ({}),
+    collection: (_db: unknown, ...parts: string[]) => ({ __path: path(...parts) }),
     collectionGroup: () => ({}),
     doc: () => ({}),
-    query: () => ({}),
+    query: (coll: unknown) => coll,
     where: () => ({}),
     orderBy: () => ({}),
     limit: () => ({}),
     onSnapshot: () => () => {},
-    getDocs: async () => ({ docs: [], empty: true, metadata: { fromCache: false } }),
+    getDocs: async (q: { __path?: string } | undefined) => {
+      const docs = q?.__path?.endsWith("/floorNotes") ? store.floorNotes.map((n) => ({ id: n.id, data: () => n.data })) : [];
+      return { docs, empty: docs.length === 0, size: docs.length, metadata: { fromCache: store.cacheOnly } };
+    },
     getDoc: async () => ({ exists: () => false, data: () => undefined }),
-    addDoc: async () => ({ id: "x" }),
+    addDoc: async (coll: { __path?: string } | undefined, data: Record<string, unknown>) => {
+      if (coll?.__path?.endsWith("/floorNotes")) store.floorNotes = [...store.floorNotes, { id: `f-${store.floorNotes.length + 1}`, data }];
+      return { id: "x" };
+    },
     setDoc: async () => undefined,
     updateDoc: async () => undefined,
     writeBatch: () => ({ set: () => {}, update: () => {}, commit: async () => undefined }),
@@ -74,8 +83,11 @@ vi.mock("../../contexts/ActiveStudioContext", () => ({
 }));
 vi.mock("../../hooks/useClientJournal", () => ({ createJournalEntry: async () => "j-new", archiveJournalEntries: async () => undefined }));
 
-import { UnsavedChangesProvider } from "../unsaved-changes";
+import { UnsavedChangesProvider, useUnsavedStatus } from "../unsaved-changes";
 import { MachineMenu, type MachineMenuProps } from "./MachineMenu";
+import { MachineMenuBody } from "./MachineMenuBody";
+import type { MenuLayout } from "./doors";
+import { olderMemoryKey, olderSetsFor } from "./older-read";
 import type { MachineMenuHost } from "./useMachineMenuData";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -186,6 +198,8 @@ beforeEach(() => {
   calls.catalog = 0;
   calls.subscribed = 0;
   calls.unsubscribed = 0;
+  store.cacheOnly = false;
+  store.floorNotes = [];
 });
 
 afterEach(async () => {
@@ -422,6 +436,17 @@ describe("the safety strip", () => {
     expect(document.querySelector('[data-block="notes"] [data-note="c1"]')).toBeNull();
   });
 
+  it("keeps the header's pill in its place, hidden and out of reach, while the strip is in view", async () => {
+    await mount({ open: true, machineId: "leg-press", onClose: () => {}, host: host({ journal: [critical] }) });
+    await settle();
+    const pill = document.querySelector<HTMLButtonElement>(".mm-head__pill");
+    // There, so showing it never rewraps the names under a drag; but hidden.
+    expect(pill).not.toBeNull();
+    expect(pill!.hasAttribute("data-shown")).toBe(false);
+    expect(pill!.getAttribute("aria-hidden")).toBe("true");
+    expect(pill!.getAttribute("tabindex")).toBe("-1");
+  });
+
   it("says Critical notes couldn't be checked when the journal couldn't be read", async () => {
     await mount({ open: true, machineId: "leg-press", onClose: () => {}, host: host({ journal: null, journalState: "failed" }) });
     await settle();
@@ -432,5 +457,136 @@ describe("the safety strip", () => {
     await mount({ open: true, machineId: "leg-press", onClose: () => {}, host: host() });
     await settle();
     expect(document.querySelector(".mm-safe")).toBeNull();
+  });
+});
+
+describe("a read only this iPad's cache answered", () => {
+  it("never makes Load older in a session remember sessions as read: it says it couldn't load, and reads them again next time", async () => {
+    store.cacheOnly = true;
+    const older = { id: "s0", date: "2026-02-23", trainerInitials: "AJ", status: "Completed" } as unknown as WorkoutSession;
+    await mount({
+      open: true,
+      machineId: "leg-press",
+      onClose: () => {},
+      host: host({ door: "session", sessions: [older, ...sessions], readIds: new Set(["s1", "s2"]), session: { id: "s3", number: 3, day: "2026-10-04" } }),
+    });
+    await settle();
+    const load = document.querySelector<HTMLButtonElement>("[data-load-older]");
+    expect(load?.textContent).toBe("Load older");
+    await click(load);
+    expect(olderSetsFor(olderMemoryKey("judy", "s3")).ids.size).toBe(0);
+    expect(document.querySelector("[data-load-older]")?.textContent).toBe("Try again");
+    expect(document.querySelector(".mm-chart")?.textContent).toContain("Couldn't load older sessions");
+  });
+
+  it("on the profile, with nothing cached, never says first time: the cautious words, no start wall", async () => {
+    await mount({
+      open: true,
+      machineId: "leg-press",
+      onClose: () => {},
+      host: host({ sessions: [], logs: [], historyState: "cache-only", moreOnServer: false, coverage: "complete" }),
+    });
+    await settle();
+    const text = document.querySelector(".mm-card")?.textContent ?? "";
+    expect(text).not.toMatch(/First time on this machine/);
+    expect(document.querySelector("[data-header-line]")?.textContent).toContain("in the sessions loaded here");
+  });
+});
+
+describe("turning the iPad", () => {
+  function Probe({ onStatus }: { onStatus: (dirty: boolean) => void }) {
+    const status = useUnsavedStatus();
+    onStatus(status.anyDirty());
+    return null;
+  }
+
+  async function mountBody(layout: MenuLayout, door: "session" | "profile") {
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+    const root = createRoot(el);
+    let dirty = false;
+    const tree = (l: MenuLayout) => (
+      <UnsavedChangesProvider>
+        <MachineMenuBody host={host({ door, session: door === "session" ? { id: "s3", number: 3, day: "2026-10-04" } : undefined })} machineId="leg-press" catalogById={{}} layout={l} />
+        <Probe onStatus={(d) => (dirty = d)} />
+      </UnsavedChangesProvider>
+    );
+    await act(async () => root.render(tree(layout)));
+    mounted.push({ root, host: el });
+    return { turn: (l: MenuLayout) => act(async () => root.render(tree(l))), dirty: () => dirty };
+  }
+
+  it("keeps an unsaved setting through a turn to landscape and back, still asked about on leaving", async () => {
+    const body = await mountBody("portrait", "session");
+    await settle();
+    await click(buttonNamed("Seat up one"));
+    const tile = () => document.querySelector('[data-dial="Seat"]');
+    const before = tile();
+    expect(before?.getAttribute("data-changed")).toBe("true");
+    await body.turn("landscape");
+    await settle();
+    expect(tile()).toBe(before);
+    expect(tile()?.getAttribute("data-changed")).toBe("true");
+    expect(body.dirty()).toBe(true);
+    await body.turn("portrait");
+    await settle();
+    expect(tile()?.getAttribute("data-changed")).toBe("true");
+  });
+
+  it("keeps a typed profile note through a turn", async () => {
+    const body = await mountBody("portrait", "profile");
+    await settle();
+    const box = document.querySelector<HTMLTextAreaElement>(".mm-cmp__text")!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(box, "Likes the pad a notch lower");
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await body.turn("landscape");
+    await settle();
+    expect(document.querySelector<HTMLTextAreaElement>(".mm-cmp__text")?.value).toBe("Likes the pad a notch lower");
+    expect(body.dirty()).toBe(true);
+  });
+});
+
+describe("Escape on the chart", () => {
+  it("goes back to the summary and leaves the card open; a second Escape closes it", async () => {
+    let closed = 0;
+    await mount({ open: true, machineId: "leg-press", onClose: () => (closed += 1), host: host() });
+    await settle();
+    // An SVG column has no .click(): a bubbling click, as a tap gives.
+    await act(async () => {
+      document.querySelector('[data-col="s2"]')!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+    expect(document.querySelector(".mm-readout")?.getAttribute("data-readout")).toBe("s2");
+    await key(document.querySelector(".mm-plot"), "Escape");
+    expect(closed).toBe(0);
+    expect(card()).not.toBeNull();
+    expect(document.querySelector(".mm-readout")?.getAttribute("data-readout")).toBe("idle");
+    await key(document.querySelector(".mm-plot"), "Escape");
+    expect(closed).toBe(1);
+  });
+});
+
+describe("a note about the machine itself, added from the card", () => {
+  it("shows in the safety strip at once, and the strip never leaves the screen in between", async () => {
+    store.floorNotes = [{ id: "f-0", data: { machineId: "leg-press", body: "Left pad sticks", authorName: "Ana Cole", isArchived: false, resolvedAt: null } }];
+    await mount({ open: true, machineId: "leg-press", onClose: () => {}, host: host() });
+    await settle();
+    const strip = document.querySelector(".mm-safe");
+    expect(strip?.textContent).toContain("Left pad sticks");
+
+    const box = document.querySelector<HTMLTextAreaElement>(".mm-cmp__text")!;
+    await act(async () => {
+      box.focus();
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(box, "Seat pin sticks at 7");
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await click([...document.querySelectorAll('[role="radio"]')].find((b) => b.textContent?.trim() === "The machine itself"));
+    await click(buttonNamed("Add to Westlake's notes"));
+    await settle();
+    expect(document.querySelector(".mm-safe")).toBe(strip);
+    expect(strip?.textContent).toContain("Seat pin sticks at 7");
+    expect(strip?.textContent).toContain("Left pad sticks");
   });
 });

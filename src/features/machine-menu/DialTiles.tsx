@@ -40,7 +40,14 @@
  * The draft is measured against what the card opened with (fixed dials
  * seeded), so opening is never dirty. After a save the card holds what it
  * wrote until the settings document's listener catches up, so the strip
- * doesn't flash back open in between.
+ * doesn't flash back open in between. When the seed itself moves (the
+ * catalog's fields arrive after the first frame, a catalog edit, another
+ * iPad's save), the draft is rebased during render (`rebaseDraft`): a dial
+ * nobody touched follows, a dial changed by hand keeps its value, so no
+ * change appears that nobody made and Save never writes one back.
+ *
+ * While a save waits (a moment at most) the dials hold still, and a refusal
+ * that comes after "saved on this iPad" is still heard (late-refusal.ts).
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useUnsavedChanges } from "../unsaved-changes";
@@ -68,6 +75,8 @@ import {
   isFirstSetup,
   offersHealthNote,
   reasonOf,
+  rebaseDraft,
+  refusedLaterWords,
   saveOutcomeWords,
   seedDraft,
   suggestedSources,
@@ -82,6 +91,7 @@ import {
 } from "./setting-draft";
 import { lastChange, lastChangedLine, type SettingPair, type SettingRow } from "./setting-history";
 import type { SettingHistoryState } from "./useSettingHistory";
+import { sayAfterClose, whenRefusedLater } from "./late-refusal";
 import "./machine-menu.css";
 
 /** A dial as the tiles take it: the equipment view model's field, and the unit's letter when it has one. */
@@ -190,6 +200,25 @@ export function DialTiles({
   const [written, setWritten] = useState<Values | null>(null);
   const base: Readonly<Record<string, string>> = written ?? saved;
   const [draft, setDraft] = useState<Values>(() => seedDraft(fields, saved));
+  // What the draft is measured against now, and the seed it was last given.
+  const seed = seedDraft(fields, base);
+  const seedKey = JSON.stringify(seed);
+  const [seededFrom, setSeededFrom] = useState<{ key: string; seed: Values }>(() => ({ key: seedKey, seed }));
+  // The seed moved under the draft (the catalog's fields arriving, a catalog
+  // edit, another iPad's save): rebase it here, during render (React's
+  // "adjusting state when a prop changes"), so no frame ever shows a change
+  // nobody made. Untouched dials follow; a dial changed by hand stays.
+  if (seededFrom.key !== seedKey) {
+    setSeededFrom({ key: seedKey, seed });
+    setDraft((d) => rebaseDraft(d, seededFrom.seed, seed));
+  }
+  /** Put a draft in place with the base it is measured against, so the rebase above never reads it as moved. */
+  const holdDraft = (nextBase: Values, nextDraft: Values) => {
+    const s = seedDraft(fields, nextBase);
+    setWritten(nextBase);
+    setSeededFrom({ key: JSON.stringify(s), seed: s });
+    setDraft(nextDraft);
+  };
   const [editing, setEditing] = useState<string | null>(null);
   const [reason, setReason] = useState<ReasonChip | null>(null);
   const [otherText, setOtherText] = useState("");
@@ -198,22 +227,28 @@ export function DialTiles({
   const [saving, setSaving] = useState(false);
   const [failedWords, setFailedWords] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
+  // Whether the card is still open, for a refusal that comes after it closed.
+  const live = useRef(true);
+  useEffect(() => {
+    live.current = true;
+    return () => {
+      live.current = false;
+    };
+  }, []);
 
   const dirty = !readOnly && isDraftDirty(fields, draft, base);
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
 
   // The settings document moved (this card's own save landing, or another
-  // iPad): what this card wrote is no longer needed, and a draft nobody is
-  // changing follows the document.
+  // iPad): what this card wrote is no longer needed. The draft follows the
+  // document through the rebase above, keeping only the dials changed here.
   const savedKey = JSON.stringify(saved);
   const firstSaved = useRef(savedKey);
   useEffect(() => {
     if (firstSaved.current === savedKey) return;
     firstSaved.current = savedKey;
     setWritten(null);
-    if (!dirtyRef.current) setDraft(seedDraft(fields, saved));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedKey]);
 
   useEffect(() => {
@@ -255,7 +290,11 @@ export function DialTiles({
       recordValues: recordValuesFor(f, { snapshots, rows: history }),
     });
 
+  // The dials hold still while a save waits (a moment at most): what the
+  // save wrote replaces the draft when it answers, and would wipe a change
+  // made in between without a word.
   const setValue = (key: string, value: string) => {
+    if (saving) return;
     setDraft((d) => ({ ...d, [key]: value }));
     setFailedWords(null);
     setResult(null);
@@ -311,12 +350,26 @@ export function DialTiles({
       setFailedWords(saveOutcomeWords(saveChanges, wasFirst, "failed", false));
       return;
     }
+    if (outcome.kind === "queued") {
+      // Refused after "saved on this iPad": the listener puts the old values
+      // back; the strip takes back its Undo and brings the change back with
+      // Try again (unless another change is under way), or the toast says it.
+      whenRefusedLater(write, (err) => {
+        console.error("[machine menu] settings refused after they were saved on this iPad", err);
+        if (!live.current) {
+          sayAfterClose(refusedLaterWords(machineName, clientFirstName, saveChanges, wasFirst));
+          return;
+        }
+        setResult(null);
+        if (!dirtyRef.current) holdDraft(before, sent);
+        setFailedWords(saveOutcomeWords(saveChanges, wasFirst, "failed", false));
+      });
+    }
     // The map as written: the database's answer, or (queued) the same map
     // saveSettings builds, so Undo puts back exactly what changed.
     const after = outcome.kind === "saved" && outcome.value ? outcome.value.settings : nextSettings([...fields], before, sent);
     const kind: SaveOutcome = outcome.kind;
-    setWritten(after);
-    setDraft(seedDraft(fields, after));
+    holdDraft(after, seedDraft(fields, after));
     setReason(null);
     setOtherText("");
     setUsed({});
@@ -356,15 +409,27 @@ export function DialTiles({
       write = Promise.reject(err);
     }
     // The tiles show the old values straight away; a refusal puts the save's back.
-    setWritten(u.payload.draft);
-    setDraft(seedDraft(fields, u.payload.draft));
+    holdDraft(u.payload.draft, seedDraft(fields, u.payload.draft));
     const outcome = await settleOrQueue(write, isOnline());
+    const refused = () => {
+      if (!dirtyRef.current) holdDraft(u.payload.saved, seedDraft(fields, u.payload.saved));
+      setResult({ words: undoOutcomeWords(u.changes, u.firstSetup, "failed"), undo: null, retryUndo: u, pain: null });
+    };
     if (outcome.kind === "failed") {
       console.error("[machine menu] undo not saved", outcome.error);
-      setWritten(u.payload.saved);
-      setDraft(seedDraft(fields, u.payload.saved));
-      setResult({ words: undoOutcomeWords(u.changes, u.firstSetup, "failed"), undo: null, retryUndo: u, pain: null });
+      refused();
       return;
+    }
+    if (outcome.kind === "queued") {
+      // Refused after "on this iPad": the same as a refusal in the moment, or the toast once the card has closed.
+      whenRefusedLater(write, (err) => {
+        console.error("[machine menu] undo refused after it was saved on this iPad", err);
+        if (!live.current) {
+          sayAfterClose(refusedLaterWords(machineName, clientFirstName, u.changes, u.firstSetup, true));
+          return;
+        }
+        refused();
+      });
     }
     setResult({ words: undoOutcomeWords(u.changes, u.firstSetup, outcome.kind), undo: null, retryUndo: null, pain: null });
     onSaved?.();
@@ -425,6 +490,7 @@ export function DialTiles({
                 type="button"
                 className="mm-btn"
                 aria-label={`Use ${state.standard} for ${f.label}`}
+                disabled={saving}
                 onClick={() => {
                   setValue(f.key, state.standard!);
                   setUsed((u) => ({ ...u, [f.key]: state.standard! }));
@@ -446,7 +512,7 @@ export function DialTiles({
             type="button"
             className="mm-step"
             aria-label={`${f.label} down one`}
-            disabled={!canStep(control, value, -1)}
+            disabled={saving || !canStep(control, value, -1)}
             onClick={() => down !== null && setValue(f.key, down)}
           >
             −
@@ -464,7 +530,7 @@ export function DialTiles({
             type="button"
             className="mm-step"
             aria-label={`${f.label} up one`}
-            disabled={!canStep(control, value, 1)}
+            disabled={saving || !canStep(control, value, 1)}
             onClick={() => up !== null && setValue(f.key, up)}
           >
             +
@@ -516,6 +582,7 @@ export function DialTiles({
           type="button"
           className="mm-btn"
           aria-label={`Use ${suggestion.value} for ${f.label}`}
+          disabled={saving}
           onClick={() => {
             pick(suggestion.value);
             setUsed((u) => ({ ...u, [f.key]: suggestion.value }));
@@ -556,8 +623,6 @@ export function DialTiles({
     );
   };
 
-  const count = Math.min(3, fields.length);
-
   return (
     <section className="mm-blk" data-block="settings" aria-label="Settings">
       <div className="mm-blk-head">
@@ -579,7 +644,7 @@ export function DialTiles({
         <p className="mm-none">This machine has no adjustable settings on its catalog entry.</p>
       ) : (
         <>
-          <div className="mm-tiles" data-count={count}>
+          <div className="mm-tiles">
             {fields.map(tile)}
           </div>
           {editor()}

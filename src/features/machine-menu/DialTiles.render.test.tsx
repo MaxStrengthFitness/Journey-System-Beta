@@ -27,12 +27,15 @@ import { createRoot, type Root } from "react-dom/client";
 
 const saves = vi.hoisted(() => ({
   calls: [] as Record<string, unknown>[],
-  answer: "ok" as "ok" | "never" | "refuse",
+  answer: "ok" as "ok" | "never" | "refuse" | "later",
+  /** "later": each save's own answer, given by the test. */
+  pending: [] as { reject: (e: unknown) => void }[],
 }));
 vi.mock("../equipment/mutations", () => ({
   saveSettings: (args: Record<string, unknown>) => {
     saves.calls.push(args);
     if (saves.answer === "never") return new Promise(() => {});
+    if (saves.answer === "later") return new Promise((_resolve, reject) => saves.pending.push({ reject }));
     if (saves.answer === "refuse") return Promise.reject(new Error("permission-denied"));
     const fields = args.fields as { key: string }[];
     const settings: Record<string, string> = { ...(args.saved as Record<string, string>) };
@@ -108,6 +111,7 @@ async function mount(node: ReactNode) {
 
 beforeEach(() => {
   saves.calls = [];
+  saves.pending = [];
   saves.answer = "ok";
   acks.calls = [];
   trend.value = null;
@@ -365,5 +369,107 @@ describe("the heading and a watched session", () => {
   it("draws nothing to change on a machine with no dials", async () => {
     const host = await mount(<Tiles fields={[]} saved={{}} />);
     expect(host.textContent).toContain("This machine has no adjustable settings on its catalog entry.");
+  });
+});
+
+/** Mount, and a way to hand the same tiles new props (a catalog snapshot, another iPad's save). */
+async function mountTiles(over: Partial<DialTilesProps>) {
+  const host = await mount(<Tiles {...over} />);
+  const { root } = mounted[mounted.length - 1];
+  return { host, rerender: (next: Partial<DialTilesProps>) => act(async () => root.render(<Tiles {...next} />)) };
+}
+
+describe("the seed moving under the draft", () => {
+  it("draws a catalog-only dial with its saved value when the catalog arrives, with no change strip", async () => {
+    const { host, rerender } = await mountTiles({ fields: [], saved: { seat: "5" } });
+    await rerender({ fields: [FIELDS[0]], saved: { seat: "5" } });
+    expect(host.querySelector('[data-strip="edit"]')).toBeNull();
+    expect(tile(host, "seat").textContent).toContain("5");
+    expect(tile(host, "seat").textContent).not.toContain("Not set");
+  });
+
+  it("moves an untouched fixed gap from 0 to the catalog's 2 without a change anybody made", async () => {
+    const gap: TileField = { key: "gap", label: "Gap", type: "text", ghost: null, absolute: true };
+    const { host, rerender } = await mountTiles({ fields: [gap], saved: {} });
+    expect(tile(host, "gap").textContent).toContain("0");
+    await rerender({ fields: [{ ...gap, ghost: "2" }], saved: {} });
+    expect(host.querySelector('[data-strip="edit"]')).toBeNull();
+    expect(tile(host, "gap").textContent).toContain("2");
+  });
+
+  it("keeps the trainer's change and takes another iPad's: the strip says only Seat, and Save never writes Back pad back", async () => {
+    const { host, rerender } = await mountTiles({});
+    await click(button(host, "Seat up one"));
+    await rerender({ saved: { ...SAVED, backPad: "2" } });
+    const strip = host.querySelector('[data-strip="edit"]')!;
+    expect(strip.textContent).toContain("Seat 4 → 5");
+    expect(strip.textContent).not.toContain("Back pad");
+    expect(tile(host, "backPad").getAttribute("data-changed")).toBeNull();
+    await click(byText(host, "Save Seat 5"));
+    expect(saves.calls[0]).toMatchObject({ saved: { ...SAVED, backPad: "2" }, draft: { ...SAVED, backPad: "2", seat: "5" } });
+  });
+});
+
+describe("a refusal that comes after 'saved on this iPad'", () => {
+  it("takes back the Undo and brings the change back with Try again", async () => {
+    saves.answer = "later";
+    const host = await mount(<Tiles online={false} />);
+    await click(button(host, "Seat up one"));
+    await click(byText(host, "Save Seat 5"));
+    expect(host.querySelector('[data-strip="done"]')!.textContent).toContain("saved on this iPad");
+    await act(async () => {
+      saves.pending[0].reject(new Error("permission-denied"));
+    });
+    expect(byText(host, "Undo")).toBeNull();
+    const strip = host.querySelector('[data-strip="edit"]')!;
+    expect(strip.textContent).toContain("Couldn't save Seat 5");
+    expect(tile(host, "seat").getAttribute("data-changed")).toBe("true");
+    expect(byText(host, "Try again")).not.toBeNull();
+  });
+
+  it("says a refused Undo, with Try again", async () => {
+    const host = await mount(<Tiles online={false} />);
+    await click(button(host, "Seat up one"));
+    await click(byText(host, "Save Seat 5"));
+    saves.answer = "later";
+    await click(byText(host, "Undo"));
+    await act(async () => {
+      saves.pending[0].reject(new Error("permission-denied"));
+    });
+    expect(host.querySelector('[data-strip="done"]')!.textContent).toContain("Couldn't undo Seat 5");
+    expect(byText(host, "Try again")).not.toBeNull();
+  });
+
+  it("says it in the app's toast once the card has closed", async () => {
+    saves.answer = "later";
+    const show = vi.fn();
+    (window as unknown as { __showToast?: typeof show }).__showToast = show;
+    try {
+      const host = await mount(<Tiles online={false} />);
+      await click(button(host, "Seat up one"));
+      await click(byText(host, "Save Seat 5"));
+      const m = mounted.pop()!;
+      await act(async () => m.root.unmount());
+      m.host.remove();
+      await act(async () => {
+        saves.pending[0].reject(new Error("permission-denied"));
+      });
+      expect(show).toHaveBeenCalledWith("Leg Press for Avery: couldn't save Seat 5. Set it again on the machine's card.", "error", 8000);
+    } finally {
+      delete (window as unknown as { __showToast?: unknown }).__showToast;
+    }
+  });
+});
+
+describe("while a save waits", () => {
+  it("holds the dials still, so a change made then is never wiped without a word", async () => {
+    saves.answer = "never";
+    const host = await mount(<Tiles />);
+    await click(button(host, "Seat up one"));
+    await click(byText(host, "Save Seat 5"));
+    expect(button(host, "Back pad up one")!.hasAttribute("disabled")).toBe(true);
+    await click(button(host, "Back pad up one"));
+    expect(tile(host, "backPad").getAttribute("data-changed")).toBeNull();
+    expect(saves.calls).toHaveLength(1);
   });
 });

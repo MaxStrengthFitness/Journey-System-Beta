@@ -31,7 +31,7 @@ import type { Machine, ClientMachineSetting, ClientMachineStat, ExerciseLog, Wor
 import type { MachineCatalogEntry, MachineSettingField } from "../../types/machines";
 import type { JournalEntry } from "../../types/journal";
 import { studioTodayKey } from "../../lib/studio-time";
-import { machineNoteLoudness, machineNotesFor } from "./machine-notes";
+import { machineNoteCount, machineNoteLoudness } from "./machine-notes";
 import { MACHINE_DATABASE, type MachineKnowledge } from "../../data/machine-database";
 import { CANONICAL_TO_DB_KEY, canonicalMachineId } from "../catalog/machine-identity";
 import { toIsoDay } from "../../lib/client-rollups";
@@ -507,7 +507,8 @@ export function toEquipmentMachines({
       sources: setting?.sources,
       fitAcks: setting?.fitAcks,
       notes,
-      noteCount: machineNotesFor(noteInput).length,
+      // Threads once each, as the card counts them (machine-notes.ts).
+      noteCount: machineNoteCount(noteInput),
       noteLoudness: machineNoteLoudness({ ...noteInput, today }),
       loggedSetCount,
       usage,

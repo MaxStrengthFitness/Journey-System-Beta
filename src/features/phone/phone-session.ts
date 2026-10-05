@@ -89,6 +89,9 @@ export function lastTimes(row: JourneyRow, history: JourneySession[], n = PAST_S
  * held, so a machine done in an older session the phone hadn't read, or one
  * a running total knows, was called new.
  *
+ *   - The sets haven't been read yet, or the read failed: it says so first,
+ *     before anything else, because "not in the sessions loaded here" would
+ *     suggest they were read. A failed read is never empty.
  *   - A running total knows it (`client.machineStats` or
  *     `currentMachineMetrics`; evidence only, never a count): done before,
  *     not in the sessions loaded here.
@@ -96,7 +99,15 @@ export function lastTimes(row: JourneyRow, history: JourneySession[], n = PAST_S
  *     machine" only when Journey holds the client's whole story.
  *   - Older sessions unread: nothing in the sessions loaded here.
  */
-export function noPastWords(opts: { knownElsewhere: boolean; everythingRead: boolean; coverage?: HistoryCoverage }): string {
+export function noPastWords(opts: {
+  knownElsewhere: boolean;
+  everythingRead: boolean;
+  coverage?: HistoryCoverage;
+  /** How far the read of the sets has got (the tracker's logs window); absent, it answered. */
+  state?: "loading" | "ready" | "cache-only" | "failed";
+}): string {
+  if (opts.state === "loading") return "Loading past times…";
+  if (opts.state === "failed") return "Couldn't load past times.";
   if (opts.knownElsewhere) return "Done here in Journey before · not in the sessions loaded here.";
   if (opts.everythingRead) return `${noMachineHistoryLine(opts.coverage ?? "unknown")}.`;
   return `${noMachineHistoryLine("unknown")} in the sessions loaded here.`;

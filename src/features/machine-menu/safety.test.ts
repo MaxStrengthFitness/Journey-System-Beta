@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { MachineNote } from "../../types";
 import type { JournalEntry } from "../../types/journal";
 import { LEG_PRESS_HISTORY, LEG_PRESS_JOURNAL, TODAY } from "./fixtures";
-import { CRITICAL_UNREAD, criticalLinesOf, floorLineCount, safetySummary, type CriticalInput } from "./safety";
+import { CRITICAL_UNREAD, criticalLinesOf, floorLineCount, safetySummary, stripScrolledAway, type CriticalInput } from "./safety";
 import { parseSettingHistory } from "./setting-history";
 
 const HISTORY = parseSettingHistory(LEG_PRESS_HISTORY, "avery");
@@ -86,5 +86,16 @@ describe("the strip's count", () => {
       }),
     ).toEqual({ count: 4, critical: true });
     expect(safetySummary({ critical: { state: "failed" }, watchOuts: 0, floor: { status: "loading" } })).toEqual({ count: 1, critical: false });
+  });
+});
+
+describe("the header's pill: is the strip scrolled away?", () => {
+  it("is away once the strip's bottom has gone up past the header's, whatever box scrolls", () => {
+    // The inline pane: the header sticks 120px down the page (under the app's top bar), not at the window's top.
+    expect(stripScrolledAway(300, 196)).toBe(false);
+    expect(stripScrolledAway(196, 196)).toBe(true);
+    expect(stripScrolledAway(150, 196)).toBe(true);
+    // Not before it first shows, and never on a measure that isn't one.
+    expect(stripScrolledAway(Number.NaN, 196)).toBe(false);
   });
 });

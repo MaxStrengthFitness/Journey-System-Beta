@@ -33,6 +33,7 @@
 import type { JournalEntry, JournalImportance, JournalKind, JournalOrigin, NoteBodyMark } from "../../types/journal";
 import {
   DEFAULT_IMPORTANCE,
+  JOURNAL_BODY_LIMIT,
   NOTE_CATEGORY_META,
   asksBodyPart,
   flavourFor,
@@ -229,6 +230,18 @@ export function floorNoteOf(draft: MenuNoteDraft | null | undefined): { body: st
   return { body: draft.body.trim() };
 }
 
+/**
+ * A client note's words as `addMachineNote` may send them: it writes
+ * "{machine} — {words}", and the journal's rule refuses a body over
+ * `JOURNAL_BODY_LIMIT`, so the words are cut to leave room for the name.
+ * Without the cut a long note offline is "saved on this iPad", then refused
+ * by the database later, after its words were cleared.
+ */
+export function machineNoteBody(body: string, machineName: string): string {
+  const room = Math.max(0, JOURNAL_BODY_LIMIT - ((machineName ?? "").length + 3));
+  return (body ?? "").slice(0, room);
+}
+
 /** Where a client note says it was written: in a session, or on the profile. */
 export function noteOrigin(door: Door): JournalOrigin {
   return door === "session" ? "in_session" : "profile";
@@ -312,6 +325,43 @@ export function noteSaveLine(kind: keyof typeof NOTE_SAVE_WORDS): { text: string
   return kind === "failed" ? { text: words.replace(/ · Try again$/, ""), retry: true } : { text: words, retry: false };
 }
 
+/**
+ * A note the card said was saved on this iPad that the database refused
+ * later, once the card had closed: the app's toast says it, since the box
+ * that held the words is gone.
+ */
+export function noteRefusedLaterWords(target: NoteTarget, studioName: string | null | undefined, machineName: string): string {
+  const machine = clean(machineName) || "this machine";
+  return target === "floor"
+    ? `A note for ${possessive(studioName)} notes on ${machine} couldn't be saved. Write it again from the machine's card.`
+    : `A note on ${machine} couldn't be saved. Write it again from the machine's card.`;
+}
+
+/**
+ * The session's note sidebar holding a draft the card filed for the studio's
+ * floor notes: it shows the words read only and says where they go, and
+ * where they are finished. Its composer saves to the client's journal and
+ * has no floor switch, so it never takes the words.
+ */
+export function floorDraftElsewhereWords(
+  studioName: string | null | undefined,
+  machineName: string | null | undefined,
+  clientFirstName: string,
+): { title: string; foot: string; button: string } {
+  const machine = clean(machineName) || "the machine";
+  const who = clean(clientFirstName) || "the client";
+  return {
+    title: `For ${possessive(studioName)} notes on ${machine}`,
+    foot: `Add them, or make them about ${who}, on the machine's card. They are never filed to ${who}'s journal from here.`,
+    button: `Open ${machine}`,
+  };
+}
+
+/** The same, for an update to a note's thread. */
+export function updateRefusedLaterWords(machineName: string): string {
+  return `An update to a note on ${clean(machineName) || "this machine"} couldn't be saved. Write it again from the machine's card.`;
+}
+
 /** A floor note saved on this iPad, the database not yet answered. */
 export function floorQueuedWords(studioName: string | null | undefined, machineName: string): string {
   return `${floorConfirmation(studioName, machineName)} Saved on this iPad · sends when online.`;
@@ -320,6 +370,8 @@ export function floorQueuedWords(studioName: string | null | undefined, machineN
 /** What the list and a note's thread say (machine menu design §C, "The list"). */
 export const THREAD_WORDS = {
   none: "No notes on this machine yet.",
+  /** No notes, and the only journal entries on the machine were settings saves' copies (the rail counts those). */
+  noneButCopies: "No notes on this machine yet. Its setting saves are under Setting changes.",
   loading: "Loading notes…",
   fewer: "Fewer notes",
   standing: "Standing context",

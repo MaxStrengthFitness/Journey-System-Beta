@@ -141,7 +141,7 @@ existed — invisible. Now it is a three-state, colour-and-shape indicator:
 | A Heads up open      | `AlertCircle` + count | plum on its fill (`--eq-warn` / `--eq-warn-fill`) |
 | A Critical note open | the Hub's `AlertTriangle` + count | crimson on its fill (`--eq-alert` / `--eq-alert-fill`) |
 
-The count and the loudness are the one list's (`machine-notes.ts`: `machineNotesFor`, `machineNoteLoudness`), read from the journal the profile's host already holds, and the loud states are the one note key (`machine-menu/note-key.ts`; machine menu, Oct 2026). The old "Flagged maintenance" chip (an orange chip with a wrench, for the old list's checkbox) is gone with the checkbox; the wrench is the Relay flag's alone.
+The count and the loudness are the one list's (`machine-notes.ts`: `machineNoteCount`, each thread once as the machine menu counts them, and `machineNoteLoudness`), read from the journal the profile's host already holds, and the loud states are the one note key (`machine-menu/note-key.ts`; machine menu, Oct 2026). The old "Flagged maintenance" chip (an orange chip with a wrench, for the old list's checkbox) is gone with the checkbox; the wrench is the Relay flag's alone.
 
 Colour alone never carries the meaning — the glyph changes too, which keeps it
 readable for a colour-blind trainer and at arm's length on a gym floor.
@@ -198,7 +198,7 @@ what replaced each, and why, is the machine menu's README → "What retired".
 | `NoteIndicator.tsx` | The note icon, in the one note key (§2.6) |
 | `WatchOutCard.tsx` | The client's clinical watch-outs for one machine, quoted from the matrix (the machine menu's safety strip draws it compact) |
 | `FloorNoteCard.tsx` | The studio's notes on the unit and the Relay flag (`useFloorNote`, the one read; `FloorNoteLines`, the lines the safety strip draws) |
-| `machine-notes.ts` | Notes about the client on one machine, as ONE list (`machineNotesFor`, `machineNoteLoudness`) |
+| `machine-notes.ts` | Notes about the client on one machine, as ONE list (`machineNotesFor`, `machineNoteCount`, `machineNoteLoudness`) |
 | `useMachineJournal.ts` | The client's machine notes from the journal (`machineJournalOf` over a host's stream, or its own read for a host that has none) |
 | `setting-suggestions.ts` · `useMachineTrend.ts` | The height-band line in an empty dial's editor, from `machineTrends/{id}` (one read per machine, cached) |
 | `useMachineStats.ts` | Reads `client.machineStats`; one-time history backfill |

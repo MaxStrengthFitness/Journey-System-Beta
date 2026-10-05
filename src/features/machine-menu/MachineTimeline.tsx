@@ -901,8 +901,12 @@ export function MachineTimeline({
     else if (e.key === "ArrowRight") step(1);
     else if (e.key === "Home") select(0);
     else if (e.key === "End") select(n - 1);
-    else if (e.key === "Escape" && selectedId) setSelectedId(null);
-    else return;
+    else if (e.key === "Escape" && selectedId) {
+      // Back to the summary only: the dialog's own Escape (Base UI's dismiss,
+      // which ignores defaultPrevented) must not close the card as well.
+      setSelectedId(null);
+      e.stopPropagation();
+    } else return;
     e.preventDefault();
   };
 
@@ -1053,7 +1057,8 @@ export function MachineTimeline({
             onClose={() => setSelectedId(null)}
             onOpenNote={onOpenNote}
           />
-          <div className="mm-plot" tabIndex={0} aria-label={PLOT_LABEL} onKeyDown={onPlotKey}>
+          {/* A group, so its name (and the keys it takes) is announced: a role-less div's label is dropped. */}
+          <div className="mm-plot" role="group" tabIndex={0} aria-label={PLOT_LABEL} onKeyDown={onPlotKey}>
             <StaircasePlot
               model={model}
               ctx={ctx}

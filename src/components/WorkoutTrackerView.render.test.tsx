@@ -199,7 +199,11 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     orderBy: () => ({}),
     limit: () => ({}),
     documentId: () => ({}),
-    onSnapshot: (q: any, next: any) => {
+    // Both call shapes (KNOWN-TRAPS): (query, next, error) and, since the
+    // logs listener asks for metadata changes (machine menu, Oct 2026),
+    // (query, options, next, error). Each snapshot is the server's answer.
+    onSnapshot: (q: any, a: any, b: any) => {
+      const next = typeof a === "function" || typeof a?.next === "function" ? a : b;
       const cb = typeof next === "function" ? next : next?.next;
       const at = q?.__path ?? "";
       const emit = () => {
@@ -212,6 +216,8 @@ vi.mock("firebase/firestore", async (importOriginal) => {
           size: docs.length,
           empty: docs.length === 0,
           forEach: (f: any) => docs.forEach(f),
+          docChanges: () => docs.map((doc: any) => ({ type: "added", doc })),
+          metadata: { fromCache: false, hasPendingWrites: false },
           id: String(at).split("/").pop(),
           exists: () => single !== undefined,
           data: () => single,

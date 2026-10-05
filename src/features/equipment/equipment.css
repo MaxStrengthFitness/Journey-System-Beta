@@ -146,13 +146,14 @@
   padding-bottom: 24px;
 }
 
+/* The pane grows with the machine menu's card and the app's page scrolls it
+   (the profile's tabs have no height of their own). It is not a scroller:
+   one that never scrolls would still have held the card's sticky header,
+   which then scrolled away with it (machine menu, Oct 2026). */
 .eq-detail {
   flex: 1;
   min-width: 0;
   min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
   padding: 16px 16px 96px;
 }
 

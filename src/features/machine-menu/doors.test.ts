@@ -36,6 +36,20 @@ describe("the two doors differ ONLY in where Notes sits (AJ, Oct 4 2026)", () =>
     }
   });
 
+  it("keeps the settings and the notes in the leading column in every layout, so a turn of the iPad never remounts them", () => {
+    for (const door of ["session", "profile"] as const) {
+      for (const state of STATES) {
+        for (const layout of LAYOUTS) {
+          const order = blockOrder(door, layout, state);
+          expect(order.leading).toContain("settings");
+          expect(order.leading).toContain("notes");
+          // Outside landscape the trailing column is empty: the body draws the same two columns stacked.
+          if (layout !== "landscape") expect(order.trailing).toEqual([]);
+        }
+      }
+    }
+  });
+
   it("does differ in where Notes sits", () => {
     for (const layout of LAYOUTS) {
       expect(readingOrder(blockOrder("session", layout, STATES[0]))).not.toEqual(readingOrder(blockOrder("profile", layout, STATES[0])));

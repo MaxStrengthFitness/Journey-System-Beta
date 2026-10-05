@@ -46,6 +46,9 @@ Each card, in the order the floor needs it (the-floor.md, "Where the eye goes"):
    (`noPastWords`): "First time on this machine." only with every session
    read and the whole story in Journey, never for a machine a running total
    knows, and "in the sessions loaded here" while older ones are unread.
+   While the sets are still loading, or the read failed, it says so first
+   ("Loading past times…", "Couldn't load past times."): a failed read is
+   never "nothing recorded".
 4. **Today**: the weight, pre-filled with the iPad's own pre-fill (the
    prescription, else the last performed load) and stepped by 2 lb, and the
    count, **never pre-filled**: last time's count is a ghost. A machine she

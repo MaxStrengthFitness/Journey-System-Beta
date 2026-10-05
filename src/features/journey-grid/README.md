@@ -260,7 +260,7 @@ History loads backwards: in the Active Session, **Older** on the rail and at the
 
 ### 2.4 The Target Weight box is gone
 
-The prescribed weight (`clientMachineSettings.currentWeight`) shows up in exactly one place: **pre-filled in Today's weight input**. The machine cell's readout shows the journey instead: `40 → 66 lb (+65%)`.
+The prescribed weight (`clientMachineSettings.currentWeight`) shows up in exactly one place: **pre-filled in Today's weight input**. The machine name's spoken summary says the newest performed load (`journeySummary`, "Last 66 lb"): no start and no %, which are the Now Bar's and the machine menu's alone (`machine-menu/progress-figure.ts`), gated on a start on file or every session read. It said `40 → 66 lb (+65%)`, counted from the oldest set loaded, until the machine menu review (Oct 5 2026).
 
 ### 2.5 The Analytics column
 

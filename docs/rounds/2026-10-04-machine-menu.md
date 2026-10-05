@@ -51,6 +51,7 @@ Outside the card: the session grid's name opens it on every tap; the session hol
 | 7 | `cca3f598` | The session and grid fixes: the logs window (`logsWindowIds`), one journal listener, the Now Bar on `progress-figure.ts`, the note key on the grid, the phone and the rail, the phone card's first-time words |
 | 8 | `2ef1a669` | Correct the starting weight on Programming → Setup (Q3 (a)) |
 | 9 | the docs commit after it | The card's README, this document, `CLAUDE.md`, the stale READMEs, `KNOWN-TRAPS.md`, checklist Round 55, `scripts/ship/ship-machine-menu.ps1` |
+| 10 | "Machine menu: review fixes" (Oct 5 2026) | The review's thirty-three confirmed findings: a read only the cache answered never counts as every session read (Load older, the profile, the tracker's window), Load older's memory per session and joined on to the window, the session's note sidebar never taking a floor draft, late refusals heard, the box and the dials held while a save waits, the draft rebased under a moving seed, one tree through a turn of the iPad, the tiles, the readout, the pill, the floor notes read again, note counts, the green % on one-side machines, the grid's spoken summary, and the small ones. The card's README, "The review fixes", lists each with its decisions |
 
 136 files before the docs, about 20,400 lines added and 4,100 removed (17 files deleted). The retired screens are listed, with why, in the README's "What retired".
 

@@ -27,7 +27,9 @@ import {
   floorTitle,
   healthNoteAfterPain,
   loudnessAfterFiling,
+  machineNoteBody,
   makeItAbout,
+  noteRefusedLaterWords,
   makeItAboutWords,
   noteOrigin,
   noteSaveLine,
@@ -267,5 +269,25 @@ describe("the box's own words and the list's", () => {
     expect(allNotesLabel(3)).toBe("All notes (3)");
     expect(resolvedLabel(2)).toBe("Resolved (2)");
     expect([...Object.values(THREAD_WORDS), composerTitle("", "")].join("\n")).not.toMatch(/\b(her|she|his|he)\b/i);
+  });
+});
+
+describe("a client note's words fit the journal's rule with the machine's name in front", () => {
+  it("cuts the words to leave room for '{machine} — ', and leaves a short note alone", () => {
+    const long = "x".repeat(6000);
+    const body = machineNoteBody(long, "Leg Press");
+    expect(`Leg Press — ${body}`.length).toBe(5000);
+    expect(machineNoteBody("Seat 4 felt right", "Leg Press")).toBe("Seat 4 felt right");
+  });
+});
+
+describe("a note refused after the card closed", () => {
+  it("says what couldn't be saved and where to write it again, never guessing a pronoun", () => {
+    expect(noteRefusedLaterWords("client", "Westlake", "Leg Press")).toBe("A note on Leg Press couldn't be saved. Write it again from the machine's card.");
+    expect(noteRefusedLaterWords("floor", "Westlake", "Leg Press")).toBe(
+      "A note for Westlake's notes on Leg Press couldn't be saved. Write it again from the machine's card.",
+    );
+    expect(noteRefusedLaterWords("floor", null, "")).toContain("the studio's notes on this machine");
+    expect([noteRefusedLaterWords("client", "", ""), THREAD_WORDS.noneButCopies].join("\n")).not.toMatch(/\b(her|she|his|he)\b/i);
   });
 });

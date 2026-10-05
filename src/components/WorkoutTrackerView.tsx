@@ -234,7 +234,7 @@ import { sessionLinkOf } from "../features/client-notes/session-link";
 import { clientDisplayName, clientFirstName } from "../lib/client-name";
 import { isNextWeightLive, nextWeightMark, nextWeightSourceLine } from "../features/next-weight/next-weight";
 import { saveNextWeight } from "../features/next-weight/store";
-import { machineNoteLoudness, machineNotesFor } from "../features/equipment/machine-notes";
+import { machineNoteCount, machineNoteLoudness } from "../features/equipment/machine-notes";
 import { machineJournalOf } from "../features/equipment/useMachineJournal";
 import { sessionNoteStudioId } from "../features/client-notes/note-studio";
 import { ClientSelectionDialog } from "../features/tracker/ClientSelectionDialog";
@@ -1237,8 +1237,15 @@ export function WorkoutTrackerView({
   useEffect(() => {
     const sessionIds = logsPlan.ids;
     const windowKey = logsPlanKey;
+    /* Once the server has answered for this window, it stays read: losing the
+       Wi-Fi later turns the snapshots cache-only, but the cache then holds
+       everything the server confirmed for it. */
     const noteWindow = (state: "ready" | "cache-only" | "failed") =>
-      setLogsWindow((prev) => (prev && prev.key === windowKey && prev.state === state ? prev : { key: windowKey, ids: sessionIds, state }));
+      setLogsWindow((prev) =>
+        prev && prev.key === windowKey && (prev.state === state || (prev.state === "ready" && state === "cache-only"))
+          ? prev
+          : { key: windowKey, ids: sessionIds, state },
+      );
     // A new window is unread until its own snapshot answers.
     setLogsWindow((prev) => (prev && prev.key === windowKey ? prev : null));
     if (sessionIds.length === 0) noteWindow("ready");
@@ -1247,9 +1254,23 @@ export function WorkoutTrackerView({
         collection(db, "exerciseLogs"),
         where("sessionId", "in", sessionIds),
       );
+      /* With metadata changes, so the window hears the server CONFIRM what the
+         cache already held (without them a listener is never told, and the
+         window stayed "cache-only" while online: KNOWN-TRAPS, "A snapshot the
+         cache answered is not a read"). A metadata-only event (that, or a
+         set's write being acknowledged) changes no set, so it only notes the
+         window, and the tracker doesn't redraw for it. */
+      let heard = false;
       const unsubscribeLogs = onSnapshot(
         logsQuery,
+        { includeMetadataChanges: true },
         (snapshot) => {
+          const first = !heard;
+          heard = true;
+          if (!first && snapshot.docChanges().length === 0) {
+            noteWindow(snapshot.metadata?.fromCache ? "cache-only" : "ready");
+            return;
+          }
           const logsMap: Record<string, ExerciseLog> = {};
           snapshot.docs.forEach((doc) => {
             const data = { id: doc.id, ...doc.data() } as ExerciseLog;
@@ -2782,7 +2803,6 @@ export function WorkoutTrackerView({
           legacy: setting?.machineNotes,
           journal: machineJournal,
         };
-        const notes = machineNotesFor(noteInput);
         // Where today's weight came from, when a trainer set it at the last
         // Wrap-up and no session has logged the machine since (next-weight).
         const nextMark = setting?.nextWeight;
@@ -2812,7 +2832,8 @@ export function WorkoutTrackerView({
             // The mark beside the name: the loudest open note, in the one
             // note key (machine menu, Oct 2026).
             alert: machineNoteLoudness({ ...noteInput, today: noteDay }) ?? undefined,
-            noteCount: notes.length,
+            // Each thread once, as the card counts them (machine-notes.ts).
+            noteCount: machineNoteCount(noteInput),
             sides: isSidesMachine(machine),
           },
         };
@@ -3148,7 +3169,10 @@ export function WorkoutTrackerView({
      (no older session unread, the read not failed): only then may the Now
      Bar's start fall back to the first counted set, and the phone's strip
      say what nothing on record means (machine-menu/progress-figure.ts). */
-  const sessionsAllRead = !!logsWindow && logsWindow.state !== "failed" && !hasOlderToRead(sessions, menuReadIds);
+  /* Only a window the server answered counts: a cache-only one may be
+     partial (offline, or the cache's first answer), so the Now Bar and the
+     phone stay cautious with it, as the card does (useMachineMenuData). */
+  const sessionsAllRead = logsWindow?.state === "ready" && !hasOlderToRead(sessions, menuReadIds);
   const menuLogs = useMemo(() => Object.values(logs) as ExerciseLog[], [logs]);
   const menuFloorStudioId = currentSession?.hostedAtStudioId || contextActiveStudioId || null;
   const menuWatching =
@@ -3226,6 +3250,16 @@ export function WorkoutTrackerView({
     hasCurrentSession: !!currentSession,
     hasWatchedSession: !!watchedSession,
   });
+
+  /* The machine menu lives only on the tracker and the watching screen. A
+     session finished or discarded on another iPad moves the screen without a
+     Close; without this the card would open by itself at the next Start. A
+     draft on the card goes with the session it was on, as the old sheet's
+     did: the change comes from the sessions listener, so there is no moment
+     to ask. */
+  useEffect(() => {
+    if (screen !== "tracker" && screen !== "watch") setMenuMachineId(null);
+  }, [screen]);
 
   if (screen === "post-session" && postSession) {
     return (
@@ -3916,6 +3950,7 @@ export function WorkoutTrackerView({
           everythingRead={sessionsAllRead}
           coverage={clientCoverage}
           totals={selectedClient}
+          historyState={logsWindow?.state ?? "loading"}
         />
       ) : (
       <div className={`jg-stage ${nowBarSide ? "jg-stage--side" : ""}`}>
@@ -4147,6 +4182,12 @@ export function WorkoutTrackerView({
             trainer={authTrainer}
             draft={noteDraft}
             onDraftChange={handleDraftChange}
+            /* A draft the machine menu filed for the floor's notes is finished on its card. */
+            floorStudioName={machineMenuHost.floorStudio.name}
+            onOpenMachine={(id) => {
+              setIsShowingSessionNotes(false);
+              setMenuMachineId(id);
+            }}
             onClose={() => setIsShowingSessionNotes(false)}
           />
         )}

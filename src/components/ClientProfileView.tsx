@@ -275,11 +275,16 @@ export function ClientProfileView({
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   /* Whether the first page of sessions and their sets has been read for
      THIS client, or failed (machine menu, Oct 2026): before it, an empty
-     history is "not read", never "nothing on this machine". And a request
-     for that page from outside the two tabs that read it: the machine menu
-     opened from Programming or Notes & Profile asks for it (`ensureHistory`). */
-  const [historyRead, setHistoryRead] = useState<ClientAnswer<"ready" | "failed"> | null>(null);
+     history is "not read", never "nothing on this machine". "cache-only"
+     when only this iPad's cache answered (getDocs offline answers from the
+     cache instead of failing): drawn, but never taken for the whole record.
+     And a request for that page from outside the two tabs that read it: the
+     machine menu opened from Programming or Notes & Profile asks for it
+     (`ensureHistory`). */
+  const [historyRead, setHistoryRead] = useState<ClientAnswer<"ready" | "cache-only" | "failed"> | null>(null);
   const [historyWanted, setHistoryWanted] = useState<string | null>(null);
+  // The last ask the fetch effect saw: the read's own clearing of it is not a new ask.
+  const lastHistoryWanted = useRef<string | null>(null);
   /*
    * What Journey itself holds — completed sessions in Journey, before any
    * prior history — stamped with the client it was counted for (client
@@ -934,19 +939,22 @@ export function ClientProfileView({
     }
   };
 
-  const fetchLogsForSessions = async (sessionIds: string[]) => {
-    if (sessionIds.length === 0) return [];
+  /** The sets of these sessions, and whether any chunk was answered by this iPad's cache only. */
+  const fetchLogsForSessions = async (sessionIds: string[]): Promise<{ logs: ExerciseLog[]; fromCache: boolean }> => {
+    if (sessionIds.length === 0) return { logs: [], fromCache: false };
     const chunks = [];
     for (let i = 0; i < sessionIds.length; i += 10) {
       chunks.push(sessionIds.slice(i, i + 10));
     }
     let fetchedLogs: ExerciseLog[] = [];
+    let fromCache = false;
     for (const chunk of chunks) {
       const qs = query(
         collection(db, "exerciseLogs"),
         where("sessionId", "in", chunk),
       );
       const snap = await getDocs(qs);
+      if (snap.metadata?.fromCache) fromCache = true;
       fetchedLogs = [
         ...fetchedLogs,
         ...snap.docs.map(
@@ -954,7 +962,7 @@ export function ClientProfileView({
         ),
       ];
     }
-    return fetchedLogs;
+    return { logs: fetchedLogs, fromCache };
   };
 
   /*
@@ -980,7 +988,11 @@ export function ClientProfileView({
   }, [clientId]);
 
   useEffect(() => {
-    if (!clientId || hasQuotaError) return;
+    // historyWanted going back to null is the read's own `finally`, not a new
+    // ask: on the Journey tab it would otherwise read the whole page again.
+    const justCleared = lastHistoryWanted.current !== null && historyWanted === null;
+    lastHistoryWanted.current = historyWanted;
+    if (justCleared || !clientId || hasQuotaError) return;
 
     // The Journey grid and the Activity Archive's calendar both read this page of
     // sessions. Programming and the record do not, so they still cost nothing
@@ -1005,12 +1017,15 @@ export function ClientProfileView({
 
         const sessionSnap = await getDocs(sessionsQuery);
         const docs = sessionSnap.docs;
+        // Offline, getDocs answers from this iPad's cache rather than failing:
+        // possibly nothing, possibly part. Such an answer is never "ready".
+        const sessionsCached = sessionSnap.metadata?.fromCache === true;
 
         if (!docs.length) {
           setSessions([]);
           setAllLogs([]);
           setHasMoreSessions(false);
-          setHistoryRead({ clientId, value: "ready" });
+          setHistoryRead({ clientId, value: sessionsCached ? "cache-only" : "ready" });
           return;
         }
 
@@ -1033,14 +1048,14 @@ export function ClientProfileView({
         });
 
         const sessionIds = liveSessionsData.map((s) => s.id!).filter(Boolean);
-        const newLogs = await fetchLogsForSessions(sessionIds);
+        const { logs: newLogs, fromCache: logsCached } = await fetchLogsForSessions(sessionIds);
 
         setAllLogs((prev) => {
           const merged = new Map(prev.map((l) => [l.id, l]));
           newLogs.forEach((l) => merged.set(l.id, l));
           return Array.from(merged.values());
         });
-        setHistoryRead({ clientId, value: "ready" });
+        setHistoryRead({ clientId, value: sessionsCached || logsCached ? "cache-only" : "ready" });
       } catch (error: any) {
         setHistoryRead({ clientId, value: "failed" });
         handleFirestoreError(error, OperationType.GET, "sessions");
@@ -1067,7 +1082,11 @@ export function ClientProfileView({
         limit(SESSION_PAGE),
       );
       const snap = await getDocs(moreQuery);
+      const pageCached = snap.metadata?.fromCache === true;
       if (snap.empty) {
+        // An empty page only the cache gave is not the end of the record:
+        // offline it says it couldn't load older sessions.
+        if (pageCached) return false;
         setHasMoreSessions(false);
         return true;
       }
@@ -1080,7 +1099,9 @@ export function ClientProfileView({
       );
 
       const sessionIds = moreSessionsData.map((s) => s.id!).filter(Boolean);
-      const moreLogs = await fetchLogsForSessions(sessionIds);
+      const { logs: moreLogs, fromCache: moreLogsCached } = await fetchLogsForSessions(sessionIds);
+      // A page the cache answered may be partial: the record is no longer known whole.
+      if (pageCached || moreLogsCached) setHistoryRead({ clientId, value: "cache-only" });
 
       setSessions((prev) => {
         const out = [...prev, ...moreSessionsData].sort(
@@ -1237,8 +1258,9 @@ export function ClientProfileView({
    */
   const profileHistoryState: MachineMenuHost["historyState"] = (() => {
     const read = answerFor(historyRead, clientId);
-    // A page already read stays drawn while the tab reads it again.
-    if (read === "ready") return "ready";
+    // A page already read stays drawn while the tab reads it again; one only
+    // the cache answered is drawn with its line, never as the whole record.
+    if (read === "ready" || read === "cache-only") return read;
     if (read === "failed" || hasQuotaError) return "failed";
     return "loading";
   })();

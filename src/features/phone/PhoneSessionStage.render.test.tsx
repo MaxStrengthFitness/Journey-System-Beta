@@ -144,6 +144,17 @@ describe("PhoneSessionStage", () => {
     expect(host!.textContent).not.toContain("First time");
   });
 
+  it("says the past times are loading, or couldn't load, rather than 'nothing recorded'", () => {
+    const neck: JourneyRow = { machine: { id: "neck", name: "Neck Flexion", group: "Neck" }, sets: {}, prescribedWeight: 20 };
+    mount({ rows: [neck], coverage: "complete", historyState: "loading" });
+    expect(host!.textContent).toContain("Loading past times…");
+    act(() => root?.unmount());
+    host?.remove();
+    mount({ rows: [neck], coverage: "complete", historyState: "failed" });
+    expect(host!.textContent).toContain("Couldn't load past times.");
+    expect(host!.textContent).not.toContain("Nothing recorded");
+  });
+
   it("marks a machine's loudest open note in the one note key, never the kaizen red", () => {
     const rows: JourneyRow[] = [
       { ...ROWS[0], machine: { ...ROWS[0].machine, alert: "critical" } },
