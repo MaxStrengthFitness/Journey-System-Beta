@@ -48,7 +48,7 @@ export interface SessionNowBarProps {
   /**
    * What is tied to THIS machine for THIS client — a critical note written on
    * it, a heads-up, a condition's instruction that names it. One line under
-   * the settings, red or amber, a tap opens the machine sheet where the whole
+   * the settings, red or amber, a tap opens the machine menu where the whole
    * of it lives (fluidity round, Sep 2026). Null when nothing is tied.
    */
   flagLine?: FlagLine | null;
@@ -708,7 +708,7 @@ function SessionNowBarImpl({
           className={`jg-nb__flag jg-nb__flag--${flagLine.tone}`}
           onClick={onOpenFlag}
           disabled={!onOpenFlag}
-          aria-label={`Watch out on this machine: ${flagLine.text}${flagLine.more > 0 ? `, and ${flagLine.more} more` : ""}. Opens the machine sheet.`}
+          aria-label={`Watch out on this machine: ${flagLine.text}${flagLine.more > 0 ? `, and ${flagLine.more} more` : ""}. Opens the machine menu.`}
         >
           <ShieldAlert size={14} strokeWidth={2.5} aria-hidden="true" />
           <span className="jg-nb__flagtext">{flagLine.text}</span>

@@ -1,6 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { createPortal } from "react-dom";
-import { AlertCircle, ChevronDown, ChevronUp, ChevronsRight, MoreHorizontal, NotebookPen, Plus, X } from "lucide-react";
+import { AlertCircle, ChevronDown, ChevronUp, ChevronsRight, NotebookPen, Plus, X } from "lucide-react";
 import type { JourneyRow, JourneySession, JourneySet, LiveColumn, LiveSet, StatMetric } from "./types";
 import {
   computeRowStats,
@@ -140,14 +139,15 @@ export interface JourneyGridProps {
    * been given and shrinks rows (44 → 28px) and session columns (84 → 56px)
    * until every loaded machine fits vertically and at least ten sessions fit
    * across. Below 36px rows the cell goes single-line ("116 · 12↓") and the
-   * settings rail folds into the ⋯ menu.
+   * settings rail is left to the machine menu.
    */
   fit?: "fixed" | "auto";
   /**
    * "inline": the settings rail under the machine name (Active Session — the
-   * trainer reads it walking up to the machine). "menu": the name alone, with
-   * a ⋯ button that opens the settings in a popover; buys the row height the
-   * dense Recent Journey needs.
+   * trainer reads it walking up to the machine). "menu": the name alone; a
+   * tap opens the machine menu, which has the settings (the grid's 22px ⋯
+   * popover retired with the machine menu, Oct 2026). Buys the row height
+   * the dense Recent Journey needs.
    */
   settingsDisplay?: "inline" | "menu";
   /** Session columns to aim for when fitting (default 14; never fewer than 10 are fitted). */
@@ -225,7 +225,6 @@ function RowImpl({
   live,
   liveValue,
   liveInactive,
-  settingsDisplay,
   band,
 }: RowProps) {
   const { machine } = row;
@@ -376,15 +375,6 @@ function RowImpl({
             <NotebookPen size={13} strokeWidth={2.25} />
           </span>
         ) : null}
-        {settingsDisplay === "menu" && (settingEntries.length > 0 || machine.noteCount) && (
-          <MachineMenu
-            machineName={machine.name}
-            settings={settingEntries.map(([k, v]) => ({ key: k, label: settingLabel(k), value: v }))}
-            noteCount={machine.noteCount}
-            summary={journeySummary(row, history)}
-            onNote={onNote ? () => onNote(machine.id) : undefined}
-          />
-        )}
       </div>
 
       {showStats && (
@@ -443,106 +433,6 @@ function RowImpl({
           </div>
         ))}
     </div>
-  );
-}
-
-/**
- * The ⋯ at the right edge of a machine cell in the dense grid. Opens a small
- * popover with the machine's settings (the same G/S pairs the inline rail
- * shows in the Active Session) and the note count.
- * Rendered through a portal: the sticky machine column lives inside an
- * overflow scroller, so anything positioned inside the cell would be clipped.
- */
-function MachineMenu({
-  machineName,
-  settings,
-  noteCount,
-  summary,
-  onNote,
-}: {
-  machineName: string;
-  settings: { key: string; label: string; value: string }[];
-  noteCount?: number;
-  summary: string;
-  onNote?: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-  const btnRef = useRef<HTMLButtonElement>(null);
-
-  const toggle = () => {
-    if (open) {
-      setOpen(false);
-      return;
-    }
-    const r = btnRef.current?.getBoundingClientRect();
-    if (r) setPos({ top: r.bottom + 6, left: Math.max(8, Math.min(r.right - 220, window.innerWidth - 232)) });
-    setOpen(true);
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: Event) => {
-      const t = e.target as Node | null;
-      if (btnRef.current && t && btnRef.current.contains(t)) return;
-      if (t && (t as Element).closest?.(".jg-menu")) return;
-      setOpen(false);
-    };
-    const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("pointerdown", close, true);
-    document.addEventListener("keydown", key);
-    window.addEventListener("scroll", () => setOpen(false), { once: true, capture: true });
-    return () => {
-      document.removeEventListener("pointerdown", close, true);
-      document.removeEventListener("keydown", key);
-    };
-  }, [open]);
-
-  const title = settings.length ? settings.map((s) => `${s.label} ${s.value}`).join(" · ") : "No settings on file";
-
-  return (
-    <>
-      <button
-        ref={btnRef}
-        type="button"
-        className={`jg-machine__more ${open ? "is-open" : ""} ${noteCount ? "has-notes" : ""}`}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-label={`${machineName}: settings and notes. ${title}`}
-        title={title}
-        onClick={toggle}
-      >
-        <MoreHorizontal size={14} strokeWidth={2.5} />
-      </button>
-      {open &&
-        pos &&
-        createPortal(
-          <div className="jg-menu" role="dialog" aria-label={`${machineName} settings`} style={{ top: pos.top, left: pos.left }}>
-            <div className="jg-menu__title">
-              {machineName}
-              <span className="jg-menu__summary">{summary}</span>
-            </div>
-            {settings.length ? (
-              <dl className="jg-menu__settings">
-                {settings.map((s) => (
-                  <div key={s.key} className="jg-menu__setting">
-                    <dt>{s.label}</dt>
-                    <dd>{s.value}</dd>
-                  </div>
-                ))}
-              </dl>
-            ) : (
-              <p className="jg-menu__empty">No machine settings saved for this client.</p>
-            )}
-            {onNote && (
-              <button type="button" className="jg-menu__note" onClick={() => { setOpen(false); onNote(); }}>
-                <NotebookPen size={13} strokeWidth={2.25} /> {noteCount ? `${noteCount} note${noteCount === 1 ? "" : "s"}` : "Add a note"}
-              </button>
-            )}
-          </div>,
-          document.body,
-        )}
-    </>
   );
 }
 

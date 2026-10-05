@@ -17,7 +17,7 @@
  *
  * What the iPad has that this leaves to it: the full grid and its older
  * columns, the analytics, the stopwatch, the per-machine flag line. The
- * machine sheet (settings, notes) opens from a machine's name, as on the iPad.
+ * machine menu (settings, notes) opens from a machine's name, as on the iPad.
  */
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, ChevronRight, ListOrdered, Minus, Plus } from "lucide-react";
@@ -48,7 +48,7 @@ export interface PhoneSessionStageProps {
   onChange: (machineId: string, patch: Partial<LiveSet>) => void;
   /** Send what is waiting now (moving on from a machine). */
   onCommit: () => void;
-  /** The machine sheet: settings and notes. */
+  /** The machine menu (features/machine-menu): settings, notes and how the client has done. */
   onOpenMachine: (machineId: string) => void;
   /** Reorder, add or take off a machine (the iPad's RoutineOrderSheet). */
   onReorder: () => void;

@@ -31,7 +31,7 @@ import { firstSentences } from "../../lib/first-sentences";
 import { studioDateKey } from "../../lib/studio-time";
 import { copiedKeysOf, earlierNotes, floorNoteFromDoc, floorThreads, openFloorLines, type FloorNote } from "../floor-notes/floor-notes";
 
-type FloorRead =
+export type FloorRead =
   | { status: "loading" }
   | { status: "failed" }
   | {
@@ -131,6 +131,15 @@ export function FloorNoteCard({
   machineId: string | null;
 }) {
   const read = useFloorNote(studioId, machineId);
+  return <FloorNoteLines read={read} studioName={studioName} />;
+}
+
+/**
+ * The card drawn from a read already made: the machine menu reads the floor
+ * once (its safety strip and the header pill's count both need the answer)
+ * and hands it in, so the unit is never read twice.
+ */
+export function FloorNoteLines({ read, studioName }: { read: FloorRead; studioName?: string | null }) {
   const whose = studioName?.trim() ? `${studioName.trim()}'s` : "The floor's";
   if (read.status === "loading") return null;
   if (read.status === "failed") {

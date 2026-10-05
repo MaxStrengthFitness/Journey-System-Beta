@@ -58,6 +58,7 @@ import type {
   WorkoutSession,
 } from "../../types";
 import { EquipmentTab } from "../equipment";
+import type { MachineMenuHost } from "../machine-menu/useMachineMenuData";
 import { SetupView } from "../machine-fit/ui/SetupView";
 import { RoutinesTab } from "../routines";
 import { relativeTime, type RoutineName } from "../routines/routine-rows";
@@ -106,6 +107,11 @@ export interface ProgrammingTabProps {
   onEdit: (name: RoutineName) => void;
   onToggleB: (checked: boolean) => void;
   onSelectMachine?: (machineId: string) => void;
+  /**
+   * The machine menu's door on the profile (ClientProfileView builds it):
+   * All Machines draws the menu's body inline for the machine picked in its list.
+   */
+  machineMenuHost?: MachineMenuHost;
   disabled?: boolean;
 }
 
@@ -132,6 +138,7 @@ export function ProgrammingTab({
   onEdit,
   onToggleB,
   onSelectMachine,
+  machineMenuHost,
   disabled = false,
 }: ProgrammingTabProps) {
   /*
@@ -358,6 +365,7 @@ export function ProgrammingTab({
           activeStudioId={activeStudioId}
           authTrainer={authTrainer}
           coverage={historyCoverage}
+          menuHost={machineMenuHost}
         />
       </div>
       )}

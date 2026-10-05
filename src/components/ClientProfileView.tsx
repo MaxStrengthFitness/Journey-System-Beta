@@ -36,7 +36,9 @@ import {
   Loader2,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { ClientMachineWindow } from "../features/equipment";
+import { MachineMenu } from "../features/machine-menu/MachineMenu";
+import type { MachineMenuHost } from "../features/machine-menu/useMachineMenuData";
+import { authorFromTrainer } from "../features/equipment/author";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,10 +54,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { QuickNoteDialog } from "../features/client-notes/QuickNoteDialog";
 import { Textarea } from "@/components/ui/textarea";
 import { getCompletedSessionCount } from "../lib/session-count-cache";
-import { isEstablishedClient } from "../lib/history-claims";
+import { isEstablishedClient, ownedWindow } from "../lib/history-claims";
 import { progressReportDue } from "../features/client-profile/cpr-timing";
-import { machineStory } from "../features/journey-grid/machine-story";
-import { MachineStoryCard } from "../features/journey-grid/MachineStoryCard";
 import { earliestKnownDate } from "../lib/client-since";
 import {
   ClinicalHistoryTab,
@@ -145,7 +145,7 @@ import { buildPackageNameIndex } from "../features/renewals/settings";
 import { sessionsSplit } from "../features/client-admin/account";
 import { recordStudioIdOf } from "../features/client-codex/access";
 import { hasImportantMachineNote } from "../features/equipment/machine-notes";
-import { useMachineJournal } from "../features/equipment/useMachineJournal";
+import { useMachineJournalRead } from "../features/equipment/useMachineJournal";
 import { isSuperAdminRole } from "../features/admin/franchise/scope";
 
 /** Sessions per Firestore page for the profile's history (see the Journey tab). */
@@ -273,6 +273,13 @@ export function ClientProfileView({
      so the Journey grid can show the loading mark instead of empty cells
      (the sessions arrive a moment before their sets do). */
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  /* Whether the first page of sessions and their sets has been read for
+     THIS client, or failed (machine menu, Oct 2026): before it, an empty
+     history is "not read", never "nothing on this machine". And a request
+     for that page from outside the two tabs that read it: the machine menu
+     opened from Programming or Notes & Profile asks for it (`ensureHistory`). */
+  const [historyRead, setHistoryRead] = useState<ClientAnswer<"ready" | "failed"> | null>(null);
+  const [historyWanted, setHistoryWanted] = useState<string | null>(null);
   /*
    * What Journey itself holds — completed sessions in Journey, before any
    * prior history — stamped with the client it was counted for (client
@@ -976,8 +983,9 @@ export function ClientProfileView({
     if (!clientId || hasQuotaError) return;
 
     // The Journey grid and the Activity Archive's calendar both read this page of
-    // sessions. Programming and the record do not, so they still cost nothing.
-    if (activeTab !== "journey" && activeTab !== "clinical") {
+    // sessions. Programming and the record do not, so they still cost nothing
+    // until the machine menu asks for it there.
+    if (activeTab !== "journey" && activeTab !== "clinical" && historyWanted !== clientId) {
       return;
     }
 
@@ -985,9 +993,9 @@ export function ClientProfileView({
       setIsLoadingSessions(true);
       try {
         // 2. Firebase Query Limits & Pagination
-        // The first page is 15 sessions: the Journey grid shows fourteen
-        // columns at once (Sep 2026 density round) and the fifteenth keeps
-        // the trend glyph on the oldest visible column honest.
+        // The first page is SESSION_PAGE (50) sessions, and every older page
+        // the same: the Journey grid, the Activity Archive's calendar and the
+        // machine menu all read these pages.
         const sessionsQuery = query(
           collection(db, "sessions"),
           where("clientId", "==", clientId),
@@ -1002,6 +1010,7 @@ export function ClientProfileView({
           setSessions([]);
           setAllLogs([]);
           setHasMoreSessions(false);
+          setHistoryRead({ clientId, value: "ready" });
           return;
         }
 
@@ -1031,19 +1040,23 @@ export function ClientProfileView({
           newLogs.forEach((l) => merged.set(l.id, l));
           return Array.from(merged.values());
         });
+        setHistoryRead({ clientId, value: "ready" });
       } catch (error: any) {
+        setHistoryRead({ clientId, value: "failed" });
         handleFirestoreError(error, OperationType.GET, "sessions");
       } finally {
         setIsLoadingSessions(false);
+        setHistoryWanted(null);
       }
     };
 
     fetchInitialSessions();
-  }, [clientId, activeTab, hasQuotaError]);
+  }, [clientId, activeTab, hasQuotaError, historyWanted]);
 
-  const handleLoadMoreHistory = async () => {
+  /** The next page of sessions and their sets. Resolves false when it failed (the machine menu says so). */
+  const handleLoadMoreHistory = async (): Promise<boolean> => {
     if (!lastVisibleSession || !hasMoreSessions || isLoadingMore || !clientId)
-      return;
+      return true;
     setIsLoadingMore(true);
     try {
       const moreQuery = query(
@@ -1056,7 +1069,7 @@ export function ClientProfileView({
       const snap = await getDocs(moreQuery);
       if (snap.empty) {
         setHasMoreSessions(false);
-        return;
+        return true;
       }
 
       setLastVisibleSession(snap.docs[snap.docs.length - 1]);
@@ -1076,8 +1089,10 @@ export function ClientProfileView({
         return Array.from(new Map(out.map((s) => [s.id, s])).values());
       });
       setAllLogs((prev) => [...prev, ...moreLogs]);
+      return true;
     } catch (err) {
       console.error("Error loading older history", err);
+      return false;
     } finally {
       setIsLoadingMore(false);
     }
@@ -1124,7 +1139,8 @@ export function ClientProfileView({
   /* Her journal's notes that name a machine: the grid's note mark reads the
      one list (Oct 2 2026, features/equipment/machine-notes.ts). The same
      query as the record's journal, so one listener. */
-  const machineJournal = useMachineJournal(client.id ?? null);
+  const machineJournalRead = useMachineJournalRead(client.id ?? null);
+  const machineJournal = machineJournalRead.entries;
   const journeyGridRows = useMemo(() => {
     // THIS studio's floor, its own machines included, the same list the
     // Active Session draws (Oct 2 2026) - not the company catalog - then any
@@ -1194,22 +1210,91 @@ export function ClientProfileView({
     machineJournal,
   ]);
 
-  // The tapped machine's story, the stats the grid no longer carries
-  // (AJ, Oct 2 2026: "only when you tap").
-  const machineStoryLines = useMemo(() => {
-    const row = machineWindowId ? journeyGridRows.find((r) => r.machine.id === machineWindowId) : null;
-    return row ? machineStory(row, journeyGridSessions) : [];
-  }, [machineWindowId, journeyGridRows, journeyGridSessions]);
-
   /**
-   * Tapping a machine — its name on the Journey grid, or its row in Routine
-   * A / B — opens the one machine window: the same detail Programming → All
-   * Machines shows, writing through features/equipment/mutations.ts.
+   * Tapping a machine — its name on the Journey grid, its row in Routine
+   * A / B, or a machine link in Notes & Profile — opens the machine menu
+   * (features/machine-menu): the same card the Active Session opens, with
+   * the notes after the chart. Programming → All Machines draws the same
+   * body inline.
    */
   const openMachineWindow = useCallback((machineId: string) => {
     setMachineWindowId(machineId);
   }, []);
   const closeMachineWindow = useCallback(() => setMachineWindowId(null), []);
+
+  /*
+   * THE MACHINE MENU'S DOOR ON THE PROFILE. What the card is handed: the
+   * pages of sessions this view has read and their sets, the one journal
+   * listener, and the profile's own Load older (the grid's next page). Opened
+   * before Journey has been visited, it asks for the first page and says
+   * it is loading — never the first-time words.
+   */
+  const profileHistoryState: MachineMenuHost["historyState"] = (() => {
+    const read = answerFor(historyRead, clientId);
+    // A page already read stays drawn while the tab reads it again.
+    if (read === "ready") return "ready";
+    if (read === "failed" || hasQuotaError) return "failed";
+    return "loading";
+  })();
+  const ensureHistory = useCallback(() => {
+    if (!clientId || isLoadingSessions) return;
+    if (answerFor(historyRead, clientId)) return;
+    setHistoryWanted(clientId);
+  }, [clientId, isLoadingSessions, historyRead]);
+  const retryHistory = useCallback(() => {
+    if (clientId && !isLoadingSessions) setHistoryWanted(clientId);
+  }, [clientId, isLoadingSessions]);
+  const profileStudioName = studios?.find((st) => st.id === activeStudioId)?.name ?? null;
+  const machineMenuHost = useMemo<MachineMenuHost>(
+    () => ({
+      door: "profile",
+      clientId: clientId || "",
+      client,
+      machines: machineWindowMachines,
+      clientSettings,
+      author: authorFromTrainer(authTrainer),
+      activeStudioId: activeStudioId ?? null,
+      floorStudio: { id: activeStudioId ?? null, name: profileStudioName },
+      roster: clients,
+      coverage: clientCoverage,
+      window: ownedWindow({ coverage: clientCoverage, prior: priorHistory, cutover: journeyCutover }),
+      sessions,
+      logs: allLogs,
+      historyState: profileHistoryState,
+      moreOnServer: hasMoreSessions,
+      onRetryHistory: retryHistory,
+      loadOlder: handleLoadMoreHistory,
+      loadingOlder: isLoadingMore,
+      ensureHistory,
+      journal: machineJournalRead.entries,
+      journalState: machineJournalRead.state,
+    }),
+    // handleLoadMoreHistory is redefined every render; the menu reads the newest.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      clientId,
+      client,
+      machineWindowMachines,
+      clientSettings,
+      authTrainer,
+      activeStudioId,
+      profileStudioName,
+      clients,
+      clientCoverage,
+      priorHistory,
+      journeyCutover,
+      sessions,
+      allLogs,
+      profileHistoryState,
+      hasMoreSessions,
+      retryHistory,
+      isLoadingMore,
+      lastVisibleSession,
+      ensureHistory,
+      machineJournalRead.entries,
+      machineJournalRead.state,
+    ],
+  );
 
   /*
    * NOTES & PROFILE (the client codex) — what it is handed from here.
@@ -1665,7 +1750,9 @@ export function ClientProfileView({
             sessions={journeyGridSessions}
             rows={journeyGridRows}
             hasMoreOnServer={hasMoreSessions}
-            onLoadMore={handleLoadMoreHistory}
+            onLoadMore={async () => {
+              await handleLoadMoreHistory();
+            }}
             loading={isLoadingSessions}
             loadingMore={isLoadingMore}
             resetKey={clientId ?? null}
@@ -1711,6 +1798,7 @@ export function ClientProfileView({
             onEdit={(name) => setEditRoutineTarget(name)}
             onToggleB={handlePromptToggleB}
             onSelectMachine={openMachineWindow}
+            machineMenuHost={machineMenuHost}
             disabled={!!hasQuotaError}
           />
 
@@ -1967,25 +2055,7 @@ export function ClientProfileView({
         </DialogContent>
       </Dialog>
 
-      <ClientMachineWindow
-        open={!!machineWindowId}
-        onClose={closeMachineWindow}
-        clientId={clientId || ""}
-        client={client}
-        machineId={machineWindowId}
-        machines={machineWindowMachines}
-        clientSettings={clientSettings}
-        allLogs={allLogs}
-        sessions={sessions}
-        authTrainer={authTrainer}
-        activeStudioId={activeStudioId}
-        coverage={clientCoverage}
-        top={
-          machineStoryLines.length > 0 ? (
-            <MachineStoryCard lines={machineStoryLines} partial={hasMoreSessions} />
-          ) : null
-        }
-      />
+      <MachineMenu open={!!machineWindowId} machineId={machineWindowId} onClose={closeMachineWindow} host={machineMenuHost} />
 
       <Dialog
         open={isEditingSessionCount}

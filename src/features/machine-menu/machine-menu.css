@@ -1756,6 +1756,343 @@
   color: var(--eq-ink-muted);
 }
 
+/* ---------- the frame: the dialog, the header, the scroller ------------ */
+
+/* The dialog: min(820px, 100vw - 60px) wide, 88dvh tall (machine menu
+   design §B). Landscape and the phone are the two blocks at the end. This
+   sits outside Tailwind's layers, so it wins over the dialog's own sizes. */
+.mm-dialog {
+  width: min(820px, calc(100vw - 60px));
+  max-width: none;
+  height: 88dvh;
+  max-height: 88dvh;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 20px;
+}
+
+.mm-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--eq-border);
+  border-radius: 20px;
+  background: var(--eq-surface);
+  color: var(--eq-ink);
+  box-shadow: 0 30px 70px -28px var(--eq-shadow), 0 2px 6px var(--eq-shadow);
+}
+
+/* Inline (Programming -> All Machines): the pane scrolls, the card grows. */
+.mm-card[data-inline="true"] {
+  height: auto;
+  overflow: visible;
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+/* The header never scrolls away in the dialog; it grows when a name wraps. */
+.mm-head {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 76px;
+  padding: 12px 24px 10px;
+  border-bottom: 1px solid var(--eq-border);
+  background: var(--eq-surface);
+  border-radius: 20px 20px 0 0;
+}
+
+.mm-card[data-inline="true"] .mm-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  border-radius: 16px 16px 0 0;
+}
+
+.mm-head__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.mm-head__title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 14px;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.mm-head__machine {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+.mm-head__client {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--eq-ink-2);
+  overflow-wrap: anywhere;
+}
+
+/* Close: 48 x 48, out of the corner's edge. */
+.mm-close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin: -2px -8px 0 0;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  color: var(--eq-ink);
+}
+
+.mm-close:hover {
+  background: var(--eq-surface-3);
+}
+
+.mm-close:focus-visible,
+.mm-head__pill:focus-visible {
+  outline: 2px solid var(--eq-focus-ring);
+  outline-offset: 2px;
+}
+
+/* "1 thing to know first": shown only while the strip is scrolled away. */
+.mm-head__pill {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 22px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--eq-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.mm-head__pill[data-critical="true"] {
+  border-color: var(--eq-alert);
+  color: var(--eq-ink);
+}
+
+.mm-head__crit {
+  flex: none;
+  color: var(--eq-alert);
+}
+
+.mm-head__back {
+  flex: none;
+}
+
+/* Line 2, the set-down read: "Last time 100 lb x 11 * · Thu Oct 1". */
+.mm-head__last {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
+  row-gap: 0;
+  margin: 0;
+}
+
+.mm-head__lbl {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--eq-ink-muted);
+}
+
+.mm-head__num {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  color: var(--eq-ink);
+}
+
+/* "skipped (pain)" is words, not figures: a step quieter. */
+.mm-head__last[data-kind="uncounted"] .mm-head__num {
+  font-size: 22px;
+}
+
+.mm-head__words,
+.mm-head__day,
+.mm-head__rest {
+  font-size: 17px;
+  color: var(--eq-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.mm-head__words {
+  padding-block: 4px;
+}
+
+/* The body: one scroller under the header, blocks 12px apart. */
+.mm-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 24px 24px;
+}
+
+.mm-card[data-inline="true"] .mm-scroll {
+  overflow: visible;
+}
+
+.mm-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Landscape: a 400px leading column and the chart beside it. */
+.mm-cols {
+  display: grid;
+  grid-template-columns: 400px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+/* Two tiles a row in the 400px column (194px each still fits 56px ± and a two-digit value). */
+.mm-col--lead .mm-tiles:not([data-count="1"]) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mm-chart-slot {
+  min-width: 0;
+}
+
+/* ---------- the safety strip ------------------------------------------ */
+
+.mm-safe {
+  gap: 8px;
+}
+
+.mm-safe:focus-visible {
+  outline: 2px solid var(--eq-focus-ring);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+.mm-safe__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Whole sentences, 52px a line. */
+.mm-safe__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 52px;
+  padding: 13px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-alert);
+  background: var(--eq-alert-fill);
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+.mm-safe__line[data-failed="true"] {
+  border-color: var(--eq-border-strong);
+  background: var(--eq-surface-2);
+}
+
+.mm-safe__crit {
+  flex: none;
+  margin-top: 1px;
+  color: var(--eq-alert);
+}
+
+.mm-safe__meta {
+  font-size: 14px;
+  color: var(--eq-ink-muted);
+}
+
+.mm-safe__more {
+  align-self: flex-start;
+}
+
+/* The session sheet's own cards, lifted to the card's in-hand floor (14px). */
+.mm-safe .eq-watch__line,
+.mm-safe .eq-watch__setup,
+.mm-safe .eq-floornote__text,
+.mm-safe .eq-floornote__flag,
+.mm-safe .eq-floornote__failed,
+.mm-safe .eq-floornote__more {
+  font-size: 15px;
+}
+
+.mm-safe .eq-card__title,
+.mm-safe .eq-watch__sev,
+.mm-safe .eq-watch__setup span,
+.mm-safe .eq-floornote__kicker,
+.mm-safe .eq-floornote i,
+.mm-safe .eq-floornote__latest {
+  font-size: 14px;
+}
+
+/* ---------- the first time: the guide's set-up part, above the dials ---- */
+
+.mm-first__body {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--eq-ink-2);
+}
+
+/* The set-up guide (equipment/SetupGuide, reused) at the card's in-hand
+   floor: a 52px fold row in plain words, nothing under 14px inside. */
+.mm-card .eq-card__head--button {
+  min-height: 52px;
+}
+
+.mm-card .eq-card__title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--eq-ink);
+}
+
+.mm-card .eq-chip,
+.mm-card .eq-guide__heading {
+  font-size: 14px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.mm-card .eq-guide__lead,
+.mm-card .eq-guide__list li {
+  font-size: 16px;
+  line-height: 1.45;
+}
+
 /* ---------- a phone (under 600px): the same card, tightened ------------ */
 
 @media (max-width: 599px) {
@@ -1773,5 +2110,25 @@
   .mm-tiles,
   .mm-tiles[data-count="2"] {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* A full-width sheet with a 16px inset. */
+  .mm-dialog {
+    width: 100vw;
+    height: 92dvh;
+    max-height: 92dvh;
+  }
+
+  .mm-head,
+  .mm-scroll {
+    padding-inline: 16px;
+  }
+}
+
+/* ---------- landscape, from 1000px: min(1080px, 100vw - 64px) ---------- */
+
+@media (orientation: landscape) and (min-width: 1000px) {
+  .mm-dialog {
+    width: min(1080px, calc(100vw - 64px));
   }
 }

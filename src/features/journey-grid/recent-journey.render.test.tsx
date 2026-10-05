@@ -11,7 +11,8 @@
  *   - scrolling to the left edge (after a touch) reveals the next page, and
  *     the rail then says where the history stops;
  *   - a machine's name opens it on every tap, not only on odd ones;
- *   - the Active Session's grid keeps its own rail, untouched;
+ *   - the Active Session's grid keeps its own rail, untouched, and opens the
+ *     machine menu from a name on every tap (machine menu, Oct 2026);
  *   - the rail says "Start of history" only when Journey holds the client's
  *     whole story, and a column head prints "#N" only through the session-
  *     number gate (lib/history-claims.ts, Sep 24 2026).
@@ -257,6 +258,37 @@ describe("the Active Session's grid is unchanged", () => {
     expect(host.querySelectorAll(".jg-cell--older__mark").length).toBeGreaterThan(0);
     // The name still traces the row, and says so.
     expect(host.querySelector(".jg-machine__btn")?.getAttribute("aria-label")).toContain("Tap to trace this row.");
+    await act(async () => root.unmount());
+  });
+
+  it("opens the machine menu from a name on every tap when the session passes onOpenMachine (machine menu, Oct 2026)", async () => {
+    // WorkoutTrackerView passes onOpenMachine since the machine menu: the old
+    // row trace toggled, so a machine just closed would not reopen.
+    const sessions = sessionsOf(4);
+    const opened: string[] = [];
+    const live: LiveColumn = {
+      session: { id: "today", sessionNumber: 5, date: "2026-03-01", trainerInitials: "AJ" },
+      routineMachineIds: ["leg-press"],
+      values: {},
+      onChange: () => {},
+    };
+    const { host, root } = await mount(
+      <JourneyGrid
+        sessions={sessions}
+        sections={[{ id: "r", label: "Today", rows: rowsFor(sessions) }]}
+        live={live}
+        showStats={false}
+        layout="fill"
+        onOpenMachine={(id) => opened.push(id)}
+      />,
+    );
+    const name = host.querySelector<HTMLButtonElement>(".jg-machine__btn")!;
+    expect(name.getAttribute("aria-label")).toContain("Tap to open this machine.");
+    await act(async () => name.click());
+    await act(async () => name.click());
+    expect(opened).toEqual(["leg-press", "leg-press"]);
+    // The grid's 22px ⋯ popover retired with the menu.
+    expect(host.querySelector(".jg-machine__more")).toBeNull();
     await act(async () => root.unmount());
   });
 

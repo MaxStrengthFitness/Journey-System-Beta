@@ -140,6 +140,8 @@ const CONTROLS = [
   "mm-upd__input",
   "mm-grp-btn",
   "mm-drawer",
+  "mm-close",
+  "mm-head__pill",
 ] as const;
 
 describe("the machine menu's controls", () => {

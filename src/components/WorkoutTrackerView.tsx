@@ -148,7 +148,8 @@ import {
 } from "../lib/log-validation";
 import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL, isBegunLog, takenOutForToday, TAKEN_OUT_OUTCOME } from "../lib/set-outcome";
 import { canQuoteSessionNumber, coverageOfClient, homeCutoverOf } from "../lib/client-coverage";
-import { sessionNumberTag } from "../lib/history-claims";
+import { ownedWindow, sessionNumberTag } from "../lib/history-claims";
+import { priorHistoryOf } from "../lib/prior-history";
 import { sessionTimingFields, toEpochMs } from "../lib/session-timing";
 import {
   forgetLiveSession,
@@ -209,7 +210,8 @@ import {
 import { floorCarryOf } from "../features/machine-menu/note-target";
 import { addFloorNote } from "../features/floor-notes/store";
 import { ActiveSessionTimer } from "./ActiveSessionTimer";
-import { MachineSheet } from "../features/equipment/MachineSheet";
+import { MachineMenu } from "../features/machine-menu/MachineMenu";
+import type { MachineMenuHost } from "../features/machine-menu/useMachineMenuData";
 /* Lazy, and the reason is measurable: the assessment panel is a 162 kB
    chunk (50 kB gzipped) that most sessions never open. A static import
    would put it on the critical path of the one screen a trainer opens
@@ -232,7 +234,7 @@ import { clientDisplayName, clientFirstName } from "../lib/client-name";
 import { isNextWeightLive, nextWeightMark, nextWeightSourceLine } from "../features/next-weight/next-weight";
 import { saveNextWeight } from "../features/next-weight/store";
 import { machineNotesFor } from "../features/equipment/machine-notes";
-import { useMachineJournal } from "../features/equipment/useMachineJournal";
+import { useMachineJournalRead } from "../features/equipment/useMachineJournal";
 import { sessionNoteStudioId } from "../features/client-notes/note-studio";
 import { ClientSelectionDialog } from "../features/tracker/ClientSelectionDialog";
 type RoutineType = "A" | "B" | "Free";
@@ -429,10 +431,10 @@ export function WorkoutTrackerView({
   /* Mirror of `logs` for the write path, kept in sync below. */
   const logsRef = React.useRef<Record<string, ExerciseLog>>({});
   const [showRoutinePicker, setShowRoutinePicker] = useState(false);
-  // Which machine the unified sheet is open on. One piece of state, because
-  // there is now one sheet: it used to be two (settings, notes) and a
-  // trainer had to know which of two targets to hit.
-  const [sheetMachineId, setSheetMachineId] = useState<string | null>(null);
+  // Which machine the machine menu is open on. One piece of state, because
+  // there is one card: it used to be two (settings, notes) and a trainer had
+  // to know which of two targets to hit (features/machine-menu).
+  const [menuMachineId, setMenuMachineId] = useState<string | null>(null);
   // The 90-day assessment, opened mid-session. See the panel at the bottom
   // of this file for why it is a slide-over and not a screen.
   const [isShowingAssessment, setIsShowingAssessment] = useState(false);
@@ -864,7 +866,8 @@ export function WorkoutTrackerView({
   /* Her journal's notes that name a machine, for the grid's note marks (one
      list since Oct 2 2026; the same query as the journal above, so one
      listener). */
-  const machineJournal = useMachineJournal(selectedClient?.id ?? null);
+  const machineJournalRead = useMachineJournalRead(selectedClient?.id ?? null);
+  const machineJournal = machineJournalRead.entries;
   const draftSessionRef = React.useRef<string | null>(null);
   useEffect(() => {
     const id = currentSession?.id ?? null;
@@ -1211,6 +1214,11 @@ export function WorkoutTrackerView({
     }
   }, [clientId, user?.uid, clients]);
 
+  /* Which sessions' sets the logs listener below holds, and whether it
+     answered (machine menu, Oct 2026): the menu draws a column only for a
+     session whose sets were read, says "loading" until they are, and a
+     failed read is unknown, never "nothing on this machine". */
+  const [logsWindow, setLogsWindow] = useState<{ key: string; ids: string[]; state: "ready" | "cache-only" | "failed" } | null>(null);
   useEffect(() => {
     const allSessionIds = new Set<string>();
     sessions.forEach((s) => {
@@ -1221,6 +1229,12 @@ export function WorkoutTrackerView({
     }
 
     const sessionIds = Array.from(allSessionIds).filter(Boolean).slice(0, 30);
+    const windowKey = sessionIds.join(",");
+    const noteWindow = (state: "ready" | "cache-only" | "failed") =>
+      setLogsWindow((prev) => (prev && prev.key === windowKey && prev.state === state ? prev : { key: windowKey, ids: sessionIds, state }));
+    // A new window is unread until its own snapshot answers.
+    setLogsWindow((prev) => (prev && prev.key === windowKey ? prev : null));
+    if (sessionIds.length === 0) noteWindow("ready");
     if (sessionIds.length > 0) {
       const logsQuery = query(
         collection(db, "exerciseLogs"),
@@ -1240,8 +1254,10 @@ export function WorkoutTrackerView({
              carries this set's older numbers (lib/pending-log-edits.ts). */
           const pending = pendingLogEdits(pendingLogWritesRef.current.values());
           setLogs((prev) => keepPendingEdits(logsMap, prev, pending));
+          noteWindow(snapshot.metadata?.fromCache ? "cache-only" : "ready");
         },
         (error) => {
+          noteWindow("failed");
           handleFirestoreError(error, OperationType.GET, "exerciseLogs");
         },
       );
@@ -3113,6 +3129,81 @@ export function WorkoutTrackerView({
       }
     : undefined;
 
+  /*
+   * THE MACHINE MENU'S DOOR IN A SESSION (features/machine-menu). What the
+   * card is handed: the client's sessions and the window of sets the logs
+   * listener read (`logsWindow` says which), the one journal listener above,
+   * the session's one note draft and its link, and the session's studio for
+   * a note about the machine itself. Load older reads the next sessions'
+   * sets itself, only on a tap. Watching another trainer's session, the
+   * card reads only.
+   */
+  const menuSession = currentSession ?? watchedSession;
+  const menuReadIds = useMemo(() => (logsWindow ? new Set(logsWindow.ids) : new Set<string>()), [logsWindow]);
+  const menuLogs = useMemo(() => Object.values(logs) as ExerciseLog[], [logs]);
+  const menuFloorStudioId = currentSession?.hostedAtStudioId || contextActiveStudioId || null;
+  const menuWatching =
+    watchedSession && !currentSession
+      ? (trainers.find((t) => t.id === watchedSession.trainerId)?.fullName || watchedSession.trainerInitials || "").trim() || "another trainer"
+      : null;
+  const menuLink = useMemo(() => sessionLinkOf(menuSession, studioTodayKey()), [menuSession]);
+  const machineMenuHost = useMemo<MachineMenuHost>(
+    () => ({
+      door: "session",
+      clientId: clientId || "",
+      client: selectedClient,
+      machines: floorMachines,
+      clientSettings: clientMachineSettings,
+      author: authTrainer
+        ? { id: user.uid, fullName: authTrainer.fullName || authTrainer.initials || "Unknown", initials: authTrainer.initials }
+        : null,
+      activeStudioId: contextActiveStudioId ?? null,
+      floorStudio: {
+        id: menuFloorStudioId,
+        name: studios?.find((st) => st.id === menuFloorStudioId)?.name ?? (menuFloorStudioId === activeStudio?.id ? (activeStudio?.name ?? null) : null),
+      },
+      roster: clients,
+      coverage: clientCoverage,
+      window: ownedWindow({ coverage: clientCoverage, prior: priorHistoryOf(selectedClient), cutover: homeCutover }),
+      sessions,
+      logs: menuLogs,
+      readIds: menuReadIds,
+      historyState: logsWindow?.state ?? "loading",
+      journal: machineJournalRead.entries,
+      journalState: machineJournalRead.state,
+      session: { id: menuLink.sessionId, number: menuLink.sessionNumber, day: menuLink.sessionDay },
+      noteDraft,
+      onNoteDraftChange: handleDraftChange,
+      watching: menuWatching,
+    }),
+    [
+      clientId,
+      selectedClient,
+      floorMachines,
+      clientMachineSettings,
+      authTrainer,
+      user?.uid,
+      contextActiveStudioId,
+      menuFloorStudioId,
+      studios,
+      activeStudio,
+      clients,
+      clientCoverage,
+      homeCutover,
+      sessions,
+      menuLogs,
+      menuReadIds,
+      logsWindow,
+      machineJournalRead.entries,
+      machineJournalRead.state,
+      menuLink,
+      noteDraft,
+      handleDraftChange,
+      menuWatching,
+    ],
+  );
+  const closeMachineMenu = React.useCallback(() => setMenuMachineId(null), []);
+
   /* Which of the three screens to draw - the order matters and is a tested
      rule (lib/tracker-screen.ts). After Finish the sessions stream reports
      "nothing running" and turns pre-session mode on; checking the briefing
@@ -3182,6 +3273,7 @@ export function WorkoutTrackerView({
       weightStep: 2,
     };
     return (
+      <>
       <WatchingSession
         clientName={
           selectedClient
@@ -3223,8 +3315,13 @@ export function WorkoutTrackerView({
           fit="auto"
           targetColumns={10}
           title="Machine"
+          /* The machine menu, read only: its settings, notes and chart,
+             with no box, no buttons and no saves (machine menu design §F). */
+          onOpenMachine={(id) => setMenuMachineId(id)}
         />
       </WatchingSession>
+      <MachineMenu open={!!menuMachineId} machineId={menuMachineId} onClose={closeMachineMenu} host={machineMenuHost} />
+      </>
     );
   }
 
@@ -3499,59 +3596,17 @@ export function WorkoutTrackerView({
         <SendStatusStrip online={sendState.online} unsentForMs={sendState.unsentForMs} />
       )}
 
-      {/* THE MACHINE SHEET. One target, one sheet.
+      {/* THE MACHINE MENU. One target, one card (features/machine-menu).
 
-          It replaces two modals that used to sit here: a "Machine Settings"
-          dialog opened by tapping a machine, and a "Machine Notes" dialog
-          opened by a small separate icon on the same row. Two near-identical
-          targets, and a trainer standing at a machine with a client waiting
-          had to know which one held the thing they wanted. A wrong guess
-          cost two taps, so the honest outcome was that notes did not get
-          written.
-
-          Both entry points now land in the same place -- note the two
-          handlers below the grid both call setSheetMachineId -- and the
-          sheet stacks what it holds in the order the floor needs it:
-          high-importance notes first, then the dials, then the note
-          composer, then reference.
-
-          It also fixes where the writes go. The old dialog wrote a third
-          copy of every settings change into a `machineSettingChanges`
-          collection that nothing in this app has ever read back, and its
-          "reason for change" therefore went nowhere a trainer could find
-          it. The sheet calls features/equipment/mutations.ts -- the same
-          functions the Equipment tab calls -- so a change made mid-session
-          is in clientMachineSettings, in the machine's settingHistory WITH
-          its reason, and in the client's Journal, and is already showing on
-          their Equipment tab before the trainer walks back to the desk. */}
-      <MachineSheet
-        open={!!sheetMachineId}
-        coverage={clientCoverage}
-        firstTime={
-          !!sheetMachineId &&
-          (() => {
-            const row = gridRows.find((r) => r.machine.id === sheetMachineId);
-            return !row || orderedSets(row, gridHistory).length === 0;
-          })()
-        }
-        machine={floorMachines.find((m) => m.id === sheetMachineId) || null}
-        client={selectedClient}
-        clientId={clientId || ""}
-        clientSettings={clientMachineSettings}
-        author={
-          authTrainer
-            ? {
-                id: user.uid,
-                fullName: authTrainer.fullName || authTrainer.initials || "Unknown",
-                initials: authTrainer.initials,
-              }
-            : null
-        }
-        sessionId={currentSession?.id || null}
-        sessionLink={sessionLinkOf(currentSession, studioTodayKey())}
-        onClose={() => setSheetMachineId(null)}
-        onError={toastError}
-      />
+          Tapping a machine's name on the grid, its card on a phone, or the
+          Now Bar's flag opens the same card the client profile opens:
+          safety first, then the settings, the note box right under them
+          (the session's one note draft), then how the client has done on
+          this machine. Every write goes through
+          features/equipment/mutations.ts and never waits on the database.
+          It replaces the machine sheet, which replaced two modals that used
+          to sit here (settings, and notes behind a separate small icon). */}
+      <MachineMenu open={!!menuMachineId} machineId={menuMachineId} onClose={closeMachineMenu} host={machineMenuHost} />
 
       {/* Client Selection Dialog (for assigning) */}
       <ClientSelectionDialog
@@ -3843,7 +3898,7 @@ export function WorkoutTrackerView({
           onFocus={(id) => setFocusMachineOverride(id)}
           onChange={handleGridLiveChange}
           onCommit={flushAllLogWrites}
-          onOpenMachine={(id) => setSheetMachineId(id)}
+          onOpenMachine={(id) => setMenuMachineId(id)}
           onReorder={() => setIsOrderSheetOpen(true)}
           step={2}
         />
@@ -3892,8 +3947,10 @@ export function WorkoutTrackerView({
             /* The machine's NAME is the target -- one big one, the width of
                the rail. The note glyph is a mark, not a second button:
                "hard to tell if I'm tapping the note or the machine" was the
-               audit's hesitation, and both did the same thing. */
-            onSelectMachine={(id) => setSheetMachineId(id)}
+               audit's hesitation, and both did the same thing. It OPENS the
+               machine menu on every tap (onOpenMachine): the old row trace
+               toggled, so a machine just closed would not reopen. */
+            onOpenMachine={(id) => setMenuMachineId(id)}
             layout="fill"
             /* Rows shrink to fit what is on screen (44 → 26px) instead of a
                fixed 44px that showed ~15 machines and hid the rest below
@@ -3941,7 +3998,7 @@ export function WorkoutTrackerView({
                 )
               : null
           }
-          onOpenFlag={gridFocusMachineId ? () => setSheetMachineId(gridFocusMachineId) : undefined}
+          onOpenFlag={gridFocusMachineId ? () => setMenuMachineId(gridFocusMachineId) : undefined}
           level={traineeLevelOf(selectedClient)}
           layout={nowBarSide ? "side" : "bar"}
           onMachineSeconds={machineTimeElapsed}

@@ -8,7 +8,9 @@
  * and this reads nothing.
  *
  * `null` while unread or after a failed read: the readers then fall back to
- * the legacy list alone, never "no notes".
+ * the legacy list alone, never "no notes". `useMachineJournalRead` says
+ * which of the two it is, for a screen that must tell "couldn't be read"
+ * from "not answered yet" (the machine menu's safety strip and notes lane).
  */
 import { useEffect, useState } from "react";
 import { collection, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
@@ -17,9 +19,17 @@ import type { JournalEntry } from "../../types/journal";
 
 const STREAM_LIMIT = 300;
 
-export function useMachineJournal(clientId: string | null | undefined, given?: readonly JournalEntry[] | null): JournalEntry[] | null {
+export type MachineJournalState = "loading" | "ready" | "failed";
+
+export interface MachineJournalRead {
+  /** Her journal's entries that name a machine; null while unread or after a failed read. */
+  entries: JournalEntry[] | null;
+  state: MachineJournalState;
+}
+
+export function useMachineJournalRead(clientId: string | null | undefined, given?: readonly JournalEntry[] | null): MachineJournalRead {
   const skip = given !== undefined || !clientId;
-  const [held, setHeld] = useState<{ clientId: string; entries: JournalEntry[] } | null>(null);
+  const [held, setHeld] = useState<{ clientId: string; entries: JournalEntry[] | null; failed: boolean } | null>(null);
   useEffect(() => {
     if (skip || !clientId) return;
     return onSnapshot(
@@ -30,14 +40,20 @@ export function useMachineJournal(clientId: string | null | undefined, given?: r
           entries: snap.docs
             .map((d) => ({ id: d.id, ...d.data() }) as JournalEntry)
             .filter((e) => typeof e.machineId === "string" && e.machineId !== ""),
+          failed: false,
         });
       },
       (err) => {
         console.warn("[machine notes] her journal couldn't be read", err);
-        setHeld(null);
+        setHeld({ clientId, entries: null, failed: true });
       },
     );
   }, [skip, clientId]);
-  if (given !== undefined) return given ? [...given] : null;
-  return held && held.clientId === clientId ? held.entries : null;
+  if (given !== undefined) return { entries: given ? [...given] : null, state: given ? "ready" : "loading" };
+  if (!held || held.clientId !== clientId) return { entries: null, state: "loading" };
+  return { entries: held.entries, state: held.failed ? "failed" : "ready" };
+}
+
+export function useMachineJournal(clientId: string | null | undefined, given?: readonly JournalEntry[] | null): JournalEntry[] | null {
+  return useMachineJournalRead(clientId, given).entries;
 }

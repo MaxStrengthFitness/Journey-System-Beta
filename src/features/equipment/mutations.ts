@@ -27,7 +27,7 @@
  * floor").
  */
 
-import { addDoc, collection, doc, setDoc, writeBatch } from "firebase/firestore";
+import { collection, doc, setDoc, writeBatch } from "firebase/firestore";
 import { db } from "../../firebase";
 import { createJournalEntry } from "../../hooks/useClientJournal";
 import type { JournalEntry, JournalImportance, JournalKind, JournalOrigin, NoteBodyMark } from "../../types/journal";
@@ -138,13 +138,6 @@ export function diffSettings(
     if (before !== after) changes.push({ label: f.label, from: before, to: after });
   }
   return changes;
-}
-
-async function writeHistory(
-  machineId: string,
-  entry: Record<string, unknown>,
-): Promise<void> {
-  await addDoc(collection(db, "machines", machineId, "settingHistory"), entry);
 }
 
 export interface SaveSettingsArgs {
@@ -307,92 +300,6 @@ export async function saveSettings({
 }
 
 /* ------------------------------------------------------------------ *
- * Weights
- * ------------------------------------------------------------------ */
-
-export interface SaveWeightsArgs {
-  clientId: string;
-  machineId: string;
-  machineName: string;
-  savedStarting: number | null;
-  savedCurrent: number | null;
-  draftStarting: string;
-  draftCurrent: string;
-  author: MutationAuthor;
-}
-
-export interface SaveWeightsResult {
-  starting: number | null;
-  current: number | null;
-  summary: string;
-}
-
-const toWeight = (v: string): number | null => {
-  const t = (v ?? "").toString().trim();
-  if (!t) return null;
-  const n = Number(t);
-  return Number.isFinite(n) ? n : null;
-};
-
-/**
- * Save prescribed weights.
- *
- * No journal entry — see README section 3.4. Weights move most sessions, and
- * journaling every one would bury coaching notes under progression noise that
- * the Journey Grid already tells better. The audit trail stays in
- * settingHistory.
- */
-export async function saveWeights({
-  clientId,
-  machineId,
-  machineName,
-  savedStarting,
-  savedCurrent,
-  draftStarting,
-  draftCurrent,
-  author,
-}: SaveWeightsArgs): Promise<SaveWeightsResult | null> {
-  const starting = toWeight(draftStarting);
-  const current = toWeight(draftCurrent);
-
-  if (starting === savedStarting && current === savedCurrent) return null;
-
-  await setDoc(
-    doc(db, "clientMachineSettings", `${clientId}_${machineId}`),
-    {
-      clientId,
-      machineId,
-      startingWeight: starting,
-      currentWeight: current,
-      // First time a starting weight is recorded, stamp when — the Journey
-      // Grid reads this to anchor a client's baseline.
-      ...(savedStarting === null && starting !== null ? { startingWeightDate: new Date() } : {}),
-      updatedAt: new Date(),
-      updatedBy: author.id,
-    },
-    { merge: true },
-  );
-
-  await writeHistory(machineId, {
-    clientId,
-    timestamp: new Date().toISOString(),
-    trainerId: author.id,
-    trainerName: author.fullName,
-    changeType: "WEIGHT",
-    oldValue: `Start: ${savedStarting ?? "None"}, Current: ${savedCurrent ?? "None"}`,
-    newValue: `Start: ${starting ?? "None"}, Current: ${current ?? "None"}`,
-    reason: "Weight update",
-  });
-
-  const summary =
-    savedCurrent !== null && current !== null && savedCurrent !== current
-      ? `${machineName} ${savedCurrent} → ${current} lbs`
-      : `${machineName} weights updated`;
-
-  return { starting, current, summary };
-}
-
-/* ------------------------------------------------------------------ *
  * Machine notes
  * ------------------------------------------------------------------ */
 
@@ -518,38 +425,4 @@ export function addMachineNote({
     },
     { merge: true },
   ).then(() => note);
-}
-
-export interface DeleteNoteArgs {
-  clientId: string;
-  machineId: string;
-  existingNotes: MachineNote[];
-  noteId: string;
-  author: MutationAuthor;
-}
-
-/**
- * Remove a machine note.
- *
- * Deliberately does NOT delete the matching journal entry. The Journal is a
- * timeline: "the seat was sticking in September" stays true even after the
- * seat is fixed and the reminder is cleared off the machine. Archive it from
- * the Journal if it should go.
- */
-export async function deleteMachineNote({
-  clientId,
-  machineId,
-  existingNotes,
-  noteId,
-  author,
-}: DeleteNoteArgs): Promise<void> {
-  await setDoc(
-    doc(db, "clientMachineSettings", `${clientId}_${machineId}`),
-    {
-      machineNotes: existingNotes.filter((n) => n.id !== noteId),
-      updatedAt: new Date(),
-      updatedBy: author.id,
-    },
-    { merge: true },
-  );
 }

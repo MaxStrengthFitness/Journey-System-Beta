@@ -15,15 +15,24 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PROFILE_TABS } from "./profile-nav";
+import { saveOutcomeWords } from "../machine-menu/setting-draft";
 
 const src = join(__dirname, "..", "..");
 const read = (path: string) => readFileSync(join(src, path), "utf8");
 
 describe("messages name today's places", () => {
-  it("a setting saved from the machine sheet says it is in the machine's history", () => {
-    const source = read("features/equipment/MachineSheet.tsx");
-    expect(source).not.toContain("Logged to their Equipment tab");
-    expect(source).toContain("Logged to the machine's history (Programming → All Machines).");
+  it("a setting saved from the machine menu says what was saved, and names no old tab (machine menu, Oct 2026)", () => {
+    // The machine sheet's long toast ("Saved to …'s profile — …. Logged to the
+    // machine's history (Programming → All Machines).") became the change
+    // strip's own words: "Seat 5 saved · Undo". The change is listed under the
+    // card's Setting changes, on the card itself.
+    const pair = [{ label: "Seat", from: "4", to: "5" }];
+    expect(saveOutcomeWords(pair, false, "saved")).toBe("Seat 5 saved · Undo");
+    for (const path of ["features/machine-menu/setting-draft.ts", "features/machine-menu/DialTiles.tsx", "features/machine-menu/ChangeStrip.tsx"]) {
+      const source = read(path);
+      expect(source, path).not.toContain("Equipment tab");
+      expect(source, path).not.toContain("Logged to their");
+    }
   });
 
   it("the renewals hint cites the Activity Archive's two-week rule", () => {

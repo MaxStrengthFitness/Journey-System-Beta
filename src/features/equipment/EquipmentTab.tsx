@@ -1,22 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMachineCatalog } from "../../hooks/useMachineCatalog";
-import { useToast } from "../../contexts/ToastContext";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import type { Machine, ClientMachineSetting, ExerciseLog, Client, Trainer, WorkoutSession } from "../../types";
 import { summarise, toEquipmentMachines } from "./adapters";
 import { useMachineStats } from "./useMachineStats";
 import { EquipmentSummaryBar } from "./EquipmentSummaryBar";
 import { MachineRail } from "./MachineRail";
-import { MachineDetailPanel } from "./MachineDetailPanel";
-import { authorFromTrainer } from "./author";
-import { loadProgression } from "./progression";
-import type {
-  JournalContext,
-  SaveSettingsResult,
-  SaveWeightsResult,
-} from "./mutations";
 import type { PaneMode } from "./types";
 import type { HistoryCoverage } from "../../lib/prior-history";
+import { MachineMenuBody } from "../machine-menu/MachineMenuBody";
+import type { MachineMenuHost } from "../machine-menu/useMachineMenuData";
+import { UnsavedChangesScope, useLeaveScope } from "../unsaved-changes";
 
 /**
  * EQUIPMENT TAB — dual-pane.
@@ -27,6 +21,14 @@ import type { HistoryCoverage } from "../../lib/prior-history";
  * Owns exactly three pieces of state — which machine is selected, the search
  * text, and (below 1024px) which pane is showing. Everything else is derived,
  * which is why selecting a machine costs no fetch.
+ *
+ * The right pane is the machine menu's body (features/machine-menu, Oct
+ * 2026), the profile's door: the same card a machine's name opens on the
+ * Journey grid, drawn inline beside the list. It replaced the old detail
+ * pane (prescription, usage, load progression, settings, notes, change
+ * history), so a machine reads the same here as everywhere else. The pane
+ * is a leave scope: picking another machine, or Back in the one-pane
+ * layout, asks first when a setting or a note is typed and not saved.
  */
 
 const SPLIT_AT = 1024;
@@ -63,11 +65,15 @@ export interface EquipmentTabProps {
   clientBodyWeight?: number;
   /**
    * How much of the client's story Journey holds (lib/client-coverage.ts).
-   * The History card says "Never performed" and "First performed" only when
-   * Journey holds all of it; otherwise it names Journey's part. Cautious by
-   * default.
+   * The rail's usage figures name Journey's part unless Journey holds all of
+   * it. Cautious by default.
    */
   coverage?: HistoryCoverage;
+  /**
+   * The machine menu's door on the profile (ClientProfileView builds it):
+   * what the right pane is handed. Without it the pane shows nothing.
+   */
+  menuHost?: MachineMenuHost;
 }
 
 export function EquipmentTab({
@@ -77,22 +83,18 @@ export function EquipmentTab({
   clientSettings = {},
   allLogs = [],
   sessions = [],
-  authTrainer,
-  activeStudioId,
-  coverage = "unknown",
+  menuHost,
 }: EquipmentTabProps) {
   const { byId: catalogById } = useMachineCatalog();
   const { stats: machineStats } = useMachineStats(client);
   const { activeStudio } = useActiveStudio();
-  const { success: toastSuccess, error: toastError } = useToast();
-
-  // The Auth uid, not authTrainer.id — see author.ts.
-  const author = authorFromTrainer(authTrainer);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [pane, setPane] = useState<PaneMode>("list");
   const isSplit = useIsSplit();
+  // The pane holds the card's drafts: a switch away from it asks first.
+  const paneScope = useLeaveScope();
 
   const equipment = useMemo(
     () =>
@@ -109,13 +111,6 @@ export function EquipmentTab({
   );
 
   const summary = useMemo(() => summarise(equipment), [equipment]);
-
-  // Everything written from this tab is journalled with origin "profile", so
-  // the Journal can say where a note came from without the trainer saying it.
-  const journal: JournalContext = useMemo(
-    () => ({ studioId: activeStudioId || activeStudio?.id || "", origin: "profile" }),
-    [activeStudioId, activeStudio],
-  );
 
   // Search filters the RAIL only. The summary sentence keeps describing the
   // whole roster, because "6 of 6 matching" is not a fact about the client.
@@ -154,28 +149,15 @@ export function EquipmentTab({
     setPane("list");
   }, [clientId]);
 
-  const selected = useMemo(
-    () => equipment.find((m) => m.id === selectedId) ?? null,
-    [equipment, selectedId],
-  );
-
-  // The selected machine only: one pass over the loaded sets per selection.
-  const progression = useMemo(
-    () => loadProgression(selected?.id, allLogs, sessions),
-    [selected?.id, allLogs, sessions],
-  );
-
-  const handleSettingsSaved = (result: SaveSettingsResult) => {
-    toastSuccess(`Settings saved — ${result.summary}`);
-  };
-
-  const handleWeightsSaved = (result: SaveWeightsResult) => {
-    toastSuccess(result.summary);
-  };
-
   const handleSelect = (id: string) => {
-    setSelectedId(id);
-    setPane("detail");
+    if (id === selectedId) {
+      setPane("detail");
+      return;
+    }
+    paneScope.guard(() => {
+      setSelectedId(id);
+      setPane("detail");
+    });
   };
 
   const showRail = isSplit || pane === "list";
@@ -200,23 +182,27 @@ export function EquipmentTab({
           />
         )}
         {showDetail && (
-          <MachineDetailPanel
-            machine={selected}
-            clientId={clientId}
-            author={author}
-            onBack={() => setPane("list")}
-            onSettingsSaved={handleSettingsSaved}
-            onWeightsSaved={handleWeightsSaved}
-            onError={toastError}
-            experienceLevel={client?.experienceLevel}
-            gender={client?.gender}
-            studioMachineSettings={activeStudio?.machineSettings}
-            journal={journal}
-            onNoteSaved={toastSuccess}
-            progression={progression}
-            client={client}
-            coverage={coverage}
-          />
+          <div className="eq-detail">
+            {selectedId && menuHost ? (
+              <UnsavedChangesScope scope={paneScope}>
+                <MachineMenuBody
+                  key={`${clientId}_${selectedId}`}
+                  host={menuHost}
+                  machineId={selectedId}
+                  catalogById={catalogById}
+                  inline
+                  onBack={isSplit ? undefined : () => paneScope.guard(() => setPane("list"))}
+                />
+              </UnsavedChangesScope>
+            ) : (
+              <div className="eq-empty">
+                <span className="eq-empty__title">Select a machine</span>
+                <span className="eq-empty__hint">
+                  Pick a machine on the left to see this client's settings, notes and how they have done on it.
+                </span>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

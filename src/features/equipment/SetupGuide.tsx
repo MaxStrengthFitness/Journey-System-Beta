@@ -18,11 +18,21 @@ import type { MachineGuide } from "./types";
 export interface SetupGuideProps {
   guide: MachineGuide;
   defaultOpen?: boolean;
+  /**
+   * Which part to draw (machine menu, Oct 2026). On a machine with nothing
+   * recorded the menu opens the SET-UP part above the dials, where the
+   * trainer reads it while seating the client, and keeps the execution cues
+   * folded below. Everything by default.
+   */
+  part?: "all" | "setup" | "execution";
 }
 
-export function SetupGuide({ guide, defaultOpen = false }: SetupGuideProps) {
+export function SetupGuide({ guide, defaultOpen = false, part = "all" }: SetupGuideProps) {
   const [open, setOpen] = useState(defaultOpen);
-  const cueCount = guide.setupCues.length + guide.executionCues.length;
+  const setup = part !== "execution";
+  const execution = part !== "setup";
+  const cueCount = (setup ? guide.setupCues.length : 0) + (execution ? guide.executionCues.length : 0);
+  const title = part === "execution" ? "Execution cues" : "Setup guide";
 
   return (
     <section className="eq-card">
@@ -32,7 +42,7 @@ export function SetupGuide({ guide, defaultOpen = false }: SetupGuideProps) {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
       >
-        <h3 className="eq-card__title">Setup guide</h3>
+        <h3 className="eq-card__title">{title}</h3>
         {cueCount > 0 && <span className="eq-chip">{cueCount} cues</span>}
         <ChevronDown
           size={16}
@@ -44,7 +54,7 @@ export function SetupGuide({ guide, defaultOpen = false }: SetupGuideProps) {
 
       {open && (
         <div className="eq-card__body">
-          {(guide.target || guide.posture || guide.requiresHandoff) && (
+          {setup && (guide.target || guide.posture || guide.requiresHandoff) && (
             <div className="eq-guide__meta">
               {guide.target && <span className="eq-chip">Target: {guide.target}</span>}
               {guide.posture && <span className="eq-chip">{guide.posture}</span>}
@@ -56,9 +66,9 @@ export function SetupGuide({ guide, defaultOpen = false }: SetupGuideProps) {
             </div>
           )}
 
-          {guide.setupSummary && <p className="eq-guide__lead">{guide.setupSummary}</p>}
+          {setup && guide.setupSummary && <p className="eq-guide__lead">{guide.setupSummary}</p>}
 
-          {guide.clinicalWarnings.length > 0 && (
+          {setup && guide.clinicalWarnings.length > 0 && (
             <div className="eq-guide__group">
               <h4 className="eq-guide__heading">
                 <TriangleAlert size={11} strokeWidth={2.6} aria-hidden /> Clinical warnings
@@ -71,7 +81,7 @@ export function SetupGuide({ guide, defaultOpen = false }: SetupGuideProps) {
             </div>
           )}
 
-          {guide.setupCues.length > 0 && (
+          {setup && guide.setupCues.length > 0 && (
             <div className="eq-guide__group">
               <h4 className="eq-guide__heading">Setup</h4>
               <ol className="eq-guide__list">
@@ -82,7 +92,7 @@ export function SetupGuide({ guide, defaultOpen = false }: SetupGuideProps) {
             </div>
           )}
 
-          {(guide.executionSummary || guide.executionCues.length > 0) && (
+          {execution && (guide.executionSummary || guide.executionCues.length > 0) && (
             <div className="eq-guide__group">
               <h4 className="eq-guide__heading">Execution</h4>
               {guide.executionSummary && <p className="eq-guide__lead">{guide.executionSummary}</p>}

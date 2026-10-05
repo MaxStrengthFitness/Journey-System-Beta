@@ -158,6 +158,11 @@ export interface MenuNotesProps {
   healthNote?: { changeWords: string; nonce: number } | null;
   /** On the profile: open the session a note was written in. */
   onOpenSession?: (sessionId: string) => void;
+  /**
+   * The chart's Open note: open that note's thread here (its thread id, the
+   * root's journal id); a new `nonce` opens it again.
+   */
+  focusNote?: { id: string; nonce: number } | null;
 }
 
 type Status = { text: string; retry: boolean } | null;
@@ -194,6 +199,7 @@ export function MenuNotes({
   stepDown = false,
   healthNote = null,
   onOpenSession,
+  focusNote = null,
 }: MenuNotesProps) {
   const controlled = door === "session" && !!onDraftChange;
   // The card's own draft: everything on the profile; in a session, only the
@@ -358,6 +364,18 @@ export function MenuNotes({
   const [updText, setUpdText] = useState("");
   const [threadStatus, setThreadStatus] = useState<{ id: string; text: string } | null>(null);
   const [offList, setOffList] = useState<NoteThread | null>(null);
+  const blockRef = useRef<HTMLElement | null>(null);
+
+  // The chart's Open note: the list opens with that note's thread open in
+  // it, and the block comes into view.
+  const focusNonce = focusNote?.nonce ?? null;
+  useEffect(() => {
+    if (focusNonce === null || !focusNote) return;
+    setAll(true);
+    setOpenThread(focusNote.id);
+    blockRef.current?.scrollIntoView?.({ block: "nearest" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusNonce]);
 
   useUnsavedChanges(!readOnly && updText.trim() !== "", `an update to a ${machineName} note`, {
     onDiscard: () => {
@@ -611,7 +629,7 @@ export function MenuNotes({
   const pickedByHand = effective.importance !== startingLoudness(effective.category);
 
   return (
-    <section className="mm-blk" data-block="notes" aria-label="Notes">
+    <section ref={blockRef} className="mm-blk" data-block="notes" aria-label="Notes">
       <div className="mm-blk-head">
         <h3 className="mm-h">Notes</h3>
         {count > 0 ? (

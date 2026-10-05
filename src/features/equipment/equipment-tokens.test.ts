@@ -323,6 +323,9 @@ const WORDS: [string, string, string[]][] = [
   // the in-session pairs above; these are the two it adds.
   ["the machine menu's fit line (words on the plum fill)", "--eq-ink", ["--eq-surface", "--eq-warn-fill"]],
   ["the machine menu's quiet switch side and fold buttons", "--eq-ink-2", ["--eq-surface-2"]],
+  // The safety strip (phase 6): a Critical note's words and its author and day on the alert fill.
+  ["the machine menu's Critical line", "--eq-ink", ["--eq-surface", "--eq-alert-fill"]],
+  ["the author and day on a Critical line", "--eq-ink-muted", ["--eq-surface", "--eq-alert-fill"]],
 ];
 
 /** A chip's words on its own fill, wherever the Hub draws the chip. */

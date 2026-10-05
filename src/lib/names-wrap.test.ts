@@ -80,6 +80,10 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   { file: "features/machine-menu/machine-menu.css", cls: "mm-note__meta", what: "a note's author in the machine's notes" },
   { file: "features/machine-menu/machine-menu.css", cls: "mm-up__meta", what: "an update's author in a note's thread" },
   { file: "features/machine-menu/machine-menu.css", cls: "mm-chg__detail", what: "the trainer who saved a setting change" },
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-head__machine", what: "the machine's floor name in the menu's header" },
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-head__client", what: "the client's display name in the menu's header" },
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-head__rest", what: "a studio (\"at Solon\") and a trainer (\"Watching Sam's session\") on the header's Last time line" },
+  { file: "features/machine-menu/machine-menu.css", cls: "mm-safe__line", what: "a Critical note's author in the safety strip" },
 ];
 
 const rulesFor = (entry: (typeof NAME_RULES)[number]) =>
