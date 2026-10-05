@@ -624,7 +624,7 @@ export function ConsultationWizard({
             <Button
               variant="outline"
               onClick={addMachine}
-              className="w-full mt-4 h-20 rounded-2xl border-2 border-dashed border-[#F06C22]/50 text-[#F06C22] hover:bg-[#F06C22] hover:text-white transition-all font-black uppercase tracking-widest text-sm flex items-center gap-2 bg-transparent"
+              className="w-full mt-4 h-20 rounded-2xl border-2 border-dashed border-[#F06C22]/50 text-[#F06C22] hover:bg-[#F06C22] hover:text-white font-black uppercase tracking-widest text-sm flex items-center gap-2 bg-transparent shadow-none"
             >
               <Plus className="w-6 h-6" />
               Add Machine

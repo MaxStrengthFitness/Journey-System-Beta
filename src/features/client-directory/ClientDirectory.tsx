@@ -451,7 +451,7 @@ export function ClientDirectory({
             {onStartNewClientOnboarding && (
               <Button
                 onClick={() => onStartNewClientOnboarding("")}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-widest rounded-xl h-12 px-6 transition-all shadow-sm cursor-pointer"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-widest rounded-xl h-12 px-6 shadow-sm cursor-pointer"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Client

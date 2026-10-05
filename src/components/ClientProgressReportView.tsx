@@ -1088,7 +1088,7 @@ export function ClientProgressReportView({
                     setActiveStep("celebrate");
                     setMode("editing");
                   }}
-                  className="h-12 bg-white text-(--pr-navy) hover:bg-white/90 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
+                  className="h-12 bg-white text-(--pr-navy) hover:bg-white/90 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6 shadow-none"
                 >
                   <Flag className="w-5 h-5" /> Build the full report
                 </Button>
@@ -1096,7 +1096,7 @@ export function ClientProgressReportView({
                 <Button
                   onClick={() => setMode("editing")}
                   variant="outline"
-                  className="h-12 text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
+                  className="h-12 text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6 shadow-none"
                 >
                   Edit Data
                 </Button>
@@ -1119,7 +1119,7 @@ export function ClientProgressReportView({
                   window.location.href = `mailto:${client.email || ""}?subject=${subject}&body=${body}`;
                 }}
                 variant="outline"
-                className="h-12 text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
+                className="h-12 text-white bg-transparent border-white/20 hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6 shadow-none"
                 title="Opens your mail app with the subject filled in — print to PDF first and attach it"
               >
                 <Mail className="w-5 h-5" /> Email

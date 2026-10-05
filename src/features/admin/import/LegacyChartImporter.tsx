@@ -857,7 +857,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                         variant="ghost" 
                         size="sm" 
                         onClick={clearFiles}
-                        className="text-[11px] font-black text-red-500 hover:text-red-400 hover:bg-red-500/10 h-6 uppercase px-2"
+                        className="text-[11px] font-black text-red-500 hover:text-red-400 hover:bg-red-500/10 uppercase px-2"
                       >
                         Clear All
                       </Button>
@@ -888,7 +888,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                     <div className="space-y-3 mt-6">
                       <Button 
                         className={cn(
-                          "w-full text-white font-black h-14 tracking-widest uppercase text-xs transition-all shadow-xl shadow-[#F06C22]/10",
+                          "w-full text-white font-black h-14 tracking-widest uppercase text-xs shadow-xl shadow-[#F06C22]/10",
                           expectedSessions > 0 && selectedClientId ? "bg-[#F06C22] hover:bg-[#D95B16] border-none" : "bg-slate-800 border-slate-700 opacity-50 cursor-not-allowed"
                         )}
                         onClick={runOCR}
@@ -906,7 +906,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
 
                       <Button 
                         variant="ghost"
-                        className="w-full border border-slate-800 text-slate-400 font-bold h-12 tracking-widest uppercase text-[11px] hover:bg-slate-800 hover:text-white transition-all shadow-inner"
+                        className="w-full border border-slate-800 text-slate-400 font-bold h-12 tracking-widest uppercase text-[11px] hover:bg-slate-800 hover:text-white shadow-inner"
                         onClick={runSettingsOCR}
                         disabled={isScanningSettings || !selectedClientId || files.length === 0}
                       >
@@ -1231,7 +1231,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                           <Button 
                             onClick={finalizeImport}
                             disabled={isFinalizing || validationSessions.some(s => !s.date)}
-                            className="w-full flex items-center justify-center gap-3 bg-[#F06C22] hover:bg-[#D95B16] text-white font-black text-lg h-20 tracking-widest uppercase transition-all shadow-[0_10px_40px_rgba(240,108,34,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full flex items-center justify-center gap-3 bg-[#F06C22] hover:bg-[#D95B16] text-white font-black text-lg h-20 tracking-widest uppercase shadow-[0_10px_40px_rgba(240,108,34,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {isFinalizing ? (
                               <div className="flex flex-col items-center gap-3 w-full max-w-md px-6">
@@ -1266,7 +1266,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                           <Button 
                             onClick={finalizeImport}
                             disabled={isFinalizing}
-                            className="w-full flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-lg h-20 tracking-widest uppercase transition-all shadow-[0_10px_40px_rgba(16,185,129,0.2)]"
+                            className="w-full flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-lg h-20 tracking-widest uppercase shadow-[0_10px_40px_rgba(16,185,129,0.2)]"
                           >
                             {isFinalizing ? 'Saving Settings...' : '[ Save Machine Settings Only ]'}
                           </Button>

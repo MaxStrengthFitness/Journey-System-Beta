@@ -1617,7 +1617,7 @@ export function ClientProfileView({
             chosen tab with data-active, never data-state). */}
         <div className="mb-2 w-full">
           <div className="w-full pb-0.5">
-            <TabsList className="cp-tabs bg-slate-200 dark:bg-slate-800/60 p-1 grid grid-cols-4 w-full h-12! rounded-xl gap-1">
+            <TabsList className="cp-tabs bg-(--tray) p-1 grid grid-cols-4 w-full h-12! rounded-xl gap-1">
               {PROFILE_TABS.map((tab) => (
                 <TabsTrigger
                   key={tab.id}
@@ -1944,7 +1944,7 @@ export function ClientProfileView({
             <Button
               variant="outline"
               disabled={isDiscardingActiveSession}
-              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-50"
+              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-50"
               onClick={() => setDiscardTarget(null)}
             >
               Keep Session

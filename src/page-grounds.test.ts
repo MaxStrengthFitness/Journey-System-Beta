@@ -189,23 +189,36 @@ describe("light mode has no pure-white panel", () => {
    --------------------------------------------------------------------------- */
 
 describe("the profile's tabs still show which one is open", () => {
-  it("the open tab is a card raised off a tray that is darker than the page", () => {
+  it("the open tab is raised off a tray that is darker than the page", () => {
     // The tray was slate-100 on a slate-50 page. slate-100 IS the light
-    // --background now, so the tray steps down to slate-200, and the open tab
-    // (shadcn's data-active fill) is a card, not the page colour.
+    // --background now, so the tray stepped down to slate-200, and the open
+    // tab (shadcn's data-active fill) was a card, not the page colour.
+    //
+    // Moved on purpose (type and depth, phase 4, Oct 4 2026): the tray is
+    // --tray (#D1DAE4, slate-200's own value in light, and BELOW the page in
+    // dark, where slate-800/60 sat above it) and the open tab is RAISED out
+    // of it on --raised (#F8FAFC, a hair lighter than the card, never
+    // white), with a lift and a soft ring. The floors are unchanged: the
+    // tray 1.1:1 off the page, the open tab 1.25:1 off the tray.
     const tabs = read("components/ui/tabs.tsx");
-    expect(tabs).toMatch(/(?<![\w:-])data-active:bg-card(?![\w/-])/);
-    expect(tabs).not.toMatch(/(?<![\w:-])data-active:bg-background(?![\w/-])/);
+    expect(tabs).toMatch(/(?<![\w:-])data-active:bg-\(--raised\)(?![\w/-])/);
+    expect(tabs).not.toMatch(/(?<![\w:-])data-active:bg-(?:background|card)(?![\w/-])/);
+    expect(tabs).toMatch(/default:\s*"bg-\(--tray\)/);
     const tray = read("components/ClientProfileView.tsx").match(/<TabsList className="cp-tabs ([^"]*)"/);
-    expect(tray?.[1]).toMatch(/(?:^|\s)bg-slate-200(?![\w/-])/);
+    expect(tray?.[1]).toMatch(/(?:^|\s)bg-\(--tray\)(?![\w/-])/);
+    expect(tray?.[1], "the tray is one token in both modes").not.toMatch(/dark:bg-/);
 
     const page = hex(ROOT, "--background");
-    const trayFill = hex(ROOT, "--n-200");
-    const open = hex(ROOT, "--card");
+    const trayFill = hex(ROOT, "--tray");
+    const open = hex(ROOT, "--raised");
+    expect(trayFill, "the tray keeps slate-200's light value").toBe(hex(ROOT, "--n-200"));
     expect(ratio(trayFill, page)).toBeGreaterThanOrEqual(1.1);
     expect(ratio(open, trayFill)).toBeGreaterThanOrEqual(1.25);
-    // The words: the idle tabs are slate-600 on the tray, the open one ink on the card.
+    // The words: the profile's idle tabs are slate-600 on the tray, shadcn's
+    // own idle tabs ink-d2, and the open one ink on the raised fill.
     expect(ratio(hex(ROOT, "--n-600"), trayFill)).toBeGreaterThanOrEqual(4.5);
+    expect(tabs).toMatch(/(?<![\w:-])text-ink-d2(?![\w/-])/);
+    expect(ratio(hex(ROOT, "--ink-d2"), trayFill)).toBeGreaterThanOrEqual(4.5);
     expect(ratio(hex(ROOT, "--foreground"), open)).toBeGreaterThanOrEqual(4.5);
   });
 

@@ -204,7 +204,7 @@ export function NotificationBell({
         }
         className={
           className ??
-          "relative h-9 w-9 sm:h-10 sm:w-10 rounded-full transition-all hover:bg-transparent shrink-0 text-muted-foreground hover:text-slate-900 dark:hover:text-slate-50"
+          "relative h-10 w-10 rounded-full transition-colors hover:bg-transparent shrink-0 text-muted-foreground hover:text-slate-900 dark:hover:text-slate-50"
         }
       >
         <Bell className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -399,7 +399,7 @@ export function NotificationBell({
               <Button
                 variant="outline"
                 onClick={markAll}
-                className="w-full h-11 rounded-2xl border-border font-black uppercase text-[10px] tracking-widest gap-2"
+                className="w-full h-11 rounded-2xl font-black uppercase text-[10px] tracking-widest gap-2"
               >
                 <CheckCheck className="w-4 h-4" />
                 Mark all read

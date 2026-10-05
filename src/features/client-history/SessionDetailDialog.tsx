@@ -890,7 +890,7 @@ export function SessionDetailDialog({
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 text-white uppercase font-black tracking-widest text-xs h-12 rounded-xl px-6"
+              className="bg-red-600 hover:bg-red-700 text-white uppercase font-black tracking-widest text-xs h-12 rounded-xl px-6 shadow-(--elev-1)"
             >
               {isDeleting ? "Deleting…" : "Delete permanently"}
             </Button>

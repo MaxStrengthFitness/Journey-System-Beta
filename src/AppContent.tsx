@@ -1228,9 +1228,11 @@ export default function AppContent({
           {...NAME_SEARCH_PROPS}
           // The frame's own well, the same in both themes (the Navy Frame,
           // Oct 4 2026). Every background is restated with its dark: twin
-          // because <Input> carries `dark:bg-input/30`, which would otherwise
-          // come back in the dark theme as a pale wash in the navy; the
-          // border stays transparent so --input draws no grey box around it.
+          // because <Input> carried `dark:bg-input/30`, which would come
+          // back in the dark theme as a pale wash in the navy (since type
+          // and depth, Oct 4, it carries the card's well instead, which this
+          // replaces too); the border stays transparent so --input draws no
+          // grey box around it.
           className="h-10 pl-8 pr-8 rounded-lg border border-transparent bg-chrome-field dark:bg-chrome-field focus-visible:bg-chrome-field dark:focus-visible:bg-chrome-field text-sm font-medium text-chrome-ink placeholder:text-chrome-ink-2 focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-chrome-here"
         />
         {hubSearchTerm && (
@@ -1277,9 +1279,9 @@ export default function AppContent({
    * that move into the avatar menu on a phone, which is a theme surface.
    */
   const headerIconClass =
-    "relative h-9 w-9 sm:h-10 sm:w-10 rounded-full shrink-0 inline-flex items-center justify-center transition-colors outline-none hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent text-chrome-ink-2 hover:text-chrome-ink aria-expanded:text-chrome-ink focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-chrome-here disabled:opacity-50";
+    "relative h-10 w-10 rounded-full shrink-0 inline-flex items-center justify-center transition-colors outline-none hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent text-chrome-ink-2 hover:text-chrome-ink aria-expanded:text-chrome-ink focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-chrome-here disabled:opacity-50";
   const menuIconClass =
-    "relative h-9 w-9 sm:h-10 sm:w-10 rounded-full shrink-0 inline-flex items-center justify-center transition-colors outline-none hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent text-muted-foreground hover:text-foreground aria-expanded:text-foreground focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
+    "relative h-10 w-10 rounded-full shrink-0 inline-flex items-center justify-center transition-colors outline-none hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent text-muted-foreground hover:text-foreground aria-expanded:text-foreground focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
 
   const headerRightControls = (
     <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
@@ -2062,7 +2064,7 @@ export default function AppContent({
                         variant="ghost"
                         size="icon"
                         disabled={idx === 0}
-                        className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary disabled:opacity-20"
+                        className="rounded-lg hover:bg-primary/10 hover:text-primary disabled:opacity-20"
                         onClick={async () => {
                           const newSorted = [...studioTrainers];
                           [newSorted[idx], newSorted[idx - 1]] = [
@@ -2085,7 +2087,7 @@ export default function AppContent({
                         variant="ghost"
                         size="icon"
                         disabled={idx === studioTrainers.length - 1}
-                        className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary disabled:opacity-20"
+                        className="rounded-lg hover:bg-primary/10 hover:text-primary disabled:opacity-20"
                         onClick={async () => {
                           const newSorted = [...studioTrainers];
                           [newSorted[idx], newSorted[idx + 1]] = [

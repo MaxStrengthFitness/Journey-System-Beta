@@ -157,7 +157,7 @@ export function CreateClientModal({
                 <div className="flex gap-4 w-full mt-4">
                   <Button
                     variant="outline"
-                    className="flex-1 border-border text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="flex-1 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                     onClick={() => {
                       if (duplicateWarning.id) {
                         onClientCreated(duplicateWarning.id);
@@ -168,7 +168,7 @@ export function CreateClientModal({
                     Cancel & View Existing
                   </Button>
                   <Button
-                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-foreground font-black uppercase tracking-wider"
+                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-foreground font-black uppercase tracking-wider shadow-(--elev-1)"
                     onClick={() => executeSave(true)}
                   >
                     Force Create
@@ -349,14 +349,14 @@ export function CreateClientModal({
           <Button
             variant="ghost"
             onClick={onClose}
-            className="w-full sm:flex-1 h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border border-slate-200 dark:border-slate-800 cursor-pointer"
+            className="w-full sm:flex-1 h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 cursor-pointer"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSaveClick}
             disabled={isSubmitting || !canSave}
-            className="w-full sm:flex-2 h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl transition-all active:scale-95 bg-primary hover:bg-primary text-primary-foreground cursor-pointer"
+            className="w-full sm:flex-2 h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl active:scale-95 bg-primary hover:bg-primary text-primary-foreground cursor-pointer"
           >
             {isSubmitting ? (
               <Loader2 className="w-5 h-5 animate-spin" />

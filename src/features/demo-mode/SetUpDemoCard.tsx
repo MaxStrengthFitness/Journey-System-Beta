@@ -157,7 +157,7 @@ export function SetUpDemoCard({
         {state === "working" ? (
           <Button
             disabled
-            className="w-full bg-bg-dark-3 text-ink-d3 font-black uppercase tracking-widest text-xs h-11 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
+            className="w-full bg-bg-dark-3 text-ink-d3 font-black uppercase tracking-widest text-xs h-11 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed shadow-none"
           >
             <Loader2 className="w-4 h-4 animate-spin" /> Working
           </Button>
@@ -169,7 +169,7 @@ export function SetUpDemoCard({
           <Button
             onClick={() => (existing && state === "idle" ? setState("confirm") : run())}
             className={cn(
-              "w-full font-black uppercase tracking-widest text-xs h-11 rounded-xl flex items-center justify-center gap-2 cursor-pointer",
+              "w-full font-black uppercase tracking-widest text-xs h-11 rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-(--elev-1)",
               state === "confirm"
                 ? "bg-destructive/10 hover:bg-destructive/10 dark:bg-destructive/20 dark:hover:bg-destructive/20 text-destructive border border-destructive"
                 : "bg-bg-dark-3 hover:bg-muted text-ink-d1 border border-div-d",

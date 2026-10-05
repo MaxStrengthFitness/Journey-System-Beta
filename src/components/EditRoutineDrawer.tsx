@@ -559,7 +559,7 @@ export function EditRoutineDrawer({
               variant="ghost"
               size="sm"
               onClick={requestClose}
-              className="h-8 w-8 p-0 shrink-0"
+              className="h-10 w-10 p-0 shrink-0"
             >
               <X className="w-5 h-5" />
             </Button>
@@ -626,14 +626,14 @@ export function EditRoutineDrawer({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 text-[11px] font-bold uppercase"
+                      className="text-[11px] font-bold uppercase"
                       onClick={() => setPendingSlotSwitch(null)}
                     >
                       Cancel
                     </Button>
                     <Button
                       size="sm"
-                      className="h-8 text-[11px] font-bold uppercase bg-amber-500 hover:bg-amber-600 text-white"
+                      className="text-[11px] font-bold uppercase bg-amber-500 hover:bg-amber-600 text-white shadow-(--elev-1)"
                       onClick={() => loadSlot(pendingSlotSwitch)}
                     >
                       Discard &amp; Switch
@@ -666,13 +666,13 @@ export function EditRoutineDrawer({
                     value={presetNameDraft}
                     onChange={(e) => setPresetNameDraft(e.target.value)}
                     placeholder={`e.g., ${studioName || "Studio"} Beginner Circuit`}
-                    className="h-8 rounded-lg text-xs bg-card"
+                    className="h-10 rounded-lg text-xs bg-card"
                   />
                   <Button
                     size="sm"
                     disabled={!presetNameDraft.trim() || isSavingPreset}
                     onClick={handleSaveStudioPreset}
-                    className="h-8 rounded-lg text-[11px] font-bold uppercase bg-primary text-primary-foreground hover:bg-primary shrink-0"
+                    className="rounded-lg text-[11px] font-bold uppercase bg-primary text-primary-foreground hover:bg-primary shrink-0"
                   >
                     {isSavingPreset ? "Saving..." : "Save"}
                   </Button>
@@ -683,7 +683,7 @@ export function EditRoutineDrawer({
                       setShowSavePresetInput(false);
                       setPresetNameDraft("");
                     }}
-                    className="h-8 rounded-lg text-[11px] font-bold uppercase shrink-0"
+                    className="rounded-lg text-[11px] font-bold uppercase shrink-0"
                   >
                     Cancel
                   </Button>
@@ -738,14 +738,14 @@ export function EditRoutineDrawer({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 text-[10px] font-bold uppercase"
+                      className="text-[10px] font-bold uppercase"
                       onClick={() => setPendingPreset(null)}
                     >
                       Cancel
                     </Button>
                     <Button
                       size="sm"
-                      className="h-7 text-[10px] font-bold uppercase bg-amber-500 hover:bg-amber-600 text-white"
+                      className="text-[10px] font-bold uppercase bg-amber-500 hover:bg-amber-600 text-white shadow-(--elev-1)"
                       onClick={() => applyPreset(pendingPreset)}
                     >
                       Replace

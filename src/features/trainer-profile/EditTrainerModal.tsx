@@ -602,7 +602,7 @@ export function EditTrainerModal({
                 size="sm"
                 onClick={handleFetchStaff}
                 disabled={fetchingStaff}
-                className="h-7 text-[10px] font-black uppercase text-primary hover:text-primary px-2"
+                className="text-[10px] font-black uppercase text-primary hover:text-primary px-2"
               >
                 {fetchingStaff ? "Fetching..." : "Lookup from Mindbody"}
               </Button>
@@ -888,7 +888,7 @@ export function EditTrainerModal({
           <Button
             onClick={handleSave}
             disabled={saving || (isAdminMode && !fullName) || !initials}
-            className="bg-primary hover:bg-primary text-primary-foreground font-black uppercase text-xs h-12 rounded-xl transition-all shadow-[0_0_20px_var(--primary)] shadow-primary/30 min-w-37.5"
+            className="bg-primary hover:bg-primary text-primary-foreground font-black uppercase text-xs h-12 rounded-xl shadow-[0_0_20px_var(--primary)] shadow-primary/30 min-w-37.5"
           >
             {saving ? "Saving Changes..." : "Save Trainer Profile"}
           </Button>

@@ -82,7 +82,7 @@ export function StaleSessionDialog({
         >
           <Button
             variant="outline"
-            className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-surface-2"
+            className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 hover:bg-slate-50 dark:hover:bg-surface-2"
             onClick={onResume}
           >
             Resume it
@@ -90,14 +90,14 @@ export function StaleSessionDialog({
           {onFinishAsItWas && (
             <Button
               variant="outline"
-              className="h-auto min-h-14 whitespace-normal rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-surface-2"
+              className="h-auto min-h-14 whitespace-normal rounded-2xl font-black uppercase tracking-widest text-xs border-2 hover:bg-slate-50 dark:hover:bg-surface-2"
               onClick={onFinishAsItWas}
             >
               Finish it as it was
             </Button>
           )}
           <Button
-            className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-cta text-cta-foreground hover:bg-cta"
+            className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-cta text-cta-foreground hover:bg-cta shadow-(--go-lift)"
             onClick={onStartNew}
           >
             Start a new session

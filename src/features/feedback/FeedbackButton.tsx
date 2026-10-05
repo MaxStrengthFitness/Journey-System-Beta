@@ -26,7 +26,7 @@ export function FeedbackButton({ className }: { className?: string }) {
       aria-label="Report a bug or share feedback"
       className={
         className ??
-        "h-9 w-9 sm:h-10 sm:w-10 rounded-full transition-colors hover:bg-transparent shrink-0 text-muted-foreground hover:text-foreground"
+        "h-10 w-10 rounded-full transition-colors hover:bg-transparent shrink-0 text-muted-foreground hover:text-foreground"
       }
     >
       <Bug className="w-5 h-5 sm:w-6 sm:h-6" />

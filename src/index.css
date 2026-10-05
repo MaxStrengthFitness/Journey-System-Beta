@@ -447,6 +447,25 @@
     --highlight: rgba(255,255,255,0.70);
     --scrim: rgba(0,18,36,0.30);
 
+    /* A control's whole resting shadow, for a className (type and depth,
+       phase 4, Oct 4 2026). A className reads ONE of these with
+       shadow-(--raised-lift), never shadow-[var(--elev-1),…]:
+       tailwind-merge files an arbitrary shadow that starts with var() as
+       a shadow COLOUR, so a caller's shadow-none or shadow-md would not
+       replace it and a caller's shadow-red-200 would silently drop it.
+       shadow-(--x) it files as a shadow, and Tailwind leaves the value
+       whole (an arbitrary one has its last colour rewritten to
+       --tw-shadow-color). Restated in .dark so a dark subtree resolves
+       them against its own tokens.
+         --raised-lift  a raised control (shadcn's outline Button, a picked
+                        tab): the contact lift and the top light, on the
+                        control's own 3:1 edge
+         --solid-lift   a solid blue fill (shadcn's default Button)
+         --go-lift      a solid orange fill that is not Start session */
+    --raised-lift: var(--elev-1), inset 0 1px 0 var(--highlight);
+    --solid-lift: var(--glow-live), var(--solid-light);
+    --go-lift: var(--glow-go), var(--go-light);
+
     /* ---------------------------------------------------------------
        THE BODY WEIGHT (type and depth, phase 2, Oct 4 2026). The weight
        ladder is five steps: 450 body, 500 meta, 600 tabs and row labels,
@@ -680,6 +699,9 @@
     --divider: rgba(150,180,210,0.10);
     --highlight: rgba(255,255,255,0.07);
     --scrim: rgba(0,6,14,0.55);
+    --raised-lift: var(--elev-1), inset 0 1px 0 var(--highlight);
+    --solid-lift: var(--glow-live), var(--solid-light);
+    --go-lift: var(--glow-go), var(--go-light);
 
     /* The body weight: light words on the navy read heavier than dark
        words on a light card, so dark mode's body is a touch lighter. */
