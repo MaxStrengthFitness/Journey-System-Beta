@@ -64,6 +64,28 @@ const FROM_THE_APP: Readonly<Record<string, string>> = {
   "--st-alert-fill": "--eq-alert-fill",
   "--st-radius": "--eq-radius",
   "--st-shadow": "--eq-shadow",
+  // Depth (type and depth, phase 3, Oct 4 2026): the fills and lines a raised
+  // or sunk box is drawn with, and the app's shadows by name, light and dark.
+  "--st-raised": "--eq-raised",
+  "--st-tray": "--eq-tray",
+  "--st-edge": "--eq-edge",
+  "--st-edge-control": "--eq-edge-control",
+  "--st-divider": "--eq-divider",
+  "--st-highlight": "--eq-highlight",
+  "--st-elev-0": "--eq-elev-0",
+  "--st-elev-1": "--eq-elev-1",
+  "--st-elev-2": "--eq-elev-2",
+  "--st-elev-3": "--eq-elev-3",
+  "--st-elev-4": "--eq-elev-4",
+  "--st-elev-5": "--eq-elev-5",
+  "--st-elev-card": "--eq-elev-card",
+  "--st-shelf": "--eq-shelf",
+  "--st-press": "--eq-press",
+  "--st-glow-live": "--eq-glow-live",
+  "--st-glow-go": "--eq-glow-go",
+  "--st-solid-light": "--eq-solid-light",
+  "--st-go-light": "--eq-go-light",
+  "--st-panel-highlight": "--eq-panel-highlight",
 };
 
 /** --st-* tokens the app has no original for, each with its reason. */

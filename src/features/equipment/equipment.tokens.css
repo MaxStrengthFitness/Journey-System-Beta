@@ -85,6 +85,33 @@
   --eq-shadow:          rgba(25, 45, 65, 0.10);
   --eq-radius:          14px;
   --eq-rail-w:          320px;
+
+  /* Depth (type and depth, phase 3, Oct 4 2026): the fills, lines and
+     shadows a raised or sunk box is drawn with. index.css explains each
+     one. The colours are its literals and the shadows its tokens by name
+     (equipment-tokens.test.ts holds the names), so every copy of this
+     palette carries the same strings. A raised fill keeps the control's own
+     3:1 edge, --eq-border-strong. */
+  --eq-raised:          #f8fafc;
+  --eq-tray:            #d1dae4;
+  --eq-edge:            rgba(25, 45, 65, 0.13);
+  --eq-edge-control:    rgba(25, 45, 65, 0.26);
+  --eq-divider:         rgba(25, 45, 65, 0.10);
+  --eq-highlight:       rgba(255, 255, 255, 0.70);
+  --eq-elev-0:          var(--elev-0);
+  --eq-elev-1:          var(--elev-1);
+  --eq-elev-2:          var(--elev-2);
+  --eq-elev-3:          var(--elev-3);
+  --eq-elev-4:          var(--elev-4);
+  --eq-elev-5:          var(--elev-5);
+  --eq-elev-card:       var(--elev-card);
+  --eq-shelf:           var(--shelf);
+  --eq-press:           var(--press);
+  --eq-glow-live:       var(--glow-live);
+  --eq-glow-go:         var(--glow-go);
+  --eq-solid-light:     var(--solid-light);
+  --eq-go-light:        var(--go-light);
+  --eq-panel-highlight: var(--panel-highlight);
 }
 
 .dark,
@@ -134,6 +161,30 @@
   --eq-alert-fill:      #472024;
 
   --eq-shadow:          rgba(2, 10, 20, 0.45);
+
+  /* Depth in dark: the raised fill a step lighter than the card, soft rims
+     of a pale navy, the shadows by name (their dark values are
+     index.css's). */
+  --eq-raised:          #203549;
+  --eq-tray:            #081725;
+  --eq-edge:            rgba(150, 180, 210, 0.11);
+  --eq-edge-control:    rgba(150, 180, 210, 0.16);
+  --eq-divider:         rgba(150, 180, 210, 0.10);
+  --eq-highlight:       rgba(255, 255, 255, 0.07);
+  --eq-elev-0:          var(--elev-0);
+  --eq-elev-1:          var(--elev-1);
+  --eq-elev-2:          var(--elev-2);
+  --eq-elev-3:          var(--elev-3);
+  --eq-elev-4:          var(--elev-4);
+  --eq-elev-5:          var(--elev-5);
+  --eq-elev-card:       var(--elev-card);
+  --eq-shelf:           var(--shelf);
+  --eq-press:           var(--press);
+  --eq-glow-live:       var(--glow-live);
+  --eq-glow-go:         var(--glow-go);
+  --eq-solid-light:     var(--solid-light);
+  --eq-go-light:        var(--go-light);
+  --eq-panel-highlight: var(--panel-highlight);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -168,5 +219,25 @@
     --eq-alert:           #f2718c;
     --eq-alert-fill:      #472024;
     --eq-shadow:          rgba(2, 10, 20, 0.45);
+    --eq-raised:          #203549;
+    --eq-tray:            #081725;
+    --eq-edge:            rgba(150, 180, 210, 0.11);
+    --eq-edge-control:    rgba(150, 180, 210, 0.16);
+    --eq-divider:         rgba(150, 180, 210, 0.10);
+    --eq-highlight:       rgba(255, 255, 255, 0.07);
+    --eq-elev-0:          var(--elev-0);
+    --eq-elev-1:          var(--elev-1);
+    --eq-elev-2:          var(--elev-2);
+    --eq-elev-3:          var(--elev-3);
+    --eq-elev-4:          var(--elev-4);
+    --eq-elev-5:          var(--elev-5);
+    --eq-elev-card:       var(--elev-card);
+    --eq-shelf:           var(--shelf);
+    --eq-press:           var(--press);
+    --eq-glow-live:       var(--glow-live);
+    --eq-glow-go:         var(--glow-go);
+    --eq-solid-light:     var(--solid-light);
+    --eq-go-light:        var(--go-light);
+    --eq-panel-highlight: var(--panel-highlight);
   }
 }

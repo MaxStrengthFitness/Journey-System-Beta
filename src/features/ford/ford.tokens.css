@@ -83,6 +83,29 @@
   /* The letter mark. 40px is the app's minimum touch target, and the mark is
      tappable in the capture sheet, so it does not go below this. */
   --ford-mark:          40px;
+
+  /* Depth (type and depth, phase 3, Oct 4 2026), value for value as
+     equipment.tokens.css. */
+  --ford-raised:          #f8fafc;
+  --ford-tray:            #d1dae4;
+  --ford-edge:            rgba(25, 45, 65, 0.13);
+  --ford-edge-control:    rgba(25, 45, 65, 0.26);
+  --ford-divider:         rgba(25, 45, 65, 0.10);
+  --ford-highlight:       rgba(255, 255, 255, 0.70);
+  --ford-elev-0:          var(--elev-0);
+  --ford-elev-1:          var(--elev-1);
+  --ford-elev-2:          var(--elev-2);
+  --ford-elev-3:          var(--elev-3);
+  --ford-elev-4:          var(--elev-4);
+  --ford-elev-5:          var(--elev-5);
+  --ford-elev-card:       var(--elev-card);
+  --ford-shelf:           var(--shelf);
+  --ford-press:           var(--press);
+  --ford-glow-live:       var(--glow-live);
+  --ford-glow-go:         var(--glow-go);
+  --ford-solid-light:     var(--solid-light);
+  --ford-go-light:        var(--go-light);
+  --ford-panel-highlight: var(--panel-highlight);
 }
 
 .dark,
@@ -119,6 +142,27 @@
   --ford-unfiled-fill:  #2a2213;
 
   --ford-shadow:        rgba(2, 10, 20, 0.45);
+
+  --ford-raised:          #203549;
+  --ford-tray:            #081725;
+  --ford-edge:            rgba(150, 180, 210, 0.11);
+  --ford-edge-control:    rgba(150, 180, 210, 0.16);
+  --ford-divider:         rgba(150, 180, 210, 0.10);
+  --ford-highlight:       rgba(255, 255, 255, 0.07);
+  --ford-elev-0:          var(--elev-0);
+  --ford-elev-1:          var(--elev-1);
+  --ford-elev-2:          var(--elev-2);
+  --ford-elev-3:          var(--elev-3);
+  --ford-elev-4:          var(--elev-4);
+  --ford-elev-5:          var(--elev-5);
+  --ford-elev-card:       var(--elev-card);
+  --ford-shelf:           var(--shelf);
+  --ford-press:           var(--press);
+  --ford-glow-live:       var(--glow-live);
+  --ford-glow-go:         var(--glow-go);
+  --ford-solid-light:     var(--solid-light);
+  --ford-go-light:        var(--go-light);
+  --ford-panel-highlight: var(--panel-highlight);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -155,5 +199,25 @@
     --ford-unfiled-fill:  #2a2213;
 
     --ford-shadow:        rgba(2, 10, 20, 0.45);
+    --ford-raised:          #203549;
+    --ford-tray:            #081725;
+    --ford-edge:            rgba(150, 180, 210, 0.11);
+    --ford-edge-control:    rgba(150, 180, 210, 0.16);
+    --ford-divider:         rgba(150, 180, 210, 0.10);
+    --ford-highlight:       rgba(255, 255, 255, 0.07);
+    --ford-elev-0:          var(--elev-0);
+    --ford-elev-1:          var(--elev-1);
+    --ford-elev-2:          var(--elev-2);
+    --ford-elev-3:          var(--elev-3);
+    --ford-elev-4:          var(--elev-4);
+    --ford-elev-5:          var(--elev-5);
+    --ford-elev-card:       var(--elev-card);
+    --ford-shelf:           var(--shelf);
+    --ford-press:           var(--press);
+    --ford-glow-live:       var(--glow-live);
+    --ford-glow-go:         var(--glow-go);
+    --ford-solid-light:     var(--solid-light);
+    --ford-go-light:        var(--go-light);
+    --ford-panel-highlight: var(--panel-highlight);
   }
 }

@@ -55,6 +55,9 @@
 
   --cr-radius: 14px;
   --cr-radius-sm: 8px;
+  /* A tooltip's lift (type and depth, Oct 4 2026): the grid's popover
+     shadow, or the app's before the grid's tokens load. */
+  --cr-elev-4: var(--jg-elev-4, var(--elev-4));
   --cr-font-display: var(--jg-font-display, "Saira Condensed", system-ui, sans-serif);
 
   color: var(--cr-ink);

@@ -71,6 +71,26 @@
   --cx-focus:           var(--eq-focus-ring);
   --cx-shadow:          var(--eq-shadow);
 
+  /* ---- depth (type and depth, phase 3, Oct 4 2026) --------------------
+     The panel, the well and the raised button, by the Hub's names. */
+  --cx-raised:          var(--eq-raised);
+  --cx-edge:            var(--eq-edge);
+  --cx-edge-control:    var(--eq-edge-control);
+  --cx-divider:         var(--eq-divider);
+  --cx-highlight:       var(--eq-highlight);
+  --cx-elev-0:          var(--eq-elev-0);
+  --cx-elev-1:          var(--eq-elev-1);
+  --cx-elev-2:          var(--eq-elev-2);
+  --cx-elev-3:          var(--eq-elev-3);
+  --cx-elev-4:          var(--eq-elev-4);
+  --cx-elev-card:       var(--eq-elev-card);
+  --cx-panel-highlight: var(--eq-panel-highlight);
+  --cx-press:           var(--eq-press);
+  --cx-glow-live:       var(--eq-glow-live);
+  --cx-solid-light:     var(--eq-solid-light);
+  --cx-glow-go:         var(--eq-glow-go);
+  --cx-go-light:        var(--eq-go-light);
+
   /* ---- the body figure (Where it matters, Sep 26 2026) ------------------
      The Catalog's muscle figure in the codex's own grey and blue: the
      muscles in the faint ink (a shade off the Catalog's slate, and opaque,

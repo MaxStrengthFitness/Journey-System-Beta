@@ -47,6 +47,13 @@
 
   --psub-h:             48px;      /* >= 40px floor, on both axes           */
   --psub-radius:        14px;
+
+  /* Depth (type and depth, phase 3, Oct 4 2026): the seven pages' raised
+     bar and the picked page's glow, by the Hub's names. */
+  --psub-edge:          var(--eq-edge);
+  --psub-elev-1:        var(--eq-elev-1);
+  --psub-glow-live:     var(--eq-glow-live);
+  --psub-solid-light:   var(--eq-solid-light);
 }
 
 .dark,
@@ -62,6 +69,10 @@
   --psub-live-on:       var(--eq-live-on);
   --psub-flag:          var(--eq-alert);
   --psub-page:          var(--background, #0a1c2c);
+  --psub-edge:          var(--eq-edge);
+  --psub-elev-1:        var(--eq-elev-1);
+  --psub-glow-live:     var(--eq-glow-live);
+  --psub-solid-light:   var(--eq-solid-light);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -77,6 +88,10 @@
     --psub-live-on:     var(--eq-live-on);
     --psub-flag:        var(--eq-alert);
     --psub-page:        var(--background, #0a1c2c);
+    --psub-edge:        var(--eq-edge);
+    --psub-elev-1:      var(--eq-elev-1);
+    --psub-glow-live:   var(--eq-glow-live);
+    --psub-solid-light: var(--eq-solid-light);
   }
 }
 

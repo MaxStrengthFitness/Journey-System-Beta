@@ -27,7 +27,11 @@ import { describe, expect, it } from "vitest";
  *     both turn violet, which made Critical and caution look the same;
  *   - the hero orange stays apart from the Critical crimson for colour-blind
  *     trainers, and the green apart from the crimson;
- *   - the crimson is the Journey grid's rep-quality crimson, one red.
+ *   - the crimson is the Journey grid's rep-quality crimson, one red;
+ *   - the depth tokens (type and depth, Oct 4 2026): each shadow is the
+ *     app's own shadow token by name, each depth colour a literal, a raised
+ *     fill sits lighter than the card and still carries the 3:1 control
+ *     edge, and dark edges are pale rims, never a black line.
  *
  * Read with the comments stripped, from the file's three blocks: :root
  * (light), .dark with [data-theme="dark"], and the prefers-color-scheme copy
@@ -259,15 +263,71 @@ const colour = (theme: Theme, token: string) => paint(theme, [token]);
    The file itself
    --------------------------------------------------------------------------- */
 
+/**
+ * The depth tokens that are shadows (type and depth, phase 3, Oct 4 2026).
+ * Each is the app's own shadow token of the same name, by alias, so its dark
+ * value is index.css's and every copy of this palette carries the same string.
+ * Only these names may alias a token outside --eq-*; the depth COLOURS
+ * (--eq-raised, --eq-tray, --eq-edge, --eq-edge-control, --eq-divider,
+ * --eq-highlight) are literals like every other colour here.
+ */
+const SHADOW_ALIAS = /^--eq-(elev-[0-5]|elev-card|shelf|press|glow-(?:live|go)|solid-light|go-light|panel-highlight)$/;
+const DEPTH_COLOURS = ["--eq-raised", "--eq-tray", "--eq-edge", "--eq-edge-control", "--eq-divider", "--eq-highlight"];
+const DEPTH_SHADOWS = [
+  "--eq-elev-0", "--eq-elev-1", "--eq-elev-2", "--eq-elev-3", "--eq-elev-4", "--eq-elev-5", "--eq-elev-card",
+  "--eq-shelf", "--eq-press", "--eq-glow-live", "--eq-glow-go", "--eq-solid-light", "--eq-go-light", "--eq-panel-highlight",
+];
+
 describe("equipment.tokens.css, as a file", () => {
   it("writes every colour as a lowercase #rrggbb, an rgba() or a var(): the copies compare strings", () => {
     for (const [name, block] of Object.entries({ light: LIGHT, dark: DARK_OWN, fallback: FALLBACK })) {
       for (const [token, value] of Object.entries(block)) {
         if (/^--eq-(radius|rail-w)$/.test(token)) continue;
+        const shadow = SHADOW_ALIAS.exec(token);
+        if (shadow) {
+          // A shadow is the app's token of the same name, never a literal and
+          // never another --eq-* token (a copy would need its own spelling).
+          expect(value, `${name} ${token}`).toBe(`var(--${shadow[1]})`);
+          continue;
+        }
         expect(value, `${name} ${token}`).toMatch(/^(#[0-9a-f]{6}|rgba\([\d\s.,]+\)|var\(--eq-[\w-]+\))$/);
       }
     }
   });
+
+  it("defines the depth tokens in every block, each colour a literal (type and depth, phase 3)", () => {
+    for (const [name, block] of Object.entries({ light: LIGHT, dark: DARK_OWN, fallback: FALLBACK })) {
+      for (const token of [...DEPTH_COLOURS, ...DEPTH_SHADOWS]) expect(block[token], `${token} in ${name}`).toBeDefined();
+      for (const token of DEPTH_COLOURS) expect(block[token], `${name} ${token}`).not.toMatch(/^var\(/);
+    }
+    // Every name the alias pattern allows is one the file defines, so the
+    // pattern cannot quietly let a stray --eq-elev-9 through.
+    expect(Object.keys(LIGHT).filter((t) => SHADOW_ALIAS.test(t)).sort()).toEqual([...DEPTH_SHADOWS].sort());
+  });
+
+  it("raises a fill a step LIGHTER than the card and sinks the tray below the page, in both modes", () => {
+    // Lighter means higher (AJ, Oct 4 2026: depth in dark comes from lighter
+    // surfaces, never black smudges); a well is --eq-surface-2, below the card.
+    for (const theme of BOTH) {
+      const lum = (token: string) => luminance(colour(theme, token));
+      expect(lum("--eq-raised"), `${theme}: raised over the card`).toBeGreaterThan(lum("--eq-surface"));
+      expect(lum("--eq-surface-2"), `${theme}: a well under the card`).toBeLessThan(lum("--eq-surface"));
+      expect(lum("--eq-tray"), `${theme}: the tray under the page`).toBeLessThan(lum("--eq-bg"));
+    }
+    expect(valueOf("light", "--eq-raised")).not.toBe("#ffffff");
+  });
+
+  it("draws dark edges as pale rims and every depth colour in the navy family, never black", () => {
+    for (const token of ["--eq-edge", "--eq-edge-control", "--eq-divider"]) {
+      const [r, g, b, a] = parse(valueOf("dark", token));
+      expect(b, `${token} in dark is a pale navy`).toBeGreaterThan(r);
+      expect(r + g + b, `${token} in dark is a light rim, not a dark line`).toBeGreaterThan(3 * 128);
+      expect(a, token).toBeLessThanOrEqual(0.2);
+      const [lr, lg, lb] = parse(valueOf("light", token));
+      expect([lr, lg, lb], `${token} in light is the logo navy`).toEqual([25, 45, 65]);
+    }
+  });
+
 
   it("keeps the prefers-color-scheme block identical to .dark, key for key", () => {
     // These two blocks exist so a page rendered before hydration is never the
@@ -319,6 +379,11 @@ const WORDS: [string, string, string[]][] = [
   ["the now pill (navy words on the hero orange)", "--eq-go-on", ["--eq-hero"]],
   ["a labelled chip on the deep orange", "--eq-hero-on", ["--eq-hero-text"]],
   ["the peek's Critical box", "--eq-ink", ["--eq-surface", "--eq-alert-fill"]],
+  // Depth (type and depth, phase 3): what a raised control and the tray carry.
+  ["words on a raised control", "--eq-ink", ["--eq-raised"]],
+  ["a quiet button's words on its raised fill", "--eq-ink-2", ["--eq-raised"]],
+  ["the picked layer's blue words on its raised chip", "--eq-live-text", ["--eq-raised"]],
+  ["a tab's words on the tray", "--eq-ink-2", ["--eq-tray"]],
 ];
 
 /** A chip's words on its own fill, wherever the Hub draws the chip. */
@@ -353,6 +418,8 @@ const MARKS: [string, string, string[]][] = [
   ["the Critical triangle on a card", "--eq-alert", CARD],
   ["the Critical triangle on an in-session card", "--eq-alert", IN_SESSION],
   ["a control's boundary", "--eq-border-strong", CARD],
+  // A raised control keeps its 3:1 edge (AJ's answer 2A, Oct 4 2026).
+  ["a raised control's own edge", "--eq-border-strong", ["--eq-raised"]],
   ["the focus ring on a card", "--eq-focus-ring", CARD],
   ["the focus ring on the grid", "--eq-focus-ring", ["--eq-bg"]],
 ];

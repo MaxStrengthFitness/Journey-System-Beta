@@ -163,11 +163,11 @@
        app softens at once with no component edits. Tailwind's defaults are
        pure black at fairly high alpha, which on a light ground reads as a
        dirty smudge — the single biggest reason light mode looked "harsh and
-       dull". Ours are tinted with the ink colour and split into a tight
-       contact shadow plus a wide ambient one, which is what actually reads as
-       a raised surface. In dark mode they collapse to almost nothing (see
-       .dark below) because a shadow on the dark navy ground barely shows
-       anyway; there, elevation comes from the surface getting LIGHTER. */
+       dull". Ours are tinted with the logo navy and split into a tight
+       contact shadow plus a short ambient one, which is what actually reads
+       as a raised surface (the depth scale in :root below, type and depth,
+       Oct 4 2026). In dark mode the shadows are the deepest navy, never
+       black, and elevation comes mostly from the surface getting LIGHTER. */
     --shadow-sm:  var(--elev-1);
     --shadow-md:  var(--elev-2);
     --shadow-lg:  var(--elev-3);
@@ -362,19 +362,90 @@
     --sidebar-ring: #115E8D;
     
     /* ---------------------------------------------------------------
-       ELEVATION SCALE. Two shadows per step on purpose: a tight, darker
-       contact shadow that anchors the element to the surface, and a wide,
-       soft ambient one that gives it height. One shadow alone always reads
-       as either a hard outline or a blur. Tinted with the ink colour
-       (25,45,65, the navy #192D41) rather than pure black so it stays in
-       the palette; a touch stronger since Oct 4 2026, because an off-white
-       card on a grey-blue ground needs a little more lift than white did.
+       DEPTH (type and depth, phase 3, Oct 4 2026). AJ: "a lot of buttons
+       and backgrounds in the app currently have a sharp cutoff look ...
+       borders and headers just needs a little bit of weight and depth ...
+       add some dropshadows". The look he picked is harness/depth's
+       kit-recommended.css, "Refined Lift".
+
+       Every shadow is the logo navy (25,45,65, the ink #192D41) at an
+       alpha, never black, and comes in two layers on purpose: a tight
+       contact shadow that anchors the box and a short ambient one that
+       lifts it. One alone reads as a hard outline or a blur. The ambient
+       layer has a negative spread, so a resting shadow stays inside a
+       scroll parent (--elev-2's blur is 18px at most; elevation.test.ts
+       holds it).
+
+         --elev-0      a well: sunk, inset
+         --elev-1      a control, or a picked tab inside a tray. The
+                       contact layer is .16 so a button still lifts under
+                       gym-floor glare
+         --elev-2      a panel
+         --elev-3      the hero, an open card
+         --elev-4      a popover, the peek, a sheet; --elev-4-up is the
+                       same lift cast upward, for a sheet that rises from
+                       the bottom edge
+         --elev-5      a dialog
+         --elev-card   a Hub booking: small blurs, because a day holds
+                       30 to 60 of them
+         --shelf       a bar over scrolling content (a room's toolbar)
+         --frame-down, --frame-up   under the navy header, over the navy
+                       bottom bar
+         --press       a raised control pressed in, with translateY(1px)
+         --glow-live, --glow-go     a solid blue or orange fill's drop;
+                       --solid-light and --go-light are its top light.
+                       No gradient and no dark foot
+         --panel-highlight          a panel's top light: none in light,
+                       a faint one in dark
+
+       The fills and lines a raised or sunk box is drawn with:
+         --raised      a control's fill, a hair lighter than the card and
+                       never white. It KEEPS the control's own 3:1 edge
+                       (--input, --X-border-strong, --jg-control-edge):
+                       the Navy Frame's "control boundaries 3:1 or more",
+                       and AJ's Oct 4 "yes" to firmer outlines
+         --well        a box inside a panel that holds information: below
+                       the card, in both modes (never bg-muted or
+                       --bg-dark-3, which go LIGHTER in dark)
+         --tray        the profile's tab tray: today's value, below the page
+         --edge        a panel's edge, drawn with background-clip:
+                       padding-box so it is seen from outside the card
+         --edge-control  the soft ring of a picked tab inside a tray (the
+                       tray is the group's boundary)
+         --divider     a row's hairline inside a panel
+         --highlight   a raised control's top light
+         --scrim       the veil under a dialog: navy, not black
+
+       Each feature palette carries these under its own prefix (--eq-*,
+       --adm-*, --st-* and the rest), the shadows as var(--elev-n) and the
+       colours as the same literals, so every copy compares as strings.
        --------------------------------------------------------------- */
-    --elev-1: 0 1px 2px rgba(25,45,65,0.06), 0 1px 3px rgba(25,45,65,0.05);
-    --elev-2: 0 1px 2px rgba(25,45,65,0.06), 0 3px 8px rgba(25,45,65,0.07);
-    --elev-3: 0 2px 4px rgba(25,45,65,0.06), 0 8px 20px rgba(25,45,65,0.10);
-    --elev-4: 0 4px 8px rgba(25,45,65,0.05), 0 16px 32px rgba(25,45,65,0.09);
-    --elev-5: 0 8px 16px rgba(25,45,65,0.06), 0 28px 56px rgba(25,45,65,0.12);
+    --elev-0: inset 0 1px 2px rgba(25,45,65,0.09);
+    --elev-1: 0 1px 2px rgba(25,45,65,0.16), 0 2px 5px -1px rgba(25,45,65,0.08);
+    --elev-2: 0 1px 2px rgba(25,45,65,0.08), 0 6px 18px -6px rgba(25,45,65,0.24);
+    --elev-3: 0 1px 3px rgba(25,45,65,0.09), 0 12px 28px -12px rgba(25,45,65,0.30);
+    --elev-4: 0 2px 6px rgba(25,45,65,0.10), 0 24px 48px -16px rgba(25,45,65,0.34);
+    --elev-4-up: 0 -2px 6px rgba(25,45,65,0.10), 0 -24px 48px -16px rgba(25,45,65,0.34);
+    --elev-5: 0 4px 10px rgba(25,45,65,0.10), 0 32px 64px -20px rgba(25,45,65,0.42);
+    --elev-card: 0 1px 2px rgba(25,45,65,0.09), 0 3px 8px -3px rgba(25,45,65,0.18);
+    --shelf: 0 1px 0 rgba(25,45,65,0.10), 0 6px 14px -10px rgba(25,45,65,0.45);
+    --frame-down: 0 1px 0 rgba(0,18,36,0.22), 0 4px 12px -2px rgba(0,35,65,0.35);
+    --frame-up: 0 -1px 0 rgba(0,18,36,0.22), 0 -10px 26px -12px rgba(0,35,65,0.45);
+    --press: inset 0 1px 3px rgba(25,45,65,0.18);
+    --glow-live: 0 1px 2px rgba(25,45,65,0.18), 0 6px 14px -6px color-mix(in srgb, var(--primary) 65%, transparent);
+    --glow-go: 0 1px 2px rgba(25,45,65,0.16), 0 10px 22px -10px color-mix(in srgb, var(--cta) 80%, transparent);
+    --solid-light: inset 0 1px 0 rgba(255,255,255,0.18);
+    --go-light: inset 0 1px 0 rgba(255,255,255,0.32);
+    --panel-highlight: 0 0 0 0 transparent;
+
+    --raised: #F8FAFC;              /* 3.8:1 under --input, 3.5:1 under --eq-border-strong */
+    --well: #E4EBF3;
+    --tray: #D1DAE4;                /* 1.12:1 off the page; the open tab 1.35:1 on it */
+    --edge: rgba(25,45,65,0.13);
+    --edge-control: rgba(25,45,65,0.26);
+    --divider: rgba(25,45,65,0.10);
+    --highlight: rgba(255,255,255,0.70);
+    --scrim: rgba(0,18,36,0.30);
 
     /* ---------------------------------------------------------------
        THE BODY WEIGHT (type and depth, phase 2, Oct 4 2026). The weight
@@ -576,16 +647,39 @@
     --sidebar-border: #334155;
     --sidebar-ring: #38BDF8;
 
-    /* On the dark navy ground a drop shadow barely shows — elevation there
-       comes from the SURFACE getting lighter (bg-dark -> -2 -> -3). Left at
-       the light-mode values, every `shadow-xl` in the app would be spending
-       paint on nothing and muddying the edges of dark cards. Tinted with
-       the deepest navy (2,10,20) rather than pure black. */
-    --elev-1: 0 1px 2px rgba(2,10,20,0.30);
-    --elev-2: 0 2px 6px rgba(2,10,20,0.35);
-    --elev-3: 0 6px 16px rgba(2,10,20,0.45);
-    --elev-4: 0 12px 28px rgba(2,10,20,0.45);
-    --elev-5: 0 20px 48px rgba(2,10,20,0.55);
+    /* DEPTH in dark (type and depth, phase 3, Oct 4 2026). On the navy
+       ground, height comes mostly from the SURFACE getting lighter: a
+       raised control is #203549, a step above the card, and a well and the
+       tray sit below it. Edges are soft rims of a pale navy, never a dark
+       line, and a panel gets a faint top light. The shadows are short and
+       in the deepest navy (2,10,20), stronger than light's because a navy
+       shadow on a navy ground shows less, but never a black smudge. */
+    --elev-0: inset 0 1px 2px rgba(2,10,20,0.45);
+    --elev-1: 0 1px 2px rgba(2,10,20,0.50);
+    --elev-2: 0 1px 2px rgba(2,10,20,0.40), 0 6px 16px -8px rgba(2,10,20,0.60);
+    --elev-3: 0 1px 3px rgba(2,10,20,0.45), 0 12px 28px -12px rgba(2,10,20,0.70);
+    --elev-4: 0 2px 6px rgba(2,10,20,0.50), 0 20px 44px -16px rgba(2,10,20,0.80);
+    --elev-4-up: 0 -2px 6px rgba(2,10,20,0.50), 0 -20px 44px -16px rgba(2,10,20,0.80);
+    --elev-5: 0 4px 10px rgba(2,10,20,0.55), 0 28px 56px -20px rgba(2,10,20,0.85);
+    --elev-card: 0 1px 2px rgba(2,10,20,0.45), 0 3px 8px -3px rgba(2,10,20,0.50);
+    --shelf: 0 1px 0 rgba(150,180,210,0.10), 0 6px 14px -10px rgba(2,10,20,0.85);
+    --frame-down: 0 1px 0 rgba(255,255,255,0.05), 0 4px 12px -2px rgba(2,10,20,0.60);
+    --frame-up: 0 -1px 0 rgba(255,255,255,0.05), 0 -10px 24px -12px rgba(2,10,20,0.60);
+    --press: inset 0 1px 3px rgba(2,10,20,0.55);
+    --glow-live: 0 1px 2px rgba(2,10,20,0.45), 0 6px 14px -8px rgba(2,10,20,0.80);
+    --glow-go: 0 1px 2px rgba(2,10,20,0.40), 0 10px 22px -12px color-mix(in srgb, var(--cta) 55%, transparent);
+    --solid-light: inset 0 1px 0 rgba(255,255,255,0.20);
+    --go-light: inset 0 1px 0 rgba(255,255,255,0.28);
+    --panel-highlight: inset 0 1px 0 rgba(255,255,255,0.045);
+
+    --raised: #203549;              /* lighter is higher; 3.2:1 under --input */
+    --well: #0D2235;
+    --tray: #081725;                /* below the page */
+    --edge: rgba(150,180,210,0.11);
+    --edge-control: rgba(150,180,210,0.16);
+    --divider: rgba(150,180,210,0.10);
+    --highlight: rgba(255,255,255,0.07);
+    --scrim: rgba(0,6,14,0.55);
 
     /* The body weight: light words on the navy read heavier than dark
        words on a light card, so dark mode's body is a touch lighter. */

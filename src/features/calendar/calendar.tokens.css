@@ -73,6 +73,29 @@
   --t5-solid: #a2457e; --t5-text: #8e336c; --t5-fill: #f6e9f1; --t5-edge: #a2457e;
   --t6-solid: #15803d; --t6-text: #136c34; --t6-fill: #e2f1e7; --t6-edge: #15803d;
   --t7-solid: #0e7490; --t7-text: #0b6079; --t7-fill: #e0f0f4; --t7-edge: #0e7490;
+
+  /* Depth (type and depth, phase 3, Oct 4 2026), value for value as
+     equipment.tokens.css. */
+  --cal-raised:          #f8fafc;
+  --cal-tray:            #d1dae4;
+  --cal-edge:            rgba(25, 45, 65, 0.13);
+  --cal-edge-control:    rgba(25, 45, 65, 0.26);
+  --cal-divider:         rgba(25, 45, 65, 0.10);
+  --cal-highlight:       rgba(255, 255, 255, 0.70);
+  --cal-elev-0:          var(--elev-0);
+  --cal-elev-1:          var(--elev-1);
+  --cal-elev-2:          var(--elev-2);
+  --cal-elev-3:          var(--elev-3);
+  --cal-elev-4:          var(--elev-4);
+  --cal-elev-5:          var(--elev-5);
+  --cal-elev-card:       var(--elev-card);
+  --cal-shelf:           var(--shelf);
+  --cal-press:           var(--press);
+  --cal-glow-live:       var(--glow-live);
+  --cal-glow-go:         var(--glow-go);
+  --cal-solid-light:     var(--solid-light);
+  --cal-go-light:        var(--go-light);
+  --cal-panel-highlight: var(--panel-highlight);
 }
 
 .dark,
@@ -121,6 +144,27 @@
   --t5-solid: #d98cbd; --t5-text: #edb8d8; --t5-fill: rgba(217,140,189,.16); --t5-edge: #d98cbd;
   --t6-solid: #4ade80; --t6-text: #86efac; --t6-fill: rgba(74,222,128,.14);  --t6-edge: #4ade80;
   --t7-solid: #22d3ee; --t7-text: #67e8f9; --t7-fill: rgba(34,211,238,.14);  --t7-edge: #22d3ee;
+
+  --cal-raised:          #203549;
+  --cal-tray:            #081725;
+  --cal-edge:            rgba(150, 180, 210, 0.11);
+  --cal-edge-control:    rgba(150, 180, 210, 0.16);
+  --cal-divider:         rgba(150, 180, 210, 0.10);
+  --cal-highlight:       rgba(255, 255, 255, 0.07);
+  --cal-elev-0:          var(--elev-0);
+  --cal-elev-1:          var(--elev-1);
+  --cal-elev-2:          var(--elev-2);
+  --cal-elev-3:          var(--elev-3);
+  --cal-elev-4:          var(--elev-4);
+  --cal-elev-5:          var(--elev-5);
+  --cal-elev-card:       var(--elev-card);
+  --cal-shelf:           var(--shelf);
+  --cal-press:           var(--press);
+  --cal-glow-live:       var(--glow-live);
+  --cal-glow-go:         var(--glow-go);
+  --cal-solid-light:     var(--solid-light);
+  --cal-go-light:        var(--go-light);
+  --cal-panel-highlight: var(--panel-highlight);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -143,6 +187,26 @@
     --t5-solid: #d98cbd; --t5-text: #edb8d8; --t5-fill: rgba(217,140,189,.16); --t5-edge: #d98cbd;
     --t6-solid: #4ade80; --t6-text: #86efac; --t6-fill: rgba(74,222,128,.14);  --t6-edge: #4ade80;
     --t7-solid: #22d3ee; --t7-text: #67e8f9; --t7-fill: rgba(34,211,238,.14);  --t7-edge: #22d3ee;
+    --cal-raised:          #203549;
+    --cal-tray:            #081725;
+    --cal-edge:            rgba(150, 180, 210, 0.11);
+    --cal-edge-control:    rgba(150, 180, 210, 0.16);
+    --cal-divider:         rgba(150, 180, 210, 0.10);
+    --cal-highlight:       rgba(255, 255, 255, 0.07);
+    --cal-elev-0:          var(--elev-0);
+    --cal-elev-1:          var(--elev-1);
+    --cal-elev-2:          var(--elev-2);
+    --cal-elev-3:          var(--elev-3);
+    --cal-elev-4:          var(--elev-4);
+    --cal-elev-5:          var(--elev-5);
+    --cal-elev-card:       var(--elev-card);
+    --cal-shelf:           var(--shelf);
+    --cal-press:           var(--press);
+    --cal-glow-live:       var(--glow-live);
+    --cal-glow-go:         var(--glow-go);
+    --cal-solid-light:     var(--solid-light);
+    --cal-go-light:        var(--go-light);
+    --cal-panel-highlight: var(--panel-highlight);
   }
 }
 

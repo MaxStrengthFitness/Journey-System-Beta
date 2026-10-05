@@ -71,6 +71,29 @@
   --adm-focus-ring:      var(--adm-live);
   --adm-shadow:          rgba(25, 45, 65, 0.10);
   --adm-radius:          14px;
+
+  /* Depth (type and depth, phase 3, Oct 4 2026), value for value as
+     equipment.tokens.css. */
+  --adm-raised:          #f8fafc;
+  --adm-tray:            #d1dae4;
+  --adm-edge:            rgba(25, 45, 65, 0.13);
+  --adm-edge-control:    rgba(25, 45, 65, 0.26);
+  --adm-divider:         rgba(25, 45, 65, 0.10);
+  --adm-highlight:       rgba(255, 255, 255, 0.70);
+  --adm-elev-0:          var(--elev-0);
+  --adm-elev-1:          var(--elev-1);
+  --adm-elev-2:          var(--elev-2);
+  --adm-elev-3:          var(--elev-3);
+  --adm-elev-4:          var(--elev-4);
+  --adm-elev-5:          var(--elev-5);
+  --adm-elev-card:       var(--elev-card);
+  --adm-shelf:           var(--shelf);
+  --adm-press:           var(--press);
+  --adm-glow-live:       var(--glow-live);
+  --adm-glow-go:         var(--glow-go);
+  --adm-solid-light:     var(--solid-light);
+  --adm-go-light:        var(--go-light);
+  --adm-panel-highlight: var(--panel-highlight);
 }
 
 .dark,
@@ -116,6 +139,27 @@
   --adm-alert-fill:      #472024;
 
   --adm-shadow:          rgba(2, 10, 20, 0.45);
+
+  --adm-raised:          #203549;
+  --adm-tray:            #081725;
+  --adm-edge:            rgba(150, 180, 210, 0.11);
+  --adm-edge-control:    rgba(150, 180, 210, 0.16);
+  --adm-divider:         rgba(150, 180, 210, 0.10);
+  --adm-highlight:       rgba(255, 255, 255, 0.07);
+  --adm-elev-0:          var(--elev-0);
+  --adm-elev-1:          var(--elev-1);
+  --adm-elev-2:          var(--elev-2);
+  --adm-elev-3:          var(--elev-3);
+  --adm-elev-4:          var(--elev-4);
+  --adm-elev-5:          var(--elev-5);
+  --adm-elev-card:       var(--elev-card);
+  --adm-shelf:           var(--shelf);
+  --adm-press:           var(--press);
+  --adm-glow-live:       var(--glow-live);
+  --adm-glow-go:         var(--glow-go);
+  --adm-solid-light:     var(--solid-light);
+  --adm-go-light:        var(--go-light);
+  --adm-panel-highlight: var(--panel-highlight);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -150,5 +194,25 @@
     --adm-alert:           #f2718c;
     --adm-alert-fill:      #472024;
     --adm-shadow:          rgba(2, 10, 20, 0.45);
+    --adm-raised:          #203549;
+    --adm-tray:            #081725;
+    --adm-edge:            rgba(150, 180, 210, 0.11);
+    --adm-edge-control:    rgba(150, 180, 210, 0.16);
+    --adm-divider:         rgba(150, 180, 210, 0.10);
+    --adm-highlight:       rgba(255, 255, 255, 0.07);
+    --adm-elev-0:          var(--elev-0);
+    --adm-elev-1:          var(--elev-1);
+    --adm-elev-2:          var(--elev-2);
+    --adm-elev-3:          var(--elev-3);
+    --adm-elev-4:          var(--elev-4);
+    --adm-elev-5:          var(--elev-5);
+    --adm-elev-card:       var(--elev-card);
+    --adm-shelf:           var(--shelf);
+    --adm-press:           var(--press);
+    --adm-glow-live:       var(--glow-live);
+    --adm-glow-go:         var(--glow-go);
+    --adm-solid-light:     var(--solid-light);
+    --adm-go-light:        var(--go-light);
+    --adm-panel-highlight: var(--panel-highlight);
   }
 }

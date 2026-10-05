@@ -201,6 +201,25 @@
   --jg-pf-border-strong: #b5c0cb;   /* sticky edges, header rule  1.70:1     */
   --jg-pf-sticky-shadow: rgba(25, 45, 65, 0.07);
 
+  /* Depth (type and depth, phase 3, Oct 4 2026), the Hub's by name. The
+     session's controls keep their --jg-control-edge and are raised on it
+     (this fill, a lift, a top light, a press); the grid lifts as one panel;
+     Finish takes Go's glow; the Now Bar docks with --jg-dock, the frame's
+     navy cast upward. They are shadows and fills only: the grid's borders,
+     separators and z-indexes stay as they are. */
+  --jg-raised:         #f8fafc;   /* --jg-control-edge on it 3.5:1         */
+  --jg-highlight:      rgba(255, 255, 255, 0.70);
+  --jg-elev-0:         var(--elev-0);
+  --jg-elev-1:         var(--elev-1);
+  --jg-elev-2:         var(--elev-2);
+  --jg-elev-3:         var(--elev-3);
+  --jg-elev-4:         var(--elev-4);
+  --jg-shelf:          var(--shelf);
+  --jg-press:          var(--press);
+  --jg-glow-go:        var(--glow-go);
+  --jg-go-light:       var(--go-light);
+  --jg-dock:           0 -6px 16px -8px rgba(0, 35, 65, 0.45);
+
   color-scheme: light;
 }
 
@@ -285,6 +304,21 @@
   --jg-pf-border-strong: var(--jg-border-strong);
   --jg-pf-sticky-shadow: var(--jg-sticky-shadow);
 
+  /* Depth in dark: the raised fill a step above the cells (the pressed
+     colour), the shadows by name. */
+  --jg-raised:         #203549;
+  --jg-highlight:      rgba(255, 255, 255, 0.07);
+  --jg-elev-0:         var(--elev-0);
+  --jg-elev-1:         var(--elev-1);
+  --jg-elev-2:         var(--elev-2);
+  --jg-elev-3:         var(--elev-3);
+  --jg-elev-4:         var(--elev-4);
+  --jg-shelf:          var(--shelf);
+  --jg-press:          var(--press);
+  --jg-glow-go:        var(--glow-go);
+  --jg-go-light:       var(--go-light);
+  --jg-dock:           0 -6px 16px -8px rgba(2, 10, 20, 0.60);
+
   color-scheme: dark;
 }
 
@@ -351,6 +385,18 @@
     --jg-pf-border:        var(--jg-border);
     --jg-pf-border-strong: var(--jg-border-strong);
     --jg-pf-sticky-shadow: var(--jg-sticky-shadow);
+    --jg-raised:         #203549;
+    --jg-highlight:      rgba(255, 255, 255, 0.07);
+    --jg-elev-0:         var(--elev-0);
+    --jg-elev-1:         var(--elev-1);
+    --jg-elev-2:         var(--elev-2);
+    --jg-elev-3:         var(--elev-3);
+    --jg-elev-4:         var(--elev-4);
+    --jg-shelf:          var(--shelf);
+    --jg-press:          var(--press);
+    --jg-glow-go:        var(--glow-go);
+    --jg-go-light:       var(--go-light);
+    --jg-dock:           0 -6px 16px -8px rgba(2, 10, 20, 0.60);
     color-scheme: dark;
   }
 }

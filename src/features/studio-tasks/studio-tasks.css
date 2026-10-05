@@ -74,6 +74,29 @@
 
   --st-radius: 14px;
   --st-shadow: rgba(25, 45, 65, 0.10);
+
+  /* Depth (type and depth, phase 3, Oct 4 2026), value for value as
+     equipment.tokens.css. */
+  --st-raised:          #f8fafc;
+  --st-tray:            #d1dae4;
+  --st-edge:            rgba(25, 45, 65, 0.13);
+  --st-edge-control:    rgba(25, 45, 65, 0.26);
+  --st-divider:         rgba(25, 45, 65, 0.10);
+  --st-highlight:       rgba(255, 255, 255, 0.70);
+  --st-elev-0:          var(--elev-0);
+  --st-elev-1:          var(--elev-1);
+  --st-elev-2:          var(--elev-2);
+  --st-elev-3:          var(--elev-3);
+  --st-elev-4:          var(--elev-4);
+  --st-elev-5:          var(--elev-5);
+  --st-elev-card:       var(--elev-card);
+  --st-shelf:           var(--shelf);
+  --st-press:           var(--press);
+  --st-glow-live:       var(--glow-live);
+  --st-glow-go:         var(--glow-go);
+  --st-solid-light:     var(--solid-light);
+  --st-go-light:        var(--go-light);
+  --st-panel-highlight: var(--panel-highlight);
 }
 
 .dark, [data-theme="dark"] {
@@ -111,6 +134,27 @@
   --st-alert-fill: #472024;
 
   --st-shadow: rgba(2, 10, 20, 0.45);
+
+  --st-raised:          #203549;
+  --st-tray:            #081725;
+  --st-edge:            rgba(150, 180, 210, 0.11);
+  --st-edge-control:    rgba(150, 180, 210, 0.16);
+  --st-divider:         rgba(150, 180, 210, 0.10);
+  --st-highlight:       rgba(255, 255, 255, 0.07);
+  --st-elev-0:          var(--elev-0);
+  --st-elev-1:          var(--elev-1);
+  --st-elev-2:          var(--elev-2);
+  --st-elev-3:          var(--elev-3);
+  --st-elev-4:          var(--elev-4);
+  --st-elev-5:          var(--elev-5);
+  --st-elev-card:       var(--elev-card);
+  --st-shelf:           var(--shelf);
+  --st-press:           var(--press);
+  --st-glow-live:       var(--glow-live);
+  --st-glow-go:         var(--glow-go);
+  --st-solid-light:     var(--solid-light);
+  --st-go-light:        var(--go-light);
+  --st-panel-highlight: var(--panel-highlight);
 }
 
 .st {

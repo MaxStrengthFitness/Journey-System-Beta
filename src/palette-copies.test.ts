@@ -156,6 +156,20 @@ interface Copy {
 const NEUTRALS = ["bg", "surface", "surface-2", "surface-3", "border", "border-strong", "ink", "ink-2", "ink-muted", "ink-faint"];
 const same = (prefix: string, names: string[]): [string, string][] => names.map((n) => [`--${prefix}-${n}`, `--eq-${n}`]);
 
+/**
+ * The depth tokens (type and depth, phase 3, Oct 4 2026): the fills and lines
+ * a raised or sunk box is drawn with, and the app's shadows by name. Every
+ * copy carries them, so a copy that misses one, in either mode or in its
+ * fallback, fails here. The Pulse leaves out the orange's two (it keeps no
+ * orange button).
+ */
+const DEPTH = [
+  "raised", "tray", "edge", "edge-control", "divider", "highlight",
+  "elev-0", "elev-1", "elev-2", "elev-3", "elev-4", "elev-5", "elev-card",
+  "shelf", "press", "glow-live", "glow-go", "solid-light", "go-light", "panel-highlight",
+];
+const NO_ORANGE = (name: string) => name !== "glow-go" && name !== "go-light";
+
 const COPIES: Copy[] = [
   {
     name: "the briefing (--br-*)",
@@ -163,7 +177,7 @@ const COPIES: Copy[] = [
     dark: DARK,
     fallback: FALLBACK,
     mirrors: [
-      ...same("br", [...NEUTRALS, "hero", "hero-text", "hero-fill", "go", "go-on", "live", "live-text", "live-fill", "live-on", "ok", "ok-fill", "shadow"]),
+      ...same("br", [...NEUTRALS, "hero", "hero-text", "hero-fill", "go", "go-on", "live", "live-text", "live-fill", "live-on", "ok", "ok-fill", "shadow", ...DEPTH]),
       ["--br-critical", "--eq-alert"],
       ["--br-critical-fill", "--eq-alert-fill"],
     ],
@@ -173,7 +187,7 @@ const COPIES: Copy[] = [
     file: "features/subjective-report/subjective-report.css",
     dark: DARK,
     fallback: null,
-    mirrors: same("sr", [...NEUTRALS, "hero", "hero-text", "hero-fill"]),
+    mirrors: same("sr", [...NEUTRALS, "hero", "hero-text", "hero-fill", ...DEPTH.filter(NO_ORANGE)]),
   },
   {
     name: "FORD (--ford-*)",
@@ -181,7 +195,7 @@ const COPIES: Copy[] = [
     dark: DARK,
     fallback: FALLBACK,
     mirrors: [
-      ...same("ford", [...NEUTRALS, "shadow"]),
+      ...same("ford", [...NEUTRALS, "shadow", ...DEPTH]),
       ["--ford-now", "--eq-hero-text"],
       ["--ford-now-fill", "--eq-hero-fill"],
       ["--ford-soon", "--eq-live-text"],
@@ -195,7 +209,7 @@ const COPIES: Copy[] = [
     file: "features/calendar/calendar.tokens.css",
     dark: DARK,
     fallback: FALLBACK,
-    mirrors: same("cal", [...NEUTRALS, "hero", "hero-text", "hero-fill", "live", "live-text", "live-fill", "live-on", "shadow"]),
+    mirrors: same("cal", [...NEUTRALS, "hero", "hero-text", "hero-fill", "live", "live-text", "live-fill", "live-on", "shadow", ...DEPTH]),
     darkMirrors: [
       ["--cal-heat-0", "--eq-surface-2"],
       ["--cal-heat-5", "--eq-live"],
@@ -211,6 +225,7 @@ const COPIES: Copy[] = [
       "hero", "hero-text", "hero-fill", "hero-on",
       "live", "live-text", "live-fill", "live-on",
       "ok", "ok-fill", "warn", "warn-fill", "alert", "alert-fill", "shadow",
+      ...DEPTH,
     ]),
     darkMirrors: [
       ["--tp-kaizen", "--eq-live"],
@@ -224,7 +239,7 @@ const COPIES: Copy[] = [
     file: "features/routine-builder/routine-builder.tokens.css",
     dark: '\n:root.dark,\n:root[data-theme="dark"] {',
     fallback: ":root:not(.dark):not(.light):not([data-theme]) {",
-    mirrors: same("rb", [...NEUTRALS, "hero", "hero-text", "hero-fill", "hero-on", "live", "live-text", "live-fill", "live-on", "ok", "ok-fill", "shadow"]),
+    mirrors: same("rb", [...NEUTRALS, "hero", "hero-text", "hero-fill", "hero-on", "live", "live-text", "live-fill", "live-on", "ok", "ok-fill", "shadow", ...DEPTH]),
   },
 ];
 
@@ -604,6 +619,11 @@ describe("one crimson, one blue", () => {
       "--psub-live-soft": "var(--eq-live-text)",
       "--psub-live-on": "var(--eq-live-on)",
       "--psub-flag": "var(--eq-alert)",
+      // Depth (type and depth, phase 3): the seven pages' raised bar.
+      "--psub-edge": "var(--eq-edge)",
+      "--psub-elev-1": "var(--eq-elev-1)",
+      "--psub-glow-live": "var(--eq-glow-live)",
+      "--psub-solid-light": "var(--eq-solid-light)",
     };
     for (const selector of [LIGHT, DARK, FALLBACK]) {
       const tokens = block(nav, selector);
