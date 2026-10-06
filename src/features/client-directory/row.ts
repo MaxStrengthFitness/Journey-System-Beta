@@ -781,15 +781,41 @@ export function buildDirectoryRow(client: Client, ctx: DirectoryContext): Direct
   };
 }
 
+/**
+ * The rows a screen built last time, by client object, for the context they
+ * were built against (the iPad round, Oct 2026). A row is worked out from its
+ * client and the context alone, so while the context is the same object a
+ * client that is the same object (useStudioRoster keeps every client a write
+ * didn't touch) gets the same row back: one webhook write rebuilds one row,
+ * and a memoised row view skips the other 299.
+ */
+export interface DirectoryRowCache {
+  ctx: DirectoryContext | null;
+  byClient: WeakMap<Client, DirectoryRow>;
+}
+
+export function newDirectoryRowCache(): DirectoryRowCache {
+  return { ctx: null, byClient: new WeakMap() };
+}
+
 /** Every row, in the roster's order. Clients with no id or no name at all are left out, as before. */
-export function buildDirectoryRows(clients: ReadonlyArray<Client>, ctx: DirectoryContext): DirectoryRow[] {
+export function buildDirectoryRows(clients: ReadonlyArray<Client>, ctx: DirectoryContext, cache?: DirectoryRowCache): DirectoryRow[] {
+  if (cache && cache.ctx !== ctx) {
+    cache.ctx = ctx;
+    cache.byClient = new WeakMap();
+  }
   const out: DirectoryRow[] = [];
   const seen = new Set<string>();
   for (const c of clients) {
     if (!c?.id || seen.has(c.id)) continue;
     if (!clean(c.firstName) && !clean(c.lastName)) continue;
     seen.add(c.id);
-    out.push(buildDirectoryRow(c, ctx));
+    let row = cache?.byClient.get(c);
+    if (!row) {
+      row = buildDirectoryRow(c, ctx);
+      cache?.byClient.set(c, row);
+    }
+    out.push(row);
   }
   return out;
 }

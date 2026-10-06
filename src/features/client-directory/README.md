@@ -40,6 +40,15 @@ The alias table is `NICKNAME_GROUPS` in `search.ts` — curated, not transitive 
 
 None per client, ever. The rows ride on what AppContent already streams — the studio roster (`useStudioRoster`), the held bookings, the last day's sessions, the trainers and the studios — plus **one small document**: the studio's package table (`useRenewalSettings`, `studios/{s}/config/renewals`), the same read the profile makes, so Left says the profile's number. "All my studios" keeps the old screen's query path exactly: the two name-prefix queries scoped by `queryStudioIds`, only when a name is typed. The old unordered `limit(100)` Last Session query is gone.
 
+## What it works out again, and when (the iPad round, Oct 2026)
+
+The perf lab measured one client's write at 378 ms (iPad 10) and 606 ms (older iPad) of frozen Directory, and every minute at 240 / 434 ms, because both rebuilt and redrew all 300 rows. Two things keep that down; break one and `ClientDirectory.rerender.render.test.tsx` fails:
+
+- **One row per client object.** `useStudioRoster` keeps every client a write didn't touch as the same object, and `buildDirectoryRows` takes a `DirectoryRowCache`: while the context is the same object, the same client gets the same row back.
+- **The rows are memoised** (`DirectoryRowView` is `memo`), so every prop must stay stable: `gridVars` is memoised, the host's callbacks are wrapped once (AppContent hands in new ones every render), and an inactive row's badged copy is kept per row.
+
+A new prop on the row, or a new input to the row model that changes over time, must keep this: pass something stable.
+
 ## Deliberately out of scope (and why)
 
 - **Note marks** (a dot for an open note you haven't marked off). Doing it honestly for 300 rows needs a roll-up on the client document (`openThreads`) — a Firestore structure change that needs AJ's OK. The seam is the `marks` prop (a map of client id → `DirectoryMark`); it defaults to none and the gutter column is not even drawn. **Do not add a per-client query to fill it.**
