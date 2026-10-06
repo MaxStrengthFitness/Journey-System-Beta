@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 /**
  * THE HEADING VOICE (type and depth, phase 12, Oct 4 2026; AJ's answer 1A).
@@ -71,7 +71,19 @@ import { describe, expect, it } from "vitest";
  */
 
 const SRC = dirname(fileURLToPath(import.meta.url));
-const read = (rel: string) => readFileSync(join(SRC, rel), "utf8").replace(/\r\n/g, "\n");
+/* These walk every file in src: under a busy PC (the full suite beside other
+   worktrees) one section can pass 5 s, so they get 30, and each file is
+   read once for the whole run. */
+vi.setConfig({ testTimeout: 30_000 });
+const READ = new Map<string, string>();
+const read = (rel: string) => {
+  let text = READ.get(rel);
+  if (text === undefined) {
+    text = readFileSync(join(SRC, rel), "utf8").replace(/\r\n/g, "\n");
+    READ.set(rel, text);
+  }
+  return text;
+};
 const stripComments = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, "");
 
 function filesUnder(dir: string, ext: RegExp, out: string[] = []): string[] {
