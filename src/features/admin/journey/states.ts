@@ -215,11 +215,14 @@ export interface ClientJourney {
   inactive?: InactiveInfo | null;
 }
 
+// Constant option sets: formatDateWords keys its formatter on the object, once.
+const DAY_WORDS: Intl.DateTimeFormatOptions = { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" };
+const DAY_WORDS_YEAR: Intl.DateTimeFormatOptions = { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" };
 const dayWords = (day: string, today: string) => {
   const [y, m, d] = day.split("-").map(Number);
   const date = new Date(Date.UTC(y, m - 1, d));
   const sameYear = y === Number(today.slice(0, 4));
-  return formatDateWords(date, { weekday: "short", month: "short", day: "numeric", ...(sameYear ? {} : { year: "numeric" }), timeZone: "UTC" }, "en-US");
+  return formatDateWords(date, sameYear ? DAY_WORDS : DAY_WORDS_YEAR, "en-US");
 };
 
 const daysText = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;

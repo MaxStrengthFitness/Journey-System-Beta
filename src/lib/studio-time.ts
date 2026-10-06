@@ -93,7 +93,8 @@ export function toDate(value: DateLike): Date | null {
  * and froze the day filter. Formatters are immutable and safe to share, so each
  * (timezone, option-set) pair is built once and reused.
  */
-const formatterCache = new Map<string, Intl.DateTimeFormat>();
+// By zone, then by locale and option set: no key string is built per call.
+const formatterCache = new Map<string, Map<string, Intl.DateTimeFormat>>();
 
 function getFormatter(
   cacheKey: string,
@@ -101,13 +102,33 @@ function getFormatter(
   options: Intl.DateTimeFormatOptions,
   locale = "en-US",
 ): Intl.DateTimeFormat {
-  const key = `${locale}|${tz}|${cacheKey}`;
-  let formatter = formatterCache.get(key);
+  let byKey = formatterCache.get(tz);
+  if (!byKey) {
+    byKey = new Map();
+    formatterCache.set(tz, byKey);
+  }
+  const key = locale === "en-US" ? cacheKey : `${locale}|${cacheKey}`;
+  let formatter = byKey.get(key);
   if (!formatter) {
     formatter = new Intl.DateTimeFormat(locale, { ...options, timeZone: tz });
-    formatterCache.set(key, formatter);
+    byKey.set(key, formatter);
   }
   return formatter;
+}
+
+/**
+ * An option set's cache key, worked out once per options object: the
+ * helpers below pass the same constant objects on every call, so
+ * JSON.stringify runs once for each, not per row.
+ */
+const optionKeys = new WeakMap<object, string>();
+function keyOfOptions(options: Intl.DateTimeFormatOptions): string {
+  let key = optionKeys.get(options);
+  if (key === undefined) {
+    key = JSON.stringify(options);
+    optionKeys.set(options, key);
+  }
+  return key;
 }
 
 const OFFSET_OPTIONS: Intl.DateTimeFormatOptions = {
@@ -476,7 +497,7 @@ function format(
   if (!d) return fallback;
   // Options vary here, so the cache key includes them. Still far cheaper than
   // rebuilding the formatter on every row.
-  return getFormatter(JSON.stringify(options), tz, options).format(d);
+  return getFormatter(keyOfOptions(options), tz, options).format(d);
 }
 
 const dateWordsCache = new Map<string, Intl.DateTimeFormat>();
@@ -500,7 +521,7 @@ export function formatDateWords(
   locale?: string,
 ): string {
   if (Number.isNaN(date.getTime())) return "Invalid Date";
-  const key = `${locale ?? ""}|${JSON.stringify(options)}`;
+  const key = `${locale ?? ""}|${keyOfOptions(options)}`;
   let formatter = dateWordsCache.get(key);
   if (!formatter) {
     formatter = new Intl.DateTimeFormat(locale, options);
@@ -512,28 +533,30 @@ export function formatDateWords(
   return formatter.format(date);
 }
 
+const TIME_OPTIONS: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit", hour12: true };
+const DATE_OPTIONS: Intl.DateTimeFormatOptions = { month: "numeric", day: "numeric", year: "numeric" };
+const DATE_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+};
+
 /** e.g. "9:15 AM" */
 export function formatStudioTime(
   value: DateLike,
   tz: string = activeTimeZone,
   fallback = "--",
 ): string {
-  return format(
-    value,
-    { hour: "numeric", minute: "2-digit", hour12: true },
-    tz,
-    fallback,
-  );
+  return format(value, TIME_OPTIONS, tz, fallback);
 }
 
 /** e.g. "5/26/2026" */
 export function formatStudioDate(
   value: DateLike,
-  options: Intl.DateTimeFormatOptions = {
-    month: "numeric",
-    day: "numeric",
-    year: "numeric",
-  },
+  options: Intl.DateTimeFormatOptions = DATE_OPTIONS,
   tz: string = activeTimeZone,
   fallback = "--",
 ): string {
@@ -546,19 +569,7 @@ export function formatStudioDateTime(
   tz: string = activeTimeZone,
   fallback = "--",
 ): string {
-  return format(
-    value,
-    {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    },
-    tz,
-    fallback,
-  );
+  return format(value, DATE_TIME_OPTIONS, tz, fallback);
 }
 
 /** Short zone label for the UI, e.g. "EDT". */
