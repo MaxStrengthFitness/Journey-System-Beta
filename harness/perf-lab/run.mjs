@@ -36,7 +36,7 @@ import { join, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { calibrate, REFERENCE_BENCH_MS } from "./calibrate.mjs";
 import { connectPage, launchChrome } from "./cdp.mjs";
-import { OUT_DIR, labCredentials } from "./lab-config.mjs";
+import { DATABASE_ID, FIRESTORE_PORT, HOST, OUT_DIR, PROJECT_ID, labCredentials } from "./lab-config.mjs";
 import { SourceMaps, foldProfile } from "./profile.mjs";
 import { writeReport } from "./report.mjs";
 import { startStaticServer } from "./server.mjs";
@@ -365,8 +365,11 @@ async function measured(s, run, { navigates = false, span = navigates } = {}) {
   const exceptionsBefore = s.exceptions;
   const netBefore = { ...s.net };
   if (s.profiled) await s.page.send("Profiler.start");
+  // The page's clock when the profiler started, so a phase's page times can be found in the profile's own clock.
+  const profPageT0 = s.profiled ? await s.now() : null;
   const t0 = navigates ? 0 : await s.now();
   const result = await run();
+  const tEnd = await s.now();
   const cpuProfile = s.profiled ? (await s.page.send("Profiler.stop")).profile : null;
   const after = await s.metrics();
   const lab = await s.ev(
@@ -390,8 +393,26 @@ async function measured(s, run, { navigates = false, span = navigates } = {}) {
     deltas[k] = k.endsWith("Duration") ? Math.round(v * 1000) : Math.round(v);
   }
   const longTotal = Math.round(tasks.reduce((a, b) => a + b, 0));
+  // Phases ([name, page ms the phase began], in order; the last runs to the end of the scenario): the long
+  // tasks that began in each, as steps (lt.<name>), and in the profiled rep the CPU of each (cpuPhases).
+  const { phases, ...rest } = result;
+  let cpuPhases = null;
+  if (Array.isArray(phases) && phases.length) {
+    rest.steps = { ...(rest.steps || {}) };
+    phases.forEach(([name, from], i) => {
+      const to = phases[i + 1]?.[1] ?? tEnd;
+      if (typeof from !== "number" || typeof to !== "number") return;
+      const inPhase = lab.lt.filter((e) => e[0] >= from && e[0] < to).map((e) => e[1]);
+      rest.steps[`lt.${name}`] = Math.round(inPhase.reduce((a, b) => a + b, 0));
+      if (cpuProfile && typeof profPageT0 === "number") {
+        cpuPhases ??= {};
+        const us = (ms) => cpuProfile.startTime + (ms - profPageT0) * 1000;
+        cpuPhases[name] = foldProfile(cpuProfile, s.maps, { top: 40, fromUs: us(from), toUs: us(to) });
+      }
+    });
+  }
   return {
-    ...result,
+    ...rest,
     // A continuous span's time NOT spent in long tasks: mostly waiting (network, the emulator, timers).
     waitingMs: span && typeof result.wallMs === "number" ? Math.max(0, result.wallMs - longTotal) : null,
     longTasks: {
@@ -405,6 +426,7 @@ async function measured(s, run, { navigates = false, span = navigates } = {}) {
     domNodes: lab.nodes,
     exceptions: s.exceptions - exceptionsBefore,
     ...(cpuProfile ? { cpu: foldProfile(cpuProfile, s.maps) } : {}),
+    ...(cpuPhases ? { cpuPhases } : {}),
   };
 }
 
@@ -543,6 +565,49 @@ const SCENARIO_RUNS = {
     });
   },
 
+  /**
+   * (h) live, opt-in (not in the default set): what one change costs while a screen is open. The Directory
+   * left open across a minute tick, then one client document changed (as a webhook or the nightly job
+   * would, through the emulator's owner token, a field no screen reads); then the same on the Hub. Long tasks
+   * per phase.
+   */
+  async live(s, ctx) {
+    // ops leaves the app on the Directory: come back to the Hub first, as scroll does.
+    if (!(await s.ev(hubReady))) await s.tap(byText("button", "Hub", { exact: true }), "the Hub tab").catch(() => {});
+    await s.must(hubReady, "the Hub");
+    await s.tap(byText("button", "Client", { exact: true }), "the Client tab");
+    await s.must(`document.querySelector(".cd-scroll") && document.querySelector(".cd-scroll").textContent.length > 200`, "the Client Directory", 45000);
+    await s.settle(600, 15000);
+    const touch = async (n) => {
+      const base = `http://${HOST}:${FIRESTORE_PORT}/v1/projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents`;
+      const id = ctx.focus?.client?.id ?? "100000001";
+      const res = await fetch(`${base}/clients/${id}?updateMask.fieldPaths=labTouch`, {
+        method: "PATCH",
+        headers: { authorization: "Bearer owner", "content-type": "application/json" },
+        body: JSON.stringify({ fields: { labTouch: { integerValue: String(n) } } }),
+      });
+      if (!res.ok) throw new Error(`the client write failed: ${res.status}`);
+    };
+    return measured(s, async () => {
+      const tIdle = await s.now();
+      await sleep(Math.max(ctx.idleMs, 61000));
+      const tDirWrite = await s.now();
+      await touch(1);
+      await sleep(8000);
+      const tBack = await s.tap(byText("button", "Hub", { exact: true }), "the Hub tab");
+      await s.must(hubReady, "the Hub again");
+      await s.settle(600, 15000);
+      const tHubWrite = await s.now();
+      await touch(2);
+      await sleep(8000);
+      return {
+        wallMs: null,
+        phases: [["directoryIdle", tIdle], ["directoryWrite", tDirWrite], ["toHub", tBack], ["hubWrite", tHubWrite]],
+        steps: { idleMs: Math.round(tDirWrite - tIdle) },
+      };
+    });
+  },
+
   /** (d) The focus client's card on today's Hub -> the peek -> Open profile -> the Journey tab drawn. */
   async client(s, ctx) {
     await s.must(hubReady, "the Hub");
@@ -555,6 +620,7 @@ const SCENARIO_RUNS = {
       const settled = await s.settle();
       const rows = await s.ev(`document.querySelectorAll(".jg-row").length`);
       return {
+        phases: [["peek", t0], ["openProfile", t1], ["afterJourney", journey]],
         wallMs: round(journey - t0),
         client: focus ? { id: focus.id, name: focus.name, journeySessions: focus.journeySessions, exerciseLogs: focus.exerciseLogs, priorSessions: focus.priorSessions } : null,
         steps: { tapToPeekMs: round(peek - t0), openToJourneyMs: round(journey - t1), journeySettledMs: settled > 0 ? round(settled - t1) : null, journeyRows: rows },
@@ -614,6 +680,8 @@ const SCENARIO_RUNS = {
       const setTotal = sets.every((x) => typeof x === "number") ? sets.reduce((a, b) => a + b, 0) : null;
       const finishToWrapUp = round(wrap - tConfirm);
       return {
+        // Where the long tasks (and, profiled, the CPU) fell: each phase runs to the next one's start.
+        phases: [["peek", t0], ["start", tStart], ["onBriefing", briefing], ["toNowBar", tGo], ["sets", nowBar], ["menu", tMenu], ["finish", tFinish], ["wrapUp", wrap]],
         // The app's own work a trainer waits on: start -> briefing -> Now Bar -> five sets -> the menu. Finish is apart.
         wallMs: [startToBriefing, briefingToNowBar, setTotal, menuOpen].every((x) => typeof x === "number") ? startToBriefing + briefingToNowBar + setTotal + menuOpen : null,
         client: focus ? { id: focus.id, name: focus.name, journeySessions: focus.journeySessions, exerciseLogs: focus.exerciseLogs } : null,
@@ -661,6 +729,8 @@ const SCENARIO_RUNS = {
       const typed = await s.now();
       const searchSettled = await s.settle(500, 10000);
       return {
+        // Where the long tasks (and, profiled, the CPU) fell: each phase runs to the next one's start.
+        phases: [["open", tOps], ["settle", brief], ["backToHub", todaySettled > 0 ? todaySettled : null], ["directory", tDir], ["search", tType]].filter(([, t]) => typeof t === "number"),
         wallMs: todaySettled > 0 ? round(todaySettled - tOps) : null,
         steps: {
           menuToTodayDrawnMs: round(brief - tOps),

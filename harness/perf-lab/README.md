@@ -105,6 +105,7 @@ Every profile but `floor` adds 60 ms of latency at 20 Mbps down / 10 up (gym Wi-
 | e `session` | Theodora Pemberton's card on tomorrow's Hub, Start session, the briefing's Start, 5 sets typed and Next, the machine menu opened and closed; then Finish, Finish session | **wall = start -> briefing + briefing -> Now Bar + the five sets + the menu**, the app's own work a trainer waits on. Each step is reported; Finish (to the Wrap-up, and the database's answer) is reported apart, as the emulator's |
 | f `ops` | The trainer menu, Open Operations, Today; back to the Hub, the Client tab, "Pat" typed in the search | **wall = Today settled**: nothing anywhere on the Operations page still "Reading..." and no spinner. Plus Today first drawn, the Directory drawn and settled, results after the last key |
 | g `scroll` | The Hub's grid scrolled down and up three times, the Directory once down, by script, 36 px a frame | frames the main thread missed, per pass |
+| h `live` (opt-in: `--scenarios live`) | The Directory left open across a minute tick, then one client document changed (the emulator's owner token, a field no screen reads, as a webhook or the nightly job would), then the same on the Hub | long tasks per phase (`lt.directoryIdle`, `lt.directoryWrite`, `lt.toHub`, `lt.hubWrite`) |
 
 ### How a number is taken
 
@@ -115,6 +116,7 @@ Every profile but `floor` adds 60 ms of latency at 20 Mbps down / 10 up (gym Wi-
 - **Waiting** (for the opens and the client scenario, whose wall is one span) is the time not spent in long tasks: the network, the emulator and the app's own timers.
 - **Requests / KB** are what the page fetched during the scenario (bodies, from the network log).
 - Long tasks, the slowest interaction (INP-like) and uncaught exceptions as before; the DOM size and the JS heap at the end.
+- **Phases.** client, session, ops and live name their phases (session: peek, start, onBriefing, toNowBar, sets, menu, finish, wrapUp; ops: open, settle, backToHub, directory, search). Each phase's long tasks are a step (`lt.<phase>`, the tasks that began in it), and in the profiled rep the report adds "By phase": each phase's CPU and its top functions, from the profile's samples between the phase's page times (matched to the profile's clock at Profiler.start, so a few ms either way).
 - **The timed reps run without the profiler.** The profiled rep (one per profile, kept out of the medians) is what "Where the time went" reads. A function's line there is where it is DEFINED, not the hot line (the bundle is minified to one line, so V8's line ticks can't help), and forced layout counts as the calling function's own time.
 - `--bare` drops every page instrument (no observers; only the clock shim stays), to measure what they cost: compare a `--bare` desktop run with a normal one. On Oct 6 2026 they cost about 1 to 2% of an open at 1x (cold Start tap to Hub 4,055 ms bare against 4,150, warm 835 against 854, after-deploy 2,230 against 2,258). The clock shim itself shows in the profile as `(LabDate)`, about 30 ms of a 5 s open at 3x.
 

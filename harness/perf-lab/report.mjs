@@ -33,6 +33,18 @@ function foldCpu(runs, key) {
     .map(([name, ms]) => ({ name, ms: Math.round((ms / Math.max(1, runs.length)) * 10) / 10 }));
 }
 
+/** The profiled reps' CPU by phase (a scenario that names its phases), in the scenario's order. */
+function phaseCpu(prof) {
+  const names = [...new Set(prof.flatMap((m) => Object.keys(m.cpuPhases || {})))];
+  if (!names.length) return null;
+  const out = {};
+  for (const ph of names) {
+    const per = prof.map((m) => ({ cpu: m.cpuPhases?.[ph] })).filter((m) => m.cpu);
+    out[ph] = { totalMs: median(per.map((m) => m.cpu.totalMs)), files: foldCpu(per, "files"), functions: foldCpu(per, "functions") };
+  }
+  return out;
+}
+
 function summariseRuns(runs, profiledRuns) {
   const out = {};
   const names = new Set([...runs, ...profiledRuns].flatMap((r) => Object.keys(r.scenarios || {})));
@@ -63,6 +75,7 @@ function summariseRuns(runs, profiledRuns) {
       cpuTotalMs: median(prof.map((m) => m.cpu?.totalMs)),
       cpuFiles: foldCpu(prof, "files"),
       cpuFunctions: foldCpu(prof, "functions"),
+      cpuPhases: phaseCpu(prof),
     };
   }
   return out;
@@ -88,6 +101,7 @@ const SCENARIO_WORDS = {
   session: "(e) Session: start -> briefing -> Now Bar -> 5 sets -> machine menu (wall = the sum of those steps; Finish apart)",
   ops: "(f) Operations Today settled (ms from Open Operations), then the Client Directory and a search",
   scroll: "(g) Scrolling the Hub grid (3 times down and up) and the Directory (once down)",
+  live: "(h) live, opt-in: the Directory across a minute tick, one client document changed there, then on the Hub (long tasks per phase, lt.*)",
 };
 
 const n = (v) => (typeof v === "number" ? v.toLocaleString("en-US") : "-");
@@ -256,7 +270,7 @@ export function writeReport(results, outDir) {
     L(`## Where the time went (${slow}, the profiled rep, self time through the source maps)`);
     L();
     L("A function's line is where it is DEFINED, not the line that was hot. Forced layout and style (a read of a size after a change) is counted as the calling function's own time, so a function that only measures (scrollToEnd, measureScroll) may be paying for layout, not JavaScript.");
-    for (const sc of ["cold", "warm", "relaunch", "afterdeploy", "idle", "client", "session", "ops"]) {
+    for (const sc of ["cold", "warm", "relaunch", "afterdeploy", "idle", "client", "session", "ops", "live"]) {
       const m = sm[sc];
       if (!m || !m.cpuFiles.length) continue;
       L();
@@ -269,6 +283,18 @@ export function writeReport(results, outDir) {
         const fn = m.cpuFunctions[i];
         if (!f && !fn) break;
         L(`| ${f ? f.name : ""} | ${f ? f.ms : ""} | ${fn ? fn.name.replace(/\|/g, "/") : ""} | ${fn ? fn.ms : ""} |`);
+      }
+      // By phase: each phase's CPU, and its top functions (the profile's samples between the phase's page times).
+      if (m.cpuPhases) {
+        L();
+        L(`By phase (${sc}): CPU ms, then the top functions.`);
+        L();
+        L("| phase | CPU ms | top functions |");
+        L("| --- | ---: | --- |");
+        for (const [ph, c] of Object.entries(m.cpuPhases)) {
+          const tops = (c.functions || []).slice(0, 6).map((f) => `${f.name.replace(/\|/g, "/")} ${f.ms}`).join("; ");
+          L(`| ${ph} | ${n(c.totalMs)} | ${tops} |`);
+        }
       }
     }
   }

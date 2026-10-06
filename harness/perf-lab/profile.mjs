@@ -116,11 +116,15 @@ export class SourceMaps {
  * Also: the package file in node_modules (react-dom, firestore...) is folded
  * to the package.
  */
-export function foldProfile(profile, maps, { top = 200 } = {}) {
+export function foldProfile(profile, maps, { top = 200, fromUs = -Infinity, toUs = Infinity } = {}) {
   const nodes = new Map(profile.nodes.map((n) => [n.id, n]));
   const selfUs = new Map();
   const { samples = [], timeDeltas = [] } = profile;
+  // A window (fromUs..toUs, the profile's own clock) keeps only the samples taken inside it: one phase of a scenario.
+  let at = profile.startTime ?? 0;
   for (let i = 0; i < samples.length; i += 1) {
+    at += timeDeltas[i] ?? 0;
+    if (at < fromUs || at >= toUs) continue;
     const dt = timeDeltas[i + 1] ?? 0;
     selfUs.set(samples[i], (selfUs.get(samples[i]) ?? 0) + Math.max(0, dt));
   }
