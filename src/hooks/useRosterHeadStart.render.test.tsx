@@ -6,7 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { ROSTER_HEAD_START_MS, useRosterHeadStart } from "./useRosterHeadStart";
+import { ROSTER_HEAD_START_MS, rosterNeedNotWait, useRosterHeadStart } from "./useRosterHeadStart";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -69,5 +69,21 @@ describe("useRosterHeadStart", () => {
     expect(last()).toBe(false);
     await render(null, true);
     expect(last()).toBe(false);
+  });
+});
+
+describe("rosterNeedNotWait (the review, Oct 6 2026)", () => {
+  it("waits only on the Hub, online, while the day is still loading", () => {
+    expect(rosterNeedNotWait({ onHub: true, online: true, dayLoading: true })).toBe(false);
+    expect(rosterNeedNotWait({ onHub: true, online: true, dayLoading: false })).toBe(true);
+    // A resumed session or the Directory needs the roster now.
+    expect(rosterNeedNotWait({ onHub: false, online: true, dayLoading: true })).toBe(true);
+    // Offline the day may never answer, and the cache can give the roster at once.
+    expect(rosterNeedNotWait({ onHub: true, online: false, dayLoading: true })).toBe(true);
+  });
+
+  it("opens the roster at once when not on the Hub", async () => {
+    await render("studio-a", rosterNeedNotWait({ onHub: false, online: true, dayLoading: true }));
+    expect(last()).toBe(true);
   });
 });

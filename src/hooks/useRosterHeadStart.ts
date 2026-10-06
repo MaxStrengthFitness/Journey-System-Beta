@@ -19,6 +19,18 @@ import { useEffect, useState } from "react";
  */
 export const ROSTER_HEAD_START_MS = 3000;
 
+/**
+ * Whether the roster may start without waiting on the day (the review, Oct 6
+ * 2026): the head start is for the Hub drawing its day. On any other screen
+ * (a resumed session, the Directory) the roster is what the screen needs, and
+ * offline the day's bookings may never leave "loading" while the iPad's cache
+ * could answer the roster at once. So it waits only on the Hub, online, while
+ * the day is still loading.
+ */
+export function rosterNeedNotWait(opts: { onHub: boolean; online: boolean; dayLoading: boolean }): boolean {
+  return !opts.onHub || !opts.online || !opts.dayLoading;
+}
+
 export function useRosterHeadStart(
   studioId: string | null | undefined,
   dayAnswered: boolean,

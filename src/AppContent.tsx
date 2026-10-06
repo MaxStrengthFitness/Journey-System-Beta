@@ -274,7 +274,7 @@ import { useMachines } from "./hooks/useMachines";
 import { useSessions } from "./hooks/useSessions";
 import { useLiveSchedule } from "./hooks/useLiveSchedule";
 import { useStudioRoster } from "./hooks/useStudioRoster";
-import { useRosterHeadStart } from "./hooks/useRosterHeadStart";
+import { rosterNeedNotWait, useRosterHeadStart } from "./hooks/useRosterHeadStart";
 import { useMachineTotals } from "./features/machine-totals/useMachineTotals";
 import { withMachineTotals } from "./features/machine-totals/totals";
 import { useClientMutations } from "./hooks/useClientMutations";
@@ -616,7 +616,11 @@ export default function AppContent({
      a slow iPad the Hub draws its day before it takes in every client. */
   const rosterMayStart = useRosterHeadStart(
     activeStudioId,
-    scheduleDayState(studioTodayKey()) !== "loading",
+    rosterNeedNotWait({
+      onHub: currentView === "clients",
+      online: typeof navigator === "undefined" || navigator.onLine !== false,
+      dayLoading: scheduleDayState(studioTodayKey()) === "loading",
+    }),
   );
   const { clients: rosterClients, status: rosterStatus, cut: rosterCut } = useStudioRoster(
     activeStudioId,
