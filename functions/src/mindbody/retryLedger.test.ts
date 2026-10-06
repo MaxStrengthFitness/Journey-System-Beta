@@ -9,6 +9,7 @@ describe("recordAttemptFailure", () => {
   let priorAttempts: number | undefined;
   let ledgerWrite: ReturnType<typeof vi.fn>;
   let eventLogDelete: ReturnType<typeof vi.fn>;
+  let eventLogSet: ReturnType<typeof vi.fn>;
   let firestore: Firestore;
 
   beforeEach(() => {
@@ -16,10 +17,12 @@ describe("recordAttemptFailure", () => {
     priorAttempts = undefined;
     ledgerWrite = vi.fn();
     eventLogDelete = vi.fn().mockResolvedValue(undefined);
+    eventLogSet = vi.fn().mockResolvedValue(undefined);
 
     const collection = vi.fn((name: string) => ({
       doc: vi.fn(() => ({
         delete: name === "mindbodyEventLog" ? eventLogDelete : vi.fn(),
+        set: name === "mindbodyEventLog" ? eventLogSet : vi.fn(),
         __name: name,
       })),
     }));
@@ -82,6 +85,28 @@ describe("recordAttemptFailure", () => {
         originalPayload: { eventData: { clientId: 5 } },
       }),
     );
+  });
+
+  it("marks a dead-lettered event's claim, so a stray resend never takes it over (R25)", async () => {
+    priorAttempts = MAX_ATTEMPTS - 1;
+    await run();
+    expect(eventLogSet).toHaveBeenCalledWith(
+      expect.objectContaining({ state: "dead_lettered" }),
+      { merge: true },
+    );
+  });
+
+  it("still dead-letters when the claim cannot be marked", async () => {
+    priorAttempts = MAX_ATTEMPTS - 1;
+    eventLogSet.mockRejectedValueOnce(new Error("offline"));
+    const outcome = await run();
+    expect(outcome.willRetry).toBe(false);
+    expect(recordDeadLetter).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not mark the claim while the event still has attempts left", async () => {
+    await run();
+    expect(eventLogSet).not.toHaveBeenCalled();
   });
 
   it("still reports a retry when the release delete fails", async () => {

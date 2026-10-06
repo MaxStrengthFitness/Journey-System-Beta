@@ -3,21 +3,24 @@ import * as crypto from "node:crypto";
 import {
   handleMindbodyWebhook,
   resetStudioCache,
+  resetHealthQuiet,
   toUtcTimestamp,
   WebhookRequest,
   WebhookDeps,
   saleClientIds,
 } from "./index";
 import { recordHealthEvent } from "./healthState";
-import { tryRecordEvent } from "./idempotency";
+import { tryRecordEvent, markEventDone } from "./idempotency";
 import { Firestore, Timestamp } from "firebase-admin/firestore";
 
 vi.mock("./healthState", () => ({
   recordHealthEvent: vi.fn(),
+  HEALTH_QUIET_MS: 60_000,
 }));
 
 vi.mock("./idempotency", () => ({
   tryRecordEvent: vi.fn(),
+  markEventDone: vi.fn(),
 }));
 
 function signForTest(body: string, secret: string) {
@@ -76,6 +79,8 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
     // The studio lookup is cached at module scope for 60s, which would otherwise
     // leak one test's roster into the next.
     resetStudioCache();
+    // The instance's quiet minute for health successes is module state too.
+    resetHealthQuiet();
 
     studioDocs = [
       { id: "studio-123", data: () => ({ mindbodySiteId: 99999 }) },
@@ -169,6 +174,7 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
     };
 
     vi.mocked(tryRecordEvent).mockResolvedValue({ wasNew: true });
+    vi.mocked(markEventDone).mockResolvedValue(true);
   });
 
   it("1. Valid signature + new event + clientId in eventData -> returns 200, writes to Firestore", async () => {
@@ -711,6 +717,139 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
 
     expect(response.statusCode).toBe(200);
     expect(scheduleWrite()?.data.status).toBe("Scheduled");
+  });
+
+  /* The speed round (Oct 5 2026, R25): the claim, the event log's studio, the quiet minute. */
+
+  it("12o. a booking marks its claim done AFTER the work, filed under the booking's studio", async () => {
+    existingDocs["trainers/trainer-abc"] = { fullName: "Marina K", primaryHomeStudioId: "studio-123" };
+    const order: string[] = [];
+    mockSet.mockImplementation(async () => {
+      order.push("work");
+    });
+    vi.mocked(markEventDone).mockImplementation(async () => {
+      order.push("done");
+      return true;
+    });
+
+    const response = await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created()));
+
+    expect(response.statusCode).toBe(200);
+    expect(order[order.length - 1]).toBe("done");
+    expect(order).toContain("work");
+    expect(markEventDone).toHaveBeenCalledWith(
+      deps.firestore,
+      expect.stringMatching(/^booking-appointmentBooking\.created/),
+      expect.objectContaining({ studioId: "studio-123", hydrationLatencyMs: expect.any(Number) }),
+    );
+  });
+
+  it("12p. a cancellation is filed under the studio of the booking it cancelled", async () => {
+    studioDocs = [
+      { id: "studio-solon", data: () => ({ mindbodySiteId: 99999, mindbodyLocationId: 2 }) },
+      { id: "studio-westlake", data: () => ({ mindbodySiteId: 99999, mindbodyLocationId: 1 }) },
+    ];
+    existingDocs["schedules/121"] = { studioId: "studio-westlake", status: "Scheduled" };
+
+    await handleMindbodyWebhook(
+      deps,
+      bookingEnvelope("appointmentBooking.cancelled", { siteId: 99999, appointmentId: 121 }),
+    );
+
+    expect(vi.mocked(markEventDone).mock.calls[0][2]).toMatchObject({ studioId: "studio-westlake" });
+  });
+
+  it("12q. an event no branch placed is filed by its site only when the site is one studio's", async () => {
+    // A sale names no studio of its own; site 99999 belongs to studio-123 alone.
+    const sale = JSON.stringify({
+      messageId: "msg-sale-1",
+      eventId: "clientSale.created",
+      eventData: { siteId: 99999, purchasingClientId: 777 },
+    });
+    await handleMindbodyWebhook(deps, { rawBody: sale, signatureHeader: signForTest(sale, mockSecret) });
+    expect(vi.mocked(markEventDone).mock.calls[0][2]).toMatchObject({ studioId: "studio-123" });
+
+    // On a shared site with no location it is filed under no studio, never a guess.
+    vi.mocked(markEventDone).mockClear();
+    resetStudioCache();
+    studioDocs = [
+      { id: "studio-solon", data: () => ({ mindbodySiteId: 99999, mindbodyLocationId: 2 }) },
+      { id: "studio-westlake", data: () => ({ mindbodySiteId: 99999, mindbodyLocationId: 1 }) },
+    ];
+    const sale2 = JSON.stringify({
+      messageId: "msg-sale-2",
+      eventId: "clientSale.created",
+      eventData: { siteId: 99999, purchasingClientId: 777 },
+    });
+    await handleMindbodyWebhook(deps, { rawBody: sale2, signatureHeader: signForTest(sale2, mockSecret) });
+    expect(vi.mocked(markEventDone).mock.calls[0][2]).toMatchObject({ studioId: null });
+  });
+
+  it("12r. a duplicate is answered 200 and its claim is neither worked nor marked", async () => {
+    vi.mocked(tryRecordEvent).mockResolvedValue({ wasNew: false });
+    const response = await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created()));
+    expect(response.statusCode).toBe(200);
+    expect(writesTo("schedules")).toHaveLength(0);
+    expect(markEventDone).not.toHaveBeenCalled();
+  });
+
+  it("12s. a failed event is never marked done, so its claim can be released or run out", async () => {
+    mockSet.mockRejectedValue(new Error("Firestore error"));
+    const response = await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created()));
+    expect(response.statusCode).toBe(500);
+    expect(markEventDone).not.toHaveBeenCalled();
+  });
+
+  it("12t. a claim taken over from an attempt that never finished is processed", async () => {
+    vi.mocked(tryRecordEvent).mockResolvedValue({ wasNew: true, takenOver: true, attempt: 2 });
+    existingDocs["trainers/trainer-abc"] = { fullName: "Marina K", primaryHomeStudioId: "studio-123" };
+    const response = await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created()));
+    expect(response.statusCode).toBe(200);
+    expect(scheduleWrite()?.data.status).toBe("Scheduled");
+    expect(markEventDone).toHaveBeenCalledTimes(1);
+  });
+
+  it("12u. successes within a minute on one instance run the health transaction once", async () => {
+    const successes = () =>
+      vi.mocked(recordHealthEvent).mock.calls.filter(([, e]) => e.type === "webhook_success").length;
+
+    await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created()));
+    await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created({ appointmentId: 122 })));
+    expect(successes()).toBe(1);
+
+    // A failure on this instance means the next success is recorded at once.
+    mockSet.mockRejectedValueOnce(new Error("Firestore error"));
+    await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created({ appointmentId: 123 })));
+    await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created({ appointmentId: 124 })));
+    expect(successes()).toBe(2);
+  });
+
+  it("12v. a minute after the last recorded success, the next one is recorded again", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(Date.parse("2026-10-05T12:00:00Z"));
+      await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created()));
+      vi.setSystemTime(Date.parse("2026-10-05T12:00:30Z"));
+      await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created({ appointmentId: 122 })));
+      vi.setSystemTime(Date.parse("2026-10-05T12:01:01Z"));
+      await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created({ appointmentId: 123 })));
+      const successes = vi
+        .mocked(recordHealthEvent)
+        .mock.calls.filter(([, e]) => e.type === "webhook_success").length;
+      expect(successes).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("12w. a health write that failed does not start the quiet minute", async () => {
+    vi.mocked(recordHealthEvent).mockRejectedValueOnce(new Error("health doc contended"));
+    await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created()));
+    await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created({ appointmentId: 122 })));
+    const successes = vi
+      .mocked(recordHealthEvent)
+      .mock.calls.filter(([, e]) => e.type === "webhook_success").length;
+    expect(successes).toBe(2);
   });
 
   describe("multiple studios sharing one MindBody site", () => {
