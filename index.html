@@ -36,6 +36,35 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <!-- Warm the connections every open needs before the app's script has
+         even downloaded (the speed round, Oct 5 2026, R5): Firestore, and
+         Firebase Auth's two (who is signed in, a fresh token each morning).
+         crossorigin because the SDKs call them with CORS and no cookies, and
+         a preconnect only helps a request of the same kind. -->
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin />
+    <script>
+      // The sign-in popup's helper loads from two more places, and only where
+      // the sign-in screen is likely next: nobody was signed in here last
+      // time (src/lib/auth-boot.ts, the same key; a signed-in open never
+      // loads the helper since R14). The auth domain is the production
+      // project's, public by design; another project's build just warms a
+      // connection it won't use.
+      (function () {
+        var signedIn = false;
+        try {
+          signedIn = localStorage.getItem("journey_signed_in_here") === "1";
+        } catch (e) {}
+        if (signedIn) return;
+        ["https://apis.google.com", "https://gen-lang-client-0731527386.firebaseapp.com"].forEach(function (href) {
+          var link = document.createElement("link");
+          link.rel = "preconnect";
+          link.href = href;
+          document.head.appendChild(link);
+        });
+      })();
+    </script>
     <script>
       // The theme before the first paint. ThemeProvider (src/components/
       // ThemeProvider.tsx) owns the theme once React runs; until then <html>
