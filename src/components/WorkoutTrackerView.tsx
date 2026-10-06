@@ -3170,17 +3170,24 @@ export function WorkoutTrackerView({
   /* The live column, memoised with steady callbacks (R10): it used to be a
      new object on every render, which redrew every row of the grid. The
      callbacks call the newest handler through a ref, so they never go stale. */
-  const gridLiveHandlers = useRef({ change: handleGridLiveChange, add: (_id: string) => {} });
-  gridLiveHandlers.current.change = handleGridLiveChange;
-  gridLiveHandlers.current.add = (id: string) => {
-    if (activeMachineIds.includes(id)) return;
-    applySessionMachineIds([...activeMachineIds, id]);
+  const gridLiveHandlers = useRef<{
+    change: (machineId: string, patch: Partial<LiveSet>) => void;
+    onAddMachine: (id: string) => void;
+  } | null>(null);
+  gridLiveHandlers.current = {
+    change: handleGridLiveChange,
+    /* Straight into the session's own list, through the one recorder the
+       reorder sheet uses: the session document, never the routine. */
+    onAddMachine: (id: string) => {
+      if (activeMachineIds.includes(id)) return;
+      applySessionMachineIds([...activeMachineIds, id]);
+    },
   };
   const onGridLiveChange = React.useCallback(
-    (machineId: string, patch: Partial<LiveSet>) => gridLiveHandlers.current.change(machineId, patch),
+    (machineId: string, patch: Partial<LiveSet>) => gridLiveHandlers.current?.change(machineId, patch),
     [],
   );
-  const onGridAddMachine = React.useCallback((id: string) => gridLiveHandlers.current.add(id), []);
+  const onGridAddMachine = React.useCallback((id: string) => gridLiveHandlers.current?.onAddMachine(id), []);
   /* Moving to another machine sends whatever is still waiting on this one. */
   const onGridFocusMachine = React.useCallback(
     (id: string) => {
