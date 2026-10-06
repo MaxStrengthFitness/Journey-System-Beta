@@ -3,7 +3,6 @@ import { signOut } from "firebase/auth";
 import { OpeningJourney } from "./features/front-door/CheckingIn";
 import { auth } from "./firebase";
 import { ActiveStudioProvider } from "./contexts/ActiveStudioContext";
-import { MindbodyHealthProvider } from "./contexts/MindbodyHealthContext";
 import { ToastProvider } from "./contexts/ToastContext";
 import { UnsavedChangesProvider } from "./features/unsaved-changes";
 import AppContent from "./AppContent";
@@ -55,7 +54,10 @@ export default function App() {
   if (!isAuthReady) return <OpeningJourney />;
 
   return (
-    <MindbodyHealthProvider>
+    <>
+      {/* No MindbodyHealthProvider here any more: the webhook's health is
+          watched by Operations → Mindbody alone (the speed round, Oct 5
+          2026; features/admin/mindbody/AdminMindbodyTab.tsx). */}
       <ToastProvider>
         {/* Keyed on the person, so a sign-out unmounts every screen, mode,
             selection and the in-memory studio with it, and the next person
@@ -100,6 +102,6 @@ export default function App() {
           </UnsavedChangesProvider>
         </ActiveStudioProvider>
       </ToastProvider>
-    </MindbodyHealthProvider>
+    </>
   );
 }
