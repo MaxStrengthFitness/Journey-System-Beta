@@ -49,6 +49,7 @@ export function ActiveStudioProvider({
   children,
   studios,
   networks = [],
+  studiosConfirmed = true,
   authTrainer,
   isAdmin = false,
   userEmail,
@@ -58,6 +59,13 @@ export function ActiveStudioProvider({
   children: ReactNode;
   studios: Studio[];
   networks?: FranchiseNetwork[];
+  /**
+   * The server has answered for the studios (the speed round, Oct 5 2026).
+   * The app now opens on the iPad's own copy of the list, and a studio
+   * missing from a copy is not gone: the open studio is cleared only on the
+   * server's word.
+   */
+  studiosConfirmed?: boolean;
   authTrainer: Trainer | null;
   isAdmin?: boolean;
   userEmail?: string;
@@ -189,6 +197,7 @@ export function ActiveStudioProvider({
   useEffect(() => {
     if (
       activeStudioId &&
+      studiosConfirmed &&
       studios.length > 0 &&
       availableStudios.length > 0 &&
       authTrainer
@@ -208,7 +217,7 @@ export function ActiveStudioProvider({
         );
       }
     }
-  }, [availableStudios, activeStudioId, authTrainer, studios]);
+  }, [availableStudios, activeStudioId, authTrainer, studios, studiosConfirmed]);
 
   return (
     <ActiveStudioContext.Provider

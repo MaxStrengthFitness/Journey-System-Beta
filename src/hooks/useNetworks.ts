@@ -4,7 +4,7 @@ import { db } from "../firebase";
 import { FranchiseNetwork } from "../types";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 
-export function useNetworks(isReady: boolean, setNetworks: (networks: FranchiseNetwork[]) => void) {
+export function useNetworks(isReady: boolean, setNetworks: (networks: FranchiseNetwork[], meta?: { fromCache?: boolean }) => void) {
   useEffect(() => {
     if (!isReady) return;
 
@@ -15,6 +15,7 @@ export function useNetworks(isReady: boolean, setNetworks: (networks: FranchiseN
           snap.docs.map(
             (doc) => ({ id: doc.id, ...doc.data() }) as FranchiseNetwork,
           ),
+          { fromCache: snap.metadata.fromCache },
         );
       },
       (error) => {

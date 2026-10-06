@@ -191,7 +191,7 @@ import {
   signInErrorSentence,
   wrongMicrosoftAccountSentence,
 } from "./features/front-door/sign-in-errors";
-import type { TrainerLookup } from "./hooks/useAuthInitialization";
+import type { LiveMeta, TrainerLookup } from "./hooks/useAuthInitialization";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { isOwner } from "./lib/permissions";
 import { HUB_PLACE, mayOpenOperations } from "./features/admin/operations-access";
@@ -282,6 +282,10 @@ export default function AppContent({
   setTrainers,
   networks,
   setNetworks,
+  studiosKnown = true,
+  trainersKnown = true,
+  networksKnown = true,
+  studiosConfirmed = true,
   handleLogout,
   tokenRole,
   signInRefusal = null,
@@ -293,11 +297,22 @@ export default function AppContent({
   authTrainer: Trainer;
   setAuthTrainer: (t: Trainer | null) => void;
   studios: Studio[];
-  setStudios: (s: Studio[]) => void;
+  setStudios: (s: Studio[], meta?: LiveMeta) => void;
   trainers: Trainer[];
-  setTrainers: (t: Trainer[]) => void;
+  setTrainers: (t: Trainer[], meta?: LiveMeta) => void;
   networks: FranchiseNetwork[];
-  setNetworks: (n: FranchiseNetwork[]) => void;
+  setNetworks: (n: FranchiseNetwork[], meta?: LiveMeta) => void;
+  /**
+   * Whether each list has answered yet (the speed round, Oct 5 2026): the
+   * app opens on the trainer record and the lists arrive beside it, so a
+   * screen that would say something off one asks first.
+   * features/front-door/boot-lookup.ts.
+   */
+  studiosKnown?: boolean;
+  trainersKnown?: boolean;
+  networksKnown?: boolean;
+  /** The server has answered for the studios; dropping a missing one waits for it. */
+  studiosConfirmed?: boolean;
   handleLogout: () => Promise<void>;
   tokenRole: string | null;
   /** Why the last sign-in was turned away: a switched-off account (Oct 2 2026). */
@@ -374,10 +389,12 @@ export default function AppContent({
    * no longer exists is still dropped here.
    */
   useEffect(() => {
-    if (activeStudioId || isChangingStudio || studios.length === 0) return;
+    // Only on the server's word: the iPad's own copy of the list may be
+    // missing a studio that exists (the speed round, Oct 5 2026).
+    if (activeStudioId || isChangingStudio || studios.length === 0 || !studiosConfirmed) return;
     const pinned = getDefaultStudioId();
     if (pinned && !studios.some((s) => s.id === pinned)) setDefaultStudioId(null);
-  }, [activeStudioId, isChangingStudio, studios]);
+  }, [activeStudioId, isChangingStudio, studios, studiosConfirmed]);
   const [isSyncing, setIsSyncing] = useState(false);
   /*
    * Who may open Operations: studio leaders and above, and — inside Demo Mode
@@ -1093,7 +1110,7 @@ export default function AppContent({
      lookup that found nobody (the front door, Oct 3 2026). */
   const signedInEmail = user?.email || user?.providerData?.find((p) => p?.email)?.email || null;
   if (user && trainerLookup === "checking") {
-    return <CheckingIn step={lookupStep} email={signedInEmail} />;
+    return <CheckingIn step={lookupStep} email={signedInEmail} onSignOut={() => void handleLogout()} />;
   }
   if (user && !authTrainer && trainerLookup === "failed") {
     return (
@@ -1132,6 +1149,9 @@ export default function AppContent({
         studios={studios}
         networks={networks}
         trainers={trainers}
+        studiosKnown={studiosKnown}
+        networksKnown={networksKnown}
+        trainersKnown={trainersKnown}
         authTrainer={authTrainer}
         onSelectTrainer={(selectedTrainer, studioId) => {
           setActiveStudioId(studioId);

@@ -33,7 +33,18 @@ export interface TodayGlanceRead {
   openJobs: number | null;
 }
 
-export function useTodayGlance(studio: Studio | null, me: Trainer | null, trainers: readonly Trainer[]): TodayGlanceRead {
+/**
+ * `trainersReady` (the speed round, Oct 5 2026): the app now opens before the
+ * trainers list has answered. "Yours" is worked out from it, so until it has
+ * the greeting says it is reading, and reads once, rather than counting off
+ * an empty list and reading again.
+ */
+export function useTodayGlance(
+  studio: Studio | null,
+  me: Trainer | null,
+  trainers: readonly Trainer[],
+  trainersReady = true,
+): TodayGlanceRead {
   const [read, setRead] = useState<TodayGlanceRead>({ loading: Boolean(studio), glance: null, openJobs: null });
   const studioId = studio?.id ?? null;
   const tz = studio?.timezone || undefined;
@@ -45,6 +56,10 @@ export function useTodayGlance(studio: Studio | null, me: Trainer | null, traine
   useEffect(() => {
     if (!studioId || !myId) {
       setRead({ loading: false, glance: null, openJobs: null });
+      return;
+    }
+    if (!trainersReady) {
+      setRead({ loading: true, glance: null, openJobs: null });
       return;
     }
     let live = true;
@@ -91,7 +106,7 @@ export function useTodayGlance(studio: Studio | null, me: Trainer | null, traine
     };
     // trainersKey stands for `trainers`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId, myId, tz, siteId, trainersKey]);
+  }, [studioId, myId, tz, siteId, trainersKey, trainersReady]);
 
   return read;
 }

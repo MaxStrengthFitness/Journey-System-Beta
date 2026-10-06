@@ -3,13 +3,16 @@ import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth
 import {
   doc,
   getDoc,
+  getDocFromCache,
   collection,
   getDocs,
+  getDocsFromCache,
   onSnapshot,
   query,
   where,
   setDoc,
   updateDoc,
+  type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { SWITCHED_OFF_SENTENCE, isSwitchedOff } from "../features/sign-out/account-off";
 import { auth, db } from "../firebase";
@@ -21,14 +24,48 @@ import {
   withoutSuperseded,
 } from "../features/trainer-identity/claim";
 import { endPersonalSession, personChanged } from "../features/sign-out/sign-out";
+import {
+  NOTHING_KNOWN,
+  TIMED_OUT,
+  accessChanged,
+  answerCounts,
+  levelOf,
+  raise,
+  trainerFromDoc,
+  withTimeout,
+  type BootKnowledge,
+  type ReadLevel,
+} from "../features/front-door/boot-lookup";
+
+/** What a live listener says about its answer, so an empty one from the cache alone doesn't count. */
+export interface LiveMeta {
+  fromCache?: boolean;
+}
+
+type BootList = keyof BootKnowledge;
+
+/**
+ * How long opening Journey waits for the person's role claim before it
+ * carries on without it (the speed round, Oct 5 2026). The token is read
+ * locally while it is fresh; after an hour asleep it is refreshed from the
+ * server, which on dead Wi-Fi can take Auth's own thirty seconds. Past this
+ * the app opens and the claim is checked when it lands.
+ */
+const CLAIM_WAIT_MS = 2000;
 
 export function useAuthInitialization() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [authTrainer, setAuthTrainer] = useState<Trainer | null>(null);
-  const [studios, setStudios] = useState<Studio[]>([]);
-  const [trainers, setTrainers] = useState<Trainer[]>([]);
-  const [networks, setNetworks] = useState<FranchiseNetwork[]>([]);
+  const [studios, setStudiosState] = useState<Studio[]>([]);
+  const [trainers, setTrainersState] = useState<Trainer[]>([]);
+  const [networks, setNetworksState] = useState<FranchiseNetwork[]>([]);
+  /**
+   * How much is known about each list (the speed round, Oct 5 2026, R4):
+   * unknown, the iPad's own copy, or the server. features/front-door/
+   * boot-lookup.ts says why the screens need it.
+   */
+  const [known, setKnown] = useState<BootKnowledge>(NOTHING_KNOWN);
   const [tokenRole, setTokenRole] = useState<string | null>(null);
   /** Why the last sign-in was turned away (a switched-off account), for the sign-in screen. */
   const [signInRefusal, setSignInRefusal] = useState<string | null>(null);
@@ -51,32 +88,164 @@ export function useAuthInitialization() {
   }, []);
 
   /**
-   * While signed in, watch the person's own trainer record (one document), so
-   * an account switched off by an administrator signs them out at once rather
-   * than at their next sign-in (Oct 2 2026). A failed read changes nothing.
+   * Which lists a live listener (AppContent's useStudios, useTrainers,
+   * useNetworks) or an explicit refresh has already filled. The boot's own
+   * read of a list never overwrites one of those: it is older by definition.
+   */
+  const liveRef = useRef<Record<BootList, boolean>>({ studios: false, trainers: false, networks: false });
+
+  const markKnown = useCallback((list: BootList, level: ReadLevel) => {
+    setKnown((prev) => {
+      const next = raise(prev[list], level);
+      return next === prev[list] ? prev : { ...prev, [list]: next };
+    });
+  }, []);
+
+  /* The setters handed to the rest of the app: a listener's answer, or a
+     refresh. An empty answer from the cache alone changes nothing. */
+  const setStudios = useCallback(
+    (list: Studio[], meta?: LiveMeta) => {
+      const fromCache = Boolean(meta?.fromCache);
+      if (!answerCounts(list.length, fromCache)) return;
+      liveRef.current.studios = true;
+      setStudiosState(list);
+      markKnown("studios", levelOf(fromCache));
+    },
+    [markKnown],
+  );
+  const setTrainers = useCallback(
+    (list: Trainer[], meta?: LiveMeta) => {
+      const fromCache = Boolean(meta?.fromCache);
+      if (!answerCounts(list.length, fromCache)) return;
+      liveRef.current.trainers = true;
+      setTrainersState(list);
+      markKnown("trainers", levelOf(fromCache));
+    },
+    [markKnown],
+  );
+  const setNetworks = useCallback(
+    (list: FranchiseNetwork[], meta?: LiveMeta) => {
+      const fromCache = Boolean(meta?.fromCache);
+      if (!answerCounts(list.length, fromCache)) return;
+      liveRef.current.networks = true;
+      setNetworksState(list);
+      markKnown("networks", levelOf(fromCache));
+    },
+    [markKnown],
+  );
+
+  /** Which lookup is current: an answer for an older one (a sign-out, Try again) is dropped. */
+  const generationRef = useRef(0);
+
+  /**
+   * While signed in, watch the person's own trainer record (one document).
+   * An account switched off by an administrator signs them out at once
+   * rather than at their next sign-in (Oct 2 2026). Since the speed round
+   * (Oct 5 2026) it is also the correction for opening on the iPad's own
+   * copy of the record: when the server's copy says the person's access
+   * changed (role, studios, switched on or off), the app takes it, and a
+   * changed role fetches a fresh role claim. A record the server says is
+   * gone runs the lookup again. A failed read changes nothing.
    */
   const watchedTrainerId = authTrainer?.id && authTrainer.id !== "owner-temp" ? authTrainer.id : null;
+  /* The record as the app holds it now, for the watch to compare against. */
+  const authTrainerRef = useRef<Trainer | null>(authTrainer);
+  authTrainerRef.current = authTrainer;
   useEffect(() => {
     if (!watchedTrainerId) return;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const refreshClaim = () => {
+      const run = () => {
+        const u = auth.currentUser;
+        if (!u) return;
+        u.getIdTokenResult(true)
+          .then((r) => setTokenRole((r.claims.role as string) || null))
+          .catch(() => {});
+      };
+      run();
+      // The claim is set by a Cloud Function a moment after the record
+      // changes; ask once more after it has had time to run.
+      timers.push(setTimeout(run, 8000));
+    };
     const unsub = onSnapshot(
       doc(db, "trainers", watchedTrainerId),
       (snap) => {
-        if (!snap.exists() || !isSwitchedOff(snap.data() as { isActive?: boolean })) return;
-        setSignInRefusal(SWITCHED_OFF_SENTENCE);
-        endPersonalSession({ local: localStorage, session: sessionStorage });
-        setAuthTrainer(null);
-        setUser(null);
-        void signOut(auth).catch((err) => console.warn("Could not sign a switched-off account out.", err));
+        const fromCache = snap.metadata.fromCache;
+        if (!snap.exists()) {
+          // Gone on the server (not merely missing from the iPad's copy):
+          // find the person again, as a fresh sign-in would.
+          if (!fromCache && auth.currentUser) resolveRef.current?.(auth.currentUser);
+          return;
+        }
+        const data = snap.data() as Record<string, unknown>;
+        if (isSwitchedOff(data as { isActive?: boolean })) {
+          setSignInRefusal(SWITCHED_OFF_SENTENCE);
+          endPersonalSession({ local: localStorage, session: sessionStorage });
+          setAuthTrainer(null);
+          setUser(null);
+          void signOut(auth).catch((err) => console.warn("Could not sign a switched-off account out.", err));
+          return;
+        }
+        const fresh = trainerFromDoc<Trainer>(snap.id, data);
+        const prev = authTrainerRef.current;
+        if (!prev || prev.id !== fresh.id) return;
+        if (!accessChanged(prev as unknown as Record<string, unknown>, fresh as unknown as Record<string, unknown>)) return;
+        setAuthTrainer(fresh);
+        if (prev.role !== fresh.role) refreshClaim();
       },
       (err) => console.warn("Could not watch the signed-in trainer's record.", err),
     );
-    return unsub;
+    return () => {
+      unsub();
+      timers.forEach(clearTimeout);
+    };
   }, [watchedTrainerId]);
 
   useEffect(() => {
     /* Whose sign-in the app last saw: undefined until Firebase first answers. */
     let lastUid: string | null | undefined = undefined;
+
+    /**
+     * One list, read for the boot: the iPad's own copy first, so a warm iPad
+     * paints at once; the server only when the copy has nothing. Either way
+     * AppContent's live listener starts beside it and brings the server's
+     * answer, which always wins (liveRef). A read that fails, or the server
+     * unreachable with nothing stored, leaves the list unknown, never empty.
+     */
+    const bootRead = async (list: BootList, generation: number): Promise<void> => {
+      const apply = (docs: QueryDocumentSnapshot[], level: ReadLevel) => {
+        if (generation !== generationRef.current || liveRef.current[list]) return;
+        if (list === "studios") {
+          setStudiosState(docs.map((d) => ({ id: d.id, ...d.data() }) as Studio));
+        } else if (list === "trainers") {
+          setTrainersState(withoutSuperseded(docs.map((d) => ({ id: d.id, ...d.data() }) as Trainer)));
+        } else {
+          setNetworksState(docs.map((d) => ({ id: d.id, ...d.data() }) as FranchiseNetwork));
+        }
+        markKnown(list, level);
+      };
+      const ref = collection(db, list);
+      try {
+        const cached = await getDocsFromCache(ref);
+        if (!cached.empty) {
+          apply(cached.docs, "cache");
+          return;
+        }
+      } catch {
+        /* Nothing stored for it: ask the server. */
+      }
+      try {
+        const snap = await getDocs(ref);
+        if (!answerCounts(snap.size, snap.metadata.fromCache)) return;
+        apply(snap.docs, levelOf(snap.metadata.fromCache));
+      } catch (e) {
+        console.warn(`Could not read the ${list} collection.`, e);
+      }
+    };
+
     const resolve = async (u: FirebaseUser | null) => {
+      const generation = ++generationRef.current;
+      const current = () => generation === generationRef.current;
       /* A sign-out that did not come through the menu — another tab, an
          expired account, a Microsoft account from outside the company turned
          away by the sign-in screen — must forget the last person too. The
@@ -94,14 +263,18 @@ export function useAuthInitialization() {
         /* A read of the trainer record that threw: unknown, never "none". */
         let lookupFailed = false;
         try {
-          let claimsRole: string | null = null;
-          try {
-            const idTokenResult = await u.getIdTokenResult();
-            claimsRole = (idTokenResult.claims.role as string) || null;
-            setTokenRole(claimsRole);
-          } catch (err) {
-            // Ignoring token claims error
-          }
+          /* The role claim, read beside the record rather than before it.
+             Locally while the token is fresh; see CLAIM_WAIT_MS. */
+          const claimsPromise: Promise<string | null> = u
+            .getIdTokenResult()
+            .then((r) => (r.claims.role as string) || null);
+          void claimsPromise
+            .then((role) => {
+              if (current()) setTokenRole(role);
+            })
+            .catch(() => {
+              // Ignoring token claims error
+            });
 
           let trainerData: Trainer | null = null;
 
@@ -112,7 +285,27 @@ export function useAuthInitialization() {
           const resolvedEmail =
             u.email || u.providerData?.find((p) => p?.email)?.email || null;
 
-          if (resolvedEmail) {
+          /*
+           * THE iPAD'S OWN COPY FIRST (the speed round, Oct 5 2026, R4). On
+           * an iPad that has opened Journey before, trainers/{uid} is in the
+           * offline cache: the app opens on it at once, and the self-watch
+           * above brings the server's copy a round trip later and corrects
+           * anything that changed. A copy that says switched off is not
+           * trusted to refuse anyone: the server decides that.
+           */
+          if (resolvedEmail && u.uid) {
+            try {
+              const cached = await getDocFromCache(doc(db, "trainers", u.uid));
+              if (cached.exists()) {
+                const fromCopy = trainerFromDoc<Trainer>(cached.id, cached.data());
+                if (!isSwitchedOff(fromCopy)) trainerData = fromCopy;
+              }
+            } catch {
+              /* Not in the iPad's copy: the server lookup below. */
+            }
+          }
+
+          if (resolvedEmail && !trainerData) {
             try {
               /**
                * UID FIRST, THEN EMAIL.
@@ -133,12 +326,7 @@ export function useAuthInitialization() {
               if (u.uid) {
                 const uidDoc = await getDoc(doc(db, "trainers", u.uid));
                 if (uidDoc.exists()) {
-                  const rawData = uidDoc.data();
-                  trainerData = {
-                    id: uidDoc.id,
-                    ...rawData,
-                    role: rawData.role || "LifeTransformer",
-                  } as Trainer;
+                  trainerData = trainerFromDoc<Trainer>(uidDoc.id, uidDoc.data());
                 }
               }
 
@@ -221,11 +409,7 @@ export function useAuthInitialization() {
                   }
 
                   if (!trainerData) {
-                    trainerData = {
-                      id: docSnap.id,
-                      ...rawData,
-                      role: rawData.role || "LifeTransformer",
-                    } as Trainer;
+                    trainerData = trainerFromDoc<Trainer>(docSnap.id, rawData);
                   }
                 }
               }
@@ -259,6 +443,8 @@ export function useAuthInitialization() {
             }
           }
 
+          if (!current()) return;
+
           /**
            * SWITCHED OFF (Oct 2 2026). A former trainer's account an
            * administrator switched off is refused here, at the door: signed
@@ -288,8 +474,16 @@ export function useAuthInitialization() {
             return;
           }
 
-          setAuthTrainer(trainerData);
-          if (trainerData) setLookupStep(2);
+          /* Nobody: the access request, which names a studio, so it waits
+             for the studios. */
+          if (!trainerData) {
+            setAuthTrainer(null);
+            await bootRead("studios", generation);
+            if (!current()) return;
+            setTrainerLookup("done");
+            setIsAuthReady(true);
+            return;
+          }
 
           /**
            * ROLE CLAIM (cost round, Sep 2026). The Cloud Function
@@ -298,67 +492,64 @@ export function useAuthInitialization() {
            * with the claim present, every role check stops costing a read.
            * An ID token is minted for an hour, so the claim a role change (or
            * the first deploy) set can lag the document. When they disagree,
-           * refresh the token ONCE now; every Firestore call after this point
-           * carries the new one. Disagreeing after the refresh means the
-           * function has not run for this person yet (or their document id is
-           * not their uid); the rules then fall back to the document exactly
-           * as before, so nothing is lost — it just costs the read.
+           * refresh the token ONCE before the app opens, so every listener it
+           * starts carries the new one; disagreeing after the refresh means
+           * the function has not run for this person yet (or their document
+           * id is not their uid), and the rules then fall back to the
+           * document exactly as before. Since the speed round (Oct 5 2026)
+           * neither wait is longer than CLAIM_WAIT_MS: past it the app opens,
+           * and the check finishes when the token arrives.
            */
-          if (trainerData && trainerData.role !== claimsRole) {
+          const record = trainerData;
+          const settleClaim = async (claimsRole: string | null) => {
+            if (record.role === claimsRole) return;
             try {
               const refreshed = await u.getIdTokenResult(true);
-              claimsRole = (refreshed.claims.role as string) || null;
-              setTokenRole(claimsRole);
+              if (current()) setTokenRole((refreshed.claims.role as string) || null);
             } catch (err) {
               // Ignoring token refresh error
             }
+          };
+          const claimsRole = await withTimeout(claimsPromise, CLAIM_WAIT_MS);
+          if (!current()) return;
+          if (claimsRole === TIMED_OUT) {
+            void claimsPromise.then(settleClaim).catch(() => {});
+          } else {
+            await withTimeout(settleClaim(claimsRole), CLAIM_WAIT_MS);
+            if (!current()) return;
           }
 
-          try {
-            const studioSnap = await getDocs(collection(db, "studios"));
-            setStudios(
-              studioSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as Studio),
-            );
-          } catch (e) {
-            console.warn("Could not fetch studios collection", e);
-          }
-
-          if (!trainerData) {
-            setTrainerLookup("done");
-            setIsAuthReady(true);
-            return;
-          }
-
-          try {
-            const trainersSnap = await getDocs(collection(db, "trainers"));
-            setTrainers(
-              withoutSuperseded(
-                trainersSnap.docs.map(
-                  (d) => ({ id: d.id, ...d.data() }) as Trainer,
-                ),
-              ),
-            );
-          } catch (e) {}
-
-          try {
-            const networksSnap = await getDocs(collection(db, "networks"));
-            setNetworks(
-              networksSnap.docs.map(
-                (d) => ({ id: d.id, ...d.data() }) as FranchiseNetwork,
-              ),
-            );
-          } catch (e) {}
-          setLookupStep(3);
+          /*
+           * THE APP OPENS HERE (the speed round, Oct 5 2026, R4): on the
+           * trainer record, not after every studio, trainer and network has
+           * been read one after another. The three lists are read together
+           * below, from the iPad's copy first; AppContent's listeners start
+           * now and bring the server's answers; and every screen that would
+           * say something off a list asks whether it is known first.
+           */
+          setAuthTrainer(record);
+          setLookupStep(2);
           setTrainerLookup("done");
+          setIsAuthReady(true);
+          void Promise.all([
+            bootRead("studios", generation),
+            bootRead("trainers", generation),
+            bootRead("networks", generation),
+          ]).then(() => {
+            if (current()) setLookupStep(3);
+          });
+          return;
         } catch (error) {
           console.error("Auth initialization failed", error);
-          setTrainerLookup("failed");
+          if (current()) setTrainerLookup("failed");
         }
       } else {
         setTrainerLookup("idle");
         setLookupStep(0);
         setAuthTrainer(null);
-        setNetworks([]);
+        setNetworksState([]);
+        liveRef.current = { studios: false, trainers: false, networks: false };
+        setKnown((prev) => ({ ...prev, networks: "unknown" }));
         // The last person's role claim. Left here it would still answer
         // "is this an administrator" for whoever signs in next, until their
         // own token was read — and forever, if that read failed.
@@ -373,7 +564,7 @@ export function useAuthInitialization() {
       resolveRef.current = null;
       unsubscribe();
     };
-  }, []);
+  }, [markKnown]);
 
   return {
     user,
@@ -386,6 +577,12 @@ export function useAuthInitialization() {
     setTrainers,
     networks,
     setNetworks,
+    /** A list has answered (the iPad's copy or the server): screens may say what it holds. */
+    studiosKnown: known.studios !== "unknown",
+    trainersKnown: known.trainers !== "unknown",
+    networksKnown: known.networks !== "unknown",
+    /** The server has answered for the studios: only then is a studio missing from it really gone. */
+    studiosConfirmed: known.studios === "server",
     tokenRole,
     setTokenRole,
     signInRefusal,

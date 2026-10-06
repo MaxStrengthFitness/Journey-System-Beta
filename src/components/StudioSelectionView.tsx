@@ -49,11 +49,23 @@ import {
 } from "../features/front-door/kit";
 import { glanceLines } from "../features/front-door/today-glance";
 import { useTodayGlance } from "../features/front-door/useTodayGlance";
+import { pickerWaits } from "../features/front-door/boot-lookup";
+import { CheckingIn } from "../features/front-door/CheckingIn";
 
 interface StudioSelectionViewProps {
   studios: Studio[];
   networks?: FranchiseNetwork[];
   trainers?: Trainer[];
+  /**
+   * Whether each list has answered (the speed round, Oct 5 2026): the app
+   * opens on the trainer record and the lists arrive beside it. Until they
+   * do this screen waits ("Checking you in") rather than say "No studios
+   * yet" or "Not on a studio's team yet", and the team sizes and today's
+   * lines wait for the trainers. features/front-door/boot-lookup.ts.
+   */
+  studiosKnown?: boolean;
+  networksKnown?: boolean;
+  trainersKnown?: boolean;
   authTrainer?: Trainer;
   onSelectTrainer: (trainer: Trainer, studioId: string) => void;
   onGoToAdmin?: () => void;
@@ -92,6 +104,9 @@ export function StudioSelectionView({
   studios,
   networks = [],
   trainers = [],
+  studiosKnown = true,
+  networksKnown = true,
+  trainersKnown = true,
   authTrainer,
   onSelectTrainer,
   onGoToAdmin,
@@ -165,7 +180,7 @@ export function StudioSelectionView({
 
   /** The one studio whose day is read: the greeted one, or the picker's first. */
   const featured = greetStudio ?? (currentStudioId ? null : mine[0] ?? null);
-  const today = useTodayGlance(featured, authTrainer ?? null, trainers);
+  const today = useTodayGlance(featured, authTrainer ?? null, trainers, trainersKnown);
 
   /** Trainers per studio, from data already in memory: costs nothing. */
   const teamSizes = useMemo(() => {
@@ -290,6 +305,13 @@ export function StudioSelectionView({
   const whoChip = name ? <WhoChip name={name} photoUrl={(authTrainer as any)?.photoURL || (authTrainer as any)?.photoUrl} onSignOut={onSignOut ?? onBack} /> : null;
   const current = currentStudioId ? studios.find((s) => s.id === currentStudioId) : null;
 
+  // ---- still reading the lists -------------------------------------------------
+  // Never "No studios yet" or "Not on a studio's team yet" off a list that
+  // hasn't answered (the speed round, Oct 5 2026).
+  if (!opening && pickerWaits({ studiosKnown, networksKnown, mine: mine.length })) {
+    return <CheckingIn step={2} email={authTrainer?.email ?? null} onSignOut={onSignOut ?? onBack} />;
+  }
+
   // ---- going in --------------------------------------------------------------
   if (opening) {
     return (
@@ -405,9 +427,12 @@ export function StudioSelectionView({
   const countLine = (s: Studio) => {
     const team = teamSizes[s.id || ""] || 0;
     const clients = clientCounts[s.id || ""];
-    const teamWords = `${team} on the team`;
-    return typeof clients === "number" ? `${clients} active clients · ${teamWords}` : teamWords;
+    // No team size off a trainers list that hasn't answered: never a zero it didn't read.
+    const teamWords = trainersKnown ? `${team} on the team` : "";
+    const clientWords = typeof clients === "number" ? `${clients} active clients` : "";
+    return [clientWords, teamWords].filter(Boolean).join(" · ");
   };
+  const metaLine = (s: Studio) => [countLine(s), networkNameFor(s)].filter(Boolean).join(" · ");
   const pinButton = (s: Studio) => {
     const pinned = s.id === pinnedStudioId;
     return (
@@ -458,8 +483,7 @@ export function StudioSelectionView({
                   {featured.name}
                 </h2>
                 <p className="fd-small" style={{ marginTop: 6 }}>
-                  {countLine(featured)}
-                  {networkNameFor(featured) ? ` · ${networkNameFor(featured)}` : ""}
+                  {metaLine(featured)}
                 </p>
               </div>
               {pinButton(featured)}
@@ -482,8 +506,7 @@ export function StudioSelectionView({
                       {s.id === currentStudioId ? <span className="fd-chip__muted"> · open now</span> : null}
                     </div>
                     <div className="fd-row__meta">
-                      {countLine(s)}
-                      {networkNameFor(s) ? ` · ${networkNameFor(s)}` : ""}
+                      {metaLine(s)}
                     </div>
                   </div>
                   <span className="fd-row__go">

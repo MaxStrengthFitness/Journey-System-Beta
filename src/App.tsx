@@ -22,6 +22,10 @@ export default function App() {
     setTrainers,
     networks,
     setNetworks,
+    studiosKnown,
+    trainersKnown,
+    networksKnown,
+    studiosConfirmed,
     tokenRole,
     setTokenRole,
     signInRefusal,
@@ -67,6 +71,7 @@ export default function App() {
           key={personKey(user, authTrainer)}
           studios={studios}
           networks={networks}
+          studiosConfirmed={studiosConfirmed}
           authTrainer={authTrainer}
           isAdmin={
             tokenRole === "Admin" ||
@@ -92,6 +97,10 @@ export default function App() {
             setTrainers={setTrainers}
             networks={networks}
             setNetworks={setNetworks}
+            studiosKnown={studiosKnown}
+            trainersKnown={trainersKnown}
+            networksKnown={networksKnown}
+            studiosConfirmed={studiosConfirmed}
             handleLogout={handleLogout}
             tokenRole={tokenRole}
             signInRefusal={signInRefusal}

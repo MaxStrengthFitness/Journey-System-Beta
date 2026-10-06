@@ -12,7 +12,20 @@ import { FrontDoorPane, Tiles } from "./kit";
 
 export const CHECK_STEPS = ["Signed in", "Finding your trainer record", "Opening your studios"] as const;
 
-export function CheckingIn({ step, email }: { step: number; email?: string | null }) {
+export function CheckingIn({
+  step,
+  email,
+  onSignOut,
+}: {
+  step: number;
+  email?: string | null;
+  /**
+   * "Not you? Sign out" (the speed round, Oct 5 2026). After a sign-in the
+   * way out is on every screen (iPads change hands), this one included: the
+   * studio picker now waits here too while the studios are read.
+   */
+  onSignOut?: () => void;
+}) {
   const [slow, setSlow] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setSlow(true), 6000);
@@ -41,6 +54,11 @@ export function CheckingIn({ step, email }: { step: number; email?: string | nul
         <p className="fd-small fd-center" style={{ marginTop: 18, visibility: slow ? "visible" : "hidden" }} role="status">
           Taking longer than usual. The Wi-Fi may be slow; Journey keeps trying.
         </p>
+        {onSignOut && (
+          <button type="button" className="fd-link fd-center" style={{ marginTop: 18, alignSelf: "center" }} onClick={onSignOut}>
+            Not you? Sign out
+          </button>
+        )}
       </main>
     </FrontDoorPane>
   );
