@@ -876,6 +876,9 @@ export async function handleMindbodyWebhook(
       }
 
       let studioId: string | null = null;
+      // Where the event log is filed when the event itself named no studio:
+      // an established client's home studio on a shared site.
+      let logStudioId: string | null = null;
       if (siteId) {
         const resolution = await resolveStudio(
           deps.firestore,
@@ -897,9 +900,13 @@ export async function handleMindbodyWebhook(
           // shared site client events never name a location, so every update
           // for an established client used to add a Limbo item that was false.
           const known = target ? await resolveClientRef(deps.firestore, target.docId).get() : null;
-          const hasHome = !!(
-            known?.exists && (known.data() as Record<string, unknown> | undefined)?.homeStudioId
-          );
+          const knownHome = known?.exists
+            ? (known.data() as Record<string, unknown> | undefined)?.homeStudioId
+            : undefined;
+          const hasHome = !!knownHome;
+          // The event log is filed under the home studio the client already
+          // has (read just above, no extra read); the record is not changed.
+          if (typeof knownHome === "string" && knownHome) logStudioId = knownHome;
           // Client events carry no locationId, but they do carry the client's
           // Mindbody `homeLocation` (the front desk's choice: 3, 4, 5 on the
           // shared site). It places a client who has NO home studio yet, when
@@ -947,7 +954,7 @@ export async function handleMindbodyWebhook(
         }
       }
 
-      eventStudioId = studioId;
+      eventStudioId = studioId ?? logStudioId;
       await ensureCanonicalClient(deps.firestore, {
         mindbodyClientId: clientId,
         docId: target?.docId,

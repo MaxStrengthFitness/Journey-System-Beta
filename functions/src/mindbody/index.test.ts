@@ -1271,6 +1271,23 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
       expect(writesTo("mindbodyLimbo")).toHaveLength(0);
     });
 
+    it("17d. an established client's event on a shared site is logged under the client's home studio", async () => {
+      studioDocs = [...sharedSite];
+      existingDocs["clients/12345"] = { homeStudioId: "studio-westlake" };
+
+      const rawBody = createValidEnvelope({ eventId: "client.updated" });
+      await handleMindbodyWebhook(deps, {
+        rawBody,
+        signatureHeader: signForTest(rawBody, mockSecret),
+      });
+
+      expect(vi.mocked(markEventDone).mock.calls[0][2]).toMatchObject({ studioId: "studio-westlake" });
+      // Filing the log never touches the record's home studio.
+      for (const w of writesTo("clients")) {
+        expect(w.data.homeStudioId ?? null).toBeNull();
+      }
+    });
+
     it("17c. a homeLocation no studio owns still parks the new client in Limbo", async () => {
       studioDocs = [...sharedSite];
 
