@@ -88,3 +88,30 @@ describe("LoginScreen", () => {
     expect(host.querySelector('[role="alert"]')?.textContent).toContain("Check the Wi-Fi.");
   });
 });
+
+/*
+ * THE BUTTONS WAIT FOR THE POPUP HELPER (the speed round, Oct 5 2026, R14).
+ * Auth now starts without it on a device that was signed in; on Safari a
+ * popup opened after the tap is blocked, so the buttons wait until the
+ * helper has loaded (features/front-door/sign-in-ready.ts).
+ */
+describe("LoginScreen before the popup sign-in is ready", () => {
+  it("holds both buttons and, if the wait is noticeable, says why", async () => {
+    vi.useFakeTimers();
+    try {
+      const onLogin = vi.fn();
+      const host = await mount(<LoginScreen isLoggingIn={false} loginError={null} onLogin={onLogin} signInReady={false} />);
+      expect(buttonSaying(host, "Continue with Google")!.disabled).toBe(true);
+      expect(buttonSaying(host, "Continue with Microsoft")!.disabled).toBe(true);
+      expect(host.textContent).not.toContain("Getting sign-in ready");
+      await act(async () => {
+        vi.advanceTimersByTime(500);
+      });
+      expect(host.textContent).toContain("Getting sign-in ready");
+      await act(async () => buttonSaying(host, "Continue with Google")!.click());
+      expect(onLogin).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

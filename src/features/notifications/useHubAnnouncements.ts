@@ -40,7 +40,9 @@ import { useEffect, useMemo, useState } from "react";
 import {
   collection,
   doc,
+  limit,
   onSnapshot,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -66,7 +68,31 @@ export interface UseHubAnnouncementsResult {
    * from the same announcementReads/{uid} document as the read-marks.
    */
   acked: ReadonlyMap<string, number | null>;
+  /**
+   * Where the read stands (the speed round, Oct 5 2026): "loading" until the
+   * first answer, "failed" when the stream was refused or broke. A failure
+   * keeps the last list it had and says so, never an empty one: "no notices"
+   * is a claim, and a failed read can't make it.
+   */
+  status: "loading" | "ready" | "failed";
 }
+
+/**
+ * How many notices the bell reads, newest first (the speed round, Oct 5
+ * 2026, R16). It read the whole company's collection, every notice ever
+ * posted, on every signed-in iPad. The realm rule and the targeting still
+ * run in memory over these (visibleAnnouncements, announcementsInRealm), so
+ * nothing about WHO sees a notice changed. Deliberately no `isActive`
+ * filter: older notices have no such field and the app treats a missing one
+ * as active, and an equality filter would drop them.
+ *
+ * The window is a count, so it covers less time as the company posts more:
+ * at about two notices a studio a week, 100 is roughly three months at four
+ * studios and under a week at a hundred, while a notice may live a month.
+ * Before the company outgrows it, read by audience instead (studioId plus
+ * createdAt, the index the speed round adds) rather than raising the number.
+ */
+export const ANNOUNCEMENTS_READ_LIMIT = 100;
 
 const NO_ACKS: ReadonlyMap<string, number | null> = new Map();
 
@@ -82,22 +108,31 @@ export function useHubAnnouncements(
   activeStudioId: string | null = null,
 ): UseHubAnnouncementsResult {
   const [all, setAll] = useState<HubAnnouncement[]>([]);
+  const [status, setStatus] = useState<UseHubAnnouncementsResult["status"]>("loading");
 
   useEffect(() => {
     if (!trainer) {
       setAll([]);
+      setStatus("loading");
       return;
     }
     const unsub = onSnapshot(
-      query(collection(db, "hub_announcements")),
+      query(
+        collection(db, "hub_announcements"),
+        orderBy("createdAt", "desc"),
+        limit(ANNOUNCEMENTS_READ_LIMIT),
+      ),
       (snap) => {
         setAll(
           snap.docs.map((d) => ({ ...(d.data() as HubAnnouncement), id: d.id })),
         );
+        setStatus("ready");
       },
       (err) => {
+        // Unknown, never empty: the last list stays and `status` says the
+        // read broke. A failed read is never "no notices".
         console.error("Error streaming hub announcements:", err);
-        setAll([]);
+        setStatus("failed");
       },
     );
     return () => unsub();
@@ -150,7 +185,7 @@ export function useHubAnnouncements(
     [announcements, trainer, uid, readIds],
   );
 
-  return { announcements, unread, unreadCount: unread.length, acked };
+  return { announcements, unread, unreadCount: unread.length, acked, status };
 }
 
 /**

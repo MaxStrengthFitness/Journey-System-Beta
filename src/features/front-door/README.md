@@ -30,6 +30,29 @@ door then opens at once (`prefersReducedMotion`).
   the access request only after a finished lookup that found nobody. Before
   this, every returning trainer saw "not registered as an authorized trainer"
   flash, and a trainer on bad Wi-Fi was treated as a stranger.
+- **The app opens on the trainer record, never on a chain of reads** (the
+  speed round, Oct 5 2026, R4). The record is read from the iPad's own copy
+  first (`getDocFromCache`) and the app opens on it; a live watch on the
+  person's own record takes the server's copy when their access changed
+  (role, studios, switched off) and fetches a fresh role claim then. The
+  studios, trainers and networks are read together, from the copy first,
+  while AppContent's listeners bring the server's answers. Each list says
+  how much is known (`boot-lookup.ts`: unknown, the copy, the server): the
+  picker shows Checking you in rather than "No studios yet" or "Not on a
+  studio's team yet" off a list that hasn't answered, team sizes and today's
+  lines wait for the trainers, and nothing is dropped as missing (the open
+  studio, the iPad's pinned studio) until the server has said so. A copy
+  that says switched off is not trusted to refuse anyone: the server
+  decides. The role claim is read for at most two seconds; a claim known to
+  disagree with the record waits up to ten for the fresh token, because a
+  leader-only listener started on the old one stays refused until a reload.
+  The copy of a LIST counts only once this iPad has had the server's whole
+  answer for it before (`journey_list_seen_<list>` in local storage), and a
+  copy of the trainers holding one record (the person's own, read at
+  sign-in) never does: that would say "1 on the team". A record the server
+  says is gone is looked up again quietly, never Checking you in over the
+  Hub or a session. Anything that rewrites a whole array on the record (the
+  Kaizen Roster) reads the server's copy first.
 - **Whose iPad it is is always on screen.** iPads change hands at the start of
   the day (AJ: "sometimes trainers pick up the wrong ipad"). The sign-in screen
   says which studio the iPad opens (`DEVICE_STUDIO_KEY` in
@@ -62,6 +85,7 @@ door then opens at once (`prefersReducedMotion`).
 | `front-door.css` | the whole look |
 | `CheckingIn.tsx` | checking you in, and `OpeningJourney` (before Firebase answers) |
 | `CantCheck.tsx` | the record couldn't be read |
+| `boot-lookup.ts` | what is known about each list at boot, and when the picker waits (pure, tested) |
 | `today-glance.ts` | the greeting's sentences (pure, tested) |
 | `useTodayGlance.ts` | its two reads |
 | `my-request.ts` | the person's own access request |

@@ -25,6 +25,7 @@ vi.mock("../../contexts/ActiveStudioContext", () => ({
 }));
 vi.mock("../../lib/authed-fetch", () => ({ authedFetch: async () => ({ ok: true, json: async () => ({}) }) }));
 vi.mock("../../contexts/MindbodyHealthContext", () => ({
+  MindbodyHealthProvider: ({ children }: { children: unknown }) => children,
   useMindbodyHealth: () => ({
     status: "offline",
     lastSuccessfulEventAt: null,

@@ -7,7 +7,7 @@ import { withoutSuperseded } from "../features/trainer-identity/claim";
 
 export function useTrainers(
   isReady: boolean,
-  setTrainers: (trainers: Trainer[]) => void,
+  setTrainers: (trainers: Trainer[], meta?: { fromCache?: boolean }) => void,
 ) {
   useEffect(() => {
     if (!isReady) return;
@@ -27,7 +27,7 @@ export function useTrainers(
           if (orderA !== orderB) return orderA - orderB;
           return (a.fullName || "").localeCompare(b.fullName || "");
         });
-        setTrainers(loaded);
+        setTrainers(loaded, { fromCache: snap.metadata.fromCache });
       },
       (error) => {
         handleFirestoreError(error, OperationType.GET, "trainers");

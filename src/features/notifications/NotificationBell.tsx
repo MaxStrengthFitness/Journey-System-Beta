@@ -136,13 +136,16 @@ export function NotificationBell({
 }: NotificationBellProps) {
   const [open, setOpen] = useState(false);
   const uid = trainerId ?? authTrainer?.id ?? null;
-  const { notifications, unreadCount } = useNotifications(uid);
+  const { notifications, unread, unreadCount, unreadCapped, failed: notificationsFailed } = useNotifications(uid);
   const {
     announcements,
     unread: unreadAnnouncements,
     unreadCount: announcementCount,
     acked,
+    status: announcementsStatus,
   } = useHubAnnouncements(authTrainer, activeStudioId);
+  /* A read that broke is never "nothing yet" (the speed round, Oct 5 2026). */
+  const readFailed = notificationsFailed || announcementsStatus === "failed";
   const signedInUid = auth.currentUser?.uid ?? null;
   // "I've read it" in the bell too (the Atlas answers, Oct 2 2026).
   const asking = announcements.filter((a) => a.asksRead && a.id && !acked.has(a.id));
@@ -159,7 +162,7 @@ export function NotificationBell({
   };
   // Mark all read marks everything read, a notice that asks included.
   const markAll = () => {
-    if (uid && unreadCount > 0) markAllNotificationsRead(uid, notifications).catch(() => {});
+    if (uid && unreadCount > 0) markAllNotificationsRead(uid, unread).catch(() => {});
     const ids = asking.map((a) => a.id!).filter(Boolean);
     if (ids.length > 0) void ackAnnouncements(ids, authTrainer?.fullName ?? null).catch(() => {});
   };
@@ -225,7 +228,11 @@ export function NotificationBell({
               Notifications
             </SheetTitle>
             <SheetDescription className="text-[12px] font-medium text-muted-foreground">
-              {badge > 0 ? `${badge} unread` : "All caught up"}
+              {badge > 0
+                ? `${badge}${unreadCapped ? "+" : ""} unread`
+                : readFailed
+                  ? "Couldn't check for new ones just now"
+                  : "All caught up"}
             </SheetDescription>
           </SheetHeader>
 
@@ -341,7 +348,12 @@ export function NotificationBell({
               </section>
             )}
 
-            {nothingAtAll ? (
+            {nothingAtAll && readFailed ? (
+              <p className="px-5 py-10 text-center text-sm text-muted-foreground font-medium">
+                Journey couldn't read your notifications just now. Check the
+                Wi-Fi; they'll be here when it's back.
+              </p>
+            ) : nothingAtAll ? (
               <p className="px-5 py-10 text-center text-sm text-muted-foreground font-medium">
                 Nothing yet. You'll hear when someone finishes a task you
                 created, or picks up a request you posted.

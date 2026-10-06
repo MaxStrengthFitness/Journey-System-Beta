@@ -36,6 +36,35 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <!-- Warm the connections every open needs before the app's script has
+         even downloaded (the speed round, Oct 5 2026, R5): Firestore, and
+         Firebase Auth's two (who is signed in, a fresh token each morning).
+         crossorigin because the SDKs call them with CORS and no cookies, and
+         a preconnect only helps a request of the same kind. -->
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin />
+    <script>
+      // The sign-in popup's helper loads from two more places, and only where
+      // the sign-in screen is likely next: nobody was signed in here last
+      // time (src/lib/auth-boot.ts, the same key; a signed-in open never
+      // loads the helper since R14). The auth domain is the production
+      // project's, public by design; another project's build just warms a
+      // connection it won't use.
+      (function () {
+        var signedIn = false;
+        try {
+          signedIn = localStorage.getItem("journey_signed_in_here") === "1";
+        } catch (e) {}
+        if (signedIn) return;
+        ["https://apis.google.com", "https://gen-lang-client-0731527386.firebaseapp.com"].forEach(function (href) {
+          var link = document.createElement("link");
+          link.rel = "preconnect";
+          link.href = href;
+          document.head.appendChild(link);
+        });
+      })();
+    </script>
     <script>
       // The theme before the first paint. ThemeProvider (src/components/
       // ThemeProvider.tsx) owns the theme once React runs; until then <html>
@@ -86,6 +115,42 @@
         });
       });
     </script>
+    <style>
+      /* THE FIRST FRAME (the speed round, Oct 5 2026, R15). Until the app's
+         script has downloaded and run, #root held nothing and the iPad showed
+         a blank page. This is the front door's opening (OpeningJourney in
+         src/features/front-door/CheckingIn.tsx): the logo's three squares on
+         its dark ground, in the same place, drawn by the browser alone. React
+         replaces it when it mounts, and OpeningJourney then shows the squares
+         still rather than dropping them in a second time. Plain CSS and an
+         inline SVG, no file to fetch. The colours are front-door.css's, named
+         once more here because this paints before any stylesheet of the
+         app's has been read. Safe areas: the page runs edge to edge
+         (viewport-fit=cover), so the top inset is paid as the pane does. */
+      #first-frame {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: calc(env(safe-area-inset-top, 0px) + 40px) 24px calc(env(safe-area-inset-bottom, 0px) + 32px);
+        background: radial-gradient(120% 70% at 50% 0%, #0d2740 0%, #071422 45%, #040a12 100%) fixed, #040a12;
+      }
+      #first-frame .ff-tiles { display: flex; gap: 10px; }
+      #first-frame .ff-sq { width: 84px; height: 84px; border-radius: 6px; display: grid; place-items: center; }
+      #first-frame .ff-sq svg { width: 62%; height: 62%; }
+      #first-frame .ff-m { background: #0a548b; }
+      #first-frame .ff-a { background: #f36d21; }
+      #first-frame .ff-x { background: #5b6770; }
+      #first-frame p { margin: 28px 0 0; font: 14px/1.45 system-ui, -apple-system, sans-serif; color: #8a9aab; }
+      /* OpeningJourney keeps an empty line for its slow note; so does this, so nothing moves. */
+      #first-frame p.ff-slow { margin-top: 18px; }
+      @media (max-width: 599px) {
+        #first-frame { padding: calc(env(safe-area-inset-top, 0px) + 28px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px); }
+        #first-frame .ff-sq { width: 68px; height: 68px; }
+      }
+    </style>
   </head>
   <body>
     <!-- The strip under the iPad status bar, on every screen including the
@@ -95,7 +160,7 @@
          style can go back to black-translucent in one line. index.css, "Safe
          areas". -->
     <div class="status-band" aria-hidden="true"></div>
-    <div id="root"></div>
+    <div id="root"><div id="first-frame" aria-busy="true" aria-label="Opening Journey"><div class="ff-tiles" role="img" aria-label="Max Strength Fitness"><div class="ff-sq ff-m"><svg viewBox="0 0 425 425" fill="none" stroke="#fff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M140 284V139l72.5 145L285 139v145" /></svg></div><div class="ff-sq ff-a"><svg viewBox="0 0 425 425" fill="none" stroke="#fff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M140 284l72.5-145L285 284" /></svg></div><div class="ff-sq ff-x"><svg viewBox="0 0 425 425" fill="none" stroke="#fff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M140 139l145 145m0-145l-145 145" /></svg></div></div><p>Opening Journey…</p><p class="ff-slow"></p></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

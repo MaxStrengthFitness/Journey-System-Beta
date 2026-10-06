@@ -22,6 +22,7 @@ vi.mock("../../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "lead"
 vi.mock("../../../contexts/ToastContext", () => ({ useToast: () => ({ success: () => {}, error: () => {}, info: () => {} }) }));
 vi.mock("../../../lib/authed-fetch", () => ({ authedFetch: async () => ({ ok: true, json: async () => ({}) }) }));
 vi.mock("../../../contexts/MindbodyHealthContext", () => ({
+  MindbodyHealthProvider: ({ children }: { children: unknown }) => children,
   useMindbodyHealth: () => ({
     status: "healthy",
     lastSuccessfulEventAt: null,

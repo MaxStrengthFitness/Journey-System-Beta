@@ -45,7 +45,10 @@ import {
   signOut,
 } from "firebase/auth";
 
-import { db, auth } from "./firebase";
+import { db, auth, browserPopupRedirectResolver, prepareSignIn, signInNeedsHelperFirst } from "./firebase";
+import { useSignInReady } from "./features/front-door/sign-in-ready";
+import { markBoot } from "./features/boot-timing/boot-timing";
+import { studioTodayKey } from "./lib/studio-time";
 import {
   Trainer,
   Client,
@@ -191,7 +194,7 @@ import {
   signInErrorSentence,
   wrongMicrosoftAccountSentence,
 } from "./features/front-door/sign-in-errors";
-import type { TrainerLookup } from "./hooks/useAuthInitialization";
+import type { LiveMeta, TrainerLookup } from "./hooks/useAuthInitialization";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { isOwner } from "./lib/permissions";
 import { HUB_PLACE, mayOpenOperations } from "./features/admin/operations-access";
@@ -282,6 +285,10 @@ export default function AppContent({
   setTrainers,
   networks,
   setNetworks,
+  studiosKnown = true,
+  trainersKnown = true,
+  networksKnown = true,
+  studiosConfirmed = true,
   handleLogout,
   tokenRole,
   signInRefusal = null,
@@ -293,11 +300,22 @@ export default function AppContent({
   authTrainer: Trainer;
   setAuthTrainer: (t: Trainer | null) => void;
   studios: Studio[];
-  setStudios: (s: Studio[]) => void;
+  setStudios: (s: Studio[], meta?: LiveMeta) => void;
   trainers: Trainer[];
-  setTrainers: (t: Trainer[]) => void;
+  setTrainers: (t: Trainer[], meta?: LiveMeta) => void;
   networks: FranchiseNetwork[];
-  setNetworks: (n: FranchiseNetwork[]) => void;
+  setNetworks: (n: FranchiseNetwork[], meta?: LiveMeta) => void;
+  /**
+   * Whether each list has answered yet (the speed round, Oct 5 2026): the
+   * app opens on the trainer record and the lists arrive beside it, so a
+   * screen that would say something off one asks first.
+   * features/front-door/boot-lookup.ts.
+   */
+  studiosKnown?: boolean;
+  trainersKnown?: boolean;
+  networksKnown?: boolean;
+  /** The server has answered for the studios; dropping a missing one waits for it. */
+  studiosConfirmed?: boolean;
   handleLogout: () => Promise<void>;
   tokenRole: string | null;
   /** Why the last sign-in was turned away: a switched-off account (Oct 2 2026). */
@@ -374,10 +392,12 @@ export default function AppContent({
    * no longer exists is still dropped here.
    */
   useEffect(() => {
-    if (activeStudioId || isChangingStudio || studios.length === 0) return;
+    // Only on the server's word: the iPad's own copy of the list may be
+    // missing a studio that exists (the speed round, Oct 5 2026).
+    if (activeStudioId || isChangingStudio || studios.length === 0 || !studiosConfirmed) return;
     const pinned = getDefaultStudioId();
     if (pinned && !studios.some((s) => s.id === pinned)) setDefaultStudioId(null);
-  }, [activeStudioId, isChangingStudio, studios]);
+  }, [activeStudioId, isChangingStudio, studios, studiosConfirmed]);
   const [isSyncing, setIsSyncing] = useState(false);
   /*
    * Who may open Operations: studio leaders and above, and — inside Demo Mode
@@ -586,6 +606,11 @@ export default function AppContent({
     schedules,
   );
   const { sessions, sessionsKnown } = useSessions(activeStudioId, isDataReady);
+  /* The Hub's day first answered: the open's last mark, and on a cold open
+     the moment its one small timing report goes (features/boot-timing, R30). */
+  useEffect(() => {
+    if (activeStudioId && scheduleDayState(studioTodayKey()) === "ready") markBoot("hub-data");
+  }, [activeStudioId, scheduleDayState]);
 
   /**
    * Background Mindbody pulls. autoSyncEnabled and syncIntervalMinutes have
@@ -1004,6 +1029,9 @@ export default function AppContent({
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  /* The popup helper, loaded as the sign-in screen appears; on Safari the
+     buttons wait for it (the speed round, Oct 5 2026, R14). */
+  const signInReady = useSignInReady({ active: !user, prepare: prepareSignIn, mustWait: signInNeedsHelperFirst() });
 
   /* Microsoft sign-in is limited to company staff (MICROSOFT_DOMAIN,
      features/front-door/sign-in-errors.ts). */
@@ -1048,7 +1076,9 @@ export default function AppContent({
         provider.addScope("profile");
         provider.addScope("User.Read");
       }
-      const credential = await signInWithPopup(auth, provider);
+      // The helper is passed here: Auth starts without one on a device that
+      // was signed in (src/firebase.ts, lib/auth-boot.ts).
+      const credential = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
 
       // Microsoft sign-in is for company staff only. The single-tenant Azure app
       // already blocks outsiders, but a guest invited into the tenant would
@@ -1084,6 +1114,7 @@ export default function AppContent({
         isLoggingIn={isLoggingIn}
         loginError={loginError ?? signInRefusal}
         onLogin={handleLogin}
+        signInReady={signInReady}
       />
     );
   }
@@ -1093,7 +1124,7 @@ export default function AppContent({
      lookup that found nobody (the front door, Oct 3 2026). */
   const signedInEmail = user?.email || user?.providerData?.find((p) => p?.email)?.email || null;
   if (user && trainerLookup === "checking") {
-    return <CheckingIn step={lookupStep} email={signedInEmail} />;
+    return <CheckingIn step={lookupStep} email={signedInEmail} onSignOut={() => void handleLogout()} />;
   }
   if (user && !authTrainer && trainerLookup === "failed") {
     return (
@@ -1132,6 +1163,9 @@ export default function AppContent({
         studios={studios}
         networks={networks}
         trainers={trainers}
+        studiosKnown={studiosKnown}
+        networksKnown={networksKnown}
+        trainersKnown={trainersKnown}
         authTrainer={authTrainer}
         onSelectTrainer={(selectedTrainer, studioId) => {
           setActiveStudioId(studioId);

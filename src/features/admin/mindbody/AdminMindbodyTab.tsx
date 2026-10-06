@@ -59,10 +59,10 @@ import {
   Webhook,
   Zap,
 } from "lucide-react";
-import { db } from "../../../firebase";
+import { auth, db } from "../../../firebase";
 import type { Client, Studio, Trainer } from "../../../types";
 import { useToast } from "../../../contexts/ToastContext";
-import { useMindbodyHealth } from "../../../contexts/MindbodyHealthContext";
+import { MindbodyHealthProvider, useMindbodyHealth } from "../../../contexts/MindbodyHealthContext";
 import { syncMindbodySchedules } from "../../../lib/mindbody-api-sync";
 import { authedFetch } from "../../../lib/authed-fetch";
 import firebaseConfig from "../../../../firebase-applet-config.json";
@@ -141,7 +141,24 @@ function intervalLabel(m: number): string {
   return m < 60 ? `${m} minutes` : `${m / 60} hour${m === 60 ? "" : "s"}`;
 }
 
-export function AdminMindbodyTab({
+/**
+ * The webhook's health (`system/health`) is watched only while this page is
+ * open (the speed round, Oct 5 2026, R16). The provider used to wrap the
+ * whole app in App.tsx: every device, signed out included, held a live read
+ * of a document that changes up to once a minute, for this one page, and its
+ * listener started before sign-in and was never restarted, so after a
+ * sign-out it stayed refused. Here it starts with the page and is keyed on
+ * who is signed in.
+ */
+export function AdminMindbodyTab(props: Props) {
+  return (
+    <MindbodyHealthProvider key={auth.currentUser?.uid ?? "signed-out"}>
+      <MindbodyPage {...props} />
+    </MindbodyHealthProvider>
+  );
+}
+
+function MindbodyPage({
   studios,
   trainers,
   clients,

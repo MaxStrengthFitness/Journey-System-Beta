@@ -6471,3 +6471,70 @@ describe("speed round: the night's month tally for Hours and Insights", () => {
     await assertFails(updateDoc(doc(as("adminSpeed"), "studios", "studioA", "watch", "hours-2026-10"), { open: 1 }));
   });
 });
+
+// ===============================================================
+// SPEED ROUND, BOOT GROUP (Oct 5 2026; R16). The new read shapes the bell
+// and the boot use: the newest hundred notices, the newest fifty
+// notifications and the unread ones. No rule changed; these hold that the
+// shapes are allowed to the people who use them and no one else.
+// ===============================================================
+describe("speed round (boot): the bell's new read shapes", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+  async function seed() {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "hub_announcements", "n1"), {
+        title: "Holiday hours", studioId: "studioA", targetScope: "studio", targetId: "studioA",
+        authorId: "ownerA", isActive: true, priority: "medium", createdAt: new Date("2026-10-01T12:00:00Z"),
+      });
+      // An older notice with no isActive field: the read must not need one.
+      await setDoc(doc(db, "hub_announcements", "n0"), {
+        title: "Old", studioId: "all", authorId: "ownerA", priority: "low", createdAt: new Date("2026-01-01T12:00:00Z"),
+      });
+      await setDoc(doc(db, "trainers", "trainerA", "notifications", "x1"), {
+        kind: "task_done", title: "Done", studioId: "studioA", actor: { id: "trainerB", name: "B" },
+        createdAt: new Date("2026-10-04T12:00:00Z"), readAt: null,
+      });
+      await setDoc(doc(db, "trainers", "trainerA", "notifications", "x2"), {
+        kind: "task_done", title: "Read", studioId: "studioA", actor: { id: "trainerB", name: "B" },
+        createdAt: new Date("2026-10-03T12:00:00Z"), readAt: new Date("2026-10-03T13:00:00Z"),
+      });
+    });
+  }
+
+  it("lets anyone signed in read the newest hundred notices, isActive or not", async () => {
+    await seed();
+    const snap = await assertSucceeds(
+      getDocs(query(collection(as("trainerA"), "hub_announcements"), orderBy("createdAt", "desc"), limit(100))),
+    );
+    expect(snap.docs.map((d) => d.id)).toEqual(["n1", "n0"]);
+    await assertFails(getDocs(query(collection(testEnv.unauthenticatedContext().firestore(), "hub_announcements"), orderBy("createdAt", "desc"), limit(100))));
+  });
+
+  it("lets a trainer read their own newest fifty and their unread ones, and nobody else's", async () => {
+    await seed();
+    const mine = collection(as("trainerA"), "trainers", "trainerA", "notifications");
+    const list = await assertSucceeds(getDocs(query(mine, orderBy("createdAt", "desc"), limit(50))));
+    expect(list.docs.map((d) => d.id)).toEqual(["x1", "x2"]);
+    const unread = await assertSucceeds(getDocs(query(mine, where("readAt", "==", null), orderBy("createdAt", "desc"), limit(100))));
+    expect(unread.docs.map((d) => d.id)).toEqual(["x1"]);
+    const theirs = collection(as("trainerB"), "trainers", "trainerA", "notifications");
+    await assertFails(getDocs(query(theirs, orderBy("createdAt", "desc"), limit(50))));
+    await assertFails(getDocs(query(theirs, where("readAt", "==", null), orderBy("createdAt", "desc"), limit(100))));
+  });
+
+  it("still refuses a notification written without readAt: null, so the unread read finds every unread one", async () => {
+    await seed();
+    const ref = collection(as("trainerB"), "trainers", "trainerA", "notifications");
+    await assertFails(addDoc(ref, { kind: "task_done", title: "No readAt", studioId: "studioA", actor: { id: "trainerB", name: "B" }, createdAt: serverTimestamp() }));
+    await assertSucceeds(addDoc(ref, { kind: "task_done", title: "With readAt", studioId: "studioA", actor: { id: "trainerB", name: "B" }, createdAt: serverTimestamp(), readAt: null }));
+  });
+
+  it("lets anyone signed in read the Mindbody health document the Operations page now watches", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "system", "health"), { status: "healthy" });
+    });
+    await assertSucceeds(getDoc(doc(as("trainerA"), "system", "health")));
+  });
+});

@@ -36,6 +36,8 @@ vi.mock("firebase/firestore", () => {
     collection: ref,
     doc: ref,
     query: (target: unknown) => target,
+    orderBy: () => ({}),
+    limit: () => ({}),
     onSnapshot: (target: { path: string }, next: (s: unknown) => void) => {
       const t = setTimeout(() => {
         if (target.path === "hub_announcements") next({ docs: [{ id: "a1", data: () => announcement }] });

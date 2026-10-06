@@ -147,3 +147,50 @@ describe("the picker", () => {
     expect(calls.back).toHaveBeenCalled();
   });
 });
+
+/*
+ * WHILE THE LISTS ARE BEING READ (the speed round, Oct 5 2026, R4). The app
+ * now opens on the trainer record, and the studios, networks and trainers
+ * arrive beside it. Until a list has answered the picker waits ("Checking
+ * you in", with the way out), and never says a thing it would have to guess.
+ */
+describe("while the lists are being read", () => {
+  it("waits for the studios instead of saying there are none", async () => {
+    const { el, calls } = await mount({ studios: [], studiosKnown: false });
+    expect(el.textContent).toContain("Checking you in");
+    expect(el.textContent).not.toContain("No studios yet");
+    await act(async () => button(el, "Not you? Sign out")!.click());
+    expect(calls.signOut).toHaveBeenCalled();
+  });
+
+  it("says there are none only once the studios have answered", async () => {
+    const { el } = await mount({ studios: [], studiosKnown: true });
+    expect(el.textContent).toContain("No studios yet");
+  });
+
+  it("waits for the networks before saying you're on no team", async () => {
+    const stranger = { ...aj, primaryHomeStudioId: "", accessibleStudioIds: [] } as unknown as Trainer;
+    const waiting = await mount({ authTrainer: stranger, trainers: [stranger], networksKnown: false });
+    expect(waiting.el.textContent).toContain("Checking you in");
+    expect(waiting.el.textContent).not.toContain("Not on a studio's team yet");
+    act(() => root?.unmount());
+    host?.remove();
+    const answered = await mount({ authTrainer: stranger, trainers: [stranger], networksKnown: true });
+    expect(answered.el.textContent).toContain("Not on a studio's team yet");
+  });
+
+  it("goes in on your own studios while the networks are still being read", async () => {
+    const { el } = await mount({ networksKnown: false });
+    expect(button(el, "Start at Strongsville")).toBeTruthy();
+  });
+
+  it("gives no team size off a trainers list that hasn't answered", async () => {
+    const guest = { ...aj, primaryHomeStudioId: "" } as unknown as Trainer;
+    const unknown = await mount({ authTrainer: guest, trainers: [], trainersKnown: false });
+    expect(unknown.el.textContent).not.toContain("on the team");
+    act(() => root?.unmount());
+    host?.remove();
+    const known = await mount({ authTrainer: guest, trainers: [guest], trainersKnown: true });
+    expect(known.el.textContent).toContain("on the team");
+  });
+});
