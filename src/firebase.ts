@@ -4,6 +4,7 @@ import {
   browserLocalPersistence,
   browserPopupRedirectResolver,
   browserSessionPersistence,
+  inMemoryPersistence,
   indexedDBLocalPersistence,
   initializeAuth,
   onAuthStateChanged,
@@ -59,9 +60,15 @@ export const functions = getFunctions(app, 'us-central1');
  * (prepareSignIn, features/front-door/sign-in-ready.ts). lib/auth-boot.ts.
  */
 const signedInHereLastTime = wasSignedInHere(deviceStorage());
+// The browser build has all three persistences and the helper (a class). The
+// Node build the test runner loads has a placeholder object for the helper
+// (getAuth there never installed one), and handing initializeAuth anything
+// but a class fails an assertion, so it is left out rather than passed.
+const helperAvailable = typeof browserPopupRedirectResolver === "function";
+const browserPersistence = [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence].filter(Boolean);
 export const auth = initializeAuth(app, {
-  persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
-  ...(signedInHereLastTime ? {} : { popupRedirectResolver: browserPopupRedirectResolver }),
+  persistence: browserPersistence.length > 0 ? browserPersistence : inMemoryPersistence,
+  ...(signedInHereLastTime || !helperAvailable ? {} : { popupRedirectResolver: browserPopupRedirectResolver }),
 });
 onAuthStateChanged(auth, (user) => rememberSignedInHere(deviceStorage(), Boolean(user)));
 
@@ -75,6 +82,7 @@ export { browserPopupRedirectResolver };
  * popup then tries again itself).
  */
 export function prepareSignIn(): Promise<void> {
+  if (!helperAvailable) return Promise.resolve();
   const resolver = _getInstance<{ _initialize(a: typeof auth): Promise<unknown> }>(browserPopupRedirectResolver);
   return resolver._initialize(auth).then(() => undefined);
 }
@@ -94,6 +102,7 @@ setIdTokenSource(async () => (auth.currentUser ? auth.currentUser.getIdToken() :
  * the helper after the tap, as it always has.
  */
 export function signInNeedsHelperFirst(): boolean {
+  if (!helperAvailable) return false;
   try {
     return Boolean(_getInstance<{ _shouldInitProactively?: boolean }>(browserPopupRedirectResolver)._shouldInitProactively);
   } catch {
