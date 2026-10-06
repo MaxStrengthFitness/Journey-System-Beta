@@ -98,6 +98,26 @@ describe("milestones: Operations' one list, only when the total may be quoted", 
     expect(entries[0].stateText).toBe("done");
   });
 
+  it("only the cache has answered: a finished session in hand still counts and is done, a gap is unknown (speed round R16)", () => {
+    // Her 99th finished this morning and the cache holds it: the count already has it, so #99, never a false "100th today".
+    const done = makeClient({ id: "c", sessionCount: 99, ...COMPLETE });
+    const quiet = makeClient({ id: "q", sessionCount: 40, ...COMPLETE });
+    const schedules = [makeBooking({ clientId: "c", start: today("09:00") }), makeBooking({ clientId: "q", start: today("09:30") })];
+    const cacheOnly = loggedSessions([makeSession({ clientId: "c", at: today("09:05") })], undefined, { complete: false });
+    const entries = run([done, quiet], schedules, { logged: cacheOnly });
+    const c = entries.find((e) => e.clientId === "c")!;
+    expect(c.sessionNumber).toBe(99);
+    expect(c.stateText).toBe("done");
+    expect(kinds(c)).not.toContain("milestone");
+    // What the Hub said before the fix, with nothing in hand: a confident wrong number.
+    const blind = run([done, quiet], schedules, { logged: null });
+    expect(blind.find((e) => e.clientId === "c")!.sessionNumber).toBe(100);
+    // Nothing in hand for the 9:30: unknown, never "not logged", until the server answers.
+    expect(entries.find((e) => e.clientId === "q")!.stateText).toBeNull();
+    const known = run([done, quiet], schedules, { logged: loggedSessions([makeSession({ clientId: "c", at: today("09:05") })]) });
+    expect(known.find((e) => e.clientId === "q")!.stateText).toBe("not logged");
+  });
+
   it("a migrating client is numbered from Mindbody's guess, but no milestone is claimed off it (Atlas answers, Oct 2 2026)", () => {
     // 400 visits before Journey (no Journey session yet) + 99 = 499 so far: this booking is the 500th.
     const entries = run([makeClient({ id: "m", sessionCount: 99, clientsNumberOfVisitsAtSite: 400 })], [makeBooking({ clientId: "m", start: today("16:00") })]);

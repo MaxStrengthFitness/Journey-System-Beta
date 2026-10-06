@@ -143,7 +143,8 @@ export function useDayMoments({
 
   // Only the finished sessions count here: a running session's heartbeat leaves this list as it was.
   const completed = useCompletedSessions(sessions);
-  const logged = useMemo(() => loggedSessions(sessionsKnown ? completed : null), [completed, sessionsKnown]);
+  // Known or not, a finished session in hand counts; only "never logged" waits for the server (R16).
+  const logged = useMemo(() => loggedSessions(completed, undefined, { complete: sessionsKnown }), [completed, sessionsKnown]);
   const clientsById = useMemo(() => new Map(clients.filter((c) => c.id).map((c) => [c.id as string, c])), [clients]);
   const keepsWaivers = useMemo(() => waiversKeptInMindbody(clients), [clients]);
   const index = useMemo(() => indexBookings(schedules), [schedules]);

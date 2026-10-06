@@ -93,6 +93,14 @@ export type SessionLike = Pick<WorkoutSession, "status"> & Partial<WorkoutSessio
  */
 export interface LoggedSessions {
   has(clientId: string, day: string): boolean;
+  /**
+   * False when the list may be missing sessions: only the iPad's cache has
+   * answered so far (useSessions' `sessionsKnown`, speed round R16). A cache
+   * can miss a session but cannot invent a finished one, so what `has` finds
+   * is still logged; what it does not find proves nothing, and a finished
+   * slot reads "unknown", never "never logged". Absent means complete.
+   */
+  readonly complete?: boolean;
 }
 
 /**
@@ -121,11 +129,13 @@ const keyOf = (clientId: string, day: string) => `${clientId}|${day}`;
  * Index a read of sessions by client and studio day. Only COMPLETED sessions
  * with a client count. Pass `null` or `undefined` for a read that failed or
  * has not arrived — the answer is then `null`, which `bookingState` reads as
- * unknown rather than as "nothing logged".
+ * unknown rather than as "nothing logged". Pass `complete: false` for a list
+ * only the cache has answered: its sessions count, its gaps prove nothing.
  */
 export function loggedSessions(
   sessions: ReadonlyArray<SessionLike> | null | undefined,
   tz?: string,
+  { complete = true }: { complete?: boolean } = {},
 ): LoggedSessions | null {
   if (!sessions) return null;
   const days = new Set<string>();
@@ -134,7 +144,7 @@ export function loggedSessions(
     const day = sessionDayKey(s as WorkoutSession, tz);
     if (day) days.add(keyOf(s.clientId, day));
   }
-  return { has: (clientId, day) => days.has(keyOf(clientId, day)) };
+  return { has: (clientId, day) => days.has(keyOf(clientId, day)), complete };
 }
 
 /**
@@ -193,5 +203,5 @@ export function bookingState(
   const start = toDate(booking.startTime as never);
   if (!start || start > now) return "upcoming";
   if (!slotOver(booking, now)) return "in-progress";
-  return logged ? "never-logged" : "unknown";
+  return logged && logged.complete !== false ? "never-logged" : "unknown";
 }

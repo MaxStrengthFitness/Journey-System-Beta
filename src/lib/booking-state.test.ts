@@ -108,6 +108,16 @@ describe("bookingState — a failed read is unknown, never 'never logged'", () =
   it("an empty read is known: nothing logged is never logged", () => {
     expect(bookingState(booking("09:00"), loggedSessions([]), NOW, TZ)).toBe("never-logged");
   });
+
+  it("a cache-only read: what it holds is logged, what it lacks is unknown (speed round R16)", () => {
+    const cacheOnly = loggedSessions([session({})], TZ, { complete: false });
+    expect(cacheOnly?.complete).toBe(false);
+    expect(bookingState(booking("09:00"), cacheOnly, NOW, TZ)).toBe("completed");
+    expect(bookingState(booking("09:00", { clientId: "c2" }), cacheOnly, NOW, TZ)).toBe("unknown");
+    expect(bookingState(booking("14:00", { clientId: "c2" }), cacheOnly, NOW, TZ)).toBe("upcoming");
+    expect(bookingState(booking("09:00", { clientId: "c2" }), loggedSessions([], TZ, { complete: false }), NOW, TZ)).toBe("unknown");
+    expect(loggedSessions([], TZ)?.complete).toBe(true);
+  });
 });
 
 // Wave 2 (Sep 28 2026, AJ: "all yes"): a leader's "didn't come" on a booking nobody logged.

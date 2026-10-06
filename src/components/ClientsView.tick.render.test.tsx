@@ -278,3 +278,20 @@ describe("the Hub as the floor moves", () => {
     expect(count.cards).toBe(0);
   });
 });
+
+describe("the Hub before the server has answered (only the cache, or offline)", () => {
+  it("a finished session in hand still says Done; a finished slot with nothing in hand says nothing until the server answers", () => {
+    props = { ...props, sessions: [{ ...running, status: "Completed" }, done], sessionsKnown: false };
+    vi.setSystemTime(at("10:05:30"));
+    draw();
+    expect(cardOf("Hamfast Gamgee")?.dataset.state).toBe("done");
+    // Belladonna's and Estella's 9:30s are over and nothing is in hand: unknown, never "Not logged".
+    expect(cardOf("Belladonna Took")?.dataset.state).toBe("past");
+    expect(cardOf("Estella Bolger")?.dataset.state).toBe("past");
+    expect(cardOf("Belladonna Took")?.textContent).not.toContain("Not logged");
+    props = { ...props, sessionsKnown: true };
+    draw();
+    expect(cardOf("Belladonna Took")?.dataset.state).toBe("not-logged");
+    expect(cardOf("Hamfast Gamgee")?.dataset.state).toBe("done");
+  });
+});

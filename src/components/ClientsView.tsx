@@ -138,8 +138,10 @@ export function ClientsView({
   schedules: any[];
   sessions: WorkoutSession[];
   /**
-   * The session stream has answered for this studio. Until it has (or after
-   * it failed) a finished card says nothing, rather than "Not logged".
+   * The session stream's SERVER has answered for this studio. Until it has
+   * (offline, a cache-only answer, or a failed read) a finished card whose
+   * session is in hand still says Done, but one with nothing in hand says
+   * nothing, rather than "Not logged".
    */
   sessionsKnown?: boolean;
   onSelectTrainer?: (id: string) => void;
@@ -496,13 +498,15 @@ export function ClientsView({
    * client and STUDIO day. The card used to match "today" with the iPad's
    * `toDateString()`, which is the wrong day on an iPad set to another zone,
    * and matched TODAY rather than the booking's day, so a session this
-   * morning marked tomorrow's card. `logged` is null until the stream has
-   * answered: unknown, never "nothing logged" (lib/booking-state).
+   * morning marked tomorrow's card. Until the server has answered, `logged`
+   * is incomplete: a finished session it holds is Done, but a finished slot
+   * it lacks is unknown, never "nothing logged" (lib/booking-state).
    */
   const workoutSessionOn = React.useMemo(() => sessionsByClientDay(sessions), [sessions]);
   // Only finished sessions count as logged: a heartbeat leaves this as it was (R6).
   const logged = React.useMemo(
-    () => loggedSessions(sessionsKnown ? completedSessions : null),
+    // A finished session the cache holds is logged; only "never logged" waits for the server (R16).
+    () => loggedSessions(completedSessions, undefined, { complete: sessionsKnown }),
     [completedSessions, sessionsKnown],
   );
 
