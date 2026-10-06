@@ -28,6 +28,10 @@
  *      date has come, each active client's state, the studio's Journey
  *      summary and the Hub's All stars (server/journey-step.ts), in its own
  *      batches and its own catch: a failure there never touches 1 to 4.
+ *   6. The month tally (speed round, Oct 5 2026): for every studio, Hours' and
+ *      Insights' counts for the current month and the four before it, from
+ *      one read of the sessions trained there (server/month-tally-step.ts),
+ *      in its own catch, after 5.
  *
  * ONE STUDIO AT A TIME (job memory, Oct 1 2026). The job runs on a 512 MB
  * instance and used to read the whole company first: every booking of four
@@ -123,6 +127,7 @@ import {
   type JourneyStepSummary,
 } from "./journey-step.ts";
 import { INSTANCE_MB, memoryWatch } from "./job-memory.ts";
+import { runMonthTally } from "./month-tally-step.ts";
 import type { SettingValues } from "../src/features/studio-settings/resolve.ts";
 
 const DAY_MS = 86_400_000;
@@ -166,6 +171,8 @@ export interface RenewalsRunSummary {
   bySituation: Record<string, number>;
   /** Step 5: the client states, the Journey summaries and All stars; null when the step failed as a whole. */
   journey?: JourneyStepSummary | null;
+  /** Step 6: the month tally for Hours and Insights. */
+  monthTally?: { studios: number; sessionsRead: number; failures: number };
 }
 
 /** A studio as the job holds it all night: its settings and its day, never its clients. */
@@ -322,6 +329,7 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
     firstSyncFailures: 0,
     mindbodyCalls: 0,
     bySituation: {},
+    monthTally: { studios: 0, sessionsRead: 0, failures: 0 },
   };
 
   /* ================= What every studio shares ================= */
@@ -783,6 +791,18 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
         },
         summary.journey,
       );
+    }
+
+    /* ---------- 6. The month tally for Hours and Insights ---------- */
+    // Last, in its own catch: a failure leaves last night's documents, which
+    // the screens then call too old and read raw.
+    try {
+      const tally = await runMonthTally({ db, studio: { id: run.id, name: run.name, tz: run.tz, today: run.today }, now, dryRun, log });
+      summary.monthTally!.studios += 1;
+      summary.monthTally!.sessionsRead += tally.sessionsRead;
+    } catch (err: any) {
+      summary.monthTally!.failures += 1;
+      log(`${run.name}: the month tally failed, so Hours and Insights read its sessions raw until tomorrow night: ${err?.message || err}`);
     }
     log(memory.line(run.name));
   }

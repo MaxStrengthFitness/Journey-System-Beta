@@ -2908,8 +2908,17 @@ service cloud.firestore {
        * the machineFit index is. Nothing in the app writes here.
        */
       match /watch/{watchId} {
-        // watch/journey is the studio's leaders' alone (its own block below).
-        allow read: if isAuthenticated() && watchId != 'journey' && writesForStudio(studioId);
+        // watch/journey is the studio's leaders' alone (its own block below),
+        // and so is the night's month tally (speed round, Oct 5 2026): Hours'
+        // counts (watch/hours-YYYY-MM) and the month's sessions as short
+        // lines for Insights (watch/sessions-YYYY-MM), written by the nightly
+        // renewals job (server/month-tally-step.ts, Admin SDK) and read by the
+        // people who open Hours and Insights: the studio's leaders, franchise
+        // owners and administrators (wave2Leads, as watch/journey).
+        allow read: if isAuthenticated() && watchId != 'journey' && (
+          (watchId.matches('^(hours|sessions)-[0-9]{4}-[0-9]{2}$') && wave2Leads(studioId)) ||
+          (!watchId.matches('^(hours|sessions)-[0-9]{4}-[0-9]{2}$') && writesForStudio(studioId))
+        );
         allow write: if false;
       }
 
