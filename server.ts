@@ -27,6 +27,7 @@ import { requireStaff } from "./server/auth.ts";
 import { idsToLookUp, parseSkipIds, skipForOwnBookings } from "./src/lib/mindbody-lookup-skip.ts";
 import { isGeminiPath, registerGeminiRoutes } from "./server/gemini-routes.ts";
 import { devFileAccess, serveBuiltApp } from "./server/served-files.ts";
+import { isLogErrorPath, registerLogErrorRoute } from "./server/log-error.ts";
 import { shutDownGracefully, tuneKeepAlive } from "./server/shutdown.ts";
 
 // Error Handling: Prevent process crash on unhandled rejections
@@ -50,8 +51,9 @@ async function startServer() {
   // Mounted first so it wraps every route and the static handler below.
   app.use(compression());
 
-  // Every body is capped at 1mb here, except the two Gemini image routes:
-  // they read their own (larger) body AFTER the staff sign-in, so a caller
+  // Every body is capped at 1mb here, except the two Gemini image routes and
+  // /api/log-error (its own 16 KB, after its limit; server/log-error.ts).
+  // The Gemini routes read their own (larger) body AFTER the staff sign-in, so a caller
   // with no sign-in can't make this process read one. Render runs it as a
   // single process (WEB_CONCURRENCY=1) on a small instance, and a few
   // concurrent large bodies were once enough to exhaust its memory. See
@@ -59,7 +61,7 @@ async function startServer() {
   const standardJson = express.json({ limit: "1mb" });
 
   app.use((req, res, next) =>
-    isGeminiPath(req.path) ? next() : standardJson(req, res, next),
+    isGeminiPath(req.path) || isLogErrorPath(req.path) ? next() : standardJson(req, res, next),
   );
 
   // Without this, an over-limit body falls to Express's default handler and
@@ -96,26 +98,11 @@ async function startServer() {
     extractMachineSettingsFromImage,
   });
 
-  app.post("/api/log-error", (req, res) => {
-    // Always goes to stdout, which is what the hosting platform captures.
-    console.log("CLIENT ERROR:", req.body);
-
-    // The file copy is a local-development convenience only. It used to be a
-    // bare appendFileSync: one unhandled throw (read-only or full disk) returned
-    // a 500, and a client error storm — the Firestore assertion bug produced
-    // 3,664 in one session — blocked the single Node thread on every write,
-    // which stalls the whole server.
-    if (process.env.NODE_ENV !== "production") {
-      fs.appendFile(
-        "client-errors.log",
-        JSON.stringify(req.body) + "\n",
-        (err) => {
-          if (err) console.warn("Could not write client-errors.log:", err.message);
-        },
-      );
-    }
-    res.json({ ok: true });
-  });
+  // The app's error reports: no sign-in (a page that broke before anyone
+  // signed in is worth hearing about), so a limit per address before the
+  // body is read, its own 16 KB body limit and trimmed fields
+  // (server/log-error.ts, Oct 5 2026). The shared parser above skips it.
+  registerLogErrorRoute(app);
 
   // Background Task: Run Master Sync every 60 minutes
   /*
