@@ -1076,9 +1076,11 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg[data-live="true"] {
   --jg-dim-veil: color-mix(in srgb, var(--jg-bg) 32%, transparent);
 }
-/* The lanes' look draws no hairlines right or below. */
+/* The lanes' look draws no borders on a cell at all (.jg-look .jg-cell sets
+   border-left, right and bottom to 0), so the veil is the padding box; a
+   veil reaching 3px left there lay over the cell before it. */
 .jg-look .jg[data-live="true"] .jg-cell:not(.is-latest):not(.is-spot):not(.jg-cell--older)::after {
-  inset: 0 0 0 -3px;
+  inset: 0;
 }
 /* The focus trace through an older cell dims with it, as it did. */
 .jg[data-live="true"] .jg-row.is-focus .jg-cell:not(.is-latest):not(.is-spot):not(.jg-cell--older)::after {
