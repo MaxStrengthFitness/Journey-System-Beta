@@ -233,8 +233,9 @@
 }
 
 /* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): the
-   edge seen from outside, the fill clipped to the padding box, a short
-   two-layer navy lift. Its 3px category border-top went (it tapered into a
+   edge seen from outside, the fill clipped to the padding box, a list
+   item's one contact shadow (--wk-elev-list: a tile among many, the iPad
+   round, Oct 6 2026). Its 3px category border-top went (it tapered into a
    crescent at the corners): the head paints the category band. */
 .lh__tile {
   display: flex;
@@ -243,7 +244,7 @@
   border-radius: var(--wk-radius);
   background: var(--wk-surface);
   background-clip: padding-box;
-  box-shadow: var(--wk-elev-2), var(--wk-panel-highlight);
+  box-shadow: var(--wk-elev-list), var(--wk-panel-highlight);
   overflow: hidden;
 }
 

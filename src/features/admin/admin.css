@@ -869,24 +869,32 @@
 }
 
 .adm-skeleton {
+  display: block;
+  position: relative;
+  overflow: hidden;
   border-radius: 8px;
-  background: linear-gradient(
-    90deg,
-    var(--adm-surface-2) 25%,
-    var(--adm-surface-3) 37%,
-    var(--adm-surface-2) 63%
-  );
-  background-size: 400% 100%;
+  background: var(--adm-surface-2);
+}
+
+/* The shimmer is a band that MOVES (a transform, which the iPad composites)
+   rather than a background that is re-positioned, which WebKit repaints on
+   every frame for as long as the page loads (the iPad round, Oct 6 2026,
+   W10). Same colours, same 1.4s sweep. */
+.adm-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--adm-surface-3) 50%, transparent);
+  transform: translateX(-100%);
   animation: adm-shimmer 1.4s ease infinite;
 }
 
 @keyframes adm-shimmer {
-  0%   { background-position: 100% 50%; }
-  100% { background-position: 0 50%; }
+  to { transform: translateX(100%); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .adm-skeleton { animation: none; }
+  .adm-skeleton::after { display: none; }
 }
 
 /* ---------- Notices --------------------------------------------------- */
@@ -1038,7 +1046,7 @@
   height: 7px;
   border-radius: 50%;
   background: currentColor;
-  animation: adm-pulse 2s ease-in-out infinite;
+  animation: adm-pulse 2s ease-in-out 3; /* three beats, then lit (the iPad round, W10) */
 }
 
 @keyframes adm-pulse {

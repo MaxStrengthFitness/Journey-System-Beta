@@ -23,6 +23,10 @@ function DialogClose({ ...props }: DialogPrimitive.Close.Props) {
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
 }
 
+// The navy scrim alone, never a backdrop blur (the iPad round, Oct 6 2026):
+// WebKit re-blurs the whole screen behind a blurred veil on every frame of
+// its fade and whenever anything under it repaints, which an older iPad
+// shows as a stutter each time the machine menu opens. paint-cost.test.ts.
 function DialogOverlay({
   className,
   ...props
@@ -31,7 +35,7 @@ function DialogOverlay({
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-(--scrim) duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 isolate z-50 bg-(--scrim) duration-100 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className
       )}
       {...props}

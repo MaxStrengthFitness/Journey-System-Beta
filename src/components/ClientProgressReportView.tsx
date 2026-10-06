@@ -1037,7 +1037,6 @@ export function ClientProgressReportView({
             .print-area .bg-white\\/10 {
                background-color: var(--pr-print-card) !important;
                border-color: var(--pr-print-border) !important;
-               backdrop-filter: none !important;
             }
             /* …and white ink on them becomes navy… */
             .print-area :is(.text-white, .text-white\\/60, .text-white\\/70, .text-white\\/80,
@@ -1293,7 +1292,7 @@ export function ClientProgressReportView({
                     </div>
                   )}
 
-                  <div className="flex-1 bg-white/5 backdrop-blur-md p-6 rounded-[25px] border border-white/10 flex flex-col justify-center relative">
+                  <div className="flex-1 bg-white/5 p-6 rounded-[25px] border border-white/10 flex flex-col justify-center relative">
                     <Quote className="w-12 h-12 text-(--pr-hero) absolute top-4 right-4 opacity-10" />
                     <p className="text-lg md:text-xl font-bold italic tracking-tight leading-tight text-white print:text-(--pr-navy) max-w-[90%]">
                       "
@@ -1702,7 +1701,7 @@ export function ClientProgressReportView({
   return (
     <div className="min-h-screen bg-(--pr-navy) p-4 sm:p-8 lg:p-12 overflow-y-auto">
       <div className="max-w-4xl mx-auto space-y-8 pb-32">
-        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/5 backdrop-blur-md p-6 rounded-3xl border border-white/10 no-print print:hidden sticky top-4 z-50">
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[color-mix(in_srgb,white_5%,var(--pr-navy))] p-6 rounded-3xl border border-white/10 no-print print:hidden sticky top-4 z-50">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"

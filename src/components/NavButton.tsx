@@ -69,7 +69,7 @@ export function NavButton({
         {attention && !active && (
           <span
             aria-hidden
-            className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-chrome-go ring-2 ring-chrome animate-pulse"
+            className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-chrome-go ring-2 ring-chrome motion-safe:animate-attention"
           />
         )}
       </div>

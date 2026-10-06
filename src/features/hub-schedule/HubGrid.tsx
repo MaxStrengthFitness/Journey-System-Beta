@@ -284,6 +284,7 @@ function HubGridView({ dayKey, columns, blocks, nowMin, renderCard, frameOf, hid
                     key={p.item.key}
                     className="hs-slot"
                     data-block-key={p.item.key}
+                    data-lanes={p.lanes}
                     style={{
                       top: p.top,
                       height: p.height,

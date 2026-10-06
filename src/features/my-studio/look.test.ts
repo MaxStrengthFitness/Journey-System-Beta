@@ -541,7 +541,7 @@ describe("My Studio's type", () => {
     expect(declared(head.body, "color")[0], cls).toMatch(/^var\(--(st|eq)-ink-2\)$/);
   });
 
-  it("draws Team's cards as panels: the edge, 14px corners, a lift, and a head with no band and no rule (type and depth, phase 10)", () => {
+  it("draws Team's cards as panels: the edge, 14px corners, a lift (the list lift for a card among many), and a head with no band and no rule (type and depth, phase 10)", () => {
     // Until Oct 4 2026 these were header-strip cards: one 1px --st-border,
     // a tinted head (--st-surface-2) cut by a 1px rule. They moved on
     // purpose to the panel recipe (plan.md, phase 10). overflow: hidden
@@ -558,7 +558,11 @@ describe("My Studio's type", () => {
       const h = RULES.find((r) => r.selectors.includes(head));
       expect(c && declared(c.body, "border"), card).toEqual(["1px solid var(--st-edge)"]);
       expect(c && declared(c.body, "background-clip"), card).toEqual(["padding-box"]);
-      expect(c && declared(c.body, "box-shadow"), card).toEqual(["var(--st-elev-2), var(--st-panel-highlight)"]);
+      // A card among many (a person, a person's week) takes the list lift, one
+      // contact shadow; a panel there is one of keeps the soft lift (the iPad
+      // round, Oct 6 2026; elevation.test.ts section 15).
+      const many = card === ".tm-card" || card === ".op-person";
+      expect(c && declared(c.body, "box-shadow"), card).toEqual([many ? "var(--st-elev-list), var(--st-panel-highlight)" : "var(--st-elev-2), var(--st-panel-highlight)"]);
       expect(c && declared(c.body, "border-radius"), card).toEqual(["var(--st-radius)"]);
       expect(c && declared(c.body, "overflow"), card).toEqual(["hidden"]);
       expect(h && declared(h.body, "background"), head).toEqual(["transparent"]);

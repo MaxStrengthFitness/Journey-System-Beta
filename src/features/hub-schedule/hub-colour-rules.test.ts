@@ -255,6 +255,18 @@ const contrast = (a: [number, number, number], b: [number, number, number]) => {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 };
 
+/**
+ * How much of a finished card still shows (0.70): the card is veiled in its
+ * own ground at the rest (hub-card.css, the iPad round, Oct 6 2026), which
+ * draws the pixels opacity 0.70 drew without a layer per card.
+ */
+function recedeStrength(): number {
+  const veil = declared(CARD, '.hs-card[data-recede="true"]::after').background;
+  const m = /^color-mix\(in srgb, var\(--hs-ground, var\(--eq-bg\)\) (\d+)%, transparent\)$/.exec(veil);
+  expect(m, veil).not.toBeNull();
+  return 1 - Number(m![1]) / 100;
+}
+
 /** A colour drawn at opacity `o` over `under`. */
 const faded = (c: [number, number, number], o: number, under: [number, number, number]) =>
   c.map((v, i) => v * o + under[i] * (1 - o)) as [number, number, number];
@@ -267,8 +279,16 @@ describe("words that must still read", () => {
     expect(declared(GRID, ".hs-rest-head").color).toBe("var(--eq-ink-muted)");
   });
 
+  it("recedes a finished card without opacity: a veil of its own ground, set per column (the iPad round, Oct 6 2026)", () => {
+    expect(declared(CARD, '.hs-card[data-recede="true"]').opacity, "no translucent layer per card").toBeUndefined();
+    expect(declared(GRID, ".hs-col")["--hs-ground"]).toBe("var(--eq-bg)");
+    expect(declared(GRID, '.hs-col[data-me="true"]')["--hs-ground"]).toBe("var(--eq-mine)");
+    expect(declared(GRID, '.hs-col[data-me="true"]').background).toBe("var(--eq-mine)");
+    expect(recedeStrength()).toBeCloseTo(0.7, 5);
+  });
+
   it("keeps a finished card's name at 4.5:1 over the grid and over your lane, in both modes", () => {
-    const opacity = Number(declared(CARD, '.hs-card[data-recede="true"]').opacity);
+    const opacity = recedeStrength();
     expect(opacity).toBeGreaterThan(0);
     for (const [mode, t] of Object.entries(THEMES)) {
       for (const ground of ["--eq-bg", "--eq-mine"]) {
@@ -291,7 +311,7 @@ describe("words that must still read", () => {
   });
 
   it("recedes the Key's swatches as far as the cards", () => {
-    const opacity = declared(CARD, '.hs-card[data-recede="true"]').opacity;
+    const opacity = String(recedeStrength());
     expect(declared(TOP, '.hd-swatch[data-state="done"]').opacity).toBe(opacity);
     expect(declared(TOP, '.hd-swatch[data-state="left-open"]').opacity).toBe(opacity);
   });

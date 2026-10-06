@@ -125,7 +125,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {/* On a phone (under 640px) the toasts sit inside the screen's edges and above the bottom bar (Journey Lite, Oct 1 2026); 384px from the right edge started off a 390px screen. */}
       <div className="fixed bottom-20 left-3 right-3 sm:left-auto sm:bottom-6 sm:right-6 z-9999 flex flex-col gap-3 sm:w-full max-w-sm pointer-events-none">
         {toasts.map((t) => {
-            let bgColor = "bg-slate-900/90 border-slate-800 text-slate-100";
+            let bgColor = "bg-slate-900 border-slate-800 text-slate-100";
             // The info toast is dark in both themes, so its icon is the
             // frame's blue, which is the same in both (--cyan follows the
             // theme and would be the deep logo blue on it in light).
@@ -135,17 +135,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             switch (t.type) {
               case "success":
                 bgColor =
-                  "bg-emerald-950/90 border-emerald-800/50 text-emerald-100";
+                  "bg-emerald-950 border-emerald-800/50 text-emerald-100";
                 iconColor = "text-emerald-400";
                 IconComponent = CheckCircle2;
                 break;
               case "error":
-                bgColor = "bg-red-950/90 border-red-900/50 text-red-100";
+                bgColor = "bg-red-950 border-red-900/50 text-red-100";
                 iconColor = "text-red-400";
                 IconComponent = AlertCircle;
                 break;
               case "warning":
-                bgColor = "bg-amber-950/90 border-amber-900/50 text-amber-100";
+                bgColor = "bg-amber-950 border-amber-900/50 text-amber-100";
                 iconColor = "text-amber-400";
                 IconComponent = AlertTriangle;
                 break;
@@ -155,7 +155,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <div
                 key={t.id}
                 data-leaving={t.leaving ? "true" : undefined}
-                className={`pointer-events-auto flex items-start gap-3 p-4 rounded-2xl border backdrop-blur-xl shadow-2xl ${bgColor} ${t.leaving ? TOAST_OUT : TOAST_IN}`}
+                className={`pointer-events-auto flex items-start gap-3 p-4 rounded-2xl border shadow-2xl ${bgColor} ${t.leaving ? TOAST_OUT : TOAST_IN}`}
               >
                 <IconComponent
                   className={`w-5 h-5 shrink-0 mt-0.5 ${iconColor}`}

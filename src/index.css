@@ -386,8 +386,15 @@
                        same lift cast upward, for a sheet that rises from
                        the bottom edge
          --elev-5      a dialog
-         --elev-card   a Hub booking: small blurs, because a day holds
-                       30 to 60 of them
+         --elev-list   a card among many: a Hub booking, a Board card, a
+                       note thread, a team or journal card, a row drawn as
+                       a card. ONE tight contact layer, 3px blur at most
+                       (the iPad round, Oct 6 2026, audit W7: WebKit
+                       rasterises each blur on the CPU as a list scrolls,
+                       so a soft two-layer lift on 30 to 60 cards drops
+                       frames on an older iPad). It was --elev-card, the
+                       Hub's alone. The soft lift (--elev-2) stays for a
+                       panel there is one of; paint-cost.test.ts holds it
          --shelf       a bar over scrolling content (a room's toolbar)
          --frame-down, --frame-up   under the navy header, over the navy
                        bottom bar
@@ -414,7 +421,10 @@
                        tray is the group's boundary)
          --divider     a row's hairline inside a panel
          --highlight   a raised control's top light
-         --scrim       the veil under a dialog: navy, not black
+         --scrim       the veil under a dialog: navy, not black, and never
+                       blurred (the iPad round, Oct 6 2026: a full-screen
+                       backdrop blur is WebKit's costliest paint on an
+                       older iPad; paint-cost.test.ts holds it)
 
        Each feature palette carries these under its own prefix (--eq-*,
        --adm-*, --st-* and the rest), the shadows as var(--elev-n) and the
@@ -427,7 +437,7 @@
     --elev-4: 0 2px 6px rgba(25,45,65,0.10), 0 24px 48px -16px rgba(25,45,65,0.34);
     --elev-4-up: 0 -2px 6px rgba(25,45,65,0.10), 0 -24px 48px -16px rgba(25,45,65,0.34);
     --elev-5: 0 4px 10px rgba(25,45,65,0.10), 0 32px 64px -20px rgba(25,45,65,0.42);
-    --elev-card: 0 1px 2px rgba(25,45,65,0.09), 0 3px 8px -3px rgba(25,45,65,0.18);
+    --elev-list: 0 1px 3px rgba(25,45,65,0.16);
     --shelf: 0 1px 0 rgba(25,45,65,0.10), 0 6px 14px -10px rgba(25,45,65,0.45);
     --frame-down: 0 1px 0 rgba(0,18,36,0.22), 0 4px 12px -2px rgba(0,35,65,0.35);
     --frame-up: 0 -1px 0 rgba(0,18,36,0.22), 0 -10px 26px -12px rgba(0,35,65,0.45);
@@ -445,7 +455,7 @@
     --edge-control: rgba(25,45,65,0.26);
     --divider: rgba(25,45,65,0.10);
     --highlight: rgba(255,255,255,0.70);
-    --scrim: rgba(0,18,36,0.30);
+    --scrim: rgba(0,18,36,0.36);    /* no blur behind it (the iPad round): .30 with a 4px blur read about as quiet */
     /* A raised control on a popover (a dialog, a sheet, a menu): in light
        the page's own raised fill and edge; dark steps them up (below). */
     --popover-raised: var(--raised);
@@ -692,7 +702,7 @@
     --elev-4: 0 2px 6px rgba(2,10,20,0.50), 0 20px 44px -16px rgba(2,10,20,0.80);
     --elev-4-up: 0 -2px 6px rgba(2,10,20,0.50), 0 -20px 44px -16px rgba(2,10,20,0.80);
     --elev-5: 0 4px 10px rgba(2,10,20,0.55), 0 28px 56px -20px rgba(2,10,20,0.85);
-    --elev-card: 0 1px 2px rgba(2,10,20,0.45), 0 3px 8px -3px rgba(2,10,20,0.50);
+    --elev-list: 0 1px 3px rgba(2,10,20,0.55);
     --shelf: 0 1px 0 rgba(150,180,210,0.10), 0 6px 14px -10px rgba(2,10,20,0.85);
     --frame-down: 0 1px 0 rgba(255,255,255,0.05), 0 4px 12px -2px rgba(2,10,20,0.60);
     --frame-up: 0 -1px 0 rgba(255,255,255,0.05), 0 -10px 24px -12px rgba(2,10,20,0.60);
@@ -710,7 +720,7 @@
     --edge-control: rgba(150,180,210,0.16);
     --divider: rgba(150,180,210,0.10);
     --highlight: rgba(255,255,255,0.07);
-    --scrim: rgba(0,6,14,0.55);
+    --scrim: rgba(0,6,14,0.60);     /* no blur behind it (the iPad round): .55 with a 4px blur */
     /* The popover (#22374B) is a step above the card, lighter than the
        raised fill, so a raised control on it steps up again: 1.11:1 above
        the popover, its edge 3.43:1 on the fill and 3.81:1 on the popover,
@@ -1043,4 +1053,27 @@ html[data-app-h] body { background-color: var(--chrome); }
   textarea {
     font-size: 16px !important;
   }
+}
+
+/* ==========================================================================
+   ATTENTION THAT RESTS (the iPad round, Oct 6 2026; audit W10)
+   A mark that asks to be looked at (the running session's tab, the clock on
+   "In progress", the Kaizen report's due dot) beats three times when it
+   appears and then stays lit. Tailwind's animate-pulse and animate-ping run
+   forever, which keeps the compositor and the display awake for a whole
+   twenty-minute session: battery and heat on an iPad mini, for a dot that
+   has said its piece in six seconds. Use these with motion-safe:, so
+   "reduce motion" keeps them still. paint-cost.test.ts holds it.
+   ========================================================================== */
+@utility animate-attention {
+  animation: attention-beat 2s cubic-bezier(0.4, 0, 0.6, 1) 3;
+}
+@utility animate-attention-ring {
+  animation: attention-ring 1s cubic-bezier(0, 0, 0.2, 1) 3;
+}
+@keyframes attention-beat {
+  50% { opacity: 0.5; }
+}
+@keyframes attention-ring {
+  75%, 100% { transform: scale(2); opacity: 0; }
 }

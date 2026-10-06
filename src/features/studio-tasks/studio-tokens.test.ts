@@ -78,7 +78,7 @@ const FROM_THE_APP: Readonly<Record<string, string>> = {
   "--st-elev-3": "--eq-elev-3",
   "--st-elev-4": "--eq-elev-4",
   "--st-elev-5": "--eq-elev-5",
-  "--st-elev-card": "--eq-elev-card",
+  "--st-elev-list": "--eq-elev-list",
   "--st-shelf": "--eq-shelf",
   "--st-press": "--eq-press",
   "--st-glow-live": "--eq-glow-live",

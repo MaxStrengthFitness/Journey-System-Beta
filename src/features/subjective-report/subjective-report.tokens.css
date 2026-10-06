@@ -60,7 +60,7 @@
   --sr-elev-3:          var(--elev-3);
   --sr-elev-4:          var(--elev-4);
   --sr-elev-5:          var(--elev-5);
-  --sr-elev-card:       var(--elev-card);
+  --sr-elev-list:       var(--elev-list);
   --sr-shelf:           var(--shelf);
   --sr-press:           var(--press);
   --sr-glow-live:       var(--glow-live);
@@ -113,7 +113,7 @@
   --sr-elev-3:          var(--elev-3);
   --sr-elev-4:          var(--elev-4);
   --sr-elev-5:          var(--elev-5);
-  --sr-elev-card:       var(--elev-card);
+  --sr-elev-list:       var(--elev-list);
   --sr-shelf:           var(--shelf);
   --sr-press:           var(--press);
   --sr-glow-live:       var(--glow-live);

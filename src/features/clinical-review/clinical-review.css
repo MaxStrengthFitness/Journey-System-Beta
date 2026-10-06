@@ -167,8 +167,11 @@
   position: sticky; top: 0; z-index: 5;
   display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
   padding: 10px 14px; border: 1px solid var(--cr-border); border-radius: var(--cr-radius);
-  background: color-mix(in srgb, var(--cr-surface) 92%, transparent);
-  backdrop-filter: blur(8px);
+  /* Opaque, no blur (the iPad round, Oct 6 2026): a blurred sticky bar
+     re-blurs whatever scrolls under it on every frame, the classic WebKit
+     jank on an older iPad. The surface at 92% over a blur read as the
+     surface anyway. */
+  background: var(--cr-surface);
 }
 .cr-bar__title { display: flex; align-items: center; gap: 10px; min-width: 0; }
 /* "Kaizen Deep Dive" in its bar: the display face upright, in its own
@@ -409,7 +412,7 @@
 /* ---- print ---------------------------------------------------------------- */
 @media print {
   .cr { gap: 12px; }
-  .cr-bar { position: static; backdrop-filter: none; }
+  .cr-bar { position: static; }
   .cr-bar .cr-seg, .cr-bar .cr-iconbtn { display: none; }
   .cr-card, .cr-insight, .cr-kpis { break-inside: avoid; }
   .cr-heat { overflow: visible; }

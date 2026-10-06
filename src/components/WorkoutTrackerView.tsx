@@ -3667,7 +3667,7 @@ export function WorkoutTrackerView({
       )}
     >
       {isIntroSession && (
-        <div className="bg-(--eq-go) p-3 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-(color:--eq-go)/20 border border-white/20 animate-pulse mt-2 mx-4 relative z-40">
+        <div className="bg-(--eq-go) p-3 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-(color:--eq-go)/20 border border-white/20 mt-2 mx-4 relative z-40">
           <Sparkles className="w-5 h-5 text-(--eq-go-on)" />
           <span className="text-(--eq-go-on) font-bold text-sm">
             New client introductory session: conversational baseline
@@ -4263,7 +4263,7 @@ export function WorkoutTrackerView({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsShowingAssessment(false)}
-              className="absolute inset-0 bg-(--scrim) backdrop-blur-sm"
+              className="absolute inset-0 bg-(--scrim)"
             />
             <motion.div
               initial={{ x: "100%" }}

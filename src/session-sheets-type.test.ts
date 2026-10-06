@@ -155,9 +155,10 @@ describe("the components a session mounts: no capitals, nothing under 11px, the 
     expect(src, "a raw black or slate veil").not.toMatch(/inset-0[^"'`]*bg-(?:black|slate-900)\/\d|bg-(?:black|slate-900)\/\d[^"'`]*inset-0/);
   });
 
-  it("the two slide-over veils in the session are the navy scrim", () => {
-    for (const file of ["components/journal/SessionJournalSidebar.tsx", "components/WorkoutTrackerView.tsx"]) {
-      expect(read(file), file).toContain("absolute inset-0 bg-(--scrim) backdrop-blur-sm");
+  it("the three slide-over veils in the session are the navy scrim, unblurred (the iPad round, Oct 6 2026)", () => {
+    for (const file of ["components/journal/SessionJournalSidebar.tsx", "components/WorkoutTrackerView.tsx", "features/journey-grid/SessionFlagsSheet.tsx"]) {
+      expect(read(file), file).toContain('className="absolute inset-0 bg-(--scrim)"');
+      expect(read(file), file).not.toMatch(/backdrop-blur/);
     }
   });
 });
