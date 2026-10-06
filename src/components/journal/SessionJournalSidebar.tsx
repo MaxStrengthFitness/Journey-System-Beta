@@ -149,8 +149,9 @@ export function SessionJournalSidebar({
     [fordEntries, session.id],
   );
 
-  // Everything written during this session, newest first. A single-field
-  // equality query, so it needs no composite index.
+  // Everything written during this session, newest first. Served by the
+  // journalEntries (sessionId, occurredAt) index: this database is the
+  // Enterprise edition, which builds no index by itself (R1, Oct 5 2026).
   useEffect(() => {
     if (!session.id) return;
     const q = query(collection(db, "journalEntries"), where("sessionId", "==", session.id));

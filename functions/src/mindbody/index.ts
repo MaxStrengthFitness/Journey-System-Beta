@@ -1134,7 +1134,7 @@ export async function handleMindbodyWebhook(
           }
 
           /*
-           * The trainer, by Mindbody staff id: at most two single-field
+           * The trainer, by Mindbody staff id: at most two indexed equality
            * queries (staffResolver) and a read of each match. Staff ids are
            * numbered per SITE, like client ids, so a match counts only when
            * that trainer works at this booking's studio, exactly the pull's

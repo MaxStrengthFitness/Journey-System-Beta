@@ -13,11 +13,10 @@ import { byOldestOffer, offerFrom, type ShareOffer } from "./offers";
  * disagree about what is waiting.
  *
  * Four collection-group reads across every studio (the floor's notes since
- * Oct 3 2026). They carry no index of
- * their own (the database is the Enterprise edition, which builds none
- * automatically), so each scans that collection group; the four are small
- * (a studio's notes, tips, floor notes and own machines), and only
- * administrators may run them.
+ * Oct 3 2026). Each is served by its own (shareStatus, studioId)
+ * collection-group index (R2, Oct 5 2026: the database is the Enterprise
+ * edition, which builds none automatically, so before that each scanned the
+ * whole collection group), and only administrators may run them.
  */
 export const SHARE_GROUPS: { kind: OfferKind; group: "roster" | "wiki" | "playbook" | "floorNotes" }[] = [
   { kind: "machine", group: "roster" },

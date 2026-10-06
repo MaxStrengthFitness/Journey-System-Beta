@@ -126,8 +126,9 @@ export function useStudioTasks(
       return;
     }
     setInstancesLoaded(false);
-    // Equality on a single field — covered by Firestore's automatic index, so
-    // this needs no composite index to deploy.
+    // Equality on a single field, served by the taskInstances (localDate,
+    // kind) index. This database is the Enterprise edition: it builds no
+    // index by itself, and a query without one reads the whole collection.
     const unsub = onSnapshot(
       query(instancesRef(studioId), where("localDate", "==", day)),
       (snap) => {

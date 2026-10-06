@@ -12,8 +12,9 @@
  * studio would miss notes: a note written in a session carries the studio the
  * trainer stood in, one written on the profile the client's home studio, so a
  * visiting client's Critical note lives under another studio's id. Equality
- * filters alone (an `in` is a set of equalities) need no composite index, and
- * the rules let any signed-in trainer read the collection. A studio day of
+ * filters (an `in` is a set of equalities) served by the journalEntries
+ * (clientId, importance, occurredAt) index — Enterprise builds none by
+ * itself — and the rules let any signed-in trainer read the collection. A studio day of
  * sixty bookings is two listeners, never one per client.
  *
  * LIVE, because the Hub stays open all day: a note written at 9:05, or one

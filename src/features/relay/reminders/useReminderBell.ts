@@ -46,8 +46,8 @@ const rungHere = new Map<string, Set<string>>();
  * stated limit (it rings while the app is open somewhere).
  *
  * Reads: the private task list (one listener) and yesterday-to-tomorrow's
- * private instances (one listener, `localDate in [...]` — a single-field
- * filter, no index to deploy), so a task already ticked stays quiet.
+ * private instances (one listener, `localDate in [...]`, served by the
+ * taskInstances (localDate, kind) index), so a task already ticked stays quiet.
  *
  * Writes: one notification per reminder per day, at a deterministic id and
  * only when that document does not exist yet, so two iPads signed in as the

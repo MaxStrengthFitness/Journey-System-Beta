@@ -111,11 +111,12 @@ export function useClientFord(args: {
       return;
     }
 
-    // Equality on studioId and nothing else: the automatic single-field index
-    // serves it, so this works the moment the code ships. Do NOT add
+    // Equality on studioId and nothing else, inside ONE client's ford
+    // subcollection: it reads that client's few details whole (this database
+    // is the Enterprise edition, which builds no index by itself; the guard
+    // test allows it as a per-client subcollection). Do NOT add
     // orderBy("occurredAt") without first deploying the composite index
-    // ford(studioId asc, occurredAt desc) — until it builds, the query fails
-    // everywhere. Sorting happens here instead.
+    // ford(studioId asc, occurredAt desc). Sorting happens here instead.
     const q = query(
       collection(db, "clients", clientId, "ford"),
       where("studioId", "==", studioId),

@@ -25,10 +25,9 @@ import "./share-review.css";
  *
  * Read once when the tab opens, with Refresh, rather than listened to: three
  * collection-group reads across every studio, for a screen an administrator
- * opens now and then. They carry no index of their own (the database is the
- * Enterprise edition, which builds none automatically), so each scans that
- * collection group; the three are small (a studio's notes, tips and own
- * machines), and only administrators may run them.
+ * opens now and then. Each is served by its own (shareStatus, studioId)
+ * collection-group index (the database is the Enterprise edition, which
+ * builds none automatically), and only administrators may run them.
  */
 
 type Load = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; offers: ShareOffer[] };

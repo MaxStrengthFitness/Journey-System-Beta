@@ -123,7 +123,7 @@ export interface TeamJob {
   completedBy: TaskAuthor | null;
   completedAt?: unknown;
   /** Studio-local day it was closed; null while open. Drives the "recently
-   *  finished" read without a composite index. */
+   *  finished" read, served by the teamJobs (closedOn, status) index. */
   closedOn?: string | null;
 
   createdBy: TaskAuthor;

@@ -3,8 +3,9 @@
  * a date range, for one studio or a leader's several, and each studio's own
  * "pay-as-you-go counts as" rule.
  *
- * One small range query per studio on renewals.closedOn — a single-field
- * range, which Firestore indexes without a composite. Nothing here writes.
+ * One small range query per studio on renewals.closedOn, served by the
+ * renewals (closedOn, outcome) index (this database is the Enterprise
+ * edition, which builds no index by itself). Nothing here writes.
  */
 
 import { useEffect, useMemo, useState } from "react";
