@@ -121,11 +121,12 @@ const OFFSET_OPTIONS: Intl.DateTimeFormatOptions = {
 };
 
 /**
- * Milliseconds to add to a UTC instant to get the wall-clock reading in `tz`.
- * Derived from Intl rather than a hardcoded table so DST is handled by the
- * platform's tz database.
+ * Milliseconds to add to a UTC instant to get the wall-clock reading in `tz`,
+ * read from Intl. Derived from Intl rather than a hardcoded table so DST is
+ * handled by the platform's tz database. This is the slow path (formatToParts
+ * on every call); everything else goes through `dayOffsetMs`.
  */
-function zoneOffsetMs(at: Date, tz: string): number {
+function intlOffsetMs(at: Date, tz: string): number {
   const parts = getFormatter("offset", tz, OFFSET_OPTIONS).formatToParts(at);
 
   const get = (type: string) =>
@@ -143,6 +144,92 @@ function zoneOffsetMs(at: Date, tz: string): number {
   return asUtc - at.getTime();
 }
 
+/**
+ * The zone's offset, remembered per (zone, UTC day).
+ *
+ * formatToParts was the app's hottest code on a slow iPad (the perf lab, Oct
+ * 2026: 1.1 s of Operations' CPU at 5x, 150-480 ms on every screen), because
+ * zonedYMD / zonedHM / studioDateKey called it once per client, per booking and
+ * per session. An offset only changes at a zone transition, so it is read three
+ * times per UTC day and the rest is arithmetic.
+ *
+ * A day is cached as one offset only when the readings at its first second,
+ * at noon and at its last second agree. A day that holds a transition (the
+ * second Sunday in March and the first in November in Ohio, or a half-hour
+ * zone's change) is marked `MIXED`, and every instant in it is read from Intl
+ * exactly as before. The one thing this trusts is that no zone has two
+ * transitions within twelve hours that cancel each other out; the tz database
+ * has none.
+ */
+const DAY_MS = 86_400_000;
+const MIXED = Number.NaN;
+/**
+ * About thirteen years of distinct days per zone; past it the map starts again
+ * (a few ms of reads), so a shared iPad signed in for weeks never grows it
+ * without end.
+ */
+const OFFSET_CACHE_MAX = 5_000;
+const offsetCache = new Map<string, Map<number, number>>();
+let lastZone: string | null = null;
+let lastZoneDays: Map<number, number> | null = null;
+
+function daysOf(tz: string): Map<number, number> {
+  if (tz === lastZone && lastZoneDays) return lastZoneDays;
+  let days = offsetCache.get(tz);
+  if (!days) {
+    days = new Map();
+    offsetCache.set(tz, days);
+  }
+  lastZone = tz;
+  lastZoneDays = days;
+  return days;
+}
+
+/**
+ * The offset for this instant's UTC day, or NaN when the day holds a
+ * transition (or is outside what the arithmetic below may stand in for).
+ */
+function dayOffsetMs(ms: number, tz: string): number {
+  const day = Math.floor(ms / DAY_MS);
+  const days = daysOf(tz);
+  const known = days.get(day);
+  if (known !== undefined) return known;
+  const from = day * DAY_MS;
+  // Offsets are whole seconds, so reading second-aligned instants is exact.
+  const first = intlOffsetMs(new Date(from), tz);
+  const noon = intlOffsetMs(new Date(from + DAY_MS / 2), tz);
+  const last = intlOffsetMs(new Date(from + DAY_MS - 1000), tz);
+  // A real offset is within a day. Anything else is Date.UTC reading a two-digit
+  // year as 19xx (year 0020), and the arithmetic must not stand on it.
+  const offset = first === noon && noon === last && Math.abs(first) < DAY_MS ? first : MIXED;
+  if (days.size >= OFFSET_CACHE_MAX) days.clear();
+  days.set(day, offset);
+  return offset;
+}
+
+/**
+ * The years the arithmetic answers for. Outside them (a bad import's year 0020,
+ * year 10000) Intl's own reading of era and year is kept, unchanged.
+ */
+function arithmeticYear(year: number): boolean {
+  return year >= 1000 && year <= 9999;
+}
+
+/**
+ * Milliseconds to add to a UTC instant to get the wall-clock reading in `tz`.
+ * The same answer as reading it from Intl at that instant, from the cache.
+ */
+function zoneOffsetMs(at: Date, tz: string): number {
+  const ms = at.getTime();
+  // Only whole-second instants: Intl drops the milliseconds, and the callers
+  // below pass whole seconds; anything else keeps Intl's exact behaviour.
+  if (ms % 1000 === 0) {
+    const offset = dayOffsetMs(ms, tz);
+    if (!Number.isNaN(offset)) return offset;
+  }
+  return intlOffsetMs(at, tz);
+}
+
 /** Calendar year/month/day as read in the studio's timezone. */
 export function zonedYMD(
   value: DateLike,
@@ -150,6 +237,19 @@ export function zonedYMD(
 ): { year: number; month: number; day: number } | null {
   const d = toDate(value);
   if (!d) return null;
+  const ms = d.getTime();
+  const offset = dayOffsetMs(ms, tz);
+  if (!Number.isNaN(offset)) {
+    const wall = new Date(ms + offset);
+    const year = wall.getUTCFullYear();
+    if (arithmeticYear(year)) {
+      return { year, month: wall.getUTCMonth() + 1, day: wall.getUTCDate() };
+    }
+  }
+  return intlYMD(d, tz);
+}
+
+function intlYMD(d: Date, tz: string): { year: number; month: number; day: number } {
   const parts = getFormatter(
     "ymd",
     tz,
@@ -174,6 +274,18 @@ export function zonedHM(
 ): { hour: number; minute: number } | null {
   const d = toDate(value);
   if (!d) return null;
+  const ms = d.getTime();
+  const offset = dayOffsetMs(ms, tz);
+  if (!Number.isNaN(offset)) {
+    const wall = new Date(ms + offset);
+    if (arithmeticYear(wall.getUTCFullYear())) {
+      return { hour: wall.getUTCHours(), minute: wall.getUTCMinutes() };
+    }
+  }
+  return intlHM(d, tz);
+}
+
+function intlHM(d: Date, tz: string): { hour: number; minute: number } {
   const parts = getFormatter("hm", tz, {
     hour12: false,
     hour: "2-digit",
@@ -183,6 +295,12 @@ export function zonedHM(
     Number(parts.find((p) => p.type === type)?.value ?? "0");
   return { hour: get("hour") % 24, minute: get("minute") };
 }
+
+/**
+ * The Intl readings themselves, for the tests that hold the cached answers to
+ * them (studio-time.test.ts). Not for screens: they are the slow path.
+ */
+export const __intlReadingsForTests = { intlYMD, intlHM, intlOffsetMs };
 
 /** Hour 0-23 in studio time, or null when the value is unusable. */
 export function studioHour(
@@ -359,6 +477,39 @@ function format(
   // Options vary here, so the cache key includes them. Still far cheaper than
   // rebuilding the formatter on every row.
   return getFormatter(JSON.stringify(options), tz, options).format(d);
+}
+
+const dateWordsCache = new Map<string, Intl.DateTimeFormat>();
+const DATE_WORDS_CACHE_MAX = 200;
+
+/**
+ * `date.toLocaleDateString(locale, options)`, from a formatter built once per
+ * (locale, options). The same words: toLocaleDateString builds a new
+ * Intl.DateTimeFormat on every call (about 80 µs on a desktop, several times
+ * that on an iPad), and the Operations pages and the Directory call it once per
+ * client or row (the perf lab, Oct 2026: 241 ms of Today's CPU at 5x in
+ * states.ts alone). `options` must name at least one date field (weekday,
+ * year, month or day), as every caller does; without one, toLocaleDateString
+ * would add a full date and this would not. An invalid date reads "Invalid
+ * Date", as toLocaleDateString's does. `locale` undefined is the iPad's own,
+ * like `[]`.
+ */
+export function formatDateWords(
+  date: Date,
+  options: Intl.DateTimeFormatOptions,
+  locale?: string,
+): string {
+  if (Number.isNaN(date.getTime())) return "Invalid Date";
+  const key = `${locale ?? ""}|${JSON.stringify(options)}`;
+  let formatter = dateWordsCache.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, options);
+    // A handful of option sets exist in the app; the bound only guards a caller
+    // that builds options from data.
+    if (dateWordsCache.size >= DATE_WORDS_CACHE_MAX) dateWordsCache.clear();
+    dateWordsCache.set(key, formatter);
+  }
+  return formatter.format(date);
 }
 
 /** e.g. "9:15 AM" */
