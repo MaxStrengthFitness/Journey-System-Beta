@@ -28,6 +28,7 @@ import {
 import { historyStartWords, sessionNumberTag } from "../../lib/history-claims";
 import type { HistoryCoverage } from "../../lib/prior-history";
 import { noteKey } from "../machine-menu/note-key";
+import { cellsKey, columnsKey } from "./pin-key";
 import "./journey-grid.css";
 
 /* ------------------------------------------------------------------ *
@@ -575,6 +576,9 @@ export function JourneyGrid({
    */
   const pinnedAt = useRef<number | null>(null);
 
+  const sessionsPinKey = useMemo(() => columnsKey(sessions), [sessions]);
+  const sectionsPinKey = useMemo(() => cellsKey(sections), [sections]);
+
   const scrollToEnd = useCallback(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -604,7 +608,10 @@ export function JourneyGrid({
     }
     prevFirstId.current = firstId;
     prevScrollWidth.current = el.scrollWidth;
-  }, [sessions, scrollToEnd]);
+    // Only when the columns changed (pin-key.ts): a new array with the same
+    // columns, as every set brings during a session, lays nothing out.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionsPinKey, scrollToEnd]);
 
   // The host page can resize after mount (fonts, orientation, a panel
   // animating open). Until the trainer touches the grid, keep it parked on
@@ -937,7 +944,10 @@ export function JourneyGrid({
    */
   useLayoutEffect(() => {
     if (!userScrolled.current) scrollToEnd();
-  }, [fitVars, sections, scrollToEnd]);
+    // What the past cells SAY, not the array (pin-key.ts): the sets landing
+    // change it; a set typed in today's column does not.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fitVars, sectionsPinKey, scrollToEnd]);
 
   const effectiveMaxH = layout === "page" ? undefined : layout === "viewport" ? viewportMaxH : maxHeight;
   const style = {
@@ -988,7 +998,9 @@ export function JourneyGrid({
       >
         <div className="jg-grid" data-reorder={live?.reorder ? "1" : "0"}>
           {/* ---------- header row ---------- */}
-          <div className="jg-row" role="row">
+          {/* One sticky box for the whole row where subgrid is there
+              (journey-grid.css, "ONE sticky header row"). */}
+          <div className="jg-row jg-row--head" role="row">
             {/* Just the word. The "start → now" line under it described the
                 Analytics column, which the Active Session turns off -- so on
                 the screen a trainer actually stares at for an hour it was a

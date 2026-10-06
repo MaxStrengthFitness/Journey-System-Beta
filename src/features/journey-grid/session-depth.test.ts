@@ -407,6 +407,10 @@ describe("the grid lifts as one panel and the Now Bar docks", () => {
         ".jg-older-loading",
         ".jg-keypop--corner",
         ".jg-look .jg-cell--nr::before",
+        // The iPad round (Oct 6 2026): the one sticky header row, and the
+        // veil that dims an older cell in place of opacity.
+        ".jg-row.jg-row--head",
+        '.jg[data-live="true"] .jg-cell:not(.is-latest):not(.is-spot):not(.jg-cell--older)::after',
       ].sort(),
     );
   });
