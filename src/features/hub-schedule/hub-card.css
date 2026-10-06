@@ -129,9 +129,13 @@
   pointer-events: none;
 }
 
-/* Open while over: the blue edge the open card has, receded with it. */
+/* Open while over: the blue edge the open card has, receded with it, round
+   three sides. Its left rail keeps the receded grey it had before the iPad
+   round (opacity used to recede the open card's rail to grey too). */
 .hs-card[data-recede="true"][data-open="true"] {
-  border-color: color-mix(in srgb, var(--eq-live) 70%, var(--hs-ground, var(--eq-bg)));
+  border-top-color: color-mix(in srgb, var(--eq-live) 70%, var(--hs-ground, var(--eq-bg)));
+  border-right-color: color-mix(in srgb, var(--eq-live) 70%, var(--hs-ground, var(--eq-bg)));
+  border-bottom-color: color-mix(in srgb, var(--eq-live) 70%, var(--hs-ground, var(--eq-bg)));
 }
 
 /* Its quiet words still read at arm's length (the colour round's review,
@@ -215,6 +219,13 @@
 /* The day summary's spotlight: the rest stand back. */
 .hs-card[data-dim="true"] {
   opacity: 0.22;
+}
+
+/* Dimmed, a card that is over drops its veil: the dim's opacity already
+   gives it a layer, and veil plus dim drew it about 30% fainter than a
+   dimmed card still to come (it was 0.22 for both before the iPad round). */
+.hs-card[data-dim="true"]::after {
+  content: none;
 }
 
 .hs-card-top {

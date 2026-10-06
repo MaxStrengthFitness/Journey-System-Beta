@@ -287,6 +287,26 @@ describe("words that must still read", () => {
     expect(recedeStrength()).toBeCloseTo(0.7, 5);
   });
 
+  it("keeps an open finished card's left rail grey, and a dimmed finished card as faint as any dimmed card (the review, Oct 6 2026)", () => {
+    // Open while over: blue round three sides only. A border-color shorthand
+    // here would outrank the receded rail and turn it blue.
+    const openOver = declared(CARD, '.hs-card[data-recede="true"][data-open="true"]');
+    expect(openOver["border-color"]).toBeUndefined();
+    expect(openOver["border-left-color"]).toBeUndefined();
+    for (const side of ["top", "right", "bottom"]) expect(openOver[`border-${side}-color`], side).toContain("var(--eq-live) 70%");
+    expect(declared(CARD, '.hs-card[data-recede="true"]')["border-left-color"]).toContain("var(--eq-border-strong) 70%");
+    // Dimmed: the veil goes, so the dim's 0.22 is the whole fade, as before.
+    expect(declared(CARD, '.hs-card[data-dim="true"]').opacity).toBe("0.22");
+    expect(declared(CARD, '.hs-card[data-dim="true"]::after').content).toBe("none");
+    expect(position(CARD, '.hs-card[data-recede="true"]::after')).toBeLessThan(position(CARD, '.hs-card[data-dim="true"]::after'));
+  });
+
+  it("lifts the column holding focus over its neighbours, under your column and the axis", () => {
+    expect(declared(GRID, ".hs-col:focus-within")["z-index"]).toBe("2");
+    expect(declared(GRID, '.hs-col[data-me="true"]')["z-index"]).toBe("3");
+    expect(position(GRID, ".hs-col:focus-within")).toBeLessThan(position(GRID, '.hs-col[data-me="true"]'));
+  });
+
   it("keeps a finished card's name at 4.5:1 over the grid and over your lane, in both modes", () => {
     const opacity = recedeStrength();
     expect(opacity).toBeGreaterThan(0);

@@ -328,6 +328,14 @@ button.hs-colhead:focus-visible {
   --hs-ground: var(--eq-bg);
 }
 
+/* Each column is a stacking context (its container above), so a focused
+   card's ring at a column's right edge would sit under the next column:
+   the column holding focus lifts over its neighbours, still under your
+   sticky column (3) and the time axis (5). */
+.hs-col:focus-within {
+  z-index: 2;
+}
+
 /* Your column: a blue cast under your bookings. Opaque, because it is
    sticky and the others scroll under it. */
 .hs-col[data-me="true"] {
@@ -385,11 +393,16 @@ button.hs-colhead:focus-visible {
 .hs-rest,
 .hs-off {
   --hs-hatch-ink: color-mix(in srgb, var(--eq-border) 50%, transparent);
+  /* The corner slivers (0% and 100%) carry the half of the neighbour's line
+     that crosses into this tile, so the stripe keeps its width at every join
+     instead of pinching to a point. */
   background-image: linear-gradient(
     to bottom right,
-    transparent calc(50% - 0.5px),
+    var(--hs-hatch-ink) 0 0.5px,
+    transparent 0.5px calc(50% - 0.5px),
     var(--hs-hatch-ink) calc(50% - 0.5px) calc(50% + 0.5px),
-    transparent calc(50% + 0.5px)
+    transparent calc(50% + 0.5px) calc(100% - 0.5px),
+    var(--hs-hatch-ink) calc(100% - 0.5px)
   );
   background-size: 11px 11px;
 }
