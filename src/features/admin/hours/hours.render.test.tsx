@@ -35,6 +35,7 @@ const fake = vi.hoisted(() => ({
   watch: {} as Record<string, Record<string, unknown>>,
   sessionReads: [] as Array<{ studio: string; from: number; to: number | null }>,
   watchReads: [] as string[],
+  idReads: [] as string[][],
 }));
 
 vi.mock("firebase/firestore", () => ({
@@ -49,8 +50,19 @@ vi.mock("firebase/firestore", () => ({
   where: (field: string, op: string, value: unknown) => ({ field, op, value }),
   orderBy: () => ({}),
   limit: (n: number) => ({ n }),
+  documentId: () => "__name__",
   getDocsFromServer: vi.fn(),
   getDocs: async (q: { cs: Array<Record<string, any>> }) => {
+    const byId = q.cs.find((c) => c.field === "__name__");
+    if (byId) {
+      const ids = byId.value as string[];
+      fake.idReads.push(ids);
+      const docs = Object.values(fake.sessions)
+        .flat()
+        .filter((s) => ids.includes(String(s.id)))
+        .map((d) => ({ id: String(d.id), data: () => d }));
+      return { docs, size: docs.length, empty: docs.length === 0, metadata: { fromCache: false } };
+    }
     const studio = q.cs.find((c) => c.field === "hostedAtStudioId")?.value as string;
     const from = (q.cs.find((c) => c.field === "createdAt" && c.op === ">=")?.value as Date).getTime();
     const toC = q.cs.find((c) => c.field === "createdAt" && c.op === "<=");
@@ -141,6 +153,7 @@ beforeEach(() => {
   forgetClosedSessions();
   fake.sessionReads = [];
   fake.watchReads = [];
+  fake.idReads = [];
   fake.watch = {};
   fake.sessions = {
     solon: [
@@ -189,6 +202,18 @@ describe("Operations → Hours", () => {
     expect(text).toContain("2 h");
     expect(text).toContain("4 sessions");
     expect(fake.sessionReads).toEqual([{ studio: "solon", from: at("2026-09-19T04:00:00Z").getTime(), to: null }]);
+  });
+
+  it("counts a session the night saw open and that was finished this morning, and reads only that one again", async () => {
+    fake.watch["studios/solon/watch/hours-2026-09"] = night("2026-09", [{ key: "t1", weeks: { "2026-09-14": 2 } }], { open: 1, openIds: ["d"] });
+    // Lee finished it this morning.
+    fake.sessions.solon = fake.sessions.solon.map((s) => (s.id === "d" ? { ...s, status: "Completed" } : s));
+    const el = await mount(leader);
+    const text = el.textContent ?? "";
+    expect(fake.idReads).toEqual([["d"]]);
+    expect(text).toContain("Lee Brown");
+    expect(text).toContain("3 sessions");
+    expect(text).not.toContain("still open");
   });
 
   it("gives an owner every studio, with a total from the night's counts, and a studio's month only when it is opened", async () => {

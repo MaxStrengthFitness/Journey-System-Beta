@@ -21,7 +21,7 @@ Only the studio's leaders, franchise owners and administrators read them (the ru
 
 `night.ts`: ask for the night's document; if it is usable (`usableHoursDoc` / `usableSessionsDoc`: this version, this month, `throughDay` at least yesterday, not too big), add one live read of the studio's sessions since `liveFromMs`. Otherwise read the raw window as before. A failed read is unknown, never empty. The sums are the same functions the raw read goes through (`hoursTally`, `studioSummary`, `trainerMetrics`, `returnRate`), run on the lines turned back into sessions (`rowAsSession`), so the two paths cannot disagree; `month-tally.test.ts` holds them equal.
 
-What a night can't see until the next one: a session counted as still open that was finished today, and an edit or a removal of a past session. A past session logged today is counted today.
+A session the night counted as still open is named in both documents (`openIds` on Hours', `open` on the lines, a handful). The screen reads those again by id, ten to a read, beside the live read: one finished since is counted at once, one discarded leaves the open line, and one the read could not reach stays as the night saw it (never guessed closed). What a night still can't see until the next one: an edit to, or a removal of, a past session it counted as completed. A past session logged today is counted today.
 
 ## Files
 

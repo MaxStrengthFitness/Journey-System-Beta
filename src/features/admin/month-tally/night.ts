@@ -6,7 +6,7 @@
  * it always made. Nothing here writes.
  */
 import { useEffect, useMemo, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, doc, documentId, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "../../../firebase";
 import type { Studio, WorkoutSession } from "../../../types";
 import { studioTodayKey } from "../../../lib/studio-time";
@@ -17,10 +17,12 @@ import type { TrainerNames } from "../insights/metrics";
 import {
   hoursDocId,
   hoursFromNightAndLive,
+  openIdsOf,
   sessionsDocId,
   usableHoursDoc,
   usableSessionsDoc,
   type HoursMonthDoc,
+  type OpenNow,
   type SessionsMonthDoc,
 } from "./month-tally";
 
@@ -47,12 +49,38 @@ export async function readNightSessions(studioId: string, months: MonthKey[], to
   return usable ? (docs as SessionsMonthDoc[]) : null;
 }
 
+/**
+ * The sessions the night counted as still open, read again by id (a
+ * handful; ten to a read). Each comes back as it is now, or null when it is
+ * gone. A read that fails, or only the cache answered, leaves its ids out of
+ * the map: those stay as the night saw them, never guessed closed.
+ */
+export async function readOpenNow(docs: ReadonlyArray<{ openIds?: string[]; open?: unknown }>): Promise<OpenNow> {
+  const ids = openIdsOf(docs);
+  const out = new Map<string, WorkoutSession | null>();
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += 10) chunks.push(ids.slice(i, i + 10));
+  await Promise.all(
+    chunks.map(async (chunk) => {
+      try {
+        const snap = await getDocs(query(collection(db, "sessions"), where(documentId(), "in", chunk)));
+        if (snap.metadata?.fromCache === true) return;
+        const found = new Map(snap.docs.map((d) => [d.id, { ...(d.data() as WorkoutSession), id: d.id }]));
+        for (const id of chunk) out.set(id, found.get(id) ?? null);
+      } catch {
+        // Unknown: these stay open, as the night counted them.
+      }
+    }),
+  );
+  return out;
+}
+
 /* ------------------------------------------------------------------ *
  * Hours, one studio
  * ------------------------------------------------------------------ */
 
 type Material =
-  | { kind: "night"; doc: HoursMonthDoc; live: WorkoutSession[]; truncated: boolean }
+  | { kind: "night"; doc: HoursMonthDoc; live: WorkoutSession[]; openNow: OpenNow; truncated: boolean }
   | { kind: "raw"; sessions: WorkoutSession[]; truncated: boolean };
 
 export interface StudioHoursState {
@@ -84,9 +112,13 @@ export function useStudioHours(studio: Pick<Studio, "id" | "timezone" | "session
         const night = await readNightHours(studio.id, month, today);
         if (cancelled) return;
         if (night) {
-          // Today, and anything logged since the night read: always live.
-          const live = await fetchSessionsInRange({ studioId: studio.id, startMs: night.liveFromMs });
-          if (!cancelled) setMaterial({ key, m: { kind: "night", doc: night, live: live.sessions, truncated: live.truncated } });
+          // Today, and anything logged since the night read: always live. And
+          // the sessions it counted as open, as they are now.
+          const [live, openNow] = await Promise.all([
+            fetchSessionsInRange({ studioId: studio.id, startMs: night.liveFromMs }),
+            readOpenNow([night]),
+          ]);
+          if (!cancelled) setMaterial({ key, m: { kind: "night", doc: night, live: live.sessions, openNow, truncated: live.truncated } });
           return;
         }
         const window = queryWindowForMonth(month, tz);
@@ -108,7 +140,7 @@ export function useStudioHours(studio: Pick<Studio, "id" | "timezone" | "session
   const failed = failedKey === key;
   const tally = useMemo(() => {
     if (!current) return hoursTally([], { month, sessionMinutes: slot, names });
-    if (current.kind === "night") return hoursFromNightAndLive(current.doc, current.live, { sessionMinutes: slot, names, tz });
+    if (current.kind === "night") return hoursFromNightAndLive(current.doc, current.live, { sessionMinutes: slot, names, tz, openNow: current.openNow });
     return hoursTally(current.sessions, { month, sessionMinutes: slot, names });
   }, [current, month, slot, names, tz]);
 

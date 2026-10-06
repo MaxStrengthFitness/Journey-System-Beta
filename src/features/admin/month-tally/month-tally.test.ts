@@ -14,6 +14,7 @@ import {
   insightsSessions,
   monthsForWindow,
   monthsKept,
+  openIdsOf,
   rowAsSession,
   usableHoursDoc,
   usableSessionsDoc,
@@ -188,5 +189,55 @@ describe("Insights from the night and the live read", () => {
     expect(usableSessionsDoc(doc, "2026-10", "2026-10-25")).toBe(true);
     expect(usableSessionsDoc(doc, "2026-10", "2026-10-26")).toBe(false);
     expect(usableSessionsDoc({ ...doc, tooBig: true }, "2026-10", "2026-10-25")).toBe(false);
+  });
+});
+
+describe("a session the night counted as still open", () => {
+  const month = "2026-09";
+  const liveFromMs = at("2026-09-20T04:00:00Z").getTime();
+  const open = (id: string, day: string) =>
+    ({ id, date: day, createdAt: at(`${day}T15:00:00Z`), startTime: at(`${day}T15:00:00Z`), status: "In-Progress", trainerId: "t1", clientId: "c1" }) as unknown as WorkoutSession;
+  const done = (id: string, day: string) =>
+    ({ id, date: day, createdAt: at(`${day}T14:00:00Z`), status: "Completed", trainerId: "t2", clientId: "c2" }) as unknown as WorkoutSession;
+
+  it("is named by the night, in Hours' counts and in the month's lines", () => {
+    const rows = rowsOf([open("o1", "2026-09-18"), done("d1", "2026-09-17")]);
+    const hours = hoursMonthDoc(month, rows, { throughDay: "2026-09-19", liveFromMs, tz: ET });
+    expect(hours.open).toBe(1);
+    expect(hours.openIds).toEqual(["o1"]);
+    const lines = encodeMonth(month, rows, { throughDay: "2026-09-19", liveFromMs });
+    expect(lines.open).toEqual([{ i: 1, id: "o1" }]);
+    expect(openIdsOf([hours, lines])).toEqual(["o1"]);
+  });
+
+  it("finished this morning: Hours counts it now and it leaves the open line", () => {
+    const rows = rowsOf([open("o1", "2026-09-18"), open("o2", "2026-09-18"), open("o3", "2026-09-18"), done("d1", "2026-09-17")]);
+    const doc = hoursMonthDoc(month, rows, { throughDay: "2026-09-19", liveFromMs, tz: ET });
+    const finished = { ...open("o1", "2026-09-18"), status: "Completed" } as WorkoutSession;
+    const openNow = new Map<string, WorkoutSession | null>([
+      ["o1", finished], // finished today
+      ["o2", null], // discarded
+      // o3 wasn't read again: it stays as the night saw it
+    ]);
+    const before = hoursFromNightAndLive(doc, [], { sessionMinutes: 30, names, tz: ET });
+    expect(before.open).toBe(3);
+    expect(before.totals.month.sessions).toBe(1);
+    const got = hoursFromNightAndLive(doc, [], { sessionMinutes: 30, names, tz: ET, openNow });
+    expect(got.open).toBe(1);
+    expect(got.totals.month.sessions).toBe(2);
+    expect(got.rows.find((r) => r.trainerKey === "t1")?.month.sessions).toBe(1);
+  });
+
+  it("Insights sees it as it is now, and a discarded one not at all", () => {
+    const run = { throughDay: "2026-09-19", liveFromMs };
+    const rows = rowsOf([open("o1", "2026-09-18"), open("o2", "2026-09-18"), done("d1", "2026-09-17")]);
+    const doc = encodeMonth(month, rows, run);
+    const finished = { ...open("o1", "2026-09-18"), status: "Completed" } as WorkoutSession;
+    const got = insightsSessions([doc], [], { startMs: 0, endMs: Number.POSITIVE_INFINITY }, new Map([["o1", finished], ["o2", null]]))!;
+    expect(got).toHaveLength(2);
+    expect(got.filter((s) => s.status === "Completed")).toHaveLength(2);
+    expect(got.some((s) => s.id === "o1")).toBe(true);
+    // Without a second read, the night's lines stand.
+    expect(insightsSessions([doc], [], { startMs: 0, endMs: Number.POSITIVE_INFINITY })!.filter((s) => s.status === "In-Progress")).toHaveLength(2);
   });
 });

@@ -30,6 +30,12 @@
  * the job already counted from that stretch). So today is always live, and
  * a past session logged today is counted today, never twice.
  *
+ * A session the night counted as still open is named (`openIds`, `open`):
+ * the screen reads those few again by id, so one finished this morning is
+ * counted at once and one discarded leaves the open line (the round's
+ * review). An edit to, or removal of, a session the night counted as
+ * completed shows from the next night; until then it is as the night saw it.
+ *
  * The screens fall back to the raw read, as before, when a document is
  * missing, from an older run than last night's, or too big to write. A failed
  * read is unknown, never empty.
@@ -168,6 +174,8 @@ export interface SessionsMonthDoc {
   count: number;
   /** The lines were too long to keep; the screens read this month raw. */
   tooBig?: boolean;
+  /** The lines that were still open when the night ran: their place in `rows`, and the session's id. */
+  open?: Array<{ i: number; id: string }>;
 }
 
 const FLAG = { completed: 1, note: 2, feel: 4, cross: 8, first: 16 } as const;
@@ -223,13 +231,14 @@ export function encodeMonth(
     machines: machines.list,
     rows: lines,
     count: lines.length,
+    open: sorted.flatMap((r, i) => (r.completed ? [] : [{ i, id: r.id }])),
   };
 }
 
 /** About how many bytes Firestore will hold for the document. */
 export function approximateBytes(doc: SessionsMonthDoc): number {
-  const strings = [...doc.rows, ...doc.trainers, ...doc.clients, ...doc.machines, ...doc.lateIds];
-  return strings.reduce((n, s) => n + s.length + 1, 0) + 200;
+  const strings = [...doc.rows, ...doc.trainers, ...doc.clients, ...doc.machines, ...doc.lateIds, ...(doc.open ?? []).map((o) => o.id)];
+  return strings.reduce((n, s) => n + s.length + 1, 0) + (doc.open?.length ?? 0) * 8 + 200;
 }
 
 /** The lines back, or null when the document isn't one this app can read. */
@@ -285,6 +294,8 @@ export interface HoursMonthDoc {
   trainers: Array<{ key: string; weeks: Record<string, number>; measuredSessions: number; measuredMinutes: number }>;
   unattributed: number;
   open: number;
+  /** The sessions counted in `open`, by id: the screen reads them again. */
+  openIds?: string[];
 }
 
 /**
@@ -315,6 +326,7 @@ export function hoursMonthDoc(
     })),
     unattributed: t.unattributed,
     open: t.open,
+    openIds: inWindow.filter((r) => !r.completed).map((r) => r.id).sort(),
   };
 }
 
@@ -423,21 +435,52 @@ export function sessionsAfterTheNight<T extends { id?: string }>(live: readonly 
   return live.filter((s) => !s.id || !seen.has(s.id));
 }
 
+/**
+ * The sessions the night counted as open, read again by id: the session as
+ * it is now, or null when it is gone (discarded). An id missing from the map
+ * wasn't read again (the read failed): it stays as the night saw it.
+ */
+export type OpenNow = ReadonlyMap<string, WorkoutSession | null>;
+
 /** Hours for one studio and month: the night's counts plus the live sessions, each inside the month's window. */
 export function hoursFromNightAndLive(
   doc: HoursMonthDoc,
   live: readonly WorkoutSession[],
-  opts: { sessionMinutes: number; names?: TrainerNames; tz?: string },
+  opts: { sessionMinutes: number; names?: TrainerNames; tz?: string; openNow?: OpenNow },
 ): HoursTally {
   const window = queryWindowForMonth(doc.month, opts.tz);
   const fresh = sessionsAfterTheNight(live, doc.lateIds).filter((s) => {
     const at = millis(s.createdAt);
     return at !== null && at >= window.startMs && at <= window.endMs;
   });
+  // A session open last night and settled since leaves the open count; one
+  // finished is counted now, through the same tally as every other.
+  let settled = 0;
+  const finished: WorkoutSession[] = [];
+  for (const id of doc.openIds ?? []) {
+    if (!opts.openNow?.has(id)) continue;
+    const now = opts.openNow.get(id) ?? null;
+    if (now === null) settled += 1;
+    else if (now.status !== "In-Progress") {
+      settled += 1;
+      finished.push(now);
+    }
+  }
+  const night = hoursTallyFromDoc(doc, opts);
   return mergeHoursTallies(
-    hoursTallyFromDoc(doc, opts),
-    hoursTally(fresh as WorkoutSession[], { month: doc.month, sessionMinutes: opts.sessionMinutes, names: opts.names }),
+    { ...night, open: Math.max(0, night.open - settled) },
+    hoursTally([...(fresh as WorkoutSession[]), ...finished], { month: doc.month, sessionMinutes: opts.sessionMinutes, names: opts.names }),
   );
+}
+
+/** Every id the night counted as open in these documents: the screen reads them again. */
+export function openIdsOf(docs: ReadonlyArray<{ openIds?: string[]; open?: unknown }>): string[] {
+  const ids = new Set<string>();
+  for (const d of docs) {
+    if (Array.isArray(d.openIds)) for (const id of d.openIds) ids.add(id);
+    if (Array.isArray(d.open)) for (const o of d.open as Array<{ id?: unknown }>) if (typeof o?.id === "string") ids.add(o.id);
+  }
+  return [...ids].sort();
 }
 
 /* ------------------------------------------------------------------ *
@@ -468,6 +511,7 @@ export function insightsSessions(
   docs: readonly SessionsMonthDoc[],
   live: readonly WorkoutSession[],
   window: { startMs: number; endMs: number },
+  openNow?: OpenNow,
 ): WorkoutSession[] | null {
   if (docs.length === 0) return null;
   const from = docs[0].liveFromMs;
@@ -477,7 +521,20 @@ export function insightsSessions(
   for (const d of docs) {
     const rows = decodeMonth(d);
     if (!rows) return null;
-    for (const r of rows) if (r.createdMs >= window.startMs && r.createdMs <= window.endMs) out.push(rowAsSession(r));
+    // A line open last night, read again: as it is now, or gone.
+    const reread = new Map<number, WorkoutSession | null>();
+    for (const o of d.open ?? []) {
+      if (openNow?.has(o.id)) reread.set(o.i, openNow.get(o.id) ?? null);
+    }
+    rows.forEach((r, i) => {
+      if (r.createdMs < window.startMs || r.createdMs > window.endMs) return;
+      if (!reread.has(i)) {
+        out.push(rowAsSession(r));
+        return;
+      }
+      const now = reread.get(i);
+      if (now) out.push(now);
+    });
     lateIds.push(...d.lateIds);
   }
   for (const s of sessionsAfterTheNight(live, lateIds)) {

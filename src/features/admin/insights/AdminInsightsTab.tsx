@@ -49,7 +49,7 @@ import {
   handleFirestoreError,
 } from "../../../lib/firestore-errors";
 import { MAX_SESSIONS_IN_RANGE, fetchSessionsInRange } from "../sessions-range";
-import { readNightSessions } from "../month-tally/night";
+import { readNightSessions, readOpenNow } from "../month-tally/night";
 import { insightsSessions, monthsForWindow } from "../month-tally/month-tally";
 import { studioDateKey, studioTodayKey } from "../../../lib/studio-time";
 import { PickOneStudio, useOperationsScope } from "../scope-context";
@@ -143,9 +143,12 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
         const night = months ? await readNightSessions(studioId, months, today) : null;
         if (cancelled) return;
         if (night && night.length > 0) {
-          const live = await fetchSessionsInRange({ studioId, startMs: night[0].liveFromMs, max: MAX_SESSIONS });
+          const [live, openNow] = await Promise.all([
+            fetchSessionsInRange({ studioId, startMs: night[0].liveFromMs, max: MAX_SESSIONS }),
+            readOpenNow(night),
+          ]);
           if (cancelled) return;
-          const all = insightsSessions(night, live.sessions, { startMs: window.start, endMs: Number.POSITIVE_INFINITY });
+          const all = insightsSessions(night, live.sessions, { startMs: window.start, endMs: Number.POSITIVE_INFINITY }, openNow);
           if (all) {
             setSessions(all);
             setTruncated(live.truncated);
