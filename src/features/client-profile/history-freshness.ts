@@ -16,7 +16,10 @@
  *   - the Activity Archive's own live listener saw a session added, edited
  *     or removed, or its pop-up saved sets (`historySignature`);
  *   - the last read was not the server's whole answer (only the cache, or
- *     it failed): `shouldReadHistory`.
+ *     it failed): `shouldReadHistory`;
+ *   - the In-Progress listener itself failed: nothing would say a session
+ *     finished, so every return to Journey or the Archive reads again, as
+ *     before this round (`watchFailed`).
  *
  * So a session finished on a second iPad still reaches the grid, and a
  * trainer walking between Journey and Programming costs nothing.
@@ -59,10 +62,13 @@ export function shouldReadHistory(input: {
   read: HistoryReadState;
   /** Her record changed after the last read began. */
   changedSinceRead: boolean;
+  /** The live In-Progress listener failed: a change can't be seen, so it is assumed. */
+  watchFailed?: boolean;
 }): boolean {
   if (input.asked) return true;
   if (!input.tabDrawsIt) return false;
   if (input.read !== "ready") return true;
+  if (input.watchFailed) return true;
   return input.changedSinceRead;
 }
 

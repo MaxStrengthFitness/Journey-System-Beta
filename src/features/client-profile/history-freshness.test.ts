@@ -30,6 +30,10 @@ describe("shouldReadHistory", () => {
   it("reads again when the record changed since the last read", () => {
     expect(shouldReadHistory({ tabDrawsIt: true, asked: false, read: "ready", changedSinceRead: true })).toBe(true);
   });
+  it("reads on every return while the In-Progress listener has failed: a change is unknown, not absent", () => {
+    expect(shouldReadHistory({ tabDrawsIt: true, asked: false, read: "ready", changedSinceRead: false, watchFailed: true })).toBe(true);
+    expect(shouldReadHistory({ tabDrawsIt: false, asked: false, read: "ready", changedSinceRead: false, watchFailed: true })).toBe(false);
+  });
 });
 
 describe("inProgressLeft", () => {

@@ -1013,9 +1013,9 @@ export function ClientProfileView({
   const readSeq = useRef(0);
   const currentClientRef = useRef(clientId);
   currentClientRef.current = clientId;
-  const inProgressSeen = useRef<{ clientId: string; ids: string[] } | null>(null);
+  const inProgressSeen = useRef<{ clientId: string; ids: string[]; failed?: boolean } | null>(null);
   useEffect(() => {
-    if (!inProgressFor) return;
+    if (!inProgressFor || inProgressFor.failed) return;
     const before = inProgressSeen.current;
     inProgressSeen.current = inProgressFor;
     if (before && before.clientId === inProgressFor.clientId && inProgressLeft(before.ids, inProgressFor.ids)) {
@@ -1035,6 +1035,8 @@ export function ClientProfileView({
     [clientId],
   );
   const tabDrawsHistory = activeTab === "journey" || activeTab === "clinical";
+  // A failed In-Progress listener can't say a session finished: unknown, so every return reads again.
+  const inProgressWatchFailed = inProgressFor?.failed === true && inProgressFor.clientId === clientId;
 
   useEffect(() => {
     // historyWanted going back to null is the read's own `finally`, not a new
@@ -1054,6 +1056,7 @@ export function ClientProfileView({
         asked: historyWanted === clientId,
         read: answerFor(historyReadRef.current, clientId),
         changedSinceRead: readFor !== historyChanges,
+        watchFailed: inProgressWatchFailed,
       })
     ) {
       return;
@@ -1132,7 +1135,7 @@ export function ClientProfileView({
     fetchInitialSessions();
     // historyRead is read through its ref: an answer arriving is not a reason to read again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId, tabDrawsHistory, hasQuotaError, historyWanted, historyChanges]);
+  }, [clientId, tabDrawsHistory, hasQuotaError, historyWanted, historyChanges, inProgressWatchFailed]);
 
   /** The next page of sessions and their sets. Resolves false when it failed (the machine menu says so). */
   const handleLoadMoreHistory = async (): Promise<boolean> => {

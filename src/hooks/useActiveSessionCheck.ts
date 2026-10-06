@@ -35,8 +35,11 @@ export function useActiveSessionCheck(clientId: string | null) {
   /* Every In-Progress session's id, stamped with the client the listener
      answered for (speed round, Oct 5 2026): the profile reads a client's
      history again when one of these leaves — finished or discarded, here
-     or on another iPad (features/client-profile/history-freshness.ts). */
-  const [inProgressFor, setInProgressFor] = useState<{ clientId: string; ids: string[] } | null>(null);
+     or on another iPad (features/client-profile/history-freshness.ts).
+     `failed` says the listener stopped (refused, quota, network): what is
+     open is then unknown, and the profile goes back to reading the page on
+     every return to Journey rather than trusting a silence. */
+  const [inProgressFor, setInProgressFor] = useState<{ clientId: string; ids: string[]; failed?: boolean } | null>(null);
 
   useEffect(() => {
     if (!clientId) {
@@ -68,6 +71,7 @@ export function useActiveSessionCheck(clientId: string | null) {
       },
       (err) => {
         console.error("Error checking active session", err);
+        setInProgressFor({ clientId, ids: [], failed: true });
         setIsCheckingActiveSession(false);
       },
     );
