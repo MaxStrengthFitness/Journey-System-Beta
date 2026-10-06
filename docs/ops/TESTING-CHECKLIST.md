@@ -3057,3 +3057,16 @@ Round document: `docs/rounds/2026-10-06-ipad.md`. Walk it after `ship-ipad.ps1` 
 - [ ] Connect the iPad to the Mac by cable; on the iPad, Settings → Apps → Safari → Advanced → Web Inspector on (on older iPadOS, Settings → Safari → Advanced); on the Mac, Safari → Develop → (the iPad) → Journey. Timelines → record with **Rendering Frames** and **Layout & Rendering** on.
 - [ ] Record: opening and closing the machine menu five times; scrolling the Board, the Journal's notes and the Hub; scrolling the Directory. Write down how many frames are over 16.7 ms (the bars above the line) and the longest "Paint" and "Composite" entries. Save each recording (Export) for Claude.
 - [ ] If an older iPad is there, the same recordings on it.
+
+**After the roster split** (only if `ship-ipad-roster.ps1` went live; branch `oct6/ipad-data`; the round document's "The roster split"):
+
+- [ ] **Before the migration, three clients on record.** Pick three clients with long histories at different studios. On each one's profile, screenshot Programming (the machines, their last weights and how many times each was done) and the Equipment tab's counts, and note the Client Directory's "Last in". These are what the migration must not change.
+- [ ] **The migration's dry run** (the command `ship-ipad-roster.ps1` printed): it says how many clients it would move and about how many KB each, and "No failures". Then `--commit` one studio, then look again at the three clients: the same weights, the same counts, the same "Last in". Then the other studios.
+- [ ] **The cold open again**, timed the same way as above, on the same iPads, the morning after the migration. Write it beside the first: this is the change the split is for.
+- [ ] **The Hub on a slow open:** the cards can appear a moment before the Critical triangles, totals like "#312", renewal marks and All stars; those fill in within a second or two, never the wrong mark first.
+- [ ] **Start on a client never opened on this iPad:** the session opens at once; the prefilled weights appear a moment after (as they already wait for machine settings). With the Wi-Fi off and that client never opened here, they wait until the iPad is back online; Start itself never waits.
+- [ ] **The machine menu and the phone's machine cards** never say "First time on this machine" for a machine the client has done, even in the first second.
+- [ ] **Finish it as it was** (a stale session) and **Log past session's Save** say "Reading the machines…" for a moment on a client just opened, then work.
+- [ ] **Operations → Renewals → a client's brief, "3. Strength":** "Reading the machine history…" for a moment, then the gains, never "Not enough machine history" first.
+- [ ] **An iPad left on the old version** (one nobody took back to the Hub since the deploy): finish a session on it for one of the three clients, then open that client on an updated iPad: the machine's count went up by exactly one, not two.
+- [ ] **Programming → Setup's suggestions and Operations → Machine fit:** they still show; they may count a little less (a set-up accepted from a suggestion no longer counts on this studio's own report). Say if that matters (the round's open question).
