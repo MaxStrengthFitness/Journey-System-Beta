@@ -120,7 +120,8 @@ export function RenewalBrief({
 
   const name = `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim();
   // Not said until the totals have answered: an empty list would read as "no gains".
-  const gains = machineTotalsKnown(client) || totals.data ? strengthGains(client, machineNames) : [];
+  const totalsKnown = machineTotalsKnown(client);
+  const gains = totalsKnown ? strengthGains(client, machineNames) : [];
   const options = s ? optionsFor(settings, s.packageKey, s.pacePerWeek) : [];
   const verdict = s ? upgradeVerdict(s, settings, inbodyVariation) : null;
   const currentTier = s ? settings.packages.find((p) => p.key === s.packageKey) ?? null : null;
@@ -285,10 +286,10 @@ export function RenewalBrief({
               </AdminPanel>
 
               <AdminPanel title="3. Strength" subtitle="First logged weight against the latest, machines logged 3+ times.">
-                {totals.state === "loading" ? (
-                  <p className="adm-hint">Reading the machine history…</p>
-                ) : totals.state === "failed" && !totals.data ? (
+                {totals.state === "failed" && !totalsKnown ? (
                   <p className="adm-hint">Couldn't read the machine history. It will try again.</p>
+                ) : !totalsKnown ? (
+                  <p className="adm-hint">Reading the machine history…</p>
                 ) : gains.length === 0 ? (
                   <p className="adm-hint">Not enough machine history in Journey yet.</p>
                 ) : (

@@ -377,6 +377,17 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
         setFinalizeProgress(Math.min(Math.round((completedOps / totalOps) * 100), 99));
       };
 
+      // The machine maps live on the client's machine totals document since
+      // the iPad round (features/machine-totals): read it once and fold it in,
+      // so first/last and the metrics build on what is on file. Read BEFORE
+      // the first batch: a failed read stops the import before anything is
+      // written, never halfway through (sessions in, counters not).
+      const listed = clients.find(c => c.id === selectedClientId);
+      const totalsSnap = await getDoc(machineTotalsRef(db, selectedClientId));
+      const targetClient = listed
+        ? { ...listed, ...mergeMachineTotals(listed, totalsSnap.exists() ? totalsSnap.data() : null) }
+        : undefined;
+
       const MAX_BATCH_SIZE = 450; // Safety margin below 500
       let currentBatch = writeBatch(db);
       let opCount = 0;
@@ -528,15 +539,6 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
       }
 
       // Build currentMachineMetrics from imported data so profile cards and live sessions auto-populate weights
-      // The machine maps live on the client's machine totals document since
-      // the iPad round (features/machine-totals): read it once and fold it in,
-      // so first/last and the metrics build on what is on file. A failed read
-      // stops the import rather than writing over what it couldn't see.
-      const listed = clients.find(c => c.id === selectedClientId);
-      const totalsSnap = await getDoc(machineTotalsRef(db, selectedClientId));
-      const targetClient = listed
-        ? { ...listed, ...mergeMachineTotals(listed, totalsSnap.exists() ? totalsSnap.data() : null) }
-        : undefined;
       /** The machines this import writes a last set for: only those are written, never the whole map. */
       const touchedMachineIds = new Set<string>();
 

@@ -4121,9 +4121,10 @@ export function WorkoutTrackerView({
           step={2}
           /* A card with no past times says what that means, the machine
              menu's way: never "first time" for a machine a running total
-             knows, or while older sessions are unread. */
+             knows, or while older sessions are unread, or while the
+             client's machine totals haven't answered (features/machine-totals). */
           everythingRead={sessionsAllRead}
-          coverage={clientCoverage}
+          coverage={totalsKnown ? clientCoverage : "unknown"}
           totals={selectedClient}
           historyState={logsWindow?.state ?? "loading"}
         />

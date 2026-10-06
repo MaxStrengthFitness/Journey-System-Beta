@@ -61,6 +61,7 @@ import { useStudioSettings } from "../studio-settings/useStudioSettings";
 import type { TileField } from "./DialTiles";
 import type { Door } from "./doors";
 import { knownElsewhere as totalsKnowIt, lastTimeLine, type HeaderLine } from "./header-words";
+import { machineTotalsKnown } from "../machine-totals/totals";
 import type { OlderLoad } from "./MachineTimeline";
 import { hasOlderToRead, olderMemoryKey, olderSetsFor, readOlderSets, rememberOlderSets, trustedReadIds } from "./older-read";
 import { progressFromModel, type ProgressFigure } from "./progress-figure";
@@ -329,6 +330,13 @@ export function useMachineMenuData(
   const metric = machine?.id ? (client?.currentMachineMetrics?.[machine.id] ?? null) : null;
   const stat = machine?.id ? (client?.machineStats?.[machine.id] ?? null) : null;
   const knownElsewhere = totalsKnowIt({ metric, stat }, today);
+  /* The client's machine totals haven't answered yet (their own document
+     since the iPad round, features/machine-totals): no running total is not
+     "none", so "First time on this machine" waits for them, as it waits for
+     every session to be read. A client never folded with them carries its
+     own maps. */
+  const totalsUnknown = !!client && !machineTotalsKnown(client);
+  const claimCoverage = totalsUnknown ? "unknown" : host.coverage;
 
   const studioNames = useMemo(() => {
     const out: Record<string, string> = {};
@@ -357,13 +365,13 @@ export function useMachineMenuData(
       lastTimeLine({
         model: model ?? { columns: [], readState: host.historyState, everythingRead },
         today,
-        coverage: host.coverage,
+        coverage: claimCoverage,
         metric,
         stat,
         studioNames,
         watching: host.watching ?? null,
       }),
-    [model, host.historyState, everythingRead, today, host.coverage, metric, stat, studioNames, host.watching],
+    [model, host.historyState, everythingRead, today, claimCoverage, metric, stat, studioNames, host.watching],
   );
 
   const progress = useMemo(
@@ -438,7 +446,7 @@ export function useMachineMenuData(
 
   const recorded = model ? model.columns.some((c) => !c.isToday) : false;
   const settled = host.historyState === "ready" || host.historyState === "cache-only";
-  const firstTime = !!equipment && settled && !recorded && !equipment.isConfigured && !knownElsewhere;
+  const firstTime = !!equipment && settled && !recorded && !equipment.isConfigured && !knownElsewhere && !totalsUnknown;
 
   const sessionId = host.session?.id ?? null;
   const journalContext = useMemo<JournalContext>(() => {

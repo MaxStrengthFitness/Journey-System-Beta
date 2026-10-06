@@ -48,6 +48,7 @@ import {
 } from "./attendance";
 import { useRenewalSettings } from "./useRenewalSettings";
 import { renewalOf } from "./auto-renew";
+import { machineTotalsKnown } from "../machine-totals/totals";
 import type { RenewalSettings, RenewalSnapshot } from "./types";
 
 const DAY_MS = 86_400_000;
@@ -163,6 +164,12 @@ export function useLiveRenewal(
     // FAILED is unknown, never the defaults: a studio that switched
     // auto-renewal off must never be worked out as the standard ON.
     if (!client || !inputs || inputs.clientId !== client.id || settingsLoading || settingsError) return null;
+    // Nor before the client's machine totals have answered (they live in
+    // their own document since the iPad round, features/machine-totals): the
+    // strength proof worked out on a client with no machine maps would say
+    // "0 tracked" for a moment. Until then the stored snapshot stands. A
+    // client the totals were never folded into carries its own maps.
+    if (!machineTotalsKnown(client)) return null;
     const tz = getActiveTimeZone();
     const now = new Date();
     const today = studioTodayKey(now, tz);
