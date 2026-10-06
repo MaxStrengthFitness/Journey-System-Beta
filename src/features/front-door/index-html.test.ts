@@ -11,6 +11,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { SIGNED_IN_HERE_KEY } from "../../lib/auth-boot";
+import { SLOW_LINE } from "./CheckingIn";
 
 const HTML = readFileSync(resolve(__dirname, "..", "..", "..", "index.html"), "utf8");
 
@@ -65,5 +66,13 @@ describe("index.html paints the first frame itself (R15)", () => {
   it("fetches nothing and pays the safe areas", () => {
     expect(frame).not.toMatch(/\b(?:src|href)=/);
     expect(HTML).toMatch(/#first-frame \{[\s\S]*?env\(safe-area-inset-top, 0px\)[\s\S]*?env\(safe-area-inset-bottom, 0px\)/);
+  });
+});
+
+describe("the first frame says the slow line by itself (the speed round's final review)", () => {
+  it("shows CheckingIn's own words six seconds after the first paint, in CSS alone", () => {
+    expect(HTML).toContain(`content: "${SLOW_LINE}";`);
+    expect(HTML).toMatch(/p\.ff-slow::after \{[^}]*animation: ff-show 0s linear 6s forwards;/);
+    expect(HTML).toMatch(/@keyframes ff-show \{ to \{ visibility: visible; \} \}/);
   });
 });

@@ -146,6 +146,15 @@
       #first-frame p { margin: 28px 0 0; font: 14px/1.45 system-ui, -apple-system, sans-serif; color: #8a9aab; }
       /* OpeningJourney keeps an empty line for its slow note; so does this, so nothing moves. */
       #first-frame p.ff-slow { margin-top: 18px; }
+      /* The slow line, six seconds after the first paint, with no script: a
+         slow download of the app's script is the wait it is for (the speed
+         round's final review). CheckingIn.tsx's SLOW_LINE, word for word. */
+      #first-frame p.ff-slow::after {
+        content: "Taking longer than usual. The Wi-Fi may be slow; Journey keeps trying.";
+        visibility: hidden;
+        animation: ff-show 0s linear 6s forwards;
+      }
+      @keyframes ff-show { to { visibility: visible; } }
       @media (max-width: 599px) {
         #first-frame { padding: calc(env(safe-area-inset-top, 0px) + 28px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px); }
         #first-frame .ff-sq { width: 68px; height: 68px; }
