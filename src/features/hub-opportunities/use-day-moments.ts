@@ -51,7 +51,7 @@ import { myTrainerIds } from "../../lib/live-session";
 import { studioDayBoundsForKey, studioTodayKey } from "../../lib/studio-time";
 import { useRenewalSettings } from "../renewals/useRenewalSettings";
 import { buildPackageNameIndex } from "../renewals/settings";
-import { buildDirectoryRows, prepareDirectory } from "../client-directory/row";
+import { buildDirectoryRows, newDirectoryRowCache, prepareDirectory, type DirectoryRowCache } from "../client-directory/row";
 import { waiversKeptInMindbody } from "../../lib/client-waiver";
 import {
   bookingBoundaries,
@@ -150,25 +150,33 @@ export function useDayMoments({
   const index = useMemo(() => indexBookings(schedules), [schedules]);
 
   /* The directory's rows: once per studio day, and when their data changes. */
+  // The context apart from the clients, so one client's write (useStudioRoster
+  // keeps every other client the same object) rebuilds that client's row only
+  // (row.ts DirectoryRowCache; the iPad round, Oct 2026).
+  const rowCache = useRef<DirectoryRowCache>(newDirectoryRowCache());
+  const rowsCtx = useMemo(
+    () =>
+      prepareDirectory({
+        today,
+        // The start of the studio's day: the engine reads no row fact that moves with the clock.
+        now: studioDayBoundsForKey(today).start,
+        studios: studios ?? [],
+        activeStudioId,
+        schedules,
+        bookingsFresh: false,
+        recentSessions: sessionsKnown ? completed : null,
+        packageIndex,
+        packageStudioId: activeStudioId,
+        myIds,
+        myName,
+        trainerNameOf,
+      }),
+    [today, schedules, studios, activeStudioId, sessionsKnown, completed, packageIndex, myIds, myName, trainerNameOf],
+  );
   const rowsById = useMemo(() => {
     const booked = clients.filter((c) => c.id && index.byClient.has(c.id));
-    const ctx = prepareDirectory({
-      today,
-      // The start of the studio's day: the engine reads no row fact that moves with the clock.
-      now: studioDayBoundsForKey(today).start,
-      studios: studios ?? [],
-      activeStudioId,
-      schedules,
-      bookingsFresh: false,
-      recentSessions: sessionsKnown ? completed : null,
-      packageIndex,
-      packageStudioId: activeStudioId,
-      myIds,
-      myName,
-      trainerNameOf,
-    });
-    return new Map(buildDirectoryRows(booked, ctx).map((r) => [r.id, r]));
-  }, [today, schedules, index, clients, studios, activeStudioId, sessionsKnown, completed, packageIndex, myIds, myName, trainerNameOf]);
+    return new Map(buildDirectoryRows(booked, rowsCtx, rowCache.current).map((r) => [r.id, r]));
+  }, [rowsCtx, index, clients]);
 
   /*
    * The engine's clock: the minute clock, moved on only when it passes an
