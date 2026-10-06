@@ -70,6 +70,7 @@ import {
   mergeHistoryLogs,
   mergeHistoryPage,
   shouldReadHistory,
+  HISTORY_STALE_MS,
 } from "../features/client-profile/history-freshness";
 import { completedNewestFirst, nextRoutine } from "../features/routines/next-routine";
 import { useProgressReports } from "../features/client-profile/useProgressReports";
@@ -1007,7 +1008,7 @@ export function ClientProfileView({
    * changes; a read remembers the count it started at.
    */
   const [historyChanges, setHistoryChanges] = useState(0);
-  const readAtChange = useRef<{ clientId: string | null; at: number }>({ clientId: null, at: -1 });
+  const readAtChange = useRef<{ clientId: string | null; at: number; time: number }>({ clientId: null, at: -1, time: 0 });
   const historyReadRef = useRef(historyRead);
   historyReadRef.current = historyRead;
   const readSeq = useRef(0);
@@ -1057,11 +1058,13 @@ export function ClientProfileView({
         read: answerFor(historyReadRef.current, clientId),
         changedSinceRead: readFor !== historyChanges,
         watchFailed: inProgressWatchFailed,
+        // A past session logged on another iPad changes neither signal above.
+        stale: readFor !== -1 && Date.now() - readAtChange.current.time > HISTORY_STALE_MS,
       })
     ) {
       return;
     }
-    readAtChange.current = { clientId, at: historyChanges };
+    readAtChange.current = { clientId, at: historyChanges, time: Date.now() };
     const seq = ++readSeq.current;
     // A newer read, or another client, has the floor: this one's answer is dropped.
     const current = () => seq === readSeq.current && currentClientRef.current === clientId;

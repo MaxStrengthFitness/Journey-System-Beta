@@ -19,7 +19,11 @@
  *     it failed): `shouldReadHistory`;
  *   - the In-Progress listener itself failed: nothing would say a session
  *     finished, so every return to Journey or the Archive reads again, as
- *     before this round (`watchFailed`).
+ *     before this round (`watchFailed`);
+ *   - a return to Journey or the Archive more than HISTORY_STALE_MS after
+ *     the last read began (`stale`): a past session logged, or a set edited,
+ *     on another iPad while this profile sat on Programming changes neither
+ *     listener above (the speed round's final review, Oct 6 2026).
  *
  * So a session finished on a second iPad still reaches the grid, and a
  * trainer walking between Journey and Programming costs nothing.
@@ -44,6 +48,9 @@ export type HistoryReadState = "ready" | "cache-only" | "failed" | null;
  */
 export const HISTORY_SIGNATURE_SPAN = 50;
 
+/** How old the last read may be before a return to Journey or the Archive reads again. */
+export const HISTORY_STALE_MS = 5 * 60 * 1000;
+
 /**
  * Whether the fetch effect should read the first page now.
  *
@@ -64,11 +71,14 @@ export function shouldReadHistory(input: {
   changedSinceRead: boolean;
   /** The live In-Progress listener failed: a change can't be seen, so it is assumed. */
   watchFailed?: boolean;
+  /** The last read began more than HISTORY_STALE_MS ago. */
+  stale?: boolean;
 }): boolean {
   if (input.asked) return true;
   if (!input.tabDrawsIt) return false;
   if (input.read !== "ready") return true;
   if (input.watchFailed) return true;
+  if (input.stale) return true;
   return input.changedSinceRead;
 }
 

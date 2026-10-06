@@ -24,6 +24,10 @@ describe("shouldReadHistory", () => {
       expect(shouldReadHistory({ tabDrawsIt: true, asked: false, read, changedSinceRead: false })).toBe(true);
     }
   });
+  it("reads again on a return when the last read is older than HISTORY_STALE_MS", () => {
+    expect(shouldReadHistory({ tabDrawsIt: true, asked: false, read: "ready", changedSinceRead: false, stale: true })).toBe(true);
+    expect(shouldReadHistory({ tabDrawsIt: false, asked: false, read: "ready", changedSinceRead: false, stale: true })).toBe(false);
+  });
   it("does not read again on a return to Journey when nothing changed", () => {
     expect(shouldReadHistory({ tabDrawsIt: true, asked: false, read: "ready", changedSinceRead: false })).toBe(false);
   });

@@ -483,7 +483,10 @@ In-Progress is no longer (finished or discarded, on this iPad or a second
 one, from `useActiveSessionCheck`), or the Archive's live list changed (an
 edit, a past session logged, one removed; `ClientHistoryTab`'s
 `onHistoryChanged`). A read that the cache alone answered, or that failed,
-is read again the next time Journey or the Archive opens. The rule and the
+is read again the next time Journey or the Archive opens, and so is one
+more than five minutes old (`HISTORY_STALE_MS`): a past session logged, or a
+set edited, on another iPad while the profile sat on Programming changes
+neither signal above. The rule and the
 merge (a server page replaces what it covers, so a removed session and its
 sets leave; older pages scrolled back through are kept; a cache answer only
 adds) are `history-freshness.ts`; a superseded read's answer is dropped.
