@@ -46,8 +46,14 @@
  * nobody touched follows, a dial changed by hand keeps its value, so no
  * change appears that nobody made and Save never writes one back.
  *
- * While a save waits (a moment at most) the dials hold still, and a refusal
- * that comes after "saved on this iPad" is still heard (late-refusal.ts).
+ * Save and Undo never wait on the database (speed round, Oct 5 2026; R9):
+ * the change is on this iPad the moment the batch is issued, so the dials
+ * are free again in the same tick (only a refusal the iPad judges itself
+ * comes back that fast). Online the strip says "saved" at once - a write on
+ * this iPad, not yet the database's answer - and turns to "saved on this
+ * iPad" if no answer has come within FINISH_WAIT_MS (studio Wi-Fi with no
+ * internet). A refusal that comes later is still heard (late-refusal.ts),
+ * and never wipes a change typed since (dirtyRef).
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useUnsavedChanges } from "../unsaved-changes";
@@ -306,9 +312,9 @@ export function DialTiles({
       recordValues: recordValuesFor(f, { snapshots, rows: history }),
     });
 
-  // The dials hold still while a save waits (a moment at most): what the
-  // save wrote replaces the draft when it answers, and would wipe a change
-  // made in between without a word.
+  // The dials hold still only for the tick a save is issued in (R9: Save
+  // never waits on the database's answer): what the save wrote replaces the
+  // draft in that tick, and would wipe a change made in between.
   const setValue = (key: string, value: string) => {
     if (saving) return;
     setDraft((d) => ({ ...d, [key]: value }));
