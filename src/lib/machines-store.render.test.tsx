@@ -106,6 +106,39 @@ describe("the machines store", () => {
     expect(catalogSeen!.catalog.map((c) => c.id)).toEqual(["a"]);
   });
 
+  it("a read that failed is let go, and the next screen that asks opens a fresh one for everyone", async () => {
+    await mount();
+    await act(async () => opened[0].next(snap([{ id: "a", data: { order: 1 } }])));
+    await act(async () => opened[0].fail(new Error("permission-denied")));
+    expect(opened[0].stopped).toBe(true);
+    expect(openMachinesListeners()).toBe(0);
+    expect(catalogSeen!.failed).toBe(true);
+
+    // Another screen asks: one fresh read opens.
+    let later: ReturnType<typeof useMachineCatalog> | null = null;
+    function Later() {
+      later = useMachineCatalog();
+      return null;
+    }
+    const host2 = document.createElement("div");
+    document.body.appendChild(host2);
+    const root2 = createRoot(host2);
+    try {
+      await act(async () => root2.render(<Later />));
+      expect(opened).toHaveLength(2);
+      expect(later!.catalog.map((c) => c.id)).toEqual(["a"]);
+
+      // Its answer reaches the screens that were already listening too.
+      await act(async () => opened[1].next(snap([{ id: "a", data: { order: 1 } }, { id: "b", data: { order: 5 } }])));
+      expect(catalogSeen!.failed).toBe(false);
+      expect(machinesSeen.map((m) => m.id)).toContain("b");
+      expect(later!.catalog.map((c) => c.id).sort()).toEqual(["a", "b"]);
+    } finally {
+      act(() => root2.unmount());
+      host2.remove();
+    }
+  });
+
   it("a sign-out closes the read", async () => {
     await mount();
     forgetPersonalMemory();

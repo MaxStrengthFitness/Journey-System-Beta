@@ -36,58 +36,72 @@ export interface MachinesRead {
 
 export const MACHINES_LOADING: MachinesRead = { docs: [], loading: true, failed: false };
 
-interface Shared {
-  value: MachinesRead;
-  listeners: Set<(v: MachinesRead) => void>;
-  stop: () => void;
+/** Everyone listening now. Kept apart from the read, so a read that died can be reopened under them. */
+const listeners = new Set<(v: MachinesRead) => void>();
+/** The one live read, or null when none is open (nobody listening, or the last one failed). */
+let target: { stop: () => void } | null = null;
+/** The last answer, handed to anyone who starts listening. */
+let last: MachinesRead = MACHINES_LOADING;
+
+function publish(v: MachinesRead) {
+  last = v;
+  listeners.forEach((l) => l(v));
 }
 
-let shared: Shared | null = null;
+function open() {
+  const mine = { stop: () => {} };
+  target = mine;
+  mine.stop = onSnapshot(
+    collection(db, "machines"),
+    (snap) => {
+      if (target !== mine) return;
+      publish({
+        docs: snap.docs.map((d) => ({ id: d.id, data: d.data() as Record<string, unknown> })),
+        loading: false,
+        failed: false,
+      });
+    },
+    (error) => {
+      if (target !== mine) return;
+      // A listener that errored never answers again (the SDK ends it). Let it
+      // go, so the next screen that asks opens a fresh read for everyone
+      // still listening, rather than the whole session living on a dead one
+      // (the speed round's review, Oct 5 2026). Keep what was there: the
+      // catalog that was read is still the catalog.
+      target = null;
+      mine.stop();
+      publish({ docs: last.docs, loading: false, failed: true });
+      handleFirestoreError(error, OperationType.GET, "machines");
+    },
+  );
+}
 
-/** Listen to the catalog. The first caller opens the one listener; the last one out closes it. */
+/**
+ * Listen to the catalog. The first caller opens the one listener and the last
+ * one out closes it; a caller arriving after the read failed opens it again.
+ */
 export function subscribeMachines(fn: (v: MachinesRead) => void): () => void {
-  if (!shared) {
-    const entry: Shared = { value: MACHINES_LOADING, listeners: new Set(), stop: () => {} };
-    const publish = (v: MachinesRead) => {
-      entry.value = v;
-      entry.listeners.forEach((l) => l(v));
-    };
-    entry.stop = onSnapshot(
-      collection(db, "machines"),
-      (snap) => {
-        publish({
-          docs: snap.docs.map((d) => ({ id: d.id, data: d.data() as Record<string, unknown> })),
-          loading: false,
-          failed: false,
-        });
-      },
-      (error) => {
-        // Keep what was there: the catalog that was read is still the catalog.
-        publish({ docs: entry.value.docs, loading: false, failed: true });
-        handleFirestoreError(error, OperationType.GET, "machines");
-      },
-    );
-    shared = entry;
-  }
-  const entry = shared;
-  entry.listeners.add(fn);
-  fn(entry.value);
+  listeners.add(fn);
+  if (!target) open();
+  fn(last);
   return () => {
-    entry.listeners.delete(fn);
-    if (entry.listeners.size === 0) {
-      entry.stop();
-      if (shared === entry) shared = null;
+    if (!listeners.delete(fn)) return;
+    if (listeners.size === 0) {
+      target?.stop();
+      target = null;
+      last = MACHINES_LOADING;
     }
   };
 }
 
 // The next person on a shared iPad opens a fresh read under their own sign-in.
 forgetOnSignOut(() => {
-  shared?.stop();
-  shared = null;
+  target?.stop();
+  target = null;
+  last = MACHINES_LOADING;
 });
 
 /** How many listeners are open on `machines` right now: 0 or 1. For tests. */
 export function openMachinesListeners(): number {
-  return shared ? 1 : 0;
+  return target ? 1 : 0;
 }
