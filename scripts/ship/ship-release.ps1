@@ -1,5 +1,15 @@
 <#
- SCRIPT-VERSION: v1  (Oct 6 2026, the release: the speed round, the iPad round and the roster split)
+ SCRIPT-VERSION: v2  (Oct 6 2026, the release: the iPad round and the roster split, on top of the speed round)
+
+ v2: THE SPEED ROUND IS ALREADY LIVE. AJ ran ship-speed.ps1 golive on Oct 6
+ 2026 at 07:29-07:33 (restore/2026-10-05-before-speed = c20d2abe; its
+ indexes, rules, mindbodyWebhook, recalcTrainerWindows and the two deletions
+ are in production; master = 3735f38e). So master must now be 3735f38e, and
+ golive deploys the indexes and the functions only if they changed since
+ (measured against master; neither did when v2 was written: what is left is
+ firestore.rules, the server, and the app). The text below is v1's, written
+ when the speed round was still to go with it; steps 2 and 4 now skip
+ themselves.
 
  Ships branch oct6/release: everything since the machine menu, together.
  AJ, Oct 6 2026: "we will ship everything together", and "yes" to the roster
@@ -25,7 +35,7 @@
 
  WHAT GOES TO PRODUCTION, in this order (golive, after GO):
    1. the restore tag restore/2026-10-06-before-release = master as it is
-      now (c20d2abe), pushed to GitHub;
+      now (3735f38e in v2), pushed to GitHub;
    2. the indexes (npx firebase deploy --only firestore:indexes --project
       prod --non-interactive, which never deletes an index; never --force);
    3. the rules tests again, then firestore.rules (they ADD the new
@@ -55,7 +65,7 @@
 
  prepare  changes nothing in production and nothing in git (it writes only
           logs\, dist\ and build\): the branch, a clean tree, the fetch,
-          that master is EXACTLY c20d2abe (anything else: stop and ask
+          that master is EXACTLY 3735f38e in v2 (anything else: stop and ask
           Claude), that the branch fast-forwards master, what goes live
           (indexes, rules, functions, server, render.yaml, index.html), the
           Firebase login, the restore tag free, no Windows line ends, the
@@ -76,8 +86,9 @@
 
  To undo: golive prints the exact order. In short: copy the machine maps
  back (scripts/unsplit-client-metrics.ts) while this app is live, push the
- restore tag to master, and last redeploy the two functions and the rules
- from a checkout of the restore tag. The indexes need no undo.
+ restore tag to master, and last redeploy the rules (and the two functions,
+ only if this release deployed them) from a checkout of the restore tag. The
+ indexes need no undo.
 
  ASCII only on purpose (Windows PowerShell 5.1 reads a script as ANSI).
 #>
@@ -94,10 +105,12 @@ New-Item -ItemType Directory -Force -Path (Split-Path -Parent $LogFile) | Out-Nu
 $Branch = 'oct6/release'
 $Folder = '.claude\worktrees\release'
 $RestoreTag = 'restore/2026-10-06-before-release'
-# The machine menu, live when the speed round was built. Every branch in this
-# release grew from it; master must be exactly this, or the release was not
-# tested against what is live.
-$MasterMustBe = 'c20d2abe'
+# The speed round, LIVE since Oct 6 2026 07:33 (AJ ran ship-speed.ps1 golive:
+# its indexes, rules, the two functions and the two deletions are already in
+# production). This release ships the iPad round and the roster split on top
+# of it; master must be exactly this, or the release was not tested against
+# what is live. (v1 of this script expected c20d2abe, the machine menu.)
+$MasterMustBe = '3735f38e'
 # 2 since the Hub fixes (Oct 1): clinical-review/charts.tsx and
 # EditTrainerModal.tsx. The release keeps the same two. More is new.
 $TscBaseline = 2
@@ -288,6 +301,13 @@ if ($unknownFn.Count -gt 0) {
 }
 & git --no-optional-locks diff --quiet origin/master $Branch -- functions/package.json functions/package-lock.json functions/tsconfig.json
 if ($LASTEXITCODE -ne 0) { Stop-Here 'functions\package.json, its lock or its tsconfig changed, which would change every function. Ask Claude.' }
+# What this release still has to deploy, measured against what is live. The
+# speed round's golive already deployed its indexes and functions, so both are
+# expected to be unchanged; golive deploys either only if it did change.
+$FunctionsChanged = $changedFn.Count -gt 0
+& git --no-optional-locks diff --quiet origin/master $Branch -- firestore.indexes.json
+$IndexesChanged = ($LASTEXITCODE -ne 0)
+Log ("Against master: indexes " + $(if ($IndexesChanged) { 'CHANGED (golive deploys them)' } else { 'unchanged (no index deploy)' }) + ', functions\src ' + $(if ($FunctionsChanged) { 'CHANGED (golive deploys ' + $DeployFunctions + ')' } else { 'unchanged (no functions deploy)' }) + '.') 'Green'
 
 if ($Stage -eq 'prepare') {
   if (Test-Path $PreparedFile) { Remove-Item -Force $PreparedFile }
@@ -296,9 +316,8 @@ if ($Stage -eq 'prepare') {
   & git --no-optional-locks diff --stat origin/master $Branch -- firestore.indexes.json | ForEach-Object { Log "   $_" 'Yellow' }
   Log 'firestore.rules changes (golive runs the rules tests again, deploys them, and checks they are live, BEFORE the push):' 'Yellow'
   & git --no-optional-locks diff --stat origin/master $Branch -- firestore.rules | ForEach-Object { Log "   $_" 'Yellow' }
-  Log "functions\ changes (golive deploys ONLY $DeployFunctions, and deletes $($RetiredFunctions -join ' and ')):" 'Yellow'
+  Log "functions\ changes (golive deploys $DeployFunctions only if functions\src changed, and deletes $($RetiredFunctions -join ' and ') if still deployed):" 'Yellow'
   & git --no-optional-locks diff --stat origin/master $Branch -- functions | ForEach-Object { Log "   $_" 'Yellow' }
-  Log '   (staffImage.ts changed too: the staff-photo pair is NOT deployed, AJ''s separate call.)' 'Yellow'
   # Any line naming a retired function that is not a comment means the code
   # may still use it, and golive would delete a function the code wants.
   foreach ($fn in $RetiredFunctions) {
@@ -414,11 +433,11 @@ if ($Stage -eq 'prepare') {
   Log "Tested: $Branch at $($BranchSha.Substring(0, 7)), master at $($MasterSha.Substring(0, 7))." 'Green'
   Log 'THE PLAN (golive, in this order, stopping at the first failure):' 'White'
   Log "  1. Tag master as it is now: $RestoreTag = $($MasterSha.Substring(0, 7)), and push the tag." 'White'
-  Log "  2. npx firebase deploy --only firestore:indexes --project $Project --non-interactive (never deletes an index)." 'White'
+  if ($IndexesChanged) { Log "  2. npx firebase deploy --only firestore:indexes --project $Project --non-interactive (never deletes an index)." 'White' } else { Log '  2. (skipped: firestore.indexes.json is the same as live; the speed round deployed it)' 'White' }
   Log "  3. npm run test:rules again, then npx firebase deploy --only firestore:rules --project $Project," 'White'
   Log "     then check the ruleset LIVE holds '$LiveRulesMark' (the roster split's rules before the app)." 'White'
-  Log "  4. npx firebase deploy --only $DeployFunctions --project $Project" 'White'
-  Log "     then npx firebase functions:delete $($RetiredFunctions -join ' ') --region $FunctionsRegion --force --project $Project (those still deployed)." 'White'
+  if ($FunctionsChanged) { Log "  4. npx firebase deploy --only $DeployFunctions --project $Project" 'White' } else { Log '  4. (no functions deploy: functions\src is the same as live)' 'White' }
+  Log "     then npx firebase functions:delete $($RetiredFunctions -join ' ') --region $FunctionsRegion --force --project $Project (only those still deployed)." 'White'
   Log "  5. git push origin ${Branch}:master (fast-forward only). Render deploys the app and the server; both crons rebuild." 'White'
   Log '  Then: your steps by hand, the roster migration THE NEXT MORNING.' 'White'
   Log 'PREPARE PASSED. Next: powershell -ExecutionPolicy Bypass -File .\scripts\ship\ship-release.ps1 -Stage golive' 'Green'
@@ -445,10 +464,10 @@ Write-Host '  currentMachineMetrics, machineStats, machineStatsBackfilledAt.' -F
 Write-Host 'Nothing on the client documents moves until YOU run the migration it prints at the end (the next morning).' -ForegroundColor Yellow
 Write-Host ''
 Write-Host 'This tags the restore point, then deploys to PRODUCTION, in order:' -ForegroundColor Yellow
-Write-Host '  the new Firestore indexes (they build in the background; nothing waits on them),' -ForegroundColor Yellow
+if ($IndexesChanged) { Write-Host '  the changed Firestore indexes (they build in the background; nothing waits on them),' -ForegroundColor Yellow }
 Write-Host '  firestore.rules (after the rules tests pass again), checked LIVE before anything else,' -ForegroundColor Yellow
-Write-Host '  the Cloud Functions mindbodyWebhook and recalcTrainerWindows,' -ForegroundColor Yellow
-Write-Host '  deletes onBookingReminderWrite and sendDailySummary,' -ForegroundColor Yellow
+if ($FunctionsChanged) { Write-Host '  the Cloud Functions mindbodyWebhook and recalcTrainerWindows,' -ForegroundColor Yellow }
+Write-Host '  deletes onBookingReminderWrite and sendDailySummary if either is somehow still deployed,' -ForegroundColor Yellow
 Write-Host '  then pushes to master, which deploys the app and the server on Render (the crons rebuild).' -ForegroundColor Yellow
 Write-Host 'Nothing is asked of or written to Mindbody; nothing contacts anyone.' -ForegroundColor Yellow
 Write-Host ''
@@ -481,9 +500,13 @@ Log "Restore point on GitHub: $RestoreTag = $($MasterSha.Substring(0, 7))" 'Gree
 #    does today, so nothing breaks meanwhile. --non-interactive: an index in
 #    production that is not in the file is left alone, never deleted. Never
 #    --force (it would delete the two TTL policies once they exist).
-$idx = Run "deploy firestore.indexes.json (project $Project)" "npx firebase deploy --only firestore:indexes --project $Project --non-interactive"
-if ($idx.Code -ne 0) { Stop-Here 'the index deploy failed. The live app, its rules and its functions are unchanged and nothing was pushed.' }
-Log 'Indexes deployed to production (they finish building by themselves).' 'Green'
+if ($IndexesChanged) {
+  $idx = Run "deploy firestore.indexes.json (project $Project)" "npx firebase deploy --only firestore:indexes --project $Project --non-interactive"
+  if ($idx.Code -ne 0) { Stop-Here 'the index deploy failed. The live app, its rules and its functions are unchanged and nothing was pushed.' }
+  Log 'Indexes deployed to production (they finish building by themselves).' 'Green'
+} else {
+  Log 'firestore.indexes.json is the same as live (the speed round deployed it): no index deploy.' 'Green'
+}
 
 # 3. The rules: the tests again first (AJ's run counts), then the deploy,
 #    then a check that what is LIVE holds the roster split's document. The
@@ -507,9 +530,13 @@ if ($null -ne $liveRules) {
 }
 
 # 4. The two changed functions, by name, then the two retired ones.
-$fd = Run-Visible 'deploy the changed functions' "npx firebase deploy --only $DeployFunctions --project $Project"
-if ($fd.Code -ne 0) { Stop-Here 'the functions deploy failed. The indexes and rules are deployed (harmless to the running app); the app is unchanged and nothing was pushed. Run golive again once it is fixed (ask Claude).' }
-Log "Deployed: $DeployFunctions" 'Green'
+if ($FunctionsChanged) {
+  $fd = Run-Visible 'deploy the changed functions' "npx firebase deploy --only $DeployFunctions --project $Project"
+  if ($fd.Code -ne 0) { Stop-Here 'the functions deploy failed. The indexes and rules are deployed (harmless to the running app); the app is unchanged and nothing was pushed. Run golive again once it is fixed (ask Claude).' }
+  Log "Deployed: $DeployFunctions" 'Green'
+} else {
+  Log 'functions\src is the same as live (the speed round deployed mindbodyWebhook and recalcTrainerWindows): no functions deploy.' 'Green'
+}
 
 $fl = Run 'list the deployed functions' "npx firebase functions:list --project $Project"
 if ($fl.Code -ne 0) { Stop-Here 'could not list the deployed functions. The indexes, rules and the two functions are deployed; the app is unchanged and nothing was pushed. Ask Claude.' }
@@ -631,8 +658,12 @@ Log '     Do this even if the migration never ran: sessions finished since this 
 Log "  b. Push the restore tag: git push --force origin ${RestoreTag}:master   (Render deploys the old app)." 'White'
 Log '  c. The next morning, once every iPad runs the old app, step a again with --commit: it copies back what this' 'White'
 Log '     app wrote between a and b.' 'White'
-Log "  d. Last, from a checkout of $RestoreTag (ask Claude to make one): the two functions and the old rules," 'White'
-Log "       npx firebase deploy --only $DeployFunctions --project $Project" 'White'
+if ($FunctionsChanged) {
+  Log "  d. Last, from a checkout of $RestoreTag (ask Claude to make one): the two functions and the old rules," 'White'
+  Log "       npx firebase deploy --only $DeployFunctions --project $Project" 'White'
+} else {
+  Log "  d. Last, from a checkout of $RestoreTag (ask Claude to make one): the old rules (the functions did not change in this release)," 'White'
+}
 Log "       npx firebase deploy --only firestore:rules --project $Project" 'White'
 Log '     (rules last: the old rules would have refused this app the new document while it was still live).' 'White'
 Log '  The indexes need no undo. The two deleted functions stay deleted (nothing set their flags).' 'White'
