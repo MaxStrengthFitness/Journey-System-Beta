@@ -22,6 +22,13 @@ import { describe, expect, it } from "vitest";
  *      (a touch stronger to make up for the blur), bars and toasts opaque.
  *   2. A card among many takes ONE contact shadow, --X-elev-list (W7). Held
  *      with the rest of the depth rules, in elevation.test.ts section 15.
+ *   3. Nothing animates forever but a loader (W10): a live or attention
+ *      mark beats three times and rests, and a loop only moves or fades
+ *      (a background-position shimmer repaints every frame).
+ *   4. The Hub's per-card costs (W12): no container per card (the column
+ *      is the one container), no opacity layer per finished card (a veil of
+ *      the ground in colour), the hatching one small tile with no opacity;
+ *      and no will-change or blend mode beyond the loading mark.
  *
  * If one of these fails, the fix is the stylesheet or the class list, not
  * the test.
@@ -218,5 +225,94 @@ describe("3. nothing animates forever but a loader, and a loop never repaints (W
     const src = read("components/WorkoutTrackerView.tsx");
     const open = src.lastIndexOf("<div", banner!.index);
     expect(src.slice(open, banner!.index)).not.toMatch(/animate-/);
+  });
+});
+
+/* ---------------------------------------------------------------------------
+   4. The Hub's small costs, times 30 to 60 (W12)
+   --------------------------------------------------------------------------- */
+
+/** The rules of a stylesheet (comments removed): selector, body, inside an at-rule or not. */
+function rulesOf(file: string): { selector: string; body: string; at: string }[] {
+  const text = stripComments(read(file));
+  const out: { selector: string; body: string; at: string }[] = [];
+  const stack: { prelude: string; start: number }[] = [];
+  let last = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "{") {
+      stack.push({ prelude: text.slice(last, i).split(";").pop()!.trim().replace(/\s+/g, " "), start: i + 1 });
+      last = i + 1;
+    } else if (text[i] === "}") {
+      const top = stack.pop()!;
+      if (!top.prelude.startsWith("@")) out.push({ selector: top.prelude, body: text.slice(top.start, i), at: stack.map((s) => s.prelude).join(" ") });
+      last = i + 1;
+    }
+  }
+  return out;
+}
+const decl = (body: string, prop: string) => new RegExp(`(?:^|;)\\s*${prop}\\s*:\\s*([^;]+)`).exec(body)?.[1].trim();
+const CARD = "features/hub-schedule/hub-card.css";
+const GRID = "features/hub-schedule/hub-grid.css";
+
+describe("4. the Hub's cards: no container each, no layer each, and the hatching one small tile (W12)", () => {
+  it("no card is a container: the column is, one per trainer, and the phone's day list", () => {
+    for (const r of rulesOf(CARD)) {
+      expect(decl(r.body, "container-type"), r.selector).toBeUndefined();
+      expect(decl(r.body, "container"), r.selector).toBeUndefined();
+    }
+    expect(decl(rulesOf(GRID).find((r) => r.selector === ".hs-col")!.body, "container")).toBe("hs-col / inline-size");
+    expect(decl(rulesOf("features/phone/phone.css").find((r) => r.selector === ".ph-day")!.body, "container")).toBe("ph-day / inline-size");
+    expect(read("features/hub-schedule/HubGrid.tsx")).toMatch(/className="hs-slot"\s+data-block-key=\{p\.item\.key\}\s+data-lanes=\{p\.lanes\}/);
+  });
+
+  it("the card's words ask the column by name, at the column width that gives the card's inside 176px (first word) and 280px (every word)", () => {
+    const text = stripComments(read(CARD));
+    expect(text, "an unnamed @container would ask whatever container is nearest").not.toMatch(/@container\s*\(/);
+    // The card's inside is the column over its lanes, less the slot's sides and the card's edge and padding.
+    const slotPad = decl(rulesOf(GRID).find((r) => r.selector === ".hs-slot")!.body, "padding");
+    expect(slotPad).toBe("0 3px");
+    const card = rulesOf(CARD).find((r) => r.selector === ".hs-card")!.body;
+    expect(decl(card, "padding")).toBe("6px 8px 6px 10px");
+    expect(decl(card, "border")).toBe("1px solid var(--eq-edge)");
+    expect(decl(card, "border-left")).toBe("4px solid var(--eq-ink-faint)");
+    const chrome = 3 * 2 + (4 + 10) + (8 + 1);
+    for (const m of text.matchAll(/@container hs-col \(min-width: (\d+)px\) \{\s*\.hs-slot\[data-lanes="(\d)"\] (\.hs-g:first-child|\.hs-card\[data-words="all"\]) \.hs-g-word/g)) {
+      const inside = m[3] === ".hs-g:first-child" ? 176 : 280;
+      expect(Number(m[1]), `${m[3]}, ${m[2]} lane(s)`).toBe(Number(m[2]) * (inside + chrome));
+    }
+    expect([...text.matchAll(/@container hs-col/g)].length, "four widths for the first word, three for every word").toBe(7);
+    // On a phone the card is the day's list less the time (56) and the gap (8).
+    expect(text).toContain(`@container ph-day (min-width: ${176 + chrome - 6 + 64}px)`);
+    expect(text).toContain(`@container ph-day (min-width: ${280 + chrome - 6 + 64}px)`);
+  });
+
+  it("a card that is over recedes in colour, not opacity: no translucent layer per card", () => {
+    const found = rulesOf(CARD)
+      .filter((r) => /data-recede="true"/.test(r.selector) && decl(r.body, "opacity") !== undefined)
+      .map((r) => r.selector);
+    expect(found).toEqual([]);
+  });
+
+  it("the hatching is one small tile, its faintness in the line's colour: no repeating gradient, no opacity", () => {
+    const grid = stripComments(read(GRID));
+    expect(grid).not.toMatch(/repeating-(?:linear|radial|conic)-gradient/);
+    for (const sel of [".hs-rest", ".hs-off"]) {
+      for (const r of rulesOf(GRID).filter((x) => x.selector.split(",").map((s) => s.trim()).includes(sel))) {
+        expect(decl(r.body, "opacity"), sel).toBeUndefined();
+      }
+    }
+    const hatch = rulesOf(GRID).find((r) => r.selector === ".hs-rest, .hs-off")!.body;
+    expect(decl(hatch, "background-size")).toBe("11px 11px");
+  });
+
+  it("nothing else asks WebKit for a layer it doesn't need: will-change only on the loading mark, no blend modes", () => {
+    const found: string[] = [];
+    for (const f of CSS_FILES) {
+      for (const d of declarations(f, /will-change|mix-blend-mode/)) {
+        if (!(f === "components/loading-mark.css" && d.prop === "will-change")) found.push(`${f}:${d.line} ${d.prop}: ${d.value}`);
+      }
+    }
+    for (const f of CODE_FILES) if (/willChange|mixBlendMode|(?:^|[\s"'`:])(?:will-change-|mix-blend-)/m.test(read(f))) found.push(f);
+    expect(found).toEqual([]);
   });
 });

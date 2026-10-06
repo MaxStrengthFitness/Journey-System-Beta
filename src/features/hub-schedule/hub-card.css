@@ -40,7 +40,6 @@
   text-align: left;
   cursor: pointer;
   overflow: hidden;
-  container-type: inline-size;
   -webkit-tap-highlight-color: transparent;
   transition: opacity 150ms ease;
 }
@@ -101,15 +100,38 @@
 
 /* Over: done, not logged, or nothing to claim. It recedes and drops its
    marks, the triangle included (AJ, Sep 28: "once the session is done it
-   should make a lot less noise"). At 0.70 its name still reads on the
-   calmer light grid (4.96:1; 0.62 would be 3.96, Oct 4 2026). The Key's
-   swatches recede by the same amount (day-header.css). */
+   should make a lot less noise"). At 70% its name still reads on the
+   calmer light grid (4.96:1; 62% would be 3.96, Oct 4 2026). The Key's
+   swatches recede by the same amount (day-header.css).
+
+   HOW it recedes (the iPad round, Oct 6 2026, audit W12): it was
+   opacity 0.70 on the card, and every translucent card makes WebKit paint
+   it into a layer of its own and blend it, which by the afternoon is most
+   of the day's cards on every scroll. Now the same arithmetic in colour: a
+   veil of the ground under the card (--hs-ground, the grid's or your
+   lane's, hub-grid.css) at 30% over its content, and its edges mixed 70%
+   into the ground (the veil stops at the edge, which overflow clips). The
+   pixels are the ones opacity 0.70 drew; only the hatching an off-hours
+   card sat over no longer shows through it. */
 .hs-card[data-recede="true"] {
-  border-left-color: var(--eq-border-strong);
+  border-color: color-mix(in srgb, var(--eq-edge) 70%, transparent);
+  border-left-color: color-mix(in srgb, var(--eq-border-strong) 70%, var(--hs-ground, var(--eq-bg)));
   background: var(--eq-surface-2);
   background-clip: padding-box;
   box-shadow: none;
-  opacity: 0.7;
+}
+
+.hs-card[data-recede="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--hs-ground, var(--eq-bg)) 30%, transparent);
+  pointer-events: none;
+}
+
+/* Open while over: the blue edge the open card has, receded with it. */
+.hs-card[data-recede="true"][data-open="true"] {
+  border-color: color-mix(in srgb, var(--eq-live) 70%, var(--hs-ground, var(--eq-bg)));
 }
 
 /* Its quiet words still read at arm's length (the colour round's review,
@@ -135,6 +157,11 @@
   border-left-color: var(--eq-warn);
 }
 
+/* Receded, its plum edge recedes with it (the veil above stops at the edge). */
+.hs-card[data-recede="true"][data-state="left-open"] {
+  border-left-color: color-mix(in srgb, var(--eq-warn) 70%, var(--hs-ground, var(--eq-bg)));
+}
+
 /* No Max Strength profile yet: the next sync links it. Inert. Its dashes
    keep today's hairline (--eq-border), as the Next 30 minutes strip's
    unlinked item does: the soft edge would fade a dash to nothing, and the
@@ -150,6 +177,12 @@
   background-clip: padding-box;
   box-shadow: none;
   cursor: default;
+}
+
+.hs-card[data-recede="true"][data-kind="unlinked"] {
+  border-top-color: color-mix(in srgb, var(--eq-border) 70%, var(--hs-ground, var(--eq-bg)));
+  border-right-color: color-mix(in srgb, var(--eq-border) 70%, var(--hs-ground, var(--eq-bg)));
+  border-bottom-color: color-mix(in srgb, var(--eq-border) 70%, var(--hs-ground, var(--eq-bg)));
 }
 
 /* The roster that would hold her hasn't arrived yet. */
@@ -414,23 +447,51 @@
 
 /* A glyph's word only where there is room for it, and only on the first.
    The width is the card's INSIDE (its padding and edge left out): 176px
-   is a card of about 200px, a landscape column of five trainers. */
+   is a card of about 200px, a landscape column of five trainers.
+
+   Measured on the COLUMN, not the card (the iPad round, Oct 6 2026, audit
+   W12): a container on each of 30-60 cards made WebKit resolve every card's
+   styles in its own layout pass. The column (hub-grid.css, `hs-col`) is
+   the one container, and the slot says how many bookings share it
+   (HubGrid's data-lanes). A card's inside is the column's width over its
+   lanes, less the slot's 3px sides (6) and the card's edge and padding
+   (4 + 10 on the left, 8 + 1 on the right: 23), so 176px inside is a
+   column of 205px a lane and 280px is 309px a lane. On a phone the day's
+   list is the container (phone.css, `ph-day`): a card is the list less
+   the time (56), the gap (8) and its 23, so 263px and 367px. */
 .hs-g-word {
   display: none;
 }
 
-@container (min-width: 176px) {
-  .hs-g:first-child .hs-g-word {
-    display: inline;
-  }
+@container hs-col (min-width: 205px) {
+  .hs-slot[data-lanes="1"] .hs-g:first-child .hs-g-word { display: inline; }
+}
+@container hs-col (min-width: 410px) {
+  .hs-slot[data-lanes="2"] .hs-g:first-child .hs-g-word { display: inline; }
+}
+@container hs-col (min-width: 615px) {
+  .hs-slot[data-lanes="3"] .hs-g:first-child .hs-g-word { display: inline; }
+}
+@container hs-col (min-width: 820px) {
+  .hs-slot[data-lanes="4"] .hs-g:first-child .hs-g-word { display: inline; }
+}
+@container ph-day (min-width: 263px) {
+  .ph-day__card .hs-g:first-child .hs-g-word { display: inline; }
 }
 
 /* Your own column, in words (hub cherry round): every glyph says its word
    once the card has room for both beside the time — about 280px inside, the
    focus column on an iPad on its side. Upright, or beside another booking,
    the card keeps to the rule above: the first word only. */
-@container (min-width: 280px) {
-  .hs-card[data-words="all"] .hs-g-word {
-    display: inline;
-  }
+@container hs-col (min-width: 309px) {
+  .hs-slot[data-lanes="1"] .hs-card[data-words="all"] .hs-g-word { display: inline; }
+}
+@container hs-col (min-width: 618px) {
+  .hs-slot[data-lanes="2"] .hs-card[data-words="all"] .hs-g-word { display: inline; }
+}
+@container hs-col (min-width: 927px) {
+  .hs-slot[data-lanes="3"] .hs-card[data-words="all"] .hs-g-word { display: inline; }
+}
+@container ph-day (min-width: 367px) {
+  .ph-day__card .hs-card[data-words="all"] .hs-g-word { display: inline; }
 }

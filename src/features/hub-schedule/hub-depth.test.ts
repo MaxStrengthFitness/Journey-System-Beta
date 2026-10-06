@@ -213,7 +213,7 @@ describe("a booking on the Hub", () => {
   it("keeps its fill inside the edge in every state: a rule that repaints the fill restates the clip", () => {
     for (const [file, cls] of [[CARD, ".hs-card"], [STRIP, ".hn-item"]] as const) {
       const painted = rulesOf(file).filter(
-        (r) => r.at.length === 0 && r.selectors.every((s) => s.startsWith(cls) && !/\s/.test(s)) && decls(r.body).background !== undefined,
+        (r) => r.at.length === 0 && r.selectors.every((s) => s.startsWith(cls) && !/\s|::/.test(s)) && decls(r.body).background !== undefined,
       );
       expect(painted.length, file).toBeGreaterThan(1);
       for (const r of painted) expect(decls(r.body)["background-clip"], `${file}: ${r.selectors.join(", ")}`).toBe("padding-box");

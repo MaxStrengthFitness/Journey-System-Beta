@@ -392,6 +392,9 @@
 /* ---- the Hub's day as a list -------------------------------------------- */
 
 .ph-day {
+  /* The one container the day's cards measure their words against
+     (hub-card.css; the iPad round, Oct 6 2026), not one per card. */
+  container: ph-day / inline-size;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
