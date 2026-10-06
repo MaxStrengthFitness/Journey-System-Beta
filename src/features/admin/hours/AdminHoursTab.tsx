@@ -18,9 +18,14 @@
  *                    the read was cut / the read failed — never a total that
  *                    is quietly short.
  *
- * One read per studio per month (sessions-range.ts), nothing written.
+ * Reads (speed round, Oct 5 2026): the night's counts for the month
+ * (studios/{s}/watch/hours-YYYY-MM, written by the nightly renewals job;
+ * features/admin/month-tally) and today's sessions live, or the raw month
+ * (sessions-range.ts) when the night has nothing usable. "All my studios"
+ * reads one small document per studio for its line, and a studio's own
+ * month only when that studio is opened. Nothing written.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
 import type { Studio, Trainer } from "../../../types";
 import {
@@ -30,20 +35,22 @@ import {
   AdminHeader,
   AdminNotice,
   AdminPanel,
+  AdminRow,
+  AdminRows,
   AdminScreen,
   AdminStatTile,
   AdminTiles,
 } from "../primitives";
 import { useOperationsScope } from "../scope-context";
-import { MAX_SESSIONS_IN_RANGE, useSessionsInRange } from "../sessions-range";
+import { MAX_SESSIONS_IN_RANGE } from "../sessions-range";
+import { useNightHoursMany, useStudioHours } from "../month-tally/night";
+import { hoursTallyFromDoc } from "../month-tally/month-tally";
 import {
   LATE_LOG_GRACE_DAYS,
   averageMinutes,
   formatHours,
-  hoursTally,
   monthKeyOfToday,
   monthLabel,
-  queryWindowForMonth,
   sessionMinutesOf,
   shiftMonth,
   trainerNames,
@@ -107,16 +114,6 @@ export function AdminHoursTab({ trainers }: Props) {
  * One studio
  * ------------------------------------------------------------------ */
 
-function useStudioTally(studio: Studio, month: MonthKey, names: Record<string, string>) {
-  const window = useMemo(() => queryWindowForMonth(month, studio.timezone || undefined), [month, studio.timezone]);
-  const read = useSessionsInRange({ studioId: studio.id, startMs: window.startMs, endMs: window.endMs });
-  const tally = useMemo(
-    () => hoursTally(read.sessions, { month, sessionMinutes: sessionMinutesOf(studio), names }),
-    [read.sessions, month, studio, names],
-  );
-  return { read, tally };
-}
-
 function StudioHours({
   studio,
   month,
@@ -128,7 +125,8 @@ function StudioHours({
   names: Record<string, string>;
   showName: boolean;
 }) {
-  const { read, tally } = useStudioTally(studio, month, names);
+  const read = useStudioHours(studio, month, names);
+  const tally = read.tally;
   return (
     <>
       <StudioTiles tally={tally} loading={read.loading} />
@@ -181,6 +179,7 @@ function HoursTable({
   loading,
   failed,
   truncated,
+  actions,
 }: {
   tally: HoursTally;
   title: string;
@@ -188,9 +187,10 @@ function HoursTable({
   loading: boolean;
   failed: boolean;
   truncated: boolean;
+  actions?: ReactNode;
 }) {
   return (
-    <AdminPanel title={title} subtitle={subtitle} flush>
+    <AdminPanel title={title} subtitle={subtitle} actions={actions} flush>
       {failed && (
         <div className="p-3">
           <AdminNotice tone="alert">The month could not be read. The numbers below are not the month — try again.</AdminNotice>
@@ -281,30 +281,41 @@ function Cell({ cell, strong }: { cell: { sessions: number; minutes: number } | 
  * Every studio the reader may look at
  * ------------------------------------------------------------------ */
 
-interface StudioReport {
-  tally: HoursTally;
-  loading: boolean;
-}
-
 /**
- * Each studio block owns its own read (one month, one studio) and reports
- * its tally up; the company line is added from those reports rather than
- * read a second time. A report from another month (the reader just moved
- * the month and that block is still loading) is left out of the sum.
+ * "All my studios" (speed round, Oct 5 2026). The line on top adds up the
+ * night's counts, one small document per studio, to last night; it never
+ * reads a studio's sessions. Each studio is a row with its own line, and
+ * its month (the night's counts with today live, or the raw month) is read
+ * only when someone opens it. A studio the night has nothing usable for is
+ * named as not in the total, never counted as zero.
  */
 function CompanyHours({ studios, month, names }: { studios: Studio[]; month: MonthKey; names: Record<string, string> }) {
-  const [reports, setReports] = useState<Record<string, StudioReport>>({});
-  const report = useCallback((studioId: string, r: StudioReport) => {
-    setReports((prev) => (prev[studioId]?.tally === r.tally && prev[studioId]?.loading === r.loading ? prev : { ...prev, [studioId]: r }));
+  const night = useNightHoursMany(studios, month);
+  const [opened, setOpened] = useState<Set<string>>(() => new Set());
+  const toggle = useCallback((id: string) => {
+    setOpened((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }, []);
 
-  const current = studios.map((s) => reports[s.id]).filter((r): r is StudioReport => Boolean(r) && r.tally.month === month);
-  const settled = current.length === studios.length && current.every((r) => !r.loading);
-  const total = current.reduce(
-    (acc, r) => ({ sessions: acc.sessions + r.tally.totals.month.sessions, minutes: acc.minutes + r.tally.totals.month.minutes }),
+  const tallies = useMemo(() => {
+    const out: Record<string, HoursTally> = {};
+    for (const s of studios) {
+      const doc = night.byStudio[s.id];
+      if (doc) out[s.id] = hoursTallyFromDoc(doc, { sessionMinutes: sessionMinutesOf(s), names });
+    }
+    return out;
+  }, [studios, night.byStudio, names]);
+  const counted = studios.filter((s) => tallies[s.id]);
+  const missing = night.loading ? [] : studios.filter((s) => !tallies[s.id]);
+  const total = counted.reduce(
+    (acc, s) => ({ sessions: acc.sessions + tallies[s.id].totals.month.sessions, minutes: acc.minutes + tallies[s.id].totals.month.minutes }),
     { sessions: 0, minutes: 0 },
   );
-  const people = new Set(current.flatMap((r) => r.tally.rows.map((row) => row.trainerKey))).size;
+  const people = new Set(counted.flatMap((s) => tallies[s.id].rows.map((row) => row.trainerKey))).size;
 
   return (
     <>
@@ -312,33 +323,59 @@ function CompanyHours({ studios, month, names }: { studios: Studio[]; month: Mon
         <AdminStatTile
           label="All my studios"
           value={formatHours(total.minutes)}
-          foot={`${total.sessions} session${total.sessions === 1 ? "" : "s"} across ${studios.length} studios`}
-          loading={!settled}
+          foot={`${total.sessions} session${total.sessions === 1 ? "" : "s"} across ${counted.length} studio${counted.length === 1 ? "" : "s"}, to last night`}
+          loading={night.loading}
         />
-        <AdminStatTile label="Trainers" value={people} foot="with a session this month, counted once" loading={!settled} />
+        <AdminStatTile label="Trainers" value={people} foot="with a session this month, counted once" loading={night.loading} />
       </AdminTiles>
-      {studios.map((s) => (
-        <StudioBlock key={s.id} studio={s} month={month} names={names} onReport={report} />
-      ))}
+      {missing.length > 0 && (
+        <AdminNotice tone="info">
+          Not in the total yet: {missing.map((s) => s.name).join(", ")}. Open a studio to read its month.
+        </AdminNotice>
+      )}
+      <AdminPanel title="Studios" flush>
+        <AdminRows>
+          {studios.map((s) => (
+            <AdminRow
+              key={s.id}
+              name={s.name}
+              meta={studioLine(tallies[s.id] ?? null, night.loading)}
+              trailing={<span>{opened.has(s.id) ? "Close" : "Open"}</span>}
+              onClick={() => toggle(s.id)}
+            />
+          ))}
+        </AdminRows>
+      </AdminPanel>
+      {studios
+        .filter((s) => opened.has(s.id))
+        .map((s) => (
+          <StudioBlock key={s.id} studio={s} month={month} names={names} onClose={() => toggle(s.id)} />
+        ))}
     </>
   );
+}
+
+/** A studio's line under its name: the night's month, or that it isn't counted yet. */
+function studioLine(night: HoursTally | null, loading: boolean): string {
+  if (loading) return "Reading…";
+  if (!night) return "Not counted yet. Open it to read the month.";
+  const n = night.totals.month.sessions;
+  return `${formatHours(night.totals.month.minutes)} over ${n} session${n === 1 ? "" : "s"}, to last night`;
 }
 
 function StudioBlock({
   studio,
   month,
   names,
-  onReport,
+  onClose,
 }: {
   studio: Studio;
   month: MonthKey;
   names: Record<string, string>;
-  onReport: (studioId: string, r: StudioReport) => void;
+  onClose: () => void;
 }) {
-  const { read, tally } = useStudioTally(studio, month, names);
-  useEffect(() => {
-    onReport(studio.id, { tally, loading: read.loading });
-  }, [onReport, studio.id, tally, read.loading]);
+  const read = useStudioHours(studio, month, names);
+  const tally = read.tally;
   return (
     <HoursTable
       tally={tally}
@@ -347,6 +384,11 @@ function StudioBlock({
       loading={read.loading}
       failed={read.failed}
       truncated={read.truncated}
+      actions={
+        <AdminButton size="sm" variant="quiet" onClick={onClose} aria-label={`Close ${studio.name}`}>
+          Close
+        </AdminButton>
+      }
     />
   );
 }
