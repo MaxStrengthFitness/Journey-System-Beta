@@ -1,6 +1,7 @@
 import React from "react";
 import { Plus, X } from "lucide-react";
 import { AdminButton, AdminInput, AdminSelect, AdminTextarea } from "../../primitives";
+import "../../admin.css";
 
 /**
  * THE CODEX FORMAT'S CONTROLS (v2, Sep 28 2026).

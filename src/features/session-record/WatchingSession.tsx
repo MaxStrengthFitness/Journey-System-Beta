@@ -18,6 +18,7 @@ import { Eye } from "lucide-react";
 import { ActiveSessionTimer } from "../../components/ActiveSessionTimer";
 import { LeaveConfirmDialog } from "../unsaved-changes";
 import type { TakeOverWords, WatchWords } from "./watch";
+import "../journey-grid/journey-grid.css";
 import "./session-record.css";
 
 export function WatchingSession({

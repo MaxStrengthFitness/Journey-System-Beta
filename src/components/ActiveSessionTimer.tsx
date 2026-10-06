@@ -1,6 +1,7 @@
 import { useState, useEffect, memo } from "react";
 import { Play, Pause } from "lucide-react";
 import { cn } from "@/lib/utils";
+import "../features/journey-grid/journey-grid.css";
 
 interface ActiveSessionTimerProps {
   /** Session start. Firestore Timestamp, Date, or ISO string. */

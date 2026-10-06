@@ -342,7 +342,7 @@ const LATER: [string, string[]][] = [
     "--adm-shelf", "--adm-raised", "--adm-elev-0", "--adm-elev-1", "--adm-elev-2", "--adm-highlight", "--adm-press",
     "--adm-glow-go", "--adm-go-light", "--adm-divider", "--adm-edge", "--adm-edge-control",
   ]],
-  ["features/studio-tasks/studio-tasks.css", [
+  ["features/studio-tasks/studio-tasks.tokens.css", [
     "--st-shelf", "--st-raised", "--st-elev-0", "--st-elev-1", "--st-elev-2", "--st-highlight", "--st-press",
     "--st-edge", "--st-edge-control", "--st-divider",
   ]],
@@ -354,7 +354,7 @@ const LATER: [string, string[]][] = [
     "--br-raised", "--br-elev-0", "--br-elev-1", "--br-elev-2", "--br-highlight", "--br-press", "--br-glow-go",
     "--br-go-light", "--br-edge",
   ]],
-  ["features/subjective-report/subjective-report.css", [
+  ["features/subjective-report/subjective-report.tokens.css", [
     "--sr-raised", "--sr-elev-0", "--sr-elev-1", "--sr-highlight", "--sr-press", "--sr-edge",
   ]],
   ["features/ford/ford.tokens.css", ["--ford-raised", "--ford-elev-1", "--ford-highlight", "--ford-press"]],
@@ -852,11 +852,11 @@ const TINT_PALETTES: [string, string, string | null][] = [
   ["index.css", "\n:root {", "\n.dark {"],
   ["features/equipment/equipment.tokens.css", "\n:root {", "\n.dark,"],
   ["features/admin/admin.tokens.css", "\n:root {", "\n.dark,"],
-  ["features/studio-tasks/studio-tasks.css", "\n:root {", "\n.dark,"],
+  ["features/studio-tasks/studio-tasks.tokens.css", "\n:root {", "\n.dark,"],
   ["features/wiki/wiki.tokens.css", "\n:root {", "\n.dark,"],
   ["features/catalog/catalog.tokens.css", "\n:root {", "\n.dark,"],
   ["features/routine-builder/routine-builder.tokens.css", "\n:root {", "\n:root.dark,"],
-  ["features/subjective-report/subjective-report.css", "\n:root {", "\n.dark,"],
+  ["features/subjective-report/subjective-report.tokens.css", "\n:root {", "\n.dark,"],
   // The codex's palette is aliases of the Hub's, the same in both modes.
   ["features/client-codex/codex.tokens.css", "\n.cx,", null],
 ];

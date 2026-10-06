@@ -14,6 +14,7 @@
 import { Plus, Sparkles, X } from "lucide-react";
 import type { Addable, AddableFromMsf } from "./floor-editor";
 import { AdminButton, AdminEmpty } from "../primitives";
+import "../admin.css";
 
 export function AddFromMsfDialog({
   studioName,

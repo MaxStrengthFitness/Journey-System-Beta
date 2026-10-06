@@ -2,6 +2,7 @@ import { memo, useMemo } from "react";
 import { buildMonthCells } from "./selectors";
 import { TrainerCountChip } from "./TrainerAvatar";
 import type { CalendarEvent, CalendarSession, DayCell, TrainerRef } from "./types";
+import "./calendar.css";
 
 /**
  * MONTH — volume at a glance.

@@ -14,6 +14,7 @@ import type {
   TurnaroundRule,
 } from "../../../../types/machines";
 import { settingFieldKey } from "../../../../types/machines";
+import "../../admin.css";
 
 /**
  * THE MACHINE EDITOR'S CONTROLS.

@@ -61,6 +61,7 @@ import { useStudioMachineNotes } from "./useStudioMachineNotes";
 import { useSectionState } from "./useSectionState";
 import type { CatalogMachine } from "./types";
 import { forgetOnSignOut } from "../sign-out/memory";
+import "./catalog.css";
 
 /**
  * THE CATALOG, as a wiki.

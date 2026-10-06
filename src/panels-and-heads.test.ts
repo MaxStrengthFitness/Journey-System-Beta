@@ -114,7 +114,7 @@ const PALETTES: [string, string, string][] = [
   ["index.css", "\n:root {", "\n.dark {"],
   ["features/equipment/equipment.tokens.css", "\n:root {", '[data-theme="dark"] {'],
   ["features/admin/admin.tokens.css", "\n:root {", '[data-theme="dark"] {'],
-  ["features/studio-tasks/studio-tasks.css", "\n:root {", '[data-theme="dark"] {'],
+  ["features/studio-tasks/studio-tasks.tokens.css", "\n:root {", '[data-theme="dark"] {'],
   ["features/wiki/wiki.tokens.css", "\n:root {", '[data-theme="dark"] {'],
   ["features/calendar/calendar.tokens.css", "\n:root {", '[data-theme="dark"] {'],
   ["features/briefing/briefing.tokens.css", "\n:root {", '[data-theme="dark"] {'],

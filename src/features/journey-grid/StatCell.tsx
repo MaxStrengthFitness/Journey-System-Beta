@@ -1,6 +1,7 @@
 import { memo } from "react";
 import type { StatMetric } from "./types";
 import { formatLongDate, formatSeconds, formatShortDate, STAT_LABEL, type StatHit } from "./stats";
+import "./journey-grid.css";
 
 interface StatCellProps {
   machineName: string;

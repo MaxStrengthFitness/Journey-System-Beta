@@ -51,6 +51,7 @@ import { db } from "../../firebase";
 import { useToast } from "../../contexts/ToastContext";
 import type { StudioMachineSetting } from "../../types";
 import { useUnsavedChanges } from "../unsaved-changes";
+import "./catalog.css";
 
 export interface StudioSetupCardProps {
   machineId: string;

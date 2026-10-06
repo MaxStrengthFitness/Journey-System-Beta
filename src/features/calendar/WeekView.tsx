@@ -4,6 +4,7 @@ import { buildWeekSummary } from "./selectors";
 import { toneClass } from "./trainer-tone";
 import { TrainerAvatar } from "./TrainerAvatar";
 import type { CalendarSession, DayBar, TrainerCount, TrainerRef, WeekSummary } from "./types";
+import "./calendar.css";
 
 /**
  * WEEK — a dashboard, not a grid.

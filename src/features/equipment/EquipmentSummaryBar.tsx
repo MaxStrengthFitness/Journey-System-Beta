@@ -1,5 +1,6 @@
 import { Search, X } from "lucide-react";
 import type { EquipmentSummary } from "./types";
+import "./equipment.css";
 
 /**
  * What replaced boxes 1, 2 and 3.

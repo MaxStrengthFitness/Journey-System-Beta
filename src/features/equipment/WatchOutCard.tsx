@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { ShieldAlert } from "lucide-react";
 import type { WatchOut } from "../../lib/clinical-watchouts";
+import "./equipment.css";
 
 /**
  * Clinical watch-outs for ONE machine — the client's flags that the studio's

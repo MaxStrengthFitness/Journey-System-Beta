@@ -13,6 +13,7 @@ import { formatSeconds, orderedSets } from "./stats";
 import { QualityMark, QUALITY_MARK_LABEL } from "./QualityMark";
 import type { HistoryCoverage } from "../../lib/prior-history";
 import { gainWords, progressFromSets } from "../machine-menu/progress-figure";
+import "./journey-grid.css";
 
 /* ------------------------------------------------------------------ *
  * Bar

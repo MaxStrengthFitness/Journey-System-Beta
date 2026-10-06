@@ -18,6 +18,7 @@ import { useState } from "react";
 import { useUnsavedChanges } from "../../unsaved-changes";
 import { OUT_OF_SERVICE_REASON_MAX, reasonToStore } from "../../catalog/out-of-service";
 import { AdminButton, AdminField, AdminTextarea } from "../primitives";
+import "../admin.css";
 
 export function OutOfServiceDialog({
   machineName,

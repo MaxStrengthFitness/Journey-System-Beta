@@ -1,4 +1,5 @@
 import { modelName, type MachineModel } from "./models";
+import "./catalog.css";
 
 /**
  * A MOVEMENT'S MODELS — each maker's machine for it (wave 2 of the Machine

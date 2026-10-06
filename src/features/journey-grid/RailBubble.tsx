@@ -9,6 +9,7 @@
  * Session keeps its own cells, so the CSS hides this everywhere else.
  */
 import { useState, type ReactNode } from "react";
+import "./journey-grid.css";
 
 export type RailBubbleKind = "practice" | "flow" | "skip";
 

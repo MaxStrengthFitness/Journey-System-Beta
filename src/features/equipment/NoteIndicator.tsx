@@ -1,5 +1,6 @@
 import { ClipboardList, ClipboardPen } from "lucide-react";
 import { noteKey } from "../machine-menu/note-key";
+import "./equipment.css";
 
 /**
  * Three-state note indicator.

@@ -8,6 +8,7 @@ import {
 import { Check, UserRound } from "lucide-react";
 import type { ShiftGroup, TaskActor } from "./board";
 import { SHIFT_LABEL } from "./types";
+import "./studio-tasks.css";
 
 /**
  * PUT A NAME ON A GROUP — head trainers and studio leaders only.

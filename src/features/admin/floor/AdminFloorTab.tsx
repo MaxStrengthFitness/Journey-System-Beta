@@ -29,6 +29,7 @@ import { AdminMachineFitTab } from "../machine-fit/AdminMachineFitTab";
 import { AdminRoutineTemplatesTab } from "../routines/AdminRoutineTemplatesTab";
 import { AdminHeader, AdminScreen } from "../primitives";
 import { PickOneStudio, useOperationsScope } from "../scope-context";
+import "../admin.css";
 import "../../relay/board/relay.css";
 
 export type FloorView = "machines" | "fit" | "routines";

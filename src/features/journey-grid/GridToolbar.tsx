@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { QualityMark, QUALITY_MARK_LABEL } from "./QualityMark";
 import { OUTCOME_GLOSS, OUTCOME_LABEL } from "../../lib/set-outcome";
+import "./journey-grid.css";
 
 interface GridToolbarProps {
   /** Section caption, e.g. "Session log". Optional: the profile's Journey tab has none. */

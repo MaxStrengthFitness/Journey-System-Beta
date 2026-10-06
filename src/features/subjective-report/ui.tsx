@@ -13,6 +13,7 @@ import type { Rag } from "./types";
 import { SCALE_ANCHORS } from "./questions";
 import { ragForDaysPerWeek } from "./scoring";
 import { Dial, FREQUENCY_SCALE, INTENSITY_SCALE, absoluteToTen, dialWord, tenToAbsolute } from "../rating";
+import "./subjective-report.css";
 
 /* ---------- Status ---------------------------------------------------- */
 

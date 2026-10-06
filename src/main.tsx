@@ -2,13 +2,19 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
-import './features/journey-grid/journey-grid.css';
-import './features/equipment/equipment.css';
-import './features/calendar/calendar.css';
-import './features/subjective-report/subjective-report.css';
+// The feature tokens every screen may read, on the first screen. Only tokens:
+// a screen's own stylesheet arrives with the screen that imports it (the
+// speed round, Oct 5 2026, R13). These six used to bring their whole sheets
+// here, about 140 KB of rules for the session, the calendar, the Pulse, the
+// Catalog and My Studio that the first screen never draws; each component
+// now imports the sheet it draws with (docs/KNOWN-TRAPS.md, "A component
+// imports the stylesheet it draws with"; css-imports.test.ts holds it).
+import './features/journey-grid/journey-grid.tokens.css';
+import './features/equipment/equipment.tokens.css';
+import './features/calendar/calendar.tokens.css';
+import './features/subjective-report/subjective-report.tokens.css';
 import './features/catalog/catalog.tokens.css';
-import './features/catalog/catalog.css';
-import './features/studio-tasks/studio-tasks.css';
+import './features/studio-tasks/studio-tasks.tokens.css';
 import { ThemeProvider } from './components/ThemeProvider.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { APP_BUILD } from './features/new-version/build';

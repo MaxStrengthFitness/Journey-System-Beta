@@ -55,6 +55,7 @@ import { buildTracker, TRACKER_LISTS, type HandedItem, type TakenItem, type Trac
 import { minutesToClock, shiftHoursOf, studioMinutesNow } from "./board/now-context";
 import { UndoBar } from "./board/Board";
 import { forgetOnSignOut } from "../sign-out/memory";
+import "../studio-tasks/studio-tasks.css";
 import "./tracker.css";
 
 /**

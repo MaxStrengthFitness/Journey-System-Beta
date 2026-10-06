@@ -52,6 +52,7 @@ import type { Trainer } from "../../types";
 import { newTemplateId, saveTaskTemplate, type TaskAuthor } from "./mutations";
 import { categoryLabel } from "./types";
 import type { StudioTaskCategory, TaskTemplate } from "./types";
+import "./studio-tasks.css";
 
 /**
  * STARTER LISTS.

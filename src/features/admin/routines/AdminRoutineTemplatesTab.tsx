@@ -27,6 +27,7 @@ import {
   AdminSelect,
   ConfirmDialog,
 } from "../primitives";
+import "../admin.css";
 
 /**
  * ROUTINE TEMPLATES — the admin hub's programming section.

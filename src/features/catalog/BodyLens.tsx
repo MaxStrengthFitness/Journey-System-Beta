@@ -15,6 +15,7 @@ import { FloorRow } from "./FloorRow";
 import type { FloorState, Preset } from "./floor-index";
 import type { MachineModel } from "./models";
 import type { CatalogMachine } from "./types";
+import "./catalog.css";
 
 /**
  * THE BODY — the Catalog's second way in (Machine Catalog round, Catalog R3).

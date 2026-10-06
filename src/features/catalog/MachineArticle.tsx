@@ -39,6 +39,7 @@ import { modelName, type MachineModel } from "./models";
 import { floorNameHidesMovement, movementOf } from "./names";
 import { outOfServiceLineOf } from "./out-of-service";
 import type { CatalogMachine, RemovedSafetyShown } from "./types";
+import "./catalog.css";
 
 /** A line Find opened this page on: which part of the page, and the sentence. */
 export interface FoundOnPage {

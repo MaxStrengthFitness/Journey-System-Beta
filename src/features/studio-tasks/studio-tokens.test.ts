@@ -20,7 +20,7 @@ import { describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const EQUIPMENT = readFileSync(join(here, "..", "equipment", "equipment.tokens.css"), "utf8");
-const STUDIO = readFileSync(join(here, "studio-tasks.css"), "utf8");
+const STUDIO = readFileSync(join(here, "studio-tasks.tokens.css"), "utf8");
 
 function readBlock(css: string, selector: string): Record<string, string> {
   const i = css.indexOf(selector);

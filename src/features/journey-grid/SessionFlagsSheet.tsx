@@ -15,6 +15,7 @@ import { CriticalStrip } from "../../components/journal/CriticalStrip";
 import { JournalEntryCard } from "../../components/journal/JournalEntryCard";
 import type { WatchOut } from "../../lib/clinical-watchouts";
 import type { SessionFlags } from "./session-flags";
+import "./journey-grid.css";
 
 /**
  * One condition, quoted from the matrix. The tone is the matrix's severity:

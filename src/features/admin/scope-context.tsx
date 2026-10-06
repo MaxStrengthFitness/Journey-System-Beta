@@ -26,6 +26,7 @@ import { AdminButton, AdminEmpty, AdminSelect } from "./primitives";
 import { operationsStudios, studiosInScope, type OperationsScope } from "./scope";
 import { forgetOnSignOut } from "../sign-out/memory";
 import { useLeaveGuard } from "../unsaved-changes";
+import "./admin.css";
 
 export interface OperationsScopeValue {
   /** Every studio the reader may look at, by name. */

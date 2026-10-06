@@ -36,6 +36,7 @@ import {
   type UpkeepEvent,
   type UpkeepKind,
 } from "./upkeepLog";
+import "../admin.css";
 
 const STATUS_TONE = {
   ok: "ok",

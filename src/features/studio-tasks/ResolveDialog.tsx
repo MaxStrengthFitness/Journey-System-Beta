@@ -44,6 +44,7 @@ import { cn } from "../../lib/utils";
 import { draftFromRequest, PLAYBOOK_TITLE_MAX } from "./playbook";
 import type { PlaybookDraft } from "./playbook";
 import type { TaskRequest } from "./requests";
+import "./studio-tasks.css";
 
 /** resolveRequest truncates at 500, so the field should not pretend otherwise. */
 const RESOLUTION_MAX = 500;

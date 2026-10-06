@@ -28,6 +28,7 @@ import {
 import { historyStartWords, sessionNumberTag } from "../../lib/history-claims";
 import type { HistoryCoverage } from "../../lib/prior-history";
 import { noteKey } from "../machine-menu/note-key";
+import "./journey-grid.css";
 
 /* ------------------------------------------------------------------ *
  * Public props

@@ -34,6 +34,7 @@ import {
   type InitiativeTarget,
   type SubmissionEntry,
 } from "./initiatives";
+import "./studio-tasks.css";
 
 export interface SubmitInitiativeDialogProps {
   open: boolean;

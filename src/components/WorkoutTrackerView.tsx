@@ -248,6 +248,7 @@ import { machineNoteCount, machineNoteLoudness } from "../features/equipment/mac
 import { machineJournalOf } from "../features/equipment/useMachineJournal";
 import { sessionNoteStudioId } from "../features/client-notes/note-studio";
 import { ClientSelectionDialog } from "../features/tracker/ClientSelectionDialog";
+import "../features/journey-grid/journey-grid.css";
 type RoutineType = "A" | "B" | "Free";
 
 /** How long a locally-created session is protected from being cleared by a

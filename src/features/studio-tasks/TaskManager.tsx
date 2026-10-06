@@ -22,6 +22,7 @@ import {
   setTaskTemplateActive,
 } from "./mutations";
 import { categoryLabel, type TaskTemplate } from "./types";
+import "./studio-tasks.css";
 
 /**
  * The manager's side of the to-do list.

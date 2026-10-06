@@ -19,6 +19,7 @@ import {
 } from "../features/calendar";
 import { fordCalendarEvents, type CalendarClient } from "../features/calendar/ford-events";
 import { useCalendarFord } from "../features/calendar/useCalendarFord";
+import "../features/calendar/calendar.css";
 
 /** The local calendar day of a Date the calendar built at local noon. */
 function localDayKey(d: Date): string {

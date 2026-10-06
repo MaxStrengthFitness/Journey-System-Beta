@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { TaskRow } from "./types";
+import "./studio-tasks.css";
 
 /**
  * Close a task with a note, and optionally flag a problem.

@@ -1,6 +1,7 @@
 import { memo, useState } from "react";
 import { toneClass } from "./trainer-tone";
 import type { TrainerRef } from "./types";
+import "./calendar.css";
 
 /**
  * A trainer's initials in their own colour, with their photo on top when

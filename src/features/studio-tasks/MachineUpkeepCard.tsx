@@ -2,6 +2,7 @@ import { Check, Sparkles, TriangleAlert, Wrench } from "lucide-react";
 import { formatStudioDate } from "../../lib/studio-time";
 import type { MachineUpkeep } from "./useMachineUpkeep";
 import type { TaskRow } from "./types";
+import "./studio-tasks.css";
 
 /**
  * Cleaning and maintenance for ONE machine, shown in the Catalog.

@@ -1,9 +1,13 @@
+@import "./subjective-report.tokens.css";
+
 /* ==========================================================================
    The Pulse (the living subjective record) — form, panel, coach dashboard
    --------------------------------------------------------------------------
    Scoped under `.sr`. Light tokens on :root, dark on `.dark` and
    [data-theme="dark"], the same convention as the journey-grid / equipment /
-   calendar feature folders.
+   calendar feature folders; they live in subjective-report.tokens.css since
+   the speed round (Oct 5 2026), which main.tsx loads with the first screen,
+   while this sheet comes with the screens that import it.
 
    Everything is sized for a tablet on the gym floor: 44px tap targets, one
    column in portrait, two in landscape, no hover-only affordances.
@@ -26,118 +30,6 @@
    The hero tokens stay as the Hub's copy, and no Pulse rule reads them.
    ========================================================================== */
 
-:root {
-  --sr-bg:            #dee6ee;
-  --sr-surface:       #f3f6f9;
-  --sr-surface-2:     #e4ebf3;
-  --sr-surface-3:     #d4dee8;
-  --sr-border:        #d1dae4;
-  --sr-border-strong: #7a8694;
-
-  --sr-ink:           #192d41;
-  --sr-ink-2:         #3f4f60;
-  --sr-ink-muted:     #546271;
-  --sr-ink-faint:     #7f8c99;
-
-  --sr-hero:          #d45a06;   /* the Hub's copy; no Pulse rule reads it */
-  --sr-hero-text:     #b04000;
-  --sr-hero-fill:     #ffe9d8;
-  --sr-navy:          #034a84;   /* brand primary-2 */
-  --sr-navy-fill:     #dbeefe;   /* navy words on it 7.6:1 */
-
-  /* Words and icons on a solid accent: the navy, and the RAG fills. */
-  --sr-on:            #ffffff;
-
-  /* Green / Yellow / Red — the document's three colours, tuned for contrast */
-  --sr-green:         #17714b;
-  --sr-green-fill:    #e3f1ea;
-  --sr-yellow:        #9d5f00;   /* 4.8:1 on the card, 4.5:1 on its fill */
-  --sr-yellow-fill:   #fbefd6;
-  --sr-red:           #b42318;
-  --sr-red-fill:      #fde8e6;
-  --sr-watch:         #6b4c9a;   /* softer "watch" flags — never confused with red */
-  --sr-watch-fill:    #efe9f7;
-
-  --sr-radius:        14px;
-  --sr-radius-sm:     9px;
-  --sr-shadow:        0 1px 2px rgba(25, 45, 65, 0.06), 0 4px 14px rgba(25, 45, 65, 0.06);
-  --sr-tap:           44px;
-
-  /* Depth (type and depth, phase 3, Oct 4 2026), value for value as
-     equipment.tokens.css, less the orange's two: the Pulse keeps no orange
-     button, so it has no Go glow to draw. */
-  --sr-raised:          #f8fafc;
-  --sr-tray:            #d1dae4;
-  --sr-edge:            rgba(25, 45, 65, 0.13);
-  --sr-edge-control:    rgba(25, 45, 65, 0.26);
-  --sr-divider:         rgba(25, 45, 65, 0.10);
-  --sr-highlight:       rgba(255, 255, 255, 0.70);
-  --sr-elev-0:          var(--elev-0);
-  --sr-elev-1:          var(--elev-1);
-  --sr-elev-2:          var(--elev-2);
-  --sr-elev-3:          var(--elev-3);
-  --sr-elev-4:          var(--elev-4);
-  --sr-elev-5:          var(--elev-5);
-  --sr-elev-card:       var(--elev-card);
-  --sr-shelf:           var(--shelf);
-  --sr-press:           var(--press);
-  --sr-glow-live:       var(--glow-live);
-  --sr-solid-light:     var(--solid-light);
-  --sr-panel-highlight: var(--panel-highlight);
-}
-
-.dark,
-[data-theme="dark"] {
-  --sr-bg:            #0a1c2c;
-  --sr-surface:       #14293d;
-  --sr-surface-2:     #0d2235;
-  --sr-surface-3:     #203549;
-  --sr-border:        #2b3e50;
-  --sr-border-strong: #6e8397;
-
-  --sr-ink:           #dfe7ef;
-  --sr-ink-2:         #b8c6d3;
-  --sr-ink-muted:     #9dadbe;
-  --sr-ink-faint:     #697b8d;
-
-  --sr-hero:          #f36d21;
-  --sr-hero-text:     #ff9455;
-  --sr-hero-fill:     #4b2915;
-  --sr-navy:          #65abe9;   /* the logo blue, lifted: 6.1:1 */
-  --sr-navy-fill:     #203d57;   /* opaque; navy words on it 4.6:1 */
-
-  --sr-on:            #071727;
-
-  --sr-green:         #5ccf98;
-  --sr-green-fill:    #0f2e21;
-  --sr-yellow:        #f0b95a;
-  --sr-yellow-fill:   #3a2a0c;
-  --sr-red:           #ff7b6e;
-  --sr-red-fill:      #3d1410;
-  --sr-watch:         #c4a9ea;
-  --sr-watch-fill:    #251a36;
-
-  --sr-shadow:        0 1px 2px rgba(2, 10, 20, 0.4), 0 6px 18px rgba(2, 10, 20, 0.35);
-
-  --sr-raised:          #203549;
-  --sr-tray:            #081725;
-  --sr-edge:            rgba(150, 180, 210, 0.11);
-  --sr-edge-control:    rgba(150, 180, 210, 0.16);
-  --sr-divider:         rgba(150, 180, 210, 0.10);
-  --sr-highlight:       rgba(255, 255, 255, 0.07);
-  --sr-elev-0:          var(--elev-0);
-  --sr-elev-1:          var(--elev-1);
-  --sr-elev-2:          var(--elev-2);
-  --sr-elev-3:          var(--elev-3);
-  --sr-elev-4:          var(--elev-4);
-  --sr-elev-5:          var(--elev-5);
-  --sr-elev-card:       var(--elev-card);
-  --sr-shelf:           var(--shelf);
-  --sr-press:           var(--press);
-  --sr-glow-live:       var(--glow-live);
-  --sr-solid-light:     var(--solid-light);
-  --sr-panel-highlight: var(--panel-highlight);
-}
 
 /* ---------- Layout --------------------------------------------------- */
 

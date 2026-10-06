@@ -6,6 +6,7 @@ import { JourneyGrid, type GridSection } from "./JourneyGrid";
 import { GridToolbar, QualityLegend } from "./GridToolbar";
 import { LoadingArea, LoadingMark } from "../../components/LoadingMark";
 import type { HistoryCoverage } from "../../lib/prior-history";
+import "./journey-grid.css";
 
 /**
  * Which machines the grid lists.

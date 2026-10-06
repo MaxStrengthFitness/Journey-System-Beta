@@ -28,6 +28,7 @@ import type { ModelWithId } from "../../../machine-codex/models";
 import { ModelPicker } from "../models/ModelPicker";
 import { InheritedSafety } from "./safety-removal";
 import { splitSafety } from "./safety-edit";
+import "../../admin.css";
 import "./codex-editor.css";
 
 /**

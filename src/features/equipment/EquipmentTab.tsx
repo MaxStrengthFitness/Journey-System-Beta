@@ -11,6 +11,7 @@ import type { HistoryCoverage } from "../../lib/prior-history";
 import { MachineMenuBody } from "../machine-menu/MachineMenuBody";
 import type { MachineMenuHost } from "../machine-menu/useMachineMenuData";
 import { UnsavedChangesScope, useLeaveScope } from "../unsaved-changes";
+import "./equipment.css";
 
 /**
  * EQUIPMENT TAB — dual-pane.

@@ -6,6 +6,7 @@ import { safetyLineKey } from "../../../../lib/resolve-machine";
 import { MAX_REMOVAL_REASON, reasonIsEnough } from "../../../../lib/machine-template";
 import { formatStudioDate } from "../../../../lib/studio-time";
 import { putBack, removedFrom, splitSafety, takeOff } from "./safety-edit";
+import "../../admin.css";
 import "./codex-editor.css";
 
 /**

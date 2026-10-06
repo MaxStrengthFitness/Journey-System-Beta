@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, TriangleAlert, Users } from "lucide-react";
 import type { MachineGuide } from "./types";
+import "./equipment.css";
 
 /**
  * The setup guide the old tab had nowhere to put.

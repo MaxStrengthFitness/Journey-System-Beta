@@ -4,6 +4,7 @@ import { ShieldAlert } from "lucide-react";
 import { NoteIndicator } from "./NoteIndicator";
 import { machineWatchOuts } from "../../lib/clinical-watchouts";
 import type { EquipmentMachine } from "./types";
+import "./equipment.css";
 
 /**
  * Left pane: every machine this studio has, always visible, never scrolled

@@ -1,4 +1,5 @@
 import { Database, MapPin, PersonStanding } from "lucide-react";
+import "./catalog.css";
 
 /**
  * THE CATALOG'S THREE WAYS IN (Machine Catalog round, Sep 28 2026 — R3).

@@ -23,6 +23,7 @@ import {
   type DayKey,
   type HistorySession,
 } from "./model";
+import "../calendar/calendar.css";
 import "./client-history.css";
 import { NO_WINDOW, type OwnedWindow } from "../../lib/history-claims";
 import { priorUncounted, type PriorHistory } from "../../lib/prior-history";

@@ -25,6 +25,7 @@ import { kudosReceived } from "../board/kudos";
 import { useStudioMachines } from "../../../hooks/useStudioMachines";
 import { firstDayOf, teamRecord, type PersonRecord } from "./accountability";
 import { useInitiativeProgress } from "./useInitiativeProgress";
+import "../../studio-tasks/studio-tasks.css";
 import "../kit.css";
 import "./team.css";
 

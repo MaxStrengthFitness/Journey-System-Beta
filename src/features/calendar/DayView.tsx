@@ -3,6 +3,7 @@ import { buildDayPlan, studioMinutes } from "./selectors";
 import { toneClass } from "./trainer-tone";
 import { TrainerAvatar } from "./TrainerAvatar";
 import type { CalendarSession, DayLane, TrainerRef } from "./types";
+import "./calendar.css";
 
 /**
  * DAY — horizontal trainer swimlanes.

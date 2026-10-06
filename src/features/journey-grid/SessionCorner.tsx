@@ -8,6 +8,7 @@
  */
 import { Check, ChevronDown, Info, ListFilter, Settings2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import "./journey-grid.css";
 
 export function SessionCorner({
   showAll,

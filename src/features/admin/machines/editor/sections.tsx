@@ -27,6 +27,7 @@ import {
   StringList,
   Turnaround,
 } from "./controls";
+import "../../admin.css";
 
 /**
  * THE EIGHT SECTIONS, in the Academy template's own order.

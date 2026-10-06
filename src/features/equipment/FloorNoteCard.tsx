@@ -30,6 +30,7 @@ import { db } from "../../firebase";
 import { firstSentences } from "../../lib/first-sentences";
 import { studioDateKey } from "../../lib/studio-time";
 import { copiedKeysOf, earlierNotes, floorNoteFromDoc, floorThreads, openFloorLines, type FloorNote } from "../floor-notes/floor-notes";
+import "./equipment.css";
 
 export type FloorRead =
   | { status: "loading" }

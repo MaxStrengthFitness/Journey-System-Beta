@@ -27,6 +27,7 @@ import { fmtDate } from "./ui";
 import { LoadingMark } from "../../components/LoadingMark";
 import { formatStudioDateTime } from "../../lib/studio-time";
 import type { HistoryStatus } from "./useCheckInDraft";
+import "./subjective-report.css";
 
 export interface AssessmentHistoryLogProps {
   rows: readonly AssessmentLogRow[];

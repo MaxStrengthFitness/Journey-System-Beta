@@ -29,6 +29,7 @@ import {
 } from "./questions";
 import { scoreAllCategories, scoreOverall, summarize, type PreviousAssessmentRef } from "./scoring";
 import { Delta, RAG_LABEL, RagPill, fmtDate, intensityWord } from "./ui";
+import "./subjective-report.css";
 
 export interface HistoryPoint {
   date: string;

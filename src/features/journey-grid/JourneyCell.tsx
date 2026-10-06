@@ -4,6 +4,7 @@ import type { JourneySet, JourneySession } from "./types";
 import { formatSeconds, formatLongDate, QUALITY_LABEL, loadDelta, trendVsPrevious, type Trend } from "./stats";
 import { QualityMark } from "./QualityMark";
 import { RailBubble } from "./RailBubble";
+import "./journey-grid.css";
 
 interface JourneyCellProps {
   session: JourneySession;

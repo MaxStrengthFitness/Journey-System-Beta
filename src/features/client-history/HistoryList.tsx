@@ -21,6 +21,7 @@ import {
   type ListMonth,
   type ListSessionItem,
 } from "./model";
+import "../calendar/calendar.css";
 
 /**
  * HISTORY — the list.

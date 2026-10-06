@@ -1,5 +1,6 @@
 import { changeSentence, changeWhen, type ChangesRead } from "../machine-codex/change-log";
 import { useMachineChanges } from "../machine-codex/change-log-store";
+import "./catalog.css";
 
 /**
  * WHAT CHANGED on a standard machine (catalog wave 3, Sep 29 2026; the

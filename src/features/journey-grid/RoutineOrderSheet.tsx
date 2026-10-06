@@ -20,6 +20,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { ArrowUpToLine, Check, GripVertical, Plus, X } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import type { JourneyRow, LiveSet } from "./types";
+import "./journey-grid.css";
 
 /**
  * TODAY'S ORDER — the reorder sheet (tracker round, Sep 2026).

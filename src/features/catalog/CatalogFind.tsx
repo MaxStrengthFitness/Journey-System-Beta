@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { BookOpen, CornerDownLeft, Filter, Library, MapPin, PersonStanding, Search, X } from "lucide-react";
 import { useWikiPageGuard } from "../wiki/page-guard";
 import type { FindHit, FindResult } from "./find";
+import "./catalog.css";
 
 /**
  * FIND, ON TOP OF THE CATALOG.

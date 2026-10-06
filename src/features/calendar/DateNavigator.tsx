@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import "./calendar.css";
 
 /**
  * The date stepper.

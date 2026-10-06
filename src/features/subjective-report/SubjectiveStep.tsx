@@ -69,6 +69,7 @@ import {
   intensityWord,
 } from "./ui";
 import { useJournalSuggestions } from "./useJournalSuggestions";
+import "./subjective-report.css";
 
 /* ====================================================================== *
  * Category card

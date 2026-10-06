@@ -68,6 +68,7 @@ import {
   useCompanyFitSummary,
   useStudioFitReports,
 } from "./useMachineFitReports";
+import "../admin.css";
 import "./machine-fit-admin.css";
 import { PickOneStudio, useOperationsScope } from "../scope-context";
 

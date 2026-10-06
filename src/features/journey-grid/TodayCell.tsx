@@ -4,6 +4,7 @@ import type { LiveSet } from "./types";
 import { formatSeconds } from "./stats";
 import { QualityMark } from "./QualityMark";
 import { RAIL_ICON } from "./RailBubble";
+import "./journey-grid.css";
 
 interface TodayCellProps {
   machineId: string;

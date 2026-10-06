@@ -36,6 +36,7 @@ import {
   AdminTextarea,
 } from "../primitives";
 import { isPlainAdoption, localSetupUpdate, pruneOverrides } from "./clone";
+import "../admin.css";
 
 export function LocalSetupDialog({
   studioId,

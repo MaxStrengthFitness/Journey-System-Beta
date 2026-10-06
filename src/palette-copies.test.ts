@@ -184,7 +184,7 @@ const COPIES: Copy[] = [
   },
   {
     name: "the Pulse (--sr-*)",
-    file: "features/subjective-report/subjective-report.css",
+    file: "features/subjective-report/subjective-report.tokens.css",
     dark: DARK,
     fallback: null,
     mirrors: same("sr", [...NEUTRALS, "hero", "hero-text", "hero-fill", ...DEPTH.filter(NO_ORANGE)]),
@@ -292,8 +292,8 @@ const DARK_FILLS: [string, string, string][] = [
   ["features/briefing/briefing.tokens.css", "--br-ok-fill", "--br-ok"],
   ["features/briefing/briefing.tokens.css", "--br-critical-fill", "--br-critical"],
   ["features/briefing/briefing.tokens.css", "--br-warn-fill", "--br-warn"],
-  ["features/subjective-report/subjective-report.css", "--sr-hero-fill", "--sr-hero"],
-  ["features/subjective-report/subjective-report.css", "--sr-navy-fill", "--sr-navy"],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-hero-fill", "--sr-hero"],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-navy-fill", "--sr-navy"],
   ["features/ford/ford.tokens.css", "--ford-now-fill", "--ford-now"],
   ["features/ford/ford.tokens.css", "--ford-soon-fill", "--ford-soon"],
   ["features/calendar/calendar.tokens.css", "--cal-hero-fill", "--cal-hero"],
@@ -357,25 +357,25 @@ const PAIRS: [string, string, string, number][] = [
   ["features/briefing/briefing.tokens.css", "--br-go-on", "--br-go", 4.5],
   ["features/briefing/briefing.tokens.css", "--br-hero", "--br-bg", 3],
   // The Pulse: the navy, the traffic lights and the words on them.
-  ["features/subjective-report/subjective-report.css", "--sr-ink-muted", "--sr-surface", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-navy", "--sr-surface", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-navy", "--sr-navy-fill", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-on", "--sr-navy", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-on", "--sr-green", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-on", "--sr-yellow", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-on", "--sr-red", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-on", "--sr-watch", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-green", "--sr-surface", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-green", "--sr-green-fill", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-yellow", "--sr-surface", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-yellow", "--sr-yellow-fill", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-red", "--sr-surface", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-red", "--sr-red-fill", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-watch", "--sr-surface", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-watch", "--sr-watch-fill", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-hero-text", "--sr-hero-fill", 4.5],
-  ["features/subjective-report/subjective-report.css", "--sr-hero", "--sr-surface", 3],
-  ["features/subjective-report/subjective-report.css", "--sr-border-strong", "--sr-surface", 3],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-ink-muted", "--sr-surface", 4.5],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-navy", "--sr-surface", 4.5],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-navy", "--sr-navy-fill", 4.5],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-on", "--sr-navy", 4.5],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-on", "--sr-green", 4.5],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-on", "--sr-yellow", 4.5],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-on", "--sr-red", 4.5],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-on", "--sr-watch", 4.5],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-green", "--sr-surface", 4.5],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-green", "--sr-green-fill", 4.5],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-yellow", "--sr-surface", 4.5],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-yellow", "--sr-yellow-fill", 4.5],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-red", "--sr-surface", 4.5],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-red", "--sr-red-fill", 4.5],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-watch", "--sr-surface", 4.5],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-watch", "--sr-watch-fill", 4.5],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-hero-text", "--sr-hero-fill", 4.5],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-hero", "--sr-surface", 3],
+  ["features/subjective-report/subjective-report.tokens.css", "--sr-border-strong", "--sr-surface", 3],
   // FORD: the urgency chips, the pillar marks and the unfiled tray.
   ["features/ford/ford.tokens.css", "--ford-now", "--ford-now-fill", 4.5],
   ["features/ford/ford.tokens.css", "--ford-soon", "--ford-soon-fill", 4.5],
@@ -499,7 +499,10 @@ describe("the one loud orange is the logo orange with navy words", () => {
 });
 
 describe("a selection in the Pulse is the blue (AJ, Oct 4 2026: \"a selection is blue\")", () => {
-  const pulse = stylesheet("features/subjective-report/subjective-report.css");
+  // The rules and their tokens (their own file since the speed round, Oct 5 2026).
+  const pulse =
+    stylesheet("features/subjective-report/subjective-report.tokens.css") +
+    stylesheet("features/subjective-report/subjective-report.css");
   const step = readFileSync(join(HERE, "features/subjective-report/SubjectiveStep.tsx"), "utf8");
   const ui = readFileSync(join(HERE, "features/subjective-report/ui.tsx"), "utf8");
 
@@ -543,7 +546,10 @@ describe("a selection in the Pulse is the blue (AJ, Oct 4 2026: \"a selection is
 });
 
 describe("words on a solid colour take an on-colour token", () => {
-  const pulse = stylesheet("features/subjective-report/subjective-report.css");
+  // The rules and their tokens (their own file since the speed round, Oct 5 2026).
+  const pulse =
+    stylesheet("features/subjective-report/subjective-report.tokens.css") +
+    stylesheet("features/subjective-report/subjective-report.css");
 
   it.each([
     ".sr-chip--on",

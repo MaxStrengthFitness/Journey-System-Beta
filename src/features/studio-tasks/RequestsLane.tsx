@@ -74,6 +74,7 @@ import { SubmitInitiativeDialog } from "./SubmitInitiativeDialog";
 import { saveSubmission, fetchSubmissions } from "./playbook-mutations";
 import type { SubmissionEntry } from "./initiatives";
 import { reactedLine } from "./reacted-line";
+import "./studio-tasks.css";
 
 const KIND_ICON: Record<RequestKind, typeof MessageSquare> = {
   cover: Repeat,

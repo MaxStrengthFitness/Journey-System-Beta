@@ -15,6 +15,7 @@ import { MachineEditor } from "./editor/MachineEditor";
 import { definitionOf, emptyMachineDefinition, stripUndefined } from "./definition-defaults";
 import { useMachineModels } from "../../machine-codex/models-store";
 import { useSignedInPerson } from "../../machine-codex/who";
+import "../admin.css";
 
 /**
  * EDITING A STUDIO'S OWN MACHINE.

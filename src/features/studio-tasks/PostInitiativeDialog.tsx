@@ -32,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "../../lib/utils";
 import { CLIENT_ACTION_LABEL, clientActionInSentence, type ClientTaskAction } from "./types";
 import type { InitiativeTarget } from "./initiatives";
+import "./studio-tasks.css";
 
 /** The actions an initiative can be about. Mirrors ClientTaskAction. */
 const ACTIONS: ClientTaskAction[] = [

@@ -7,6 +7,7 @@ import { modelName, type MachineModel } from "./models";
 import { floorNameHidesMovement, movementOf } from "./names";
 import { outOfServiceShort } from "./out-of-service";
 import type { CatalogMachine } from "./types";
+import "./catalog.css";
 
 /**
  * ONE UNIT ON THE FLOOR, AS A TRAINER WALKS UP TO IT.
