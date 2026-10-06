@@ -58,7 +58,8 @@ function buildCredential() {
   process.exit(1);
 }
 
-export function connectFirestore() {
+/** The project and database connectFirestore() would connect to, without connecting. */
+export function resolveTarget(): { projectId: string | undefined; databaseId: string } {
   const configPath = path.resolve(process.cwd(), "firebase-applet-config.json");
   const config = fs.existsSync(configPath)
     ? JSON.parse(fs.readFileSync(configPath, "utf-8"))
@@ -70,6 +71,11 @@ export function connectFirestore() {
     process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID ||
     config.firestoreDatabaseId ||
     "(default)";
+  return { projectId, databaseId };
+}
+
+export function connectFirestore() {
+  const { projectId, databaseId } = resolveTarget();
   if (!projectId) {
     console.error("No project id. Pass --project gen-lang-client-0731527386");
     process.exit(1);

@@ -9,6 +9,7 @@ import {
   mergeWriteOf,
   planClientSplit,
   splitMachineTotalsUpdates,
+  splitWritesOf,
   whenOf,
   withMachineTotals,
 } from "./totals";
@@ -238,5 +239,30 @@ describe("planClientSplit: the migration", () => {
   it("reads the last machine day from either map", () => {
     expect(latestMachineDay({ machineStats: { a: { lastPerformedDate: "2026-01-02" } }, currentMachineMetrics: { b: { weight: "1", settings: {}, lastPerformedDate: ts("2026-03-04T15:00:00Z") } } }, dayOf)).toBe("2026-03-04");
     expect(latestMachineDay({}, dayOf)).toBeNull();
+  });
+});
+
+describe("splitWritesOf: the migration's two writes", () => {
+  const ops = { delete: () => "DELETE", serverTimestamp: () => "NOW" };
+  it("replaces the merged fields whole on the totals document and deletes them from the client", () => {
+    const plan = planClientSplit(
+      { lastSessionDate: "2026-09-01", machineStats: { a: { timesPerformed: 3, lastPerformedDate: "2026-09-20" } } },
+      { currentMachineMetrics: { b: { weight: "10", settings: {}, lastPerformedDate: null } } },
+      { dayOf, today: "2026-10-06" },
+    );
+    const w = splitWritesOf(plan, ops);
+    expect(w.totals).toEqual({
+      data: {
+        currentMachineMetrics: { b: { weight: "10", settings: {}, lastPerformedDate: null } },
+        machineStats: { a: { timesPerformed: 3, lastPerformedDate: "2026-09-20" } },
+        updatedAt: "NOW",
+      },
+      mergeFields: ["currentMachineMetrics", "machineStats", "updatedAt"],
+    });
+    expect(w.client).toEqual({ machineStats: "DELETE", lastSessionDate: "2026-09-20" });
+  });
+
+  it("writes nothing for a client already moved", () => {
+    expect(splitWritesOf(planClientSplit({ firstName: "x" }, null, { dayOf, today: "2026-10-06" }), ops)).toEqual({ totals: null, client: null });
   });
 });

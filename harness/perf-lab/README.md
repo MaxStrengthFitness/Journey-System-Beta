@@ -35,6 +35,12 @@ node harness/perf-lab/lab.mjs run --build-a before --build-b after
 
 The two builds run against the same seeded export, alternating rep by rep (and which goes first), and the report adds a table of deltas, calling a change real only when it is bigger than both builds' spread. `--build-a` / `--build-b` also take a folder.
 
+### The slim roster (`--split`)
+
+`--split` on `all`, `run` or `seed` seeds each client's machine maps (`currentMachineMetrics`, `machineStats`) in their own document, `clients/{id}/machineTotals/current`, the shape `scripts/split-client-metrics.ts` leaves in production (the iPad round, Oct 6 2026; `src/features/machine-totals/README.md`). Without it the seed is the shape before the migration. Both are written by the migration's own `planClientSplit`, so they can't drift; `src/features/machine-totals/split-run.test.ts` holds that the script turns the unsplit shape into exactly the split one. `seed-summary.json` records `split`, and `run` reseeds when it doesn't match what was asked.
+
+A build from before the split reads a split seed with no machine maps at all, so compare the slim roster as **before build on the unsplit seed** against **after build on the split seed** (two runs: `run --build-a before` without `--split`, then `run --build-a after --split`), not as one A/B run. The migration script runs against the lab's emulator too, with the emulators up: `$env:FIRESTORE_EMULATOR_HOST="127.0.0.1:8085"; npx tsx scripts/split-client-metrics.ts --project demo-perf-lab --database perf-lab --commit`.
+
 The pieces on their own: `lab.mjs emulators` (start and wait; from the seeded export when there is one, `--empty` for none), `lab.mjs seed` (seeds the running emulators and exports), `lab.mjs build`, `lab.mjs run` (needs the build; reseeds first when the seed is from an earlier studio day). To look at the seeded studio yourself: `lab.mjs emulators`, then serve the lab build (`<out>/lab-build`) with any static server on 127.0.0.1 and sign in from the browser console with `__perfLab.signIn(email, password)` and the values in `lab.config.example.json`.
 
 Needs: Node 22+ (the driver uses Node's own WebSocket), Java (for the Firestore emulator), Chrome at `C:/Program Files/Google/Chrome/Application/chrome.exe` (or `PERF_LAB_CHROME`), and the repo's `node_modules`. Nothing to install. Nothing may be listening on 8085 or 9099.

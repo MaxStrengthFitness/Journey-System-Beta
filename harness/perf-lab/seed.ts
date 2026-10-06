@@ -56,6 +56,8 @@ import { sessionDayKey } from "../../src/features/client-history/model";
 import { resolveAll } from "../../src/features/studio-settings/resolve";
 import { linesOf } from "../../src/features/admin/journey/states";
 import { ALL_STARS_READ_DAYS, CLIENT_STATES, HUB_MARKS_ID, JOURNEY_WATCH_ID, nightStudio } from "../../src/features/admin/journey/nightly";
+import { MACHINE_TOTALS_COLLECTION, MACHINE_TOTALS_DOC_ID, planClientSplit } from "../../src/features/machine-totals/totals";
+import { studioDateKey } from "../../src/lib/studio-time";
 import {
   DATABASE_ID,
   FIRESTORE_PORT,
@@ -88,6 +90,15 @@ const MAX_LOGS = Number(process.env.PERF_LAB_MAX_LOGS || 250000);
  * such cost. PERF_LAB_LOG_WEEKS=13 writes them all.
  */
 const LOG_WEEKS = Number(process.env.PERF_LAB_LOG_WEEKS || 4);
+/**
+ * --split (or PERF_LAB_SPLIT=1; lab.mjs --split): each client's machine maps
+ * (currentMachineMetrics, machineStats) in their own document,
+ * clients/{id}/machineTotals/current, the shape scripts/split-client-metrics.ts
+ * leaves (the iPad round, Oct 6 2026; features/machine-totals). Written by the
+ * same planClientSplit the migration runs, so the two can't drift. Without it
+ * the seed is the shape before the migration, as production is today.
+ */
+const SPLIT = process.argv.includes("--split") || process.env.PERF_LAB_SPLIT === "1";
 
 /* ── Deterministic randomness (the demo seeder's) ──────────────────────── */
 
@@ -727,7 +738,19 @@ function buildClientDocs(c: LabClient, h: ClientHistory): void {
     createdAt: tsDay(first),
     updatedAt: tsDay(TODAY),
   };
-  put(`clients/${c.id}`, clientData);
+  if (SPLIT) {
+    const plan = planClientSplit(clientData, null, { dayOf: (v) => studioDateKey(v as never, TZ), today: TODAY });
+    const slim: Record<string, unknown> = { ...clientData };
+    for (const f of plan.clientDeletes) delete slim[f];
+    if (plan.lastSessionDate) slim.lastSessionDate = plan.lastSessionDate;
+    put(`clients/${c.id}`, slim);
+    put(`clients/${c.id}/${MACHINE_TOTALS_COLLECTION}/${MACHINE_TOTALS_DOC_ID}`, { ...plan.totals, updatedAt: tsDay(TODAY) });
+    count("machineTotals");
+  } else {
+    put(`clients/${c.id}`, clientData);
+  }
+  // The nightly record below reads the whole client, as the job does with
+  // the totals folded in (server/machine-totals-read.ts).
   clientDocs.set(c.id, clientData);
   count("clients");
 
@@ -996,7 +1019,7 @@ function buildNightly(clients: LabClient[]): { states: number; allStars: number;
 
 async function main(): Promise<void> {
   const started = Date.now();
-  console.log(`Perf lab seed: studio day ${TODAY}, ${CLIENTS} clients, project ${PROJECT_ID}, database ${DATABASE_ID}.`);
+  console.log(`Perf lab seed: studio day ${TODAY}, ${CLIENTS} clients${SPLIT ? " (split: machine maps in their own documents)" : ""}, project ${PROJECT_ID}, database ${DATABASE_ID}.`);
   await clearEmulators();
 
   const app = initializeApp({ projectId: PROJECT_ID });
@@ -1046,6 +1069,8 @@ async function main(): Promise<void> {
     /** The held "now" (09:40 Eastern on the seed's day): the driver's Date shim starts every page here. */
     anchorMs: NOW.getTime(),
     anchorIso: NOW.toISOString(),
+    /** The clients' machine maps in their own documents (--split). */
+    split: SPLIT,
     documents: docs.length,
     ...counts,
     bookingsToday: today,

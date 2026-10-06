@@ -21,6 +21,8 @@
  *   --build-a <name|dir> --build-b <name|dir>   two builds, alternated rep by rep, with deltas
  *   --out <folder> (default PERF_LAB_OUT, else <temp>/journey-perf-lab)
  *   --clients 300 (the seed's size)  --skip-build (reuse <out>/lab-build)
+ *   --split (seed the clients' machine maps in their own documents, the shape
+ *   after scripts/split-client-metrics.ts; features/machine-totals)
  *
  * Only ever the local emulators under demo-perf-lab: see README.md.
  */
@@ -224,13 +226,14 @@ function freshEachRep(importDir) {
   };
 }
 
-function seed(outRoot, clients) {
+function seed(outRoot, clients, split) {
   mkdirSync(outRoot, { recursive: true });
   const summary = join(outRoot, "seed-summary.json");
   run("npx", ["tsx", "harness/perf-lab/seed.ts"], {
     ...emulatorEnv(),
     PERF_LAB_SEED_SUMMARY: summary,
     ...(clients ? { PERF_LAB_CLIENTS: String(clients) } : {}),
+    ...(split ? { PERF_LAB_SPLIT: "1" } : {}),
   });
   return summary;
 }
@@ -251,11 +254,11 @@ function build(outRoot, name) {
 }
 
 /** Seeds fresh emulators and exports them (they are stopped after). */
-async function seedAndExport(outRoot, clients) {
+async function seedAndExport(outRoot, clients, split) {
   console.log("Seeding the studio...");
   const stop = await startEmulators();
   try {
-    seed(outRoot, clients);
+    seed(outRoot, clients, split);
     await exportSeed(outRoot);
   } finally {
     await stop();
@@ -267,22 +270,25 @@ async function seedAndExport(outRoot, clients) {
  * "today" the app works out come from the held clock, and a seed from an
  * earlier day is a different Hub. Reseeds when it isn't (about a minute).
  */
-async function ensureFreshSeed(outRoot, clients) {
+async function ensureFreshSeed(outRoot, clients, split) {
   const exportDir = join(outRoot, "seed-export");
   const summaryFile = join(outRoot, "seed-summary.json");
   let seedDay = null;
   let anchored = false;
+  let seedSplit = false;
   try {
     const sd = JSON.parse(readFileSync(summaryFile, "utf8"));
     seedDay = sd.today;
     anchored = typeof sd.anchorMs === "number";
+    seedSplit = Boolean(sd.split);
   } catch {
     /* no seed yet */
   }
   const today = easternToday();
-  if (existsSync(exportDir) && seedDay === today && anchored) return;
+  if (existsSync(exportDir) && seedDay === today && anchored && seedSplit === Boolean(split)) return;
+  if (seedSplit !== Boolean(split)) console.log(`The seed is ${seedSplit ? "split" : "not split"}; this run asked for ${split ? "--split" : "no --split"}: reseeding.`);
   console.log(seedDay ? `The seed is for ${seedDay}${anchored ? "" : " (with no held clock)"}; today is ${today}: reseeding.` : "No seed yet: seeding.");
-  await seedAndExport(outRoot, clients);
+  await seedAndExport(outRoot, clients, split);
 }
 
 /** This PC against the reference, and the rate each profile would get. */
@@ -318,7 +324,7 @@ async function main() {
   }
   if (command === "seed") {
     // Seeds the emulators already running, and exports what it laid down.
-    seed(outRoot, args.clients);
+    seed(outRoot, args.clients, args.split);
     await exportSeed(outRoot);
     return;
   }
@@ -335,14 +341,14 @@ async function main() {
     ...(args["build-b"] ? { "build-b": buildDir(outRoot, args["build-b"]) } : {}),
   });
   if (command === "run") {
-    await ensureFreshSeed(outRoot, args.clients);
+    await ensureFreshSeed(outRoot, args.clients, args.split);
     await runLab({ ...args, ...builds(), out: outRoot, seedSummary: summaryFile, ...freshEachRep(exportDir) });
     return;
   }
   if (command !== "all") throw new Error(`Unknown command ${command}.`);
   const started = Date.now();
   if (!args["build-a"] && !(args["skip-build"] && existsSync(join(outRoot, "lab-build", "index.html")))) build(outRoot);
-  await seedAndExport(outRoot, args.clients);
+  await seedAndExport(outRoot, args.clients, args.split);
   await runLab({ ...args, ...builds(), out: outRoot, seedSummary: summaryFile, ...freshEachRep(exportDir) });
   console.log(`Done in ${Math.round((Date.now() - started) / 60000)} min.`);
 }

@@ -372,3 +372,26 @@ export function planClientSplit(
     machineDay && machineDay <= options.today && (!current || machineDay > current) ? machineDay : null;
   return { totals, clientDeletes, lastSessionDate, done: false };
 }
+
+/**
+ * A plan as the two writes the migration makes in one transaction: the totals
+ * document's fields REPLACED whole by the merged ones (so the document ends
+ * up exactly as the merge rule reads it), and the old fields deleted from the
+ * client. `ops` are the SDK's sentinels (FieldValue.delete / serverTimestamp).
+ */
+export function splitWritesOf(
+  plan: ClientSplitPlan,
+  ops: { delete: () => unknown; serverTimestamp: () => unknown },
+): {
+  totals: { data: Record<string, unknown>; mergeFields: string[] } | null;
+  client: Record<string, unknown> | null;
+} {
+  if (plan.done) return { totals: null, client: null };
+  const data: Record<string, unknown> = {};
+  for (const f of MACHINE_TOTALS_FIELDS) if (plan.totals[f] !== undefined) data[f] = plan.totals[f];
+  data.updatedAt = ops.serverTimestamp();
+  const client: Record<string, unknown> = {};
+  for (const f of plan.clientDeletes) client[f] = ops.delete();
+  if (plan.lastSessionDate) client.lastSessionDate = plan.lastSessionDate;
+  return { totals: { data, mergeFields: Object.keys(data) }, client };
+}
