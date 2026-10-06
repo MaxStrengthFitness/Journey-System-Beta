@@ -5,8 +5,13 @@
  * (no router: the app is one page). /api/* answers 204 to a POST (the client
  * error and boot reports) and 404 otherwise: the lab has no Mindbody and no
  * Gemini, and the studio is seeded "offline" so nothing asks.
+ *
+ * index.html is served WITHOUT its production preconnects (Firestore and
+ * Auth on googleapis.com, the sign-in helper on apis.google.com and the
+ * production project's firebaseapp.com): a lab page talks to 127.0.0.1 only,
+ * and an open must not wait on, or warm, a connection to Google.
  */
-import { createReadStream, existsSync, statSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
 
@@ -28,6 +33,13 @@ const TYPES = {
   ".map": "application/json; charset=utf-8",
   ".txt": "text/plain; charset=utf-8",
 };
+
+/** index.html with every preconnect to a host outside the lab taken out. */
+export function labIndexHtml(html) {
+  return html
+    .replace(/[ \t]*<link rel="preconnect" href="https:\/\/[^"]*"[^>]*>\r?\n?/g, "")
+    .replace(/\["https:\/\/apis\.google\.com"[^\]]*\]/g, "[]");
+}
 
 export function startStaticServer(root, port = 0) {
   const base = resolve(root);
@@ -57,6 +69,11 @@ export function startStaticServer(root, port = 0) {
     if (url.pathname.startsWith("/assets/")) headers["Cache-Control"] = "public, max-age=31536000, immutable";
     else if (url.pathname.endsWith("version.json")) headers["Cache-Control"] = "no-store";
     else headers["Cache-Control"] = "no-cache";
+    if (file.endsWith("index.html")) {
+      res.writeHead(200, headers);
+      res.end(labIndexHtml(readFileSync(file, "utf8")));
+      return;
+    }
     res.writeHead(200, headers);
     createReadStream(file).pipe(res);
   });

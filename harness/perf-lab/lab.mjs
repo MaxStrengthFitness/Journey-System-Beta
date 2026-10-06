@@ -5,26 +5,45 @@
  *   node harness/perf-lab/lab.mjs emulators  start them (from the seeded export if there is one;
  *                                            --empty for none) and wait; Ctrl+C stops them
  *   node harness/perf-lab/lab.mjs seed       seed the running emulators and export the result
- *   node harness/perf-lab/lab.mjs build      the lab build only
- *   node harness/perf-lab/lab.mjs run        the driver only (needs the build and the export)
+ *   node harness/perf-lab/lab.mjs build      the lab build only (--as <name>: into <out>/build-<name>)
+ *   node harness/perf-lab/lab.mjs run        the driver only (needs the build; reseeds if the
+ *                                            seed is from an earlier studio day)
+ *   node harness/perf-lab/lab.mjs calibrate  this PC's speed against the reference, and the rates
  *
  * Every rep of the run starts its own emulators from the seeded export (about
  * 13 s), so every rep sees the same studio and nothing one rep wrote (or left
  * locked) reaches the next.
  *
  * Options for all/run: --profiles ipad10-portrait,desktop  --reps 3
- *   --scenarios cold,warm,idle,client,session,ops,scroll  --idleMs 70000
+ *   --scenarios cold,warm,relaunch,afterdeploy,idle,client,session,ops,scroll
+ *   --idleMs 70000  --no-profile-rep  --bare  --latency 0
+ *   --build-a <name|dir> --build-b <name|dir>   two builds, alternated rep by rep, with deltas
  *   --out <folder> (default PERF_LAB_OUT, else <temp>/journey-perf-lab)
  *   --clients 300 (the seed's size)  --skip-build (reuse <out>/lab-build)
  *
  * Only ever the local emulators under demo-perf-lab: see README.md.
  */
 import { spawn, spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { isAbsolute, join, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
+import { calibrate, REFERENCE_BENCH_MS } from "./calibrate.mjs";
+import { connectPage, launchChrome } from "./cdp.mjs";
 import { AUTH_PORT, DATABASE_ID, FIRESTORE_PORT, HOST, LAB_DIR, LAB_UID, OUT_DIR, PROJECT_ID, REPO_ROOT, STUDIO_ID, emulatorEnv, labCredentials } from "./lab-config.mjs";
-import { runLab } from "./run.mjs";
+import { PROFILES, runLab } from "./run.mjs";
+
+/** The studio's day now (Eastern), as the seed names it. */
+function easternToday() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}
+
+/** A build named on the command line: a folder with index.html, else <out>/build-<name>. */
+function buildDir(outRoot, nameOrDir) {
+  if (!nameOrDir) return join(outRoot, "lab-build");
+  const asDir = isAbsolute(nameOrDir) ? nameOrDir : resolve(nameOrDir);
+  if (existsSync(join(asDir, "index.html"))) return asDir;
+  return join(outRoot, `build-${nameOrDir}`);
+}
 
 const isWindows = process.platform === "win32";
 
@@ -214,8 +233,8 @@ function seed(outRoot, clients) {
   return summary;
 }
 
-function build(outRoot) {
-  const dir = join(outRoot, "lab-build");
+function build(outRoot, name) {
+  const dir = name ? join(outRoot, `build-${name}`) : join(outRoot, "lab-build");
   console.log(`Building the lab app into ${dir} ...`);
   // NODE_ENV=production on purpose: a shell with NODE_ENV=test or development
   // makes vite build React's development runtime (jsxDEV), which is several
@@ -227,6 +246,57 @@ function build(outRoot) {
     VITE_FIREBASE_FIRESTORE_DATABASE_ID: DATABASE_ID,
   });
   return dir;
+}
+
+/** Seeds fresh emulators and exports them (they are stopped after). */
+async function seedAndExport(outRoot, clients) {
+  console.log("Seeding the studio...");
+  const stop = await startEmulators();
+  try {
+    seed(outRoot, clients);
+    await exportSeed(outRoot);
+  } finally {
+    await stop();
+  }
+}
+
+/**
+ * The seed must be for TODAY's studio day: the Hub, the briefing and every
+ * "today" the app works out come from the held clock, and a seed from an
+ * earlier day is a different Hub. Reseeds when it isn't (about a minute).
+ */
+async function ensureFreshSeed(outRoot, clients) {
+  const exportDir = join(outRoot, "seed-export");
+  const summaryFile = join(outRoot, "seed-summary.json");
+  let seedDay = null;
+  let anchored = false;
+  try {
+    const sd = JSON.parse(readFileSync(summaryFile, "utf8"));
+    seedDay = sd.today;
+    anchored = typeof sd.anchorMs === "number";
+  } catch {
+    /* no seed yet */
+  }
+  const today = easternToday();
+  if (existsSync(exportDir) && seedDay === today && anchored) return;
+  console.log(seedDay ? `The seed is for ${seedDay}${anchored ? "" : " (with no held clock)"}; today is ${today}: reseeding.` : "No seed yet: seeding.");
+  await seedAndExport(outRoot, clients);
+}
+
+/** This PC against the reference, and the rate each profile would get. */
+async function calibrateOnly(outRoot) {
+  const chrome = await launchChrome(join(outRoot, "chrome-profiles", "calibrate"), { fresh: true });
+  const page = await connectPage(chrome.port);
+  await page.send("Runtime.enable");
+  const evaluate = async (expression) => (await page.send("Runtime.evaluate", { expression, returnByValue: true }, 60000)).result.value;
+  const setRate = (rate) => page.send("Emulation.setCPUThrottlingRate", { rate });
+  console.log(`Reference PC: ${REFERENCE_BENCH_MS} ms.`);
+  for (const [name, p] of Object.entries(PROFILES)) {
+    const c = await calibrate(evaluate, setRate, p.cpu);
+    console.log(`${name}: this PC ${c.hostMs} ms, rate ${c.rate}, class reached ${c.effective}x (target ${p.cpu}x)`);
+  }
+  page.close();
+  await chrome.close();
 }
 
 async function main() {
@@ -250,24 +320,22 @@ async function main() {
     await exportSeed(outRoot);
     return;
   }
-  if (command === "build") return void build(outRoot);
+  if (command === "build") return void build(outRoot, args.as);
+  if (command === "calibrate") return calibrateOnly(outRoot);
+  const builds = () => ({
+    build: buildDir(outRoot, args["build-a"]),
+    ...(args["build-b"] ? { "build-b": buildDir(outRoot, args["build-b"]) } : {}),
+  });
   if (command === "run") {
-    if (!existsSync(exportDir)) throw new Error(`No seeded export at ${exportDir}: run lab.mjs all, or lab.mjs emulators + lab.mjs seed.`);
-    await runLab({ ...args, build: join(outRoot, "lab-build"), out: outRoot, seedSummary: existsSync(summaryFile) ? summaryFile : undefined, ...freshEachRep(exportDir) });
+    await ensureFreshSeed(outRoot, args.clients);
+    await runLab({ ...args, ...builds(), out: outRoot, seedSummary: summaryFile, ...freshEachRep(exportDir) });
     return;
   }
   if (command !== "all") throw new Error(`Unknown command ${command}.`);
   const started = Date.now();
-  const dir = args["skip-build"] && existsSync(join(outRoot, "lab-build", "index.html")) ? join(outRoot, "lab-build") : build(outRoot);
-  console.log("Seeding the studio...");
-  const stop = await startEmulators();
-  try {
-    seed(outRoot, args.clients);
-    await exportSeed(outRoot);
-  } finally {
-    await stop();
-  }
-  await runLab({ ...args, build: dir, out: outRoot, seedSummary: summaryFile, ...freshEachRep(exportDir) });
+  if (!args["build-a"] && !(args["skip-build"] && existsSync(join(outRoot, "lab-build", "index.html")))) build(outRoot);
+  await seedAndExport(outRoot, args.clients);
+  await runLab({ ...args, ...builds(), out: outRoot, seedSummary: summaryFile, ...freshEachRep(exportDir) });
   console.log(`Done in ${Math.round((Date.now() - started) / 60000)} min.`);
 }
 

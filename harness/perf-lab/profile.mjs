@@ -116,7 +116,7 @@ export class SourceMaps {
  * Also: the package file in node_modules (react-dom, firestore...) is folded
  * to the package.
  */
-export function foldProfile(profile, maps, { top = 15 } = {}) {
+export function foldProfile(profile, maps, { top = 200 } = {}) {
   const nodes = new Map(profile.nodes.map((n) => [n.id, n]));
   const selfUs = new Map();
   const { samples = [], timeDeltas = [] } = profile;
