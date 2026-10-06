@@ -500,11 +500,18 @@ export function ClientsView({
    * decides which of its client's notes matter on its own day
    * (lib/hub-critical-notes). `notesFor` is null for a client whose notes are
    * unknown, and that card then claims nothing either way.
+   *
+   * By the BOOKINGS' own client ids (speed round, Oct 5 2026, R8): under
+   * strict resolution a booking's clientId IS the client's document id (see
+   * findClientForSession above; lib/mindbody-api-sync writes it), so the read
+   * starts with the bookings instead of waiting for the client list, and the
+   * triangles arrive with the cards. It used to ask only for the clients the
+   * roster already held, so it opened late and opened again as each visiting
+   * client landed. A booking whose client has no profile yet costs one id in
+   * the read and draws no card mark.
    */
   const criticalNotes = useHubCriticalNotes(
-    todaysSchedules
-      .filter((s) => !s.clientName?.toLowerCase().includes("unavailab"))
-      .map((s) => findClientForSession(s)?.id),
+    todaysSchedules.filter((s) => !isStaffBlock(s)).map((s) => (s.clientId ? String(s.clientId).trim() : null)),
   );
 
   /*
@@ -535,12 +542,20 @@ export function ClientsView({
   /*
    * "DIDN'T COME" (Operations room, wave 3, Sep 29 2026): a leader's mark on
    * a booking nobody logged (studios/{s}/bookingMarks, read by
-   * lib/booking-state as a no-show). ONE listener, for the day on screen —
-   * never per card, never per client. Unread or refused, the marks are null
-   * and a finished slot reads as it did before the mark.
+   * lib/booking-state as a no-show). ONE listener — never per card, never
+   * per client. Unread or refused, the marks are null and a finished slot
+   * reads as it did before the mark.
+   *
+   * For the Hub's whole window, yesterday to a week on and the day on
+   * screen (speed round, Oct 5 2026, R8; hub-window.ts): a mark is found by
+   * its booking's id, so one read serves every day on the strip, and a day
+   * tap no longer closes the listener, forgets the marks and opens another
+   * (a marked card blinked back to "Not logged" on the way back to today).
+   * It moves only at the studio's midnight. The read stays on the (day,
+   * clientId) index, and the rules let anyone who works at the studio read
+   * the marks.
    */
-  const dayKeyOnScreen = selectedKey;
-  const bookingMarks = useBookingMarks(readsStudio ? activeStudioId : null, dayKeyOnScreen, dayKeyOnScreen);
+  const bookingMarks = useBookingMarks(readsStudio ? activeStudioId : null, hubDays.from, hubDays.to);
 
   /*
    * THE DAY'S MOMENTS (calm Hub round, Sep 28 2026): every client booked on
