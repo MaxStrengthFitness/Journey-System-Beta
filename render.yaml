@@ -115,7 +115,12 @@ services:
     numInstances: 1
     branch: master
     buildCommand: npm ci && npm run build
-    startCommand: npm start
+    # Node itself, not `npm start` (the same `node build/server.cjs`, from
+    # package.json): Render's SIGTERM then reaches server.ts directly, with
+    # no npm or shell in between that might not pass it on, and the drain
+    # below actually runs. The first deploy should log "SIGTERM: no new
+    # connections; letting running requests finish."
+    startCommand: node build/server.cjs
     healthCheckPath: /healthz   # server.ts already answers this
     # On a deploy Render moves traffic to the new instance, waits about 60
     # seconds, then sends the old one SIGTERM. server.ts now answers SIGTERM

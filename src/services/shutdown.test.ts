@@ -116,9 +116,17 @@ describe("server.ts and render.yaml", () => {
     expect(web).toMatch(/^\s+maxShutdownDelaySeconds: 120\s*$/m);
   });
 
-  it("keeps the plan, and never caps the heap through NODE_OPTIONS (it would cap vite build too)", () => {
+  // A tripwire: this is MEANT to change when the R20 gate in render.yaml opens
+  // (plan 0.5c-512mb, startCommand `node --max-old-space-size=320 build/server.cjs`).
+  it("keeps the plan, starts Node itself so SIGTERM reaches it, and never caps the heap through NODE_OPTIONS (it would cap vite build too)", () => {
     expect(web).toMatch(/^\s+plan: 1c-2g\b/m);
-    expect(web).toMatch(/^\s+startCommand: npm start\s*$/m);
+    expect(web).toMatch(/^\s+startCommand: node build\/server\.cjs\s*$/m);
     expect(renderYaml).not.toMatch(/^\s+- key: NODE_OPTIONS/m);
+  });
+
+  it("starts the same file package.json's start script does", () => {
+    const pkg = JSON.parse(readFileSync(join(HERE, "../../package.json"), "utf8"));
+    expect(pkg.scripts.start).toBe("node build/server.cjs");
+    expect(pkg.scripts.prestart).toBeUndefined();
   });
 });
