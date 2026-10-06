@@ -49,7 +49,10 @@ door then opens at once (`prefersReducedMotion`).
   The copy of a LIST counts only once this iPad has had the server's whole
   answer for it before (`journey_list_seen_<list>` in local storage), and a
   copy of the trainers holding one record (the person's own, read at
-  sign-in) never does: that would say "1 on the team". A record the server
+  sign-in) never does: that would say "1 on the team". The flags belong to
+  the iPad, like its Firestore copy, so a sign-out keeps them; and the list
+  listeners listen with metadata changes, or the server confirming the copy
+  would raise no event (`listDeliveryGate`). A record the server
   says is gone is looked up again quietly, never Checking you in over the
   Hub or a session. Anything that rewrites a whole array on the record (the
   Kaizen Roster) reads the server's copy first.
