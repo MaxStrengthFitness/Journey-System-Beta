@@ -1,3 +1,4 @@
+# SUPERSEDED by scripts/ship/ship-release.ps1 (Oct 6 2026, AJ: "we will ship everything together"); this one would refuse anyway, its master check no longer matches.
 <#
  SCRIPT-VERSION: v1  (Oct 6 2026, the iPad round's roster split)
 
