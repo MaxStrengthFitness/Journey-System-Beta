@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { GEMINI_CALL_TIMEOUT_MS, geminiTimeoutSentence, withRetry } from "../../server/gemini";
+import { GEMINI_CALL_TIMEOUT_MS, GEMINI_SCAN_DEADLINE_MS, geminiTimeoutSentence, withRetry } from "../../server/gemini";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -59,5 +59,41 @@ describe("withRetry's time limit", () => {
     const source = readFileSync(join(HERE, "../../server/gemini.ts"), "utf8");
     expect(source.match(/withRetry\("\w+", \(abortSignal\) =>/g)).toHaveLength(2);
     expect(source.match(/^\s+abortSignal,$/gm)).toHaveLength(2);
+  });
+});
+
+describe("withRetry's whole-request deadline (the review, Oct 5 2026)", () => {
+  it("is two minutes, so a scan holds the one slot for at most that", () => {
+    expect(GEMINI_SCAN_DEADLINE_MS).toBe(120_000);
+  });
+
+  it("stops retrying a 503 once the deadline has gone", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    let calls = 0;
+    const alwaysBusy = async () => {
+      calls++;
+      await new Promise((r) => setTimeout(r, 40));
+      throw Object.assign(new Error("503 overloaded"), { status: 503 });
+    };
+    const started = Date.now();
+    // Either the last 503 or the deadline cutting the last attempt short; never another fifty tries.
+    await expect(withRetry("processLegacyChart", alwaysBusy, 50, 1, 1_000, 100)).rejects.toThrow(/Gemini API Error|Gemini took longer/);
+    expect(Date.now() - started).toBeLessThan(400);
+    expect(calls).toBeLessThan(5);
+  });
+
+  it("cuts a retry's attempt short at the deadline, and says it in a sentence", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    let calls = 0;
+    const busyThenHangs = (signal: AbortSignal) => {
+      calls++;
+      if (calls === 1) return Promise.reject(Object.assign(new Error("503 overloaded"), { status: 503 }));
+      return new Promise<never>((_resolve, reject) => signal.addEventListener("abort", () => reject(signal.reason)));
+    };
+    const started = Date.now();
+    await expect(withRetry("processLegacyChart", busyThenHangs, 3, 1, 10_000, 120)).rejects.toThrow(geminiTimeoutSentence(120));
+    expect(Date.now() - started).toBeLessThan(1_000);
+    expect(calls).toBe(2);
   });
 });

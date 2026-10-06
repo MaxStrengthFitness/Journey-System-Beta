@@ -27,24 +27,39 @@ export function geminiTimeoutSentence(timeoutMs: number = GEMINI_CALL_TIMEOUT_MS
   return `Gemini took longer than ${Math.round(timeoutMs / 1000)} seconds to read this. Try again, or send fewer pages at a time.`;
 }
 
+/**
+ * How long one scan request may hold the model, retries included (the speed
+ * round's review, Oct 5 2026). Each attempt has its own 90 s limit, but a
+ * 503 or 429 is retried, so without this a request whose first attempts came
+ * back retryable near the limit held the process's one scan slot
+ * (server/gemini-routes.ts) for about four and a half minutes, and every
+ * other scan was told "busy" all that time. No attempt runs past this from
+ * the first one's start, and none starts once it has gone.
+ */
+export const GEMINI_SCAN_DEADLINE_MS = 120_000;
+
 export const withRetry = async <T>(
   operationName: string,
   fn: (signal: AbortSignal) => Promise<T>,
   retries = 3,
   initialDelay = 1000,
   timeoutMs = GEMINI_CALL_TIMEOUT_MS,
+  deadlineMs = GEMINI_SCAN_DEADLINE_MS,
 ): Promise<T> => {
+  const started = Date.now();
   let attempt = 0;
   while (attempt < retries) {
-    // A fresh limit for each attempt, handed to the SDK as its abortSignal.
-    const signal = AbortSignal.timeout(timeoutMs);
+    // A fresh limit for each attempt, handed to the SDK as its abortSignal,
+    // never running past the whole request's deadline.
+    const limit = Math.max(1, Math.min(timeoutMs, deadlineMs - (Date.now() - started)));
+    const signal = AbortSignal.timeout(limit);
     try {
       return await fn(signal);
     } catch (e: any) {
       attempt++;
       if (signal.aborted) {
-        console.warn(`[Gemini API] ${operationName} gave up after ${timeoutMs}ms.`);
-        throw new Error(geminiTimeoutSentence(timeoutMs));
+        console.warn(`[Gemini API] ${operationName} gave up after ${limit}ms.`);
+        throw new Error(geminiTimeoutSentence(attempt === 1 ? limit : deadlineMs));
       }
       const msg = e.message || String(e);
       const isRetryable =
@@ -52,15 +67,15 @@ export const withRetry = async <T>(
         e.status === 429 ||
         msg.includes("503") ||
         msg.includes("429");
-      if (attempt >= retries || !isRetryable) {
+      const delay = initialDelay * attempt;
+      const timeLeft = deadlineMs - (Date.now() - started) - delay;
+      if (attempt >= retries || !isRetryable || timeLeft <= 0) {
         throw new Error(`Gemini API Error during ${operationName}: ${msg}`);
       }
       console.log(
-        `[Gemini API] Retry ${attempt}/${retries} for ${operationName} after ${initialDelay * attempt}ms due to: ${msg}`,
+        `[Gemini API] Retry ${attempt}/${retries} for ${operationName} after ${delay}ms due to: ${msg}`,
       );
-      await new Promise((resolve) =>
-        setTimeout(resolve, initialDelay * attempt),
-      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
   throw new Error("unreachable");

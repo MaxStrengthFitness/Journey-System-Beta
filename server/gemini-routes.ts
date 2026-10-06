@@ -94,10 +94,13 @@ export function createScanGate(slots: number = SCANS_AT_ONCE): ScanGate {
  * Takes the process's scan slot before the body is read. The slot is freed
  * when the answer has gone, or the connection closed, before the model was
  * asked (a refused page, an oversized body, a caller who gave up); once the
- * model has been asked, only when it has answered (`withScanSlot`'s finally,
- * bounded by the model's own time limit in server/gemini.ts). Freeing it as
- * soon as a caller walked away would let a second scan in while the first
- * one's pages are still in memory, which is what the slot is for.
+ * model has been asked, only when it has answered (`withScanSlot`'s finally).
+ * That wait is bounded: each attempt at the model has 90 s, and the request
+ * as a whole, retries included, at most GEMINI_SCAN_DEADLINE_MS (120 s) in
+ * server/gemini.ts. A caller who walks away while the model works does NOT
+ * free the slot (a deliberate difference from "release on client abort"):
+ * freeing it then would let a second scan in while the first one's pages are
+ * still in memory, which is what the slot is for.
  */
 function oneScanAtATime(gate: ScanGate): RequestHandler {
   return (_req, res, next) => {
