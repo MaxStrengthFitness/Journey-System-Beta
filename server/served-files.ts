@@ -108,7 +108,7 @@ export function serveBuiltApp(app: Express, distPath: string) {
   // Refused before either static handler can find one of them on disk.
   app.use((req, res, next) => {
     if (!isServerOnlyFile(req.path)) return next();
-    res.status(404).type("text/plain").send("Not found");
+    notFoundNeverCached(res);
   });
 
   // Vite stamps a content hash into every asset filename
@@ -142,15 +142,35 @@ export function serveBuiltApp(app: Express, distPath: string) {
   // A missing chunk must 404. Falling through to index.html returns
   // "200 OK" with HTML in it, and the browser then tries to parse that HTML
   // as JavaScript: "Uncaught SyntaxError: Unexpected token '<'".
+  // no-store (the speed round, R18, Oct 5 2026): Render's edge cache keeps a
+  // 404 for a few minutes unless told not to, and a chunk that is missing for
+  // a moment during a deploy must not stay missing at the edge.
   app.use("/assets", (req, res) => {
-    res.status(404).type("text/plain").send("Not found");
+    notFoundNeverCached(res);
   });
 
   // index.html is the file that names the hashed assets above. A cached copy
   // pins the browser to a previous deploy's filenames, so it must always be
   // revalidated.
   app.get("*", (req, res) => {
+    // A path that names a file (it has an extension) and reached here is a
+    // file that isn't in the build. Answering it with the app shell would
+    // put HTML under an image's or a script's URL, and an edge cache that
+    // keeps such URLs ("Common static files") could then keep serving that
+    // HTML in the file's place (R18).
+    if (looksLikeAFile(req.path)) return notFoundNeverCached(res);
     res.set("Cache-Control", "no-cache");
     res.sendFile(path.join(distPath, "index.html"));
   });
+}
+
+/** The last segment of the path ends in an extension: /icon-192.png, /x/y.js. The app's own screens have none. */
+export function looksLikeAFile(urlPath: string): boolean {
+  const last = urlPath.replace(/\/+$/, "").split("/").pop() ?? "";
+  return /\.[a-z0-9]{1,16}$/i.test(last);
+}
+
+function notFoundNeverCached(res: express.Response) {
+  res.set("Cache-Control", "no-store");
+  res.status(404).type("text/plain").send("Not found");
 }

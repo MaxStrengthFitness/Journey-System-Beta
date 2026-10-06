@@ -22,7 +22,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { devFileAccess, isServerOnlyFile, serveBuiltApp } from "../../server/served-files";
+import { devFileAccess, isServerOnlyFile, looksLikeAFile, serveBuiltApp } from "../../server/served-files";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MARKER = "NOT-A-REAL-SECRET-4b1d";
@@ -237,6 +237,32 @@ describe("the production server (dist/)", () => {
     expect((await get("/assets/missing-Zz99.js")).status).toBe(404);
   });
 
+  it("never caches a missing chunk, and never answers a missing file with the shell (R18)", async () => {
+    const chunk = await get("/assets/missing-Zz99.js");
+    expect(chunk.status).toBe(404);
+    expect(chunk.cacheControl).toBe("no-store");
+
+    for (const path of ["/icon-512.png", "/missing.js", "/fonts/x.woff2", "/manifest.webmanifest", "/clients/photo.jpg", "/x.css/"]) {
+      const res = await get(path);
+      expect(res.status, path).toBe(404);
+      expect(res.cacheControl, path).toBe("no-store");
+      expect(res.body, path).not.toContain("SHELL");
+    }
+
+    const refused = await get("/server.cjs");
+    expect(refused.cacheControl).toBe("no-store");
+  });
+
+  it("keeps the shell revalidated, the hashed assets immutable and real files served", async () => {
+    const shell = await get("/");
+    expect(shell.cacheControl).toBe("no-cache");
+    const route = await get("/clients/123");
+    expect(route.cacheControl).toBe("no-cache");
+    const asset = await get("/assets/index-Ab12Cd34.js");
+    expect(asset.cacheControl).toMatch(/immutable/);
+    expect((await get("/favicon.svg")).status).toBe(200);
+  });
+
   it("sends the build's name never cached, and a 404 rather than the shell when it is missing", async () => {
     writeTree(dist, { "version.json": '{"version":"test-build"}' });
     const name = await get("/version.json");
@@ -248,6 +274,17 @@ describe("the production server (dist/)", () => {
     const missing = await get("/version.json");
     expect(missing.status).toBe(404);
     expect(missing.body).not.toContain("SHELL");
+  });
+});
+
+describe("looksLikeAFile", () => {
+  it("names a path whose last segment has an extension, and none of the app's screens", () => {
+    for (const path of ["/icon.png", "/a/b.js", "/x.woff2", "/manifest.webmanifest", "/x.css/"]) {
+      expect(looksLikeAFile(path), path).toBe(true);
+    }
+    for (const path of ["/", "/clients/123", "/maps", "/v1.2/clients", "/a.b/c"]) {
+      expect(looksLikeAFile(path), path).toBe(false);
+    }
   });
 });
 
