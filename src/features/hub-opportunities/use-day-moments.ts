@@ -18,27 +18,62 @@
  *
  * Eager on purpose: ClientsView is in the first bundle and the grid needs it
  * on the first paint. Nothing here imports a stylesheet or a screen.
+ *
+ * WHAT IT WORKS OUT AGAIN, AND WHEN (speed round, Oct 5 2026, R6). It used to
+ * work everything out again every minute, on every session write (a running
+ * session's heartbeat included) and on every day tap, over every booking the
+ * app held, so a Calendar month browsed made the Hub slower for the rest of
+ * the visit. Now:
+ *   - the bookings are the Hub's own window round today (ClientsView's
+ *     `hubSchedules`), indexed once by day and by client (`indexBookings`);
+ *   - the directory's rows (the costly part) are worked out once per studio
+ *     day and when their data changes: the bookings, the roster, the
+ *     FINISHED sessions (`useCompletedSessions`: a heartbeat changes nothing
+ *     here), the package table. The engine reads only a row's coverage,
+ *     Last in and Left, none of which moves with the clock, so the rows are
+ *     worked out as of the start of the studio's day (their Next and In
+ *     today are not read here);
+ *   - the day's entries are worked out again only when the clock passes an
+ *     instant that can change one (`bookingBoundaries`: a slot coming within
+ *     half an hour, its start, its end, its end plus the slack), when the
+ *     studio's day turns, or when the data or the day on screen changes.
+ *     Between those, a minute tick works nothing out;
+ *   - the strip's dots ask `celebratesOn`, not a whole day's entries each.
  */
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import type { Client, ScheduleEntry, Trainer, WorkoutSession } from "../../types";
 import type { JournalEntry } from "../../types/journal";
 import type { FordEntry } from "../ford/types";
 import type { AllStarMark } from "./all-stars";
-import { isStaffBlock, loggedSessions, type BookingMarks, type LoggedSessions } from "../../lib/booking-state";
+import { loggedSessions, type BookingMarks, type LoggedSessions } from "../../lib/booking-state";
+import { useCompletedSessions } from "../../lib/completed-sessions";
 import { myTrainerIds } from "../../lib/live-session";
-import { studioTodayKey } from "../../lib/studio-time";
+import { studioDayBoundsForKey, studioTodayKey } from "../../lib/studio-time";
 import { useRenewalSettings } from "../renewals/useRenewalSettings";
 import { buildPackageNameIndex } from "../renewals/settings";
 import { buildDirectoryRows, prepareDirectory } from "../client-directory/row";
 import { waiversKeptInMindbody } from "../../lib/client-waiver";
-import { momentsToday, type MomentsTodayInput, type RunSheetEntry } from "./moments-today";
+import {
+  bookingBoundaries,
+  celebratesOn,
+  clockStep,
+  indexBookings,
+  momentsToday,
+  type MomentsTodayInput,
+  type RunSheetEntry,
+} from "./moments-today";
 
 export interface DayMomentsProps {
   /** The day on screen (the Hub's selected day), `yyyy-mm-dd`. */
   day: string;
   now: Date;
+  /**
+   * The bookings the engine works from: the Hub's own window round today
+   * (ClientsView's `hubSchedules`), not everything the Calendar fetched.
+   */
   schedules: ReadonlyArray<ScheduleEntry>;
   clients: ReadonlyArray<Client>;
+  /** The studio's session stream; only its COMPLETED sessions are read. */
   sessions: ReadonlyArray<WorkoutSession>;
   sessionsKnown: boolean;
   /** The day's "didn't come" marks (`useBookingMarks().marks`); null when not read. */
@@ -69,6 +104,12 @@ export interface DayMoments {
   input: MomentsTodayInput;
   /** The Hub's sessions as `loggedSessions`, or null while they are unknown. */
   logged: LoggedSessions | null;
+  /**
+   * Would a day have something to celebrate (the strip's dot)? The engine's
+   * own answer (`celebratesOn`), asked cheaply and remembered per day; one
+   * function until the data or the engine's clock moves.
+   */
+  celebratesOn: (day: string) => boolean;
 }
 
 export function useDayMoments({
@@ -90,7 +131,9 @@ export function useDayMoments({
 }: DayMomentsProps): DayMoments {
   const today = studioTodayKey(now);
   const myIds = useMemo(() => myTrainerIds(authTrainer, uid ?? null), [authTrainer, uid]);
+  const myName = authTrainer?.fullName ?? null;
   const trainerNames = useMemo(() => new Map(trainers.map((t) => [t.id, t.nickname?.trim() || t.fullName])), [trainers]);
+  const trainerNameOf = useMemo(() => (id: string) => trainerNames.get(id) ?? null, [trainerNames]);
 
   const renewalSettings = useRenewalSettings(activeStudioId);
   const packageIndex = useMemo(() => {
@@ -98,35 +141,55 @@ export function useDayMoments({
     return buildPackageNameIndex(renewalSettings.settings);
   }, [renewalSettings.loading, renewalSettings.error, renewalSettings.forStudioId, renewalSettings.settings, activeStudioId]);
 
-  const logged = useMemo(() => loggedSessions(sessionsKnown ? sessions : null), [sessions, sessionsKnown]);
+  // Only the finished sessions count here: a running session's heartbeat leaves this list as it was.
+  const completed = useCompletedSessions(sessions);
+  // Known or not, a finished session in hand counts; only "never logged" waits for the server (R16).
+  const logged = useMemo(() => loggedSessions(completed, undefined, { complete: sessionsKnown }), [completed, sessionsKnown]);
   const clientsById = useMemo(() => new Map(clients.filter((c) => c.id).map((c) => [c.id as string, c])), [clients]);
+  const keepsWaivers = useMemo(() => waiversKeptInMindbody(clients), [clients]);
+  const index = useMemo(() => indexBookings(schedules), [schedules]);
 
-  return useMemo(() => {
-    const bookedIds = new Set(schedules.filter((b) => !isStaffBlock(b)).map((b) => b.clientId).filter(Boolean) as string[]);
-    const booked = clients.filter((c) => c.id && bookedIds.has(c.id));
-    const trainerNameOf = (id: string) => trainerNames.get(id) ?? null;
+  /* The directory's rows: once per studio day, and when their data changes. */
+  const rowsById = useMemo(() => {
+    const booked = clients.filter((c) => c.id && index.byClient.has(c.id));
     const ctx = prepareDirectory({
       today,
-      now,
+      // The start of the studio's day: the engine reads no row fact that moves with the clock.
+      now: studioDayBoundsForKey(today).start,
       studios: studios ?? [],
       activeStudioId,
       schedules,
       bookingsFresh: false,
-      recentSessions: sessionsKnown ? sessions : null,
+      recentSessions: sessionsKnown ? completed : null,
       packageIndex,
       packageStudioId: activeStudioId,
       myIds,
-      myName: authTrainer?.fullName ?? null,
+      myName,
       trainerNameOf,
     });
-    const rows = buildDirectoryRows(booked, ctx);
-    const input: MomentsTodayInput = {
-      day,
+    return new Map(buildDirectoryRows(booked, ctx).map((r) => [r.id, r]));
+  }, [today, schedules, index, clients, studios, activeStudioId, sessionsKnown, completed, packageIndex, myIds, myName, trainerNameOf]);
+
+  /*
+   * The engine's clock: the minute clock, moved on only when it passes an
+   * instant that can change an entry, or the studio's day turns. The same
+   * step gives the same answers, so nothing below is worked out again.
+   */
+  const boundaries = useMemo(() => bookingBoundaries(schedules), [schedules]);
+  const step = clockStep(boundaries, now.getTime());
+  const clockRef = useRef<{ step: number; today: string; boundaries: readonly number[]; now: Date } | null>(null);
+  const held = clockRef.current;
+  const engineNow = held && held.step === step && held.today === today && held.boundaries === boundaries ? held.now : now;
+  clockRef.current = { step, today, boundaries, now: engineNow };
+
+  const base = useMemo<Omit<MomentsTodayInput, "day">>(
+    () => ({
       today,
-      now,
+      now: engineNow,
       schedules,
+      index,
       clientsById,
-      rowsById: new Map(rows.map((r) => [r.id, r])),
+      rowsById,
       studios: studios ?? [],
       logged,
       marks,
@@ -134,15 +197,33 @@ export function useDayMoments({
       fordFor,
       allStarOf,
       myIds,
-      myName: authTrainer?.fullName ?? null,
+      myName,
       trainerNameOf,
       // Mindbody's "not signed" flags a card only where the studio keeps its
       // waivers in Mindbody at all (hub fixes, Oct 1 2026; lib/client-waiver).
-      waiversKeptInMindbody: waiversKeptInMindbody(clients),
+      waiversKeptInMindbody: keepsWaivers,
+    }),
+    [today, engineNow, schedules, index, clientsById, rowsById, studios, logged, marks, criticalFor, fordFor, allStarOf, myIds, myName, trainerNameOf, keepsWaivers],
+  );
+
+  /* The strip's dots: asked per day, remembered until the engine's input moves. */
+  const celebrates = useMemo(() => {
+    const asked = new Map<string, boolean>();
+    return (key: string): boolean => {
+      let yes = asked.get(key);
+      if (yes === undefined) {
+        yes = celebratesOn({ ...base, day: key }, key);
+        asked.set(key, yes);
+      }
+      return yes;
     };
+  }, [base]);
+
+  return useMemo(() => {
+    const input: MomentsTodayInput = { ...base, day };
     const entries = momentsToday(input);
     const byClientId = new Map<string, RunSheetEntry>();
     for (const e of entries) if (e.clientId) byClientId.set(e.clientId, e);
-    return { entries, byClientId, input, logged };
-  }, [day, today, now, schedules, clients, clientsById, studios, activeStudioId, sessionsKnown, sessions, packageIndex, myIds, authTrainer?.fullName, trainerNames, logged, marks, criticalFor, fordFor, allStarOf]);
+    return { entries, byClientId, input, logged, celebratesOn: celebrates };
+  }, [base, day, logged, celebrates]);
 }

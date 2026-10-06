@@ -739,9 +739,15 @@ describe("the Hub: \"didn't come\" (Operations wave 3)", () => {
     marksRead.ids = [];
   });
 
-  it("reads the day's marks once, for the day on screen, for someone who works at the studio, and for nobody else", () => {
+  it("reads the marks once for the whole week, yesterday on, for someone who works at the studio, and for nobody else", () => {
     mount();
-    expect(marksRead.calls[marksRead.calls.length - 1]).toEqual(["westlake", "2026-09-28", "2026-09-28"]);
+    // One read for the Hub's window (speed round, Oct 5 2026, R8): yesterday to a week on.
+    expect(marksRead.calls[marksRead.calls.length - 1]).toEqual(["westlake", "2026-09-27", "2026-10-05"]);
+    // A day tap reads nothing new: the same read serves every day on the strip.
+    const before = new Set(marksRead.calls.map((c) => c.join("|")));
+    act(() => [...host!.querySelectorAll<HTMLButtonElement>(".hd-day")][2].click());
+    act(() => [...host!.querySelectorAll<HTMLButtonElement>(".hd-day")][0].click());
+    expect(new Set(marksRead.calls.map((c) => c.join("|")))).toEqual(before);
     act(() => root?.unmount());
     host?.remove();
     mount({ ...trainer("t-grimbold", "Grimbold"), primaryHomeStudioId: "solon" });

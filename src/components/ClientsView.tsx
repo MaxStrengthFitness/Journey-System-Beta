@@ -53,7 +53,7 @@ import { weekdayOf } from "../features/client-history/model";
 import { DayHeader, DaySummary, KeySheet } from "../features/hub-schedule/DayHeader";
 import { Peek } from "../features/hub-schedule/Peek";
 import { countsByDay, spotWords, stripDays, summaryChips } from "../features/hub-schedule/day-summary";
-import { hasFamily, momentsToday, type FilterId, type MomentFamily } from "../features/hub-opportunities/moments-today";
+import { hasFamily, type FilterId, type MomentFamily } from "../features/hub-opportunities/moments-today";
 import { rememberMyStudioSection } from "../features/my-studio/section-memory";
 import { bookingSessionNumber, cardMarks, cardRestWords, isNewToJourney, usualServiceOf } from "../features/hub-schedule/card-marks";
 import { yourDay } from "../features/hub-schedule/your-day";
@@ -70,6 +70,8 @@ import { useDirectoryContext } from "../features/client-directory/use-directory-
 import { buildDirectoryRows } from "../features/client-directory/row";
 import { buildNameIndex, searchNames, type MatchTier } from "../features/client-directory/search";
 import { SearchResults } from "../features/client-directory/SearchResults";
+import { hubWindow, inHubWindow } from "../features/hub-schedule/hub-window";
+import { useCompletedSessions } from "../lib/completed-sessions";
 
 /*
  * THE OPPORTUNITIES LAYER (Sep 27 2026): fetched the first time it is
@@ -93,6 +95,12 @@ const SessionDetailDialog = React.lazy(() =>
 const NO_SCHEDULES: any[] = [];
 const NO_MACHINES: Machine[] = [];
 const NO_STUDIOS: ReadonlyArray<{ id?: string; journeyCutoverDate?: string | null }> = [];
+/** Minutes since the studio's midnight: where a booking sits on the grid. */
+function studioMinutes(date: Date): number {
+  const hm = zonedHM(date);
+  return hm ? hm.hour * 60 + hm.minute : 0;
+}
+
 /** The Directory's own order for a name match: exact, then by first name, last name, a nickname, close. */
 const MATCH_ORDER: MatchTier[] = ["exact", "first-prefix", "last-prefix", "alias", "close"];
 
@@ -130,8 +138,10 @@ export function ClientsView({
   schedules: any[];
   sessions: WorkoutSession[];
   /**
-   * The session stream has answered for this studio. Until it has (or after
-   * it failed) a finished card says nothing, rather than "Not logged".
+   * The session stream's SERVER has answered for this studio. Until it has
+   * (offline, a cache-only answer, or a failed read) a finished card whose
+   * session is in hand still says Done, but one with nothing in hand says
+   * nothing, rather than "Not logged".
    */
   sessionsKnown?: boolean;
   onSelectTrainer?: (id: string) => void;
@@ -227,6 +237,27 @@ export function ClientsView({
   /** Today is the studio's Eastern day, from the minute clock; the day on screen follows it unless one was picked. */
   const studioToday = studioTodayKey(currentTime);
   const selectedKey = shownDay(pickedDay, studioToday);
+
+  /*
+   * THE HUB'S OWN BOOKINGS (speed round, Oct 5 2026, R6;
+   * features/hub-schedule/hub-window.ts): yesterday to a week from today,
+   * and the day on screen. The app's schedule holds every range the Calendar
+   * has shown too, and the Hub used to work its day out over all of it.
+   * Kept until the studio's day or the schedule changes.
+   */
+  const hubDays = hubWindow(studioToday, selectedKey);
+  const hubSchedules = React.useMemo(
+    () => inHubWindow(schedules || NO_SCHEDULES, { from: hubDays.from, to: hubDays.to }),
+    [schedules, hubDays.from, hubDays.to],
+  );
+  /** The studio's clients by id: a card finds its own without walking the list. */
+  const clientsById = React.useMemo(() => {
+    const out = new Map<string, Client>();
+    for (const c of clients) if (c.id) out.set(String(c.id).trim(), c);
+    return out;
+  }, [clients]);
+  /** Only the FINISHED sessions, steady while a running session's heartbeat lands (lib/completed-sessions). */
+  const completedSessions = useCompletedSessions(sessions);
 
   // Sync / search database in real-time when trainer searches on main screen
   useEffect(() => {
@@ -336,20 +367,27 @@ export function ClientsView({
    * for a client with 54).
    */
   const searchMyIds = React.useMemo(() => myTrainerIds(authTrainer, auth.currentUser?.uid ?? null), [authTrainer]);
+  const searching = searchTerm.trim().length > 0;
+  /*
+   * Worked out only while something is typed (speed round, Oct 5 2026, R6):
+   * it groups every held booking by client, and it used to do that every
+   * minute and on every session write with nobody searching. The Directory's
+   * own bookings (all of them, as the Directory reads them) and only the
+   * finished sessions, which are all its rows read.
+   */
   const { ctx: directoryCtx } = useDirectoryContext({
     now: currentTime,
     today: studioToday,
     studios: cutoverStudios ?? NO_STUDIOS,
     activeStudioId: activeStudioId || null,
-    schedules: schedules ?? null,
+    schedules: searching ? schedules ?? null : null,
     schedulesFetchedAt,
-    sessions,
+    sessions: searching ? completedSessions : null,
     sessionsKnown,
     myIds: searchMyIds,
     myName: authTrainer?.fullName ?? null,
     trainers: sortedTrainers,
   });
-  const searching = searchTerm.trim().length > 0;
   const searchPool = React.useMemo(
     () => (searching ? Array.from(new Map([...clients, ...dbSearchResults].filter((c) => c.id).map((c) => [c.id as string, c])).values()) : []),
     [searching, clients, dbSearchResults],
@@ -384,29 +422,27 @@ export function ClientsView({
   const isSelfTrainer = (t: { id?: string }): boolean =>
     !!authTrainer?.id && !!t.id && String(t.id) === String(authTrainer.id);
 
-  /** Minutes since the studio's midnight: where a booking sits on the grid. */
-  const studioMinutes = (date: Date): number => {
-    const hm = zonedHM(date);
-    return hm ? hm.hour * 60 + hm.minute : 0;
-  };
 
   // Sessions for the selected day, bounded by the STUDIO's midnight. Using the
   // viewer's midnight here while reading hours in studio time selected a window
   // offset from the studio's day, which scattered a normal 7am-8pm schedule
   // across every hour from 12 AM to 11:30 PM.
-  const { start: dateStart, end: dateEnd } = studioDayBoundsForKey(selectedKey);
-
-  const todaysSchedules = (schedules || [])
-    .filter((s) => {
-      const date = safeToDate(s.startTime || s.StartDateTime || s.date);
-      if (!date) return false;
-      return date >= dateStart && date <= dateEnd && s.status !== "Cancelled";
-    })
-    .sort(
-      (a, b) =>
-        getMillis(a.startTime || a.StartDateTime || a.date) -
-        getMillis(b.startTime || b.StartDateTime || b.date),
-    );
+  // Kept until the day or the Hub's bookings change (R7): the columns, the
+  // grid and the cards below are keyed on it.
+  const todaysSchedules = React.useMemo(() => {
+    const { start: dateStart, end: dateEnd } = studioDayBoundsForKey(selectedKey);
+    return hubSchedules
+      .filter((s) => {
+        const date = safeToDate(s.startTime || s.StartDateTime || s.date);
+        if (!date) return false;
+        return date >= dateStart && date <= dateEnd && s.status !== "Cancelled";
+      })
+      .sort(
+        (a, b) =>
+          getMillis(a.startTime || a.StartDateTime || a.date) -
+          getMillis(b.startTime || b.StartDateTime || b.date),
+      );
+  }, [hubSchedules, selectedKey]);
 
   /*
    * WHAT IS KNOWN ABOUT THE DAY (hub fixes, Oct 1 2026): a failed read is
@@ -446,12 +482,15 @@ export function ClientsView({
    * fallback: creating a profile by hand here is what produced duplicate
    * documents outside the canonical path.
    */
-  const findClientForSession = (session: any): Client | null => {
-    if (!session?.clientId) return null;
-    const target = String(session.clientId).trim();
-    if (!target) return null;
-    return clients.find((c) => c.id && String(c.id).trim() === target) || null;
-  };
+  const findClientForSession = React.useCallback(
+    (session: any): Client | null => {
+      if (!session?.clientId) return null;
+      const target = String(session.clientId).trim();
+      if (!target) return null;
+      return clientsById.get(target) ?? null;
+    },
+    [clientsById],
+  );
 
   /*
    * What each card checks its booking against, built once per stream update
@@ -459,13 +498,16 @@ export function ClientsView({
    * client and STUDIO day. The card used to match "today" with the iPad's
    * `toDateString()`, which is the wrong day on an iPad set to another zone,
    * and matched TODAY rather than the booking's day, so a session this
-   * morning marked tomorrow's card. `logged` is null until the stream has
-   * answered: unknown, never "nothing logged" (lib/booking-state).
+   * morning marked tomorrow's card. Until the server has answered, `logged`
+   * is incomplete: a finished session it holds is Done, but a finished slot
+   * it lacks is unknown, never "nothing logged" (lib/booking-state).
    */
   const workoutSessionOn = React.useMemo(() => sessionsByClientDay(sessions), [sessions]);
+  // Only finished sessions count as logged: a heartbeat leaves this as it was (R6).
   const logged = React.useMemo(
-    () => loggedSessions(sessionsKnown ? sessions : null),
-    [sessions, sessionsKnown],
+    // A finished session the cache holds is logged; only "never logged" waits for the server (R16).
+    () => loggedSessions(completedSessions, undefined, { complete: sessionsKnown }),
+    [completedSessions, sessionsKnown],
   );
 
   /*
@@ -475,11 +517,18 @@ export function ClientsView({
    * decides which of its client's notes matter on its own day
    * (lib/hub-critical-notes). `notesFor` is null for a client whose notes are
    * unknown, and that card then claims nothing either way.
+   *
+   * By the BOOKINGS' own client ids (speed round, Oct 5 2026, R8): under
+   * strict resolution a booking's clientId IS the client's document id (see
+   * findClientForSession above; lib/mindbody-api-sync writes it), so the read
+   * starts with the bookings instead of waiting for the client list, and the
+   * triangles arrive with the cards. It used to ask only for the clients the
+   * roster already held, so it opened late and opened again as each visiting
+   * client landed. A booking whose client has no profile yet costs one id in
+   * the read and draws no card mark.
    */
   const criticalNotes = useHubCriticalNotes(
-    todaysSchedules
-      .filter((s) => !s.clientName?.toLowerCase().includes("unavailab"))
-      .map((s) => findClientForSession(s)?.id),
+    todaysSchedules.filter((s) => !isStaffBlock(s)).map((s) => (s.clientId ? String(s.clientId).trim() : null)),
   );
 
   /*
@@ -510,12 +559,20 @@ export function ClientsView({
   /*
    * "DIDN'T COME" (Operations room, wave 3, Sep 29 2026): a leader's mark on
    * a booking nobody logged (studios/{s}/bookingMarks, read by
-   * lib/booking-state as a no-show). ONE listener, for the day on screen —
-   * never per card, never per client. Unread or refused, the marks are null
-   * and a finished slot reads as it did before the mark.
+   * lib/booking-state as a no-show). ONE listener — never per card, never
+   * per client. Unread or refused, the marks are null and a finished slot
+   * reads as it did before the mark.
+   *
+   * For the Hub's whole window, yesterday to a week on and the day on
+   * screen (speed round, Oct 5 2026, R8; hub-window.ts): a mark is found by
+   * its booking's id, so one read serves every day on the strip, and a day
+   * tap no longer closes the listener, forgets the marks and opens another
+   * (a marked card blinked back to "Not logged" on the way back to today).
+   * It moves only at the studio's midnight. The read stays on the (day,
+   * clientId) index, and the rules let anyone who works at the studio read
+   * the marks.
    */
-  const dayKeyOnScreen = selectedKey;
-  const bookingMarks = useBookingMarks(readsStudio ? activeStudioId : null, dayKeyOnScreen, dayKeyOnScreen);
+  const bookingMarks = useBookingMarks(readsStudio ? activeStudioId : null, hubDays.from, hubDays.to);
 
   /*
    * THE DAY'S MOMENTS (calm Hub round, Sep 28 2026): every client booked on
@@ -526,7 +583,7 @@ export function ClientsView({
   const dayMoments = useDayMoments({
     day: selectedKey,
     now: currentTime,
-    schedules: schedules || NO_SCHEDULES,
+    schedules: hubSchedules,
     clients,
     sessions,
     sessionsKnown,
@@ -574,23 +631,28 @@ export function ClientsView({
    * minutes.
    */
   const gridDayKey = selectedKey;
-  const gridBlocks: GridBlock[] = [];
-  todaysSchedules.forEach((s, i) => {
-    const columnId = columnPlan.columnOf[i];
-    if (columnId === null) return;
-    const start = safeToDate(s.startTime || s.StartDateTime || s.date);
-    if (!start) return;
-    const end = safeToDate(s.endTime || s.EndDateTime);
-    const from = studioMinutes(start);
-    let to = end ? studioMinutes(end) : from + 30;
-    if (to <= from) to = from + 30;
-    gridBlocks.push({
-      key: String(s.id || s.mindbodyAppointmentId || `${columnId}-${from}-${i}`),
-      columnId,
-      span: { from, to },
-      booking: s,
+  // Kept until the day's bookings or columns change (R7): the grid lays the
+  // day out from these, and a new list each render undid its memo.
+  const gridBlocks = React.useMemo(() => {
+    const out: GridBlock[] = [];
+    todaysSchedules.forEach((s, i) => {
+      const columnId = columnPlan.columnOf[i];
+      if (columnId === null) return;
+      const start = safeToDate(s.startTime || s.StartDateTime || s.date);
+      if (!start) return;
+      const end = safeToDate(s.endTime || s.EndDateTime);
+      const from = studioMinutes(start);
+      let to = end ? studioMinutes(end) : from + 30;
+      if (to <= from) to = from + 30;
+      out.push({
+        key: String(s.id || s.mindbodyAppointmentId || `${columnId}-${from}-${i}`),
+        columnId,
+        span: { from, to },
+        booking: s,
+      });
     });
-  });
+    return out;
+  }, [todaysSchedules, columnPlan]);
   const gridNowMin = gridDayKey === studioDateKey(currentTime) ? studioMinutes(currentTime) : null;
   /*
    * YOUR OWN COLUMN, IN WORDS (hub cherry round, Sep 28 2026; Hub direction
@@ -609,34 +671,40 @@ export function ClientsView({
   const focusId = isPhone ? focusColumnId(focus, myColumnId) : myColumnId;
   // The name they go by, whole (research-hub §6.0), never cut; the full name
   // when two columns would otherwise read alike (two Chrises, Oct 1 2026).
-  const shortName = (t: Trainer) => ((t as any).nickname || "").trim() || (t.fullName || "").trim().split(" ")[0] || "Trainer";
-  const shortNames = visibleTrainersList.map(shortName);
-  const plannedColumns: GridColumn[] = visibleTrainersList.map((t, i) => {
-    const id = String(t.id);
-    const own = gridBlocks.filter((b) => b.columnId === id && !isStaffBlock(b.booking as any));
-    const alike = shortNames.filter((n) => n.toLowerCase() === shortNames[i].toLowerCase()).length > 1;
-    return {
-      id,
-      name: alike ? (t.fullName || "").trim() || shortNames[i] : shortNames[i],
-      initials: ((t as any).initials || t.fullName || "??").substring(0, 2).toUpperCase(),
-      isMe: isSelfTrainer(t),
-      count: own.length,
-      detail: id === focusId ? yourDay({ spans: own.map((b) => b.span), nowMin: gridNowMin }) : null,
-    };
-  });
-  if (columnPlan.unassigned > 0) {
-    plannedColumns.push({
-      id: UNASSIGNED_ID,
-      name: "Unassigned",
-      initials: "?",
-      isMe: false,
-      count: gridBlocks.filter((b) => b.columnId === UNASSIGNED_ID && !isStaffBlock(b.booking as any)).length,
-      detail: null,
+  // Kept until the columns, the blocks, the focus or (for your column's
+  // words only) the minute change (R7).
+  const authId = authTrainer?.id ?? null;
+  const gridColumns = React.useMemo(() => {
+    const isMe = (t: { id?: string }) => !!authId && !!t.id && String(t.id) === String(authId);
+    const shortName = (t: Trainer) => ((t as any).nickname || "").trim() || (t.fullName || "").trim().split(" ")[0] || "Trainer";
+    const shortNames = visibleTrainersList.map(shortName);
+    const plannedColumns: GridColumn[] = visibleTrainersList.map((t, i) => {
+      const id = String(t.id);
+      const own = gridBlocks.filter((b) => b.columnId === id && !isStaffBlock(b.booking as any));
+      const alike = shortNames.filter((n) => n.toLowerCase() === shortNames[i].toLowerCase()).length > 1;
+      return {
+        id,
+        name: alike ? (t.fullName || "").trim() || shortNames[i] : shortNames[i],
+        initials: ((t as any).initials || t.fullName || "??").substring(0, 2).toUpperCase(),
+        isMe: isMe(t),
+        count: own.length,
+        detail: id === focusId ? yourDay({ spans: own.map((b) => b.span), nowMin: gridNowMin }) : null,
+      };
     });
-  }
-  // The day's sessions first: yours when you have some, then every column
-  // with sessions, Unassigned included, then the empty ones (Oct 3 2026).
-  const gridColumns = orderColumnsBySessions(plannedColumns);
+    if (columnPlan.unassigned > 0) {
+      plannedColumns.push({
+        id: UNASSIGNED_ID,
+        name: "Unassigned",
+        initials: "?",
+        isMe: false,
+        count: gridBlocks.filter((b) => b.columnId === UNASSIGNED_ID && !isStaffBlock(b.booking as any)).length,
+        detail: null,
+      });
+    }
+    // The day's sessions first: yours when you have some, then every column
+    // with sessions, Unassigned included, then the empty ones (Oct 3 2026).
+    return orderColumnsBySessions(plannedColumns);
+  }, [visibleTrainersList, gridBlocks, columnPlan.unassigned, focusId, authId, focusId !== null ? gridNowMin : null]);
 
   /*
    * Who's on (AJ's Mindbody screenshots, Keep: "who's working, at a
@@ -654,41 +722,61 @@ export function ClientsView({
   );
 
   /** Her newest Journey session on the booking's studio day, if one exists. */
-  const workoutSessionFor = (session: any, clientObj: Client | null) =>
-    clientObj
-      ? workoutSessionOn(
-          clientObj.id,
-          bookingDay({ startTime: session.startTime || session.StartDateTime || session.date, status: session.status }),
-        )
-      : null;
+  const workoutSessionFor = React.useCallback(
+    (session: any, clientObj: Client | null) =>
+      clientObj
+        ? workoutSessionOn(
+            clientObj.id,
+            bookingDay({ startTime: session.startTime || session.StartDateTime || session.date, status: session.status }),
+          )
+        : null,
+    [workoutSessionOn],
+  );
 
-  const renderCard = (block: GridBlock) => {
-    const session: any = block.booking;
-    const clientObj = isStaffBlock(session) ? null : findClientForSession(session);
-    const workoutSession = workoutSessionFor(session, clientObj);
-    const entry = clientObj?.id ? dayMoments.byClientId.get(clientObj.id) ?? null : null;
-    return (
-      <HubCard
-        booking={session}
-        client={clientObj}
-        entry={entry}
-        sessionNumber={bookingSessionNumber(entry, clientObj, session, dayMoments.input)}
-        newToJourney={isNewToJourney(entry, clientObj)}
-        usualService={usualService}
-        dimmed={activeSpot !== null && !(entry && hasFamily(entry, activeSpot))}
-        wordy={focusId !== null && block.columnId === focusId}
-        rosterLoading={rosterLoading}
-        rosterFailed={rosterFailed}
-        staffName={block.columnId === UNASSIGNED_ID ? staffLabel(session.trainerName) : null}
-        workoutSession={workoutSession}
-        logged={logged}
-        noShows={bookingMarks.marks}
-        now={currentTime}
-        open={activePeek?.blockKey === block.key}
-        onOpen={(clientId, anchor) => setPeek({ clientId, blockKey: block.key, day: gridDayKey, anchor })}
-      />
-    );
-  };
+  const activeSpot = layer === "schedule" && spot && spot.day === gridDayKey ? spot.family : null;
+  /* The peek belongs to the day and the layer it was opened on. */
+  const activePeek = layer === "schedule" && peek && peek.day === gridDayKey ? peek : null;
+  const openKey = activePeek?.blockKey ?? null;
+
+  /* One handler for every card, so a card that has nothing new skips drawing (HubCard is memoised; R7). */
+  const openCard = React.useCallback(
+    (clientId: string, anchor: HTMLElement, blockKey?: string) => {
+      if (blockKey) setPeek({ clientId, blockKey, day: gridDayKey, anchor });
+    },
+    [gridDayKey],
+  );
+
+  const renderCard = React.useCallback(
+    (block: GridBlock) => {
+      const session: any = block.booking;
+      const clientObj = isStaffBlock(session) ? null : findClientForSession(session);
+      const workoutSession = workoutSessionFor(session, clientObj);
+      const entry = clientObj?.id ? dayMoments.byClientId.get(clientObj.id) ?? null : null;
+      return (
+        <HubCard
+          booking={session}
+          blockKey={block.key}
+          client={clientObj}
+          entry={entry}
+          sessionNumber={bookingSessionNumber(entry, clientObj, session, dayMoments.input)}
+          newToJourney={isNewToJourney(entry, clientObj)}
+          usualService={usualService}
+          dimmed={activeSpot !== null && !(entry && hasFamily(entry, activeSpot))}
+          wordy={focusId !== null && block.columnId === focusId}
+          rosterLoading={rosterLoading}
+          rosterFailed={rosterFailed}
+          staffName={block.columnId === UNASSIGNED_ID ? staffLabel(session.trainerName) : null}
+          workoutSession={workoutSession}
+          logged={logged}
+          noShows={bookingMarks.marks}
+          now={currentTime}
+          open={openKey === block.key}
+          onOpen={openCard}
+        />
+      );
+    },
+    [findClientForSession, workoutSessionFor, dayMoments, usualService, activeSpot, focusId, rosterLoading, rosterFailed, logged, bookingMarks.marks, currentTime, openKey, openCard],
+  );
 
   /* ------------------------------------------------------------------ *
    * The day at a glance.
@@ -715,19 +803,15 @@ export function ClientsView({
    */
   const stripKeysKey = stripKeys.join("|");
   const todayKey = studioToday;
-  const bookingCounts = React.useMemo(() => countsByDay(schedules || NO_SCHEDULES), [schedules]);
+  const bookingCounts = React.useMemo(() => countsByDay(hubSchedules), [hubSchedules]);
+  // The engine's own answer, asked cheaply (celebratesOn), not seven days of entries a minute (R6).
   const celebrateDays = React.useMemo(() => {
     const out = new Set<string>();
-    for (const key of stripKeysKey.split("|")) {
-      if (momentsToday({ ...dayMoments.input, day: key }).some((e) => hasFamily(e, "celebrate"))) out.add(key);
-    }
+    for (const key of stripKeysKey.split("|")) if (dayMoments.celebratesOn(key)) out.add(key);
     return out;
-  }, [dayMoments.input, stripKeysKey]);
+  }, [dayMoments.celebratesOn, stripKeysKey]);
   const strip = stripDays(stripKeys, todayKey, bookingCounts, (key) => celebrateDays.has(key));
   const chips = summaryChips(dayMoments.entries);
-  const activeSpot = layer === "schedule" && spot && spot.day === gridDayKey ? spot.family : null;
-  /* The peek belongs to the day and the layer it was opened on. */
-  const activePeek = layer === "schedule" && peek && peek.day === gridDayKey ? peek : null;
   const spotKeys = activeSpot
     ? gridBlocks
         .filter((b) => {
@@ -745,6 +829,17 @@ export function ClientsView({
     const el = Array.from(document.querySelectorAll<HTMLElement>(".hs-slot, .ph-day__row")).find((s) => s.dataset.blockKey === key);
     el?.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
   };
+
+  /* A tap on a column head: that trainer's bookings as a list (hub fixes, Oct 1 2026, AJ approved). */
+  const openColumn = React.useCallback(
+    (columnId: string) => {
+      setSpot(null);
+      setPeek(null);
+      setTrainerList({ columnId, day: gridDayKey });
+      setLayer("opportunities");
+    },
+    [gridDayKey],
+  );
 
   /*
    * THE NEXT 30 MINUTES (hub cherry round, Sep 28 2026; Hub direction B):
@@ -1075,13 +1170,7 @@ export function ClientsView({
               hidden={layer !== "schedule"}
               focusId={focusId}
               emptyWords={bookingsRead === "ready" ? NOBODY_BOOKED : bookingsRead === "loading" ? "Reading the day\u2019s bookings\u2026" : null}
-              onOpenColumn={(columnId) => {
-                // That trainer's bookings as a list (hub fixes, Oct 1 2026, AJ approved).
-                setSpot(null);
-                setPeek(null);
-                setTrainerList({ columnId, day: gridDayKey });
-                setLayer("opportunities");
-              }}
+              onOpenColumn={openColumn}
             />
             )}
 
