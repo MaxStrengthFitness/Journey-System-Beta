@@ -27,6 +27,7 @@ import { requireStaff } from "./server/auth.ts";
 import { idsToLookUp, parseSkipIds, skipForOwnBookings } from "./src/lib/mindbody-lookup-skip.ts";
 import { isGeminiPath, registerGeminiRoutes } from "./server/gemini-routes.ts";
 import { devFileAccess, serveBuiltApp } from "./server/served-files.ts";
+import { shutDownGracefully, tuneKeepAlive } from "./server/shutdown.ts";
 
 // Error Handling: Prevent process crash on unhandled rejections
 process.on("unhandledRejection", (reason, promise) => {
@@ -1161,9 +1162,14 @@ async function startServer() {
     serveBuiltApp(app, path.join(process.cwd(), "dist"));
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
+  // Keep-alive longer than Render's balancer, and on a deploy's SIGTERM let
+  // running requests finish instead of cutting them (R19, Oct 5 2026; render.yaml
+  // gives the process maxShutdownDelaySeconds to do it). server/shutdown.ts.
+  tuneKeepAlive(server);
+  process.on("SIGTERM", () => shutDownGracefully(server));
 }
 
 startServer();
