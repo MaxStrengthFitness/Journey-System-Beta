@@ -123,12 +123,27 @@ const totalledSessionIds = new Set<string>();
  * ONE batch, so a refusal refuses both, exactly as the single client update
  * did before, and `totalledSessionIds` still means "counted" or "not".
  */
-function totalsCommit(db: Firestore, w: { ref: DocumentReference; clientId: string; updates: Record<string, unknown> }): Promise<void> {
+async function totalsCommit(db: Firestore, w: { ref: DocumentReference; clientId: string; updates: Record<string, unknown> }): Promise<void> {
   const { client, totals } = splitMachineTotalsUpdates(w.updates);
   const batch = writeBatch(db);
-  if (Object.keys(client).length > 0) batch.update(w.ref, client);
-  addMachineTotalsWrite(batch, db, w.clientId, totals);
-  return batch.commit();
+  const hasClient = Object.keys(client).length > 0;
+  if (hasClient) batch.update(w.ref, client);
+  const hasTotals = addMachineTotalsWrite(batch, db, w.clientId, totals);
+  try {
+    await batch.commit();
+  } catch (err) {
+    /* Refused whole, so nothing landed. If the refusal was the totals
+       document's (the app reached the iPads before its rules did: the deploy
+       order skipped, or a rules deploy that failed), the counters alone are
+       asked again, so "session count didn't update" doesn't fire on every
+       client. A refusal of the client itself is refused again and reported
+       as before. */
+    if (!hasClient || !hasTotals || (err as { code?: string })?.code !== 'permission-denied') throw err;
+    const counters = writeBatch(db);
+    counters.update(w.ref, client);
+    await counters.commit();
+    console.warn('[finish] the machine totals were refused; the client counters were saved on their own', err);
+  }
 }
 
 /**

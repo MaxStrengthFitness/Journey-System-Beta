@@ -21,6 +21,8 @@ const calls = vi.hoisted(() => ({
    */
   updateDocs: [] as Array<{ path: string; data: Record<string, unknown>; writes: Array<{ op: string; path: string; data: Record<string, unknown>; options?: unknown }> }>,
   refuseTotals: false,
+  /** Refuse only a batch that writes the machine totals document (its rules not deployed yet). */
+  refuseMachineTotals: false,
   refuseBatch: false,
   // While set, the batch's commit waits on it, as an offline commit waits
   // for the server.
@@ -43,7 +45,7 @@ vi.mock("firebase/firestore", () => ({
         if (writes.some((w) => w.path.startsWith("clients/"))) {
           const client = writes.find((w) => w.op === "update" && w.path.startsWith("clients/"));
           calls.updateDocs.push({ path: client?.path ?? "", data: client?.data ?? {}, writes });
-          if (calls.refuseTotals) {
+          if (calls.refuseTotals || (calls.refuseMachineTotals && writes.some((w) => w.path.endsWith("/machineTotals/current")))) {
             throw Object.assign(new Error("Missing or insufficient permissions."), { code: "permission-denied" });
           }
           return;
@@ -102,6 +104,7 @@ beforeEach(() => {
   calls.commits = 0;
   calls.updateDocs = [];
   calls.refuseTotals = false;
+  calls.refuseMachineTotals = false;
   calls.refuseBatch = false;
   calls.commitGate = null;
 });
@@ -205,6 +208,17 @@ describe("completeWorkoutSession", () => {
     const r = await finish();
     expect(calls.commits).toBe(1);
     expect(r.totalsSaved).toBe(false);
+  });
+
+  it("saves the counters on their own when only the machine totals document is refused (its rules not live yet)", async () => {
+    calls.refuseMachineTotals = true;
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const r = await finish();
+    expect(calls.updateDocs).toHaveLength(2);
+    // The second ask is the client's counters alone.
+    expect(calls.updateDocs[1].writes.map((w) => w.path)).toEqual(["clients/c1"]);
+    expect(calls.updateDocs[1].data.completedSessions).toEqual({ __increment: 1 });
+    expect(r.totalsSaved).toBe(true);
   });
 
   it("queues the totals before the session's commit is acknowledged, so an offline reload replays both", async () => {

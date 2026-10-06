@@ -55,6 +55,10 @@ Writes, each a `set` with `mergeFields` through `store.ts` (the same effect as t
 
 - **Start's prefilled weights wait for it**, as they wait for the machine settings, and follow the moment it is known (`startFollowUpRef`). Never a prescribed weight in place of a last weight nobody has read.
 - **The backfill waits for it**, or a client whose marker is in the new document would have her whole history re-read on every profile open.
+- **Finish, "Finish it as it was" and Log past session never read "nothing on file" off a document still loading** (the review, Oct 6 2026): with the totals unknown, Finish writes the counts, and the last pair and the prefill only for today's session (newest by definition); an old session writes no last time and no next weight; nothing writes a first pair (`completedSessionRollup`'s `existingKnown`). "Finish it as it was" and Log past session's Save wait for the totals ("Reading the machines...").
+- **A document only this iPad has written is not the whole document**: an offline Finish creates it with only its own paths, so the hook calls it `loading` (its data passed on, marked not complete) until the server answers, a cached copy has nothing of ours pending, or the whole document was seen since the app opened.
+- **A failure that still holds a whole answer is known** (a listener error mid-session doesn't freeze the prefill); a failure with nothing whole is unknown.
+- **The renewal's live snapshot and the machine menu's "first time" wait too**: the brief and the profile's renewal card show the stored snapshot until the totals answer, and the menu's header and the phone's cards never say "First time on this machine" while they are out.
 
 While the totals are loading the client's own old fields stand, which before the migration is the whole story.
 
@@ -67,9 +71,9 @@ The roster (Hub, Directory, Operations' lists, machine fit's studio report) carr
 
 ## Shipping it (a Firestore structure change: AJ's OK first)
 
-1. **Rules** (`firebase deploy --only firestore:rules`, after `npm run test:rules`): they only add the totals document's access, so the running app is unaffected. No new index.
+1. **Rules** (`firebase deploy --only firestore:rules`, after `npm run test:rules`): they add the totals document's access, and refuse SETTING `machineStatsBackfilledAt` on a client (the review, Oct 6 2026): an iPad still on the old version backfills by writing a whole-history `machineStats` with that marker onto the client, which the sum would double; refused whole, and the old app doesn't re-arm on a refusal. Every other client write is unaffected, so the running app is too. No new index. If the app ever reaches the iPads before these rules, Finish saves the client's counters on their own when only the totals document is refused.
 2. **The app** (push to master): from here every write lands in the new document and every read folds both sides. Nothing on the roster changes yet.
-3. **The migration**, once the iPads have loaded the new version (`features/new-version` loads it on the Hub): `scripts/split-client-metrics.ts`, a dry run first, then `--commit`, one studio at a time if you like (its header has the commands). Only now does the roster shrink. Running it again later is safe and moves anything an old iPad wrote meanwhile.
+3. **The migration**, once the iPads have loaded the new version (`features/new-version` loads it on the Hub): `scripts/split-client-metrics.ts`, a dry run first, then `--commit`, one studio at a time if you like (its header has the commands). Only now does the roster shrink. Running it again later is safe and moves anything an old iPad wrote meanwhile. With `--commit` it writes what every moved client held before to `backups/split-client-metrics-<time>.json` after each transaction, a restore point beside PITR.
 
 No Cloud Function reads or writes these fields, so none needs redeploying. The nightly and weekly jobs ship with the app (Render builds them from the same push).
 
