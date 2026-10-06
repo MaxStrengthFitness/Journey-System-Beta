@@ -23,7 +23,7 @@
  * Presentational: ClientsView decides the columns, which booking goes in
  * which, and draws each card (`renderCard`). No reads here.
  */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { bandWords, clockWords, layoutDay, placeColumn, yOf, type Placed, type Span } from "./grid-model";
 import type { TrainerDayFrame } from "./off-hours";
@@ -107,7 +107,7 @@ export function HubNotice({ words, onRetry }: { words: string; onRetry?: () => v
   );
 }
 
-export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, hidden = false, focusId = null, emptyWords = NOBODY_BOOKED, onOpenColumn }: HubGridProps) {
+function HubGridView({ dayKey, columns, blocks, nowMin, renderCard, frameOf, hidden = false, focusId = null, emptyWords = NOBODY_BOOKED, onOpenColumn }: HubGridProps) {
   const [opened, setOpened] = useState<{ day: string; from: ReadonlySet<number> }>({ day: dayKey, from: new Set() });
   const openedFrom = opened.day === dayKey ? opened.from : EMPTY_SET;
 
@@ -326,5 +326,14 @@ export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, 
 
 const EMPTY_SET: ReadonlySet<number> = new Set();
 const UNKNOWN_FRAME: TrainerDayFrame = { kind: "unknown" };
+
+/**
+ * Drawn again only when a prop changes (speed round, Oct 5 2026, R7): the Hub
+ * hands it kept columns, blocks and handlers, so a render of the screen above
+ * that changed nothing here (a toast, a snapshot of something else) costs
+ * nothing. The minute clock still moves the Now line, and each card then
+ * decides for itself whether it has anything new (HubCard's `sameCard`).
+ */
+export const HubGrid = memo(HubGridView);
 
 export default HubGrid;

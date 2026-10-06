@@ -3,6 +3,7 @@ import React, {
   useContext,
   useState,
   useCallback,
+  useMemo,
   ReactNode,
 } from "react";
 import {
@@ -88,10 +89,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     };
   }, [addToast]);
 
+  /*
+   * One value for as long as the handlers are the same, which is always
+   * (speed round, Oct 5 2026, R7). It used to be a new object every time a
+   * toast came or went, and every one of the ~80 screens and parts that
+   * call useToast() — AppContent among them, so the whole app — drew again
+   * twice per toast.
+   */
+  const value = useMemo(
+    () => ({ toast: addToast, success, error, warning, info }),
+    [addToast, success, error, warning, info],
+  );
+
   return (
-    <ToastContext.Provider
-      value={{ toast: addToast, success, error, warning, info }}
-    >
+    <ToastContext.Provider value={value}>
       {children}
       {/* On a phone (under 640px) the toasts sit inside the screen's edges and above the bottom bar (Journey Lite, Oct 1 2026); 384px from the right edge started off a 390px screen. */}
       <div className="fixed bottom-20 left-3 right-3 sm:left-auto sm:bottom-6 sm:right-6 z-9999 flex flex-col gap-3 sm:w-full max-w-sm pointer-events-none">

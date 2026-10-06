@@ -28,7 +28,7 @@
  * column), every glyph says its sayable word where the card has room, not
  * only the first. The words are still only ones fine to say out loud.
  */
-import type { ComponentType } from "react";
+import { memo, type ComponentType } from "react";
 import { Activity, AlertTriangle, Award, Cake, Check, CloudOff, FileSignature, MessageCircle, RefreshCw, Sparkles, Undo2 } from "lucide-react";
 import type { Client, WorkoutSession } from "../../types";
 import { isStaffBlock, type BookingMarks, type LoggedSessions } from "../../lib/booking-state";
@@ -122,10 +122,16 @@ export interface HubCardProps {
   wordy?: boolean;
   /** Its peek is open. */
   open?: boolean;
-  onOpen: (clientId: string, anchor: HTMLElement) => void;
+  /**
+   * The grid block it is drawn in, handed back to `onOpen`, so the grid can
+   * pass every card ONE handler and a card with nothing new skips drawing
+   * (speed round, Oct 5 2026, R7).
+   */
+  blockKey?: string;
+  onOpen: (clientId: string, anchor: HTMLElement, blockKey?: string) => void;
 }
 
-export function HubCard({
+function HubCardView({
   booking,
   client,
   entry,
@@ -142,8 +148,10 @@ export function HubCard({
   dimmed = false,
   wordy = false,
   open = false,
+  blockKey,
   onOpen,
 }: HubCardProps) {
+  const openPeek = (clientId: string, anchor: HTMLElement) => (blockKey === undefined ? onOpen(clientId, anchor) : onOpen(clientId, anchor, blockKey));
   const start = safeToDate(booking?.startTime || booking?.StartDateTime || booking?.date);
   const end = safeToDate(booking?.endTime || booking?.EndDateTime);
   const time = cardTime(start, end);
@@ -163,18 +171,7 @@ export function HubCard({
     );
   }
 
-  const cardState = hubCardState(
-    {
-      id: booking?.id ?? null,
-      clientId: client?.id ?? booking?.clientId ?? null,
-      startTime: booking?.startTime || booking?.StartDateTime || booking?.date,
-      endTime: booking?.endTime || booking?.EndDateTime,
-      status: booking?.status,
-    },
-    logged,
-    now,
-    { session: workoutSession, marks: noShows },
-  );
+  const cardState = stateOfCard({ booking, client, logged, now, workoutSession, noShows });
   const recedes = hubCardRecedes(cardState);
   const isUnlinked = !client;
   const isPending = isUnlinked && rosterLoading && Boolean(booking?.clientId);
@@ -221,13 +218,13 @@ export function HubCard({
           : marks.critical || undefined
       }
       onClick={(e) => {
-        if (interactive && client?.id) onOpen(client.id, e.currentTarget);
+        if (interactive && client?.id) openPeek(client.id, e.currentTarget);
       }}
       onKeyDown={(e) => {
         if (!interactive || !client?.id) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onOpen(client.id, e.currentTarget);
+          openPeek(client.id, e.currentTarget);
         }
       }}
     >
@@ -343,5 +340,46 @@ export function HubCard({
     </div>
   );
 }
+
+/** What happened to the booking, by the card's own rule (lib/hub-card-state). */
+function stateOfCard(p: Pick<HubCardProps, "booking" | "client" | "logged" | "now" | "workoutSession" | "noShows">) {
+  const booking = p.booking;
+  return hubCardState(
+    {
+      id: booking?.id ?? null,
+      clientId: p.client?.id ?? booking?.clientId ?? null,
+      startTime: booking?.startTime || booking?.StartDateTime || booking?.date,
+      endTime: booking?.endTime || booking?.EndDateTime,
+      status: booking?.status,
+    },
+    p.logged ?? null,
+    p.now ?? new Date(),
+    { session: p.workoutSession ?? null, marks: p.noShows ?? null },
+  );
+}
+
+const momentsKey = (entry: RunSheetEntry | null | undefined) => (entry ? JSON.stringify(entry.moments) : "");
+
+/**
+ * Does the card draw the same? (speed round, Oct 5 2026, R7.) Every prop the
+ * same, except two the Hub hands over new far more often than the card
+ * changes: the minute clock, which matters only through the booking's state
+ * (in session, done, not logged), and the day's entry, of which the card
+ * reads only the moments. A minute tick, or a session's heartbeat elsewhere
+ * on the floor, then redraws only the cards whose state or marks moved.
+ */
+export function sameCard(a: HubCardProps, b: HubCardProps): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const k of keys) {
+    if (k === "now" || k === "entry") continue;
+    if ((a as unknown as Record<string, unknown>)[k] !== (b as unknown as Record<string, unknown>)[k]) return false;
+  }
+  if (a.entry !== b.entry && momentsKey(a.entry) !== momentsKey(b.entry)) return false;
+  if (a.now !== b.now && !isStaffBlock(a.booking) && stateOfCard(a) !== stateOfCard(b)) return false;
+  return true;
+}
+
+/** One booking on the grid, drawn again only when what it shows changes (`sameCard`). */
+export const HubCard = memo(HubCardView, sameCard);
 
 export default HubCard;
