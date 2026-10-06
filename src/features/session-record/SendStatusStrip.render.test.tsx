@@ -116,3 +116,32 @@ describe("SendStatusStrip with useSendState", () => {
     expect(el.querySelector(".sr-send")).toBeNull();
   });
 });
+
+/*
+ * The Active Session's way (speed round, Oct 5 2026; R10): the hook without
+ * its tick, so the screen is not redrawn once a second, and the strip
+ * keeping its own clock from `unsentSince`.
+ */
+let draws = 0;
+function QuietHarness() {
+  draws += 1;
+  state = useSendState({ tick: false });
+  return <SendStatusStrip online={state.online} unsentSince={state.unsentSince} />;
+}
+
+describe("SendStatusStrip keeping its own clock (R10)", () => {
+  it("says a save is still going on time while the screen holding it never redraws for the clock", () => {
+    draws = 0;
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    act(() => root!.render(<QuietHarness />));
+    act(() => state!.sent());
+    const drawn = draws;
+    act(() => {
+      vi.advanceTimersByTime(STILL_SENDING_AFTER_MS + 1_000);
+    });
+    expect(host.querySelector(".sr-send")?.getAttribute("data-kind")).toBe("sending");
+    expect(draws).toBe(drawn);
+  });
+});
