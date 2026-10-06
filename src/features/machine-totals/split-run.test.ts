@@ -152,6 +152,21 @@ describe("runClientSplit", () => {
     expect(again).toMatchObject({ toMove: 0, moved: 0 });
   });
 
+  it("records what each moved client held before, after each committed transaction, and nothing on a dry run", async () => {
+    const store = studio();
+    const pre = JSON.parse(JSON.stringify(store["clients/c1"]));
+    const { db } = fakeDb(store);
+    const dry: unknown[] = [];
+    await runClientSplit({ db, commit: false, now: NOW, log: () => {}, record: (r) => dry.push(...r) });
+    expect(dry).toEqual([]);
+    const moved: Array<{ clientId: string; client: Record<string, unknown>; totals: unknown }> = [];
+    await runClientSplit({ db, commit: true, now: NOW, log: () => {}, record: (r) => moved.push(...r) });
+    expect(moved.map((m) => m.clientId).sort()).toEqual(["c1", "c2", "c4"]);
+    const c1 = moved.find((m) => m.clientId === "c1")!;
+    expect(JSON.parse(JSON.stringify(c1.client.machineStats))).toEqual(pre.machineStats);
+    expect(c1.client).not.toHaveProperty("firstName");
+  });
+
   it("is the shape the lab's seed --split writes", async () => {
     const store = studio();
     const pre = { ...store["clients/c1"] };

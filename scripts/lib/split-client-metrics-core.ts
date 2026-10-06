@@ -31,6 +31,22 @@ export interface SplitRunOptions {
   chunk?: number;
   log?: (line: string) => void;
   now?: Date;
+  /**
+   * Called after each committed transaction with what its clients held
+   * before (the three fields and lastSessionDate, and the totals document
+   * as it was): the script writes them to backups/, a restore point beside
+   * PITR. Never called on a dry run.
+   */
+  record?: (moved: SplitRecord[]) => void;
+}
+
+/** One moved client, as it was before the move. */
+export interface SplitRecord {
+  clientId: string;
+  /** The client's fields the move deletes or changes, as they were. */
+  client: Record<string, unknown>;
+  /** The totals document as it was (null: there was none). */
+  totals: Record<string, unknown> | null;
 }
 
 export interface SplitRunSummary {
@@ -98,11 +114,13 @@ export async function runClientSplit(options: SplitRunOptions): Promise<SplitRun
     const clientRefs = part.map((id) => db.collection("clients").doc(id));
     const totalsRefs = part.map((id) => db.doc(machineTotalsPath(id).join("/")));
     const tally = { moved: 0, hadTotalsDoc: 0, lastSessionMoved: 0, bytesMoved: 0 };
+    let records: SplitRecord[] = [];
     const work = async (read: (refs: unknown[]) => Promise<Array<{ exists: boolean; data: () => Record<string, unknown> | undefined }>>, write: ((p: { clientRef: unknown; totalsRef: unknown; w: ReturnType<typeof splitWritesOf> }) => void) | null) => {
       tally.moved = 0;
       tally.hadTotalsDoc = 0;
       tally.lastSessionMoved = 0;
       tally.bytesMoved = 0;
+      records = [];
       const snaps = await read([...clientRefs, ...totalsRefs]);
       part.forEach((_, i) => {
         const c = snaps[i];
@@ -121,6 +139,11 @@ export async function runClientSplit(options: SplitRunOptions): Promise<SplitRun
         if (totalsData) tally.hadTotalsDoc += 1;
         if (plan.lastSessionDate) tally.lastSessionMoved += 1;
         for (const f of plan.clientDeletes) tally.bytesMoved += jsonBytes(clientData[f]);
+        if (write) {
+          const before: Record<string, unknown> = {};
+          for (const f of [...plan.clientDeletes, "lastSessionDate"]) if (clientData[f] !== undefined) before[f] = clientData[f];
+          records.push({ clientId: part[i], client: before, totals: totalsData });
+        }
         write?.({ clientRef: clientRefs[i], totalsRef: totalsRefs[i], w });
       });
     };
@@ -137,6 +160,8 @@ export async function runClientSplit(options: SplitRunOptions): Promise<SplitRun
             },
           );
         });
+        // What this transaction's clients held, now that it has committed.
+        if (records.length > 0) options.record?.(records);
       } else {
         await work((refs) => db.getAll(...(refs as Parameters<typeof db.getAll>)) as never, null);
       }

@@ -45,11 +45,19 @@
  *     npx tsx scripts/split-client-metrics.ts --project demo-perf-lab --database perf-lab --commit
  *
  * Options: --studio <id>  --limit <n>  --chunk <n> (clients per transaction, default 20)
+ *
+ * RESTORE POINT. With --commit, what each moved client held before (the
+ * three fields, lastSessionDate, and its totals document as it was) is
+ * written to backups/split-client-metrics-<time>.json after every
+ * transaction, so a run stopped halfway still has its record. PITR is the
+ * other way back.
  */
 
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
-import { runClientSplit, splitSummaryLines } from "./lib/split-client-metrics-core.ts";
+import fs from "node:fs";
+import path from "node:path";
+import { runClientSplit, splitSummaryLines, type SplitRecord } from "./lib/split-client-metrics-core.ts";
 
 const argv = process.argv.slice(2);
 const hasFlag = (name: string) => argv.includes(`--${name}`);
@@ -95,8 +103,22 @@ async function main() {
   const studioId = flag("studio") ?? null;
   console.log(commit ? "COMMIT: machine maps will move to clients/{id}/machineTotals/current." : "DRY RUN: nothing will be written.");
   console.log(studioId ? `Studio: ${studioId} (its home clients).` : "Every client.");
-  const summary = await runClientSplit({ db, commit, studioId, limit, chunk });
+  // The restore point: every moved client as it was, the file rewritten
+  // after each transaction (backups/ is git-ignored, as every script's is).
+  const moved: SplitRecord[] = [];
+  let reportFile: string | null = null;
+  const record = (part: SplitRecord[]) => {
+    moved.push(...part);
+    if (!reportFile) {
+      const dir = path.resolve(process.cwd(), "backups");
+      fs.mkdirSync(dir, { recursive: true });
+      reportFile = path.join(dir, `split-client-metrics-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
+    }
+    fs.writeFileSync(reportFile, JSON.stringify({ studioId, moved }, null, 2));
+  };
+  const summary = await runClientSplit({ db, commit, studioId, limit, chunk, record });
   for (const line of splitSummaryLines(summary, commit)) console.log(line);
+  if (reportFile) console.log(`What the moved clients held before: ${reportFile}`);
   if (!commit && summary.toMove > 0) console.log("Nothing was written. Add --commit to move them.");
   process.exit(summary.failed > 0 ? 2 : 0);
 }
