@@ -26,6 +26,13 @@
  * `sessionMachineIds` on the session document means machine variety no longer
  * needs the exerciseLogs collection, which halves the read cost of the screen
  * and removes the biggest unscoped query left in the app.
+ *
+ * THE NIGHT'S LINES FIRST (speed round, Oct 5 2026). The window is read
+ * from the night's month documents (studios/{s}/watch/sessions-YYYY-MM,
+ * features/admin/month-tally), every session as a short line, plus today's
+ * sessions live: no cap, so a busy studio's ninety days are no longer cut at
+ * 1,500. When the night has nothing usable for a month the window needs, the
+ * raw read below answers, as before.
  */
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -42,6 +49,9 @@ import {
   handleFirestoreError,
 } from "../../../lib/firestore-errors";
 import { MAX_SESSIONS_IN_RANGE, fetchSessionsInRange } from "../sessions-range";
+import { readNightSessions, readOpenNow } from "../month-tally/night";
+import { insightsSessions, monthsForWindow } from "../month-tally/month-tally";
+import { studioDateKey, studioTodayKey } from "../../../lib/studio-time";
 import { PickOneStudio, useOperationsScope } from "../scope-context";
 import {
   AdminEmpty,
@@ -126,6 +136,25 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
     setFailed(false);
     (async () => {
       try {
+        // The night's lines and today live, when the night has every month the window needs.
+        const tz = studios.find((s) => s.id === studioId)?.timezone || undefined;
+        const today = studioTodayKey(new Date(), tz);
+        const months = monthsForWindow(window.start, today, (ms) => studioDateKey(ms, tz) ?? today);
+        const night = months ? await readNightSessions(studioId, months, today) : null;
+        if (cancelled) return;
+        if (night && night.length > 0) {
+          const [live, openNow] = await Promise.all([
+            fetchSessionsInRange({ studioId, startMs: night[0].liveFromMs, max: MAX_SESSIONS }),
+            readOpenNow(night),
+          ]);
+          if (cancelled) return;
+          const all = insightsSessions(night, live.sessions, { startMs: window.start, endMs: Number.POSITIVE_INFINITY }, openNow);
+          if (all) {
+            setSessions(all);
+            setTruncated(live.truncated);
+            return;
+          }
+        }
         const result = await fetchSessionsInRange({ studioId, startMs: window.start, max: MAX_SESSIONS });
         if (cancelled) return;
         setSessions(result.sessions);

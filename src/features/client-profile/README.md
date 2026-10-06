@@ -471,3 +471,19 @@ door: the filed reports are the Archive's shelf.
 so the context sentence above the toggle and the panel below it are the same
 numbers from one walk of the logs. `RoutinesTab` computes its own when no
 model is passed, so it stays mountable on its own.
+
+### 9.4 Her history is read once, and again only when it changed (speed round, Oct 5 2026)
+
+The Journey grid, the Archive's calendar and the machine menu draw from one
+page of her fifty newest sessions and their sets (AJ, Sep 13: "load fifty at
+a time"). The sets for a page go out in parallel, ten ids to a query. The
+page used to be read again on every return to Journey; now it is read once
+per client and again only when her record changed: a session of hers that was
+In-Progress is no longer (finished or discarded, on this iPad or a second
+one, from `useActiveSessionCheck`), or the Archive's live list changed (an
+edit, a past session logged, one removed; `ClientHistoryTab`'s
+`onHistoryChanged`). A read that the cache alone answered, or that failed,
+is read again the next time Journey or the Archive opens. The rule and the
+merge (a server page replaces what it covers, so a removed session and its
+sets leave; older pages scrolled back through are kept; a cache answer only
+adds) are `history-freshness.ts`; a superseded read's answer is dropped.

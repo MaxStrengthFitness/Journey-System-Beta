@@ -27,11 +27,25 @@ export interface OutcomesState {
   error: string | null;
 }
 
-export function useOutcomes(studioIds: string[], from: string, to: string): OutcomesState {
-  const key = useMemo(
-    () => Array.from(new Set(studioIds.filter(Boolean))).sort().slice(0, MAX_STUDIOS_COMPARED).join(","),
-    [studioIds],
-  );
+/**
+ * Which studios are read, as one key: at most MAX_STUDIOS_COMPARED, in id
+ * order, and always the one on screen (`keep`) when it is among them
+ * (speed round, Oct 5 2026). Past 25 studios the cut was by id alone, so an
+ * administrator's own studio could fall off the comparison and its panel
+ * read nothing.
+ */
+export function outcomeStudioKey(studioIds: readonly string[], keep?: string | null): string {
+  const all = Array.from(new Set(studioIds.filter(Boolean))).sort();
+  if (keep && all.includes(keep)) {
+    const rest = all.filter((id) => id !== keep).slice(0, MAX_STUDIOS_COMPARED - 1);
+    return [keep, ...rest].sort().join(",");
+  }
+  return all.slice(0, MAX_STUDIOS_COMPARED).join(",");
+}
+
+/** `keep`: the studio on screen, read whatever the cut (outcomeStudioKey). */
+export function useOutcomes(studioIds: string[], from: string, to: string, keep?: string | null): OutcomesState {
+  const key = useMemo(() => outcomeStudioKey(studioIds, keep), [studioIds, keep]);
   const [byStudio, setByStudio] = useState<Record<string, OutcomeRow[]>>({});
   const [paygRule, setPaygRule] = useState<Record<string, PayAsYouGoCountsAs>>({});
   const [error, setError] = useState<string | null>(null);

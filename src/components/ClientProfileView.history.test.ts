@@ -61,3 +61,46 @@ describe("retrying the read", () => {
     expect(effect).toMatch(/if \(justCleared \|\| !clientId \|\| hasQuotaError\) return;/);
   });
 });
+
+/*
+ * The speed round (Oct 5 2026; R12): the page is read once per client and
+ * again only when her record changed, and its sets go out side by side.
+ * These hold the effect's shape, so reverting it fails a test.
+ */
+describe("reading the page once, and again only on a change", () => {
+  const deps = () => {
+    const m = source.match(/fetchInitialSessions\(\);[\s\S]*?\}, \[([^\]]*)\]\);/);
+    expect(m, "the fetch effect's dependency list").not.toBeNull();
+    return m![1].split(",").map((d) => d.trim());
+  };
+
+  it("does not depend on the open tab, only on whether it draws the page and on a change", () => {
+    expect(deps()).not.toContain("activeTab");
+    expect(deps()).toEqual(expect.arrayContaining(["clientId", "tabDrawsHistory", "historyChanges", "inProgressWatchFailed"]));
+    expect(deps()).not.toContain("historyRead");
+  });
+
+  it("sends a page's set reads all at once, never one after another", () => {
+    const logs = between("const fetchLogsForSessions = async", "return { logs: fetchedLogs, fromCache };");
+    expect(logs).toMatch(/await Promise\.all\(/);
+    expect(logs).not.toMatch(/for \([^)]*\)\s*\{[^}]*await /);
+  });
+
+  it("drops a superseded answer after every wait", () => {
+    const first = between("const fetchInitialSessions = async", "fetchInitialSessions();");
+    const awaits = first.match(/= await /g) ?? [];
+    const guards = first.match(/if \(!current\(\)\) return;/g) ?? [];
+    expect(awaits.length).toBeGreaterThanOrEqual(2);
+    expect(guards.length).toBeGreaterThanOrEqual(awaits.length);
+  });
+
+  it("merges an older page's sets by id, never by appending", () => {
+    const more = between("const handleLoadMoreHistory = async", "} finally {");
+    expect(more).toMatch(/setAllLogs\(\(prev\) => mergeHistoryLogs\(/);
+    expect(more).not.toMatch(/setAllLogs\(\(prev\) => \[\.\.\.prev/);
+  });
+
+  it("reads again on every return when the In-Progress listener failed", () => {
+    expect(source).toMatch(/watchFailed: inProgressWatchFailed/);
+  });
+});

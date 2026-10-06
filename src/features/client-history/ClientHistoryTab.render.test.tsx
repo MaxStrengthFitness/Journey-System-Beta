@@ -19,6 +19,7 @@ import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { Client, ScheduleEntry, Trainer } from "../../types";
 import { setActiveTimeZone, wallClockToInstant } from "../../lib/studio-time";
+import { historySignature } from "../client-profile/history-freshness";
 
 type Read = { q: any; resolve: (snap: unknown) => void; reject: (error: unknown) => void };
 
@@ -115,7 +116,7 @@ const readsFor = (clientId: string) =>
 let root: Root | null = null;
 let host: HTMLDivElement | null = null;
 
-async function render(clientId: string) {
+async function render(clientId: string, onHistoryChanged?: (signature: string) => void) {
   if (!host) {
     host = document.createElement("div");
     document.body.appendChild(host);
@@ -124,7 +125,14 @@ async function render(clientId: string) {
   await act(async () => {
     root!.render(
       <StrictMode>
-        <ClientHistoryTab clientId={clientId} client={clientDoc(clientId)} machines={[]} trainers={trainers} timeZone={ET} />
+        <ClientHistoryTab
+          clientId={clientId}
+          client={clientDoc(clientId)}
+          machines={[]}
+          trainers={trainers}
+          timeZone={ET}
+          onHistoryChanged={onHistoryChanged}
+        />
       </StrictMode>,
     );
   });
@@ -277,5 +285,18 @@ describe("ClientHistoryTab — the read of her bookings", () => {
     expect(cell("2026-10-02")?.className).toContain("hist-cell--booked");
     expect(cell("2026-09-29")?.className ?? "").not.toContain("hist-cell--booked");
     expect(legend()).not.toContain("Loading bookings");
+  });
+});
+
+describe("ClientHistoryTab — telling the profile her record changed (speed round, Oct 5 2026)", () => {
+  it("reports her sessions' signature once the server answers, and never the last client's list as the next client's", async () => {
+    const seen: string[] = [];
+    const report = (sig: string) => seen.push(sig);
+    await render("c1", report);
+    expect(seen.at(-1)).toBe(historySignature(fake.sessions.c1));
+    await render("c2", report);
+    expect(seen.at(-1)).toBe(historySignature(fake.sessions.c2));
+    // Nothing in between said c2 had no sessions.
+    expect(seen).not.toContain("");
   });
 });

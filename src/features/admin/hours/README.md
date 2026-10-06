@@ -12,7 +12,9 @@ Why not the Mindbody schedule? The sync pulls today forward and never goes back,
 
 Completed sessions whose day (`sessionDay`: the `date` field, else the studio's day of the start) falls in the month. In-progress sessions are reported as "still open", sessions with no trainer on the document as "no trainer on the record" — a leader sees that the number is short rather than a total that quietly is.
 
-The read is one `createdAt` window per studio per month (`features/admin/sessions-range.ts`, shared with Insights), from a day before the month to `LATE_LOG_GRACE_DAYS` (14) after it, so a session logged after the fact is caught; one logged later than that is not counted, and the footer says so.
+The month is one `createdAt` window per studio (from a day before the month to `LATE_LOG_GRACE_DAYS` (14) after it), so a session logged after the fact is caught; one logged later than that is not counted, and the footer says so.
+
+**Where it is read from (speed round, Oct 5 2026).** First the night's counts: the nightly renewals job writes `studios/{s}/watch/hours-YYYY-MM` for the current month and the four before it, closed days only, from one read of the sessions trained at the studio (`features/admin/month-tally`, `server/month-tally-step.ts`). The screen adds today, and anything logged since the night read, from one small live read (`liveFromMs`, less the `lateIds` the night already counted). When the night's document is missing, from before last night, or unreadable, the screen reads the raw month (`features/admin/sessions-range.ts`) as before. The raw read was capped at 1,500 sessions, which a 220-client studio reaches in a month; the night's counts have no cap. What the night counted as still open is read again by id when Hours opens, so a session finished this morning is counted and leaves the "still open" line at once. An edit to, or a removal of, a past completed session shows from the next night.
 
 ## Weeks
 
@@ -20,7 +22,7 @@ Monday to Sunday (`weekStartOf`). A leader reads this on Monday morning about th
 
 ## Scope
 
-`features/admin/scope.ts` — the one answer, for every Operations tab, to "which studios may this reader look at": the company and owner tiers see every studio; the studio tier sees the studios they run (`leadsStudio`, which counts the grant). "All my studios" reads one month per studio, each block reports its tally up, and the company tiles are added from those reports — never a second read.
+`features/admin/scope.ts` — the one answer, for every Operations tab, to "which studios may this reader look at": the company and owner tiers see every studio; the studio tier sees the studios they run (`leadsStudio`, which counts the grant). "All my studios" reads the night's counts only, one small document per studio, and its line says "to last night"; a studio the night has nothing usable for is named as not in the total, never added as nothing. A studio's own month (with today) is read only when it is opened from the list.
 
 ## Files
 

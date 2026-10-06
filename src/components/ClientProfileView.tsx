@@ -65,6 +65,12 @@ import {
   useProfileNav,
 } from "../features/client-profile";
 import { answerFor, type ClientAnswer } from "../features/client-profile/client-answer";
+import {
+  inProgressLeft,
+  mergeHistoryLogs,
+  mergeHistoryPage,
+  shouldReadHistory,
+} from "../features/client-profile/history-freshness";
 import { completedNewestFirst, nextRoutine } from "../features/routines/next-routine";
 import { useProgressReports } from "../features/client-profile/useProgressReports";
 import {
@@ -194,6 +200,9 @@ export function ClientProfileView({
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [allLogs, setAllLogs] = useState<ExerciseLog[]>([]);
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
+  // The newest sessions array, for a read that must know what it is replacing.
+  const sessionsRef = useRef(sessions);
+  sessionsRef.current = sessions;
   const [clientSettings, setClientSettings] = useState<
     Record<string, ClientMachineSetting>
   >({});
@@ -298,7 +307,7 @@ export function ClientProfileView({
   const journeyCompletedCount = answerFor(journeyCountRead, clientId);
 
   // Use the new soft lock handoff hook
-  const { activeInProgressSession, staleInProgressSession, isCheckingActiveSession } =
+  const { activeInProgressSession, staleInProgressSession, isCheckingActiveSession, inProgressFor } =
     useActiveSessionCheck(clientId);
 
   // Per-studio machine display order (Aug 2026): resolves a studio's own
@@ -939,28 +948,28 @@ export function ClientProfileView({
     }
   };
 
-  /** The sets of these sessions, and whether any chunk was answered by this iPad's cache only. */
+  /**
+   * The sets of these sessions, and whether any chunk was answered by this
+   * iPad's cache only. Ten ids to an `in` query, and every chunk at once
+   * (speed round, Oct 5 2026: they were read one after another, five round
+   * trips in a row for a page of fifty, while the grid's cells waited).
+   */
   const fetchLogsForSessions = async (sessionIds: string[]): Promise<{ logs: ExerciseLog[]; fromCache: boolean }> => {
     if (sessionIds.length === 0) return { logs: [], fromCache: false };
-    const chunks = [];
+    const chunks: string[][] = [];
     for (let i = 0; i < sessionIds.length; i += 10) {
       chunks.push(sessionIds.slice(i, i + 10));
     }
-    let fetchedLogs: ExerciseLog[] = [];
+    const snaps = await Promise.all(
+      chunks.map((chunk) =>
+        getDocs(query(collection(db, "exerciseLogs"), where("sessionId", "in", chunk))),
+      ),
+    );
+    const fetchedLogs: ExerciseLog[] = [];
     let fromCache = false;
-    for (const chunk of chunks) {
-      const qs = query(
-        collection(db, "exerciseLogs"),
-        where("sessionId", "in", chunk),
-      );
-      const snap = await getDocs(qs);
+    for (const snap of snaps) {
       if (snap.metadata?.fromCache) fromCache = true;
-      fetchedLogs = [
-        ...fetchedLogs,
-        ...snap.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data() }) as ExerciseLog,
-        ),
-      ];
+      for (const d of snap.docs) fetchedLogs.push({ id: d.id, ...d.data() } as ExerciseLog);
     }
     return { logs: fetchedLogs, fromCache };
   };
@@ -987,6 +996,48 @@ export function ClientProfileView({
     setHasMoreSessions(false);
   }, [clientId]);
 
+  /*
+   * WHEN THE PAGE IS READ AGAIN (speed round, Oct 5 2026;
+   * features/client-profile/history-freshness.ts). It used to be read again
+   * on every return to Journey, fifty sessions and their sets each time. Now
+   * once per client, and again only when her record changed: a session of
+   * hers that was In-Progress is no longer (finished or discarded, on this
+   * iPad or a second one), or the Activity Archive's live list changed (an
+   * edit, a past session logged, one removed). `historyChanges` counts those
+   * changes; a read remembers the count it started at.
+   */
+  const [historyChanges, setHistoryChanges] = useState(0);
+  const readAtChange = useRef<{ clientId: string | null; at: number }>({ clientId: null, at: -1 });
+  const historyReadRef = useRef(historyRead);
+  historyReadRef.current = historyRead;
+  const readSeq = useRef(0);
+  const currentClientRef = useRef(clientId);
+  currentClientRef.current = clientId;
+  const inProgressSeen = useRef<{ clientId: string; ids: string[]; failed?: boolean } | null>(null);
+  useEffect(() => {
+    if (!inProgressFor || inProgressFor.failed) return;
+    const before = inProgressSeen.current;
+    inProgressSeen.current = inProgressFor;
+    if (before && before.clientId === inProgressFor.clientId && inProgressLeft(before.ids, inProgressFor.ids)) {
+      setHistoryChanges((n) => n + 1);
+    }
+  }, [inProgressFor]);
+  const archiveSeen = useRef<{ clientId: string; signature: string } | null>(null);
+  const onArchiveHistory = useCallback(
+    (signature: string) => {
+      if (!clientId) return;
+      const before = archiveSeen.current;
+      archiveSeen.current = { clientId, signature };
+      if (before && before.clientId === clientId && before.signature !== signature) {
+        setHistoryChanges((n) => n + 1);
+      }
+    },
+    [clientId],
+  );
+  const tabDrawsHistory = activeTab === "journey" || activeTab === "clinical";
+  // A failed In-Progress listener can't say a session finished: unknown, so every return reads again.
+  const inProgressWatchFailed = inProgressFor?.failed === true && inProgressFor.clientId === clientId;
+
   useEffect(() => {
     // historyWanted going back to null is the read's own `finally`, not a new
     // ask: on the Journey tab it would otherwise read the whole page again.
@@ -996,10 +1047,24 @@ export function ClientProfileView({
 
     // The Journey grid and the Activity Archive's calendar both read this page of
     // sessions. Programming and the record do not, so they still cost nothing
-    // until the machine menu asks for it there.
-    if (activeTab !== "journey" && activeTab !== "clinical" && historyWanted !== clientId) {
+    // until the machine menu asks for it there. Coming back to either costs
+    // nothing either, unless her record changed meanwhile.
+    const readFor = readAtChange.current.clientId === clientId ? readAtChange.current.at : -1;
+    if (
+      !shouldReadHistory({
+        tabDrawsIt: tabDrawsHistory,
+        asked: historyWanted === clientId,
+        read: answerFor(historyReadRef.current, clientId),
+        changedSinceRead: readFor !== historyChanges,
+        watchFailed: inProgressWatchFailed,
+      })
+    ) {
       return;
     }
+    readAtChange.current = { clientId, at: historyChanges };
+    const seq = ++readSeq.current;
+    // A newer read, or another client, has the floor: this one's answer is dropped.
+    const current = () => seq === readSeq.current && currentClientRef.current === clientId;
 
     const fetchInitialSessions = async () => {
       setIsLoadingSessions(true);
@@ -1016,15 +1081,19 @@ export function ClientProfileView({
         );
 
         const sessionSnap = await getDocs(sessionsQuery);
+        if (!current()) return;
         const docs = sessionSnap.docs;
         // Offline, getDocs answers from this iPad's cache rather than failing:
         // possibly nothing, possibly part. Such an answer is never "ready".
         const sessionsCached = sessionSnap.metadata?.fromCache === true;
 
         if (!docs.length) {
-          setSessions([]);
-          setAllLogs([]);
-          setHasMoreSessions(false);
+          // Only the server's empty answer empties what is drawn.
+          if (!sessionsCached) {
+            setSessions([]);
+            setAllLogs([]);
+            setHasMoreSessions(false);
+          }
           setHistoryRead({ clientId, value: sessionsCached ? "cache-only" : "ready" });
           return;
         }
@@ -1036,37 +1105,37 @@ export function ClientProfileView({
           (doc) => ({ id: doc.id, ...doc.data() }) as WorkoutSession,
         );
 
-        // Merge gracefully to not erase older paginated history if coach loaded more
-        setSessions((prev: WorkoutSession[]) => {
-          const merged = new Map(prev.map((s) => [s.id, s]));
-          liveSessionsData.forEach((s) => merged.set(s.id, s));
-          const finalArr = Array.from(merged.values());
-          finalArr.sort(
-            (a, b) => parseSessionDate(b.date) - parseSessionDate(a.date),
-          );
-          return finalArr;
-        });
+        // The server's page is the truth for the span it covers (a session
+        // removed in the Archive leaves); older pages the trainer scrolled
+        // back through are kept. A cache answer only adds.
+        const pageOpts = { whole: !sessionsCached, pageSize: SESSION_PAGE };
+        const { removed } = mergeHistoryPage(sessionsRef.current, liveSessionsData, pageOpts);
+        setSessions((prev: WorkoutSession[]) => mergeHistoryPage(prev, liveSessionsData, pageOpts).sessions);
 
         const sessionIds = liveSessionsData.map((s) => s.id!).filter(Boolean);
         const { logs: newLogs, fromCache: logsCached } = await fetchLogsForSessions(sessionIds);
+        if (!current()) return;
 
-        setAllLogs((prev) => {
-          const merged = new Map(prev.map((l) => [l.id, l]));
-          newLogs.forEach((l) => merged.set(l.id, l));
-          return Array.from(merged.values());
-        });
+        setAllLogs((prev) =>
+          mergeHistoryLogs(prev, sessionIds, newLogs, { whole: !sessionsCached && !logsCached, removed }),
+        );
         setHistoryRead({ clientId, value: sessionsCached || logsCached ? "cache-only" : "ready" });
       } catch (error: any) {
+        if (!current()) return;
         setHistoryRead({ clientId, value: "failed" });
         handleFirestoreError(error, OperationType.GET, "sessions");
       } finally {
-        setIsLoadingSessions(false);
-        setHistoryWanted(null);
+        if (seq === readSeq.current) {
+          setIsLoadingSessions(false);
+          setHistoryWanted(null);
+        }
       }
     };
 
     fetchInitialSessions();
-  }, [clientId, activeTab, hasQuotaError, historyWanted]);
+    // historyRead is read through its ref: an answer arriving is not a reason to read again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId, tabDrawsHistory, hasQuotaError, historyWanted, historyChanges, inProgressWatchFailed]);
 
   /** The next page of sessions and their sets. Resolves false when it failed (the machine menu says so). */
   const handleLoadMoreHistory = async (): Promise<boolean> => {
@@ -1109,7 +1178,8 @@ export function ClientProfileView({
         );
         return Array.from(new Map(out.map((s) => [s.id, s])).values());
       });
-      setAllLogs((prev) => [...prev, ...moreLogs]);
+      // By id: a page read twice (after the first page was read again) never doubles a set.
+      setAllLogs((prev) => mergeHistoryLogs(prev, sessionIds, moreLogs, { whole: false }));
       return true;
     } catch (err) {
       console.error("Error loading older history", err);
@@ -2005,6 +2075,7 @@ export function ClientProfileView({
               onEditMedical={() => nav.openRecord("body", "body-watchouts")}
               view={nav.clinicalView}
               onViewChange={nav.setClinicalView}
+              onHistoryChanged={onArchiveHistory}
               disabled={!!hasQuotaError}
             />
           )}

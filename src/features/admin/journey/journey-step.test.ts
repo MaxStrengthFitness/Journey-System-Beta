@@ -260,6 +260,9 @@ describe("the whole nightly job, with the Journey step", () => {
     expect(summary.journey).toMatchObject({ studios: 1, statesWritten: 1 });
     const order = writes.map((w) => w.path);
     expect(order.indexOf("clients/eowyn")).toBeLessThan(order.indexOf("studios/edoras/clientStates/eowyn"));
-    expect(order.at(-1)).toBe("studios/edoras/watch/journey");
+    // Step 6, the month tally (speed round, Oct 5 2026), comes after the whole Journey step.
+    const tally = (p: string) => /\/watch\/(hours|sessions)-\d{4}-\d{2}$/.test(p);
+    expect(order.filter((p) => !tally(p)).at(-1)).toBe("studios/edoras/watch/journey");
+    expect(order.findIndex(tally)).toBeGreaterThan(order.indexOf("studios/edoras/watch/journey"));
   });
 });

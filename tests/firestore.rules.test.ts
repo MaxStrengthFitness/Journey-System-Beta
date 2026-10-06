@@ -6426,3 +6426,48 @@ describe("oct 2: switching a former trainer's account off", () => {
     await assertFails(updateDoc(own, { switchedOffAt: deleteField() }));
   });
 });
+
+// ── SPEED ROUND, PROFILE AND LEADER SCREENS GROUP (Oct 5 2026) ─────────────
+describe("speed round: the night's month tally for Hours and Insights", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+  const hours = { v: 1, month: "2026-10", throughDay: "2026-10-04", liveFromMs: 1, lateIds: [], trainers: [], unattributed: 0, open: 0 };
+  const lines = { v: 1, month: "2026-10", throughDay: "2026-10-04", liveFromMs: 1, lateIds: [], trainers: [], clients: [], machines: [], rows: [], count: 0 };
+
+  async function seed() {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, "trainers", "adminSpeed"), {
+        fullName: "Admin Speed", initials: "AS", role: "Admin", primaryHomeStudioId: "studioB", accessibleStudioIds: ["studioB"],
+      });
+      for (const studio of ["studioA", "demo-studio"]) {
+        await setDoc(doc(db, "studios", studio, "watch", "hours-2026-10"), hours);
+        await setDoc(doc(db, "studios", studio, "watch", "sessions-2026-10"), lines);
+      }
+      await setDoc(doc(db, "studios", "studioA", "watch", "hubMarks"), { v: 1, clients: {} });
+    });
+  }
+
+  it("lets the studio's leaders and an administrator read it, and not the studio's trainers or another studio's", async () => {
+    await seed();
+    for (const id of ["hours-2026-10", "sessions-2026-10"]) {
+      await assertSucceeds(getDoc(doc(as("ownerA"), "studios", "studioA", "watch", id)));
+      await assertSucceeds(getDoc(doc(as("adminSpeed"), "studios", "studioA", "watch", id)));
+      await assertFails(getDoc(doc(as("trainerA"), "studios", "studioA", "watch", id)));
+      await assertFails(getDoc(doc(as("trainerB"), "studios", "studioA", "watch", id)));
+    }
+    // Everything else on the watch is still everyone's who works here.
+    await assertSucceeds(getDoc(doc(as("trainerA"), "studios", "studioA", "watch", "hubMarks")));
+  });
+
+  it("is everyone's inside Demo Mode, as the practice studio's Operations is", async () => {
+    await seed();
+    await assertSucceeds(getDoc(doc(as("trainerB"), "studios", "demo-studio", "watch", "hours-2026-10")));
+  });
+
+  it("is written by nobody in the app, an administrator included", async () => {
+    await seed();
+    await assertFails(setDoc(doc(as("ownerA"), "studios", "studioA", "watch", "hours-2026-10"), hours));
+    await assertFails(setDoc(doc(as("adminSpeed"), "studios", "studioA", "watch", "sessions-2026-11"), lines));
+    await assertFails(updateDoc(doc(as("adminSpeed"), "studios", "studioA", "watch", "hours-2026-10"), { open: 1 }));
+  });
+});

@@ -129,7 +129,13 @@ describe("the nightly job reads a studio at a time", () => {
     for (const q of history) {
       const ins = q.wheres.find(([f, op]) => f === "clientId" && op === "in");
       if (!ins) {
-        // The one query that isn't by client: the studio's earliest booking, one document.
+        // The two queries that aren't by client: the studio's earliest booking,
+        // one document; and the month tally's (speed round, Oct 5 2026), the
+        // sessions trained at ONE studio since five months back.
+        if (q.path === "sessions") {
+          expect(shape(q)).toBe("hostedAtStudioId ==, createdAt >=, order createdAt desc");
+          continue;
+        }
         expect(shape(q)).toBe("studioId ==, order startTime asc");
         expect(q.limit).toBe(1);
         continue;
@@ -141,6 +147,7 @@ describe("the nightly job reads a studio at a time", () => {
       "clientId in, createdAt >=, order createdAt desc",
       "clientId in, date >=, order date desc",
       "clientId in, startTime >=, startTime <=, order startTime asc",
+      "hostedAtStudioId ==, createdAt >=, order createdAt desc",
       "studioId ==, order startTime asc",
     ]);
     // 71 clients: Edoras's 70 in three batches and Helm's Deep's one, read for the snapshots, and again for the states.
@@ -154,6 +161,7 @@ describe("the nightly job reads a studio at a time", () => {
     expect(has("sessions", ["clientId ASCENDING", "date DESCENDING"])).toBe(true);
     expect(has("sessions", ["clientId ASCENDING", "createdAt DESCENDING"])).toBe(true);
     expect(has("schedules", ["studioId ASCENDING", "startTime ASCENDING"])).toBe(true);
+    expect(has("sessions", ["hostedAtStudioId ASCENDING", "createdAt DESCENDING"])).toBe(true);
 
     // The heap's peak, studio by studio, and for the run.
     expect(lines.filter((l) => /^(Edoras|Helm's Deep): memory peak [\d.]+ MB heap used/.test(l))).toHaveLength(2);

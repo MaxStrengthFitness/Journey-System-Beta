@@ -78,7 +78,7 @@ export function RenewalOutcomesPanel({ studioId, settings, studios, trainers }: 
     () => (compare ? studios.map((s) => s.id).filter(Boolean) : [studioId]) as string[],
     [compare, studios, studioId],
   );
-  const { rows: allRows, paygRule, loading, error } = useOutcomes(ids, quarter.from, quarter.to);
+  const { rows: allRows, paygRule, loading, error } = useOutcomes(ids, quarter.from, quarter.to, studioId);
 
   const here = useMemo(() => allRows.filter((r) => r.studioId === studioId), [allRows, studioId]);
   const studioTally = tallyOutcomes(here, settings);
