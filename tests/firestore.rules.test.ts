@@ -6788,3 +6788,21 @@ describe("a client's machine totals document", () => {
     await assertSucceeds(b.commit());
   });
 });
+
+// Demo Mode's seed writes each demo client's machine totals, flagged isDemo
+// like every document it writes, after the clients themselves (seed-write.ts).
+describe("a demo client's machine totals", () => {
+  it("are written by any trainer, as the rest of the demo studio is, and read the same way", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "clients", "demo-client-arwen"), {
+        firstName: "Arwen", lastName: "Demo", isActive: true, remainingSessions: 10, homeStudioId: "demo-studio", isDemo: true,
+      });
+    });
+    const db = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    const ref = doc(db, "clients", "demo-client-arwen", "machineTotals", "current");
+    await assertSucceeds(
+      setDoc(ref, { currentMachineMetrics: { "m-a": { weight: "40", settings: {} } }, machineStats: { "m-a": { timesPerformed: 8 } }, updatedAt: serverTimestamp(), isDemo: true }),
+    );
+    await assertSucceeds(getDoc(ref));
+  });
+});

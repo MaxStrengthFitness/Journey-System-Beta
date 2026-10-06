@@ -1960,8 +1960,9 @@ service cloud.firestore {
     //           machineStats but not the backfill's marker (the same list as
     //           crossTrainSessionTotals)
     //   delete  administrators only, as the client
-    // Only the one document id, only these fields, and never for a client
-    // that does not exist.
+    // Only the one document id, only these fields (and Demo Mode's isDemo
+    // flag, which its seed puts on every document it writes), and never for
+    // a client that does not exist.
     function machineTotalsClient(clientId) {
       return get(/databases/$(database)/documents/clients/$(clientId)).data;
     }
@@ -2000,7 +2001,7 @@ service cloud.firestore {
 
       allow create, update: if docId == 'current'
                     && request.resource.data.keys().hasOnly(
-                         ['currentMachineMetrics', 'machineStats', 'machineStatsBackfilledAt', 'updatedAt'])
+                         ['currentMachineMetrics', 'machineStats', 'machineStatsBackfilledAt', 'updatedAt', 'isDemo'])
                     && machineTotalsWritable(clientId);
 
       allow delete: if isSuperAdmin();

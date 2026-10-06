@@ -103,9 +103,20 @@ export async function seedDemoStudio(
   const seed = buildDemoSeed({ today, seededBy });
   const missingCatalog = await findMissingCatalog(database, seed.summary.requiresCatalog);
 
+  /* The clients' machine totals go last, in their own batches: the rules
+     let them be written only for a client that already exists, and a rule
+     reads the database as it was before the batch it is in
+     (features/machine-totals). */
+  const isTotals = (d: SeedDoc) => d.path.includes("/machineTotals/");
+  const ordered = [...seed.docs.filter((d) => !isTotals(d)), ...seed.docs.filter(isTotals)];
+  const firstTotals = ordered.findIndex(isTotals);
+  const batches: SeedDoc[][] = [];
+  for (const part of firstTotals < 0 ? [ordered] : [ordered.slice(0, firstTotals), ordered.slice(firstTotals)]) {
+    for (let i = 0; i < part.length; i += BATCH_SIZE) batches.push(part.slice(i, i + BATCH_SIZE));
+  }
+
   let written = 0;
-  for (let i = 0; i < seed.docs.length; i += BATCH_SIZE) {
-    const chunk = seed.docs.slice(i, i + BATCH_SIZE);
+  for (const chunk of batches) {
     const batch = writeBatch(database);
     for (const entry of chunk) {
       batch.set(refFor(database, entry.path), materialise(entry.data), {

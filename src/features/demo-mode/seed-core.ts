@@ -37,6 +37,7 @@
 
 import { MACHINE_DEFINITION_LIST } from "../../data/machine-definitions";
 import { rollupFromHistory } from "../../lib/client-rollups";
+import { MACHINE_TOTALS_COLLECTION, MACHINE_TOTALS_DOC_ID } from "../machine-totals/totals";
 import type { Trainer } from "../../types";
 import {
   DEMO_EMAIL_DOMAIN,
@@ -736,6 +737,9 @@ function buildClient(
 
   /* --- the client ------------------------------------------------------ */
   const packageFields = packageFor(seed, ctx);
+  // The machine maps live beside the client since the iPad round
+  // (features/machine-totals): her rollup's machineStats goes with them.
+  const { machineStats, ...rollupOnClient } = rollup;
   docs.push({
     path: `clients/${clientId}`,
     data: {
@@ -763,11 +767,10 @@ function buildClient(
       lastSessionDate: lastDay,
       lifetimeReps,
       lifetimeWeight: Math.round(lifetimeWeight),
-      currentMachineMetrics: metrics,
       consultationCompleted: true,
       requiresConsultation: false,
       isRoutineBActive: true,
-      ...rollup,
+      ...rollupOnClient,
       ...packageFields,
       ...(seed.priorSessions > 0
         ? {
@@ -800,6 +803,19 @@ function buildClient(
             historyIsComplete: true,
           }),
       createdAt: ts(`${startedOn}T12:00:00.000Z`),
+      updatedAt: ts(`${ctx.today}T12:00:00.000Z`),
+      [DEMO_FLAG]: true,
+    },
+  });
+
+  /* --- her machine totals: what the next session pre-fills from, and each
+     machine's lifetime rollup, in their own document (features/machine-totals).
+     Written whole, so a reset puts them back too. */
+  docs.push({
+    path: `clients/${clientId}/${MACHINE_TOTALS_COLLECTION}/${MACHINE_TOTALS_DOC_ID}`,
+    data: {
+      currentMachineMetrics: metrics,
+      machineStats,
       updatedAt: ts(`${ctx.today}T12:00:00.000Z`),
       [DEMO_FLAG]: true,
     },

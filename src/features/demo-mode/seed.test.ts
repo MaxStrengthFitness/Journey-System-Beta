@@ -454,9 +454,13 @@ describe("the six clients each still teach their one thing", () => {
       const counted = Object.values(tally).reduce((a, b) => a + b, 0);
       expect(counted).toBe(c.sessions);
       expect(String(doc.topTrainerId)).toContain("demo-trainer-");
-      expect(Object.keys(doc.machineStats as object).length).toBeGreaterThan(0);
+      // The machine maps live beside the client (features/machine-totals).
+      expect(doc).not.toHaveProperty("machineStats");
+      expect(doc).not.toHaveProperty("currentMachineMetrics");
+      const totals = at(`clients/demo-client-${c.key}/machineTotals/current`)!;
+      expect(Object.keys(totals.machineStats as object).length).toBeGreaterThan(0);
       // What the next session pre-fills its weights and dials from.
-      expect(Object.keys(doc.currentMachineMetrics as object).length).toBeGreaterThan(0);
+      expect(Object.keys(totals.currentMachineMetrics as object).length).toBeGreaterThan(0);
     }
   });
 
