@@ -450,8 +450,8 @@ export function WrapUpScreen({
     ? carriedFloorWords(studioName, machines.find((m) => m.id === floorCarry.machineId)?.name ?? null)
     : null;
 
-  // This session's journal entries, for the To-file tray: one single-field
-  // equality query (no composite index), the same stream the Active Session
+  // This session's journal entries, for the To-file tray: one equality query
+  // (the journalEntries (sessionId, occurredAt) index), the same stream the Active Session
   // sheet used. Only the unfiled ones are kept; a filed note leaves on the
   // next snapshot.
   const [unfiledNotes, setUnfiledNotes] = useState<JournalEntry[]>([]);

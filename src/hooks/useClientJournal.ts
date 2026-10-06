@@ -1155,8 +1155,9 @@ export function useClientJournal({
       setCappedBy({});
       return;
     }
-    // Single-field equality only — no composite index required. The limit is
-    // the guard rail (JOURNAL_GUARD_LIMIT), unordered on purpose.
+    // Single-field equality, served by the clientFocuses (clientId, ...)
+    // indexes (Enterprise builds none by itself). The limit is the guard
+    // rail (JOURNAL_GUARD_LIMIT), unordered on purpose.
     const q = query(
       collection(db, "clientFocuses"),
       where("clientId", "==", clientId),

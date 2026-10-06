@@ -298,8 +298,9 @@ export interface SharedWithMeState {
 /**
  * Notes colleagues shared with this trainer at the studio they're standing
  * in: two listeners — the ones naming them (`audienceIds array-contains`),
- * and the studio's team shares (`audience == team`). Both single-field
- * filters, so no index to deploy. Each is what the rule can prove.
+ * and the studio's team shares (`audience == team`). Each has its own
+ * noteShares index (audienceIds / audience, then createdAt; Enterprise builds
+ * none by itself). Each is what the rule can prove.
  */
 export function useNotesSharedWithMe(uid: string | null, studioId: string | null | undefined): SharedWithMeState {
   const [mine, setMine] = useState<{ list: NoteShare[]; ready: boolean; error: string | null }>({

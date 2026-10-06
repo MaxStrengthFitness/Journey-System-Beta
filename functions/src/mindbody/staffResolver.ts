@@ -38,7 +38,10 @@ export type StaffResolution =
  * The modals now normalise on write and the backfill repairs old rows -- this
  * second query is what keeps the sync working in the meantime.
  *
- * Single-field equality, so no composite index is needed.
+ * Single-field equality, served by the trainers (mindbodyStaffId,
+ * primaryHomeStudioId) composite. This database is the Enterprise edition: it
+ * builds no index by itself, and before that composite every webhook booking
+ * read the whole trainers collection (Query Insights, Oct 5 2026).
  */
 export async function resolveTrainerByStaffId(
   firestore: Firestore,

@@ -14,9 +14,9 @@
  * read-only under the watch-outs: the flag first (something is wrong with it
  * today), then the floor's open notes on this machine, each with its latest
  * update (the dated list since AJ's answer 2A: `studios/{s}/floorNotes`, one
- * query on the machine; it has no index of its own, because the Enterprise
- * edition refuses single-field index settings, so it reads through this one
- * studio's floor notes, which are few), then the old Studio notes while nobody has copied
+ * query on the machine, served by the floorNotes (machineId, updatedAt)
+ * composite — the Enterprise edition refuses single-field index settings, so
+ * a composite is how it gets one), then the old Studio notes while nobody has copied
  * them into that list. Closed notes are history and stay on the Catalog.
  * None of it is about the client, so none is written here; the door to
  * change the floor's notes is where they live. Nothing when there is

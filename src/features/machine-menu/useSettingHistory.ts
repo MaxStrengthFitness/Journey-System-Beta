@@ -15,8 +15,10 @@
  * After a save the card calls `reload`, and the iPad's own write is in the
  * answer at once.
  *
- * The query is a single equality on a subcollection, so it needs no index of
- * its own (the old listener asked the same).
+ * The query is a single equality on a machine's settingHistory, which every
+ * client on that machine shares, so it is served by the settingHistory
+ * (clientId, timestamp) index (R1, Oct 5 2026; this database is the
+ * Enterprise edition, which builds no index by itself).
  */
 import { useCallback, useEffect, useState } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";

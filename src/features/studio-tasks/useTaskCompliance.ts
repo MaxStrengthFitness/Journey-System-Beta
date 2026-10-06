@@ -19,12 +19,13 @@
  * the lazy-write design in mutations.ts costs nothing here — a missed task
  * looks exactly like what it is.
  *
- * ONE RANGE QUERY, NO COMPOSITE INDEX
- * -----------------------------------
- * A range on a single field is covered by Firestore's automatic index, so this
- * deploys with nothing to configure. A query that needs a composite index
- * fails quietly in the console and loudly on the floor, which is a bad trade
- * for a panel a manager opens once a week.
+ * ONE RANGE QUERY
+ * ---------------
+ * A range on a single field, served by the taskInstances (localDate, kind)
+ * index. This database is the Enterprise edition: it builds no index by
+ * itself, and a query without one still answers by reading every document,
+ * so nothing fails and nothing warns. src/lib/firestore-indexes.test.ts is
+ * what notices.
  */
 
 import { useEffect, useMemo, useState } from "react";
