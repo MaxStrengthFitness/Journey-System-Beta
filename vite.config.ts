@@ -79,10 +79,22 @@ export default defineConfig(({ command }) => {
               //
               // Pinning them into vendor-ui (which is eager anyway) cuts that
               // edge. Do not move this below the charts group.
+              //
+              // ONLY the pinned utilities (the speed round, Oct 5 2026, R13).
+              // This group used to hold lucide-react and @base-ui as well, and
+              // a group claims a package's modules wherever they are imported:
+              // every icon and every Base UI widget used on ANY screen (226
+              // icons, select, tabs, switch, menubar...) rode in this eager
+              // file, though the first screen draws 72 icons and four widgets,
+              // and adding an icon anywhere changed the file every iPad had
+              // cached. Icons and Base UI now split with the screens that use
+              // them. They share nothing with recharts, so the edge above
+              // stays cut: index.html must never modulepreload vendor-charts
+              // (scripts/check-bundle-budget.mjs refuses a build that does).
               {
                 name: "vendor-ui",
                 priority: 90,
-                test: /node_modules[\\/](lucide-react|@base-ui|clsx|tailwind-merge|class-variance-authority|reselect|use-sync-external-store|react-is)[\\/]/,
+                test: /node_modules[\\/](clsx|tailwind-merge|class-variance-authority|reselect|use-sync-external-store|react-is)[\\/]/,
               },
               // Drag and drop is only reachable from lazy screens, so it gets
               // its own file rather than riding along with the icons.
