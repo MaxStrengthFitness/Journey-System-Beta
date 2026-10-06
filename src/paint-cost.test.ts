@@ -106,3 +106,117 @@ describe("1. nothing is drawn through a backdrop blur (W3)", () => {
     expect(fills.filter((s) => /\/\d+$/.test(s)), "a toast's fill is solid").toEqual([]);
   });
 });
+
+/* ---------------------------------------------------------------------------
+   3. Nothing animates forever but a loader (W10)
+   --------------------------------------------------------------------------- */
+
+/** The session's grid is the floor group's this round (journey-grid.css): its two loops are theirs to settle. */
+const NOT_MINE = new Set(["features/journey-grid/journey-grid.css"]);
+
+/**
+ * What may loop for as long as it is on screen: a mark that is only there
+ * while something loads, or while the front door checks someone in (its own
+ * motion, features/front-door/README.md). [file, selector].
+ */
+const LOADERS: [string, string][] = [
+  ["components/loading-mark.css", ".lm__sq"],
+  ["features/admin/admin.css", ".adm-skeleton::after"],
+  ["features/front-door/front-door.css", ".fd-spin"],
+  ["features/front-door/front-door.css", ".fd-tiles--steps .fd-tile-sq.is-now::after"],
+  ["features/front-door/front-door.css", ".fd-steps li.is-now .fd-step-dot"],
+  ["features/front-door/front-door.css", ".fd-timeline li.is-waiting .fd-tl-dot::after"],
+];
+
+/** Every @keyframes block in src, by name: the properties its frames change. */
+function keyframes(): Map<string, Set<string>> {
+  const out = new Map<string, Set<string>>();
+  for (const f of CSS_FILES) {
+    const text = stripComments(read(f));
+    for (const m of text.matchAll(/@keyframes\s+([\w-]+)\s*\{/g)) {
+      let depth = 1;
+      let i = m.index! + m[0].length;
+      for (; i < text.length && depth > 0; i++) {
+        if (text[i] === "{") depth++;
+        else if (text[i] === "}") depth--;
+      }
+      const props = new Set([...text.slice(m.index! + m[0].length, i).matchAll(/([\w-]+)\s*:/g)].map((p) => p[1]));
+      out.set(m[1], new Set([...(out.get(m[1]) ?? []), ...props]));
+    }
+  }
+  return out;
+}
+
+/** Every rule that sets an animation, with its selector (innermost rule; comments removed). */
+function animations(): { file: string; selector: string; value: string }[] {
+  const out: { file: string; selector: string; value: string }[] = [];
+  for (const f of CSS_FILES) {
+    const text = stripComments(read(f)).replace(/@keyframes\s+[\w-]+\s*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, "");
+    for (const m of text.matchAll(/([^{};]+)\{([^{}]*)\}/g)) {
+      for (const a of m[2].matchAll(/(?:^|;)\s*(animation(?:-iteration-count)?)\s*:\s*([^;]+)/g)) {
+        out.push({ file: f, selector: m[1].trim().replace(/\s+/g, " "), value: `${a[1]}: ${a[2].trim()}` });
+      }
+    }
+  }
+  return out;
+}
+
+describe("3. nothing animates forever but a loader, and a loop never repaints (W10)", () => {
+  const KEYFRAMES = keyframes();
+
+  it("only a loader loops: a live or attention mark beats a few times and then rests", () => {
+    const found = animations()
+      .filter((a) => !NOT_MINE.has(a.file) && /\binfinite\b/.test(a.value))
+      .filter((a) => !LOADERS.some(([f, s]) => f === a.file && s === a.selector))
+      .map((a) => `${a.file} ${a.selector} { ${a.value} }`);
+    expect(found).toEqual([]);
+  });
+
+  it("the loaders' loops move or fade (transform, opacity), which the iPad composites without repainting", () => {
+    const found: string[] = [];
+    for (const a of animations().filter((x) => /\binfinite\b/.test(x.value) && !NOT_MINE.has(x.file))) {
+      const name = a.value.replace(/^animation:\s*/, "").split(/\s+/).find((w) => KEYFRAMES.has(w));
+      expect(name, `${a.file} ${a.selector}: its keyframes`).toBeDefined();
+      for (const p of KEYFRAMES.get(name!)!) if (!["transform", "opacity"].includes(p)) found.push(`${a.file} ${a.selector}: @keyframes ${name} changes ${p}`);
+    }
+    expect(found).toEqual([]);
+  });
+
+  it("the list of loaders says only what is true: each still loops", () => {
+    const looping = animations().filter((a) => /\binfinite\b/.test(a.value));
+    for (const [f, s] of LOADERS) expect(looping.some((a) => a.file === f && a.selector === s), `${f} ${s}`).toBe(true);
+  });
+
+  it("the attention marks beat three times, under motion-safe, and the Hub's live dot too", () => {
+    const index = stripComments(read("index.css"));
+    expect(index).toMatch(/@utility animate-attention \{\s*animation: attention-beat [^;]* 3;/);
+    expect(index).toMatch(/@utility animate-attention-ring \{\s*animation: attention-ring [^;]* 3;/);
+    expect(read("components/NavButton.tsx")).toMatch(/ring-chrome motion-safe:animate-attention"/);
+    expect(read("features/client-profile/ProfileHeader.tsx")).toMatch(/<Clock className="w-4 h-4 motion-safe:animate-attention" \/>/);
+    expect(read("components/ClientProfileView.tsx")).toMatch(/opacity-60 motion-safe:animate-attention-ring"/);
+    expect(animations().find((a) => a.selector === ".hs-live-dot")?.value).toBe("animation: hs-live 1.6s ease-in-out 3");
+  });
+
+  it("no class list pulses, pings or bounces forever, but the few that show only while something is deleted or read", () => {
+    // Each is on screen for the seconds a delete or an import takes, then gone.
+    const TRANSIENT: Record<string, number> = {
+      "components/WorkoutTrackerView.tsx": 1, // the bin while a session is deleted
+      "components/ClientProfileView.tsx": 1, // the bin while a running session is discarded
+      "features/admin/import/LegacyChartImporter.tsx": 1, // the heading while a chart scan is read
+    };
+    const found: string[] = [];
+    for (const f of CODE_FILES) {
+      const n = [...read(f).matchAll(/(?:^|[\s"'`])(?:[\w-]+:)*animate-(?:pulse|ping|bounce)(?=[\s"'`]|$)/gm)].length;
+      if (n !== (TRANSIENT[f] ?? 0)) found.push(`${f}: ${n}`);
+    }
+    expect(found).toEqual([]);
+  });
+
+  it("the intro session's banner is still: it is on screen for the whole session", () => {
+    const banner = /New client introductory session/.exec(read("components/WorkoutTrackerView.tsx"));
+    expect(banner).not.toBeNull();
+    const src = read("components/WorkoutTrackerView.tsx");
+    const open = src.lastIndexOf("<div", banner!.index);
+    expect(src.slice(open, banner!.index)).not.toMatch(/animate-/);
+  });
+});

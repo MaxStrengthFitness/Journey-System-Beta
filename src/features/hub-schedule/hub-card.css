@@ -329,7 +329,10 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .hs-live-dot {
-    animation: hs-live 1.6s ease-in-out infinite;
+    /* Three beats when the session starts, then a steady dot (the iPad
+       round, Oct 6 2026, W10): the Hub is on screen all day, and a dot
+       that beats forever keeps an iPad's display link awake for it. */
+    animation: hs-live 1.6s ease-in-out 3;
   }
 }
 

@@ -656,7 +656,7 @@ export function ProfileHeader({
                 on orange; white was 2.1:1, navy is 8.5:1; review fix, Oct 5
                 2026). */}
             <DropdownMenuTrigger className="inline-flex items-center gap-2 h-12 px-4 sm:px-5 rounded-2xl bg-amber-500 hover:bg-amber-500 text-cta-foreground font-display italic uppercase font-extrabold tracking-[0.04em] text-[14px] sm:text-[17px] shadow-(--go-lift) active:translate-y-px active:shadow-(--press) transition-[background-color,transform]">
-              <Clock className="w-4 h-4 animate-pulse" />
+              <Clock className="w-4 h-4 motion-safe:animate-attention" />
               <span className="hidden sm:inline">In progress</span>
               <span className="text-cta-foreground text-xs not-italic font-sans font-bold">({activeInProgressSession.trainerInitials})</span>
             </DropdownMenuTrigger>

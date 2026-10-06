@@ -1054,3 +1054,26 @@ html[data-app-h] body { background-color: var(--chrome); }
     font-size: 16px !important;
   }
 }
+
+/* ==========================================================================
+   ATTENTION THAT RESTS (the iPad round, Oct 6 2026; audit W10)
+   A mark that asks to be looked at (the running session's tab, the clock on
+   "In progress", the Kaizen report's due dot) beats three times when it
+   appears and then stays lit. Tailwind's animate-pulse and animate-ping run
+   forever, which keeps the compositor and the display awake for a whole
+   twenty-minute session: battery and heat on an iPad mini, for a dot that
+   has said its piece in six seconds. Use these with motion-safe:, so
+   "reduce motion" keeps them still. paint-cost.test.ts holds it.
+   ========================================================================== */
+@utility animate-attention {
+  animation: attention-beat 2s cubic-bezier(0.4, 0, 0.6, 1) 3;
+}
+@utility animate-attention-ring {
+  animation: attention-ring 1s cubic-bezier(0, 0, 0.2, 1) 3;
+}
+@keyframes attention-beat {
+  50% { opacity: 0.5; }
+}
+@keyframes attention-ring {
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
