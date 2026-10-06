@@ -22,7 +22,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { devFileAccess, isServerOnlyFile, looksLikeAFile, serveBuiltApp } from "../../server/served-files";
+import { PERF_LAB_MARKER, devFileAccess, isServerOnlyFile, looksLikeAFile, serveBuiltApp } from "../../server/served-files";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MARKER = "NOT-A-REAL-SECRET-4b1d";
@@ -317,5 +317,20 @@ describe("server.ts and package.json", () => {
     expect(outfile).toBeTruthy();
     expect(outfile!.replace(/\\/g, "/")).not.toMatch(/^(\.\/)?dist\//);
     expect(pkg.scripts.start).toBe(`node ${outfile}`);
+  });
+});
+
+describe("a perf lab build (harness/perf-lab)", () => {
+  it("is refused: serveBuiltApp throws on a dist carrying the lab's marker, so a deploy of one never starts", () => {
+    const dist = tempFolder("lab-dist");
+    writeTree(dist, { "index.html": "<!doctype html><title>LAB</title>", [PERF_LAB_MARKER]: "lab" });
+    expect(() => serveBuiltApp(express(), dist)).toThrow(/perf lab build/);
+  });
+
+  it("is marked by vite.config.ts under the same name, and refused into dist/ or on Render", () => {
+    const config = readFileSync(join(HERE, "../../vite.config.ts"), "utf8");
+    expect(config).toContain(`const PERF_LAB_MARKER = '${PERF_LAB_MARKER}'`);
+    expect(config).toMatch(/process\.env\.RENDER \|\| out === path\.resolve\(config\.root, 'dist'\)/);
+    expect(config).toMatch(/perfLabGuard\(\)\]/);
   });
 });

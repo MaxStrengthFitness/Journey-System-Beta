@@ -37,10 +37,43 @@ function versionFile(build: string): Plugin {
   };
 }
 
+/*
+ * THE PERF LAB'S BUILD CAN NEVER SHIP (harness/perf-lab, Oct 6 2026). With
+ * VITE_PERF_LAB=1 the app talks only to Firebase emulators on 127.0.0.1
+ * (src/perf-lab-hook.ts): deployed, every iPad would lose the app. So a lab
+ * build is refused into dist/ (what server.ts serves) and on Render, and it
+ * carries a marker file that server/served-files.ts refuses to serve
+ * (PERF_LAB_MARKER there; the same name here).
+ */
+const PERF_LAB_MARKER = 'PERF-LAB-BUILD.txt';
+function perfLabGuard(): Plugin {
+  let lab = false;
+  return {
+    name: 'journey-perf-lab-guard',
+    apply: 'build',
+    configResolved(config) {
+      lab = config.env.VITE_PERF_LAB === '1' || process.env.VITE_PERF_LAB === '1';
+      if (!lab) return;
+      const out = path.resolve(config.root, config.build.outDir);
+      if (process.env.RENDER || out === path.resolve(config.root, 'dist')) {
+        throw new Error('VITE_PERF_LAB=1 builds the perf lab app, which talks only to local emulators: never into dist/ and never on Render. Unset it.');
+      }
+    },
+    generateBundle() {
+      if (!lab) return;
+      this.emitFile({
+        type: 'asset',
+        fileName: PERF_LAB_MARKER,
+        source: 'A perf lab build (harness/perf-lab): it talks only to local Firebase emulators. Never deploy it.\n',
+      });
+    },
+  };
+}
+
 export default defineConfig(({ command }) => {
   const appBuild = command === 'build' ? buildName() : 'dev';
   return {
-    plugins: [react(), tailwindcss(), versionFile(appBuild)],
+    plugins: [react(), tailwindcss(), versionFile(appBuild), perfLabGuard()],
     // The ONLY `define`, and it is the build's name above: public on purpose.
     //
     // No `define` for GEMINI_API_KEY. `define` is a build-time text
