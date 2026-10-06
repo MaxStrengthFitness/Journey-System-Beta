@@ -2962,7 +2962,7 @@ Round document: `docs/rounds/2026-10-04-machine-menu.md`; the card is `src/featu
 
 ## Round 58 — The speed round · *Oct 5 2026, branch `oct5/speed`*
 
-Round document: `docs/rounds/2026-10-05-speed.md`. Walk it the day after `ship-speed.ps1` golive, once Firebase console → Firestore → (the named database) → Indexes shows every index Enabled. Take a studio iPad (Safari tab AND the Home Screen app), a second iPad, and a stopwatch or the phone's timer. Nothing here was measured on an iPad before it shipped: **every time you take is the first real number**, so write each one in the Findings log.
+Round document: `docs/rounds/2026-10-05-speed.md`. Walk it the day after `ship-release.ps1` golive (the Oct 6 release, which carries the speed round), once Firebase console → Firestore → (the named database) → Indexes shows every index Enabled. Take a studio iPad (Safari tab AND the Home Screen app), a second iPad, and a stopwatch or the phone's timer. Nothing here was measured on an iPad before it shipped: **every time you take is the first real number**, so write each one in the Findings log.
 
 **Sign-in first** (R14 changed how sign-in starts; it was never walked on a device):
 
@@ -3019,7 +3019,7 @@ Round document: `docs/rounds/2026-10-05-speed.md`. Walk it the day after `ship-s
 
 ## Round 59 — The iPad round · *Oct 6 2026, branch `oct6/ipad`*
 
-Round document: `docs/rounds/2026-10-06-ipad.md`. Walk it after `ship-ipad.ps1` golive, once Render shows the deploy Live and the iPad has been back on the Hub once (it loads the new version there by itself). Take a **10th-gen iPad or an iPad mini** (the iPads AJ named), and **an older iPad too if the studio has one** (8th or 9th gen); a stopwatch or the phone's timer; a second iPad or the PC signed in. Walk on the studio's own Wi-Fi. Nothing in this round was measured on a real iPad: **every time you take is the first real number**, so write each one in the Findings log with the iPad's model, and do each timed step twice and keep the slower.
+Round document: `docs/rounds/2026-10-06-ipad.md`. Walk it after `ship-release.ps1` golive (the Oct 6 release: this round, the floor group and the roster split, with the speed round), once Render shows the deploy Live and the iPad has been back on the Hub once (it loads the new version there by itself). Take a **10th-gen iPad or an iPad mini** (the iPads AJ named), and **an older iPad too if the studio has one** (8th or 9th gen); a stopwatch or the phone's timer; a second iPad or the PC signed in. Walk on the studio's own Wi-Fi. Nothing in this round was measured on a real iPad: **every time you take is the first real number**, so write each one in the Findings log with the iPad's model, and do each timed step twice and keep the slower.
 
 **Opens, timed** (the Home Screen app, the Journey icon):
 
@@ -3031,8 +3031,9 @@ Round document: `docs/rounds/2026-10-06-ipad.md`. Walk it after `ship-ipad.ps1` 
 
 - [ ] **Start → the briefing:** time from Start session to the briefing drawn. Then the briefing's Start to the Now Bar.
 - [ ] **Five sets:** type weight and reps on five machines and press Next each time. Every Next answers at once; nothing stutters; the grid stays on the newest column.
+- [ ] **The session's Journey grid** (the floor group): the older columns are as faint as before, a practice set's bubble among them faint too, with no darker line at the column edges; scrolling down, the date heads stay on top; scrolling sideways, the machine names, Older, Latest and Today stay put. Portrait and landscape, light and dark. *If an older column shows at full strength:* `journey-grid.css`, the veil (`dim-veil.test.ts`).
 - [ ] **The machine menu at each machine** (tap a machine's name, then close it), five or six times through the session: it opens and closes without a stutter, and **the screen behind it is sharp and a little darker, not blurred**. Same for the session's journal, flags and machine slide-overs.
-- [ ] **Finish → the Wrap-up:** time from Finish session to the Wrap-up drawn. The short confetti burst is still there (AJ: "I like it keep it").
+- [ ] **Finish → the Wrap-up:** time from Finish session to the Wrap-up drawn. The short confetti burst is still there (AJ: "I like it keep it"): the same burst, all 36 bits, now drawn by CSS, gone after about a second and a half; the cards rise in as before, the title and Today first. With Settings → Accessibility → Motion → Reduce Motion on: no burst and no rise, and the screen is all there at once. Taps work during the burst.
 
 **Moving around** (time each, then judge how it feels):
 
@@ -3058,10 +3059,10 @@ Round document: `docs/rounds/2026-10-06-ipad.md`. Walk it after `ship-ipad.ps1` 
 - [ ] Record: opening and closing the machine menu five times; scrolling the Board, the Journal's notes and the Hub; scrolling the Directory. Write down how many frames are over 16.7 ms (the bars above the line) and the longest "Paint" and "Composite" entries. Save each recording (Export) for Claude.
 - [ ] If an older iPad is there, the same recordings on it.
 
-**After the roster split** (only if `ship-ipad-roster.ps1` went live; branch `oct6/ipad-data`; the round document's "The roster split"):
+**After the roster split** (it ships in the Oct 6 release, `ship-release.ps1`; the migration is AJ's, the next morning; the round document's "The roster split"):
 
 - [ ] **Before the migration, three clients on record.** Pick three clients with long histories at different studios. On each one's profile, screenshot Programming (the machines, their last weights and how many times each was done) and the Equipment tab's counts, and note the Client Directory's "Last in". These are what the migration must not change.
-- [ ] **The migration's dry run** (the command `ship-ipad-roster.ps1` printed): it says how many clients it would move and about how many KB each, and "No failures". Then `--commit` one studio, then look again at the three clients: the same weights, the same counts, the same "Last in". Then the other studios.
+- [ ] **The migration's dry run** (the command `ship-release.ps1` printed): it says how many clients it would move and about how many KB each, and "No failures". Then `--commit` one studio, then look again at the three clients: the same weights, the same counts, the same "Last in". Then the other studios.
 - [ ] **The cold open again**, timed the same way as above, on the same iPads, the morning after the migration. Write it beside the first: this is the change the split is for.
 - [ ] **The Hub on a slow open:** the cards can appear a moment before the Critical triangles, totals like "#312", renewal marks and All stars; those fill in within a second or two, never the wrong mark first.
 - [ ] **Start on a client never opened on this iPad:** the session opens at once; the prefilled weights appear a moment after (as they already wait for machine settings). With the Wi-Fi off and that client never opened here, they wait until the iPad is back online; Start itself never waits.
