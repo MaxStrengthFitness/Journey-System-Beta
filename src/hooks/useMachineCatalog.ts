@@ -1,8 +1,6 @@
-import { useEffect, useState } from "react";
-import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "../firebase";
+import { useEffect, useMemo, useState } from "react";
 import { MachineCatalogEntry } from "../types/machines";
-import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
+import { MACHINES_LOADING, subscribeMachines, type MachinesRead } from "../lib/machines-store";
 
 /**
  * The global machine catalog — the default set every studio picks from.
@@ -15,8 +13,12 @@ import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
  * downstream through resolveMachineOrder.
  *
  * `failed` (client codex, Sep 2026): a read that failed also ends with
- * `loading` false and an empty catalog, so a screen that quotes the catalog
- * checks it to say "couldn't be loaded" rather than "nothing to show".
+ * `loading` false, so a screen that quotes the catalog checks it to say
+ * "couldn't be loaded" rather than "nothing to show".
+ *
+ * One read for the whole app (the speed round, Oct 5 2026): every caller
+ * shares the listener in lib/machines-store.ts with AppContent's useMachines,
+ * and `byId` is built once per answer, not on every render.
  */
 export function useMachineCatalog(): {
   catalog: MachineCatalogEntry[];
@@ -24,31 +26,19 @@ export function useMachineCatalog(): {
   loading: boolean;
   failed: boolean;
 } {
-  const [catalog, setCatalog] = useState<MachineCatalogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
+  const [read, setRead] = useState<MachinesRead>(MACHINES_LOADING);
 
-  useEffect(() => {
-    const unsub = onSnapshot(
-      collection(db, "machines"),
-      (snap) => {
-        setCatalog(
-          snap.docs.map((d) => ({ ...d.data(), id: d.id }) as MachineCatalogEntry),
-        );
-        setFailed(false);
-        setLoading(false);
-      },
-      (error) => {
-        setFailed(true);
-        setLoading(false);
-        handleFirestoreError(error, OperationType.GET, "machines");
-      },
-    );
-    return () => unsub();
-  }, []);
+  useEffect(() => subscribeMachines(setRead), []);
 
-  const byId: Record<string, MachineCatalogEntry> = {};
-  for (const c of catalog) byId[c.id] = c;
+  const catalog = useMemo(
+    () => read.docs.map((d) => ({ ...d.data, id: d.id }) as MachineCatalogEntry),
+    [read.docs],
+  );
+  const byId = useMemo(() => {
+    const map: Record<string, MachineCatalogEntry> = {};
+    for (const c of catalog) map[c.id] = c;
+    return map;
+  }, [catalog]);
 
-  return { catalog, byId, loading, failed };
+  return { catalog, byId, loading: read.loading, failed: read.failed };
 }
