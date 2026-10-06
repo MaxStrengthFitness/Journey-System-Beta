@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 /**
  * WHAT SAFARI PAYS TO DRAW (the iPad round, Oct 6 2026; AJ: "we really need
@@ -35,7 +35,19 @@ import { describe, expect, it } from "vitest";
  */
 
 const SRC = dirname(fileURLToPath(import.meta.url));
-const read = (rel: string) => readFileSync(join(SRC, rel), "utf8").replace(/\r\n/g, "\n");
+/* These walk every file in src: under a busy PC (the full suite beside other
+   worktrees) one section can pass 5 s, so they get 30, and each file is
+   read once for the whole run. */
+vi.setConfig({ testTimeout: 30_000 });
+const READ = new Map<string, string>();
+const read = (rel: string) => {
+  let text = READ.get(rel);
+  if (text === undefined) {
+    text = readFileSync(join(SRC, rel), "utf8").replace(/\r\n/g, "\n");
+    READ.set(rel, text);
+  }
+  return text;
+};
 const stripComments = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, "");
 
 function filesUnder(dir: string, ext: RegExp, out: string[] = []): string[] {
@@ -303,6 +315,10 @@ describe("4. the Hub's cards: no container each, no layer each, and the hatching
     }
     const hatch = rulesOf(GRID).find((r) => r.selector === ".hs-rest, .hs-off")!.body;
     expect(decl(hatch, "background-size")).toBe("11px 11px");
+    // The corner slivers keep the stripe its width at every join (the review, Oct 6 2026).
+    const image = decl(hatch, "background-image") ?? "";
+    expect(image).toContain("var(--hs-hatch-ink) 0 0.5px");
+    expect(image).toContain("var(--hs-hatch-ink) calc(100% - 0.5px)");
   });
 
   it("nothing else asks WebKit for a layer it doesn't need: will-change only on the loading mark, no blend modes", () => {
