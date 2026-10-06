@@ -17,11 +17,25 @@
  *     prior history (some 300+ sessions before Journey) and unconfirmed ones
  *   - 8 weeks of bookings (5 back, this one, 2 ahead; about 1.6 a client a
  *     week, today and tomorrow fully booked across the 6 trainers)
- *   - about 3 months of sessions with their exercise logs, from the past
- *     bookings (and the weeks before them); a few past bookings left unlogged
- *     and some of those marked late cancels (bookingMarks)
+ *   - 26 weeks of sessions, with exercise logs written for the last 4 weeks
+ *     (PERF_LAB_LOG_WEEKS); a few past bookings left unlogged and some of
+ *     those marked late cancels (bookingMarks)
+ *   - two FOCUS clients the scenarios open by name (FOCUS below): 600
+ *     sessions before Journey, a year of twice-weekly Journey sessions with
+ *     every exercise log written, one booked at 10:00 today and one at 09:00
+ *     tomorrow, both with the lab user. The client and session scenarios
+ *     open these two every rep and on every profile.
+ *   - the nightly job's documents, worked out by its own pure core over the
+ *     seeded data: each client's renewal snapshot (clients/{id}.renewal),
+ *     studios/{s}/clientStates, watch/journey and watch/hubMarks
  *   - client notes (journalEntries) with Critical ones on today's clients,
  *     FORD details, standing weeks, announcements and the lab user's bell
+ *
+ * THE STUDIO'S CLOCK IS HELD. The seed's "now" is 09:40 Eastern on the day it
+ * runs (whatever the wall clock says), and the driver holds every page's
+ * clock at that same moment (run.mjs, the Date shim), so a run at 2 AM and a
+ * run at 3 PM see the same mid-morning Hub. seed-summary.json records the day
+ * and the anchor; lab.mjs reseeds when the Eastern day has moved on.
  *
  * Deterministic: every id and number comes from a seeded PRNG, so two runs on
  * the same day lay down the same studio. Uses only pure modules from src/
@@ -32,7 +46,16 @@ import { getAuth } from "firebase-admin/auth";
 import { Timestamp, getFirestore, type Firestore } from "firebase-admin/firestore";
 import { MACHINE_DEFINITION_LIST } from "../../src/data/machine-definitions";
 import { rollupFromHistory } from "../../src/lib/client-rollups";
-import type { Trainer } from "../../src/types";
+import type { Client, ScheduleEntry, Trainer, WorkoutSession } from "../../src/types";
+import { buildRenewalSnapshot } from "../../src/features/renewals/engine";
+import { attendanceFromSchedules, attendanceFromSessions, attendanceSinceOf, feelFromSessions } from "../../src/features/renewals/attendance";
+import { buildPackageNameIndex, normalizeRenewalSettings } from "../../src/features/renewals/settings";
+import { bookingMarks, loggedSessions } from "../../src/lib/booking-state";
+import { cutoverOf } from "../../src/lib/client-coverage";
+import { sessionDayKey } from "../../src/features/client-history/model";
+import { resolveAll } from "../../src/features/studio-settings/resolve";
+import { linesOf } from "../../src/features/admin/journey/states";
+import { ALL_STARS_READ_DAYS, CLIENT_STATES, HUB_MARKS_ID, JOURNEY_WATCH_ID, nightStudio } from "../../src/features/admin/journey/nightly";
 import {
   DATABASE_ID,
   FIRESTORE_PORT,
@@ -51,8 +74,9 @@ assertEmulatorsOnly();
 const CLIENTS = Number(process.env.PERF_LAB_CLIENTS || 300);
 const BOOKING_DAYS_BACK = 35; // 5 weeks back...
 const BOOKING_DAYS_AHEAD = 20; // ...this week and about 2 ahead: 8 weeks
-const SESSION_DAYS_BACK = 91; // about 3 months of sessions
-const MAX_LOGS = Number(process.env.PERF_LAB_MAX_LOGS || 45000);
+const SESSION_DAYS_BACK = 182; // 26 weeks: the All-stars read, and what a Journey grid pages back through
+const FOCUS_DAYS_BACK = 365; // the focus clients: a year of Journey sessions
+const MAX_LOGS = Number(process.env.PERF_LAB_MAX_LOGS || 250000);
 /*
  * Exercise logs are WRITTEN only for the last LOG_WEEKS weeks of sessions
  * (every client's last eight or so, which is what the grids draw first); the
@@ -115,8 +139,9 @@ function easternInstant(dayKey: string, hh: number, mm: number): Date {
 const ts = (d: Date) => Timestamp.fromDate(d);
 const tsDay = (dayKey: string) => Timestamp.fromDate(new Date(`${dayKey}T12:00:00.000Z`));
 
-const NOW = new Date();
-const TODAY = easternDayKey(NOW);
+/** The studio day the seed is for (Eastern), and the held "now": 09:40 that morning. */
+const TODAY = easternDayKey(new Date());
+const NOW = easternInstant(TODAY, 9, 40);
 
 /* ── Names ─────────────────────────────────────────────────────────────── */
 
@@ -143,6 +168,20 @@ const TRAINERS: LabTrainer[] = [
   { id: "lab-trainer-dana", firstName: "Dana", lastName: "Kim", initials: "DK", role: "LifeTransformer", email: "dana@perf-lab.test" },
 ];
 const fullName = (t: LabTrainer) => `${t.firstName} ${t.lastName}`;
+
+/*
+ * THE FOCUS CLIENTS: the two people the client and session scenarios open,
+ * found on the Hub BY NAME (no other seeded client has these surnames), so
+ * every rep and every profile opens the same long-tenured client however the
+ * cards are laid out. Both are the lab user's, 600 sessions before Journey
+ * (confirmed), a year of twice-weekly Journey sessions with every exercise
+ * log written, routines of eight machines.
+ */
+const FOCUS = [
+  { role: "client", firstName: "Winifred", lastName: "Ashcombe", weekdays: [1, 4], slotIndex: 0, bookDelta: 0, bookHour: 10 },
+  { role: "session", firstName: "Theodora", lastName: "Pemberton", weekdays: [2, 5], slotIndex: 1, bookDelta: 1, bookHour: 9 },
+] as const;
+const FOCUS_PRIOR_SESSIONS = 600;
 
 /* ── The floor ─────────────────────────────────────────────────────────── */
 
@@ -279,6 +318,10 @@ interface LabClient {
   routineA: string[];
   routineB: string[];
   packageSize: number;
+  /** One of the FOCUS clients (the scenario that opens her), else null. */
+  focus: "client" | "session" | null;
+  /** The last day she came (she stopped after it), else null. */
+  stoppedOn: string | null;
 }
 
 function buildClients(): LabClient[] {
@@ -306,8 +349,31 @@ function buildClients(): LabClient[] {
       routineA: shuffled.slice(0, perRoutine),
       routineB: shuffled.slice(perRoutine, perRoutine * 2),
       packageSize: pick(r, [24, 36, 48, 72]),
+      // About one client in ten stopped coming: some a few weeks ago (drifting, at risk), some past the lapse line.
+      stoppedOn: (() => { const x = r(); return x < 0.06 ? addDays(TODAY, -between(r, 12, 35)) : x < 0.1 ? addDays(TODAY, -between(r, 46, 85)) : null; })(),
+      focus: null,
     });
   }
+  FOCUS.forEach((f, k) => {
+    const i = CLIENTS + k;
+    const shuffled = [...MACHINES.map((m) => m.id)].sort((a, b) => hashOf(`${i}:${a}`) - hashOf(`${i}:${b}`));
+    out.push({
+      id: String(100000001 + i * 37),
+      key: i,
+      firstName: f.firstName,
+      lastName: f.lastName,
+      gender: "female",
+      age: 66 + k * 5,
+      trainer: TRAINERS[0],
+      history: "prior",
+      priorSessions: FOCUS_PRIOR_SESSIONS,
+      routineA: shuffled.slice(0, 8),
+      routineB: shuffled.slice(8, 16),
+      packageSize: 48,
+      stoppedOn: null,
+      focus: f.role,
+    });
+  });
   return out;
 }
 
@@ -322,11 +388,40 @@ interface Appointment {
 }
 
 /** Every appointment from SESSION_DAYS_BACK ago to BOOKING_DAYS_AHEAD from now. */
-function buildAppointments(clients: LabClient[]): Appointment[] {
+function buildAppointments(allClients: LabClient[]): Appointment[] {
   const out: Appointment[] = [];
+  const clients = allClients.filter((c) => !c.focus);
   // Slots: 6:00 to 19:00, every 30 minutes (26 a trainer a day).
   const slots: Array<[number, number]> = [];
   for (let h = 6; h < 19; h += 1) slots.push([h, 0], [h, 30]);
+  const slotOf = (h: number) => (h - 6) * 2;
+  /** The lab user's slots the focus clients hold: 6:00 and 6:30 every day, and their own booking today / tomorrow. */
+  const focusHolds = (delta: number, trainerId: string, slotIndex: number) =>
+    trainerId === LAB_UID && (slotIndex <= 1 || FOCUS.some((f) => f.bookDelta === delta && slotOf(f.bookHour) === slotIndex));
+  const appt = (day: string, trainer: LabTrainer, slotIndex: number, client: LabClient, cancelled: boolean): Appointment => {
+    const [h, m] = slots[slotIndex];
+    const start = easternInstant(day, h, m);
+    return {
+      id: `lab-appt-${day.replace(/-/g, "")}-${trainer.id.slice(-5)}-${slotIndex}`,
+      day,
+      start,
+      end: new Date(start.getTime() + 30 * 60000),
+      client,
+      trainer,
+      cancelled,
+    };
+  };
+  // The focus clients: twice a week for a year (6:00 / 6:30), and their own booking today or tomorrow.
+  for (const c of allClients.filter((x) => x.focus)) {
+    const f = FOCUS.find((x) => x.role === c.focus)!;
+    for (let delta = -FOCUS_DAYS_BACK; delta <= BOOKING_DAYS_AHEAD; delta += 1) {
+      const day = addDays(TODAY, delta);
+      if (delta === 0 || delta === 1) continue;
+      if (!(f.weekdays as readonly number[]).includes(weekdayOf(day))) continue;
+      out.push(appt(day, c.trainer, f.slotIndex, c, false));
+    }
+    out.push(appt(addDays(TODAY, f.bookDelta), c.trainer, slotOf(f.bookHour), c, false));
+  }
   for (let delta = -SESSION_DAYS_BACK; delta <= BOOKING_DAYS_AHEAD; delta += 1) {
     const day = addDays(TODAY, delta);
     const weekday = weekdayOf(day);
@@ -338,7 +433,8 @@ function buildAppointments(clients: LabClient[]): Appointment[] {
     for (const trainer of TRAINERS) {
       const theirs = clients.filter((c) => c.trainer.id === trainer.id);
       const others = clients.filter((c) => c.trainer.id !== trainer.id);
-      slots.forEach(([h, m], slotIndex) => {
+      slots.forEach(([h], slotIndex) => {
+        if (focusHolds(delta, trainer.id, slotIndex)) return;
         const r = rngFor(`slot:${day}:${trainer.id}:${slotIndex}`);
         // Fully booked days fill 7:00 to 17:30; other days by chance.
         const inCore = h >= 7 && h < 18;
@@ -347,31 +443,28 @@ function buildAppointments(clients: LabClient[]): Appointment[] {
         for (let tries = 0; tries < 12 && !client; tries += 1) {
           const pool = r() < 0.85 ? theirs : others;
           const c = pick(r, pool);
-          if (!seenToday.has(c.id)) client = c;
+          if (!seenToday.has(c.id) && !(c.stoppedOn && day > c.stoppedOn)) client = c;
         }
         if (!client) return;
         seenToday.add(client.id);
-        const start = easternInstant(day, h, m);
-        out.push({
-          id: `lab-appt-${day.replace(/-/g, "")}-${trainer.id.slice(-5)}-${slotIndex}`,
-          day,
-          start,
-          end: new Date(start.getTime() + 30 * 60000),
-          client,
-          trainer,
-          cancelled: delta !== 0 && delta !== 1 && r() < 0.04,
-        });
+        out.push(appt(day, trainer, slotIndex, client, delta !== 0 && delta !== 1 && r() < 0.04));
       });
     }
   }
   return out;
 }
 
+/** What the nightly core is handed, as the job would read it: bookings, sessions and marks by client. */
+const bookingsByClient = new Map<string, ScheduleEntry[]>();
+const sessionsByClient = new Map<string, WorkoutSession[]>();
+const markRows: Array<{ id: string; noShow: boolean }> = [];
+const clientDocs = new Map<string, Record<string, unknown>>();
+
 function buildBookings(appts: Appointment[]): void {
   for (const a of appts) {
     const delta = Math.round((Date.parse(`${a.day}T12:00:00Z`) - Date.parse(`${TODAY}T12:00:00Z`)) / DAY_MS);
     if (delta < -BOOKING_DAYS_BACK) continue;
-    put(`schedules/${a.id}`, {
+    const data: Record<string, unknown> = {
       clientId: a.client.id,
       mindbodyClientId: a.client.id,
       clientName: `${a.client.firstName} ${a.client.lastName}`,
@@ -385,7 +478,11 @@ function buildBookings(appts: Appointment[]): void {
       source: "MindBody",
       createdAt: ts(new Date(a.start.getTime() - 14 * DAY_MS)),
       ...(a.cancelled ? { cancelledAt: ts(new Date(a.start.getTime() - DAY_MS)) } : {}),
-    });
+    };
+    put(`schedules/${a.id}`, data);
+    const list = bookingsByClient.get(a.client.id) ?? [];
+    list.push({ id: a.id, ...data } as unknown as ScheduleEntry);
+    bookingsByClient.set(a.client.id, list);
     count("bookings");
   }
 }
@@ -407,7 +504,7 @@ function buildHistories(clients: LabClient[], appts: Appointment[]): Map<string,
     const r = rngFor(`done:${a.id}`);
     // About 3% of past bookings were never logged; a third of those were late cancels.
     if (r() < 0.03) {
-      if (r() < 0.35) marks.push(a);
+      if (r() < 0.35 && a.day >= addDays(TODAY, -BOOKING_DAYS_BACK)) marks.push(a);
       continue;
     }
     const h = byClient.get(a.client.id)!;
@@ -438,6 +535,7 @@ function buildHistories(clients: LabClient[], appts: Appointment[]): Map<string,
     }
   }
   for (const a of marks) {
+    markRows.push({ id: a.id, noShow: true });
     put(`studios/${STUDIO_ID}/bookingMarks/${a.id}`, {
       noShow: true,
       clientId: a.client.id,
@@ -456,7 +554,7 @@ function buildClientDocs(c: LabClient, h: ClientHistory): void {
   const sessionById = new Map(h.sessions.map((s) => [s.id, s]));
   for (const s of h.sessions) {
     const end = new Date(s.start.getTime() + between(r, 24, 32) * 60000);
-    put(`sessions/${s.id}`, {
+    const sessionData: Record<string, unknown> = {
       clientId: c.id,
       clientName: name,
       mindbodyClientId: c.id,
@@ -483,7 +581,11 @@ function buildClientDocs(c: LabClient, h: ClientHistory): void {
       totalPausedMs: 0,
       clientAge: c.age,
       clientIsRetired: c.age >= 67,
-    });
+    };
+    put(`sessions/${s.id}`, sessionData);
+    const mine = sessionsByClient.get(c.id) ?? [];
+    mine.push({ id: s.id, ...sessionData } as unknown as WorkoutSession);
+    sessionsByClient.set(c.id, mine);
     count("sessions");
   }
   const settings: Record<string, Record<string, string>> = {};
@@ -494,7 +596,8 @@ function buildClientDocs(c: LabClient, h: ClientHistory): void {
   }
   const logsFrom = addDays(TODAY, -LOG_WEEKS * 7);
   for (const l of h.logs) {
-    if (sessionById.get(l.sessionId)!.day < logsFrom) {
+    // Every log of a focus client is written: the grids the scenarios open page through all of them.
+    if (!c.focus && sessionById.get(l.sessionId)!.day < logsFrom) {
       count("exerciseLogsNotWritten");
       continue;
     }
@@ -580,7 +683,7 @@ function buildClientDocs(c: LabClient, h: ClientHistory): void {
       : c.history === "new"
         ? { historyIsComplete: true }
         : {};
-  put(`clients/${c.id}`, {
+  const clientData: Record<string, unknown> = {
     firstName: c.firstName,
     lastName: c.lastName,
     email: `client${c.key}@perf-lab.test`,
@@ -623,7 +726,9 @@ function buildClientDocs(c: LabClient, h: ClientHistory): void {
     ...priorFields,
     createdAt: tsDay(first),
     updatedAt: tsDay(TODAY),
-  });
+  };
+  put(`clients/${c.id}`, clientData);
+  clientDocs.set(c.id, clientData);
   count("clients");
 
   for (const machineId of [...c.routineA, ...c.routineB]) {
@@ -795,6 +900,98 @@ function buildBoard(): void {
   }
 }
 
+/*
+ * THE NIGHTLY JOB'S DOCUMENTS, by its own pure core: what server/renewals-job.ts
+ * and server/journey-step.ts would write tonight over this data, so
+ * Operations, the Directory and the Hub's All stars do the work they do in
+ * production. Each client's renewal snapshot (buildRenewalSnapshot over the
+ * attendance the job reads), then nightStudio for the states, the summary
+ * and All stars. The studio's settings and Max Strength's defaults are
+ * unset, so the lines are the app's, as a screen resolves them.
+ */
+function buildNightly(clients: LabClient[]): { states: number; allStars: number; counts: Record<string, number> } {
+  const settings = normalizeRenewalSettings(undefined);
+  const nameIndex = buildPackageNameIndex(settings);
+  const cutovers = [{ id: STUDIO_ID, journeyCutoverDate: addDays(TODAY, -400) }];
+  const marks = bookingMarks(markRows);
+  const machineNames = Object.fromEntries(MACHINES.map((m) => [m.id, m.name]));
+  let earliest: unknown = null;
+  for (const list of bookingsByClient.values()) {
+    for (const b of list) {
+      const at = (b.startTime as unknown as Timestamp).toMillis();
+      if (!earliest || at < (earliest as Timestamp).toMillis()) earliest = b.startTime;
+    }
+  }
+  const attendanceSince = attendanceSinceOf(earliest, TZ);
+  const visitDaysByClient = new Map<string, string[]>();
+  const loggedDaysByClient = new Map<string, string[]>();
+  const snapshots = new Map<string, NonNullable<Client["renewal"]>>();
+  const withIds: Client[] = [];
+  const loggedFrom = addDays(TODAY, -ALL_STARS_READ_DAYS);
+  for (const c of clients) {
+    const data = clientDocs.get(c.id)!;
+    const client = { id: c.id, ...data } as unknown as Client;
+    const schedules = bookingsByClient.get(c.id) ?? [];
+    const sessions = sessionsByClient.get(c.id) ?? [];
+    const attendance = [
+      ...attendanceFromSchedules(schedules as never, NOW, TZ, {
+        logged: loggedSessions(sessions as never, TZ),
+        cutoverOf: (studioId: string) => cutoverOf(cutovers, studioId),
+        marks,
+      } as never),
+      ...attendanceFromSessions(sessions, TZ, TODAY),
+    ];
+    const snapshot = buildRenewalSnapshot({
+      client,
+      settings,
+      today: TODAY,
+      attendance,
+      sessionFeel: feelFromSessions(sessions, TZ),
+      machineNames,
+      attendanceSince,
+      nameIndex,
+      lastVisitHint: null,
+    } as never);
+    snapshots.set(c.id, snapshot as never);
+    // The job writes the snapshot onto the client (the rules keep it the job's alone).
+    data.renewal = { ...snapshot, computedAt: ts(NOW) };
+    withIds.push({ ...client, renewal: snapshot } as Client);
+    visitDaysByClient.set(c.id, attendance.filter((a) => a.kind === "visit").map((a) => a.day));
+    const days = new Set<string>();
+    for (const s of sessions) {
+      const day = sessionDayKey(s as never, TZ);
+      if (day && day >= loggedFrom) days.add(day);
+    }
+    loggedDaysByClient.set(c.id, [...days].sort());
+  }
+  const night = nightStudio({
+    studioId: STUDIO_ID,
+    today: TODAY,
+    now: NOW,
+    tz: TZ,
+    studios: [{ id: STUDIO_ID, name: "Lakeside", journeyCutoverDate: addDays(TODAY, -400) }],
+    clients: withIds,
+    snapshots: snapshots as never,
+    bookingsByClient,
+    visitDaysByClient,
+    loggedDaysByClient,
+    loggedFrom,
+    packageIndex: nameIndex,
+    breakDays: settings.breakDays,
+    lines: linesOf(resolveAll({ studio: null, company: null, studioDoc: null } as never)),
+    previous: new Map(),
+    marks: new Map(),
+  });
+  const computedAt = ts(NOW);
+  for (const [clientId, doc] of night.states) {
+    put(`studios/${STUDIO_ID}/${CLIENT_STATES}/${clientId}`, { ...doc, computedAt });
+    count("clientStates");
+  }
+  if (night.allStars) put(`studios/${STUDIO_ID}/watch/${HUB_MARKS_ID}`, { allStars: night.allStars, computedAt });
+  put(`studios/${STUDIO_ID}/watch/${JOURNEY_WATCH_ID}`, { ...night.summary, computedAt });
+  return { states: night.states.size, allStars: night.allStars?.length ?? 0, counts: night.summary.counts as Record<string, number> };
+}
+
 /* ── Main ──────────────────────────────────────────────────────────────── */
 
 async function main(): Promise<void> {
@@ -818,6 +1015,7 @@ async function main(): Promise<void> {
   for (const c of clients) buildClientDocs(c, histories.get(c.id)!);
   buildNotes(clients, appts);
   buildBoard();
+  const nightly = buildNightly(clients);
 
   const today = appts.filter((a) => a.day === TODAY && !a.cancelled).length;
   const tomorrow = appts.filter((a) => a.day === addDays(TODAY, 1) && !a.cancelled).length;
@@ -826,15 +1024,35 @@ async function main(): Promise<void> {
     priorCounts[c.history] += 1;
     if (c.priorSessions >= 300) priorCounts.prior300 += 1;
   }
+  // The focus clients, by the scenario that opens each: who, and how deep her record is.
+  const focus: Record<string, unknown> = {};
+  for (const c of clients.filter((x) => x.focus)) {
+    const h = histories.get(c.id)!;
+    focus[c.focus!] = {
+      id: c.id,
+      name: `${c.firstName} ${c.lastName}`,
+      lastName: c.lastName,
+      priorSessions: c.priorSessions,
+      journeySessions: h.sessions.length,
+      exerciseLogs: h.logs.length,
+      machinesPerSession: c.routineA.length,
+      booked: `${addDays(TODAY, FOCUS.find((f) => f.role === c.focus)!.bookDelta)} ${String(FOCUS.find((f) => f.role === c.focus)!.bookHour).padStart(2, "0")}:00`,
+    };
+  }
   console.log(`Writing ${docs.length} documents...`);
   await writeAll(db);
   const summary = {
     today: TODAY,
+    /** The held "now" (09:40 Eastern on the seed's day): the driver's Date shim starts every page here. */
+    anchorMs: NOW.getTime(),
+    anchorIso: NOW.toISOString(),
     documents: docs.length,
     ...counts,
     bookingsToday: today,
     bookingsTomorrow: tomorrow,
     clientsByHistory: priorCounts,
+    focus,
+    nightly,
     seconds: Math.round((Date.now() - started) / 1000),
   };
   console.log(JSON.stringify(summary, null, 2));
