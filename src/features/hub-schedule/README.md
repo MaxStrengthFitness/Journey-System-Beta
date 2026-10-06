@@ -24,6 +24,7 @@ This folder is the Hub's Schedule layer: the grid, its cards, the top, the spotl
 | `NextStrip.tsx` + `next-strip.css` | The Next 30 minutes strip (prefix `hn-`): one quiet row under the top; a tap opens the peek (hub cherry round) |
 | `focus.ts` | Focus: Me or Everyone, on a phone only since Oct 3 2026, remembered on the device (local storage, cleared at sign-out); the focus column's id (hub cherry round) |
 | `hub-day.ts` | The Hub's day: the studio's today, the week strip from it, a day picked on purpose or "follow today", the day's title. Pure (hub fixes, Oct 1 2026) |
+| `hub-window.ts` | The Hub's own bookings (speed round, Oct 5 2026, R6): yesterday to a week from today, stretched to hold a day picked on purpose that has fallen behind. The app's schedule also holds every range the Calendar has shown; everything the Hub draws, counts or works out is asked of this window. Pure |
 | `columns.ts` | Which column a booking goes in: the trainer id, else the Mindbody staff id at this studio's site, else **Unassigned**; never a name. Which trainers have a column. The staff name an Unassigned card may say. Pure (hub fixes) |
 
 `components/ClientsView.tsx` is still the screen: it asks `columns.ts` for the columns and which booking goes in which, and hands the grid its cards. `ClientsView.render.test.tsx` mounts it.

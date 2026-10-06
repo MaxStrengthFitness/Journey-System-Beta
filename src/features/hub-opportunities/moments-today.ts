@@ -57,7 +57,7 @@ import { homeCutoverOf } from "../../lib/client-coverage";
 import { canClaimMilestone, sessionNumberWords, sessionTotalOf, totalIsSayable, type SessionTotalBasis } from "../../lib/session-total";
 import { priorHistoryOf, type HistoryCoverage } from "../../lib/prior-history";
 import { canClaimGap, dayAfter, ownedWindow } from "../../lib/history-claims";
-import { bookingState, isStaffBlock, type BookingMarks, type LoggedSessions } from "../../lib/booking-state";
+import { SLOT_SLACK_MS, bookingState, isStaffBlock, type BookingMarks, type LoggedSessions } from "../../lib/booking-state";
 import { getClientAlertState } from "../../lib/client-alerts";
 import { waiverFlagState } from "../../lib/client-waiver";
 import { criticalNotesOn } from "../../lib/hub-critical-notes";
@@ -336,6 +336,81 @@ export interface MomentsTodayInput {
    * flagged. Absent: true, as before.
    */
   waiversKeptInMindbody?: boolean;
+  /**
+   * `schedules` indexed once (`indexBookings`), so a pass over a day reads
+   * that day's bookings and a session number reads that client's, instead
+   * of every held booking each time (speed round, Oct 5 2026, R6). Absent:
+   * worked out from `schedules`, as before. Must be built from the same
+   * `schedules` and `tz`.
+   */
+  index?: BookingIndex;
+}
+
+/**
+ * The held bookings a pass reads, indexed once: uncancelled, never a staff
+ * block, by the studio day they start on and by client, each list soonest
+ * first. What `momentsToday` and `sessionNumberFor` would otherwise filter
+ * out of every held booking, for every day and every entry.
+ */
+export interface BookingIndex {
+  byDay: ReadonlyMap<string, ScheduleEntry[]>;
+  byClient: ReadonlyMap<string, ScheduleEntry[]>;
+}
+
+export function indexBookings(schedules: ReadonlyArray<ScheduleEntry>, tz?: string): BookingIndex {
+  const byDay = new Map<string, ScheduleEntry[]>();
+  const byClient = new Map<string, ScheduleEntry[]>();
+  for (const b of schedules) {
+    if (!b || b.status === "Cancelled" || isStaffBlock(b)) continue;
+    const day = studioDateKey(b.startTime, tz);
+    if (day) {
+      const list = byDay.get(day) ?? [];
+      list.push(b);
+      byDay.set(day, list);
+    }
+    if (b.clientId) {
+      const list = byClient.get(b.clientId) ?? [];
+      list.push(b);
+      byClient.set(b.clientId, list);
+    }
+  }
+  for (const list of byClient.values()) list.sort((a, b) => startOf(a) - startOf(b));
+  return { byDay, byClient };
+}
+
+/**
+ * Every instant at which something the engine says about these bookings
+ * can change, as the clock moves: a slot coming within half an hour, its
+ * start, its end, and its end plus the five minutes' slack — each with the
+ * millisecond after it, so a strict and a non-strict comparison both land on
+ * one. Sorted. Between two of them every entry reads the same (the
+ * booking's state, the time sections, the session number counting the
+ * bookings still to come), which is what lets the Hub work a day out again
+ * only when one of them passes (`clockStep`).
+ */
+export function bookingBoundaries(schedules: ReadonlyArray<ScheduleEntry>): number[] {
+  const out: number[] = [];
+  for (const b of schedules) {
+    if (!b) continue;
+    const start = toDate(b.startTime)?.getTime();
+    if (typeof start !== "number" || !Number.isFinite(start)) continue;
+    const endRaw = toDate(b.endTime)?.getTime();
+    const end = typeof endRaw === "number" && Number.isFinite(endRaw) ? endRaw : start + 30 * 60_000;
+    for (const t of [start - 30 * 60_000, start, end, end + SLOT_SLACK_MS]) out.push(t, t + 1);
+  }
+  return out.sort((a, b) => a - b);
+}
+
+/** How many boundaries are at or before `nowMs`: the same number means nothing has passed. */
+export function clockStep(boundaries: ReadonlyArray<number>, nowMs: number): number {
+  let lo = 0;
+  let hi = boundaries.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (boundaries[mid] <= nowMs) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
 }
 
 const startOf = (b: ScheduleEntry) => toDate(b.startTime)?.getTime() ?? 0;
@@ -374,9 +449,14 @@ export function sessionNumberFor(
   if (day && day === input.today && client.id && input.logged?.has(client.id, day)) return count;
   const nowMs = input.now.getTime();
   const thisStart = startOf(booking);
-  const between = input.schedules.filter(
-    (b) => b.clientId === client.id && b.status !== "Cancelled" && !isStaffBlock(b) && startOf(b) > nowMs && startOf(b) < thisStart,
-  ).length;
+  // Her own bookings only: the index holds them by client.
+  const hers = input.index ? input.index.byClient.get(client.id ?? "") ?? [] : input.schedules;
+  let between = 0;
+  for (const b of hers) {
+    if (b.clientId !== client.id || b.status === "Cancelled" || isStaffBlock(b)) continue;
+    const at = startOf(b);
+    if (at > nowMs && at < thisStart) between += 1;
+  }
   return count + between + 1;
 }
 
@@ -648,7 +728,9 @@ function timeFact(booking: ScheduleEntry, input: MomentsTodayInput, start: numbe
 export function momentsToday(input: MomentsTodayInput): RunSheetEntry[] {
   const myIdSet = new Set(input.myIds.filter(Boolean));
   const byClient = new Map<string, ScheduleEntry[]>();
-  for (const b of input.schedules) {
+  // The day's own bookings when the index is there; every held booking otherwise.
+  const pool = input.index ? input.index.byDay.get(input.day) ?? [] : input.schedules;
+  for (const b of pool) {
     if (!b || b.status === "Cancelled" || isStaffBlock(b)) continue;
     if (studioDateKey(b.startTime, input.tz) !== input.day) continue;
     const key = b.clientId ?? `unlinked:${b.id ?? b.clientName}`;
@@ -664,6 +746,37 @@ export function momentsToday(input: MomentsTodayInput): RunSheetEntry[] {
     entries.push(entry);
   }
   return entries.sort((a, b) => a.start - b.start || a.name.localeCompare(b.name));
+}
+
+/**
+ * Would `day` have something to celebrate — the strip's dot? The same answer
+ * as `momentsToday({ ...input, day }).some((e) => hasFamily(e, "celebrate"))`
+ * (moments-today.test.ts holds them together), asking only the two things
+ * Celebrate is made of — a milestone session, a birthday within the week —
+ * about each client's first booking that day, instead of working out every
+ * entry of every day on the strip each minute (speed round, Oct 5 2026, R6).
+ */
+export function celebratesOn(input: MomentsTodayInput, day: string): boolean {
+  const asked: MomentsTodayInput = { ...input, day };
+  const pool = input.index ? input.index.byDay.get(day) ?? [] : input.schedules;
+  const first = new Map<string, ScheduleEntry>();
+  for (const b of pool) {
+    if (!b || b.status === "Cancelled" || isStaffBlock(b) || !b.clientId) continue;
+    if (studioDateKey(b.startTime, input.tz) !== day) continue;
+    const had = first.get(b.clientId);
+    if (!had || startOf(b) < startOf(had)) first.set(b.clientId, b);
+  }
+  for (const [clientId, booking] of first) {
+    const client = input.clientsById.get(clientId);
+    if (!client) continue;
+    const bday = birthdayFrom(client.dateOfBirth, day);
+    if (bday && Math.abs(bday.nearest) <= BIRTHDAY_WINDOW) return true;
+    const totals = sessionTotalOf(client, coverageOf(input.rowsById.get(clientId)));
+    if (!canClaimMilestone(totals.basis)) continue;
+    const n = sessionNumberFor(client, booking, asked, totalIsSayable(totals) ? totals.total : null);
+    if (n !== null && SESSION_MILESTONES.includes(n)) return true;
+  }
+  return false;
 }
 
 /* ------------------------------------------------------------------ */

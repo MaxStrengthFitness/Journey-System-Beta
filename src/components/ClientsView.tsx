@@ -53,7 +53,7 @@ import { weekdayOf } from "../features/client-history/model";
 import { DayHeader, DaySummary, KeySheet } from "../features/hub-schedule/DayHeader";
 import { Peek } from "../features/hub-schedule/Peek";
 import { countsByDay, spotWords, stripDays, summaryChips } from "../features/hub-schedule/day-summary";
-import { hasFamily, momentsToday, type FilterId, type MomentFamily } from "../features/hub-opportunities/moments-today";
+import { hasFamily, type FilterId, type MomentFamily } from "../features/hub-opportunities/moments-today";
 import { rememberMyStudioSection } from "../features/my-studio/section-memory";
 import { bookingSessionNumber, cardMarks, cardRestWords, isNewToJourney, usualServiceOf } from "../features/hub-schedule/card-marks";
 import { yourDay } from "../features/hub-schedule/your-day";
@@ -70,6 +70,8 @@ import { useDirectoryContext } from "../features/client-directory/use-directory-
 import { buildDirectoryRows } from "../features/client-directory/row";
 import { buildNameIndex, searchNames, type MatchTier } from "../features/client-directory/search";
 import { SearchResults } from "../features/client-directory/SearchResults";
+import { hubWindow, inHubWindow } from "../features/hub-schedule/hub-window";
+import { useCompletedSessions } from "../lib/completed-sessions";
 
 /*
  * THE OPPORTUNITIES LAYER (Sep 27 2026): fetched the first time it is
@@ -228,6 +230,21 @@ export function ClientsView({
   const studioToday = studioTodayKey(currentTime);
   const selectedKey = shownDay(pickedDay, studioToday);
 
+  /*
+   * THE HUB'S OWN BOOKINGS (speed round, Oct 5 2026, R6;
+   * features/hub-schedule/hub-window.ts): yesterday to a week from today,
+   * and the day on screen. The app's schedule holds every range the Calendar
+   * has shown too, and the Hub used to work its day out over all of it.
+   * Kept until the studio's day or the schedule changes.
+   */
+  const hubDays = hubWindow(studioToday, selectedKey);
+  const hubSchedules = React.useMemo(
+    () => inHubWindow(schedules || NO_SCHEDULES, { from: hubDays.from, to: hubDays.to }),
+    [schedules, hubDays.from, hubDays.to],
+  );
+  /** Only the FINISHED sessions, steady while a running session's heartbeat lands (lib/completed-sessions). */
+  const completedSessions = useCompletedSessions(sessions);
+
   // Sync / search database in real-time when trainer searches on main screen
   useEffect(() => {
     if (!searchTerm.trim()) {
@@ -336,20 +353,27 @@ export function ClientsView({
    * for a client with 54).
    */
   const searchMyIds = React.useMemo(() => myTrainerIds(authTrainer, auth.currentUser?.uid ?? null), [authTrainer]);
+  const searching = searchTerm.trim().length > 0;
+  /*
+   * Worked out only while something is typed (speed round, Oct 5 2026, R6):
+   * it groups every held booking by client, and it used to do that every
+   * minute and on every session write with nobody searching. The Directory's
+   * own bookings (all of them, as the Directory reads them) and only the
+   * finished sessions, which are all its rows read.
+   */
   const { ctx: directoryCtx } = useDirectoryContext({
     now: currentTime,
     today: studioToday,
     studios: cutoverStudios ?? NO_STUDIOS,
     activeStudioId: activeStudioId || null,
-    schedules: schedules ?? null,
+    schedules: searching ? schedules ?? null : null,
     schedulesFetchedAt,
-    sessions,
+    sessions: searching ? completedSessions : null,
     sessionsKnown,
     myIds: searchMyIds,
     myName: authTrainer?.fullName ?? null,
     trainers: sortedTrainers,
   });
-  const searching = searchTerm.trim().length > 0;
   const searchPool = React.useMemo(
     () => (searching ? Array.from(new Map([...clients, ...dbSearchResults].filter((c) => c.id).map((c) => [c.id as string, c])).values()) : []),
     [searching, clients, dbSearchResults],
@@ -396,7 +420,7 @@ export function ClientsView({
   // across every hour from 12 AM to 11:30 PM.
   const { start: dateStart, end: dateEnd } = studioDayBoundsForKey(selectedKey);
 
-  const todaysSchedules = (schedules || [])
+  const todaysSchedules = hubSchedules
     .filter((s) => {
       const date = safeToDate(s.startTime || s.StartDateTime || s.date);
       if (!date) return false;
@@ -463,9 +487,10 @@ export function ClientsView({
    * answered: unknown, never "nothing logged" (lib/booking-state).
    */
   const workoutSessionOn = React.useMemo(() => sessionsByClientDay(sessions), [sessions]);
+  // Only finished sessions count as logged: a heartbeat leaves this as it was (R6).
   const logged = React.useMemo(
-    () => loggedSessions(sessionsKnown ? sessions : null),
-    [sessions, sessionsKnown],
+    () => loggedSessions(sessionsKnown ? completedSessions : null),
+    [completedSessions, sessionsKnown],
   );
 
   /*
@@ -526,7 +551,7 @@ export function ClientsView({
   const dayMoments = useDayMoments({
     day: selectedKey,
     now: currentTime,
-    schedules: schedules || NO_SCHEDULES,
+    schedules: hubSchedules,
     clients,
     sessions,
     sessionsKnown,
@@ -715,14 +740,13 @@ export function ClientsView({
    */
   const stripKeysKey = stripKeys.join("|");
   const todayKey = studioToday;
-  const bookingCounts = React.useMemo(() => countsByDay(schedules || NO_SCHEDULES), [schedules]);
+  const bookingCounts = React.useMemo(() => countsByDay(hubSchedules), [hubSchedules]);
+  // The engine's own answer, asked cheaply (celebratesOn), not seven days of entries a minute (R6).
   const celebrateDays = React.useMemo(() => {
     const out = new Set<string>();
-    for (const key of stripKeysKey.split("|")) {
-      if (momentsToday({ ...dayMoments.input, day: key }).some((e) => hasFamily(e, "celebrate"))) out.add(key);
-    }
+    for (const key of stripKeysKey.split("|")) if (dayMoments.celebratesOn(key)) out.add(key);
     return out;
-  }, [dayMoments.input, stripKeysKey]);
+  }, [dayMoments.celebratesOn, stripKeysKey]);
   const strip = stripDays(stripKeys, todayKey, bookingCounts, (key) => celebrateDays.has(key));
   const chips = summaryChips(dayMoments.entries);
   const activeSpot = layer === "schedule" && spot && spot.day === gridDayKey ? spot.family : null;
