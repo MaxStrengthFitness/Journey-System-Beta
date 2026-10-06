@@ -12,14 +12,18 @@
  * Every request now passes, IN THIS ORDER:
  *   1. the same staff sign-in as /api/mindbody/* (server/auth.ts), so a
  *      caller with no sign-in is refused before a byte of the body is read;
- *   2. a per-person limit (src/lib/request-limit.ts) — two at once, sixty in
- *      fifteen minutes; a twelve-page scan is thirteen requests;
- *   3. ONE SCAN AT A TIME for the whole process (the speed round, R20, Oct 5
+ *   2. ONE SCAN AT A TIME for the whole process (the speed round, R20, Oct 5
  *      2026), taken before the body is read: while one request is with the
  *      model, another is answered 503 { error: "busy" } at once rather than
- *      queued with up to 20 MB of pages held in memory. The importer sends
- *      one request at a time and shows "Journey is reading another scan";
- *      this is what lets the service run on a small instance (render.yaml);
+ *      queued with up to 20 MB of pages held in memory. It is one REQUEST
+ *      at a time, and a scan is many (a page each, then the settings), so
+ *      the importer waits and tries a busy page again rather than losing
+ *      the pages it has read (src/services/chart-scan.ts). It comes before
+ *      the per-person limit so that a busy answer, and every retry of one,
+ *      costs nothing against that person's sixty. This is what lets the
+ *      service run on a small instance (render.yaml);
+ *   3. a per-person limit (src/lib/request-limit.ts) — two at once, sixty in
+ *      fifteen minutes; a twelve-page scan is thirteen requests;
  *   4. the body, capped at CHART_BODY_LIMIT (src/services/chart-upload.ts,
  *      which also says why that number);
  *   5. a check of the pages themselves (at most MAX_CHART_PAGES, photos or
@@ -181,8 +185,9 @@ function finiteOrUndefined(value: unknown): number | undefined {
 export function registerGeminiRoutes(app: Express, deps: GeminiRouteDeps): void {
   const guard = [
     deps.requireSignIn,
-    perCallerLimit(deps.limiter ?? createRequestLimiter(GEMINI_LIMITS)),
+    // Before the per-person limit: a busy answer must not use up anyone's sixty.
     oneScanAtATime(deps.gate ?? createScanGate()),
+    perCallerLimit(deps.limiter ?? createRequestLimiter(GEMINI_LIMITS)),
     chartBody(),
   ];
 

@@ -28,13 +28,23 @@ export const CHART_JPEG_QUALITY = 0.85;
 export const CHART_BODY_LIMIT = "20mb";
 
 /**
- * The routes read ONE scan at a time for the whole web service (the speed
+ * The routes read ONE request at a time for the whole web service (the speed
  * round, R20, Oct 5 2026): a second one meanwhile is answered 503 with this
- * code instead of being queued with its pages in memory, and the importer
- * shows SCAN_BUSY_MESSAGE.
+ * code instead of being queued with its pages in memory. The importer waits
+ * and tries again (src/services/chart-scan.ts), showing SCAN_WAITING_MESSAGE,
+ * and says SCAN_BUSY_MESSAGE only once it has waited SCAN_BUSY_WAIT_MS.
  */
 export const SCAN_BUSY = "busy";
 export const SCAN_BUSY_MESSAGE = "Journey is reading another scan. Try again in a moment.";
+export const SCAN_WAITING_MESSAGE = "Waiting for another scan to finish...";
+
+/**
+ * How long the importer keeps trying one busy page before giving up. Another
+ * request holds the slot for at most two minutes (GEMINI_SCAN_DEADLINE_MS in
+ * server/gemini.ts), so three covers it with room for a second scan's pages
+ * taking turns with this one's.
+ */
+export const SCAN_BUSY_WAIT_MS = 3 * 60 * 1000;
 
 /** Photos and PDFs; the model reads both. */
 const CHART_MIME = /^(image\/[a-z0-9.+-]+|application\/pdf)$/i;

@@ -25,7 +25,7 @@ import { requireStaff } from "../../server/auth";
 import { createScanGate, registerGeminiRoutes, SCANS_AT_ONCE, type ScanGate } from "../../server/gemini-routes";
 import { createRequestLimiter, type RequestLimiter } from "../lib/request-limit";
 import { MAX_CHART_PAGES, SCAN_BUSY_MESSAGE } from "./chart-upload";
-import { handleResponse } from "./geminiService";
+import { handleResponse, ScanBusyError } from "./geminiService";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PAGE = { base64: "aGVsbG8=", mimeType: "image/jpeg" };
@@ -199,7 +199,8 @@ describe("signed in", () => {
     let finish!: () => void;
     const slow = () => new Promise((resolve) => (finish = () => resolve({ sessionHeaders: [], performances: [] })));
     const limiter = createRequestLimiter({ maxInFlight: 1, maxPerWindow: 100, windowMs: 60_000 });
-    const api = await mount({ requireSignIn: signedInAs("aj"), limiter, chart: slow });
+    // Two scan slots, so it is the person's own limit that answers here.
+    const api = await mount({ requireSignIn: signedInAs("aj"), limiter, gate: createScanGate(2), chart: slow });
 
     const first = api.post("/api/gemini/processChart", { images: [PAGE] });
     await vi.waitFor(() => expect(api.processLegacyChart).toHaveBeenCalledTimes(1));
@@ -288,6 +289,39 @@ describe("one scan at a time (R20)", () => {
     expect((await api.post("/api/gemini/processChart", { images: [PAGE] })).status).toBe(200);
   });
 
+  it("answers busy before the per-person limit, so waiting costs nobody their sixty", async () => {
+    const gate = createScanGate();
+    const limiter = createRequestLimiter({ maxInFlight: 5, maxPerWindow: 1, windowMs: 15 * 60 * 1000 });
+    const slow = slowChart();
+    const aj = await mount({ requireSignIn: signedInAs("aj"), gate, limiter, chart: slow.chart });
+    const sam = await mount({ requireSignIn: signedInAs("sam"), gate, limiter });
+
+    const first = aj.post("/api/gemini/processChart", { images: [PAGE] });
+    await vi.waitFor(() => expect(aj.processLegacyChart).toHaveBeenCalledTimes(1));
+    for (let i = 0; i < 3; i++) {
+      expect((await sam.post("/api/gemini/processChart", { images: [PAGE] })).status).toBe(503);
+    }
+    slow.finish();
+    expect((await first).status).toBe(200);
+    await vi.waitFor(() => expect(gate.running()).toBe(0));
+    // Sam's one request in the window is still there to use.
+    expect((await sam.post("/api/gemini/processChart", { images: [PAGE] })).status).toBe(200);
+    // And the limit still holds once it is used.
+    await vi.waitFor(() => expect(gate.running()).toBe(0));
+    expect((await sam.post("/api/gemini/processChart", { images: [PAGE] })).status).toBe(429);
+    await vi.waitFor(() => expect(gate.running()).toBe(0));
+  });
+
+  it("frees the slot when the person's own limit refuses the request", async () => {
+    const gate = createScanGate();
+    const limiter = createRequestLimiter({ maxInFlight: 5, maxPerWindow: 1, windowMs: 15 * 60 * 1000 });
+    const api = await mount({ requireSignIn: signedInAs("aj"), gate, limiter });
+    expect((await api.post("/api/gemini/processChart", { images: [PAGE] })).status).toBe(200);
+    await vi.waitFor(() => expect(gate.running()).toBe(0));
+    expect((await api.post("/api/gemini/processChart", { images: [PAGE] })).status).toBe(429);
+    await vi.waitFor(() => expect(gate.running()).toBe(0));
+  });
+
   it("frees the slot when the model fails", async () => {
     const gate = createScanGate();
     const api = await mount({ requireSignIn: signedInAs("aj"), gate, chart: async () => { throw new Error("model down"); } });
@@ -322,6 +356,15 @@ describe("the importer's reading of an answer", () => {
   it("turns the busy answer into a sentence a person can act on", async () => {
     const busy = new Response(JSON.stringify({ error: "busy" }), { status: 503 });
     await expect(handleResponse(busy)).rejects.toThrow(SCAN_BUSY_MESSAGE);
+  });
+
+  it("marks the busy answer so the importer can wait it out, with the server's Retry-After", async () => {
+    const busy = new Response(JSON.stringify({ error: "busy" }), { status: 503, headers: { "Retry-After": "7" } });
+    const err = await handleResponse(busy).catch((e) => e);
+    expect(err).toBeInstanceOf(ScanBusyError);
+    expect(err.retryAfterSeconds).toBe(7);
+    const noHeader = await handleResponse(new Response(JSON.stringify({ error: "busy" }), { status: 503 })).catch((e) => e);
+    expect(noHeader.retryAfterSeconds).toBe(5);
   });
 
   it("passes every other refusal through as before", async () => {
