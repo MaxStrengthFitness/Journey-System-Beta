@@ -93,6 +93,11 @@ import { studioDayKeyOf, type DateLike } from "../../lib/studio-time";
 import { firstSentences } from "../../lib/first-sentences";
 import { cap, curly, dayKeyDate, joinDots, plural } from "../client-codex/kit/text";
 import { CLIENT_PRONOUNS, agree, type Pronouns } from "../client-codex/kit/pronouns";
+import { firstVisitOf, monthYear, type FirstVisitBasis } from "./first-visit";
+
+// Re-exported: these two were born here, and every older import of them from
+// story.ts keeps working. New code on the first screen imports ./first-visit.
+export { firstVisitOf, monthYear, type FirstVisitBasis };
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -272,12 +277,6 @@ function daysBetween(a: string, b: string): number {
   return Math.round((utc(b) - utc(a)) / 86_400_000);
 }
 
-/** "Mar 2019" for a day key. */
-export function monthYear(day: string): string {
-  const d = dayKeyDate(day);
-  return d ? d.toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "";
-}
-
 /** A sentence's own end, kept; one full stop added only when it has none. */
 function withStop(text: string): string {
   const t = text.trim();
@@ -406,44 +405,8 @@ function contractBeats(client: StoryClient, today: string): StoryBeat[] {
 /* Mindbody's first visit                                              */
 /* ------------------------------------------------------------------ */
 
-/**
- * What `firstAppointmentDate` was taken from, by its `firstAppointmentDateSource`:
- *
- *   mindbody  absent, or "mindbody": Mindbody said so (the webhook, Master
- *             Sync). THE first visit, a Mindbody date read as its UTC day.
- *   booking   "pull-sync:…", "rehome:…": the earliest booking a schedule pull
- *             happened to see — a real appointment's instant (the studio's
- *             day), and a ceiling: the first may be earlier.
- *   session   "backfill:firstSessionDate", "backfill:earliest-session":
- *             Journey's own earliest session (scripts/backfill-client-since.ts),
- *             not a Mindbody visit at all. The studio's day.
- *   contract  "backfill:earliest-contract": the earliest package start on
- *             file, a Mindbody date (its UTC day).
- *   other     any other marker: an inference of unknown kind.
- *
- * Only `mindbody` is authoritative; the rest are "the earliest Journey has".
- */
-export type FirstVisitBasis = "mindbody" | "booking" | "session" | "contract" | "other";
-
-export function firstVisitOf(
-  client: Pick<StoryClient, "firstAppointmentDate" | "firstAppointmentDateSource">,
-  tz?: string,
-): { day: string; authoritative: boolean; basis: FirstVisitBasis } | null {
-  const source = tidy(client.firstAppointmentDateSource);
-  const basis: FirstVisitBasis =
-    !source || source === "mindbody"
-      ? "mindbody"
-      : source.startsWith("pull-sync:") || source.startsWith("rehome:")
-        ? "booking"
-        : source === "backfill:firstSessionDate" || source === "backfill:earliest-session"
-          ? "session"
-          : source === "backfill:earliest-contract"
-            ? "contract"
-            : "other";
-  const mindbodyDate = basis === "mindbody" || basis === "contract";
-  const day = mindbodyDate ? mindbodyDay(client.firstAppointmentDate) : instantDay(client.firstAppointmentDate, tz);
-  return day ? { day, authoritative: basis === "mindbody", basis } : null;
-}
+/* firstVisitOf and FirstVisitBasis live in ./first-visit (a leaf, so the Hub's
+ * directory row can use them without this module's graph), re-exported above. */
 
 /** The first-visit beat's words, where it came from and its door, by what the date was taken from. */
 const FIRST_VISIT_WORDS: Record<FirstVisitBasis, { text: string; sourceLine: string; door: StoryDoor | null }> = {

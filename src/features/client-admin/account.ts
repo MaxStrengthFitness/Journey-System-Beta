@@ -75,7 +75,7 @@ import {
   type PriorHistorySource,
 } from "../../lib/prior-history";
 import { ageFromDob, masterSyncLabel } from "../client-profile/sync-label";
-import { firstVisitOf, monthYear, type FirstVisitBasis } from "../client-story/story";
+import { firstVisitOf, monthYear, type FirstVisitBasis } from "../client-story/first-visit";
 import { cap, dayKeyDate, joinDots, plural } from "../client-codex/kit/text";
 import { CLIENT_PRONOUNS, agree, type Pronouns } from "../client-codex/kit/pronouns";
 import { recordStudioIdOf } from "../client-codex/access";

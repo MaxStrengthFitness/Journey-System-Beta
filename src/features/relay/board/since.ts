@@ -48,7 +48,7 @@
 import { historyCoverage, priorHistoryOf, priorUncounted } from "../../../lib/prior-history";
 import { isStaffBlock } from "../../../lib/booking-state";
 import { studioDateKey, studioDayKeyOf, toDate, zonedHM, type DateLike } from "../../../lib/studio-time";
-import { firstVisitOf } from "../../client-story/story";
+import { firstVisitOf } from "../../client-story/first-visit";
 import { addDays } from "../../studio-tasks/recurrence";
 import { minutesToClock } from "./now-context";
 
