@@ -14,8 +14,9 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { Client, Machine, Trainer, WorkoutSession, ExerciseLog } from '../../../types';
-import { processLegacyChart, extractMachineSettingsFromImage, OCRMachineSetting, ValidationSession, sanitizeImportedSessions, OCRResult } from '../../../services/geminiService';
-import { chartPagesProblem, MAX_CHART_PAGES } from '../../../services/chart-upload';
+import { extractMachineSettingsFromImage, OCRMachineSetting, ValidationSession, sanitizeImportedSessions, OCRResult } from '../../../services/geminiService';
+import { chartPagesProblem, MAX_CHART_PAGES, SCAN_WAITING_MESSAGE } from '../../../services/chart-upload';
+import { readChartPages, waitWhileScanBusy } from '../../../services/chart-scan';
 import { readChartFile } from '../../../services/read-chart-file';
 import { db } from '../../../firebase';
 import { useActiveStudio } from '../../../contexts/ActiveStudioContext';
@@ -148,22 +149,26 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
     setExtractedSettings([]); // Clear previous results
 
     try {
-      const allOcrResults: OCRResult[] = [];
       const imageFiles = files.map(f => ({ base64: f.base64, mimeType: f.mimeType }));
-      
-      // Process images one by one for maximum precision
-      for (let i = 0; i < imageFiles.length; i++) {
-        const file = imageFiles[i];
-        setScanProgress(`Analyzing Page ${i + 1} of ${imageFiles.length}...`);
-        setScanPercentage(Math.round(((i) / imageFiles.length) * 50)); // First 50% for sessions
-        
-        const result = await processLegacyChart([file], 12, i, imageFiles.length);
-        allOcrResults.push(result);
-      }
+      // The server reads one request at a time (R20): a page answered busy is
+      // waited out and sent again, and the pages already read are kept
+      // (services/chart-scan.ts).
+      const waitingForTurn = () => setScanProgress(SCAN_WAITING_MESSAGE);
 
-      setScanProgress('Extracting High-Precision Machine Settings...');
+      // Process images one by one for maximum precision
+      const allOcrResults: OCRResult[] = await readChartPages(imageFiles, {
+        onWaiting: waitingForTurn,
+        onPage: (i, total) => {
+          setScanProgress(`Analyzing Page ${i + 1} of ${total}...`);
+          setScanPercentage(Math.round((i / total) * 50)); // First 50% for sessions
+        },
+      });
+
       // Use the specialized settings engine for better padding/seat data
-      const settings = await extractMachineSettingsFromImage(imageFiles);
+      const settings = await waitWhileScanBusy(() => {
+        setScanProgress('Extracting High-Precision Machine Settings...');
+        return extractMachineSettingsFromImage(imageFiles);
+      }, { onWaiting: waitingForTurn });
       setExtractedSettings(settings);
       setScanPercentage(90);
 
@@ -306,7 +311,10 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
     
     try {
       const imageFiles = files.map(f => ({ base64: f.base64, mimeType: f.mimeType }));
-      const settings = await extractMachineSettingsFromImage(imageFiles);
+      const settings = await waitWhileScanBusy(() => {
+        setScanProgress('Scanning Settings Column Across All Images...');
+        return extractMachineSettingsFromImage(imageFiles);
+      }, { onWaiting: () => setScanProgress(SCAN_WAITING_MESSAGE) });
       setExtractedSettings(settings);
       setScanProgress('Settings Extraction Complete');
     } catch (err: any) {

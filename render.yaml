@@ -108,11 +108,41 @@ services:
     name: maxstrength-app-beta
     runtime: node
     plan: 1c-2g            # "Standard" - $25/mo, 1 CPU, 2 GB
+    # One instance, said out loud (the speed round, Oct 5 2026). The Gemini
+    # limits and the Mindbody token bucket live in this process's memory, so
+    # a second instance would double both; it waits until they are divided
+    # or shared.
+    numInstances: 1
     branch: master
     buildCommand: npm ci && npm run build
-    startCommand: npm start
+    # Node itself, not `npm start` (the same `node build/server.cjs`, from
+    # package.json): Render's SIGTERM then reaches server.ts directly, with
+    # no npm or shell in between that might not pass it on, and the drain
+    # below actually runs. The first deploy should log "SIGTERM: no new
+    # connections; letting running requests finish."
+    startCommand: node build/server.cjs
     healthCheckPath: /healthz   # server.ts already answers this
+    # On a deploy Render moves traffic to the new instance, waits about 60
+    # seconds, then sends the old one SIGTERM. server.ts now answers SIGTERM
+    # by finishing the requests still running (a long chart scan, a slow
+    # Mindbody pull) before it exits, and this is how long Render lets it.
+    # Without the handler this number did nothing: Node exits on SIGTERM.
+    maxShutdownDelaySeconds: 120
     autoDeployTrigger: commit   # replaces the deprecated `autoDeploy: true`
+    # THE SMALLER PLAN (R20) - NOT YET. Moving this service to 0.5c-512mb
+    # ($7/mo instead of $25) waits for every one of these:
+    #   1. Edge caching on ("Common static files") and a second GET of an
+    #      /assets/*.js file answering `cf-cache-status: HIT`.
+    #   2. Two recorded 14-day windows in a row (Pro keeps 14 days of metrics:
+    #      screenshot each window's peak and p95 before it ages out), each
+    #      holding a deploy and an evening of chart imports, with memory p95
+    #      under 300 MB and CPU in the deploy window under 70%.
+    #   3. AJ approves the bill change.
+    # Then: plan: 0.5c-512mb, and the heap cap goes in the START command,
+    #   startCommand: node --max-old-space-size=320 build/server.cjs
+    # never as NODE_OPTIONS under envVars: Render hands a service's env vars
+    # to the build too, and a 320 MB heap would break `vite build`. Back to
+    # 1c-2g on memory p95 over 300 MB or any out-of-memory restart.
     # NOTE: no service in this file sets `region`, on purpose.
     #
     # For THIS service it cannot help: region is fixed at creation, so naming

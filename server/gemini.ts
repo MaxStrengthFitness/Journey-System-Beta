@@ -1,36 +1,81 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
+/**
+ * The model both OCR routes read with. Checked against Google's model list
+ * and deprecations page on Oct 5 2026 (the speed round, R33): there is no
+ * stable id of THIS model - Gemini 3 Flash is still only
+ * "gemini-3-flash-preview", with no shutdown date announced - so it stays.
+ * Google names "gemini-3.6-flash" (stable) as its replacement; that is a
+ * different model, and moving to it means re-checking the chart and machine
+ * readings against real pages first, never a silent swap. Prompts unchanged.
+ */
 const OCR_MODEL = "gemini-3-flash-preview";
 
 let genaiClient: GoogleGenAI | null = null;
 
-const withRetry = async <T>(
+/**
+ * How long one call to the model may take (the speed round, Oct 5 2026). A
+ * page is usually read in well under a minute; without a limit a call that
+ * never came back held the chart scan's slot (server/gemini-routes.ts) and
+ * left the importer spinning for ever. Past it the call is abandoned (Google
+ * may still bill a call it finished) and the importer is told in a sentence.
+ * A timeout is not retried.
+ */
+export const GEMINI_CALL_TIMEOUT_MS = 90_000;
+
+export function geminiTimeoutSentence(timeoutMs: number = GEMINI_CALL_TIMEOUT_MS): string {
+  return `Gemini took longer than ${Math.round(timeoutMs / 1000)} seconds to read this. Try again, or send fewer pages at a time.`;
+}
+
+/**
+ * How long one scan request may hold the model, retries included (the speed
+ * round's review, Oct 5 2026). Each attempt has its own 90 s limit, but a
+ * 503 or 429 is retried, so without this a request whose first attempts came
+ * back retryable near the limit held the process's one scan slot
+ * (server/gemini-routes.ts) for about four and a half minutes, and every
+ * other scan was told "busy" all that time. No attempt runs past this from
+ * the first one's start, and none starts once it has gone.
+ */
+export const GEMINI_SCAN_DEADLINE_MS = 120_000;
+
+export const withRetry = async <T>(
   operationName: string,
-  fn: () => Promise<T>,
+  fn: (signal: AbortSignal) => Promise<T>,
   retries = 3,
   initialDelay = 1000,
+  timeoutMs = GEMINI_CALL_TIMEOUT_MS,
+  deadlineMs = GEMINI_SCAN_DEADLINE_MS,
 ): Promise<T> => {
+  const started = Date.now();
   let attempt = 0;
   while (attempt < retries) {
+    // A fresh limit for each attempt, handed to the SDK as its abortSignal,
+    // never running past the whole request's deadline.
+    const limit = Math.max(1, Math.min(timeoutMs, deadlineMs - (Date.now() - started)));
+    const signal = AbortSignal.timeout(limit);
     try {
-      return await fn();
+      return await fn(signal);
     } catch (e: any) {
       attempt++;
+      if (signal.aborted) {
+        console.warn(`[Gemini API] ${operationName} gave up after ${limit}ms.`);
+        throw new Error(geminiTimeoutSentence(attempt === 1 ? limit : deadlineMs));
+      }
       const msg = e.message || String(e);
       const isRetryable =
         e.status === 503 ||
         e.status === 429 ||
         msg.includes("503") ||
         msg.includes("429");
-      if (attempt >= retries || !isRetryable) {
+      const delay = initialDelay * attempt;
+      const timeLeft = deadlineMs - (Date.now() - started) - delay;
+      if (attempt >= retries || !isRetryable || timeLeft <= 0) {
         throw new Error(`Gemini API Error during ${operationName}: ${msg}`);
       }
       console.log(
-        `[Gemini API] Retry ${attempt}/${retries} for ${operationName} after ${initialDelay * attempt}ms due to: ${msg}`,
+        `[Gemini API] Retry ${attempt}/${retries} for ${operationName} after ${delay}ms due to: ${msg}`,
       );
-      await new Promise((resolve) =>
-        setTimeout(resolve, initialDelay * attempt),
-      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
   throw new Error("unreachable");
@@ -203,7 +248,7 @@ ${JSON.stringify(machineDictionary, null, 2)}
     inlineData: { data: img.base64, mimeType: img.mimeType },
   }));
 
-  const response = await withRetry("extractMachineSettingsFromImage", () =>
+  const response = await withRetry("extractMachineSettingsFromImage", (abortSignal) =>
     ai.models.generateContent({
       model: OCR_MODEL,
       contents: [
@@ -220,6 +265,7 @@ ${JSON.stringify(machineDictionary, null, 2)}
         systemInstruction,
         responseMimeType: "application/json",
         responseSchema: MACHINE_SETTINGS_OCR_SCHEMA,
+        abortSignal,
       },
     }),
   );
@@ -279,7 +325,7 @@ Return ONLY valid JSON matching the requested schema.`;
     inlineData: { data: img.base64, mimeType: img.mimeType },
   }));
 
-  const response = await withRetry("processLegacyChart", () =>
+  const response = await withRetry("processLegacyChart", (abortSignal) =>
     ai.models.generateContent({
       model: OCR_MODEL,
       contents: [
@@ -296,6 +342,7 @@ Return ONLY valid JSON matching the requested schema.`;
         systemInstruction,
         responseMimeType: "application/json",
         responseSchema: CHART_OCR_SCHEMA,
+        abortSignal,
       },
     }),
   );

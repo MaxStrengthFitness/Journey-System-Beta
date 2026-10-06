@@ -83,10 +83,44 @@ function tokenVerifier() {
   return getAuth(app);
 }
 
-async function restGet(url: string, idToken: string): Promise<{ status: number; body: any }> {
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
-  const body = await r.json().catch(() => null);
-  return { status: r.status, body };
+/**
+ * How long one of these reads may take (the speed round's review, Oct 5
+ * 2026). Every /api/mindbody/* and /api/gemini/* request waits on this check
+ * first, and a Firestore read that never answered held the request for ever:
+ * the Mindbody and Gemini calls behind it have their own limits, this one had
+ * none. AUTH_READ_TIMEOUT_MS overrides it (read per call, for tests).
+ */
+export const AUTH_READ_TIMEOUT_MS = 15_000;
+
+function authReadTimeoutMs(): number {
+  const fromEnv = Number(process.env.AUTH_READ_TIMEOUT_MS);
+  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : AUTH_READ_TIMEOUT_MS;
+}
+
+/**
+ * One Firestore REST read with the caller's token. A read that doesn't answer
+ * in time comes back as HTTP 504 with a reason, which every caller already
+ * treats as UNKNOWN: it rides on the last good answer if there is one, and
+ * otherwise the request is answered 503 "Couldn't confirm your account just
+ * now", never "not staff" and never signed out.
+ */
+export async function restGet(url: string, idToken: string): Promise<{ status: number; body: any }> {
+  const timeoutMs = authReadTimeoutMs();
+  const signal = AbortSignal.timeout(timeoutMs);
+  const timedOut = () => ({
+    status: 504,
+    body: { error: { message: `Firestore didn't answer within ${Math.round(timeoutMs / 1000)} s` } },
+  });
+  try {
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` }, signal });
+    const body = await r.json().catch(() => undefined);
+    // A body cut off by the limit is not an empty document.
+    if (body === undefined && signal.aborted) return timedOut();
+    return { status: r.status, body: body ?? null };
+  } catch (err) {
+    if (signal.aborted) return timedOut();
+    throw err;
+  }
 }
 
 /**

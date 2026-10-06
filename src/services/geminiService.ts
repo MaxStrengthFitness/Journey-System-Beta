@@ -1,4 +1,5 @@
 import { authedFetch } from "../lib/authed-fetch";
+import { SCAN_BUSY, SCAN_BUSY_MESSAGE } from "./chart-upload";
 
 export interface ValidationLog {
   id: string;
@@ -58,16 +59,40 @@ export interface OCRMachineSetting {
   currentWeight?: string;
 }
 
-async function handleResponse(res: Response) {
+/**
+ * The server is reading someone else's page (server/gemini-routes.ts, R20):
+ * one request at a time for the whole process. Its message is the sentence a
+ * person sees; `retryAfterSeconds` is the server's Retry-After, so a caller
+ * that can wait (src/services/chart-scan.ts) knows when to try again.
+ */
+export class ScanBusyError extends Error {
+  readonly busy = true;
+  constructor(readonly retryAfterSeconds: number) {
+    super(SCAN_BUSY_MESSAGE);
+    this.name = 'ScanBusyError';
+  }
+}
+
+export function isScanBusy(err: unknown): err is ScanBusyError {
+  return err instanceof ScanBusyError;
+}
+
+export async function handleResponse(res: Response) {
   if (!res.ok) {
     let errorMsg: any = 'API Request Failed';
     try {
       const errorData = await res.json();
       errorMsg = errorData?.error || errorMsg;
+      // The server reads one scan at a time (server/gemini-routes.ts, R20).
+      if (res.status === 503 && errorMsg === SCAN_BUSY) {
+        const seconds = Number(res.headers.get('Retry-After'));
+        throw new ScanBusyError(Number.isFinite(seconds) && seconds > 0 ? seconds : 5);
+      }
       if (typeof errorMsg === 'object' && errorMsg !== null && 'message' in errorMsg) {
         errorMsg = errorMsg.message;
       }
     } catch (e) {
+      if (isScanBusy(e)) throw e;
       // ignore
     }
     throw new Error(String(errorMsg));

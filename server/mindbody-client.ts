@@ -105,6 +105,20 @@ const BUCKET_LIMITS = {
 const MAX_ATTEMPTS = envNum("MINDBODY_MAX_ATTEMPTS", 3);
 /** Everything for one call, retries and waiting included. */
 const TOTAL_DEADLINE_MS = envNum("MINDBODY_DEADLINE_MS", 15_000);
+/**
+ * How long ONE attempt may wait for Mindbody, its answer's body included (the
+ * speed round, Oct 5 2026). The deadline above only ever bounded the waits
+ * BETWEEN attempts: a call Mindbody accepted and never answered held the
+ * route, and the trainer's Sync, for ever. Generous on purpose, because a
+ * slow answer is still an answer. Past it the attempt counts as a network
+ * failure (status 504): retried only if the deadline still allows, and the
+ * route answers its usual error, so the browser reports a failure (unknown,
+ * never empty) instead of hanging. Nothing about WHAT is called, or how
+ * often, changes.
+ */
+export const MINDBODY_ATTEMPT_TIMEOUT_MS = envNum("MINDBODY_ATTEMPT_TIMEOUT_MS", 30_000);
+/** One page of up to 500 appointments (the schedule pull): longer, as Mindbody can be slow to build it. */
+export const MINDBODY_LARGE_PAGE_TIMEOUT_MS = envNum("MINDBODY_LARGE_PAGE_TIMEOUT_MS", 60_000);
 const BREAKER_LIMITS = {
   fails: envNum("MINDBODY_BREAKER_FAILS", 5),
   cooldownMs: envNum("MINDBODY_BREAKER_COOLDOWN_MS", 60_000),
@@ -143,9 +157,11 @@ export interface FloorOutcome {
 async function callMindbody(
   site: string,
   label: string,
-  send: () => Promise<Response>,
+  /** Must hand `signal` to fetch: it is the attempt's time limit. */
+  send: (signal: AbortSignal) => Promise<Response>,
   /** A status that is a normal answer here, not a failure for the breaker (a staff photo's 404). */
   isNormal: (status: number) => boolean = () => false,
+  timeoutMs: number = MINDBODY_ATTEMPT_TIMEOUT_MS,
 ): Promise<FloorOutcome> {
   const paused = breakerPausedMs(breakers[site] || NEW_BREAKER, Date.now());
   if (paused > 0) {
@@ -166,12 +182,21 @@ async function callMindbody(
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     await takeToken();
     let res: Response | null = null;
+    // Started after the token bucket, so time spent waiting our turn is not
+    // counted against Mindbody. It stays on the response, so reading the
+    // body is inside the limit too.
+    const signal = AbortSignal.timeout(timeoutMs);
     try {
-      res = await send();
+      res = await send(signal);
     } catch (err: any) {
-      /* A network error, not an HTTP one. Worth one more go. */
-      lastError = err?.message || String(err);
-      lastStatus = 0;
+      if (signal.aborted) {
+        lastError = `Mindbody did not answer within ${Math.round(timeoutMs / 1000)}s.`;
+        lastStatus = 504;
+      } else {
+        /* A network error, not an HTTP one. Worth one more go. */
+        lastError = err?.message || String(err);
+        lastStatus = 0;
+      }
     }
 
     if (res) {
@@ -257,8 +282,9 @@ async function issueMindbodyToken(siteId: string): Promise<string> {
    * mindbodyGet, this one still THROWS, because a caller with no token has
    * nothing useful to do.
    */
-  const outcome = await callMindbody(String(siteId), "usertoken/issue", () =>
+  const outcome = await callMindbody(String(siteId), "usertoken/issue", (signal) =>
     fetch(`${MB_BASE}/usertoken/issue`, {
+      signal,
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -321,7 +347,13 @@ export async function mindbodyFetch(
   init: RequestInit,
   isNormal?: (status: number) => boolean,
 ): Promise<Response> {
-  const outcome = await callMindbody(String(site), label, () => fetch(url, init), isNormal);
+  const outcome = await callMindbody(
+    String(site),
+    label,
+    // The floor's signal is the attempt's time limit; a caller's own is not used.
+    (signal) => fetch(url, { ...init, signal }),
+    isNormal,
+  );
   if (outcome.response) return outcome.response;
   return new Response(
     JSON.stringify({ Error: { Message: outcome.error || "Mindbody did not answer." } }),
@@ -374,11 +406,15 @@ export interface MindbodyResult {
   error: string;
 }
 
-/** One authenticated GET against the Public API. Never throws for an HTTP error. */
+/**
+ * One authenticated GET against the Public API. Never throws for an HTTP
+ * error, a timeout, or an answer it couldn't read: each is `ok: false`.
+ */
 export async function mindbodyGet(
   site: string,
   path: string,
   params: Record<string, string | number | boolean | Array<string | number>>,
+  options: { timeoutMs?: number } = {},
 ): Promise<MindbodyResult> {
   const apiKey = process.env.MINDBODY_API_KEY;
   if (!apiKey) return { ok: false, status: 500, data: null, error: "MINDBODY_API_KEY is not set." };
@@ -393,16 +429,22 @@ export async function mindbodyGet(
   let outcome: FloorOutcome | null = null;
   for (let pass = 0; pass < 2; pass++) {
     const userToken = await getMindbodyToken(site);
-    outcome = await callMindbody(site, path, () =>
-      fetch(`${MB_BASE}/${path}?${query.toString()}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Api-Key": apiKey,
-          SiteId: site,
-          Authorization: userToken,
-        },
-      }),
+    outcome = await callMindbody(
+      site,
+      path,
+      (signal) =>
+        fetch(`${MB_BASE}/${path}?${query.toString()}`, {
+          signal,
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Api-Key": apiKey,
+            SiteId: site,
+            Authorization: userToken,
+          },
+        }),
+      undefined,
+      options.timeoutMs,
     );
     if (outcome.response?.status === 401 && pass === 0) {
       forgetMindbodyToken(site, userToken);
@@ -416,12 +458,21 @@ export async function mindbodyGet(
     console.warn(`Mindbody ${path} gave up (Site ${site}):`, outcome!.status, outcome!.error);
     return { ok: false, status: outcome!.status, data: null, error: outcome!.error };
   }
-  if (!r.ok) {
-    const text = await r.text();
-    console.warn(`Mindbody ${path} failed (Site ${site}):`, r.status, text.slice(0, 300));
-    return { ok: false, status: r.status, data: null, error: text };
+  /* The body is read inside the attempt's time limit too: a body that stops
+     arriving, or one that isn't JSON, is a failed read, never a throw. */
+  try {
+    if (!r.ok) {
+      const text = await r.text();
+      console.warn(`Mindbody ${path} failed (Site ${site}):`, r.status, text.slice(0, 300));
+      return { ok: false, status: r.status, data: null, error: text };
+    }
+    return { ok: true, status: r.status, data: await r.json(), error: "" };
+  } catch (err: any) {
+    const timedOut = err?.name === "TimeoutError" || err?.name === "AbortError";
+    const error = timedOut ? "Mindbody's answer stopped arriving before it was complete." : `Mindbody's answer couldn't be read: ${err?.message || err}`;
+    console.warn(`Mindbody ${path} (Site ${site}):`, error);
+    return { ok: false, status: timedOut ? 504 : 502, data: null, error };
   }
-  return { ok: true, status: r.status, data: await r.json(), error: "" };
 }
 
 export interface CommercialPull {

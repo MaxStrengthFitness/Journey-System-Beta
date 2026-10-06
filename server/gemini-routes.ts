@@ -12,11 +12,21 @@
  * Every request now passes, IN THIS ORDER:
  *   1. the same staff sign-in as /api/mindbody/* (server/auth.ts), so a
  *      caller with no sign-in is refused before a byte of the body is read;
- *   2. a per-person limit (src/lib/request-limit.ts) — two at once, sixty in
+ *   2. ONE SCAN AT A TIME for the whole process (the speed round, R20, Oct 5
+ *      2026), taken before the body is read: while one request is with the
+ *      model, another is answered 503 { error: "busy" } at once rather than
+ *      queued with up to 20 MB of pages held in memory. It is one REQUEST
+ *      at a time, and a scan is many (a page each, then the settings), so
+ *      the importer waits and tries a busy page again rather than losing
+ *      the pages it has read (src/services/chart-scan.ts). It comes before
+ *      the per-person limit so that a busy answer, and every retry of one,
+ *      costs nothing against that person's sixty. This is what lets the
+ *      service run on a small instance (render.yaml);
+ *   3. a per-person limit (src/lib/request-limit.ts) — two at once, sixty in
  *      fifteen minutes; a twelve-page scan is thirteen requests;
- *   3. the body, capped at CHART_BODY_LIMIT (src/services/chart-upload.ts,
+ *   4. the body, capped at CHART_BODY_LIMIT (src/services/chart-upload.ts,
  *      which also says why that number);
- *   4. a check of the pages themselves (at most MAX_CHART_PAGES, photos or
+ *   5. a check of the pages themselves (at most MAX_CHART_PAGES, photos or
  *      PDFs), before anything is sent to the model.
  * server.ts's own body parser skips /api/gemini/* so that step 3 happens here,
  * after the sign-in, and not before it.
@@ -32,7 +42,7 @@ import {
   type RequestLimiter,
   type RequestLimitOptions,
 } from "../src/lib/request-limit.ts";
-import { CHART_BODY_LIMIT, readChartImages } from "../src/services/chart-upload.ts";
+import { CHART_BODY_LIMIT, readChartImages, SCAN_BUSY } from "../src/services/chart-upload.ts";
 import type { extractMachineSettingsFromImage, processLegacyChart } from "./gemini.ts";
 
 export const GEMINI_LIMITS: RequestLimitOptions = {
@@ -53,6 +63,76 @@ export interface GeminiRouteDeps {
   extractMachineSettingsFromImage: typeof extractMachineSettingsFromImage;
   /** Defaults to one built from GEMINI_LIMITS. */
   limiter?: RequestLimiter;
+  /** Defaults to one slot for both routes. */
+  gate?: ScanGate;
+}
+
+/** How many scans the process reads at once, across both routes and everyone. */
+export const SCANS_AT_ONCE = 1;
+
+export interface ScanGate {
+  /** A release function when a slot was free (safe to call twice), else null. */
+  tryTake(): (() => void) | null;
+  /** Scans running now; for tests. */
+  running(): number;
+}
+
+export function createScanGate(slots: number = SCANS_AT_ONCE): ScanGate {
+  let running = 0;
+  return {
+    tryTake() {
+      if (running >= slots) return null;
+      running++;
+      let released = false;
+      return () => {
+        if (released) return;
+        released = true;
+        running--;
+      };
+    },
+    running: () => running,
+  };
+}
+
+/**
+ * Takes the process's scan slot before the body is read. The slot is freed
+ * when the answer has gone, or the connection closed, before the model was
+ * asked (a refused page, an oversized body, a caller who gave up); once the
+ * model has been asked, only when it has answered (`withScanSlot`'s finally).
+ * That wait is bounded: each attempt at the model has 90 s, and the request
+ * as a whole, retries included, at most GEMINI_SCAN_DEADLINE_MS (120 s) in
+ * server/gemini.ts. A caller who walks away while the model works does NOT
+ * free the slot (a deliberate difference from "release on client abort"):
+ * freeing it then would let a second scan in while the first one's pages are
+ * still in memory, which is what the slot is for.
+ */
+function oneScanAtATime(gate: ScanGate): RequestHandler {
+  return (_req, res, next) => {
+    const release = gate.tryTake();
+    if (!release) {
+      res.set("Retry-After", "5");
+      res.status(503).json({ error: SCAN_BUSY });
+      return;
+    }
+    res.locals.scanSlot = release;
+    const freeUnlessWorking = () => {
+      if (!res.locals.scanWorking) release();
+    };
+    res.on("finish", freeUnlessWorking);
+    res.on("close", freeUnlessWorking);
+    next();
+  };
+}
+
+/** Runs the model call holding the slot, and frees it when the call is over. */
+async function withScanSlot<T>(res: express.Response, work: () => Promise<T>): Promise<T> {
+  res.locals.scanWorking = true;
+  try {
+    return await work();
+  } finally {
+    res.locals.scanWorking = false;
+    res.locals.scanSlot?.();
+  }
 }
 
 function perCallerLimit(limiter: RequestLimiter): RequestHandler {
@@ -105,6 +185,8 @@ function finiteOrUndefined(value: unknown): number | undefined {
 export function registerGeminiRoutes(app: Express, deps: GeminiRouteDeps): void {
   const guard = [
     deps.requireSignIn,
+    // Before the per-person limit: a busy answer must not use up anyone's sixty.
+    oneScanAtATime(deps.gate ?? createScanGate()),
     perCallerLimit(deps.limiter ?? createRequestLimiter(GEMINI_LIMITS)),
     chartBody(),
   ];
@@ -114,11 +196,13 @@ export function registerGeminiRoutes(app: Express, deps: GeminiRouteDeps): void 
     if (!pages.ok) return res.status(400).json({ error: pages.error });
     try {
       const { expectedSessions, pageIndex, totalPages } = req.body;
-      const data = await deps.processLegacyChart(
-        pages.images,
-        finiteOrUndefined(expectedSessions) ?? 12,
-        finiteOrUndefined(pageIndex),
-        finiteOrUndefined(totalPages),
+      const data = await withScanSlot(res, () =>
+        deps.processLegacyChart(
+          pages.images,
+          finiteOrUndefined(expectedSessions) ?? 12,
+          finiteOrUndefined(pageIndex),
+          finiteOrUndefined(totalPages),
+        ),
       );
       res.json(data);
     } catch (e: any) {
@@ -131,7 +215,7 @@ export function registerGeminiRoutes(app: Express, deps: GeminiRouteDeps): void 
     const pages = readChartImages(req.body?.images);
     if (!pages.ok) return res.status(400).json({ error: pages.error });
     try {
-      const data = await deps.extractMachineSettingsFromImage(pages.images);
+      const data = await withScanSlot(res, () => deps.extractMachineSettingsFromImage(pages.images));
       res.json(data);
     } catch (e: any) {
       console.error(e);
