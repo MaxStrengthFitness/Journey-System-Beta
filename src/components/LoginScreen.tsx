@@ -19,10 +19,26 @@ export interface LoginScreenProps {
   isLoggingIn: boolean;
   loginError: string | null;
   onLogin: (provider: "google" | "microsoft") => void;
+  /**
+   * The popup sign-in is ready (the speed round, Oct 5 2026,
+   * features/front-door/sign-in-ready.ts). On Safari the buttons wait for it
+   * for a moment, because a popup opened after the tap is blocked.
+   */
+  signInReady?: boolean;
 }
 
-export function LoginScreen({ isLoggingIn, loginError, onLogin }: LoginScreenProps) {
+export function LoginScreen({ isLoggingIn, loginError, onLogin, signInReady = true }: LoginScreenProps) {
   const [tried, setTried] = useState<"google" | "microsoft" | null>(null);
+  // Said only if the wait is noticeable: a ready helper answers in a frame.
+  const [slowToReady, setSlowToReady] = useState(false);
+  useEffect(() => {
+    if (signInReady) {
+      setSlowToReady(false);
+      return;
+    }
+    const t = setTimeout(() => setSlowToReady(true), 400);
+    return () => clearTimeout(t);
+  }, [signInReady]);
   const [deviceLine] = useState(() => deviceStudioLine(getDeviceStudio(), getDefaultStudioId()));
   const errorRef = useRef<HTMLDivElement>(null);
 
@@ -56,7 +72,7 @@ export function LoginScreen({ isLoggingIn, loginError, onLogin }: LoginScreenPro
             type="button"
             className="fd-btn fd-btn--provider"
             onClick={() => press("google")}
-            disabled={isLoggingIn}
+            disabled={isLoggingIn || !signInReady}
           >
             <GoogleMark />
             <span>Continue with Google</span>
@@ -66,7 +82,7 @@ export function LoginScreen({ isLoggingIn, loginError, onLogin }: LoginScreenPro
             type="button"
             className={`fd-btn fd-btn--provider${loginError && tried === "microsoft" ? " fd-btn--bad" : ""}`}
             onClick={() => press("microsoft")}
-            disabled={isLoggingIn}
+            disabled={isLoggingIn || !signInReady}
           >
             <MicrosoftMark />
             <span>Continue with Microsoft</span>
@@ -76,6 +92,11 @@ export function LoginScreen({ isLoggingIn, loginError, onLogin }: LoginScreenPro
               <span className="fd-btn__sub">@{MICROSOFT_DOMAIN}</span>
             )}
           </button>
+          {!signInReady && slowToReady && (
+            <p className="fd-small fd-center" role="status">
+              Getting sign-in ready…
+            </p>
+          )}
           {loginError && (
             <div ref={errorRef} tabIndex={-1} role="alert" className="fd-notice fd-notice--bad fd-shake" key={loginError}>
               <WarnIcon />

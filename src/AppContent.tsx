@@ -45,7 +45,8 @@ import {
   signOut,
 } from "firebase/auth";
 
-import { db, auth } from "./firebase";
+import { db, auth, browserPopupRedirectResolver, prepareSignIn, signInNeedsHelperFirst } from "./firebase";
+import { useSignInReady } from "./features/front-door/sign-in-ready";
 import {
   Trainer,
   Client,
@@ -1021,6 +1022,9 @@ export default function AppContent({
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  /* The popup helper, loaded as the sign-in screen appears; on Safari the
+     buttons wait for it (the speed round, Oct 5 2026, R14). */
+  const signInReady = useSignInReady({ active: !user, prepare: prepareSignIn, mustWait: signInNeedsHelperFirst() });
 
   /* Microsoft sign-in is limited to company staff (MICROSOFT_DOMAIN,
      features/front-door/sign-in-errors.ts). */
@@ -1065,7 +1069,9 @@ export default function AppContent({
         provider.addScope("profile");
         provider.addScope("User.Read");
       }
-      const credential = await signInWithPopup(auth, provider);
+      // The helper is passed here: Auth starts without one on a device that
+      // was signed in (src/firebase.ts, lib/auth-boot.ts).
+      const credential = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
 
       // Microsoft sign-in is for company staff only. The single-tenant Azure app
       // already blocks outsiders, but a guest invited into the tenant would
@@ -1101,6 +1107,7 @@ export default function AppContent({
         isLoggingIn={isLoggingIn}
         loginError={loginError ?? signInRefusal}
         onLogin={handleLogin}
+        signInReady={signInReady}
       />
     );
   }
