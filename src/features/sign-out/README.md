@@ -23,7 +23,9 @@ Everything else goes, in four places:
    fresh. A key rather than a list of setters, so state added later is covered
    without anyone remembering to add it here.
 2. **Local storage** - `clearPersonalStorage` keeps `DEVICE_KEYS` (the pin)
-   and clears the rest.
+   and every key under `DEVICE_KEY_PREFIXES` (the boot's "this iPad holds the
+   whole list" flags, which describe the iPad's Firestore copy, and that copy
+   outlives a sign-out), and clears the rest.
 3. **Session storage** - `clearSessionHandoffs` removes the one-shot handoffs
    (`SESSION_HANDOFF_PREFIXES`: where a client's profile should open, machine
    fit's Setup hint) and leaves note drafts alone.

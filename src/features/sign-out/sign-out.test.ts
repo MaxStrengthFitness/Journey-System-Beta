@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DEVICE_KEYS,
+  DEVICE_KEY_PREFIXES,
   SESSION_HANDOFF_PREFIXES,
   SIGNED_OUT,
   clearPersonalStorage,
@@ -12,6 +13,7 @@ import {
 } from "./sign-out";
 import { forgetOnSignOut, forgetPersonalMemory } from "./memory";
 import { DEFAULT_STUDIO_KEY, DEVICE_STUDIO_KEY } from "../../lib/default-studio";
+import { LIST_SEEN_PREFIX, listSeen } from "../front-door/boot-lookup";
 import { STORE_PREFIX as PROFILE_NAV_PREFIX } from "../client-profile/profile-nav";
 import { PREFIX as SETUP_HINT_PREFIX } from "../machine-fit/ui/open-hint";
 import { PLACE_KEY, RELOAD_KEY } from "../new-version/reload-once";
@@ -81,6 +83,19 @@ describe("clearPersonalStorage — the iPad keeps its studio, nothing else", () 
 
   it("the pinned studio and the studio this iPad last opened are the only device keys", () => {
     expect(DEVICE_KEYS).toEqual([DEFAULT_STUDIO_KEY, DEVICE_STUDIO_KEY]);
+  });
+
+  it("keeps the boot's list-seen flags: they describe the iPad's Firestore copy, which a sign-out keeps", () => {
+    const local = leadersLocal();
+    local.setItem(LIST_SEEN_PREFIX + "studios", "1");
+    local.setItem(LIST_SEEN_PREFIX + "trainers", "1");
+    local.setItem(LIST_SEEN_PREFIX + "networks", "1");
+    clearPersonalStorage(local);
+    expect(listSeen(local, "studios")).toBe(true);
+    expect(listSeen(local, "trainers")).toBe(true);
+    expect(listSeen(local, "networks")).toBe(true);
+    expect(local.getItem("max_strength_trainer_id")).toBeNull();
+    expect(DEVICE_KEY_PREFIXES).toEqual([LIST_SEEN_PREFIX]);
   });
 
   it("a storage that throws is survived, not fatal", () => {

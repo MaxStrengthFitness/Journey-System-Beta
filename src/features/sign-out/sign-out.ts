@@ -17,6 +17,8 @@
  *  - KEPT: a note a trainer started mid-session and did not save
  *    (client-notes/session-draft). It belongs to the SESSION, not the person,
  *    and "nothing a trainer wrote about a client may be lost by the app".
+ *  - KEPT: which of the boot's lists this iPad's Firestore copy holds in full
+ *    (DEVICE_KEY_PREFIXES). The copy outlives a sign-out, so its flags do.
  *  - FORGOTTEN: everything else. Local storage apart from the pin; the
  *    one-shot handoffs in session storage (a profile told to open on Setup);
  *    every module memory registered in ./memory; and all of React's state,
@@ -26,6 +28,7 @@
  */
 
 import { DEFAULT_STUDIO_KEY, DEVICE_STUDIO_KEY } from "../../lib/default-studio";
+import { LIST_SEEN_PREFIX } from "../front-door/boot-lookup";
 import { STORE_PREFIX as PROFILE_NAV_PREFIX } from "../client-profile/profile-nav";
 import { PREFIX as SETUP_HINT_PREFIX } from "../machine-fit/ui/open-hint";
 import { PLACE_KEY as NEW_VERSION_PLACE_KEY } from "../new-version/reload-once";
@@ -45,6 +48,16 @@ export interface StorageLike {
 export const DEVICE_KEYS: readonly string[] = [DEFAULT_STUDIO_KEY, DEVICE_STUDIO_KEY];
 
 /**
+ * Local-storage keys, by prefix, that belong to the iPad too. The boot's
+ * "this iPad has had the server's whole answer for this list" flags
+ * (front-door/boot-lookup, the speed round's final review, Oct 6 2026)
+ * describe the iPad's Firestore copy, which a sign-out does not clear: wiped,
+ * the next person on dead Wi-Fi would wait on "Checking you in" for studios
+ * the iPad already holds, and could not start a session offline.
+ */
+export const DEVICE_KEY_PREFIXES: readonly string[] = [LIST_SEEN_PREFIX];
+
+/**
  * Session-storage keys, by prefix, that are one-shot handoffs from one screen
  * to the next: written by a tap, read once by the screen it opens. Left
  * behind, the next person's first tap on that client obeys the last person's.
@@ -62,7 +75,12 @@ export const SESSION_HANDOFF_PREFIXES: readonly string[] = [
 export function clearPersonalStorage(storage: StorageLike | null | undefined): void {
   if (!storage) return;
   try {
-    const kept = DEVICE_KEYS.map((key) => [key, storage.getItem(key)] as const);
+    const keys = new Set(DEVICE_KEYS);
+    for (let i = 0; i < storage.length; i++) {
+      const key = storage.key(i);
+      if (key && DEVICE_KEY_PREFIXES.some((prefix) => key.startsWith(prefix))) keys.add(key);
+    }
+    const kept = [...keys].map((key) => [key, storage.getItem(key)] as const);
     storage.clear();
     for (const [key, value] of kept) {
       if (value !== null) storage.setItem(key, value);
