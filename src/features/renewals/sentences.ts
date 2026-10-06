@@ -8,21 +8,20 @@
  */
 
 import { daysBetween } from "../client-history/model";
+import { formatDateWords } from "../../lib/studio-time";
 import { callChange, type InBodyVariation } from "../inbody/variation";
 import type { AutoRenewSource, RenewalSituation, RenewalSnapshot } from "./types";
 
-/** "Nov 14", or "Nov 14, 2027" when it isn't this year. */
+const DAY_LABEL: Intl.DateTimeFormatOptions = { timeZone: "UTC", month: "short", day: "numeric" };
+const DAY_LABEL_YEAR: Intl.DateTimeFormatOptions = { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" };
+
+/** "Nov 14", or "Nov 14, 2027" when it isn't this year. One cached formatter per option set. */
 export function dayLabel(key: string | null | undefined, today?: string): string {
   if (!key) return "";
   const [y, m, d] = key.split("-").map(Number);
   const date = new Date(Date.UTC(y, m - 1, d));
   const sameYear = today ? today.slice(0, 4) === key.slice(0, 4) : true;
-  return date.toLocaleDateString("en-US", {
-    timeZone: "UTC",
-    month: "short",
-    day: "numeric",
-    ...(sameYear ? {} : { year: "numeric" }),
-  });
+  return formatDateWords(date, sameYear ? DAY_LABEL : DAY_LABEL_YEAR, "en-US");
 }
 
 function sessions(n: number): string {

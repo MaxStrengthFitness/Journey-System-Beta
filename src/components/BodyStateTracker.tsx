@@ -222,7 +222,7 @@ export function BodyStateTracker({
       {/* Modal Overlay */}
       {open && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-(--scrim) backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-(--scrim)"
           onClick={closePopover}
         >
           <div

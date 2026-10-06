@@ -116,7 +116,7 @@
   --eq-elev-3:          var(--elev-3);
   --eq-elev-4:          var(--elev-4);
   --eq-elev-5:          var(--elev-5);
-  --eq-elev-card:       var(--elev-card);
+  --eq-elev-list:       var(--elev-list);
   --eq-shelf:           var(--shelf);
   --eq-press:           var(--press);
   --eq-glow-live:       var(--glow-live);
@@ -194,7 +194,7 @@
   --eq-elev-3:          var(--elev-3);
   --eq-elev-4:          var(--elev-4);
   --eq-elev-5:          var(--elev-5);
-  --eq-elev-card:       var(--elev-card);
+  --eq-elev-list:       var(--elev-list);
   --eq-shelf:           var(--shelf);
   --eq-press:           var(--press);
   --eq-glow-live:       var(--glow-live);
@@ -253,7 +253,7 @@
     --eq-elev-3:          var(--elev-3);
     --eq-elev-4:          var(--elev-4);
     --eq-elev-5:          var(--elev-5);
-    --eq-elev-card:       var(--elev-card);
+    --eq-elev-list:       var(--elev-list);
     --eq-shelf:           var(--shelf);
     --eq-press:           var(--press);
     --eq-glow-live:       var(--glow-live);

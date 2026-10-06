@@ -547,7 +547,7 @@
   border-radius: 14px;
   background: var(--eq-surface);
   background-clip: padding-box;
-  box-shadow: var(--eq-elev-2), var(--eq-panel-highlight);
+  box-shadow: var(--eq-elev-list), var(--eq-panel-highlight);
   color: var(--eq-ink);
 }
 

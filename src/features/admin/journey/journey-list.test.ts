@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Client, ScheduleEntry, Trainer } from "../../../types";
 import { DEFAULT_RENEWAL_SETTINGS } from "../../renewals/settings";
 import type { WatchlistEntry } from "../attention/attention";
-import { listFor, shiftToday, stateCounts, studioJourneys, thisWeek, type StudioJourneysInput } from "./journey-list";
+import { listFor, shiftFromIndex, shiftIndex, shiftToday, stateCounts, studioJourneys, thisWeek, type StudioJourneysInput } from "./journey-list";
 import { APP_LINES } from "./states";
 
 const TODAY = "2026-09-28"; // a Monday
@@ -149,5 +149,29 @@ describe("the studio's Journey", () => {
   it("reads a trainer's shift from the day's bookings", () => {
     expect(shiftToday(week, trainers[0], TODAY, TZ)).toBe("11:00 AM – 3:30 PM");
     expect(shiftToday(week, null, TODAY, TZ)).toBeNull();
+  });
+
+  it("the shift index answers as shiftToday does, for every trainer (ids, sign-in uids, names, cancelled, blocks, other days)", () => {
+    const at = (day: string, hm: string) => new Date(`${day}T${hm}:00-04:00`);
+    const tomorrow = "2026-09-29";
+    const mixed = [
+      ...week,
+      { id: "x1", clientId: "a", clientName: "A", trainerId: "uid-ber", startTime: at(TODAY, "06:00"), endTime: at(TODAY, "06:30"), status: "Scheduled" },
+      { id: "x2", clientId: "b", clientName: "B", trainerName: "  Mablung Ranger ", startTime: at(TODAY, "19:00"), status: "Scheduled" },
+      { id: "x3", clientId: "c", clientName: "C", trainerId: "t-mab", startTime: at(TODAY, "05:00"), endTime: at(TODAY, "05:30"), status: "Cancelled" },
+      { id: "x4", clientId: "d", clientName: "Unavailable", trainerId: "t-mab", startTime: at(TODAY, "04:00"), endTime: at(TODAY, "04:30"), status: "Scheduled" },
+      { id: "x5", clientId: "e", clientName: "E", trainerId: "t-mab", startTime: at(tomorrow, "05:00"), endTime: at(tomorrow, "05:30"), status: "Scheduled" },
+      { id: "x6", clientId: "f", clientName: "F", trainerName: "Westlake Rotation", startTime: at(TODAY, "08:00"), endTime: at(TODAY, "08:30"), status: "Scheduled" },
+    ] as unknown as typeof week;
+    const people = [
+      ...trainers,
+      { id: "t-ber", authUid: "uid-ber", fullName: "Beregond Guard" },
+      { id: "nobody", fullName: "No One" },
+      { id: "t-rot", fullName: "Westlake Rotation" },
+      { id: "t-blank", fullName: "" },
+    ] as unknown as typeof trainers;
+    const index = shiftIndex(mixed, TODAY, TZ);
+    for (const t of people) expect(shiftFromIndex(index, t, TZ), t.fullName).toBe(shiftToday(mixed, t, TODAY, TZ));
+    expect(shiftFromIndex(index, null, TZ)).toBeNull();
   });
 });

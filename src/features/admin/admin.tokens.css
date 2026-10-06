@@ -91,7 +91,7 @@
   --adm-elev-3:          var(--elev-3);
   --adm-elev-4:          var(--elev-4);
   --adm-elev-5:          var(--elev-5);
-  --adm-elev-card:       var(--elev-card);
+  --adm-elev-list:       var(--elev-list);
   --adm-shelf:           var(--shelf);
   --adm-press:           var(--press);
   --adm-glow-live:       var(--glow-live);
@@ -162,7 +162,7 @@
   --adm-elev-3:          var(--elev-3);
   --adm-elev-4:          var(--elev-4);
   --adm-elev-5:          var(--elev-5);
-  --adm-elev-card:       var(--elev-card);
+  --adm-elev-list:       var(--elev-list);
   --adm-shelf:           var(--shelf);
   --adm-press:           var(--press);
   --adm-glow-live:       var(--glow-live);
@@ -221,7 +221,7 @@
     --adm-elev-3:          var(--elev-3);
     --adm-elev-4:          var(--elev-4);
     --adm-elev-5:          var(--elev-5);
-    --adm-elev-card:       var(--elev-card);
+    --adm-elev-list:       var(--elev-list);
     --adm-shelf:           var(--shelf);
     --adm-press:           var(--press);
     --adm-glow-live:       var(--glow-live);

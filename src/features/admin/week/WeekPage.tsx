@@ -35,7 +35,7 @@ import { useMemo } from "react";
 import { CalendarRange, ChevronRight } from "lucide-react";
 import type { Client, Studio, Trainer } from "../../../types";
 import { loggedSessions } from "../../../lib/booking-state";
-import { formatStudioTime, studioDateKey, studioDayBoundsForKey } from "../../../lib/studio-time";
+import { formatStudioTime, studioDateKey, studioDayBoundsForKey, formatDateWords } from "../../../lib/studio-time";
 import { addDays } from "../../client-history/model";
 import { tallyOutcomes } from "../../renewals/rates";
 import { useOutcomes } from "../../renewals/useOutcomes";
@@ -51,7 +51,8 @@ import { moments } from "../overview/moments";
 import { renewalsQuestion } from "../overview/questions";
 import { useStudioJourneys } from "../journey/useStudioJourneys";
 import { isSlipping } from "../journey/states";
-import { useMinuteClock } from "../shell/useMinuteClock";
+import { useBoundaryClock } from "../../../lib/boundary-clock";
+import { bookingBoundaries } from "../../../lib/booking-state";
 import type { OpsDoor } from "../shell/places";
 import { busiestDay, dayFacts, dayLine, mondayOf, readInFull, teamWeek, totals, weekFrom, type DayFacts } from "./review";
 import { useCoverageRecord } from "./useCoverageRecord";
@@ -78,13 +79,13 @@ export function WeekPage(props: WeekPageProps) {
 
 const dateWords = (day: string) => {
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }, "en-US");
 };
 
 /** "Thursday", from a day key's digits. */
 function longDay(day: string): string {
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { weekday: "long", timeZone: "UTC" }, "en-US");
 }
 
 function DayCells({ days, today, logging = true }: { days: DayFacts[]; today: string; logging?: boolean }) {
@@ -117,14 +118,17 @@ function Door({ label, to, onOpen }: { label: string; to: OpsDoor; onOpen?: (to:
  * ------------------------------------------------------------------ */
 
 function LastWeek({ studio, studios, clients, trainers, authTrainer, onOpen }: WeekPageProps) {
-  const now = useMinuteClock();
+  // Moves when a state could change (a booking's edge, the night's record, the day), not every minute.
+  const clock = useBoundaryClock();
+  const now = clock.now;
   const studioId = studio.id as string;
-  const j = useStudioJourneys({ studio, studios, clients, trainers, authTrainer, now });
+  const j = useStudioJourneys({ studio, studios, clients, trainers, authTrainer, now, clock });
   const tz = j.tz;
   const thisMonday = mondayOf(j.today);
   const lastMonday = addDays(thisMonday, -7);
   const lastSunday = addDays(thisMonday, -1);
   const week = useWeekSchedule(studioId, lastMonday, tz);
+  clock.watch("lastWeek", useMemo(() => bookingBoundaries(week.entries), [week.entries]));
   // Anchored on the Monday, so the read happens once a week, not every minute.
   const startMs = useMemo(() => studioDayBoundsForKey(lastMonday, tz).start.getTime(), [lastMonday, tz]);
   const sessions = useSessionsInRange({ studioId, startMs });
@@ -256,12 +260,15 @@ function LastWeek({ studio, studios, clients, trainers, authTrainer, onOpen }: W
  * ------------------------------------------------------------------ */
 
 function ThisWeek({ studio, onOpenClient }: WeekPageProps) {
-  const now = useMinuteClock();
+  // Moves at the week's booking edges and the day, not every minute.
+  const clock = useBoundaryClock();
+  const now = clock.now;
   const studioId = studio.id as string;
   const tz = studio.timezone || undefined;
   const todayKey = studioDateKey(now, tz) ?? "";
   const monday = mondayOf(todayKey);
   const week = useWeekSchedule(studioId, monday, tz);
+  clock.watch("thisWeek", useMemo(() => bookingBoundaries(week.entries), [week.entries]));
   const startMs = useMemo(() => studioDayBoundsForKey(monday, tz).start.getTime(), [monday, tz]);
   const sessions = useSessionsInRange({ studioId, startMs });
   const logged = useMemo(() => (sessions.loading || sessions.failed || sessions.truncated ? null : loggedSessions(sessions.sessions, tz)), [sessions, tz]);
@@ -296,8 +303,10 @@ function ThisWeek({ studio, onOpenClient }: WeekPageProps) {
  * ------------------------------------------------------------------ */
 
 function WeekAhead({ studio, studios, clients, trainers, authTrainer, onOpenClient, onOpen }: WeekPageProps) {
-  const now = useMinuteClock();
-  const j = useStudioJourneys({ studio, studios, clients, trainers, authTrainer, now });
+  // Moves when a state could change (a booking's edge, the night's record, the day), not every minute.
+  const clock = useBoundaryClock();
+  const now = clock.now;
+  const j = useStudioJourneys({ studio, studios, clients, trainers, authTrainer, now, clock });
   const tz = j.tz;
   const next = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(j.today, i)), [j.today]);
   const days = useMemo(() => next.map((d) => dayFacts(j.week.entries, d, null, now, tz)), [next, j.week.entries, now, tz]);

@@ -40,7 +40,7 @@ import { AllClear, BriefEmpty, BriefSection, CountsLine, PageNote } from "../ove
 import { ActionRows } from "../overview/pieces";
 import { noteCovers, useNightlyNote } from "../overview/useNightlyNote";
 import { useStudioJourneys } from "../journey/useStudioJourneys";
-import { useMinuteClock } from "../shell/useMinuteClock";
+import { useBoundaryClock } from "../../../lib/boundary-clock";
 import {
   byDay,
   dayWords,
@@ -69,8 +69,10 @@ export interface MonthPageProps {
 export const MONTH_REACH = 12;
 
 export function MonthPage({ studio, studios, clients, trainers, authTrainer, onOpenClient }: MonthPageProps) {
-  const now = useMinuteClock();
-  const j = useStudioJourneys({ studio, studios, clients, trainers, authTrainer, now });
+  // Moves when a state could change (a booking's edge, the night's record, the day), not every minute.
+  const clock = useBoundaryClock();
+  const now = clock.now;
+  const j = useStudioJourneys({ studio, studios, clients, trainers, authTrainer, now, clock });
   const thisMonth = monthOf(j.today);
   const [month, setMonth] = useState(thisMonth);
   const cutover = studio.journeyCutoverDate ?? null;

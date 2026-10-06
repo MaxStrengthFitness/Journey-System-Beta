@@ -170,3 +170,43 @@ export function isPermissionError(error: unknown): boolean {
     String(e?.message ?? "").toLowerCase().includes("insufficient permissions")
   );
 }
+
+/** What the roster reads of a snapshot's document. */
+export interface RosterSnapshotDoc {
+  id: string;
+  data: () => unknown;
+}
+
+/**
+ * The listener's clients from one snapshot, keeping the SAME object for every
+ * client the snapshot did not change (the iPad round, Oct 2026).
+ *
+ * Mapping every document through `data()` on every snapshot gave all 300-1500
+ * clients new identities whenever ONE changed (a Mindbody webhook, the nightly
+ * job, another iPad), so every row, card and model keyed on a client rebuilt:
+ * the perf lab measured 378 ms of frozen Directory on an iPad 10 and 606 ms on
+ * an older iPad, per write. `changed` is the ids in `snap.docChanges()`; null
+ * (no change list, or the listener's first answer) converts every document,
+ * as before. A client whose document did not change is the object it was,
+ * and when nothing changed at all the previous list itself comes back, so
+ * React sees no change.
+ */
+export function rosterFromSnapshot(
+  docs: ReadonlyArray<RosterSnapshotDoc>,
+  changed: ReadonlySet<string> | null,
+  previous: ReadonlyMap<string, Client>,
+  previousList: readonly Client[],
+): { list: Client[]; byId: Map<string, Client> } {
+  const byId = new Map<string, Client>();
+  const list: Client[] = new Array(docs.length);
+  let same = docs.length === previousList.length;
+  for (let i = 0; i < docs.length; i++) {
+    const d = docs[i];
+    const held = changed && !changed.has(d.id) ? previous.get(d.id) : undefined;
+    const client = held ?? ({ id: d.id, ...(d.data() as object) } as Client);
+    list[i] = client;
+    byId.set(d.id, client);
+    if (same && previousList[i] !== client) same = false;
+  }
+  return { list: same ? (previousList as Client[]) : list, byId };
+}

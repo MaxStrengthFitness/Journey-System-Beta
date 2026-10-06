@@ -320,6 +320,12 @@ button.hs-colhead:focus-visible {
   width: var(--hs-col-min);
   box-sizing: border-box;
   border-right: 1px solid var(--eq-border);
+  /* The one container its bookings measure their words against (the iPad
+     round, Oct 6 2026, W12): one per trainer instead of one per card.
+     hub-card.css divides it by the slot's data-lanes. */
+  container: hs-col / inline-size;
+  /* What a card that is over recedes into (hub-card.css). */
+  --hs-ground: var(--eq-bg);
 }
 
 /* Your column: a blue cast under your bookings. Opaque, because it is
@@ -329,6 +335,7 @@ button.hs-colhead:focus-visible {
   left: var(--hs-axis);
   z-index: 3;
   background: var(--eq-mine);
+  --hs-ground: var(--eq-mine);
   box-shadow: 1px 0 0 var(--eq-border-strong);
 }
 
@@ -367,20 +374,37 @@ button.hs-colhead:focus-visible {
   font-weight: 600;
 }
 
+/* The hatching (the iPad round, Oct 6 2026, audit W12) is ONE small tile,
+   11px square with a 1px diagonal through its corners (a stripe every 7.8px,
+   as the old 8px), repeated: WebKit draws the tile once and stamps it,
+   where a repeating gradient over a block hundreds of pixels tall was
+   worked out again for every tile of the screen it covered, and its
+   opacity painted the block through a layer of its own. The faintness is
+   in the line's colour now (the border at 50% here, 90% on a trainer who
+   isn't on), not in an opacity. */
+.hs-rest,
+.hs-off {
+  --hs-hatch-ink: color-mix(in srgb, var(--eq-border) 50%, transparent);
+  background-image: linear-gradient(
+    to bottom right,
+    transparent calc(50% - 0.5px),
+    var(--hs-hatch-ink) calc(50% - 0.5px) calc(50% + 0.5px),
+    transparent calc(50% + 0.5px)
+  );
+  background-size: 11px 11px;
+}
+
 .hs-rest {
   flex: 1 1 auto;
-  background: repeating-linear-gradient(135deg, transparent 0 7px, var(--eq-border) 7px 8px);
-  opacity: 0.5;
 }
 
 /* A trainer who isn't on (the agreed week, or a day away): hatched, so it
    reads in both themes. It only shades; a booking there is still drawn. */
 .hs-off {
+  --hs-hatch-ink: color-mix(in srgb, var(--eq-border) 90%, transparent);
   position: absolute;
   left: 0;
   right: 0;
-  background: repeating-linear-gradient(135deg, transparent 0 7px, var(--eq-border) 7px 8px);
-  opacity: 0.9;
   pointer-events: none;
 }
 

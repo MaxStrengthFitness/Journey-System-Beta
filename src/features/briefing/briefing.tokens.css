@@ -100,7 +100,7 @@
   --br-elev-3:          var(--elev-3);
   --br-elev-4:          var(--elev-4);
   --br-elev-5:          var(--elev-5);
-  --br-elev-card:       var(--elev-card);
+  --br-elev-list:       var(--elev-list);
   --br-shelf:           var(--shelf);
   --br-press:           var(--press);
   --br-glow-live:       var(--glow-live);
@@ -161,7 +161,7 @@
   --br-elev-3:          var(--elev-3);
   --br-elev-4:          var(--elev-4);
   --br-elev-5:          var(--elev-5);
-  --br-elev-card:       var(--elev-card);
+  --br-elev-list:       var(--elev-list);
   --br-shelf:           var(--shelf);
   --br-press:           var(--press);
   --br-glow-live:       var(--glow-live);
@@ -212,7 +212,7 @@
     --br-elev-3:          var(--elev-3);
     --br-elev-4:          var(--elev-4);
     --br-elev-5:          var(--elev-5);
-    --br-elev-card:       var(--elev-card);
+    --br-elev-list:       var(--elev-list);
     --br-shelf:           var(--shelf);
     --br-press:           var(--press);
     --br-glow-live:       var(--glow-live);

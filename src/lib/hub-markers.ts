@@ -15,6 +15,7 @@ import { renewalPromptDue } from "../features/renewals/conversation";
 import { renewalOf } from "../features/renewals/auto-renew";
 import type { HistoryCoverage } from "./prior-history";
 import { canQuoteSessionNumber } from "./client-coverage";
+import { formatDateWords } from "./studio-time";
 
 export type HubMarkerKind =
   | "consult"
@@ -65,7 +66,7 @@ function shortDay(day: string, today: Date): string {
   if (n === 0) return "today";
   if (n === 1) return "tomorrow";
   const d = new Date(day.length === 10 ? `${day}T12:00:00` : day);
-  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  return formatDateWords(d, { month: "short", day: "numeric" });
 }
 
 export function hubMarkers(params: {

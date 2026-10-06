@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { forgetPersonalMemory } from "../sign-out/memory";
 import { averyAll } from "./fixtures";
 import {
+  OLDER_MEMORY_KEYS,
   OLDER_PAGE,
   hasOlderToRead,
   joinLogsToSessions,
@@ -147,6 +148,19 @@ describe("the memory, for the rest of the session", () => {
     expect(olderSetsFor(olderMemoryKey("avery", "s-72")).ids.size).toBe(0);
     expect(olderMemoryKey("avery", null)).toBe("avery|");
     expect(olderMemoryKey("", "s-71")).toBe("");
+  });
+
+  it("keeps only the last few clients' sets on an iPad that stays signed in (audit W11)", () => {
+    forgetPersonalMemory();
+    const keys = Array.from({ length: OLDER_MEMORY_KEYS + 3 }, (_, i) => olderMemoryKey(`client-${i}`, "s-1"));
+    rememberOlderSets(keys[0], { ids: ["a"], logs: [] });
+    for (const k of keys.slice(1)) {
+      rememberOlderSets(k, { ids: ["a"], logs: [] });
+      // The session's own client stays: it is read again at every machine.
+      expect(olderSetsFor(keys[0]).ids.size).toBe(1);
+    }
+    expect(olderSetsFor(keys[1]).ids.size).toBe(0);
+    expect(olderSetsFor(keys[keys.length - 1]).ids.size).toBe(1);
   });
 
   it("is forgotten at sign-out", () => {

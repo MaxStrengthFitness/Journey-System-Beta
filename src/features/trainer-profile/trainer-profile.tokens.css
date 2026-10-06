@@ -89,7 +89,7 @@
   --tp-elev-3:          var(--elev-3);
   --tp-elev-4:          var(--elev-4);
   --tp-elev-5:          var(--elev-5);
-  --tp-elev-card:       var(--elev-card);
+  --tp-elev-list:       var(--elev-list);
   --tp-shelf:           var(--shelf);
   --tp-press:           var(--press);
   --tp-glow-live:       var(--glow-live);
@@ -153,7 +153,7 @@
   --tp-elev-3:          var(--elev-3);
   --tp-elev-4:          var(--elev-4);
   --tp-elev-5:          var(--elev-5);
-  --tp-elev-card:       var(--elev-card);
+  --tp-elev-list:       var(--elev-list);
   --tp-shelf:           var(--shelf);
   --tp-press:           var(--press);
   --tp-glow-live:       var(--glow-live);
@@ -206,7 +206,7 @@
     --tp-elev-3:          var(--elev-3);
     --tp-elev-4:          var(--elev-4);
     --tp-elev-5:          var(--elev-5);
-    --tp-elev-card:       var(--elev-card);
+    --tp-elev-list:       var(--elev-list);
     --tp-shelf:           var(--shelf);
     --tp-press:           var(--press);
     --tp-glow-live:       var(--glow-live);

@@ -325,7 +325,7 @@
   border-radius: 12px;
   background: var(--st-surface);
   background-clip: padding-box;
-  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
+  box-shadow: var(--st-elev-list), var(--st-panel-highlight);
   color: var(--st-ink);
   font: inherit;
   text-align: left;

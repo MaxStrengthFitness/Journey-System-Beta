@@ -3,7 +3,7 @@
  * states. Run with TZ=America/New_York (the studio's day is Eastern).
  */
 import { describe, expect, it } from "vitest";
-import { buildDirectoryRow, buildDirectoryRows, heightWords, pastDayWords, futureDayWords } from "./row";
+import { buildDirectoryRow, buildDirectoryRows, heightWords, newDirectoryRowCache, pastDayWords, futureDayWords } from "./row";
 import { TODAY, eastern, makeBooking, makeClient, makeContext, makeSession } from "./fixtures";
 
 const PIF = { s1: { serviceId: 1, name: "96 PIF", count: 96, remaining: 36 } };
@@ -313,5 +313,30 @@ describe("day words", () => {
     expect(futureDayWords("2026-09-28", TODAY)).toBe("Tomorrow");
     expect(futureDayWords("2026-10-01", TODAY)).toBe("Thu");
     expect(futureDayWords("2026-10-14", TODAY)).toBe("Oct 14");
+  });
+});
+
+describe("the row cache (the iPad round, Oct 2026)", () => {
+  const a = makeClient({ id: "a", firstName: "Ann", lastName: "Lee", lastSessionDate: "2026-09-22" });
+  const b = makeClient({ id: "b", firstName: "Bea", lastName: "Moss", lastSessionDate: "2026-09-20" });
+
+  it("gives the same row for the same client object and context, and a new one for a changed client", () => {
+    const ctx = makeContext();
+    const cache = newDirectoryRowCache();
+    const first = buildDirectoryRows([a, b], ctx, cache);
+    const b2 = { ...b, lastSessionDate: "2026-09-26" };
+    const second = buildDirectoryRows([a, b2], ctx, cache);
+    expect(second[0]).toBe(first[0]);
+    expect(second[1]).not.toBe(first[1]);
+    expect(second[1]).toEqual(buildDirectoryRow(b2, ctx));
+  });
+
+  it("starts again when the context changes, and answers as an uncached build does", () => {
+    const cache = newDirectoryRowCache();
+    const first = buildDirectoryRows([a, b], makeContext(), cache);
+    const ctx2 = makeContext();
+    const second = buildDirectoryRows([a, b], ctx2, cache);
+    expect(second[0]).not.toBe(first[0]);
+    expect(second).toEqual(buildDirectoryRows([a, b], ctx2));
   });
 });

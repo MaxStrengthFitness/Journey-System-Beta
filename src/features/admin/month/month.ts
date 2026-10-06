@@ -41,7 +41,7 @@ import type { Client } from "../../../types";
 import { clientDisplayName } from "../../../lib/client-name";
 import { resolveClientSince, type ClientSinceSource } from "../../../lib/client-since";
 import { historyCoverage } from "../../../lib/prior-history";
-import { studioDateKey } from "../../../lib/studio-time";
+import { studioDateKey, formatDateWords } from "../../../lib/studio-time";
 import { leaningLabel } from "../../renewals/conversation";
 import { laneOf, nextStep, type PipelineLane } from "../../renewals/pipeline";
 import { situationSentence } from "../../renewals/sentences";
@@ -82,7 +82,7 @@ export function daysInMonth(month: string): number {
 /** "Tue, Oct 6" — a day key read as a calendar day, never through the zone. */
 export function dayWords(day: string): string {
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }, "en-US");
 }
 
 const nameOf = (c: Client) => clientDisplayName(c, "A client");

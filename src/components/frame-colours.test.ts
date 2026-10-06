@@ -96,7 +96,8 @@ describe("the frame draws only in the frame's tokens", () => {
     expect(nav).toMatch(/"bg-chrome-go-fill"/);
     // The pulsing dot is ringed in the frame's navy, which cuts it out of the
     // faint box in both themes (it was ring-white / ring-slate-950).
-    expect(nav).toMatch(/bg-chrome-go ring-2 ring-chrome animate-pulse/);
+    // It beats three times, then rests (the iPad round, Oct 6 2026, W10).
+    expect(nav).toMatch(/bg-chrome-go ring-2 ring-chrome motion-safe:animate-attention"/);
   });
 });
 

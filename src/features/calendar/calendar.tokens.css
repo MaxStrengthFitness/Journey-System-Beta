@@ -88,7 +88,7 @@
   --cal-elev-3:          var(--elev-3);
   --cal-elev-4:          var(--elev-4);
   --cal-elev-5:          var(--elev-5);
-  --cal-elev-card:       var(--elev-card);
+  --cal-elev-list:       var(--elev-list);
   --cal-shelf:           var(--shelf);
   --cal-press:           var(--press);
   --cal-glow-live:       var(--glow-live);
@@ -157,7 +157,7 @@
   --cal-elev-3:          var(--elev-3);
   --cal-elev-4:          var(--elev-4);
   --cal-elev-5:          var(--elev-5);
-  --cal-elev-card:       var(--elev-card);
+  --cal-elev-list:       var(--elev-list);
   --cal-shelf:           var(--shelf);
   --cal-press:           var(--press);
   --cal-glow-live:       var(--glow-live);
@@ -199,7 +199,7 @@
     --cal-elev-3:          var(--elev-3);
     --cal-elev-4:          var(--elev-4);
     --cal-elev-5:          var(--elev-5);
-    --cal-elev-card:       var(--elev-card);
+    --cal-elev-list:       var(--elev-list);
     --cal-shelf:           var(--shelf);
     --cal-press:           var(--press);
     --cal-glow-live:       var(--glow-live);

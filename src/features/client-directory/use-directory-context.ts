@@ -18,9 +18,24 @@ import { SCHEDULE_STALE_MS } from "../../lib/schedule-window";
 import { useRenewalSettings } from "../renewals/useRenewalSettings";
 import { buildPackageNameIndex } from "../renewals/settings";
 import { prepareDirectory, type DirectoryContext } from "./row";
+import { bookingBoundaries } from "../../lib/booking-state";
 
 /** How long the held bookings may go unread before "Nothing booked" is no longer said. */
 export const BOOKINGS_FRESH_MS = 2 * SCHEDULE_STALE_MS;
+
+/**
+ * The instants at which the rows say something different about the time
+ * (lib/boundary-clock.ts): the held bookings' own (booking-state.ts
+ * bookingBoundaries: Next moves on, "Coming up" becomes "Earlier today", a
+ * row's time is over) and the moment the held bookings turn stale ("Nothing
+ * booked" is no longer said). The studio's day turning is the clock's own.
+ */
+export function directoryBoundaries(schedules: ReadonlyArray<ScheduleEntry> | null, schedulesFetchedAt: number | null): number[] {
+  const out = bookingBoundaries(schedules);
+  // Fresh while now - fetchedAt <= BOOKINGS_FRESH_MS: stale from the next millisecond.
+  if (schedulesFetchedAt !== null) out.push(schedulesFetchedAt + BOOKINGS_FRESH_MS + 1);
+  return out;
+}
 
 export interface DirectoryContextInput {
   now: Date;

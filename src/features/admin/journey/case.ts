@@ -38,6 +38,7 @@
 import { addDays, daysBetween } from "../../client-history/model";
 import type { CaseOutcome, StoredCase } from "./case-store";
 import type { ClientJourney, JourneyState } from "./states";
+import { formatDateWords } from "../../../lib/studio-time";
 
 /** After this many days with no step recorded, a case is the leader's (AJ's question 7, default). */
 export const CASE_ESCALATE_DAYS = 3;
@@ -79,7 +80,7 @@ const OPEN: ReadonlySet<JourneyState> = new Set(["drifting", "at-risk", "lapsed"
 
 const dayWords = (day: string) => {
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { weekday: "long", month: "short", day: "numeric", timeZone: "UTC" }, "en-US");
 };
 
 /** Is this a state a leader would open a case for? */

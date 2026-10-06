@@ -98,7 +98,7 @@
   --ford-elev-3:          var(--elev-3);
   --ford-elev-4:          var(--elev-4);
   --ford-elev-5:          var(--elev-5);
-  --ford-elev-card:       var(--elev-card);
+  --ford-elev-list:       var(--elev-list);
   --ford-shelf:           var(--shelf);
   --ford-press:           var(--press);
   --ford-glow-live:       var(--glow-live);
@@ -155,7 +155,7 @@
   --ford-elev-3:          var(--elev-3);
   --ford-elev-4:          var(--elev-4);
   --ford-elev-5:          var(--elev-5);
-  --ford-elev-card:       var(--elev-card);
+  --ford-elev-list:       var(--elev-list);
   --ford-shelf:           var(--shelf);
   --ford-press:           var(--press);
   --ford-glow-live:       var(--glow-live);
@@ -211,7 +211,7 @@
     --ford-elev-3:          var(--elev-3);
     --ford-elev-4:          var(--elev-4);
     --ford-elev-5:          var(--elev-5);
-    --ford-elev-card:       var(--elev-card);
+    --ford-elev-list:       var(--elev-list);
     --ford-shelf:           var(--shelf);
     --ford-press:           var(--press);
     --ford-glow-live:       var(--glow-live);

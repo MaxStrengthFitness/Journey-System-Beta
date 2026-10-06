@@ -1833,7 +1833,7 @@ export function ClientProfileView({
                     >
                       <span
                         className={cn(
-                          "absolute inline-flex h-full w-full rounded-full opacity-60 motion-safe:animate-ping",
+                          "absolute inline-flex h-full w-full rounded-full opacity-60 motion-safe:animate-attention-ring",
                           reportDue.level === "renewal" ? "bg-amber-400" : "bg-primary",
                         )}
                       />

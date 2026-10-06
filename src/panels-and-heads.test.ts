@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest";
  *      box so the edge sits over the ground) and a short two-layer navy lift
  *      (--X-elev-2 and --X-panel-highlight, the dark top light). The hero
  *      lifts higher (--X-elev-3); a booking on the Next 30 minutes strip
- *      takes the Hub card's small lift (--X-elev-card). Something past or
+ *      takes the Hub card's small lift (--X-elev-list). Something past or
  *      off (a done card, a trainer off today, a routine that is off, an
  *      unlinked booking) lies flat.
  *   2. A panel's HEAD has no band and no rule: the title carries it.
@@ -166,30 +166,33 @@ type Panel = {
   band?: boolean;
 };
 
+/** A card among many takes the list lift, one contact shadow (the iPad round, Oct 6 2026; paint-cost.test.ts). */
+const LIST = (p: string) => `var(--${p}-elev-list), var(--${p}-panel-highlight)`;
+
 const PANELS: Panel[] = [
   // Settings and My Profile.
   { file: "features/settings/settings.css", sel: ".stg-card", p: "eq" },
   { file: "features/trainer-profile/trainer-profile.css", sel: ".tp-card", p: "tp" },
   { file: "features/trainer-profile/trainer-profile.css", sel: ".tp-identity", p: "tp" },
   // My Studio: Team, Openings, Relay (the Board, the Tracker, the Journal, the Floor Map).
-  { file: "features/relay/team/team.css", sel: ".tm-card", p: "st" },
+  { file: "features/relay/team/team.css", sel: ".tm-card", p: "st", lift: LIST("st") },
   { file: "features/relay/board/relay.css", sel: ".tc", p: "st" },
   { file: "features/studio-tasks/studio-tasks.css", sel: ".stm__panel", p: "st" },
-  { file: "features/openings/openings.css", sel: ".op-person", p: "st" },
-  { file: "features/openings/openings.css", sel: ".op-offer", p: "st" },
-  { file: "features/relay/board/board.css", sel: ".rbc", p: "st" },
+  { file: "features/openings/openings.css", sel: ".op-person", p: "st", lift: LIST("st") },
+  { file: "features/openings/openings.css", sel: ".op-offer", p: "st", lift: LIST("st") },
+  { file: "features/relay/board/board.css", sel: ".rbc", p: "st", lift: LIST("st") },
   { file: "features/relay/board/board.css", sel: ".rjn", p: "st" },
   { file: "features/relay/board/board.css", sel: ".rsy", p: "st" },
   { file: "features/relay/planner.css", sel: ".pl__list ul", p: "st" },
-  { file: "features/relay/tracker.css", sel: ".rtk .pl__task", p: "st" },
-  { file: "features/relay/notes/notes.css", sel: ".pn__card", p: "st" },
-  { file: "features/relay/board/relay.css", sel: ".fm__tile", p: "st" },
+  { file: "features/relay/tracker.css", sel: ".rtk .pl__task", p: "st", lift: LIST("st") },
+  { file: "features/relay/notes/notes.css", sel: ".pn__card", p: "st", lift: LIST("st") },
+  { file: "features/relay/board/relay.css", sel: ".fm__tile", p: "st", lift: LIST("st") },
   { file: "features/studio-tasks/studio-hub.css", sel: ".sh__strip", p: "st" },
   // Operations and the Admins dashboard.
   { file: "features/admin/admin.css", sel: ".adm-panel", p: "adm" },
   { file: "features/admin/shell/ops.css", sel: ".ops-sec__card", p: "adm" },
   { file: "features/admin/shell/ops.css", sel: ".ops-case", p: "adm" },
-  { file: "features/admin/shell/ops.css", sel: ".ops-tr", p: "adm" },
+  { file: "features/admin/shell/ops.css", sel: ".ops-tr", p: "adm", lift: LIST("adm") },
   { file: "features/admin/shell/ops.css", sel: ".ops-fact", p: "adm" },
   { file: "features/admin/shell/ops.css", sel: ".ops-setup", p: "adm" },
   { file: "features/admin/overview/overview.css", sel: ".adm-ov__needs", p: "adm" },
@@ -200,27 +203,27 @@ const PANELS: Panel[] = [
   { file: "features/admins/admins.css", sel: ".hq-launch", p: "adm" },
   { file: "features/admins/admins.css", sel: ".hq-search", p: "adm" },
   // Notes, the briefing, the machine sheet, the Calendar, the Directory.
-  { file: "features/client-notes/notes-page.css", sel: ".nt-card", p: "eq" },
+  { file: "features/client-notes/notes-page.css", sel: ".nt-card", p: "eq", lift: LIST("eq") },
   { file: "features/client-notes/notes-page.css", sel: ".nx-rows", p: "eq" },
   { file: "features/briefing/briefing.css", sel: ".br-card", p: "br" },
   { file: "features/equipment/equipment.css", sel: ".eq-card", p: "eq" },
   { file: "features/calendar/calendar.css", sel: ".cal-card", p: "cal" },
   { file: "features/client-directory/client-directory.css", sel: ".cd-scroll", p: "eq" },
   // The profile's Programming and Activity Archive tabs.
-  { file: "features/routines/routines.css", sel: ".rt-routine", p: "eq" },
+  { file: "features/routines/routines.css", sel: ".rt-routine", p: "eq", lift: LIST("eq") },
   { file: "features/routines/routines.css", sel: ".rt-changes", p: "eq" },
   { file: "features/client-history/client-history.css", sel: ".hist-month", p: "cal" },
-  { file: "features/client-history/client-history.css", sel: ".hist-lcard", p: "cal" },
+  { file: "features/client-history/client-history.css", sel: ".hist-lcard", p: "cal", lift: LIST("cal") },
   // Learning and the Catalog.
   { file: "features/learning/learning.css", sel: ".lh__hero", p: "wk", lift: "var(--wk-elev-3), var(--wk-panel-highlight)", band: true },
-  { file: "features/learning/learning.css", sel: ".lh__tile", p: "wk" },
+  { file: "features/learning/learning.css", sel: ".lh__tile", p: "wk", lift: LIST("wk") },
   { file: "features/wiki/wiki.css", sel: ".wk__infobox", p: "wk" },
   { file: "features/catalog/catalog.css", sel: ".mcat-floor", p: "wk" },
   { file: "features/catalog/catalog.css", sel: ".mcat-models", p: "wk" },
   { file: "features/catalog/catalog.css", sel: ".mcat-changes", p: "wk" },
   // The Hub's Next 30 minutes, and the phone's machine card.
-  { file: "features/hub-schedule/next-strip.css", sel: ".hn-item", p: "eq", lift: "var(--eq-elev-card), var(--eq-panel-highlight)" },
-  { file: "features/phone/phone.css", sel: ".ph-card", p: "eq" },
+  { file: "features/hub-schedule/next-strip.css", sel: ".hn-item", p: "eq", lift: "var(--eq-elev-list), var(--eq-panel-highlight)" },
+  { file: "features/phone/phone.css", sel: ".ph-card", p: "eq", lift: LIST("eq") },
 ];
 
 describe("a panel: the edge seen from outside, the fill clipped to the padding box, a short navy lift", () => {
@@ -274,13 +277,13 @@ describe("a panel: the edge seen from outside, the fill clipped to the padding b
 
   it("today's routine keeps its orange ring on top of the lift", () => {
     expect(merged("features/routines/routines.css", ".rt-routine--today")["box-shadow"]).toBe(
-      "inset 0 0 0 1px var(--eq-hero), var(--eq-elev-2), var(--eq-panel-highlight)",
+      "inset 0 0 0 1px var(--eq-hero), var(--eq-elev-list), var(--eq-panel-highlight)",
     );
   });
 
   it("the machine in hand on a phone lifts as an open card; an open Next 30 minutes booking keeps its blue ring and its lift", () => {
     expect(merged("features/phone/phone.css", ".ph-card.is-in-hand")["box-shadow"]).toBe("var(--eq-elev-3), var(--eq-panel-highlight)");
-    expect(merged("features/hub-schedule/next-strip.css", '.hn-item[data-open="true"]')["box-shadow"]).toBe("0 0 0 2px var(--eq-live), var(--eq-elev-card)");
+    expect(merged("features/hub-schedule/next-strip.css", '.hn-item[data-open="true"]')["box-shadow"]).toBe("0 0 0 2px var(--eq-live), var(--eq-elev-list)");
   });
 
   it("the state rails the plan keeps stay: the Next 30 minutes booking and the phone's machine card", () => {

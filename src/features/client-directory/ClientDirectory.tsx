@@ -27,7 +27,7 @@
  * this round: `marks` is the seam, and it defaults to none. They need a
  * roll-up AJ has to OK (a Firestore structure change).
  */
-import React, { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Search, X } from "lucide-react";
 import { collection, getDocs, limit, query, where } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,8 @@ import { myTrainerIds } from "../../lib/live-session";
 import { formatStudioDate, studioTodayKey } from "../../lib/studio-time";
 import { LoadingArea } from "../../components/LoadingMark";
 import "../trainer-profile/trainer-profile.tokens.css";
-import { buildDirectoryRows, type DirectoryRow } from "./row";
+import { buildDirectoryRows, newDirectoryRowCache, type DirectoryRow, type DirectoryRowCache } from "./row";
+import { useBoundaryClock } from "../../lib/boundary-clock";
 import { SORT_MENU, nextSortForTap, sectionRows, sortWords, type SortKey, type SortSpec } from "./buckets";
 import { buildNameIndex, searchNames } from "./search";
 import { applyTokens, buildNameVocab, buildOccupationVocab, notOnFileWords, parseQuery, type Token } from "./tokens";
@@ -64,7 +65,7 @@ import { useStudioSettings } from "../studio-settings/useStudioSettings";
 import { rosterCutWords } from "../../lib/studio-roster";
 import { DirectoryRowView, type DirectoryMark, type ExtraColumn } from "./DirectoryRowView";
 import { SortPicker } from "./SortPicker";
-import { useDirectoryContext } from "./use-directory-context";
+import { directoryBoundaries, useDirectoryContext } from "./use-directory-context";
 import "./client-directory.css";
 
 export type { DirectoryMark } from "./DirectoryRowView";
@@ -240,15 +241,21 @@ export function ClientDirectory({
   const { activeStudioId, availableStudios } = useActiveStudio();
   const studioList: ReadonlyArray<Studio> = studios ?? availableStudios ?? [];
 
-  /* ---- the clock: a minute is fine for "today" and "next" ---- */
-  const [tick, setTick] = useState(() => Date.now());
-  useEffect(() => {
-    if (fixedNow) return;
-    const t = setInterval(() => setTick(Date.now()), 60_000);
-    return () => clearInterval(t);
-  }, [fixedNow]);
-  const now = useMemo(() => fixedNow ?? new Date(tick), [fixedNow, tick]);
+  /* ---- the clock ---- */
+  // It moves when a held booking ends, when the bookings turn stale and when
+  // the studio's day turns, never at the minutes between: every model below
+  // is keyed on it, and a minute clock rebuilt all of them once a minute
+  // (240 / 434 ms frozen on an iPad 10 / an older iPad, the perf lab).
+  const boundaries = useMemo(() => directoryBoundaries(schedules ?? null, schedulesFetchedAt), [schedules, schedulesFetchedAt]);
+  const now = useBoundaryClock(boundaries, fixedNow).now;
   const today = studioTodayKey(now);
+
+  // AppContent hands in new functions on every render; the rows are memoised,
+  // so they get one stable function each that calls the latest.
+  const latest = useRef({ onSelectClient, onStartSession });
+  latest.current = { onSelectClient, onStartSession };
+  const selectClient = useCallback((id: string) => latest.current.onSelectClient(id), []);
+  const startSessionFor = useCallback((id: string) => latest.current.onStartSession?.(id), []);
 
   /* ---- the controls ---- */
   const trainerKey = authTrainer?.id ?? uid ?? null;
@@ -336,7 +343,9 @@ export function ClientDirectory({
   const inactiveMarks = useInactiveMarks(activeStudioId);
   const studioSettings = useStudioSettings(activeStudioId);
   const inactiveDays = studioSettings.all.inactiveDays.value ?? 90;
-  const builtRows = useMemo(() => buildDirectoryRows(scopeClients, ctx), [scopeClients, ctx]);
+  // One row per client object and context: a write to one client rebuilds one row (row.ts, DirectoryRowCache).
+  const rowCache = useRef<DirectoryRowCache>(newDirectoryRowCache());
+  const builtRows = useMemo(() => buildDirectoryRows(scopeClients, ctx, rowCache.current), [scopeClients, ctx]);
   // How each row is inactive. A client from another studio is judged by her own studio, so only this studio's marks count here.
   const inactive = useMemo(() => {
     const out = new Map<string, InactiveHow>();
@@ -348,8 +357,19 @@ export function ClientDirectory({
     return out;
   }, [builtRows, inactiveMarks.marks, today, inactiveDays, studioSettings.loading]);
   // The word on her row, wherever she shows (the row model already says it for Mindbody's own).
+  // The badged row is kept per row object, so an inactive row stays the same object until its row changes.
+  const badged = useRef(new WeakMap<DirectoryRow, DirectoryRow>());
   const rows = useMemo(
-    () => builtRows.map((r) => (inactive.has(r.id) && !r.badges.includes("Inactive") ? { ...r, badges: [...r.badges, "Inactive"] } : r)),
+    () =>
+      builtRows.map((r) => {
+        if (!inactive.has(r.id) || r.badges.includes("Inactive")) return r;
+        let b = badged.current.get(r);
+        if (!b) {
+          b = { ...r, badges: [...r.badges, "Inactive"] };
+          badged.current.set(r, b);
+        }
+        return b;
+      }),
     [builtRows, inactive],
   );
   const activeRows = useMemo(() => rows.filter((r) => !inactive.has(r.id)), [rows, inactive]);
@@ -398,7 +418,8 @@ export function ClientDirectory({
   ]
     .filter(Boolean)
     .join(" ");
-  const gridVars = { "--cd-cols": cols, "--cd-cols-wide": colsWide } as React.CSSProperties;
+  // One object while the columns are the same: every row is memoised on it.
+  const gridVars = useMemo(() => ({ "--cd-cols": cols, "--cd-cols-wide": colsWide }) as React.CSSProperties, [cols, colsWide]);
 
   const total = rows.length;
   const describing = parsed.tokens.length > 0 || !!parsed.nameText.trim();
@@ -625,8 +646,8 @@ export function ClientDirectory({
                       sortKey={sort.key}
                       liveAuthTrainer={liveAuthTrainer ?? null}
                       showStart={showStart}
-                      onSelect={onSelectClient}
-                      onStart={onStartSession}
+                      onSelect={selectClient}
+                      onStart={onStartSession ? startSessionFor : undefined}
                     />
                   );
                 })}
