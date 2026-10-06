@@ -1066,9 +1066,16 @@ export function WorkoutTrackerView({
         collection(db, "clientMachineSettings"),
         where("clientId", "==", clientId),
       );
+      /* Whether this client's settings ever arrived. A read that FAILS before
+         they do leaves the settings unknown for good, and the seed waits on
+         them, so a failure is taken as "no settings": the prefill then comes
+         from the last performed weights alone, as it did before the speed
+         round. The seed only ever fills a blank, so nothing is overwritten. */
+      let settingsArrived = false;
       const unsubscribeSettings = onSnapshot(
         settingsQuery,
         (snapshot) => {
+          settingsArrived = true;
           const settingsMap: Record<string, ClientMachineSetting> = {};
           snapshot.docs.forEach((doc) => {
             const data = { id: doc.id, ...doc.data() } as ClientMachineSetting;
@@ -1078,6 +1085,10 @@ export function WorkoutTrackerView({
           setKnownFor((k) => (k.settings === clientId ? k : { ...k, settings: clientId }));
         },
         (error) => {
+          if (!settingsArrived) {
+            setClientMachineSettings({});
+            setKnownFor((k) => (k.settings === clientId ? k : { ...k, settings: clientId }));
+          }
           handleFirestoreError(
             error,
             OperationType.GET,
@@ -1091,16 +1102,31 @@ export function WorkoutTrackerView({
         collection(db, "routines"),
         where("clientId", "==", clientId),
       );
+      /* Known only once the answer can be trusted (KNOWN-TRAPS: a snapshot
+         the cache answered is not a read). An EMPTY answer from the iPad's
+         cache may only mean this iPad never read this client's routines, so
+         it does not make them known, and Start does not make a Routine A off
+         it; the server's answer does (Start never waits for it: the routine
+         follows, startFollowUpRef). Metadata changes are listened to because
+         the server confirming an empty cached list changes no document, and
+         without them that answer would never be heard. */
+      let routinesSeen = false;
       const unsubscribeRoutines = onSnapshot(
         routinesQuery,
+        { includeMetadataChanges: true },
         (snapshot) => {
-          const routinesData = snapshot.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() }) as Routine,
-          );
-          // Sort routines alphabetically so Routine A is default/first
-          setRoutines(
-            routinesData.sort((a, b) => a.name.localeCompare(b.name)),
-          );
+          // A metadata-only answer changes no routine: no new list, no redraw.
+          if (!routinesSeen || snapshot.docChanges().length > 0) {
+            routinesSeen = true;
+            const routinesData = snapshot.docs.map(
+              (doc) => ({ id: doc.id, ...doc.data() }) as Routine,
+            );
+            // Sort routines alphabetically so Routine A is default/first
+            setRoutines(
+              routinesData.sort((a, b) => a.name.localeCompare(b.name)),
+            );
+          }
+          if (snapshot.empty && snapshot.metadata?.fromCache) return;
           setKnownFor((k) => (k.routines === clientId ? k : { ...k, routines: clientId }));
         },
         (error) => {
@@ -1455,9 +1481,32 @@ export function WorkoutTrackerView({
       startingWeight: (name, gender, age) => calculateStartingWeight(name, gender, age, "Novice"),
     });
 
-  /** A start batch the database refused: said once, and the session leaves this iPad. */
-  const startRefused = (sessionId: string, error: unknown) => {
+  /**
+   * A start batch the database refused: said once, and the session leaves
+   * this iPad. A refusal can come late (on reconnect), after sets were typed:
+   * those sets were their own writes, so the ones still waiting are dropped
+   * and the ones already sent are deleted in one batch (Discard's list), or
+   * they would land as sets of a session that never existed.
+   */
+  const startRefused = (sessionId: string, error: unknown, plannedMachineIds: string[]) => {
     console.error("[start] the session was refused", error);
+    for (const [key, pending] of Array.from(pendingLogWritesRef.current.entries())) {
+      if (pending.payload?.sessionId !== sessionId) continue;
+      if (pending.timer) clearTimeout(pending.timer);
+      pendingLogWritesRef.current.delete(key);
+    }
+    const machineIds = Array.from(
+      new Set([
+        ...plannedMachineIds,
+        ...(currentSessionIdRef.current === sessionId ? activeMachineIdsRef.current : []),
+      ]),
+    );
+    const orphanIds = discardLogIds(sessionId, logsRef.current, machineIds);
+    if (orphanIds.length > 0) {
+      const sweep = writeBatch(db);
+      for (const id of orphanIds) sweep.delete(doc(db, "exerciseLogs", id));
+      sweep.commit().catch((e) => console.error("[start] the refused session's sets were not cleared", e));
+    }
     if (startFollowUpRef.current?.sessionId === sessionId) startFollowUpRef.current = null;
     forgetLiveSession(sessionId);
     if (justStartedSessionRef.current?.id === sessionId) justStartedSessionRef.current = null;
@@ -1592,7 +1641,7 @@ export function WorkoutTrackerView({
       }
       // Issued now and never awaited: the iPad's copy holds it this instant.
       const committing = batch.commit();
-      committing.catch((error) => startRefused(sessionRef.id, error));
+      committing.catch((error) => startRefused(sessionRef.id, error, plannedMachineIds));
       markSent();
 
       // Protects this session from being cleared by a snapshot that predates it.

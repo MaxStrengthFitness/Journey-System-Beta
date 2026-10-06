@@ -196,6 +196,13 @@ const netCtl = {
   moreSettings: [] as { id: string; data: () => any }[],
   deletes: [] as string[],
   autoId: 0,
+  /** Collections whose listeners answer from the iPad's cache (`fromCache: true`). */
+  fromCache: new Set<string>(),
+  /** Collections whose listeners fail (a refused or broken read). */
+  fail: new Set<string>(),
+  /** While true, a batch's commit waits for the test to refuse it (`refusals`). */
+  refuseLater: false,
+  refusals: [] as ((e: unknown) => void)[],
 };
 const never = () => new Promise<any>(() => {});
 
@@ -233,10 +240,15 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     // Both call shapes (KNOWN-TRAPS): (query, next, error) and, since the
     // logs listener asks for metadata changes (machine menu, Oct 2026),
     // (query, options, next, error). Each snapshot is the server's answer.
-    onSnapshot: (q: any, a: any, b: any) => {
+    onSnapshot: (q: any, a: any, b: any, c: any) => {
       const next = typeof a === "function" || typeof a?.next === "function" ? a : b;
       const cb = typeof next === "function" ? next : next?.next;
+      const fail = typeof next === "function" ? (next === a ? b : c) : next?.error;
       const at = q?.__path ?? "";
+      if (netCtl.fail.has(at)) {
+        fail?.(Object.assign(new Error("refused"), { code: "permission-denied" }));
+        return () => {};
+      }
       const emit = () => {
         const docs = docsFor(at);
         // Both shapes: the briefing (mounted since the Sep 24 tests) also
@@ -248,7 +260,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
           empty: docs.length === 0,
           forEach: (f: any) => docs.forEach(f),
           docChanges: () => docs.map((doc: any) => ({ type: "added", doc })),
-          metadata: { fromCache: false, hasPendingWrites: false },
+          metadata: { fromCache: netCtl.fromCache.has(at), hasPendingWrites: false },
           id: String(at).split("/").pop(),
           exists: () => single !== undefined,
           data: () => single,
@@ -296,7 +308,12 @@ vi.mock("firebase/firestore", async (importOriginal) => {
         writes.push({ path: ref.__path, data, merge: !!opts?.merge }),
       update: (ref: any, data: any) => writes.push({ path: ref.__path, data }),
       delete: (ref: any) => netCtl.deletes.push(ref.__path),
-      commit: () => (finishCtl.commit === "hang" || netCtl.hang ? new Promise<void>(() => {}) : Promise.resolve()),
+      commit: () =>
+        netCtl.refuseLater
+          ? new Promise<void>((_, refuse) => netCtl.refusals.push(refuse))
+          : finishCtl.commit === "hang" || netCtl.hang
+            ? new Promise<void>(() => {})
+            : Promise.resolve(),
     }),
     getDocFromServer: async () => ({
       exists: () => finishCtl.serverStatus !== undefined,
@@ -384,6 +401,10 @@ beforeEach(() => {
   netCtl.routines = [];
   netCtl.moreSettings = [];
   netCtl.deletes = [];
+  netCtl.fromCache = new Set();
+  netCtl.fail = new Set();
+  netCtl.refuseLater = false;
+  netCtl.refusals = [];
   setViewSpy.mockClear();
   Object.defineProperty(navigator, "onLine", { configurable: true, get: () => true });
   sessionDocs = SESSION_DOCS;
@@ -1180,6 +1201,92 @@ describe("session writes never wait on the network (speed round, Oct 5 2026; R9)
     // ...and never over the set typed into: no write to it at all, and never the prescription.
     expect(legPress()).toHaveLength(before);
     expect(legPress().some((w) => w.data?.weight === "120")).toBe(false);
+  });
+
+  it("routines the iPad's cache answers EMPTY are not 'none': no Routine A until the server says so", async () => {
+    sessionDocs = [];
+    netCtl.routines = [];
+    netCtl.fromCache.add("routines");
+    offline();
+    const host = await mount(<Tracker />);
+    await act(async () => startButton()!.click());
+    expect(host.querySelector(".jg-sbar")).toBeTruthy();
+    const sid = startedSession()!.path.split("/")[1];
+    expect(startedSession()!.data.routineId).toBeNull();
+    // An empty cache is not the client having no routine: none is made.
+    expect(writes.some((w) => w.path.startsWith("routines/"))).toBe(false);
+
+    // The server answers: the client had a Routine A all along.
+    netCtl.routines = [ROUTINE_A];
+    netCtl.fromCache.delete("routines");
+    await act(async () => {
+      for (const l of snapshotListeners.filter((x) => x.live && x.path === "routines")) l.emit();
+    });
+    await settle();
+    expect(writes.find((w) => w.path === `sessions/${sid}` && w.data?.routineId === "r-a")).toBeTruthy();
+    expect(writes.some((w) => w.path.startsWith("routines/"))).toBe(false);
+  });
+
+  it("a brand-new client's empty routines, confirmed by the server, get exactly one Routine A", async () => {
+    sessionDocs = [];
+    netCtl.routines = [];
+    netCtl.fromCache.add("routines");
+    const host = await mount(<Tracker />);
+    await act(async () => startButton()!.click());
+    expect(host.querySelector(".jg-sbar")).toBeTruthy();
+    expect(writes.some((w) => w.path.startsWith("routines/"))).toBe(false);
+    // The server confirms the empty list: a metadata-only answer.
+    netCtl.fromCache.delete("routines");
+    await act(async () => {
+      for (const l of snapshotListeners.filter((x) => x.live && x.path === "routines")) l.emit();
+    });
+    await settle();
+    expect(writes.filter((w) => w.path.startsWith("routines/"))).toHaveLength(1);
+  });
+
+  it("a settings read that fails still prefills from the last performed weights", async () => {
+    sessionDocs = [];
+    netCtl.routines = [ROUTINE_A];
+    netCtl.fail.add("clientMachineSettings");
+    offline();
+    const who = { ...client, currentMachineMetrics: { "m-leg-press": { weight: "110", reps: 10 } } } as unknown as Client;
+    await mount(<Tracker who={who} />);
+    await act(async () => startButton()!.click());
+    const sid = startedSession()!.path.split("/")[1];
+    expect(writes.find((w) => w.path === `exerciseLogs/${sid}_m-leg-press`)?.data.weight).toBe("110");
+  });
+
+  it("a Start refused late takes back the sets typed meanwhile: none waits to land on a session that never was", async () => {
+    const { sendSetsNow } = await import("../features/session-record/sign-out-check");
+    sessionDocs = [];
+    netCtl.routines = [ROUTINE_A];
+    netCtl.refuseLater = true;
+    const host = await mount(<Tracker />);
+    await act(async () => startButton()!.click());
+    const sid = startedSession()!.path.split("/")[1];
+    const reps = host.querySelector<HTMLInputElement>('input[aria-label="reps to failure"]');
+    expect(reps).not.toBeNull();
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    await act(async () => {
+      setter.call(reps!, "11");
+      reps!.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    // The database refuses the start batch (the first commit).
+    const refuse = netCtl.refusals[0];
+    await act(async () => {
+      refuse(Object.assign(new Error("refused"), { code: "permission-denied" }));
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    // The typed set, still waiting on its timer, is never sent...
+    await act(async () => sendSetsNow());
+    expect(writes.some((w) => w.path === `exerciseLogs/${sid}_m-leg-press` && w.data?.reps === "11")).toBe(false);
+    // ...and the session's sets are deleted in one batch.
+    expect(netCtl.deletes).toEqual(
+      expect.arrayContaining([`exerciseLogs/${sid}_m-leg-press`, `exerciseLogs/${sid}_sm-solon-rear-delt`]),
+    );
+    // The session left the screen, and it was said.
+    expect(host.querySelector(".jg-sbar")).toBeNull();
+    expect(document.body.textContent).toContain("The session didn't start");
   });
 
   it("Discard is one batch, and the Hub comes at once offline", async () => {
