@@ -3016,3 +3016,44 @@ Round document: `docs/rounds/2026-10-05-speed.md`. Walk it the day after `ship-s
 - [ ] **Each screen whose stylesheet moved**, opened FIRST after a cold load, portrait and landscape, light and dark: the session grid and the Now Bar, a machine's card, Calendar (day, week, month) and the profile's Activity Archive calendar and history, Pulse (the panel, the quick log, client mode), Learning → Catalog (the floor, the body, Find, a machine's page, its setup card), Relay's Board, Tracker and Team, and My Studio → Machines through BOTH doors (My Studio → Machines, and Operations → Setup → Floor). *If it fails:* a screen drawn unstyled lost its stylesheet import (`css-imports.test.ts` should have caught it); tell Claude which screen and which door.
 - [ ] **Render after the deploy:** the deploy's Logs show the OLD instance saying "SIGTERM: no new connections; letting running requests finish." and then "Every request finished; exiting." Settings shows Start Command `node build/server.cjs`, Max shutdown delay 120 seconds, one instance.
 - [ ] **Edge caching** (after you switch on "Common static files", which comes only after this deploy): in PowerShell, twice, `curl.exe -sI https://maxstrength-app-beta.onrender.com/assets/<a .js file from the page source>`; the second answer says `cf-cache-status: HIT`. And `curl.exe -sI https://maxstrength-app-beta.onrender.com/assets/nothing-here.js` answers 404 with `cache-control: no-store`.
+
+## Round 59 — The iPad round · *Oct 6 2026, branch `oct6/ipad`*
+
+Round document: `docs/rounds/2026-10-06-ipad.md`. Walk it after `ship-ipad.ps1` golive, once Render shows the deploy Live and the iPad has been back on the Hub once (it loads the new version there by itself). Take a **10th-gen iPad or an iPad mini** (the iPads AJ named), and **an older iPad too if the studio has one** (8th or 9th gen); a stopwatch or the phone's timer; a second iPad or the PC signed in. Walk on the studio's own Wi-Fi. Nothing in this round was measured on a real iPad: **every time you take is the first real number**, so write each one in the Findings log with the iPad's model, and do each timed step twice and keep the slower.
+
+**Opens, timed** (the Home Screen app, the Journey icon):
+
+- [ ] **Cold open.** Swipe the app away in the app switcher, wait a minute, then tap the icon and time it until the Hub's cards are drawn and you could tap one. Write the seconds down, per iPad. *Before this round the lab put it at about 6.6 s on an iPad 10th gen and 8.3 s on an older iPad* (Chrome slowed down; the real number is yours). It barely moves with this round alone: the roster split is what takes the open down.
+- [ ] **Reopen.** With the app open on the Hub, go to the home screen, open Safari for half a minute, then tap the Journey icon again: time it until the Hub answers a tap. Write it down.
+- [ ] **The boot report** (on the PC): Render → maxstrength-app-beta → Logs, search `type: 'boot'`. Each cold open is one line with `auth-ready`, `trainer-ready` and `hub-data` in milliseconds; write the `hub-data` of your cold opens beside your stopwatch times.
+
+**A session** (portrait, then once in landscape):
+
+- [ ] **Start → the briefing:** time from Start session to the briefing drawn. Then the briefing's Start to the Now Bar.
+- [ ] **Five sets:** type weight and reps on five machines and press Next each time. Every Next answers at once; nothing stutters; the grid stays on the newest column.
+- [ ] **The machine menu at each machine** (tap a machine's name, then close it), five or six times through the session: it opens and closes without a stutter, and **the screen behind it is sharp and a little darker, not blurred**. Same for the session's journal, flags and machine slide-overs.
+- [ ] **Finish → the Wrap-up:** time from Finish session to the Wrap-up drawn. The short confetti burst is still there (AJ: "I like it keep it").
+
+**Moving around** (time each, then judge how it feels):
+
+- [ ] **A client's profile** from the Hub (card → peek → Open profile): time it until the Journey tab's grid is drawn. *The lab: about 1.9 s on an iPad 10th gen, 2.4 s older.*
+- [ ] **Operations → Today** (a leader): time it until nothing on the page says "Reading…" and no spinner turns. *The lab: about 6.8 s on an iPad 10th gen, 8.8 s older.* Then tap around Today: taps answer at once, no frozen second.
+- [ ] **The Client Directory:** scroll from top to bottom and back, quickly. Smooth, no catch. Type a name in the search: results follow each key.
+- [ ] **The minute, and a change underneath.** Leave the Directory open across two minute changes: no hitch as the minute turns. Then, from the second iPad or the PC, change something on a client who is in the list (a phone number, a note on the profile): the iPad with the Directory does not freeze. Do the same with the Hub open.
+- [ ] **A day signed in.** At the end of a busy day on an iPad nobody signed out of, the app feels as quick as in the morning (Load older on a machine now remembers the last 8 clients; a 9th reads again).
+
+**What looks different** (each in portrait and landscape, light and dark, on the 10th gen or the mini):
+
+- [ ] **Dialogs and sheets:** the machine menu, the session's journal, flags and machine slide-overs, End session, a delete confirm, Add a client: the screen behind is sharp and slightly darker than before (no blur). Say if the darkening (.36 light, .60 dark) is too much or too little.
+- [ ] **Toasts** are fully solid. The **Kaizen Deep Dive's** sticky report bar is solid; nothing shows through it while scrolling.
+- [ ] **List cards sit closer to the page** (a short crisp shadow, not the soft glow): the Hub's bookings and Next 30 minutes, the Board, the Tracker, the Journal's notes, Team's people, the Floor Map, Openings' people and offers, a client's note threads, the history list, routines, Learning's tiles, Operations → Team's trainers, and on a phone the machine cards. One-of panels, popovers and dialogs look as before. Say if the cards still have enough of the Refined Lift, especially in light mode on the Board, Notes and the Hub.
+- [ ] **Dots that rest:** the Session tab's orange dot (leave a running session for the Hub), a Hub card's live dot, a profile's In progress clock and the Kaizen ring each pulse three times when they appear, then stay lit. With Settings → Accessibility → Motion → Reduce Motion on, they don't pulse at all. The intro session's orange banner no longer throbs.
+- [ ] **Operations' loading skeletons:** the same light sweep as before while a page loads.
+- [ ] **The Hub's finished cards** look as before: faded the same. Tap a finished card so its peek opens: its grey left rail stays. Use the spotlight on a trainer: the other finished cards dim as much as the rest, not more. *If it fails:* `hub-card.css`, the review's `c706f217`.
+- [ ] **The Hub's stripes** (off hours, and the "nobody else booked" column) run evenly with no pinch or seam where the tiles meet, at the iPad's own 2x, in light and dark. An off-hours card that is over shows no stripes through it.
+
+**Safari Web Inspector** (only if a Mac is available; the lab can't see these costs):
+
+- [ ] Connect the iPad to the Mac by cable; on the iPad, Settings → Apps → Safari → Advanced → Web Inspector on (on older iPadOS, Settings → Safari → Advanced); on the Mac, Safari → Develop → (the iPad) → Journey. Timelines → record with **Rendering Frames** and **Layout & Rendering** on.
+- [ ] Record: opening and closing the machine menu five times; scrolling the Board, the Journal's notes and the Hub; scrolling the Directory. Write down how many frames are over 16.7 ms (the bars above the line) and the longest "Paint" and "Composite" entries. Save each recording (Export) for Claude.
+- [ ] If an older iPad is there, the same recordings on it.
