@@ -488,6 +488,27 @@ describe("the Active Session mounts and draws this studio's floor", () => {
     expect(open).toHaveLength(1);
   });
 
+  it("keeps the client's listeners open when the studio's client list changes (the iPad round, Oct 6 2026)", async () => {
+    // Any client document at the studio changing gives the screen a new
+    // `clients` array. It used to close and reopen the sessions, routines and
+    // settings listeners every time.
+    await mount(<Tracker />);
+    const opened = (p: string) => snapshotListeners.filter((l) => l.path === p).length;
+    const before = { sessions: opened("sessions"), routines: opened("routines"), settings: opened("clientMachineSettings") };
+    expect(before.sessions).toBeGreaterThan(0);
+    const { root } = mounted[mounted.length - 1];
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <ToastProvider>
+            <Tracker who={{ ...client, lastName: "Changed" } as Client} />
+          </ToastProvider>
+        </StrictMode>,
+      );
+    });
+    expect({ sessions: opened("sessions"), routines: opened("routines"), settings: opened("clientMachineSettings") }).toEqual(before);
+  });
+
   it("shows the STUDIO's name for its own unit, not the catalog's", async () => {
     const host = await mount(<Tracker />);
     const text = host.textContent ?? "";

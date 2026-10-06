@@ -1061,6 +1061,16 @@ export function WorkoutTrackerView({
     }
   }, [clientId, clients]);
 
+  /* The client's settings, routines and sessions, listened to once per
+     client and person. `clients` is NOT a dependency (the iPad round, Oct 6
+     2026): nothing in here reads it, and it changes every time any client
+     document at the studio changes (the roster listener, a Mindbody webhook,
+     the nightly job) and when the selected client's own read answers, a
+     moment after Start. Each change tore all three listeners down and opened
+     them again, so the briefing could be drawn from a new listener's partial
+     cached answer (40 of a client's 99 sessions, in the perf lab) before the
+     server's, and every roster change mid-session asked the server for the
+     client's sessions again. */
   useEffect(() => {
     if (clientId && user) {
       // Fetch Client Machine Settings
@@ -1281,7 +1291,7 @@ export function WorkoutTrackerView({
         unsubscribeSessions();
       };
     }
-  }, [clientId, user?.uid, clients]);
+  }, [clientId, user?.uid]);
 
   /* Which sessions' sets the logs listener below holds, and whether it
      answered (machine menu, Oct 2026): the menu draws a column only for a
