@@ -1256,7 +1256,7 @@ describe("session writes never wait on the network (speed round, Oct 5 2026; R9)
     expect(writes.find((w) => w.path === `exerciseLogs/${sid}_m-leg-press`)?.data.weight).toBe("110");
   });
 
-  it("a Start refused late takes back the sets typed meanwhile: none waits to land on a session that never was", async () => {
+  it("a Start refused late keeps the sets typed meanwhile and takes back only the untouched prefills", async () => {
     const { sendSetsNow } = await import("../features/session-record/sign-out-check");
     sessionDocs = [];
     netCtl.routines = [ROUTINE_A];
@@ -1277,16 +1277,17 @@ describe("session writes never wait on the network (speed round, Oct 5 2026; R9)
       refuse(Object.assign(new Error("refused"), { code: "permission-denied" }));
       await new Promise((r) => setTimeout(r, 0));
     });
-    // The typed set, still waiting on its timer, is never sent...
     await act(async () => sendSetsNow());
-    expect(writes.some((w) => w.path === `exerciseLogs/${sid}_m-leg-press` && w.data?.reps === "11")).toBe(false);
-    // ...and the session's sets are deleted in one batch.
-    expect(netCtl.deletes).toEqual(
-      expect.arrayContaining([`exerciseLogs/${sid}_m-leg-press`, `exerciseLogs/${sid}_sm-solon-rear-delt`]),
-    );
-    // The session left the screen, and it was said.
+    // The typed set is the only record of what the client lifted: it is sent,
+    // and never deleted...
+    expect(writes.some((w) => w.path === `exerciseLogs/${sid}_m-leg-press` && w.data?.reps === "11")).toBe(true);
+    expect(netCtl.deletes).not.toContain(`exerciseLogs/${sid}_m-leg-press`);
+    // ...while an untouched prefill is taken back.
+    expect(netCtl.deletes).toContain(`exerciseLogs/${sid}_sm-solon-rear-delt`);
+    // The session left the screen, and it was said, with where the sets are.
     expect(host.querySelector(".jg-sbar")).toBeNull();
     expect(document.body.textContent).toContain("The session didn't start");
+    expect(document.body.textContent).toContain("The sets typed are kept");
   });
 
   it("Discard is one batch, and the Hub comes at once offline", async () => {

@@ -57,6 +57,7 @@ import { finishedElsewhereAtTap, settleOrQueue } from "../features/session-recor
 import {
   cleanPayload,
   discardLogIds,
+  refusedStartSweep,
   plannedMachinesOf,
   prefillOf,
   resolveStartRoutine,
@@ -1116,6 +1117,7 @@ export function WorkoutTrackerView({
         routinesQuery,
         { includeMetadataChanges: true },
         (snapshot) => {
+          const trusted = !(snapshot.empty && snapshot.metadata?.fromCache);
           // A metadata-only answer changes no routine: no new list, no redraw.
           if (!routinesSeen || snapshot.docChanges().length > 0) {
             routinesSeen = true;
@@ -1126,8 +1128,16 @@ export function WorkoutTrackerView({
             setRoutines(
               routinesData.sort((a, b) => a.name.localeCompare(b.name)),
             );
+            // The list on screen is now this answer's: an untrusted one
+            // un-knows the routines, or a client switched away from and back
+            // (X, Y, X) would read as known off Y's empty list (the speed
+            // round's final review).
+            if (!trusted) {
+              setKnownFor((k) => (k.routines === null ? k : { ...k, routines: null }));
+              return;
+            }
           }
-          if (snapshot.empty && snapshot.metadata?.fromCache) return;
+          if (!trusted) return;
           setKnownFor((k) => (k.routines === clientId ? k : { ...k, routines: clientId }));
         },
         (error) => {
@@ -1478,23 +1488,26 @@ export function WorkoutTrackerView({
       clientHomeStudioId,
       studioId,
       createdAt: serverTimestamp(),
-      hasLocal: (key) => !!logsRef.current[key] || pendingLogWritesRef.current.has(key),
+      // A set this iPad already sent counts too: its echo may not be in logsRef yet.
+      hasLocal: (key) =>
+        !!logsRef.current[key] || pendingLogWritesRef.current.has(key) || writtenLogIdsRef.current.has(key),
       startingWeight: (name, gender, age) => calculateStartingWeight(name, gender, age, "Novice"),
     });
 
   /**
    * A start batch the database refused: said once, and the session leaves
-   * this iPad. A refusal can come late (on reconnect), after sets were typed:
-   * those sets were their own writes, so the ones still waiting are dropped
-   * and the ones already sent are deleted in one batch (Discard's list), or
-   * they would land as sets of a session that never existed.
+   * this iPad. A refusal can come late (on reconnect, after a whole offline
+   * session). The sets typed meanwhile were their own writes and are the only
+   * record of what the client lifted, so they are KEPT (the speed round's
+   * final review, Oct 6 2026): the ones still waiting are sent, and only the
+   * untouched prefills are deleted, in one batch (refusedStartSweep). A kept
+   * set is an administrator's to recover, and the toast says so.
    */
   const startRefused = (sessionId: string, error: unknown, plannedMachineIds: string[]) => {
     console.error("[start] the session was refused", error);
     for (const [key, pending] of Array.from(pendingLogWritesRef.current.entries())) {
       if (pending.payload?.sessionId !== sessionId) continue;
-      if (pending.timer) clearTimeout(pending.timer);
-      pendingLogWritesRef.current.delete(key);
+      flushLogWrite(key);
     }
     const machineIds = Array.from(
       new Set([
@@ -1502,11 +1515,13 @@ export function WorkoutTrackerView({
         ...(currentSessionIdRef.current === sessionId ? activeMachineIdsRef.current : []),
       ]),
     );
-    const orphanIds = discardLogIds(sessionId, logsRef.current, machineIds);
-    if (orphanIds.length > 0) {
+    const { remove, kept } = refusedStartSweep(sessionId, logsRef.current, machineIds, (id) =>
+      writtenLogIdsRef.current.has(id) || pendingLogWritesRef.current.has(id),
+    );
+    if (remove.length > 0) {
       const sweep = writeBatch(db);
-      for (const id of orphanIds) sweep.delete(doc(db, "exerciseLogs", id));
-      sweep.commit().catch((e) => console.error("[start] the refused session's sets were not cleared", e));
+      for (const id of remove) sweep.delete(doc(db, "exerciseLogs", id));
+      sweep.commit().catch((e) => console.error("[start] the refused session's prefills were not cleared", e));
     }
     if (startFollowUpRef.current?.sessionId === sessionId) startFollowUpRef.current = null;
     forgetLiveSession(sessionId);
@@ -1516,7 +1531,11 @@ export function WorkoutTrackerView({
       setCurrentSession(null);
       setIsPreSessionMode(true);
     }
-    toastError("The session didn't start. Check the connection, then press Start again.");
+    toastError(
+      kept.length > 0
+        ? "The session didn't start, so it isn't on the record. The sets typed are kept: tell a leader."
+        : "The session didn't start. Check the connection, then press Start again.",
+    );
   };
 
   const startNewSession = (
@@ -2574,12 +2593,19 @@ export function WorkoutTrackerView({
     >
   >(new Map());
   const lastHeartbeatWriteRef = useRef(0);
+  /**
+   * Every set this iPad has sent. The follow-up seed and a late-refused Start
+   * read it: between a flush and the listener's echo a typed set is in
+   * neither the queue nor logsRef (the speed round's final review).
+   */
+  const writtenLogIdsRef = useRef<Set<string>>(new Set());
 
   const flushLogWrite = React.useCallback((docId: string) => {
     const pending = pendingLogWritesRef.current.get(docId);
     if (!pending) return;
     if (pending.timer) clearTimeout(pending.timer);
     pendingLogWritesRef.current.delete(docId);
+    writtenLogIdsRef.current.add(docId);
 
     setDoc(
       doc(db, "exerciseLogs", docId),

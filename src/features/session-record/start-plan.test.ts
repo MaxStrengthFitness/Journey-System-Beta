@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   cleanPayload,
   discardLogIds,
+  refusedStartSweep,
   plannedMachinesOf,
   prefillOf,
   resolveStartRoutine,
@@ -150,5 +151,20 @@ describe("discardLogIds: Discard's one batch", () => {
       ["m-a", "m-torso-rotation"],
     );
     expect(ids.sort()).toEqual(["random-legacy-id", "s1_m-a", "s1_m-torso-rotation_Left", "s1_m-torso-rotation_Right"].sort());
+  });
+});
+
+describe("refusedStartSweep: a late-refused Start never deletes a set the trainer touched", () => {
+  it("takes back the untouched prefills and keeps typed or written sets", () => {
+    const logs = {
+      a: { id: "s1_m-a", sessionId: "s1", weight: "100", reps: "11" },
+      b: { id: "s1_m-b", sessionId: "s1", weight: "80" },
+      c: { id: "s1_m-c", sessionId: "s1", weight: "60" },
+      d: { id: "s1_m-d", sessionId: "s1", skipReason: "pain" },
+      other: { id: "s2_m-a", sessionId: "s2", reps: "9" },
+    } as never;
+    const { remove, kept } = refusedStartSweep("s1", logs, ["m-a", "m-b", "m-c", "m-d", "m-e"], (id) => id === "s1_m-c");
+    expect(kept.sort()).toEqual(["s1_m-a", "s1_m-c", "s1_m-d"]);
+    expect(remove.sort()).toEqual(["s1_m-b", "s1_m-e"]);
   });
 });

@@ -262,3 +262,42 @@ export function discardLogIds(
   }
   return [...ids];
 }
+
+/** The fields a trainer fills in on a set (never a prefill's weight): any of them, and the set is theirs. */
+function touchedByTrainer(log: Partial<ExerciseLog> | undefined): boolean {
+  if (!log) return false;
+  const filled = (v: unknown) => v !== undefined && v !== null && String(v).trim() !== "";
+  const l = log as Record<string, unknown>;
+  return [
+    "reps", "repsLeft", "repsRight", "seconds", "timeSpent", "outcomeReps", "outcomeTut",
+    "repQuality", "outcome", "skipReason", "skipNote", "notes",
+  ].some((f) => filled(l[f]));
+}
+
+/**
+ * A start the database refused LATE (on reconnect, after a whole offline
+ * session): which of its sets to take back (the speed round's final review,
+ * Oct 6 2026). Only the untouched prefills. A set the trainer typed into, or
+ * one this iPad wrote or is about to write (`written`), stays: it is the only
+ * record of what the client lifted, and an administrator can still recover it.
+ */
+export function refusedStartSweep(
+  sessionId: string,
+  logs: Record<string, Partial<ExerciseLog> & Pick<ExerciseLog, "sessionId">>,
+  machineIds: string[],
+  written: (id: string) => boolean,
+): { remove: string[]; kept: string[] } {
+  const touched = new Set<string>();
+  for (const [key, log] of Object.entries(logs)) {
+    if (log?.sessionId !== sessionId) continue;
+    const id = log.id && !String(log.id).startsWith("temp_") ? String(log.id) : key;
+    if (touchedByTrainer(log)) touched.add(id);
+  }
+  const remove: string[] = [];
+  const kept: string[] = [];
+  for (const id of discardLogIds(sessionId, logs as Record<string, Pick<ExerciseLog, "id" | "sessionId">>, machineIds)) {
+    if (touched.has(id) || written(id)) kept.push(id);
+    else remove.push(id);
+  }
+  return { remove, kept };
+}
