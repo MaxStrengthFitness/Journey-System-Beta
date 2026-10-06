@@ -19,10 +19,20 @@ import firebaseConfig from '../firebase-applet-config.json';
 import { setIdTokenSource } from './lib/authed-fetch';
 import { deviceStorage, rememberSignedInHere, wasSignedInHere } from './lib/auth-boot';
 
+import { labFirebaseConfig, startPerfLab } from './perf-lab-hook';
+
 // Silence Firestore internal warnings and idle stream disconnections
 setLogLevel('silent');
 
-const app = initializeApp(firebaseConfig);
+/*
+ * THE PERFORMANCE LAB (harness/perf-lab, Oct 6 2026). A build made with
+ * VITE_PERF_LAB=1 talks to the local Firebase emulators under a demo-*
+ * project and nothing else; every other build is unchanged, and the lab's
+ * code is dropped from it at build time (the condition is the literal flag,
+ * which Vite replaces, so the minifier removes the branch and the import).
+ * src/perf-lab-hook.test.ts holds this.
+ */
+const app = initializeApp(import.meta.env.VITE_PERF_LAB === "1" ? labFirebaseConfig() : firebaseConfig);
 
 // Offline persistence, single-tab.
 //
@@ -41,7 +51,7 @@ export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
     tabManager: persistentSingleTabManager(undefined),
   }),
-}, firebaseConfig.firestoreDatabaseId);
+}, import.meta.env.VITE_PERF_LAB === "1" ? labFirebaseConfig().firestoreDatabaseId : firebaseConfig.firestoreDatabaseId);
 
 import { getFunctions } from 'firebase/functions';
 export const functions = getFunctions(app, 'us-central1');
@@ -70,6 +80,8 @@ export const auth = initializeAuth(app, {
   persistence: browserPersistence.length > 0 ? browserPersistence : inMemoryPersistence,
   ...(signedInHereLastTime || !helperAvailable ? {} : { popupRedirectResolver: browserPopupRedirectResolver }),
 });
+// The lab only (see above): the emulators, before anything reads or signs in.
+if (import.meta.env.VITE_PERF_LAB === "1") startPerfLab(db, auth);
 onAuthStateChanged(auth, (user) => rememberSignedInHere(deviceStorage(), Boolean(user)));
 
 /** The popup helper signInWithPopup must be handed (Auth starts without one on a signed-in open). */
