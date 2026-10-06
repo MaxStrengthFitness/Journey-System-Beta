@@ -101,11 +101,13 @@ export function mapMindbodySessions(sessions: any[], trainers: Trainer[]): Parti
   });
 }
 
-import { Firestore, writeBatch, doc, collection, serverTimestamp, increment, updateDoc, deleteField, type DocumentReference } from 'firebase/firestore';
+import { Firestore, writeBatch, doc, collection, serverTimestamp, increment, deleteField, type DocumentReference } from 'firebase/firestore';
 import { invalidateSessionCount } from './session-count-cache';
 import { completedSessionRollup } from './client-rollups';
 import { studioDateKey, studioTodayKey } from "./studio-time";
 import { isPerformedLog } from './set-outcome';
+import { splitMachineTotalsUpdates } from '../features/machine-totals/totals';
+import { addMachineTotalsWrite } from '../features/machine-totals/store';
 
 /**
  * Sessions whose client totals landed although the session itself was
@@ -113,6 +115,21 @@ import { isPerformedLog } from './set-outcome';
  * Kept through a sign-out on purpose: it is about a session, not a person.
  */
 const totalledSessionIds = new Set<string>();
+
+/**
+ * The client's totals as one write: her counters on clients/{id}, and the
+ * machine maps (currentMachineMetrics, machineStats) on her machine totals
+ * document, where they live since the iPad round (features/machine-totals).
+ * ONE batch, so a refusal refuses both, exactly as the single client update
+ * did before, and `totalledSessionIds` still means "counted" or "not".
+ */
+function totalsCommit(db: Firestore, w: { ref: DocumentReference; clientId: string; updates: Record<string, unknown> }): Promise<void> {
+  const { client, totals } = splitMachineTotalsUpdates(w.updates);
+  const batch = writeBatch(db);
+  if (Object.keys(client).length > 0) batch.update(w.ref, client);
+  addMachineTotalsWrite(batch, db, w.clientId, totals);
+  return batch.commit();
+}
 
 /**
  * Atomic Session Completion Engine
@@ -272,7 +289,7 @@ export async function completeWorkoutSession(
   // machine's current metrics or sets tomorrow's weight (set-outcome.ts).
   const performedLogs = sessionLogs.filter((l: any) => isPerformedLog(l));
 
-  let totalsWrite: { ref: DocumentReference; updates: Record<string, unknown> } | null = null;
+  let totalsWrite: { ref: DocumentReference; clientId: string; updates: Record<string, unknown> } | null = null;
   if (selectedClient && selectedClient.id) {
     let totalSessionReps = 0;
     let totalSessionVolume = 0;
@@ -399,7 +416,7 @@ export async function completeWorkoutSession(
       ),
     );
 
-    totalsWrite = { ref: clientRef, updates: clientUpdates };
+    totalsWrite = { ref: clientRef, clientId: selectedClient.id, updates: clientUpdates };
   }
 
   // The session, every set and every setting: one all-or-nothing commit.
@@ -411,7 +428,7 @@ export async function completeWorkoutSession(
   const committed = batch.commit();
   const totals: Promise<boolean | null> =
     totalsWrite && !totalledSessionIds.has(currentSession.id)
-      ? updateDoc(totalsWrite.ref, totalsWrite.updates).then(
+      ? totalsCommit(db, totalsWrite).then(
           () => true,
           (err) => {
             console.error('[finish] the session saved, but the client totals did not', err);

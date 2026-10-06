@@ -274,6 +274,8 @@ import { useMachines } from "./hooks/useMachines";
 import { useSessions } from "./hooks/useSessions";
 import { useLiveSchedule } from "./hooks/useLiveSchedule";
 import { useStudioRoster } from "./hooks/useStudioRoster";
+import { useMachineTotals } from "./features/machine-totals/useMachineTotals";
+import { withMachineTotals } from "./features/machine-totals/totals";
 import { useClientMutations } from "./hooks/useClientMutations";
 // Pure and tiny, and imported from the module rather than the barrel (the
 // Learning tab itself is lazy-loaded): the link format the bell, search and
@@ -672,6 +674,14 @@ export default function AppContent({
 
   // Memoised: this array is a dependency of effects in several screens, and a
   // new array on every AppContent render re-ran them all for nothing.
+  /**
+   * The client on screen's machine totals (the last set on each machine and
+   * each machine's lifetime rollup), live from their own document since the
+   * iPad round (features/machine-totals): the roster no longer carries them.
+   * Folded into that one client below, so the profile, the session and the
+   * machine menu read them where they always did.
+   */
+  const selectedTotals = useMachineTotals(selectedClientId);
   const clients = useMemo(
     () =>
       Array.from(
@@ -681,8 +691,8 @@ export default function AppContent({
             ...rosterClients,
           ].map((c) => [c.id, c]),
         ).values(),
-      ),
-    [selectedClientDoc, rosterClients],
+      ).map((c) => (selectedClientId && c.id === selectedClientId ? withMachineTotals(c, selectedTotals) : c)),
+    [selectedClientDoc, rosterClients, selectedClientId, selectedTotals],
   );
   const [isReorderingTrainers, setIsReorderingTrainers] = useState(false);
   const [isIntroSession, setIsIntroSession] = useState(false);

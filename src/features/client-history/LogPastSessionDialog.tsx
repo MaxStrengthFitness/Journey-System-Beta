@@ -35,6 +35,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OperationType, handleFirestoreError } from "../../lib/firestore-errors";
 import { completedSessionRollup } from "../../lib/client-rollups";
+import { splitMachineTotalsUpdates } from "../machine-totals/totals";
+import { addMachineTotalsWrite } from "../machine-totals/store";
 import { cn } from "../../lib/utils";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { CoverageStrip, MachinePicker, SequenceMachineRow, analyzeRoutine } from "../routine-builder";
@@ -287,12 +289,16 @@ export function LogPastSessionDialog({
 
       // The counters, exactly as finishing a live session keeps them. Only
       // performed sets vote, and only one vote per machine — that arithmetic
-      // lives in client-rollups.ts and is not repeated here.
-      batch.update(doc(db, "clients", clientId), {
+      // lives in client-rollups.ts and is not repeated here. The machine
+      // counts go to the client's machine totals document, in the same batch
+      // (features/machine-totals).
+      const counters = splitMachineTotalsUpdates({
         completedSessions: increment(1),
         sessionCount: increment(1),
         ...completedSessionRollup(client, session, written, trainers, { increment, serverTimestamp }),
       });
+      batch.update(doc(db, "clients", clientId), counters.client);
+      addMachineTotalsWrite(batch, db, clientId, counters.totals);
 
       await batch.commit();
       onOpenChange(false);

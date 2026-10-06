@@ -21,7 +21,7 @@ import { readChartFile } from '../../../services/read-chart-file';
 import { db } from '../../../firebase';
 import { useActiveStudio } from '../../../contexts/ActiveStudioContext';
 import { useToast } from '../../../contexts/ToastContext';
-import { collection, writeBatch, doc, serverTimestamp, increment } from 'firebase/firestore';
+import { collection, writeBatch, doc, getDoc, serverTimestamp, increment } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -30,6 +30,8 @@ import { Badge } from '@/components/ui/badge';
 import { cn, parseSessionDate, parseMachineSettings } from '../../../lib/utils';
 import { planLegacyImport } from '../../../lib/legacy-import-utils';
 import { importedSessionsRollup } from '../../../lib/client-rollups';
+import { mergeMachineTotals, splitMachineTotalsUpdates } from '../../machine-totals/totals';
+import { addMachineTotalsWrite, machineTotalsRef } from '../../machine-totals/store';
 import { importedOutcome } from '../../../lib/set-outcome';
 
 interface ImporterProps {
@@ -526,7 +528,17 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
       }
 
       // Build currentMachineMetrics from imported data so profile cards and live sessions auto-populate weights
-      const targetClient = clients.find(c => c.id === selectedClientId);
+      // The machine maps live on the client's machine totals document since
+      // the iPad round (features/machine-totals): read it once and fold it in,
+      // so first/last and the metrics build on what is on file. A failed read
+      // stops the import rather than writing over what it couldn't see.
+      const listed = clients.find(c => c.id === selectedClientId);
+      const totalsSnap = await getDoc(machineTotalsRef(db, selectedClientId));
+      const targetClient = listed
+        ? { ...listed, ...mergeMachineTotals(listed, totalsSnap.exists() ? totalsSnap.data() : null) }
+        : undefined;
+      /** The machines this import writes a last set for: only those are written, never the whole map. */
+      const touchedMachineIds = new Set<string>();
 
       // Top Trainer tally + per-machine lifetime stats (Sep 2026). The chart
       // parser already resolved each column's trainer (trainerId / initials),
@@ -611,6 +623,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
 
           const finalSettings = sanitizeSettingsMap(rawSettingsObj);
 
+          touchedMachineIds.add(vLog.machineId);
           currentMachineMetrics[vLog.machineId] = {
             weight: String(vLog.weight || '0'),
             reps: vLog.isStaticHold ? '' : String(vLog.reps || ''),
@@ -636,6 +649,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
           if (extracted.armPad) finalSettings['Arm Pad'] = extracted.armPad;
 
           if (extracted.currentWeight || Object.keys(finalSettings).length > 0) {
+            touchedMachineIds.add(extracted.machineId);
             currentMachineMetrics[extracted.machineId] = {
               weight: String(extracted.currentWeight || '0'),
               reps: '',
@@ -649,12 +663,16 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
         }
       }
 
-      if (Object.keys(currentMachineMetrics).length > 0) {
-        clientUpdateObj.currentMachineMetrics = currentMachineMetrics;
+      for (const machineId of touchedMachineIds) {
+        clientUpdateObj[`currentMachineMetrics.${machineId}`] = currentMachineMetrics[machineId];
       }
 
-      currentBatch.update(clientRef, clientUpdateObj);
+      // The counters on the client; the machine maps on the machine totals
+      // document, in the same batch.
+      const split = splitMachineTotalsUpdates(clientUpdateObj);
+      currentBatch.update(clientRef, split.client);
       opCount++;
+      if (addMachineTotalsWrite(currentBatch, db, selectedClientId, split.totals)) opCount++;
       updateProgress();
       await commitBatchIfNeeded();
 

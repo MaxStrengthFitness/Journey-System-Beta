@@ -18,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { OperationType, handleFirestoreError } from "../../lib/firestore-errors";
 import { deletedSessionRollup } from "../../lib/client-rollups";
+import { splitMachineTotalsUpdates } from "../machine-totals/totals";
+import { addMachineTotalsWrite } from "../machine-totals/store";
 import { formatStudioTime } from "../../lib/studio-time";
 import { cn } from "../../lib/utils";
 import { TrainerAvatar, type TrainerRef } from "../calendar";
@@ -429,9 +431,11 @@ export function SessionDetailDialog({
 
       // 5. The client's machine counts move with the sets — but only for a
       //    session that ever cast those votes. An old backfill never did.
+      //    They live on the client's machine totals document since the iPad
+      //    round (features/machine-totals).
       if (clientId && ownsClientCounters(selected)) {
         const stats = machineStatsUpdate(machineVoteDelta(logs, keptLogs), { increment, serverTimestamp });
-        if (Object.keys(stats).length > 0) batch.update(doc(db, "clients", clientId), stats);
+        addMachineTotalsWrite(batch, db, clientId, stats);
       }
 
       await batch.commit();
@@ -476,11 +480,14 @@ export function SessionDetailDialog({
       // backfill pulled the client's counters one lower than the truth. A
       // backfill written since then did count, and says so on itself.
       if (clientId && ownsClientCounters(selected)) {
-        batch.update(doc(db, "clients", clientId), {
+        const giveBack = splitMachineTotalsUpdates({
           completedSessions: increment(-1),
           sessionCount: increment(-1),
           ...deletedSessionRollup(selected, logs, { increment, serverTimestamp }),
         });
+        batch.update(doc(db, "clients", clientId), giveBack.client);
+        // The machine counts, on the machine totals document (features/machine-totals).
+        addMachineTotalsWrite(batch, db, clientId, giveBack.totals);
       }
       await batch.commit();
       setConfirmDelete(false);

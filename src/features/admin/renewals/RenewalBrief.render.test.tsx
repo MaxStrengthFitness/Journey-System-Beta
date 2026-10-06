@@ -14,6 +14,8 @@ import type { Client, Trainer } from "../../../types";
 import type { RenewalSnapshot } from "../../renewals/types";
 
 vi.mock("../../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "uid-lead" } } }));
+// The machine totals document (features/machine-totals): answered, with nothing in it.
+vi.mock("../../machine-totals/useMachineTotals", () => ({ useMachineTotals: () => ({ state: "missing", data: null }) }));
 vi.mock("../../../contexts/ToastContext", () => ({
   useToast: () => ({ success: () => {}, error: () => {}, info: () => {}, warning: () => {}, toast: () => {} }),
 }));

@@ -12,9 +12,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const calls = vi.hoisted(() => ({
-  batchWrites: [] as Array<{ op: string; path: string; data: Record<string, unknown> }>,
+  /** The session's batch: the first batch Finish commits. */
+  batchWrites: [] as Array<{ op: string; path: string; data: Record<string, unknown>; options?: unknown }>,
   commits: 0,
-  updateDocs: [] as Array<{ path: string; data: Record<string, unknown> }>,
+  /**
+   * The totals: every later batch, as committed (the client's counters and,
+   * since the iPad round, the machine totals document beside the client).
+   */
+  updateDocs: [] as Array<{ path: string; data: Record<string, unknown>; writes: Array<{ op: string; path: string; data: Record<string, unknown>; options?: unknown }> }>,
   refuseTotals: false,
   refuseBatch: false,
   // While set, the batch's commit waits on it, as an offline commit waits
@@ -28,26 +33,34 @@ vi.mock("firebase/firestore", () => ({
   serverTimestamp: () => ({ __server: true }),
   increment: (n: number) => ({ __increment: n }),
   deleteField: () => ({ __delete: true }),
-  writeBatch: () => ({
-    update: (ref: { path: string }, data: Record<string, unknown>) =>
-      calls.batchWrites.push({ op: "update", path: ref.path, data }),
-    set: (ref: { path: string }, data: Record<string, unknown>) =>
-      calls.batchWrites.push({ op: "set", path: ref.path, data }),
-    commit: async () => {
-      calls.commits += 1;
-      if (calls.commitGate) await calls.commitGate;
-      if (calls.refuseBatch) {
-        throw Object.assign(new Error("Missing or insufficient permissions."), { code: "permission-denied" });
-      }
-    },
-  }),
-  updateDoc: async (ref: { path: string }, data: Record<string, unknown>) => {
-    calls.updateDocs.push({ path: ref.path, data });
-    if (calls.refuseTotals && ref.path.startsWith("clients/")) {
-      throw Object.assign(new Error("Missing or insufficient permissions."), { code: "permission-denied" });
-    }
+  writeBatch: () => {
+    const writes: Array<{ op: string; path: string; data: Record<string, unknown>; options?: unknown }> = [];
+    return {
+      update: (ref: { path: string }, data: Record<string, unknown>) => writes.push({ op: "update", path: ref.path, data }),
+      set: (ref: { path: string }, data: Record<string, unknown>, options?: unknown) => writes.push({ op: "set", path: ref.path, data, options }),
+      commit: async () => {
+        // The totals' batch touches clients/; the session's never does.
+        if (writes.some((w) => w.path.startsWith("clients/"))) {
+          const client = writes.find((w) => w.op === "update" && w.path.startsWith("clients/"));
+          calls.updateDocs.push({ path: client?.path ?? "", data: client?.data ?? {}, writes });
+          if (calls.refuseTotals) {
+            throw Object.assign(new Error("Missing or insufficient permissions."), { code: "permission-denied" });
+          }
+          return;
+        }
+        calls.batchWrites.push(...writes);
+        calls.commits += 1;
+        if (calls.commitGate) await calls.commitGate;
+        if (calls.refuseBatch) {
+          throw Object.assign(new Error("Missing or insufficient permissions."), { code: "permission-denied" });
+        }
+      },
+    };
   },
 }));
+
+/** The machine totals write that rode with the client's counters (features/machine-totals). */
+const machineTotalsWrite = (i = 0) => calls.updateDocs[i].writes.find((w) => w.path === "clients/c1/machineTotals/current");
 // Finish writes no journal note (the tracker files the Note for the next
 // trainer's journal copy itself). If it ever did again, this would say so.
 const journal = vi.hoisted(() => ({ created: 0 }));
@@ -116,7 +129,16 @@ describe("completeWorkoutSession", () => {
       sessionCount: 41,
       lastSessionDate: expect.any(String),
     });
-    expect(Object.keys(calls.updateDocs[0].data)).toContain("currentMachineMetrics.m1");
+    // The machine maps are no longer on the client: they go to the totals
+    // document, in the same batch, as a set that touches only these paths.
+    expect(Object.keys(calls.updateDocs[0].data).some((k) => k.startsWith("currentMachineMetrics") || k.startsWith("machineStats"))).toBe(false);
+    const machines = machineTotalsWrite()!;
+    expect(machines.op).toBe("set");
+    expect((machines.data.currentMachineMetrics as any).m1.weight).toBe("180");
+    expect((machines.data.machineStats as any).m1.timesPerformed).toEqual({ __increment: 1 });
+    expect((machines.options as any).mergeFields).toEqual(
+      expect.arrayContaining(["currentMachineMetrics.m1", "machineStats.m1.timesPerformed", "updatedAt"]),
+    );
     expect(r.totalsSaved).toBe(true);
   });
 
@@ -133,8 +155,9 @@ describe("completeWorkoutSession", () => {
     // Her last-session day only moves forward.
     expect(totals).not.toHaveProperty("lastSessionDate");
     // m1 was done since: left alone. m2 was not: written, on the session's own day.
-    expect(totals).not.toHaveProperty("currentMachineMetrics.m1");
-    expect((totals["currentMachineMetrics.m2"] as any).lastPerformedDate).toBeInstanceOf(Date);
+    const metrics = machineTotalsWrite()!.data.currentMachineMetrics as any;
+    expect(metrics).not.toHaveProperty("m1");
+    expect(metrics.m2.lastPerformedDate).toBeInstanceOf(Date);
     const paths = calls.batchWrites.map((w) => w.path);
     expect(paths).not.toContain("clientMachineSettings/c1_m1");
     expect(paths).toContain("clientMachineSettings/c1_m2");

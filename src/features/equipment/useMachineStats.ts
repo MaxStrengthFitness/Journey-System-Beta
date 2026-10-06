@@ -14,13 +14,23 @@
  * Cost: one sessions query plus the sets (≤60 sessions: `sessionId in` batches
  * of ten; beyond that a single `clientId ==` query), one document write. Paid
  * once per client, ever.
+ *
+ * Since the iPad round (Oct 6 2026) the rollup and its marker live on the
+ * client's machine totals document (features/machine-totals). The rebuild
+ * writes them there and takes the old fields off the client in the same batch
+ * (the two sides' counts are added, so they must never both hold one), and it
+ * waits until that document has answered: while it is loading, a marker
+ * already there is not visible yet, and a client whose rollup is complete
+ * would have her whole history re-read on every profile open.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { collection, getDocs, query, serverTimestamp, where, writeBatch } from "firebase/firestore";
 import { db } from "../../firebase";
 import { isPermissionError, isQuotaError } from "../../lib/studio-roster";
 import type { Client, ClientMachineStat, ExerciseLog, WorkoutSession } from "../../types";
 import { rollupFromHistory } from "../../lib/client-rollups";
+import { machineTotalsKnown } from "../machine-totals/totals";
+import { addMachineTotalsReplace } from "../machine-totals/store";
 
 export interface MachineStatsState {
   /** Lifetime rollup, or null while the figures should come from loaded sessions. */
@@ -51,6 +61,8 @@ export function useMachineStats(client: Client | null | undefined, options: { en
   const enabled = options.enabled ?? true;
   const clientId = client?.id ?? null;
   const ready = !!client?.machineStatsBackfilledAt;
+  /** The client's machine totals have answered (or were never split off): see the header. */
+  const totalsKnown = machineTotalsKnown(client);
   const [backfilling, setBackfilling] = useState(false);
   const mounted = useRef(true);
 
@@ -62,7 +74,7 @@ export function useMachineStats(client: Client | null | undefined, options: { en
   }, []);
 
   useEffect(() => {
-    if (!enabled || !clientId || ready || started.has(clientId)) return;
+    if (!enabled || !clientId || ready || !totalsKnown || started.has(clientId)) return;
     started.add(clientId);
     setBackfilling(true);
     (async () => {
@@ -73,10 +85,14 @@ export function useMachineStats(client: Client | null | undefined, options: { en
         const rolled = rollupFromHistory(sessions, logs, []);
         // Whole-field replace, not a merge: the history already includes any
         // session the incremental rollup counted, so merging would double it.
-        await updateDoc(doc(db, "clients", clientId), {
+        // On the machine totals document, with the client's old copy taken
+        // off in the same batch (features/machine-totals).
+        const batch = writeBatch(db);
+        addMachineTotalsReplace(batch, db, clientId, {
           machineStats: rolled.machineStats,
           machineStatsBackfilledAt: serverTimestamp(),
         });
+        await batch.commit();
       } catch (err) {
         /*
          * A FAILURE THAT WILL FAIL AGAIN MUST NOT RE-ARM.
@@ -104,7 +120,7 @@ export function useMachineStats(client: Client | null | undefined, options: { en
         if (mounted.current) setBackfilling(false);
       }
     })();
-  }, [enabled, clientId, ready]);
+  }, [enabled, clientId, ready, totalsKnown]);
 
   return useMemo<MachineStatsState>(() => ({ stats: ready ? client?.machineStats ?? {} : null, backfilling }), [ready, client?.machineStats, backfilling]);
 }

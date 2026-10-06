@@ -60,6 +60,8 @@ import { optionsFor, upgradeVerdict } from "../../renewals/options";
 import { formatMoney, signedMoney } from "../../renewals/money";
 import { useClinicalReport, buildReport, rangeForPreset } from "../../clinical-review";
 import { useInBodyVariation } from "../../inbody/useInBodyVariation";
+import { useMachineTotals } from "../../machine-totals/useMachineTotals";
+import { machineTotalsKnown, withMachineTotals } from "../../machine-totals/totals";
 import type { RenewalOutcome, RenewalStage } from "../../renewals/types";
 import "./renewals.css";
 
@@ -84,7 +86,7 @@ export interface RenewalBriefProps {
 const money = formatMoney;
 
 export function RenewalBrief({
-  client,
+  client: listedClient,
   studioTrainers,
   machines,
   trainers,
@@ -93,6 +95,11 @@ export function RenewalBrief({
   onClose,
   studios,
 }: RenewalBriefProps) {
+  /* The client's machine totals (each machine's first and last weight: the
+     strength gains) live on their own document since the iPad round, not on
+     the pipeline's list (features/machine-totals): one read, for this client. */
+  const totals = useMachineTotals(listedClient.id ?? null);
+  const client = useMemo(() => withMachineTotals(listedClient, totals), [listedClient, totals]);
   const today = studioTodayKey();
   const { success: toastSuccess, error: toastError } = useToast();
   const machineNames = useMemo(() => {
@@ -112,7 +119,8 @@ export function RenewalBrief({
   const inbodyVariation = useInBodyVariation(client);
 
   const name = `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim();
-  const gains = strengthGains(client, machineNames);
+  // Not said until the totals have answered: an empty list would read as "no gains".
+  const gains = machineTotalsKnown(client) || totals.data ? strengthGains(client, machineNames) : [];
   const options = s ? optionsFor(settings, s.packageKey, s.pacePerWeek) : [];
   const verdict = s ? upgradeVerdict(s, settings, inbodyVariation) : null;
   const currentTier = s ? settings.packages.find((p) => p.key === s.packageKey) ?? null : null;
@@ -277,7 +285,11 @@ export function RenewalBrief({
               </AdminPanel>
 
               <AdminPanel title="3. Strength" subtitle="First logged weight against the latest, machines logged 3+ times.">
-                {gains.length === 0 ? (
+                {totals.state === "loading" ? (
+                  <p className="adm-hint">Reading the machine history…</p>
+                ) : totals.state === "failed" && !totals.data ? (
+                  <p className="adm-hint">Couldn't read the machine history. It will try again.</p>
+                ) : gains.length === 0 ? (
                   <p className="adm-hint">Not enough machine history in Journey yet.</p>
                 ) : (
                   <div className="adm-brief__lines">

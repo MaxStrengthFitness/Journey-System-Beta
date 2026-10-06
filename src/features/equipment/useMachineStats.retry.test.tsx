@@ -52,6 +52,14 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     updateDoc: async () => {
       if (failWith) throw failWith;
     },
+    deleteField: () => ({ __delete: true }),
+    writeBatch: () => ({
+      set: () => {},
+      update: () => {},
+      commit: async () => {
+        if (failWith) throw failWith;
+      },
+    }),
     serverTimestamp: () => ({ __server: true }),
     Timestamp: real.Timestamp,
   };

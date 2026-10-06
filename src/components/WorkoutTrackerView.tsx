@@ -126,6 +126,7 @@ import {
 } from "../lib/utils";
 import { toFloorMachines, isPerSideMachine } from "../lib/floor-machines";
 import { completeWorkoutSession } from "../lib/sync-utils";
+import { machineTotalsKnown } from "../features/machine-totals/totals";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -381,6 +382,12 @@ export function WorkoutTrackerView({
   const routinesKnown = !!clientId && knownFor.routines === clientId;
   const settingsKnown = !!clientId && knownFor.settings === clientId;
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  /* The client's machine totals (the last set on each machine: Start's
+     prefilled weights) have answered. They live in their own document since
+     the iPad round (features/machine-totals), so the prefill waits for them
+     as it waits for the settings, rather than prefilling a prescribed weight
+     in place of a last weight nobody has read yet. */
+  const totalsKnown = !!clientId && selectedClient?.id === clientId && machineTotalsKnown(selectedClient);
   /*
    * How much of this client's story Journey holds - computed ONCE here and
    * handed to the three screens this file draws, rather than each of them
@@ -1642,7 +1649,7 @@ export function WorkoutTrackerView({
          the meantime. Merged, and never over a set this iPad already holds. */
       const sessionStudioId = currentStudioId || clientHomeStudioId || "";
       const homeId = clientHomeStudioId || "";
-      const seedNow = routine.kind !== "unknown" && settingsKnown;
+      const seedNow = routine.kind !== "unknown" && settingsKnown && totalsKnown;
       const seeds = seedNow ? seedsFor(sessionRef.id, plannedMachineIds, homeId, sessionStudioId) : [];
 
       const batch = writeBatch(db);
@@ -1854,7 +1861,7 @@ export function WorkoutTrackerView({
       }
     }
 
-    if (f.routineDone && !f.seeded && settingsKnown) {
+    if (f.routineDone && !f.seeded && settingsKnown && totalsKnown) {
       f.seeded = true;
       const seeds = seedsFor(f.sessionId, f.plannedMachineIds, f.clientHomeStudioId, f.studioId);
       if (seeds.length > 0) {
@@ -1866,7 +1873,7 @@ export function WorkoutTrackerView({
     }
     if (f.routineDone && f.seeded) startFollowUpRef.current = null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routinesKnown, settingsKnown, routines, clientMachineSettings, currentSession?.id, clientId]);
+  }, [routinesKnown, settingsKnown, totalsKnown, routines, clientMachineSettings, currentSession?.id, clientId]);
 
   const assignSessionToClient = async (targetClientId: string) => {
     const sessionToAssign = pendingAssignSession || currentSession;

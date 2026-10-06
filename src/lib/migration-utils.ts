@@ -1,6 +1,7 @@
-import { collection, query, where, getDocs, doc, writeBatch, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import { WorkoutSession, ExerciseLog, CurrentMachineMetric } from '../types';
+import { addMachineTotalsReplace } from '../features/machine-totals/store';
 
 /**
  * Robust one-time execution script to retroactively fix all legacy data.
@@ -65,8 +66,9 @@ export async function migrateClientMachineMetrics(clientId: string) {
       }
     }
     
-    const clientRef = doc(db, 'clients', clientId);
-    batch.update(clientRef, { currentMachineMetrics });
+    // On the client's machine totals document since the iPad round, with the
+    // client's old copy taken off in the same batch (features/machine-totals).
+    addMachineTotalsReplace(batch, db, clientId, { currentMachineMetrics });
     
     await batch.commit();
     console.log(`Successfully migrated machine metrics for client ${clientId}`);

@@ -52,6 +52,7 @@ export function useMachineTotals(clientId: string | null | undefined): MachineTo
       { includeMetadataChanges: true },
       (snap) => {
         failures.current = { clientId, n: 0 };
+        const fromCache = snap.metadata.fromCache;
         if (snap.exists()) {
           const data = snap.data() as MachineTotalsDoc;
           // A metadata-only answer (a write acknowledged, the cache confirmed)
@@ -60,7 +61,7 @@ export function useMachineTotals(clientId: string | null | undefined): MachineTo
           if (key !== null && key === lastKey) return;
           lastKey = key;
           put({ state: "ready", data });
-        } else if (!snap.metadata.fromCache) {
+        } else if (!fromCache) {
           lastKey = null;
           put({ state: "missing", data: null });
         }
