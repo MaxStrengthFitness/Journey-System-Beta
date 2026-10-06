@@ -944,6 +944,12 @@ export function JourneyGrid({
    */
   useLayoutEffect(() => {
     if (!userScrolled.current) scrollToEnd();
+    // The width the next Older page is measured against: the sets landing
+    // widen the columns, and the prepend above keeps the cells under the
+    // thumb only from the width as it was just before (the resize observer
+    // refreshes it too; this covers a browser that reports no resize).
+    const el = scrollerRef.current;
+    if (el) prevScrollWidth.current = el.scrollWidth;
     // What the past cells SAY, not the array (pin-key.ts): the sets landing
     // change it; a set typed in today's column does not.
     // eslint-disable-next-line react-hooks/exhaustive-deps

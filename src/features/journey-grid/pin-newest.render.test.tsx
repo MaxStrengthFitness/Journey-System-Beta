@@ -245,3 +245,55 @@ describe("JourneyGrid and a scroll nobody made (Oct 2 2026)", () => {
     await unmount();
   });
 });
+
+describe("JourneyGrid pins on what it depends on (the iPad round, Oct 6 2026)", () => {
+  it("reads no width when a set brings new arrays with the same columns and cells", async () => {
+    RecordingObserver.all = [];
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    const sessions = sessionsOf(14);
+    await act(async () => {
+      root!.render(<RecentJourneyView sessions={sessions} rows={rowsFor(sessions)} layout="page" resetKey="judy" />);
+    });
+    const scroller = host.querySelector<HTMLElement>(".jg-scroller")!;
+    let widthReads = 0;
+    let leftWrites = 0;
+    const box = { scrollWidth: 1052, clientWidth: 673, scrollLeft: 379 };
+    Object.defineProperty(scroller, "scrollWidth", {
+      configurable: true,
+      get: () => {
+        widthReads += 1;
+        return box.scrollWidth;
+      },
+    });
+    Object.defineProperty(scroller, "clientWidth", { configurable: true, get: () => box.clientWidth });
+    Object.defineProperty(scroller, "scrollLeft", {
+      configurable: true,
+      get: () => box.scrollLeft,
+      set: (v: number) => {
+        leftWrites += 1;
+        box.scrollLeft = Math.max(0, Math.min(v, box.scrollWidth - box.clientWidth));
+      },
+    });
+
+    // A set during a session: the listeners answer again with new arrays,
+    // and not one column or past cell changed.
+    const again = sessions.map((s) => ({ ...s }));
+    await act(async () => {
+      root!.render(<RecentJourneyView sessions={again} rows={rowsFor(again)} layout="page" resetKey="judy" />);
+    });
+    expect(widthReads).toBe(0);
+    expect(leftWrites).toBe(0);
+
+    // A new column does re-pin.
+    const more = sessionsOf(15);
+    box.scrollWidth = 1108;
+    await act(async () => {
+      root!.render(<RecentJourneyView sessions={more} rows={rowsFor(more)} layout="page" resetKey="judy" />);
+    });
+    expect(widthReads).toBeGreaterThan(0);
+    expect(box.scrollLeft).toBe(box.scrollWidth - box.clientWidth);
+    await unmount();
+  });
+});
