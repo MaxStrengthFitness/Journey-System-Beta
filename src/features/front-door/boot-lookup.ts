@@ -95,6 +95,27 @@ export function markListSeen(storage: FlagStorage | null | undefined, list: keyo
   }
 }
 
+/**
+ * Which of a live list listener's answers to hand on (the speed round's final
+ * review, Oct 6 2026). Firestore raises NO event when the server's answer is
+ * the same as the iPad's copy, unless the listener asks for metadata changes;
+ * without that event a list painted from the copy is never confirmed, and a
+ * copy this iPad can't trust (a sign-in after someone else's) stays unknown
+ * until a document changes. So the list listeners ask for metadata changes,
+ * and this keeps the extra events from re-rendering the app: hand on the
+ * first answer, any answer that changed a document, and the moment the
+ * server confirms what the copy said. One per listener; returns a fresh gate.
+ */
+export function listDeliveryGate(): (docChanges: number, fromCache: boolean) => boolean {
+  let last: boolean | null = null;
+  return (docChanges, fromCache) => {
+    const prev = last;
+    last = fromCache;
+    if (prev === null || docChanges > 0) return true;
+    return prev && !fromCache;
+  };
+}
+
 /** The level an answer that counts raises a list to. */
 export function levelOf(fromCache: boolean): ReadLevel {
   return fromCache ? "cache" : "server";
@@ -154,6 +175,34 @@ export function accessChanged(prev: Record<string, unknown> | null | undefined, 
 /** A trainer record as the app holds it: the id, the fields, a role always. */
 export function trainerFromDoc<T>(id: string, data: Record<string, unknown>): T {
   return { id, ...data, role: (data.role as string) || "LifeTransformer" } as T;
+}
+
+/** JSON with its keys in order, so two copies of one record compare equal. */
+function stableJson(value: unknown): string {
+  return JSON.stringify(value, (_key, v) => {
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      const plain = typeof (v as { toJSON?: unknown }).toJSON === "function" ? (v as { toJSON: () => unknown }).toJSON() : v;
+      if (!plain || typeof plain !== "object" || Array.isArray(plain)) return plain;
+      return Object.fromEntries(Object.keys(plain).sort().map((k) => [k, (plain as Record<string, unknown>)[k]]));
+    }
+    return v;
+  });
+}
+
+/**
+ * Is the server's copy of the person's record different from the one the app
+ * holds in ANY field (the speed round's final review, Oct 6 2026)? The app
+ * may open on the iPad's own copy, days old, and Start stamps the trainer's
+ * initials and name onto every session, so the server's first answer is
+ * taken whole when anything differs, not only when access changed.
+ */
+export function recordChanged(prev: Record<string, unknown> | null | undefined, next: Record<string, unknown>): boolean {
+  if (!prev) return true;
+  try {
+    return stableJson(prev) !== stableJson(next);
+  } catch {
+    return true;
+  }
 }
 
 export const TIMED_OUT = Symbol("timed out");

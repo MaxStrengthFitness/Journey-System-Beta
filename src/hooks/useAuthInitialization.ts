@@ -28,6 +28,7 @@ import {
   NOTHING_KNOWN,
   TIMED_OUT,
   accessChanged,
+  recordChanged,
   levelOf,
   listAnswerCounts,
   listSeen,
@@ -227,7 +228,13 @@ export function useAuthInitialization() {
         const fresh = trainerFromDoc<Trainer>(snap.id, data);
         const prev = authTrainerRef.current;
         if (!prev || prev.id !== fresh.id) return;
-        if (!accessChanged(prev as unknown as Record<string, unknown>, fresh as unknown as Record<string, unknown>)) return;
+        const was = prev as unknown as Record<string, unknown>;
+        const now = fresh as unknown as Record<string, unknown>;
+        // The server's copy is taken whole when anything differs (the name and
+        // initials Start stamps on a session, a photo, a list): the app may
+        // have opened on a days-old copy (the speed round's final review).
+        // The iPad's own copy is taken only when access changed.
+        if (fromCache ? !accessChanged(was, now) : !recordChanged(was, now)) return;
         setAuthTrainer(fresh);
         if (prev.role !== fresh.role) refreshClaim();
       },

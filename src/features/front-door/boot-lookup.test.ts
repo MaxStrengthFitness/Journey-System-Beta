@@ -7,6 +7,8 @@ import {
   cacheAnswerUsable,
   levelOf,
   listAnswerCounts,
+  listDeliveryGate,
+  recordChanged,
   listSeen,
   markListSeen,
   pickerWaits,
@@ -110,5 +112,35 @@ describe("the iPad's copy of a list (the review's fix)", () => {
     };
     expect(listSeen(broken, "studios")).toBe(false);
     expect(() => markListSeen(broken, "studios")).not.toThrow();
+  });
+});
+
+describe("which live list answers are handed on", () => {
+  it("the first answer, any answer that changed a document, and the server confirming the copy", () => {
+    const deliver = listDeliveryGate();
+    expect(deliver(3, true)).toBe(true); // the copy
+    expect(deliver(0, false)).toBe(true); // the server says the same: confirmed
+    expect(deliver(0, false)).toBe(false); // a pending write acknowledged: nothing new
+    expect(deliver(1, false)).toBe(true); // a document changed
+    expect(deliver(0, true)).toBe(false); // gone offline: nothing new
+    expect(deliver(0, false)).toBe(true); // back: the server confirms again
+  });
+
+  it("an empty first answer is still the first answer", () => {
+    expect(listDeliveryGate()(0, false)).toBe(true);
+  });
+});
+
+describe("did the person's record change", () => {
+  it("compares every field, in any key order", () => {
+    expect(recordChanged({ a: 1, b: [1, 2] }, { b: [1, 2], a: 1 })).toBe(false);
+    expect(recordChanged({ a: 1, fullName: "A" }, { a: 1, fullName: "B" })).toBe(true);
+    expect(recordChanged({ a: 1 }, { a: 1, initials: "AJ" })).toBe(true);
+    expect(recordChanged({ list: ["x"] }, { list: ["x", "y"] })).toBe(true);
+    expect(recordChanged(null, { a: 1 })).toBe(true);
+  });
+
+  it("reads a nested object by its fields, not its key order", () => {
+    expect(recordChanged({ m: { x: 1, y: 2 } }, { m: { y: 2, x: 1 } })).toBe(false);
   });
 });

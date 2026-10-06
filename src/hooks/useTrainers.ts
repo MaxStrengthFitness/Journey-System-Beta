@@ -3,6 +3,7 @@ import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import { Trainer } from "../types";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
+import { listDeliveryGate } from "../features/front-door/boot-lookup";
 import { withoutSuperseded } from "../features/trainer-identity/claim";
 
 export function useTrainers(
@@ -12,9 +13,14 @@ export function useTrainers(
   useEffect(() => {
     if (!isReady) return;
 
+    const deliver = listDeliveryGate();
     const unsubscribeTrainers = onSnapshot(
       collection(db, "trainers"),
+      // Metadata changes too: the server confirming the iPad's copy raises no
+      // event otherwise (front-door/boot-lookup.ts, listDeliveryGate).
+      { includeMetadataChanges: true },
       (snap) => {
+        if (!deliver(snap.docChanges().length, snap.metadata.fromCache)) return;
         // A claimed placeholder stays in the collection as a tombstone, so
         // without this the same person appears twice — once under a document
         // nobody can write. See features/trainer-identity/claim.ts.

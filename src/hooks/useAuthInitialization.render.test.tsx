@@ -10,7 +10,8 @@
  *    one), with the three lists still unknown, never empty;
  *  - a list that fails stays unknown; a record that can't be read is
  *    "failed" (Can't check), never "nobody";
- *  - the self-watch takes the server's copy when the person's access changed;
+ *  - the self-watch takes the server's copy when anything differs, the
+ *    iPad's copy only when the person's access changed;
  *  - a copy that says switched off is not trusted to refuse anyone.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -86,6 +87,7 @@ function listSnap(docs: { id: string; data: Record<string, unknown> }[], fromCac
 
 import { useAuthInitialization } from "./useAuthInitialization";
 import { LIST_SEEN_PREFIX } from "../features/front-door/boot-lookup";
+import { endPersonalSession } from "../features/sign-out/sign-out";
 
 const USER = {
   uid: "u1",
@@ -246,15 +248,46 @@ describe("opening Journey", () => {
     expect(seen.authTrainer?.id).toBe("u1");
   });
 
-  it("the self-watch takes the server's copy when the person's access changed, and only then", async () => {
+  it("the self-watch takes the iPad's copy only when the person's access changed", async () => {
     h.cacheDoc = async () => docSnap("u1", RECORD, true);
     for (const list of ["studios", "trainers", "networks"]) h.cacheList[list] = () => new Promise(() => {});
     await mountSignedIn();
     const before = seen.authTrainer;
-    await act(async () => h.watch!(docSnap("u1", { ...RECORD, photoURL: "new.png" })));
+    await act(async () => h.watch!(docSnap("u1", { ...RECORD, photoURL: "new.png" }, true)));
     expect(seen.authTrainer).toBe(before);
-    await act(async () => h.watch!(docSnap("u1", { ...RECORD, role: "StudioLeader" })));
+    await act(async () => h.watch!(docSnap("u1", { ...RECORD, role: "StudioLeader" }, true)));
     expect(seen.authTrainer?.role).toBe("StudioLeader");
+  });
+
+  it("the self-watch takes the server's copy whole when any field differs, and keeps the record when none does", async () => {
+    // Opened on a days-old copy: Start stamps the initials and name onto a
+    // session, so a name changed elsewhere must not stay stale all visit.
+    h.cacheDoc = async () => docSnap("u1", RECORD, true);
+    for (const list of ["studios", "trainers", "networks"]) h.cacheList[list] = () => new Promise(() => {});
+    await mountSignedIn();
+    const before = seen.authTrainer;
+    await act(async () => h.watch!(docSnap("u1", { ...RECORD })));
+    expect(seen.authTrainer).toBe(before);
+    await act(async () => h.watch!(docSnap("u1", { ...RECORD, fullName: "AJ Jurgens", initials: "AJ" })));
+    expect(seen.authTrainer?.fullName).toBe("AJ Jurgens");
+    expect((seen.authTrainer as { initials?: string } | null)?.initials).toBe("AJ");
+  });
+
+  it("after a sign-out, the next person on dead Wi-Fi gets the studios from the iPad's copy (the seen flags survive)", async () => {
+    for (const list of ["studios", "trainers", "networks"]) localStorage.setItem(LIST_SEEN_PREFIX + list, "1");
+    endPersonalSession({ local: localStorage, session: sessionStorage });
+    h.cacheDoc = async () => docSnap("u1", RECORD, true);
+    h.serverDoc = () => new Promise(() => {});
+    h.cacheList.studios = async () => listSnap([{ id: "westlake", data: { name: "Westlake" } }], true);
+    h.cacheList.trainers = async () =>
+      listSnap([{ id: "u1", data: RECORD }, { id: "u2", data: { ...RECORD, fullName: "Sam Lee" } }], true);
+    h.cacheList.networks = async () => listSnap([{ id: "n1", data: { studioIds: [] } }], true);
+    for (const list of ["studios", "trainers", "networks"]) h.serverList[list] = () => new Promise(() => {});
+    await mountSignedIn();
+    expect(seen.studiosKnown).toBe(true);
+    expect(seen.trainersKnown).toBe(true);
+    expect(seen.networksKnown).toBe(true);
+    expect(seen.studios.map((s) => s.id)).toEqual(["westlake"]);
   });
 
   it("a record the server says is gone is looked up again quietly: the screen stays, never Checking you in", async () => {

@@ -1012,8 +1012,11 @@ export default function AppContent({
     try {
       if (collectionName === "studios") {
         const snap = await getDocs(collection(db, "studios"));
+        // Offline, getDocs answers from the iPad's copy: say so, so it is not
+        // taken as the server's answer (the speed round's final review).
         setStudios(
           snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Studio),
+          { fromCache: snap.metadata.fromCache },
         );
       } else if (collectionName === "networks") {
         const snap = await getDocs(collection(db, "networks"));
@@ -1021,6 +1024,7 @@ export default function AppContent({
           snap.docs.map(
             (doc) => ({ id: doc.id, ...doc.data() }) as FranchiseNetwork,
           ),
+          { fromCache: snap.metadata.fromCache },
         );
       } else if (collectionName === "trainers") {
         const snap = await getDocs(collection(db, "trainers"));
@@ -1029,6 +1033,7 @@ export default function AppContent({
           withoutSuperseded(
             snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Trainer),
           ),
+          { fromCache: snap.metadata.fromCache },
         );
       }
     } catch (e) {

@@ -43,7 +43,10 @@ export default function App() {
        can't go. See features/sign-out. */
     endPersonalSession({ local: localStorage, session: sessionStorage });
     setAuthTrainer(null);
-    setNetworks([]);
+    /* The networks are cleared by the auth listener's sign-out (with what is
+       known about them); an empty list handed in here would count as the
+       server's answer and mark the iPad's copy as whole (the speed round's
+       final review). */
     setTokenRole(null);
     await signOut(auth);
   };
