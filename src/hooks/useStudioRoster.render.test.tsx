@@ -33,6 +33,15 @@ const snapOf = (docs: Doc[]) => ({
   docs: docs.map(({ id, ...data }) => ({ id, data: () => data })),
 });
 
+/** A snapshot as Firestore sends one after the first: with the documents it changed. */
+function pushChanged(studio: string, changedIds: string[]) {
+  for (const l of listeners) {
+    if (l.closed || l.studio !== studio) continue;
+    const snap = snapOf(clients.filter((c) => c.homeStudioId === studio));
+    l.next({ ...snap, docChanges: () => snap.docs.filter((d) => changedIds.includes(d.id)).map((doc) => ({ type: "modified", doc })) });
+  }
+}
+
 function push(studio: string) {
   for (const l of listeners) {
     if (!l.closed && l.studio === studio) l.next(snapOf(clients.filter((c) => c.homeStudioId === studio)));
@@ -183,6 +192,25 @@ describe("useStudioRoster", () => {
     clients.push({ id: "s3", homeStudioId: "solon", firstName: "New" });
     await act(async () => push("solon"));
     expect(ids()).toEqual(["s1", "s2", "s3"]);
+  });
+
+  it("keeps every client the snapshot didn't change as the same object (one webhook write rebuilds one client)", async () => {
+    await mount("solon", []);
+    await settle();
+    const before = latest!.clients;
+    const s1 = before.find((c) => c.id === "s1");
+    const s2 = before.find((c) => c.id === "s2");
+
+    clients = clients.map((c) => (c.id === "s2" ? { ...c, firstName: "Lisa B" } : c));
+    await act(async () => pushChanged("solon", ["s2"]));
+    const after = latest!.clients;
+    expect(after.find((c) => c.id === "s1")).toBe(s1);
+    expect(after.find((c) => c.id === "s2")).not.toBe(s2);
+    expect(after.find((c) => c.id === "s2")?.firstName).toBe("Lisa B");
+
+    // A snapshot that changed nothing gives the same list: nothing downstream recomputes.
+    await act(async () => pushChanged("solon", []));
+    expect(latest!.clients).toBe(after);
   });
 
   it("reads a booked visitor by id once, and not again on the next schedule change", async () => {
