@@ -131,7 +131,13 @@ describe("foldWindowRow (R23)", () => {
 describe("readWindowRows (R23)", () => {
   /** A sessions collection that records the query asked of it and streams its rows. */
   function fakeReader(rows: SessionLike[]) {
-    const asked: { wheres: unknown[][]; select?: string[]; streamed: boolean; got: boolean } = {
+    const asked: {
+      wheres: unknown[][];
+      orderBy?: unknown[];
+      select?: string[];
+      streamed: boolean;
+      got: boolean;
+    } = {
       wheres: [],
       streamed: false,
       got: false,
@@ -139,6 +145,10 @@ describe("readWindowRows (R23)", () => {
     const query: any = {
       where: (...args: unknown[]) => {
         asked.wheres.push(args);
+        return query;
+      },
+      orderBy: (...args: unknown[]) => {
+        asked.orderBy = args;
         return query;
       },
       select: (...fields: string[]) => {
@@ -173,6 +183,9 @@ describe("readWindowRows (R23)", () => {
       ["status", "==", "Completed"],
       ["createdAt", ">=", cutoff],
     ]);
+    // Ordered newest first, so the query is the (status ASC, createdAt DESC)
+    // index exactly rather than a shape the planner might scan for.
+    expect(asked.orderBy).toEqual(["createdAt", "desc"]);
   });
 
   it("streams a projection rather than holding whole documents", async () => {

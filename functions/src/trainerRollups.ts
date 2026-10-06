@@ -397,8 +397,9 @@ export type WindowReader = Pick<Firestore, "collection">;
 /**
  * The 90-day read behind the windows (the speed round, Oct 5 2026, R23).
  *
- * `status == "Completed"` with `createdAt >= cutoff` is served by the
- * existing (status ASC, createdAt DESC) sessions index, so it is a range read
+ * `status == "Completed"` with `createdAt >= cutoff`, ordered by `createdAt`
+ * descending, is the existing (status ASC, createdAt DESC) sessions index
+ * exactly, so it is a range read
  * rather than a scan of the whole collection (this database is the Enterprise
  * edition: it builds no index by itself, and an unindexed query reads every
  * document). The read is STREAMED and projected to WINDOW_FIELDS, and each
@@ -415,6 +416,9 @@ export async function readWindowRows(
     .collection("sessions")
     .where("status", "==", "Completed")
     .where("createdAt", ">=", cutoff)
+    // Newest first, so the query is the (status ASC, createdAt DESC) index
+    // exactly; the fold does not depend on order.
+    .orderBy("createdAt", "desc")
     .select(...WINDOW_FIELDS)
     .stream() as AsyncIterable<{ data(): unknown }>;
   for await (const doc of stream) {
