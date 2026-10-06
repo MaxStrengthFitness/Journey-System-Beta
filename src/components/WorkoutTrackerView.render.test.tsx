@@ -1250,3 +1250,44 @@ describe("session writes never wait on the network (speed round, Oct 5 2026; R9)
     }
   });
 });
+
+/*
+ * THE SESSION'S NOTES COME FROM THE ONE JOURNAL LISTENER (speed round, Oct 5
+ * 2026; R11). The Wrap-up's To-file tray and the session's note sheet each
+ * opened a query of their own beside it.
+ */
+describe("the Wrap-up and the note sheet read this session's notes from the journal stream already open (R11)", () => {
+  const settle = async () => {
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+  };
+  const journalListeners = () => snapshotListeners.filter((l) => l.live && l.path === "journalEntries");
+
+  it("the Wrap-up's tray shows the session's note with no second journal listener", async () => {
+    const host = await mount(<Tracker />);
+    await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
+    const box = document.getElementById("next-trainer-note") as HTMLTextAreaElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(box, "Knee sore after the move.");
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const finish = Array.from(document.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Finish session")!;
+    await act(async () => finish.click());
+    await settle();
+    await settle();
+    expect(document.querySelector('[data-testid="sweep-j-1"]')).toBeTruthy();
+    expect(journalListeners()).toHaveLength(1);
+  });
+
+  it("the session's note sheet opens no journal listener of its own", async () => {
+    const host = await mount(<Tracker />);
+    const before = journalListeners().length;
+    const notes = host.querySelector<HTMLButtonElement>('button[aria-label="Session notes"]');
+    expect(notes).not.toBeNull();
+    await act(async () => notes!.click());
+    await settle();
+    expect(document.body.textContent).toContain("Session notes");
+    expect(journalListeners()).toHaveLength(before);
+  });
+});

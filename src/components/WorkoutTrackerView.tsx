@@ -3325,6 +3325,9 @@ export function WorkoutTrackerView({
         onSaveDraft={fileSessionDraft}
         onDropDraft={dropSessionDraft}
         nextTrainerNote={postSession.nextTrainerNote}
+        /* The tray's notes from the one journal listener (R11), only while
+           it is this client's: otherwise the Wrap-up reads them itself. */
+        journalStream={selectedClient?.id === postSession.client.id ? flagJournalStream : undefined}
         savedOnThisIpad={!!postSession.queued}
         machines={floorMachines}
         rightControls={rightControls}
@@ -4231,6 +4234,8 @@ export function WorkoutTrackerView({
             onDraftChange={handleDraftChange}
             /* A draft the machine menu filed for the floor's notes is finished on its card. */
             floorStudioName={machineMenuHost.floorStudio.name}
+            /* This session's notes from the one journal listener (R11). */
+            journalStream={flagJournalStream}
             onOpenMachine={(id) => {
               setIsShowingSessionNotes(false);
               setMenuMachineId(id);
