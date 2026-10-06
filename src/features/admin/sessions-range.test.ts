@@ -48,7 +48,7 @@ vi.mock("firebase/firestore", () => ({
 }));
 
 import { forgetPersonalMemory } from "../sign-out/memory";
-import { CLOSED_KEEP_MS, forgetClosedSessions, readSessionsInRange } from "./sessions-range";
+import { CLOSED_KEEP_MS, forgetClosedSessions, keptStretchCount, readSessionsInRange, sweepClosedSessions } from "./sessions-range";
 
 const NOW = new Date("2026-10-05T16:00:00Z"); // noon Eastern, Monday
 const TODAY_START = new Date("2026-10-05T04:00:00Z").getTime();
@@ -160,5 +160,21 @@ describe("readSessionsInRange", () => {
     fake.reads = [];
     await readSessionsInRange({ studioId: "solon", startMs: day(14) }, new Date(NOW.getTime() + 60_000));
     expect(fake.reads.filter((r) => r.to !== null)).toHaveLength(1);
+  });
+
+  it("lets a stretch go once it is past its keep, in every studio, with nothing read again (audit W11)", async () => {
+    await readSessionsInRange({ studioId: "solon", startMs: day(14) }, NOW);
+    await readSessionsInRange({ studioId: "westlake", startMs: day(14) }, NOW);
+    expect(keptStretchCount()).toBe(2);
+    sweepClosedSessions(NOW.getTime() + CLOSED_KEEP_MS - 1);
+    expect(keptStretchCount()).toBe(2);
+    sweepClosedSessions(NOW.getTime() + CLOSED_KEEP_MS);
+    expect(keptStretchCount()).toBe(0);
+  });
+
+  it("a read sweeps the other studios' old stretches", async () => {
+    await readSessionsInRange({ studioId: "westlake", startMs: day(14) }, NOW);
+    await readSessionsInRange({ studioId: "solon", startMs: day(14) }, new Date(NOW.getTime() + CLOSED_KEEP_MS + 1));
+    expect(keptStretchCount()).toBe(1);
   });
 });

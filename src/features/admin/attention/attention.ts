@@ -26,6 +26,7 @@
 import type { Client } from "../../../types";
 import { clientDisplayName } from "../../../lib/client-name";
 import type { RenewalSnapshot } from "../../renewals/types";
+import { formatDateWords } from "../../../lib/studio-time";
 
 /* ------------------------------------------------------------------ *
  * The documents
@@ -102,7 +103,7 @@ export interface BackAgainRow {
 
 const shortDate = (day: string) => {
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { month: "short", day: "numeric", timeZone: "UTC" }, "en-US");
 };
 
 /**

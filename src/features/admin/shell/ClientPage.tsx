@@ -45,7 +45,8 @@ import { useRenewalSettings } from "../../renewals/useRenewalSettings";
 import { AdminButton, AdminNotice } from "../primitives";
 import { JourneyCase } from "../journey/JourneyCase";
 import { useStudioJourneys } from "../journey/useStudioJourneys";
-import { useMinuteClock } from "./useMinuteClock";
+import { useBoundaryClock } from "../../../lib/boundary-clock";
+import { bookingBoundaries } from "../../../lib/booking-state";
 import "./ops.css";
 
 export interface ClientPageProps {
@@ -128,11 +129,13 @@ const NO_STUDIO = { id: "" } as Studio;
 
 export function ClientPage(props: ClientPageProps) {
   const { clientId, backLabel, onBack, onOpenProfile, children, studios, clients, trainers, authTrainer, activeStudioId } = props;
-  const clock = useMinuteClock();
-  const now = props.now ?? clock;
+  // Moves when a state could change (a booking's edge, the night's record, the day), not every minute.
+  const clock = useBoundaryClock(null, props.now ?? null);
+  const now = clock.now;
+  clock.watch("held", useMemo(() => bookingBoundaries(props.schedules), [props.schedules]));
   const studio = studios.find((s) => s.id === activeStudioId) ?? null;
   // Her journey, for a client whose home is this studio: the Journey's own rules and reads.
-  const journeys = useStudioJourneys({ studio: studio ?? NO_STUDIO, studios, clients, trainers, authTrainer, now, only: clientId });
+  const journeys = useStudioJourneys({ studio: studio ?? NO_STUDIO, studios, clients, trainers, authTrainer, now, clock, only: clientId });
   const entry = journeys.entries.find((e) => e.id === clientId) ?? null;
   const plain = useClientRow({ ...props, now });
   const client = plain.client;

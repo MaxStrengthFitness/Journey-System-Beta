@@ -21,7 +21,7 @@
  */
 import { useMemo, useState } from "react";
 import type { Client, Trainer } from "../../../types";
-import { studioDateKey } from "../../../lib/studio-time";
+import { studioDateKey, formatDateWords } from "../../../lib/studio-time";
 import { leadsHere } from "../../relay/leads";
 import { chipText, situationSentence } from "../../renewals/sentences";
 import type { RenewalSnapshot } from "../../renewals/types";
@@ -56,7 +56,7 @@ export const STATE_TONE: Record<JourneyState, "ok" | "warn" | "neutral" | "live"
 
 const dayWords = (day: string) => {
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }, "en-US");
 };
 
 /** A stamp's studio day in words, or null when there is no readable stamp. */

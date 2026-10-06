@@ -36,7 +36,7 @@
 import type { Client, ScheduleEntry } from "../../../types";
 import { clientDisplayName } from "../../../lib/client-name";
 import { isStaffBlock, type LoggedSessions } from "../../../lib/booking-state";
-import { formatStudioDate, formatStudioTime, studioDateKey, studioDayBoundsForKey, toDate } from "../../../lib/studio-time";
+import { formatStudioDate, formatStudioTime, studioDateKey, studioDayBoundsForKey, toDate, formatDateWords } from "../../../lib/studio-time";
 import { addDays } from "../../client-history/model";
 import type { MomentFamily, RunSheetEntry } from "../../hub-opportunities/moments-today";
 import type { RenewalSnapshot } from "../../renewals/types";
@@ -93,6 +93,14 @@ export function nightlyRead(clients: readonly Client[], studioId: string, now: D
   }
   const stale = homeClients > 0 && (!last || now.getTime() - last.getTime() > NIGHTLY_STALE_DAYS * DAY_MS);
   return { lastChangedAt: last, stale, homeClients, missing, unknownData };
+}
+
+/**
+ * The instant last night's record turns stale with nothing new written (a
+ * boundary for lib/boundary-clock.ts), or null when there is no record.
+ */
+export function nightlyStaleAt(read: Pick<NightlyRead, "lastChangedAt">): number | null {
+  return read.lastChangedAt ? read.lastChangedAt.getTime() + NIGHTLY_STALE_DAYS * DAY_MS + 1 : null;
 }
 
 /** Clients whose renewal timing is unknown: no snapshot, or not enough Mindbody data. */
@@ -296,7 +304,7 @@ export function heldAgainst(day: string, today: string): string {
   if (day === today) return "today";
   if (day === addDays(today, 1)) return "tomorrow";
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { weekday: "long", timeZone: "UTC" }, "en-US");
 }
 
 /** The studio day's start as epoch ms, for "since the start of yesterday". */

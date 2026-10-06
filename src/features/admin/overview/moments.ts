@@ -27,7 +27,7 @@ import { clientDisplayName } from "../../../lib/client-name";
 import { canClaimAnniversary, resolveClientSince } from "../../../lib/client-since";
 import { historyCoverage } from "../../../lib/prior-history";
 import { canClaimMilestone, sessionTotalOf } from "../../../lib/session-total";
-import { formatStudioTime, studioDateKey, toDate } from "../../../lib/studio-time";
+import { formatStudioTime, studioDateKey, toDate, formatDateWords } from "../../../lib/studio-time";
 import { addDays } from "../../client-history/model";
 import { describeWindow, nextOccurrence } from "../../client-notes/mattering";
 import type { DelightRow } from "../../ford/useClientFord";
@@ -75,7 +75,7 @@ const nameOf = (c: Client) => clientDisplayName(c, "A client");
 
 const prettyDay = (day: string) => {
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }, "en-US");
 };
 
 const ordinal = (n: number) => {

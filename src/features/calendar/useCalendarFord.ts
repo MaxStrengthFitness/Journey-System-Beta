@@ -17,10 +17,13 @@ import { studioDayBoundsForKey } from "../../lib/studio-time";
 import { fetchHubFord, type HubFordRead } from "../ford/hub-read";
 import type { FordEntry } from "../ford/types";
 import { forgetOnSignOut } from "../sign-out/memory";
+import { getBounded, setBounded } from "../../lib/bounded-map";
 
 export type CalendarFordStatus = "off" | "loading" | "ready" | "failed";
 
 const held = new Map<string, HubFordRead>();
+/** The ranges kept: the few a trainer moves between; each range looked at used to stay until sign-out (audit W11). */
+const HELD_RANGES = 6;
 forgetOnSignOut(() => held.clear());
 
 /** A day no detail is ever noted on, so the read's "noted since" branch adds nothing. */
@@ -46,7 +49,7 @@ export function useCalendarFord(
 
   useEffect(() => {
     if (!key || !studioId) return;
-    const cached = held.get(key);
+    const cached = getBounded(held, key);
     if (cached) {
       setState({ key, read: cached });
       return;
@@ -58,7 +61,7 @@ export function useCalendarFord(
       datedUntil: studioDayBoundsForKey(nextDay(to)).start,
       notedFrom: NEVER,
     }).then((read) => {
-      if (read.status === "ready" || read.status === "partial") held.set(key, read);
+      if (read.status === "ready" || read.status === "partial") setBounded(held, key, read, HELD_RANGES);
       if (live) setState({ key, read });
     });
     return () => {

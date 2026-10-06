@@ -26,6 +26,7 @@ import { ActionRows } from "../overview/pieces";
 import { CountsLine } from "../overview/brief-pieces";
 import { changeCounts, changesForDay, describeChange, shortChange } from "./changes";
 import { WEEK_DAYS } from "./useWeekSchedule";
+import { formatDateWords } from "../../../lib/studio-time";
 import "../overview/overview.css";
 
 export interface ChangesViewProps {
@@ -45,15 +46,15 @@ const dayLabel = (day: string, today: string) => {
   if (day === today) return "Today";
   if (day === addDays(today, 1)) return "Tomorrow";
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { weekday: "short", timeZone: "UTC" }, "en-US");
 };
 const dateLabel = (day: string) => {
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { month: "short", day: "numeric", timeZone: "UTC" }, "en-US");
 };
 const longLabel = (day: string) => {
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" }, "en-US");
 };
 
 export function ChangesView({ studio, entries, loading, failed, today, onBack, backLabel = "Overview", onOpenClient }: ChangesViewProps) {

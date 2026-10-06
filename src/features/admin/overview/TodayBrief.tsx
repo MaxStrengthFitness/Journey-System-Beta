@@ -63,12 +63,13 @@ import { CalendarRange, ChevronRight, Ruler, TrendingUp, UsersRound } from "luci
 import { auth } from "../../../firebase";
 import type { Client, Machine, Studio, Trainer } from "../../../types";
 import { clientDisplayName } from "../../../lib/client-name";
-import { isStaffBlock } from "../../../lib/booking-state";
+import { bookingBoundaries, isStaffBlock } from "../../../lib/booking-state";
+import { useSettledNow } from "../../../lib/boundary-clock";
 import { canManageRenewals } from "../../renewals/permissions";
 import { markNoShow, takeBackNoShow, useBookingMarks } from "../attention/booking-marks";
 import { myTrainerIds } from "../../../lib/live-session";
 import { LEFT_OPEN_HINT, leftOpenHeading, leftOpenSessions } from "./left-open";
-import { formatStudioDate, formatStudioTime, toDate } from "../../../lib/studio-time";
+import { formatStudioDate, formatStudioTime, toDate, formatDateWords } from "../../../lib/studio-time";
 import { useDelightQueue } from "../../ford/useClientFord";
 import { setGestureStatus } from "../../ford/ford-write";
 import { useCyclesRead } from "../../renewals/usePipeline";
@@ -166,6 +167,14 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
 
   /* ---- the reads ---- */
   const week = useStudioWeek(studioId, today, tz);
+  // The page's minute clock settled on the week's booking edges (lib/boundary-clock.ts):
+  // the models below that say something about the bookings are worked out when a
+  // booking starts, ends or comes within half an hour, and on new data, not every
+  // minute (Today was rebuilding every client's journey and the day's run-sheet
+  // once a minute). The light ones (the nightly record, sessions left open, the
+  // insight) keep the minute.
+  const weekEdges = useMemo(() => bookingBoundaries(week.entries), [week.entries]);
+  const settled = useSettledNow(now, weekEdges);
   const weekUnread = week.loading || week.failed;
   const logged = useTodaySessions(studioId, today, tz);
   // The leaders' "didn't come" on today's bookings (wave 2).
@@ -196,8 +205,8 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
 
   /* ---- today ---- */
   const todayEntries = useMemo(() => entriesForDay(week.entries, today), [week.entries, today]);
-  const numbers = useMemo(() => todayNumbers(todayEntries, now, logged.logged, tz, marks.marks), [todayEntries, now, logged.logged, tz, marks.marks]);
-  const chase = useMemo(() => chaseList(todayEntries, now, logged.logged, tz, marks.marks), [todayEntries, now, logged.logged, tz, marks.marks]);
+  const numbers = useMemo(() => todayNumbers(todayEntries, settled, logged.logged, tz, marks.marks), [todayEntries, settled, logged.logged, tz, marks.marks]);
+  const chase = useMemo(() => chaseList(todayEntries, settled, logged.logged, tz, marks.marks), [todayEntries, settled, logged.logged, tz, marks.marks]);
   // While today's marks are still out, a marked session would show as unlogged for a beat: nothing is counted until they answer.
   const neverLogged = weekUnread || logged.loading || logged.failed || marks.loading || numbers.unknown > 0 ? null : numbers.neverLogged;
   const marked = useMemo(() => {
@@ -278,7 +287,7 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
     const booked = clients.filter((c) => c.id && bookedIds.has(c.id));
     const ctx = prepareDirectory({
       today,
-      now,
+      now: settled,
       tz,
       studios,
       activeStudioId: studioId,
@@ -298,7 +307,7 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
     return momentsToday({
       day: today,
       today,
-      now,
+      now: settled,
       tz,
       schedules: week.entries,
       clientsById: new Map(clients.filter((c) => c.id).map((c) => [c.id as string, c])),
@@ -310,11 +319,11 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
       myName: authTrainer.fullName ?? null,
       trainerNameOf,
     });
-  }, [weekUnread, trainers, authTrainer, uid, week.entries, clients, today, now, tz, studios, studioId, packageIndex, own.critical, logged.logged]);
-  const catchRows = useMemo(() => (dayEntries ? catchToday(dayEntries, now.getTime(), tz) : null), [dayEntries, now, tz]);
+  }, [weekUnread, trainers, authTrainer, uid, week.entries, clients, today, settled, tz, studios, studioId, packageIndex, own.critical, logged.logged]);
+  const catchRows = useMemo(() => (dayEntries ? catchToday(dayEntries, settled.getTime(), tz) : null), [dayEntries, settled, tz]);
   const leftRows = useMemo(
-    () => (weekUnread ? null : leftWithNothingBooked({ clients, weekEntries: week.entries, logged: logged.logged, today, now, tz, readAt: week.readAt })),
-    [weekUnread, clients, week.entries, logged.logged, today, now, tz, week.readAt],
+    () => (weekUnread ? null : leftWithNothingBooked({ clients, weekEntries: week.entries, logged: logged.logged, today, now: settled, tz, readAt: week.readAt })),
+    [weekUnread, clients, week.entries, logged.logged, today, settled, tz, week.readAt],
   );
   const catchCount = catchRows === null ? null : catchRows.length + (leftRows?.length ?? 0);
 
@@ -325,7 +334,7 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
       clients,
       studioId,
       today,
-      now,
+      now: settled,
       tz,
       studios,
       weekEntries: week.entries,
@@ -341,7 +350,7 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
       cases: cases.cases,
       stored: stored.failed ? null : { summary: stored.summary, states: stored.states },
     });
-  }, [stored, renewalSettings.loading, studioSettings.loading, clients, studioId, today, now, tz, studios, week.entries, week.read, packageIndex, trainers, authTrainer, uid, settings, nightly.stale, lines, watchlist.value, cases.cases]);
+  }, [stored, renewalSettings.loading, studioSettings.loading, clients, studioId, today, settled, tz, studios, week.entries, week.read, packageIndex, trainers, authTrainer, uid, settings, nightly.stale, lines, watchlist.value, cases.cases]);
   const slipping = useMemo(() => {
     if (!journeys) return null;
     const both = [...listFor(journeys, "at-risk", "all"), ...listFor(journeys, "drifting", "all")];
@@ -1062,5 +1071,5 @@ function dayWord(day: string, today: string): string {
   if (day === today) return "Today";
   if (day === addDays(today, 1)) return "Tomorrow";
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { weekday: "short", timeZone: "UTC" }, "en-US");
 }

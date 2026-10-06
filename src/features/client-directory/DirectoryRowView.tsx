@@ -12,7 +12,7 @@
  * Presentational: the screen that hosts it decides the rows, the grid's
  * columns (`--cd-cols`) and what a tap does.
  */
-import { useState, type CSSProperties } from "react";
+import { memo, useState, type CSSProperties } from "react";
 import type { Trainer } from "../../types";
 import { KaizenToggle } from "../trainer-profile/KaizenToggle";
 import { KaizenMark } from "../trainer-profile/KaizenMark";
@@ -140,7 +140,7 @@ export interface DirectoryRowViewProps {
   onStart?: (clientId: string) => void;
 }
 
-export function DirectoryRowView({
+function DirectoryRowViewInner({
   row,
   match = null,
   gridVars,
@@ -239,3 +239,10 @@ export function DirectoryRowView({
 }
 
 const NO_EXTRAS: ReadonlySet<ExtraColumn> = new Set();
+
+/**
+ * Memoised (the iPad round, Oct 2026): a host that keeps its props stable (the
+ * row object from the row cache, one gridVars, stable callbacks) re-renders only
+ * the rows whose client or context changed, not all 300 on every write.
+ */
+export const DirectoryRowView = memo(DirectoryRowViewInner);

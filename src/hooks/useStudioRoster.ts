@@ -22,6 +22,7 @@ import {
   isPermissionError,
   isQuotaError,
   mergeRoster,
+  rosterFromSnapshot,
   rosterIsCut,
   visitorIdsToFetch,
 } from "../lib/studio-roster";
@@ -101,6 +102,12 @@ export function useStudioRoster(
     if (!isReady || !activeStudioId) return;
     let cancelled = false;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    // This listener's clients by id, and its last list: a snapshot replaces
+    // only the documents it changed (rosterFromSnapshot), so one client's
+    // write leaves every other client the same object.
+    let heldById = new Map<string, Client>();
+    let heldList: Client[] = [];
+    let first = true;
 
     const unsubscribe = onSnapshot(
       query(
@@ -110,7 +117,16 @@ export function useStudioRoster(
       ),
       (snap) => {
         if (cancelled) return;
-        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Client);
+        // The first answer converts everything; after it, only what changed.
+        let changed: Set<string> | null = null;
+        if (!first && typeof snap.docChanges === "function") {
+          changed = new Set(snap.docChanges().map((c) => c.doc.id));
+        }
+        first = false;
+        const next = rosterFromSnapshot(snap.docs, changed, heldById, heldList);
+        heldById = next.byId;
+        heldList = next.list;
+        const list = next.list;
         failuresRef.current = 0;
         setStudioClients(list);
         setStatus("ready");

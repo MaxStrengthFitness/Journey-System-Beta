@@ -26,6 +26,7 @@
  * pure, testable half; the menu's data hook passes the real query.
  */
 import { forgetOnSignOut } from "../sign-out/memory";
+import { getBounded, setBounded } from "../../lib/bounded-map";
 import { toIsoDate } from "../journey-grid/adapters";
 import { isDrawableLog, type TimelineLogInput, type TimelineSessionInput } from "./timeline-model";
 
@@ -193,6 +194,13 @@ interface Remembered {
 }
 
 const memory = new Map<string, Remembered>();
+/**
+ * The keys kept: a few clients' older sets (the session's client, and a
+ * profile or two looked at beside it). A shared iPad signed in for days
+ * gained one per client per session and never let one go (audit W11); a key
+ * let go is read again from Load older, as on a fresh start.
+ */
+export const OLDER_MEMORY_KEYS = 8;
 
 forgetOnSignOut(() => {
   memory.clear();
@@ -208,14 +216,14 @@ export function olderMemoryKey(clientId: string, sessionId: string | null | unde
 /** Keep an older read under its key. A later read of the same set replaces it. */
 export function rememberOlderSets(key: string, read: OlderRead<TimelineLogInput>): void {
   if (!key) return;
-  const kept = memory.get(key) ?? { ids: new Set<string>(), logs: new Map<string, TimelineLogInput>() };
+  const kept = getBounded(memory, key) ?? { ids: new Set<string>(), logs: new Map<string, TimelineLogInput>() };
   for (const id of read.ids) kept.ids.add(id);
   for (const l of read.logs) kept.logs.set(logKey(l), l);
-  memory.set(key, kept);
+  setBounded(memory, key, kept, OLDER_MEMORY_KEYS);
 }
 
 /** What Load older has read under this key, so far this session. */
 export function olderSetsFor(key: string): { ids: ReadonlySet<string>; logs: TimelineLogInput[] } {
-  const kept = memory.get(key);
+  const kept = getBounded(memory, key);
   return { ids: kept ? new Set(kept.ids) : new Set<string>(), logs: kept ? [...kept.logs.values()] : [] };
 }

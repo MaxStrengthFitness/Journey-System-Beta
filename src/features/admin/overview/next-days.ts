@@ -21,7 +21,7 @@
  */
 import type { Client, ScheduleEntry } from "../../../types";
 import { clientDisplayName } from "../../../lib/client-name";
-import { studioDateKey } from "../../../lib/studio-time";
+import { studioDateKey, formatDateWords } from "../../../lib/studio-time";
 import { addDays } from "../../client-history/model";
 import type { RenewalSnapshot } from "../../renewals/types";
 
@@ -42,11 +42,11 @@ export interface NextDay {
 
 const weekdayLabel = (day: string) => {
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { weekday: "short", timeZone: "UTC" }, "en-US");
 };
 const dateLabel = (day: string) => {
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { month: "short", day: "numeric", timeZone: "UTC" }, "en-US");
 };
 
 export interface NextDaysInput {

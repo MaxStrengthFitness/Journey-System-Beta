@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Client, ScheduleEntry } from "../types";
 import {
+  rosterFromSnapshot,
   MISSING_RECHECK_MS,
   VISITOR_STALE_MS,
   bookedClientIds,
@@ -96,5 +97,34 @@ describe("the roster's cut (hub fixes, Oct 1 2026): never silent", () => {
 
   it("says so in words, with the number", () => {
     expect(rosterCutWords()).toBe("This studio has more than 1,500 clients on file, and this list holds 1,500 of them. Search by name finds anyone it's missing.");
+  });
+});
+describe("rosterFromSnapshot", () => {
+  const docsOf = (rows: Array<{ id: string; firstName: string }>) =>
+    rows.map(({ id, ...data }) => ({ id, data: () => data }));
+  const first = rosterFromSnapshot(docsOf([{ id: "a", firstName: "Ann" }, { id: "b", firstName: "Bea" }]), null, new Map(), []);
+
+  it("converts every document on the first answer", () => {
+    expect(first.list.map((c) => [c.id, c.firstName])).toEqual([["a", "Ann"], ["b", "Bea"]]);
+  });
+
+  it("rebuilds only the documents the snapshot changed, in the snapshot's order", () => {
+    const next = rosterFromSnapshot(docsOf([{ id: "a", firstName: "Ann" }, { id: "b", firstName: "Beatrice" }, { id: "c", firstName: "Cy" }]), new Set(["b", "c"]), first.byId, first.list);
+    expect(next.list[0]).toBe(first.list[0]);
+    expect(next.list[1]).not.toBe(first.list[1]);
+    expect(next.list.map((c) => c.firstName)).toEqual(["Ann", "Beatrice", "Cy"]);
+  });
+
+  it("drops a removed document, and gives back the same list when nothing changed", () => {
+    const removed = rosterFromSnapshot(docsOf([{ id: "b", firstName: "Bea" }]), new Set(["a"]), first.byId, first.list);
+    expect(removed.list.map((c) => c.id)).toEqual(["b"]);
+    expect(removed.list[0]).toBe(first.list[1]);
+    const same = rosterFromSnapshot(docsOf([{ id: "a", firstName: "Ann" }, { id: "b", firstName: "Bea" }]), new Set(), first.byId, first.list);
+    expect(same.list).toBe(first.list);
+  });
+
+  it("never reuses a client it has not held (a new document in a change list it wasn't named in)", () => {
+    const next = rosterFromSnapshot(docsOf([{ id: "z", firstName: "Zed" }]), new Set(), first.byId, first.list);
+    expect(next.list[0].firstName).toBe("Zed");
   });
 });

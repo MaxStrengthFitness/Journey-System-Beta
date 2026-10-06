@@ -56,7 +56,8 @@ import { useWeekSchedule } from "../changes/useWeekSchedule";
 import { BriefEmpty, BriefSection, CountsLine, PageNote } from "../overview/brief-pieces";
 import { noteCovers, useNightlyNote } from "../overview/useNightlyNote";
 import { useStudioJourneys } from "../journey/useStudioJourneys";
-import { useMinuteClock } from "../shell/useMinuteClock";
+import { useBoundaryClock } from "../../../lib/boundary-clock";
+import { bookingBoundaries } from "../../../lib/booking-state";
 import { mondayOf, teamWeek, type TrainerWeek } from "../week/review";
 import { toggleHuddleLine, useHuddleLines } from "./huddle-memory";
 import { checkLine, howWeCheck, renewalCounts, TRAINER_RATE_MIN } from "./renewal-counts";
@@ -83,9 +84,11 @@ const initialsOf = (name: string) =>
     .join("");
 
 export function TeamWeekPage({ studio, studios, clients, trainers, authTrainer }: TeamWeekPageProps) {
-  const now = useMinuteClock();
+  // Moves when a state could change (a booking's edge, the night's record, the day), not every minute.
+  const clock = useBoundaryClock();
+  const now = clock.now;
   const studioId = studio.id as string;
-  const j = useStudioJourneys({ studio, studios, clients, trainers, authTrainer, now });
+  const j = useStudioJourneys({ studio, studios, clients, trainers, authTrainer, now, clock });
   const { tz, today } = j;
 
   /* ---- who is on today, and who works here ---- */
@@ -98,6 +101,7 @@ export function TeamWeekPage({ studio, studios, clients, trainers, authTrainer }
   const lastMonday = addDays(thisMonday, -7);
   const lastSunday = addDays(thisMonday, -1);
   const lastWeek = useWeekSchedule(studioId, lastMonday, tz);
+  clock.watch("lastWeek", useMemo(() => bookingBoundaries(lastWeek.entries), [lastWeek.entries]));
   const startMs = useMemo(() => studioDayBoundsForKey(lastMonday, tz).start.getTime(), [lastMonday, tz]);
   const sessions = useSessionsInRange({ studioId, startMs });
   const logged = useMemo(() => (sessions.loading || sessions.failed || sessions.truncated ? null : loggedSessions(sessions.sessions, tz)), [sessions, tz]);

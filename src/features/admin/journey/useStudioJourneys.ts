@@ -21,6 +21,8 @@
  * falls through to the layer beneath, and the page says so.
  */
 import { useMemo } from "react";
+import type { BoundaryClock } from "../../../lib/boundary-clock";
+import { bookingBoundaries } from "../../../lib/booking-state";
 import type { Client, Studio, Trainer } from "../../../types";
 import { auth } from "../../../firebase";
 import { myTrainerIds } from "../../../lib/live-session";
@@ -32,7 +34,7 @@ import { useStudioSettings, type StudioSettings } from "../../studio-settings/us
 import { useStudioWeek, type StudioWeek } from "../changes/useStudioWeek";
 import { useWatchlist, type StreamState } from "../attention/useAttention";
 import type { WatchlistEntry } from "../attention/attention";
-import { nightlyRead, type NightlyRead } from "../overview/brief";
+import { nightlyRead, nightlyStaleAt, type NightlyRead } from "../overview/brief";
 import { useStudioCases, type CasesRead } from "./case-store";
 import { summaryIsFresh } from "./nightly";
 import { useStoredJourney } from "./useStoredJourney";
@@ -74,6 +76,7 @@ export function useStudioJourneys({
   trainers,
   authTrainer,
   now,
+  clock,
   only,
 }: {
   studio: Studio;
@@ -82,6 +85,12 @@ export function useStudioJourneys({
   trainers: Trainer[];
   authTrainer: Trainer;
   now: Date;
+  /**
+   * The page's boundary clock (lib/boundary-clock.ts), when `now` is its time:
+   * the week's bookings and last night's record are watched, so the page's
+   * time moves only when a state here could change.
+   */
+  clock?: Pick<BoundaryClock, "watch"> | null;
   /** Work out one client only (the client page); the nightly record is still judged across the roster. */
   only?: string | null;
 }): StudioJourneys {
@@ -98,6 +107,15 @@ export function useStudioJourneys({
   // The leaders' inactive marks (the inactive round, Oct 1 2026): one shared listener per studio.
   const marks = useInactiveMarks(studioId);
   const nightly = useMemo(() => nightlyRead(clients, studioId, now), [clients, studioId, now]);
+  // When anything below could say something different with the time alone:
+  // a booking's edges (row.next, bookingState) and the record turning stale.
+  const boundaries = useMemo(() => {
+    const out = bookingBoundaries(week.entries);
+    const staleAt = nightlyStaleAt(nightly);
+    if (staleAt !== null) out.push(staleAt);
+    return out;
+  }, [week.entries, nightly]);
+  clock?.watch("journeys", boundaries);
   const packageIndex = useMemo(() => {
     if (settingsState.loading || settingsState.error || settingsState.forStudioId !== studioId) return null;
     return buildPackageNameIndex(settingsState.settings);
@@ -128,7 +146,8 @@ export function useStudioJourneys({
       stored: stored.failed ? null : { summary: stored.summary, states: stored.states },
       marks: marks.failed ? null : marks.marks,
     });
-    // `now` is read once per render on purpose: the page re-renders every minute.
+    // `now` is read once per render on purpose: the page's clock moves at every
+    // instant the entries could change with the time (`boundaries`, above).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, only, clients, studioId, today, tz, studios, week.entries, week.read, packageIndex, trainers, authTrainer, uid, settingsState.settings, nightly.stale, lines, watchlist.value, cases.cases, stored, marks]);
   return {

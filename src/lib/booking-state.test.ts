@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { WorkoutSession } from "../types";
-import { bookingMarks, bookingState, loggedSessions, slotOver, type BookingLike } from "./booking-state";
+import { bookingBoundaries, bookingMarks, bookingState, loggedSessions, slotOver, type BookingLike } from "./booking-state";
 
 const TZ = "America/New_York";
 const at = (day: string, hm: string) => new Date(`${day}T${hm}:00-04:00`);
@@ -144,5 +144,22 @@ describe("bookingState — a leader's mark", () => {
     expect(bookingState(booking("09:00"), logged(), NOW, TZ, marks)).toBe("never-logged");
     expect(bookingState(booking("09:00", { id: "b1" }), logged(), NOW, TZ)).toBe("never-logged");
     expect(bookingState(booking("09:00", { id: "b1" }), logged(), NOW, TZ, bookingMarks(null))).toBe("never-logged");
+  });
+});
+
+describe("bookingBoundaries: bookingState changes only at them", () => {
+  const b: BookingLike = { id: "x", clientId: "c", startTime: "2026-09-27T14:00:00Z", endTime: "2026-09-27T14:30:00Z", status: "Scheduled" };
+  const logged = loggedSessions([], "America/New_York");
+  it("names the start less half an hour, the start, the end and the end with the slack", () => {
+    const t = Date.parse("2026-09-27T14:00:00Z");
+    expect(new Set(bookingBoundaries([b]))).toEqual(new Set([t - 1_800_000, t, t + 1_800_000, t + 1_800_000 + 300_001]));
+  });
+  it("every minute of the day: the state at each minute equals the state at the last boundary before it", () => {
+    const sorted = [...new Set(bookingBoundaries([b]))].sort((x, y) => x - y);
+    const from = Date.parse("2026-09-27T12:00:00Z");
+    for (let ms = from; ms < from + 4 * 3_600_000; ms += 60_000) {
+      const last = [...sorted].reverse().find((x) => x <= ms) ?? from;
+      expect(bookingState(b, logged, new Date(ms), "America/New_York")).toBe(bookingState(b, logged, new Date(Math.max(last, from)), "America/New_York"));
+    }
   });
 });

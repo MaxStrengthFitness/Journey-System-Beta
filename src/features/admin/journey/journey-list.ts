@@ -111,6 +111,52 @@ export function trainerById(trainers: readonly Trainer[], id: string | null | un
   return trainers.find((t) => t.id === id || t.authUid === id) ?? null;
 }
 
+/**
+ * Today's bookings by whose they are, read once (the iPad round, Oct 2026):
+ * studioJourneys asked shiftToday for every client, and each ask walked the
+ * whole week reading every booking's studio day (the perf lab: Operations ->
+ * Today's hottest code of its own). Keyed by trainer id, and by name for a
+ * booking that names no id, each the first start and the last end today.
+ */
+export interface ShiftIndex {
+  byId: Map<string, { first: number; last: number }>;
+  byName: Map<string, { first: number; last: number }>;
+}
+
+export function shiftIndex(entries: readonly ScheduleEntry[], today: string, tz?: string): ShiftIndex {
+  const byId = new Map<string, { first: number; last: number }>();
+  const byName = new Map<string, { first: number; last: number }>();
+  for (const b of entries) {
+    if (b.status === "Cancelled" || isStaffBlock(b)) continue;
+    const key = b.trainerId || (b.trainerName ?? "").trim().toLowerCase();
+    if (!key || studioDateKey(b.startTime, tz) !== today) continue;
+    const start = toDate(b.startTime)?.getTime();
+    const end = toDate(b.endTime)?.getTime() ?? (typeof start === "number" ? start + 30 * 60_000 : undefined);
+    if (typeof start !== "number" || typeof end !== "number") continue;
+    const map = b.trainerId ? byId : byName;
+    const was = map.get(key);
+    map.set(key, was ? { first: Math.min(was.first, start), last: Math.max(was.last, end) } : { first: start, last: end });
+  }
+  return { byId, byName };
+}
+
+/** shiftToday from the index: the same answer, without walking the week. */
+export function shiftFromIndex(index: ShiftIndex, trainer: Trainer | null, tz?: string): string | null {
+  if (!trainer) return null;
+  let first: number | null = null;
+  let last: number | null = null;
+  const take = (span: { first: number; last: number } | undefined) => {
+    if (!span) return;
+    first = first === null ? span.first : Math.min(first, span.first);
+    last = last === null ? span.last : Math.max(last, span.last);
+  };
+  for (const id of new Set([trainer.id, trainer.authUid].filter(Boolean) as string[])) take(index.byId.get(id));
+  const name = (trainer.fullName ?? "").trim().toLowerCase();
+  if (name) take(index.byName.get(name));
+  if (first === null || last === null) return null;
+  return `${formatStudioTime(new Date(first), tz)} – ${formatStudioTime(new Date(last), tz)}`;
+}
+
 /** A trainer's first and last booking today, as "7:00 AM – 3:00 PM"; null when they have none. */
 export function shiftToday(entries: readonly ScheduleEntry[], trainer: Trainer | null, today: string, tz?: string): string | null {
   if (!trainer) return null;
@@ -157,6 +203,9 @@ export function studioJourneys(i: StudioJourneysInput): JourneyEntry[] {
   const settings = i.settings as RenewalSettings;
   const nightFresh = Boolean(i.stored && summaryIsFresh(i.stored.summary, i.today, i.lines, i.settings.breakDays));
   const horizonEnd = addDays(i.today, 6);
+  // Each trainer's day, once: many clients share a usual trainer.
+  const shifts = i.weekReady ? shiftIndex(i.weekEntries, i.today, i.tz) : null;
+  const shiftOf = new Map<Trainer, string | null>();
   const out: JourneyEntry[] = [];
   for (const client of home) {
     const row = rows.get(client.id as string);
@@ -187,7 +236,11 @@ export function studioJourneys(i: StudioJourneysInput): JourneyEntry[] {
     const night = doc && doc.state === journey.state ? { since: doc.since, was: doc.was } : null;
     const trainer = trainerById(i.trainers, snapshot?.primaryTrainerId);
     const usual = trainer?.id ? { id: trainer.id, name: trainer.fullName, uid: trainer.authUid || trainer.id } : null;
-    const usualInToday = i.weekReady ? shiftToday(i.weekEntries, trainer, i.today, i.tz) : null;
+    let usualInToday: string | null = null;
+    if (shifts && trainer) {
+      if (!shiftOf.has(trainer)) shiftOf.set(trainer, shiftFromIndex(shifts, trainer, i.tz));
+      usualInToday = shiftOf.get(trainer) ?? null;
+    }
     const lane = snapshot ? laneOf(snapshot, null, settings, i.today) : null;
     const entry = i.watchlist.get(client.id as string) ?? null;
     const stored = i.cases?.get(client.id as string) ?? null;
