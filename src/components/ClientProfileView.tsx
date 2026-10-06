@@ -939,28 +939,28 @@ export function ClientProfileView({
     }
   };
 
-  /** The sets of these sessions, and whether any chunk was answered by this iPad's cache only. */
+  /**
+   * The sets of these sessions, and whether any chunk was answered by this
+   * iPad's cache only. Ten ids to an `in` query, and every chunk at once
+   * (speed round, Oct 5 2026: they were read one after another, five round
+   * trips in a row for a page of fifty, while the grid's cells waited).
+   */
   const fetchLogsForSessions = async (sessionIds: string[]): Promise<{ logs: ExerciseLog[]; fromCache: boolean }> => {
     if (sessionIds.length === 0) return { logs: [], fromCache: false };
-    const chunks = [];
+    const chunks: string[][] = [];
     for (let i = 0; i < sessionIds.length; i += 10) {
       chunks.push(sessionIds.slice(i, i + 10));
     }
-    let fetchedLogs: ExerciseLog[] = [];
+    const snaps = await Promise.all(
+      chunks.map((chunk) =>
+        getDocs(query(collection(db, "exerciseLogs"), where("sessionId", "in", chunk))),
+      ),
+    );
+    const fetchedLogs: ExerciseLog[] = [];
     let fromCache = false;
-    for (const chunk of chunks) {
-      const qs = query(
-        collection(db, "exerciseLogs"),
-        where("sessionId", "in", chunk),
-      );
-      const snap = await getDocs(qs);
+    for (const snap of snaps) {
       if (snap.metadata?.fromCache) fromCache = true;
-      fetchedLogs = [
-        ...fetchedLogs,
-        ...snap.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data() }) as ExerciseLog,
-        ),
-      ];
+      for (const d of snap.docs) fetchedLogs.push({ id: d.id, ...d.data() } as ExerciseLog);
     }
     return { logs: fetchedLogs, fromCache };
   };
