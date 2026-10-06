@@ -28,6 +28,7 @@ vi.mock("firebase/firestore", () => ({
 }));
 
 import { useStudios } from "./useStudios";
+import type { Studio } from "../types";
 
 function snap(ids: string[], changes: number, fromCache: boolean) {
   return {
@@ -47,8 +48,9 @@ afterEach(() => {
 describe("useStudios", () => {
   it("asks for metadata changes, and hands on the server's identical answer as a server answer", async () => {
     const calls: { ids: string[]; fromCache?: boolean }[] = [];
-    const setStudios = (list: { id: string }[], meta?: { fromCache?: boolean }) =>
+    const setStudios = (list: Studio[], meta?: { fromCache?: boolean }) => {
       calls.push({ ids: list.map((s) => s.id), fromCache: meta?.fromCache });
+    };
     function Probe() {
       useStudios(true, setStudios);
       return null;
