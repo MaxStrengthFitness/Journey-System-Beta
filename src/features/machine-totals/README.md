@@ -64,3 +64,20 @@ The roster (Hub, Directory, Operations' lists, machine fit's studio report) carr
 
 - **The Directory's "Last in"** read the last machine day as its third piece of evidence. The migration moves `lastSessionDate` forward to that day where it is later, so the column keeps the day.
 - **Machine fit's studio tier** (Programming -> Setup's suggestions, Operations -> Machine fit) counted a set-up accepted from a suggestion only once the client had performed that machine since, read from `machineStats` on the roster. After the migration the studio tier can't see that day, so it leaves such a set-up out (fewer samples, never a wrong one). Set-ups a trainer typed are unaffected, and the weekly company tier still joins the totals. Open for AJ: keep a small per-machine "last day" map on the client (about 0.6 KB) if the studio tier should count them.
+
+## Shipping it (a Firestore structure change: AJ's OK first)
+
+1. **Rules** (`firebase deploy --only firestore:rules`, after `npm run test:rules`): they only add the totals document's access, so the running app is unaffected. No new index.
+2. **The app** (push to master): from here every write lands in the new document and every read folds both sides. Nothing on the roster changes yet.
+3. **The migration**, once the iPads have loaded the new version (`features/new-version` loads it on the Hub): `scripts/split-client-metrics.ts`, a dry run first, then `--commit`, one studio at a time if you like (its header has the commands). Only now does the roster shrink. Running it again later is safe and moves anything an old iPad wrote meanwhile.
+
+No Cloud Function reads or writes these fields, so none needs redeploying. The nightly and weekly jobs ship with the app (Render builds them from the same push).
+
+Undo, if it is ever needed: the app reads both sides, so stopping before step 3 changes nothing on the floor; after step 3 the old fields are gone from the client, and a build from before this round would show no last weights until they were copied back (the totals document holds all of it).
+
+## Tests
+
+- `totals.test.ts`: the merge rule, the write shapes, the migration's plan.
+- `split-run.test.ts`: the script's core against a fake database, and that it produces exactly the lab's `--split` shape.
+- `jobs-read.test.ts`: the jobs' `getAll` fold.
+- `tests/firestore.rules.test.ts`, "a client's machine totals document" and "a demo client's machine totals".

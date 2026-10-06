@@ -452,6 +452,13 @@ function pastDayOf(value: unknown, today: string, tz?: string): string | null {
   return day;
 }
 
+/**
+ * The last machine day, from currentMachineMetrics while the roster still
+ * carries it. Since the iPad round (Oct 6 2026) the map lives in its own
+ * document (features/machine-totals) and a migrated client's roster row has
+ * none; scripts/split-client-metrics.ts moved her lastSessionDate forward to
+ * that day first, so "Last in" keeps it.
+ */
 function latestMachineDay(client: Client, today: string, tz?: string): string | null {
   let best: string | null = null;
   for (const m of Object.values(client.currentMachineMetrics ?? {})) {
