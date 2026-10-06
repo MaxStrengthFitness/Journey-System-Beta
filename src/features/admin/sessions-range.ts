@@ -22,9 +22,16 @@
  * stale "nobody logged it" for today could invite a wrong late-cancel mark,
  * which the renewal pace counts, so today never comes from the keep.
  * `fromServer` reads, and the plain `fetchSessionsInRange`, never use it.
+ *
+ * Two things never come from the keep (the round's review): a session that
+ * was still In-Progress when it was kept is read again by its id each time
+ * the keep is used (Today's "left open" row must go the moment a leader
+ * closes it, not fifteen minutes later; a discarded one drops out), and an
+ * answer this iPad's cache gave (offline) is never kept, so the first read
+ * after reconnecting goes to the server.
  */
 import { useEffect, useState } from "react";
-import { Timestamp, collection, getDocs, getDocsFromServer, limit as fsLimit, orderBy, query, where } from "firebase/firestore";
+import { Timestamp, collection, documentId, getDocs, getDocsFromServer, limit as fsLimit, orderBy, query, where } from "firebase/firestore";
 import { db } from "../../firebase";
 import { OperationType, handleFirestoreError } from "../../lib/firestore-errors";
 import type { WorkoutSession } from "../../types";
@@ -54,6 +61,8 @@ export interface SessionsRange {
 export interface SessionsRangeResult {
   sessions: WorkoutSession[];
   truncated: boolean;
+  /** True when this iPad's cache answered (offline), not the server. Never kept. */
+  fromCache?: boolean;
 }
 
 export async function fetchSessionsInRange({ studioId, startMs, endMs, max = MAX_SESSIONS_IN_RANGE, fromServer = false }: SessionsRange): Promise<SessionsRangeResult> {
@@ -69,6 +78,7 @@ export async function fetchSessionsInRange({ studioId, startMs, endMs, max = MAX
   return {
     sessions: snap.docs.map((d) => ({ ...(d.data() as WorkoutSession), id: d.id })),
     truncated: snap.size >= max,
+    fromCache: snap.metadata?.fromCache === true,
   };
 }
 
@@ -92,12 +102,38 @@ interface ClosedStretch {
 const closedKeep = new Map<string, ClosedStretch[]>();
 forgetOnSignOut(() => closedKeep.clear());
 
-/** For tests: forget every kept stretch. */
-export function forgetClosedSessions(): void {
-  closedKeep.clear();
+/** Forget every kept stretch, or one studio's. */
+export function forgetClosedSessions(studioId?: string): void {
+  if (studioId === undefined) closedKeep.clear();
+  else closedKeep.delete(studioId);
 }
 
 const createdMsOf = (s: WorkoutSession): number => millis(s.createdAt) ?? 0;
+
+/** Firestore's `in` takes up to thirty; ten keeps each read small, as elsewhere in the app. */
+const IN_CHUNK = 10;
+
+/**
+ * The kept stretch's In-Progress sessions, read again by id. A session that
+ * was finished since comes back Completed, one discarded (deleted) does not
+ * come back and is dropped. The keep is updated in place, so the next use
+ * reads only what is still open. Throws when a read fails; the caller then
+ * reads the whole stretch instead.
+ */
+async function refreshOpen(kept: ClosedStretch): Promise<void> {
+  const openIds = kept.sessions.filter((s) => s.status === "In-Progress").map((s) => s.id);
+  if (openIds.length === 0) return;
+  const chunks: string[][] = [];
+  for (let i = 0; i < openIds.length; i += IN_CHUNK) chunks.push(openIds.slice(i, i + IN_CHUNK));
+  const snaps = await Promise.all(
+    chunks.map((chunk) => getDocs(query(collection(db, "sessions"), where(documentId(), "in", chunk)))),
+  );
+  if (snaps.some((snap) => snap.metadata?.fromCache === true)) throw new Error("open sessions answered by the cache");
+  const fresh = new Map<string, WorkoutSession>();
+  for (const snap of snaps) for (const d of snap.docs) fresh.set(d.id, { ...(d.data() as WorkoutSession), id: d.id });
+  const asked = new Set(openIds);
+  kept.sessions = kept.sessions.flatMap((s) => (asked.has(s.id) ? (fresh.has(s.id) ? [fresh.get(s.id)!] : []) : [s]));
+}
 
 /**
  * The same read as `fetchSessionsInRange`, with the part before the studio's
@@ -117,7 +153,17 @@ export async function readSessionsInRange(range: SessionsRange, now: Date = new 
     const kept = (closedKeep.get(studioId) ?? []).find(
       (c) => c.fromMs <= startMs && c.toMs >= closedTo && now.getTime() - c.readAt < CLOSED_KEEP_MS,
     );
+    let refreshed = false;
     if (kept) {
+      try {
+        await refreshOpen(kept);
+        refreshed = true;
+      } catch {
+        // The open sessions couldn't be read again: drop this stretch and read it whole.
+        closedKeep.set(studioId, (closedKeep.get(studioId) ?? []).filter((c) => c !== kept));
+      }
+    }
+    if (kept && refreshed) {
       const sessions = kept.sessions.filter((s) => {
         const at = createdMsOf(s);
         return at >= startMs && at <= closedTo;
@@ -126,7 +172,8 @@ export async function readSessionsInRange(range: SessionsRange, now: Date = new 
     }
     const read = await fetchSessionsInRange({ studioId, startMs, endMs: closedTo, max });
     // A stretch the cap cut is not kept: a narrower ask could not tell what it is missing.
-    if (!read.truncated) {
+    // Nor is an answer the cache gave: after reconnecting, the next open reads the server.
+    if (!read.truncated && !read.fromCache) {
       const fresh = (closedKeep.get(studioId) ?? []).filter((c) => now.getTime() - c.readAt < CLOSED_KEEP_MS);
       closedKeep.set(studioId, [...fresh.slice(-3), { fromMs: startMs, toMs: closedTo, sessions: read.sessions, readAt: now.getTime() }]);
     }
@@ -141,6 +188,7 @@ export async function readSessionsInRange(range: SessionsRange, now: Date = new 
   return {
     sessions: sessions.slice(0, max),
     truncated: past.truncated || today.truncated || sessions.length >= max,
+    fromCache: past.fromCache === true || today.fromCache === true,
   };
 }
 
