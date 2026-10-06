@@ -155,10 +155,41 @@ class Session {
     const page = await connectPage(this.chrome.port);
     this.page = page;
     page.on("Runtime.exceptionThrown", () => (this.exceptions += 1));
-    page.on("Network.requestWillBeSent", (p) => {
-      if (!/^data:|^blob:/.test(p.request?.url || "")) this.net.requests += 1;
-    });
-    page.on("Network.dataReceived", (p) => (this.net.bytes += p.encodedDataLength || 0));
+    if (process.env.PERF_LAB_TRACE) {
+      const fsT = await import("node:fs");
+      const out = (line) => fsT.appendFileSync(process.env.PERF_LAB_TRACE, line + "\n");
+      let off = null;
+      const reqs = new Map();
+      page.on("Runtime.consoleAPICalled", (p) => {
+        const a = p.args || [];
+        if (a[0]?.value !== "[trace]") return;
+        out(`${Math.round(p.timestamp)}	console	${a.slice(1).map((x) => x.value).join("	")}`);
+      });
+      page.on("Network.requestWillBeSent", (p) => {
+        const u = p.request?.url || "";
+        if (p.wallTime) off = p.wallTime * 1000 - p.timestamp * 1000;
+        if (!/8085|9099/.test(u)) return;
+        const kind = (u.match(/Firestore\/(\w+)\/channel/) || [])[1] || u.slice(22, 60);
+        const rid = (u.match(/[?&]RID=(\w+)/) || [])[1] || "";
+        reqs.set(p.requestId, { kind, method: p.request.method, rid, t: p.wallTime * 1000 });
+        if ((p.request.postData || "").length > 500) {
+          let body = p.request.postData;
+          try { body = decodeURIComponent(body.replace(/\+/g, " ")); } catch {}
+          fsT.appendFileSync(process.env.PERF_LAB_TRACE + ".bodies", `==== ${Math.round(p.wallTime * 1000)} ${kind} RID=${rid}\n${body}\n`);
+        }
+        out(`${Math.round(p.wallTime * 1000)}	send	${p.request.method} ${kind} RID=${rid} ${p.requestId} body=${(p.request.postData || "").length}`);
+      });
+      page.on("Network.dataReceived", (p) => {
+        const r = reqs.get(p.requestId);
+        if (!r || off == null || r.method !== "GET") return;
+        out(`${Math.round(p.timestamp * 1000 + off)}\tdata\t${r.kind} ${p.requestId} +${p.dataLength}`);
+      });
+      page.on("Network.loadingFinished", (p) => {
+        const r = reqs.get(p.requestId);
+        if (!r || off == null) return;
+        out(`${Math.round(p.timestamp * 1000 + off)}	done	${r.method} ${r.kind} RID=${r.rid} ${p.requestId} took=${Math.round(p.timestamp * 1000 + off - r.t)} bytes=${p.encodedDataLength}`);
+      });
+    }
     await page.send("Page.enable");
     await page.send("Runtime.enable");
     // Wall time (the default time domain), so the durations include the slowdown.
@@ -626,6 +657,12 @@ const SCENARIO_RUNS = {
         steps: { tapToPeekMs: round(peek - t0), openToJourneyMs: round(journey - t1), journeySettledMs: settled > 0 ? round(settled - t1) : null, journeyRows: rows },
       };
     }, { span: true });
+    if (process.env.PERF_LAB_SHOTS) {
+      await ctx.shot("profile");
+      await s.ev(`(() => { const el = document.querySelector(".jg-scroller"); if (el) { el.scrollLeft = Math.max(0, el.scrollLeft - 300); el.scrollTop += 200; window.scrollBy(0, 300); } })()`);
+      await sleep(400);
+      await ctx.shot("profile-scrolled");
+    }
     await s.tap(byText("button", "Hub", { exact: true }), "the Hub tab");
     await s.must(hubReady, "the Hub again");
     return r;
@@ -668,6 +705,14 @@ const SCENARIO_RUNS = {
       await s.key("Escape", "Escape", 27);
       await s.waitFor(`!document.querySelector(".mm-dialog")`, 5000);
       await s.settle(300, 8000);
+      if (process.env.PERF_LAB_SHOTS) {
+        await ctx.shot("session");
+        await s.ev(`(() => { const el = document.querySelector(".jg-scroller"); if (el) { el.scrollLeft = Math.max(0, el.scrollLeft - 250); el.scrollTop += 120; } })()`);
+        await sleep(400);
+        await ctx.shot("session-scrolled");
+        await s.ev(`(() => { const el = document.querySelector(".jg-scroller"); if (el) { el.scrollLeft = el.scrollWidth; el.scrollTop = 0; } })()`);
+        await sleep(300);
+      }
       // Finish: reported apart, because the emulator answers the Finish batch slowly and the app's two waits (2 s + 3 s) run out.
       const tFinish = await s.tap(byText("button", "Finish", { exact: true }), "Finish");
       await s.must(byText("button", "Finish session", { exact: true }), "the end-session question");
@@ -890,6 +935,8 @@ export async function runLab(options) {
             console.log(`  calibrated: this PC ${s.calibration.hostMs} ms (reference ${REFERENCE_BENCH_MS}), rate ${s.calibration.rate}, class ${s.calibration.effective}x`);
             const own = profile.scenarios ? scenarios.filter((x) => profile.scenarios.includes(x)) : scenarios;
             const ctx = { creds, idleMs, focus: seed?.focus ?? null };
+            // PERF_LAB_SHOTS=1: a screenshot at the named moments of a scenario (outside the timed spans), to see that a build still looks the same.
+            ctx.shot = (label) => (process.env.PERF_LAB_SHOTS ? s.screenshot(join(outDir, `shot-${name}-${v.name}-${run.rep}-${label}.png`)) : null);
             if (own[0] !== "cold") await signInUnmeasured(s, ctx);
             for (const scenario of own) {
               if (broken) {
