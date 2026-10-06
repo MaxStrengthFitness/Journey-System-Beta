@@ -6740,6 +6740,24 @@ describe("a client's machine totals document", () => {
     await assertSucceeds(b.commit());
   });
 
+  it("refuses the old version's backfill onto the client (the marker set there), and allows taking the marker off", async () => {
+    // An iPad still on the old version backfills by writing a whole-history
+    // machineStats and the marker onto the client; summed with the totals
+    // document it would double every count. Refused whole, for everyone.
+    const oldBackfill = { machineStats: { "m-leg-press": { timesPerformed: 40 } }, machineStatsBackfilledAt: serverTimestamp() };
+    await assertFails(updateDoc(doc(as("trainerA"), "clients", HOME), oldBackfill));
+    await assertFails(updateDoc(doc(as("adminTotals"), "clients", HOME), oldBackfill));
+    await assertFails(updateDoc(doc(as("trainerA"), "clients", HOME), { machineStatsBackfilledAt: serverTimestamp() }));
+    // A client that still carries a marker from before: other writes go
+    // through, and the new app's replace may delete it.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), "clients", HOME), { machineStatsBackfilledAt: "2026-09-01" });
+    });
+    await assertSucceeds(updateDoc(doc(as("trainerA"), "clients", HOME), { completedSessions: increment(1) }));
+    await assertFails(updateDoc(doc(as("trainerA"), "clients", HOME), { machineStatsBackfilledAt: "2026-10-06" }));
+    await assertSucceeds(updateDoc(doc(as("trainerA"), "clients", HOME), { machineStats: deleteField(), machineStatsBackfilledAt: deleteField() }));
+  });
+
   it("refuses a write from a studio the client isn't at", async () => {
     await assertFails(setDoc(totalsDoc(as("trainerB"), HOME), finishWrite("s1"), { mergeFields: finishFields }));
     await assertFails(setDoc(totalsDoc(as("trainerC"), VISITING), finishWrite("s1"), { mergeFields: finishFields }));

@@ -1864,8 +1864,18 @@ service cloud.firestore {
       // full and the session never ended (docs/KNOWN-TRAPS.md, cross-train).
       // Checked before the home-studio test so the visitor's path stays cheap
       // inside a finish batch of eight machines.
+      // The machine totals' backfill marker is never SET on the client any
+      // more (the iPad round's review, Oct 6 2026): it lives on
+      // clients/{id}/machineTotals/current. An iPad still on the old version
+      // backfills by writing a whole-history machineStats with the marker
+      // onto the client, and the reader SUMS that with the totals document's
+      // counts, doubling every times-performed. Refusing the marker refuses
+      // that one write whole; deleting it (the new app's replace) and every
+      // other client write are unaffected. Scripts use the admin SDK.
       allow update: if isValidClient(request.resource.data)
                     && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['renewal'])
+                    && !(request.resource.data.diff(resource.data).affectedKeys().hasAny(['machineStatsBackfilledAt'])
+                         && 'machineStatsBackfilledAt' in request.resource.data)
                     && (isSuperAdmin()
                         || crossTrainSessionTotals(resource.data, callerTrainer())
                         || (isAnyAuthenticatedTrainer()
