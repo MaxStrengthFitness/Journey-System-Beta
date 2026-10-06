@@ -176,6 +176,35 @@ const writes: { path: string; data: any; merge?: boolean }[] = [];
 const snapshotListeners: { path: string; emit: () => void; live: boolean }[] = [];
 /** Finish's database, per test (session record, Sep 26 2026): does the commit answer, and what does the server say the session is? */
 const finishCtl = { commit: "ok" as "ok" | "hang", serverStatus: undefined as string | undefined };
+/**
+ * The speed round's database (Oct 5 2026, R9): `hang` makes EVERY write's
+ * answer never come (offline: the write is on the iPad, the database never
+ * answers); `hold` keeps a collection's listeners unanswered until the test
+ * calls `release`; `routines` is the client's routines; `deletes` every
+ * batch delete.
+ */
+const netCtl = {
+  hang: false,
+  hold: new Set<string>(),
+  held: {} as Record<string, (() => void)[]>,
+  release(path: string) {
+    netCtl.hold.delete(path);
+    for (const emit of netCtl.held[path] ?? []) emit();
+    delete netCtl.held[path];
+  },
+  routines: [] as { id: string; data: () => any }[],
+  moreSettings: [] as { id: string; data: () => any }[],
+  deletes: [] as string[],
+  autoId: 0,
+  /** Collections whose listeners answer from the iPad's cache (`fromCache: true`). */
+  fromCache: new Set<string>(),
+  /** Collections whose listeners fail (a refused or broken read). */
+  fail: new Set<string>(),
+  /** While true, a batch's commit waits for the test to refuse it (`refusals`). */
+  refuseLater: false,
+  refusals: [] as ((e: unknown) => void)[],
+};
+const never = () => new Promise<any>(() => {});
 
 vi.mock("firebase/firestore", async (importOriginal) => {
   const real = await importOriginal<typeof import("firebase/firestore")>();
@@ -185,15 +214,24 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     if (p === "machines") return CATALOG_DOCS;
     if (p === `studios/${STUDIO_ID}/roster`) return ROSTER_DOCS;
     if (p === "sessions") return sessionDocs;
-    if (p === "clientMachineSettings") return SETTINGS_DOCS;
+    if (p === "clientMachineSettings") return [...SETTINGS_DOCS, ...netCtl.moreSettings];
     if (p === "journalEntries") return journalDocs;
+    if (p === "routines") return netCtl.routines;
     return [];
   };
 
   return {
     ...real,
     collection: (_db: unknown, ...parts: string[]) => ({ __path: path(...parts) }),
-    doc: (_db: unknown, ...parts: string[]) => ({ __path: path(...parts) }),
+    // doc(collectionRef) makes an id on the iPad, as Firestore does.
+    doc: (first: any, ...parts: string[]) => {
+      if (first && typeof first.__path === "string" && parts.length === 0) {
+        const id = `auto-${++netCtl.autoId}`;
+        return { __path: `${first.__path}/${id}`, id };
+      }
+      const p = path(...parts);
+      return { __path: p, id: p.split("/").pop() };
+    },
     query: (coll: any) => coll,
     where: () => ({}),
     orderBy: () => ({}),
@@ -202,10 +240,15 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     // Both call shapes (KNOWN-TRAPS): (query, next, error) and, since the
     // logs listener asks for metadata changes (machine menu, Oct 2026),
     // (query, options, next, error). Each snapshot is the server's answer.
-    onSnapshot: (q: any, a: any, b: any) => {
+    onSnapshot: (q: any, a: any, b: any, c: any) => {
       const next = typeof a === "function" || typeof a?.next === "function" ? a : b;
       const cb = typeof next === "function" ? next : next?.next;
+      const fail = typeof next === "function" ? (next === a ? b : c) : next?.error;
       const at = q?.__path ?? "";
+      if (netCtl.fail.has(at)) {
+        fail?.(Object.assign(new Error("refused"), { code: "permission-denied" }));
+        return () => {};
+      }
       const emit = () => {
         const docs = docsFor(at);
         // Both shapes: the briefing (mounted since the Sep 24 tests) also
@@ -217,13 +260,14 @@ vi.mock("firebase/firestore", async (importOriginal) => {
           empty: docs.length === 0,
           forEach: (f: any) => docs.forEach(f),
           docChanges: () => docs.map((doc: any) => ({ type: "added", doc })),
-          metadata: { fromCache: false, hasPendingWrites: false },
+          metadata: { fromCache: netCtl.fromCache.has(at), hasPendingWrites: false },
           id: String(at).split("/").pop(),
           exists: () => single !== undefined,
           data: () => single,
         });
       };
-      emit();
+      if (netCtl.hold.has(at)) (netCtl.held[at] ??= []).push(emit);
+      else emit();
       const listener = { path: at, emit, live: true };
       snapshotListeners.push(listener);
       return () => {
@@ -247,21 +291,29 @@ vi.mock("firebase/firestore", async (importOriginal) => {
       const id = `j-${journalDocs.length + 1}`;
       journalDocs = [...journalDocs, { id, data: () => data }];
       snapshotListeners.filter((l) => l.path === "journalEntries").forEach((l) => l.emit());
+      if (netCtl.hang) return never();
       return { id };
     },
-    setDoc: async (ref: any, data: any, opts?: any) => {
+    setDoc: (ref: any, data: any, opts?: any) => {
       writes.push({ path: ref.__path, data, merge: !!opts?.merge });
+      return netCtl.hang ? never() : Promise.resolve();
     },
-    updateDoc: async (ref: any, data: any) => {
+    updateDoc: (ref: any, data: any) => {
       writes.push({ path: ref.__path, data });
+      return netCtl.hang ? never() : Promise.resolve();
     },
     deleteDoc: async () => {},
     writeBatch: () => ({
       set: (ref: any, data: any, opts?: any) =>
         writes.push({ path: ref.__path, data, merge: !!opts?.merge }),
       update: (ref: any, data: any) => writes.push({ path: ref.__path, data }),
-      delete: () => {},
-      commit: () => (finishCtl.commit === "hang" ? new Promise<void>(() => {}) : Promise.resolve()),
+      delete: (ref: any) => netCtl.deletes.push(ref.__path),
+      commit: () =>
+        netCtl.refuseLater
+          ? new Promise<void>((_, refuse) => netCtl.refusals.push(refuse))
+          : finishCtl.commit === "hang" || netCtl.hang
+            ? new Promise<void>(() => {})
+            : Promise.resolve(),
     }),
     getDocFromServer: async () => ({
       exists: () => finishCtl.serverStatus !== undefined,
@@ -278,6 +330,34 @@ vi.mock("firebase/firestore", async (importOriginal) => {
 
 /** The studio list the context hands out; a test may give the studios cutover days. */
 const studioCtx = vi.hoisted(() => ({ studios: undefined as undefined | { id: string; journeyCutoverDate?: string }[] }));
+
+/*
+ * Render counters (speed round, Oct 5 2026; R10). The tracker calls
+ * useSendState once per render of its own (the machine menu's call is only
+ * while the menu is open), so counting the calls counts the tracker's
+ * renders; toJourneyRows is what rebuilds every row of the grid.
+ */
+const renders = vi.hoisted(() => ({ tracker: 0, rows: 0 }));
+vi.mock("../features/session-record/useSendState", async (importOriginal) => {
+  const realMod = await importOriginal<typeof import("../features/session-record/useSendState")>();
+  return {
+    ...realMod,
+    useSendState: (...args: Parameters<typeof realMod.useSendState>) => {
+      renders.tracker += 1;
+      return realMod.useSendState(...args);
+    },
+  };
+});
+vi.mock("../features/journey-grid", async (importOriginal) => {
+  const realMod = await importOriginal<typeof import("../features/journey-grid")>();
+  return {
+    ...realMod,
+    toJourneyRows: (...args: Parameters<typeof realMod.toJourneyRows>) => {
+      renders.rows += 1;
+      return realMod.toJourneyRows(...args);
+    },
+  };
+});
 
 vi.mock("../contexts/ActiveStudioContext", async (importOriginal) => {
   const realMod = await importOriginal<any>();
@@ -315,6 +395,17 @@ beforeEach(() => {
   snapshotListeners.length = 0;
   finishCtl.commit = "ok";
   finishCtl.serverStatus = undefined;
+  netCtl.hang = false;
+  netCtl.hold = new Set();
+  netCtl.held = {};
+  netCtl.routines = [];
+  netCtl.moreSettings = [];
+  netCtl.deletes = [];
+  netCtl.fromCache = new Set();
+  netCtl.fail = new Set();
+  netCtl.refuseLater = false;
+  netCtl.refusals = [];
+  setViewSpy.mockClear();
   Object.defineProperty(navigator, "onLine", { configurable: true, get: () => true });
   sessionDocs = SESSION_DOCS;
   journalDocs = [];
@@ -361,6 +452,9 @@ const appWideMachines: Machine[] = [
   },
 ];
 
+/** Where the screen sent the trainer (the Hub is "clients"). */
+const setViewSpy = vi.fn();
+
 function Tracker({ who = client }: { who?: Client } = {}) {
   return (
     <WorkoutTrackerView
@@ -369,7 +463,7 @@ function Tracker({ who = client }: { who?: Client } = {}) {
       machines={appWideMachines}
       trainers={[trainer]}
       user={{ uid: "uid-coach", email: "coach@maxstrengthfitness.com" } as any}
-      setView={vi.fn()}
+      setView={setViewSpy}
       setSelectedClientId={vi.fn()}
       onStartNewClientOnboarding={vi.fn()}
       authTrainer={trainer}
@@ -1002,5 +1096,377 @@ describe("a session another trainer is running opens read-only, and live (sessio
     const mine = await mount(<Open />);
     expect(watching(mine)).toBeNull();
     expect(mine.querySelector(".jg-sbar__finish")).toBeTruthy();
+  });
+});
+
+/*
+ * SESSION WRITES NEVER WAIT ON THE NETWORK (speed round, Oct 5 2026; R9).
+ * Every test here runs against a database that never answers a write - the
+ * iPad offline, or studio Wi-Fi with nothing behind it - and asks that the
+ * screen finishes what the trainer did anyway: the write is on the iPad.
+ */
+describe("session writes never wait on the network (speed round, Oct 5 2026; R9)", () => {
+  const ROUTINE_A = {
+    id: "r-a",
+    data: () => ({ clientId: CLIENT_ID, name: "Routine A", machineIds: ["m-leg-press", "sm-solon-rear-delt"] }),
+  };
+  const settle = async () => {
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+  };
+  const startButton = () => document.querySelector<HTMLButtonElement>(".br__cta");
+  const startedSession = () => writes.find((w) => w.path.startsWith("sessions/auto-") && w.data?.status === "In-Progress");
+  const offline = () => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, get: () => false });
+    netCtl.hang = true;
+  };
+
+  it("Start opens the session at once offline: the session and its prefilled sets in one batch, nothing awaited", async () => {
+    sessionDocs = [];
+    netCtl.routines = [ROUTINE_A];
+    offline();
+    const host = await mount(<Tracker />);
+    expect(startButton()).toBeTruthy();
+    await act(async () => startButton()!.click());
+    expect(host.querySelector(".jg-sbar")).toBeTruthy();
+    const session = startedSession();
+    expect(session?.data).toMatchObject({
+      clientId: CLIENT_ID,
+      routineId: "r-a",
+      sessionMachineIds: ["m-leg-press", "sm-solon-rear-delt"],
+    });
+    const sid = session!.path.split("/")[1];
+    const seed = writes.find((w) => w.path === `exerciseLogs/${sid}_m-leg-press`);
+    // The prescription, merged, never a count.
+    expect(seed?.data.weight).toBe("120");
+    expect(seed?.merge).toBe(true);
+    expect(seed?.data).not.toHaveProperty("reps");
+    // The client has a Routine A: none is made.
+    expect(writes.some((w) => w.path.startsWith("routines/"))).toBe(false);
+  });
+
+  it("routines not read yet: Start makes no second Routine A, and the session takes the client's the moment they are", async () => {
+    sessionDocs = [];
+    netCtl.routines = [ROUTINE_A];
+    netCtl.hold.add("routines");
+    offline();
+    const host = await mount(<Tracker />);
+    await act(async () => startButton()!.click());
+    // Started anyway: "known" never holds Start.
+    expect(host.querySelector(".jg-sbar")).toBeTruthy();
+    const session = startedSession();
+    expect(session?.data.routineId).toBeNull();
+    const sid = session!.path.split("/")[1];
+    // Nothing guessed while the routines are unknown.
+    expect(writes.some((w) => w.path.startsWith("routines/"))).toBe(false);
+    expect(writes.some((w) => w.path.startsWith(`exerciseLogs/${sid}_`))).toBe(false);
+
+    await act(async () => netCtl.release("routines"));
+    await settle();
+    const update = writes.find((w) => w.path === `sessions/${sid}` && w.data?.routineId === "r-a");
+    expect(update?.data.sessionMachineIds).toEqual(["m-leg-press", "sm-solon-rear-delt"]);
+    expect(writes.some((w) => w.path.startsWith("routines/"))).toBe(false);
+    expect(writes.find((w) => w.path === `exerciseLogs/${sid}_m-leg-press`)?.data.weight).toBe("120");
+  });
+
+  it("a set typed while the settings were unread survives the seed that follows (the old offline overwrite)", async () => {
+    const { sendSetsNow } = await import("../features/session-record/sign-out-check");
+    sessionDocs = [];
+    netCtl.routines = [ROUTINE_A];
+    netCtl.hold.add("clientMachineSettings");
+    netCtl.moreSettings = [
+      { id: `${CLIENT_ID}_sm-solon-rear-delt`, data: () => ({ clientId: CLIENT_ID, machineId: "sm-solon-rear-delt", settings: {}, startingWeight: 30 }) },
+    ];
+    offline();
+    const host = await mount(<Tracker />);
+    await act(async () => startButton()!.click());
+    const sid = startedSession()!.path.split("/")[1];
+    const reps = host.querySelector<HTMLInputElement>('input[aria-label="reps to failure"]');
+    expect(reps).not.toBeNull();
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    await act(async () => {
+      setter.call(reps!, "11");
+      reps!.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => sendSetsNow());
+    const legPress = () => writes.filter((w) => w.path === `exerciseLogs/${sid}_m-leg-press`);
+    expect(legPress().some((w) => w.data?.reps === "11")).toBe(true);
+    const before = legPress().length;
+
+    await act(async () => netCtl.release("clientMachineSettings"));
+    await settle();
+    // The seed came for the machine nobody touched...
+    expect(writes.find((w) => w.path === `exerciseLogs/${sid}_sm-solon-rear-delt`)?.data.weight).toBe("30");
+    // ...and never over the set typed into: no write to it at all, and never the prescription.
+    expect(legPress()).toHaveLength(before);
+    expect(legPress().some((w) => w.data?.weight === "120")).toBe(false);
+  });
+
+  it("routines the iPad's cache answers EMPTY are not 'none': no Routine A until the server says so", async () => {
+    sessionDocs = [];
+    netCtl.routines = [];
+    netCtl.fromCache.add("routines");
+    offline();
+    const host = await mount(<Tracker />);
+    await act(async () => startButton()!.click());
+    expect(host.querySelector(".jg-sbar")).toBeTruthy();
+    const sid = startedSession()!.path.split("/")[1];
+    expect(startedSession()!.data.routineId).toBeNull();
+    // An empty cache is not the client having no routine: none is made.
+    expect(writes.some((w) => w.path.startsWith("routines/"))).toBe(false);
+
+    // The server answers: the client had a Routine A all along.
+    netCtl.routines = [ROUTINE_A];
+    netCtl.fromCache.delete("routines");
+    await act(async () => {
+      for (const l of snapshotListeners.filter((x) => x.live && x.path === "routines")) l.emit();
+    });
+    await settle();
+    expect(writes.find((w) => w.path === `sessions/${sid}` && w.data?.routineId === "r-a")).toBeTruthy();
+    expect(writes.some((w) => w.path.startsWith("routines/"))).toBe(false);
+  });
+
+  it("a brand-new client's empty routines, confirmed by the server, get exactly one Routine A", async () => {
+    sessionDocs = [];
+    netCtl.routines = [];
+    netCtl.fromCache.add("routines");
+    const host = await mount(<Tracker />);
+    await act(async () => startButton()!.click());
+    expect(host.querySelector(".jg-sbar")).toBeTruthy();
+    expect(writes.some((w) => w.path.startsWith("routines/"))).toBe(false);
+    // The server confirms the empty list: a metadata-only answer.
+    netCtl.fromCache.delete("routines");
+    await act(async () => {
+      for (const l of snapshotListeners.filter((x) => x.live && x.path === "routines")) l.emit();
+    });
+    await settle();
+    expect(writes.filter((w) => w.path.startsWith("routines/"))).toHaveLength(1);
+  });
+
+  it("a settings read that fails still prefills from the last performed weights", async () => {
+    sessionDocs = [];
+    netCtl.routines = [ROUTINE_A];
+    netCtl.fail.add("clientMachineSettings");
+    offline();
+    const who = { ...client, currentMachineMetrics: { "m-leg-press": { weight: "110", reps: 10 } } } as unknown as Client;
+    await mount(<Tracker who={who} />);
+    await act(async () => startButton()!.click());
+    const sid = startedSession()!.path.split("/")[1];
+    expect(writes.find((w) => w.path === `exerciseLogs/${sid}_m-leg-press`)?.data.weight).toBe("110");
+  });
+
+  it("a Start refused late takes back the sets typed meanwhile: none waits to land on a session that never was", async () => {
+    const { sendSetsNow } = await import("../features/session-record/sign-out-check");
+    sessionDocs = [];
+    netCtl.routines = [ROUTINE_A];
+    netCtl.refuseLater = true;
+    const host = await mount(<Tracker />);
+    await act(async () => startButton()!.click());
+    const sid = startedSession()!.path.split("/")[1];
+    const reps = host.querySelector<HTMLInputElement>('input[aria-label="reps to failure"]');
+    expect(reps).not.toBeNull();
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    await act(async () => {
+      setter.call(reps!, "11");
+      reps!.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    // The database refuses the start batch (the first commit).
+    const refuse = netCtl.refusals[0];
+    await act(async () => {
+      refuse(Object.assign(new Error("refused"), { code: "permission-denied" }));
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    // The typed set, still waiting on its timer, is never sent...
+    await act(async () => sendSetsNow());
+    expect(writes.some((w) => w.path === `exerciseLogs/${sid}_m-leg-press` && w.data?.reps === "11")).toBe(false);
+    // ...and the session's sets are deleted in one batch.
+    expect(netCtl.deletes).toEqual(
+      expect.arrayContaining([`exerciseLogs/${sid}_m-leg-press`, `exerciseLogs/${sid}_sm-solon-rear-delt`]),
+    );
+    // The session left the screen, and it was said.
+    expect(host.querySelector(".jg-sbar")).toBeNull();
+    expect(document.body.textContent).toContain("The session didn't start");
+  });
+
+  it("Discard is one batch, and the Hub comes at once offline", async () => {
+    offline();
+    await mount(<Tracker />);
+    const discard = document.querySelector<HTMLButtonElement>('button[aria-label="Discard this session"]');
+    expect(discard).not.toBeNull();
+    await act(async () => discard!.click());
+    const scrap = Array.from(document.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Scrap session");
+    expect(scrap).toBeDefined();
+    await act(async () => scrap!.click());
+    expect(setViewSpy).toHaveBeenCalledWith("clients");
+    expect(netCtl.deletes).toEqual(
+      expect.arrayContaining([
+        `sessions/${SESSION_ID}`,
+        `exerciseLogs/${SESSION_ID}_m-leg-press`,
+        `exerciseLogs/${SESSION_ID}_sm-solon-rear-delt`,
+      ]),
+    );
+    expect(document.body.textContent).not.toContain("Deleting");
+  });
+
+  it("Back to Hub from the Wrap-up goes at once, with the profile note issued, offline", async () => {
+    offline();
+    const host = await mount(<Tracker />);
+    await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
+    const finish = Array.from(document.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Finish session")!;
+    await act(async () => finish.click());
+    await settle();
+    await settle();
+    expect(document.body.textContent).toContain("Wrap-up · session saved on this iPad");
+    const box = document.querySelector<HTMLTextAreaElement>('textarea[placeholder^="Profile note"]');
+    expect(box).not.toBeNull();
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(box!, "Likes the new seat height.");
+      box!.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const back = Array.from(document.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Back to Hub")!;
+    await act(async () => back.click());
+    expect(setViewSpy).toHaveBeenCalledWith("clients");
+    expect(journalDocs.some((d) => d.data().body === "Likes the new seat height.")).toBe(true);
+  });
+
+  it("Finish asks 'finished elsewhere?' when the dialog opens, so the tap makes no second read", async () => {
+    let reads = 0;
+    Object.defineProperty(finishCtl, "serverStatus", {
+      configurable: true,
+      get: () => {
+        reads += 1;
+        return "Completed";
+      },
+    });
+    try {
+      const host = await mount(<Tracker />);
+      await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
+      const afterOpen = reads;
+      expect(afterOpen).toBeGreaterThan(0);
+      const finish = Array.from(document.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Finish session")!;
+      await act(async () => finish.click());
+      await settle();
+      await settle();
+      expect(reads).toBe(afterOpen);
+      expect(document.body.textContent).toContain("already finished on another iPad");
+    } finally {
+      Object.defineProperty(finishCtl, "serverStatus", { configurable: true, writable: true, value: undefined });
+    }
+  });
+
+  it("Finish sees a session the live stream already says is Completed, with no server read at all", async () => {
+    let reads = 0;
+    Object.defineProperty(finishCtl, "serverStatus", {
+      configurable: true,
+      get: () => {
+        reads += 1;
+        return undefined;
+      },
+    });
+    try {
+      offline(); // no early read: the dialog opens offline
+      const host = await mount(<Tracker />);
+      await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
+      // Another iPad finishes it; the client's sessions stream says so.
+      sessionDocs = [{ id: SESSION_ID, data: () => ({ ...SESSION_DOCS[0].data(), status: "Completed" }) }];
+      const writesBefore = writes.length;
+      const finish = Array.from(document.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Finish session")!;
+      await act(async () => {
+        snapshotListeners.filter((l) => l.live && l.path === "sessions").forEach((l) => l.emit());
+        finish.click();
+      });
+      await settle();
+      await settle();
+      expect(reads).toBe(0);
+      expect(writes.slice(writesBefore).filter((w) => w.path === `sessions/${SESSION_ID}` && w.data?.status === "Completed")).toHaveLength(0);
+    } finally {
+      Object.defineProperty(finishCtl, "serverStatus", { configurable: true, writable: true, value: undefined });
+    }
+  });
+});
+
+/*
+ * THE SESSION'S NOTES COME FROM THE ONE JOURNAL LISTENER (speed round, Oct 5
+ * 2026; R11). The Wrap-up's To-file tray and the session's note sheet each
+ * opened a query of their own beside it.
+ */
+describe("the Wrap-up and the note sheet read this session's notes from the journal stream already open (R11)", () => {
+  const settle = async () => {
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+  };
+  const journalListeners = () => snapshotListeners.filter((l) => l.live && l.path === "journalEntries");
+
+  it("the Wrap-up's tray shows the session's note with no second journal listener", async () => {
+    const host = await mount(<Tracker />);
+    await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
+    const box = document.getElementById("next-trainer-note") as HTMLTextAreaElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(box, "Knee sore after the move.");
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const finish = Array.from(document.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Finish session")!;
+    await act(async () => finish.click());
+    await settle();
+    await settle();
+    expect(document.querySelector('[data-testid="sweep-j-1"]')).toBeTruthy();
+    expect(journalListeners()).toHaveLength(1);
+  });
+
+  it("the session's note sheet opens no journal listener of its own", async () => {
+    const host = await mount(<Tracker />);
+    const before = journalListeners().length;
+    const notes = host.querySelector<HTMLButtonElement>('button[aria-label="Session notes"]');
+    expect(notes).not.toBeNull();
+    await act(async () => notes!.click());
+    await settle();
+    expect(document.body.textContent).toContain("Session notes");
+    expect(journalListeners()).toHaveLength(before);
+  });
+});
+
+/*
+ * THE SESSION SCREEN DOES NOT REDRAW ITSELF FOR A CLOCK OR A KEYSTROKE
+ * (speed round, Oct 5 2026; R10). The machine clock ticks inside the Now
+ * Bar and the send line keeps its own clock; a keystroke in today's column
+ * no longer rebuilds every row of the grid.
+ */
+describe("the Active Session's own redraws (R10)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("does not redraw the session screen once a second while a machine is focused; the Now Bar's clock still runs", async () => {
+    // The intervals are faked from the start, so the ones the screen opens are the fakes.
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    const host = await mount(<Tracker />);
+    const before = renders.tracker;
+    await act(async () => {
+      vi.advanceTimersByTime(5_000);
+    });
+    // Over five seconds the tracker itself drew no more than once (a stray
+    // timer of its own), where it used to draw five times.
+    expect(renders.tracker - before).toBeLessThanOrEqual(1);
+    expect(host.textContent ?? "").toMatch(/On machine \d+s/);
+  });
+
+  it("a keystroke in today's column does not rebuild the grid's rows", async () => {
+    const host = await mount(<Tracker />);
+    const reps = host.querySelector<HTMLInputElement>('input[aria-label="reps to failure"]');
+    expect(reps).not.toBeNull();
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    const rowsBefore = renders.rows;
+    const drawsBefore = renders.tracker;
+    for (const v of ["1", "11"]) {
+      await act(async () => {
+        setter.call(reps!, v);
+        reps!.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    }
+    // The tracker drew for the keystrokes, and the rows were not rebuilt.
+    expect(renders.tracker).toBeGreaterThan(drawsBefore);
+    expect(renders.rows).toBe(rowsBefore);
   });
 });

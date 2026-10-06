@@ -493,6 +493,7 @@ export function JourneyGrid({
   coverage = "unknown",
 }: JourneyGridProps) {
   const history = historySessions ?? sessions;
+  const rowLive = useRowLive(live);
   const latestSessionId = latestProp !== undefined ? latestProp : (history[history.length - 1]?.id ?? null);
 
   /* --- controlled / uncontrolled metric, spotlight, selection -------- */
@@ -1120,7 +1121,8 @@ export function JourneyGrid({
               hasOlderColumn={hasOlderColumn}
               onOlder={autoOlder && railState === "more" ? askOlder : undefined}
               quietOlder={autoOlder}
-              live={live}
+              live={rowLive}
+              liveValues={live?.values}
               settingsDisplay={settingsDisplay}
             />
           ))}
@@ -1147,8 +1149,41 @@ interface SectionBlockProps {
   hasOlderColumn: boolean;
   onOlder?: () => void;
   quietOlder: boolean;
+  /** The rows' frame of the live column, without its values (useRowLive). */
   live?: LiveColumn;
+  /** Today's values, handed to each row as its own `liveValue`. */
+  liveValues?: Record<string, LiveSet>;
   settingsDisplay: "inline" | "menu";
+}
+
+const NO_LIVE_VALUES: Record<string, LiveSet> = {};
+
+/**
+ * The live column as the ROWS take it (speed round, Oct 5 2026; R10): every
+ * field but `values`, kept the same object while those fields are the
+ * same. Each row reads its own value as `liveValue`, so a keystroke in one
+ * row's Today cell redraws that row and not the other twenty (every row is
+ * memoised, and `live` used to be a new object on every keystroke).
+ */
+function useRowLive(live: LiveColumn | undefined): LiveColumn | undefined {
+  return useMemo(
+    () => (live ? { ...live, values: NO_LIVE_VALUES } : undefined),
+    // Every field the rows read, and nothing else.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      !!live,
+      live?.session,
+      live?.routineMachineIds,
+      live?.onChange,
+      live?.onAddMachine,
+      live?.focusMachineId,
+      live?.onFocusMachine,
+      live?.weightStep,
+      live?.reorder,
+      live?.onMoveMachine,
+      live?.onRemoveMachine,
+    ],
+  );
 }
 
 const SectionBlock = memo(function SectionBlock({
@@ -1169,6 +1204,7 @@ const SectionBlock = memo(function SectionBlock({
   onOlder,
   quietOlder,
   live,
+  liveValues,
   settingsDisplay,
 }: SectionBlockProps) {
   const toggle = section.onToggle;
@@ -1210,7 +1246,7 @@ const SectionBlock = memo(function SectionBlock({
             quietOlder={quietOlder}
             orderNumber={section.numbered ? i + 1 : undefined}
             live={live}
-            liveValue={live?.values[row.machine.id]}
+            liveValue={liveValues?.[row.machine.id]}
             liveInactive={!!section.inactive}
             settingsDisplay={settingsDisplay}
             band={i % 2 === 1}

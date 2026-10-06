@@ -461,15 +461,30 @@ describe("a refusal that comes after 'saved on this iPad'", () => {
   });
 });
 
-describe("while a save waits", () => {
-  it("holds the dials still, so a change made then is never wiped without a word", async () => {
+describe("a save the database never answers (speed round R9: the card never waits)", () => {
+  it("is done at once, online: 'Seat 5 saved' with Undo, and the dials are free for the next change", async () => {
     saves.answer = "never";
     const host = await mount(<Tiles />);
     await click(button(host, "Seat up one"));
     await click(byText(host, "Save Seat 5"));
-    expect(button(host, "Back pad up one")!.hasAttribute("disabled")).toBe(true);
-    await click(button(host, "Back pad up one"));
-    expect(tile(host, "backPad").getAttribute("data-changed")).toBeNull();
+    expect(host.querySelector('[data-strip="done"]')!.textContent).toContain("Seat 5 saved");
+    expect(button(host, "Back pad up one")!.hasAttribute("disabled")).toBe(false);
     expect(saves.calls).toHaveLength(1);
+  });
+
+  it("says 'saved on this iPad' once the answer is late, honestly, without ever holding the card", async () => {
+    vi.useFakeTimers();
+    saves.answer = "never";
+    const host = await mount(<Tiles />);
+    await click(button(host, "Seat up one"));
+    await click(byText(host, "Save Seat 5"));
+    await act(async () => {
+      vi.advanceTimersByTime(0);
+    });
+    expect(host.querySelector('[data-strip="done"]')!.textContent).not.toContain("on this iPad");
+    await act(async () => {
+      vi.advanceTimersByTime(3_000);
+    });
+    expect(host.querySelector('[data-strip="done"]')!.textContent).toContain("Seat 5 saved on this iPad");
   });
 });

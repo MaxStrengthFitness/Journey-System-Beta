@@ -18,9 +18,7 @@ import {
   writeBatch,
   collection,
   onSnapshot,
-  addDoc,
   updateDoc,
-  deleteDoc,
   doc,
   query,
   serverTimestamp,
@@ -52,9 +50,21 @@ import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
 import { logDocId } from "../lib/exercise-log-id";
 import { keepPendingEdits, pendingLogEdits } from "../lib/pending-log-edits";
 import { sendsAtOnce } from "../features/journey-grid/send-at-once";
+import { stableHistory } from "../features/journey-grid/stable-history";
 import { useSendState } from "../features/session-record/useSendState";
 import { SendStatusStrip } from "../features/session-record/SendStatusStrip";
-import { finishedElsewhere, settleOrQueue } from "../features/session-record/finish-wait";
+import { finishedElsewhereAtTap, settleOrQueue } from "../features/session-record/finish-wait";
+import {
+  cleanPayload,
+  discardLogIds,
+  plannedMachinesOf,
+  prefillOf,
+  resolveStartRoutine,
+  seedLogs,
+  startClientPatch,
+  type StartRoutineType,
+} from "../features/session-record/start-plan";
+import { calculateStartingWeight } from "../lib/consultation-utils";
 import { SEND_SETS_NOW_EVENT } from "../features/session-record/sign-out-check";
 import { NothingOnScreen } from "../features/session-record/NothingOnScreen";
 import { nothingKind } from "../features/session-record/nothing-on-screen";
@@ -353,6 +363,21 @@ export function WorkoutTrackerView({
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [logs, setLogs] = useState<Record<string, ExerciseLog>>({});
   const [routines, setRoutines] = useState<Routine[]>([]);
+  /*
+   * Whether this client's routines and machine settings are KNOWN: a snapshot
+   * has arrived for this client, from the iPad's cache or the server (speed
+   * round, Oct 5 2026). Until then an empty list means "not read yet", never
+   * "none", so Start makes no Routine A and seeds no weights off it. Known
+   * never holds Start or Finish: the routine and the weights follow the
+   * moment they are (features/session-record/start-plan.ts). Keyed by the
+   * client, so a listener re-opened for the same client keeps it.
+   */
+  const [knownFor, setKnownFor] = useState<{ routines: string | null; settings: string | null }>({
+    routines: null,
+    settings: null,
+  });
+  const routinesKnown = !!clientId && knownFor.routines === clientId;
+  const settingsKnown = !!clientId && knownFor.settings === clientId;
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   /*
    * How much of this client's story Journey holds - computed ONCE here and
@@ -383,6 +408,9 @@ export function WorkoutTrackerView({
   );
 
   const [activeMachineIds, setActiveMachineIds] = useState<string[]>([]);
+  /* Read by Start's follow-up (R9), which must not redraw on every change. */
+  const activeMachineIdsRef = useRef<string[]>([]);
+  activeMachineIdsRef.current = activeMachineIds;
   const [clientMachineSettings, setClientMachineSettings] = useState<
     Record<string, ClientMachineSetting>
   >({});
@@ -669,7 +697,6 @@ export function WorkoutTrackerView({
     );
   };
 
-  const [machineTimeElapsed, setMachineTimeElapsed] = useState<number>(0);
 
   useEffect(() => {
     const takeoverSessionId = peekLiveSessionId();
@@ -812,15 +839,13 @@ export function WorkoutTrackerView({
      handled without destroying data: `isSessionValid` hides a session whose
      heartbeat is older than 60 minutes. Nothing on this screen may delete
      a session except the trainer pressing Discard. */
-  useEffect(() => {
-    if (!currentSession) return;
-    const tick = () =>
-      setMachineTimeElapsed(gridFocusMachineIdRef.current ? secondsOn(machineClocks.current, gridFocusMachineIdRef.current) : 0);
-    tick();
-    if (isPaused) return;
-    const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
-  }, [currentSession, isPaused]);
+  /* The focused machine's seconds, read by the Now Bar, which ticks itself
+     once a second (speed round, Oct 5 2026; R10). The tick used to live
+     here, as state, and redrew the whole session screen every second. */
+  const readFocusedMachineSeconds = React.useCallback(
+    () => (gridFocusMachineIdRef.current ? secondsOn(machineClocks.current, gridFocusMachineIdRef.current) : 0),
+    [],
+  );
 
   // Fetch all exercise logs for analysis (limited to last 1000 for performance)
   const [isShowingSessionNotes, setIsShowingSessionNotes] = useState(false);
@@ -1041,17 +1066,29 @@ export function WorkoutTrackerView({
         collection(db, "clientMachineSettings"),
         where("clientId", "==", clientId),
       );
+      /* Whether this client's settings ever arrived. A read that FAILS before
+         they do leaves the settings unknown for good, and the seed waits on
+         them, so a failure is taken as "no settings": the prefill then comes
+         from the last performed weights alone, as it did before the speed
+         round. The seed only ever fills a blank, so nothing is overwritten. */
+      let settingsArrived = false;
       const unsubscribeSettings = onSnapshot(
         settingsQuery,
         (snapshot) => {
+          settingsArrived = true;
           const settingsMap: Record<string, ClientMachineSetting> = {};
           snapshot.docs.forEach((doc) => {
             const data = { id: doc.id, ...doc.data() } as ClientMachineSetting;
             settingsMap[data.machineId] = data;
           });
           setClientMachineSettings(settingsMap);
+          setKnownFor((k) => (k.settings === clientId ? k : { ...k, settings: clientId }));
         },
         (error) => {
+          if (!settingsArrived) {
+            setClientMachineSettings({});
+            setKnownFor((k) => (k.settings === clientId ? k : { ...k, settings: clientId }));
+          }
           handleFirestoreError(
             error,
             OperationType.GET,
@@ -1065,16 +1102,32 @@ export function WorkoutTrackerView({
         collection(db, "routines"),
         where("clientId", "==", clientId),
       );
+      /* Known only once the answer can be trusted (KNOWN-TRAPS: a snapshot
+         the cache answered is not a read). An EMPTY answer from the iPad's
+         cache may only mean this iPad never read this client's routines, so
+         it does not make them known, and Start does not make a Routine A off
+         it; the server's answer does (Start never waits for it: the routine
+         follows, startFollowUpRef). Metadata changes are listened to because
+         the server confirming an empty cached list changes no document, and
+         without them that answer would never be heard. */
+      let routinesSeen = false;
       const unsubscribeRoutines = onSnapshot(
         routinesQuery,
+        { includeMetadataChanges: true },
         (snapshot) => {
-          const routinesData = snapshot.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() }) as Routine,
-          );
-          // Sort routines alphabetically so Routine A is default/first
-          setRoutines(
-            routinesData.sort((a, b) => a.name.localeCompare(b.name)),
-          );
+          // A metadata-only answer changes no routine: no new list, no redraw.
+          if (!routinesSeen || snapshot.docChanges().length > 0) {
+            routinesSeen = true;
+            const routinesData = snapshot.docs.map(
+              (doc) => ({ id: doc.id, ...doc.data() }) as Routine,
+            );
+            // Sort routines alphabetically so Routine A is default/first
+            setRoutines(
+              routinesData.sort((a, b) => a.name.localeCompare(b.name)),
+            );
+          }
+          if (snapshot.empty && snapshot.metadata?.fromCache) return;
+          setKnownFor((k) => (k.routines === clientId ? k : { ...k, routines: clientId }));
         },
         (error) => {
           handleFirestoreError(error, OperationType.GET, "routines");
@@ -1112,6 +1165,8 @@ export function WorkoutTrackerView({
               return timeB - timeA;
             });
           setSessions(sessionsData);
+          // What the stream says each session is, the moment it says it (Finish reads it at the tap, R9).
+          streamStatusRef.current = new Map(sessionsData.map((s) => [s.id ?? "", s.status ?? null]));
 
           /* Which session to carry on with (lib/live-session.ts). The one
              already on screen stays, whatever its heartbeat says; otherwise
@@ -1382,7 +1437,88 @@ export function WorkoutTrackerView({
      mid-session goes through handleSaveSessionMachineIds, which is local
      state; routine notes are edited on the client profile. */
 
-  const startNewSession = async (
+  /*
+   * START NEVER WAITS ON THE NETWORK (speed round, Oct 5 2026; R9).
+   * features/session-record/start-plan.ts is the plan and says why. In short:
+   * the ids are made here, the session, its new routine (when one has to be
+   * made) and the prefilled sets go in ONE batch that is issued and never
+   * awaited, and the screen switches to the session in the same tap, online
+   * or off. The client's own fields and the arrival note are separate writes,
+   * never waited on either. A refusal comes back through the batch's promise
+   * and is said; the session then leaves the screen as the iPad's copy drops
+   * it.
+   *
+   * `startFollowUpRef` carries what Start could not decide yet because the
+   * client's routines or machine settings had not been read (start-plan's
+   * "known"): the effect below finishes it the moment they are.
+   */
+  const startFollowUpRef = useRef<{
+    sessionId: string;
+    clientId: string;
+    routineType: StartRoutineType;
+    customMachines: string[] | null;
+    routineDone: boolean;
+    seeded: boolean;
+    plannedMachineIds: string[];
+    clientHomeStudioId: string;
+    studioId: string;
+  } | null>(null);
+
+  /** The prefilled sets for a session, as batch writes. Never over a set this iPad holds. */
+  const seedsFor = (sessionId: string, machineIds: string[], clientHomeStudioId: string, studioId: string) =>
+    seedLogs({
+      sessionId,
+      machineIds,
+      prefill: prefillOf(selectedClient, clientMachineSettings),
+      settings: clientMachineSettings,
+      nameOf: (id) => floorMachines.find((m) => m.id === id)?.name,
+      client: selectedClient,
+      clientId: clientId || "",
+      clientHomeStudioId,
+      studioId,
+      createdAt: serverTimestamp(),
+      hasLocal: (key) => !!logsRef.current[key] || pendingLogWritesRef.current.has(key),
+      startingWeight: (name, gender, age) => calculateStartingWeight(name, gender, age, "Novice"),
+    });
+
+  /**
+   * A start batch the database refused: said once, and the session leaves
+   * this iPad. A refusal can come late (on reconnect), after sets were typed:
+   * those sets were their own writes, so the ones still waiting are dropped
+   * and the ones already sent are deleted in one batch (Discard's list), or
+   * they would land as sets of a session that never existed.
+   */
+  const startRefused = (sessionId: string, error: unknown, plannedMachineIds: string[]) => {
+    console.error("[start] the session was refused", error);
+    for (const [key, pending] of Array.from(pendingLogWritesRef.current.entries())) {
+      if (pending.payload?.sessionId !== sessionId) continue;
+      if (pending.timer) clearTimeout(pending.timer);
+      pendingLogWritesRef.current.delete(key);
+    }
+    const machineIds = Array.from(
+      new Set([
+        ...plannedMachineIds,
+        ...(currentSessionIdRef.current === sessionId ? activeMachineIdsRef.current : []),
+      ]),
+    );
+    const orphanIds = discardLogIds(sessionId, logsRef.current, machineIds);
+    if (orphanIds.length > 0) {
+      const sweep = writeBatch(db);
+      for (const id of orphanIds) sweep.delete(doc(db, "exerciseLogs", id));
+      sweep.commit().catch((e) => console.error("[start] the refused session's sets were not cleared", e));
+    }
+    if (startFollowUpRef.current?.sessionId === sessionId) startFollowUpRef.current = null;
+    forgetLiveSession(sessionId);
+    if (justStartedSessionRef.current?.id === sessionId) justStartedSessionRef.current = null;
+    if (currentSessionIdRef.current === sessionId) {
+      currentSessionIdRef.current = null;
+      setCurrentSession(null);
+      setIsPreSessionMode(true);
+    }
+    toastError("The session didn't start. Check the connection, then press Start again.");
+  };
+
+  const startNewSession = (
     routineType: "A" | "B" | "Free",
     sessionType: SessionType = "Standard",
     customMachines?: string[],
@@ -1410,34 +1546,10 @@ export function WorkoutTrackerView({
     const date = studioTodayKey();
 
     try {
-      let routineId: string | undefined = undefined;
+      /* Which routine: the client's, a new one (only once the routines are
+         known to hold none), or not decided yet (start-plan.ts). */
+      const routine = resolveStartRoutine({ routineType, customMachines, routines, routinesKnown });
 
-      if (routineType !== "Free") {
-        const routineName = `Routine ${routineType}`;
-        let routine = routines.find((r) => r.name === routineName);
-
-        if (!routine) {
-          // Create the routine if it doesn't exist
-          const newRoutineRef = await addDoc(collection(db, "routines"), {
-            clientId,
-            name: routineName,
-            machineIds: customMachines || [],
-            createdAt: serverTimestamp(),
-            studioId: selectedClient?.homeStudioId || "",
-          });
-          routineId = newRoutineRef.id;
-
-          if (routineType === "B") {
-            await updateDoc(doc(db, "clients", clientId), {
-              isRoutineBActive: true,
-            });
-          }
-        } else {
-          routineId = routine.id;
-        }
-      }
-
-      // 1. Create the session
       // STATISTICAL ROUTING & CROSS-TRAIN DETECTION
       // The session should log where it physically happened (the currently active studio)
       // but if the client belongs elsewhere, mark it as a cross-train event.
@@ -1454,35 +1566,18 @@ export function WorkoutTrackerView({
         currentStudioId !== null &&
         clientHomeStudioId !== currentStudioId;
 
-      const cleanFirestorePayload = (obj: any): any => {
-        if (obj === null || obj === undefined) return null;
-        if (Array.isArray(obj)) return obj.map(cleanFirestorePayload);
-        if (typeof obj !== "object") return obj;
-        if (
-          typeof obj.toDate === "function" ||
-          obj.constructor?.name === "FieldValue" ||
-          obj instanceof Date
-        )
-          return obj;
-
-        const cleaned: Record<string, any> = {};
-        Object.entries(obj).forEach(([k, v]) => {
-          if (v !== undefined) {
-            cleaned[k] = cleanFirestorePayload(v);
-          }
-        });
-        return cleaned;
-      };
+      // Ids made on this iPad: nothing waits for the database to name them.
+      const sessionRef = doc(collection(db, "sessions"));
+      const routineRef = routine.kind === "create" ? doc(collection(db, "routines")) : null;
+      const routineId =
+        routine.kind === "existing" ? routine.routine.id : routineRef ? routineRef.id : undefined;
 
       /* What this session intends to run. Recorded on the document from the
          first moment so that the session, not the routine, is the thing the
          screen reads back — see WorkoutSession.sessionMachineIds. */
-      const plannedMachineIds: string[] =
-        customMachines && customMachines.length > 0
-          ? customMachines
-          : (routineId ? routines.find((r) => r.id === routineId) : null)?.machineIds ?? [];
+      const plannedMachineIds = plannedMachinesOf(routine, customMachines);
 
-      const sessionData: any = cleanFirestorePayload({
+      const sessionData: any = cleanPayload({
         clientId,
         mindbodyClientId:
           selectedClient?.mindbodyClientId ||
@@ -1519,28 +1614,80 @@ export function WorkoutTrackerView({
         ...(preSessionCheckIn ? { preSessionCheckIn } : {}),
       });
 
-      const docRef = await addDoc(collection(db, "sessions"), sessionData);
+      /* The prefilled sets go in the same batch when they can be worked out
+         now: the routine decided and the settings read. Otherwise they follow
+         (the effect after this function). Seeding in the same batch is what
+         ended the old offline overwrite: the seed used to wait behind the
+         session's own write, and on reconnect it landed over weights typed in
+         the meantime. Merged, and never over a set this iPad already holds. */
+      const sessionStudioId = currentStudioId || clientHomeStudioId || "";
+      const homeId = clientHomeStudioId || "";
+      const seedNow = routine.kind !== "unknown" && settingsKnown;
+      const seeds = seedNow ? seedsFor(sessionRef.id, plannedMachineIds, homeId, sessionStudioId) : [];
+
+      const batch = writeBatch(db);
+      if (routineRef && routine.kind === "create") {
+        batch.set(routineRef, {
+          clientId,
+          name: routine.name,
+          machineIds: routine.machineIds,
+          createdAt: serverTimestamp(),
+          studioId: selectedClient?.homeStudioId || "",
+        });
+      }
+      batch.set(sessionRef, sessionData);
+      for (const seed of seeds) {
+        batch.set(doc(db, "exerciseLogs", seed.id), seed.payload, { merge: true });
+      }
+      // Issued now and never awaited: the iPad's copy holds it this instant.
+      const committing = batch.commit();
+      committing.catch((error) => startRefused(sessionRef.id, error, plannedMachineIds));
+      markSent();
 
       // Protects this session from being cleared by a snapshot that predates it.
       justStartedSessionRef.current = {
-        id: docRef.id,
+        id: sessionRef.id,
         clientId,
         at: Date.now(),
       };
+      currentSessionIdRef.current = sessionRef.id;
       // The device remembers the live session, so the bottom tab can bring
       // the trainer straight back after a crash (lib/live-session.ts).
-      rememberLiveSession(docRef.id);
+      rememberLiveSession(sessionRef.id);
 
-      const clientUpdateData: any = {};
-      if (routineType === "B" && !selectedClient?.isRoutineBActive) {
-        clientUpdateData.isRoutineBActive = true;
+      /* A routine not decided yet: the session holds the list the briefing
+         gave (often none) until it is, and the machine list is not taken
+         from the floor as if it were a Free session. */
+      if (routine.kind === "unknown") {
+        seededMachinesForSession.current = sessionRef.id;
+        activeMachineIdsRef.current = plannedMachineIds;
+        setActiveMachineIds(plannedMachineIds);
       }
-      if (nextNum === 1 && !selectedClient?.firstSessionDate) {
-        clientUpdateData.firstSessionDate = serverTimestamp();
-      }
+      startFollowUpRef.current =
+        routine.kind === "unknown" || !seedNow
+          ? {
+              sessionId: sessionRef.id,
+              clientId,
+              routineType,
+              customMachines: customMachines ? [...customMachines] : null,
+              routineDone: routine.kind !== "unknown",
+              seeded: seedNow,
+              plannedMachineIds,
+              clientHomeStudioId: homeId,
+              studioId: sessionStudioId,
+            }
+          : null;
+
+      /* The client's own fields, apart from the session: the clients rules
+         limit what a visiting or cross-train trainer may change, and one
+         refused field must never take the session down with it. */
+      const patch = startClientPatch({ routineType, client: selectedClient, sessionNumber: nextNum });
+      const clientUpdateData: Record<string, unknown> = {};
+      if (patch.isRoutineBActive) clientUpdateData.isRoutineBActive = true;
+      if (patch.firstSessionDate) clientUpdateData.firstSessionDate = serverTimestamp();
       if (Object.keys(clientUpdateData).length > 0) {
-        await updateDoc(doc(db, "clients", clientId), clientUpdateData).catch(
-          console.error,
+        updateDoc(doc(db, "clients", clientId), clientUpdateData).catch((error) =>
+          console.error("[start] the client's routine or first-session mark was not saved", error),
         );
       }
 
@@ -1548,8 +1695,8 @@ export function WorkoutTrackerView({
         /* The "why the routine changed today" note goes to the client's
            Journal (journalEntries, origin pre_session) — the canonical notes
            collection — not to the legacy sessionNotes. Author is the Auth
-           uid, which the rule pins authorId to. Never blocks the start: a
-           note that fails is reported, and the session begins regardless. */
+           uid, which the rule pins authorId to. Never blocks the start: it
+           is issued and never waited on, and a note that fails is reported. */
         const initials = (
           authTrainer?.initials ||
           (authTrainer?.fullName || "").substring(0, 2) ||
@@ -1558,240 +1705,41 @@ export function WorkoutTrackerView({
         const arrivalStored = (({ kind, category }) => ({ kind, category }))(
           storedNoteOf(arrivalCategory ?? null, null, null),
         );
-        try {
-          await createJournalEntry(
-            clientId,
-            // Her home studio's note, wherever the session is (Oct 2 2026).
-            clientHomeStudioId || currentStudioId || "",
-            { id: user.uid, initials, fullName: authTrainer?.fullName || initials },
-            {
-              /* Filed as it is written when the trainer picked what kind it
-                 is (notes round, Oct 3 2026), at that kind's starting
-                 loudness — an ache filed as Health is a Heads up, read out
-                 at her next four sessions and seen by the studio's leaders.
-                 Left unpicked it is unfiled, at Note, and waits in the tray. */
-              ...arrivalStored,
-              /* The briefing's box is the ARRIVAL note now ("how they slept,
-                 an ache, a trip coming up") — it only reads as a routine
-                 change when the sequence actually changed. */
-              body: (customMachines
-                ? `Routine adjusted for today: ${adjustmentNote.trim()}`
-                : `On arrival: ${adjustmentNote.trim()}`
-              ).slice(0, 5000),
-              importance: arrivalCategory ? DEFAULT_IMPORTANCE[arrivalCategory] : "standard",
-              machineId: null,
-              focusId: null,
-              // Linked to the session it opened, with its number and day
-              // (client-notes/session-link.ts).
-              ...sessionLinkOf({ id: docRef.id, sessionNumber: nextNum, date }, date),
-              origin: "pre_session",
-            },
-          );
-        } catch (err) {
+        createJournalEntry(
+          clientId,
+          // Her home studio's note, wherever the session is (Oct 2 2026).
+          clientHomeStudioId || currentStudioId || "",
+          { id: user.uid, initials, fullName: authTrainer?.fullName || initials },
+          {
+            /* Filed as it is written when the trainer picked what kind it
+               is (notes round, Oct 3 2026), at that kind's starting
+               loudness — an ache filed as Health is a Heads up, read out
+               at her next four sessions and seen by the studio's leaders.
+               Left unpicked it is unfiled, at Note, and waits in the tray. */
+            ...arrivalStored,
+            /* The briefing's box is the ARRIVAL note now ("how they slept,
+               an ache, a trip coming up") — it only reads as a routine
+               change when the sequence actually changed. */
+            body: (customMachines
+              ? `Routine adjusted for today: ${adjustmentNote.trim()}`
+              : `On arrival: ${adjustmentNote.trim()}`
+            ).slice(0, 5000),
+            importance: arrivalCategory ? DEFAULT_IMPORTANCE[arrivalCategory] : "standard",
+            machineId: null,
+            focusId: null,
+            // Linked to the session it opened, with its number and day
+            // (client-notes/session-link.ts).
+            ...sessionLinkOf({ id: sessionRef.id, sessionNumber: nextNum, date }, date),
+            origin: "pre_session",
+          },
+        ).catch((err) => {
           console.error("[start] adjustment note did not reach the Journal", err);
           toastError("The session started, but the routine note could not be saved. Add it from Notes & Profile → Notes.");
-        }
-      }
-
-      // 2. Fetch last logs to pre-fill weights
-      const machineLastLogs: Record<string, Partial<ExerciseLog>> = {};
-
-      if (selectedClient && selectedClient.currentMachineMetrics) {
-        Object.entries(selectedClient.currentMachineMetrics).forEach(
-          ([mId, metricVal]) => {
-            const metric = metricVal as any;
-            // For simplicity, we just seed it directly mapping back to ExerciseLog properties
-            machineLastLogs[mId] = {
-              weight: metric.weight,
-              reps: metric.reps,
-              seconds: metric.seconds,
-              isStaticHold: metric.isStaticHold,
-              isTSC: metric.isTSC,
-              machineId: mId,
-              repQuality: 2, // default
-            };
-          },
-        );
-      }
-
-      // Also fallback to clientMachineSettings if machine is not yet in currentMachineMetrics
-      if (clientMachineSettings) {
-        Object.entries(clientMachineSettings).forEach(
-          ([mId, settingObjVal]) => {
-            const settingObj = settingObjVal as any;
-            if (!machineLastLogs[mId] && settingObj) {
-              const w = settingObj.currentWeight ?? settingObj.startingWeight;
-              if (w !== undefined && w !== null && String(w).trim() !== "") {
-                machineLastLogs[mId] = {
-                  weight: String(w),
-                  machineId: mId,
-                  repQuality: 2,
-                };
-              }
-            }
-          },
-        );
-      }
-
-      // The trainer's prescribed weight wins over the raw last-performed
-      // metric. sync-utils rewrites currentWeight to whatever was actually
-      // performed when a session is saved, so this is "same as last session"
-      // by default and a manual prescription whenever a trainer set one on the
-      // Journey grid or the Equipment tab. Nothing progresses automatically.
-      if (clientMachineSettings) {
-        Object.entries(clientMachineSettings).forEach(
-          ([mId, settingObjVal]) => {
-            const prescribed = (settingObjVal as any)?.currentWeight;
-            if (
-              prescribed === undefined ||
-              prescribed === null ||
-              String(prescribed).trim() === ""
-            ) {
-              return;
-            }
-            if (machineLastLogs[mId]) {
-              machineLastLogs[mId] = {
-                ...machineLastLogs[mId],
-                weight: String(prescribed),
-              };
-            }
-          },
-        );
-      }
-
-      // 3. Auto-populate logs for the machines this session will run.
-      //    (Shadows the component-level state of the same name on purpose —
-      //     this is the local list for seeding logs, computed above.)
-      const activeMachineIds = plannedMachineIds;
-
-      if (activeMachineIds && activeMachineIds.length > 0) {
-        const currentSettings = clientMachineSettings;
-
-        const createLogPayload = (
-          prevLog: Partial<ExerciseLog> | undefined,
-          mId: string,
-          side?: "Left" | "Right",
-          defaultWeight?: number | null,
-        ) => {
-          const payload: any = {
-            sessionId: docRef.id,
-            clientId,
-            homeStudioId: clientHomeStudioId || "",
-            clientHomeStudioId: clientHomeStudioId || "",
-            studioId: currentStudioId || clientHomeStudioId || "",
-            machineId: mId,
-            machineSettings:
-              currentSettings[mId]?.settings || prevLog?.machineSettings || {},
-            createdAt: serverTimestamp(),
-          };
-          if (side) payload.side = side;
-          if (prevLog) {
-            if (prevLog.weight) payload.weight = String(prevLog.weight);
-
-            // Intentionally not auto-filling reps, seconds, or repQuality per user request
-
-            if (prevLog.isStaticHold !== undefined)
-              payload.isStaticHold = Boolean(prevLog.isStaticHold);
-            if (prevLog.isTSC !== undefined)
-              payload.isTSC = Boolean(prevLog.isTSC);
-          } else if (defaultWeight) {
-            payload.weight = String(defaultWeight);
-          }
-          return cleanFirestorePayload(payload);
-        };
-
-        /*
-         * ONE BATCH, MERGED, BEFORE THE TRAINER CAN TOUCH ANYTHING.
-         *
-         * This loop used to `await setDoc(...)` once per machine, with no
-         * { merge: true }, AFTER the sessions listener had already seen the
-         * local addDoc and switched the screen to the live tracker. Two ways
-         * that lost a trainer's work:
-         *
-         *   - Offline, a setDoc promise never resolves. The loop parked at
-         *     machine 1 while the trainer kept working; when the network came
-         *     back it resumed and REPLACED (not merged) the placeholder for
-         *     machines 2..N — reps, quality and skip reasons gone, and the
-         *     snapshot echo cleared the Now Bar in front of them.
-         *   - Even online there was a window of N round trips in which the
-         *     same thing could happen on a slow studio connection.
-         *
-         * Every other write to these documents is a merge (updateLogMultiple);
-         * the seed was the one replace. Now the payloads are built first, the
-         * dynamic import is hoisted out of the loop, and one writeBatch with
-         * merge commits them. A session is 5-8 machines, so this is well
-         * inside the 500-op limit.
-         *
-         * "We need the app to be able to act as pen and paper in terms of
-         * reliability." — docs/business/the-floor.md
-         */
-        const { calculateStartingWeight } = await import(
-          "../lib/consultation-utils"
-        );
-
-        const seeds: { ref: ReturnType<typeof doc>; payload: any }[] = [];
-
-        for (const mId of activeMachineIds) {
-          const mac = floorMachines.find((m) => m.id === mId);
-          // Canonical id first, so a studio that renamed its torso rotation
-          // still gets Left and Right seeded. src/lib/floor-machines.ts.
-          const isTorsoMac = isPerSideMachine({ id: mId, name: mac?.name });
-
-          let defaultWeight: number | null = null;
-          if (!machineLastLogs[mId] && selectedClient && mac && mac.name) {
-            const gender =
-              selectedClient.gender === "Female" ? "Female" : "Male";
-            const calculatedWeight = calculateStartingWeight(
-              mac.name,
-              gender,
-              selectedClient.age || 45,
-              "Novice",
-            );
-            defaultWeight = calculatedWeight > 0 ? calculatedWeight : null;
-          }
-
-          if (isTorsoMac) {
-            const prefilledLeft =
-              machineLastLogs[`${mId}_Left`] || machineLastLogs[mId];
-            const prefilledRight =
-              machineLastLogs[`${mId}_Right`] || machineLastLogs[mId];
-
-            if (prefilledLeft || defaultWeight) {
-              seeds.push({
-                ref: doc(db, "exerciseLogs", logDocId(docRef.id, mId, "Left")),
-                payload: createLogPayload(prefilledLeft, mId, "Left", defaultWeight),
-              });
-            }
-            if (prefilledRight || defaultWeight) {
-              seeds.push({
-                ref: doc(db, "exerciseLogs", logDocId(docRef.id, mId, "Right")),
-                payload: createLogPayload(prefilledRight, mId, "Right", defaultWeight),
-              });
-            }
-          } else {
-            const prefilledLog = machineLastLogs[mId];
-            if (prefilledLog || defaultWeight) {
-              seeds.push({
-                ref: doc(db, "exerciseLogs", logDocId(docRef.id, mId, undefined)),
-                payload: createLogPayload(prefilledLog, mId, undefined, defaultWeight),
-              });
-            }
-          }
-        }
-
-        if (seeds.length > 0) {
-          const seedBatch = writeBatch(db);
-          for (const { ref, payload } of seeds) {
-            // merge: a seed must never clobber a set the trainer has already
-            // entered on this machine.
-            seedBatch.set(ref, payload, { merge: true });
-          }
-          await seedBatch.commit();
-        }
+        });
       }
 
       const newSession = {
-        id: docRef.id,
+        id: sessionRef.id,
         clientId,
         routineId: routineId || null,
         sessionType,
@@ -1804,6 +1752,7 @@ export function WorkoutTrackerView({
         trainerName,
         trainerId,
         status: "In-Progress",
+        sessionMachineIds: plannedMachineIds,
         startTime: new Date(),
       };
 
@@ -1821,6 +1770,83 @@ export function WorkoutTrackerView({
       toastError("The session didn't start. Check the connection, then press Start again.");
     }
   };
+
+  /*
+   * WHAT START COULD NOT DECIDE YET, decided the moment it can (R9). The
+   * routine, once the client's routines are known: the client's own, or a
+   * new one made with the session's routine id written onto the session. The
+   * prefilled sets, once the routine is decided and the settings are known:
+   * merged, and never over a set this iPad holds, so a weight typed while
+   * they waited stays. Nothing here holds Start or Finish.
+   */
+  useEffect(() => {
+    const f = startFollowUpRef.current;
+    if (!f || f.clientId !== clientId) return;
+    if (currentSession?.id !== f.sessionId) return;
+
+    if (!f.routineDone) {
+      if (!routinesKnown) return;
+      const routine = resolveStartRoutine({
+        routineType: f.routineType,
+        customMachines: f.customMachines,
+        routines,
+        routinesKnown: true,
+      });
+      const planned = plannedMachinesOf(routine, f.customMachines);
+      // A list the trainer already changed in the meantime stays theirs.
+      const keepTrainersList =
+        activeMachineIdsRef.current.join(",") !== f.plannedMachineIds.join(",");
+      const machinesToWrite = keepTrainersList ? activeMachineIdsRef.current : planned;
+      const batch = writeBatch(db);
+      let routineId: string | null = null;
+      if (routine.kind === "existing") {
+        routineId = routine.routine.id ?? null;
+      } else if (routine.kind === "create") {
+        const ref = doc(collection(db, "routines"));
+        routineId = ref.id;
+        batch.set(ref, {
+          clientId: f.clientId,
+          name: routine.name,
+          machineIds: routine.machineIds,
+          createdAt: serverTimestamp(),
+          studioId: selectedClient?.homeStudioId || "",
+        });
+      }
+      batch.update(doc(db, "sessions", f.sessionId), {
+        routineId,
+        sessionMachineIds: machinesToWrite,
+        lastHeartbeatAt: serverTimestamp(),
+      });
+      batch.commit().catch((error) =>
+        handleFirestoreError(error, OperationType.UPDATE, "sessions"),
+      );
+      markSent();
+      f.routineDone = true;
+      f.plannedMachineIds = machinesToWrite;
+      setCurrentSession((cur) =>
+        cur && cur.id === f.sessionId
+          ? ({ ...cur, routineId, sessionMachineIds: machinesToWrite } as WorkoutSession)
+          : cur,
+      );
+      if (!keepTrainersList) {
+        seededMachinesForSession.current = f.sessionId;
+        setActiveMachineIds(machinesToWrite);
+      }
+    }
+
+    if (f.routineDone && !f.seeded && settingsKnown) {
+      f.seeded = true;
+      const seeds = seedsFor(f.sessionId, f.plannedMachineIds, f.clientHomeStudioId, f.studioId);
+      if (seeds.length > 0) {
+        const batch = writeBatch(db);
+        for (const seed of seeds) batch.set(doc(db, "exerciseLogs", seed.id), seed.payload, { merge: true });
+        batch.commit().catch((error) => handleFirestoreError(error, OperationType.WRITE, "exerciseLogs"));
+        markSent();
+      }
+    }
+    if (f.routineDone && f.seeded) startFollowUpRef.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routinesKnown, settingsKnown, routines, clientMachineSettings, currentSession?.id, clientId]);
 
   const assignSessionToClient = async (targetClientId: string) => {
     const sessionToAssign = pendingAssignSession || currentSession;
@@ -1860,31 +1886,62 @@ export function WorkoutTrackerView({
     }
   };
 
-  const deleteSession = async (sessionId: string) => {
+  /*
+   * DISCARD IS ONE BATCH, NEVER WAITED ON (speed round, Oct 5 2026; R9).
+   *
+   * It read the session's sets from the server, then deleted them one at a
+   * time and the session last, each delete awaited: 10-20 round trips, a
+   * second or two online, and offline it hung on the first. Now the sets this
+   * iPad holds and every id the session's machines write under
+   * (start-plan.ts `discardLogIds`) go in ONE batch with the session, issued
+   * and never awaited, and the screen goes back to the Hub at once. Sets
+   * still waiting to be sent from here are dropped first, so a late send can
+   * never write a set back onto a discarded session. A set another iPad
+   * wrote that this one never held is swept by a read after the batch.
+   *
+   * The legacy `sessionNotes` are no longer read or deleted here: nothing
+   * writes them any more (journal entries replaced them), and the rules let
+   * only an administrator delete one, so a trainer's Discard used to stop
+   * at that step with the session still there.
+   */
+  const deleteSession = (sessionId: string) => {
     try {
-      // Delete associated logs first
-      const logsQ = query(
-        collection(db, "exerciseLogs"),
-        where("sessionId", "==", sessionId),
-      );
-      const logsSnap = await getDocs(logsQ);
-      for (const logDoc of logsSnap.docs) {
-        await deleteDoc(logDoc.ref);
+      for (const [key, pending] of Array.from(pendingLogWritesRef.current.entries())) {
+        if (pending.payload?.sessionId !== sessionId) continue;
+        if (pending.timer) clearTimeout(pending.timer);
+        pendingLogWritesRef.current.delete(key);
       }
-      // Delete associated notes
-      const notesQ = query(
-        collection(db, "sessionNotes"),
-        where("sessionId", "==", sessionId),
+      const machineIds = Array.from(
+        new Set([...activeMachineIdsRef.current, ...(currentSession?.sessionMachineIds ?? [])]),
       );
-      const notesSnap = await getDocs(notesQ);
-      for (const noteDoc of notesSnap.docs) {
-        await deleteDoc(noteDoc.ref);
-      }
-      // Delete session
-      await deleteDoc(doc(db, "sessions", sessionId));
+      const logIds = discardLogIds(sessionId, logsRef.current, machineIds);
+      const batch = writeBatch(db);
+      for (const id of logIds) batch.delete(doc(db, "exerciseLogs", id));
+      batch.delete(doc(db, "sessions", sessionId));
+      batch.commit().then(
+        () => {
+          // Sets another iPad wrote that this one never held.
+          getDocs(query(collection(db, "exerciseLogs"), where("sessionId", "==", sessionId)))
+            .then((snap) => {
+              const left = snap.docs.filter((d) => !logIds.includes(d.id));
+              if (left.length === 0) return;
+              const sweep = writeBatch(db);
+              for (const d of left) sweep.delete(d.ref);
+              return sweep.commit();
+            })
+            .catch((error) => console.error("[discard] leftover sets were not swept", error));
+        },
+        (error) => {
+          console.error("[discard] the session was not discarded", error);
+          toastError("The session couldn't be discarded. It is still on the client's profile, where it can be discarded again.");
+        },
+      );
+      markSent();
+      if (startFollowUpRef.current?.sessionId === sessionId) startFollowUpRef.current = null;
       forgetLiveSession(sessionId);
 
       if (currentSession?.id === sessionId) {
+        currentSessionIdRef.current = null;
         setCurrentSession(null);
         setLogs({});
         setSelectedClientId(null);
@@ -1947,6 +2004,19 @@ export function WorkoutTrackerView({
     for (const id of uncountedMachineIds()) asked[id] = "skipped";
     setEndChoices(asked);
 
+    /* The "already finished on another iPad?" read starts now, while the
+       trainer reads the dialog, so Finish rarely waits for it (R9). The tap
+       checks the live sessions stream as well (finishedElsewhereAtTap). */
+    if (currentSession?.id && sendState.online) {
+      const id = currentSession.id;
+      const read = getDocFromServer(doc(db, "sessions", id)).then((snap) =>
+        snap.exists() ? ((snap.data() as WorkoutSession).status ?? null) : null,
+      );
+      read.catch(() => {
+        /* No answer is "no": Finish goes ahead (finish-wait.ts). */
+      });
+      finishCheckRef.current = { sessionId: id, read };
+    }
     if (currentSession?.id && !currentSession.endTime) {
       const now = new Date();
       updateDoc(doc(db, "sessions", currentSession.id), {
@@ -1976,6 +2046,10 @@ export function WorkoutTrackerView({
   /* The session a Finish is running for, if one is (session record, Sep 26
      2026). A second tap must not run it twice: its totals are increments. */
   const finishingRef = useRef<string | null>(null);
+  /* The client's sessions stream's statuses, as of its last snapshot (never a render behind). */
+  const streamStatusRef = useRef<Map<string, string | null>>(new Map());
+  /* The "already finished?" read started when the End Session dialog opened (R9). */
+  const finishCheckRef = useRef<{ sessionId: string; read: Promise<string | null> } | null>(null);
 
   const commitEndSession = async () => {
     if (!currentSession?.id || !selectedClient) return;
@@ -2048,13 +2122,17 @@ export function WorkoutTrackerView({
          another iPad already finished would add them again. Ask the database,
          briefly; offline the answer is no and Finish goes ahead
          (features/session-record/finish-wait.ts). */
-      const alreadyFinished = await finishedElsewhere(
-        () =>
+      const early = finishCheckRef.current?.sessionId === sessionId ? finishCheckRef.current.read : null;
+      finishCheckRef.current = null;
+      const alreadyFinished = await finishedElsewhereAtTap({
+        streamStatus: streamStatusRef.current.get(sessionId) ?? null,
+        early,
+        readStatus: () =>
           getDocFromServer(doc(db, "sessions", sessionId)).then((snap) =>
             snap.exists() ? ((snap.data() as WorkoutSession).status ?? null) : null,
           ),
-        sendState.online,
-      );
+        online: sendState.online,
+      });
 
       /* The session, its sets and the machine weights are saved whatever
          happened to the totals (lib/sync-utils.ts); only the client's running
@@ -2387,14 +2465,17 @@ export function WorkoutTrackerView({
     const snap = postSession;
     // A draft the trainer neither saved nor dropped is filed, unfiled, on the
     // way out. The To-file tray exists for exactly this; losing it does not.
+    /* Both writes are ISSUED here, side by side, and never one after the
+       other (speed round, Oct 5 2026; R9): each says its own refusal. */
+    const filing: Promise<void>[] = [];
     const draftKey = snap?.session.id ?? null;
     if (snap?.draft && hasDraftText(snap.draft) && draftFiledForRef.current !== draftKey) {
       draftFiledForRef.current = draftKey;
-      await fileSessionDraft(snap.draft.body);
+      filing.push(fileSessionDraft(snap.draft.body));
     }
     const body = profileNote?.noteContent.trim() ?? "";
     if (snap && body && user?.uid) {
-      await noteOrSay(
+      filing.push(noteOrSay(
         createJournalEntry(
           snap.client.id,
           sessionNoteStudioId(snap.client, contextActiveStudioId || authTrainer?.primaryHomeStudioId),
@@ -2413,13 +2494,16 @@ export function WorkoutTrackerView({
           },
         ),
         "Session saved. The profile note could not be saved — add it from Notes & Profile → Notes.",
-      );
+      ));
     }
+    await Promise.all(filing);
   };
 
-  /** Leaving the Wrap-up by Back to Hub files its Profile note, if any, and goes home. */
-  const leavePostSession = async (profileNote?: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => {
-    await filePostSessionNotes(profileNote);
+  /** Leaving the Wrap-up by Back to Hub files its Profile note, if any, and goes home.
+      The writes are issued and the Hub comes at once; their toasts follow
+      their answers (R9). Nothing typed is lost: the writes are on the iPad. */
+  const leavePostSession = (profileNote?: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => {
+    void filePostSessionNotes(profileNote);
     setPostSession(null);
     setIsPostSessionMode(false);
     setSelectedClientId(null);
@@ -2478,7 +2562,8 @@ export function WorkoutTrackerView({
    */
   /* Online or not, and whether sent sets have reached the database yet: the
      line under the session bar (features/session-record). */
-  const sendState = useSendState();
+  /* No tick here (R10): the strip under the bar keeps its own clock. */
+  const sendState = useSendState({ tick: false });
   const markSent = sendState.sent;
 
   const pendingLogWritesRef = useRef<
@@ -2672,11 +2757,12 @@ export function WorkoutTrackerView({
 
   const [isDeletingSession, setIsDeletingSession] = useState(false);
 
-  const confirmScrapSession = async () => {
+  // Discard is issued, never waited on (deleteSession), so this is one frame.
+  const confirmScrapSession = () => {
     setIsDeletingSession(true);
     try {
       if (currentSession?.id) {
-        await deleteSession(currentSession.id);
+        deleteSession(currentSession.id);
       } else {
         setCurrentSession(null);
         setLogs({});
@@ -2748,6 +2834,21 @@ export function WorkoutTrackerView({
     [gridHistory, gridVisible],
   );
 
+  /* The PAST sets alone, the same array while only today's change (R10;
+     features/journey-grid/stable-history.ts): a keystroke in today's column
+     no longer rebuilds every row of the grid, nor does the listener's echo
+     of a save. Today's values are read apart, in gridLiveValues. */
+  const shownSessionId = shownSession?.id ?? null;
+  const historyLogsRef = useRef<ExerciseLog[] | null>(null);
+  const historyLogs = useMemo(() => {
+    const next = (Object.values(logs) as ExerciseLog[]).filter(
+      (l) => !shownSessionId || l.sessionId !== shownSessionId,
+    );
+    const kept = stableHistory(historyLogsRef.current, next);
+    historyLogsRef.current = kept;
+    return kept;
+  }, [logs, shownSessionId]);
+
   const gridRows = useMemo(() => {
     const ordered = [...floorMachines].sort(
       (a, b) =>
@@ -2761,9 +2862,6 @@ export function WorkoutTrackerView({
           b.order,
           b.id ? studioFloorById[b.id]?.order : undefined,
         ),
-    );
-    const historyLogs = (Object.values(logs) as ExerciseLog[]).filter(
-      (l) => !shownSession || l.sessionId !== shownSession.id,
     );
     const starred = new Set(
       ordered.filter((m) => isBig5Machine(m.name)).map((m) => m.id!),
@@ -2841,10 +2939,9 @@ export function WorkoutTrackerView({
     );
   }, [
     floorMachines,
-    logs,
+    historyLogs,
     clientMachineSettings,
     studioFloorById,
-    shownSession,
     gridHistory,
     selectedClient?.currentMachineMetrics,
     machineJournal,
@@ -3119,40 +3216,70 @@ export function WorkoutTrackerView({
     canQuoteNumber,
   );
 
-  const gridLive: LiveColumn | undefined = currentSession?.id
+  /* The live column, memoised with steady callbacks (R10): it used to be a
+     new object on every render, which redrew every row of the grid. The
+     callbacks call the newest handler through a ref, so they never go stale. */
+  const gridLiveHandlers = useRef<{
+    change: (machineId: string, patch: Partial<LiveSet>) => void;
+    onAddMachine: (id: string) => void;
+  } | null>(null);
+  gridLiveHandlers.current = {
+    change: handleGridLiveChange,
+    /* Straight into the session's own list, through the one recorder the
+       reorder sheet uses: the session document, never the routine. */
+    onAddMachine: (id: string) => {
+      if (activeMachineIds.includes(id)) return;
+      applySessionMachineIds([...activeMachineIds, id]);
+    },
+  };
+  const onGridLiveChange = React.useCallback(
+    (machineId: string, patch: Partial<LiveSet>) => gridLiveHandlers.current?.change(machineId, patch),
+    [],
+  );
+  const onGridAddMachine = React.useCallback((id: string) => gridLiveHandlers.current?.onAddMachine(id), []);
+  /* Moving to another machine sends whatever is still waiting on this one. */
+  const onGridFocusMachine = React.useCallback(
+    (id: string) => {
+      flushAllLogWrites();
+      setFocusMachineOverride(id);
+    },
+    [flushAllLogWrites],
+  );
+  const liveSessionId = currentSession?.id ?? null;
+  const liveSessionNumber = currentSession?.sessionNumber || sessions.length;
+  const liveDate = currentSession?.date || null;
+  const liveInitials = (currentSession?.trainerInitials || authTrainer?.initials || "").toUpperCase();
+  const gridLiveSession = useMemo(
+    () =>
+      liveSessionId
+        ? {
+            id: liveSessionId,
+            sessionNumber: liveSessionNumber,
+            date: toIsoDate(liveDate || studioTodayKey()),
+            trainerInitials: liveInitials,
+          }
+        : null,
+    [liveSessionId, liveSessionNumber, liveDate, liveInitials],
+  );
+  const gridLive = useMemo<LiveColumn | undefined>(() => gridLiveSession
     ? {
-        session: {
-          id: currentSession.id,
-          sessionNumber: currentSession.sessionNumber || sessions.length,
-          date: toIsoDate(currentSession.date || studioTodayKey()),
-          trainerInitials: (
-            currentSession.trainerInitials ||
-            authTrainer?.initials ||
-            ""
-          ).toUpperCase(),
-        },
+        session: gridLiveSession,
         routineMachineIds: activeMachineIds,
         values: gridLiveValues,
-        onChange: handleGridLiveChange,
+        onChange: onGridLiveChange,
         /* Straight in. The "+" only appears on a machine that is not in
            today's routine, so the tap is already unambiguous — and a trainer
            who has spare time and wants a bicep curl should not have to
            confirm that they meant it. Removing it is the reverse of a
            decision made when this was built ("prompts before adding it,
            rather than toggling it in silently"); silence is the point. */
-        onAddMachine: (id: string) => {
-          if (activeMachineIds.includes(id)) return;
-          applySessionMachineIds([...activeMachineIds, id]);
-        },
+        onAddMachine: onGridAddMachine,
         focusMachineId: gridFocusMachineId,
-        /* Moving to another machine sends whatever is still waiting on this one. */
-        onFocusMachine: (id: string) => {
-          flushAllLogWrites();
-          setFocusMachineOverride(id);
-        },
+        onFocusMachine: onGridFocusMachine,
         weightStep: 2,
       }
-    : undefined;
+    : undefined,
+  [gridLiveSession, activeMachineIds, gridLiveValues, onGridLiveChange, onGridAddMachine, gridFocusMachineId, onGridFocusMachine]);
 
   /*
    * THE MACHINE MENU'S DOOR IN A SESSION (features/machine-menu). What the
@@ -3287,6 +3414,9 @@ export function WorkoutTrackerView({
         onSaveDraft={fileSessionDraft}
         onDropDraft={dropSessionDraft}
         nextTrainerNote={postSession.nextTrainerNote}
+        /* The tray's notes from the one journal listener (R11), only while
+           it is this client's: otherwise the Wrap-up reads them itself. */
+        journalStream={selectedClient?.id === postSession.client.id ? flagJournalStream : undefined}
         savedOnThisIpad={!!postSession.queued}
         machines={floorMachines}
         rightControls={rightControls}
@@ -3636,7 +3766,7 @@ export function WorkoutTrackerView({
       {/* Zone 1b — where the sets are, only when there is something to say:
           offline, or saves waiting on a poor connection (session record). */}
       {currentSession && (
-        <SendStatusStrip online={sendState.online} unsentForMs={sendState.unsentForMs} />
+        <SendStatusStrip online={sendState.online} unsentSince={sendState.unsentSince} />
       )}
 
       {/* THE MACHINE MENU. One target, one card (features/machine-menu).
@@ -3946,7 +4076,7 @@ export function WorkoutTrackerView({
           values={gridLiveValues}
           focusId={gridFocusMachineId ?? null}
           onFocus={(id) => setFocusMachineOverride(id)}
-          onChange={handleGridLiveChange}
+          onChange={onGridLiveChange}
           onCommit={flushAllLogWrites}
           onOpenMachine={(id) => setMenuMachineId(id)}
           onReorder={() => setIsOrderSheetOpen(true)}
@@ -4033,7 +4163,7 @@ export function WorkoutTrackerView({
           orderNumber={gridFocusOrder}
           value={gridFocusMachineId ? gridLiveValues[gridFocusMachineId] : undefined}
           history={gridHistory}
-          onChange={handleGridLiveChange}
+          onChange={onGridLiveChange}
           onCommit={flushAllLogWrites}
           step={2}
           nextName={gridNextRow?.machine.name}
@@ -4061,7 +4191,8 @@ export function WorkoutTrackerView({
           onOpenFlag={gridFocusMachineId ? () => setMenuMachineId(gridFocusMachineId) : undefined}
           level={traineeLevelOf(selectedClient)}
           layout={nowBarSide ? "side" : "bar"}
-          onMachineSeconds={machineTimeElapsed}
+          readMachineSeconds={readFocusedMachineSeconds}
+          machineClockRunning={!!currentSession && !isPaused}
         />
       )}
       </div>
@@ -4193,6 +4324,8 @@ export function WorkoutTrackerView({
             onDraftChange={handleDraftChange}
             /* A draft the machine menu filed for the floor's notes is finished on its card. */
             floorStudioName={machineMenuHost.floorStudio.name}
+            /* This session's notes from the one journal listener (R11). */
+            journalStream={flagJournalStream}
             onOpenMachine={(id) => {
               setIsShowingSessionNotes(false);
               setMenuMachineId(id);

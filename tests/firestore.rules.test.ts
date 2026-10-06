@@ -6538,3 +6538,130 @@ describe("speed round (boot): the bell's new read shapes", () => {
     await assertSucceeds(getDoc(doc(as("trainerA"), "system", "health")));
   });
 });
+
+// ---------------------------------------------------------------------------
+// SPEED ROUND, the live session group (Oct 5 2026; R9). Start is ONE batch:
+// the session, its routine when one has to be made, and the prefilled sets,
+// with ids made on the iPad. The client's own fields are a separate write, so
+// one refused client field never rolls the session back. Discard is one batch
+// of deletes, ids the session MAY have written included.
+// ---------------------------------------------------------------------------
+describe("speed round (live session): the Start and Discard batches", () => {
+  const CLIENT = "speedClient";
+  const MACHINES = ["m-leg-press", "m-pulldown", "m-torso-rotation"];
+  const as = (uid: string) => testEnv.authenticatedContext(uid).firestore();
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      // Home studio B; approved for cross-training at A (trainerA's studio).
+      await setDoc(doc(db, "clients", CLIENT), {
+        firstName: "Sam", lastName: "Speed", isActive: true, remainingSessions: 10,
+        homeStudioId: "studioB", approvedCrossTrainStudioIds: ["studioA"],
+        completedSessions: 0, sessionCount: 0,
+      });
+    });
+  });
+
+  const startBatch = (
+    db: ReturnType<typeof as>,
+    uid: string,
+    hostedAt: string,
+    opts: { newRoutine?: boolean } = {},
+  ) => {
+    const b = writeBatch(db);
+    const sessionRef = doc(collection(db, "sessions"));
+    const routineRef = opts.newRoutine ? doc(collection(db, "routines")) : null;
+    if (routineRef) {
+      b.set(routineRef, { clientId: CLIENT, name: "Routine A", machineIds: MACHINES, createdAt: serverTimestamp(), studioId: "studioB" });
+    }
+    b.set(sessionRef, {
+      clientId: CLIENT, clientName: "Sam Speed", homeStudioId: "studioB", clientHomeStudioId: "studioB",
+      hostedAtStudioId: hostedAt, routineId: routineRef ? routineRef.id : null, sessionType: "Standard",
+      sessionNumber: 1, date: "2026-10-05", isCrossTrain: hostedAt !== "studioB",
+      trainerInitials: "TA", trainerName: "Trainer", trainerId: uid, startedByTrainerId: uid,
+      lastHeartbeatAt: serverTimestamp(), status: "In-Progress", sessionMachineIds: MACHINES,
+      pausedAt: null, totalPausedMs: 0, clientStartTime: "2026-10-05T13:00:00.000Z",
+      startTime: serverTimestamp(), createdAt: serverTimestamp(),
+    });
+    for (const id of [`${sessionRef.id}_m-leg-press`, `${sessionRef.id}_m-torso-rotation_Left`, `${sessionRef.id}_m-torso-rotation_Right`]) {
+      b.set(doc(db, "exerciseLogs", id), {
+        sessionId: sessionRef.id, clientId: CLIENT, homeStudioId: "studioB", clientHomeStudioId: "studioB",
+        studioId: hostedAt, machineId: id.includes("torso") ? "m-torso-rotation" : "m-leg-press",
+        machineSettings: {}, createdAt: serverTimestamp(), weight: "120",
+      }, { merge: true });
+    }
+    return { batch: b, sessionId: sessionRef.id };
+  };
+
+  it("lets a cross-train visitor's Start batch through: the session, a new routine and the prefilled sets together", async () => {
+    const { batch } = startBatch(as("trainerA"), "trainerA", "studioA", { newRoutine: true });
+    await assertSucceeds(batch.commit());
+  });
+
+  it("lets the home studio's trainer's Start batch through", async () => {
+    const { batch } = startBatch(as("trainerB"), "trainerB", "studioB");
+    await assertSucceeds(batch.commit());
+  });
+
+  it("the visitor's client fields are their own write: allowed alone, and a refused one cannot take the session with it", async () => {
+    const db = as("trainerA");
+    const { batch, sessionId } = startBatch(db, "trainerA", "studioA");
+    await assertSucceeds(batch.commit());
+    await assertSucceeds(updateDoc(doc(db, "clients", CLIENT), { isRoutineBActive: true, firstSessionDate: serverTimestamp() }));
+    // A client field the visitor may not change is refused, and the session stands.
+    await assertFails(updateDoc(doc(db, "clients", CLIENT), { goals: "x" }));
+    await assertSucceeds(getDoc(doc(db, "sessions", sessionId)));
+  });
+
+  it("would refuse the whole Start if a refused client field rode in the same batch (why it never does)", async () => {
+    const db = as("trainerA");
+    const { batch } = startBatch(db, "trainerA", "studioA");
+    batch.update(doc(db, "clients", CLIENT), { goals: "x" });
+    await assertFails(batch.commit());
+  });
+
+  it("lets the follow-up write the routine it decided once the routines were read", async () => {
+    const db = as("trainerA");
+    const { batch, sessionId } = startBatch(db, "trainerA", "studioA");
+    await assertSucceeds(batch.commit());
+    const follow = writeBatch(db);
+    const routineRef = doc(collection(db, "routines"));
+    follow.set(routineRef, { clientId: CLIENT, name: "Routine A", machineIds: [], createdAt: serverTimestamp(), studioId: "studioB" });
+    follow.update(doc(db, "sessions", sessionId), { routineId: routineRef.id, sessionMachineIds: MACHINES, lastHeartbeatAt: serverTimestamp() });
+    await assertSucceeds(follow.commit());
+  });
+
+  it("lets the visitor Discard in one batch, deletes of sets that were never written included", async () => {
+    const db = as("trainerA");
+    const { batch, sessionId } = startBatch(db, "trainerA", "studioA");
+    await assertSucceeds(batch.commit());
+    const discard = writeBatch(db);
+    for (const id of [
+      `${sessionId}_m-leg-press`,
+      `${sessionId}_m-pulldown`, // never written: the machine had nothing to seed
+      `${sessionId}_m-torso-rotation_Left`,
+      `${sessionId}_m-torso-rotation_Right`,
+    ]) {
+      discard.delete(doc(db, "exerciseLogs", id));
+    }
+    discard.delete(doc(db, "sessions", sessionId));
+    await assertSucceeds(discard.commit());
+  });
+
+  it("refuses the Discard batch to a trainer the session is nothing to", async () => {
+    const { batch, sessionId } = startBatch(as("trainerA"), "trainerA", "studioA");
+    await assertSucceeds(batch.commit());
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "trainers", "trainerC"), {
+        fullName: "Trainer C", initials: "TC", role: "LifeTransformer",
+        primaryHomeStudioId: "studioC", accessibleStudioIds: ["studioC"],
+      });
+    });
+    const db = as("trainerC");
+    const discard = writeBatch(db);
+    discard.delete(doc(db, "exerciseLogs", `${sessionId}_m-leg-press`));
+    discard.delete(doc(db, "sessions", sessionId));
+    await assertFails(discard.commit());
+  });
+});

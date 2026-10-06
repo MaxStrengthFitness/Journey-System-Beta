@@ -74,6 +74,15 @@ export interface SessionNowBarProps {
    */
   onMachineSeconds?: number | null;
   /**
+   * Reads the focused machine's seconds (lib/machine-clock.ts). Given it, the
+   * bar ticks ITSELF once a second while `machineClockRunning`, and the
+   * screen around it never redraws for the clock (speed round, Oct 5 2026;
+   * R10: the whole Active Session used to re-render every second for this
+   * one number). Wins over `onMachineSeconds`.
+   */
+  readMachineSeconds?: () => number;
+  machineClockRunning?: boolean;
+  /**
    * How much of this client's story Journey actually holds
    * (lib/client-coverage.ts). It decides ONE sentence on this bar, and that
    * sentence is the most-read line in the app: the trainer sees it walking
@@ -330,7 +339,9 @@ function SessionNowBarImpl({
   step = 2,
   nextName,
   onNext,
-  onMachineSeconds,
+  onMachineSeconds: onMachineSecondsProp,
+  readMachineSeconds,
+  machineClockRunning = false,
   onAddMachine,
   flagLine = null,
   onOpenFlag,
@@ -338,6 +349,7 @@ function SessionNowBarImpl({
   everythingRead = false,
   layout = "bar",
 }: SessionNowBarProps) {
+  const onMachineSeconds = useMachineSeconds(readMachineSeconds, machineClockRunning) ?? onMachineSecondsProp;
   const machine = row?.machine;
   const v = value ?? EMPTY;
   const weight = v.weight ?? row?.prescribedWeight ?? null;
@@ -754,6 +766,21 @@ function SessionNowBarImpl({
       )}
     </div>
   );
+}
+
+/**
+ * The machine clock's tick, kept inside the bar (R10): a redraw of the bar
+ * once a second while the clock runs, and the reading taken as it draws.
+ * Null when no reader is given (the caller passes a number instead).
+ */
+function useMachineSeconds(read: (() => number) | undefined, running: boolean): number | null {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!read || !running) return;
+    const t = setInterval(() => setTick((n) => (n + 1) % 1_000_000), 1000);
+    return () => clearInterval(t);
+  }, [read, running]);
+  return read ? read() : null;
 }
 
 export const SessionNowBar = memo(SessionNowBarImpl);

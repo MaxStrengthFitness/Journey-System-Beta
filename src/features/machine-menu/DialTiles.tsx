@@ -46,8 +46,14 @@
  * nobody touched follows, a dial changed by hand keeps its value, so no
  * change appears that nobody made and Save never writes one back.
  *
- * While a save waits (a moment at most) the dials hold still, and a refusal
- * that comes after "saved on this iPad" is still heard (late-refusal.ts).
+ * Save and Undo never wait on the database (speed round, Oct 5 2026; R9):
+ * the change is on this iPad the moment the batch is issued, so the dials
+ * are free again in the same tick (only a refusal the iPad judges itself
+ * comes back that fast). Online the strip says "saved" at once - a write on
+ * this iPad, not yet the database's answer - and turns to "saved on this
+ * iPad" if no answer has come within FINISH_WAIT_MS (studio Wi-Fi with no
+ * internet). A refusal that comes later is still heard (late-refusal.ts),
+ * and never wipes a change typed since (dirtyRef).
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useUnsavedChanges } from "../unsaved-changes";
@@ -60,7 +66,7 @@ import { acknowledgeFlag } from "../machine-fit/setup-save";
 import { nextSettings } from "../machine-fit/settings-write";
 import type { FitFactors, SettingSource } from "../machine-fit/types";
 import { readStoredSpec } from "../machine-fit/ui/stored-spec";
-import { settleOrQueue } from "../session-record/finish-wait";
+import { FINISH_WAIT_MS, settleOrQueue } from "../session-record/finish-wait";
 import { ChangeResult, ChangeStrip } from "./ChangeStrip";
 import { canStep, dialControl, recordValuesFor, stepDial, studioValuesFor, wordChips, type DialControl } from "./dial-control";
 import { FitLine } from "./FitLine";
@@ -93,6 +99,22 @@ import { lastChange, lastChangedLine, type SettingPair, type SettingRow } from "
 import type { SettingHistoryState } from "./useSettingHistory";
 import { sayAfterClose, whenRefusedLater } from "./late-refusal";
 import "./machine-menu.css";
+
+/** Calls `then` if the write has not answered either way within FINISH_WAIT_MS. */
+function whenStillOut(write: Promise<unknown>, then: () => void): void {
+  let answered = false;
+  write.then(
+    () => {
+      answered = true;
+    },
+    () => {
+      answered = true;
+    },
+  );
+  window.setTimeout(() => {
+    if (!answered) then();
+  }, FINISH_WAIT_MS);
+}
 
 /** A dial as the tiles take it: the equipment view model's field, and the unit's letter when it has one. */
 export interface TileField extends SettingFieldSpec {
@@ -290,9 +312,9 @@ export function DialTiles({
       recordValues: recordValuesFor(f, { snapshots, rows: history }),
     });
 
-  // The dials hold still while a save waits (a moment at most): what the
-  // save wrote replaces the draft when it answers, and would wipe a change
-  // made in between without a word.
+  // The dials hold still only for the tick a save is issued in (R9: Save
+  // never waits on the database's answer): what the save wrote replaces the
+  // draft in that tick, and would wipe a change made in between.
   const setValue = (key: string, value: string) => {
     if (saving) return;
     setDraft((d) => ({ ...d, [key]: value }));
@@ -343,7 +365,13 @@ export function DialTiles({
     } catch (err) {
       write = Promise.reject(err);
     }
-    const outcome = await settleOrQueue(write, isOnline());
+    /* The card never waits on the database's answer (speed round, Oct 5
+       2026; R9): the change is on this iPad the moment the batch is issued,
+       so only a refusal the iPad judges itself comes back in this tick.
+       Online the strip says "saved" at once, and "saved on this iPad" if the
+       answer is still out after a moment (studio Wi-Fi with no internet). */
+    const onlineNow = isOnline();
+    const outcome = await settleOrQueue(write, onlineNow, 0);
     setSaving(false);
     if (outcome.kind === "failed") {
       console.error("[machine menu] settings not saved", outcome.error);
@@ -368,7 +396,7 @@ export function DialTiles({
     // The map as written: the database's answer, or (queued) the same map
     // saveSettings builds, so Undo puts back exactly what changed.
     const after = outcome.kind === "saved" && outcome.value ? outcome.value.settings : nextSettings([...fields], before, sent);
-    const kind: SaveOutcome = outcome.kind;
+    const kind: SaveOutcome = outcome.kind === "queued" && onlineNow ? "saved" : outcome.kind;
     holdDraft(after, seedDraft(fields, after));
     setReason(null);
     setOtherText("");
@@ -385,6 +413,13 @@ export function DialTiles({
       retryUndo: null,
       pain: offersHealthNote(why) ? changeWords(saveChanges) : null,
     });
+    if (outcome.kind === "queued" && onlineNow) {
+      const shown = saveOutcomeWords(saveChanges, wasFirst, "saved", false);
+      whenStillOut(write, () => {
+        if (!live.current) return;
+        setResult((r) => (r && r.words === shown ? { ...r, words: saveOutcomeWords(saveChanges, wasFirst, "queued", false) } : r));
+      });
+    }
     onSaved?.();
   };
 
@@ -410,7 +445,9 @@ export function DialTiles({
     }
     // The tiles show the old values straight away; a refusal puts the save's back.
     holdDraft(u.payload.draft, seedDraft(fields, u.payload.draft));
-    const outcome = await settleOrQueue(write, isOnline());
+    // Never waited on, as a save isn't (R9).
+    const onlineNow = isOnline();
+    const outcome = await settleOrQueue(write, onlineNow, 0);
     const refused = () => {
       if (!dirtyRef.current) holdDraft(u.payload.saved, seedDraft(fields, u.payload.saved));
       setResult({ words: undoOutcomeWords(u.changes, u.firstSetup, "failed"), undo: null, retryUndo: u, pain: null });
@@ -431,7 +468,8 @@ export function DialTiles({
         refused();
       });
     }
-    setResult({ words: undoOutcomeWords(u.changes, u.firstSetup, outcome.kind), undo: null, retryUndo: null, pain: null });
+    const undoKind: SaveOutcome = outcome.kind === "queued" && onlineNow ? "saved" : outcome.kind;
+    setResult({ words: undoOutcomeWords(u.changes, u.firstSetup, undoKind), undo: null, retryUndo: null, pain: null });
     onSaved?.();
   };
 

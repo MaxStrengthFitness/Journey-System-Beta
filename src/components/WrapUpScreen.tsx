@@ -14,6 +14,8 @@ import {
   Machine,
 } from "../types";
 import type { JournalEntry, JournalImportance } from "../types/journal";
+import type { JournalStream } from "../hooks/useClientJournal";
+import { sessionJournalOf } from "../features/session-record/session-journal";
 import { safeToDate } from "../lib/utils";
 import { PulseQuickLogDialog } from "../features/subjective-report";
 import { FordSweep } from "../features/ford/FordSweep";
@@ -296,6 +298,13 @@ export interface WrapUpScreenProps {
    */
   nextTrainerNote?: { id: string | null; body: string } | null;
   /**
+   * The client's journal stream the Active Session already holds (speed
+   * round R11): the To-file tray takes this session's notes from it rather
+   * than opening a query of its own. Without it, or if it failed, the tray
+   * reads them itself as before (session-record/session-journal.ts).
+   */
+  journalStream?: JournalStream | null;
+  /**
    * The session is saved on this iPad and the database has not answered yet:
    * offline, or a slow connection (session record, Sep 26 2026). "Saved" alone
    * would be a claim about the studio's records that is not true yet.
@@ -422,6 +431,7 @@ export function WrapUpScreen({
   onSaveDraft,
   onDropDraft,
   nextTrainerNote = null,
+  journalStream,
   savedOnThisIpad = false,
   machines = [],
   rightControls,
@@ -454,24 +464,31 @@ export function WrapUpScreen({
   // (the journalEntries (sessionId, occurredAt) index), the same stream the Active Session
   // sheet used. Only the unfiled ones are kept; a filed note leaves on the
   // next snapshot.
-  const [unfiledNotes, setUnfiledNotes] = useState<JournalEntry[]>([]);
+  const fromStream = useMemo(() => sessionJournalOf(journalStream, session.id), [journalStream, session.id]);
+  const [ownUnfiled, setOwnUnfiled] = useState<JournalEntry[]>([]);
+  const unfiledNotes = useMemo(
+    () => (fromStream ? fromStream.entries.filter((e) => !e.isArchived && isUnfiled(e)) : ownUnfiled),
+    [fromStream, ownUnfiled],
+  );
+  const readsOwn = fromStream === null;
   // The Note for the next trainer is one of them, and its card is told apart.
   const nextTrainerMark: NextTrainerNoteMark | null = nextTrainerNote
     ? { sessionId: session.id ?? null, id: nextTrainerNote.id, body: nextTrainerNote.body }
     : null;
   useEffect(() => {
-    if (!session.id) return;
+    // Read here only when the session's stream can't answer (R11).
+    if (!session.id || !readsOwn) return;
     const q = query(collection(db, "journalEntries"), where("sessionId", "==", session.id));
     const unsub = onSnapshot(
       q,
       (snap) => {
         const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as JournalEntry);
-        setUnfiledNotes(rows.filter((e) => !e.isArchived && isUnfiled(e)));
+        setOwnUnfiled(rows.filter((e) => !e.isArchived && isUnfiled(e)));
       },
       (err) => handleFirestoreError(err, OperationType.GET, "journalEntries"),
     );
     return () => unsub();
-  }, [session.id]);
+  }, [session.id, readsOwn]);
 
   // Anything caught with "Remember this" during the session and not yet filed.
   // The client is passed because the read names the client's studio (client

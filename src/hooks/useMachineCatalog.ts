@@ -34,6 +34,11 @@ export function useMachineCatalog(): {
     () => read.docs.map((d) => ({ ...d.data, id: d.id }) as MachineCatalogEntry),
     [read.docs],
   );
+
+  /* The same map until the catalog changes (speed round, Oct 5 2026; R10).
+     A new map on every render made useStudioMachines resolve the whole floor
+     again on every render of every screen that holds it, and the Active
+     Session rebuilt every grid row once a second and on every keystroke. */
   const byId = useMemo(() => {
     const map: Record<string, MachineCatalogEntry> = {};
     for (const c of catalog) map[c.id] = c;

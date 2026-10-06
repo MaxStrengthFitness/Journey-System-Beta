@@ -61,7 +61,8 @@ import { handleFirestoreError, OperationType } from "../../lib/firestore-errors"
 import { Button } from "@/components/ui/button";
 import type { Client, Machine, Trainer, WorkoutSession } from "../../types";
 import { toDate, type JournalDraft, type JournalEntry } from "../../types/journal";
-import { createJournalEntry, type JournalAuthor } from "../../hooks/useClientJournal";
+import { createJournalEntry, type JournalAuthor, type JournalStream } from "../../hooks/useClientJournal";
+import { sessionJournalOf } from "../../features/session-record/session-journal";
 import { JournalComposer } from "./JournalComposer";
 import { JournalEntryCard } from "./JournalEntryCard";
 import { FordQuickCapture } from "../../features/ford/FordQuickCapture";
@@ -104,6 +105,12 @@ export interface SessionJournalSidebarProps {
   floorStudioName?: string | null;
   /** A floor draft is finished on its machine's card: open it (the sheet closes first). */
   onOpenMachine?: (machineId: string) => void;
+  /**
+   * The client's journal stream the Active Session already holds (speed
+   * round R11): this session's notes are taken from it, with no query of
+   * their own. Without it, or if it failed, the sheet reads them itself.
+   */
+  journalStream?: JournalStream | null;
   onClose: () => void;
 }
 
@@ -124,11 +131,21 @@ export function SessionJournalSidebar({
   onDraftChange,
   floorStudioName = null,
   onOpenMachine,
+  journalStream,
   onClose,
 }: SessionJournalSidebarProps) {
   const [mode, setMode] = useState<SidebarMode>(defaultMode);
-  const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const fromStream = useMemo(() => sessionJournalOf(journalStream, session.id), [journalStream, session.id]);
+  const [ownEntries, setOwnEntries] = useState<JournalEntry[]>([]);
+  const [ownLoading, setOwnLoading] = useState(true);
+  const readsOwn = fromStream === null;
+  const entries = useMemo(() => {
+    if (!fromStream) return ownEntries;
+    const rows = fromStream.entries.filter((e) => !e.isArchived);
+    rows.sort((a, b) => (toDate(b.occurredAt)?.getTime() ?? 0) - (toDate(a.occurredAt)?.getTime() ?? 0));
+    return rows;
+  }, [fromStream, ownEntries]);
+  const isLoading = fromStream ? fromStream.loading : ownLoading;
 
   // Only streamed to show what was already caught this session, so the trainer
   // does not save the same sentence twice. Cheap: one client subcollection.
@@ -153,23 +170,24 @@ export function SessionJournalSidebar({
   // journalEntries (sessionId, occurredAt) index: this database is the
   // Enterprise edition, which builds no index by itself (R1, Oct 5 2026).
   useEffect(() => {
-    if (!session.id) return;
+    // Read here only when the session's stream can't answer (R11).
+    if (!session.id || !readsOwn) return;
     const q = query(collection(db, "journalEntries"), where("sessionId", "==", session.id));
     const unsub = onSnapshot(
       q,
       (snap) => {
         const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as JournalEntry);
         rows.sort((a, b) => (toDate(b.occurredAt)?.getTime() ?? 0) - (toDate(a.occurredAt)?.getTime() ?? 0));
-        setEntries(rows.filter((e) => !e.isArchived));
-        setIsLoading(false);
+        setOwnEntries(rows.filter((e) => !e.isArchived));
+        setOwnLoading(false);
       },
       (err) => {
         handleFirestoreError(err, OperationType.GET, "journalEntries");
-        setIsLoading(false);
+        setOwnLoading(false);
       },
     );
     return () => unsub();
-  }, [session.id]);
+  }, [session.id, readsOwn]);
 
   // Unfiled notes go to the To-file tray; the rest are listed as cards.
   const { unfiled, filed } = useMemo(() => splitUnfiled(entries), [entries]);
