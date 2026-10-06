@@ -3,8 +3,8 @@
  *
  * WHY THIS EXISTS
  * ---------------
- * functions/src/index.ts writes documents into `notificationQueue` and nothing
- * has ever read them back out. Two producers write there today:
+ * Two Cloud Functions in functions/src/index.ts used to write documents into
+ * `notificationQueue`, and nothing ever read them back out:
  *
  *   onBookingReminderWrite  -> { type: "booking_reminder" } the INSTANT a
  *                              booking is created, whenever that booking is
@@ -13,8 +13,10 @@
  *   sendDailySummary        -> { type: "daily_summary" } at 6am ET, one per
  *                              studio with dailySummaryEnabled.
  *
- * plus, now, server/cron-daily-reminders.ts, which queues day-of reminders in
- * the morning. Both reminder producers can describe the same session, so this
+ * Both were deleted in the speed round (Oct 5 2026, R25): nothing set their
+ * flags. The queue's only producer now is server/cron-daily-reminders.ts
+ * (parked), which queues day-of reminders in the morning; the backlog the two
+ * functions left is still in the collection, so the guards below still matter. Both reminder producers can describe the same session, so this
  * worker checks for an already-delivered sibling before sending, and refuses
  * to send a "reminder" for a session that is not close enough to remind
  * anyone about. Neither of those guards is optional: without them the first
@@ -104,8 +106,9 @@ function runWithTimeout<T>(work: Promise<T>, ms: number, label: string): Promise
 
 /**
  * Has this session already had a reminder delivered by the other producer?
- * Equality-only query, so Firestore serves it from single-field indexes and no
- * composite index is needed.
+ * This database is the Enterprise edition, which builds no single-field index:
+ * before the worker comes back, add a (scheduleId, status) composite to
+ * firestore.indexes.json, or this query scans the whole queue.
  */
 async function alreadyDelivered(scheduleId: string, selfId: string): Promise<boolean> {
   const snap = await db.collection(QUEUE).where("scheduleId", "==", scheduleId).limit(20).get();
@@ -136,7 +139,7 @@ async function deliver(id: string, data: DocumentData): Promise<string> {
         );
       }
       if (hoursAway > REMINDER_WINDOW_HOURS) {
-        // This is the shape onBookingReminderWrite produces: queued at the
+        // This is the shape onBookingReminderWrite produced (the backlog): queued at the
         // moment of booking, for a session that may be weeks out. Sending it
         // would be a "reminder" about a session nobody has got to yet.
         throw new SkipDelivery(
@@ -175,8 +178,9 @@ async function deliver(id: string, data: DocumentData): Promise<string> {
     }
 
     case "daily_summary": {
-      // Written by sendDailySummary in functions/src/index.ts at 6am ET, one
-      // per studio with notificationSettings.dailySummaryEnabled.
+      // Written by sendDailySummary at 6am ET, one per studio with
+      // notificationSettings.dailySummaryEnabled. That function was deleted in
+      // the speed round (Oct 5 2026); only the backlog still holds these.
       const summary =
         `daily summary -> ${data.studioName || data.studioId || "a studio"} ` +
         `(${data.totalBookingsCount ?? 0} booking(s) on ${data.summaryDate || "today"})`;

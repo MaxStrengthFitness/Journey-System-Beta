@@ -321,12 +321,12 @@ services:
 #
 # WHAT IS HAPPENING MEANWHILE
 # ---------------------------
-# functions/src/index.ts keeps writing into the notificationQueue collection
-# exactly as it does today - onBookingReminderWrite on every booking for a
-# reminders-enabled studio, sendDailySummary each morning. That is unchanged
-# and harmless: documents accumulate in Firestore and nothing reads them. This
-# is the status quo, not a new risk. It has been true for as long as those
-# functions have existed.
+# Nothing writes into the notificationQueue collection any more. The two
+# Cloud Functions that did (onBookingReminderWrite, sendDailySummary) were
+# removed from functions/src/index.ts in the speed round (Oct 5 2026, R25) and
+# deleted from Firebase by scripts/ship/ship-speed.ps1; nothing in the app set
+# the studio flags they waited on. The queue has no writer until the parked
+# crons below are switched on. What they wrote before is still there, unread.
 #
 # BEFORE YOU UNCOMMENT ANY OF THIS
 # --------------------------------
