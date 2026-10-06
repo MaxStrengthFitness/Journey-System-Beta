@@ -7,7 +7,6 @@ import { ToastProvider } from "./contexts/ToastContext";
 import { UnsavedChangesProvider } from "./features/unsaved-changes";
 import AppContent from "./AppContent";
 import { useAuthInitialization } from "./hooks/useAuthInitialization";
-import { migrateClientMachineMetrics } from "./lib/migration-utils";
 import { endPersonalSession, personKey } from "./features/sign-out/sign-out";
 
 export default function App() {
@@ -49,8 +48,11 @@ export default function App() {
     await signOut(auth);
   };
 
+  // The console door to the one-off machine-metrics repair. Its code loads
+  // only when someone calls it (the speed round, Oct 5 2026, R13).
   useEffect(() => {
-    (window as any).migrateClientMachineMetrics = migrateClientMachineMetrics;
+    (window as any).migrateClientMachineMetrics = async (clientId: string) =>
+      (await import("./lib/migration-utils")).migrateClientMachineMetrics(clientId);
   }, []);
 
   // Before Firebase has answered: the front door's three squares, so the

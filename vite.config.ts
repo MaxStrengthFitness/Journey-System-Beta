@@ -118,10 +118,14 @@ export default defineConfig(({ command }) => {
                 priority: 80,
                 test: /node_modules[\\/](firebase[\\/]firestore|@firebase[\\/]firestore|@firebase[\\/]webchannel-wrapper)/,
               },
+              // Not the Functions SDK (the speed round, Oct 5 2026, R13): its
+              // one caller loads it on a button press (Admins -> System
+              // tools), and a group claims a package wherever it is
+              // imported, so leaving it in here put it on the first screen.
               {
                 name: "vendor-firebase",
                 priority: 70,
-                test: /node_modules[\\/](firebase|@firebase)[\\/]/,
+                test: /node_modules[\\/](firebase[\\/](?!functions[\\/])|@firebase[\\/](?!functions[\\/]))/,
               },
               {
                 name: "vendor-motion",

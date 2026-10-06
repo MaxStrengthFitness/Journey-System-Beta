@@ -68,19 +68,25 @@ import { afterOverlayClose } from "./lib/scroll-lock";
 import { installShakeUndoGuard } from "./lib/shake-undo";
 import { useToast } from "./contexts/ToastContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import AccessRequestView from "./components/AccessRequestView";
+// Lazy (the speed round, Oct 5 2026, R13): only someone signed in with no
+// trainer record ever sees it, so it is not on every iPad's first screen.
+// Each place it is drawn is inside its own LoadBoundary.
+const AccessRequestView = lazy(() => import("./components/AccessRequestView"));
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const TrainerSettingsView = lazy(() =>
   import("./features/settings").then((m) => ({
     default: m.TrainerSettingsView,
   })),
 );
-// Lazy-loaded: downloaded on first visit to this view, not at app start.
-const ClientProfileView = lazy(() =>
+// Lazy-loaded: downloaded on first visit to this view, not at app start, and
+// fetched in the background once the Hub is quiet (the warm-up below; the
+// speed round, Oct 5 2026, R13), so the first client opened after a cold
+// start or a deploy does not wait for it. One loader for both.
+const loadClientProfile = () =>
   import("./components/ClientProfileView").then((m) => ({
     default: m.ClientProfileView,
-  })),
-);
+  }));
+const ClientProfileView = lazy(loadClientProfile);
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const CalendarView = lazy(() =>
   import("./components/CalendarView").then((m) => ({
@@ -139,7 +145,10 @@ const AdminsDashboardView = lazy(() =>
     default: m.AdminsDashboardView,
   })),
 );
-import { CreateClientModal } from "./components/CreateClientModal";
+// Lazy (R13): opened only to add a client by hand; inside its own LoadBoundary.
+const CreateClientModal = lazy(() =>
+  import("./components/CreateClientModal").then((m) => ({ default: m.CreateClientModal })),
+);
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const ClientProgressReportView = lazy(() =>
   import("./components/ClientProgressReportView").then((m) => ({
@@ -848,12 +857,13 @@ export default function AppContent({
   );
   // The Active Session and Pulse, fetched once the shell is up and quiet, so
   // a deploy later in the day cannot stop a session from opening
-  // (features/new-version/warm-up.ts). Once per page.
+  // (features/new-version/warm-up.ts), then the client profile, so its first
+  // open does not wait for its download (R13). Once per page, at idle moments.
   const warmedUp = useRef(false);
   useEffect(() => {
     if (!shellReady || warmedUp.current) return;
     warmedUp.current = true;
-    warmUp([loadWorkoutTracker, loadClientCheckInPanel]);
+    warmUp([loadWorkoutTracker, loadClientCheckInPanel, loadClientProfile]);
   }, [shellReady]);
   // Derived state for the active studio name
   const activeStudioName = useMemo(() => {
@@ -1138,6 +1148,9 @@ export default function AppContent({
   // Intercept authenticated but unauthorized users
   if (user && !authTrainer) {
     return (
+      <ScreenRecoveryProvider value={screenRecovery}>
+      <LoadBoundary kind="screen">
+      <Suspense fallback={<ViewLoader />}>
       <AccessRequestView
         authenticatedUser={user}
         studios={studios}
@@ -1145,6 +1158,9 @@ export default function AppContent({
         onCheckAgain={retryLookup}
         onLogout={handleLogout}
       />
+      </Suspense>
+      </LoadBoundary>
+      </ScreenRecoveryProvider>
     );
   }
 
@@ -1196,6 +1212,9 @@ export default function AppContent({
   // Access Request Screen (if authenticated via Google but no matching profile exists)
   if (!authTrainer) {
     return (
+      <ScreenRecoveryProvider value={screenRecovery}>
+      <LoadBoundary kind="screen">
+      <Suspense fallback={<ViewLoader />}>
       <AccessRequestView
         authenticatedUser={user}
         studios={studios}
@@ -1205,11 +1224,17 @@ export default function AppContent({
         onCheckAgain={retryLookup}
         onLogout={handleLogout}
       />
+      </Suspense>
+      </LoadBoundary>
+      </ScreenRecoveryProvider>
     );
   }
 
   if (newClientOnboardingName !== null) {
     return (
+      <ScreenRecoveryProvider value={screenRecovery}>
+      <LoadBoundary kind="screen">
+      <Suspense fallback={<ViewLoader />}>
       <CreateClientModal
         clients={clients}
         studios={studios}
@@ -1225,6 +1250,9 @@ export default function AppContent({
           setNewClientOnboardingName(null);
         }}
       />
+      </Suspense>
+      </LoadBoundary>
+      </ScreenRecoveryProvider>
     );
   }
 

@@ -43,8 +43,11 @@ export const db = initializeFirestore(app, {
   }),
 }, firebaseConfig.firestoreDatabaseId);
 
-import { getFunctions } from 'firebase/functions';
-export const functions = getFunctions(app, 'us-central1');
+// No Cloud Functions client here (the speed round, Oct 5 2026, R13). Its one
+// caller, Admins -> Machinery -> System tools' "Rebuild trainer rollups",
+// loads the Functions SDK when the button is pressed
+// (features/admin/system/AdminSystemToolsTab.tsx), so it is not on the first
+// screen of every iPad.
 
 /*
  * AUTH WITHOUT THE POPUP HELPER ON A SIGNED-IN OPEN (the speed round, Oct 5

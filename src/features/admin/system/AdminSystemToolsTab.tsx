@@ -35,8 +35,6 @@ import {
   Database,
   ListOrdered,
 } from "lucide-react";
-import { httpsCallable } from "firebase/functions";
-import { functions } from "../../../firebase";
 import { useToast } from "../../../contexts/ToastContext";
 import {
   AdminButton,
@@ -112,7 +110,10 @@ export function AdminSystemToolsTab({
   const handleRebuildRollups = async () => {
     setRebuilding(true);
     try {
-      const call = httpsCallable(functions, "backfillTrainerRollups");
+      // The Functions SDK loads here, on the press, never with the app (R13).
+      const { getApp } = await import("firebase/app");
+      const { getFunctions, httpsCallable } = await import("firebase/functions");
+      const call = httpsCallable(getFunctions(getApp(), "us-central1"), "backfillTrainerRollups");
       const result: any = await call({});
       const data = result?.data || {};
       toastSuccess(
