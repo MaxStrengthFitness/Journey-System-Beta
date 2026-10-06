@@ -4,18 +4,39 @@ const OCR_MODEL = "gemini-3-flash-preview";
 
 let genaiClient: GoogleGenAI | null = null;
 
-const withRetry = async <T>(
+/**
+ * How long one call to the model may take (the speed round, Oct 5 2026). A
+ * page is usually read in well under a minute; without a limit a call that
+ * never came back held the chart scan's slot (server/gemini-routes.ts) and
+ * left the importer spinning for ever. Past it the call is abandoned (Google
+ * may still bill a call it finished) and the importer is told in a sentence.
+ * A timeout is not retried.
+ */
+export const GEMINI_CALL_TIMEOUT_MS = 90_000;
+
+export function geminiTimeoutSentence(timeoutMs: number = GEMINI_CALL_TIMEOUT_MS): string {
+  return `Gemini took longer than ${Math.round(timeoutMs / 1000)} seconds to read this. Try again, or send fewer pages at a time.`;
+}
+
+export const withRetry = async <T>(
   operationName: string,
-  fn: () => Promise<T>,
+  fn: (signal: AbortSignal) => Promise<T>,
   retries = 3,
   initialDelay = 1000,
+  timeoutMs = GEMINI_CALL_TIMEOUT_MS,
 ): Promise<T> => {
   let attempt = 0;
   while (attempt < retries) {
+    // A fresh limit for each attempt, handed to the SDK as its abortSignal.
+    const signal = AbortSignal.timeout(timeoutMs);
     try {
-      return await fn();
+      return await fn(signal);
     } catch (e: any) {
       attempt++;
+      if (signal.aborted) {
+        console.warn(`[Gemini API] ${operationName} gave up after ${timeoutMs}ms.`);
+        throw new Error(geminiTimeoutSentence(timeoutMs));
+      }
       const msg = e.message || String(e);
       const isRetryable =
         e.status === 503 ||
@@ -203,7 +224,7 @@ ${JSON.stringify(machineDictionary, null, 2)}
     inlineData: { data: img.base64, mimeType: img.mimeType },
   }));
 
-  const response = await withRetry("extractMachineSettingsFromImage", () =>
+  const response = await withRetry("extractMachineSettingsFromImage", (abortSignal) =>
     ai.models.generateContent({
       model: OCR_MODEL,
       contents: [
@@ -220,6 +241,7 @@ ${JSON.stringify(machineDictionary, null, 2)}
         systemInstruction,
         responseMimeType: "application/json",
         responseSchema: MACHINE_SETTINGS_OCR_SCHEMA,
+        abortSignal,
       },
     }),
   );
@@ -279,7 +301,7 @@ Return ONLY valid JSON matching the requested schema.`;
     inlineData: { data: img.base64, mimeType: img.mimeType },
   }));
 
-  const response = await withRetry("processLegacyChart", () =>
+  const response = await withRetry("processLegacyChart", (abortSignal) =>
     ai.models.generateContent({
       model: OCR_MODEL,
       contents: [
@@ -296,6 +318,7 @@ Return ONLY valid JSON matching the requested schema.`;
         systemInstruction,
         responseMimeType: "application/json",
         responseSchema: CHART_OCR_SCHEMA,
+        abortSignal,
       },
     }),
   );
