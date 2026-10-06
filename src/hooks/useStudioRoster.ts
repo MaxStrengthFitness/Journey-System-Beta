@@ -42,6 +42,12 @@ import {
  * answer, so the Hub can say "loading" instead of "Not synced" for that beat.
  * A failed read never empties the roster: "the read failed" must never look
  * like "these clients do not exist" (CLAUDE.md, data rules).
+ *
+ * `start` (the iPad round, Oct 6 2026): the listener opens only once it is
+ * true. AppContent holds it until the Hub's day has answered (or a few
+ * seconds have passed: useRosterHeadStart), so the day's bookings are never
+ * queued behind the whole client list on a slow iPad. Until then the status
+ * is "loading", which the Hub already says honestly.
  */
 
 export type RosterStatus = "loading" | "ready" | "error";
@@ -53,7 +59,9 @@ export function useStudioRoster(
   activeStudioId: string | null,
   isReady: boolean,
   schedules: readonly ScheduleEntry[],
+  options: { start?: boolean } = {},
 ) {
+  const start = options.start ?? true;
   const [studioClients, setStudioClients] = useState<Client[]>([]);
   const [status, setStatus] = useState<RosterStatus>("loading");
   /** Bumped to re-open the listener after it failed. */
@@ -98,7 +106,7 @@ export function useStudioRoster(
   /* ---------------- the studio listener ---------------- */
 
   useEffect(() => {
-    if (!isReady || !activeStudioId) return;
+    if (!isReady || !activeStudioId || !start) return;
     let cancelled = false;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -146,7 +154,7 @@ export function useStudioRoster(
       if (retryTimer) clearTimeout(retryTimer);
       unsubscribe();
     };
-  }, [activeStudioId, isReady, retryTick]);
+  }, [activeStudioId, isReady, retryTick, start]);
 
   /* ---------------- visitors ---------------- */
 

@@ -274,6 +274,7 @@ import { useMachines } from "./hooks/useMachines";
 import { useSessions } from "./hooks/useSessions";
 import { useLiveSchedule } from "./hooks/useLiveSchedule";
 import { useStudioRoster } from "./hooks/useStudioRoster";
+import { useRosterHeadStart } from "./hooks/useRosterHeadStart";
 import { useMachineTotals } from "./features/machine-totals/useMachineTotals";
 import { withMachineTotals } from "./features/machine-totals/totals";
 import { useClientMutations } from "./hooks/useClientMutations";
@@ -610,10 +611,18 @@ export default function AppContent({
    * booked visitor from elsewhere. Replaced the booking-window roster on
    * Sep 16 2026 — see src/lib/studio-roster.ts for what that got wrong.
    */
+  /* The day's bookings first (the iPad round, Oct 6 2026): the roster's
+     listener waits until the Hub's day has answered, or a few seconds, so on
+     a slow iPad the Hub draws its day before it takes in every client. */
+  const rosterMayStart = useRosterHeadStart(
+    activeStudioId,
+    scheduleDayState(studioTodayKey()) !== "loading",
+  );
   const { clients: rosterClients, status: rosterStatus, cut: rosterCut } = useStudioRoster(
     activeStudioId,
     isDataReady,
     schedules,
+    { start: rosterMayStart },
   );
   const { sessions, sessionsKnown } = useSessions(activeStudioId, isDataReady);
   /* The Hub's day first answered: the open's last mark, and on a cold open
