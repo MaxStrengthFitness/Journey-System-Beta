@@ -28,7 +28,7 @@ export function CheckingIn({
 }) {
   const [slow, setSlow] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setSlow(true), 6000);
+    const t = setTimeout(() => setSlow(true), SLOW_AFTER_MS);
     return () => clearTimeout(t);
   }, []);
 
@@ -52,7 +52,7 @@ export function CheckingIn({
           ))}
         </ol>
         <p className="fd-small fd-center" style={{ marginTop: 18, visibility: slow ? "visible" : "hidden" }} role="status">
-          Taking longer than usual. The Wi-Fi may be slow; Journey keeps trying.
+          {SLOW_LINE}
         </p>
         {onSignOut && (
           <button type="button" className="fd-link fd-center" style={{ marginTop: 18, alignSelf: "center" }} onClick={onSignOut}>
@@ -64,14 +64,46 @@ export function CheckingIn({
   );
 }
 
-/** Before Firebase has said whether anyone is signed in: the squares, and nothing to read. */
+/** The slow line's words, the same on every front-door wait. */
+export const SLOW_LINE = "Taking longer than usual. The Wi-Fi may be slow; Journey keeps trying.";
+/** How long a wait runs before the slow line shows. */
+export const SLOW_AFTER_MS = 6000;
+
+/** True when index.html's static first frame is still on screen (it is replaced when React mounts). */
+function firstFrameShowing(): boolean {
+  try {
+    return typeof document !== "undefined" && Boolean(document.getElementById("first-frame"));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Before Firebase has said whether anyone is signed in: the squares, and
+ * nothing to read. Since the speed round (Oct 5 2026, R15) index.html paints
+ * these same squares before the script arrives; when it did, they stay still
+ * here instead of dropping in a second time. And after six seconds the same
+ * slow line as Checking you in: a silent ten-second wait on dead Wi-Fi read
+ * as a frozen iPad.
+ */
 export function OpeningJourney() {
+  const [afterFirstFrame] = useState(firstFrameShowing);
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setSlow(true), SLOW_AFTER_MS);
+    return () => clearTimeout(t);
+  }, []);
   return (
     <FrontDoorPane label="Opening Journey">
       <main className="fd-page fd-page--center" aria-busy="true">
-        <Tiles mode="assemble" />
+        <Tiles mode={afterFirstFrame ? "still" : "assemble"} />
         <p className="fd-small fd-center" style={{ marginTop: 28 }}>
           Opening Journey…
+        </p>
+        {/* Not reserved while hidden, so the squares sit exactly where the
+            first frame drew them. */}
+        <p className="fd-small fd-center" style={{ marginTop: 18 }} role="status">
+          {slow ? SLOW_LINE : ""}
         </p>
       </main>
     </FrontDoorPane>
