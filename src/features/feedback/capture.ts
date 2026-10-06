@@ -22,8 +22,9 @@
 import type { FeedbackContext, FeedbackErrorSample } from "./types";
 
 /**
- * main.tsx keeps a small ring buffer of the runtime errors it reports and
- * declares `__recentClientErrors` on Window there. Not re-declared here: two
+ * The client error reporter (lib/client-error-report.ts since Oct 5 2026; it
+ * was in main.tsx) keeps a small ring buffer of the runtime errors it reports
+ * and declares `__recentClientErrors` on Window there. Not re-declared here: two
  * global augmentations of the same property must be written with the SAME
  * type, and a second one spelled differently is a compile error rather than a
  * merge. main.tsx is not imported either — it is the entry module, and

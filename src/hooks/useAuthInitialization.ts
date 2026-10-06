@@ -36,6 +36,7 @@ import {
   type BootKnowledge,
   type ReadLevel,
 } from "../features/front-door/boot-lookup";
+import { markBoot } from "../features/boot-timing/boot-timing";
 
 /** What a live listener says about its answer, so an empty one from the cache alone doesn't count. */
 export interface LiveMeta {
@@ -244,6 +245,8 @@ export function useAuthInitialization() {
     };
 
     const resolve = async (u: FirebaseUser | null) => {
+      // Firebase has said who is signed in (R30; once a page load).
+      markBoot("auth-ready");
       const generation = ++generationRef.current;
       const current = () => generation === generationRef.current;
       /* A sign-out that did not come through the menu — another tab, an
@@ -531,6 +534,7 @@ export function useAuthInitialization() {
           setLookupStep(2);
           setTrainerLookup("done");
           setIsAuthReady(true);
+          markBoot("trainer-ready");
           void Promise.all([
             bootRead("studios", generation),
             bootRead("trainers", generation),

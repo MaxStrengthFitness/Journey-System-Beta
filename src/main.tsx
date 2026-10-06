@@ -15,13 +15,13 @@ import { APP_BUILD } from './features/new-version/build';
 import { noteChunkLoadError } from './features/new-version/chunk-error';
 import { versionStore } from './features/new-version/version-store';
 import { watchAppHeight } from './features/home-screen/app-height';
+import { reportClientError } from './lib/client-error-report';
+import { startBootTiming } from './features/boot-timing/boot-timing';
 
 declare global {
   interface Window {
     __appLoaded?: boolean;
     __earlyErrors?: Record<string, unknown>[];
-    /** Ring buffer of the last 10 reported errors, read by the feedback drawer. */
-    __recentClientErrors?: { message: string; type: string; at: number }[];
     __appVersion?: string;
   }
 }
@@ -49,42 +49,8 @@ window.addEventListener('vite:preloadError', (event) => {
 // index.html used to register its own window.onerror and unhandledrejection
 // handlers posting to the same endpoint, so every client error was reported
 // twice. These listeners are now the only ones.
-//
-// The cap matters: the Firestore multi-tab assertion bug produced 3,664 errors
-// in a single session, and the server is one Node process. Unthrottled, an
-// error storm turns into an accidental self-DoS.
-const MAX_ERROR_REPORTS = 50;
-let errorReportCount = 0;
-
-function reportClientError(payload: Record<string, unknown>) {
-  // Mirrored into a small ring buffer the beta feedback drawer reads, so a
-  // trainer's "it broke" arrives with the actual errors attached. Kept OUTSIDE
-  // the report cap below: the cap exists to stop an error storm from DoSing the
-  // single Node process, and an in-memory array of 10 costs nothing.
-  try {
-    const buf = (window.__recentClientErrors ??= []);
-    buf.push({
-      message: String((payload as { message?: unknown }).message ?? "unknown"),
-      type: String((payload as { type?: unknown }).type ?? "unknown"),
-      at: Date.now(),
-    });
-    if (buf.length > 10) buf.splice(0, buf.length - 10);
-  } catch {
-    /* never let telemetry break the page it is reporting on */
-  }
-
-  if (errorReportCount >= MAX_ERROR_REPORTS) return;
-  errorReportCount += 1;
-  const body =
-    errorReportCount === MAX_ERROR_REPORTS
-      ? { ...payload, note: "report cap reached; further errors go to the console only" }
-      : payload;
-  fetch('/api/log-error', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  }).catch(() => {});
-}
+// The reporter itself (and its cap) is lib/client-error-report.ts since the
+// speed round (Oct 5 2026), so the boot report goes through the same door.
 
 // Suppress benign ResizeObserver errors
 const suppressResizeObserverError = () => {
@@ -157,6 +123,10 @@ window.addEventListener('unhandledrejection', (e) => {
 // Flush anything that failed before this module ran.
 (window.__earlyErrors ?? []).forEach(reportClientError);
 window.__earlyErrors = [];
+
+// How long this open took, for one small report on a cold open (the speed
+// round, Oct 5 2026, R30; features/boot-timing). Before anything else runs.
+startBootTiming();
 
 // The Home Screen app's height (Oct 3 2026): the shell takes the smallest
 // height iPadOS reports, so the bottom bar never lands under iPadOS's strip.

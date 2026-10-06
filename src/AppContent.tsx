@@ -47,6 +47,8 @@ import {
 
 import { db, auth, browserPopupRedirectResolver, prepareSignIn, signInNeedsHelperFirst } from "./firebase";
 import { useSignInReady } from "./features/front-door/sign-in-ready";
+import { markBoot } from "./features/boot-timing/boot-timing";
+import { studioTodayKey } from "./lib/studio-time";
 import {
   Trainer,
   Client,
@@ -604,6 +606,11 @@ export default function AppContent({
     schedules,
   );
   const { sessions, sessionsKnown } = useSessions(activeStudioId, isDataReady);
+  /* The Hub's day first answered: the open's last mark, and on a cold open
+     the moment its one small timing report goes (features/boot-timing, R30). */
+  useEffect(() => {
+    if (activeStudioId && scheduleDayState(studioTodayKey()) === "ready") markBoot("hub-data");
+  }, [activeStudioId, scheduleDayState]);
 
   /**
    * Background Mindbody pulls. autoSyncEnabled and syncIntervalMinutes have
