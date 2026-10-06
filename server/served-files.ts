@@ -101,10 +101,21 @@ export function isServerOnlyFile(urlPath: string): boolean {
 }
 
 /**
+ * The file a perf lab build carries (vite.config.ts writes it when
+ * VITE_PERF_LAB=1; harness/perf-lab). A lab build talks only to emulators on
+ * 127.0.0.1, so served to an iPad it would be an outage: the server refuses
+ * to start on one, and Render keeps the version that was running.
+ */
+export const PERF_LAB_MARKER = "PERF-LAB-BUILD.txt";
+
+/**
  * The production half of server.ts: the built app in `distPath`, with the SPA
  * shell for every other path. Mounted after every /api route.
  */
 export function serveBuiltApp(app: Express, distPath: string) {
+  if (fs.existsSync(path.join(distPath, PERF_LAB_MARKER))) {
+    throw new Error(`${distPath} is a perf lab build (it talks only to local emulators). Refusing to serve it: build the app without VITE_PERF_LAB.`);
+  }
   // Refused before either static handler can find one of them on disk.
   app.use((req, res, next) => {
     if (!isServerOnlyFile(req.path)) return next();
