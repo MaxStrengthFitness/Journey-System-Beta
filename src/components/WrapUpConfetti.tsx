@@ -11,12 +11,14 @@ import React, { useEffect, useRef, useState } from "react";
  * @keyframes on transform and opacity, which the compositor runs, and the
  * whole layer is unmounted once the last bit has finished, so nothing stays
  * on the page at opacity 0. It used to be 36 motion components animated in
- * JavaScript every frame while the Wrap-up mounted. A touch screen gets 24
- * bits rather than 36: the same burst, less to draw on an iPad.
+ * JavaScript every frame while the Wrap-up mounted. Every screen gets all 36
+ * bits, the iPad too: the burst AJ kept is the one that shows, and in CSS it
+ * costs the iPad no JavaScript per frame. No `will-change` on the bits
+ * (paint-cost.test.ts): a transform and opacity animation is composited
+ * without it.
  */
 
 export const CONFETTI_BITS = 36;
-export const CONFETTI_BITS_TOUCH = 24;
 /** The burst's longest bit: 1.3 s plus at most 0.15 s of delay. The layer is
  *  taken away after this even if no animationend arrives (reduced motion,
  *  a hidden tab), with a little room. */
@@ -33,14 +35,6 @@ interface Bit {
   delay: number;
 }
 
-function coarsePointer(): boolean {
-  try {
-    return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
-  } catch {
-    return false;
-  }
-}
-
 export function makeBits(count: number, random: () => number = Math.random): Bit[] {
   return Array.from({ length: count }, (_, i) => ({
     id: i,
@@ -53,7 +47,7 @@ export function makeBits(count: number, random: () => number = Math.random): Bit
 }
 
 export function WrapUpConfetti() {
-  const [bits] = useState(() => makeBits(coarsePointer() ? CONFETTI_BITS_TOUCH : CONFETTI_BITS));
+  const [bits] = useState(() => makeBits(CONFETTI_BITS));
   const [done, setDone] = useState(false);
   const ended = useRef(0);
 

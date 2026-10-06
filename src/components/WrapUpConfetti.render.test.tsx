@@ -2,7 +2,7 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CONFETTI_BITS_TOUCH, CONFETTI_GONE_AFTER_MS, WrapUpConfetti, makeBits } from "./WrapUpConfetti";
+import { CONFETTI_BITS, CONFETTI_GONE_AFTER_MS, WrapUpConfetti, makeBits } from "./WrapUpConfetti";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -37,10 +37,11 @@ describe("the Wrap-up's confetti (the iPad round, Oct 6 2026)", () => {
     expect(el.querySelector(".wu-confetti")).toBeNull();
   });
 
-  it("draws fewer bits on a touch screen", async () => {
+  it("draws the whole burst on a touch screen too (the burst AJ kept)", async () => {
     (window as unknown as { matchMedia: unknown }).matchMedia = (q: string) => ({ matches: q === "(pointer: coarse)" });
     const el = await mount();
-    expect(el.querySelectorAll(".wu-confetti__bit")).toHaveLength(CONFETTI_BITS_TOUCH);
+    expect(el.querySelectorAll(".wu-confetti__bit")).toHaveLength(CONFETTI_BITS);
+    expect(CONFETTI_BITS).toBe(36);
   });
 
   it("lands each bit where the old burst did, with its delay inside 0.15 s", () => {
