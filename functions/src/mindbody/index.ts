@@ -7,8 +7,8 @@ import {
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { verifyMindbodySignature } from "./verifySignature";
-import { recordHealthEvent } from "./healthState";
-import { tryRecordEvent } from "./idempotency";
+import { recordHealthEvent, HEALTH_QUIET_MS } from "./healthState";
+import { tryRecordEvent, markEventDone } from "./idempotency";
 import {
   wallClockToInstant,
   isValidTimeZone,
@@ -21,7 +21,7 @@ import {
   LIMBO_QUEUE,
   MindbodyClientProfile,
 } from "./clientResolver";
-import { recordAttemptFailure } from "./retryLedger";
+import { recordAttemptFailure, deadLetterUnfinished } from "./retryLedger";
 import { extractBookingExtras } from "./passFields";
 import { extractStaffId, mapStaffEventToPatch } from "./staffProfile";
 import { resolveTrainerByStaffId } from "./staffResolver";
@@ -248,11 +248,42 @@ async function resolveTrainerForStudio(
 async function safeHealthEvent(
   firestore: Firestore,
   event: Parameters<typeof recordHealthEvent>[1],
-): Promise<void> {
+): Promise<boolean> {
+  // Anything but a success may change the status a reader sees, so the next
+  // success on this instance is recorded at once rather than waiting out the
+  // quiet minute below.
+  if (event.type !== "webhook_success") lastSuccessHealthAtMs = 0;
   try {
     await recordHealthEvent(firestore, event);
+    return true;
   } catch (error) {
     console.error("Mindbody webhook: the health record was not written", { error: String(error) });
+    return false;
+  }
+}
+
+/**
+ * When this instance last recorded a success on system/health (the speed
+ * round, Oct 5 2026, R25). The health transaction runs after the event's work
+ * has committed, but it is still two or three round trips before Mindbody
+ * gets its 200, on every event. recordHealthEvent already skips the WRITE for
+ * a success within HEALTH_QUIET_MS of the last one on a healthy doc; this
+ * skips the transaction itself, on this instance, for the same minute. A
+ * failure or signature failure on this instance clears it (safeHealthEvent).
+ */
+let lastSuccessHealthAtMs = 0;
+
+/** Forgets the instance's last recorded success. Exported for tests. */
+export function resetHealthQuiet(): void {
+  lastSuccessHealthAtMs = 0;
+}
+
+/** Records a success on system/health unless this instance did so within the quiet minute. */
+async function recordSuccessHealth(firestore: Firestore, hydrationLatencyMs: number): Promise<void> {
+  const now = Date.now();
+  if (lastSuccessHealthAtMs > 0 && now - lastSuccessHealthAtMs < HEALTH_QUIET_MS) return;
+  if (await safeHealthEvent(firestore, { type: "webhook_success", hydrationLatencyMs })) {
+    lastSuccessHealthAtMs = now;
   }
 }
 
@@ -422,17 +453,48 @@ export async function handleMindbodyWebhook(
     return { statusCode: 200 };
   }
 
-  // 2. Idempotency Check
+  // 2. Idempotency Check: a claim with an expiry, marked done after the work
+  // (idempotency.ts). A duplicate, or a resend while another attempt holds a
+  // live claim, is answered 200 so Mindbody stops sending it.
   try {
-    const { wasNew } = await tryRecordEvent(deps.firestore, eventId, eventType);
-    if (!wasNew) {
-      // Return 200 to satisfy Mindbody retry loop for duplicates
+    const claim = await tryRecordEvent(deps.firestore, eventId, eventType);
+    if (claim.exhausted) {
+      // Every attempt so far was stopped before it finished: hand the event to
+      // the DLQ for a person, and answer 200 so Mindbody stops resending it.
+      // If the DLQ write fails, a 500; the claim stays expired and the next
+      // resend comes back here.
+      try {
+        await deadLetterUnfinished(deps.firestore, {
+          messageId: eventId,
+          eventType,
+          payload: parsed,
+          attempts: claim.attempt ?? 0,
+        });
+        console.error(
+          `Mindbody webhook: event ${eventId} (${eventType}) dead-lettered after ${claim.attempt ?? "?"} attempts that never finished.`,
+        );
+        return { statusCode: 200 };
+      } catch (e) {
+        console.error("Mindbody webhook: could not dead-letter an event whose attempts never finished", e);
+        return { statusCode: 500 };
+      }
+    }
+    if (!claim.wasNew) {
       return { statusCode: 200 };
+    }
+    if (claim.takenOver) {
+      console.warn(
+        `Mindbody webhook: event ${eventId} (${eventType}) was claimed by an attempt that never finished; processing it again (attempt ${claim.attempt ?? "?"}).`,
+      );
     }
   } catch (e) {
     console.error("Idempotency check failed", e);
     return { statusCode: 500 };
   }
+
+  // Which studio this event was about, when a branch below works it out, so
+  // the event log can be filed under it (Operations -> Mindbody's log).
+  let eventStudioId: string | null = null;
 
   // 3. Payload Mapping & Upsert
   try {
@@ -814,6 +876,9 @@ export async function handleMindbodyWebhook(
       }
 
       let studioId: string | null = null;
+      // Where the event log is filed when the event itself named no studio:
+      // an established client's home studio on a shared site.
+      let logStudioId: string | null = null;
       if (siteId) {
         const resolution = await resolveStudio(
           deps.firestore,
@@ -835,9 +900,13 @@ export async function handleMindbodyWebhook(
           // shared site client events never name a location, so every update
           // for an established client used to add a Limbo item that was false.
           const known = target ? await resolveClientRef(deps.firestore, target.docId).get() : null;
-          const hasHome = !!(
-            known?.exists && (known.data() as Record<string, unknown> | undefined)?.homeStudioId
-          );
+          const knownHome = known?.exists
+            ? (known.data() as Record<string, unknown> | undefined)?.homeStudioId
+            : undefined;
+          const hasHome = !!knownHome;
+          // The event log is filed under the home studio the client already
+          // has (read just above, no extra read); the record is not changed.
+          if (typeof knownHome === "string" && knownHome) logStudioId = knownHome;
           // Client events carry no locationId, but they do carry the client's
           // Mindbody `homeLocation` (the front desk's choice: 3, 4, 5 on the
           // shared site). It places a client who has NO home studio yet, when
@@ -885,6 +954,7 @@ export async function handleMindbodyWebhook(
         }
       }
 
+      eventStudioId = studioId ?? logStudioId;
       await ensureCanonicalClient(deps.firestore, {
         mindbodyClientId: clientId,
         docId: target?.docId,
@@ -990,6 +1060,9 @@ export async function handleMindbodyWebhook(
           if (eventAt) cancel.mindbodyEventAt = eventAt;
           tx.set(scheduleRef, cancel, { merge: true });
           outcome = "cancelled";
+          if (typeof existing.studioId === "string" && existing.studioId) {
+            eventStudioId = existing.studioId;
+          }
         });
         if (outcome === "noted") {
           console.log(`Mindbody webhook: cancellation for booking ${bookingId}, which Journey does not hold yet; noted.`);
@@ -1094,6 +1167,7 @@ export async function handleMindbodyWebhook(
           );
           if (resolution.studioId) {
             studioId = resolution.studioId;
+            eventStudioId = studioId;
             if (resolution.timeZone) studioTimeZone = resolution.timeZone;
           } else if (resolution.ambiguous || resolution.unmapped) {
             // The booking is PARKED, not dropped. It must not reach `schedules`:
@@ -1382,10 +1456,22 @@ export async function handleMindbodyWebhook(
       });
     }
 
-    await safeHealthEvent(deps.firestore, {
-      type: "webhook_success",
-      hydrationLatencyMs: Math.max(0, Date.now() - processingStartedAt),
-    });
+    // The work has committed: mark the claim done, filed under the studio the
+    // event was about. A branch that resolved no studio (a sale, a staff
+    // event) is filed by its site and location from the cached studio list,
+    // only when that names exactly one studio. No Mindbody call.
+    const hydrationLatencyMs = Math.max(0, Date.now() - processingStartedAt);
+    if (!eventStudioId && siteId !== undefined) {
+      try {
+        const resolution = await resolveStudio(deps.firestore, siteId, locationId);
+        if (resolution.studioId) eventStudioId = resolution.studioId;
+      } catch (error) {
+        console.warn("Mindbody webhook: could not name the event's studio for the log", { error: String(error) });
+      }
+    }
+    await markEventDone(deps.firestore, eventId, { studioId: eventStudioId, hydrationLatencyMs });
+
+    await recordSuccessHealth(deps.firestore, hydrationLatencyMs);
     return { statusCode: 200 };
 
     // 4. Resiliency & Edge Errors
@@ -1394,10 +1480,12 @@ export async function handleMindbodyWebhook(
 
     await safeHealthEvent(deps.firestore, { type: "webhook_failure" });
 
-    // The idempotency record was committed before this business logic ran, so
-    // without a release the retry would be waved through as a duplicate and the
-    // event lost. recordAttemptFailure either frees the gate for another
-    // attempt or, once the budget is spent, dead-letters the event.
+    // The claim was taken before this business logic ran, so without a
+    // release the retry would be answered as a duplicate until the claim ran
+    // out. recordAttemptFailure either frees the gate for another attempt or,
+    // once the budget is spent, dead-letters the event. If the ledger itself
+    // fails, the claim still runs out (CLAIM_MS) well before Mindbody's next
+    // resend, so the 500 below is never the end of the event.
     try {
       const { willRetry, attempts } = await recordAttemptFailure(deps.firestore, {
         messageId: eventId,

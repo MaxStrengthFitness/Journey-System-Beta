@@ -2,7 +2,9 @@ import { describe, it, expect, vi } from "vitest";
 import {
   IMAGE_TTL_MS,
   fetchStaffImageUrl,
+  imageWriteNeeded,
   parseImageUrlResponse,
+  refreshStaffImage,
   shouldRefreshImage,
 } from "./staffImage";
 
@@ -122,5 +124,74 @@ describe("fetchStaffImageUrl", () => {
     });
     await fetchStaffImageUrl({ ...base, staffId: "a b/c", fetchImpl });
     expect(fetchImpl.mock.calls[0][0]).toContain("a%20b%2Fc");
+  });
+});
+
+describe("imageWriteNeeded (R25: write the trainer only when the photo changed)", () => {
+  const url = "https://cdn.example.com/a.jpg";
+  const checked = { imageUrl: url, imageFetchedAt: stamp(1), staffId: "42" };
+
+  it("writes for a trainer never checked before", () => {
+    expect(imageWriteNeeded(undefined, url, "42")).toBe(true);
+    expect(imageWriteNeeded({}, null, "42")).toBe(true);
+    expect(imageWriteNeeded({ imageUrl: url, staffId: "42" }, url, "42")).toBe(true);
+  });
+
+  it("writes nothing when the same photo comes back", () => {
+    expect(imageWriteNeeded(checked, url, "42")).toBe(false);
+  });
+
+  it("writes nothing when there is still no photo", () => {
+    expect(imageWriteNeeded({ imageUrl: null, imageFetchedAt: stamp(1), staffId: "42" }, null, "42")).toBe(false);
+  });
+
+  it("writes when the photo changed, appeared or went away", () => {
+    expect(imageWriteNeeded(checked, "https://cdn.example.com/b.jpg", "42")).toBe(true);
+    expect(imageWriteNeeded({ imageUrl: null, imageFetchedAt: stamp(1), staffId: "42" }, url, "42")).toBe(true);
+    expect(imageWriteNeeded(checked, null, "42")).toBe(true);
+  });
+
+  it("writes when the photo now comes from another staff id", () => {
+    expect(imageWriteNeeded(checked, url, "43")).toBe(true);
+  });
+});
+
+describe("refreshStaffImage writes only on a change", () => {
+  function fakeTrainer(mindbody: Record<string, unknown> | undefined) {
+    const set = vi.fn(async () => undefined);
+    const ref = {
+      get: async () => ({ data: () => (mindbody ? { mindbody } : {}) }),
+      set,
+    };
+    return { ref: ref as never, set };
+  }
+  const fetchReturning = (body: unknown) =>
+    vi.fn(async () => ({ ok: true, status: 200, text: async () => "", json: async () => body }));
+  const url = "https://cdn.example.com/a.jpg";
+
+  it("does not write the trainer when the forced check finds the same photo", async () => {
+    const { ref, set } = fakeTrainer({ imageUrl: url, imageFetchedAt: stamp(1), staffId: "42" });
+    const result = await refreshStaffImage({} as never, ref, {
+      apiKey: "k",
+      siteId: "1",
+      staffId: "42",
+      force: true,
+      fetchImpl: fetchReturning({ ImageUrl: url }),
+    });
+    expect(set).not.toHaveBeenCalled();
+    expect(result).toEqual({ refreshed: false, url, reason: "unchanged" });
+  });
+
+  it("writes the trainer when the photo changed", async () => {
+    const { ref, set } = fakeTrainer({ imageUrl: url, imageFetchedAt: stamp(1), staffId: "42" });
+    const result = await refreshStaffImage({} as never, ref, {
+      apiKey: "k",
+      siteId: "1",
+      staffId: "42",
+      force: true,
+      fetchImpl: fetchReturning({ ImageUrl: "https://cdn.example.com/b.jpg" }),
+    });
+    expect(set).toHaveBeenCalledTimes(1);
+    expect(result.refreshed).toBe(true);
   });
 });

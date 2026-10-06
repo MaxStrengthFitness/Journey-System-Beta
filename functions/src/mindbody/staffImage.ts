@@ -42,7 +42,29 @@ export const IMAGE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export type CachedImageState = {
   imageUrl?: string | null;
   imageFetchedAt?: { toMillis?: () => number } | null;
+  staffId?: string | null;
 };
+
+/**
+ * Pure: does the trainer document need writing after a check that found
+ * `url`? (The speed round, Oct 5 2026, R25.) Only when something it shows
+ * changed: the photo, or the staff id it came from, or the trainer was never
+ * checked before. Every write to a trainer document reaches every iPad's
+ * trainers listener and runs syncTrainerClaims, so an unchanged photo is not
+ * written again. The cost is that `imageFetchedAt` then says when the photo
+ * was last FOUND CHANGED rather than last looked at, so the weekly sweep looks
+ * again each week - which, with a seven-day TTL and a weekly sweep, it did
+ * already.
+ */
+export function imageWriteNeeded(
+  cached: CachedImageState | undefined,
+  url: string | null,
+  staffId: string,
+): boolean {
+  if (!cached || !cached.imageFetchedAt) return true;
+  if ((cached.imageUrl ?? null) !== url) return true;
+  return String(cached.staffId ?? "") !== String(staffId);
+}
 
 /**
  * Pure: is this cached photo old enough to be worth an API call?
@@ -141,7 +163,9 @@ export async function fetchStaffImageUrl(opts: {
  * Refreshes one trainer's cached photo, honouring the TTL.
  *
  * `imageFetchedAt` is stamped even when Mindbody has no photo, so a staff
- * member without one is not re-checked on every single event.
+ * member without one is not re-checked on every single event. A check that
+ * finds the same photo (or the same "no photo") writes nothing at all
+ * (imageWriteNeeded) and answers `refreshed: false, reason: "unchanged"`.
  */
 export async function refreshStaffImage(
   firestore: Firestore,
@@ -170,6 +194,10 @@ export async function refreshStaffImage(
     staffId: opts.staffId,
     fetchImpl: opts.fetchImpl,
   });
+
+  if (!imageWriteNeeded(cached, url, opts.staffId)) {
+    return { refreshed: false, url, reason: "unchanged" };
+  }
 
   await trainerRef.set(
     {

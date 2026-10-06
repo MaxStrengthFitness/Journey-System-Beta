@@ -362,30 +362,82 @@ export function sessionInstantMs(session: SessionLike): number | null {
   return null;
 }
 
+/** The session fields the nightly windows read; nothing else is fetched. */
+export const WINDOW_FIELDS = [
+  "status",
+  "trainerId",
+  "startedByTrainerId",
+  "rollupTrainerId",
+  "clientId",
+  "createdAt",
+  "date",
+] as const;
+
+export type WindowRow = { atMs: number; clientId?: string };
+
+/**
+ * Pure: add one session to the per-trainer rows, or leave it out. Only a
+ * Completed session with a trainer and an instant counts. The query already
+ * asks for Completed; this says so again so the two never drift apart.
+ */
+export function foldWindowRow(byTrainer: Map<string, WindowRow[]>, data: SessionLike): void {
+  if (data.status !== "Completed") return;
+  const trainerId = data.rollupTrainerId || data.trainerId || data.startedByTrainerId;
+  if (!trainerId) return;
+  const atMs = sessionInstantMs(data);
+  if (atMs === null) return;
+  const list = byTrainer.get(trainerId) || [];
+  list.push({ atMs, clientId: data.clientId });
+  byTrainer.set(trainerId, list);
+}
+
+/** Just enough of a Firestore for the windows' read, so a test can stand in for it. */
+export type WindowReader = Pick<Firestore, "collection">;
+
+/**
+ * The 90-day read behind the windows (the speed round, Oct 5 2026, R23).
+ *
+ * `status == "Completed"` with `createdAt >= cutoff`, ordered by `createdAt`
+ * descending, is the existing (status ASC, createdAt DESC) sessions index
+ * exactly, so it is a range read
+ * rather than a scan of the whole collection (this database is the Enterprise
+ * edition: it builds no index by itself, and an unindexed query reads every
+ * document). The read is STREAMED and projected to WINDOW_FIELDS, and each
+ * session is folded into a small row as it arrives, so the function never
+ * holds a whole 90-day snapshot of session documents at once.
+ */
+export async function readWindowRows(
+  firestore: WindowReader,
+  cutoff: Timestamp,
+): Promise<{ byTrainer: Map<string, WindowRow[]>; read: number }> {
+  const byTrainer = new Map<string, WindowRow[]>();
+  let read = 0;
+  const stream = firestore
+    .collection("sessions")
+    .where("status", "==", "Completed")
+    .where("createdAt", ">=", cutoff)
+    // Newest first, so the query is the (status ASC, createdAt DESC) index
+    // exactly; the fold does not depend on order.
+    .orderBy("createdAt", "desc")
+    .select(...WINDOW_FIELDS)
+    .stream() as AsyncIterable<{ data(): unknown }>;
+  for await (const doc of stream) {
+    read += 1;
+    foldWindowRow(byTrainer, doc.data() as SessionLike);
+  }
+  return { byTrainer, read };
+}
+
 export const recalcTrainerWindows = onSchedule(
-  { schedule: "0 3 * * *", timeZone: TIME_ZONE, region: REGION },
+  // 512 MiB and nine minutes (R23): the v2 defaults (256 MiB, 60 s) were
+  // sized for a handful of studios. The read is streamed now; this is room.
+  { schedule: "0 3 * * *", timeZone: TIME_ZONE, region: REGION, memory: "512MiB", timeoutSeconds: 540 },
   async () => {
     const firestore = db();
     const nowMs = Date.now();
     const cutoff = Timestamp.fromMillis(nowMs - 90 * 86_400_000);
 
-    // One range query over 90 days, all studios. Single-field on `createdAt`,
-    // so Firestore indexes it automatically -- status is filtered in memory
-    // rather than buying a composite index for one nightly job.
-    const snap = await firestore.collection("sessions").where("createdAt", ">=", cutoff).get();
-
-    const byTrainer = new Map<string, { atMs: number; clientId?: string }[]>();
-    snap.forEach((doc) => {
-      const data = doc.data() as SessionLike;
-      if (data.status !== "Completed") return;
-      const trainerId = data.rollupTrainerId || data.trainerId || data.startedByTrainerId;
-      if (!trainerId) return;
-      const atMs = sessionInstantMs(data);
-      if (atMs === null) return;
-      const list = byTrainer.get(trainerId) || [];
-      list.push({ atMs, clientId: data.clientId });
-      byTrainer.set(trainerId, list);
-    });
+    const { byTrainer, read } = await readWindowRows(firestore, cutoff);
 
     // Every trainer gets written, including those with nothing in the window --
     // otherwise a trainer who stopped coaching keeps showing last month's 63.
@@ -436,7 +488,7 @@ export const recalcTrainerWindows = onSchedule(
     if (pending > 0) await batch.commit();
 
     console.log(
-      `trainerRollups: windows recalculated for ${trainers.size} trainers from ${snap.size} recent sessions.`,
+      `trainerRollups: windows recalculated for ${trainers.size} trainers from ${read} recent completed sessions.`,
     );
   },
 );

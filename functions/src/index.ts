@@ -1,8 +1,6 @@
 import * as admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
-import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { onDocumentCreated } from "firebase-functions/v2/firestore";
 
 export { mindbodyWebhook } from "./mindbody";
 export {
@@ -30,6 +28,17 @@ const db = getFirestore("ai-studio-32cbbdcc-6e08-4770-9665-867c68878efa");
  * of memory past a handful of studios. Deploying functions from this code
  * asks to delete it from Firebase; the ship script answers yes. The stale
  * analytics/facilitySummary document can be deleted from the console.
+ */
+
+/*
+ * onBookingReminderWrite and sendDailySummary were deleted by the speed round
+ * (Oct 5 2026, R25). They queued booking reminders and a morning summary into
+ * notificationQueue for a studio with notificationSettings.bookingRemindersEnabled
+ * or .dailySummaryEnabled - flags nothing in the app sets - and the only reader
+ * of that queue, server/worker.ts, is parked in render.yaml ("nothing contacts
+ * clients or trainers"). The trigger still ran on EVERY new booking and read
+ * the studio document each time. Removing an export does not delete a deployed
+ * function: the ship script runs firebase functions:delete for both.
  */
 
 /**
@@ -170,92 +179,6 @@ export const setCustomUserClaimsV2 = onCall(
         "internal",
         `Error assigning user claims: ${error.message}`,
       );
-    }
-  },
-);
-
-/**
- * Triggers booking reminder notification queuing when a new schedule entry is added.
- */
-export const onBookingReminderWrite = onDocumentCreated(
-  {
-    document: "schedules/{scheduleId}",
-    region: "us-central1",
-    database: "ai-studio-32cbbdcc-6e08-4770-9665-867c68878efa",
-  },
-  async (event) => {
-    const snap = event.data;
-    if (!snap) return;
-    const schedule = snap.data();
-    const studioId = schedule.studioId;
-    if (!studioId) return;
-
-    // Check if the studio has booking reminders enabled
-    const studioRef = db.collection("studios").doc(studioId);
-    const studioSnap = await studioRef.get();
-    if (!studioSnap.exists) return;
-
-    const studioData = studioSnap.data();
-    const notificationsEnabled =
-      studioData?.notificationSettings?.bookingRemindersEnabled === true;
-    if (!notificationsEnabled) return;
-
-    // Add task to notificationQueue
-    await db.collection("notificationQueue").add({
-      type: "booking_reminder",
-      scheduleId: event.params.scheduleId,
-      clientName: schedule.clientName || "Unknown Client",
-      trainerName: schedule.trainerName || "Unknown Trainer",
-      startTime: schedule.startTime,
-      status: "queued",
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-  },
-);
-
-export const sendDailySummary = onSchedule(
-  {
-    schedule: "0 6 * * *",
-    timeZone: "America/New_York",
-    region: "us-central1",
-  },
-  async (event) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const rangeStart = admin.firestore.Timestamp.fromDate(today);
-    const rangeEnd = admin.firestore.Timestamp.fromDate(tomorrow);
-
-    // Fetch all active studios
-    const studiosSnap = await db.collection("studios").get();
-    for (const studioDoc of studiosSnap.docs) {
-      const studio = studioDoc.data();
-      const studioId = studioDoc.id;
-
-      if (studio?.notificationSettings?.dailySummaryEnabled === true) {
-        // Fetch all schedules for this studio today
-        const schedulesSnap = await db
-          .collection("schedules")
-          .where("studioId", "==", studioId)
-          .where("startTime", ">=", rangeStart)
-          .where("startTime", "<", rangeEnd)
-          .get();
-
-        if (!schedulesSnap.empty) {
-          const count = schedulesSnap.size;
-          await db.collection("notificationQueue").add({
-            type: "daily_summary",
-            studioId,
-            studioName: studio.name || "Unknown Studio",
-            totalBookingsCount: count,
-            summaryDate: today.toISOString().split("T")[0],
-            status: "queued",
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        }
-      }
     }
   },
 );
