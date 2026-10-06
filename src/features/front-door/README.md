@@ -43,7 +43,16 @@ door then opens at once (`prefersReducedMotion`).
   lines wait for the trainers, and nothing is dropped as missing (the open
   studio, the iPad's pinned studio) until the server has said so. A copy
   that says switched off is not trusted to refuse anyone: the server
-  decides. The role claim is waited for at most two seconds.
+  decides. The role claim is read for at most two seconds; a claim known to
+  disagree with the record waits up to ten for the fresh token, because a
+  leader-only listener started on the old one stays refused until a reload.
+  The copy of a LIST counts only once this iPad has had the server's whole
+  answer for it before (`journey_list_seen_<list>` in local storage), and a
+  copy of the trainers holding one record (the person's own, read at
+  sign-in) never does: that would say "1 on the team". A record the server
+  says is gone is looked up again quietly, never Checking you in over the
+  Hub or a session. Anything that rewrites a whole array on the record (the
+  Kaizen Roster) reads the server's copy first.
 - **Whose iPad it is is always on screen.** iPads change hands at the start of
   the day (AJ: "sometimes trainers pick up the wrong ipad"). The sign-in screen
   says which studio the iPad opens (`DEVICE_STUDIO_KEY` in

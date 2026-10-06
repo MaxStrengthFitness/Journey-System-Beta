@@ -85,6 +85,7 @@ function listSnap(docs: { id: string; data: Record<string, unknown> }[], fromCac
 }
 
 import { useAuthInitialization } from "./useAuthInitialization";
+import { LIST_SEEN_PREFIX } from "../features/front-door/boot-lookup";
 
 const USER = {
   uid: "u1",
@@ -143,9 +144,11 @@ describe("opening Journey", () => {
   });
 
   it("paints each list from the iPad's copy, and the server's answer (the listener) confirms it", async () => {
+    for (const list of ["studios", "trainers", "networks"]) localStorage.setItem(LIST_SEEN_PREFIX + list, "1");
     h.cacheDoc = async () => docSnap("u1", RECORD, true);
     h.cacheList.studios = async () => listSnap([{ id: "westlake", data: { name: "Westlake" } }], true);
-    h.cacheList.trainers = async () => listSnap([{ id: "u1", data: RECORD }], true);
+    h.cacheList.trainers = async () =>
+      listSnap([{ id: "u1", data: RECORD }, { id: "u2", data: { ...RECORD, fullName: "Sam Lee" } }], true);
     h.cacheList.networks = async () => listSnap([{ id: "n1", data: { studioIds: [] } }], true);
     await mountSignedIn();
     expect(seen.studiosKnown).toBe(true);
@@ -154,6 +157,38 @@ describe("opening Journey", () => {
     await act(async () => seen.setStudios([{ id: "westlake", name: "Westlake" } as never, { id: "solon", name: "Solon" } as never], { fromCache: false }));
     expect(seen.studios.map((s) => s.id)).toEqual(["westlake", "solon"]);
     expect(seen.studiosConfirmed).toBe(true);
+  });
+
+  it("the iPad's copy of a list it never had the server's whole answer for is not the list", async () => {
+    // A first sign-in here: the copy holds the person's own record, read at
+    // sign-in, and nothing else. That is not "1 on the team".
+    h.cacheDoc = async () => docSnap("u1", RECORD, true);
+    h.cacheList.studios = async () => listSnap([{ id: "westlake", data: { name: "Westlake" } }], true);
+    h.cacheList.trainers = async () => listSnap([{ id: "u1", data: RECORD }], true);
+    h.cacheList.networks = async () => listSnap([{ id: "n1", data: {} }], true);
+    const server = deferred<unknown>();
+    for (const list of ["studios", "trainers", "networks"]) h.serverList[list] = () => server.promise;
+    await mountSignedIn();
+    expect(seen.studiosKnown).toBe(false);
+    expect(seen.trainersKnown).toBe(false);
+    expect(seen.networksKnown).toBe(false);
+    // A listener's cache-only answer doesn't count either...
+    await act(async () => seen.setTrainers([{ id: "u1" } as never], { fromCache: true }));
+    expect(seen.trainersKnown).toBe(false);
+    // ...the server's does, and is remembered for the next open.
+    await act(async () => seen.setTrainers([{ id: "u1" } as never, { id: "u2" } as never], { fromCache: false }));
+    expect(seen.trainersKnown).toBe(true);
+    expect(localStorage.getItem(LIST_SEEN_PREFIX + "trainers")).toBe("1");
+  });
+
+  it("even after a whole answer, a copy of the trainers holding one record is not the team", async () => {
+    localStorage.setItem(LIST_SEEN_PREFIX + "trainers", "1");
+    h.cacheDoc = async () => docSnap("u1", RECORD, true);
+    h.cacheList.trainers = async () => listSnap([{ id: "u1", data: RECORD }], true);
+    h.serverList.trainers = () => new Promise(() => {});
+    for (const list of ["studios", "networks"]) h.cacheList[list] = () => new Promise(() => {});
+    await mountSignedIn();
+    expect(seen.trainersKnown).toBe(false);
   });
 
   it("a list read that fails stays unknown, never empty, and an empty cache-only answer changes nothing", async () => {
@@ -220,6 +255,37 @@ describe("opening Journey", () => {
     expect(seen.authTrainer).toBe(before);
     await act(async () => h.watch!(docSnap("u1", { ...RECORD, role: "StudioLeader" })));
     expect(seen.authTrainer?.role).toBe("StudioLeader");
+  });
+
+  it("a record the server says is gone is looked up again quietly: the screen stays, never Checking you in", async () => {
+    h.cacheDoc = async () => docSnap("u1", RECORD, true);
+    for (const list of ["studios", "trainers", "networks"]) h.cacheList[list] = () => new Promise(() => {});
+    await mountSignedIn();
+    const before = seen.authTrainer;
+    const lookup = deferred<unknown>();
+    h.serverDoc = () => lookup.promise;
+    await act(async () => h.watch!(docSnap("u1", null, false)));
+    // Mid-lookup: still in, still on the same record.
+    expect(seen.trainerLookup).toBe("done");
+    expect(seen.authTrainer).toBe(before);
+    // Nothing found: nothing changes now (the next open decides).
+    await act(async () => lookup.resolve(docSnap("u1", null, false)));
+    expect(seen.trainerLookup).toBe("done");
+    expect(seen.authTrainer).toBe(before);
+  });
+
+  it("a gone record that only the iPad's copy lacks changes nothing", async () => {
+    h.cacheDoc = async () => docSnap("u1", RECORD, true);
+    for (const list of ["studios", "trainers", "networks"]) h.cacheList[list] = () => new Promise(() => {});
+    await mountSignedIn();
+    let asked = 0;
+    h.serverDoc = () => {
+      asked += 1;
+      return new Promise(() => {});
+    };
+    await act(async () => h.watch!(docSnap("u1", null, true)));
+    expect(asked).toBe(0);
+    expect(seen.trainerLookup).toBe("done");
   });
 
   it("signed out: nothing to check", async () => {

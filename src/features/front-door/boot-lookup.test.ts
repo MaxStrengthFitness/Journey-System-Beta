@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { TIMED_OUT, accessChanged, answerCounts, levelOf, pickerWaits, raise, trainerFromDoc, withTimeout } from "./boot-lookup";
+import {
+  LIST_SEEN_PREFIX,
+  TIMED_OUT,
+  accessChanged,
+  answerCounts,
+  cacheAnswerUsable,
+  levelOf,
+  listAnswerCounts,
+  listSeen,
+  markListSeen,
+  pickerWaits,
+  raise,
+  trainerFromDoc,
+  withTimeout,
+} from "./boot-lookup";
 
 describe("what is known about a list", () => {
   it("only grows: the cache never unconfirms the server", () => {
@@ -62,5 +76,39 @@ describe("withTimeout", () => {
     await expect(withTimeout(Promise.resolve(4), 50)).resolves.toBe(4);
     await expect(withTimeout(new Promise(() => {}), 5)).resolves.toBe(TIMED_OUT);
     await expect(withTimeout(Promise.reject(new Error("x")), 50)).resolves.toBe(TIMED_OUT);
+  });
+});
+
+describe("the iPad's copy of a list (the review's fix)", () => {
+  it("counts only after the server has answered in full here before", () => {
+    expect(cacheAnswerUsable("studios", 4, false)).toBe(false);
+    expect(cacheAnswerUsable("studios", 4, true)).toBe(true);
+    expect(cacheAnswerUsable("networks", 0, true)).toBe(false);
+  });
+  it("never takes one trainer record for the team", () => {
+    expect(cacheAnswerUsable("trainers", 1, true)).toBe(false);
+    expect(cacheAnswerUsable("trainers", 2, true)).toBe(true);
+  });
+  it("the server's answer always counts, empty included", () => {
+    expect(listAnswerCounts("trainers", 0, false, false)).toBe(true);
+    expect(listAnswerCounts("trainers", 1, true, true)).toBe(false);
+  });
+  it("remembers a whole answer in storage, and storage that throws is simply no", () => {
+    const store = new Map<string, string>();
+    const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v) };
+    expect(listSeen(storage, "studios")).toBe(false);
+    markListSeen(storage, "studios");
+    expect(store.get(LIST_SEEN_PREFIX + "studios")).toBe("1");
+    expect(listSeen(storage, "studios")).toBe(true);
+    const broken = {
+      getItem: () => {
+        throw new Error("blocked");
+      },
+      setItem: () => {
+        throw new Error("blocked");
+      },
+    };
+    expect(listSeen(broken, "studios")).toBe(false);
+    expect(() => markListSeen(broken, "studios")).not.toThrow();
   });
 });

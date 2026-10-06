@@ -28,8 +28,10 @@ import {
   NOTHING_KNOWN,
   TIMED_OUT,
   accessChanged,
-  answerCounts,
   levelOf,
+  listAnswerCounts,
+  listSeen,
+  markListSeen,
   raise,
   trainerFromDoc,
   withTimeout,
@@ -45,6 +47,27 @@ export interface LiveMeta {
 
 type BootList = keyof BootKnowledge;
 
+/** This device's local storage, or null where there is none. */
+function deviceStorage(): Storage | null {
+  try {
+    return typeof localStorage === "undefined" ? null : localStorage;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether an answer for a list counts (boot-lookup.ts): the server's always,
+ * the iPad's copy only once the server has answered in full here before. A
+ * server answer is remembered for next time.
+ */
+function answerCountsFor(list: BootList, count: number, fromCache: boolean): boolean {
+  const storage = deviceStorage();
+  if (!listAnswerCounts(list, count, fromCache, listSeen(storage, list))) return false;
+  if (!fromCache) markListSeen(storage, list);
+  return true;
+}
+
 /**
  * How long opening Journey waits for the person's role claim before it
  * carries on without it (the speed round, Oct 5 2026). The token is read
@@ -53,6 +76,17 @@ type BootList = keyof BootKnowledge;
  * the app opens and the claim is checked when it lands.
  */
 const CLAIM_WAIT_MS = 2000;
+
+/**
+ * How long opening waits for a FRESH token once the claim is known to
+ * disagree with the record (a leader just promoted or demoted). Rare, and the
+ * listeners the app starts carry the token they start with: a leader-only
+ * listener started on the old one is refused by the rules and never comes
+ * back until a reload, so this waits as long as Checking you in's own slow
+ * line (the speed round's review, Oct 5 2026). Before the speed round it had
+ * no limit at all.
+ */
+const CLAIM_REFRESH_WAIT_MS = 10000;
 
 export function useAuthInitialization() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -82,7 +116,7 @@ export function useAuthInitialization() {
   const [trainerLookup, setTrainerLookup] = useState<TrainerLookup>("idle");
   /** How many of the three check steps are done: signed in, record, studios. */
   const [lookupStep, setLookupStep] = useState(0);
-  const resolveRef = useRef<((u: FirebaseUser | null) => void) | null>(null);
+  const resolveRef = useRef<((u: FirebaseUser | null, opts?: ResolveOptions) => void) | null>(null);
   /** Look the signed-in person up again (Try again on "Can't check"). */
   const retryLookup = useCallback(() => {
     if (auth.currentUser) resolveRef.current?.(auth.currentUser);
@@ -107,7 +141,7 @@ export function useAuthInitialization() {
   const setStudios = useCallback(
     (list: Studio[], meta?: LiveMeta) => {
       const fromCache = Boolean(meta?.fromCache);
-      if (!answerCounts(list.length, fromCache)) return;
+      if (!answerCountsFor("studios", list.length, fromCache)) return;
       liveRef.current.studios = true;
       setStudiosState(list);
       markKnown("studios", levelOf(fromCache));
@@ -117,7 +151,7 @@ export function useAuthInitialization() {
   const setTrainers = useCallback(
     (list: Trainer[], meta?: LiveMeta) => {
       const fromCache = Boolean(meta?.fromCache);
-      if (!answerCounts(list.length, fromCache)) return;
+      if (!answerCountsFor("trainers", list.length, fromCache)) return;
       liveRef.current.trainers = true;
       setTrainersState(list);
       markKnown("trainers", levelOf(fromCache));
@@ -127,7 +161,7 @@ export function useAuthInitialization() {
   const setNetworks = useCallback(
     (list: FranchiseNetwork[], meta?: LiveMeta) => {
       const fromCache = Boolean(meta?.fromCache);
-      if (!answerCounts(list.length, fromCache)) return;
+      if (!answerCountsFor("networks", list.length, fromCache)) return;
       liveRef.current.networks = true;
       setNetworksState(list);
       markKnown("networks", levelOf(fromCache));
@@ -174,8 +208,11 @@ export function useAuthInitialization() {
         const fromCache = snap.metadata.fromCache;
         if (!snap.exists()) {
           // Gone on the server (not merely missing from the iPad's copy):
-          // find the person again, as a fresh sign-in would.
-          if (!fromCache && auth.currentUser) resolveRef.current?.(auth.currentUser);
+          // find the person again, QUIETLY. The screen stays as it is (never
+          // Checking you in over the Hub or a running session); only a record
+          // found under another id is taken, and anything else waits for the
+          // next open (the speed round's review, Oct 5 2026).
+          if (!fromCache && auth.currentUser) resolveRef.current?.(auth.currentUser, { quiet: true });
           return;
         }
         const data = snap.data() as Record<string, unknown>;
@@ -208,7 +245,9 @@ export function useAuthInitialization() {
 
     /**
      * One list, read for the boot: the iPad's own copy first, so a warm iPad
-     * paints at once; the server only when the copy has nothing. Either way
+     * paints at once; the server only when the copy has nothing, or nothing
+     * this iPad can trust to be the whole list (boot-lookup.ts,
+     * cacheAnswerUsable). Either way
      * AppContent's live listener starts beside it and brings the server's
      * answer, which always wins (liveRef). A read that fails, or the server
      * unreachable with nothing stored, leaves the list unknown, never empty.
@@ -228,7 +267,7 @@ export function useAuthInitialization() {
       const ref = collection(db, list);
       try {
         const cached = await getDocsFromCache(ref);
-        if (!cached.empty) {
+        if (answerCountsFor(list, cached.size, true)) {
           apply(cached.docs, "cache");
           return;
         }
@@ -237,17 +276,21 @@ export function useAuthInitialization() {
       }
       try {
         const snap = await getDocs(ref);
-        if (!answerCounts(snap.size, snap.metadata.fromCache)) return;
+        if (!answerCountsFor(list, snap.size, snap.metadata.fromCache)) return;
         apply(snap.docs, levelOf(snap.metadata.fromCache));
       } catch (e) {
         console.warn(`Could not read the ${list} collection.`, e);
       }
     };
 
-    const resolve = async (u: FirebaseUser | null) => {
+    const resolve = async (u: FirebaseUser | null, opts?: ResolveOptions) => {
       // Firebase has said who is signed in (R30; once a page load).
       markBoot("auth-ready");
-      const generation = ++generationRef.current;
+      /* A look-up again while someone is already in (the self-watch): it
+         changes nothing on screen unless it finds their record. */
+      const quiet = Boolean(opts?.quiet && u && authTrainerRef.current && u.uid === lastUid);
+      // A quiet look-up doesn't make the boot's own reads of the lists stale.
+      const generation = quiet ? generationRef.current : ++generationRef.current;
       const current = () => generation === generationRef.current;
       /* A sign-out that did not come through the menu — another tab, an
          expired account, a Microsoft account from outside the company turned
@@ -261,8 +304,10 @@ export function useAuthInitialization() {
       lastUid = uid;
       setUser(u);
       if (u) {
-        setTrainerLookup("checking");
-        setLookupStep(1);
+        if (!quiet) {
+          setTrainerLookup("checking");
+          setLookupStep(1);
+        }
         /* A read of the trainer record that threw: unknown, never "none". */
         let lookupFailed = false;
         try {
@@ -296,7 +341,7 @@ export function useAuthInitialization() {
            * anything that changed. A copy that says switched off is not
            * trusted to refuse anyone: the server decides that.
            */
-          if (resolvedEmail && u.uid) {
+          if (resolvedEmail && u.uid && !quiet) {
             try {
               const cached = await getDocFromCache(doc(db, "trainers", u.uid));
               if (cached.exists()) {
@@ -469,6 +514,9 @@ export function useAuthInitialization() {
           }
           if (trainerData) setSignInRefusal(null);
 
+          /* Quiet: nothing found, or nothing readable, changes nothing now. */
+          if (quiet && !trainerData) return;
+
           /* The record couldn't be read: "Can't check", never Request Access. */
           if (!trainerData && lookupFailed) {
             setAuthTrainer(null);
@@ -500,8 +548,10 @@ export function useAuthInitialization() {
            * the function has not run for this person yet (or their document
            * id is not their uid), and the rules then fall back to the
            * document exactly as before. Since the speed round (Oct 5 2026)
-           * neither wait is longer than CLAIM_WAIT_MS: past it the app opens,
-           * and the check finishes when the token arrives.
+           * reading the claim waits at most CLAIM_WAIT_MS (past it the app
+           * opens, and the check finishes when the token arrives), and a
+           * claim known to disagree waits up to CLAIM_REFRESH_WAIT_MS for the
+           * fresh token.
            */
           const record = trainerData;
           const settleClaim = async (claimsRole: string | null) => {
@@ -518,7 +568,7 @@ export function useAuthInitialization() {
           if (claimsRole === TIMED_OUT) {
             void claimsPromise.then(settleClaim).catch(() => {});
           } else {
-            await withTimeout(settleClaim(claimsRole), CLAIM_WAIT_MS);
+            await withTimeout(settleClaim(claimsRole), CLAIM_REFRESH_WAIT_MS);
             if (!current()) return;
           }
 
@@ -530,6 +580,17 @@ export function useAuthInitialization() {
            * now and bring the server's answers; and every screen that would
            * say something off a list asks whether it is known first.
            */
+          if (quiet) {
+            const prev = authTrainerRef.current;
+            if (
+              !prev ||
+              prev.id !== record.id ||
+              accessChanged(prev as unknown as Record<string, unknown>, record as unknown as Record<string, unknown>)
+            ) {
+              setAuthTrainer(record);
+            }
+            return;
+          }
           setAuthTrainer(record);
           setLookupStep(2);
           setTrainerLookup("done");
@@ -545,7 +606,7 @@ export function useAuthInitialization() {
           return;
         } catch (error) {
           console.error("Auth initialization failed", error);
-          if (current()) setTrainerLookup("failed");
+          if (current() && !quiet) setTrainerLookup("failed");
         }
       } else {
         setTrainerLookup("idle");
@@ -561,7 +622,7 @@ export function useAuthInitialization() {
       }
       setIsAuthReady(true);
     };
-    resolveRef.current = (u) => void resolve(u);
+    resolveRef.current = (u, opts) => void resolve(u, opts);
     const unsubscribe = onAuthStateChanged(auth, (u) => void resolve(u));
 
     return () => {
@@ -597,3 +658,8 @@ export function useAuthInitialization() {
 }
 
 export type TrainerLookup = "idle" | "checking" | "done" | "failed";
+
+/** quiet: look the signed-in person up again without touching the screen (the self-watch). */
+interface ResolveOptions {
+  quiet?: boolean;
+}

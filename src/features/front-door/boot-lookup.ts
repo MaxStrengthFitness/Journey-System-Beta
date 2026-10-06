@@ -42,6 +42,59 @@ export function answerCounts(count: number, fromCache: boolean): boolean {
   return !(fromCache && count === 0);
 }
 
+/**
+ * Whether the iPad's own copy of a list may be trusted to be the WHOLE list
+ * (the speed round's review, Oct 5 2026). The copy holds only what this iPad
+ * has read: on a first sign-in it may hold the person's own trainer record
+ * and nothing else, and that would say "1 on the team". So a copy counts only
+ * after this iPad has had the server's whole answer for the list at least
+ * once (`seen`, kept in local storage under LIST_SEEN_PREFIX), and a copy of
+ * the trainers holding one record (the person's own, read at sign-in) never
+ * does. Otherwise the list stays unknown until the server answers.
+ */
+export function cacheAnswerUsable(list: keyof BootKnowledge, count: number, seen: boolean): boolean {
+  if (!seen || count === 0) return false;
+  if (list === "trainers" && count < 2) return false;
+  return true;
+}
+
+/** Whether an answer counts: the server's always; the iPad's copy by cacheAnswerUsable. */
+export function listAnswerCounts(
+  list: keyof BootKnowledge,
+  count: number,
+  fromCache: boolean,
+  seen: boolean,
+): boolean {
+  return fromCache ? cacheAnswerUsable(list, count, seen) : true;
+}
+
+/** Local-storage key prefix: this iPad has had the server's whole answer for the list. */
+export const LIST_SEEN_PREFIX = "journey_list_seen_";
+
+/** The part of Web Storage this module uses. */
+interface FlagStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
+
+/** Has this iPad had the server's whole answer for `list`? Storage that throws: no. */
+export function listSeen(storage: FlagStorage | null | undefined, list: keyof BootKnowledge): boolean {
+  try {
+    return storage?.getItem(LIST_SEEN_PREFIX + list) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Remember that the server answered for `list` in full. Storage that throws: nothing. */
+export function markListSeen(storage: FlagStorage | null | undefined, list: keyof BootKnowledge): void {
+  try {
+    storage?.setItem(LIST_SEEN_PREFIX + list, "1");
+  } catch {
+    /* Private window or storage off: the copy just isn't trusted next time. */
+  }
+}
+
 /** The level an answer that counts raises a list to. */
 export function levelOf(fromCache: boolean): ReadLevel {
   return fromCache ? "cache" : "server";
