@@ -21,6 +21,7 @@ import type { DocumentData, Firestore } from "firebase-admin/firestore";
 import { createCompanyAccumulator, type CompanyBuild, type CompanyClientRecord } from "../src/features/machine-fit/company.ts";
 import type { FitClientRecord, FitRowDoc } from "../src/features/machine-fit/fit-index.ts";
 import { isDemoStudioId } from "../src/features/demo-mode/is-demo.ts";
+import { withMachineTotalsRead } from "./machine-totals-read.ts";
 
 /** The client fields machine fit reads (factorsOf, verifiedSettings) and the home it counts at. */
 export const FIT_CLIENT_FIELDS = ["homeStudioId", "height", "gender", "wingspan", "weight", "dateOfBirth", "age", "inbodySummary", "machineStats"] as const;
@@ -81,11 +82,13 @@ export async function buildCompanyFit(
       for (let at = 0; at < all.length; at += GET_ALL_CHUNK) {
         const refs = all.slice(at, at + GET_ALL_CHUNK).map((id) => db.collection("clients").doc(id));
         const got = await db.getAll(...refs, { fieldMask: [...FIT_CLIENT_FIELDS] });
-        for (const d of got) {
-          if (!d.exists) continue;
-          clientsRead += 1;
-          const record = fitClientRecord(d.id, d.data() ?? {});
-          if (record.homeStudioId === studio.id) roster.set(d.id, record);
+        const found = got.filter((d) => d.exists).map((d) => ({ ...(d.data() ?? {}), id: d.id }));
+        clientsRead += found.length;
+        // machineStats lives beside the client since the iPad round
+        // (server/machine-totals-read.ts): folded in, only that field.
+        for (const c of await withMachineTotalsRead(db, found, { fieldMask: ["machineStats"] })) {
+          const record = fitClientRecord(c.id, c);
+          if (record.homeStudioId === studio.id) roster.set(c.id, record);
         }
       }
     }

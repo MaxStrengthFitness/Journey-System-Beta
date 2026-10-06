@@ -93,6 +93,10 @@ function fakeDb(collections: Record<string, Docs>, opts: { failOn?: string; fail
 
   const db = {
     collection,
+    doc: (path: string) => {
+      const at = path.lastIndexOf("/");
+      return docRef(path.slice(0, at), path.slice(at + 1));
+    },
     // Machine fit reads the clients a studio's rows name by id, with a field mask (ignored here).
     getAll: async (...refs: unknown[]) => Promise.all(refs.filter((r): r is ReturnType<typeof docRef> => typeof (r as { get?: unknown })?.get === "function").map((r) => r.get())),
     batch: () => {

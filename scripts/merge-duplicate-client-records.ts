@@ -51,6 +51,7 @@ import {
 import { nameKey } from "../src/features/admin/provisional/provisional.ts";
 import { siteOfClient } from "../src/lib/mindbody-site.ts";
 import { rollupFromHistory } from "../src/lib/client-rollups.ts";
+import { machineTotalsPath } from "../src/features/machine-totals/totals.ts";
 import { FieldValue } from "firebase-admin/firestore";
 
 const COMMIT = process.argv.includes("--commit");
@@ -179,16 +180,31 @@ async function main() {
     );
     // 5. The survivor learns where its history came from, and any blank the
     //    duplicate could fill. 6. Then, and only then, the tombstone.
-    await db.collection("clients").doc(realId).update({
+    //    machineStats and its marker live on the client's machine totals
+    //    document since the iPad round (src/features/machine-totals): written
+    //    there whole, and the old copy taken off the client in the same batch,
+    //    because the app adds the two sides' counts.
+    const survivor = db.batch();
+    survivor.update(db.collection("clients").doc(realId), {
       ...p.carry,
       ...survivorPatch(dupId),
       trainerTally: rolled.trainerTally,
       topTrainerId: rolled.topTrainerId,
       topTrainerName: rolled.topTrainerName,
       topTrainerSessions: rolled.topTrainerSessions,
-      machineStats: rolled.machineStats,
-      machineStatsBackfilledAt: FieldValue.serverTimestamp(),
+      machineStats: FieldValue.delete(),
+      machineStatsBackfilledAt: FieldValue.delete(),
     });
+    survivor.set(
+      db.doc(machineTotalsPath(realId).join("/")),
+      {
+        machineStats: rolled.machineStats,
+        machineStatsBackfilledAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { mergeFields: ["machineStats", "machineStatsBackfilledAt", "updatedAt"] },
+    );
+    await survivor.commit();
     await db.collection("clients").doc(dupId).update(tombstonePatch(realId));
     console.log(`Merged ${p.name}: ${dupId} -> ${realId}`);
   }

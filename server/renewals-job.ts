@@ -90,6 +90,7 @@ import { DEFAULT_TIME_ZONE, isValidTimeZone, studioDateKey, studioTodayKey } fro
 import { bookingMarks, loggedSessions, type BookingMarks } from "../src/lib/booking-state.ts";
 import { cutoverOf } from "../src/lib/client-coverage.ts";
 import { buildRenewalSnapshot, sameSnapshot, stableStringify } from "../src/features/renewals/engine.ts";
+import { withMachineTotalsRead } from "./machine-totals-read.ts";
 import {
   CYCLE_KEY_PATTERN,
   outcomeCandidate,
@@ -301,10 +302,16 @@ async function readClientHistory(db: Firestore, clientIds: readonly string[], no
   return { bookings, sessions, bookingCount, sessionCount };
 }
 
-/** A studio's own clients (its home clients), whole: the snapshot reads most of a client. */
+/**
+ * A studio's own clients (its home clients), whole: the snapshot reads most of
+ * a client. With their machine totals folded in (the strength proof reads
+ * machineStats), which live beside the client since the iPad round: one
+ * getAll per hundred clients (server/machine-totals-read.ts).
+ */
 async function readHomeClients(db: Firestore, studioId: string): Promise<Client[]> {
   const snap = await db.collection("clients").where("homeStudioId", "==", studioId).get();
-  return snap.docs.map((d) => ({ ...(d.data() as Client), id: d.id }));
+  const clients = snap.docs.map((d) => ({ ...(d.data() as Client), id: d.id }));
+  return withMachineTotalsRead(db, clients);
 }
 
 export async function runRenewals(options: RenewalsRunOptions): Promise<RenewalsRunSummary> {
