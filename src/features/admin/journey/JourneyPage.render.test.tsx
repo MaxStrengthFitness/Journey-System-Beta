@@ -7,7 +7,7 @@
  * slipping clients (the redesign's Operations room, phase 4).
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { StrictMode, act } from "react";
+import { Profiler, StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
 vi.mock("../../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "lead" } }, functions: {} }));
@@ -269,5 +269,38 @@ describe("Clients → Journey", () => {
     expect(el.querySelectorAll(".ops-note")).toHaveLength(1);
     expect(el.textContent).not.toContain("This week:");
     expect(stop(el, "Unknown").querySelector("b")?.textContent).toBe("9");
+  });
+
+  it("does not draw again as the minutes pass, only at a booking's edge (the iPad round, Oct 2026)", async () => {
+    vi.useFakeTimers({ now: NOW });
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    let commits = 0;
+    await act(async () => {
+      root!.render(
+        <Profiler id="journey" onRender={() => (commits += 1)}>
+          <JourneyPage studio={studio} studios={[studio]} clients={clients} trainers={trainers} authTrainer={lead} onOpenClient={() => {}} />
+        </Profiler>,
+      );
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(listNames(host)).toEqual(["Adelard Took", "Estella Bolger", "Halbarad Dunedain"]);
+    commits = 0;
+    // 9:00 to 10:20 AM: the first edge is 10:30, half an hour before Hamfast's 11:00.
+    // A minute at a time, each its own act, as an iPad lives it (one act would batch them into one draw).
+    const minutes = async (n: number) => {
+      for (let i = 0; i < n; i++) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(60_000);
+        });
+      }
+    };
+    await minutes(80);
+    expect(commits).toBe(0);
+    await minutes(15);
+    expect(commits).toBeGreaterThan(0);
   });
 });

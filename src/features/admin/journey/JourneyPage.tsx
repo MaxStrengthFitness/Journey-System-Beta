@@ -44,7 +44,7 @@ import { noteCovers, useNightlyNote } from "../overview/useNightlyNote";
 import { leadsHere } from "../../relay/leads";
 import { markReasonWords } from "./inactive";
 import { markActiveAgain } from "./inactive-store";
-import { useMinuteClock } from "../shell/useMinuteClock";
+import { useBoundaryClock } from "../../../lib/boundary-clock";
 import { LENSES, listFor, stateCounts, thisWeek, type JourneyEntry, type JourneyLens } from "./journey-list";
 import { BESIDE_STATES, LINE_STATES, STATE_NAMES, isSlipping, multipleWords, type JourneyLines, type JourneyState } from "./states";
 import { useStudioJourneys } from "./useStudioJourneys";
@@ -97,8 +97,10 @@ const UNKNOWN_GROUP: Record<string, string> = {
 };
 
 export function JourneyPage({ studio, studios, clients, trainers, authTrainer, onOpenClient }: JourneyPageProps) {
-  const now = useMinuteClock();
-  const j = useStudioJourneys({ studio, studios, clients, trainers, authTrainer, now });
+  // Moves when a state could change (a booking's edge, the night's record, the day), not every minute.
+  const clock = useBoundaryClock();
+  const now = clock.now;
+  const j = useStudioJourneys({ studio, studios, clients, trainers, authTrainer, now, clock });
   const [lens, setLens] = useState<JourneyLens>("all");
   const [state, setState] = useState<JourneyState>("drifting");
   const counts = useMemo(() => stateCounts(j.entries, lens), [j.entries, lens]);

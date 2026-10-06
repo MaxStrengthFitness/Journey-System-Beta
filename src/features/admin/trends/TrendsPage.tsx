@@ -27,7 +27,7 @@ import { useOutcomes } from "../../renewals/useOutcomes";
 import { AdminHeader, AdminScreen } from "../primitives";
 import { AdminInsightsTab } from "../insights/AdminInsightsTab";
 import { useStudioJourneys } from "../journey/useStudioJourneys";
-import { useMinuteClock } from "../shell/useMinuteClock";
+import { useBoundaryClock } from "../../../lib/boundary-clock";
 import { SIGNAL_CHECK_LINE, WIN_BACK_LINE, longerPackageLine, lostReasonsLine, renewalOutcomesLine, startGroups, startGroupsLine, studioRhythmLine, type TrendLine } from "./trends";
 import "../shell/ops.css";
 
@@ -40,9 +40,11 @@ export interface TrendsPageProps {
 }
 
 export function TrendsPage({ studio, studios, clients, trainers, authTrainer }: TrendsPageProps) {
-  const now = useMinuteClock();
+  // Moves when a state could change (a booking's edge, the night's record, the day), not every minute.
+  const clock = useBoundaryClock();
+  const now = clock.now;
   const studioId = studio.id as string;
-  const j = useStudioJourneys({ studio, studios, clients, trainers, authTrainer, now });
+  const j = useStudioJourneys({ studio, studios, clients, trainers, authTrainer, now, clock });
   const [thisQ, lastQ] = useMemo(() => recentQuarters(j.today || "2026-01-01", 2), [j.today]);
   const now_ = useOutcomes([studioId], thisQ.from, thisQ.to);
   const before = useOutcomes([studioId], lastQ.from, lastQ.to);

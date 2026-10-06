@@ -206,6 +206,10 @@ do admin work at the desk.
 
 ---
 
+## The clock (the iPad round, Oct 2026)
+
+A page's time is `useBoundaryClock` (`src/lib/boundary-clock.ts`), never a minute clock: it moves when the studio's day turns or the time crosses a boundary the page watches, and the page does not render in between (Journey, Month, Trends, Team, the three Week pages and a client's page used to work themselves out and draw again every minute). `useStudioJourneys({ ..., now: clock.now, clock })` watches the week's bookings (`bookingBoundaries` in `lib/booking-state.ts`: every `bookingState` changes only at them) and the night's record turning stale; a page that reads other bookings watches them too (`clock.watch("lastWeek", ...)`). Today keeps the minute for its light parts (and Openings' own) and keys the heavy ones (every client's journey, the day's run-sheet, the chase) on `useSettledNow`. **A new model that reads the time must change only at an instant some watched list names**, or add its instants; `JourneyPage.render.test.tsx` and `OverviewPage.render.test.tsx` fail on a page that goes back to the minute.
+
 ## Scope (the Operations round, Sep 19 2026)
 
 A thirteenth axis the audit found after the twelve: **which studio am I

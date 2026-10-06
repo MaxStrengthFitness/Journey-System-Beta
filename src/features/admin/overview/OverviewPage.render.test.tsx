@@ -32,6 +32,19 @@ vi.mock("../../../contexts/ActiveStudioContext", () => ({
 
 vi.mock("../../../contexts/ToastContext", () => ({ useToast: () => ({ success: () => {}, error: () => {}, info: () => {} }) }));
 
+// How often every client's journey is worked out (the iPad round, Oct 2026).
+const journeyCalls = vi.hoisted(() => ({ n: 0 }));
+vi.mock("../journey/journey-list", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../journey/journey-list")>();
+  return {
+    ...actual,
+    studioJourneys: (...a: Parameters<typeof actual.studioJourneys>) => {
+      journeyCalls.n += 1;
+      return actual.studioJourneys(...a);
+    },
+  };
+});
+
 const MONDAY = new Date("2026-09-21T13:00:00Z"); // Monday 9 AM Eastern
 const SATURDAY = new Date("2026-09-26T13:00:00Z"); // Saturday 9 AM Eastern
 /** The test's clock: Monday unless a test moves it. The fixture's days count from it. */
@@ -591,5 +604,27 @@ describe("Today, the brief", () => {
     await click(buttonByText(unlogged, "Show"));
     expect(unlogged.textContent).toContain("7:00 AM");
     expect(buttonByText(host, "Late cancel · session taken")).toBeUndefined();
+  });
+
+  it("works every client's journey out again at a booking's edge, not every minute (the iPad round, Oct 2026)", async () => {
+    const el = await mount();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20_000);
+    });
+    expect(section(el, "slipping")).toBeTruthy();
+    journeyCalls.n = 0;
+    // 9:00 to 9:25 AM, a minute at a time: the first edge is 9:30 (Cy's cancelled 9:30 start).
+    for (let i = 0; i < 25; i++) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000);
+      });
+    }
+    expect(journeyCalls.n).toBe(0);
+    for (let i = 0; i < 7; i++) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000);
+      });
+    }
+    expect(journeyCalls.n).toBeGreaterThan(0);
   });
 });

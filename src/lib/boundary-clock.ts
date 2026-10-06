@@ -103,8 +103,11 @@ export function useBoundaryClock(boundaries?: readonly number[] | null, fixedNow
   const check = useCallback(() => {
     const nowMs = Date.now();
     const lists = [...sources.current.values()].map((s) => s.sorted);
-    // Returning the same number is React's no-op: no render between boundaries.
-    setHeld((h) => (clockMoved(h, nowMs, lists) ? nowMs : h));
+    // No update at all between boundaries: even a same-value update makes React run the screen once more.
+    if (clockMoved(heldRef.current, nowMs, lists)) {
+      heldRef.current = nowMs;
+      setHeld(nowMs);
+    }
   }, []);
 
   const watch = useCallback((source: string, instants: readonly number[]) => {
@@ -151,9 +154,12 @@ export function useSettledNow(now: Date, boundaries: readonly number[]): Date {
   const sorted = useMemo(() => sortBoundaries(boundaries), [boundaries]);
   const held = useRef(now);
   const heldFor = useRef(sorted);
-  if (held.current !== now && (heldFor.current !== sorted || clockMoved(held.current.getTime(), now.getTime(), sorted))) {
-    held.current = now;
+  if (heldFor.current !== sorted) {
+    // New boundaries come with new data, and the models keyed on them work themselves out again anyway.
     heldFor.current = sorted;
+    held.current = now;
+  } else if (held.current !== now && clockMoved(held.current.getTime(), now.getTime(), sorted)) {
+    held.current = now;
   }
   return held.current;
 }

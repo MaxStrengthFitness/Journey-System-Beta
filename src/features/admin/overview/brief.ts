@@ -95,6 +95,14 @@ export function nightlyRead(clients: readonly Client[], studioId: string, now: D
   return { lastChangedAt: last, stale, homeClients, missing, unknownData };
 }
 
+/**
+ * The instant last night's record turns stale with nothing new written (a
+ * boundary for lib/boundary-clock.ts), or null when there is no record.
+ */
+export function nightlyStaleAt(read: Pick<NightlyRead, "lastChangedAt">): number | null {
+  return read.lastChangedAt ? read.lastChangedAt.getTime() + NIGHTLY_STALE_DAYS * DAY_MS + 1 : null;
+}
+
 /** Clients whose renewal timing is unknown: no snapshot, or not enough Mindbody data. */
 export function renewalUnknownCount(n: NightlyRead): number {
   return n.missing.length + n.unknownData.length;
