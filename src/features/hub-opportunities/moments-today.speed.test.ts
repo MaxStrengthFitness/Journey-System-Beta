@@ -10,6 +10,7 @@
 import { describe, expect, it } from "vitest";
 import type { Client, ScheduleEntry } from "../../types";
 import { loggedSessions } from "../../lib/booking-state";
+import { studioDayBoundsForKey } from "../../lib/studio-time";
 import { addDays } from "../client-history/model";
 import { buildDirectoryRows } from "../client-directory/row";
 import { STUDIOS, TODAY, eastern, makeBooking, makeClient, makeContext, makeSession } from "../client-directory/fixtures";
@@ -152,4 +153,37 @@ describe("the engine's clock", () => {
     expect(clockStep([1, 2, 5, 9], 4)).toBe(2);
     expect(clockStep([1, 2, 5, 9], 10)).toBe(4);
   });
+});
+
+describe("the directory rows, built once at the start of the studio's day", () => {
+  /*
+   * use-day-moments builds the rows once per studio day, as of its first
+   * instant, so a row's clock fields (`next`, `today`) are the morning's. The
+   * engine must read none of them: at any time of day, the morning's rows and
+   * rows built at that very moment give the same entries (review of R6).
+   */
+  const finished = [makeSession({ clientId: "c3", at: eastern(TODAY, "08:05") })];
+  const rowsAt = (now: Date) =>
+    new Map(
+      buildDirectoryRows(
+        fixture.clients,
+        makeContext({ now, schedules: fixture.schedules, bookingsFresh: false, recentSessions: finished }),
+      ).map((r) => [r.id, r]),
+    );
+  const morning = rowsAt(studioDayBoundsForKey(TODAY).start);
+
+  it("the morning's rows and rows built at the moment say the same, all day, every day of the window", () => {
+    let rowsDiffered = 0;
+    for (const hm of ["06:10", "08:31", "09:45", "13:00", "16:20", "21:00"]) {
+      const now = eastern(TODAY, hm);
+      const fresh = rowsAt(now);
+      for (const [id, row] of fresh) if (JSON.stringify(row) !== JSON.stringify(morning.get(id))) rowsDiffered += 1;
+      for (const day of DAYS) {
+        const base = inputAt(now, day, true);
+        expect(said({ ...base, rowsById: morning }), `${day} at ${hm}`).toBe(said({ ...base, rowsById: fresh }));
+      }
+    }
+    // The rows really do move with the clock, so the check above means something.
+    expect(rowsDiffered).toBeGreaterThan(0);
+  }, 60_000);
 });
