@@ -27,6 +27,15 @@ export const CHART_JPEG_QUALITY = 0.85;
 /** The request-body ceiling on the two Gemini routes (an Express `limit`). */
 export const CHART_BODY_LIMIT = "20mb";
 
+/**
+ * The routes read ONE scan at a time for the whole web service (the speed
+ * round, R20, Oct 5 2026): a second one meanwhile is answered 503 with this
+ * code instead of being queued with its pages in memory, and the importer
+ * shows SCAN_BUSY_MESSAGE.
+ */
+export const SCAN_BUSY = "busy";
+export const SCAN_BUSY_MESSAGE = "Journey is reading another scan. Try again in a moment.";
+
 /** Photos and PDFs; the model reads both. */
 const CHART_MIME = /^(image\/[a-z0-9.+-]+|application\/pdf)$/i;
 

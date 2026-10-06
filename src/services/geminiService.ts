@@ -1,4 +1,5 @@
 import { authedFetch } from "../lib/authed-fetch";
+import { SCAN_BUSY, SCAN_BUSY_MESSAGE } from "./chart-upload";
 
 export interface ValidationLog {
   id: string;
@@ -58,12 +59,14 @@ export interface OCRMachineSetting {
   currentWeight?: string;
 }
 
-async function handleResponse(res: Response) {
+export async function handleResponse(res: Response) {
   if (!res.ok) {
     let errorMsg: any = 'API Request Failed';
     try {
       const errorData = await res.json();
       errorMsg = errorData?.error || errorMsg;
+      // The server reads one scan at a time (server/gemini-routes.ts, R20).
+      if (res.status === 503 && errorMsg === SCAN_BUSY) errorMsg = SCAN_BUSY_MESSAGE;
       if (typeof errorMsg === 'object' && errorMsg !== null && 'message' in errorMsg) {
         errorMsg = errorMsg.message;
       }
