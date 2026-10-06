@@ -50,6 +50,7 @@ import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
 import { logDocId } from "../lib/exercise-log-id";
 import { keepPendingEdits, pendingLogEdits } from "../lib/pending-log-edits";
 import { sendsAtOnce } from "../features/journey-grid/send-at-once";
+import { stableHistory } from "../features/journey-grid/stable-history";
 import { useSendState } from "../features/session-record/useSendState";
 import { SendStatusStrip } from "../features/session-record/SendStatusStrip";
 import { finishedElsewhereAtTap, settleOrQueue } from "../features/session-record/finish-wait";
@@ -696,7 +697,6 @@ export function WorkoutTrackerView({
     );
   };
 
-  const [machineTimeElapsed, setMachineTimeElapsed] = useState<number>(0);
 
   useEffect(() => {
     const takeoverSessionId = peekLiveSessionId();
@@ -839,15 +839,13 @@ export function WorkoutTrackerView({
      handled without destroying data: `isSessionValid` hides a session whose
      heartbeat is older than 60 minutes. Nothing on this screen may delete
      a session except the trainer pressing Discard. */
-  useEffect(() => {
-    if (!currentSession) return;
-    const tick = () =>
-      setMachineTimeElapsed(gridFocusMachineIdRef.current ? secondsOn(machineClocks.current, gridFocusMachineIdRef.current) : 0);
-    tick();
-    if (isPaused) return;
-    const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
-  }, [currentSession, isPaused]);
+  /* The focused machine's seconds, read by the Now Bar, which ticks itself
+     once a second (speed round, Oct 5 2026; R10). The tick used to live
+     here, as state, and redrew the whole session screen every second. */
+  const readFocusedMachineSeconds = React.useCallback(
+    () => (gridFocusMachineIdRef.current ? secondsOn(machineClocks.current, gridFocusMachineIdRef.current) : 0),
+    [],
+  );
 
   // Fetch all exercise logs for analysis (limited to last 1000 for performance)
   const [isShowingSessionNotes, setIsShowingSessionNotes] = useState(false);
@@ -2515,7 +2513,8 @@ export function WorkoutTrackerView({
    */
   /* Online or not, and whether sent sets have reached the database yet: the
      line under the session bar (features/session-record). */
-  const sendState = useSendState();
+  /* No tick here (R10): the strip under the bar keeps its own clock. */
+  const sendState = useSendState({ tick: false });
   const markSent = sendState.sent;
 
   const pendingLogWritesRef = useRef<
@@ -2786,6 +2785,21 @@ export function WorkoutTrackerView({
     [gridHistory, gridVisible],
   );
 
+  /* The PAST sets alone, the same array while only today's change (R10;
+     features/journey-grid/stable-history.ts): a keystroke in today's column
+     no longer rebuilds every row of the grid, nor does the listener's echo
+     of a save. Today's values are read apart, in gridLiveValues. */
+  const shownSessionId = shownSession?.id ?? null;
+  const historyLogsRef = useRef<ExerciseLog[] | null>(null);
+  const historyLogs = useMemo(() => {
+    const next = (Object.values(logs) as ExerciseLog[]).filter(
+      (l) => !shownSessionId || l.sessionId !== shownSessionId,
+    );
+    const kept = stableHistory(historyLogsRef.current, next);
+    historyLogsRef.current = kept;
+    return kept;
+  }, [logs, shownSessionId]);
+
   const gridRows = useMemo(() => {
     const ordered = [...floorMachines].sort(
       (a, b) =>
@@ -2799,9 +2813,6 @@ export function WorkoutTrackerView({
           b.order,
           b.id ? studioFloorById[b.id]?.order : undefined,
         ),
-    );
-    const historyLogs = (Object.values(logs) as ExerciseLog[]).filter(
-      (l) => !shownSession || l.sessionId !== shownSession.id,
     );
     const starred = new Set(
       ordered.filter((m) => isBig5Machine(m.name)).map((m) => m.id!),
@@ -2879,10 +2890,9 @@ export function WorkoutTrackerView({
     );
   }, [
     floorMachines,
-    logs,
+    historyLogs,
     clientMachineSettings,
     studioFloorById,
-    shownSession,
     gridHistory,
     selectedClient?.currentMachineMetrics,
     machineJournal,
@@ -3157,40 +3167,63 @@ export function WorkoutTrackerView({
     canQuoteNumber,
   );
 
-  const gridLive: LiveColumn | undefined = currentSession?.id
+  /* The live column, memoised with steady callbacks (R10): it used to be a
+     new object on every render, which redrew every row of the grid. The
+     callbacks call the newest handler through a ref, so they never go stale. */
+  const gridLiveHandlers = useRef({ change: handleGridLiveChange, add: (_id: string) => {} });
+  gridLiveHandlers.current.change = handleGridLiveChange;
+  gridLiveHandlers.current.add = (id: string) => {
+    if (activeMachineIds.includes(id)) return;
+    applySessionMachineIds([...activeMachineIds, id]);
+  };
+  const onGridLiveChange = React.useCallback(
+    (machineId: string, patch: Partial<LiveSet>) => gridLiveHandlers.current.change(machineId, patch),
+    [],
+  );
+  const onGridAddMachine = React.useCallback((id: string) => gridLiveHandlers.current.add(id), []);
+  /* Moving to another machine sends whatever is still waiting on this one. */
+  const onGridFocusMachine = React.useCallback(
+    (id: string) => {
+      flushAllLogWrites();
+      setFocusMachineOverride(id);
+    },
+    [flushAllLogWrites],
+  );
+  const liveSessionId = currentSession?.id ?? null;
+  const liveSessionNumber = currentSession?.sessionNumber || sessions.length;
+  const liveDate = currentSession?.date || null;
+  const liveInitials = (currentSession?.trainerInitials || authTrainer?.initials || "").toUpperCase();
+  const gridLiveSession = useMemo(
+    () =>
+      liveSessionId
+        ? {
+            id: liveSessionId,
+            sessionNumber: liveSessionNumber,
+            date: toIsoDate(liveDate || studioTodayKey()),
+            trainerInitials: liveInitials,
+          }
+        : null,
+    [liveSessionId, liveSessionNumber, liveDate, liveInitials],
+  );
+  const gridLive = useMemo<LiveColumn | undefined>(() => gridLiveSession
     ? {
-        session: {
-          id: currentSession.id,
-          sessionNumber: currentSession.sessionNumber || sessions.length,
-          date: toIsoDate(currentSession.date || studioTodayKey()),
-          trainerInitials: (
-            currentSession.trainerInitials ||
-            authTrainer?.initials ||
-            ""
-          ).toUpperCase(),
-        },
+        session: gridLiveSession,
         routineMachineIds: activeMachineIds,
         values: gridLiveValues,
-        onChange: handleGridLiveChange,
+        onChange: onGridLiveChange,
         /* Straight in. The "+" only appears on a machine that is not in
            today's routine, so the tap is already unambiguous — and a trainer
            who has spare time and wants a bicep curl should not have to
            confirm that they meant it. Removing it is the reverse of a
            decision made when this was built ("prompts before adding it,
            rather than toggling it in silently"); silence is the point. */
-        onAddMachine: (id: string) => {
-          if (activeMachineIds.includes(id)) return;
-          applySessionMachineIds([...activeMachineIds, id]);
-        },
+        onAddMachine: onGridAddMachine,
         focusMachineId: gridFocusMachineId,
-        /* Moving to another machine sends whatever is still waiting on this one. */
-        onFocusMachine: (id: string) => {
-          flushAllLogWrites();
-          setFocusMachineOverride(id);
-        },
+        onFocusMachine: onGridFocusMachine,
         weightStep: 2,
       }
-    : undefined;
+    : undefined,
+  [gridLiveSession, activeMachineIds, gridLiveValues, onGridLiveChange, onGridAddMachine, gridFocusMachineId, onGridFocusMachine]);
 
   /*
    * THE MACHINE MENU'S DOOR IN A SESSION (features/machine-menu). What the
@@ -3677,7 +3710,7 @@ export function WorkoutTrackerView({
       {/* Zone 1b — where the sets are, only when there is something to say:
           offline, or saves waiting on a poor connection (session record). */}
       {currentSession && (
-        <SendStatusStrip online={sendState.online} unsentForMs={sendState.unsentForMs} />
+        <SendStatusStrip online={sendState.online} unsentSince={sendState.unsentSince} />
       )}
 
       {/* THE MACHINE MENU. One target, one card (features/machine-menu).
@@ -3987,7 +4020,7 @@ export function WorkoutTrackerView({
           values={gridLiveValues}
           focusId={gridFocusMachineId ?? null}
           onFocus={(id) => setFocusMachineOverride(id)}
-          onChange={handleGridLiveChange}
+          onChange={onGridLiveChange}
           onCommit={flushAllLogWrites}
           onOpenMachine={(id) => setMenuMachineId(id)}
           onReorder={() => setIsOrderSheetOpen(true)}
@@ -4074,7 +4107,7 @@ export function WorkoutTrackerView({
           orderNumber={gridFocusOrder}
           value={gridFocusMachineId ? gridLiveValues[gridFocusMachineId] : undefined}
           history={gridHistory}
-          onChange={handleGridLiveChange}
+          onChange={onGridLiveChange}
           onCommit={flushAllLogWrites}
           step={2}
           nextName={gridNextRow?.machine.name}
@@ -4102,7 +4135,8 @@ export function WorkoutTrackerView({
           onOpenFlag={gridFocusMachineId ? () => setMenuMachineId(gridFocusMachineId) : undefined}
           level={traineeLevelOf(selectedClient)}
           layout={nowBarSide ? "side" : "bar"}
-          onMachineSeconds={machineTimeElapsed}
+          readMachineSeconds={readFocusedMachineSeconds}
+          machineClockRunning={!!currentSession && !isPaused}
         />
       )}
       </div>

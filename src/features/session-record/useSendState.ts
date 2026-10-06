@@ -17,14 +17,27 @@ import { db } from "../../firebase";
 
 export interface SendState {
   online: boolean;
+  /**
+   * How long the oldest unconfirmed save has waited, as of this render. With
+   * `{ tick: false }` it is NOT kept current (nothing redraws the caller once
+   * a second): hand `unsentSince` to SendStatusStrip, which ticks itself.
+   */
   unsentForMs: number;
+  /** When the oldest unconfirmed save was made (epoch ms), or null when all have arrived. */
+  unsentSince: number | null;
   /** Call after issuing a write whose arrival matters. Stable across renders. */
   sent: () => void;
 }
 
 const browserOnline = () => (typeof navigator === "undefined" ? true : navigator.onLine !== false);
 
-export function useSendState(): SendState {
+/**
+ * `tick: false` (speed round, Oct 5 2026; R10): the caller is not redrawn
+ * once a second while a save waits. The Active Session passes it, so its
+ * whole screen no longer redraws every second for the line under its bar;
+ * the strip ticks itself from `unsentSince`.
+ */
+export function useSendState({ tick = true }: { tick?: boolean } = {}): SendState {
   const [online, setOnline] = useState(browserOnline);
   const [unsentSince, setUnsentSince] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -66,15 +79,16 @@ export function useSendState(): SendState {
   /* Tick only while something is waiting, so the "still sending" line can
      appear without anything else re-rendering the screen. */
   useEffect(() => {
-    if (unsentSince === null) return;
+    if (unsentSince === null || !tick) return;
     setNow(Date.now());
     const t = setInterval(() => setNow(Date.now()), 1_000);
     return () => clearInterval(t);
-  }, [unsentSince]);
+  }, [unsentSince, tick]);
 
   return {
     online,
-    unsentForMs: unsentSince === null ? 0 : Math.max(0, now - unsentSince),
+    unsentForMs: unsentSince === null ? 0 : Math.max(0, (tick ? now : Date.now()) - unsentSince),
+    unsentSince,
     sent,
   };
 }

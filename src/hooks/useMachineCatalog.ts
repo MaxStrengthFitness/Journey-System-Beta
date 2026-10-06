@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import { MachineCatalogEntry } from "../types/machines";
@@ -47,8 +47,15 @@ export function useMachineCatalog(): {
     return () => unsub();
   }, []);
 
-  const byId: Record<string, MachineCatalogEntry> = {};
-  for (const c of catalog) byId[c.id] = c;
+  /* The same map until the catalog changes (speed round, Oct 5 2026; R10).
+     A new map on every render made useStudioMachines resolve the whole floor
+     again on every render of every screen that holds it, and the Active
+     Session rebuilt every grid row once a second and on every keystroke. */
+  const byId = useMemo(() => {
+    const map: Record<string, MachineCatalogEntry> = {};
+    for (const c of catalog) map[c.id] = c;
+    return map;
+  }, [catalog]);
 
   return { catalog, byId, loading, failed };
 }

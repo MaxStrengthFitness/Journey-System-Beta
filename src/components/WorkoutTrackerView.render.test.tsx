@@ -314,6 +314,34 @@ vi.mock("firebase/firestore", async (importOriginal) => {
 /** The studio list the context hands out; a test may give the studios cutover days. */
 const studioCtx = vi.hoisted(() => ({ studios: undefined as undefined | { id: string; journeyCutoverDate?: string }[] }));
 
+/*
+ * Render counters (speed round, Oct 5 2026; R10). The tracker calls
+ * useSendState once per render of its own (the machine menu's call is only
+ * while the menu is open), so counting the calls counts the tracker's
+ * renders; toJourneyRows is what rebuilds every row of the grid.
+ */
+const renders = vi.hoisted(() => ({ tracker: 0, rows: 0 }));
+vi.mock("../features/session-record/useSendState", async (importOriginal) => {
+  const realMod = await importOriginal<typeof import("../features/session-record/useSendState")>();
+  return {
+    ...realMod,
+    useSendState: (...args: Parameters<typeof realMod.useSendState>) => {
+      renders.tracker += 1;
+      return realMod.useSendState(...args);
+    },
+  };
+});
+vi.mock("../features/journey-grid", async (importOriginal) => {
+  const realMod = await importOriginal<typeof import("../features/journey-grid")>();
+  return {
+    ...realMod,
+    toJourneyRows: (...args: Parameters<typeof realMod.toJourneyRows>) => {
+      renders.rows += 1;
+      return realMod.toJourneyRows(...args);
+    },
+  };
+});
+
 vi.mock("../contexts/ActiveStudioContext", async (importOriginal) => {
   const realMod = await importOriginal<any>();
   return { ...realMod, useActiveStudio: () => ({ activeStudioId: STUDIO_ID, studios: studioCtx.studios }) };
@@ -1289,5 +1317,49 @@ describe("the Wrap-up and the note sheet read this session's notes from the jour
     await settle();
     expect(document.body.textContent).toContain("Session notes");
     expect(journalListeners()).toHaveLength(before);
+  });
+});
+
+/*
+ * THE SESSION SCREEN DOES NOT REDRAW ITSELF FOR A CLOCK OR A KEYSTROKE
+ * (speed round, Oct 5 2026; R10). The machine clock ticks inside the Now
+ * Bar and the send line keeps its own clock; a keystroke in today's column
+ * no longer rebuilds every row of the grid.
+ */
+describe("the Active Session's own redraws (R10)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("does not redraw the session screen once a second while a machine is focused; the Now Bar's clock still runs", async () => {
+    // The intervals are faked from the start, so the ones the screen opens are the fakes.
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    const host = await mount(<Tracker />);
+    const before = renders.tracker;
+    await act(async () => {
+      vi.advanceTimersByTime(5_000);
+    });
+    // Over five seconds the tracker itself drew no more than once (a stray
+    // timer of its own), where it used to draw five times.
+    expect(renders.tracker - before).toBeLessThanOrEqual(1);
+    expect(host.textContent ?? "").toMatch(/On machine \d+s/);
+  });
+
+  it("a keystroke in today's column does not rebuild the grid's rows", async () => {
+    const host = await mount(<Tracker />);
+    const reps = host.querySelector<HTMLInputElement>('input[aria-label="reps to failure"]');
+    expect(reps).not.toBeNull();
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    const rowsBefore = renders.rows;
+    const drawsBefore = renders.tracker;
+    for (const v of ["1", "11"]) {
+      await act(async () => {
+        setter.call(reps!, v);
+        reps!.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    }
+    // The tracker drew for the keystrokes, and the rows were not rebuilt.
+    expect(renders.tracker).toBeGreaterThan(drawsBefore);
+    expect(renders.rows).toBe(rowsBefore);
   });
 });
