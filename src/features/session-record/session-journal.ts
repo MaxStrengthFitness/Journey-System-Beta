@@ -10,7 +10,9 @@
  * memory, and no second query is made.
  *
  * Returns null when the stream cannot answer (none handed over, no session,
- * or the stream FAILED): the caller then reads the notes itself, as before.
+ * the stream FAILED, or it is the index-less fallback that came back at its
+ * limit, so not surely the newest): the caller then reads the notes itself,
+ * as before.
  * A failed read is unknown, never "no notes". Loading is said as loading.
  */
 import type { JournalStream } from "../../hooks/useClientJournal";
@@ -28,6 +30,8 @@ export function sessionJournalOf(
 ): SessionJournalRead | null {
   if (!stream || !sessionId) return null;
   if (stream.state === "failed") return null;
+  // Some 300 of the client's notes, not the newest: this session's may be missing.
+  if (stream.newest === false) return null;
   if (stream.state !== "ready" || !stream.entries) return { entries: [], loading: true };
   return { entries: stream.entries.filter((e) => e.sessionId === sessionId), loading: false };
 }

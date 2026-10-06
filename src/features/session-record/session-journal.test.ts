@@ -24,4 +24,10 @@ describe("sessionJournalOf: a session's notes from the stream already open (R11)
     expect(sessionJournalOf(null, "s1")).toBeNull();
     expect(sessionJournalOf({ state: "ready", entries: [] }, null)).toBeNull();
   });
+
+  it("hands the read back when the stream is not surely the newest (the index-less fallback at its limit)", () => {
+    expect(sessionJournalOf({ state: "ready", entries: [entry("a", "s1")], newest: false }, "s1")).toBeNull();
+    // Said to be the newest, or not said at all: it answers.
+    expect(sessionJournalOf({ state: "ready", entries: [entry("a", "s1")], newest: true }, "s1")?.entries).toHaveLength(1);
+  });
 });

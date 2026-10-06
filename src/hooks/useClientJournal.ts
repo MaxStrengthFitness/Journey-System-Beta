@@ -950,6 +950,13 @@ export interface JournalLoadState {
 export interface JournalStream {
   entries: JournalEntry[] | null;
   state: JournalLoad;
+  /**
+   * False when the stream may NOT hold the client's newest entries: the
+   * index-less fallback (unordered) came back at its limit, so it is some
+   * 300 of them, not the newest 300. A reader that needs the newest (this
+   * session's notes) reads for itself then. Absent means it does.
+   */
+  newest?: boolean;
 }
 
 /** Which listener belongs to which group. */
@@ -1072,6 +1079,9 @@ export function useClientJournal({
 
   // Guards the ordered-query -> unordered-query fallback from looping.
   const fellBackRef = useRef(false);
+  /* The fallback came back at its limit: an arbitrary 300, not the newest
+     (JournalStream.newest). Keyed by the client it was said about. */
+  const [unorderedFullFor, setUnorderedFullFor] = useState<string | null>(null);
 
   /** Records whether a collection's snapshot came back exactly at the guard rail. */
   const noteCap = (name: string, size: number) =>
@@ -1121,6 +1131,8 @@ export function useClientJournal({
           setNative(
             snap.docs.map((d) => ({ id: d.id, ...d.data() }) as JournalEntry),
           );
+          const full = !ordered && snap.docs.length >= STREAM_LIMIT;
+          setUnorderedFullFor((prev) => (full ? clientId : prev === clientId ? null : prev));
           setIsLoading(false);
           markLoad(clientId, "journalEntries", "ready");
         },
@@ -1457,8 +1469,12 @@ export function useClientJournal({
 
   const streamState: JournalLoad = loadFor.journalEntries ?? "loading";
   const journalStream = useMemo<JournalStream>(
-    () => ({ entries: streamState === "ready" ? native : null, state: streamState }),
-    [streamState, native],
+    () => ({
+      entries: streamState === "ready" ? native : null,
+      state: streamState,
+      newest: unorderedFullFor !== clientId,
+    }),
+    [streamState, native, unorderedFullFor, clientId],
   );
 
   const capped = Object.values(cappedBy).some(Boolean);
