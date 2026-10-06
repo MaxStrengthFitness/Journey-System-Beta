@@ -35,6 +35,25 @@ Local dev points at the production Firebase project by design, so UI work can
 be checked against real studio and schedule data. Writes hit real records —
 see CLAUDE.md before running anything that writes.
 
+## The first screen's size budget
+
+What an iPad downloads and parses before Journey can draw anything is held to
+a budget (the speed round, Oct 5 2026). After a production build:
+
+```bash
+npx vite build          # in a shell where NODE_ENV is unset or "production"
+npm run check:bundle    # scripts/check-bundle-budget.mjs dist
+```
+
+It sums the files the built `index.html` names (the module script, every
+modulepreload and stylesheet), raw and gzipped, and fails above
+`BUDGET_GZIP_KB` (480 KB gzip; 456.9 KB when it was set), when charts, drag
+and drop or motion reach the first screen, or when the build used React's
+development files. CI runs it after its build, and a ship script's prepare can
+run it after its own. When it fails, find what joined the first screen (a
+stylesheet imported from `main.tsx`, a helper imported from a big module, a
+vendor group in `vite.config.ts`) before raising the number.
+
 ## The rest
 
 | | |

@@ -121,6 +121,14 @@ jobs:
       - name: Build
         run: npx vite build
 
+      # What every iPad downloads before the first screen, held to a budget
+      # (the speed round, Oct 5 2026, R13). scripts/check-bundle-budget.mjs
+      # reads the build's index.html and fails over BUDGET_GZIP_KB, when a
+      # lazy-only library (charts, drag and drop, motion) reaches the first
+      # screen, or when the build used React's development files.
+      - name: First-screen size budget
+        run: npm run check:bundle
+
       # Kept even when everything passes: the typecheck log is how you see
       # WHICH errors remain without checking the repo out.
       - name: Upload typecheck log
