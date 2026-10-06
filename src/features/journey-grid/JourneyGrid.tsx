@@ -988,7 +988,9 @@ export function JourneyGrid({
       >
         <div className="jg-grid" data-reorder={live?.reorder ? "1" : "0"}>
           {/* ---------- header row ---------- */}
-          <div className="jg-row" role="row">
+          {/* One sticky box for the whole row where subgrid is there
+              (journey-grid.css, "ONE sticky header row"). */}
+          <div className="jg-row jg-row--head" role="row">
             {/* Just the word. The "start → now" line under it described the
                 Analytics column, which the Active Session turns off -- so on
                 the screen a trainer actually stares at for an hour it was a
