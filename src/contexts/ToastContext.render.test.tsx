@@ -9,20 +9,10 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
-vi.mock("motion/react", async () => {
-  const R = await import("react");
-  const strip = ({ initial: _i, animate: _a, exit: _e, layout: _l, transition: _t, ...rest }: Record<string, unknown>) => rest;
-  const made = new Map<string, unknown>();
-  const motion = new Proxy({}, {
-    get: (_t, tag: string) => {
-      if (!made.has(tag)) made.set(tag, R.forwardRef((p: Record<string, unknown>, ref) => R.createElement(tag, { ...strip(p), ref })));
-      return made.get(tag);
-    },
-  });
-  return { motion, AnimatePresence: ({ children }: { children: React.ReactNode }) => R.createElement(R.Fragment, null, children) };
-});
+// No motion mock: the toasts come and go with CSS since the speed round
+// (Oct 5 2026, R13), and nothing here imports the motion library.
 
-import { ToastProvider, useToast } from "./ToastContext";
+import { TOAST_EXIT_MS, ToastProvider, useToast } from "./ToastContext";
 
 beforeAll(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -69,5 +59,40 @@ describe("ToastProvider", () => {
     });
     expect(document.body.textContent).not.toContain("Saved");
     expect(seen.length).toBe(before);
+  });
+
+  it("fades a toast out for TOAST_EXIT_MS before it goes, and a tap and the timer together drop it once", () => {
+    vi.useFakeTimers();
+    let show: ((m: string) => void) | null = null;
+    function Reader() {
+      show = useToast().info;
+      return null;
+    }
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    act(() =>
+      root!.render(
+        <ToastProvider>
+          <Reader />
+        </ToastProvider>,
+      ),
+    );
+    act(() => show!("Synced"));
+    const toast = () => document.body.querySelector<HTMLButtonElement>("button[aria-label=\"Dismiss\"]")?.parentElement ?? null;
+    expect(toast()?.getAttribute("data-leaving")).toBeNull();
+    expect(toast()?.className).toContain("motion-safe:animate-in");
+    act(() => {
+      vi.advanceTimersByTime(4000);
+    });
+    // Leaving: still drawn, fading, and only under "reduce motion" still.
+    expect(toast()?.getAttribute("data-leaving")).toBe("true");
+    expect(toast()?.className).toContain("motion-safe:animate-out");
+    // A tap on Dismiss while it fades changes nothing.
+    act(() => toast()!.querySelector("button")!.click());
+    act(() => {
+      vi.advanceTimersByTime(TOAST_EXIT_MS);
+    });
+    expect(document.body.textContent).not.toContain("Synced");
   });
 });

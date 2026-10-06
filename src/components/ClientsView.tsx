@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { motion } from "motion/react";
 import {
   collection,
   query,
@@ -907,12 +906,12 @@ export function ClientsView({
     : null;
 
   return (
-    <motion.div
+    // The Hub rises in with CSS (the speed round, Oct 5 2026, R13): the
+    // motion library it used put its whole runtime on the first screen. It
+    // no longer fades out first either; the next screen opens at once.
+    <div
       key="clients"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="flex flex-col h-full bg-background text-foreground w-full overflow-hidden"
+      className="flex flex-col h-full bg-background text-foreground w-full overflow-hidden motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-5 duration-300 ease-out"
     >
       {/* Client search moved to the global header (AppContent → AppHeader.searchSlot).
           Manual client creation stays removed: profiles arrive via the Mindbody sync.
@@ -1217,6 +1216,6 @@ export function ClientsView({
         )}
       </div>
 
-    </motion.div>
+    </div>
   );
 }

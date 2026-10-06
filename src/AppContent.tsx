@@ -28,7 +28,6 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { usePhone } from "./features/phone/device";
-import { AnimatePresence } from "motion/react";
 import {
   collection,
   updateDoc,
@@ -1644,7 +1643,11 @@ export default function AppContent({
             <ScreenRecoveryProvider value={screenRecovery}>
             <LoadBoundary kind="screen" resetKey={currentView} sessionScreen={currentView === "workouts"}>
             <Suspense fallback={<ViewLoader />}>
-              <AnimatePresence mode="wait">
+              {/* One screen at a time. This was motion's AnimatePresence in
+                  "wait" mode, so a screen opened only after the Hub had
+                  faded out; the speed round (Oct 5 2026, R13) dropped it with
+                  the motion runtime it put on the first screen. */}
+              <>
                 {currentView === "client-directory" && (
                   <ClientDirectory
                     clients={clients}
@@ -2030,7 +2033,7 @@ export default function AppContent({
                     }}
                   />
                 )}
-              </AnimatePresence>
+              </>
             </Suspense>
             </LoadBoundary>
             </ScreenRecoveryProvider>

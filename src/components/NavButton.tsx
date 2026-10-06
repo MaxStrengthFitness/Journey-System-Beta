@@ -30,7 +30,6 @@
  * scale transition; the weight changes at once.
  */
 import React from "react";
-import { motion } from "motion/react";
 
 export function NavButton({
   active,
@@ -78,9 +77,12 @@ export function NavButton({
         {label}
       </span>
       {active && (
-        <motion.div
-          layoutId="nav-indicator"
-          className={`absolute -bottom-1 left-0 right-0 h-0.5 rounded-full ${activeIndicator}`}
+        // The tab you're on is underlined. Drawn with CSS since the speed
+        // round (Oct 5 2026, R13): it slid from tab to tab with the motion
+        // library, whose whole runtime the bar put on the first screen. It
+        // now grows in where it lands, and stays still under "reduce motion".
+        <div
+          className={`absolute -bottom-1 left-0 right-0 h-0.5 rounded-full motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-50 duration-300 ease-out ${activeIndicator}`}
         />
       )}
     </button>

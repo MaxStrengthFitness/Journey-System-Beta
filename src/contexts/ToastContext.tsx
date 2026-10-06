@@ -13,7 +13,6 @@ import {
   Info,
   X,
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
@@ -22,7 +21,21 @@ export interface ToastMessage {
   message: string;
   type: ToastType;
   duration?: number;
+  /** On its way out: drawn for TOAST_EXIT_MS more, fading, then gone. */
+  leaving?: boolean;
 }
+
+/*
+ * The toasts come and go with CSS, not the motion library (the speed round,
+ * Oct 5 2026, R13): this provider wraps the whole app, so importing motion
+ * here put its whole runtime (about 40 KB gzip) on the first screen. The
+ * same moves: in, a rise of 20px from 95% with a fade; out, a fade to 90%
+ * over 150ms. Under "reduce motion" neither moves (motion-safe), which
+ * motion never honoured here.
+ */
+export const TOAST_EXIT_MS = 150;
+const TOAST_IN = "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-5 motion-safe:zoom-in-95 duration-300 ease-out";
+const TOAST_OUT = "motion-safe:animate-out motion-safe:fade-out-0 motion-safe:zoom-out-90 duration-150 fill-mode-forwards";
 
 interface ToastContextType {
   toast: (message: string, type?: ToastType, duration?: number) => void;
@@ -37,8 +50,13 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
+  // Out in two steps: marked leaving (it fades), then dropped once the fade
+  // is done. A second call (the timer and a tap) only drops it again.
   const removeToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    setToasts((prev) => prev.map((t) => (t.id === id && !t.leaving ? { ...t, leaving: true } : t)));
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, TOAST_EXIT_MS);
   }, []);
 
   const addToast = useCallback(
@@ -106,8 +124,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       {/* On a phone (under 640px) the toasts sit inside the screen's edges and above the bottom bar (Journey Lite, Oct 1 2026); 384px from the right edge started off a 390px screen. */}
       <div className="fixed bottom-20 left-3 right-3 sm:left-auto sm:bottom-6 sm:right-6 z-9999 flex flex-col gap-3 sm:w-full max-w-sm pointer-events-none">
-        <AnimatePresence>
-          {toasts.map((t) => {
+        {toasts.map((t) => {
             let bgColor = "bg-slate-900/90 border-slate-800 text-slate-100";
             // The info toast is dark in both themes, so its icon is the
             // frame's blue, which is the same in both (--cyan follows the
@@ -135,16 +152,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             }
 
             return (
-              <motion.div
+              <div
                 key={t.id}
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{
-                  opacity: 0,
-                  scale: 0.9,
-                  transition: { duration: 0.15 },
-                }}
-                className={`pointer-events-auto flex items-start gap-3 p-4 rounded-2xl border backdrop-blur-xl shadow-2xl ${bgColor}`}
+                data-leaving={t.leaving ? "true" : undefined}
+                className={`pointer-events-auto flex items-start gap-3 p-4 rounded-2xl border backdrop-blur-xl shadow-2xl ${bgColor} ${t.leaving ? TOAST_OUT : TOAST_IN}`}
               >
                 <IconComponent
                   className={`w-5 h-5 shrink-0 mt-0.5 ${iconColor}`}
@@ -164,10 +175,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 >
                   <X className="w-4 h-4" aria-hidden />
                 </button>
-              </motion.div>
+              </div>
             );
           })}
-        </AnimatePresence>
       </div>
     </ToastContext.Provider>
   );
