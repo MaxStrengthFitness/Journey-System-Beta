@@ -796,6 +796,14 @@ export function MachineTimeline({
 }: MachineTimelineProps) {
   const rootRef = useRef<HTMLElement>(null);
   const [measured, setMeasured] = useState<number | null>(null);
+  /* Whether the card's width has been read once (the iPad round, Oct 6
+     2026). Until it has, the Staircase is not drawn: the read happens before
+     the first paint, so nobody sees the gap, and the chart is drawn once at
+     its real width instead of once at a guessed width and again at the real
+     one (the machine menu opened in 146 ms on an iPad 10th gen and 247 ms
+     on an older iPad in the perf lab). A hidden card that measures 0 still
+     draws at the fallback width, as it always did. */
+  const [widthRead, setWidthRead] = useState(!!forced);
   const rawId = useId();
   const idBase = `mm${rawId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
 
@@ -807,6 +815,7 @@ export function MachineTimeline({
       const w = el.clientWidth;
       // A hidden card measures 0: keep what we had until it is shown.
       if (w > 0) setMeasured(Math.round(w));
+      setWidthRead(true);
     };
     read();
     if (typeof ResizeObserver !== "function") return;
@@ -1059,16 +1068,18 @@ export function MachineTimeline({
           />
           {/* A group, so its name (and the keys it takes) is announced: a role-less div's label is dropped. */}
           <div className="mm-plot" role="group" tabIndex={0} aria-label={PLOT_LABEL} onKeyDown={onPlotKey}>
-            <StaircasePlot
-              model={model}
-              ctx={ctx}
-              view={view}
-              contentWidth={contentWidth}
-              landscape={landscape}
-              selected={selIndex >= 0 ? selIndex : null}
-              idBase={idBase}
-              onTapColumn={tapColumn}
-            />
+            {widthRead || forced ? (
+              <StaircasePlot
+                model={model}
+                ctx={ctx}
+                view={view}
+                contentWidth={contentWidth}
+                landscape={landscape}
+                selected={selIndex >= 0 ? selIndex : null}
+                idBase={idBase}
+                onTapColumn={tapColumn}
+              />
+            ) : null}
           </div>
           {!model.notesRead ? <p className="mm-chart__note">{NOTES_UNREAD_LINE}</p> : null}
           {controls(true)}

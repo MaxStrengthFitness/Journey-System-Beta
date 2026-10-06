@@ -134,6 +134,36 @@ describe("the Staircase's width", () => {
     expect(q(b.host, ".mm-plot svg")?.getAttribute("viewBox")).toMatch(/^0 0 712 /);
   });
 
+  it("draws the Staircase once, at the width it read, and at the fallback when the card measures 0 (the iPad round, Oct 6 2026)", async () => {
+    // jsdom measures every box 0: the card is drawn at the fallback, as a hidden card is.
+    const a = await mount(<MachineTimeline model={avery(21)} ctx={CTX} />);
+    expect(q(a.host, ".mm-plot svg")?.getAttribute("viewBox")).toMatch(new RegExp(`^0 0 ${TIMELINE_FALLBACK_WIDTH} `));
+    // A card that measures 600px is drawn at 600, and never first at the fallback.
+    const drawn: string[] = [];
+    const desc = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, get: () => 600 });
+    const seen = new MutationObserver((records) => {
+      for (const r of records) {
+        // A plot drawn at one width and then changed to another says so here.
+        if (r.type === "attributes" && (r.target as Element).matches(".mm-plot > svg")) drawn.push(r.oldValue ?? "");
+        for (const n of r.addedNodes)
+          if (n instanceof Element) for (const svg of n.matches(".mm-plot > svg") ? [n] : n.querySelectorAll(".mm-plot > svg")) drawn.push(svg.getAttribute("viewBox") ?? "");
+      }
+    });
+    seen.observe(document.body, { subtree: true, childList: true, attributes: true, attributeOldValue: true, attributeFilter: ["viewBox"] });
+    try {
+      const b = await mount(<MachineTimeline model={avery(21)} ctx={CTX} />);
+      expect(q(b.host, ".mm-plot svg")?.getAttribute("viewBox")).toMatch(/^0 0 600 /);
+      for (const r of seen.takeRecords()) for (const n of r.addedNodes) if (n instanceof Element) for (const svg of n.querySelectorAll(".mm-plot > svg")) drawn.push(svg.getAttribute("viewBox") ?? "");
+      expect(drawn.length).toBeGreaterThan(0);
+      expect(drawn.every((v) => v.startsWith("0 0 600 "))).toBe(true);
+    } finally {
+      seen.disconnect();
+      if (desc) Object.defineProperty(HTMLElement.prototype, "clientWidth", desc);
+      else delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth;
+    }
+  });
+
   it("follows a ResizeObserver when there is one, and stops observing when it goes", async () => {
     let disconnected = 0;
     class FakeObserver {
