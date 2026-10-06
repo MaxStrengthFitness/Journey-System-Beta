@@ -2,13 +2,13 @@
 
 ## Corrected Oct 5 2026: the Enterprise edition's prices (the speed round, R31)
 
-**Read this section first; it supersedes the Sep 25 model's prices and totals below.** That model priced Firestore as the Standard edition, multi-region ($0.06 per 100k reads), which is about 12 times too high for an indexed read on this database, and it had no line for collection scans, real-time updates, internet egress or point-in-time recovery. Production Firestore is the **Enterprise edition in us-west1** (one region), and it bills differently. The figures here are from the speed round's blueprint (https://claude.ai/artifact/3BVGAvBj8ooWwMNhQ2tEtt, §7), with prices fetched on Oct 5 2026. "Est." means an estimate; nothing below was read off an invoice except the Mindbody one.
+**Read this section first; it supersedes the Sep 25 model's prices and totals below.** That model priced Firestore as the Standard edition, multi-region ($0.06 per 100k reads), which is about 12 times too high for an indexed read on this database, and it had no line for collection scans, real-time updates, internet egress or point-in-time recovery. Production Firestore is the **Enterprise edition in us-west1** (one region), and it bills differently. The figures here are from the speed round's blueprint (https://claude.ai/artifact/3BVGAvBj8ooWwMNhQ2tEtt, §7), with prices fetched on Oct 5 2026. "Est." means an estimate. Read off invoices on the night of Oct 5 2026 (AJ's dashboards): Mindbody's ($13.56 for 6,779 calls), Render's (September $50.00, August $18.75), and Render's billing page (October projected $50 before the crons).
 
 ### The answer
 
-- **Today (4 studios): about $52–54 a month**, almost all of it Render's fixed fees.
-- **After the speed round, and once R20's gate allows the smaller web instance: about $34–36 a month.**
-- **At 100 studios of 300 clients: about $76–1,100 a month after the fixes** (about $740 central), against **$1.7k–7.3k if nothing had changed** (about $3.9k central). The width of that range is Mindbody's billing rule, not infrastructure.
+- **Today (4 studios): about $66–68 a month**: Render $50 (workspace and web), the two crons about $2 (created on Oct 5 2026), Mindbody about $14 (one cent for every five calls), Firestore $0–2.
+- **After the speed round, and once R20's gate allows the smaller web instance: about $48–50 a month.**
+- **At 100 studios of 300 clients: about $720–790 a month after the fixes** (Mindbody about $645 of it), against **about $3.9k if nothing had changed** (about $1.7–7.3k; the scans). **Mindbody is the biggest line at every size from here**; every call it is spared is $0.002.
 
 ### Prices used (Oct 5 2026)
 
@@ -22,8 +22,8 @@
 | Firestore free tier | worth about $2 a month, and given to **one database per project**; this project has seven, so Journey's named database may not have it. It moves no total |
 | **Render** | Pro workspace **$25** flat (25 GB bandwidth, then $0.15/GB; 1,000 build minutes, then $5 per 1,000; metrics and logs kept **14 days**). Web instance `1c-2g` **$25**, `0.5c-512mb` $7, `2c-4g` $85. Each cron service **at least $1 a month** ($0.00016 a minute). Edge caching included |
 | Cloud Run functions (gen 2) | 2M requests, 180k vCPU-seconds and 360k GiB-seconds free per billing account, then $0.40 per million requests. Artifact Registry storage is charged even inside the free tier |
-| Gemini 3 Flash (preview) | $0.50 per million input tokens, $3.00 per million output; the free tier may use what it reads to improve Google's products (R33: confirm the key's project is on the paid tier) |
-| **Mindbody** | Three readings of the rule: **A** 1,000 calls a day free per site (about $0); **B** $0.002 a call after about 5,000 a cycle; **C** 1,000 a day account-wide, then $0.0033 (Mindbody's own FAQ still says this). The Aug 26 – Sep 23 invoice: 6,779 calls, busiest day 922, **$0 overage**, which fits A or C, not B. R29 asks Mindbody which. Booking through the API costs **$2.50 an appointment** |
+| Gemini 3 Flash (preview) | $0.50 per million input tokens, $3.00 per million output. **R33, answered Oct 5 2026:** the scans run in the MaxStrengthFitness App project (`gen-lang-client-0731527386`), which AI Studio shows on the **paid tier (Tier 1, Firebase payment)**, so Google does not use them to improve its products |
+| **Mindbody** | **$0.002 for every call, from the first one (R29, answered Oct 5 2026 from the developer account).** The Sep 25 invoice was **$13.56 for 6,779 calls** (Aug 24 – Sep 23: Solon 1,191, the shared site 29068 5,588; busiest day 922), which is exactly 6,779 × $0.002. Mindbody's report shows "0 call overages" for the same cycle, so an overage is a separate, higher charge above a threshold Journey has not reached, not the per-call fee. The three readings this table used to carry (1,000 a day free, 5,000 a cycle free, $0.0033 after 1,000 a day) are all wrong. Booking through the API costs **$2.50 an appointment** |
 
 ### Today, line by line
 
@@ -31,12 +31,12 @@
 | --- | --- | --- |
 | Render Pro workspace | flat | 25 |
 | Render web `1c-2g` | flat | 25 |
-| Two Render crons | $1 minimum each (they run about $0.05) | 2 |
-| Render bandwidth and builds | 27 MB out month to date, far under 25 GB; builds probably inside 1,000 minutes (not checked) | 0 (0–5 if builds run over) |
-| Firestore | indexed reads about $0.1, scans about $1, real-time about $0.2, writes about $0.1, storage and PITR about $0.1 (modelled, not measured) | 0–2 |
-| Mindbody | the invoice: $0 overage | 0 |
+| Two Render crons | $1 minimum each (they run about $0.05). **They did not exist until Oct 5 2026**: render.yaml was never linked as a Blueprint, so its two cron jobs were never created and the nightly renewals job had never run; AJ created both in the dashboard that night (region Ohio) | 2 |
+| Render bandwidth and builds | 32 MB out and 8 of 1,000 build minutes in October to the 5th | 0 |
+| Firestore | indexed reads about $0.1, scans about $1, real-time about $0.2, writes about $0.1, storage and PITR about $0.1 (modelled; the console showed 66K reads, 8.2K writes and 554 real-time reads in the 24 hours to Oct 5, which is pennies) | 0–2 |
+| Mindbody | the Sep 25 invoice: 6,779 calls × $0.002 | about 14 |
 | Functions, Scheduler, Auth, Gemini | free tiers, or not used | about 0 |
-| **Total** | | **about $52–54** (Render 96–100% of it) |
+| **Total** | | **about $66–68** |
 
 ### After the speed round
 
@@ -45,7 +45,7 @@
 | Web `1c-2g` → `0.5c-512mb` (R20; only after its gate: edge caching showing HIT, the one-scan slot, two recorded 14-day windows under 300 MB memory p95, and AJ's approval) | **−18** |
 | The scans indexed (R1, R2, R24): about −$1 today, plus about $0.1 of index writes | about −1 |
 | The deleted functions, TTL on the webhook's logs, edge caching, budgets | about 0 |
-| **New total** ($25 + $7 + $2 + $0–2) | **about $34–36** |
+| **New total** ($25 + $7 + $2 + Firestore $0–2 + Mindbody about $14) | **about $48–50** |
 
 Hobby instead of the Pro workspace would save $25 more but loses latency metrics, request logs and seats; not during these rounds.
 
@@ -62,7 +62,9 @@ Assumptions: sessions a month = studios × clients × 1.6 × 4.33; six iPads a s
 | 100 × 150 | 103,920 | $0 / $435 / $634 | $819 ($780) | $32–44 | $1–3 | $34–51 | **about $1.3k** ($0.5–2.4k) | **$67–732**; about $517 | $5.2 |
 | 100 × 300 | 207,840 | $0 / $635 / $964 | $3,186 ($3,119) | $40–78 | $2–9 | $34–51 | **about $3.9k** ($1.7–7.3k) | **$76–1,102**; about $740 | $7.4 |
 
-The one figure to quote: at 100 × 300 the unindexed scans would have cost **about $3.1k a month (about $1.5–6k)**, against **about $1 a month** of index writes to remove them. Mindbody calls are B ÷ $0.002 + 5,000 (about 323k a month at 100 × 300); under C the allowance does not roll over, so C's figures are floors. The crons' egress at 100 × 300 is about 40–75 GB a month, $5–11 past the free 10 GiB (R34 moves the crons next to Firestore if it passes $10).
+**Settled on Oct 5 2026 (R29): Mindbody bills every call, so the true Mindbody line is column B plus $10** (B assumed 5,000 free calls a cycle; there are none), and the "Total after" central figures become about **$159 / $216 / $280 / $393 / $527 / $750** down the table; A and C do not apply, so the low and high ends of the "Total after" ranges are void. Mindbody is then the largest line in every row after the fixes.
+
+The one figure to quote: at 100 × 300 the unindexed scans would have cost **about $3.1k a month (about $1.5–6k)**, against **about $1 a month** of index writes to remove them. Mindbody calls are B ÷ $0.002 + 5,000 (about 323k a month at 100 × 300, so about $645 a month). The crons' egress at 100 × 300 is about 40–75 GB a month, $5–11 past the free 10 GiB (R34 moves the crons next to Firestore if it passes $10).
 
 ### What drives the bill on this database
 
@@ -83,7 +85,7 @@ The one figure to quote: at 100 × 300 the unindexed scans would have cost **abo
 1. **Firebase console → Firestore → Usage**, and **Query insights**: a day after the speed round's indexes are Enabled, no collection scan should be among the top shapes by read units on the session and profile path.
 2. **Google Cloud → Billing**: Firestore dollars a studio a month should stay flat as studios are added (under $1).
 3. **Render → Metrics**: memory p95 and p90 response, recorded in 14-day windows (Pro keeps 14 days), which is also R20's gate.
-4. **The Mindbody answer (R29)** goes here when it comes.
+4. **Mindbody → developers.mindbodyonline.com → Reports → Invoice Detail and Activity by Studio**: calls a day and a site, at $0.002 each (R29 was answered there on Oct 5 2026).
 
 ---
 

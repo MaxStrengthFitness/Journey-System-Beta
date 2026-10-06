@@ -67,9 +67,11 @@
           failure (each stop says what is already live). Then it prints
           what is left for AJ by hand: the indexes Enabled, the two TTL
           policies, Render's edge caching (only AFTER this deploy), the
-          Render settings check, the Mindbody billing email (R29), the
-          Gemini paid tier (R33), the iPad walk (Round 58), and recording
-          Render's metrics for the R20 gate.
+          Render settings (render.yaml is NOT linked, so they are set by
+          hand), the two crons' next log, the iPad walk (Round 58), and
+          recording Render's metrics for the R20 gate. R29 (Mindbody bills
+          $0.002 a call) and R33 (Gemini on the paid tier) were answered
+          on Oct 5 2026 from AJ's dashboards.
 
  To undo the app: push the restore tag to master (ask Claude). To undo the
  two functions: deploy them again from a checkout of the restore tag (ask
@@ -461,12 +463,15 @@ Log '   The second answer says cf-cache-status: HIT. That is R20''s first gate.'
 Log '   Then twice each: curl.exe -sI https://maxstrength-app-beta.onrender.com/version.json  and the same for  /' 'White'
 Log '   Neither may ever say cf-cache-status: HIT, and version.json must say Cache-Control: no-store' 'White'
 Log '   (iPads notice a new version through it). If either is a HIT, turn Edge Caching off and tell Claude.' 'White'
-Log '4. Render -> maxstrength-app-beta -> Settings: Start Command = node build/server.cjs, Max shutdown delay = 120 s,' 'White'
-Log '   Instances = 1 (set them there if the service is not synced from render.yaml). The deploy''s Logs should show the OLD' 'White'
-Log '   instance say "SIGTERM: no new connections; letting running requests finish." If that never appears, tell Claude.' 'White'
+Log '4. Render -> maxstrength-app-beta -> Settings. The service is NOT linked to render.yaml (checked Oct 5 2026), so SET:' 'White'
+Log '   Start Command = node build/server.cjs (npm start does not pass SIGTERM on to the server), Max shutdown delay = 120 s' 'White'
+Log '   (if Render shows that setting), Instances = 1. The NEXT deploy''s Logs should show the OLD instance say' 'White'
+Log '   "SIGTERM: no new connections; letting running requests finish." If that never appears, tell Claude.' 'White'
 Log '5. Render -> Logs, search  type: ''boot''  : one line per cold open (auth-ready, trainer-ready, hub-data, standalone, userAgent).' 'White'
-Log '6. R29: send Mindbody the billing question (docs\rounds\2026-09-26-cost-plan.md, the invoice paragraph). Its answer goes in docs\business\running-costs.md.' 'White'
-Log '7. R33: Google AI Studio or Cloud console -> Billing: the project that owns GEMINI_API_KEY is on the paid tier, billing on.' 'White'
+Log '6. The two Render crons (created by hand on Oct 5 2026) rebuild from master on this push. The next morning, open' 'White'
+Log '   journey-cron-renewals -> Logs: the Done line, and the month tally step for Hours and Insights. Tell Claude if it failed.' 'White'
+Log '7. Nothing to send for R29 or R33: Mindbody bills $0.002 a call from the first call, and the Gemini key''s project is on' 'White'
+Log '   the paid tier (both read from your dashboards on Oct 5 2026).' 'White'
 Log '8. Walk Round 58 of docs\ops\TESTING-CHECKLIST.md on an iPad, sign-in first (Google and Microsoft, tab and Home Screen app).' 'White'
 Log '9. For the R20 gate (the $18 a month cut), record Render -> Metrics -> Memory and CPU in 14-day windows (Pro keeps 14 days):' 'White'
 Log '   screenshot each window''s peak and p95 before it ages out. Two windows in a row with a deploy and a chart-import evening,' 'White'
