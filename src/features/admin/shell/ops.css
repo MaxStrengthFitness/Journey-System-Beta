@@ -1554,7 +1554,7 @@
   border-radius: var(--adm-radius);
   background: var(--adm-surface);
   background-clip: padding-box;
-  box-shadow: var(--adm-elev-2), var(--adm-panel-highlight);
+  box-shadow: var(--adm-elev-list), var(--adm-panel-highlight);
 }
 
 .ops-tr--off {

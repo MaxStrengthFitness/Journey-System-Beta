@@ -386,8 +386,15 @@
                        same lift cast upward, for a sheet that rises from
                        the bottom edge
          --elev-5      a dialog
-         --elev-card   a Hub booking: small blurs, because a day holds
-                       30 to 60 of them
+         --elev-list   a card among many: a Hub booking, a Board card, a
+                       note thread, a team or journal card, a row drawn as
+                       a card. ONE tight contact layer, 3px blur at most
+                       (the iPad round, Oct 6 2026, audit W7: WebKit
+                       rasterises each blur on the CPU as a list scrolls,
+                       so a soft two-layer lift on 30 to 60 cards drops
+                       frames on an older iPad). It was --elev-card, the
+                       Hub's alone. The soft lift (--elev-2) stays for a
+                       panel there is one of; paint-cost.test.ts holds it
          --shelf       a bar over scrolling content (a room's toolbar)
          --frame-down, --frame-up   under the navy header, over the navy
                        bottom bar
@@ -430,7 +437,7 @@
     --elev-4: 0 2px 6px rgba(25,45,65,0.10), 0 24px 48px -16px rgba(25,45,65,0.34);
     --elev-4-up: 0 -2px 6px rgba(25,45,65,0.10), 0 -24px 48px -16px rgba(25,45,65,0.34);
     --elev-5: 0 4px 10px rgba(25,45,65,0.10), 0 32px 64px -20px rgba(25,45,65,0.42);
-    --elev-card: 0 1px 2px rgba(25,45,65,0.09), 0 3px 8px -3px rgba(25,45,65,0.18);
+    --elev-list: 0 1px 3px rgba(25,45,65,0.16);
     --shelf: 0 1px 0 rgba(25,45,65,0.10), 0 6px 14px -10px rgba(25,45,65,0.45);
     --frame-down: 0 1px 0 rgba(0,18,36,0.22), 0 4px 12px -2px rgba(0,35,65,0.35);
     --frame-up: 0 -1px 0 rgba(0,18,36,0.22), 0 -10px 26px -12px rgba(0,35,65,0.45);
@@ -695,7 +702,7 @@
     --elev-4: 0 2px 6px rgba(2,10,20,0.50), 0 20px 44px -16px rgba(2,10,20,0.80);
     --elev-4-up: 0 -2px 6px rgba(2,10,20,0.50), 0 -20px 44px -16px rgba(2,10,20,0.80);
     --elev-5: 0 4px 10px rgba(2,10,20,0.55), 0 28px 56px -20px rgba(2,10,20,0.85);
-    --elev-card: 0 1px 2px rgba(2,10,20,0.45), 0 3px 8px -3px rgba(2,10,20,0.50);
+    --elev-list: 0 1px 3px rgba(2,10,20,0.55);
     --shelf: 0 1px 0 rgba(150,180,210,0.10), 0 6px 14px -10px rgba(2,10,20,0.85);
     --frame-down: 0 1px 0 rgba(255,255,255,0.05), 0 4px 12px -2px rgba(2,10,20,0.60);
     --frame-up: 0 -1px 0 rgba(255,255,255,0.05), 0 -10px 24px -12px rgba(2,10,20,0.60);

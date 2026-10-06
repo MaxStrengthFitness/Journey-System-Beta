@@ -36,7 +36,7 @@
 /* A person's card is a panel, like every other card on Team (the standing
    duties, the open loops, the vault, the Operations-kit panels): an edge
    seen from outside (--st-edge, the fill clipped to the padding box), a
-   short navy lift (--st-elev-2), 14px corners, the person at the top and
+   list item's one contact shadow (--st-elev-list, the iPad round), 14px corners, the person at the top and
    the week's lines under them (type and depth, phase 10, Oct 4 2026; it was
    a header-strip card: one hairline, the person in a tinted strip cut by a
    rule, no lift). The cards' grid gap (10px) and the scroller's 16px sides
@@ -50,7 +50,7 @@
   border-radius: var(--st-radius);
   background: var(--st-surface);
   background-clip: padding-box;
-  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
+  box-shadow: var(--st-elev-list), var(--st-panel-highlight);
   overflow: hidden;
 }
 

@@ -62,7 +62,7 @@
   border-radius: var(--eq-radius);
   background: var(--eq-surface);
   background-clip: padding-box;
-  box-shadow: var(--eq-elev-2), var(--eq-panel-highlight);
+  box-shadow: var(--eq-elev-list), var(--eq-panel-highlight);
   scroll-margin: 12px;
 }
 .ph-card.is-logged { border-left-color: var(--eq-ok); }

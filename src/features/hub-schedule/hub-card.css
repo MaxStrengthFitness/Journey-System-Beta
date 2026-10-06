@@ -45,15 +45,16 @@
   transition: opacity 150ms ease;
 }
 
-/* Lifted: a client's booking that isn't over. A small two-layer lift
-   (--eq-elev-card: blur 2px and 8px, the Hub draws 30-60 of them, never
+/* Lifted: a client's booking that isn't over. A list item's one contact
+   shadow (--eq-elev-list: a single 3px blur, the iPad round, Oct 6 2026;
+   it was two layers, 2px and 8px; the Hub draws 30-60 of them, never
    animated) and the dark top light. A flat card means past or not a client,
    so the lift is SCOPED to the one kind that lifts instead of taken back
    from five: a card that is over, unlinked, pending, unknown or a staff
    block (which carries neither data-recede nor data-state) never matches.
    HubCard always sets data-kind and data-recede on a booking. */
 .hs-card[data-kind="client"][data-recede="false"] {
-  box-shadow: var(--eq-elev-card), var(--eq-panel-highlight);
+  box-shadow: var(--eq-elev-list), var(--eq-panel-highlight);
 }
 
 .hs-card:focus-visible {

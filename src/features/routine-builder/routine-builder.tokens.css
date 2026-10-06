@@ -108,7 +108,7 @@
   --rb-elev-3:          var(--elev-3);
   --rb-elev-4:          var(--elev-4);
   --rb-elev-5:          var(--elev-5);
-  --rb-elev-card:       var(--elev-card);
+  --rb-elev-list:       var(--elev-list);
   --rb-shelf:           var(--shelf);
   --rb-press:           var(--press);
   --rb-glow-live:       var(--glow-live);
@@ -177,7 +177,7 @@
   --rb-elev-3:          var(--elev-3);
   --rb-elev-4:          var(--elev-4);
   --rb-elev-5:          var(--elev-5);
-  --rb-elev-card:       var(--elev-card);
+  --rb-elev-list:       var(--elev-list);
   --rb-shelf:           var(--shelf);
   --rb-press:           var(--press);
   --rb-glow-live:       var(--glow-live);
@@ -242,7 +242,7 @@
     --rb-elev-3:          var(--elev-3);
     --rb-elev-4:          var(--elev-4);
     --rb-elev-5:          var(--elev-5);
-    --rb-elev-card:       var(--elev-card);
+    --rb-elev-list:       var(--elev-list);
     --rb-shelf:           var(--shelf);
     --rb-press:           var(--press);
     --rb-glow-live:       var(--glow-live);

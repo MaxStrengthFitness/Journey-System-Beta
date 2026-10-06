@@ -639,7 +639,7 @@
   border: 1px solid var(--cal-edge);
   background: var(--cal-surface);
   background-clip: padding-box;
-  box-shadow: var(--cal-elev-2), var(--cal-panel-highlight);
+  box-shadow: var(--cal-elev-list), var(--cal-panel-highlight);
   overflow: hidden;
 }
 

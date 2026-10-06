@@ -167,10 +167,10 @@ describe("a booking on the Hub", () => {
 
   it("lifts only while it is a client's and not over, with two small blurs", () => {
     expect(merged(CARD, ".hs-card")["box-shadow"], "the base carries no lift").toBeUndefined();
-    expect(merged(CARD, LIFTED)["box-shadow"]).toBe("var(--eq-elev-card), var(--eq-panel-highlight)");
-    // --elev-card: at most two layers, each blur 8px or less (30-60 on screen).
+    expect(merged(CARD, LIFTED)["box-shadow"]).toBe("var(--eq-elev-list), var(--eq-panel-highlight)");
+    // --elev-list: at most two layers, each blur 8px or less (30-60 on screen).
     for (const theme of BOTH) {
-      const layers = CORE[theme]["--elev-card"].split(/,(?![^(]*\))/);
+      const layers = CORE[theme]["--elev-list"].split(/,(?![^(]*\))/);
       expect(layers.length, theme).toBeLessThanOrEqual(2);
       for (const l of layers) expect(Number(/^\s*-?\d+(?:px)? -?\d+(?:px)? (\d+)px/.exec(l)?.[1] ?? NaN), `${theme}: ${l}`).toBeLessThanOrEqual(8);
     }
@@ -195,7 +195,7 @@ describe("a booking on the Hub", () => {
   });
 
   it("draws no other shadow: the lift, the open ring, or none", () => {
-    const allowed = new Set(["none", "var(--eq-elev-card), var(--eq-panel-highlight)", "0 0 0 2px var(--eq-live), var(--eq-elev-3)"]);
+    const allowed = new Set(["none", "var(--eq-elev-list), var(--eq-panel-highlight)", "0 0 0 2px var(--eq-live), var(--eq-elev-3)"]);
     for (const r of rulesOf(CARD)) {
       const shadow = decls(r.body)["box-shadow"];
       if (shadow && r.selectors.every((s) => s.startsWith(".hs-card") && !/\s/.test(s))) expect(allowed.has(shadow), `${r.selectors.join(", ")}: ${shadow}`).toBe(true);

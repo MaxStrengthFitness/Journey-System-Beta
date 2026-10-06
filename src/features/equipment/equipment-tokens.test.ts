@@ -271,10 +271,10 @@ const colour = (theme: Theme, token: string) => paint(theme, [token]);
  * (--eq-raised, --eq-tray, --eq-edge, --eq-edge-control, --eq-divider,
  * --eq-highlight) are literals like every other colour here.
  */
-const SHADOW_ALIAS = /^--eq-(elev-[0-5]|elev-card|shelf|press|glow-(?:live|go)|solid-light|go-light|panel-highlight)$/;
+const SHADOW_ALIAS = /^--eq-(elev-[0-5]|elev-list|shelf|press|glow-(?:live|go)|solid-light|go-light|panel-highlight)$/;
 const DEPTH_COLOURS = ["--eq-raised", "--eq-tray", "--eq-edge", "--eq-edge-control", "--eq-divider", "--eq-highlight"];
 const DEPTH_SHADOWS = [
-  "--eq-elev-0", "--eq-elev-1", "--eq-elev-2", "--eq-elev-3", "--eq-elev-4", "--eq-elev-5", "--eq-elev-card",
+  "--eq-elev-0", "--eq-elev-1", "--eq-elev-2", "--eq-elev-3", "--eq-elev-4", "--eq-elev-5", "--eq-elev-list",
   "--eq-shelf", "--eq-press", "--eq-glow-live", "--eq-glow-go", "--eq-solid-light", "--eq-go-light", "--eq-panel-highlight",
 ];
 

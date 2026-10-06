@@ -130,7 +130,7 @@
   --wk-elev-3:          var(--elev-3);
   --wk-elev-4:          var(--elev-4);
   --wk-elev-5:          var(--elev-5);
-  --wk-elev-card:       var(--elev-card);
+  --wk-elev-list:       var(--elev-list);
   --wk-shelf:           var(--shelf);
   --wk-press:           var(--press);
   --wk-glow-live:       var(--glow-live);
@@ -245,7 +245,7 @@
   --wk-elev-3:          var(--elev-3);
   --wk-elev-4:          var(--elev-4);
   --wk-elev-5:          var(--elev-5);
-  --wk-elev-card:       var(--elev-card);
+  --wk-elev-list:       var(--elev-list);
   --wk-shelf:           var(--shelf);
   --wk-press:           var(--press);
   --wk-glow-live:       var(--glow-live);

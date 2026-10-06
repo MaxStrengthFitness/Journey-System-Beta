@@ -165,7 +165,7 @@ const same = (prefix: string, names: string[]): [string, string][] => names.map(
  */
 const DEPTH = [
   "raised", "tray", "edge", "edge-control", "divider", "highlight",
-  "elev-0", "elev-1", "elev-2", "elev-3", "elev-4", "elev-5", "elev-card",
+  "elev-0", "elev-1", "elev-2", "elev-3", "elev-4", "elev-5", "elev-list",
   "shelf", "press", "glow-live", "glow-go", "solid-light", "go-light", "panel-highlight",
 ];
 const NO_ORANGE = (name: string) => name !== "glow-go" && name !== "go-light";

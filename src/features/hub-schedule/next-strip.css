@@ -76,14 +76,14 @@
   padding: 6px 12px 6px 10px;
   /* Tappable, so the Hub card's lift (type and depth, phase 10, Oct 4
      2026): the edges in --eq-edge with the fill clipped to the padding box,
-     and --eq-elev-card, a small blur for a row of many. The 4px state rail
+     and --eq-elev-list, a small blur for a row of many. The 4px state rail
      on the left is untouched; an unlinked item stays flat, as on the grid. */
   border: 1px solid var(--eq-edge);
   border-left: 4px solid var(--eq-ink-faint);
   border-radius: 10px;
   background: var(--eq-surface);
   background-clip: padding-box;
-  box-shadow: var(--eq-elev-card), var(--eq-panel-highlight);
+  box-shadow: var(--eq-elev-list), var(--eq-panel-highlight);
   color: var(--eq-ink);
   font: inherit;
   text-align: left;
@@ -125,7 +125,7 @@
 
 .hn-item[data-open="true"] {
   border-color: var(--eq-live);
-  box-shadow: 0 0 0 2px var(--eq-live), var(--eq-elev-card);
+  box-shadow: 0 0 0 2px var(--eq-live), var(--eq-elev-list);
 }
 
 .hn-item:focus-visible {

@@ -322,7 +322,7 @@
   border-radius: var(--st-radius);
   background: var(--st-surface);
   background-clip: padding-box;
-  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
+  box-shadow: var(--st-elev-list), var(--st-panel-highlight);
 }
 .op-offer__text {
   margin: 0;
@@ -363,7 +363,7 @@
   border-radius: var(--st-radius);
   background: var(--st-surface);
   background-clip: padding-box;
-  box-shadow: var(--st-elev-2), var(--st-panel-highlight);
+  box-shadow: var(--st-elev-list), var(--st-panel-highlight);
   overflow: hidden;
 }
 .op-person__head {

@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest";
  * in src, not a list, so a new screen is held to it too:
  *
  *   8. The most-seen panels lift: each reads its family's --X-elev-2 (the
- *      Hub's bookings --eq-elev-card, Learning's hero --wk-elev-3).
+ *      Hub's bookings --eq-elev-list, Learning's hero --wk-elev-3).
  *   9. No shadow anywhere is raw black, in a rule or in a shadow token.
  *  10. Nothing animates a shadow: no stylesheet's transition lists
  *      box-shadow or all, and no class list pairs transition-all or
@@ -146,7 +146,7 @@ const same = (a: string, b: string) => a.replace(/\s+/g, "").toLowerCase() === b
    --------------------------------------------------------------------------- */
 
 const SHADOWS = [
-  "--elev-0", "--elev-1", "--elev-2", "--elev-3", "--elev-4", "--elev-4-up", "--elev-5", "--elev-card",
+  "--elev-0", "--elev-1", "--elev-2", "--elev-3", "--elev-4", "--elev-4-up", "--elev-5", "--elev-list",
   "--shelf", "--frame-down", "--frame-up", "--press", "--glow-live", "--glow-go", "--solid-light", "--go-light",
   "--panel-highlight",
 ];
@@ -215,7 +215,7 @@ describe("every shadow is navy, never black", () => {
    --------------------------------------------------------------------------- */
 
 describe("a resting shadow is short", () => {
-  const RESTING = ["--elev-0", "--elev-1", "--elev-2", "--elev-card", "--shelf", "--press"];
+  const RESTING = ["--elev-0", "--elev-1", "--elev-2", "--elev-list", "--shelf", "--press"];
   for (const theme of BOTH) {
     it.each(RESTING)(`${theme}: %s blurs 18px at most`, (token) => {
       const blur = Math.max(...layers(CORE[theme][token]).map((l) => layer(l).blur));
@@ -335,7 +335,7 @@ const LATER: [string, string[]][] = [
   ]],
   ["features/equipment/equipment.tokens.css", [
     "--eq-shelf", "--eq-edge", "--eq-edge-control", "--eq-divider", "--eq-raised", "--eq-highlight",
-    "--eq-elev-0", "--eq-elev-1", "--eq-elev-2", "--eq-elev-3", "--eq-elev-4", "--eq-elev-card", "--eq-panel-highlight",
+    "--eq-elev-0", "--eq-elev-1", "--eq-elev-2", "--eq-elev-3", "--eq-elev-4", "--eq-elev-list", "--eq-panel-highlight",
     "--eq-press", "--eq-glow-live", "--eq-solid-light", "--eq-glow-go", "--eq-go-light",
   ]],
   ["features/admin/admin.tokens.css", [
@@ -495,15 +495,15 @@ const PANEL_LIFTS: [string, string, string][] = [
   ["features/equipment/equipment.css", ".eq-card", "--eq-elev-2"],
   ["features/calendar/calendar.css", ".cal-card", "--cal-elev-2"],
   ["features/briefing/briefing.css", ".br-card", "--br-elev-2"],
-  ["features/client-notes/notes-page.css", ".nt-card", "--eq-elev-2"],
-  ["features/relay/board/board.css", ".rbc", "--st-elev-2"],
-  ["features/relay/team/team.css", ".tm-card", "--st-elev-2"],
+  ["features/client-notes/notes-page.css", ".nt-card", "--eq-elev-list"],
+  ["features/relay/board/board.css", ".rbc", "--st-elev-list"],
+  ["features/relay/team/team.css", ".tm-card", "--st-elev-list"],
   ["features/client-directory/client-directory.css", ".cd-scroll", "--eq-elev-2"],
-  ["features/routines/routines.css", ".rt-routine", "--eq-elev-2"],
+  ["features/routines/routines.css", ".rt-routine", "--eq-elev-list"],
   ["features/client-history/client-history.css", ".hist-month", "--cal-elev-2"],
-  ["features/learning/learning.css", ".lh__tile", "--wk-elev-2"],
+  ["features/learning/learning.css", ".lh__tile", "--wk-elev-list"],
   ["features/learning/learning.css", ".lh__hero", "--wk-elev-3"],
-  ["features/hub-schedule/hub-card.css", '.hs-card[data-kind="client"][data-recede="false"]', "--eq-elev-card"],
+  ["features/hub-schedule/hub-card.css", '.hs-card[data-kind="client"][data-recede="false"]', "--eq-elev-list"],
 ];
 
 describe("8. the most-seen panels lift", () => {
@@ -976,6 +976,85 @@ describe("14. a well sinks: never bg-muted or --bg-dark-3, which go lighter than
         .map(({ line }) => `${file}:${line}`),
     );
     expect(found).toEqual([]);
+  });
+});
+
+/* ---------------------------------------------------------------------------
+   15. A card among many takes the list lift (the iPad round, Oct 6 2026)
+   --------------------------------------------------------------------------- */
+
+/**
+ * The audit's W7: WebKit rasterises a box-shadow's blur on the CPU each time
+ * it paints a tile, so a list of 30 to 60 cards that each carry the soft
+ * two-layer lift (--X-elev-2: 2px and 18px) redraws dozens of 36-device-pixel
+ * blurs on every scroll frame of an older iPad. A card that is one of many
+ * takes --X-elev-list instead: ONE tight contact layer, 3px at most. The soft
+ * lift stays for a panel there is one of, and for the one card that is open
+ * or in hand. [file, selector, palette, how many a screen holds].
+ */
+const REPEATED: [string, string, string, string][] = [
+  ["features/hub-schedule/hub-card.css", '.hs-card[data-kind="client"][data-recede="false"]', "eq", "30-60 a day on the Hub"],
+  ["features/hub-schedule/next-strip.css", ".hn-item", "eq", "the Next 30 minutes' bookings"],
+  ["features/relay/board/board.css", ".rbc", "st", "every card on the Board"],
+  ["features/relay/tracker.css", ".rtk .pl__task", "st", "every task on the Tracker"],
+  ["features/relay/notes/notes.css", ".pn__card", "st", "every note in the Journal"],
+  ["features/relay/team/team.css", ".tm-card", "st", "a card per person on Team"],
+  ["features/relay/board/relay.css", ".fm__tile", "st", "a tile per machine on the Floor Map"],
+  ["features/openings/openings.css", ".op-person", "st", "a card per trainer on Who's usually in"],
+  ["features/openings/openings.css", ".op-offer", "st", "a card per time to offer"],
+  ["features/client-notes/notes-page.css", ".nt-card", "eq", "every note thread on a client's Notes"],
+  ["features/client-history/client-history.css", ".hist-lcard", "cal", "every session in the history list"],
+  ["features/routines/routines.css", ".rt-routine", "eq", "every routine on Programming"],
+  ["features/learning/learning.css", ".lh__tile", "wk", "a tile per family on Learning"],
+  ["features/admin/shell/ops.css", ".ops-tr", "adm", "a card per trainer on Operations -> Team"],
+  ["features/phone/phone.css", ".ph-card", "eq", "a card per machine in a phone's session"],
+];
+
+/** The one card at a time that is open or in hand: it may lift higher. */
+const ONE_AT_A_TIME = [/\[data-open="true"\]/, /\.is-in-hand\b/];
+
+describe("15. a card among many takes the list lift: one contact shadow (the iPad round, W7)", () => {
+  for (const theme of BOTH) {
+    it(`${theme}: --elev-list is one navy layer, 3px of blur at most`, () => {
+      const ls = layers(CORE[theme]["--elev-list"]).map(layer);
+      expect(ls).toHaveLength(1);
+      expect(ls[0].inset).toBe(false);
+      expect(ls[0].blur).toBeLessThanOrEqual(3);
+      expect(ls[0].spread).toBeLessThanOrEqual(0);
+    });
+  }
+
+  it.each(REPEATED)("%s %s (%s): reads --X-elev-list (%s)", (file, sel, p) => {
+    const shadow = merged(file, sel)["box-shadow"] ?? "";
+    expect(shadow, `${sel}'s box-shadow`).toContain(`var(--${p}-elev-list)`);
+    expect(shadow, `${sel}'s box-shadow`).not.toMatch(/elev-[1-5]\b|\d+px \d+px (?:[4-9]|\d\d)px/);
+  });
+
+  it("no state of a repeated card lifts it into the soft lift again, but the one open or in hand", () => {
+    const found: string[] = [];
+    for (const [file, sel] of REPEATED) {
+      const base = sel.split(" ").pop()!.replace(/\[.*$/, "");
+      for (const r of RULES.get(file) ?? []) {
+        for (const s of r.selectors) {
+          if (!s.split(" ").pop()!.startsWith(base) || ONE_AT_A_TIME.some((re) => re.test(s))) continue;
+          for (const v of declared(r.body, "box-shadow")) {
+            if (/elev-[2-5]\b|elev-4-up/.test(v)) found.push(`${file} ${s} { box-shadow: ${v} }`);
+          }
+        }
+      }
+    }
+    expect(found).toEqual([]);
+  });
+
+  it("every palette that carries the lifts carries the list lift, as the app's token by name", () => {
+    // The session's palette is left out: the Active Session draws no list of
+    // cards, and its tokens are the floor's to change this round.
+    for (const file of CSS_FILES.filter((f) => /\.tokens\.css$/.test(f) && !f.includes("journey-grid"))) {
+      const code = stripComments(read(file));
+      for (const m of code.matchAll(/(--([\w]+)-elev-2)\s*:/g)) {
+        expect(code, `${file}: --${m[2]}-elev-list beside ${m[1]}`).toMatch(new RegExp(`--${m[2]}-elev-list\\s*:\\s*var\\(--(?:eq-)?elev-list\\)`));
+      }
+    }
   });
 });
 

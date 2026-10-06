@@ -20,6 +20,8 @@ import { describe, expect, it } from "vitest";
  *      its fade and whenever anything under it repaints; a blurred sticky bar
  *      does the same on every scroll frame. Veils are the navy --scrim alone
  *      (a touch stronger to make up for the blur), bars and toasts opaque.
+ *   2. A card among many takes ONE contact shadow, --X-elev-list (W7). Held
+ *      with the rest of the depth rules, in elevation.test.ts section 15.
  *
  * If one of these fails, the fix is the stylesheet or the class list, not
  * the test.

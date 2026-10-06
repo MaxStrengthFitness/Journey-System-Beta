@@ -178,7 +178,8 @@
 
 /* A PANEL (type and depth, phase 10, Oct 4 2026; the kit's .panel): the
    edge seen from outside (--eq-edge, the fill clipped to the padding box)
-   and a short two-layer navy lift. It was a flat hairline box. Today's
+   and a list item's one contact shadow (--eq-elev-list, the iPad round,
+   Oct 6 2026: a routine among many). It was a flat hairline box. Today's
    routine keeps its orange ring, on top of the lift; a routine that is off
    lies flat on the page's tone. */
 .rt-routine {
@@ -186,12 +187,12 @@
   background-clip: padding-box;
   border: 1px solid var(--eq-edge);
   border-radius: var(--eq-radius);
-  box-shadow: var(--eq-elev-2), var(--eq-panel-highlight);
+  box-shadow: var(--eq-elev-list), var(--eq-panel-highlight);
   overflow: hidden;
 }
 .rt-routine--today {
   border-color: var(--eq-hero);
-  box-shadow: inset 0 0 0 1px var(--eq-hero), var(--eq-elev-2), var(--eq-panel-highlight);
+  box-shadow: inset 0 0 0 1px var(--eq-hero), var(--eq-elev-list), var(--eq-panel-highlight);
 }
 .rt-routine--off { background: var(--eq-bg); box-shadow: none; }
 .rt-routine--off .rt-routine__name { color: var(--eq-ink-muted); }
