@@ -226,8 +226,17 @@ describe("Operations → Hours", () => {
     const el = await mount(owner);
     await chooseAllStudios(el);
     const text = el.textContent ?? "";
-    expect(text).toContain("2 sessions across 1 studio, to last night");
+    expect(text).toContain("2 sessions across 1 of 2 studios, to last night");
     expect(text).toContain("Not in the total yet: Westlake");
+  });
+
+  it("shows no total, never a zero, when the night has counted no studio", async () => {
+    const el = await mount(owner);
+    await chooseAllStudios(el);
+    const text = el.textContent ?? "";
+    expect(text).toContain("Not counted yet. Open a studio below to read its month.");
+    expect(text).not.toContain("0 sessions across");
+    expect(text).not.toContain("0 h");
   });
 
   it("walks back a month and comes up empty without throwing", async () => {

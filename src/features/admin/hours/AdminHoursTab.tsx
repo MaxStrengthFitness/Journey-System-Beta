@@ -316,17 +316,32 @@ function CompanyHours({ studios, month, names }: { studios: Studio[]; month: Mon
     { sessions: 0, minutes: 0 },
   );
   const people = new Set(counted.flatMap((s) => tallies[s.id].rows.map((row) => row.trainerKey))).size;
+  // Nothing counted is not zero hours: a confident wrong number is worse than a missing one.
+  const noneCounted = !night.loading && counted.length === 0;
+  const across =
+    counted.length === studios.length
+      ? `${counted.length} studio${counted.length === 1 ? "" : "s"}`
+      : `${counted.length} of ${studios.length} studios`;
 
   return (
     <>
       <AdminTiles>
         <AdminStatTile
           label="All my studios"
-          value={formatHours(total.minutes)}
-          foot={`${total.sessions} session${total.sessions === 1 ? "" : "s"} across ${counted.length} studio${counted.length === 1 ? "" : "s"}, to last night`}
+          value={noneCounted ? "—" : formatHours(total.minutes)}
+          foot={
+            noneCounted
+              ? "Not counted yet. Open a studio below to read its month."
+              : `${total.sessions} session${total.sessions === 1 ? "" : "s"} across ${across}, to last night`
+          }
           loading={night.loading}
         />
-        <AdminStatTile label="Trainers" value={people} foot="with a session this month, counted once" loading={night.loading} />
+        <AdminStatTile
+          label="Trainers"
+          value={noneCounted ? "—" : people}
+          foot={noneCounted ? "Not counted yet" : "with a session this month, counted once"}
+          loading={night.loading}
+        />
       </AdminTiles>
       {missing.length > 0 && (
         <AdminNotice tone="info">
