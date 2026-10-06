@@ -1,5 +1,94 @@
 # What Journey will cost to run: a model built from the code
 
+## Corrected Oct 5 2026: the Enterprise edition's prices (the speed round, R31)
+
+**Read this section first; it supersedes the Sep 25 model's prices and totals below.** That model priced Firestore as the Standard edition, multi-region ($0.06 per 100k reads), which is about 12 times too high for an indexed read on this database, and it had no line for collection scans, real-time updates, internet egress or point-in-time recovery. Production Firestore is the **Enterprise edition in us-west1** (one region), and it bills differently. The figures here are from the speed round's blueprint (https://claude.ai/artifact/3BVGAvBj8ooWwMNhQ2tEtt, §7), with prices fetched on Oct 5 2026. "Est." means an estimate; nothing below was read off an invoice except the Mindbody one.
+
+### The answer
+
+- **Today (4 studios): about $52–54 a month**, almost all of it Render's fixed fees.
+- **After the speed round, and once R20's gate allows the smaller web instance: about $34–36 a month.**
+- **At 100 studios of 300 clients: about $76–1,100 a month after the fixes** (about $740 central), against **$1.7k–7.3k if nothing had changed** (about $3.9k central). The width of that range is Mindbody's billing rule, not infrastructure.
+
+### Prices used (Oct 5 2026)
+
+| What | Price |
+| --- | --- |
+| **Firestore read units** (Enterprise, us-west1) | **$0.05 per million, one unit per 4 KiB read.** An indexed lookup is about one unit a document. **A query with no index scans the whole collection and is billed on the summed bytes of every document it reads ÷ 4 KiB** |
+| **Firestore real-time updates** | **$0.30 per million**, one per 4 KiB of each changed document, for every listener that receives it |
+| **Firestore write units** | **$0.26 per million, one per 1 KiB**, and every index entry a write touches counts |
+| Firestore storage · point-in-time recovery | $0.24 · $0.15 per GiB-month (PITR is on) |
+| Internet egress (Render's crons read Firestore over the internet) | first 10 GiB a month free, then $0.12 per GiB, from any Render region |
+| Firestore free tier | worth about $2 a month, and given to **one database per project**; this project has seven, so Journey's named database may not have it. It moves no total |
+| **Render** | Pro workspace **$25** flat (25 GB bandwidth, then $0.15/GB; 1,000 build minutes, then $5 per 1,000; metrics and logs kept **14 days**). Web instance `1c-2g` **$25**, `0.5c-512mb` $7, `2c-4g` $85. Each cron service **at least $1 a month** ($0.00016 a minute). Edge caching included |
+| Cloud Run functions (gen 2) | 2M requests, 180k vCPU-seconds and 360k GiB-seconds free per billing account, then $0.40 per million requests. Artifact Registry storage is charged even inside the free tier |
+| Gemini 3 Flash (preview) | $0.50 per million input tokens, $3.00 per million output; the free tier may use what it reads to improve Google's products (R33: confirm the key's project is on the paid tier) |
+| **Mindbody** | Three readings of the rule: **A** 1,000 calls a day free per site (about $0); **B** $0.002 a call after about 5,000 a cycle; **C** 1,000 a day account-wide, then $0.0033 (Mindbody's own FAQ still says this). The Aug 26 – Sep 23 invoice: 6,779 calls, busiest day 922, **$0 overage**, which fits A or C, not B. R29 asks Mindbody which. Booking through the API costs **$2.50 an appointment** |
+
+### Today, line by line
+
+| Line | How it is worked out | $ a month |
+| --- | --- | --- |
+| Render Pro workspace | flat | 25 |
+| Render web `1c-2g` | flat | 25 |
+| Two Render crons | $1 minimum each (they run about $0.05) | 2 |
+| Render bandwidth and builds | 27 MB out month to date, far under 25 GB; builds probably inside 1,000 minutes (not checked) | 0 (0–5 if builds run over) |
+| Firestore | indexed reads about $0.1, scans about $1, real-time about $0.2, writes about $0.1, storage and PITR about $0.1 (modelled, not measured) | 0–2 |
+| Mindbody | the invoice: $0 overage | 0 |
+| Functions, Scheduler, Auth, Gemini | free tiers, or not used | about 0 |
+| **Total** | | **about $52–54** (Render 96–100% of it) |
+
+### After the speed round
+
+| Change | $ a month |
+| --- | --- |
+| Web `1c-2g` → `0.5c-512mb` (R20; only after its gate: edge caching showing HIT, the one-scan slot, two recorded 14-day windows under 300 MB memory p95, and AJ's approval) | **−18** |
+| The scans indexed (R1, R2, R24): about −$1 today, plus about $0.1 of index writes | about −1 |
+| The deleted functions, TTL on the webhook's logs, edge caching, budgets | about 0 |
+| **New total** ($25 + $7 + $2 + $0–2) | **about $34–36** |
+
+Hobby instead of the Pro workspace would save $25 more but loses latency metrics, request logs and seats; not during these rounds.
+
+### At 25, 50 and 100 studios
+
+Assumptions: sessions a month = studios × clients × 1.6 × 4.33; six iPads a studio; history 1.75 × active clients. The "as is" column includes the unindexed scans the speed round removes, modelled at about 23–27 KB per company client per scan and good to about ±2× (an order of magnitude, not a forecast). "After" is indexed reads, real-time, writes, storage, PITR, device egress and the crons' egress; Render after is $25 + $7–14 + $2 + bandwidth $0–5 + builds $0–5.
+
+| Studios × clients | Sessions a month | Mindbody A / B / C | Firestore as is (scans) | Firestore after | Functions | Render after | **Total as is** (central, range) | **Total after** (range; central at B) | After, per studio |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 25 × 150 | 25,980 | $0 / $101 / $83 | $56 ($49) | $7–8 | $0–2 | $34–46 | **about $209** ($0.13–0.32k) | **$41–157**; about $149 | $6.0 |
+| 25 × 300 | 51,960 | $0 / $151 / $165 | $209 ($195) | $14–16 | $0–2 | $34–46 | **about $412** ($0.2–0.65k) | **$48–229**; about $206 | $8.2 |
+| 50 × 150 | 51,960 | $0 / $212 / $266 | $212 ($195) | $17–19 | $0–2 | $34–46 | **about $477** ($0.2–0.75k) | **$51–333**; about $270 | $5.4 |
+| 50 × 300 | 103,920 | $0 / $313 / $433 | $811 ($780) | $27–36 | $1–3 | $34–51 | **about $1.2k** ($0.5–2.1k) | **$62–523**; about $383 | $7.7 |
+| 100 × 150 | 103,920 | $0 / $435 / $634 | $819 ($780) | $32–44 | $1–3 | $34–51 | **about $1.3k** ($0.5–2.4k) | **$67–732**; about $517 | $5.2 |
+| 100 × 300 | 207,840 | $0 / $635 / $964 | $3,186 ($3,119) | $40–78 | $2–9 | $34–51 | **about $3.9k** ($1.7–7.3k) | **$76–1,102**; about $740 | $7.4 |
+
+The one figure to quote: at 100 × 300 the unindexed scans would have cost **about $3.1k a month (about $1.5–6k)**, against **about $1 a month** of index writes to remove them. Mindbody calls are B ÷ $0.002 + 5,000 (about 323k a month at 100 × 300); under C the allowance does not roll over, so C's figures are floors. The crons' egress at 100 × 300 is about 40–75 GB a month, $5–11 past the free 10 GiB (R34 moves the crons next to Firestore if it passes $10).
+
+### What drives the bill on this database
+
+- **A query with no index costs the size of the collection, every time.** That is why the speed round added 39 composite indexes and a test (`src/lib/firestore-indexes.test.ts`) that fails when a new query has none. On Standard pricing a scan looked like one read a document; here it is every byte of every document, company-wide.
+- **Real-time updates cost per listener.** A document written often and watched by every iPad (the studio document's sync lease, the trainer document's counters, `system/health`) is paid once per watching iPad. The speed round wrote `system/health` at most once a minute per function instance on success; scoping the trainers listener is R17, on its trigger (about 300 trainer documents).
+- **A write pays for its index entries:** about 15–25 index writes a session after the speed round, about $1.1 a month at 100 × 300.
+- **Render is fixed fees.** The web service is idle (Oct 5: about 100 MB of 2 GB, CPU about 0%, p90 5–22 ms), because iPads talk to Firestore directly. A bigger plan buys nothing.
+
+### What the Sep 25 model got wrong, and what has changed since
+
+- Its Firestore prices (Standard, multi-region) and its storage line ("Firestore bills its automatic indexes too"): Enterprise builds no automatic indexes, and its units are priced as above. A session document measured 527 bytes on average on Sep 27, not the ~10 KB assumed; `scripts/read-cost-report.ts` settles sizes.
+- Drivers #1, #2 and #4 below were acted on by the cost plan (Sep 26 2026): the schedule pull runs every **30** minutes with ONE deep pull a day (`syncPolicy.ts` `DEFAULT_INTERVAL_MINUTES = 30`, `DEEP_PULL_HOURS = [0]`), the 2am function is deleted, and the Hub re-reads the week every **60** minutes (`SCHEDULE_STALE_MS`). The speed round deleted `onBookingReminderWrite` and `sendDailySummary`, wrote `system/health` at most once a minute, capped the bell's reads, and made one machines listener of two.
+- The webhook's idempotency records and early-cancellation notes carry `expiresAt`; the speed round's ship steps set the TTL policies on both collections.
+- Not re-checked in this correction: the Sep 25 model's per-studio read counts (drivers #3 and #5, and the "Working" tables). Treat them as the shape of the costs, not their size.
+
+### How to check it against reality
+
+1. **Firebase console → Firestore → Usage**, and **Query insights**: a day after the speed round's indexes are Enabled, no collection scan should be among the top shapes by read units on the session and profile path.
+2. **Google Cloud → Billing**: Firestore dollars a studio a month should stay flat as studios are added (under $1).
+3. **Render → Metrics**: memory p95 and p90 response, recorded in 14-day windows (Pro keeps 14 days), which is also R20's gate.
+4. **The Mindbody answer (R29)** goes here when it comes.
+
+---
+
+## The Sep 25 2026 model (kept for its reasoning; its prices and totals are superseded above)
+
 *Sep 26: the plan built on this model, with AJ's ranking of what has to be fresh, is `docs/rounds/2026-09-26-cost-plan.md` (arithmetic in `cost-plan-model.py`).*
 
 *Sep 25 2026. Built from branch `lean-sync` (master, plus the unshipped packages release, plus the lean Mindbody sync). I only read code and changed nothing: no Firestore writes and no Mindbody calls. The arithmetic is in `running-costs-model.py` next to this file (`python docs/business/running-costs-model.py`).*
@@ -188,7 +277,7 @@ The lean-sync round document's own Mindbody estimate ($300 at 50, $600 at 100) a
 | Clients near a renewal (weekly Mindbody refresh) | 60% of active clients. Everyone else, past clients included, monthly | Estimate. Past clients count because the nightly job ranks every client document that carries a Mindbody id |
 | Client documents per studio (active + past) | about 2× active by month 12 | Estimate. 10–15 new clients a month, plus past ones |
 | **Mindbody price** | **$0.002 a call after 5,000 free a month**, one developer account. Tokens are counted as calls. Webhook deliveries are assumed free | **Unverified.** Check the developer invoice |
-| **Firestore prices** | Reads $0.06 / 100k, writes $0.18 / 100k, deletes $0.02 / 100k, storage $0.18 per GiB-month | Blaze, multi-region. **If the database is single-region, the Firestore lines roughly halve.** Check its location in the console |
+| **Firestore prices** | Reads $0.06 / 100k, writes $0.18 / 100k, deletes $0.02 / 100k, storage $0.18 per GiB-month | Blaze, multi-region. **If the database is single-region, the Firestore lines roughly halve.** Check its location in the console. **Superseded Oct 5 2026:** the database is the Enterprise edition in us-west1 (one region), priced by read, write and real-time units; see the top of this page |
 | Firestore free tier | Ignored | Google documents the free allowance as applying to one database per project. Journey's data is in the **named** database `ai-studio-32cbbdcc-6e08-4770-9665-867c68878efa`, so assume it pays from the first read. The allowance is worth only about $2 a month anyway (50k reads + 20k writes a day + 1 GiB) |
 | Render | Web `1c-2g` $25 + workspace $25 + two crons ~$2 | `render.yaml:39-52`, `:110` |
 
@@ -298,7 +387,7 @@ Per active client per year, that is ≈**5.5 MB**.
 
 A FileMaker import of old sessions as Journey documents would add history all at once. That importer is on hold.
 
-The webhook's idempotency records carry `expiresAt` (30 days, `functions/src/mindbody/idempotency.ts:41-47`). They only expire if a TTL policy is set in the Firebase console, and none is visible in the repo. Worth a check; either way the storage is small.
+The webhook's idempotency records carry `expiresAt` (30 days, `functions/src/mindbody/idempotency.ts:41-47`). They only expire once a TTL policy is set (gcloud, not the repo); the speed round's ship steps set one on `mindbodyEventLog` and `mindbodyBookingCancels` (Oct 5 2026). Either way the storage is small.
 
 ### 5. Render
 
@@ -319,8 +408,8 @@ The web service does not touch Firestore (`docs/business/does-this-scale.md` §1
 
   - **Headroom.** Node, the Firebase SDK and gRPC take about 60–90 MB of the 512, which leaves roughly 300 MB of heap to be safe with. The trends job then holds about **15,000 clients who trained in the last 90 days** (about 50 studios of 300) before it needs `1c-2g`; a past client costs it a few hundred bytes. The scale target (100 studios of 300) would want `1c-2g` for that one weekly run, about a dollar a month. The renewals job no longer grows with the company: a single studio would need several thousand clients to matter.
   - **Watch it in Render's log.** Each job now prints the heap's peak after each studio and for the run ("Solon: memory peak 41.2 MB heap used (process 120.3 MB now; the instance has 512 MB)." and "Memory: the run's peak was 63.0 MB of heap"). When the run's peak passes about 300 MB, move the job to `1c-2g` (billed by the minute; the table allows $7–$12 a month for this).
-  - **Cost side effect.** The renewals job's old reads of every booking and every workout in a window had no index on the Enterprise database and scanned both whole collections every night; it now reads by client on indexes that already exist. The trends job's one 90-day read of `exerciseLogs` by `createdAt` is still that unindexed shape (streamed now, so it no longer costs memory): an index on `createdAt` would make it a range read, and is AJ's call.
-  - **Not changed:** the Cloud Function `recalcTrainerWindows` (256 MiB, about 0.19 MB a client by the Sep 27 estimate). Functions deploy separately with the Firebase CLI and need AJ's OK.
+  - **Cost side effect.** The renewals job's old reads of every booking and every workout in a window had no index on the Enterprise database and scanned both whole collections every night; it now reads by client on indexes that already exist. The trends job's one 90-day read of `exerciseLogs` by `createdAt` was still that unindexed shape (streamed, so it no longer costs memory) until the speed round (Oct 5 2026, R24, AJ's OK) added `exerciseLogs (createdAt, machineId)`, which makes it a range read.
+  - **Changed in the speed round (Oct 5 2026, R23):** the Cloud Function `recalcTrainerWindows` reads only completed sessions of the last 90 days on the existing `(status, createdAt DESC)` index, streamed and projected to the fields it uses, at 512 MiB and 540 s (it was 256 MiB, about 0.19 MB a client by the Sep 27 estimate). Cloud Logging says whether it succeeds and its peak memory.
 
 ### 6. The small lines
 
