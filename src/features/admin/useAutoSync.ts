@@ -27,7 +27,11 @@ import { recordCoverage } from "../openings/coverage-record";
 const TICK_MS = 60_000;
 
 export interface AutoSyncState {
-  /** The last verdict, for the Integrations screen to explain itself with. */
+  /**
+   * The last verdict that said something new (run, reason), for the
+   * Integrations screen to explain itself with. Its `retryInMs` is the
+   * countdown when it was first said, not refreshed each minute.
+   */
   verdict: SyncVerdict | null;
   running: boolean;
   lastError: string | null;
@@ -69,6 +73,8 @@ export function useAutoSync({
   enabled?: boolean;
 }): AutoSyncState {
   const [verdict, setVerdict] = useState<SyncVerdict | null>(null);
+  /** The verdict last stored, so a look that says the same thing stores nothing. */
+  const verdictRef = useRef<SyncVerdict | null>(null);
   const [running, setRunning] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
 
@@ -117,7 +123,19 @@ export function useAutoSync({
     };
 
     const decision = decideSync(ctx);
-    setVerdict(decision);
+    /*
+     * Stored only when what it says changes (speed round, Oct 5 2026, R6a).
+     * This runs every minute, and a new verdict object every minute
+     * re-rendered AppContent — the whole app, on every iPad — for a value
+     * nothing on screen reads. The pull's cadence is untouched: it is decided
+     * above, every minute, exactly as before (useAutoSync.schedule.render
+     * test). A "not due" keeps the countdown of the look that first said it.
+     */
+    const shown = verdictRef.current;
+    if (!shown || shown.run !== decision.run || shown.reason !== decision.reason) {
+      verdictRef.current = decision;
+      setVerdict(decision);
+    }
     if (!decision.run) return;
 
     // Claim the shared lease. The local studio snapshot can be a few seconds
