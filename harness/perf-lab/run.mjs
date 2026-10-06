@@ -155,6 +155,12 @@ class Session {
     const page = await connectPage(this.chrome.port);
     this.page = page;
     page.on("Runtime.exceptionThrown", () => (this.exceptions += 1));
+    // The report's network line, on every run (the trace below adds its own
+    // listeners beside these, never in their place).
+    page.on("Network.requestWillBeSent", (p) => {
+      if (!/^data:|^blob:/.test(p.request?.url || "")) this.net.requests += 1;
+    });
+    page.on("Network.dataReceived", (p) => (this.net.bytes += p.encodedDataLength || 0));
     if (process.env.PERF_LAB_TRACE) {
       const fsT = await import("node:fs");
       const out = (line) => fsT.appendFileSync(process.env.PERF_LAB_TRACE, line + "\n");
@@ -163,7 +169,7 @@ class Session {
       page.on("Runtime.consoleAPICalled", (p) => {
         const a = p.args || [];
         if (a[0]?.value !== "[trace]") return;
-        out(`${Math.round(p.timestamp)}	console	${a.slice(1).map((x) => x.value).join("	")}`);
+        out(`${Math.round(p.timestamp)}\tconsole\t${a.slice(1).map((x) => x.value).join("\t")}`);
       });
       page.on("Network.requestWillBeSent", (p) => {
         const u = p.request?.url || "";
@@ -177,7 +183,7 @@ class Session {
           try { body = decodeURIComponent(body.replace(/\+/g, " ")); } catch {}
           fsT.appendFileSync(process.env.PERF_LAB_TRACE + ".bodies", `==== ${Math.round(p.wallTime * 1000)} ${kind} RID=${rid}\n${body}\n`);
         }
-        out(`${Math.round(p.wallTime * 1000)}	send	${p.request.method} ${kind} RID=${rid} ${p.requestId} body=${(p.request.postData || "").length}`);
+        out(`${Math.round(p.wallTime * 1000)}\tsend\t${p.request.method} ${kind} RID=${rid} ${p.requestId} body=${(p.request.postData || "").length}`);
       });
       page.on("Network.dataReceived", (p) => {
         const r = reqs.get(p.requestId);
@@ -187,7 +193,7 @@ class Session {
       page.on("Network.loadingFinished", (p) => {
         const r = reqs.get(p.requestId);
         if (!r || off == null) return;
-        out(`${Math.round(p.timestamp * 1000 + off)}	done	${r.method} ${r.kind} RID=${r.rid} ${p.requestId} took=${Math.round(p.timestamp * 1000 + off - r.t)} bytes=${p.encodedDataLength}`);
+        out(`${Math.round(p.timestamp * 1000 + off)}\tdone\t${r.method} ${r.kind} RID=${r.rid} ${p.requestId} took=${Math.round(p.timestamp * 1000 + off - r.t)} bytes=${p.encodedDataLength}`);
       });
     }
     await page.send("Page.enable");
