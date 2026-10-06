@@ -78,9 +78,6 @@ const ALLOWED: Record<string, string> = {
   "COLLECTION sharedNotes": "clients/{id}/sharedNotes: notes shared onto one client's record.",
   "COLLECTION notes": "trainers/{uid}/notes: one trainer's private notes.",
 
-  // ---- The machine catalog: the twenty MSF machines and a few more, read whole ----
-  "COLLECTION machines @ src/hooks/useMachines.ts": "machines: the company catalog (tens of documents), ordered by `order`.",
-
   // ---- The provisional-client merge: an administrator's rare repair, one client at a time ----
   "COLLECTION machineSettingChanges @ src/features/admin/provisional/mergeClient.ts":
     "Legacy collection nothing writes any more; repointed only when a temporary client is merged.",
