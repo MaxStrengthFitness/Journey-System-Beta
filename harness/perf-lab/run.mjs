@@ -384,9 +384,9 @@ async function measured(s, run, { navigates = false, span = navigates } = {}) {
   const worst = interactions.reduce((m, x) => (x.dur > m.dur ? x : m), { dur: 0, name: null });
   const deltas = {};
   for (const k of METRIC_KEYS) {
-    // Cumulative counters; a navigation may start them again, so a negative delta means "since the new document".
-    let v = (after[k] ?? 0) - (before[k] ?? 0);
-    if (v < 0) v = after[k] ?? 0;
+    // Chrome starts these counters again with every new document, so an open (which navigates) reads the
+    // new document's own count, from its navigation on; anything else is the difference over the scenario.
+    const v = navigates ? (after[k] ?? 0) : Math.max(0, (after[k] ?? 0) - (before[k] ?? 0));
     deltas[k] = k.endsWith("Duration") ? Math.round(v * 1000) : Math.round(v);
   }
   const longTotal = Math.round(tasks.reduce((a, b) => a + b, 0));
@@ -690,8 +690,10 @@ const SCENARIO_RUNS = {
           const step = 36; const frames = []; let last = performance.now(); let dir = 1; let passes = 0;
           const tick = (now) => {
             frames.push(now - last); last = now;
-            el.scrollTop = Math.min(max, Math.max(0, el.scrollTop + dir * step));
-            if ((dir > 0 && el.scrollTop >= max - 1) || (dir < 0 && el.scrollTop <= 1)) { dir = -dir; passes += 1; }
+            // A pass ends when the list stops moving (its height can change as it renders, and at 2x scrollTop is fractional).
+            const before = el.scrollTop;
+            el.scrollTop = Math.max(0, before + dir * step);
+            if (Math.abs(el.scrollTop - before) < 1) { dir = -dir; passes += 1; }
             if (passes >= ${passes} || frames.length > ${capFrames}) {
               const ft = frames.slice(1); const budget = 1000 / 60;
               const missed = ft.reduce((a, d) => a + Math.max(0, Math.round(d / budget) - 1), 0);

@@ -13,7 +13,7 @@ export function stat(values) {
   const v = values.filter((x) => typeof x === "number" && Number.isFinite(x)).sort((a, b) => a - b);
   if (v.length === 0) return null;
   const mid = Math.floor(v.length / 2);
-  const med = v.length % 2 ? v[mid] : Math.round((v[mid - 1] + v[mid]) / 2);
+  const med = v.length % 2 ? v[mid] : Math.round(((v[mid - 1] + v[mid]) / 2) * 100) / 100;
   return { med, min: v[0], max: v[v.length - 1], n: v.length };
 }
 
@@ -181,15 +181,16 @@ export function writeReport(results, outDir) {
     headlineTable(lines, summary[v], profiles);
   }
 
-  // Sanity: the throttle must show in the main-thread columns.
-  const ip = summary[first]["ipad10-portrait"]?.cold?.metrics?.TaskDuration?.med;
-  const dk = (summary[first].desktop ?? summary[first].floor)?.cold?.metrics?.TaskDuration?.med;
+  // Sanity: the throttle must show in the main-thread column. On relaunch, the open that is mostly work (cold is mostly waiting).
+  const checkSc = summary[first]["ipad10-portrait"]?.relaunch ? "relaunch" : "cold";
+  const ip = summary[first]["ipad10-portrait"]?.[checkSc]?.metrics?.TaskDuration?.med;
+  const dk = (summary[first].desktop ?? summary[first].floor)?.[checkSc]?.metrics?.TaskDuration?.med;
   if (ip && dk) {
     L();
     L(
       ip >= 2 * dk
-        ? `Check: the iPad 10th gen cold open's main-thread time (${n(ip)} ms) is ${Math.round((ip / dk) * 10) / 10}x the 1x profile's (${n(dk)} ms), so the slowdown shows in the main-thread column.`
-        : `**Check FAILED: the iPad 10th gen cold open's main-thread time (${n(ip)} ms) is under 2x the 1x profile's (${n(dk)} ms).** The main-thread column is not showing the slowdown; don't trust it in this run.`,
+        ? `Check: the iPad 10th gen ${checkSc} open's main-thread time (${n(ip)} ms) is ${Math.round((ip / dk) * 10) / 10}x the 1x profile's (${n(dk)} ms), so the slowdown shows in the main-thread column.`
+        : `**Check FAILED: the iPad 10th gen ${checkSc} open's main-thread time (${n(ip)} ms) is under 2x the 1x profile's (${n(dk)} ms).** The main-thread column is not showing the slowdown; don't trust it in this run.`,
     );
   }
 

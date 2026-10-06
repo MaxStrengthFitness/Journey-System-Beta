@@ -9,6 +9,7 @@
  *   node harness/perf-lab/lab.mjs run        the driver only (needs the build; reseeds if the
  *                                            seed is from an earlier studio day)
  *   node harness/perf-lab/lab.mjs calibrate  this PC's speed against the reference, and the rates
+ *   node harness/perf-lab/lab.mjs report --runId <id>   the report again from that run's results.json
  *
  * Every rep of the run starts its own emulators from the seeded export (about
  * 13 s), so every rep sees the same studio and nothing one rep wrote (or left
@@ -30,6 +31,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { calibrate, REFERENCE_BENCH_MS } from "./calibrate.mjs";
 import { connectPage, launchChrome } from "./cdp.mjs";
 import { AUTH_PORT, DATABASE_ID, FIRESTORE_PORT, HOST, LAB_DIR, LAB_UID, OUT_DIR, PROJECT_ID, REPO_ROOT, STUDIO_ID, emulatorEnv, labCredentials } from "./lab-config.mjs";
+import { writeReport } from "./report.mjs";
 import { PROFILES, runLab } from "./run.mjs";
 
 /** The studio's day now (Eastern), as the seed names it. */
@@ -322,6 +324,12 @@ async function main() {
   }
   if (command === "build") return void build(outRoot, args.as);
   if (command === "calibrate") return calibrateOnly(outRoot);
+  if (command === "report") {
+    // The report again from a run's results.json (after a change to report.mjs).
+    const dir = join(outRoot, args.runId || "");
+    console.log(`Report: ${writeReport(JSON.parse(readFileSync(join(dir, "results.json"), "utf8")), dir)}`);
+    return;
+  }
   const builds = () => ({
     build: buildDir(outRoot, args["build-a"]),
     ...(args["build-b"] ? { "build-b": buildDir(outRoot, args["build-b"]) } : {}),

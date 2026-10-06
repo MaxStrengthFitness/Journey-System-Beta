@@ -19,6 +19,7 @@ node harness/perf-lab/lab.mjs all --profiles ipad10-portrait --reps 1 --idleMs 1
 node harness/perf-lab/lab.mjs all --profiles old-ipad-landscape --scenarios relaunch,session
 node harness/perf-lab/lab.mjs all --skip-build          # reuse the last lab build
 node harness/perf-lab/lab.mjs calibrate                 # how fast this PC is against the reference
+node harness/perf-lab/lab.mjs report --runId <id>       # the report again from a run's results.json
 ```
 
 Any subset of scenarios works: a run without `cold` signs in first without timing it.
@@ -110,12 +111,12 @@ Every profile but `floor` adds 60 ms of latency at 20 Mbps down / 10 up (gym Wi-
 - **"Drawn"** is the next paint after the thing appeared, found by a watch on the DOM (checked at most once a frame) with a 100 ms poll behind it.
 - **"Settled"** is the moment the page went quiet: no element added or removed and no long task for 300 to 600 ms. Style and text changes (animations, the minute tick, a "sending" counter) don't count, so a ticking clock no longer moves it.
 - **A set** is the Next tap's own interaction from event timing: from the input to the next paint after its handlers ran. Event timing reports nothing under 16 ms, so a set that fast is written as 16. `setSettledMedianMs` is the tap to the page going quiet.
-- **Main thread** is `Performance.getMetrics` TaskDuration in wall time, so it includes the slowdown (before Oct 6 2026 the columns were thread time, which leaves the slowdown out; ScriptDuration does not follow the throttle at all, so it stays in results.json only). Layout and style are beside it. The report checks that the iPad 10th gen's cold main-thread time is at least twice the 1x profile's and says plainly when it isn't.
+- **Main thread** is `Performance.getMetrics` TaskDuration in wall time, so it includes the slowdown (before Oct 6 2026 the columns were thread time, which leaves the slowdown out; ScriptDuration does not follow the throttle at all, so it stays in results.json only). Layout and style are beside it. Chrome starts these counters again with every new document, so an open reads the new document's own count from its navigation on. The report checks that the iPad 10th gen's relaunch main-thread time (relaunch is mostly work; cold is mostly waiting) is at least twice the 1x profile's and says plainly when it isn't.
 - **Waiting** (for the opens and the client scenario, whose wall is one span) is the time not spent in long tasks: the network, the emulator and the app's own timers.
 - **Requests / KB** are what the page fetched during the scenario (bodies, from the network log).
 - Long tasks, the slowest interaction (INP-like) and uncaught exceptions as before; the DOM size and the JS heap at the end.
 - **The timed reps run without the profiler.** The profiled rep (one per profile, kept out of the medians) is what "Where the time went" reads. A function's line there is where it is DEFINED, not the hot line (the bundle is minified to one line, so V8's line ticks can't help), and forced layout counts as the calling function's own time.
-- `--bare` drops every page instrument (no observers; only the clock shim stays), to measure what they cost: compare a `--bare` desktop cold with a normal one. The clock shim itself shows in the profile as `(LabDate)`, about 30 ms of a 5 s open at 3x.
+- `--bare` drops every page instrument (no observers; only the clock shim stays), to measure what they cost: compare a `--bare` desktop run with a normal one. On Oct 6 2026 they cost about 1 to 2% of an open at 1x (cold Start tap to Hub 4,055 ms bare against 4,150, warm 835 against 854, after-deploy 2,230 against 2,258). The clock shim itself shows in the profile as `(LabDate)`, about 30 ms of a 5 s open at 3x.
 
 Every cell in the report is the median of the timed reps, then [min-max]; **!** flags a spread over 15% of the median.
 
@@ -131,5 +132,8 @@ What is the emulator's, not the app's: **the session's Finish** (`finishToWrapUp
 - **The CLI's export skips a named database.** `firebase emulators:export` writes only `(default)`; the lab's data is in `perf-lab`. `lab.mjs` asks the emulator's own endpoint (`POST /emulator/v1/projects/demo-perf-lab:export` with the database named) and an `--import` restores it into `perf-lab`.
 - **A cold emulator answers its first rules-checked reads seconds late.** Each rep warms it first (the app's opening reads and two writes, removed with the owner token).
 - **Chrome's throttle isn't the number you give it**, and thread-time metrics leave it out entirely. Hence the calibration, and wall-time metrics.
+- **Performance.getMetrics starts again with every document**, and ScriptDuration ignores the throttle. An open reads the new document's TaskDuration as it is; subtracting the blank page's (where the calibration ran) gave nonsense.
+- **A list's height changes while it scrolls**, and at 2x scrollTop is fractional, so a scroll pass ends when the list stops moving, not at a height measured once.
+- **A blocked-URL pattern naming googleapis.com also matches the Auth emulator** (127.0.0.1:9099/identitytoolkit.googleapis.com/...): the lab refuses every https URL instead.
 - **`NODE_ENV`**, above.
 - **`/harness/` is git-ignored** (and in `.git/info/exclude` on AJ's PC); `.gitignore` lets `harness/perf-lab/` through, and on AJ's PC its files are added with `git add -f`.
