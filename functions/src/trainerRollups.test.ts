@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import {
   applyCount,
   applyUncount,
@@ -8,6 +8,11 @@ import {
   tallyWindows,
   sessionInstantMs,
   foldBackfillPage,
+  foldWindowRow,
+  readWindowRows,
+  WINDOW_FIELDS,
+  type WindowReader,
+  type WindowRow,
   type BackfillTotals,
   type SessionLike,
 } from "./trainerRollups";
@@ -99,6 +104,98 @@ describe("tallyWindows", () => {
       clients90d: 0,
       avgPerWeek: 0,
     });
+  });
+});
+
+describe("foldWindowRow (R23)", () => {
+  const at = { toMillis: () => 1_000 };
+
+  it("adds a completed session to its trainer, rollup trainer first", () => {
+    const byTrainer = new Map<string, WindowRow[]>();
+    foldWindowRow(byTrainer, { status: "Completed", rollupTrainerId: "r", trainerId: "t", createdAt: at, clientId: "c1" });
+    foldWindowRow(byTrainer, { status: "Completed", startedByTrainerId: "s", createdAt: at });
+    expect(byTrainer.get("r")).toEqual([{ atMs: 1_000, clientId: "c1" }]);
+    expect(byTrainer.get("s")).toEqual([{ atMs: 1_000, clientId: undefined }]);
+    expect(byTrainer.has("t")).toBe(false);
+  });
+
+  it("leaves out anything not Completed, with no trainer, or with no instant", () => {
+    const byTrainer = new Map<string, WindowRow[]>();
+    foldWindowRow(byTrainer, { status: "In-Progress", trainerId: "t", createdAt: at });
+    foldWindowRow(byTrainer, { status: "Completed", createdAt: at });
+    foldWindowRow(byTrainer, { status: "Completed", trainerId: "t" });
+    expect(byTrainer.size).toBe(0);
+  });
+});
+
+describe("readWindowRows (R23)", () => {
+  /** A sessions collection that records the query asked of it and streams its rows. */
+  function fakeReader(rows: SessionLike[]) {
+    const asked: { wheres: unknown[][]; select?: string[]; streamed: boolean; got: boolean } = {
+      wheres: [],
+      streamed: false,
+      got: false,
+    };
+    const query: any = {
+      where: (...args: unknown[]) => {
+        asked.wheres.push(args);
+        return query;
+      },
+      select: (...fields: string[]) => {
+        asked.select = fields;
+        return query;
+      },
+      get: async () => {
+        asked.got = true;
+        throw new Error("readWindowRows must stream, not get()");
+      },
+      stream: () => {
+        asked.streamed = true;
+        return (async function* () {
+          for (const r of rows) yield { data: () => r };
+        })();
+      },
+    };
+    const reader = {
+      collection: (name: string) => {
+        expect(name).toBe("sessions");
+        return query;
+      },
+    } as unknown as WindowReader;
+    return { reader, asked };
+  }
+
+  it("asks only for Completed sessions in the window, on the (status, createdAt) index", async () => {
+    const { reader, asked } = fakeReader([]);
+    const cutoff = Timestamp.fromMillis(5);
+    await readWindowRows(reader, cutoff);
+    expect(asked.wheres).toEqual([
+      ["status", "==", "Completed"],
+      ["createdAt", ">=", cutoff],
+    ]);
+  });
+
+  it("streams a projection rather than holding whole documents", async () => {
+    const { reader, asked } = fakeReader([]);
+    await readWindowRows(reader, Timestamp.fromMillis(5));
+    expect(asked.streamed).toBe(true);
+    expect(asked.got).toBe(false);
+    expect(asked.select).toEqual([...WINDOW_FIELDS]);
+  });
+
+  it("folds each streamed session by trainer and counts what it read", async () => {
+    const at = { toMillis: () => 2_000 };
+    const { reader } = fakeReader([
+      { status: "Completed", trainerId: "t1", clientId: "c1", createdAt: at },
+      { status: "Completed", trainerId: "t1", clientId: "c2", createdAt: at },
+      { status: "Completed", trainerId: "t2", createdAt: at },
+      { status: "Completed", createdAt: at },
+    ]);
+    const { byTrainer, read } = await readWindowRows(reader, Timestamp.fromMillis(5));
+    expect(read).toBe(4);
+    expect(byTrainer.get("t1")).toHaveLength(2);
+    expect(byTrainer.get("t2")).toHaveLength(1);
+    expect(byTrainer.size).toBe(2);
   });
 });
 
