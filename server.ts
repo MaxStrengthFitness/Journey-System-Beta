@@ -12,6 +12,7 @@ import {
 } from "./server/gemini.ts";
 import {
   getMindbodyToken,
+  MINDBODY_LARGE_PAGE_TIMEOUT_MS,
   mindbodyAuthedFetch,
   mindbodyFetch,
   mindbodyGet,
@@ -575,10 +576,13 @@ async function startServer() {
       const apptsOf = (d: any) => d?.Appointments || d?.appointments || [];
 
       const tFetch = Date.now();
+      // A page of up to 500 appointments may take Mindbody a while to build:
+      // the longer per-attempt limit (server/mindbody-client.ts).
       const first = await mindbodyGet(
         String(siteId),
         "appointment/staffappointments",
         pageParams(0),
+        { timeoutMs: MINDBODY_LARGE_PAGE_TIMEOUT_MS },
       );
 
       if (!first.ok) {
@@ -629,6 +633,7 @@ async function startServer() {
               String(siteId),
               "appointment/staffappointments",
               pageParams(o),
+              { timeoutMs: MINDBODY_LARGE_PAGE_TIMEOUT_MS },
             ),
           ),
         );
@@ -1099,6 +1104,9 @@ async function startServer() {
           .digest("base64");
 
       const webhookResponse = await fetch(webhookUrl, {
+        // Our own function, not Mindbody: a hung one fails the test in 30 s
+        // instead of holding the request (the speed round, Oct 5 2026).
+        signal: AbortSignal.timeout(30_000),
         method: "POST",
         headers: {
           "Content-Type": "application/json",
