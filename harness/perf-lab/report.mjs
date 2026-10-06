@@ -133,6 +133,8 @@ export function writeReport(results, outDir) {
   lines.push("");
   lines.push("- It is Chrome (Blink and V8) slowed down, not Safari (WebKit and JavaScriptCore) on an A14: the CPU multiplier is a class estimate, and WebKit's style, layout and GC costs differ. Read the numbers as relative (before vs after a change), not as an iPad's absolute.");
   lines.push("- The database is the local emulator with the real rules: no real network, no real Firestore latency beyond the added 60 ms, no Firestore's own server time, and the emulator's locking is not production's.");
+  lines.push("- The session's finishToWrapUpMs and databaseAckMs are the emulator's: it answers the Finish slowly while the app's listeners are open (desktop, with no long tasks, waits the same 5 s), so the app's 2 s and 3 s Finish waits run out. Judge the Finish by its script and long-task numbers.");
+  lines.push("- Exercise logs are seeded for the last 4 weeks only (the emulator's writes slow down with a collection's size); older sessions have no sets behind them.");
   lines.push("- No GPU, thermal throttling, memory pressure or tab eviction of a 3 GB iPad; no Mindbody or Gemini calls (the studio is offline); the sign-in is the emulator's, not Google's or Microsoft's popup.");
   const path = join(outDir, "report.md");
   writeFileSync(path, `${lines.join("\n")}\n`);

@@ -53,6 +53,17 @@ const BOOKING_DAYS_BACK = 35; // 5 weeks back...
 const BOOKING_DAYS_AHEAD = 20; // ...this week and about 2 ahead: 8 weeks
 const SESSION_DAYS_BACK = 91; // about 3 months of sessions
 const MAX_LOGS = Number(process.env.PERF_LAB_MAX_LOGS || 45000);
+/*
+ * Exercise logs are WRITTEN only for the last LOG_WEEKS weeks of sessions
+ * (every client's last eight or so, which is what the grids draw first); the
+ * rollups, last-set metrics and session numbers still come from all three
+ * months. The Firestore emulator's write time grows with the size of a
+ * collection (an exerciseLogs write took 4.3 s with 39,000 logs, rules or no
+ * rules, against 35 ms for a 4,000-document collection), which made every
+ * set and Finish wait on the emulator rather than the app. Production has no
+ * such cost. PERF_LAB_LOG_WEEKS=13 writes them all.
+ */
+const LOG_WEEKS = Number(process.env.PERF_LAB_LOG_WEEKS || 4);
 
 /* ── Deterministic randomness (the demo seeder's) ──────────────────────── */
 
@@ -481,7 +492,12 @@ function buildClientDocs(c: LabClient, h: ClientHistory): void {
     for (const label of dialLabels(m)) map[label] = String(between(r, 1, /angle/i.test(label) ? 4 : 10));
     settings[m.id] = map;
   }
+  const logsFrom = addDays(TODAY, -LOG_WEEKS * 7);
   for (const l of h.logs) {
+    if (sessionById.get(l.sessionId)!.day < logsFrom) {
+      count("exerciseLogsNotWritten");
+      continue;
+    }
     put(`exerciseLogs/${l.sessionId}_${l.machineId}`, {
       sessionId: l.sessionId,
       clientId: c.id,

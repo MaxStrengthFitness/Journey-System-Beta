@@ -31,6 +31,8 @@ export const PROFILES = {
 };
 /** Gym Wi-Fi to Firestore us-west1 from Ohio, roughly; the emulator is local, so the lab adds it. */
 const NETWORK = { latencyMs: 60, downMbps: 20, upMbps: 10 };
+/** --latency 0 turns the added network off (to tell the app's waits from the network's). */
+let network = { ...NETWORK };
 
 export const SCENARIOS = ["cold", "warm", "idle", "client", "session", "ops", "scroll"];
 
@@ -177,9 +179,9 @@ async function openSession(profile, profileDir, baseUrl, maps) {
   await page.send("Network.enable");
   await page.send("Network.emulateNetworkConditions", {
     offline: false,
-    latency: NETWORK.latencyMs,
-    downloadThroughput: (NETWORK.downMbps * 1e6) / 8,
-    uploadThroughput: (NETWORK.upMbps * 1e6) / 8,
+    latency: network.latencyMs,
+    downloadThroughput: network.latencyMs > 0 ? (network.downMbps * 1e6) / 8 : -1,
+    uploadThroughput: network.latencyMs > 0 ? (network.upMbps * 1e6) / 8 : -1,
   });
   await page.send("Emulation.setDeviceMetricsOverride", {
     width: profile.width,
@@ -384,7 +386,10 @@ const SCENARIO_RUNS = {
         await s.tap(css(".jg-nb__outin"), "the reps box");
         await s.ev(`(() => { const el = document.querySelector(".jg-nb__outin"); el && el.select && el.select(); })()`);
         await s.typeText(String(6 + (i % 4)));
-        const tNext = await s.tap(byText("button", "Next"), "Next");
+        // The last machine of a short routine has no Next: the set is kept as typed, so leave the box.
+        const hasNext = await s.ev(`!!(${byText("button", "Next")})`);
+        const tNext = hasNext ? await s.tap(byText("button", "Next"), "Next") : await s.now();
+        if (!hasNext) await s.key("Tab", "Tab", 9);
         const done = await s.settle(300, 8000);
         sets.push(done > 0 ? done - tNext : null);
       }
@@ -525,6 +530,7 @@ export async function runLab(options) {
   });
   const scenarios = options.scenarios ? options.scenarios.split(",") : SCENARIOS;
   const reps = Number(options.reps || 3);
+  network = { ...NETWORK, ...(options.latency !== undefined ? { latencyMs: Number(options.latency) } : {}) };
   const idleMs = Number(options.idleMs || 70000);
   const outRoot = resolve(options.out || OUT_DIR);
   const runId = options.runId || new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
@@ -536,7 +542,7 @@ export async function runLab(options) {
   const results = {
     runId,
     startedAt: new Date().toISOString(),
-    network: NETWORK,
+    network,
     reps,
     idleMs,
     seed: options.seedSummary ? JSON.parse(readFileSync(options.seedSummary, "utf8")) : null,
@@ -550,6 +556,8 @@ export async function runLab(options) {
       for (let rep = 1; rep <= reps; rep += 1) {
         const tag = `${name} #${rep}`;
         console.log(`[${new Date().toLocaleTimeString()}] ${tag}`);
+        // lab.mjs restarts the emulators from the seeded export here, so every rep starts from the same data.
+        if (options.beforeRep) await options.beforeRep(name, rep);
         const s = await openSession(profile, join(outRoot, "chrome-profiles", `${name}-${rep}`), srv.url, maps);
         const run = { rep, scenarios: {} };
         let broken = false;
@@ -560,7 +568,8 @@ export async function runLab(options) {
           }
           const started = Date.now();
           try {
-            const ctx = { creds, idleMs, cardIndex: (runCounter * 3) % 60 };
+            // Fresh data each rep: the same client every time. Shared data: a different one each rep.
+            const ctx = { creds, idleMs, cardIndex: options.beforeRep ? 0 : (runCounter * 3) % 60 };
             run.scenarios[scenario] = await SCENARIO_RUNS[scenario](s, ctx);
             const m = run.scenarios[scenario];
             console.log(`  ${scenario}: ${m.wallMs ?? "-"} ms, long tasks ${m.longTasks.count} (${m.longTasks.totalMs} ms, worst ${m.longTasks.worstMs}), worst interaction ${m.interactions.worstMs} ms  [${Math.round((Date.now() - started) / 1000)} s]`);
@@ -591,6 +600,7 @@ export async function runLab(options) {
         await s.screenshot(join(outDir, `last-${name}-${rep}.png`));
         s.page.close();
         await s.chrome.close();
+        if (options.afterRep) await options.afterRep(name, rep);
         results.profiles[name].runs.push(run);
         writeFileSync(join(outDir, "results.json"), JSON.stringify(results, null, 2));
       }
