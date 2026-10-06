@@ -1138,9 +1138,26 @@ describe("the Wrap-up follows the theme, and keeps its confetti", () => {
 
   it("bursts its confetti once as it opens, out of the way of every tap", async () => {
     const host = await mount(<FullScreen />);
-    const layer = host.querySelector(".pointer-events-none.z-50")!;
+    const layer = host.querySelector(".wu-confetti")!;
     expect(layer).toBeTruthy();
+    // A pointer that is not a touch screen (jsdom has no matchMedia): the full 36.
     expect(layer.children).toHaveLength(36);
+    // Drawn by CSS (wrap-up.css), never by a component animating each frame.
+    expect(layer.querySelectorAll(".wu-confetti__bit")).toHaveLength(36);
+  });
+
+  it("takes the confetti off the page once every bit has finished (the iPad round, Oct 6 2026)", async () => {
+    const host = await mount(<FullScreen />);
+    const layer = host.querySelector(".wu-confetti")!;
+    const bits = Array.from(layer.children);
+    await act(async () => {
+      for (const b of bits.slice(0, -1)) b.dispatchEvent(new Event("animationend", { bubbles: true }));
+    });
+    expect(host.querySelector(".wu-confetti")).toBeTruthy();
+    await act(async () => {
+      bits[bits.length - 1].dispatchEvent(new Event("animationend", { bubbles: true }));
+    });
+    expect(host.querySelector(".wu-confetti")).toBeNull();
   });
 });
 

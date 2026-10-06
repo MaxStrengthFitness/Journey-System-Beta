@@ -1,0 +1,82 @@
+/* The Wrap-up's motion (the iPad round, Oct 6 2026): the confetti burst and
+   the cards rising in, as CSS animations on transform and opacity only, so
+   the compositor draws them and the main thread is free while the screen
+   mounts and the session's writes go out. They were motion components
+   animating x, y, scale and rotate in JavaScript every frame: about 0.5 s
+   (iPad 10th gen) and 1 s (older iPad) of long tasks as the Wrap-up
+   appeared, in the perf lab. AJ kept the confetti ("I like it keep it"). */
+
+.wu-confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* One particle. Its size, colour, delay and where it lands come from the
+   element (--wu-x, --wu-y in px), the path is the same for all: out fast,
+   a little past full size, then shrinking away (the old ease 0.1, 0.8, 0.3, 1
+   folded into where each step lands). */
+.wu-confetti__bit {
+  position: absolute;
+  border-radius: 2px;
+  opacity: 0;
+  transform: scale(0);
+  animation: wu-burst 1.3s linear var(--wu-delay, 0s) 1 both;
+  will-change: transform, opacity;
+}
+
+@keyframes wu-burst {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(0);
+    opacity: 1;
+  }
+  33% {
+    transform: translate(calc(var(--wu-x) * 0.8), calc(var(--wu-y) * 0.8)) rotate(176deg) scale(1.2);
+    opacity: 1;
+  }
+  67% {
+    transform: translate(calc(var(--wu-x) * 0.97), calc(var(--wu-y) * 0.97)) rotate(213deg) scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(var(--wu-x), var(--wu-y)) rotate(220deg) scale(0);
+    opacity: 0;
+  }
+}
+
+/* A card or line rising in: the old motion fade (opacity 0 -> 1, 18px up),
+   with its stagger as an animation delay. */
+.wu-rise {
+  animation: wu-rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) var(--wu-delay, 0s) 1 both;
+}
+.wu-drop {
+  animation: wu-drop 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0s 1 both;
+}
+.wu-fade {
+  animation: wu-fade 0.3s ease-out var(--wu-delay, 0s) 1 both;
+}
+
+@keyframes wu-rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes wu-drop {
+  from { opacity: 0; transform: translateY(-14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes wu-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wu-confetti { display: none; }
+  .wu-rise,
+  .wu-drop,
+  .wu-fade { animation: none; }
+}

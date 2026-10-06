@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "motion/react";
+import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { collection, limit, onSnapshot, orderBy, query, Timestamp, where } from "firebase/firestore";
 import { db } from "../firebase";
 import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
 import { AppHeader } from "./AppHeader";
+import { WrapUpConfetti } from "./WrapUpConfetti";
+import "./wrap-up.css";
 import type { DialValue, Studio } from "../types";
 import {
   Client,
@@ -343,18 +344,17 @@ function Kicker({ children }: { children: React.ReactNode }) {
 
 function Card({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay, ease: [0.16, 1, 0.3, 1] }}
+    <section
+      // Rises in by CSS (wrap-up.css, the iPad round): the compositor draws it.
+      style={{ "--wu-delay": `${delay}s` } as React.CSSProperties}
       // A panel (type and depth, phase 10, Oct 4 2026): the edge seen from
       // outside (--edge, the fill clipped to the padding box) and the
       // panel's lift with its dark top light (--panel-lift, as the profile
       // header card). It was the divider hairline with no shadow.
-      className={`mx-5 p-4 bg-bg-dark-2 border border-(--edge) bg-clip-padding rounded-[14px] shadow-(--panel-lift) flex flex-col gap-3 ${className}`}
+      className={`wu-rise mx-5 p-4 bg-bg-dark-2 border border-(--edge) bg-clip-padding rounded-[14px] shadow-(--panel-lift) flex flex-col gap-3 ${className}`}
     >
       {children}
-    </motion.section>
+    </section>
   );
 }
 
@@ -538,22 +538,6 @@ export function WrapUpScreen({
    */
   const [noteFiledHere, setNoteFiledHere] = useState(false);
 
-  /* The confetti: a short burst as the screen opens, a little over a second,
-     then quiet. AJ kept it (Sep 27 2026, asked in the Sep 21 audit and again
-     in the voice review: "I like it keep it"). It never blocks a tap
-     (pointer-events-none) and never repeats. Its colours are tokens, so it
-     shows on the light theme's pale page as well as the dark one. */
-  const [particles] = useState(() =>
-    Array.from({ length: 36 }).map((_, i) => ({
-      id: i,
-      x: (Math.random() - 0.5) * 360,
-      y: (Math.random() - 0.6) * 300 - 40,
-      tone: ["bg-cta", "bg-cyan", "bg-(--eq-ok)", "bg-(--jg-q-star)", "bg-(--eq-live)"][i % 5],
-      size: Math.random() * 7 + 4,
-      delay: Math.random() * 0.15,
-    })),
-  );
-
   /* The Profile note is filed when the trainer leaves — by the button, or by
      closing the tab. Keep the latest text in a ref so an unload can read it. */
   const notesRef = useRef({ notes, importance, effectiveUntil });
@@ -729,22 +713,17 @@ export function WrapUpScreen({
     return { sessions, reps: lifetimeReps, volume };
   }, [client, allLogs]);
 
+  /* Everything under Today waits for the first frame to be drawn: a
+     deferred value is false on the first render and true on the next, which
+     React renders after the browser has had the chance to paint. */
+  const restDrawn = useDeferredValue(true, false);
+
   const fmtBig = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 10_000 ? `${Math.round(n / 1000)}k` : Math.round(n).toLocaleString());
 
   return (
     <div className="w-full h-full min-h-screen bg-bg-dark font-sans flex flex-col overflow-hidden relative">
-      <div className="absolute inset-0 pointer-events-none z-50 flex items-center justify-center overflow-hidden">
-        {particles.map((p) => (
-          <motion.div
-            key={p.id}
-            initial={{ scale: 0, x: 0, y: 0, opacity: 1 }}
-            animate={{ scale: [0, 1.2, 1, 0], x: p.x, y: p.y, opacity: [1, 1, 0.7, 0], rotate: 220 }}
-            transition={{ duration: 1.3, delay: p.delay, ease: [0.1, 0.8, 0.3, 1] }}
-            className={`absolute rounded-xs ${p.tone}`}
-            style={{ width: p.size, height: p.size }}
-          />
-        ))}
-      </div>
+      {/* The confetti burst (WrapUpConfetti.tsx): CSS, gone once it has finished. */}
+      <WrapUpConfetti />
 
       <div className="max-w-205 mx-auto w-full h-full relative flex flex-col border-x border-div-d shadow-2xl">
         <AppHeader
@@ -759,7 +738,7 @@ export function WrapUpScreen({
 
         <div className="flex-1 overflow-y-auto no-scrollbar relative z-10 flex flex-col gap-3 pb-6">
           {/* title */}
-          <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="px-6 pt-4 pb-1">
+          <div className="wu-drop px-6 pt-4 pb-1">
             <div className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-d2 break-words">
               {savedOnThisIpad ? "Wrap-up · session saved on this iPad" : "Wrap-up · session saved"}
             </div>
@@ -776,7 +755,7 @@ export function WrapUpScreen({
               {minutes !== null ? ` · ${minutes} min` : ""}
               {sessionTag ? ` · session ${sessionTag}` : ""}
             </div>
-          </motion.div>
+          </div>
 
           {/* 1 · today */}
           <Card delay={0.05}>
@@ -811,6 +790,12 @@ export function WrapUpScreen({
             )}
           </Card>
 
+          {/* The rest of the screen a frame later (the iPad round, Oct 6 2026):
+                 the first frame is the title and Today, so the Wrap-up is on
+                 screen at once, and the cards below arrive with the next
+                 render, already rising in as they always did. */}
+          {restDrawn && (
+          <>
           {/* 1b · the next session's weights (the Atlas answers, Oct 2 2026):
                  the trainer sets what the next session loads, up or down; the
                  app never suggests one. Silent when nothing was performed. */}
@@ -1079,12 +1064,7 @@ export function WrapUpScreen({
 
           {/* 3b · what they told you — see the header. Both silent when empty. */}
           {unfiledNotes.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.22 }}
-              className="mx-5"
-            >
+            <div className="wu-fade mx-5" style={{ "--wu-delay": "0.22s" } as React.CSSProperties}>
               <NoteSweep
                 entries={unfiledNotes}
                 machines={machines}
@@ -1093,15 +1073,10 @@ export function WrapUpScreen({
                 onDiscard={discardUnfiledEntry}
                 isNextTrainerNote={(entry) => isNextTrainerNote(entry, nextTrainerMark)}
               />
-            </motion.div>
+            </div>
           )}
           {(fordUntagged.length > 0 || fordStatus === "failed") && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.24 }}
-              className="mx-5"
-            >
+            <div className="wu-fade mx-5" style={{ "--wu-delay": "0.24s" } as React.CSSProperties}>
               <FordSweep
                 clientId={client.id}
                 clientFirstName={clientFirstName(client, "them")}
@@ -1109,7 +1084,7 @@ export function WrapUpScreen({
                 sessionId={session.id ?? null}
                 status={fordStatus}
               />
-            </motion.div>
+            </div>
           )}
 
           {/* 3c · packages — for a client with no package on file (the
@@ -1136,7 +1111,7 @@ export function WrapUpScreen({
                  (canQuoteLifetime, lib/prior-history.ts). Today's numbers
                  above are unaffected: those really did happen today. */}
           {canQuoteLifetime(coverage) && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mx-5 grid grid-cols-3 gap-2">
+          <div className="wu-fade mx-5 grid grid-cols-3 gap-2" style={{ "--wu-delay": "0.3s" } as React.CSSProperties}>
             {[
               { label: "Sessions", value: lifetime.sessions.toLocaleString() },
               { label: "Lifetime volume", value: `${fmtBig(lifetime.volume)} lb` },
@@ -1147,7 +1122,10 @@ export function WrapUpScreen({
                 <div className="font-mono text-[14px] font-bold text-ink-d2">{t.value}</div>
               </div>
             ))}
-          </motion.div>
+          </div>
+          )}
+
+          </>
           )}
 
           {/* leave */}
