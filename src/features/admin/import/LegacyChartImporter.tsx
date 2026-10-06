@@ -886,7 +886,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                               <Trash2 size={12} />
                             </button>
                           </div>
-                          <div className="absolute bottom-1 left-1 right-1 px-1 py-0.5 bg-black/50 backdrop-blur-sm rounded text-[7px] font-black truncate text-white">
+                          <div className="absolute bottom-1 left-1 right-1 px-1 py-0.5 bg-black/60 rounded text-[7px] font-black truncate text-white">
                             {file.name}
                           </div>
                         </div>

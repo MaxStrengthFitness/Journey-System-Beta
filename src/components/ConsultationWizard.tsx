@@ -265,7 +265,7 @@ export function ConsultationWizard({
   return (
     <div className="flex flex-col bg-[#0A2E46] min-h-screen text-white">
       {/* Header */}
-      <div className="p-8 pt-12 mb-2 bg-linear-to-b from-black/20 to-transparent flex justify-between items-start sticky top-0 z-50 backdrop-blur-md">
+      <div className="p-8 pt-12 mb-2 bg-linear-to-b from-black/20 to-transparent flex justify-between items-start sticky top-0 z-50">
         <div>
           <h1 className="text-4xl font-black uppercase tracking-tighter text-white">
             Initial Consultation

@@ -39,7 +39,7 @@ export function StrongConfirmationModal({
   const isEnabled = inputValue === confirmationPhrase;
 
   return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 sm:p-6 bg-slate-900/50 backdrop-blur-sm sm:items-center animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 sm:items-center animate-in fade-in duration-200">
       <div className="bg-card rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-full border border-red-500/30">
         <div className="p-6">
           <div className="flex justify-between items-start mb-4">

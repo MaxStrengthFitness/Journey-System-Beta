@@ -414,7 +414,10 @@
                        tray is the group's boundary)
          --divider     a row's hairline inside a panel
          --highlight   a raised control's top light
-         --scrim       the veil under a dialog: navy, not black
+         --scrim       the veil under a dialog: navy, not black, and never
+                       blurred (the iPad round, Oct 6 2026: a full-screen
+                       backdrop blur is WebKit's costliest paint on an
+                       older iPad; paint-cost.test.ts holds it)
 
        Each feature palette carries these under its own prefix (--eq-*,
        --adm-*, --st-* and the rest), the shadows as var(--elev-n) and the
@@ -445,7 +448,7 @@
     --edge-control: rgba(25,45,65,0.26);
     --divider: rgba(25,45,65,0.10);
     --highlight: rgba(255,255,255,0.70);
-    --scrim: rgba(0,18,36,0.30);
+    --scrim: rgba(0,18,36,0.36);    /* no blur behind it (the iPad round): .30 with a 4px blur read about as quiet */
     /* A raised control on a popover (a dialog, a sheet, a menu): in light
        the page's own raised fill and edge; dark steps them up (below). */
     --popover-raised: var(--raised);
@@ -710,7 +713,7 @@
     --edge-control: rgba(150,180,210,0.16);
     --divider: rgba(150,180,210,0.10);
     --highlight: rgba(255,255,255,0.07);
-    --scrim: rgba(0,6,14,0.55);
+    --scrim: rgba(0,6,14,0.60);     /* no blur behind it (the iPad round): .55 with a 4px blur */
     /* The popover (#22374B) is a step above the card, lighter than the
        raised fill, so a raised control on it steps up again: 1.11:1 above
        the popover, its edge 3.43:1 on the fill and 3.81:1 on the popover,

@@ -4263,7 +4263,7 @@ export function WorkoutTrackerView({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsShowingAssessment(false)}
-              className="absolute inset-0 bg-(--scrim) backdrop-blur-sm"
+              className="absolute inset-0 bg-(--scrim)"
             />
             <motion.div
               initial={{ x: "100%" }}

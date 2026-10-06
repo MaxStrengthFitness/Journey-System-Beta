@@ -131,10 +131,10 @@ export function CreateClientModal({
     // Rendered before the app shell exists (AppContent returns it early), so it
     // keeps clear of the iPad status bar and home indicator itself
     // (features/home-screen), and the card may use all the height between.
-    <div className="fixed inset-0 z-40 flex items-center justify-center px-4 sm:px-6 pt-safe-4 pb-safe-4 sm:pt-safe-6 sm:pb-safe-6 bg-slate-900/60 dark:bg-slate-950/90 backdrop-blur-sm">
+    <div className="fixed inset-0 z-40 flex items-center justify-center px-4 sm:px-6 pt-safe-4 pb-safe-4 sm:pt-safe-6 sm:pb-safe-6 bg-slate-900/60 dark:bg-slate-950/90">
       <Card className="w-full max-w-2xl bg-card border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-full rounded-[32px] overflow-hidden relative text-foreground">
         {duplicateWarning && (
-          <div className="absolute inset-0 z-50 bg-slate-950/40 dark:bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="absolute inset-0 z-50 bg-slate-950/50 dark:bg-slate-950/80 flex items-center justify-center p-6">
             <div className="bg-card border border-amber-500 rounded-[24px] p-8 max-w-md w-full shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-2 bg-amber-500"></div>
               <div className="flex flex-col items-center text-center gap-6">
