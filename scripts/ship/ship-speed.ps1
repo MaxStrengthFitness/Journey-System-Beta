@@ -123,6 +123,19 @@ function Run {
   return @{ Code = $code; Output = $out }
 }
 
+# A command whose questions must be seen and answered (the functions deploy
+# can ask how long to keep container images): straight to the console, not
+# captured, so nothing waits invisibly. Its output is not in the log.
+function Run-Visible {
+  param([string]$label, [string]$cmd)
+  Log "--- $label (output on screen, not in the log) ---" 'Cyan'
+  Log "> $cmd"
+  & cmd /c $cmd
+  $code = $LASTEXITCODE
+  Log "$label exit code: $code" $(if ($code -eq 0) { 'Green' } else { 'Yellow' })
+  return @{ Code = $code; Output = @() }
+}
+
 function Stop-Here {
   param([string]$why)
   Log "STOP: $why" 'Red'
@@ -300,7 +313,9 @@ if ($Stage -eq 'prepare') {
   if ($errs -gt $TscBaseline) { Stop-Here 'more typecheck errors than the baseline.' }
 
   $env:TZ = 'America/New_York'
-  $vt = Run 'the suite (TZ=America/New_York)' 'npx vitest run --dir src'
+  # A longer per-test limit: a few file-walking style tests can pass vitest's
+  # default 5 s on a loaded PC, and a timeout is not a failure of the app.
+  $vt = Run 'the suite (TZ=America/New_York)' 'npx vitest run --dir src --testTimeout=30000'
   Must $vt 'the test suite'
 
   # The functions golive deploys: their own typecheck and tests.
@@ -399,7 +414,7 @@ if ($RulesChanged) {
 }
 
 # 4. The two changed functions, by name, then the two retired ones.
-$fd = Run 'deploy the changed functions' "npx firebase deploy --only $DeployFunctions --project $Project"
+$fd = Run-Visible 'deploy the changed functions' "npx firebase deploy --only $DeployFunctions --project $Project"
 if ($fd.Code -ne 0) { Stop-Here 'the functions deploy failed. The indexes and rules are deployed; the app is unchanged and nothing was pushed. Run golive again once it is fixed (ask Claude).' }
 Log "Deployed: $DeployFunctions" 'Green'
 
@@ -437,10 +452,15 @@ Log '2. The TTL policies on the webhook''s logs, in PowerShell (gcloud signed in
 Log "   gcloud firestore fields ttls update expiresAt --collection-group=mindbodyEventLog --enable-ttl --database=$Db --project=$GcpProject" 'White'
 Log "   gcloud firestore fields ttls update expiresAt --collection-group=mindbodyBookingCancels --enable-ttl --database=$Db --project=$GcpProject" 'White'
 Log "   gcloud firestore fields ttls list --database=$Db --project=$GcpProject   (each CREATING, then ACTIVE)" 'White'
+Log '   From then on NEVER deploy indexes with --force: firestore.indexes.json does not hold these two TTL policies,' 'White'
+Log '   and --force deletes them. The index deploy''s note about "2 field overrides ... not present" is expected.' 'White'
 Log '3. Render edge caching, ONLY NOW that this deploy is Live (the 404 no-store fix must be live first):' 'White'
 Log '   Render -> maxstrength-app-beta -> Settings -> Networking -> Edge Caching -> Edit -> "Common static files" -> Save.' 'White'
 Log '   Then twice: curl.exe -sI https://maxstrength-app-beta.onrender.com/assets/<a .js file from the page source>' 'White'
 Log '   The second answer says cf-cache-status: HIT. That is R20''s first gate.' 'White'
+Log '   Then twice each: curl.exe -sI https://maxstrength-app-beta.onrender.com/version.json  and the same for  /' 'White'
+Log '   Neither may ever say cf-cache-status: HIT, and version.json must say Cache-Control: no-store' 'White'
+Log '   (iPads notice a new version through it). If either is a HIT, turn Edge Caching off and tell Claude.' 'White'
 Log '4. Render -> maxstrength-app-beta -> Settings: Start Command = node build/server.cjs, Max shutdown delay = 120 s,' 'White'
 Log '   Instances = 1 (set them there if the service is not synced from render.yaml). The deploy''s Logs should show the OLD' 'White'
 Log '   instance say "SIGTERM: no new connections; letting running requests finish." If that never appears, tell Claude.' 'White'
@@ -452,8 +472,8 @@ Log '9. For the R20 gate (the $18 a month cut), record Render -> Metrics -> Memo
 Log '   screenshot each window''s peak and p95 before it ages out. Two windows in a row with a deploy and a chart-import evening,' 'White'
 Log '   memory p95 under 300 MB and CPU under 70% in the deploy window, then ask Claude to change the plan (your approval).' 'White'
 Log '10. R30: Query insights a day after the indexes (no scans on the session and profile path), Cloud Logging for' 'White'
-Log '   recalcTrainerWindows (succeeds, how long, peak memory), budget alerts at $25 / $50 / $100, and a cleanup policy' 'White'
-Log '   on the gcf-artifacts repository.' 'White'
+Log '   recalcTrainerWindows (succeeds, how long, peak memory), budget alerts at $25 / $50 / $100, and confirm the' 'White'
+Log '   gcf-artifacts repository has a cleanup policy (the functions deploy asks for one if it has none).' 'White'
 Log '' 'White'
 Log "TO UNDO the app: push $RestoreTag to master (ask Claude). TO UNDO the two functions: from a checkout of $RestoreTag" 'White'
 Log "(ask Claude to make one), npx firebase deploy --only $DeployFunctions --project $Project. The rules: deploy" 'White'

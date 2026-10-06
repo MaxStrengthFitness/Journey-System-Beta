@@ -101,8 +101,10 @@ services:
   # the name below matches https://maxstrength-app-beta.onrender.com, so Render
   # will update it in place instead of creating a second one.
   #
-  # Nothing here changes how it runs today - same build, same start command,
-  # same health check. The point is that they are now written down.
+  # Same build and health check as the dashboard. Since the speed round
+  # (Oct 5 2026) the start command is node build/server.cjs, so SIGTERM
+  # reaches server.ts, and numInstances / maxShutdownDelaySeconds are
+  # written down.
   # ===========================================================================
   - type: web
     name: maxstrength-app-beta
