@@ -100,7 +100,45 @@ interface ClosedStretch {
 
 /** By studio. The Demo studio has its own id, so the practice realm never meets a real one. */
 const closedKeep = new Map<string, ClosedStretch[]>();
-forgetOnSignOut(() => closedKeep.clear());
+
+/**
+ * Let go of every stretch past CLOSED_KEEP_MS, in every studio (the iPad
+ * round, Oct 2026, audit W11). A stretch is never used after it, but it was
+ * only dropped when the same studio was read again, so a studio looked at
+ * once held up to four stretches of up to 1,500 sessions until sign-out,
+ * and a shared iPad is rarely signed out.
+ */
+export function sweepClosedSessions(nowMs: number = Date.now()): void {
+  for (const [studioId, list] of closedKeep) {
+    const fresh = list.filter((c) => nowMs - c.readAt < CLOSED_KEEP_MS);
+    if (fresh.length === 0) closedKeep.delete(studioId);
+    else if (fresh.length !== list.length) closedKeep.set(studioId, fresh);
+  }
+}
+
+/** How many stretches are kept, across studios (for the test of the sweep). */
+export function keptStretchCount(): number {
+  let n = 0;
+  for (const list of closedKeep.values()) n += list.length;
+  return n;
+}
+
+// One timer while anything is kept, so a keep is let go even if nothing reads again.
+let sweepTimer: ReturnType<typeof setTimeout> | null = null;
+function armSweep(): void {
+  if (sweepTimer) return;
+  sweepTimer = setTimeout(() => {
+    sweepTimer = null;
+    sweepClosedSessions();
+    if (closedKeep.size > 0) armSweep();
+  }, CLOSED_KEEP_MS);
+}
+
+forgetOnSignOut(() => {
+  closedKeep.clear();
+  if (sweepTimer) clearTimeout(sweepTimer);
+  sweepTimer = null;
+});
 
 /** Forget every kept stretch, or one studio's. */
 export function forgetClosedSessions(studioId?: string): void {
@@ -149,6 +187,7 @@ export async function readSessionsInRange(range: SessionsRange, now: Date = new 
   const closedTo = Math.min(endMs ?? Number.POSITIVE_INFINITY, todayStart - 1);
   const wantsToday = endMs === undefined || endMs >= todayStart;
 
+  sweepClosedSessions(now.getTime());
   const closed = (async (): Promise<SessionsRangeResult> => {
     const kept = (closedKeep.get(studioId) ?? []).find(
       (c) => c.fromMs <= startMs && c.toMs >= closedTo && now.getTime() - c.readAt < CLOSED_KEEP_MS,
@@ -176,6 +215,7 @@ export async function readSessionsInRange(range: SessionsRange, now: Date = new 
     if (!read.truncated && !read.fromCache) {
       const fresh = (closedKeep.get(studioId) ?? []).filter((c) => now.getTime() - c.readAt < CLOSED_KEEP_MS);
       closedKeep.set(studioId, [...fresh.slice(-3), { fromMs: startMs, toMs: closedTo, sessions: read.sessions, readAt: now.getTime() }]);
+      armSweep();
     }
     return read;
   })();
