@@ -35,7 +35,7 @@ import { useMemo } from "react";
 import { CalendarRange, ChevronRight } from "lucide-react";
 import type { Client, Studio, Trainer } from "../../../types";
 import { loggedSessions } from "../../../lib/booking-state";
-import { formatStudioTime, studioDateKey, studioDayBoundsForKey } from "../../../lib/studio-time";
+import { formatStudioTime, studioDateKey, studioDayBoundsForKey, formatDateWords } from "../../../lib/studio-time";
 import { addDays } from "../../client-history/model";
 import { tallyOutcomes } from "../../renewals/rates";
 import { useOutcomes } from "../../renewals/useOutcomes";
@@ -79,13 +79,13 @@ export function WeekPage(props: WeekPageProps) {
 
 const dateWords = (day: string) => {
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }, "en-US");
 };
 
 /** "Thursday", from a day key's digits. */
 function longDay(day: string): string {
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { weekday: "long", timeZone: "UTC" }, "en-US");
 }
 
 function DayCells({ days, today, logging = true }: { days: DayFacts[]; today: string; logging?: boolean }) {

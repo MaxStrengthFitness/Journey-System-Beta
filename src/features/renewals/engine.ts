@@ -40,6 +40,7 @@ import type { Client, MindbodyContract, MindbodyService } from "../../types";
 import { addDays, daysBetween, keyOf, toTimelineEvents } from "../client-history/model";
 import { CATEGORY_BY_KEY } from "../subjective-report/questions";
 import { toDateSafe } from "../../lib/mindbody-dates";
+import { formatDateWords } from "../../lib/studio-time";
 import { buildPackageNameIndex, sessionsPerPayment, type PackageNameIndex } from "./settings";
 import { decideAutoRenew, lockSaysNothingBills } from "./auto-renew";
 import type {
@@ -177,15 +178,13 @@ function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-/** "Nov 14" — for flag sentences. */
+const SHORT_DATE: Intl.DateTimeFormatOptions = { timeZone: "UTC", month: "short", day: "numeric" };
+
+/** "Nov 14" — for flag sentences. One cached formatter (lib/studio-time formatDateWords). */
 export function shortDate(key: string | null): string {
   if (!key) return "";
   const [y, m, d] = key.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
-    timeZone: "UTC",
-    month: "short",
-    day: "numeric",
-  });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), SHORT_DATE, "en-US");
 }
 
 /* ------------------------------------------------------------------ *
