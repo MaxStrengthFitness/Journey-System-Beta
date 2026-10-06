@@ -123,6 +123,21 @@ describe("completedSessionRollup", () => {
     expect(u["machineStats.leg-press.lastWeight"]).toBe(116);
   });
 
+  it("with the machine totals unknown, writes the count, and the last pair only for the newest session (the iPad round's review)", () => {
+    const log = [{ machineId: "leg-press", weight: "116", reps: "8" }];
+    const today = completedSessionRollup({ machineStats: undefined }, { date: "2026-09-05", trainerId: "t-aj" }, log, TRAINERS, plainFieldOps, {
+      existingKnown: false,
+      newest: true,
+    });
+    expect(today["machineStats.leg-press.timesPerformed"]).toBe(1);
+    expect(today["machineStats.leg-press.firstPerformedDate"]).toBeUndefined();
+    expect(today["machineStats.leg-press.firstWeight"]).toBeUndefined();
+    expect(today["machineStats.leg-press.lastPerformedDate"]).toBe("2026-09-05");
+    expect(today["machineStats.leg-press.lastWeight"]).toBe(116);
+    const old = completedSessionRollup(null, { date: "2026-05-01", trainerId: "t-aj" }, log, TRAINERS, plainFieldOps, { existingKnown: false });
+    expect(Object.keys(old).filter((k) => k.startsWith("machineStats"))).toEqual(["machineStats.leg-press.timesPerformed"]);
+  });
+
   it("fixes a wrong first date when a back-dated session is logged", () => {
     const client = {
       machineStats: { lumbar: { firstPerformedDate: "2026-06-01", firstWeight: 50, lastPerformedDate: "2026-08-01", lastWeight: 50 } },

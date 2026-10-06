@@ -106,7 +106,7 @@ import { invalidateSessionCount } from './session-count-cache';
 import { completedSessionRollup } from './client-rollups';
 import { studioDateKey, studioTodayKey } from "./studio-time";
 import { isPerformedLog } from './set-outcome';
-import { splitMachineTotalsUpdates } from '../features/machine-totals/totals';
+import { machineTotalsKnown, splitMachineTotalsUpdates } from '../features/machine-totals/totals';
 import { addMachineTotalsWrite } from '../features/machine-totals/store';
 
 /**
@@ -326,9 +326,18 @@ export async function completeWorkoutSession(
     else if (!(typeof selectedClient.lastSessionDate === 'string' && selectedClient.lastSessionDate > asOfDay)) {
       clientUpdates.lastSessionDate = asOfDay;
     }
+    /* Whether this client's machine totals have answered (they live in their
+       own document since the iPad round, features/machine-totals). Until
+       they have, the client object carries no machine maps, and "nothing on
+       file" is not an answer: an old session's set must not become "last
+       time", and nobody's first weight may be written over. A client the
+       totals were never folded into ("unmerged") carries its own maps. */
+    const totalsKnown = machineTotalsKnown(selectedClient);
     /** A machine whose "last time" on file is from a later day than the session being finished. */
     const newerOnFile = (machineId: string): boolean => {
       if (!asOfDay) return false;
+      // Unknown is never "nothing newer": an old session's set stays out.
+      if (!totalsKnown) return true;
       const metric = selectedClient.currentMachineMetrics?.[machineId];
       const day = metric?.lastPerformedDate ? studioDateKey(metric.lastPerformedDate) : null;
       return !!day && day > asOfDay;
@@ -413,6 +422,8 @@ export async function completeWorkoutSession(
         sessionLogs as any[],
         authTrainer ? [authTrainer as Trainer] : [],
         { increment, serverTimestamp },
+        // Totals unknown: the count, and the last pair only for today's session.
+        { existingKnown: totalsKnown, newest: !asOfDay },
       ),
     );
 

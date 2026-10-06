@@ -178,6 +178,16 @@ describe("the client on screen", () => {
     // A row that never went through the fold: its own fields are its answer.
     expect(machineTotalsKnown(client)).toBe(true);
   });
+
+  it("a document only this iPad has written is not the whole story; a failure that still holds a whole answer is (the review, Oct 6 2026)", () => {
+    const partial = withMachineTotals(client, { state: "loading", data: { machineStats: { "m-b": { timesPerformed: 1 } } }, complete: false });
+    expect(partial.machineStats!["m-b"].timesPerformed).toBe(1);
+    expect(machineTotalsKnown(partial)).toBe(false);
+    const heldWhole = withMachineTotals(client, { state: "failed", data: { machineStats: {} }, complete: true });
+    expect(machineTotalsStateOf(heldWhole)).toBe("failed");
+    expect(machineTotalsKnown(heldWhole)).toBe(true);
+    expect(machineTotalsKnown(withMachineTotals(client, { state: "failed", data: { machineStats: {} }, complete: false }))).toBe(false);
+  });
 });
 
 describe("planClientSplit: the migration", () => {
@@ -234,6 +244,14 @@ describe("planClientSplit: the migration", () => {
     expect(planClientSplit({ ...legacy, lastSessionDate: "2026-10-01" }, null, { dayOf, today }).lastSessionDate).toBeNull();
     const future = { ...legacy, machineStats: { "m-a": { lastPerformedDate: "2026-12-01" } } };
     expect(planClientSplit({ ...future, currentMachineMetrics: undefined }, null, { dayOf, today }).lastSessionDate).toBeNull();
+  });
+
+  it("reads a lastSessionDate stored as a Timestamp or a Date as its day, and never moves it back; an unreadable one is left alone", () => {
+    expect(planClientSplit({ ...legacy, lastSessionDate: ts("2026-10-01T14:00:00Z") }, null, { dayOf, today }).lastSessionDate).toBeNull();
+    expect(planClientSplit({ ...legacy, lastSessionDate: new Date("2026-10-01T14:00:00Z") }, null, { dayOf, today }).lastSessionDate).toBeNull();
+    expect(planClientSplit({ ...legacy, lastSessionDate: ts("2026-09-01T14:00:00Z") }, null, { dayOf, today }).lastSessionDate).toBe("2026-09-20");
+    expect(planClientSplit({ ...legacy, lastSessionDate: { nonsense: true } }, null, { dayOf, today }).lastSessionDate).toBeNull();
+    expect(planClientSplit({ ...legacy, lastSessionDate: undefined }, null, { dayOf, today }).lastSessionDate).toBe("2026-09-20");
   });
 
   it("reads the last machine day from either map", () => {

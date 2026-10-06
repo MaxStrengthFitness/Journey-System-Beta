@@ -35,7 +35,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OperationType, handleFirestoreError } from "../../lib/firestore-errors";
 import { completedSessionRollup } from "../../lib/client-rollups";
-import { splitMachineTotalsUpdates } from "../machine-totals/totals";
+import { machineTotalsKnown, splitMachineTotalsUpdates } from "../machine-totals/totals";
 import { addMachineTotalsWrite } from "../machine-totals/store";
 import { cn } from "../../lib/utils";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
@@ -216,7 +216,15 @@ export function LogPastSessionDialog({
   const performed = entries.filter(hasNumbers);
   const datePlaceable = isPlaceable(date, timeZone);
   const canLeaveWhen = Boolean(trainerId) && datePlaceable;
-  const canSave = canLeaveWhen && entries.length > 0 && !isSaving;
+  /* The client's machine totals (first and last weight on each machine) live
+     in their own document since the iPad round (features/machine-totals).
+     Until they have answered, Save waits: a past session's rollup compares
+     its day with what is on file, and "nothing on file" read off a document
+     still loading would write its set over a newer last time or a real
+     first weight. Seconds at most; the save is held, never refused. */
+  const totalsKnown = client ? machineTotalsKnown(client) : false;
+  const totalsWaiting = !!client && !totalsKnown;
+  const canSave = canLeaveWhen && entries.length > 0 && !isSaving && !totalsWaiting;
 
   /* ── Save ──────────────────────────────────────────────────────────────── */
 
@@ -295,7 +303,9 @@ export function LogPastSessionDialog({
       const counters = splitMachineTotalsUpdates({
         completedSessions: increment(1),
         sessionCount: increment(1),
-        ...completedSessionRollup(client, session, written, trainers, { increment, serverTimestamp }),
+        // Totals not known (no client given): the counts alone, never a first
+        // or last pair off "nothing on file".
+        ...completedSessionRollup(client, session, written, trainers, { increment, serverTimestamp }, { existingKnown: totalsKnown, newest: false }),
       });
       batch.update(doc(db, "clients", clientId), counters.client);
       addMachineTotalsWrite(batch, db, clientId, counters.totals);
@@ -534,7 +544,7 @@ export function LogPastSessionDialog({
           </Button>
           {pane === "numbers" ? (
             <Button onClick={save} disabled={!canSave} className="hsd-save">
-              {isSaving ? "Saving…" : <><PlusCircle className="w-4 h-4 mr-2" aria-hidden /> Save session</>}
+              {isSaving ? "Saving…" : totalsWaiting ? "Reading the machines…" : <><PlusCircle className="w-4 h-4 mr-2" aria-hidden /> Save session</>}
             </Button>
           ) : (
             <Button

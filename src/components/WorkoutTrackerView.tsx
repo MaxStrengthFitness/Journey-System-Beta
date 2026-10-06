@@ -668,7 +668,10 @@ export function WorkoutTrackerView({
    */
   const finishStaleSessionAsItWas = () => {
     const s = staleSession;
-    if (!s?.id || !selectedClient || !user?.uid) return;
+    // The dialog holds the button until the totals answer; this holds a tap
+    // that raced it. completeWorkoutSession keeps an unknown "last time" safe
+    // regardless (sync-utils, newerOnFile).
+    if (!s?.id || !selectedClient || !user?.uid || !totalsKnown) return;
     const sessionLogs = (Object.values(logs) as ExerciseLog[]).filter((l) => l.sessionId === s.id);
     const stamped = sessionLogs.map((l) => {
       const o = outcomeAtFinish(l, null);
@@ -3566,6 +3569,7 @@ export function WorkoutTrackerView({
         onResume={resumeStaleSession}
         onStartNew={leaveStaleSession}
         onFinishAsItWas={finishStaleSessionAsItWas}
+        finishAsItWasReady={totalsKnown}
       />
     ) : null;
 

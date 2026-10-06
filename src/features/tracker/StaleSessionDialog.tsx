@@ -31,6 +31,7 @@ export function StaleSessionDialog({
   onResume,
   onStartNew,
   onFinishAsItWas,
+  finishAsItWasReady = true,
 }: {
   open: boolean;
   clientFirstName: string;
@@ -52,6 +53,13 @@ export function StaleSessionDialog({
    * to today's. Absent: only the two answers.
    */
   onFinishAsItWas?: () => void;
+  /**
+   * Whether the client's machine totals have answered (the iPad round,
+   * features/machine-totals). Finishing an old session compares each
+   * machine's day with what is on file, so until they have, the answer
+   * waits (a moment): never "nothing on file" off a read still on its way.
+   */
+  finishAsItWasReady?: boolean;
 }) {
   const started = staleSessionStartedLine(session, todayKey);
   const day = sessionDayWords(session, todayKey) ?? "the day it was started";
@@ -92,8 +100,10 @@ export function StaleSessionDialog({
               variant="outline"
               className="h-auto min-h-14 whitespace-normal rounded-2xl"
               onClick={onFinishAsItWas}
+              disabled={!finishAsItWasReady}
+              aria-busy={!finishAsItWasReady || undefined}
             >
-              Finish it as it was
+              {finishAsItWasReady ? "Finish it as it was" : "Reading the machines…"}
             </Button>
           )}
           <Button

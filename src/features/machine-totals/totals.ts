@@ -283,9 +283,16 @@ export interface MachineTotalsRead {
   state: MachineTotalsState;
   /** The document's data when it exists; kept through a later failure. */
   data: MachineTotalsDoc | null;
+  /**
+   * Whether `data` is the whole document: false while "loading" holds only
+   * what this iPad wrote itself and the server has not answered (an offline
+   * Finish creates the document locally with nothing but its own paths), and
+   * kept through a failure. Absent means whole.
+   */
+  complete?: boolean;
 }
 
-const STATES = new WeakMap<object, MachineTotalsState>();
+const STATES = new WeakMap<object, { state: MachineTotalsState; held: boolean }>();
 
 /**
  * The client with its totals folded in, and the totals' state remembered for
@@ -294,7 +301,7 @@ const STATES = new WeakMap<object, MachineTotalsState>();
  */
 export function withMachineTotals<C extends object>(client: C, read: MachineTotalsRead): C {
   const merged = read.data ? ({ ...client, ...mergeMachineTotals(client as Record<string, unknown>, read.data) } as C) : ({ ...client } as C);
-  STATES.set(merged, read.state);
+  STATES.set(merged, { state: read.state, held: read.state === "failed" && !!read.data && read.complete !== false });
   return merged;
 }
 
@@ -305,16 +312,19 @@ export function withMachineTotals<C extends object>(client: C, read: MachineTota
  */
 export function machineTotalsStateOf(client: object | null | undefined): MachineTotalsState | "unmerged" {
   if (!client) return "loading";
-  return STATES.get(client) ?? "unmerged";
+  return STATES.get(client)?.state ?? "unmerged";
 }
 
 /**
  * Whether a screen may act on this client's totals as an answer (Start's
- * prefilled weights, the profile's backfill): the document arrived, or the
- * server said there is none, or this is a client the totals were never folded
- * into. Loading and failed are unknown.
+ * prefilled weights, the profile's backfill, Finish's first and last pairs):
+ * the document arrived whole, or the server said there is none, or this is a
+ * client the totals were never folded into. Loading is unknown, and so is a
+ * failed read with nothing held; a failure that still holds a whole answer
+ * from before (a listener error mid-session) is known, as it was a moment ago.
  */
 export function machineTotalsKnown(client: object | null | undefined): boolean {
+  if (client && STATES.get(client)?.held) return true;
   const s = machineTotalsStateOf(client);
   return s === "ready" || s === "missing" || s === "unmerged";
 }
@@ -367,9 +377,13 @@ export function planClientSplit(
   const totals = mergeMachineTotals(clientData, totalsData);
   if (clientDeletes.length === 0) return { totals, clientDeletes, lastSessionDate: null, done: true };
   const machineDay = latestMachineDay(machineTotalsFieldsOf(clientData), options.dayOf);
-  const current = typeof clientData.lastSessionDate === "string" ? clientData.lastSessionDate : null;
+  // Only ever forward: a lastSessionDate stored as a Timestamp or a Date is
+  // read as its studio day, and one that can't be read is left alone.
+  const raw = clientData.lastSessionDate;
+  const present = raw !== undefined && raw !== null && raw !== "";
+  const current = !present ? null : typeof raw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : options.dayOf(raw);
   const lastSessionDate =
-    machineDay && machineDay <= options.today && (!current || machineDay > current) ? machineDay : null;
+    machineDay && machineDay <= options.today && (!present || (current !== null && machineDay > current)) ? machineDay : null;
   return { totals, clientDeletes, lastSessionDate, done: false };
 }
 

@@ -238,9 +238,20 @@ export function completedSessionRollup(
   logs: RollupLog[],
   trainers: Trainer[],
   ops: FieldOps,
+  /**
+   * When the client's machine totals have not answered (they live in their
+   * own document since the iPad round, features/machine-totals), `client`
+   * carries no machineStats, and "nothing on file" would read as "first
+   * time": the first pair would be written over the real one on the totals
+   * document, permanently. `existingKnown: false` writes only what needs no
+   * look at what is on file: the count, and the last pair when `newest` (a
+   * session finished today is the newest by definition; an old one is not).
+   */
+  options: { existingKnown?: boolean; newest?: boolean } = {},
 ): Record<string, unknown> {
   const updates: Record<string, unknown> = {};
   const day = toIsoDay(session.date ?? new Date());
+  const existingKnown = options.existingKnown !== false;
 
   /* ---- trainer tally ---- */
   const key = trainerKeyFor(session);
@@ -272,6 +283,13 @@ export function completedSessionRollup(
     const existing = client?.machineStats?.[machineId];
     const base = `machineStats.${machineId}`;
     updates[`${base}.timesPerformed`] = ops.increment(1);
+    if (!existingKnown) {
+      if (options.newest) {
+        if (day) updates[`${base}.lastPerformedDate`] = day;
+        if (weight !== null) updates[`${base}.lastWeight`] = weight;
+      }
+      continue;
+    }
     if (day) {
       if (!existing?.firstPerformedDate || day < existing.firstPerformedDate) {
         updates[`${base}.firstPerformedDate`] = day;

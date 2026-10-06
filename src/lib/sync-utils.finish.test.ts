@@ -73,6 +73,7 @@ vi.mock("../hooks/useClientJournal", () => ({
 vi.mock("./session-count-cache", () => ({ invalidateSessionCount: () => {} }));
 
 import { completeWorkoutSession } from "./sync-utils";
+import { withMachineTotals } from "../features/machine-totals/totals";
 
 const session = { id: "sess1", sessionNumber: 41, hostedAtStudioId: "studioA", date: "2026-09-24" };
 const client = { id: "c1", homeStudioId: "studioB", firstName: "Casey", completedSessions: 40 };
@@ -161,6 +162,35 @@ describe("completeWorkoutSession", () => {
     const paths = calls.batchWrites.map((w) => w.path);
     expect(paths).not.toContain("clientMachineSettings/c1_m1");
     expect(paths).toContain("clientMachineSettings/c1_m2");
+  });
+
+  it("never writes a first weight off totals that haven't answered: a migrated client keeps the real one (the review, Oct 6 2026)", async () => {
+    // After the migration the roster's client carries no machine maps; the
+    // totals document is still loading (offline, or the first second).
+    const loading = withMachineTotals({ ...client }, { state: "loading", data: null });
+    await completeWorkoutSession({} as never, session, loading, logs, "", trainer, {}, "uid-t1");
+    const stats = machineTotalsWrite()!.data.machineStats as any;
+    const fields = (machineTotalsWrite()!.options as any).mergeFields as string[];
+    expect(stats.m1.timesPerformed).toEqual({ __increment: 1 });
+    expect(fields.some((f) => /firstPerformedDate|firstWeight/.test(f))).toBe(false);
+    // Today's session is the newest by definition: last time and the prefill still move.
+    expect(stats.m1.lastWeight).toBe(180);
+    expect(stats.m1.lastPerformedDate).toBe("2026-09-24");
+    expect((machineTotalsWrite()!.data.currentMachineMetrics as any).m1.weight).toBe("180");
+  });
+
+  it("finishing an old session with totals unknown leaves every last time and next weight alone", async () => {
+    const loading = withMachineTotals({ ...client, lastSessionDate: "2026-09-20" }, { state: "loading", data: null });
+    await completeWorkoutSession({} as never, session, loading, logs, "", trainer, {}, "uid-t1", undefined, { asOfDay: "2026-09-24" });
+    const w = machineTotalsWrite()!;
+    const fields = (w.options as any).mergeFields as string[];
+    expect(w.data).not.toHaveProperty("currentMachineMetrics");
+    expect(fields.filter((f) => f.startsWith("machineStats")).sort()).toEqual(["machineStats.m1.timesPerformed", "machineStats.m2.timesPerformed"]);
+    const paths = calls.batchWrites.map((x) => x.path);
+    expect(paths).not.toContain("clientMachineSettings/c1_m1");
+    expect(paths).not.toContain("clientMachineSettings/c1_m2");
+    // The counters still count it.
+    expect(calls.updateDocs[0].data.completedSessions).toEqual({ __increment: 1 });
   });
 
   it("moves her last-session day to the old session's day when nothing came after", async () => {

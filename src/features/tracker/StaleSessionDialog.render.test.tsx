@@ -57,6 +57,20 @@ describe("StaleSessionDialog", () => {
     expect(onStartNew).not.toHaveBeenCalled();
   });
 
+  it("holds Finish it as it was until the client's machine totals have answered", async () => {
+    const onFinishAsItWas = vi.fn();
+    await mount({ onFinishAsItWas, finishAsItWasReady: false });
+    expect(button("Finish it as it was")).toBeUndefined();
+    const waiting = button("Reading the machines…")!;
+    expect(waiting).toBeTruthy();
+    expect(waiting.disabled).toBe(true);
+    await act(async () => waiting.click());
+    expect(onFinishAsItWas).not.toHaveBeenCalled();
+    // The other two answers never wait.
+    expect(button("Resume it")!.disabled).toBe(false);
+    expect(button("Start a new session")!.disabled).toBe(false);
+  });
+
   it("keeps the two answers when no host offers the third", async () => {
     await mount({});
     expect(button("Finish it as it was")).toBeUndefined();
