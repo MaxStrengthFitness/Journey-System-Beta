@@ -92,7 +92,8 @@ gitstate.txt
 /*.txt
 /*.txtcd
 /Claude outputs/
-/harness/
+/harness/*
+!/harness/perf-lab/
 /patches/
 /patches-*/
 
