@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Client, ExerciseLog, Machine, Routine, Trainer } from "../../types";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { useBookingMarks } from "../admin/attention/booking-marks";
@@ -15,6 +15,7 @@ import { useClientCoverage } from "../../hooks/useClientCoverage";
 import { canQuoteSessionNumber } from "../../lib/client-coverage";
 import { ownedWindow } from "../../lib/history-claims";
 import { priorHistoryOf } from "../../lib/prior-history";
+import { HISTORY_SIGNATURE_SPAN, historySignature } from "../client-profile/history-freshness";
 
 /**
  * The client profile's History tab: every read and write lives here, every
@@ -42,6 +43,13 @@ export interface ClientHistoryTabProps {
   onViewChange?: (view: HistoryViewMode) => void;
   /** Suppress the tab's own header — the parent already names the screen. */
   hideHeader?: boolean;
+  /**
+   * Her newest sessions as the live list holds them, as one signature, each
+   * time the server has answered (speed round, Oct 5 2026). The profile reads
+   * its own page of her history again only when this changes: an edit, a
+   * past session logged, one removed, here or on another iPad.
+   */
+  onHistoryChanged?: (signature: string) => void;
 }
 
 export function ClientHistoryTab({
@@ -56,9 +64,21 @@ export function ClientHistoryTab({
   view,
   onViewChange,
   hideHeader = false,
+  onHistoryChanged,
 }: ClientHistoryTabProps) {
   const { activeStudioId } = useActiveStudio();
   const history = useSessionHistory(clientId, !disabled);
+  // The newest page's worth only: Load full history widening the window is not a change.
+  const signature = useMemo(() => {
+    if (history.status !== "ready") return null;
+    const own = history.sessions.filter((s) => s.clientId === clientId).slice(0, HISTORY_SIGNATURE_SPAN);
+    // For the one render after a switch the list still holds the last client's.
+    if (own.length === 0 && history.sessions.length > 0) return null;
+    return historySignature(own);
+  }, [history.status, history.sessions, clientId]);
+  useEffect(() => {
+    if (signature !== null) onHistoryChanged?.(signature);
+  }, [signature, onHistoryChanged]);
   const { logsBySession, request, replace } = useSessionLogs(seedLogs);
   const [opened, setOpened] = useState<{ key: number; sessions: HistorySession[] } | null>(null);
   const [logPastOpen, setLogPastOpen] = useState(false);

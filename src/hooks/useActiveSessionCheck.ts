@@ -32,11 +32,17 @@ export function useActiveSessionCheck(clientId: string | null) {
   const [staleInProgressSession, setStaleInProgressSession] =
     useState<WorkoutSession | null>(null);
   const [isCheckingActiveSession, setIsCheckingActiveSession] = useState(false);
+  /* Every In-Progress session's id, stamped with the client the listener
+     answered for (speed round, Oct 5 2026): the profile reads a client's
+     history again when one of these leaves — finished or discarded, here
+     or on another iPad (features/client-profile/history-freshness.ts). */
+  const [inProgressFor, setInProgressFor] = useState<{ clientId: string; ids: string[] } | null>(null);
 
   useEffect(() => {
     if (!clientId) {
       setActiveInProgressSession(null);
       setStaleInProgressSession(null);
+      setInProgressFor(null);
       return;
     }
 
@@ -57,6 +63,7 @@ export function useActiveSessionCheck(clientId: string | null) {
         const { live, stale } = splitInProgress(sessions);
         setActiveInProgressSession(live);
         setStaleInProgressSession(live ? null : (stale[0] ?? null));
+        setInProgressFor({ clientId, ids: sessions.map((x) => x.id!).filter(Boolean).sort() });
         setIsCheckingActiveSession(false);
       },
       (err) => {
@@ -68,5 +75,5 @@ export function useActiveSessionCheck(clientId: string | null) {
     return () => unsubscribe();
   }, [clientId]);
 
-  return { activeInProgressSession, staleInProgressSession, isCheckingActiveSession };
+  return { activeInProgressSession, staleInProgressSession, isCheckingActiveSession, inProgressFor };
 }

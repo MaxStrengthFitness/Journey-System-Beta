@@ -100,6 +100,8 @@ export interface ClinicalHistoryTabProps {
   onEditMedical?: () => void;
   view: ClinicalView;
   onViewChange: (view: ClinicalView) => void;
+  /** The Archive's live list changed (passed through to ClientHistoryTab; speed round, Oct 5 2026). */
+  onHistoryChanged?: (signature: string) => void;
   disabled?: boolean;
 }
 
@@ -128,6 +130,7 @@ export function ClinicalHistoryTab({
   onEditMedical,
   view,
   onViewChange,
+  onHistoryChanged,
   disabled = false,
 }: ClinicalHistoryTabProps) {
   // The Deep Dive (view id "trends") is mounted on first visit and kept. See decision 4.
@@ -278,6 +281,7 @@ export function ClinicalHistoryTab({
           seedLogs={seedLogs}
           timeZone={timeZone}
           disabled={disabled}
+          onHistoryChanged={onHistoryChanged}
           hideHeader
           view={view === "sessions" ? "list" : "calendar"}
           onViewChange={(v) => onViewChange(v === "list" ? "sessions" : "calendar")}
