@@ -41,6 +41,7 @@ import { formatStudioDate, studioTodayKey } from "../../lib/studio-time";
 import { LoadingArea } from "../../components/LoadingMark";
 import "../trainer-profile/trainer-profile.tokens.css";
 import { buildDirectoryRows, newDirectoryRowCache, type DirectoryRow, type DirectoryRowCache } from "./row";
+import { useBoundaryClock } from "../../lib/boundary-clock";
 import { SORT_MENU, nextSortForTap, sectionRows, sortWords, type SortKey, type SortSpec } from "./buckets";
 import { buildNameIndex, searchNames } from "./search";
 import { applyTokens, buildNameVocab, buildOccupationVocab, notOnFileWords, parseQuery, type Token } from "./tokens";
@@ -64,7 +65,7 @@ import { useStudioSettings } from "../studio-settings/useStudioSettings";
 import { rosterCutWords } from "../../lib/studio-roster";
 import { DirectoryRowView, type DirectoryMark, type ExtraColumn } from "./DirectoryRowView";
 import { SortPicker } from "./SortPicker";
-import { useDirectoryContext } from "./use-directory-context";
+import { directoryBoundaries, useDirectoryContext } from "./use-directory-context";
 import "./client-directory.css";
 
 export type { DirectoryMark } from "./DirectoryRowView";
@@ -240,14 +241,13 @@ export function ClientDirectory({
   const { activeStudioId, availableStudios } = useActiveStudio();
   const studioList: ReadonlyArray<Studio> = studios ?? availableStudios ?? [];
 
-  /* ---- the clock: a minute is fine for "today" and "next" ---- */
-  const [tick, setTick] = useState(() => Date.now());
-  useEffect(() => {
-    if (fixedNow) return;
-    const t = setInterval(() => setTick(Date.now()), 60_000);
-    return () => clearInterval(t);
-  }, [fixedNow]);
-  const now = useMemo(() => fixedNow ?? new Date(tick), [fixedNow, tick]);
+  /* ---- the clock ---- */
+  // It moves when a held booking ends, when the bookings turn stale and when
+  // the studio's day turns, never at the minutes between: every model below
+  // is keyed on it, and a minute clock rebuilt all of them once a minute
+  // (240 / 434 ms frozen on an iPad 10 / an older iPad, the perf lab).
+  const boundaries = useMemo(() => directoryBoundaries(schedules ?? null, schedulesFetchedAt), [schedules, schedulesFetchedAt]);
+  const now = useBoundaryClock(boundaries, fixedNow).now;
   const today = studioTodayKey(now);
 
   // AppContent hands in new functions on every render; the rows are memoised,

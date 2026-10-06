@@ -42,12 +42,13 @@ None per client, ever. The rows ride on what AppContent already streams — the 
 
 ## What it works out again, and when (the iPad round, Oct 2026)
 
-The perf lab measured one client's write at 378 ms (iPad 10) and 606 ms (older iPad) of frozen Directory, and every minute at 240 / 434 ms, because both rebuilt and redrew all 300 rows. Two things keep that down; break one and `ClientDirectory.rerender.render.test.tsx` fails:
+The perf lab measured one client's write at 378 ms (iPad 10) and 606 ms (older iPad) of frozen Directory, and every minute at 240 / 434 ms, because both rebuilt and redrew all 300 rows. Three things keep that down; break one and `ClientDirectory.rerender.render.test.tsx` fails:
 
 - **One row per client object.** `useStudioRoster` keeps every client a write didn't touch as the same object, and `buildDirectoryRows` takes a `DirectoryRowCache`: while the context is the same object, the same client gets the same row back.
 - **The rows are memoised** (`DirectoryRowView` is `memo`), so every prop must stay stable: `gridVars` is memoised, the host's callbacks are wrapped once (AppContent hands in new ones every render), and an inactive row's badged copy is kept per row.
+- **The clock moves only when the answer would** (`lib/boundary-clock.ts`): when a held booking ends, when the bookings turn stale (`directoryBoundaries`) and when the studio's day turns. It still looks once a minute, so a boundary is noticed within the minute, as before.
 
-A new prop on the row, or a new input to the row model that changes over time, must keep this: pass something stable.
+A new prop on the row, or a new input to the row model that changes over time, must keep this: pass something stable, or add its instant to `directoryBoundaries`.
 
 ## Deliberately out of scope (and why)
 

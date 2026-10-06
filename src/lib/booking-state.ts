@@ -205,3 +205,28 @@ export function bookingState(
   if (!slotOver(booking, now)) return "in-progress";
   return logged && logged.complete !== false ? "never-logged" : "unknown";
 }
+
+/** How far ahead "Now and the next 30 min" reaches (hub-opportunities/moments-today.ts timeFact). */
+const NEXT_HALF_HOUR_MS = 30 * 60_000;
+
+/**
+ * The instants at which what a screen says about these bookings can change
+ * with the time alone (lib/boundary-clock.ts, the iPad round, Oct 2026): each
+ * booking's start less half an hour (it joins "now and the next 30 min"), its
+ * start (no longer upcoming; no longer "still to come"), its end, or half an
+ * hour after the start when it has none (the row model's slot: Next moves on,
+ * "Earlier today"), and its end plus the slack (`slotOver`: in progress
+ * becomes not logged). Every bookingState, the Directory's rows, the Hub's
+ * moments and Operations' day facts change only at these.
+ */
+export function bookingBoundaries(entries: Iterable<BookingLike> | null | undefined): number[] {
+  const out: number[] = [];
+  for (const b of entries ?? []) {
+    if (!b) continue;
+    const start = toDate(b.startTime as never)?.getTime();
+    if (typeof start === "number") out.push(start - NEXT_HALF_HOUR_MS, start, start + NEXT_HALF_HOUR_MS);
+    const end = toDate(b.endTime as never)?.getTime();
+    if (typeof end === "number") out.push(end, end + SLOT_SLACK_MS + 1);
+  }
+  return out;
+}

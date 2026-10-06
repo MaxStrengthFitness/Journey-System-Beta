@@ -10,6 +10,8 @@
  * row) fails here:
  *   - a write to one client redraws that client's row and no other, even
  *     when the host hands in new callbacks;
+ *   - the clock redraws nothing between boundaries, and moves when a held
+ *     booking ends.
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, memo } from "react";
@@ -136,5 +138,35 @@ describe("ClientDirectory: what one write and the clock redraw", () => {
     renders.clear();
     await render({ now: NOW, clients: changed });
     expect(total()).toBe(0);
+  });
+
+  it("the minute passes without a redraw; a booking ending moves the clock", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"] });
+    vi.setSystemTime(NOW);
+    // 4:00 PM for 30 minutes, bookings read just now (fresh for two hours).
+    const soon = [makeBooking({ clientId: "zp", start: eastern(TODAY, "16:00"), trainerId: "t-me", trainerName: "Sam Rivera" })];
+    await render({ schedules: soon, schedulesFetchedAt: NOW.getTime() });
+    expect(total()).toBe(3);
+    expect(host.querySelector('.cd-row[data-client-id="zp"] .cd-cell[data-col="Next"]')?.textContent).toContain("4:00");
+    renders.clear();
+
+    // Eighty minutes of ticks, 2:00 to 3:20 PM: no boundary is crossed (the
+    // first is 3:30 PM, half an hour before the booking).
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(80 * 60_000);
+    });
+    expect(total()).toBe(0);
+
+    // Past 3:30 PM: a boundary, and the rows are worked out again.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15 * 60_000);
+    });
+    expect(renders.get("zp")).toBeGreaterThanOrEqual(1);
+
+    // Past 4:30 PM: the booking is over, and Next no longer names it.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(62 * 60_000);
+    });
+    expect(host.querySelector('.cd-row[data-client-id="zp"] .cd-cell[data-col="Next"]')?.textContent).not.toContain("4:00");
   });
 });
