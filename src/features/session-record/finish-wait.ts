@@ -87,3 +87,25 @@ export async function finishedElsewhere(
   const status = await withinOrNull(read, ms);
   return status === "Completed";
 }
+
+/**
+ * The "already finished?" question asked EARLY, and checked again at the tap
+ * (speed round, Oct 5 2026; R9). The server read starts when the End Session
+ * dialog opens (`early`), so by the time Finish is tapped its answer is
+ * usually in hand and Finish waits on nothing. Starting it early alone would
+ * widen the window in which another iPad can finish the session unseen, so
+ * the tap also reads the client's LIVE sessions stream (`streamStatus`): a
+ * session the stream already says is Completed is never counted again. With
+ * no early read (offline when the dialog opened), the read is made at the
+ * tap, as before. Offline, or with no answer in time, the answer is no.
+ */
+export async function finishedElsewhereAtTap(a: {
+  streamStatus: string | null | undefined;
+  early: Promise<string | null | undefined> | null;
+  readStatus: () => Promise<string | null | undefined>;
+  online: boolean;
+  ms?: number;
+}): Promise<boolean> {
+  if (a.streamStatus === "Completed") return true;
+  return finishedElsewhere(() => a.early ?? a.readStatus(), a.online, a.ms);
+}

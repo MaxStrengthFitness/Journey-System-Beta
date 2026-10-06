@@ -25,6 +25,18 @@ It reads nothing and writes nothing.
 - `finishedElsewhere` asks the server whether another iPad already finished the session. Finish then writes nothing, so the client's totals are never counted twice. Offline, or with no answer, it says no and Finish goes ahead.
 - What this cannot stop: an offline Finish that replays after another iPad finished the same session online. AJ judged that extremely unlikely (Sep 26 2026), so nothing on the database side guards it. Don't add a guard without asking.
 
+## Start, Discard, Back to Hub and the machine Save never wait on the network
+
+The speed round (Oct 5 2026, R9 in its blueprint). A write is on the iPad the moment it is made; what can take forever is the database's answer, so nothing a trainer taps waits for one.
+
+- **Start** (`start-plan.ts` is the plan, `WorkoutTrackerView` issues it): the ids are made on the iPad, and the session, its new routine (only when one has to be made) and the prefilled sets go in ONE batch, issued and never awaited. The screen switches in the same tap, online or off. A refusal comes back through the batch's promise: it is said, and the session leaves the screen. The client's own fields (Routine B, the first session's day) are a SEPARATE write whose failure is logged, because the clients rules limit what a visiting or cross-train trainer may change and one refused field must never take the session down. The arrival note is its own write too.
+- **Known.** The client's routines and machine settings are known once a snapshot has arrived (cache or server). Until the routines are known Start makes no Routine A (an empty list there is "not read yet", which is how a second, empty Routine A got made); until the settings are known the prefilled weights wait. Neither ever holds Start or Finish: the routine and the weights follow the moment they are known.
+- **The seed never writes over a set this iPad holds**, so a weight typed while the seed waited is never overwritten when the connection comes back.
+- **Discard** is one batch (the sets this iPad holds, every id the session's machines write under, and the session), never awaited; the Hub comes at once. Sets still waiting to be sent for it are dropped first. The legacy `sessionNotes` are no longer touched: nothing writes them, and only an administrator may delete one.
+- **Back to Hub** from the Wrap-up issues its note writes side by side and goes; each says its own refusal.
+- **Finish** starts the "already finished on another iPad?" read when the End Session dialog opens, and at the tap also reads the client's live sessions stream (`finishedElsewhereAtTap`), so starting early never widens the window in which a session could be counted twice.
+- **The machine menu's Save** closes at once: "saved" online, "saved on this iPad" offline or once the answer is still out after `FINISH_WAIT_MS`; a later refusal takes the Undo back as before.
+
 ## Sign-out asks first
 
 `sign-out-check.ts`, used by AppContent's `logOut`:

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FINISH_WAIT_MS, finishedElsewhere, settleOrQueue, withinOrNull } from "./finish-wait";
+import { FINISH_WAIT_MS, finishedElsewhere, finishedElsewhereAtTap, settleOrQueue, withinOrNull } from "./finish-wait";
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -85,5 +85,57 @@ describe("finishedElsewhere", () => {
       throw new TypeError("no database");
     };
     await expect(finishedElsewhere(throwsAtOnce, true)).resolves.toBe(false);
+  });
+});
+
+describe("finishedElsewhereAtTap (R9: the read starts when the dialog opens, and the tap checks the stream)", () => {
+  it("the live stream already saying Completed wins, with no read at all", async () => {
+    let read = 0;
+    const out = await finishedElsewhereAtTap({
+      streamStatus: "Completed",
+      early: null,
+      readStatus: () => {
+        read += 1;
+        return Promise.resolve("In-Progress");
+      },
+      online: true,
+    });
+    expect(out).toBe(true);
+    expect(read).toBe(0);
+  });
+
+  it("uses the early read's answer and makes no second read", async () => {
+    let read = 0;
+    const out = await finishedElsewhereAtTap({
+      streamStatus: "In-Progress",
+      early: Promise.resolve("Completed"),
+      readStatus: () => {
+        read += 1;
+        return Promise.resolve(null);
+      },
+      online: true,
+    });
+    expect(out).toBe(true);
+    expect(read).toBe(0);
+  });
+
+  it("with no early read, reads at the tap", async () => {
+    const out = await finishedElsewhereAtTap({
+      streamStatus: "In-Progress",
+      early: null,
+      readStatus: () => Promise.resolve("In-Progress"),
+      online: true,
+    });
+    expect(out).toBe(false);
+  });
+
+  it("offline, no: Finish is never blocked by a question it cannot ask", async () => {
+    const out = await finishedElsewhereAtTap({
+      streamStatus: "In-Progress",
+      early: new Promise(() => {}),
+      readStatus: () => new Promise(() => {}),
+      online: false,
+    });
+    expect(out).toBe(false);
   });
 });
