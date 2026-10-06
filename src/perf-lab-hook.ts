@@ -15,7 +15,7 @@
  * Nothing here runs at import: the module only declares functions.
  */
 import { connectAuthEmulator, signInWithEmailAndPassword, type Auth } from 'firebase/auth';
-import { connectFirestoreEmulator, type Firestore } from 'firebase/firestore';
+import { connectFirestoreEmulator, waitForPendingWrites, type Firestore } from 'firebase/firestore';
 
 /** Where the lab's emulators listen (harness/perf-lab/firebase.lab.json). */
 export const LAB_HOST = '127.0.0.1';
@@ -47,5 +47,7 @@ export function startPerfLab(db: Firestore, auth: Auth): void {
   (window as unknown as { __perfLab: unknown }).__perfLab = {
     signIn: (email: string, password: string) =>
       signInWithEmailAndPassword(auth, email, password).then((cred) => cred.user.uid),
+    /** Resolves when every write this page made has reached the emulator. */
+    waitForWrites: () => waitForPendingWrites(db),
   };
 }
