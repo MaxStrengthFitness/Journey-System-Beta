@@ -141,6 +141,25 @@ export default defineConfig(({ command }) => {
                 priority: 50,
                 test: /node_modules[\\/](recharts|victory-vendor|d3-|internmap|delaunator|robust-predicates)/,
               },
+              // The first screen's own code, in ONE file (the speed round,
+              // Oct 5 2026, R13). `$initial` is rolldown's tag for a module
+              // the entry imports statically, directly or not: exactly what
+              // index.html makes every iPad fetch before it can draw. Without
+              // this group the bundler cut that code into dozens of small
+              // files wherever a lazy screen shared a module with the shell
+              // (68 modulepreloads after the bundle diet), each its own
+              // request and its own gzip window. Lowest priority, so every
+              // vendor group above keeps its own modules; a lazy screen's
+              // code is never `$initial`, so nothing moves onto the first
+              // screen. The eager stylesheets merge the same way; the theme
+              // tokens resolve to the same values in light, dark and both
+              // system modes (checked when this landed).
+              {
+                name: "app-shell",
+                priority: 10,
+                tags: ["$initial"],
+                test: /[\\/]src[\\/]/,
+              },
             ],
           },
         },
