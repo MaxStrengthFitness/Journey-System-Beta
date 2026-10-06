@@ -60,6 +60,7 @@
  * made. A booking makes either kind active again: she reads Back.
  */
 import { addDays, daysBetween } from "../../client-history/model";
+import { formatDateWords } from "../../../lib/studio-time";
 import type { RenewalSnapshot } from "../../renewals/types";
 // The pure halves only: the job imports this file, and the settings' index
 // brings the Firestore listeners with it.
@@ -218,7 +219,7 @@ const dayWords = (day: string, today: string) => {
   const [y, m, d] = day.split("-").map(Number);
   const date = new Date(Date.UTC(y, m - 1, d));
   const sameYear = y === Number(today.slice(0, 4));
-  return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", ...(sameYear ? {} : { year: "numeric" }), timeZone: "UTC" });
+  return formatDateWords(date, { weekday: "short", month: "short", day: "numeric", ...(sameYear ? {} : { year: "numeric" }), timeZone: "UTC" }, "en-US");
 };
 
 const daysText = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;

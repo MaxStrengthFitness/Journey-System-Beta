@@ -37,7 +37,7 @@ import { useMemo, useState } from "react";
 import { Route } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Client, Studio, Trainer } from "../../../types";
-import { formatStudioDate, formatStudioTime } from "../../../lib/studio-time";
+import { formatStudioDate, formatStudioTime, formatDateWords } from "../../../lib/studio-time";
 import { AdminButton, AdminHeader, AdminNotice, AdminScreen } from "../primitives";
 import { BriefSection, CountsLine, PageNote } from "../overview/brief-pieces";
 import { noteCovers, useNightlyNote } from "../overview/useNightlyNote";
@@ -246,7 +246,7 @@ function caseLine(e: JourneyEntry): string {
 
 function shortDay(day: string): string {
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }, "en-US");
 }
 
 /**

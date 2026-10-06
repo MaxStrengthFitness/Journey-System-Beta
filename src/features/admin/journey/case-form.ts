@@ -32,6 +32,7 @@ import type { Trainer } from "../../../types";
 import { whoWorksHere } from "../../../lib/who-works-here";
 import type { CaseView } from "./case";
 import type { CaseDraft, StoredCase } from "./case-store";
+import { formatDateWords } from "../../../lib/studio-time";
 
 /** What the signed-in person may do with this client's case. */
 export type CaseEditing = "all" | "own" | "none";
@@ -110,5 +111,5 @@ export function dueWords(day: string | null): string {
   if (!day) return "";
   const [y, m, d] = day.split("-").map(Number);
   if (!y || !m || !d) return "";
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }, "en-US");
 }

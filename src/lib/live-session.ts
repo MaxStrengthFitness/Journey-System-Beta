@@ -43,7 +43,7 @@
  */
 
 import { getMillis, isSessionValid } from "./utils";
-import { formatStudioTime, studioDayKeyOf, toDate, type DateLike } from "./studio-time";
+import { formatDateWords, formatStudioTime, studioDayKeyOf, toDate, type DateLike } from "./studio-time";
 
 export const LIVE_SESSION_KEY = "max_strength_active_session_id";
 
@@ -254,13 +254,13 @@ export function sessionDayWords(session: StaleSessionFacts, todayKey: string): s
   if (DAY_KEY.test(todayKey) && key === shiftDayKey(todayKey, -1)) return "yesterday";
   const [, y, m, d] = key.match(DAY_KEY)!;
   const sameYear = todayKey.slice(0, 4) === y;
-  return new Intl.DateTimeFormat("en-US", {
+  return formatDateWords(new Date(Date.UTC(+y, +m - 1, +d, 12)), {
     weekday: "short",
     month: "short",
     day: "numeric",
     ...(sameYear ? {} : { year: "numeric" }),
     timeZone: "UTC",
-  }).format(new Date(Date.UTC(+y, +m - 1, +d, 12)));
+  }, "en-US");
 }
 
 /**

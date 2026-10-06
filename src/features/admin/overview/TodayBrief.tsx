@@ -68,7 +68,7 @@ import { canManageRenewals } from "../../renewals/permissions";
 import { markNoShow, takeBackNoShow, useBookingMarks } from "../attention/booking-marks";
 import { myTrainerIds } from "../../../lib/live-session";
 import { LEFT_OPEN_HINT, leftOpenHeading, leftOpenSessions } from "./left-open";
-import { formatStudioDate, formatStudioTime, toDate } from "../../../lib/studio-time";
+import { formatStudioDate, formatStudioTime, toDate, formatDateWords } from "../../../lib/studio-time";
 import { useDelightQueue } from "../../ford/useClientFord";
 import { setGestureStatus } from "../../ford/ford-write";
 import { useCyclesRead } from "../../renewals/usePipeline";
@@ -1062,5 +1062,5 @@ function dayWord(day: string, today: string): string {
   if (day === today) return "Today";
   if (day === addDays(today, 1)) return "Tomorrow";
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { weekday: "short", timeZone: "UTC" }, "en-US");
 }

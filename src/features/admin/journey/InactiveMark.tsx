@@ -36,6 +36,7 @@ import {
   type InactiveMark,
 } from "./inactive";
 import { markActiveAgain, markInactive } from "./inactive-store";
+import { formatDateWords } from "../../../lib/studio-time";
 import "../shell/ops.css";
 
 export interface InactiveMarkProps {
@@ -61,7 +62,7 @@ export interface InactiveMarkProps {
 
 const dayWords = (day: string) => {
   const [y, m, d] = day.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  return formatDateWords(new Date(Date.UTC(y, m - 1, d)), { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }, "en-US");
 };
 
 const firstOf = (name: string) => name.trim().split(/\s+/)[0] || "this client";
