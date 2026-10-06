@@ -2959,3 +2959,60 @@ Round document: `docs/rounds/2026-10-04-machine-menu.md`; the card is `src/featu
 - [ ] **Light and dark:** Save and Add note are the logo orange with navy words; a changed tile is blue; no word you need is in faint grey; the set-up lane uses the sliders mark, never the wrench.
 - [ ] **The Refined Lift look** (merged with type and depth, Oct 5 2026; walk Round 56 first): the card lifts off the page with no hard line round it, and the header casts a soft shadow on what scrolls under it; the machine's name is the tall condensed face, upright, and "100 lb × 11" beside Last time is too; Settings, Notes and the chart's head are bold 17px titles; every button has a firm outline, a lighter face and a small lift, and presses in when tapped (±, Use, Undo, Cancel, Close, ‹ Older, Every session, Setting changes, the positions); Save and Add note glow orange; each setting tile, each note, a big jump's positions and Every session's table sit sunk into the card, the ± standing out of the tile; Open and Standing context are in ordinary words, not capitals; nothing sticks grey after a tap. In dark too. Programming → Setup → Correct the starting weight: the field sinks, − and + are raised, "Starting weight" is in ordinary words.
 - [ ] **Names:** a long machine name and a long client name wrap in the header and the chart's heading, never cut short.
+
+## Round 58 — The speed round · *Oct 5 2026, branch `oct5/speed`*
+
+Round document: `docs/rounds/2026-10-05-speed.md`. Walk it the day after `ship-speed.ps1` golive, once Firebase console → Firestore → (the named database) → Indexes shows every index Enabled. Take a studio iPad (Safari tab AND the Home Screen app), a second iPad, and a stopwatch or the phone's timer. Nothing here was measured on an iPad before it shipped: **every time you take is the first real number**, so write each one in the Findings log.
+
+**Sign-in first** (R14 changed how sign-in starts; it was never walked on a device):
+
+- [ ] **Google in a Safari tab.** Menu → Sign out. On the sign-in screen the buttons may say "Getting sign-in ready" for a moment (under a second on good Wi-Fi). Tap Continue with Google and choose the account: the sign-in window opens (it is NOT blocked) and you land on the greeting. *If it fails:* a blocked popup or a button that never wakes means the sign-in helper didn't warm up (`src/features/front-door/sign-in-ready.ts`, `src/lib/auth-boot.ts`); tell Claude which browser and what it said.
+- [ ] **Microsoft in a Safari tab.** Sign out again; Continue with Microsoft with the company account; you land on the greeting.
+- [ ] **Both again in the Home Screen app** (the Journey icon), then once each in desktop Chrome on the PC.
+- [ ] **Signed in stays signed in.** Close the Safari tab completely (and swipe the Home Screen app away), then open Journey again: it opens on the studio with no sign-in.
+- [ ] **A shared iPad.** Sign out, and have a second person sign in on the same iPad. The studio picker says "Checking you in" for a moment, never "No studios yet", "Not on a studio's team yet" or "1 on the team"; nothing of the first person shows (their studio, their sessions, their bell).
+- [ ] **A fresh iPad** (or a private Safari window): the first sign-in. The picker says "Checking you in" until the server answers, then the right team size.
+
+**A cold open, timed** (R4, R5, R14, R15):
+
+- [ ] **Safari tab:** close it completely, open Journey, and time from the tap to a Hub you can use (the day's cards drawn). Write the seconds down. The logo's three squares appear at once, before anything else.
+- [ ] **The Home Screen app:** swipe it away, open it, and time it the same way.
+- [ ] **Dead Wi-Fi:** join a network with no internet (or a phone hotspot with mobile data off) and open Journey: the squares appear at once and, after 6 seconds, a line saying it is taking longer. An iPad that has used Journey before opens on its cached day instead of waiting about 10 seconds.
+- [ ] **The boot report.** On the PC: Render → maxstrength-app-beta → Logs, search `type: 'boot'`. Each cold open is one line with `auth-ready`, `trainer-ready` and `hub-data` in milliseconds, `standalone` true (Home Screen app) or false (tab), and the `userAgent`. Write down the Home Screen app's userAgent and the usual `hub-data` time. *If there is no line:* the report didn't send (an offline open sends nothing; `src/features/boot-timing/`).
+
+**A session that never waits** (R9, R10, R11):
+
+- [ ] **Start with Wi-Fi OFF.** Turn the Wi-Fi off (do NOT reload Journey while offline), open a client and press Start: the session opens at once with the weights prefilled. Type a weight and reps on two machines.
+- [ ] **A machine Save offline.** Open a machine's card, change a dial and press Save: the card closes at once and says "saved on this iPad".
+- [ ] **Reconnect.** Turn the Wi-Fi back on: the typed weights are all still there and nothing went back to last session's weight; the dial change shows in Setting changes; the session is on the client's profile.
+- [ ] **Finish and Back to Hub.** Press Finish, type a Profile note and press Back to Hub: the Hub comes straight away, and the note is on the profile a moment later.
+- [ ] **Discard offline.** Wi-Fi off, start a session, tap the bin on the session bar, then Scrap session: the Hub comes at once. Wi-Fi on: the session is gone from the client's profile.
+- [ ] **One Routine A.** A brand-new client with no routine: press Start once offline, then reconnect; and once online on another new client. Each has exactly ONE Routine A on the profile, never two.
+- [ ] **Save online** says "Seat 5 saved" at once (it now means saved on this iPad); on studio Wi-Fi with no internet it changes to "saved on this iPad" after 3 seconds.
+- [ ] **The Wrap-up's To-file tray** shows the session's notes at once after Finish.
+- [ ] **Typing stays smooth** on a long grid: type reps quickly on one machine; nothing stutters, and the "On machine" clock keeps counting.
+
+**The Hub over time** (R6a, R6, R7, R8, R16):
+
+- [ ] **Open on today:** the red Critical triangles appear WITH the cards, not a beat later.
+- [ ] **After an hour open.** Leave the Hub open across a booking's end: the finished card turns to "Not logged" (or Done once logged) by itself, and scrolling stays smooth through the minute ticks.
+- [ ] **After a Calendar month.** Open Calendar, browse a month or two, come back and tap through the week strip: as quick as before browsing, no pause on the minute.
+- [ ] **A late cancel holds.** Mark a late cancel from the peek, tap another day and back: the card still says "Late cancel", with no blink to "Not logged".
+- [ ] **Offline Hub.** Finish a session, then turn the Wi-Fi off and reopen Journey: that card still says Done with the client's number unchanged; a finished slot nobody logged says nothing (not "Not logged") until the iPad is back online; Start session is still offered.
+- [ ] **The bottom bar's underline** fades in under the tab you tap (it no longer slides between tabs), and leaving the Hub opens the next screen at once.
+
+**The profile and Operations** (R12, R26, R27):
+
+- [ ] **The profile reads once.** Open a client's profile, go to Programming and back to Journey: the grid does not show its loading mark again. Finish a session for that client on the second iPad while the profile is open: the new column appears by itself. Delete a session in the Activity Archive: its column leaves Journey.
+- [ ] **Today's "left open".** Operations → Today: tap a session left open, finish or discard it, and come back: the row is gone at once.
+- [ ] **Hours before the first night:** Operations → Team → Hours, All my studios: a dash and "Not counted yet. Open a studio below to read its month.", never "0 h". Opening a studio reads its month.
+- [ ] **Hours and Insights after the first night:** the top line ends "to last night", and no studio is listed as not in the total. A session left open overnight and finished in the morning is counted when you reopen that studio, and the "still open" line goes. Insights at the busiest studio over 90 days shows no "more than 1,500 sessions" notice.
+- [ ] **Operations → Mindbody** shows the health card; sign out and sign in as someone else who may open it: it still shows (it used to die at a sign-out).
+
+**Everything else**
+
+- [ ] **Two chart scans at once** (two iPads, the legacy chart importer, a few pages each, started together): both finish. The one that has to wait says "Waiting for another scan to finish…" for a while instead of failing, and every page read before the wait is still in its results.
+- [ ] **The bell:** announcements and notifications show; the unread badge counts (100+ when there are more); Mark all read clears it.
+- [ ] **Each screen whose stylesheet moved**, opened FIRST after a cold load, portrait and landscape, light and dark: the session grid and the Now Bar, a machine's card, Calendar (day, week, month) and the profile's Activity Archive calendar and history, Pulse (the panel, the quick log, client mode), Learning → Catalog (the floor, the body, Find, a machine's page, its setup card), Relay's Board, Tracker and Team, and My Studio → Machines through BOTH doors (My Studio → Machines, and Operations → Setup → Floor). *If it fails:* a screen drawn unstyled lost its stylesheet import (`css-imports.test.ts` should have caught it); tell Claude which screen and which door.
+- [ ] **Render after the deploy:** the deploy's Logs show the OLD instance saying "SIGTERM: no new connections; letting running requests finish." and then "Every request finished; exiting." Settings shows Start Command `node build/server.cjs`, Max shutdown delay 120 seconds, one instance.
+- [ ] **Edge caching** (after you switch on "Common static files", which comes only after this deploy): in PowerShell, twice, `curl.exe -sI https://maxstrength-app-beta.onrender.com/assets/<a .js file from the page source>`; the second answer says `cf-cache-status: HIT`. And `curl.exe -sI https://maxstrength-app-beta.onrender.com/assets/nothing-here.js` answers 404 with `cache-control: no-store`.
