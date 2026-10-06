@@ -1946,6 +1946,66 @@ service cloud.firestore {
                       isStudioOwnerOrHeadTrainerOnly(inbodyClientStudio(clientId)));
     }
 
+    // A CLIENT'S MACHINE TOTALS (the iPad round, Oct 6 2026;
+    // src/features/machine-totals). currentMachineMetrics, machineStats and
+    // the backfill's marker moved off clients/{id} into this one document, so
+    // the studio roster every iPad streams on every open no longer carries
+    // them (they were 73% of a client document).
+    //
+    // EXACTLY the client document's access for these fields, nothing more:
+    //   read    whoever can read the client (match /clients/{clientId})
+    //   write   whoever can update the client: an administrator, a trainer
+    //           of the client's studio, or an approved cross-train visitor,
+    //           who on the client may move currentMachineMetrics and
+    //           machineStats but not the backfill's marker (the same list as
+    //           crossTrainSessionTotals)
+    //   delete  administrators only, as the client
+    // Only the one document id, only these fields, and never for a client
+    // that does not exist.
+    function machineTotalsClient(clientId) {
+      return get(/databases/$(database)/documents/clients/$(clientId)).data;
+    }
+
+    function machineTotalsVisitor(c, t) {
+      return t != null
+        && (c.get('approvedCrossTrainStudioIds', []).hasAny([t.get('primaryHomeStudioId', '')])
+            || c.get('approvedCrossTrainStudioIds', []).hasAny(t.get('accessibleStudioIds', []))
+            || c.get('approvedCrossTrainStudioIds', []).hasAny(t.get('activeGuestStudioIds', [])))
+        && (resource == null
+              ? request.resource.data.keys()
+              : request.resource.data.diff(resource.data).affectedKeys())
+             .hasOnly(['currentMachineMetrics', 'machineStats', 'updatedAt']);
+    }
+
+    function machineTotalsWritable(clientId) {
+      return exists(/databases/$(database)/documents/clients/$(clientId))
+        && (isSuperAdmin()
+            || machineTotalsVisitor(machineTotalsClient(clientId), callerTrainer())
+            || (isAnyAuthenticatedTrainer()
+                && isTrainerOfStudio(getStudioIdFromData(machineTotalsClient(clientId)))));
+    }
+
+    match /clients/{clientId}/machineTotals/{docId} {
+      allow read: if docId == 'current' && (
+                    isSuperAdmin()
+                    || isFranchiseOwnerOnly()
+                    || (isAnyAuthenticatedTrainer()
+                        && exists(/databases/$(database)/documents/clients/$(clientId))
+                        && isTrainerOfClientData(
+                             clientId,
+                             machineTotalsClient(clientId),
+                             getTrainerData().primaryHomeStudioId,
+                             getTrainerData().get('accessibleStudioIds', []),
+                             getTrainerData().get('activeGuestStudioIds', []))));
+
+      allow create, update: if docId == 'current'
+                    && request.resource.data.keys().hasOnly(
+                         ['currentMachineMetrics', 'machineStats', 'machineStatsBackfilledAt', 'updatedAt'])
+                    && machineTotalsWritable(clientId);
+
+      allow delete: if isSuperAdmin();
+    }
+
     // DISK SETTINGS: Machine settings assigned to specific athletes
     //
     // Delete was `isSuperAdmin() || isFranchiseOwner() || isAuthenticated()`

@@ -6665,3 +6665,126 @@ describe("speed round (live session): the Start and Discard batches", () => {
     await assertFails(discard.commit());
   });
 });
+
+// A CLIENT'S MACHINE TOTALS (the iPad round, Oct 6 2026). currentMachineMetrics,
+// machineStats and the backfill's marker moved off clients/{id} into
+// clients/{id}/machineTotals/current (src/features/machine-totals). The rule is
+// the client document's own access for those fields: read by whoever reads the
+// client, written by whoever updates it (an approved cross-train visitor, the
+// two maps only), deleted by administrators.
+describe("a client's machine totals document", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+  const HOME = "totalsHomeClient";
+  const VISITING = "totalsVisitingClient";
+  const totalsDoc = (db: any, clientId: string, id = "current") => doc(db, "clients", clientId, "machineTotals", id);
+  const finishWrite = (sessionId: string) => ({
+    currentMachineMetrics: { "m-leg-press": { weight: "180", reps: "9", settings: {}, lastSessionId: sessionId } },
+    machineStats: { "m-leg-press": { timesPerformed: increment(1), lastPerformedDate: "2026-10-06", lastWeight: 180 } },
+    updatedAt: serverTimestamp(),
+  });
+  const finishFields = ["currentMachineMetrics.m-leg-press", "machineStats.m-leg-press.timesPerformed", "machineStats.m-leg-press.lastPerformedDate", "machineStats.m-leg-press.lastWeight", "updatedAt"];
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "clients", HOME), {
+        firstName: "Hana", lastName: "Home", isActive: true, remainingSessions: 10, homeStudioId: "studioA",
+      });
+      await setDoc(doc(db, "clients", VISITING), {
+        firstName: "Vic", lastName: "Visitor", isActive: true, remainingSessions: 10,
+        homeStudioId: "studioB", approvedCrossTrainStudioIds: ["studioA"],
+      });
+      await setDoc(totalsDoc(db, HOME), {
+        machineStats: { "m-leg-press": { timesPerformed: 40, lastPerformedDate: "2026-09-20", lastWeight: 170 } },
+      });
+      await setDoc(doc(db, "trainers", "trainerC"), {
+        fullName: "Trainer C", initials: "TC", role: "LifeTransformer",
+        primaryHomeStudioId: "studioC", accessibleStudioIds: ["studioC"],
+      });
+      await setDoc(doc(db, "trainers", "adminTotals"), { fullName: "Admin", initials: "AD", role: "Admin" });
+      await setDoc(doc(db, "trainers", "ownerTotals"), {
+        fullName: "Franchise", initials: "FO", role: "FranchiseOwner", primaryHomeStudioId: "studioB",
+      });
+    });
+  });
+
+  it("is read by whoever reads the client, and refused to anyone else", async () => {
+    await assertSucceeds(getDoc(totalsDoc(as("trainerA"), HOME)));
+    await assertSucceeds(getDoc(totalsDoc(as("ownerA"), HOME)));
+    await assertSucceeds(getDoc(totalsDoc(as("adminTotals"), HOME)));
+    await assertSucceeds(getDoc(totalsDoc(as("ownerTotals"), HOME)));
+    await assertFails(getDoc(totalsDoc(as("trainerB"), HOME)));
+    await assertFails(getDoc(totalsDoc(as("trainerC"), HOME)));
+    // A cross-train visitor reads the client, so reads its totals (missing or not).
+    await assertSucceeds(getDoc(totalsDoc(as("trainerA"), VISITING)));
+    await assertFails(getDoc(totalsDoc(testEnv.unauthenticatedContext().firestore(), HOME)));
+  });
+
+  it("lets the client's studio write a Finish's totals, creating the document the first time", async () => {
+    const db = as("trainerA");
+    await assertSucceeds(setDoc(totalsDoc(db, HOME), finishWrite("s1"), { mergeFields: finishFields }));
+    // A client with no totals document yet: the same write creates it.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "clients", "totalsNewClient"), {
+        firstName: "New", lastName: "Client", isActive: true, remainingSessions: 10, homeStudioId: "studioA",
+      });
+    });
+    await assertSucceeds(setDoc(totalsDoc(db, "totalsNewClient"), finishWrite("s2"), { mergeFields: finishFields }));
+  });
+
+  it("lets the backfill replace machineStats and its marker, as the client allowed", async () => {
+    const db = as("trainerA");
+    const b = writeBatch(db);
+    b.set(totalsDoc(db, HOME), { machineStats: { "m-leg-press": { timesPerformed: 41 } }, machineStatsBackfilledAt: serverTimestamp(), updatedAt: serverTimestamp() }, { mergeFields: ["machineStats", "machineStatsBackfilledAt", "updatedAt"] });
+    b.update(doc(db, "clients", HOME), { machineStats: deleteField(), machineStatsBackfilledAt: deleteField() });
+    await assertSucceeds(b.commit());
+  });
+
+  it("refuses a write from a studio the client isn't at", async () => {
+    await assertFails(setDoc(totalsDoc(as("trainerB"), HOME), finishWrite("s1"), { mergeFields: finishFields }));
+    await assertFails(setDoc(totalsDoc(as("trainerC"), VISITING), finishWrite("s1"), { mergeFields: finishFields }));
+    // A franchise owner reads the client but cannot update it, so not this either.
+    await assertFails(setDoc(totalsDoc(as("ownerTotals"), HOME), finishWrite("s1"), { mergeFields: finishFields }));
+  });
+
+  it("lets an approved cross-train visitor move the two maps, and nothing else", async () => {
+    const db = as("trainerA");
+    // trainerA works at studioA; VISITING's home is studioB, approved for A.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "trainers", "trainerB2"), {
+        fullName: "Trainer B2", initials: "TB", role: "LifeTransformer",
+        primaryHomeStudioId: "studioB", accessibleStudioIds: ["studioB"],
+      });
+    });
+    await assertSucceeds(setDoc(totalsDoc(db, VISITING), finishWrite("s1"), { mergeFields: finishFields }));
+    await assertFails(
+      setDoc(totalsDoc(db, VISITING), { machineStatsBackfilledAt: serverTimestamp() }, { merge: true }),
+    );
+    // The client's own studio may set the marker.
+    await assertSucceeds(
+      setDoc(totalsDoc(as("trainerB2"), VISITING), { machineStatsBackfilledAt: serverTimestamp() }, { merge: true }),
+    );
+  });
+
+  it("refuses any other field, any other document id, and a client that does not exist", async () => {
+    const db = as("trainerA");
+    await assertFails(setDoc(totalsDoc(db, HOME), { firstName: "x" }, { merge: true }));
+    await assertFails(setDoc(totalsDoc(db, HOME), { machineStats: {}, renewal: {} }, { merge: true }));
+    await assertFails(setDoc(totalsDoc(db, HOME, "other"), { machineStats: {} }));
+    await assertFails(getDoc(totalsDoc(db, HOME, "other")));
+    await assertFails(setDoc(totalsDoc(db, "noSuchClient"), finishWrite("s1"), { mergeFields: finishFields }));
+  });
+
+  it("is deleted by administrators only", async () => {
+    await assertFails(deleteDoc(totalsDoc(as("trainerA"), HOME)));
+    await assertSucceeds(deleteDoc(totalsDoc(as("adminTotals"), HOME)));
+  });
+
+  it("takes a whole Finish: the client's counters and the totals in one batch", async () => {
+    const db = as("trainerA");
+    const b = writeBatch(db);
+    b.update(doc(db, "clients", HOME), { completedSessions: increment(1), lastSessionDate: "2026-10-06", "trainerTally.trainerA": increment(1) });
+    b.set(totalsDoc(db, HOME), finishWrite("s1"), { mergeFields: finishFields });
+    await assertSucceeds(b.commit());
+  });
+});
