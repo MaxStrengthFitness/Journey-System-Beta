@@ -1,5 +1,14 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
+/**
+ * The model both OCR routes read with. Checked against Google's model list
+ * and deprecations page on Oct 5 2026 (the speed round, R33): there is no
+ * stable id of THIS model - Gemini 3 Flash is still only
+ * "gemini-3-flash-preview", with no shutdown date announced - so it stays.
+ * Google names "gemini-3.6-flash" (stable) as its replacement; that is a
+ * different model, and moving to it means re-checking the chart and machine
+ * readings against real pages first, never a silent swap. Prompts unchanged.
+ */
 const OCR_MODEL = "gemini-3-flash-preview";
 
 let genaiClient: GoogleGenAI | null = null;
