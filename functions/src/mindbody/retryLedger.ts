@@ -109,3 +109,43 @@ export async function recordAttemptFailure(
 
   return { willRetry: false, attempts };
 }
+
+/**
+ * Dead-letters an event whose every attempt was stopped before it finished
+ * (the platform's timeout runs no catch, so recordAttemptFailure never saw
+ * them). Called when the claim reports `exhausted` (idempotency.ts).
+ *
+ * The DLQ row is written FIRST and the claim marked `dead_lettered` after, so
+ * a failure here leaves the claim expired and the next resend tries again:
+ * the event is never marked given-up without a row a person can see. Throws
+ * when the DLQ write fails, so the caller answers 500.
+ */
+export async function deadLetterUnfinished(
+  firestore: Firestore,
+  params: {
+    messageId: string;
+    eventType: string;
+    payload: Record<string, unknown>;
+    attempts: number;
+  },
+): Promise<void> {
+  const { messageId, eventType, payload, attempts } = params;
+  await recordDeadLetter(firestore, {
+    messageId,
+    eventType,
+    originalPayload: payload,
+    retryCount: attempts,
+    lastError: "attempt never finished (platform timeout)",
+  });
+  try {
+    await firestore
+      .collection(EVENT_LOG)
+      .doc(messageId)
+      .set({ state: "dead_lettered", level: "error" }, { merge: true });
+  } catch (e) {
+    console.error(
+      `Mindbody webhook: ${messageId} is in the DLQ but its claim was not marked dead-lettered; the next resend will dead-letter it again.`,
+      e,
+    );
+  }
+}

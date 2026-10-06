@@ -21,7 +21,7 @@ import {
   LIMBO_QUEUE,
   MindbodyClientProfile,
 } from "./clientResolver";
-import { recordAttemptFailure } from "./retryLedger";
+import { recordAttemptFailure, deadLetterUnfinished } from "./retryLedger";
 import { extractBookingExtras } from "./passFields";
 import { extractStaffId, mapStaffEventToPatch } from "./staffProfile";
 import { resolveTrainerByStaffId } from "./staffResolver";
@@ -458,6 +458,27 @@ export async function handleMindbodyWebhook(
   // live claim, is answered 200 so Mindbody stops sending it.
   try {
     const claim = await tryRecordEvent(deps.firestore, eventId, eventType);
+    if (claim.exhausted) {
+      // Every attempt so far was stopped before it finished: hand the event to
+      // the DLQ for a person, and answer 200 so Mindbody stops resending it.
+      // If the DLQ write fails, a 500; the claim stays expired and the next
+      // resend comes back here.
+      try {
+        await deadLetterUnfinished(deps.firestore, {
+          messageId: eventId,
+          eventType,
+          payload: parsed,
+          attempts: claim.attempt ?? 0,
+        });
+        console.error(
+          `Mindbody webhook: event ${eventId} (${eventType}) dead-lettered after ${claim.attempt ?? "?"} attempts that never finished.`,
+        );
+        return { statusCode: 200 };
+      } catch (e) {
+        console.error("Mindbody webhook: could not dead-letter an event whose attempts never finished", e);
+        return { statusCode: 500 };
+      }
+    }
     if (!claim.wasNew) {
       return { statusCode: 200 };
     }

@@ -809,6 +809,37 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
     expect(markEventDone).toHaveBeenCalledTimes(1);
   });
 
+  it("12x. an event whose every attempt never finished is dead-lettered, not worked, and answered 200", async () => {
+    vi.mocked(tryRecordEvent).mockResolvedValue({ wasNew: false, exhausted: true, attempt: 4 });
+
+    const response = await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created()));
+
+    expect(response.statusCode).toBe(200);
+    expect(writesTo("schedules")).toHaveLength(0);
+    expect(markEventDone).not.toHaveBeenCalled();
+    const [dlq] = writesTo("mindbodyDLQ");
+    expect(dlq.data).toMatchObject({
+      eventType: "appointmentBooking.created",
+      retryCount: 4,
+      lastError: "attempt never finished (platform timeout)",
+    });
+    const marks = writesTo("mindbodyEventLog");
+    expect(marks[marks.length - 1].data).toMatchObject({ state: "dead_lettered" });
+  });
+
+  it("12y. if the dead-lettering itself fails, a 500, so the next resend tries again", async () => {
+    vi.mocked(tryRecordEvent).mockResolvedValue({ wasNew: false, exhausted: true, attempt: 4 });
+    // The DLQ row is written in a transaction; make that transaction fail.
+    vi.mocked(deps.firestore.runTransaction).mockRejectedValueOnce(new Error("contended"));
+
+    const response = await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created()));
+
+    expect(response.statusCode).toBe(500);
+    expect(writesTo("schedules")).toHaveLength(0);
+    // The claim is not marked dead-lettered without a DLQ row behind it.
+    expect(writesTo("mindbodyEventLog")).toHaveLength(0);
+  });
+
   it("12u. successes within a minute on one instance run the health transaction once", async () => {
     const successes = () =>
       vi.mocked(recordHealthEvent).mock.calls.filter(([, e]) => e.type === "webhook_success").length;

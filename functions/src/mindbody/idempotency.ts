@@ -1,4 +1,5 @@
 import { Firestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { MAX_ATTEMPTS } from './retryLedger';
 
 /**
  * THE IDEMPOTENCY GATE: one document per Mindbody message, `mindbodyEventLog/{messageId}`.
@@ -15,7 +16,9 @@ import { Firestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
  *
  *   no document                        -> claim it, process         (wasNew)
  *   processing, claim still live       -> a duplicate in flight     (not new)
- *   processing, claim expired          -> the last attempt died; take it over
+ *   processing, claim expired          -> the last attempt died; take it over,
+ *                                         unless MAX_ATTEMPTS attempts have
+ *                                         all died: then it is dead-lettered
  *   done / dead_lettered / no state    -> already handled           (not new)
  *
  * A document with no `state` was written by the old gate, which only ever
@@ -27,6 +30,13 @@ import { Firestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
  * claim of 2 minutes has always run out by the time the first resend comes,
  * and is still long enough that a duplicate arriving while the first attempt
  * is working is answered as a duplicate rather than run twice at once.
+ *
+ * An event whose every attempt is stopped by the platform (a kill runs no
+ * catch, so the retry ledger never counts it) would otherwise be taken over
+ * on each of Mindbody's resends and then sit `processing` in silence once they
+ * stop. The claim counts its own `attempts`, and once MAX_ATTEMPTS have all
+ * died the next resend is answered `exhausted`: the handler dead-letters it
+ * (retryLedger.ts `deadLetterUnfinished`) so a person sees it.
  *
  * Every document carries `expiresAt` 30 days out; a TTL policy on that field
  * deletes it (the policy is configuration, set once with gcloud).
@@ -77,6 +87,12 @@ export type ClaimResult = {
   takenOver?: boolean;
   /** Which attempt this is, counting the one that was taken over. */
   attempt?: number;
+  /**
+   * True when the claim ran out after MAX_ATTEMPTS attempts that never
+   * finished: the caller must dead-letter the event rather than work it.
+   * Nothing is written by the gate in that case (`wasNew` is false).
+   */
+  exhausted?: boolean;
 };
 
 /**
@@ -112,6 +128,11 @@ export async function tryRecordEvent(
     if (decision === 'take_over') {
       const prior = typeof existing?.attempts === 'number' ? existing.attempts : 1;
       const attempt = prior + 1;
+      // Every attempt so far died without finishing. Working it again would
+      // only die again; hand it to the dead-letter queue instead. The claim
+      // is left as it is, so if the dead-lettering fails the next resend
+      // comes back here and tries it again.
+      if (attempt > MAX_ATTEMPTS) return { wasNew: false, exhausted: true, attempt: prior };
       // Cast: the mock transaction takes Record<string, unknown>.
       transaction.set(
         docRef,
@@ -159,6 +180,9 @@ export async function markEventDone(
   const data: Record<string, unknown> = {
     state: 'done',
     processedAt: FieldValue.serverTimestamp(),
+    // Written again here so a mark that finds no claim document (it vanished
+    // between the claim and the mark) never creates one the TTL can't delete.
+    expiresAt: Timestamp.fromMillis(Date.now() + EVENT_LOG_TTL_MS),
   };
   if (typeof fields.studioId === 'string' && fields.studioId) data.studioId = fields.studioId;
   if (

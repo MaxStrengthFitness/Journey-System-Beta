@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Firestore, Timestamp } from 'firebase-admin/firestore';
 import { tryRecordEvent, markEventDone, claimDecision, CLAIM_MS } from './idempotency';
+import { MAX_ATTEMPTS } from './retryLedger';
 
 type MockDocRef = { path: string; id: string };
 
@@ -240,6 +241,29 @@ describe('tryRecordEvent as a claim', () => {
     expect((doc?.expiresAt as Timestamp).toMillis()).toBe(firstExpiry);
   });
 
+  it('answers exhausted, writing nothing, once MAX_ATTEMPTS attempts have all died', async () => {
+    await tryRecordEvent(firestore(), 'c5', 't');
+    let t = now;
+    // Attempts 2..MAX_ATTEMPTS each take over a claim the last one never finished.
+    for (let attempt = 2; attempt <= MAX_ATTEMPTS; attempt += 1) {
+      t += 15 * 60 * 1000;
+      vi.setSystemTime(t);
+      expect(await tryRecordEvent(firestore(), 'c5', 't')).toEqual({
+        wasNew: true,
+        takenOver: true,
+        attempt,
+      });
+    }
+    const before = mockDb.getDoc('mindbodyEventLog/c5');
+    t += 15 * 60 * 1000;
+    vi.setSystemTime(t);
+
+    const result = await tryRecordEvent(firestore(), 'c5', 't');
+
+    expect(result).toEqual({ wasNew: false, exhausted: true, attempt: MAX_ATTEMPTS });
+    expect(mockDb.getDoc('mindbodyEventLog/c5')).toEqual(before);
+  });
+
   it('never takes over an event that was marked done', async () => {
     await tryRecordEvent(firestore(), 'c4', 't');
     await markEventDone(firestore(), 'c4', { studioId: 'studio-1' });
@@ -275,6 +299,8 @@ describe('markEventDone', () => {
     await markEventDone(firestore(), 'd2', { studioId: null });
     const doc = mockDb.getDoc('mindbodyEventLog/d2') ?? {};
     expect('studioId' in doc).toBe(false);
+    // Even with no claim document to merge into, the TTL can delete it.
+    expect(doc.expiresAt).toBeInstanceOf(Timestamp);
     expect(Object.values(doc).some((v) => v === undefined)).toBe(false);
   });
 
