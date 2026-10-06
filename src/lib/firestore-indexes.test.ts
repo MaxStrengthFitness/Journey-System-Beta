@@ -8,6 +8,7 @@ import {
   describeShape,
   findQueries,
   isServed,
+  SECOND_FIELD_PLACEHOLDER,
   suggestedIndex,
   type CompositeIndex,
   type QueryShape,
@@ -35,10 +36,11 @@ import {
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-/** The app, the web server and its cron jobs (server/cron-*.ts), and the Cloud Functions. */
-const SCANNED = ["src", "server", "functions/src"];
+/** The app, the web server (its entry and server/, the cron jobs included), and the Cloud Functions. */
+const SCANNED = ["src", "server.ts", "server", "functions/src"];
 
 function sourceFiles(dir: string): string[] {
+  if (statSync(dir).isFile()) return [dir];
   const out: string[] = [];
   for (const name of readdirSync(dir)) {
     if (name === "node_modules" || name.startsWith(".")) continue;
@@ -98,6 +100,8 @@ const ALLOWED: Record<string, string> = {
  * Files holding a query the guard can't read on its own (the collection or a
  * field is decided at run time), each with how the test reads it instead.
  * Every one is expanded into ordinary shapes below, so it is still judged.
+ * Each file may hold exactly ONE such query: a second run-time query added
+ * to one of these files fails the test rather than being read as the first.
  */
 const EXPANDED: Record<string, (q: QueryShape) => QueryShape[]> = {
   // repointField(collectionName, field, ...) runs once per CLIENT_REFERENCE_FIELDS entry.
@@ -129,11 +133,11 @@ describe("every Firestore query has an index (Enterprise edition)", () => {
   const files = SCANNED.flatMap((d) => sourceFiles(join(ROOT, d)));
   const prog = buildProgram(files.map((f) => ({ rel: relative(ROOT, f).replace(/\\/g, "/"), text: readFileSync(f, "utf8") })));
   const found = findQueries(prog);
-  const usedExpanded = new Set<string>();
+  const usedExpanded = new Map<string, number[]>();
   const queries = found.flatMap((q) => {
     const expand = EXPANDED[q.file];
     if (expand && (q.group === null || q.unreadable)) {
-      usedExpanded.add(q.file);
+      usedExpanded.set(q.file, [...(usedExpanded.get(q.file) ?? []), q.line]);
       return expand(q);
     }
     return [q];
@@ -173,8 +177,16 @@ describe("every Firestore query has an index (Enterprise edition)", () => {
   });
 
   it("every query is served by an index of its scope", () => {
-    const lines = missing.map((q) => `${describeShape(q)}\n    add: ${JSON.stringify(suggestedIndex(q))}`);
-    expect(lines, `Unindexed queries. Add each index to firestore.indexes.json "indexes":\n${lines.join("\n")}`).toEqual([]);
+    const lines = missing.map((q) => `${describeShape(q)}\n    add: ${JSON.stringify(suggestedIndex(q, indexes))}`);
+    const placeholder = lines.some((l) => l.includes(SECOND_FIELD_PLACEHOLDER))
+      ? `\n${SECOND_FIELD_PLACEHOLDER}: the query names one field, and a composite needs two. Put a second field these documents carry in its place.`
+      : "";
+    expect(lines, `Unindexed queries. Add each index to firestore.indexes.json "indexes":\n${lines.join("\n")}${placeholder}`).toEqual([]);
+  });
+
+  it("each EXPANDED file holds exactly one query read at run time", () => {
+    const many = [...usedExpanded].filter(([, at]) => at.length !== 1).map(([file, at]) => `${file}: lines ${at.join(", ")}`);
+    expect(many, "Each EXPANDED entry reads ONE query. Name the new query's collection, or give it its own entry").toEqual([]);
   });
 
   it("the guard can read every query, or says how it reads it", () => {
@@ -316,11 +328,71 @@ describe("the guard's parser", () => {
     expect(q.equality).toEqual([]);
     expect(isServed(q, [IDX("bug_reports", "COLLECTION", "userId", "createdAt")])).toBe(false);
     expect(isServed(q, [IDX("bug_reports", "COLLECTION", "createdAt", "userId")])).toBe(true);
+    // One field named: the suggestion still has two, the second a marked
+    // placeholder, so pasting it can't fail the index file's own test.
     expect(suggestedIndex(q)).toEqual({
       collectionGroup: "bug_reports",
       queryScope: "COLLECTION",
-      fields: [{ fieldPath: "createdAt", order: "DESCENDING" }],
+      fields: [
+        { fieldPath: "createdAt", order: "DESCENDING" },
+        { fieldPath: SECOND_FIELD_PLACEHOLDER, order: "ASCENDING" },
+      ],
     });
+  });
+
+  it("every suggestion has at least two fields, a real second one when the query has it", () => {
+    const qs = shapes(`
+      getDocs(query(collection(db, "tasks"), where("status", "==", "open")));
+      getDocs(query(collection(db, "tasks"), where("status", "==", "open"), orderBy("dueOn")));
+    `);
+    for (const q of qs) expect(suggestedIndex(q).fields.length).toBeGreaterThanOrEqual(2);
+    expect(suggestedIndex(qs[0]).fields[1].fieldPath).toBe(SECOND_FIELD_PLACEHOLDER);
+    expect(suggestedIndex(qs[1]).fields.map((f) => f.fieldPath)).toEqual(["status", "dueOn"]);
+  });
+
+  it("says it can't read constraints passed in as a parameter, never drops the query", () => {
+    const [q] = shapes(`function read(cs: QueryConstraint[]) { return getDocs(query(collection(db, "sessions"), ...cs)); }`);
+    expect(q).toMatchObject({ group: "sessions", unreadable: true });
+    expect(isServed(q, [])).toBe(false);
+  });
+
+  it("says it can't read constraints from a helper it can't find, but reads a renamed Firestore import", () => {
+    const qs = shapes(`
+      import { limit as fsLimit, where as w } from "firebase/firestore";
+      import { studioFilter } from "some-library";
+      getDocs(query(collection(db, "sessions"), studioFilter(s)));
+      getDocs(query(collection(db, "sessions"), w("clientId", "==", c), fsLimit(5)));
+    `);
+    expect(qs).toHaveLength(2);
+    expect(qs[0]).toMatchObject({ group: "sessions", unreadable: true });
+    expect(qs[1]).toMatchObject({ group: "sessions", equality: ["clientId"], unreadable: false });
+  });
+
+  it("judges each branch of a conditional and each disjunct of or() on its own", () => {
+    const qs = shapes(`
+      getDocs(query(collection(db, "tasks"), mine ? where("ownerId", "==", u) : where("studioId", "==", s)));
+      getDocs(query(collection(db, "tasks"), or(where("ownerId", "==", u), where("studioId", "==", s))));
+      getDocs(query(collection(db, "tasks"), where("studioId", "==", s), or(where("ownerId", "==", u), where("helperId", "==", u))));
+    `);
+    const onlyOwner = [IDX("tasks", "COLLECTION", "ownerId", "dueOn")];
+    const onlyStudio = [IDX("tasks", "COLLECTION", "studioId", "dueOn")];
+    // Only one branch's field indexed: the other branch still scans.
+    expect(isServed(qs[0], onlyOwner)).toBe(false);
+    expect(isServed(qs[1], onlyOwner)).toBe(false);
+    expect(isServed(qs[0], [...onlyOwner, ...onlyStudio])).toBe(true);
+    expect(isServed(qs[1], [...onlyOwner, ...onlyStudio])).toBe(true);
+    // The suggestion is for the branch that isn't served.
+    expect(suggestedIndex(qs[0], onlyOwner).fields[0].fieldPath).toBe("studioId");
+    // An or() under an equality every way shares is served by that equality.
+    expect(qs[2].variants).toHaveLength(2);
+    expect(isServed(qs[2], onlyStudio)).toBe(true);
+  });
+
+  it("a spread that adds no disjunct to or() is not a way of its own", () => {
+    const [q] = shapes(`
+      getDocs(query(collection(db, "tasks"), or(where("ownerId", "==", u), ...(flag ? [where("helperId", "==", u)] : []))));
+    `);
+    expect(q.variants?.map((v) => v.equality)).toEqual([["ownerId"], ["helperId"]]);
   });
 
   it("an array-contains query needs an index leading with that field as CONTAINS", () => {

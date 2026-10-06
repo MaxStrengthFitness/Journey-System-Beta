@@ -31,11 +31,18 @@
  * misses against about 35 real ones, because code writes the range before
  * the studio, and builds constraints in arrays and helpers.
  *
+ * A query that can run more than one way (`flag ? where(a) : where(b)`, or an
+ * `or(...)`, which Firestore runs as one query per disjunct) is judged way by
+ * way: it is served only when every way is.
+ *
  * WHAT IT CANNOT SEE
  * ------------------
- * A query whose collection or field is decided at run time (a parameter, a
- * value from a document) is reported as unreadable rather than guessed at,
- * and the test lists those under its own allowlist with a reason.
+ * A query whose collection, field or constraints are decided where the guard
+ * can't follow (a parameter nobody bound, a value from a document, a call to a
+ * function it can't find, a name imported from a library) is reported as
+ * unreadable rather than guessed at or dropped, and the test fails on it
+ * unless the file is in its EXPANDED list with how to read it. Renamed
+ * Firestore imports (`limit as fsLimit`) are read as the name they import.
  */
 import ts from "typescript";
 
@@ -67,6 +74,12 @@ export interface QueryShape {
   /** `<`, `<=`, `>`, `>=`, `!=`, `not-in`. */
   range: string[];
   orderBy: { field: string; direction: "ASCENDING" | "DESCENDING" }[];
+  /**
+   * Set when the query can run more than one way (a branch, an `or(...)`):
+   * each way, with every constraint it carries. The lists above are then the
+   * union, for the message; the query is served only when EVERY way is.
+   */
+  variants?: Conj[];
   /** A field or an operator the guard couldn't read. */
   unreadable: boolean;
   /** Only document-id constraints: a key lookup, never a scan. */
@@ -99,6 +112,8 @@ const RANGE_OPS = new Set(["<", "<=", ">", ">=", "!=", "not-in"]);
 interface FileInfo {
   rel: string;
   sf: ts.SourceFile;
+  /** Names imported from a Firestore module, local name -> exported name (`limit as fsLimit`). */
+  fsImports: Map<string, string>;
 }
 
 type FnLike = ts.FunctionDeclaration | ts.ArrowFunction | ts.FunctionExpression;
@@ -141,10 +156,10 @@ function unwrap(expr: ts.Expression): ts.Expression {
 }
 
 export function buildProgram(sources: { rel: string; text: string }[]): Program {
-  const files: FileInfo[] = sources.map(({ rel, text }) => ({
-    rel,
-    sf: ts.createSourceFile(rel, text, ts.ScriptTarget.Latest, true, rel.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS),
-  }));
+  const files: FileInfo[] = sources.map(({ rel, text }) => {
+    const sf = ts.createSourceFile(rel, text, ts.ScriptTarget.Latest, true, rel.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+    return { rel, sf, fsImports: firestoreImports(sf) };
+  });
   const constants = new Map<string, string | null>();
   const helpers = new Map<string, Helper[]>();
   const addHelper = (name: string, fn: FnLike, file: FileInfo) => {
@@ -175,6 +190,19 @@ export function buildProgram(sources: { rel: string; text: string }[]): Program 
     visit(file.sf);
   }
   return { files, constants, helpers };
+}
+
+/** `import { limit as fsLimit } from "firebase/firestore"`: fsLimit -> limit. */
+function firestoreImports(sf: ts.SourceFile): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const st of sf.statements) {
+    if (!ts.isImportDeclaration(st) || !ts.isStringLiteral(st.moduleSpecifier)) continue;
+    if (!/firestore|^firebase-admin$/.test(st.moduleSpecifier.text)) continue;
+    const named = st.importClause?.namedBindings;
+    if (!named || !ts.isNamedImports(named)) continue;
+    for (const el of named.elements) out.set(el.name.text, (el.propertyName ?? el.name).text);
+  }
+  return out;
 }
 
 function literalString(e: ts.Expression): string | null {
@@ -364,27 +392,85 @@ interface Ref {
   scope: Scope;
 }
 
-interface Constraints {
+/** One way a query can run: every constraint on it at once. */
+export interface Conj {
   equality: string[];
   contains: string[];
   range: string[];
   orderBy: { field: string; direction: "ASCENDING" | "DESCENDING" }[];
+  /** This way carries a constraint the guard could not read. */
+  unreadable?: true;
+}
+
+/**
+ * What a query's constraints stand for. `variants` are the ways it can run:
+ * one, unless a branch (`flag ? where(a) : where(b)`) or an `or(...)` makes
+ * alternatives, and then each alternative runs as its own query and needs
+ * its own index, so each is judged on its own.
+ */
+interface Constraints {
+  variants: Conj[];
   unreadable: boolean;
   /** Saw at least one where/orderBy. */
   any: boolean;
 }
 
-function emptyConstraints(): Constraints {
-  return { equality: [], contains: [], range: [], orderBy: [], unreadable: false, any: false };
+/** More alternatives than this and the guard says it can't read the query rather than guess. */
+const MAX_VARIANTS = 64;
+
+function emptyConj(): Conj {
+  return { equality: [], contains: [], range: [], orderBy: [] };
 }
 
+function emptyConstraints(): Constraints {
+  return { variants: [emptyConj()], unreadable: false, any: false };
+}
+
+function unreadableConstraints(): Constraints {
+  return { variants: [{ ...emptyConj(), unreadable: true }], unreadable: true, any: true };
+}
+
+function joinConj(a: Conj, b: Conj): Conj {
+  return {
+    equality: [...a.equality, ...b.equality],
+    contains: [...a.contains, ...b.contains],
+    range: [...a.range, ...b.range],
+    orderBy: [...a.orderBy, ...b.orderBy],
+    ...(a.unreadable || b.unreadable ? { unreadable: true as const } : {}),
+  };
+}
+
+/** A constraint the guard could not read: the query, and every way it runs. */
+function markUnreadable(c: Constraints) {
+  c.unreadable = true;
+  for (const v of c.variants) v.unreadable = true;
+}
+
+function capped(c: Constraints): Constraints {
+  if (c.variants.length > MAX_VARIANTS) {
+    c.variants = [c.variants.reduce(joinConj, emptyConj())];
+    markUnreadable(c);
+  }
+  return c;
+}
+
+/** AND: every way of `into` with every way of `from`. */
 function merge(into: Constraints, from: Constraints) {
-  into.equality.push(...from.equality);
-  into.contains.push(...from.contains);
-  into.range.push(...from.range);
-  into.orderBy.push(...from.orderBy);
+  const product: Conj[] = [];
+  for (const a of into.variants) for (const b of from.variants) product.push(joinConj(a, b));
+  into.variants = product;
   into.unreadable ||= from.unreadable;
   into.any ||= from.any;
+  capped(into);
+}
+
+/** OR: the query runs as one of these. */
+function alternatives(list: Constraints[]): Constraints {
+  return capped({
+    variants: list.flatMap((x) => x.variants),
+    unreadable: list.some((x) => x.unreadable),
+    any: list.some((x) => x.any),
+  });
 }
 
 /** What a query-like expression reads, plus any constraints already applied to it. */
@@ -400,19 +486,29 @@ function calleeName(call: ts.CallExpression): string | null {
   return null;
 }
 
-/** Resolve a helper call: bind its parameters to the arguments and read what it returns. */
-function viaHelper<T>(call: ts.CallExpression, ctx: Ctx, read: (e: ts.Expression, c: Ctx) => T | null): T | null {
+/** The Firestore name a call's callee stands for (`fsLimit` -> `limit`), else its own name. */
+function firestoreName(call: ts.CallExpression, ctx: Ctx): string | null {
+  const c = unwrap(call.expression);
+  if (ts.isIdentifier(c)) return ctx.file.fsImports.get(c.text) ?? c.text;
+  return calleeName(call);
+}
+
+/** The functions a call could be: a local one first, else any of that name in the program. */
+function helperCandidates(call: ts.CallExpression, ctx: Ctx): Helper[] {
   const name = calleeName(call);
-  if (!name) return null;
+  if (!name) return [];
   const local = ts.isIdentifier(unwrap(call.expression)) ? lookup(name, call) : null;
-  let candidates: Helper[] = [];
   if (local && !local.isParam) {
     const init = local.init ? unwrap(local.init) : null;
-    if (isFnLike(local.decl)) candidates = [{ fn: local.decl, file: ctx.file }];
-    else if (init && isFnLike(init)) candidates = [{ fn: init, file: ctx.file }];
+    if (isFnLike(local.decl)) return [{ fn: local.decl, file: ctx.file }];
+    if (init && isFnLike(init)) return [{ fn: init, file: ctx.file }];
   }
-  if (candidates.length === 0) candidates = ctx.prog.helpers.get(name) ?? [];
-  for (const h of candidates) {
+  return ctx.prog.helpers.get(name) ?? [];
+}
+
+/** Resolve a helper call: bind its parameters to the arguments and read what it returns. */
+function viaHelper<T>(call: ts.CallExpression, ctx: Ctx, read: (e: ts.Expression, c: Ctx) => T | null): T | null {
+  for (const h of helperCandidates(call, ctx)) {
     const env: Env = new Map();
     h.fn.parameters.forEach((p, i) => {
       if (ts.isIdentifier(p.name) && call.arguments[i]) env.set(p.name.text, { expr: call.arguments[i], file: ctx.file, env: ctx.env });
@@ -520,22 +616,24 @@ function fieldOf(expr: ts.Expression | undefined, ctx: Ctx): string | null {
 function addWhere(c: Constraints, field: string | null, op: string | null) {
   c.any = true;
   if (field === null || op === null) {
-    c.unreadable = true;
+    markUnreadable(c);
     return;
   }
-  if (EQUALITY_OPS.has(op)) c.equality.push(field);
-  else if (CONTAINS_OPS.has(op)) c.contains.push(field);
-  else if (RANGE_OPS.has(op)) c.range.push(field);
-  else c.unreadable = true;
+  const kind = EQUALITY_OPS.has(op) ? "equality" : CONTAINS_OPS.has(op) ? "contains" : RANGE_OPS.has(op) ? "range" : null;
+  if (kind === null) {
+    markUnreadable(c);
+    return;
+  }
+  for (const v of c.variants) v[kind].push(field);
 }
 
 function addOrder(c: Constraints, field: string | null, dir: string | null) {
   c.any = true;
   if (field === null) {
-    c.unreadable = true;
+    markUnreadable(c);
     return;
   }
-  c.orderBy.push({ field, direction: dir === "desc" ? "DESCENDING" : "ASCENDING" });
+  for (const v of c.variants) v.orderBy.push({ field, direction: dir === "desc" ? "DESCENDING" : "ASCENDING" });
 }
 
 /** One `.where(...)` / `.orderBy(...)` link of an admin chain. */
@@ -568,9 +666,8 @@ function constraintsOf(expr: ts.Expression | ts.SpreadElement, ctx: Ctx): Constr
     return c;
   }
   if (ts.isConditionalExpression(e)) {
-    merge(c, constraintsOf(e.whenTrue, sub(ctx)));
-    merge(c, constraintsOf(e.whenFalse, sub(ctx)));
-    return c;
+    // Either branch runs, never both: each is its own way the query runs.
+    return alternatives([constraintsOf(e.whenTrue, sub(ctx)), constraintsOf(e.whenFalse, sub(ctx))]);
   }
   if (ts.isBinaryExpression(e)) {
     merge(c, constraintsOf(e.right, sub(ctx)));
@@ -578,17 +675,24 @@ function constraintsOf(expr: ts.Expression | ts.SpreadElement, ctx: Ctx): Constr
     return c;
   }
   if (ts.isIdentifier(e)) {
+    if (e.text === "undefined") return c;
     const bound = ctx.env.get(e.text);
     if (bound) return constraintsOf(bound.expr, sub(ctx, bound.file, bound.env));
     const b = lookup(e.text, e);
-    if (!b || b.isParam) return c;
+    // A parameter nobody bound, or a name from another module: the constraints
+    // are decided where the guard isn't looking. Say so; never pass quietly.
+    if (!b || b.isParam) return unreadableConstraints();
     if (b.init) merge(c, constraintsOf(b.init, sub(ctx)));
     for (const p of pushes(e.text, b.scope)) merge(c, constraintsOf(p, sub(ctx)));
     for (const r of reassignments(e.text, b.scope)) merge(c, constraintsOf(r, sub(ctx)));
     return c;
   }
-  if (!ts.isCallExpression(e)) return c;
-  const name = calleeName(e);
+  if (!ts.isCallExpression(e)) {
+    // `opts.constraints`, `list[i]`: read from somewhere the guard can't follow.
+    if (ts.isPropertyAccessExpression(e) || ts.isElementAccessExpression(e)) return unreadableConstraints();
+    return c;
+  }
+  const name = firestoreName(e, ctx);
   const callee = unwrap(e.expression);
   if (ts.isIdentifier(callee) || (ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression) && callee.expression.text === "Filter")) {
     if (name === "where") {
@@ -599,9 +703,18 @@ function constraintsOf(expr: ts.Expression | ts.SpreadElement, ctx: Ctx): Constr
       addOrder(c, fieldOf(e.arguments[0], ctx), e.arguments[1] ? stringOf(e.arguments[1], ctx) : "asc");
       return c;
     }
-    if (name === "and" || name === "or") {
+    if (name === "and") {
       for (const a of e.arguments) merge(c, constraintsOf(a, sub(ctx)));
       return c;
+    }
+    if (name === "or") {
+      // Firestore runs each disjunct as its own query: each needs an index.
+      // An empty way is a spread that added no disjunct (`...(x ? [w] : [])`),
+      // not a disjunct that matches everything, so it is dropped.
+      const alt = alternatives(e.arguments.map((a) => constraintsOf(a, sub(ctx))));
+      const real = alt.variants.filter((v) => v.unreadable || v.equality.length + v.contains.length + v.range.length + v.orderBy.length > 0);
+      if (real.length > 0) alt.variants = real;
+      return alt;
     }
     if (name && ["limit", "limitToLast", "startAt", "startAfter", "endAt", "endBefore"].includes(name)) return c;
   }
@@ -611,6 +724,9 @@ function constraintsOf(expr: ts.Expression | ts.SpreadElement, ctx: Ctx): Constr
     for (const a of callee.name.text === "concat" ? e.arguments : []) merge(c, constraintsOf(a, sub(ctx)));
     return c;
   }
+  // A helper that builds constraints. One the guard can't find (an import from
+  // a library, a call it doesn't know) is unreadable, never nothing.
+  if (helperCandidates(e, ctx).length === 0) return unreadableConstraints();
   const viaFn = viaHelper(e, ctx, (r, cc) => {
     const got = constraintsOf(r, cc);
     return got.any || got.unreadable ? got : null;
@@ -628,18 +744,30 @@ function shapeFrom(file: FileInfo, node: ts.Node, t: Target | null, extra: Const
   if (t) merge(c, t.constraints);
   if (extra) merge(c, extra);
   if (!c.any) return null; // no filter, no order: a whole read, which an index can't help
-  const all = [...c.equality, ...c.contains, ...c.range, ...c.orderBy.map((o) => o.field)];
+  const u = c.variants.reduce(joinConj, emptyConj());
+  const all = [...u.equality, ...u.contains, ...u.range, ...u.orderBy.map((o) => o.field)];
   const docIdOnly = all.length > 0 && all.every((f) => f === DOC_ID) && !c.unreadable;
   const strip = (xs: string[]) => [...new Set(xs.filter((f) => f !== DOC_ID))];
+  const stripOrder = (xs: Conj["orderBy"]) => {
+    const seen = new Set<string>();
+    return xs.filter((o) => {
+      if (o.field === DOC_ID || seen.has(o.field)) return false;
+      seen.add(o.field);
+      return true;
+    });
+  };
+  const clean = (v: Conj): Conj => ({ equality: strip(v.equality), contains: strip(v.contains), range: strip(v.range), orderBy: stripOrder(v.orderBy), ...(v.unreadable ? { unreadable: true as const } : {}) });
+  const variants = [...new Map(c.variants.map(clean).map((v) => [JSON.stringify(v), v] as const)).values()];
   return {
     file: file.rel,
     line: file.sf.getLineAndCharacterOfPosition(node.getStart(file.sf)).line + 1,
     group: t?.ref?.group ?? null,
     scope: t?.ref?.scope ?? null,
-    equality: strip(c.equality),
-    contains: strip(c.contains),
-    range: strip(c.range),
-    orderBy: c.orderBy.filter((o) => o.field !== DOC_ID),
+    equality: strip(u.equality),
+    contains: strip(u.contains),
+    range: strip(u.range),
+    orderBy: stripOrder(u.orderBy),
+    ...(variants.length > 1 ? { variants } : {}),
     unreadable: c.unreadable,
     docIdOnly,
   };
@@ -731,7 +859,20 @@ function looksLikeFirestoreChain(top: ts.CallExpression): boolean {
 
 export function isServed(q: QueryShape, indexes: CompositeIndex[]): boolean {
   if (q.docIdOnly) return true;
-  const mine = indexes.filter((i) => i.collectionGroup === q.group && i.queryScope === q.scope);
+  return waysOf(q).every((v) => isWayServed(q, v, indexes));
+}
+
+/** Each way a query can run (one, unless it branches). */
+function waysOf(q: QueryShape): Conj[] {
+  return q.variants ?? [{ equality: q.equality, contains: q.contains, range: q.range, orderBy: q.orderBy, ...(q.unreadable ? { unreadable: true as const } : {}) }];
+}
+
+function isWayServed(at: Pick<QueryShape, "group" | "scope">, q: Conj, indexes: CompositeIndex[]): boolean {
+  // A way with no field left (no filter, or document ids only) is a whole read
+  // or a key read: there is nothing for an index to serve.
+  // A way with a constraint the guard couldn't read is never served by having none.
+  if (q.equality.length + q.contains.length + q.range.length + q.orderBy.length === 0) return !q.unreadable;
+  const mine = indexes.filter((i) => i.collectionGroup === at.group && i.queryScope === at.scope);
   const leads = (field: string, contains: boolean) =>
     mine.some((i) => {
       const f = i.fields[0];
@@ -747,8 +888,21 @@ export function isServed(q: QueryShape, indexes: CompositeIndex[]): boolean {
   return false;
 }
 
-/** The two-field composite that would serve this query, as the index file writes it. */
-export function suggestedIndex(q: QueryShape): CompositeIndex {
+/**
+ * Printed in place of a second field when a query names only one. A composite
+ * needs two (a one-field composite is unchecked on Enterprise, and the index
+ * file's own test refuses one), and the guard can't know which other field
+ * the collection's documents carry.
+ */
+export const SECOND_FIELD_PLACEHOLDER = "CHOOSE_A_SECOND_FIELD_THESE_DOCUMENTS_CARRY";
+
+/**
+ * The two-field composite that would serve this query (the first of its ways
+ * the indexes don't serve, when it branches), as the index file writes it.
+ */
+export function suggestedIndex(shape: QueryShape, indexes: CompositeIndex[] = []): CompositeIndex {
+  const ways = waysOf(shape);
+  const q = ways.find((v) => !isWayServed(shape, v, indexes)) ?? ways[0];
   const fields: IndexField[] = [];
   const seen = new Set<string>();
   const add = (f: IndexField) => {
@@ -761,10 +915,15 @@ export function suggestedIndex(q: QueryShape): CompositeIndex {
   for (const f of q.contains) add({ fieldPath: f, arrayConfig: "CONTAINS" });
   for (const o of q.orderBy) add({ fieldPath: o.field, order: o.direction });
   for (const f of q.range) add({ fieldPath: f, order: order(f) });
-  return { collectionGroup: q.group ?? "?", queryScope: q.scope ?? "COLLECTION", fields };
+  if (fields.length < 2) add({ fieldPath: SECOND_FIELD_PLACEHOLDER, order: "ASCENDING" });
+  return { collectionGroup: shape.group ?? "?", queryScope: shape.scope ?? "COLLECTION", fields };
 }
 
 export function describeShape(q: QueryShape): string {
+  if (q.variants) {
+    const ways = q.variants.map((v) => describeShape({ ...q, ...v, variants: undefined }).replace(/^[^(]*/, ""));
+    return `${q.file}:${q.line}  ${q.scope === "COLLECTION_GROUP" ? "collectionGroup " : ""}${q.group ?? "?"} one of ${ways.join(" | ")}`;
+  }
   const parts = [
     ...q.equality.map((f) => `${f} ==`),
     ...q.contains.map((f) => `${f} contains`),
