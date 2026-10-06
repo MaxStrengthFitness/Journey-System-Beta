@@ -16,8 +16,6 @@
      .jg-stat          2                ✓      (left = machine col width)
      .jg-today         2                       ✓
      .jg-cell          0
-   Where subgrid is there, the header row (.jg-row--head, z 5) is the one
-   box sticking to the top, and the heads inside it stack among themselves.
    Inside a cell, the dim veil of an older column (z 2) lies over the words.
    ========================================================================== */
 
@@ -223,28 +221,12 @@
   border-bottom: 1px solid var(--jg-border-strong);
 }
 .jg-head { z-index: 3; padding: 0; }
-/* ONE sticky header row (the iPad round, Oct 6 2026; audit W4). Where the
-   browser has subgrid (iPadOS 16 and later), the header row is itself the
-   sticky box, spanning every column and lined up with them through subgrid,
-   and the date heads inside it are ordinary boxes riding along with it. On
-   iPad Safari every sticky box inside a scroller is a layer of its own, and
-   this was one per date head, fourteen or more. The corner, the Analytics
-   head, the Older rail, Latest (live) and Today still stick sideways inside
-   it, as they did. Without subgrid, every head sticks on its own as before. */
-@supports (grid-template-columns: subgrid) {
-  .jg-row.jg-row--head {
-    display: grid;
-    grid-column: 1 / -1;
-    grid-template-columns: subgrid;
-    position: sticky;
-    top: 0;
-    z-index: 5;
-  }
-  .jg-row--head > .jg-head:not(.jg-head--older):not(.jg-head--live) {
-    position: relative;
-    top: auto;
-  }
-}
+/* One sticky header row (one sticky box for the date heads, through subgrid)
+   was built in the iPad round (Oct 6 2026; audit W4) and HELD BACK from the
+   release: sticky heads inside a sticky row on iPad Safari had not been seen
+   on an iPad, and the lab is Chrome. It waits for a walk with Safari's Layers
+   tab (docs/rounds/2026-10-06-ipad.md, "Held back"). Every head sticks on
+   its own, as before. */
 .jg-corner {
   left: 0;
   z-index: 5;
@@ -1081,6 +1063,16 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
    veil reaching 3px left there lay over the cell before it. */
 .jg-look .jg[data-live="true"] .jg-cell:not(.is-latest):not(.is-spot):not(.jg-cell--older)::after {
   inset: 0;
+}
+/* The lanes hide a practice cell's ::after (its dashed frame is the old
+   look's; the rail bubble stands in for it) and show it again only on a
+   banded row. The veil is that same pseudo element, so an older practice
+   cell shows it again, as a plain veil: its bubble dims with its neighbours,
+   as it did under the old opacity (review of the iPad round, Oct 6 2026). */
+.jg-look .jg[data-live="true"] .jg-cell--practice:not(.is-latest):not(.is-spot):not(.jg-cell--older)::after {
+  display: block;
+  border: 0;
+  border-radius: 0;
 }
 /* The focus trace through an older cell dims with it, as it did. */
 .jg[data-live="true"] .jg-row.is-focus .jg-cell:not(.is-latest):not(.is-spot):not(.jg-cell--older)::after {
