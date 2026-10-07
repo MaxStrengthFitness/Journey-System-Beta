@@ -24,15 +24,28 @@ vi.mock("../../../lib/studio-time", async (importOriginal) => ({
   studioTodayKey: () => "2026-10-06",
 }));
 vi.mock("../../renewals/usePipeline", () => ({
-  useCyclesFor: () => ({}),
+  useCyclesFor: () => reads.cycles,
+  useCyclesRead: () => ({ cycles: reads.cycles, loading: false, failed: reads.cyclesFailed }),
   useMissingDataCount: () => 0,
   useMissingDataClients: () => null,
+}));
+const saved = vi.hoisted(() => ({ plans: [] as unknown[] }));
+vi.mock("../../renewals/useRenewalCycle", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../renewals/useRenewalCycle")>()),
+  saveRenewalPlan: async (p: unknown) => {
+    saved.plans.push(p);
+  },
 }));
 vi.mock("../../inbody/useInBodyVariation", async () => {
   const { DEFAULT_INBODY_VARIATION } = await import("../../inbody/variation");
   return { useInBodyVariationLookup: () => () => DEFAULT_INBODY_VARIATION };
 });
-const reads = vi.hoisted(() => ({ marks: new Map<string, { day: string }>(), marksLoading: false }));
+const reads = vi.hoisted(() => ({
+  marks: new Map<string, { day: string }>(),
+  marksLoading: false,
+  cycles: {} as Record<string, unknown>,
+  cyclesFailed: false,
+}));
 vi.mock("../journey/inactive-store", () => ({
   useInactiveMarks: () => ({ marks: reads.marks, loading: reads.marksLoading, failed: false }),
 }));
@@ -45,7 +58,7 @@ import { renewalsQuestion } from "../overview/questions";
 import { DEFAULT_RENEWAL_SETTINGS } from "../../renewals/settings";
 import type { RosterStatus } from "../../../hooks/useStudioRoster";
 import type { RenewalSnapshot } from "../../renewals/types";
-import type { Client } from "../../../types";
+import type { Client, Trainer } from "../../../types";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -89,9 +102,12 @@ const roster: Client[] = [
 // Something in a lane (Coming up), and not running low.
 const comingUp = person("c3", "Lena", snap({ sessionsLeft: 40, sessionsOnHand: 40, focusDate: "2026-11-20", runOutDate: "2026-11-20" }));
 
+// A trainer who works at Solon: anyone who works here may set a plan.
+const jen = { id: "t-jen", fullName: "Jen Park", role: "Trainer", primaryHomeStudioId: "solon" } as unknown as Trainer;
+
 let mounted: { root: Root; host: HTMLElement }[] = [];
 
-async function mount(props: { roster?: Client[]; rosterStatus?: RosterStatus } = {}) {
+async function mount(props: { roster?: Client[]; rosterStatus?: RosterStatus; authTrainer?: Trainer | null; planSettingsReady?: boolean } = {}) {
   const host = document.createElement("div");
   document.body.appendChild(host);
   const root = createRoot(host);
@@ -106,6 +122,9 @@ async function mount(props: { roster?: Client[]; rosterStatus?: RosterStatus } =
           onOpenBrief={onOpenBrief}
           roster={props.roster ?? roster}
           rosterStatus={props.rosterStatus ?? "ready"}
+          trainers={[jen]}
+          authTrainer={props.authTrainer === undefined ? jen : props.authTrainer}
+          planSettingsReady={props.planSettingsReady}
         />
       </StrictMode>,
     );
@@ -122,6 +141,9 @@ afterEach(async () => {
   mounted = [];
   reads.marks = new Map();
   reads.marksLoading = false;
+  reads.cycles = {};
+  reads.cyclesFailed = false;
+  saved.plans = [];
 });
 
 const tile = (host: HTMLElement, label: string) =>
@@ -129,7 +151,8 @@ const tile = (host: HTMLElement, label: string) =>
 const tileValue = (host: HTMLElement, label: string) => tile(host, label).querySelector(".adm-tile__value")?.textContent;
 const panel = (host: HTMLElement, title: string) =>
   Array.from(host.querySelectorAll<HTMLElement>(".adm-panel")).find((p) => p.querySelector(".adm-panel__title")?.textContent?.startsWith(`${title} · `)) ?? null;
-const names = (p: HTMLElement | null) => Array.from(p?.querySelectorAll<HTMLElement>(".adm-row__name") ?? []).map((n) => n.textContent);
+// Running low's rows are the kit's; a lane's rows are the dashboard row (Oct 7 2026).
+const names = (p: HTMLElement | null) => Array.from(p?.querySelectorAll<HTMLElement>(".adm-row__name, .rr__name") ?? []).map((n) => n.textContent);
 
 describe("RenewalsPipeline — Running low", () => {
   it("counts the roster at or under the studio's number, in total, and lists them behind a tap", async () => {
@@ -172,7 +195,7 @@ describe("RenewalsPipeline — the lanes, from the roster (Oct 6 2026)", () => {
     const talk = panel(host, "Talk now")!;
     // Soonest first: Ivan runs out on Oct 17, Nora next May.
     expect(names(talk)).toEqual(["Ivan Reyes", "Nora Reyes"]);
-    await act(async () => talk.querySelectorAll<HTMLElement>(".adm-row")[1].click());
+    await act(async () => talk.querySelectorAll<HTMLElement>(".rr__open")[1].click());
     expect(onOpenBrief).toHaveBeenCalledWith(roster[0]);
   });
 
@@ -247,5 +270,205 @@ describe("RenewalsPipeline — the lanes, from the roster (Oct 6 2026)", () => {
     const { host } = await mount({ rosterStatus: "error" });
     expect(host.querySelector(".adm-notice")).toBeNull();
     expect(tileValue(host, "Talk now")).toBe("2");
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * The renewals dashboard (Oct 7 2026): each lane's row is the dashboard
+ * row, and its plan is a picker that fits the contract's auto-renew answer.
+ * ------------------------------------------------------------------ */
+
+// Strongsville's way: the contract doesn't renew by itself. Version 3.
+const manual = person(
+  "s1",
+  "Sasha",
+  snap({
+    version: 3,
+    cycleKey: "7001",
+    packageKey: "committed",
+    packageLabel: "Committed · 12 months",
+    paymentMode: "monthly",
+    autoRenews: false,
+    chargeDate: "2026-12-01",
+    chargeDateSource: "mindbody",
+    commitmentEnd: "2026-12-01",
+    commitmentEndSource: "mindbody",
+    sessionsLeft: 9,
+    sessionsOnHand: 9,
+    conversationDue: true,
+    focusDate: "2026-11-20",
+    runOutDate: "2026-11-20",
+    primaryTrainerId: "t-jen",
+    ledger: { carriedIn: 4, thisContract: 5, toCome: 0, extra: 0, total: 9, source: "mindbody", asOf: "2026-10-05" },
+    projection: { endsOn: "2026-12-01", endsOnSource: "mindbody", booked: 2, bookedThrough: "2026-10-15", paceWeeks: 6.7, pacePerWeek: 2, leftAtEnd: 0, leftAtEndLow: 0, leftAtEndHigh: 0, runOutDate: "2026-11-20" },
+    rate: { perSession: 54, payment: 432, source: "mindbody", packageRate: 60, special: true },
+  } as Partial<RenewalSnapshot>),
+);
+
+// A franchise contract that renews by itself and will bank sessions.
+const autoRenewing = person(
+  "b2",
+  "Bea",
+  snap({
+    version: 3,
+    cycleKey: "7002",
+    packageKey: "committed",
+    packageLabel: "Committed · 12 months",
+    paymentMode: "monthly",
+    autoRenews: true,
+    situation: "will-bank",
+    chargeWarning: true,
+    chargeDate: "2026-10-28",
+    chargeDateSource: "mindbody",
+    focusDate: "2026-10-28",
+    sessionsLeft: 30,
+    bankedAtCharge: 24,
+  } as Partial<RenewalSnapshot>),
+);
+
+const rowOf = (host: HTMLElement, name: string) =>
+  Array.from(host.querySelectorAll<HTMLElement>(".rr")).find((r) => r.querySelector(".rr__name")?.textContent === name)!;
+const optionsOf = (sel: HTMLSelectElement) => Array.from(sel.options).map((o) => o.textContent);
+
+async function choose(sel: HTMLSelectElement, value: string) {
+  await act(async () => {
+    sel.value = value;
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
+async function type(el: HTMLTextAreaElement, value: string) {
+  await act(async () => {
+    const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+    set.call(el, value);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+describe("RenewalsPipeline — the dashboard row", () => {
+  it("says the client, their trainer, the package and rate, the end, what's left and what will be", async () => {
+    const { host, onOpenBrief } = await mount({ roster: [manual] });
+    const row = rowOf(host, "Sasha Reyes");
+    const text = row.textContent ?? "";
+    expect(text).toContain("Jen Park");
+    expect(text).toContain("Committed · 12 months · at $54 a session (special)");
+    expect(text).toContain("Ends Dec 1");
+    expect(text).toContain("9 left: 4 rolled over · 5 this contract");
+    expect(text).toContain("Runs out around Nov 20, 2 weeks before it ends");
+    expect(text).toContain("Nobody has talked to them yet");
+    // The working is on the (i), not printed on the row.
+    expect(text).not.toContain("then 2× a week");
+    await act(async () => row.querySelector<HTMLButtonElement>(".rr__info")!.click());
+    expect(row.querySelector(".rr__why")?.textContent).toContain("At the end: 9 left, 2 booked, then 2× a week for 7 weeks.");
+    await act(async () => row.querySelector<HTMLButtonElement>(".rr__open")!.click());
+    expect(onOpenBrief).toHaveBeenCalledWith(manual);
+  });
+
+  it("offers a studio without auto-renew the manual plan, and saves it with the package and note", async () => {
+    const { host } = await mount({ roster: [manual] });
+    const row = rowOf(host, "Sasha Reyes");
+    const sel = row.querySelector<HTMLSelectElement>('select[aria-label="Renewal plan for Sasha Reyes"]')!;
+    expect(optionsOf(sel)).toEqual([
+      "Set the plan…",
+      "Renewing — same package",
+      "Upgrading",
+      "Downgrading",
+      "Pay as you go",
+      "Not renewing",
+      "Not decided yet",
+    ]);
+    // Nothing is written by the select alone.
+    await choose(sel, "upgrade");
+    expect(saved.plans).toEqual([]);
+    const pkg = row.querySelector<HTMLSelectElement>('select[aria-label="Package Sasha Reyes is renewing onto"]')!;
+    expect(pkg.value).toBe("transformed");
+    await type(row.querySelector<HTMLTextAreaElement>("textarea")!, "Wants the 18-month rate");
+    const save = Array.from(row.querySelectorAll<HTMLButtonElement>("button")).find((b) => b.textContent === "Save plan")!;
+    await act(async () => save.click());
+    expect(saved.plans).toHaveLength(1);
+    expect(saved.plans[0]).toMatchObject({
+      studioId: "solon",
+      cycleKey: "7001",
+      clientId: "s1",
+      clientName: "Sasha Reyes",
+      authorName: "Jen Park",
+      draft: { choice: "upgrade", packageKey: "transformed", note: "Wants the 18-month rate" },
+    });
+    // The editor closes once it's saved.
+    expect(row.querySelector("textarea")).toBeNull();
+  });
+
+  it("puts the plan back on Cancel, and writes nothing", async () => {
+    const { host } = await mount({ roster: [manual] });
+    const row = rowOf(host, "Sasha Reyes");
+    const sel = row.querySelector<HTMLSelectElement>("select")!;
+    await choose(sel, "not-renewing");
+    const cancel = Array.from(row.querySelectorAll<HTMLButtonElement>("button")).find((b) => b.textContent === "Cancel")!;
+    await act(async () => cancel.click());
+    expect(sel.value).toBe("");
+    expect(saved.plans).toEqual([]);
+  });
+
+  it("offers a contract that renews by itself letting it renew or pausing billing", async () => {
+    const { host } = await mount({ roster: [autoRenewing] });
+    const sel = rowOf(host, "Bea Reyes").querySelector<HTMLSelectElement>("select")!;
+    expect(optionsOf(sel)).toEqual([
+      "Set the plan…",
+      "Let it renew (sessions carry over)",
+      "Pause billing in Mindbody until sessions run low",
+      "Not renewing",
+      "Not decided yet",
+    ]);
+    expect(rowOf(host, "Bea Reyes").textContent).toContain("Auto-renews Oct 28");
+  });
+
+  it("shows the plan that was set, who set it and when, and the next step it sets", async () => {
+    reads.cycles = {
+      "7001": {
+        clientId: "s1",
+        cycleKey: "7001",
+        latestLeaning: "leaning-yes",
+        latestConcerns: [],
+        needsLeader: false,
+        lastTouchAt: { toDate: () => new Date("2026-10-03T15:00:00Z") },
+        lastTouchByName: "Jen Park",
+        plan: { choice: "renew-same", packageKey: "committed", note: "Signing Friday", byUid: "u", byName: "Jen Park", at: { toDate: () => new Date("2026-10-06T15:00:00Z") } },
+      },
+    };
+    const { host } = await mount({ roster: [manual] });
+    const row = rowOf(host, "Sasha Reyes");
+    expect(row.querySelector<HTMLSelectElement>("select")!.value).toBe("renew-same");
+    expect(row.querySelector(".rr-plan__sentence")?.textContent).toMatch(/^Renewing — same package \(.+\) · Jen, Oct 6$/);
+    expect(row.textContent).toContain("Signing Friday");
+    expect(row.textContent).toContain("Talked Oct 3 · Jen");
+    expect(row.querySelector(".rr__next")?.textContent).toBe("Renewing — the new package shows here once it's in Mindbody");
+  });
+
+  it("says 'Couldn't check' when the conversations couldn't be read, never 'nobody'", async () => {
+    reads.cyclesFailed = true;
+    const { host } = await mount({ roster: [manual] });
+    const row = rowOf(host, "Sasha Reyes");
+    expect(row.textContent).toContain("Couldn't check");
+    expect(row.textContent).not.toContain("Nobody has talked to them yet");
+  });
+
+  it("shows the plan without the picker to someone who doesn't work here, or before the studio's settings answered", async () => {
+    const outsider = await mount({ roster: [manual], authTrainer: null });
+    expect(rowOf(outsider.host, "Sasha Reyes").querySelector("select")).toBeNull();
+    expect(rowOf(outsider.host, "Sasha Reyes").textContent).toContain("No plan yet");
+    const waiting = await mount({ roster: [manual], planSettingsReady: false });
+    expect(rowOf(waiting.host, "Sasha Reyes").querySelector("select")).toBeNull();
+  });
+
+  it("filters to the plans not decided and to those not renewing", async () => {
+    reads.cycles = {
+      "7001": { clientId: "s1", cycleKey: "7001", latestConcerns: [], needsLeader: false, plan: { choice: "not-renewing", byUid: "u", byName: "Jen", at: null } },
+    };
+    const { host } = await mount({ roster: [...roster, manual] });
+    const tab = (label: string) => Array.from(host.querySelectorAll<HTMLButtonElement>(".adm-seg")).find((b) => b.textContent === label)!;
+    await act(async () => tab("Not renewing").click());
+    expect(names(panel(host, "Talk now"))).toEqual(["Sasha Reyes"]);
+    await act(async () => tab("Plan: not decided").click());
+    expect(names(panel(host, "Talk now"))).toEqual(["Ivan Reyes", "Nora Reyes"]);
   });
 });

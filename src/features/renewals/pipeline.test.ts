@@ -126,6 +126,16 @@ describe("filters and grouping", () => {
     expect(matchesFilter(row({}), "needs-leader", S)).toBe(false);
   });
 
+  it("filters by the studio's renewal plan (the renewals dashboard, Oct 7 2026)", () => {
+    const plan = (choice: string) => ({ ...talked, plan: { choice, byUid: "u", byName: "Jen", at: null } }) as PipelineRow["cycle"];
+    expect(matchesFilter(row({}), "plan-undecided", S)).toBe(true);
+    expect(matchesFilter(row({ cycle: plan("undecided") }), "plan-undecided", S)).toBe(true);
+    expect(matchesFilter(row({ cycle: plan("renew-same") }), "plan-undecided", S)).toBe(false);
+    expect(matchesFilter(row({ cycle: plan("not-renewing") }), "not-renewing", S)).toBe(true);
+    expect(matchesFilter(row({ cycle: plan("let-renew") }), "not-renewing", S)).toBe(false);
+    expect(matchesFilter(row({}), "not-renewing", S)).toBe(false);
+  });
+
   // Client codex, Sep 2026 (AJ's decision 8): before this round a client
   // whose only "progress" was +1.2 lb of muscle on InBody was an upgrade
   // candidate.

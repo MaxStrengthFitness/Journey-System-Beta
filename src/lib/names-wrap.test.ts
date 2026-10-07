@@ -97,6 +97,11 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   // face, in their own capitalisation, wrap like every name.
   { file: "features/briefing/briefing.css", cls: "br__name", what: "the client's name on the briefing (Saira 22-30, upright)" },
   { file: "features/trainer-profile/trainer-profile.css", cls: "tp-identity__name", what: "the trainer's name on My Profile (Saira 22-30, upright)" },
+  // The renewals dashboard (Oct 7 2026): the client and the primary trainer
+  // on a renewals row (Operations → Clients → Renewals, and My renewals).
+  { file: "features/renewals/renewal-row.css", cls: "rr__name", what: "the client on a renewals dashboard row" },
+  { file: "features/renewals/renewal-row.css", cls: "rr__trainer", what: "the primary trainer on a renewals dashboard row" },
+  { file: "features/renewals/renewal-row.css", cls: "rr-plan__sentence", what: "who set the renewal plan, on its row" },
 ];
 
 const rulesFor = (entry: (typeof NAME_RULES)[number]) =>

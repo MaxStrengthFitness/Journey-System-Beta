@@ -3,8 +3,12 @@
  *
  * Five numbers across the top, then lanes by how soon something is lost:
  * before the charge, talk now, coming up (by month), and the win-back list.
- * Each row: who, their package on both clocks in one line, the latest
- * leaning, one line of proof, and the next step. Tap a row for the Brief.
+ * Since the renewals dashboard (Oct 7 2026) each row is the dashboard row
+ * (features/renewals/RenewalRow.tsx): the client and their primary trainer,
+ * the package and its rate, when the commitment ends, sessions left part by
+ * part, what will be left when it ends, who last talked to them, the one or
+ * two signals that matter, and the renewal plan as a picker anyone who works
+ * here may set. Tap the name for the Brief; the working is on the row's (i).
  *
  * Running low (AJ, Oct 6 2026: "we need a way for operations to show how
  * many clients are running out of their sessions ... In total") is the
@@ -23,7 +27,8 @@
  * Reads the roster (already held), the cycle documents for just the clients
  * a lane could hold and the Running low list (one chunked read), the
  * studio's inactive marks (one small listener the app shares) and the
- * missing-data count. Nothing here writes. Until the roster, the marks and
+ * missing-data count. Nothing here writes but a row's plan (useRenewalCycle
+ * saveRenewalPlan). Until the roster, the marks and
  * the Inactive line have answered, no number is said; a roster that failed
  * with nothing held says "—", never a confident 0.
  */
@@ -54,21 +59,24 @@ import {
   type PipelineLane,
   type PipelineRow,
 } from "../../renewals/pipeline";
-import { chipText, proofSentence, SITUATION_TONE } from "../../renewals/sentences";
-import { latestLine } from "../../renewals/conversation";
+import { proofSentence, SITUATION_TONE } from "../../renewals/sentences";
 import { useInBodyVariationLookup } from "../../inbody/useInBodyVariation";
 import { useInactiveMarks } from "../journey/inactive-store";
 import { useStudioSettings } from "../../studio-settings/useStudioSettings";
 import { leftLine, notKnownLine, runningLow, runningLowFoot } from "./running-low";
 import { mayHaveLane, renewalLane, type RenewalLaneContext } from "./lanes";
 import type { RosterStatus } from "../../../hooks/useStudioRoster";
-import { useCyclesFor, useMissingDataClients, useMissingDataCount } from "../../renewals/usePipeline";
+import { useCyclesRead, useMissingDataClients, useMissingDataCount } from "../../renewals/usePipeline";
+import { RenewalRow, RenewalRowList } from "../../renewals/RenewalRow";
+import { situationWord } from "../../renewals/row-facts";
+import { canSetRenewalPlan } from "../../renewals/permissions";
 import type { RenewalSettings } from "../../renewals/types";
-import type { Client } from "../../../types";
+import type { Client, Trainer } from "../../../types";
 import "./renewals.css";
 
-const FILTERS: PipelineFilter[] = ["all", "needs-leader", "price", "upgrade", "not-talked"];
+const FILTERS: PipelineFilter[] = ["all", "needs-leader", "price", "upgrade", "not-talked", "plan-undecided", "not-renewing"];
 const NO_CLIENTS: Client[] = [];
+const NO_TRAINERS: Trainer[] = [];
 
 const TONE_BADGE: Record<string, "ok" | "warn" | "alert" | "neutral"> = {
   ok: "ok",
@@ -91,9 +99,28 @@ export interface RenewalsPipelineProps {
   roster?: Client[];
   /** The roster's read: the page waits while it loads, and says nothing off a failed, empty one. */
   rosterStatus?: RosterStatus;
+  /** Everyone on staff: each row's primary trainer by name. */
+  trainers?: Trainer[];
+  /** The signed-in person: who may set a renewal plan, and the name on it. */
+  authTrainer?: Trainer | null;
+  /**
+   * The studio's own settings answered (not the defaults after a failed
+   * read): a plan names a package from them, so it waits until they have.
+   */
+  planSettingsReady?: boolean;
 }
 
-export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief, roster = NO_CLIENTS, rosterStatus = "ready" }: RenewalsPipelineProps) {
+export function RenewalsPipeline({
+  studioId,
+  studioName,
+  settings,
+  onOpenBrief,
+  roster = NO_CLIENTS,
+  rosterStatus = "ready",
+  trainers = NO_TRAINERS,
+  authTrainer = null,
+  planSettingsReady = true,
+}: RenewalsPipelineProps) {
   const today = studioTodayKey();
   const inactiveMarks = useInactiveMarks(studioId);
   const studioSettings = useStudioSettings(studioId);
@@ -113,7 +140,12 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief, 
     const lowRows = runningLow({ clients: home, studioId, cycles: {}, settings, today, inactiveMarks: marks, inactiveDays }).rows;
     return [...lanes, ...lowRows.map((r) => r.snapshot.cycleKey ?? "")].filter(Boolean);
   }, [home, ctx, studioId, settings, today, marks, inactiveDays]);
-  const cycles = useCyclesFor(studioId, cycleKeys);
+  const { cycles, failed: cyclesFailed } = useCyclesRead(studioId, cycleKeys);
+  // The renewals dashboard (Oct 7 2026): each row names the primary trainer,
+  // and anyone who works here may set the renewal plan.
+  const trainerNames = useMemo(() => new Map(trainers.filter((t) => t.id).map((t) => [t.id as string, t.fullName ?? ""])), [trainers]);
+  const canPlan = planSettingsReady && canSetRenewalPlan(authTrainer, studioId);
+  const authorName = authTrainer?.fullName?.trim() || "Someone at the studio";
   const low = useMemo(
     () => runningLow({ clients: home, studioId, cycles, settings, today, inactiveMarks: marks, inactiveDays }),
     [home, studioId, cycles, settings, today, marks, inactiveDays],
@@ -159,40 +191,36 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief, 
   const inLane = (lane: PipelineLane) => sortRows(visible.filter((r) => r.lane === lane));
   const count = (lane: PipelineLane) => rows.filter((r) => r.lane === lane).length;
 
+  // The renewals dashboard (Oct 7 2026): every lane's row is the dashboard
+  // row (features/renewals/RenewalRow.tsx), the one My renewals draws too.
   const renderRow = (r: PipelineRow) => {
     const s = r.snapshot;
-    const latest = latestLine(r.cycle, today);
-    const proof = proofSentence(s, r.inbodyVariation);
     return (
-      <AdminRow
+      <RenewalRow
         key={r.clientId}
-        onClick={() => {
+        studioId={studioId}
+        clientId={r.clientId}
+        name={r.name}
+        snapshot={s}
+        cycle={r.cycle}
+        cyclesFailed={cyclesFailed}
+        settings={settings}
+        today={today}
+        trainerName={s.primaryTrainerId ? trainerNames.get(s.primaryTrainerId) ?? null : null}
+        proof={proofSentence(s, r.inbodyVariation)}
+        nextStep={nextStep(s, r.cycle, settings, today)}
+        badges={
+          <>
+            <AdminBadge tone={TONE_BADGE[SITUATION_TONE[s.situation]]}>{situationWord(s.situation)}</AdminBadge>
+            {r.cycle?.needsLeader && <AdminBadge tone="warn">Needs a leader</AdminBadge>}
+          </>
+        }
+        onOpen={() => {
           const c = clientsById.get(r.clientId);
           if (c) onOpenBrief(c);
         }}
-        name={
-          <span className="inline-flex flex-wrap items-center gap-2">
-            {r.name}
-            {r.cycle?.needsLeader && <AdminBadge tone="warn">Needs a leader</AdminBadge>}
-          </span>
-        }
-        meta={
-          <span className="flex flex-col gap-0.5">
-            <span>
-              {s.packageLabel ? `${s.packageLabel.split(" · ")[0]} · ` : ""}
-              {chipText(s, today)}
-            </span>
-            <span>{latest ?? "Nobody has talked to them yet"}</span>
-            {proof && <span>{proof}</span>}
-            <span className="font-semibold">{nextStep(s, r.cycle, settings, today)}</span>
-          </span>
-        }
-        trailing={
-          <span className="inline-flex items-center gap-2">
-            <AdminBadge tone={TONE_BADGE[SITUATION_TONE[s.situation]]}>{situationWord(s.situation)}</AdminBadge>
-            <ChevronRight className="w-4 h-4 opacity-50" />
-          </span>
-        }
+        canPlan={canPlan}
+        authorName={authorName}
       />
     );
   };
@@ -220,11 +248,11 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief, 
           byMonth(list).map((g) => (
             <div key={g.month}>
               <p className="adm-label px-4 pt-3">{g.label}</p>
-              <AdminRows>{g.rows.map(renderRow)}</AdminRows>
+              <RenewalRowList label={`${LANE_TITLES[lane]}, ${g.label}`}>{g.rows.map(renderRow)}</RenewalRowList>
             </div>
           ))
         ) : (
-          <AdminRows>{list.map(renderRow)}</AdminRows>
+          <RenewalRowList label={LANE_TITLES[lane]}>{list.map(renderRow)}</RenewalRowList>
         )}
       </AdminPanel>
     );
@@ -375,23 +403,4 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief, 
       )}
     </div>
   );
-}
-
-function situationWord(s: string): string {
-  switch (s) {
-    case "will-bank":
-      return "Will bank";
-    case "will-run-out":
-      return "Runs out early";
-    case "ended":
-      return "Ended";
-    case "lapsed":
-      return "Lapsed";
-    case "away":
-      return "Away";
-    case "unknown":
-      return "No data";
-    default:
-      return "On track";
-  }
 }

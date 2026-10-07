@@ -1,5 +1,6 @@
 import { studioDateKey, studioTodayKey } from "../../lib/studio-time";
-import { concernLabel, interestLabel, leaningLabel } from "./conversation";
+import { interestLabel } from "./conversation";
+import { touchHeadline } from "./row-facts";
 import { dayLabel } from "./sentences";
 import { useRenewalTouches } from "./useRenewalCycle";
 
@@ -38,8 +39,7 @@ export function TouchHistory({
           {(compact ? touches.slice(0, 3) : touches).map((t) => (
             <li key={t.id} className={compact ? "px-3 py-2" : "p-3"}>
               <p className="text-[13px] font-bold text-slate-800 dark:text-slate-100">
-                {leaningLabel(t.leaning)}
-                {t.concerns.length > 0 && ` — ${t.concerns.map(concernLabel).join(", ").toLowerCase()}`}
+                {touchHeadline(t)}
                 {t.needsLeader && (
                   <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[12px] font-bold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
                     Needs a leader

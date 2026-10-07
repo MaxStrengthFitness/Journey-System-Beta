@@ -24,6 +24,7 @@ import { effectiveStage } from "./conversation";
 import { dayLabel } from "./sentences";
 import { upgradeVerdict } from "./options";
 import { planNextStep } from "./plan";
+import { planUndecided, saidNotRenewing } from "./row-facts";
 import type { InBodyVariation } from "../inbody/variation";
 import type { RenewalCycle, RenewalSettings, RenewalSnapshot } from "./types";
 
@@ -134,7 +135,14 @@ export interface PipelineRow {
   inbodyVariation: InBodyVariation;
 }
 
-export type PipelineFilter = "all" | "needs-leader" | "price" | "upgrade" | "not-talked";
+export type PipelineFilter =
+  | "all"
+  | "needs-leader"
+  | "price"
+  | "upgrade"
+  | "not-talked"
+  | "plan-undecided"
+  | "not-renewing";
 
 export const FILTER_LABELS: Record<PipelineFilter, string> = {
   all: "Everyone",
@@ -142,6 +150,9 @@ export const FILTER_LABELS: Record<PipelineFilter, string> = {
   price: "On the fence about price",
   upgrade: "Upgrade candidates",
   "not-talked": "Nobody has talked to them",
+  // The renewals dashboard (Oct 7 2026): the studio's plan (plan.ts).
+  "plan-undecided": "Plan: not decided",
+  "not-renewing": "Not renewing",
 };
 
 export function matchesFilter(row: PipelineRow, filter: PipelineFilter, settings: RenewalSettings): boolean {
@@ -154,6 +165,10 @@ export function matchesFilter(row: PipelineRow, filter: PipelineFilter, settings
       return upgradeVerdict(row.snapshot, settings, row.inbodyVariation).candidate;
     case "not-talked":
       return !row.cycle?.lastTouchAt;
+    case "plan-undecided":
+      return planUndecided(row.cycle);
+    case "not-renewing":
+      return saidNotRenewing(row.cycle);
     default:
       return true;
   }

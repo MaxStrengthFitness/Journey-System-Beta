@@ -48,12 +48,11 @@ import {
 } from "../../renewals/sentences";
 import {
   STAGES,
-  concernLabel,
   effectiveStage,
   interestLabel,
   latestLine,
-  leaningLabel,
 } from "../../renewals/conversation";
+import { touchHeadline } from "../../renewals/row-facts";
 import { gainSentence, healthLines, journeyLines, strengthGains } from "../../renewals/brief";
 import { OUTCOMES, closedOnFor } from "../../renewals/outcomes";
 import { optionsFor, upgradeVerdict } from "../../renewals/options";
@@ -465,7 +464,7 @@ export function RenewalBrief({
                     {touches.map((t) => (
                       <AdminRow
                         key={t.id}
-                        name={`${leaningLabel(t.leaning)}${t.concerns.length ? ` — ${t.concerns.map(concernLabel).join(", ").toLowerCase()}` : ""}`}
+                        name={touchHeadline(t)}
                         meta={[
                           t.authorName,
                           studioDateKey((t.at ?? null) as any) ? dayLabel(studioDateKey(t.at as any), today) : null,

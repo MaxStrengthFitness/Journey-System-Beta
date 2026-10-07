@@ -164,6 +164,9 @@ export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainer
                 onOpenBrief={setBriefClient}
                 roster={roster}
                 rosterStatus={rosterStatus}
+                trainers={trainers}
+                authTrainer={authTrainer}
+                planSettingsReady={!error && forStudioId === studioId}
               />
             </div>
           )}
