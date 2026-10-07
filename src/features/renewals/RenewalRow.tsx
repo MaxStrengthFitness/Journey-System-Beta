@@ -49,8 +49,8 @@ export interface RenewalRowProps {
   proof?: string | null;
   /**
    * The Left now cell's words, when a list says it its own way: Running low
-   * says the total and when it runs out (running-low.ts leftLine) for a
-   * client whose record has no ledger yet. Else the row's own (the ledger).
+   * adds when the sessions run out (running-low.ts lowLeftNow). Else the
+   * row's own (the ledger).
    */
   leftNow?: string | null;
   /** The next step (pipeline.ts nextStep), said above the plan. */

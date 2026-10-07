@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inactiveOnRecord, leftLine, notKnownLine, runningLow, runningLowFoot, type RunningLowInput } from "./running-low";
+import { inactiveOnRecord, leftLine, lowLeftNow, notKnownLine, runningLow, runningLowFoot, type RunningLowInput } from "./running-low";
 import { DEFAULT_RENEWAL_SETTINGS } from "../../renewals/settings";
 import type { RenewalCycle, RenewalSnapshot } from "../../renewals/types";
 import type { Client } from "../../../types";
@@ -219,6 +219,19 @@ describe("running low: the words", () => {
 
   it("puts the year on a run-out date in another year", () => {
     expect(leftLine(snap({ sessionsLeft: 8, runOutDate: "2027-05-18" }), TODAY)).toBe("8 left · runs out around May 18, 2027");
+  });
+
+  it("says the ledger on the dashboard row, and still when the sessions run out", () => {
+    const ledger = { carriedIn: 4, thisContract: 5, toCome: 0, extra: 0, total: 9, source: "mindbody" as const, asOf: null };
+    // No ledger yet: the list's own line.
+    expect(lowLeftNow(snap({ sessionsLeft: 6 }), TODAY)).toBe("6 left · runs out around Oct 27");
+    // A ledger: the ledger, then when they run out.
+    expect(lowLeftNow(snap({ sessionsLeft: 9, ledger }), TODAY)).toBe("9 left: 4 rolled over · 5 this contract · runs out around Oct 27");
+    // At the end already says it: not twice.
+    const projection = { endsOn: "2026-12-01", endsOnSource: "mindbody" as const, booked: 2, bookedThrough: "2026-10-10", paceWeeks: 3, pacePerWeek: 2, leftAtEnd: 0, leftAtEndLow: 0, leftAtEndHigh: 0, runOutDate: "2026-10-27" };
+    expect(lowLeftNow(snap({ sessionsLeft: 9, ledger, projection }), TODAY)).toBe("9 left: 4 rolled over · 5 this contract");
+    // No run-out date: the ledger alone.
+    expect(lowLeftNow(snap({ sessionsLeft: 9, ledger, runOutDate: null }), TODAY)).toBe("9 left: 4 rolled over · 5 this contract");
   });
 
   it("names the studio's number on the tile, and says the not-known once", () => {

@@ -201,8 +201,10 @@ describe("RenewalsPipeline — Running low", () => {
     const low = panel(host, "Running low")!;
     const row = low.querySelector<HTMLElement>(".rr")!;
     expect(row.querySelector(".rr__name")?.textContent).toBe("Sasha Reyes");
-    // A record with a ledger says it the way the lanes do.
+    // A record with a ledger says it the way the lanes do; when the sessions
+    // run out is said once, by At the end here (running-low.ts lowLeftNow).
     expect(row.querySelector(".rr__cell--left .rr__value")?.textContent).toBe("9 left: 4 rolled over · 5 this contract");
+    expect(row.querySelector(".rr__cell--atend")?.textContent).toContain("Runs out around Nov 20");
     expect(row.textContent).toContain("Jen Park");
     const sel = row.querySelector<HTMLSelectElement>('select[aria-label="Renewal plan for Sasha Reyes"]')!;
     expect(optionsOf(sel)).toContain("Same package");

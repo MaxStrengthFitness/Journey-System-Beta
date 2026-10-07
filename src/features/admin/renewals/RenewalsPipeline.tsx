@@ -65,7 +65,7 @@ import { proofSentence, SITUATION_TONE } from "../../renewals/sentences";
 import { useInBodyVariationLookup } from "../../inbody/useInBodyVariation";
 import { useInactiveMarks } from "../journey/inactive-store";
 import { useStudioSettings } from "../../studio-settings/useStudioSettings";
-import { leftLine, notKnownLine, runningLow, runningLowFoot } from "./running-low";
+import { lowLeftNow, notKnownLine, runningLow, runningLowFoot } from "./running-low";
 import { mayHaveLane, renewalLane, type RenewalLaneContext } from "./lanes";
 import type { RosterStatus } from "../../../hooks/useStudioRoster";
 import { useCyclesRead, useMissingDataClients, useMissingDataCount } from "../../renewals/usePipeline";
@@ -321,15 +321,15 @@ export function RenewalsPipeline({
             <AdminEmpty title="Nobody is running low">{`Nobody at ${studioName} has ${settings.conversationAtSessionsLeft} or fewer sessions left.`}</AdminEmpty>
           ) : (
             // The dashboard row, as the lanes draw it (AJ, Oct 7 2026: "Yes").
-            // Fewest left first, as running-low.ts sorts them. A record with
-            // no ledger yet says the total its own way: what it is made of,
-            // and when it runs out.
+            // Fewest left first, as running-low.ts sorts them. Left now says
+            // when the sessions run out, as this list always has
+            // (running-low.ts lowLeftNow).
             <RenewalRowList label="Running low">
               {low.rows.map((r) => {
                 const c = clientsById.get(r.clientId);
                 return renderRow(
                   { ...r, inbodyVariation: variationFor(c) },
-                  r.snapshot.ledger ? null : leftLine(r.snapshot, today),
+                  lowLeftNow(r.snapshot, today),
                 );
               })}
             </RenewalRowList>

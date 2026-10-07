@@ -38,7 +38,7 @@
 import { daysBetween } from "../../client-history/model";
 import { clientDisplayName } from "../../../lib/client-name";
 import { markHolds, pastInactiveLine, type InactiveMark } from "../journey/inactive";
-import { dayLabel } from "../../renewals/sentences";
+import { dayLabel, ledgerSentence } from "../../renewals/sentences";
 import type { RenewalCycle, RenewalSettings, RenewalSnapshot } from "../../renewals/types";
 import type { Client } from "../../../types";
 
@@ -144,6 +144,24 @@ export function leftLine(
   } else count = `${left} left${est}`;
   const when = left > 0 && s.runOutDate ? `runs out around ${dayLabel(s.runOutDate, today)}` : null;
   return [count, when].filter(Boolean).join(" · ");
+}
+
+/**
+ * Running low's Left now on the dashboard row. A record with no ledger yet
+ * says leftLine. One with a ledger says the ledger, as the lanes do, and
+ * still says when the sessions run out, unless the row's At the end already
+ * does (a projection with its own run-out date): "9 left: 4 rolled over · 5
+ * this contract · runs out around Oct 27".
+ */
+export function lowLeftNow(
+  s: Pick<RenewalSnapshot, "sessionsLeft" | "sessionsLeftSource" | "sessionsOnHand" | "paymentsLeft" | "runOutDate" | "ledger" | "projection">,
+  today: string,
+): string {
+  const ledger = ledgerSentence(s);
+  if (!ledger) return leftLine(s, today);
+  const left = Math.max(0, s.sessionsLeft ?? 0);
+  if (left === 0 || !s.runOutDate || s.projection?.runOutDate) return ledger;
+  return `${ledger} · runs out around ${dayLabel(s.runOutDate, today)}`;
 }
 
 /** The tile's foot: "10 or fewer left, in total". */
