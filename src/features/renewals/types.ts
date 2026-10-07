@@ -283,6 +283,20 @@ export interface RenewalSnapshot {
   rate?: RenewalRate | null;
   /** The smaller retention signals, each said as a sentence (sentences.ts). */
   signals?: RetentionSignals | null;
+
+  /* ---- Ahead (Oct 7 2026, AJ's "2a"). Absent on older snapshots. ---- */
+
+  /**
+   * The client's slowest and fastest 4-week pace (projection.ts `paceRange`),
+   * so every date can carry its range. Null with fewer than two 4-week
+   * windows that clear the minimum sample, or without a pace.
+   */
+  paceRange?: { slowest: number; fastest: number } | null;
+  /**
+   * When the sessions run out at the fastest and the slowest 4-week pace,
+   * `runOutDate` between them. Null without a range, or when both say the same day.
+   */
+  runOutRange?: { earliest: string; latest: string } | null;
 }
 
 /**

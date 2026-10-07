@@ -9,6 +9,7 @@ import {
   paceRange,
   paceTrendOf,
   projectAtEnd,
+  projectionStart,
   rateOf,
   runOutDay,
   suggestPackage,
@@ -248,5 +249,61 @@ describe("rateOf", () => {
         paymentMode: "monthly",
       }),
     ).toBeNull();
+  });
+});
+
+describe("projectionStart (Ahead, AJ's 2a: the dates count from the day Mindbody counted)", () => {
+  const away: never[] = [];
+  it("with Mindbody's remaining already net of the bookings, starts after them, from the count's day", () => {
+    // Counted today, nothing booked: the pace starts today, as it always did.
+    expect(projectionStart({ sessionsLeft: 20, countedOn: TODAY, today: TODAY, pacePerWeek: 2, bookedAhead: [], away })).toEqual({
+      from: TODAY,
+      left: 20,
+      booked: [],
+      countedOn: TODAY,
+    });
+    // Counted 10 days ago: the pace has been using it since then.
+    expect(projectionStart({ sessionsLeft: 20, countedOn: T(-10), today: TODAY, pacePerWeek: 2, bookedAhead: [], away }).from).toBe(T(-10));
+    // Booked through T(20): those visits use sessions the count no longer
+    // holds, so the count is used after them; the span on file now stands in
+    // for the one on file at the count.
+    expect(projectionStart({ sessionsLeft: 20, countedOn: TODAY, today: TODAY, pacePerWeek: 2, bookedAhead: [T(2), T(20)], away }).from).toBe(T(20));
+    expect(projectionStart({ sessionsLeft: 20, countedOn: T(-10), today: TODAY, pacePerWeek: 2, bookedAhead: [T(2), T(20)], away }).from).toBe(T(10));
+    // Never subtracted a second time.
+    expect(projectionStart({ sessionsLeft: 20, countedOn: TODAY, today: TODAY, pacePerWeek: 2, bookedAhead: [T(2), T(20)], away }).left).toBe(20);
+  });
+
+  it("with Mindbody's remaining still holding the bookings, uses the pace up to today and keeps the booked days to come off first", () => {
+    const s = projectionStart({
+      sessionsLeft: 20,
+      countedOn: T(-14),
+      today: TODAY,
+      pacePerWeek: 2,
+      bookedAhead: [T(2), T(5)],
+      away,
+      remainingIncludesBooked: false,
+    });
+    // Two weeks at 2 a week since the count.
+    expect(s).toEqual({ from: TODAY, left: 16, booked: [T(2), T(5)], countedOn: T(-14) });
+    // Away days since the count used nothing.
+    expect(
+      projectionStart({
+        sessionsLeft: 20,
+        countedOn: T(-14),
+        today: TODAY,
+        pacePerWeek: 2,
+        bookedAhead: [],
+        away: [{ from: T(-13), to: T(-7), reason: "Vacation" }],
+        remainingIncludesBooked: false,
+      }).left,
+    ).toBe(18);
+  });
+
+  it("treats a count with no usable day as today's", () => {
+    for (const countedOn of [null, "soon", T(3)]) {
+      const s = projectionStart({ sessionsLeft: 20, countedOn, today: TODAY, pacePerWeek: 2, bookedAhead: [], away });
+      expect(s.from).toBe(TODAY);
+      expect(s.countedOn).toBeNull();
+    }
   });
 });

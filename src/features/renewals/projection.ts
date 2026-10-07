@@ -193,6 +193,66 @@ export function runOutDay(params: {
 }
 
 /* ------------------------------------------------------------------ *
+ * Where the projection starts (Ahead, Oct 7 2026)
+ * ------------------------------------------------------------------ */
+
+/**
+ * The day the pace starts using the count up, and what the count holds then.
+ *
+ * AJ, Oct 7 2026 ("2a"): the dates count from the day Mindbody counted, not
+ * from the night the job ran. Sessions left is Mindbody's number at its last
+ * pull, and a client is pulled at a sale, weekly near the end of a package
+ * and otherwise monthly, so the count can be weeks old. Counting forward from
+ * tonight with it put every date later by the count's age, and a date six
+ * months out could be weeks late. Counting from the count's own day keeps
+ * the dates still between pulls.
+ *
+ * Which day that is depends on whether Mindbody's remaining has already taken
+ * the booked visits off (`MINDBODY_REMAINING_INCLUDES_BOOKED`):
+ *   - It has (the default): the booked visits use sessions the count no
+ *     longer holds, so the count is used AFTER them. The bookings on file now
+ *     stand in for the ones on file at the count (a regular's standing
+ *     bookings run about as far ahead from week to week): the pace starts
+ *     that many days after the count's day.
+ *   - It hasn't: the count still holds them. The pace used the count from
+ *     its day to today, then the booked days come off, then the pace again.
+ *
+ * Never a screen's count-down: this only places the dates, and sessions left
+ * on every screen stays Mindbody's number. A count from visits (no pricing
+ * options on file) is today's already (`countedOn` null).
+ */
+export function projectionStart(params: {
+  sessionsLeft: number | null;
+  /** The day Mindbody counted (`ledger.asOf`); null when the count is today's. */
+  countedOn: string | null;
+  today: string;
+  pacePerWeek: number | null;
+  /** The distinct booked days from today, soonest first (the bookings' read horizon). */
+  bookedAhead: readonly string[];
+  away: readonly AwayRange[];
+  remainingIncludesBooked?: boolean;
+}): { from: string; left: number | null; booked: string[]; countedOn: string | null } {
+  const { sessionsLeft, today, pacePerWeek, bookedAhead, away } = params;
+  const includes = params.remainingIncludesBooked ?? MINDBODY_REMAINING_INCLUDES_BOOKED;
+  const countedOn =
+    typeof params.countedOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(params.countedOn) && params.countedOn <= today
+      ? params.countedOn
+      : null;
+  const base = countedOn ?? today;
+  if (includes) {
+    const last = bookedAhead.length > 0 ? bookedAhead[bookedAhead.length - 1] : null;
+    const span = last && last > today ? daysBetween(today, last) : 0;
+    return { from: addDays(base, span), left: sessionsLeft, booked: [], countedOn };
+  }
+  let left = sessionsLeft;
+  if (left !== null && countedOn && countedOn < today && pacePerWeek !== null && pacePerWeek > 0) {
+    const days = daysBetween(countedOn, today) - awayDaysBetween(addDays(countedOn, 1), today, away);
+    left = Math.max(0, Math.round(left - (pacePerWeek * Math.max(0, days)) / 7));
+  }
+  return { from: today, left, booked: [...bookedAhead], countedOn };
+}
+
+/* ------------------------------------------------------------------ *
  * The projection at the commitment's end
  * ------------------------------------------------------------------ */
 

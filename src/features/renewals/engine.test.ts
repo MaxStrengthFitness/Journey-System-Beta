@@ -198,7 +198,10 @@ describe("the two clocks", () => {
   it("is on track at exactly twice a week", () => {
     const snap = monthly({ mindbodyServices: { a: service(1, "96 Sessions - 2X Week", 0) } }, visitsAt(2, "2026-06-01"));
     expect(snap.sessionsLeft).toBe(16);
-    expect(snap.bankedAtCharge).toBe(0);
+    // The visit booked two days ahead is already out of Mindbody's count, so
+    // the 16 are used after it: 54 days at 2 a week leaves about 1 (Ahead,
+    // Oct 7 2026). Still on track: well under the 4 that make it "will bank".
+    expect(snap.bankedAtCharge).toBe(1);
     expect(snap.situation).toBe("on-track");
   });
 

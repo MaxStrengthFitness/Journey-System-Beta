@@ -82,12 +82,55 @@ export function laneOf(
 /**
  * When the "10 sessions left" conversation will come due, at the client's
  * pace. Null when it already has, or when there's no pace to project from.
+ *
+ * Counted from the day Mindbody counted (the ledger's `asOf`; AJ, Oct 7 2026,
+ * "2a"), not from today: the threshold is on Mindbody's own number, which
+ * falls with the visits (or the bookings) from that day, so a count weeks old
+ * no longer pushes the date later every night. A day the pace has already
+ * passed says today: by the pace it is about now.
  */
-export function conversationDueDate(s: RenewalSnapshot, settings: RenewalSettings, today: string): string | null {
-  if (s.sessionsLeft === null || s.pacePerWeek === null || s.pacePerWeek <= 0) return null;
+export function conversationDueDate(
+  s: Pick<RenewalSnapshot, "sessionsLeft" | "pacePerWeek"> & Partial<Pick<RenewalSnapshot, "ledger">>,
+  settings: Pick<RenewalSettings, "conversationAtSessionsLeft">,
+  today: string,
+): string | null {
+  return conversationDueAt(s, settings, today, s.pacePerWeek);
+}
+
+/**
+ * The same day at the client's fastest and slowest 4-week pace, with the
+ * day itself between them (Ahead's range). Null without a date; the
+ * earliest and latest are the day itself without a pace range.
+ */
+export function conversationDueRange(
+  s: Pick<RenewalSnapshot, "sessionsLeft" | "pacePerWeek"> & Partial<Pick<RenewalSnapshot, "ledger" | "paceRange">>,
+  settings: Pick<RenewalSettings, "conversationAtSessionsLeft">,
+  today: string,
+): { on: string; earliest: string; latest: string } | null {
+  const on = conversationDueDate(s, settings, today);
+  if (!on) return null;
+  const fast = s.paceRange ? conversationDueAt(s, settings, today, s.paceRange.fastest) : null;
+  const slow = s.paceRange ? conversationDueAt(s, settings, today, s.paceRange.slowest) : null;
+  return {
+    on,
+    earliest: fast && fast < on ? fast : on,
+    latest: slow && slow > on ? slow : on,
+  };
+}
+
+function conversationDueAt(
+  s: Pick<RenewalSnapshot, "sessionsLeft"> & Partial<Pick<RenewalSnapshot, "ledger">>,
+  settings: Pick<RenewalSettings, "conversationAtSessionsLeft">,
+  today: string,
+  pace: number | null,
+): string | null {
+  if (s.sessionsLeft === null || pace === null || pace <= 0) return null;
   const extra = s.sessionsLeft - settings.conversationAtSessionsLeft;
   if (extra <= 0) return null;
-  return addDays(today, Math.ceil((extra / s.pacePerWeek) * 7));
+  const asOf = s.ledger?.asOf;
+  const from = typeof asOf === "string" && /^\d{4}-\d{2}-\d{2}$/.test(asOf) && asOf <= today ? asOf : today;
+  const day = addDays(from, Math.ceil((extra / pace) * 7));
+  return day < today ? today : day;
 }
 
 /** The next step, in words, for a pipeline row. */

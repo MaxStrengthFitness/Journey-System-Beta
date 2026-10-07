@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { byMonth, conversationDueDate, horizonEnd, LANE_HINTS, laneOf, matchesFilter, nextStep, sortRows, type PipelineRow } from "./pipeline";
+import { byMonth, conversationDueDate, conversationDueRange, horizonEnd, LANE_HINTS, laneOf, matchesFilter, nextStep, sortRows, type PipelineRow } from "./pipeline";
 import { DEFAULT_RENEWAL_SETTINGS } from "./settings";
 import { DEFAULT_INBODY_VARIATION, normalizeInBodyVariation } from "../inbody/variation";
 import type { RenewalCycle, RenewalSnapshot } from "./types";
@@ -105,6 +105,30 @@ describe("next step", () => {
     expect(conversationDueDate(snap({}), S, TODAY)).toBe("2026-10-16");
     expect(nextStep(snap({}), null, S, TODAY)).toBe("Conversation due around Oct 16");
     expect(conversationDueDate(snap({ sessionsLeft: 8 }), S, TODAY)).toBeNull();
+  });
+
+  it("counts from the day Mindbody counted, not from today (Ahead, AJ's 2a)", () => {
+    const ledger = (asOf: string | null) => ({ carriedIn: 0, thisContract: 20, toCome: 0, extra: 0, total: 20, source: "mindbody" as const, asOf });
+    // Counted two weeks ago: 5 weeks from Aug 28, not from today.
+    expect(conversationDueDate(snap({ ledger: ledger("2026-08-28") }), S, TODAY)).toBe("2026-10-02");
+    // A pull day that is today, unknown, or in the future counts from today.
+    expect(conversationDueDate(snap({ ledger: ledger(TODAY) }), S, TODAY)).toBe("2026-10-16");
+    expect(conversationDueDate(snap({ ledger: ledger(null) }), S, TODAY)).toBe("2026-10-16");
+    expect(conversationDueDate(snap({ ledger: ledger("2026-09-20") }), S, TODAY)).toBe("2026-10-16");
+    // So old that the pace has already passed it: about now.
+    expect(conversationDueDate(snap({ ledger: ledger("2026-07-01") }), S, TODAY)).toBe(TODAY);
+  });
+
+  it("gives the range from the fastest and slowest 4-week pace", () => {
+    // 10 to go: at 2.5 a week 4 weeks, at 2 five, at 1.5 about seven.
+    expect(conversationDueRange(snap({ paceRange: { slowest: 1.5, fastest: 2.5 } }), S, TODAY)).toEqual({
+      on: "2026-10-16",
+      earliest: "2026-10-09",
+      latest: "2026-10-28",
+    });
+    // Without a range, the day itself both ways; without a date, nothing.
+    expect(conversationDueRange(snap({}), S, TODAY)).toEqual({ on: "2026-10-16", earliest: "2026-10-16", latest: "2026-10-16" });
+    expect(conversationDueRange(snap({ sessionsLeft: 8 }), S, TODAY)).toBeNull();
   });
 });
 

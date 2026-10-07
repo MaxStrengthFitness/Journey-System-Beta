@@ -55,6 +55,7 @@ import {
   paceTrendOf,
   paceTrendWindows,
   projectAtEnd,
+  projectionStart,
   rateOf,
   runOutDay,
   suggestPackage,
@@ -787,22 +788,44 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
     commitmentEndSource = "estimate";
   }
 
-  // The bookings Mindbody holds from today come off first, then the pace
-  // from the last booked day (projection.ts). With nothing booked, both
-  // numbers are the arithmetic they always were.
-  const booked = bookedDaysAhead(attendance, today, null);
-  const runOutDate = runOutDay({ sessionsLeft, booked, pacePerWeek: perWeek, today, away: awayAhead });
+  // The dates count from the day Mindbody counted (Ahead, Oct 7 2026, AJ's
+  // "2a"): the count is used up from its own day, after the visits Mindbody
+  // already took off for, or with the booked days coming off first where it
+  // didn't (projection.ts `projectionStart`). A count from visits is today's.
+  const countedOn = sessionsOnHand !== null ? countedOnOf(client, input.timeZone) : null;
+  const start = projectionStart({
+    sessionsLeft,
+    countedOn,
+    today,
+    pacePerWeek: perWeek,
+    bookedAhead: bookedDaysAhead(attendance, today, null, false),
+    away: awayAhead,
+  });
+  const range = perWeek === null ? null : paceRange({ used: usedDays, today, floor: pace.windowStart, away: awayAhead });
+  // A count old enough that the pace would already have used it up says
+  // "about now", never a day in the past.
+  const runOutAt = (p: number | null): string | null => {
+    const d = runOutDay({ sessionsLeft: start.left, booked: start.booked, pacePerWeek: p, today: start.from, away: awayAhead });
+    return d && d < today ? today : d;
+  };
+  const runOutDate = runOutAt(perWeek);
+  const runOutEarliest = range ? runOutAt(range.fastest) : null;
+  const runOutLatest = range ? runOutAt(range.slowest) : null;
+  const runOutRange =
+    runOutDate && runOutEarliest && runOutLatest && runOutEarliest !== runOutLatest
+      ? { earliest: minKey(runOutEarliest, runOutDate)!, latest: maxKey(runOutLatest, runOutDate)! }
+      : null;
 
   let projection: RenewalProjection | null = null;
-  if (commitmentEnd && commitmentEndSource && commitmentEnd >= today && sessionsLeft !== null) {
+  if (commitmentEnd && commitmentEndSource && commitmentEnd >= today && start.left !== null) {
     projection = projectAtEnd({
-      sessionsLeft,
+      sessionsLeft: start.left,
       endsOn: commitmentEnd,
       endsOnSource: commitmentEndSource,
-      today,
-      booked,
+      today: start.from,
+      booked: start.booked,
       pacePerWeek: perWeek,
-      range: paceRange({ used: usedDays, today, floor: pace.windowStart, away: awayAhead }),
+      range,
       away: awayAhead,
       runOutDate,
     });
@@ -1004,15 +1027,12 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
         ? mindbodyDayKey(balance.packageService.service.activeDate)
         : contracts.lastEnded?.start ?? null;
     const parts = ledgerParts(client.mindbodyServices, index, refStart, mindbodyDayKey);
-    const synced = client.mindbodyServicesSyncedAt;
     ledger = {
       ...parts,
       toCome: Math.max(0, sessionsLeft - sessionsOnHand),
       total: sessionsLeft,
       source: sessionsLeftSource,
-      asOf: typeof synced === "string" && /^\d{4}-\d{2}-\d{2}/.test(synced)
-        ? synced.slice(0, 10)
-        : studioDateKey((synced ?? null) as any, input.timeZone ?? "UTC"),
+      asOf: countedOnOf(client, input.timeZone),
     };
   }
 
@@ -1088,7 +1108,21 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
     projection,
     rate: rateOf({ contract: current?.contract ?? null, tier, paymentMode }),
     signals,
+    paceRange: range,
+    runOutRange,
   };
+}
+
+/**
+ * The studio's day of the Mindbody pull that sessions left came from (the
+ * ledger's `asOf`, and the day the projection counts from). Null when the
+ * pull's time isn't on file.
+ */
+export function countedOnOf(client: Pick<Client, "mindbodyServicesSyncedAt">, timeZone?: string): string | null {
+  const synced = client.mindbodyServicesSyncedAt;
+  return typeof synced === "string" && /^\d{4}-\d{2}-\d{2}/.test(synced)
+    ? synced.slice(0, 10)
+    : studioDateKey((synced ?? null) as any, timeZone ?? "UTC");
 }
 
 /**

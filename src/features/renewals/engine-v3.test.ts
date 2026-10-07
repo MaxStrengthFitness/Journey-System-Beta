@@ -43,7 +43,9 @@ function client(over: Partial<Client> = {}): Client {
     isActive: true,
     remainingSessions: 0,
     mindbodyCommercialSyncedAt: "synced",
-    mindbodyServicesSyncedAt: "2026-09-10T04:12:00.000Z",
+    // Pulled this morning, so the projection counts from today; counting
+    // from an older pull has its own tests ("counts from the day Mindbody counted").
+    mindbodyServicesSyncedAt: "2026-09-11T04:12:00.000Z",
     ...over,
   } as Client;
 }
@@ -113,7 +115,7 @@ describe("the session ledger", () => {
       extra: 2,
       total: 54,
       source: "mindbody",
-      asOf: "2026-09-10",
+      asOf: "2026-09-11",
     });
     // The unmatched option is in no part, as it is in no balance.
     expect(snap.dataGaps.some((g) => g.includes("Mystery Pack"))).toBe(true);
@@ -182,9 +184,11 @@ describe("the projection at the commitment's end", () => {
   const base = (attendance: AttendanceRow[], over: Partial<Client> = {}) =>
     buildRenewalSnapshot(input({ client: rolledOver(over), attendance }));
 
-  it("does not take the bookings Mindbody holds off a second time (as shipped), with a range from the 4-week paces", () => {
+  it("never takes the bookings Mindbody holds off a second time, and uses the count after them (as shipped), with a range from the 4-week paces", () => {
     // MINDBODY_REMAINING_INCLUDES_BOOKED: Mindbody's remaining has already
-    // taken the booked visits off, so the projection is the pace from today.
+    // taken the booked visits off, so they are never subtracted again; they
+    // use sessions the count no longer holds, so the pace starts using the
+    // count after the last booked day (Ahead, Oct 7 2026, AJ's "2a").
     const s = base([...SLOWING, ...booked(T(1), T(5), T(8))]);
     expect(s.pacePerWeek).toBe(1.5);
     expect(s.commitmentEnd).toBe(END);
@@ -192,18 +196,20 @@ describe("the projection at the commitment's end", () => {
     const p = s.projection!;
     expect(p.booked).toBe(0);
     expect(p.bookedThrough).toBeNull();
-    // 140 days to the end: 20 weeks.
-    expect(p.paceWeeks).toBe(20);
-    // 54 − 1.5 × 20 = 24, exactly what version 2 said with or without bookings.
-    expect(p.leftAtEnd).toBe(24);
-    expect(s.bankedAtCharge).toBe(base(SLOWING).bankedAtCharge);
-    // Fastest 4 weeks (2×): 54 − 40 = 14. Slowest (1×): 54 − 20 = 34.
-    expect(p.leftAtEndLow).toBe(14);
-    expect(p.leftAtEndHigh).toBe(34);
+    // 132 days from the last booked day to the end: 18.9 weeks.
+    expect(p.paceWeeks).toBe(18.9);
+    // 54 − 1.5 × 18.86 = 25.7: about 26, where the pace from today said 24.
+    expect(p.leftAtEnd).toBe(26);
+    expect(s.bankedAtCharge).toBe(26);
+    expect(base(SLOWING).bankedAtCharge).toBe(24);
+    // Fastest 4 weeks (2×): 54 − 37.7 = 16. Slowest (1×): 54 − 18.9 = 35.
+    expect(p.leftAtEndLow).toBe(16);
+    expect(p.leftAtEndHigh).toBe(35);
     expect(p.runOutDate).toBeNull();
-    expect(projectionSentence(s, TODAY)).toBe("About 24 left when the commitment ends Jan 29, 2027 (14–34)");
+    expect(s.paceRange).toEqual({ slowest: 1, fastest: 2 });
+    expect(projectionSentence(s, TODAY)).toBe("About 26 left when the commitment ends Jan 29, 2027 (16–35)");
     // The extras are in what is projected, said the way the ledger says them.
-    expect(projectionWorking(s)).toBe("52 + 2 extra left, 1.5× a week for 20 weeks");
+    expect(projectionWorking(s)).toBe("52 + 2 extra left, 1.5× a week for 19 weeks");
   });
 
   it("with nothing booked is the old banked-at-the-charge arithmetic", () => {
@@ -227,12 +233,50 @@ describe("the projection at the commitment's end", () => {
       mindbodyServices: { a: service(1, "96 Sessions - 2X Week", 6, T(-3)) },
     });
     expect(s.sessionsLeft).toBe(6);
-    // 6 at 2 a week from today (the bookings are already out of Mindbody's
-    // remaining): 21 days, the version-2 day.
-    expect(s.runOutDate).toBe(T(21));
-    expect(s.projection?.runOutDate).toBe(T(21));
+    // The two booked visits are already out of Mindbody's remaining, so they
+    // come first; then 6 at 2 a week from the last of them: 21 days after
+    // T(3). Counting from today, as version 2 did, said T(21).
+    expect(s.runOutDate).toBe(T(24));
+    expect(s.projection?.runOutDate).toBe(T(24));
     expect(s.projection?.leftAtEnd).toBe(0);
-    expect(projectionSentence(s, TODAY)).toBe("Runs out around Oct 2, 17 weeks before it ends");
+    expect(projectionSentence(s, TODAY)).toBe("Runs out around Oct 5, 17 weeks before it ends");
+  });
+
+  it("counts from the day Mindbody counted, not from the night of the run (Ahead, AJ's 2a)", () => {
+    const pulled = (day: string) => base(SLOWING, { mindbodyServicesSyncedAt: `${day}T04:12:00.000Z` });
+    const fresh = pulled(TODAY);
+    const old = pulled(T(-14));
+    // The same 54 counted two weeks earlier runs out two weeks earlier...
+    expect(fresh.runOutDate).toBe(T(252));
+    expect(old.runOutDate).toBe(T(238));
+    // ...and leaves about 3 fewer when the commitment ends (1.5 a week for 2 more weeks).
+    expect(fresh.projection?.leftAtEnd).toBe(24);
+    expect(old.projection?.leftAtEnd).toBe(21);
+    expect(old.bankedAtCharge).toBe(21);
+    // Sessions left on every screen is still Mindbody's number, never counted down.
+    expect(old.sessionsLeft).toBe(54);
+    expect(old.ledger?.asOf).toBe(T(-14));
+  });
+
+  it("never puts the run-out day in the past: a count the pace has already used up says today", () => {
+    const s = base([...visitsAt(2, "2026-06-01")], {
+      mindbodyContracts: { "9001": contract({ id: 9001, startDate: START, endDate: END, upcomingAutopayEvents: [] }) },
+      mindbodyServices: { a: service(1, "96 Sessions - 2X Week", 2, T(-60)) },
+      mindbodyServicesSyncedAt: `${T(-30)}T04:12:00.000Z`,
+    });
+    expect(s.sessionsLeft).toBe(2);
+    expect(s.runOutDate).toBe(TODAY);
+  });
+
+  it("keeps the pace range and the run-out range, so every date can say its range", () => {
+    const s = base(SLOWING);
+    expect(s.paceRange).toEqual({ slowest: 1, fastest: 2 });
+    // 54 at 2 a week is 189 days; at 1 a week 378; the 1.5-a-week day between.
+    expect(s.runOutRange).toEqual({ earliest: T(189), latest: T(378) });
+    // No pace, no range.
+    const thin = buildRenewalSnapshot(input({ client: rolledOver(), attendance: visits(T(-3)), attendanceSince: T(-10) }));
+    expect(thin.paceRange).toBeNull();
+    expect(thin.runOutRange).toBeNull();
   });
 
   it("says 'Not enough to project yet' below the pace's minimum sample", () => {
