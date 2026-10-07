@@ -293,6 +293,8 @@ export interface MachineTotalsRead {
 }
 
 const STATES = new WeakMap<object, { state: MachineTotalsState; held: boolean }>();
+/** The last merge of each client object, with the answer it was made from. */
+const MERGED = new WeakMap<object, { read: MachineTotalsRead; merged: object }>();
 
 /**
  * The client with its totals folded in, and the totals' state remembered for
@@ -300,8 +302,16 @@ const STATES = new WeakMap<object, { state: MachineTotalsState; held: boolean }>
  * fields stand: before the migration that is the whole story.
  */
 export function withMachineTotals<C extends object>(client: C, read: MachineTotalsRead): C {
+  // The same client object with the same answer is the same merged object
+  // (the Wrap-up round, Oct 6 2026): AppContent rebuilds its client list on
+  // every roster change, and a new object for the client on screen each time
+  // redrew the whole session, the Wrap-up behind it and the profile for a
+  // change to somebody else.
+  const hit = MERGED.get(client);
+  if (hit && hit.read === read) return hit.merged as C;
   const merged = read.data ? ({ ...client, ...mergeMachineTotals(client as Record<string, unknown>, read.data) } as C) : ({ ...client } as C);
   STATES.set(merged, { state: read.state, held: read.state === "failed" && !!read.data && read.complete !== false });
+  MERGED.set(client, { read, merged });
   return merged;
 }
 

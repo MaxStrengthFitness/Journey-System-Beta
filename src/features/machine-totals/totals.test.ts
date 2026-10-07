@@ -188,6 +188,27 @@ describe("the client on screen", () => {
     expect(machineTotalsKnown(heldWhole)).toBe(true);
     expect(machineTotalsKnown(withMachineTotals(client, { state: "failed", data: { machineStats: {} }, complete: false }))).toBe(false);
   });
+
+  it("the same client with the same answer is the same object; a new answer or a changed client is a new one (the Wrap-up round, Oct 6 2026)", () => {
+    const read = { state: "ready" as const, data: { machineStats: { "m-a": { timesPerformed: 1 } } } };
+    const first = withMachineTotals(client, read);
+    // The roster changed for somebody else: the same client object, the same answer.
+    expect(withMachineTotals(client, read)).toBe(first);
+    // The totals answered again: a new object, with the new answer and its state.
+    const again = { state: "ready" as const, data: { machineStats: { "m-a": { timesPerformed: 2 } } } };
+    const second = withMachineTotals(client, again);
+    expect(second).not.toBe(first);
+    expect(second.machineStats!["m-a"].timesPerformed).toBe(6);
+    // The client's own document changed: a new object too.
+    const changed = { ...client, firstName: "Adah" };
+    const third = withMachineTotals(changed, again);
+    expect(third).not.toBe(second);
+    expect(third.firstName).toBe("Adah");
+    // A loading answer after a ready one is said as loading, never the ready one's state.
+    const loading = withMachineTotals(client, { state: "loading", data: null });
+    expect(machineTotalsStateOf(loading)).toBe("loading");
+    expect(machineTotalsKnown(loading)).toBe(false);
+  });
 });
 
 describe("planClientSplit: the migration", () => {
