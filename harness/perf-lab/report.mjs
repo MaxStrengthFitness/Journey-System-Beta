@@ -40,7 +40,12 @@ function phaseCpu(prof) {
   const out = {};
   for (const ph of names) {
     const per = prof.map((m) => ({ cpu: m.cpuPhases?.[ph] })).filter((m) => m.cpu);
-    out[ph] = { totalMs: median(per.map((m) => m.cpu.totalMs)), files: foldCpu(per, "files"), functions: foldCpu(per, "functions") };
+    out[ph] = {
+      totalMs: median(per.map((m) => m.cpu.totalMs)),
+      appMs: median(per.map((m) => m.cpu.appMs).filter((x) => typeof x === "number")),
+      files: foldCpu(per, "files"),
+      functions: foldCpu(per, "functions"),
+    };
   }
   return out;
 }
@@ -287,13 +292,15 @@ export function writeReport(results, outDir) {
       // By phase: each phase's CPU, and its top functions (the profile's samples between the phase's page times).
       if (m.cpuPhases) {
         L();
-        L(`By phase (${sc}): CPU ms, then the top functions.`);
+        L(
+          `By phase (${sc}): CPU ms; the app's share of it (samples with an app frame, src/, on the stack); then the top functions. A phase that is mostly not the app's is the libraries working on their own: in the lab, mostly Firestore taking in what the emulator sent.`,
+        );
         L();
-        L("| phase | CPU ms | top functions |");
-        L("| --- | ---: | --- |");
+        L("| phase | CPU ms | app ms | top functions |");
+        L("| --- | ---: | ---: | --- |");
         for (const [ph, c] of Object.entries(m.cpuPhases)) {
           const tops = (c.functions || []).slice(0, 6).map((f) => `${f.name.replace(/\|/g, "/")} ${f.ms}`).join("; ");
-          L(`| ${ph} | ${n(c.totalMs)} | ${tops} |`);
+          L(`| ${ph} | ${n(c.totalMs)} | ${c.appMs == null ? "-" : n(c.appMs)} | ${tops} |`);
         }
       }
     }

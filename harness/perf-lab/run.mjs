@@ -139,12 +139,89 @@ function instruments(offsetMs, bare) {
 `;
 }
 
+/* -- PERF_LAB_TRACE helpers -- */
+
+/** A line in the trace at this moment (the scenarios mark their phases with it). */
+export function traceMark(label) {
+  if (!process.env.PERF_LAB_TRACE) return;
+  try {
+    writeFileSync(process.env.PERF_LAB_TRACE, `${Date.now()}\tmark\t${label}\n`, { flag: "a" });
+  } catch {
+    /* a trace line is never worth a failed run */
+  }
+}
+
+/**
+ * The listen stream's WebChannel frames ("<length>\n<json>"), decoded into one
+ * summary line per frame: documents by collection with the targets they came
+ * for, deletes and removes, target changes (CURRENT, RESET, ...) and existence
+ * filters. What the iPad has to take in, and for which listener.
+ */
+function listenDecoder() {
+  const dec = new TextDecoder();
+  let buf = "";
+  const summarize = (frame) => {
+    let arr;
+    try {
+      arr = JSON.parse(frame);
+    } catch {
+      return `(frame ${frame.length} chars, unparsed)`;
+    }
+    const docs = new Map();
+    const parts = [];
+    let bytes = 0;
+    for (const item of Array.isArray(arr) ? arr : []) {
+      for (const m of Array.isArray(item?.[1]) ? item[1] : []) {
+        if (!m || typeof m !== "object") continue;
+        if (m.documentChange) {
+          const name = m.documentChange.document?.name?.split("/documents/")[1] ?? "?";
+          const coll = name.replace(/\/[^/]+$/, "").replace(/\/[^/]+\//g, "/*/");
+          const key = `${coll} T${(m.documentChange.targetIds || []).join(",")}${m.documentChange.removedTargetIds ? " -T" + m.documentChange.removedTargetIds.join(",") : ""}`;
+          const len = JSON.stringify(m.documentChange.document).length;
+          bytes += len;
+          const d = docs.get(key) || { n: 0, len: 0, one: name };
+          d.n += 1;
+          d.len += len;
+          docs.set(key, d);
+        } else if (m.documentDelete || m.documentRemove) {
+          const x = m.documentDelete || m.documentRemove;
+          parts.push(`${m.documentDelete ? "delete" : "remove"} ${(x.document || "").split("/documents/")[1]} T${(x.removedTargetIds || []).join(",")}`);
+        } else if (m.targetChange) {
+          const t = m.targetChange;
+          parts.push(`target ${t.targetChangeType || "NO_CHANGE"} T${(t.targetIds || []).join(",") || "*"}${t.cause ? " cause" : ""}`);
+        } else if (m.filter) parts.push(`filter T${m.filter.targetId} count=${m.filter.count}`);
+      }
+    }
+    for (const [key, d] of docs) parts.unshift(`docs ${key} x${d.n} ${Math.round(d.len / 1024)}KB${d.n === 1 ? " " + d.one : ""}`);
+    return parts.join(" | ") || null;
+  };
+  return {
+    push(bytes) {
+      buf += dec.decode(bytes, { stream: true });
+      const lines = [];
+      for (;;) {
+        const nl = buf.indexOf("\n");
+        if (nl < 0) break;
+        const len = Number(buf.slice(0, nl));
+        if (!Number.isFinite(len) || buf.length < nl + 1 + len) break;
+        const frame = buf.slice(nl + 1, nl + 1 + len);
+        buf = buf.slice(nl + 1 + len);
+        const s = summarize(frame);
+        if (s) lines.push(s);
+      }
+      return lines;
+    },
+  };
+}
+
 /* -- One Chrome, one profile, one rep -- */
 
 class Session {
   constructor({ profile, profileDir, baseUrl, maps, offsetMs, bare, profiled, network }) {
     Object.assign(this, { profile, profileDir, baseUrl, maps, offsetMs, bare, profiled, network });
     this.exceptions = 0;
+    /** Firestore saying its disk cache could not start (it then runs on memory and downloads everything again). */
+    this.cacheFallbacks = 0;
     this.net = { requests: 0, bytes: 0 };
     this.calibration = null;
   }
@@ -155,12 +232,23 @@ class Session {
     const page = await connectPage(this.chrome.port);
     this.page = page;
     page.on("Runtime.exceptionThrown", () => (this.exceptions += 1));
+    page.on("Runtime.consoleAPICalled", (p) => {
+      if (p.type !== "warning" && p.type !== "error") return;
+      const text = (p.args || []).map((a) => a.value ?? a.description ?? "").join(" ");
+      if (/memory cache|exclusive access|IndexedDb|IndexedDB|persistence/i.test(text)) {
+        this.cacheFallbacks += 1;
+        if (process.env.PERF_LAB_TRACE) traceMark(`console ${p.type}: ${text.slice(0, 300)}`);
+      }
+    });
     // The report's network line, on every run (the trace below adds its own
     // listeners beside these, never in their place).
     page.on("Network.requestWillBeSent", (p) => {
       if (!/^data:|^blob:/.test(p.request?.url || "")) this.net.requests += 1;
     });
-    page.on("Network.dataReceived", (p) => (this.net.bytes += p.encodedDataLength || 0));
+    page.on("Network.dataReceived", (p) => {
+      this.net.bytes += p.encodedDataLength || 0;
+      this.lastDataAt = Date.now();
+    });
     if (process.env.PERF_LAB_TRACE) {
       const fsT = await import("node:fs");
       const out = (line) => fsT.appendFileSync(process.env.PERF_LAB_TRACE, line + "\n");
@@ -184,11 +272,21 @@ class Session {
           fsT.appendFileSync(process.env.PERF_LAB_TRACE + ".bodies", `==== ${Math.round(p.wallTime * 1000)} ${kind} RID=${rid}\n${body}\n`);
         }
         out(`${Math.round(p.wallTime * 1000)}\tsend\t${p.request.method} ${kind} RID=${rid} ${p.requestId} body=${(p.request.postData || "").length}`);
+        // What arrives on the listen stream, decoded (`recv` lines): which targets the documents came for.
+        if (p.request.method === "GET" && kind === "Listen") {
+          const r = reqs.get(p.requestId);
+          r.stream = listenDecoder();
+          page.send("Network.streamResourceContent", { requestId: p.requestId }).then((res) => {
+            if (res?.bufferedData) for (const line of r.stream.push(Buffer.from(res.bufferedData, "base64"))) out(`${Math.round(Date.now())}\trecv\t${kind}\t${line}`);
+          }).catch(() => {});
+        }
       });
       page.on("Network.dataReceived", (p) => {
         const r = reqs.get(p.requestId);
         if (!r || off == null || r.method !== "GET") return;
-        out(`${Math.round(p.timestamp * 1000 + off)}\tdata\t${r.kind} ${p.requestId} +${p.dataLength}`);
+        const at = Math.round(p.timestamp * 1000 + off);
+        out(`${at}\tdata\t${r.kind} ${p.requestId} +${p.dataLength}`);
+        if (p.data && r.stream) for (const line of r.stream.push(Buffer.from(p.data, "base64"))) out(`${at}\trecv\t${r.kind}\t${line}`);
       });
       page.on("Network.loadingFinished", (p) => {
         const r = reqs.get(p.requestId);
@@ -261,7 +359,21 @@ class Session {
    * V8's code cache go too (IndexedDB, the Firestore cache, stays): the first
    * open after a deploy, when every file has a new name.
    */
+  /**
+   * Waits until nothing has arrived from the database for `quietMs` and the page has gone quiet, so what it
+   * downloaded has had the time to reach its disk cache (IndexedDB) before Chrome is closed or the page
+   * reloaded. Without it a slowed iPad profile was sometimes closed while Firestore was still writing the
+   * last download, and the next open downloaded everything again (the "old-iPad evening anomaly" of Oct 6
+   * 2026: harness/perf-lab/README.md).
+   */
+  async cacheQuiet(quietMs = 2000, capMs = 20000) {
+    const t0 = Date.now();
+    while (Date.now() - t0 < capMs && Date.now() - (this.lastDataAt || 0) < quietMs) await sleep(200);
+    await this.settle(1000, 10000);
+  }
+
   async reopen({ clearCache = false } = {}) {
+    await this.cacheQuiet();
     if (clearCache) await this.page.send("Network.clearBrowserCache").catch(() => {});
     await this.close();
     if (clearCache) {
@@ -349,6 +461,16 @@ class Session {
     return at;
   }
 
+  /**
+   * Two animation frames: whatever just appeared (the peek's buttons, the day header) has been laid out and
+   * drawn, and its handlers are attached, before the lab taps it. A tap in the same frame as the element
+   * arriving sometimes landed on the layer under it (Oct 6 2026: two client reps timed out with the peek open,
+   * and one session rep never left today).
+   */
+  frames() {
+    return this.ev(`new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(performance.now()))))`);
+  }
+
   async key(key, code, keyCode) {
     await this.page.send("Input.dispatchKeyEvent", { type: "keyDown", key, code, windowsVirtualKeyCode: keyCode });
     await this.page.send("Input.dispatchKeyEvent", { type: "keyUp", key, code, windowsVirtualKeyCode: keyCode });
@@ -400,6 +522,7 @@ const METRIC_KEYS = ["ScriptDuration", "LayoutDuration", "RecalcStyleDuration", 
 async function measured(s, run, { navigates = false, span = navigates } = {}) {
   const before = await s.metrics();
   const exceptionsBefore = s.exceptions;
+  const fallbacksBefore = s.cacheFallbacks;
   const netBefore = { ...s.net };
   if (s.profiled) await s.page.send("Profiler.start");
   // The page's clock when the profiler started, so a phase's page times can be found in the profile's own clock.
@@ -413,6 +536,24 @@ async function measured(s, run, { navigates = false, span = navigates } = {}) {
     `({ lt: window.__lab.lt.filter((e) => e[0] >= ${t0}), ev: window.__lab.ev.filter((e) => e[0] >= ${t0}), nodes: document.getElementsByTagName("*").length })`,
   );
   const tasks = lab.lt.map((e) => e[1]);
+  if (process.env.PERF_LAB_SAVE_PROFILE && cpuProfile) {
+    // Diagnostic: the raw profile with the page's clock at its start, the phases and the long tasks, for
+    // looking inside one long task (which code was on the stack), not just a phase's totals.
+    writeFileSync(
+      `${process.env.PERF_LAB_SAVE_PROFILE}-${Date.now()}.json`,
+      JSON.stringify({ profPageT0, phases: result.phases ?? null, lt: lab.lt, profile: cpuProfile }),
+    );
+  }
+  if (process.env.PERF_LAB_TRACE) {
+    // The long tasks and the slow interactions on the trace's clock, beside the data that caused them.
+    const origin = await s.ev("performance.timeOrigin");
+    const lines = [
+      ...lab.lt.map(([t, d]) => `${Math.round(origin + t)}\tlongtask\t${Math.round(d)} ms`),
+      ...lab.ev.filter((e) => e[3] && e[1] >= 100).map(([t, d, name]) => `${Math.round(origin + t)}\tinteraction\t${name} ${Math.round(d)} ms`),
+      `${Math.round(origin + tEnd)}\tmark\tthe scenario's measured span ends`,
+    ];
+    writeFileSync(process.env.PERF_LAB_TRACE, lines.join("\n") + "\n", { flag: "a" });
+  }
   // INP-like: the longest event of each interaction, then the worst interaction.
   const byInteraction = new Map();
   for (const [, dur, name, id] of lab.ev) {
@@ -462,6 +603,8 @@ async function measured(s, run, { navigates = false, span = navigates } = {}) {
     network: { requests: s.net.requests - netBefore.requests, kb: Math.round((s.net.bytes - netBefore.bytes) / 1024) },
     domNodes: lab.nodes,
     exceptions: s.exceptions - exceptionsBefore,
+    // Firestore warned that its disk cache could not start (see the README: the old-iPad evening anomaly).
+    cacheFallbacks: s.cacheFallbacks - fallbacksBefore,
     ...(cpuProfile ? { cpu: foldProfile(cpuProfile, s.maps) } : {}),
     ...(cpuPhases ? { cpuPhases } : {}),
   };
@@ -578,6 +721,7 @@ const SCENARIO_RUNS = {
 
   /** (b) Reload: the same renderer, its memory caches, the HTTP cache and the Firestore cache kept. */
   async warm(s) {
+    await s.cacheQuiet();
     return measured(s, () => openToHub(s, () => s.page.send("Page.reload", {})), { navigates: true });
   },
 
@@ -652,8 +796,12 @@ const SCENARIO_RUNS = {
     const r = await measured(s, async () => {
       const t0 = await s.tap(cardOf(focus, 2), focus ? `${focus.name}'s card` : "a client card");
       const peek = await s.must(css(".hp .hp-btn"), "the peek");
+      // Settled before the tap (two frames: the peek's buttons drawn and live). Counted in the wall, about 30 ms.
+      await s.frames();
       const t1 = await s.tap(byText(".hp .hp-btn", "Open profile"), "Open profile");
+      traceMark("client: Open profile tapped");
       const journey = await s.must(`document.querySelectorAll(".jg-row").length > 0`, "the Journey tab", 45000);
+      traceMark("client: the Journey tab drawn");
       const settled = await s.settle();
       const rows = await s.ev(`document.querySelectorAll(".jg-row").length`);
       return {
@@ -677,18 +825,30 @@ const SCENARIO_RUNS = {
   /** (e) The focus client tomorrow: Start from the briefing, 5 sets, the machine menu, then Finish -> the Wrap-up (reported apart). */
   async session(s, ctx) {
     await s.must(hubReady, "the Hub");
+    // The day header settled before tomorrow is tapped (the same reason as the peek's frames).
+    await s.must(tomorrowTab, "the day header");
+    await s.settle(300, 8000);
+    await s.frames();
     await s.tap(tomorrowTab, "tomorrow");
     const focus = ctx.focus?.session ?? null;
+    if ((await s.waitFor(focus ? cardOf(focus, 0) : hubReady, 10000)) < 0) {
+      // Still on today: the tap fell between frames once; one more, then the scenario's own failure.
+      await s.frames();
+      await s.tap(tomorrowTab, "tomorrow, again");
+    }
     await s.must(focus ? cardOf(focus, 0) : hubReady, "tomorrow's cards");
     await s.settle(400, 8000);
     const r = await measured(s, async () => {
       const t0 = await s.tap(cardOf(focus, 0), focus ? `${focus.name}'s card` : "a client card");
       const peek = await s.must(css(".hp .hp-btn"), "the peek", 15000);
+      await s.frames();
       if (!(await s.ev(`!!document.querySelector('.hp [data-primary=true][data-go=true]')`))) throw new Error("the peek did not offer Start session");
       const tStart = await s.tap(css(".hp [data-primary=true][data-go=true]"), "Start session");
+      traceMark("session: Start session tapped");
       const briefing = await s.must(css(".br__cta"), "the briefing", 45000);
       const tGo = await s.tap(css(".br__cta"), "the briefing's Start session");
-      const nowBar = await s.must(css(".jg-nb__outin"), "the Now Bar", 45000);
+      const nowBar = await s.must(css(".jg-nb__outin"), "the Now Bar", ctx.nowBarWaitMs);
+      traceMark("session: the Now Bar");
       await s.settle(300, 8000);
       const sets = [];
       const setSettled = [];
@@ -723,8 +883,13 @@ const SCENARIO_RUNS = {
       const tFinish = await s.tap(byText("button", "Finish", { exact: true }), "Finish");
       await s.must(byText("button", "Finish session", { exact: true }), "the end-session question");
       const tConfirm = await s.tap(byText("button", "Finish session", { exact: true }), "Finish session");
+      traceMark("session: Finish session tapped");
       const wrap = await s.must(wrapUpTitle, "the Wrap-up", 45000);
+      traceMark("session: the Wrap-up");
       const ack = await s.waitFor(`(() => { const t = ${wrapUpTitle}; return t && !/on this iPad/i.test(t); })()`, 20000, { paint: false });
+      traceMark(`session: the database answered Finish (${ack > 0 ? "yes" : "not in 20 s"})`);
+      // PERF_LAB_WRAPUP_TAIL_MS (diagnostic, off by default): keep measuring the Wrap-up this long after the answer.
+      if (Number(process.env.PERF_LAB_WRAPUP_TAIL_MS) > 0) await sleep(Number(process.env.PERF_LAB_WRAPUP_TAIL_MS));
       const startToBriefing = round(briefing - tStart);
       const briefingToNowBar = round(nowBar - tGo);
       const menuOpen = round(menu - tMenu);
@@ -870,6 +1035,11 @@ export async function runLab(options) {
   const variants = [{ name: options["build-b"] ? "A" : "main", build: resolve(options.build) }];
   if (options["build-b"]) variants.push({ name: "B", build: resolve(options["build-b"]) });
   for (const v of variants) if (!existsSync(join(v.build, "index.html"))) throw new Error(`No lab build at ${v.build}.`);
+  // How long the session waits for the Now Bar: 45 s, or --nowbar-wait <ms>; a build named in --slow-start (A, B or
+  // main) gets at least 120 s. A build from before the speed round (c20d2abe and older) awaits the new session's
+  // write before it shows the Now Bar, and the emulator sometimes takes longer than 45 s to answer it.
+  const slowStart = String(options["slow-start"] || "").split(",").map((x) => x.trim()).filter(Boolean);
+  for (const v of variants) v.nowBarWaitMs = Math.max(Number(options["nowbar-wait"] || 45000), slowStart.includes(v.name) ? 120000 : 0);
   const profiles = (options.profiles ? options.profiles.split(",") : Object.keys(PROFILES)).map((p) => {
     if (!PROFILES[p]) throw new Error(`Unknown profile ${p}.`);
     return p;
@@ -940,7 +1110,7 @@ export async function runLab(options) {
             results.calibration.reps.push({ profile: name, variant: v.name, rep: run.rep, ...s.calibration });
             console.log(`  calibrated: this PC ${s.calibration.hostMs} ms (reference ${REFERENCE_BENCH_MS}), rate ${s.calibration.rate}, class ${s.calibration.effective}x`);
             const own = profile.scenarios ? scenarios.filter((x) => profile.scenarios.includes(x)) : scenarios;
-            const ctx = { creds, idleMs, focus: seed?.focus ?? null };
+            const ctx = { creds, idleMs, focus: seed?.focus ?? null, nowBarWaitMs: v.nowBarWaitMs };
             // PERF_LAB_SHOTS=1: a screenshot at the named moments of a scenario (outside the timed spans), to see that a build still looks the same.
             ctx.shot = (label) => (process.env.PERF_LAB_SHOTS ? s.screenshot(join(outDir, `shot-${name}-${v.name}-${run.rep}-${label}.png`)) : null);
             if (own[0] !== "cold") await signInUnmeasured(s, ctx);
