@@ -134,6 +134,11 @@ describe("filters and grouping", () => {
     expect(matchesFilter(row({ cycle: plan("not-renewing") }), "not-renewing", S)).toBe(true);
     expect(matchesFilter(row({ cycle: plan("let-renew") }), "not-renewing", S)).toBe(false);
     expect(matchesFilter(row({}), "not-renewing", S)).toBe(false);
+    // A plan nobody could read is unknown: the plan filters match nobody,
+    // except a row whose own conversation did come back.
+    expect(matchesFilter(row({}), "plan-undecided", S, false)).toBe(false);
+    expect(matchesFilter(row({ cycle: plan("undecided") }), "plan-undecided", S, false)).toBe(true);
+    expect(matchesFilter(row({ cycle: plan("not-renewing") }), "not-renewing", S, false)).toBe(true);
   });
 
   // Client codex, Sep 2026 (AJ's decision 8): before this round a client

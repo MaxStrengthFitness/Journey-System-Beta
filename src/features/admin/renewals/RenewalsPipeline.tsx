@@ -140,7 +140,7 @@ export function RenewalsPipeline({
     const lowRows = runningLow({ clients: home, studioId, cycles: {}, settings, today, inactiveMarks: marks, inactiveDays }).rows;
     return [...lanes, ...lowRows.map((r) => r.snapshot.cycleKey ?? "")].filter(Boolean);
   }, [home, ctx, studioId, settings, today, marks, inactiveDays]);
-  const { cycles, failed: cyclesFailed } = useCyclesRead(studioId, cycleKeys);
+  const { cycles, loading: cyclesLoading, failed: cyclesFailed } = useCyclesRead(studioId, cycleKeys);
   // The renewals dashboard (Oct 7 2026): each row names the primary trainer,
   // and anyone who works here may set the renewal plan.
   const trainerNames = useMemo(() => new Map(trainers.filter((t) => t.id).map((t) => [t.id as string, t.fullName ?? ""])), [trainers]);
@@ -187,7 +187,8 @@ export function RenewalsPipeline({
     return out;
   }, [home, cycles, ctx, variationFor]);
 
-  const visible = rows.filter((r) => matchesFilter(r, filter, settings));
+  // The plan filters match nobody, never everybody, while a plan is unknown.
+  const visible = rows.filter((r) => matchesFilter(r, filter, settings, !cyclesLoading && !cyclesFailed));
   const inLane = (lane: PipelineLane) => sortRows(visible.filter((r) => r.lane === lane));
   const count = (lane: PipelineLane) => rows.filter((r) => r.lane === lane).length;
 
@@ -204,6 +205,7 @@ export function RenewalsPipeline({
         snapshot={s}
         cycle={r.cycle}
         cyclesFailed={cyclesFailed}
+        cyclesLoading={cyclesLoading}
         settings={settings}
         today={today}
         trainerName={s.primaryTrainerId ? trainerNames.get(s.primaryTrainerId) ?? null : null}

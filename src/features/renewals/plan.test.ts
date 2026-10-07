@@ -194,6 +194,16 @@ describe("the pipeline's next step reads the plan", () => {
     expect(nextStep(snap(), cycle({ plan: plan("let-renew"), outcome: "lost" }), DEFAULT_RENEWAL_SETTINGS, TODAY)).toContain("Recorded as lost");
     expect(nextStep(snap(), cycle({ plan: plan("undecided") }), DEFAULT_RENEWAL_SETTINGS, TODAY)).toBe(nextStep(snap(), cycle({}), DEFAULT_RENEWAL_SETTINGS, TODAY));
   });
+  it("a leader's Decided still asks for the outcome, whatever the plan says", () => {
+    expect(nextStep(snap(), cycle({ plan: plan("renew-same"), stage: "decided" }), DEFAULT_RENEWAL_SETTINGS, TODAY)).toBe(
+      "Decided — record the outcome",
+    );
+  });
+  it("never names a charge day that has passed as a deadline", () => {
+    const past = snap({ chargeDate: "2026-10-01" });
+    expect(nextStep(past, cycle({ plan: plan("pause-billing") }), DEFAULT_RENEWAL_SETTINGS, TODAY)).toBe("Pause billing in Mindbody");
+    expect(nextStep(past, cycle({ plan: plan("let-renew") }), DEFAULT_RENEWAL_SETTINGS, TODAY)).toBe("Letting it renew — sessions carry over");
+  });
   it("an ended package that said it wasn't renewing asks for the outcome", () => {
     expect(planNextStep({ choice: "not-renewing" }, { situation: "ended", chargeDate: null }, TODAY)).toBe(
       "Said they weren't renewing — record the outcome",

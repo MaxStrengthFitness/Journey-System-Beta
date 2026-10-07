@@ -22,7 +22,7 @@
 import { useState, type ReactNode } from "react";
 import { ChevronRight, Info } from "lucide-react";
 import { RenewalPlanPicker } from "./RenewalPlanPicker";
-import { renewalRowFacts } from "./row-facts";
+import { planKnown, renewalRowFacts } from "./row-facts";
 import type { RenewalCycle, RenewalSettings, RenewalSnapshot } from "./types";
 import "../admin/admin.css";
 import "./renewal-row.css";
@@ -35,6 +35,8 @@ export interface RenewalRowProps {
   cycle: RenewalCycle | null | undefined;
   /** Some read of the conversations failed: a missing one is unknown, never "nobody". */
   cyclesFailed?: boolean;
+  /** The conversations are still being read: no plan is offered over one not yet seen. */
+  cyclesLoading?: boolean;
   settings: Pick<RenewalSettings, "packages">;
   today: string;
   /**
@@ -101,6 +103,7 @@ export function RenewalRow(props: RenewalRowProps) {
     snapshot,
     cycle,
     cyclesFailed: props.cyclesFailed,
+    cyclesLoading: props.cyclesLoading,
     settings,
     today,
     trainerName: props.trainerName,
@@ -147,15 +150,23 @@ export function RenewalRow(props: RenewalRowProps) {
       <Cell area="left" label="Left now">
         {facts.leftNow}
       </Cell>
-      <Cell area="atend" label="At the end">
-        {facts.atEnd ?? "Not known yet"}
-      </Cell>
+      {facts.atEnd && (
+        <Cell area="atend" label="At the end">
+          {facts.atEnd}
+        </Cell>
+      )}
       <Cell area="talk" label="Last talked">
         {facts.talked}
       </Cell>
-      <Cell area="sig" label="Signals">
-        {facts.signals.length > 0 ? facts.signals.map((s) => <span key={s} className="rr__line">{s}</span>) : "None to mention"}
-      </Cell>
+      {facts.signals.length > 0 && (
+        <Cell area="sig" label="Signals">
+          {facts.signals.map((s) => (
+            <span key={s} className="rr__line">
+              {s}
+            </span>
+          ))}
+        </Cell>
+      )}
 
       <div className="rr__cell rr__cell--plan">
         <span className="rr__label">Plan</span>
@@ -168,7 +179,9 @@ export function RenewalRow(props: RenewalRowProps) {
           cycle={cycle}
           settings={settings}
           sentence={facts.plan}
-          canSet={canPlan}
+          // A plan is offered only over a plan this screen has seen: never
+          // while the conversations load, nor after their read failed.
+          canSet={canPlan && planKnown(cycle, props.cyclesLoading, props.cyclesFailed)}
           authorName={authorName}
         />
       </div>

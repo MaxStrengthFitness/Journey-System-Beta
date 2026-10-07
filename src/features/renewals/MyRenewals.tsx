@@ -89,7 +89,7 @@ export function MyRenewals({
 
   const renewals = useRenewalSettings(studioId);
   const cycleKeys = useMemo(() => rows.map((c) => c.renewal?.cycleKey ?? "").filter(Boolean), [rows]);
-  const { cycles, failed: cyclesFailed } = useCyclesRead(studioId ?? null, cycleKeys);
+  const { cycles, loading: cyclesLoading, failed: cyclesFailed } = useCyclesRead(studioId ?? null, cycleKeys);
   const trainerNames = useMemo(() => {
     const m = new Map(trainers.filter((t) => t.id).map((t) => [t.id as string, t.fullName ?? ""]));
     if (trainer.id && trainer.fullName) m.set(trainer.id, trainer.fullName);
@@ -130,6 +130,7 @@ export function MyRenewals({
                 snapshot={s}
                 cycle={cycle}
                 cyclesFailed={cyclesFailed}
+                cyclesLoading={cyclesLoading}
                 settings={renewals.settings}
                 today={today}
                 trainerName={s.primaryTrainerId ? trainerNames.get(s.primaryTrainerId) || null : null}

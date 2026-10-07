@@ -7,8 +7,9 @@
    The row lays itself out by the LIST's width (a container query), not the
    screen's: Operations has a sidebar in landscape and none upright, and My
    Profile is narrower again.
-     under 560px   one cell under another (a phone)
-     560-839px     two lines of cells, the plan on the right (an iPad upright)
+     under 640px   one cell under another (a phone, or My Profile upright)
+     640-839px     two lines of cells, the plan on the right (an iPad upright)
+   A cell with nothing to say is left out, never filled with "none".
      840px and up  one line of columns under a header (an iPad on its side)
    ========================================================================== */
 
@@ -66,15 +67,16 @@
   color: var(--adm-ink-muted);
 }
 
+/* Words break between words; only a word longer than the cell breaks inside. */
 .rr__value {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .rr__line {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .rr__line--strong {
   font-weight: 600;
@@ -205,10 +207,10 @@
 
 /* An iPad upright: two lines of cells, the client and the package down the
    left, the plan down the right. */
-@container rr-list (min-width: 560px) {
+@container rr-list (min-width: 640px) {
   .rr {
     grid-template-columns:
-      minmax(140px, 1.15fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(190px, 1.25fr);
+      minmax(120px, 1.1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(160px, 1.1fr);
     grid-template-areas:
       "who pkg left  talk plan"
       "who pkg atend sig  plan"

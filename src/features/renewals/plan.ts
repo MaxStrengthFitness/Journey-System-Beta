@@ -260,7 +260,8 @@ export function planNextStep(
   today: string,
 ): string | null {
   if (!plan) return null;
-  const charge = s.chargeDate ? dayLabel(s.chargeDate, today) : null;
+  // A charge day that has passed is not a deadline: the date is left out.
+  const charge = s.chargeDate && s.chargeDate >= today ? dayLabel(s.chargeDate, today) : null;
   switch (plan.choice) {
     case "let-renew":
       return charge ? `Letting it renew ${charge} — sessions carry over` : "Letting it renew — sessions carry over";

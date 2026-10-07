@@ -25,7 +25,7 @@ vi.mock("../../../lib/studio-time", async (importOriginal) => ({
 }));
 vi.mock("../../renewals/usePipeline", () => ({
   useCyclesFor: () => reads.cycles,
-  useCyclesRead: () => ({ cycles: reads.cycles, loading: false, failed: reads.cyclesFailed }),
+  useCyclesRead: () => ({ cycles: reads.cycles, loading: reads.cyclesLoading, failed: reads.cyclesFailed }),
   useMissingDataCount: () => 0,
   useMissingDataClients: () => null,
 }));
@@ -45,6 +45,7 @@ const reads = vi.hoisted(() => ({
   marksLoading: false,
   cycles: {} as Record<string, unknown>,
   cyclesFailed: false,
+  cyclesLoading: false,
 }));
 vi.mock("../journey/inactive-store", () => ({
   useInactiveMarks: () => ({ marks: reads.marks, loading: reads.marksLoading, failed: false }),
@@ -143,6 +144,7 @@ afterEach(async () => {
   reads.marksLoading = false;
   reads.cycles = {};
   reads.cyclesFailed = false;
+  reads.cyclesLoading = false;
   saved.plans = [];
 });
 
@@ -450,6 +452,28 @@ describe("RenewalsPipeline — the dashboard row", () => {
     const row = rowOf(host, "Sasha Reyes");
     expect(row.textContent).toContain("Couldn't check");
     expect(row.textContent).not.toContain("Nobody has talked to them yet");
+    // No plan is offered over one this screen couldn't read: a save would
+    // replace it unseen.
+    expect(row.querySelector("select")).toBeNull();
+    expect(row.querySelector(".rr-plan__sentence")?.textContent).toBe("Couldn't check");
+  });
+
+  it("offers no plan while the conversations are still being read", async () => {
+    reads.cyclesLoading = true;
+    const { host } = await mount({ roster: [manual] });
+    const row = rowOf(host, "Sasha Reyes");
+    expect(row.querySelector("select")).toBeNull();
+    expect(row.querySelector(".rr-plan__sentence")?.textContent).toBe("Checking…");
+  });
+
+  it("has the plan filters match nobody, never everybody, when the conversations couldn't be read", async () => {
+    reads.cyclesFailed = true;
+    const { host } = await mount({ roster: [...roster, manual] });
+    const tab = (label: string) => Array.from(host.querySelectorAll<HTMLButtonElement>(".adm-seg")).find((b) => b.textContent === label)!;
+    await act(async () => tab("Plan: not decided").click());
+    expect(names(panel(host, "Talk now"))).toEqual([]);
+    await act(async () => tab("Not renewing").click());
+    expect(names(panel(host, "Talk now"))).toEqual([]);
   });
 
   it("shows the plan without the picker to someone who doesn't work here, or before the studio's settings answered", async () => {

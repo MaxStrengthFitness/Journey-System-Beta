@@ -102,11 +102,12 @@ export function nextStep(
   if (cycle?.outcome === "pay-as-you-go") return "On single sessions — offer a package";
   if (cycle?.outcome === "lost") return "Recorded as lost — win-back: reach out in person";
   if (cycle?.outcome) return "Renewal recorded";
+  // A leader's "Decided" asks for the outcome, whatever the plan says.
+  if (effectiveStage(cycle) === "decided") return "Decided — record the outcome";
   // The studio's plan (plan.ts) says what comes next more exactly than the
   // stage does; away still waits for them to be back.
   const planned = s.situation === "away" ? null : planNextStep(cycle?.plan, s, today);
   if (planned) return planned;
-  if (effectiveStage(cycle) === "decided") return "Decided — record the outcome";
   if (s.situation === "away") {
     return s.awayUntil ? `Back around ${dayLabel(s.awayUntil, today)}` : "Paused";
   }
@@ -155,7 +156,17 @@ export const FILTER_LABELS: Record<PipelineFilter, string> = {
   "not-renewing": "Not renewing",
 };
 
-export function matchesFilter(row: PipelineRow, filter: PipelineFilter, settings: RenewalSettings): boolean {
+/**
+ * `cyclesKnown` is false while the conversations are loading or after a read
+ * of them failed: the plan filters then match nobody, never everybody (a
+ * failed read is unknown, not "no plan").
+ */
+export function matchesFilter(
+  row: PipelineRow,
+  filter: PipelineFilter,
+  settings: RenewalSettings,
+  cyclesKnown = true,
+): boolean {
   switch (filter) {
     case "needs-leader":
       return Boolean(row.cycle?.needsLeader);
@@ -166,9 +177,9 @@ export function matchesFilter(row: PipelineRow, filter: PipelineFilter, settings
     case "not-talked":
       return !row.cycle?.lastTouchAt;
     case "plan-undecided":
-      return planUndecided(row.cycle);
+      return (cyclesKnown || Boolean(row.cycle)) && planUndecided(row.cycle);
     case "not-renewing":
-      return saidNotRenewing(row.cycle);
+      return (cyclesKnown || Boolean(row.cycle)) && saidNotRenewing(row.cycle);
     default:
       return true;
   }

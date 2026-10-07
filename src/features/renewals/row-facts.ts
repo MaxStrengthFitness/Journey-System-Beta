@@ -55,6 +55,8 @@ export interface RenewalRowInput {
   cycle: RenewalCycle | null | undefined;
   /** Some read of the conversations failed: a missing one is unknown. */
   cyclesFailed?: boolean;
+  /** The conversations are still being read. */
+  cyclesLoading?: boolean;
   settings: Pick<RenewalSettings, "packages">;
   today: string;
   /** The primary trainer's name, looked up from the studio's staff. */
@@ -166,9 +168,24 @@ export function renewalRowFacts(input: RenewalRowInput): RenewalRowFacts {
     atEnd: projectionSentence(s, today),
     talked: talkedLine(cycle, today, input.cyclesFailed),
     signals: rowSignals(s, settings, today),
-    plan: planSentence(cycle?.plan, settings, today),
+    plan: cycle
+      ? planSentence(cycle.plan, settings, today)
+      : input.cyclesFailed
+        ? "Couldn't check"
+        : input.cyclesLoading
+          ? "Checking…"
+          : null,
     why,
   };
+}
+
+/**
+ * Is this row's plan known: its conversation document was read, or every
+ * read answered and it simply has none. False while the read is loading or
+ * after it failed, so nothing offers a plan over one nobody has seen.
+ */
+export function planKnown(cycle: unknown, loading?: boolean, failed?: boolean): boolean {
+  return Boolean(cycle) || (!loading && !failed);
 }
 
 /** No plan yet, or the plan says it isn't decided: the "Plan: not decided" filter. */
