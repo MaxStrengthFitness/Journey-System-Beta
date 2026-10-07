@@ -18,6 +18,29 @@
 #      machine-trends rebuild (was the nightly leaderboard until the cost
 #      round), and the nightly renewals job (Renewals round, Sep 2026)
 #
+# WHERE THE DASHBOARD DIFFERS FROM THIS FILE (checked Oct 6 2026)
+# ----------------------------------------------------------------
+#   - A PUSH DEPLOYS NOTHING. Render has no access to the repo ("It looks
+#     like we don't have access to your repo" in every build log), so every
+#     deploy is pressed by hand: Manual Deploy on the web service, and
+#     Builds -> Manual Build on EACH cron, or the cron keeps its old commit.
+#     Render's GitHub app on the repo (the owner, MaxStrengthFitness, installs
+#     it) brings autoDeployTrigger back; docs/KNOWN-TRAPS.md has the trap.
+#   - The web service's build command is `npm install; npm run build`, not
+#     the `npm ci && npm run build` below: the semicolon builds on even when
+#     the install fails. Set it to the line below (the crons already use
+#     `npm ci`, and .npmrc's include=dev keeps vite under NODE_ENV).
+#   - NODE_ENV=production IS set on the web service. That is safe only
+#     because .npmrc says include=dev; the warning below stands for any
+#     service without that file.
+#   - maxShutdownDelaySeconds has no field in the dashboard, so the live
+#     service has Render's default until it is set through the API.
+#   - The web service has no MINDBODY_WEBHOOK_SECRET (only the switched-off
+#     test route reads it: leave it off), no VITE_MICROSOFT_TENANT_ID (so
+#     Microsoft sign-in uses /common: any Microsoft account), and no APP_URL (nothing reads it).
+#   - Health check /healthz, PR previews off, edge caching "Common static
+#     files", one instance, failure notifications: as written here.
+#
 # WHAT IS PARKED, AND WHY
 # -----------------------
 # Nothing in this file can contact a client or a trainer. AJ's call, Sep 2026:

@@ -207,8 +207,10 @@ them is most of what makes a request land correctly.
   this project has history.
 - **A branch** — a private copy of the code where a round is built, so
   half-finished work never reaches the live app.
-- **`master`** — the real one. **Every push to `master` goes live to
-  trainers.** That is why work waits on a branch.
+- **`master`** — the real one. **What is on `master` goes live to
+  trainers at the next deploy.** That is why work waits on a branch. (As
+  checked on Oct 6 2026, a push alone does not deploy: Render can't see the repo, so AJ
+  presses Deploy on the web service and on both cron jobs.)
 - **A trap** — something that broke once, written down in `docs/KNOWN-TRAPS.md`
   with the rule that came out of it. This is the project's scar tissue and it
   is genuinely valuable.
