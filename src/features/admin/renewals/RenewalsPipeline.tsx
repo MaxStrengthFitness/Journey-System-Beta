@@ -48,6 +48,7 @@ import {
 } from "../primitives";
 import { studioTodayKey } from "../../../lib/studio-time";
 import {
+  FILTER_HINTS,
   FILTER_LABELS,
   LANE_HINTS,
   LANE_TITLES,
@@ -355,6 +356,7 @@ export function RenewalsPipeline({
           ))}
         </div>
       )}
+      {ready && !empty && FILTER_HINTS[filter] && <p className="adm-hint">{FILTER_HINTS[filter]}</p>}
 
       {showMissing && (
         <AdminPanel

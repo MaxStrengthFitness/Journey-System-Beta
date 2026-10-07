@@ -196,7 +196,10 @@ export function planUndecided(cycle: Pick<RenewalCycle, "plan"> | null | undefin
 
 /**
  * Not renewing: the plan says so, or, with no plan that says otherwise, the
- * latest conversation heard it. The "Not renewing" filter.
+ * latest conversation heard it. The "Not renewing" filter, which says so under
+ * itself (pipeline.ts FILTER_HINTS). AJ, Oct 7 2026, keeping the
+ * conversations in: "I want to know the people that had the conversation that
+ * month so it's not bad to just keep them in the same spot".
  */
 export function saidNotRenewing(cycle: Pick<RenewalCycle, "plan" | "latestLeaning"> | null | undefined): boolean {
   if (cycle?.plan?.choice === "not-renewing") return true;

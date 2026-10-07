@@ -489,15 +489,29 @@ describe("RenewalsPipeline — the dashboard row", () => {
     expect(rowOf(waiting.host, "Sasha Reyes").querySelector("select")).toBeNull();
   });
 
+  it("includes in Not renewing a client whose latest conversation leaned that way, with no plan", async () => {
+    reads.cycles = {
+      "7001": { clientId: "s1", cycleKey: "7001", latestLeaning: "not-renewing", latestConcerns: [], needsLeader: false },
+    };
+    const { host } = await mount({ roster: [...roster, manual] });
+    const tab = (label: string) => Array.from(host.querySelectorAll<HTMLButtonElement>(".adm-seg")).find((b) => b.textContent === label)!;
+    await act(async () => tab("Not renewing").click());
+    expect(names(panel(host, "Talk now"))).toEqual(["Sasha Reyes"]);
+  });
+
   it("filters to the plans not decided and to those not renewing", async () => {
     reads.cycles = {
       "7001": { clientId: "s1", cycleKey: "7001", latestConcerns: [], needsLeader: false, plan: { choice: "not-renewing", byUid: "u", byName: "Jen", at: null } },
     };
     const { host } = await mount({ roster: [...roster, manual] });
     const tab = (label: string) => Array.from(host.querySelectorAll<HTMLButtonElement>(".adm-seg")).find((b) => b.textContent === label)!;
+    expect(host.textContent).not.toContain("latest conversation leaned not renewing");
     await act(async () => tab("Not renewing").click());
     expect(names(panel(host, "Talk now"))).toEqual(["Sasha Reyes"]);
+    // AJ, Oct 7 2026: it keeps the conversations that leaned not renewing, and says so.
+    expect(host.textContent).toContain("Includes anyone whose latest conversation leaned not renewing, as well as a plan of Not renewing.");
     await act(async () => tab("Plan: not decided").click());
+    expect(host.textContent).not.toContain("latest conversation leaned not renewing");
     expect(names(panel(host, "Talk now"))).toEqual(["Ivan Reyes", "Nora Reyes"]);
   });
 });

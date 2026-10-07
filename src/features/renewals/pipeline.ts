@@ -157,6 +157,17 @@ export const FILTER_LABELS: Record<PipelineFilter, string> = {
 };
 
 /**
+ * What a filter takes in, said once under the filters while it is on; only
+ * where the label alone could mislead. Not renewing includes a client whose
+ * latest conversation leaned not renewing, plan or no plan (AJ, Oct 7 2026:
+ * "I want to know the people that had the conversation that month so it's
+ * not bad to just keep them in the same spot").
+ */
+export const FILTER_HINTS: Partial<Record<PipelineFilter, string>> = {
+  "not-renewing": "Includes anyone whose latest conversation leaned not renewing, as well as a plan of Not renewing.",
+};
+
+/**
  * `cyclesKnown` is false while the conversations are loading or after a read
  * of them failed: the plan filters then match nobody, never everybody (a
  * failed read is unknown, not "no plan").
