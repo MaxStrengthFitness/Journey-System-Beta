@@ -6824,3 +6824,134 @@ describe("a demo client's machine totals", () => {
     await assertSucceeds(getDoc(ref));
   });
 });
+
+// ── RENEWALS: the renewal plan (the renewals dashboard, Oct 7 2026) ───────
+//
+// AJ: "allow in app response", and for studios without auto-renew "mark if
+// a client is set to renew or not". Anyone who works at the studio sets the
+// cycle's plan with one touch of kind "plan" in the same batch
+// (features/renewals/useRenewalCycle.ts saveRenewalPlan); it never touches
+// the outcome, and a leader's write keeps it to the same shape.
+describe("the renewal plan", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+  const cycleOf = (db: ReturnType<typeof as>, studio = "studioA") => doc(db, "studios", studio, "renewals", "9001");
+
+  const plan = (uid: string, over: Record<string, unknown> = {}) => ({
+    choice: "renew-same",
+    packageKey: "committed",
+    note: "Renewing in January",
+    byUid: uid,
+    byName: "Trainer A",
+    at: serverTimestamp(),
+    ...over,
+  });
+  const planTouch = (uid: string, over: Record<string, unknown> = {}) => ({
+    clientId: "c1",
+    authorId: uid,
+    authorName: "Trainer A",
+    at: serverTimestamp(),
+    leaning: "renewing",
+    concerns: [],
+    interestedIn: "same",
+    note: "Renewing in January",
+    needsLeader: false,
+    kind: "plan",
+    plan: { choice: "renew-same", packageKey: "committed" },
+    ...over,
+  });
+  const cycleWrite = (uid: string, planOver: Record<string, unknown> = {}, over: Record<string, unknown> = {}) => ({
+    clientId: "c1",
+    clientName: "Client One",
+    cycleKey: "9001",
+    packageKey: "committed",
+    chargeDate: "2026-11-14",
+    plan: plan(uid, planOver),
+    touchCount: increment(1),
+    ...over,
+  });
+  const save = (db: ReturnType<typeof as>, uid: string, planOver: Record<string, unknown> = {}, over: Record<string, unknown> = {}) => {
+    const cycle = cycleOf(db);
+    const batch = writeBatch(db);
+    batch.set(doc(collection(cycle, "touches")), planTouch(uid));
+    batch.set(cycle, cycleWrite(uid, planOver, over), { merge: true });
+    return batch.commit();
+  };
+
+  it("lets a trainer at the studio set the plan, with its touch, in one batch", async () => {
+    const db = as("trainerA");
+    await assertSucceeds(save(db, "trainerA"));
+    const snap = await getDoc(cycleOf(db));
+    expect(snap.get("plan.choice")).toBe("renew-same");
+    expect(snap.get("touchCount")).toBe(1);
+    // And change it later, on the cycle it wrote.
+    await assertSucceeds(save(db, "trainerA", { choice: "not-renewing", packageKey: null, note: "" }));
+  });
+
+  it("lets a trainer set the plan on a cycle the nightly job decided, and never the outcome", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "studios", "studioA", "renewals", "9001"), {
+        clientId: "c1", clientName: "Client One", cycleKey: "9001", packageKey: "committed",
+        outcome: "lost", outcomeBy: "job", outcomeAt: new Date(), closedOn: "2026-07-20",
+        nextCycleKey: null, nextPackageKey: null, primaryTrainerId: "trainerA",
+      });
+    });
+    const db = as("trainerA");
+    await assertSucceeds(save(db, "trainerA", { choice: "pay-as-you-go", packageKey: null }));
+    await assertFails(save(db, "trainerA", {}, { outcome: "renewed" }));
+    await assertFails(save(db, "trainerA", {}, { stage: "decided" }));
+    expect((await getDoc(cycleOf(db))).get("outcome")).toBe("lost");
+  });
+
+  it("refuses a plan signed by someone else, backdated, of an unknown choice, or with a stray key", async () => {
+    const db = as("trainerA");
+    await assertFails(save(db, "trainerA", { byUid: "ownerA" }));
+    await assertFails(save(db, "trainerA", { at: new Date("2026-01-01") }));
+    await assertFails(save(db, "trainerA", { choice: "maybe" }));
+    await assertFails(save(db, "trainerA", { score: 5 }));
+    await assertFails(save(db, "trainerA", { byName: "" }));
+    await assertFails(save(db, "trainerA", { note: "x".repeat(501) }));
+    await assertFails(save(db, "trainerA", {}, { touchCount: increment(2) }));
+  });
+
+  it("refuses a plan touch without its plan, or of another kind", async () => {
+    const db = as("trainerA");
+    const touches = collection(cycleOf(db), "touches");
+    const { plan: _omit, ...noPlan } = planTouch("trainerA");
+    await assertFails(setDoc(doc(touches), noPlan));
+    await assertFails(setDoc(doc(touches), planTouch("trainerA", { kind: "note" })));
+    await assertFails(setDoc(doc(touches), planTouch("trainerA", { plan: { choice: "maybe" } })));
+    await assertSucceeds(setDoc(doc(touches), planTouch("trainerA")));
+  });
+
+  it("keeps another studio's trainers out", async () => {
+    const db = as("trainerB");
+    await assertFails(save(db, "trainerB"));
+  });
+
+  it("lets a leader set it, and a leader's later write on a cycle with a plan still goes through", async () => {
+    const owner = as("ownerA");
+    await assertSucceeds(save(owner, "ownerA", { byName: "Owner A" }));
+    await assertSucceeds(
+      setDoc(cycleOf(owner), { stage: "decided", updatedBy: "ownerA", updatedAt: serverTimestamp() }, { merge: true }),
+    );
+    // A merge deepens into the stored plan: a changed field must keep the whole plan valid.
+    await assertFails(setDoc(cycleOf(owner), { plan: { choice: "maybe" }, updatedBy: "ownerA" }, { merge: true }));
+    await assertFails(setDoc(cycleOf(owner), { plan: { byUid: "trainerA" }, updatedBy: "ownerA" }, { merge: true }));
+  });
+
+  it("leaves a trainer's conversation working on a cycle that has a plan", async () => {
+    await assertSucceeds(save(as("trainerA"), "trainerA"));
+    const db = as("trainerA");
+    await assertSucceeds(
+      setDoc(
+        cycleOf(db),
+        {
+          clientId: "c1", clientName: "Client One", cycleKey: "9001", packageKey: "committed", chargeDate: "2026-11-14",
+          latestLeaning: "leaning-yes", latestConcerns: [], latestInterestedIn: null,
+          lastTouchBy: "trainerA", lastTouchByName: "Trainer A", lastTouchAt: serverTimestamp(), touchCount: increment(1),
+        },
+        { merge: true },
+      ),
+    );
+  });
+});

@@ -23,6 +23,7 @@ import { addDays, daysBetween } from "../client-history/model";
 import { effectiveStage } from "./conversation";
 import { dayLabel } from "./sentences";
 import { upgradeVerdict } from "./options";
+import { planNextStep } from "./plan";
 import type { InBodyVariation } from "../inbody/variation";
 import type { RenewalCycle, RenewalSettings, RenewalSnapshot } from "./types";
 
@@ -100,6 +101,10 @@ export function nextStep(
   if (cycle?.outcome === "pay-as-you-go") return "On single sessions — offer a package";
   if (cycle?.outcome === "lost") return "Recorded as lost — win-back: reach out in person";
   if (cycle?.outcome) return "Renewal recorded";
+  // The studio's plan (plan.ts) says what comes next more exactly than the
+  // stage does; away still waits for them to be back.
+  const planned = s.situation === "away" ? null : planNextStep(cycle?.plan, s, today);
+  if (planned) return planned;
   if (effectiveStage(cycle) === "decided") return "Decided — record the outcome";
   if (s.situation === "away") {
     return s.awayUntil ? `Back around ${dayLabel(s.awayUntil, today)}` : "Paused";

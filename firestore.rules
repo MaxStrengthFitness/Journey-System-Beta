@@ -517,7 +517,47 @@ service cloud.firestore {
       return renewalTrainerKeys().concat([
               'stage', 'leadTrainerId', 'outcome', 'outcomeAt', 'outcomeBy',
               'nextCycleKey', 'nextPackageKey', 'closedOn', 'primaryTrainerId',
-              'updatedAt', 'updatedBy']);
+              'updatedAt', 'updatedBy', 'plan']);
+    }
+
+    /* THE RENEWAL PLAN (the renewals dashboard, Oct 7 2026; AJ: "allow in
+       app response", and for studios without auto-renew "mark if a client is
+       set to renew or not"). features/renewals/plan.ts is the app's half:
+       PLAN_LABELS lists the same choices. Anyone who works at the studio
+       sets it, signed and stamped by the server, with one touch of kind
+       "plan" in the same batch; it never touches the outcome. */
+    function renewalPlanChoices() {
+      return ['let-renew', 'pause-billing', 'renew-same', 'upgrade', 'downgrade',
+              'pay-as-you-go', 'not-renewing', 'undecided'];
+    }
+
+    function renewalPlanValid(p) {
+      return p is map
+          && p.keys().hasAll(['choice', 'byUid', 'byName', 'at'])
+          && p.keys().hasOnly(['choice', 'packageKey', 'note', 'byUid', 'byName', 'at'])
+          && p.choice in renewalPlanChoices()
+          && p.byUid == request.auth.uid
+          && p.byName is string && p.byName.size() >= 1 && p.byName.size() <= 80
+          && p.at == request.time
+          && (!('packageKey' in p) || p.packageKey == null ||
+              (p.packageKey is string && p.packageKey.size() <= 40))
+          && (!('note' in p) || (p.note is string && p.note.size() <= 500));
+    }
+
+    /** What a plan change may write on a cycle: the plan, its context, the touch count. */
+    function renewalPlanKeys() {
+      return ['clientId', 'clientName', 'cycleKey', 'packageKey', 'chargeDate',
+              'plan', 'touchCount'];
+    }
+
+    function renewalPlanWrite() {
+      let d = request.resource.data;
+      return renewalPlanValid(d.get('plan', null))
+          && d.get('touchCount', 0) ==
+               (resource == null ? 0 : resource.data.get('touchCount', 0)) + 1
+          && (resource == null
+                ? d.keys().hasOnly(renewalPlanKeys())
+                : d.diff(resource.data).affectedKeys().hasOnly(renewalPlanKeys()));
     }
 
     function renewalLeanings() {
@@ -550,19 +590,33 @@ service cloud.firestore {
                 ['renewed', 'upgraded', 'downgraded', 'pay-as-you-go', 'lost'])
           && (request.resource.data.get('closedOn', null) == null ||
               (request.resource.data.closedOn is string &&
-               request.resource.data.closedOn.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')));
+               request.resource.data.closedOn.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))
+          // A leader changing the plan holds it to the same shape.
+          && (!request.resource.data.diff(resource == null ? {} : resource.data)
+                .affectedKeys().hasAny(['plan'])
+              || renewalPlanValid(request.resource.data.plan));
     }
 
     /** One logged conversation. Signed by its author; never edited. */
     function renewalTouchValid(d) {
       return d.keys().hasOnly(['clientId', 'authorId', 'authorName', 'at', 'leaning',
-                               'concerns', 'interestedIn', 'note', 'needsLeader'])
+                               'concerns', 'interestedIn', 'note', 'needsLeader',
+                               'kind', 'plan'])
           && d.authorId == request.auth.uid
           && d.at == request.time
           && d.leaning in renewalLeanings()
           && d.concerns is list && d.concerns.size() <= 8
           && d.note is string && d.note.size() <= 500
-          && d.needsLeader is bool;
+          && d.needsLeader is bool
+          // A plan change's touch (Oct 7 2026): kind "plan" and the plan's choice.
+          && (!('kind' in d) || (d.kind == 'plan' && 'plan' in d))
+          && (!('plan' in d) ||
+              (d.plan is map
+               && d.plan.keys().hasAll(['choice'])
+               && d.plan.keys().hasOnly(['choice', 'packageKey'])
+               && d.plan.choice in renewalPlanChoices()
+               && (!('packageKey' in d.plan) || d.plan.packageKey == null ||
+                   (d.plan.packageKey is string && d.plan.packageKey.size() <= 40))));
     }
 
     /* ====================================================================
@@ -2713,7 +2767,9 @@ service cloud.firestore {
                     && renewalsReadable(studioId, getRole(), callerTrainer());
         allow create, update: if isAuthenticated() && (
           (renewalsManageable(studioId, getRole(), callerTrainer()) && renewalLeaderWrite()) ||
-          (renewalsReadable(studioId, getRole(), callerTrainer()) && renewalTrainerWrite())
+          (renewalsReadable(studioId, getRole(), callerTrainer()) && renewalTrainerWrite()) ||
+          // The renewal plan (Oct 7 2026): anyone who works here.
+          (renewalsReadable(studioId, getRole(), callerTrainer()) && renewalPlanWrite())
         );
         allow delete: if false;
 

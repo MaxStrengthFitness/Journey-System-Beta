@@ -199,3 +199,34 @@ export function promptText(s: RenewalSnapshot): string {
   }
   return `Renewal: ${s.sessionsLeft ?? "a few"} left. Talk about it today?`;
 }
+
+/**
+ * Who last talked to the client about the renewal, and when: read from the
+ * cycle the dashboard already reads (`useCyclesRead`), not stored on the
+ * snapshot, so a talk logged a minute ago shows at once. Null when nobody
+ * has logged a conversation on this cycle.
+ */
+export function lastTalkOf(
+  cycle: Pick<RenewalCycle, "lastTouchAt" | "lastTouchByName"> | null | undefined,
+): { day: string; byName: string | null } | null {
+  const day = dayOf(cycle?.lastTouchAt);
+  if (!day) return null;
+  const name = (cycle?.lastTouchByName ?? "").trim();
+  return { day, byName: name || null };
+}
+
+/**
+ * "Talked Oct 3 · Jen", "Nobody has talked to them yet", or, when the
+ * cycles' read failed, "Couldn't check": a failed read is unknown, never
+ * "nobody" (the Operations room's pin, Sep 28 2026).
+ */
+export function lastTalkSentence(
+  cycle: Pick<RenewalCycle, "lastTouchAt" | "lastTouchByName"> | null | undefined,
+  today: string,
+  opts: { readFailed?: boolean } = {},
+): string {
+  const talk = lastTalkOf(cycle);
+  if (!talk) return opts.readFailed ? "Couldn't check" : "Nobody has talked to them yet";
+  const who = talk.byName ? talk.byName.split(/\s+/)[0] : null;
+  return [`Talked ${dayLabel(talk.day, today)}`, who].filter(Boolean).join(" · ");
+}

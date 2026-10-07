@@ -68,3 +68,12 @@ export function canManageRenewals(t: TrainerLike | null | undefined, studioId: s
 export function canTakePartInRenewals(t: TrainerLike | null | undefined, studioId: string | null | undefined): boolean {
   return canManageRenewals(t, studioId) || worksAt(t, studioId);
 }
+
+/**
+ * Setting the renewal plan (plan.ts; the renewals dashboard, Oct 7 2026):
+ * anyone who works at the studio, as with a conversation. Mirrors the rules'
+ * renewalPlanWrite branch, which asks renewalsReadable.
+ */
+export function canSetRenewalPlan(t: TrainerLike | null | undefined, studioId: string | null | undefined): boolean {
+  return canTakePartInRenewals(t, studioId);
+}

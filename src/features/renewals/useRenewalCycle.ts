@@ -26,6 +26,7 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "../../firebase";
 import { conversationWrites, type ConversationDraft } from "./conversation";
+import { planWrites, type PlanDraft } from "./plan";
 import type { RenewalCycle, RenewalOutcome, RenewalSnapshot, RenewalStage, RenewalTouch } from "./types";
 
 export function cycleRef(studioId: string, cycleKey: string) {
@@ -118,6 +119,36 @@ export async function logRenewalConversation(params: {
   batch.set(
     ref,
     { ...cycle, lastTouchAt: serverTimestamp(), touchCount: increment(1) },
+    { merge: true },
+  );
+  await batch.commit();
+}
+
+/**
+ * Sets the renewal plan (plan.ts): the cycle's `plan` and one touch of kind
+ * "plan", in one batch, so the plan and its history never disagree. Anyone
+ * who works at the studio may (trainers and leaders alike, as with a
+ * conversation); the rules hold the shape (renewalPlanValid). It never
+ * touches the outcome, the stage or the conversation fields.
+ */
+export async function saveRenewalPlan(params: {
+  studioId: string;
+  cycleKey: string;
+  clientId: string;
+  clientName: string;
+  snapshot: Pick<RenewalSnapshot, "packageKey" | "chargeDate"> | null;
+  draft: PlanDraft;
+  authorName: string;
+}): Promise<void> {
+  if (!isUsableCycleKey(params.cycleKey)) throw new Error("This client has no package to plan a renewal for yet.");
+  const uid = signedInUid();
+  const { touch, cycle } = planWrites({ ...params, authorId: uid });
+  const ref = cycleRef(params.studioId, params.cycleKey);
+  const batch = writeBatch(db);
+  batch.set(doc(collection(ref, "touches")), { ...touch, at: serverTimestamp() });
+  batch.set(
+    ref,
+    { ...cycle, plan: { ...cycle.plan, at: serverTimestamp() }, touchCount: increment(1) },
     { merge: true },
   );
   await batch.commit();
