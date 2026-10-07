@@ -158,13 +158,18 @@ describe("the Journey tab has no totals gate", () => {
 
   it("draws its grid when the client's sessions and sets are read, whatever the totals are doing", () => {
     expect(profile).not.toMatch(/machineTotalsKnown|machineTotalsStateOf|useMachineTotals/);
-    const grid = profile.slice(profile.indexOf("<RecentJourneyView"), profile.indexOf("/>", profile.indexOf("<RecentJourneyView")));
-    expect(grid).toMatch(/loading=\{isLoadingSessions\}/);
+    // The grid's own props, up to the next element: its loading is the sessions read and nothing else.
+    const start = profile.indexOf("<RecentJourneyView");
+    expect(start).toBeGreaterThan(-1);
+    const grid = profile.slice(start, profile.indexOf("<", start + 1));
+    expect(grid).toMatch(/\bloading=\{\s*isLoadingSessions\s*\}/);
   });
 
   it("while Start's prefill and Log past session's Save still wait for them", () => {
-    expect(tracker).toMatch(/const totalsKnown = !!clientId && selectedClient\?\.id === clientId && machineTotalsKnown\(selectedClient\);/);
-    expect(logPast).toMatch(/const totalsKnown = client \? machineTotalsKnown\(client\) : false;/);
+    // The gate itself, however the line is written (the render tests for Start's prefill and Log past
+    // session's Save hold what it does).
+    expect(tracker).toMatch(/\bconst\s+totalsKnown\s*=[^;]*\bmachineTotalsKnown\(/);
+    expect(logPast).toMatch(/\bconst\s+totalsKnown\s*=[^;]*\bmachineTotalsKnown\(/);
   });
 });
 
