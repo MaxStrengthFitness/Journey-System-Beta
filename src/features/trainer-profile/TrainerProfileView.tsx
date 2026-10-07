@@ -66,6 +66,8 @@ export interface TrainerProfileViewProps {
    * nobody. Required, so no caller can leave My clients guessing.
    */
   rosterStatus: RosterStatus;
+  /** Everyone on staff the app holds: My renewals names each client's primary trainer from it. */
+  trainers?: Trainer[];
 }
 
 export function TrainerProfileView({
@@ -78,6 +80,7 @@ export function TrainerProfileView({
   onSelectClient,
   setView,
   rosterStatus,
+  trainers,
 }: TrainerProfileViewProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const active = useOptionalActiveStudio();
@@ -188,7 +191,7 @@ export function TrainerProfileView({
 
       {/* Renewals round (Sep 2026): the trainer's own list only. */}
       {visibility.scope === "self" && (
-        <MyRenewals trainer={trainer} onSelectClient={openClient} />
+        <MyRenewals trainer={trainer} trainers={trainers} onSelectClient={openClient} />
       )}
 
       {/* Voice-review round (Sep 27 2026): the trainer proposes their usual
