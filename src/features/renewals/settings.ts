@@ -82,7 +82,15 @@ export const SETTING_LIMITS = {
 } as const;
 
 export const MAX_PACKAGES = 12;
-export const MAX_NAMES_PER_PACKAGE = 20;
+/**
+ * 60 since the renewals dashboard (Oct 7 2026): Strongsville alone had 44
+ * Mindbody names waiting, several for one package ("48 Sessions w/ Roll
+ * Over", "SV 6 Months/48 Sessions PIF", …), and a cap of 20 would have
+ * dropped names silently on the next read. The rules put no cap per package.
+ */
+export const MAX_NAMES_PER_PACKAGE = 60;
+/** The rules' cap on the extra-sessions list (renewalSettingsValid). */
+export const MAX_EXTRA_SESSION_NAMES = 40;
 
 /** Pricing options come 8 at a time on a monthly package; below this a package is not a package. */
 const MIN_PACKAGE_SESSIONS = 1;
@@ -244,7 +252,7 @@ export function normalizeRenewalSettings(raw: unknown): RenewalSettings {
     extraSessionNames:
       d.extraSessionNames === undefined
         ? DEFAULT_RENEWAL_SETTINGS.extraSessionNames
-        : cleanNames(d.extraSessionNames, 40),
+        : cleanNames(d.extraSessionNames, MAX_EXTRA_SESSION_NAMES),
     // Kept only when the studio answered: absent is "hasn't said", which
     // reads as ON (auto-renew.ts), and a stray "yes" is not an answer.
     ...(typeof d.packagesRenewAutomatically === "boolean"
