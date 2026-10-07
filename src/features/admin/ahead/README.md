@@ -48,7 +48,7 @@ A renewal already signed (`renewalOnBooks`) or recorded (renewed, upgraded, down
 
 ## The dates count from the day Mindbody counted (AJ: "2a")
 
-Sessions left is Mindbody's number at its last pull, which can be weeks old. The renewals engine now counts the run-out day, the projection and the conversation's day from the day of that count. It also keeps `paceRange` and `runOutRange` on the snapshot, so every date can say its range. All of this is in `renewals/projection.ts` `projectionStart` and `renewals/README.md`. Ahead reads those fields; it adds no arithmetic of its own to them.
+Sessions left is Mindbody's number at its last pull, which can be weeks old. The renewals engine now counts the run-out day, the projection and the conversation's day from the day of that count, at the client's pace (Mindbody's Remaining still counts the visits booked ahead, checked Oct 7 2026, so they are part of the pace). It also keeps `paceRange` and `runOutRange` on the snapshot, so every date can say its range. All of this is in `renewals/projection.ts` `projectionStart` and `renewals/README.md`. Ahead reads those fields; it adds no arithmetic of its own to them.
 
 ## The reads (`useAhead.ts`)
 

@@ -15,14 +15,12 @@
    - Week ahead's Further ahead line;
    - the docs.
 
- BEFORE golive, ONE CHECK IN MINDBODY (reading only; golive asks for it).
- 2a counts a regular's sessions from after the visits they have booked,
- because Mindbody most likely takes a session off Remaining when a visit is
- booked. Pick a Strongsville regular with standing bookings, note a pricing
- option's Remaining, book one more visit next week, look again:
-   went down by one  -> ship as built;
-   did NOT go down   -> stop and tell Claude (one switch flips, and prepare
-                        must run again).
+ THE MINDBODY CHECK IS ANSWERED. Does a pricing option's Remaining drop when
+ a visit is booked? Checked Oct 7 2026 from Journey's own synced data (read
+ only): it does NOT (60 clients whose Remaining plus their bookings ahead
+ exceeded what the option ever held; none the other way). The branch is
+ built on that answer (MINDBODY_REMAINING_INCLUDES_BOOKED false), so golive
+ does not ask.
 
  WHAT GOES TO PRODUCTION, in this order (golive, after GO):
    1. the restore tag restore/2026-10-07-before-ahead = master as it is now
@@ -53,7 +51,7 @@
           lab's markers in the build. Ends PREPARE PASSED.
 
  golive   refuses unless the branch and master are exactly what prepare
-          recorded, asks for the Mindbody check and for GO, then does 1-2
+          recorded, asks for GO, then does 1-2
           above and stops at the first failure. Then it prints the steps
           left for AJ by hand.
 
@@ -264,7 +262,6 @@ if ($Stage -eq 'prepare') {
   Set-Content -Path $PreparedFile -Value "$BranchSha $MasterSha" -Encoding ascii
   Log "Tested: $Branch at $($BranchSha.Substring(0, 7)), master at $($MasterSha.Substring(0, 7))." 'Green'
   Log 'THE PLAN (golive, in this order, stopping at the first failure):' 'White'
-  Log '  0. You confirm the Mindbody check (Remaining goes down when a visit is booked).' 'White'
   Log "  1. Tag master as it is now: $RestoreTag = $($MasterSha.Substring(0, 7)), and push the tag." 'White'
   Log "  2. git push origin ${Branch}:master (fast-forward only)." 'White'
   Log '  (no rules, no index and no Cloud Function: none changed)' 'White'
@@ -281,21 +278,11 @@ if ($prepared[1] -ne $MasterSha) { Stop-Here "master has moved since prepare pas
 Log "prepare passed on this commit ($($BranchSha.Substring(0, 7))) onto this master ($($MasterSha.Substring(0, 7)))." 'Green'
 
 Write-Host ''
-Write-Host 'First, the Mindbody check (reading only, in Mindbody):' -ForegroundColor Yellow
-Write-Host '  pick a Strongsville regular with standing bookings, note a pricing option''s Remaining,' -ForegroundColor Yellow
-Write-Host '  book one more visit for next week, and look again.' -ForegroundColor Yellow
-Write-Host '  DROPS = Remaining went down by one (ship as built). STAYS = it did not (stop; tell Claude).' -ForegroundColor Yellow
-$check = Read-Host 'Type DROPS or STAYS'
-if ($check -eq 'STAYS') { Stop-Here 'Remaining does not go down at booking: the switch MINDBODY_REMAINING_INCLUDES_BOOKED must become false before this ships. Tell Claude; nothing was tagged or pushed.' }
-if ($check -ne 'DROPS') { Stop-Here 'the Mindbody check was not answered. Nothing was tagged or pushed.' }
-Log 'AJ checked Mindbody: Remaining goes down when a visit is booked (as built).' 'Green'
-
-Write-Host ''
 Write-Host 'Ahead:' -ForegroundColor Yellow
 Write-Host '  Operations gains Ahead beside Month: the weeks ahead with each client''s dates, and every' -ForegroundColor Yellow
 Write-Host '  client''s two clocks on one line; Week ahead ends with Further ahead. The nightly renewal' -ForegroundColor Yellow
-Write-Host '  record counts its dates from the day Mindbody counted, with their ranges: a regular''s' -ForegroundColor Yellow
-Write-Host '  run-out day and banked-at-the-charge move by about how far ahead they are booked.' -ForegroundColor Yellow
+Write-Host '  record counts its dates from the day Mindbody counted, with their ranges: a client last' -ForegroundColor Yellow
+Write-Host '  pulled weeks ago gets an earlier run-out day, by about the sessions used since the pull.' -ForegroundColor Yellow
 Write-Host 'This tags the restore point, then pushes to master. On Render nothing happens until YOU press' -ForegroundColor Yellow
 Write-Host 'Manual Deploy (web service) and Manual Build (both crons); golive prints the steps.' -ForegroundColor Yellow
 Write-Host 'No rules, no index, no Cloud Function; nothing is asked of Mindbody; nothing contacts anyone.' -ForegroundColor Yellow
@@ -347,8 +334,8 @@ Log '   The renewals job runs at 2:30 AM Eastern; until then Ahead draws the dat
 Log '3. The iPads pick the new version up by themselves on the Hub (never over a session or while typing).' 'White'
 Log '   Front-desk computers: reload the page.' 'White'
 Log '4. The morning after the renewals job''s first run on the new commit: walk Round 64 of' 'White'
-Log '   docs\ops\TESTING-CHECKLIST.md (Ahead), upright and on its side. On Renewals, a regular with standing' 'White'
-Log '   bookings now says a later run-out day and more banked at the charge than before: that is the fix.' 'White'
+Log '   docs\ops\TESTING-CHECKLIST.md (Ahead), upright and on its side.' 'White'
+Log '   On Renewals, a client last pulled from Mindbody weeks ago now says an earlier run-out day: that is the fix.' 'White'
 Log '' 'White'
 Log 'TO UNDO (ask Claude first):' 'White'
 Log "  git push --force origin ${RestoreTag}:master   then the same three Render buttons (steps 1 and 2)." 'White'

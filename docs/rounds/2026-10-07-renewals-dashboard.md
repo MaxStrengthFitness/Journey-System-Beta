@@ -82,6 +82,8 @@ No Cloud Functions, no Mindbody calls, no Firestore structure change beyond the 
 
 ## Check before trusting two things
 
+**The first is answered (Oct 7 2026, the Ahead round, from Journey's own synced data):** Remaining does NOT drop when a visit is booked. 60 clients across the four studios showed Remaining plus their visits booked ahead more than their pricing option ever held; none showed the opposite. `MINDBODY_REMAINING_INCLUDES_BOOKED` is now false (`docs/rounds/2026-10-07-ahead.md`). The other two below are still open.
+
 - **Does Mindbody's Remaining already leave out booked visits?** Pick a Strongsville regular with standing bookings. In Mindbody note the pricing option's Remaining, then book one more visit for next week and look again. If Remaining went down by one: it already leaves them out, and nothing changes (the switch stays true). If it didn't: tell Claude, and `MINDBODY_REMAINING_INCLUDES_BOOKED` becomes false (the projection then takes the booked days off first).
 - **"w/ Roll Over" options at Strongsville**, before pressing Confirm all: open one contract client's "48 Sessions w/ Roll Over" (or 144) option and compare its count with the contract's payments. A count of 8 a payment is the usual case; the whole 48 or 144 up front is now handled (nothing to come), but say if it is something else.
 - **Tax in the charge:** look at one Solon and one Strongsville contract's next scheduled charge. If it is the package price plus tax, every client there would read "(special)"; tell Claude and the rate will compare before tax.
