@@ -43,8 +43,31 @@ import type {
   RenewalTouch,
 } from "./types";
 
-/** Every choice, in the words the dashboard shows. firestore.rules lists the same keys. */
+/**
+ * Every choice, in the words the picker shows. firestore.rules lists the same
+ * keys. Short, so a closed select on an iPad never cuts one off (AJ, Oct 7
+ * 2026: "fix"): at most PLAN_LABEL_MAX characters, held by plan.test.ts. The
+ * whole meaning is PLAN_WORDS, said under the picker.
+ */
 export const PLAN_LABELS: Record<RenewalPlanChoice, string> = {
+  "let-renew": "Let it renew",
+  "pause-billing": "Pause billing",
+  "renew-same": "Same package",
+  upgrade: "Upgrading",
+  downgrade: "Downgrading",
+  "pay-as-you-go": "Pay as you go",
+  "not-renewing": "Not renewing",
+  undecided: "Not decided yet",
+};
+
+/** The longest a picker label may be: what a closed select in the row's narrowest plan column shows whole. */
+export const PLAN_LABEL_MAX = 15;
+
+/**
+ * Each choice said whole: the plan's sentence under the picker, the line
+ * under it while a choice is being picked, and the conversation history.
+ */
+export const PLAN_WORDS: Record<RenewalPlanChoice, string> = {
   "let-renew": "Let it renew (sessions carry over)",
   "pause-billing": "Pause billing in Mindbody until sessions run low",
   "renew-same": "Renewing — same package",
@@ -54,6 +77,12 @@ export const PLAN_LABELS: Record<RenewalPlanChoice, string> = {
   "not-renewing": "Not renewing",
   undecided: "Not decided yet",
 };
+
+/** The whole meaning of a choice when its picker label is shorter than it; null when the label already says it all. */
+export function planMeaning(choice: RenewalPlanChoice | null | undefined): string | null {
+  if (!choice || !PLAN_WORDS[choice]) return null;
+  return PLAN_WORDS[choice] === PLAN_LABELS[choice] ? null : PLAN_WORDS[choice];
+}
 
 export const PLAN_CHOICES = Object.keys(PLAN_LABELS) as RenewalPlanChoice[];
 
@@ -238,7 +267,7 @@ export function planSentence(
 ): string | null {
   if (!plan || !PLAN_LABELS[plan.choice]) return null;
   const tier = plan.packageKey ? settings.packages.find((p) => p.key === plan.packageKey) ?? null : null;
-  let what = PLAN_LABELS[plan.choice];
+  let what = PLAN_WORDS[plan.choice];
   if (tier) {
     if (plan.choice === "renew-same") what = `${what} (${tier.label})`;
     else what = `${what} to ${tier.label}`;

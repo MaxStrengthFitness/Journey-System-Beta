@@ -4,9 +4,13 @@ import {
   defaultPlanPackage,
   EMPTY_PLAN_DRAFT,
   PLAN_CHOICES,
+  PLAN_LABEL_MAX,
+  PLAN_LABELS,
+  PLAN_WORDS,
   planChoicesFor,
   planExpectation,
   planLeaning,
+  planMeaning,
   planModeOf,
   planNextStep,
   planPackageOptions,
@@ -80,6 +84,31 @@ describe("the choices, by the decided auto-renew answer", () => {
     expect(planChoicesFor(snap({ autoRenews: false }), "pause-billing")).toEqual([
       "renew-same", "upgrade", "downgrade", "pay-as-you-go", "not-renewing", "pause-billing", "undecided",
     ]);
+  });
+
+  // AJ, Oct 7 2026 ("fix"): a closed select on an iPad never cuts a label off.
+  it("keeps every picker label short enough to show whole, with the whole meaning beside it", () => {
+    for (const c of PLAN_CHOICES) {
+      expect(PLAN_LABELS[c].length, PLAN_LABELS[c]).toBeLessThanOrEqual(PLAN_LABEL_MAX);
+      expect(PLAN_WORDS[c]).toBeTruthy();
+    }
+    expect(PLAN_LABELS["let-renew"]).toBe("Let it renew");
+    expect(PLAN_LABELS["pause-billing"]).toBe("Pause billing");
+    expect(planMeaning("let-renew")).toBe("Let it renew (sessions carry over)");
+    expect(planMeaning("pause-billing")).toBe("Pause billing in Mindbody until sessions run low");
+    expect(planMeaning("renew-same")).toBe("Renewing — same package");
+    // A label that already says it all has nothing more to say.
+    expect(planMeaning("not-renewing")).toBeNull();
+    expect(planMeaning(null)).toBeNull();
+    // The words and the labels name the same choices, in the same order.
+    expect(Object.keys(PLAN_WORDS)).toEqual(PLAN_CHOICES);
+  });
+
+  it("says a saved plan whole, not by its short label", () => {
+    const at = { toDate: () => new Date("2026-10-06T15:00:00Z") };
+    expect(planSentence({ choice: "pause-billing", packageKey: null, byUid: "u", byName: "Jen Smith", at }, DEFAULT_RENEWAL_SETTINGS, TODAY)).toBe(
+      "Pause billing in Mindbody until sessions run low · Jen, Oct 6",
+    );
   });
 
   it("lists the same choices as firestore.rules", () => {

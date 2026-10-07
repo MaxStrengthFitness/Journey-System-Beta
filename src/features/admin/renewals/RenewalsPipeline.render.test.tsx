@@ -372,7 +372,7 @@ describe("RenewalsPipeline — the dashboard row", () => {
     const sel = row.querySelector<HTMLSelectElement>('select[aria-label="Renewal plan for Sasha Reyes"]')!;
     expect(optionsOf(sel)).toEqual([
       "Set the plan…",
-      "Renewing — same package",
+      "Same package",
       "Upgrading",
       "Downgrading",
       "Pay as you go",
@@ -416,12 +416,17 @@ describe("RenewalsPipeline — the dashboard row", () => {
     const sel = rowOf(host, "Bea Reyes").querySelector<HTMLSelectElement>("select")!;
     expect(optionsOf(sel)).toEqual([
       "Set the plan…",
-      "Let it renew (sessions carry over)",
-      "Pause billing in Mindbody until sessions run low",
+      "Let it renew",
+      "Pause billing",
       "Not renewing",
       "Not decided yet",
     ]);
     expect(rowOf(host, "Bea Reyes").textContent).toContain("Auto-renews Oct 28");
+    // The label is short so a closed select shows it whole; the line under it says it all.
+    await choose(sel, "pause-billing");
+    expect(rowOf(host, "Bea Reyes").querySelector(".rr-plan__sentence")?.textContent).toBe("Pause billing in Mindbody until sessions run low");
+    await choose(sel, "not-renewing");
+    expect(rowOf(host, "Bea Reyes").querySelector(".rr-plan__sentence")).toBeNull();
   });
 
   it("shows the plan that was set, who set it and when, and the next step it sets", async () => {

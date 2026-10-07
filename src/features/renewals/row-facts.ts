@@ -17,7 +17,7 @@
 
 import { concernLabel, lastTalkSentence, leaningLabel } from "./conversation";
 import { formatMoney } from "./money";
-import { PLAN_LABELS, planExpectation, planSentence } from "./plan";
+import { PLAN_WORDS, planExpectation, planSentence } from "./plan";
 import {
   dayLabel,
   ledgerSentence,
@@ -210,7 +210,7 @@ export function saidNotRenewing(cycle: Pick<RenewalCycle, "plan" | "latestLeanin
  * to the plan, else the leaning and its concerns, "Unsure — price".
  */
 export function touchHeadline(t: Pick<RenewalTouch, "leaning" | "concerns" | "kind" | "plan">): string {
-  if (t.kind === "plan" && t.plan && PLAN_LABELS[t.plan.choice]) return `Plan: ${PLAN_LABELS[t.plan.choice]}`;
+  if (t.kind === "plan" && t.plan && PLAN_WORDS[t.plan.choice]) return `Plan: ${PLAN_WORDS[t.plan.choice]}`;
   const concerns = (t.concerns ?? []).map(concernLabel).join(", ").toLowerCase();
   return `${leaningLabel(t.leaning)}${concerns ? ` — ${concerns}` : ""}`;
 }

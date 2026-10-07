@@ -455,8 +455,8 @@ export interface RenewalCycle {
  * The renewal plan's choices (plan.ts says which are offered when).
  *
  * A contract that renews by itself and will bank sessions:
- *   let-renew       "Let it renew (sessions carry over)"
- *   pause-billing   "Pause billing in Mindbody until sessions run low"
+ *   let-renew       "Let it renew" (sessions carry over)
+ *   pause-billing   "Pause billing" (in Mindbody, until sessions run low)
  * A contract that doesn't renew by itself (Strongsville; AJ, Oct 6 2026:
  * "allow ... for studios without auto renew to mark if a client is set to
  * renew or not"):

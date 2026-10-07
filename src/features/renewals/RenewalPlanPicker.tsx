@@ -9,6 +9,11 @@
  * Let it renew · Pause billing · Not renewing; one that doesn't (Strongsville)
  * offers Renewing · Upgrading · Downgrading · Pay as you go · Not renewing.
  *
+ * The picker's labels are short ("Let it renew", "Pause billing"), so a
+ * closed select on an iPad never cuts one off (AJ, Oct 7 2026: "fix"); the
+ * choice said whole (plan.ts PLAN_WORDS) is the line under it while picking,
+ * and the plan's sentence once saved.
+ *
  * Picking a choice opens the package (when the choice names one) and a
  * note, with Save and Cancel: a plan is a recorded decision, one touch on
  * the conversation history each time, so it is never written by a slip of
@@ -27,6 +32,7 @@ import {
   planChoicesFor,
   planNamesPackage,
   planPackageOptions,
+  planMeaning,
   planProblem,
   type PlanDraft,
 } from "./plan";
@@ -129,6 +135,7 @@ export function RenewalPlanPicker({ studioId, clientId, clientName, snapshot, cy
 
       {draft ? (
         <div className="rr-plan__edit">
+          {planMeaning(draft.choice) && <p className="rr-plan__sentence">{planMeaning(draft.choice)}</p>}
           {planNamesPackage(draft.choice) && packages.length > 0 && (
             <AdminSelect
               aria-label={`Package ${clientName} is renewing onto`}
