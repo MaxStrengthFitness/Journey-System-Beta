@@ -38,7 +38,7 @@ import { db } from "../../firebase";
 import type { Client, ScheduleEntry, WorkoutSession } from "../../types";
 import { getActiveTimeZone, studioTodayKey } from "../../lib/studio-time";
 import { loggedSessions } from "../../lib/booking-state";
-import { cutoverOf } from "../../lib/client-coverage";
+import { coverageOfClient, cutoverOf } from "../../lib/client-coverage";
 import { buildRenewalSnapshot } from "./engine";
 import {
   attendanceFromSchedules,
@@ -188,6 +188,10 @@ export function useLiveRenewal(
       machineNames: options.machineNames,
       attendanceSince: attendanceSinceOf(inputs.earliestBooking, tz),
       lastVisitHint: client.renewal?.lastVisitDate ?? null,
+      // As the nightly job: the total sessions by the home studio's cutover
+      // (the studio read here IS the home studio), and the pull's day in its zone.
+      coverage: coverageOfClient(client, inputs.studio.journeyCutoverDate),
+      timeZone: tz,
     });
   }, [client, inputs, settings, settingsLoading, settingsError, options.machineNames]);
 

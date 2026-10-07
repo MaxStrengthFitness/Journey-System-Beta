@@ -119,8 +119,12 @@ describe("the two clocks", () => {
     expect(snap.sessionsLeft).toBe(36);
     expect(snap.sessionsLeftSource).toBe("mindbody");
     expect(snap.pacePerWeek).toBe(1.5);
-    // 8 weeks at 1.5 uses 12 of the 36.
-    expect(snap.bankedAtCharge).toBe(24);
+    // Version 3: the booking in 2 days uses one, then 1.5 a week for the
+    // 54 days after it (11.6): 36 − 1 − 11.6 ≈ 23. (Version 2 ignored the
+    // booking and said 24: 8 weeks at 1.5 uses 12 of the 36.)
+    expect(snap.bankedAtCharge).toBe(23);
+    expect(snap.projection?.leftAtEnd).toBe(23);
+    expect(snap.projection?.booked).toBe(1);
     expect(snap.situation).toBe("will-bank");
     // 56 days out: outside the default 30-day warning window.
     expect(snap.chargeWarning).toBe(false);
@@ -243,9 +247,9 @@ describe("auto-renew, decided in one place (AJ, Sep 25 2026)", () => {
     autoRenewMark: { renews, contractId, setAt: "2026-09-10T15:00:00.000Z", setById: "uid-aj", setByName: "AJ" },
   });
 
-  it("writes version 2", () => {
-    expect(ENGINE_VERSION).toBe(2);
-    expect(build().version).toBe(2);
+  it("writes version 3 (the renewals dashboard's ledger and projection on top of version 2)", () => {
+    expect(ENGINE_VERSION).toBe(3);
+    expect(build().version).toBe(3);
   });
 
   it("at a studio switched OFF: billing just ends — still banks, no warning, the conversation as usual", () => {

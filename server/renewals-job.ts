@@ -88,7 +88,7 @@ import { DEFAULT_FIRST_SYNC_MAX, firstSyncOrder, needsFirstSync } from "../src/l
 import { mapContractRecords, mapServiceRecords } from "../src/lib/mindbody-commercial-map.ts";
 import { DEFAULT_TIME_ZONE, isValidTimeZone, studioDateKey, studioTodayKey } from "../src/lib/studio-time.ts";
 import { bookingMarks, loggedSessions, type BookingMarks } from "../src/lib/booking-state.ts";
-import { cutoverOf } from "../src/lib/client-coverage.ts";
+import { coverageOfClient, cutoverOf } from "../src/lib/client-coverage.ts";
 import { buildRenewalSnapshot, sameSnapshot, stableStringify } from "../src/features/renewals/engine.ts";
 import { withMachineTotalsRead } from "./machine-totals-read.ts";
 import {
@@ -404,6 +404,11 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
       attendanceSince: run.attendanceSince,
       nameIndex: run.nameIndex,
       lastVisitHint: client.renewal?.lastVisitDate ?? null,
+      // Version 3: the total sessions by the client's HOME studio's cutover,
+      // and the day of the last Mindbody pull on the studio's calendar. The
+      // live read (useLiveRenewal) passes the same two.
+      coverage: coverageOfClient(client, cutoverOf(cutovers, client.homeStudioId)),
+      timeZone: run.tz,
     });
   };
 

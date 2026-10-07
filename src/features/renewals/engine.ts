@@ -41,30 +41,56 @@ import { addDays, daysBetween, keyOf, toTimelineEvents } from "../client-history
 import { CATEGORY_BY_KEY } from "../subjective-report/questions";
 import { toDateSafe } from "../../lib/mindbody-dates";
 import { formatDateWords } from "../../lib/studio-time";
+import { studioDateKey } from "../../lib/studio-time";
+import { sessionTotalOf } from "../../lib/session-total";
+import type { HistoryCoverage } from "../../lib/prior-history";
 import { buildPackageNameIndex, sessionsPerPayment, type PackageNameIndex } from "./settings";
 import { decideAutoRenew, lockSaysNothingBills } from "./auto-renew";
+import {
+  awayDaysBetween,
+  bookedDaysAhead,
+  ledgerParts,
+  paceRange,
+  paceTrendOf,
+  paceTrendWindows,
+  projectAtEnd,
+  rateOf,
+  runOutDay,
+  suggestPackage,
+  type AwayRange,
+} from "./projection";
+import { MIN_PACE_WINDOW_DAYS } from "./projection";
 import type {
   PackageTier,
   RenewalFlag,
+  RenewalProjection,
   RenewalProof,
   RenewalSettings,
   RenewalSituation,
   RenewalSnapshot,
+  RetentionSignals,
+  SessionLedger,
 } from "./types";
+
+export { MIN_PACE_WINDOW_DAYS };
 
 /**
  * 2 (Sep 25 2026): `autoRenews` is the DECIDED answer (auto-renew.ts), with
  * `autoRenewsFrom` and `autoRenewsInherited` beside it. A version-1 snapshot
  * carried Mindbody's flag alone; `renewalOf` leaves one as it is.
+ *
+ * 3 (Oct 7 2026, the renewals dashboard): the session ledger, the commitment
+ * end, the projection at it (bookings first, then the pace), the rate and
+ * the retention signals (projection.ts). `runOutDate` and `bankedAtCharge`
+ * now take the bookings ahead into account, so they and the projection
+ * always agree; with nothing booked they are what they were.
  */
-export const ENGINE_VERSION = 2;
+export const ENGINE_VERSION = 3;
 
 /** Days in one billing period: payments are every 4 weeks. */
 export const BILLING_PERIOD_DAYS = 28;
 /** Pace looks back 8 weeks — long enough to be steady, short enough to be current. */
 export const PACE_WINDOW_DAYS = 56;
-/** Below 3 weeks of observable time there is no pace yet, only a guess. */
-export const MIN_PACE_WINDOW_DAYS = 21;
 /** "Runs out" only counts when it is at least 2 weeks before billing ends. */
 export const RUN_OUT_MARGIN_DAYS = 14;
 /** "Nothing booked" looks this far ahead. */
@@ -141,6 +167,14 @@ export interface RenewalEngineInput {
    * client's last visit would be forgotten once it aged out of the window.
    */
   lastVisitHint?: string | null;
+  /**
+   * How much of the client's story Journey holds, judged by her HOME
+   * studio's cutover (lib/client-coverage.ts, coverageOfClient), for her
+   * total sessions (lib/session-total.ts). "unknown" when not given.
+   */
+  coverage?: HistoryCoverage;
+  /** The studio's time zone, for the day of the last Mindbody pull. UTC when not given. */
+  timeZone?: string;
 }
 
 /* ------------------------------------------------------------------ *
@@ -191,28 +225,10 @@ export function shortDate(key: string | null): string {
  * Away time
  * ------------------------------------------------------------------ */
 
-interface AwayRange {
-  from: string;
-  to: string;
-  reason: string;
-}
-
 function awayRanges(client: Client): AwayRange[] {
   return toTimelineEvents(client.events)
     .filter((e) => e.away)
     .map((e) => ({ from: e.from, to: e.to, reason: e.type }));
-}
-
-function isAwayOn(day: string, ranges: AwayRange[]): boolean {
-  return ranges.some((r) => r.from <= day && day <= r.to);
-}
-
-/** Days in [from, to] covered by away time. */
-function awayDaysBetween(from: string, to: string, ranges: AwayRange[]): number {
-  if (ranges.length === 0 || from > to) return 0;
-  let n = 0;
-  for (let d = from; d <= to; d = addDays(d, 1)) if (isAwayOn(d, ranges)) n++;
-  return n;
 }
 
 export interface AwayState {
@@ -745,22 +761,50 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
     pauseDuringAway: settings.pauseDuringAwayEvents,
   });
   const perWeek = pace.perWeek;
+  // Away time ahead uses no sessions, where the studio lets away time pause the clocks.
+  const awayAhead = settings.pauseDuringAwayEvents ? away : [];
 
-  let runOutDate: string | null = null;
-  if (sessionsLeft !== null && perWeek !== null && perWeek > 0) {
-    let date = addDays(today, Math.ceil((sessionsLeft / perWeek) * 7));
-    // Away time ahead uses no sessions: push the date past it.
-    if (settings.pauseDuringAwayEvents) date = addDays(date, awayDaysBetween(today, date, away));
-    runOutDate = date;
+  /*
+   * THE COMMITMENT'S END (version 3). A monthly contract's is its billing
+   * end (`chargeDate`: Mindbody's contract end, else estimated). A package
+   * paid in full commits to the same weeks: its start plus its payments ×
+   * 28 days, estimated. Billing that has finished has no end ahead.
+   */
+  let commitmentEnd: string | null = null;
+  let commitmentEndSource: RenewalSnapshot["commitmentEndSource"] = null;
+  if (paymentMode === "monthly" && chargeDate) {
+    commitmentEnd = chargeDate;
+    commitmentEndSource = chargeDateSource;
+  } else if (paymentMode === "prepaid" && billingStart && tier) {
+    commitmentEnd = addDays(billingStart, tier.payments * BILLING_PERIOD_DAYS - 1);
+    commitmentEndSource = "estimate";
   }
 
-  let bankedAtCharge: number | null = null;
-  if (chargeDate && sessionsLeft !== null && perWeek !== null && chargeDate >= today) {
-    const days =
-      daysBetween(today, chargeDate) -
-      (settings.pauseDuringAwayEvents ? awayDaysBetween(today, chargeDate, away) : 0);
-    bankedAtCharge = Math.max(0, Math.round(sessionsLeft - perWeek * (Math.max(0, days) / 7)));
+  // The bookings Mindbody holds from today come off first, then the pace
+  // from the last booked day (projection.ts). With nothing booked, both
+  // numbers are the arithmetic they always were.
+  const booked = bookedDaysAhead(attendance, today, null);
+  const runOutDate = runOutDay({ sessionsLeft, booked, pacePerWeek: perWeek, today, away: awayAhead });
+
+  let projection: RenewalProjection | null = null;
+  if (commitmentEnd && commitmentEndSource && commitmentEnd >= today && sessionsLeft !== null) {
+    projection = projectAtEnd({
+      sessionsLeft,
+      endsOn: commitmentEnd,
+      endsOnSource: commitmentEndSource,
+      today,
+      booked,
+      pacePerWeek: perWeek,
+      range: paceRange({ used: usedDays, today, floor: pace.windowStart, away: awayAhead }),
+      away: awayAhead,
+      runOutDate,
+    });
   }
+
+  // Sessions still banked when billing ends: the projection at the charge,
+  // so the two can never disagree.
+  const bankedAtCharge: number | null =
+    chargeDate && projection && projection.endsOn === chargeDate ? projection.leftAtEnd : null;
 
   /* ---- Has the package ended? ---- */
   // Nothing running and no package sessions left: it ended when the last
@@ -940,6 +984,56 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
     dataGaps.unshift("Temporary profile — there is no Mindbody record to read yet.");
   }
 
+  /* ---- The session ledger (version 3) ---- */
+  // Only when sessions left came from Mindbody's pricing options: the
+  // estimate from visits (no options on file) has no parts to tell apart.
+  let ledger: SessionLedger | null = null;
+  if (sessionsLeft !== null && sessionsLeftSource && sessionsOnHand !== null) {
+    // Bought before this package began: rolled over. "This package" is the
+    // running contract, else the paid-in-full option, else the last contract.
+    const refStart = current
+      ? current.start
+      : isPif && balance.packageService
+        ? mindbodyDayKey(balance.packageService.service.activeDate)
+        : contracts.lastEnded?.start ?? null;
+    const parts = ledgerParts(client.mindbodyServices, index, refStart, mindbodyDayKey);
+    const synced = client.mindbodyServicesSyncedAt;
+    ledger = {
+      ...parts,
+      toCome: Math.max(0, sessionsLeft - sessionsOnHand),
+      total: sessionsLeft,
+      source: sessionsLeftSource,
+      asOf: typeof synced === "string" && /^\d{4}-\d{2}-\d{2}/.test(synced)
+        ? synced.slice(0, 10)
+        : studioDateKey((synced ?? null) as any, input.timeZone ?? "UTC"),
+    };
+  }
+
+  /* ---- The smaller retention signals (version 3) ---- */
+  // A new client's weeks before they joined are not "coming less": the trend
+  // never reaches before their first package on file.
+  const firstPackageDay = [
+    ...Object.values(client.mindbodyContracts ?? {}).map((c) => mindbodyDayKey(c?.startDate)),
+    ...Object.values(client.mindbodyServices ?? {}).map((s) => mindbodyDayKey(s?.activeDate)),
+  ]
+    .filter((d): d is string => Boolean(d))
+    .sort()[0] ?? null;
+  const trend = paceTrendWindows({
+    used: usedDays,
+    today,
+    floor: attendanceSince ? maxKey(attendanceSince, firstPackageDay) : null,
+    away: settings.pauseDuringAwayEvents ? away : [],
+  });
+  const total = sessionTotalOf(client, input.coverage ?? "unknown");
+  const signals: RetentionSignals = {
+    paceRecent: trend.recent,
+    pacePrior: trend.prior,
+    paceTrend: paceTrendOf(trend.recent, trend.prior),
+    totalSessions: total.total ?? (total.basis === "journey-only" ? total.journey : null),
+    totalSessionsBasis: total.total !== null || total.journey !== null ? total.basis : null,
+    suggestedPackageKey: suggestPackage(settings.packages, perWeek, tier?.key ?? null),
+  };
+
   return {
     version: ENGINE_VERSION,
     cycleKey,
@@ -981,6 +1075,12 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
     coachIds,
     primaryTrainerId,
     dataGaps: Array.from(new Set(dataGaps)),
+    ledger,
+    commitmentEnd,
+    commitmentEndSource,
+    projection,
+    rate: rateOf({ contract: current?.contract ?? null, tier, paymentMode }),
+    signals,
   };
 }
 

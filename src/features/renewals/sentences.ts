@@ -10,6 +10,7 @@
 import { daysBetween } from "../client-history/model";
 import { formatDateWords } from "../../lib/studio-time";
 import { callChange, type InBodyVariation } from "../inbody/variation";
+import { formatMoney } from "./money";
 import type { AutoRenewSource, RenewalSituation, RenewalSnapshot } from "./types";
 
 const DAY_LABEL: Intl.DateTimeFormatOptions = { timeZone: "UTC", month: "short", day: "numeric" };
@@ -242,3 +243,121 @@ export const SITUATION_TONE: Record<RenewalSituation, "ok" | "warn" | "alert" | 
   lapsed: "alert",
   unknown: "neutral",
 };
+
+/* ------------------------------------------------------------------ *
+ * Version 3 (the renewals dashboard, Oct 7 2026): the ledger, the
+ * projection, the rate and the retention signals, each one sentence.
+ * ------------------------------------------------------------------ */
+
+/**
+ * Sessions left, part by part: "52 left: 9 rolled over · 11 this contract ·
+ * 32 to come · +2 extra". Extra (complimentary or won) sessions stand BESIDE
+ * the package's number, as on the profile header ("36 left in contract · +12
+ * extra"), never inside it. A single part is just "11 left". Null without a
+ * ledger (a version-2 snapshot, or no pricing options on file).
+ */
+export function ledgerSentence(s: Pick<RenewalSnapshot, "ledger"> | null | undefined): string | null {
+  const l = s?.ledger;
+  if (!l) return null;
+  const pkg = l.total - l.extra;
+  const extra = l.extra > 0 ? `+${l.extra} extra` : null;
+  const toCome = l.toCome > 0 ? `${l.toCome} to come${l.source === "estimate" ? " (estimated)" : ""}` : null;
+  const parts = [
+    l.carriedIn > 0 ? `${l.carriedIn} rolled over` : null,
+    l.thisContract > 0 ? `${l.thisContract} this contract` : null,
+    toCome,
+  ].filter((p): p is string => Boolean(p));
+  if (pkg <= 0) return extra ? `No package sessions left · ${extra}` : "No sessions left";
+  const head = parts.length > 1 ? `${pkg} left: ${parts.join(" · ")}` : `${pkg} left`;
+  return [head, extra].filter(Boolean).join(" · ");
+}
+
+/** "6 weeks", "1 week". */
+function weeksWords(n: number): string {
+  return `${n} week${n === 1 ? "" : "s"}`;
+}
+
+/**
+ * What will be left when the commitment ends: "About 14 left when the
+ * commitment ends Mar 3 (11–17)", "Runs out around Jan 20, 6 weeks before
+ * it ends", or "Not enough to project yet" below the pace's minimum sample.
+ * An estimated end says "around". Null when there is no projection.
+ */
+export function projectionSentence(s: Pick<RenewalSnapshot, "projection"> | null | undefined, today: string): string | null {
+  const p = s?.projection;
+  if (!p) return null;
+  if (p.leftAtEnd === null) return "Not enough to project yet";
+  const end = `${p.endsOnSource === "estimate" ? "around " : ""}${dayLabel(p.endsOn, today)}`;
+  if (p.runOutDate) {
+    const gap = weeksBetween(p.runOutDate, p.endsOn);
+    return `Runs out around ${dayLabel(p.runOutDate, today)}, ${weeksWords(gap)} before it ends`;
+  }
+  if (p.leftAtEnd === 0) return `Uses them all by the time the commitment ends ${end}`;
+  const low = p.leftAtEndLow ?? p.leftAtEnd;
+  const high = p.leftAtEndHigh ?? p.leftAtEnd;
+  const range = low !== high ? ` (${low}–${high})` : "";
+  return `About ${p.leftAtEnd} left when the commitment ends ${end}${range}`;
+}
+
+/**
+ * How the projection was worked out, for its (i): "52 left, 6 booked, then
+ * 1.5× a week for 21 weeks". Null without a projection to explain.
+ */
+export function projectionWorking(s: Pick<RenewalSnapshot, "projection" | "sessionsLeft"> | null | undefined): string | null {
+  const p = s?.projection;
+  if (!p || p.leftAtEnd === null || s?.sessionsLeft === null || s?.sessionsLeft === undefined) return null;
+  return [
+    `${s.sessionsLeft} left`,
+    p.booked > 0 ? `${p.booked} booked` : null,
+    p.pacePerWeek !== null ? `then ${paceLabel(p.pacePerWeek)} a week for ${Math.round(p.paceWeeks)} week${Math.round(p.paceWeeks) === 1 ? "" : "s"}` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+/**
+ * What the client pays: "at $54 a session (special)" when Mindbody's charge
+ * differs from the package table, "at $60 a session" otherwise, or "$480
+ * every 4 weeks" when the package (and so the split into sessions) isn't
+ * known. Null without a rate.
+ */
+export function rateSentence(s: Pick<RenewalSnapshot, "rate"> | null | undefined): string | null {
+  const r = s?.rate;
+  if (!r) return null;
+  if (r.perSession !== null) return `at ${formatMoney(r.perSession)} a session${r.special ? " (special)" : ""}`;
+  if (r.payment !== null) return `${formatMoney(r.payment)} every 4 weeks`;
+  return null;
+}
+
+/**
+ * The pace's trend: "Coming less: 0.75× a week in the last 4 weeks, 1.5× in
+ * the 8 before", "Coming more: …", or "Steady at 1.5× a week". Null when
+ * either window is too short to say.
+ */
+export function paceTrendSentence(s: Pick<RenewalSnapshot, "signals"> | null | undefined): string | null {
+  const g = s?.signals;
+  if (!g || !g.paceTrend || g.paceRecent === null || g.pacePrior === null) return null;
+  if (g.paceTrend === "steady") return `Steady at ${paceLabel(g.paceRecent)} a week`;
+  return `Coming ${g.paceTrend === "down" ? "less" : "more"}: ${paceLabel(g.paceRecent)} a week in the last 4 weeks, ${paceLabel(g.pacePrior)} in the 8 before`;
+}
+
+/**
+ * Their sessions so far, before Journey included (lib/session-total.ts):
+ * "312 sessions in all", "About 312 sessions in all (from Mindbody, not yet
+ * confirmed)", or "12 sessions in Journey" when nothing before Journey is
+ * known. Null when the count isn't known.
+ */
+export function tenureSentence(s: Pick<RenewalSnapshot, "signals"> | null | undefined): string | null {
+  const g = s?.signals;
+  if (!g || g.totalSessions === null || !g.totalSessionsBasis) return null;
+  const n = g.totalSessions;
+  const word = `session${n === 1 ? "" : "s"}`;
+  switch (g.totalSessionsBasis) {
+    case "journey-only":
+      return `${n} ${word} in Journey`;
+    case "mindbody":
+      return `About ${n} ${word} in all (from Mindbody, not yet confirmed)`;
+    default:
+      return `${n} ${word} in all`;
+  }
+}

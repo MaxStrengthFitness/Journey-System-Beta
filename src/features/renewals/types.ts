@@ -260,6 +260,121 @@ export interface RenewalSnapshot {
   primaryTrainerId: string | null;
   /** What is missing, in words: "No Mindbody contract on file — press Sync on the Mindbody card". */
   dataGaps: string[];
+
+  /* ---- Version 3 (the renewals dashboard, Oct 7 2026). Absent on older snapshots. ---- */
+
+  /**
+   * Where `sessionsLeft` comes from, part by part: "52 left: 9 rolled over ·
+   * 11 this contract · 32 to come · +2 won". Its `total` IS `sessionsLeft`:
+   * never a second balance. Null when the parts can't be told apart (no
+   * pricing options on file, or no balance at all).
+   */
+  ledger?: SessionLedger | null;
+  /**
+   * When the commitment ends: Mindbody's contract end for a monthly contract
+   * (`chargeDate`), else the package's start plus its payments × 28 days.
+   * Null when no commitment is running.
+   */
+  commitmentEnd?: string | null;
+  commitmentEndSource?: "mindbody" | "estimate" | null;
+  /** Sessions projected left when the commitment ends. Null without a commitment end or a balance. */
+  projection?: RenewalProjection | null;
+  /** What the client pays: Mindbody's own charge when it is on file, else the package table's rate. */
+  rate?: RenewalRate | null;
+  /** The smaller retention signals, each said as a sentence (sentences.ts). */
+  signals?: RetentionSignals | null;
+}
+
+/**
+ * Sessions left, part by part (snapshot version 3). Every part is a count of
+ * Mindbody's own, except `toCome`, which is 8 for each payment still to come
+ * (`source: "estimate"` when the payments were counted from the contract's
+ * dates rather than Mindbody's scheduled charges).
+ */
+export interface SessionLedger {
+  /**
+   * Unused sessions on pricing options bought before the current contract
+   * began: rolled over (sessions never expire, and an auto-renewed contract
+   * carries them in).
+   */
+  carriedIn: number;
+  /** Unused sessions on pricing options bought under the current contract (or the paid-in-full package). */
+  thisContract: number;
+  /** Sessions still to arrive: 8 for each payment still to come. */
+  toCome: number;
+  /**
+   * Complimentary and won sessions: pricing options named in the studio's
+   * extra-sessions names (AJ, Oct 6 2026: won sessions are "added to
+   * mindbody" as pricing options).
+   */
+  extra: number;
+  /** carriedIn + thisContract + toCome + extra — always equal to `sessionsLeft`. */
+  total: number;
+  source: "mindbody" | "estimate";
+  /** The studio's day of the Mindbody pull these counts come from. Null when the pull's time isn't on file. */
+  asOf: string | null;
+}
+
+/**
+ * Sessions projected left when the commitment ends (snapshot version 3).
+ *
+ *   leftAtEnd = sessionsLeft − booked − pace × paceWeeks
+ *
+ * `booked` is the client's bookings from today to the end, as far as the
+ * bookings are read (30 days ahead); after the last booked day, the pace.
+ * Away time ahead (Vacation, Snowbird, Medical) uses no sessions.
+ */
+export interface RenewalProjection {
+  /** The commitment's end (the snapshot's `commitmentEnd`). */
+  endsOn: string;
+  endsOnSource: "mindbody" | "estimate";
+  /** Booked days from today to the end. */
+  booked: number;
+  /** The last booked day counted; null when nothing is booked. */
+  bookedThrough: string | null;
+  /** Weeks after the last booked day (or today) to the end, away time taken off. One decimal. */
+  paceWeeks: number;
+  /** The pace the projection used (the snapshot's `pacePerWeek`). Null below the minimum sample. */
+  pacePerWeek: number | null;
+  /** Sessions left when the commitment ends; 0 when they run out first; null when there's not enough to project. */
+  leftAtEnd: number | null;
+  /** The range, from this client's fastest and slowest 4-week pace. Equal to leftAtEnd when there is only one. */
+  leftAtEndLow: number | null;
+  leftAtEndHigh: number | null;
+  /** When the sessions run out, when that is before the end. */
+  runOutDate: string | null;
+}
+
+/** What the client pays (snapshot version 3). */
+export interface RenewalRate {
+  /** Per session. Null when the package isn't known (a payment can't be split into sessions). */
+  perSession: number | null;
+  /** Each 4-weekly payment; null for paid in full. */
+  payment: number | null;
+  /** "mindbody": the contract's scheduled charge. "package": the studio's package table. */
+  source: "mindbody" | "package";
+  /** The package table's rate, for "at $54 (special)". Null without a package. */
+  packageRate: number | null;
+  /** Mindbody's charge differs from the package table's payment. */
+  special: boolean;
+}
+
+/** The smaller retention signals (snapshot version 3). Sentences, never scores. */
+export interface RetentionSignals {
+  /** Visits (late cancels counted as used) a week over the last 4 weeks; null below 21 observed days. */
+  paceRecent: number | null;
+  /** The same over the 8 weeks before those. */
+  pacePrior: number | null;
+  /** Recent against prior: "down", "up", or "steady"; null when either is unknown. */
+  paceTrend: "up" | "down" | "steady" | null;
+  /** Her total sessions so far, before Journey included (lib/session-total.ts). */
+  totalSessions: number | null;
+  totalSessionsBasis: "confirmed" | "whole-story" | "mindbody" | "journey-only" | null;
+  /**
+   * The package whose sessions a week fit the client's pace best (the
+   * current package on a tie). Null without a pace.
+   */
+  suggestedPackageKey: string | null;
 }
 
 /* ------------------------------------------------------------------ *
@@ -323,8 +438,50 @@ export interface RenewalCycle {
   closedOn?: string | null;
   /** The trainer who coached most sessions this cycle — for leader-only rates. */
   primaryTrainerId?: string | null;
+  /**
+   * What the studio has decided about the renewal (the renewals dashboard,
+   * Oct 7 2026; AJ: "allow in app response"). Anyone who works at the studio
+   * sets it; every change also writes a touch of kind "plan". Never an
+   * outcome: a leader's outcome stands beside it and wins.
+   */
+  plan?: RenewalPlan | null;
   updatedAt?: unknown;
   updatedBy?: string;
+}
+
+/**
+ * The renewal plan's choices (plan.ts says which are offered when).
+ *
+ * A contract that renews by itself and will bank sessions:
+ *   let-renew       "Let it renew (sessions carry over)"
+ *   pause-billing   "Pause billing in Mindbody until sessions run low"
+ * A contract that doesn't renew by itself (Strongsville; AJ, Oct 6 2026:
+ * "allow ... for studios without auto renew to mark if a client is set to
+ * renew or not"):
+ *   renew-same · upgrade · downgrade · pay-as-you-go
+ * Both:
+ *   not-renewing · undecided
+ */
+export type RenewalPlanChoice =
+  | "let-renew"
+  | "pause-billing"
+  | "renew-same"
+  | "upgrade"
+  | "downgrade"
+  | "pay-as-you-go"
+  | "not-renewing"
+  | "undecided";
+
+export interface RenewalPlan {
+  choice: RenewalPlanChoice;
+  /** The package they are renewing onto (renew-same, upgrade, downgrade). */
+  packageKey?: string | null;
+  note?: string;
+  /** Sign-in uid of whoever set it. */
+  byUid: string;
+  byName: string;
+  /** Firestore server time. */
+  at: unknown;
 }
 
 /** One logged conversation. Never edited; a leader can delete a mistake. */
@@ -339,4 +496,10 @@ export interface RenewalTouch {
   interestedIn: RenewalInterest | null;
   note: string;
   needsLeader: boolean;
+  /**
+   * "plan" when the touch records a change to the renewal plan (its leaning
+   * is the plan's, plan.ts `planLeaning`); absent on a conversation.
+   */
+  kind?: "plan";
+  plan?: { choice: RenewalPlanChoice; packageKey?: string | null };
 }
