@@ -368,6 +368,7 @@ function OperationsShell({
             studio={studio}
             studios={studios}
             clients={clients}
+            rosterStatus={clientsStatus}
             trainers={trainers}
             authTrainer={authTrainer}
             onOpenClient={openClient}

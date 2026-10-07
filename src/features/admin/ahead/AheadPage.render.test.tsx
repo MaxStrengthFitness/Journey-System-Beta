@@ -274,6 +274,25 @@ describe("Operations → Ahead", () => {
     expect(el.querySelector(".ops-ah-legend")?.textContent).toContain("Banked at the charge");
   });
 
+  it("a trainer remembered from elsewhere never empties the page", async () => {
+    // Two trainers here, so the picker is drawn: Linda trains with Tess.
+    const here = clients.map((c) => (c.id === "linda" ? ({ ...c, renewal: { ...(c.renewal as object), primaryTrainerId: "t-tess" } } as unknown as Client) : c));
+    trainers.push({ id: "t-tess", fullName: "Tess Ward", primaryHomeStudioId: "westlake" } as unknown as Trainer);
+    let el = await mount(here);
+    const select = el.querySelector<HTMLSelectElement>("select[aria-label='Trainer']")!;
+    await act(async () => {
+      select.value = "t-dana";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    // Another studio: nobody's primary trainer is Dana there.
+    act(() => root?.unmount());
+    host?.remove();
+    const elsewhere = clients.map((c) => ({ ...c, renewal: { ...(c.renewal as object), primaryTrainerId: "t-other" } }) as unknown as Client);
+    el = await mount(elsewhere);
+    expect([...el.querySelectorAll(".ops-ah-row__name")].map((n) => n.textContent)).toContain("Maureen Kowalski");
+    trainers.pop();
+  });
+
   it("says so when the conversations can't be read, and never 'nobody has talked'", async () => {
     failures.cycles = true;
     const el = await mount();

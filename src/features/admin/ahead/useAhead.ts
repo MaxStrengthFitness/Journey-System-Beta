@@ -23,7 +23,7 @@ import type { Client, Studio, Trainer } from "../../../types";
 import { useBoundaryClock } from "../../../lib/boundary-clock";
 import type { RosterStatus } from "../../../hooks/useStudioRoster";
 import { useCyclesRead } from "../../renewals/usePipeline";
-import { useStudioJourneys } from "../journey/useStudioJourneys";
+import { useStudioJourneys, type StudioJourneys } from "../journey/useStudioJourneys";
 import { noteCovers, useNightlyNote } from "../overview/useNightlyNote";
 import type { RenewalLaneContext } from "../renewals/lanes";
 import { aheadClients, KIND_GROUP, shortestTier, type AheadInput, type AheadJourney } from "./events";
@@ -42,6 +42,17 @@ export function useAhead({ studio, studios, clients, rosterStatus = "ready", tra
   // Moves when a state could change (a booking's edge, the night's record, the day), not every minute.
   const clock = useBoundaryClock();
   const j = useStudioJourneys({ studio, studios, clients, trainers, authTrainer, now: clock.now, clock });
+  return useAheadFrom(j, { studio, clients, rosterStatus, trainers });
+}
+
+/**
+ * Ahead's reads on a Journey a page already holds (Week ahead's Further
+ * ahead passes its own), so a page never opens the Journey's listeners twice.
+ */
+export function useAheadFrom(
+  j: StudioJourneys,
+  { studio, clients, rosterStatus = "ready", trainers }: Pick<UseAheadArgs, "studio" | "clients" | "rosterStatus" | "trainers">,
+) {
   const studioId = studio.id as string;
   const span = useMemo(() => aheadSpan(j.today), [j.today]);
   const laneCtx = useMemo<RenewalLaneContext>(

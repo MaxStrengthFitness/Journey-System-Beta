@@ -162,9 +162,14 @@ describe("the charge and the commitment's end", () => {
     expect(one(client("victor", pif)).events.find((e) => e.kind === "ends")!.sentence).toBe("Paid in full · ends around Feb 4, 2027");
   });
 
-  it("a coach's paid-in-full lock means nothing charges", () => {
-    const a = one(client("walt", banking(), { contractTierOverride: { payment: "pif" } } as Partial<Client>));
+  it("a coach's paid-in-full lock means nothing charges, and says so", () => {
+    const a = one(client("walt", banking({ autoRenews: null }), { contractTierOverride: { payment: "pif" } } as Partial<Client>));
     expect(a.events.some((e) => e.kind === "charge" || e.kind === "charge-window")).toBe(false);
+    const end = a.events.find((e) => e.kind === "ends")!;
+    expect(end.sentence).toContain("nothing bills");
+    expect(end.proof).toContain("A coach marked this client paid in full");
+    // Never "Nothing has answered whether the contract renews": the lock answered.
+    expect(a.events.some((e) => e.kind === "billing-ends")).toBe(false);
   });
 });
 
@@ -228,6 +233,17 @@ describe("May slip", () => {
     expect(e).toMatchObject({ day: T(2), line: "drifting", sentence: "Turns Drifting if nothing is booked · last came Oct 1" });
     // Within a week: it needs you now.
     expect(a.needsNow).toBe(true);
+  });
+
+  it("a client too new to judge still crosses At risk with nothing booked, as journeyOf says", () => {
+    const tooNew = journey({ state: "unknown", unknownWhy: "too-new", driftDays: null, lastVisit: T(-10) } as Partial<ClientJourney>);
+    expect(one(client("dennis", snap()), withJourney({ journey: tooNew, nextState: "none" })).events.find((e) => e.kind === "may-slip")).toMatchObject({
+      day: T(4),
+      line: "at-risk",
+    });
+    // Any other Unknown (no nightly record, a stale one, bookings unread) can't be judged: nothing is said.
+    const stale = journey({ state: "unknown", unknownWhy: "stale-record", driftDays: null, lastVisit: T(-10) } as Partial<ClientJourney>);
+    expect(kinds(client("dennis", snap()), withJourney({ journey: stale, nextState: "none" })).some((k) => k.startsWith("may-slip"))).toBe(false);
   });
 
   it("says nothing when booked, unread, away or before the Journey is ready", () => {

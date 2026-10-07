@@ -25,9 +25,9 @@ A row opens the client: as a **sheet from the bottom** where the page is narrowe
 - the renewals dashboard's own row (`RenewalRow`, plan picker included), so a client is never said two ways;
 - Open client, which opens the client's page inside Operations, with the journey and the case.
 
-Lenses: All · Talks · At a charge · Runs out early · May slip · the studio's shortest package by its own name (the Trial) · Moments. A trainer filter sits beside them. The view, the lens and the trainer are remembered until sign-out (`forgetOnSignOut`).
+Lenses: All · Talks · At a charge · Runs out early · May slip · the studio's shortest package by its own name (the Trial) · Moments. A trainer filter sits beside them. The view, the lens and the trainer are remembered until sign-out (`forgetOnSignOut`); a remembered trainer who isn't anyone's primary trainer at this studio reads as Everyone, so a filter nobody can see never empties the page.
 
-Week ahead ends with **Further ahead**, the first week after it with something to decide, with a door to Ahead (`weeks.ts` `nextBusyWeek`), so an all-clear week is never a dead end.
+Week ahead ends with **Further ahead**, the first week after it with something to decide, with a door to Ahead (`weeks.ts` `nextBusyWeek`), so an all-clear week is never a dead end. It uses Ahead's own reads on the Journey Week already holds (`useAheadFrom`), conversations included, and says nothing until they have answered.
 
 ## The events, and where each date comes from
 
@@ -66,7 +66,7 @@ Ahead makes no Mindbody call, adds no query shape (so no index), writes nothing 
 | `line-crossing.ts` | The next line if nothing is booked, checked day by day against `journeyOf` |
 | `weeks.ts` | The span, Monday weeks, the run with clear stretches folded, the counts line, pile-ups, the strip, the lenses, the Clients view's groups, `nextBusyWeek` |
 | `clocks-geometry.ts` | The two clocks as positions (pure, no DOM) |
-| `useAhead.ts` | The reads |
+| `useAhead.ts` | The reads; `useAheadFrom` the same on a Journey a page already holds (Week ahead) |
 | `AheadPage.tsx` | The page: header, counts, notes, can't place, the switch, lenses, trainer, the view and the panel |
 | `WeekRun.tsx` · `ClientClocks.tsx` · `AheadPeek.tsx` · `marks.tsx` | The views, the panel (`chartLabels` keeps its labels apart), the marks and the clock bar |
 | `ahead.css` | `ops-ah-*`, admin tokens only; container queries on the page; sticky strip and axis take back the scroller's padding |

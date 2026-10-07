@@ -54,8 +54,10 @@ import { isSlipping } from "../journey/states";
 import { useBoundaryClock } from "../../../lib/boundary-clock";
 import { bookingBoundaries } from "../../../lib/booking-state";
 import type { OpsDoor } from "../shell/places";
-import { aheadClients, eventsOf } from "../ahead/events";
-import { aheadSpan, countsWords, nextBusyWeek } from "../ahead/weeks";
+import { eventsOf } from "../ahead/events";
+import { countsWords, nextBusyWeek } from "../ahead/weeks";
+import { useAheadFrom } from "../ahead/useAhead";
+import type { RosterStatus } from "../../../hooks/useStudioRoster";
 import { busiestDay, dayFacts, dayLine, mondayOf, readInFull, teamWeek, totals, weekFrom, type DayFacts } from "./review";
 import { useCoverageRecord } from "./useCoverageRecord";
 import "../shell/ops.css";
@@ -67,6 +69,8 @@ export interface WeekPageProps {
   studio: Studio;
   studios: Studio[];
   clients: Client[];
+  /** The roster's read: Further ahead says nothing until it has answered. */
+  rosterStatus?: RosterStatus;
   trainers: Trainer[];
   authTrainer: Trainer;
   onOpenClient?: (clientId: string) => void;
@@ -304,7 +308,7 @@ function ThisWeek({ studio, onOpenClient }: WeekPageProps) {
  * The week ahead
  * ------------------------------------------------------------------ */
 
-function WeekAhead({ studio, studios, clients, trainers, authTrainer, onOpenClient, onOpen }: WeekPageProps) {
+function WeekAhead({ studio, studios, clients, rosterStatus, trainers, authTrainer, onOpenClient, onOpen }: WeekPageProps) {
   // Moves when a state could change (a booking's edge, the night's record, the day), not every minute.
   const clock = useBoundaryClock();
   const now = clock.now;
@@ -336,27 +340,14 @@ function WeekAhead({ studio, studios, clients, trainers, authTrainer, onOpenClie
   const noteCovers = note !== null && note.kind !== "unknown";
   const renewalsDue = renewals.counts["talk-now"] + renewals.counts["before-charge"];
   // Further ahead (Oct 7 2026, AJ: a week that is all clear should say what comes next): the first
-  // week after this one with something to decide, by Ahead's own rules, with a door to Ahead.
-  const further = useMemo(() => {
-    if (!j.ready) return undefined;
-    const span = aheadSpan(j.today);
-    const list = aheadClients({
-      clients,
-      studioId: studio.id as string,
-      today: j.today,
-      until: span.until,
-      settings: j.settings,
-      laneCtx: { studioId: studio.id as string, settings: j.settings, today: j.today, inactiveMarks: j.marks.marks, inactiveDays: j.lines.inactiveDays },
-      cycles: {},
-      cyclesKnown: false,
-      journeys: new Map(j.entries.map((e) => [e.id, { journey: e.journey, nextState: e.row.next.state }])),
-      breakDays: j.breakDays,
-      lines: j.lines,
-      cutover: studio.journeyCutoverDate ?? null,
-      tz,
-    });
-    return nextBusyWeek(eventsOf(list), lastDay, span);
-  }, [j.ready, j.today, j.settings, j.marks.marks, j.lines, j.entries, j.breakDays, clients, studio.id, studio.journeyCutoverDate, tz, lastDay]);
+  // week after this one with something to decide, by Ahead's own reads and rules (the conversations
+  // included, so it never names a week Ahead shows empty), with a door to Ahead. Nothing until the
+  // roster, the Journey and the conversations have answered.
+  const ahead = useAheadFrom(j, { studio, clients, rosterStatus, trainers });
+  const further = useMemo(
+    () => (ahead.ready && !ahead.rosterUnknown && !ahead.cyclesLoading ? nextBusyWeek(eventsOf(ahead.clients), lastDay, ahead.span) : undefined),
+    [ahead.ready, ahead.rosterUnknown, ahead.cyclesLoading, ahead.clients, ahead.span, lastDay],
+  );
 
   const clear: string[] = [];
   const backShown = !j.ready || dueBack.length > 0;

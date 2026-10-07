@@ -83,7 +83,17 @@ export function AheadPage({ studio, studios, clients, rosterStatus, trainers, au
 
   const lenses = useMemo(() => aheadLenses(a.trialLabel), [a.trialLabel]);
   const activeLens = lenses.some((l) => l.id === lens) ? lens : "all";
-  const byTrainer = useMemo(() => a.clients.filter((c) => !trainer || c.trainerId === trainer), [a.clients, trainer]);
+  const trainerChoices = useMemo(() => {
+    const ids = new Set(a.clients.map((c) => c.trainerId).filter((id): id is string => Boolean(id)));
+    return Array.from(ids)
+      .map((id) => ({ id, name: a.trainerNames.get(id) || "" }))
+      .filter((t) => t.name)
+      .sort((x, y) => x.name.localeCompare(y.name));
+  }, [a.clients, a.trainerNames]);
+  // A trainer remembered from another studio, or no longer anyone's primary
+  // trainer here, is Everyone: a filter nobody can see must never empty the page.
+  const activeTrainer = trainer && trainerChoices.some((t) => t.id === trainer) ? trainer : "";
+  const byTrainer = useMemo(() => a.clients.filter((c) => !activeTrainer || c.trainerId === activeTrainer), [a.clients, activeTrainer]);
   const clientsById = useMemo(() => new Map(a.clients.map((c) => [c.id, c])), [a.clients]);
   const events = useMemo(
     () => eventsOf(byTrainer).filter((e) => eventInLens(e, clientsById.get(e.clientId), activeLens)),
@@ -95,16 +105,9 @@ export function AheadPage({ studio, studios, clients, rosterStatus, trainers, au
   const groups = useMemo(() => clientGroups(byTrainer.filter((c) => clientInLens(c, activeLens))), [byTrainer, activeLens]);
   const counts = useMemo(() => headlineCounts(a.clients, a.span), [a.clients, a.span]);
   const cant = useMemo(() => a.clients.filter((c) => c.cantPlace !== null), [a.clients]);
-  const miaToday = j.ready ? a.clients.filter((c) => c.slipping && (!trainer || c.trainerId === trainer)).length : null;
+  const miaToday = j.ready ? a.clients.filter((c) => c.slipping && (!activeTrainer || c.trainerId === activeTrainer)).length : null;
   const axis = useMemo(() => axisOf(a.span), [a.span]);
   const bookingsSeenTo = addDays(today, BOOKING_LOOKAHEAD_DAYS);
-  const trainerChoices = useMemo(() => {
-    const ids = new Set(a.clients.map((c) => c.trainerId).filter((id): id is string => Boolean(id)));
-    return Array.from(ids)
-      .map((id) => ({ id, name: a.trainerNames.get(id) || "" }))
-      .filter((t) => t.name)
-      .sort((x, y) => x.name.localeCompare(y.name));
-  }, [a.clients, a.trainerNames]);
   const pickedClient = picked ? clientsById.get(picked) ?? null : null;
   const canPlan = j.ready && !j.settingsFailed && canSetRenewalPlan(authTrainer, studioId);
   const n = (v: number) => (a.ready && !a.rosterUnknown ? v : null);
@@ -198,7 +201,7 @@ export function AheadPage({ studio, studios, clients, rosterStatus, trainers, au
             </button>
           </div>
           {trainerChoices.length > 1 && (
-            <AdminSelect className="ops-ah__trainer" aria-label="Trainer" value={trainer} onChange={(e) => setTrainer(e.target.value)}>
+            <AdminSelect className="ops-ah__trainer" aria-label="Trainer" value={activeTrainer} onChange={(e) => setTrainer(e.target.value)}>
               <option value="">Everyone</option>
               {trainerChoices.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -229,7 +232,7 @@ export function AheadPage({ studio, studios, clients, rosterStatus, trainers, au
                 onPick={setPicked}
                 covered={a.covered}
                 miaToday={activeLens === "all" ? miaToday : null}
-                filtered={Boolean(trainer)}
+                filtered={Boolean(activeTrainer)}
               />
             ) : (
               <ClientClocks

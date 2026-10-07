@@ -330,6 +330,12 @@ function renewalEvents(
         sentence: atEnd === 0 ? "Sessions used up about when it renews" : leftWords ? `${leftWords[0].toUpperCase()}${leftWords.slice(1)} when it renews` : "Auto-renews",
         proof: `The contract auto-renews ${around}${dayLabel(end, i.today)}${leftWords ? `, with ${leftWords} at the client's pace` : ""}.`,
       });
+    } else if (s.paymentMode === "monthly" && lockSaysNothingBills(c.contractTierOverride)) {
+      // A coach's mark on the profile says paid in full or banked sessions: nothing bills, whatever the contract says.
+      add("ends", end, {
+        sentence: `Commitment ends ${around}${dayLabel(end, i.today)} · nothing bills${leftWords ? ` · ${leftWords}` : ""}`,
+        proof: "A coach marked this client paid in full or using banked sessions on the profile, so nothing is charged when the commitment ends; the sessions carry on.",
+      });
     } else if (s.paymentMode === "monthly") {
       add("billing-ends", end, {
         sentence:
@@ -369,7 +375,9 @@ function renewalEvents(
 function slipEvent(c: Client, j: AheadJourney | undefined, i: AheadInput): AheadEvent | null {
   if (!j || j.nextState !== "none") return null;
   const state = j.journey.state;
-  if (state === "away" || state === "unknown" || state === "inactive" || state === "back") return null;
+  // Too new to judge still crosses At risk with nothing booked (journeyOf tests the lines before the stage); any other Unknown can't be judged.
+  if (state === "away" || state === "inactive" || state === "back") return null;
+  if (state === "unknown" && j.journey.unknownWhy !== "too-new") return null;
   const lastVisit = j.journey.lastVisit;
   const horizon = addDays(i.today, BOOKING_LOOKAHEAD_DAYS);
   const next = nextLineCrossing({
