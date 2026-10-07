@@ -131,6 +131,27 @@ export function foldProfile(profile, maps, { top = 200, fromUs = -Infinity, toUs
   const byFile = new Map();
   const byFn = new Map();
   let total = 0;
+  // The app's share: samples with one of the app's own frames (src/) anywhere on the stack, whatever the leaf
+  // (a library called by the app counts; a library working on its own, such as Firestore taking in what the
+  // network brought, does not).
+  const parentOf = new Map();
+  for (const n of profile.nodes) for (const c of n.children || []) parentOf.set(c, n.id);
+  const appNode = new Map();
+  const isAppFrame = (node) => {
+    const cf = node.callFrame;
+    if (!cf.url || !cf.url.startsWith("http")) return false;
+    const parsed = maps.forUrl(cf.url);
+    const hit = parsed ? lookup(parsed, cf.lineNumber, cf.columnNumber) : null;
+    return !!hit && shortSource(hit.source).startsWith("src/");
+  };
+  const onApp = (id) => {
+    if (appNode.has(id)) return appNode.get(id);
+    const node = nodes.get(id);
+    const v = !!node && (isAppFrame(node) || (parentOf.has(id) && onApp(parentOf.get(id))));
+    appNode.set(id, v);
+    return v;
+  };
+  let appUs = 0;
   for (const [id, us] of selfUs) {
     const node = nodes.get(id);
     if (!node) continue;
@@ -138,6 +159,7 @@ export function foldProfile(profile, maps, { top = 200, fromUs = -Infinity, toUs
     // Idle is the main thread waiting: not work, and it would top every list.
     if (!cf.url && cf.functionName === "(idle)") continue;
     total += us;
+    if (onApp(id)) appUs += us;
     let file;
     let fn;
     if (!cf.url) {
@@ -160,5 +182,5 @@ export function foldProfile(profile, maps, { top = 200, fromUs = -Infinity, toUs
       .sort((a, b) => b[1] - a[1])
       .slice(0, top)
       .map(([name, us]) => ({ name, ms: Math.round(us / 100) / 10 }));
-  return { totalMs: Math.round(total / 1000), files: rank(byFile), functions: rank(byFn) };
+  return { totalMs: Math.round(total / 1000), appMs: Math.round(appUs / 1000), files: rank(byFile), functions: rank(byFn) };
 }

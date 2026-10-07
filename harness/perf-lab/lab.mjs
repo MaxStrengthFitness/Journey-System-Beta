@@ -23,6 +23,12 @@
  *   --clients 300 (the seed's size)  --skip-build (reuse <out>/lab-build)
  *   --split (seed the clients' machine maps in their own documents, the shape
  *   after scripts/split-client-metrics.ts; features/machine-totals)
+ *   --nowbar-wait 45000 (the session's wait for the Now Bar)  --slow-start A
+ *   (that build, A, B or main, gets at least 120 s: a build from before the
+ *   speed round shows the Now Bar only after the database answers)
+ *
+ * Diagnostics (README.md, "Switches for looking closer"): PERF_LAB_TRACE,
+ * PERF_LAB_SAVE_PROFILE, PERF_LAB_WRAPUP_TAIL_MS, PERF_LAB_SHOTS.
  *
  * Only ever the local emulators under demo-perf-lab: see README.md.
  */

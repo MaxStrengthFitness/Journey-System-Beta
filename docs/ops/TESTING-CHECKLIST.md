@@ -3072,6 +3072,7 @@ Round document: `docs/rounds/2026-10-06-ipad.md`. Walk it after `ship-release.ps
 - [ ] **An iPad left on the old version** (one nobody took back to the Hub since the deploy): finish a session on it for one of the three clients, then open that client on an updated iPad: the machine's count went up by exactly one, not two.
 - [ ] **Programming → Setup's suggestions and Operations → Machine fit:** they still show; they may count a little less (a set-up accepted from a suggestion no longer counts on this studio's own report). Say if that matters (the round's open question).
 
+<<<<<<< HEAD
 ## Round 60 — Running low on sessions · *Oct 6 2026, branch `oct6/running-low`*
 
 Round document: `docs/rounds/2026-10-06-running-low.md`. Walk it as a studio leader, after the push, in portrait and landscape, at a studio that has had a nightly run (westlake, Strongsville or Willoughby).
@@ -3103,3 +3104,10 @@ Round document: `docs/rounds/2026-10-06-slipping-inactive.md`. Walk it as a stud
 - [ ] **Marked today:** mark someone who is on Slipping away right now, go back to Today: they leave the list at once, with no reload. If they were the only one, Slipping away folds into the All clear line.
 - [ ] **No flicker:** reopen Today. Slipping away says "Reading…" for a moment at most, and a marked client never shows in it, even briefly.
 - [ ] **Booked again:** a marked client who has booked since isn't slipping either (Clients → Journey calls them Back).
+=======
+**The Wrap-up round** (Oct 7 2026, branch `oct6/wrapup`, `ship-wrapup.ps1`; `docs/rounds/2026-10-07-wrapup.md`). Walk it once the deploy is Live (Render's Manual Deploy pressed) and the iPad has been back on the Hub. A 10th-gen iPad or a mini; an older iPad too if there is one. Nothing on screen changed; these lines are the first real numbers for what the lab could only estimate. Write each time in the Findings log with the iPad's model.
+
+- [ ] **The Wrap-up in its first seconds.** Finish a session with five or six machines. As soon as the Wrap-up is drawn, scroll it and tap a card within the first three seconds: it answers at once, and the confetti runs without a catch. Time Finish session → the Wrap-up drawn. *The lab (emulator, not production) measured 0.7 s of stutter on an iPad 10th gen class and 1.0 s older, nearly all of it the emulator re-sending data; a real iPad should show far less.* If it catches, say for how long, and, if a Mac is near, record Finish to the Wrap-up in Safari's Timelines (JavaScript and Events, Rendering Frames) and export it for Claude.
+- [ ] **A session while another iPad finishes.** With a session running on this iPad, finish a session for a different client on a second iPad (or change that client from the PC). This iPad's session doesn't flicker, jump back in the grid or catch on a Next tap; the same with this iPad on the Wrap-up and on a client's profile. *If it does:* `withMachineTotals`, `90461dec`.
+- [ ] **Five profiles in a row.** From the Hub, open five clients one after another (card → peek → Open profile, then back to the Hub, the next card at once). Time each until the Journey tab's grid is drawn: the fourth and fifth are about as quick as the first. The Journey tab never waits for the machine counts; on the Equipment tab the counts show at once (after the migration they can fill in a moment later, as the totals arrive), and a machine the client has done never reads as never done. Do it before the roster migration and again after it, and write both.
+>>>>>>> oct6/wrapup

@@ -3,16 +3,70 @@
  * WebSocket. No puppeteer: one small client, so the lab has no dependency of
  * its own.
  */
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 export const CHROME = process.env.PERF_LAB_CHROME || "C:/Program Files/Google/Chrome/Application/chrome.exe";
 
+/** Ends a Chrome and every process it started (on Windows, killing the first process leaves its children). */
+function killTree(proc) {
+  if (!proc?.pid) return;
+  try {
+    if (process.platform === "win32") spawnSync("taskkill", ["/PID", String(proc.pid), "/T", "/F"], { stdio: "ignore" });
+    else proc.kill("SIGKILL");
+  } catch {
+    /* gone */
+  }
+}
+
+/**
+ * The .NET pattern (PowerShell's -match, which ignores case) for a command line naming this profile folder
+ * and no other: the folder followed by a quote, a space, a backslash or the end, so "...-main-2" never
+ * matches "...-main-20". Chrome keeps the folder as it was given, so slashes are compared as backslashes.
+ */
+export function strayPattern(profileDir) {
+  const dir = resolve(profileDir).split("/").join("\\");
+  return dir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?:[\\x22\\s\\\\]|$)";
+}
+
+/**
+ * Any Chrome still running on this profile folder (from a rep that failed, or a run that was stopped) is
+ * ended first. One left behind holds the folder: a new Chrome on it hands over to the old one and exits, the
+ * lab then drives the OLD browser, and an app page still open there holds Firestore's disk cache, so every
+ * open of the new rep runs on memory and downloads everything again (the old-iPad "evening anomaly" of
+ * Oct 6 2026, harness/perf-lab/README.md). Windows only, where the lab runs.
+ */
+function endStrays(profileDir) {
+  if (process.platform !== "win32") return 0;
+  const pattern = strayPattern(profileDir).replace(/'/g, "''");
+  const ps = [
+    `Get-CimInstance Win32_Process -Filter "Name='chrome.exe'"`,
+    `Where-Object { $_.CommandLine -and ($_.CommandLine.Replace('/', [string][char]92) -match '${pattern}') }`,
+    `ForEach-Object { taskkill /PID $_.ProcessId /T /F 2>&1 | Out-Null; 1 }`,
+    `Measure-Object | ForEach-Object { $_.Count }`,
+  ].join(" | ");
+  const out = spawnSync("powershell", ["-NoProfile", "-Command", ps], { encoding: "utf8" });
+  return Number(String(out.stdout || "0").trim()) || 0;
+}
+
 /** Starts Chrome on a profile folder; returns { proc, port, close() }. */
 export async function launchChrome(profileDir, { fresh = false } = {}) {
-  if (fresh && existsSync(profileDir)) rmSync(profileDir, { recursive: true, force: true });
+  const ended = endStrays(profileDir);
+  if (ended > 0) console.log(`  ended a Chrome left running on ${profileDir}`);
+  // What a Chrome that just ended held (its lock, or the whole folder for a fresh start) is let go a moment
+  // after it exits, up to about 10 s on Windows.
+  for (let i = 0; i < 20; i += 1) {
+    try {
+      if (fresh && existsSync(profileDir)) rmSync(profileDir, { recursive: true, force: true });
+      else for (const lock of ["lockfile", "SingletonLock"]) rmSync(join(profileDir, lock), { force: true });
+      break;
+    } catch (err) {
+      if (i === 19) throw err;
+      await sleep(500);
+    }
+  }
   mkdirSync(profileDir, { recursive: true });
   const portFile = join(profileDir, "DevToolsActivePort");
   if (existsSync(portFile)) rmSync(portFile, { force: true });
@@ -36,10 +90,16 @@ export async function launchChrome(profileDir, { fresh = false } = {}) {
   let port = 0;
   for (let i = 0; i < 100 && !port; i += 1) {
     await sleep(100);
-    if (existsSync(portFile)) port = Number(readFileSync(portFile, "utf8").split("\n")[0]);
+    try {
+      // Chrome may still be writing it (EBUSY on Windows): ask again next time round, and never leave the run
+      // with this Chrome still running on the folder.
+      if (existsSync(portFile)) port = Number(readFileSync(portFile, "utf8").split("\n")[0]) || 0;
+    } catch {
+      port = 0;
+    }
   }
   if (!port) {
-    proc.kill();
+    killTree(proc);
     throw new Error("Chrome did not open its debugging port.");
   }
   return {
@@ -54,11 +114,7 @@ export async function launchChrome(profileDir, { fresh = false } = {}) {
         /* already gone */
       }
       await sleep(300);
-      try {
-        proc.kill();
-      } catch {
-        /* gone */
-      }
+      killTree(proc);
       await sleep(300);
     },
   };
