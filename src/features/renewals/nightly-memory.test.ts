@@ -174,6 +174,10 @@ describe("the nightly job reads a studio at a time", () => {
       await runRenewals({ db, now: NOW, noPulls: true, log: () => {} });
       // Her last visit is Thursday's, at Helm's Deep.
       expect((store.clients.e000.renewal as { lastVisitDate?: string }).lastVisitDate).toBe("2026-09-24");
+      // Version 3 (the renewals dashboard): the job writes the new fields as the live read works them out.
+      expect(store.clients.e000.renewal).toMatchObject({ version: 3, signals: expect.any(Object) });
+      expect(store.clients.e000.renewal).toHaveProperty("projection");
+      expect(store.clients.e000.renewal).toHaveProperty("ledger");
       expect(store["studios/edoras/clientStates"].e000).toMatchObject({ lastVisit: "2026-09-24" });
     }
   });

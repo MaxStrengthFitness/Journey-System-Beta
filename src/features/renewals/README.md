@@ -22,6 +22,20 @@ The conversation is due at the studio's threshold (10 sessions left by default).
 
 **The lanes read the roster too, by one rule** (Oct 6 2026, the same day, on AJ's yes). Until then the pipeline had its own query, packages ending between six months ago and the planning horizon, so a client with 8 left at a quarter a week, running out next May, never reached Talk now while Operations → Today, counting from the roster, did. Now `../admin/renewals/lanes.ts` places every roster client, and the Pipeline, Today, Week and Month all ask it: the studio's own clients only; an Inactive client (Mindbody's flag, a leader's mark that still holds, or past the studio's Inactive line with nothing booked: Running low's `inactiveOnRecord`) out of Before the charge, Talk now and Coming up; Lapsed and Away untouched (Renewals' lost list stays its own list); Away keeping the old window (AJ: "Keep Away as it is"), except on Month, which lists it by month. `docs/rounds/2026-10-06-talk-now-roster.md`.
 
+## The renewals dashboard's data (Oct 7 2026)
+
+AJ (Oct 6-7 2026) asked for a renewal and retention dashboard: leaders ahead of every renewal, with the exact sessions left (rolled over and given or won included) and what will still be left on the day the commitment ends. The engine's half:
+
+- **Snapshot version 3** (`projection.ts`, through `engine.ts`; the nightly job and `useLiveRenewal` pass the same inputs, the client's `coverage` and the studio's `timeZone` included):
+  - `ledger`: sessions left part by part, `carriedIn` (pricing options bought before the current contract began: rolled over) · `thisContract` · `toCome` (8 a payment) · `extra` (the studio's extra-sessions names: complimentary or won, AJ: "Yes added to mindbody"); `total` IS `sessionsLeft`, never a second balance. Said as "52 left: 9 rolled over · 11 this contract · 32 to come · +2 extra" (`ledgerSentence`): extras beside the package's number, as on the profile header.
+  - `commitmentEnd`: Mindbody's contract end (`chargeDate`), else the package's start plus its payments × 28 days (paid in full too, estimated).
+  - `projection`: `sessionsLeft − booked − pace × paceWeeks` at the end. The bookings from today (30 days ahead, what both reads see) come off first, then the 8-week pace after the last booked day, away time left out; a range from the slowest and fastest 4-week pace; the run-out day when it comes first. Below the pace's minimum sample, `leftAtEnd` is null: "Not enough to project yet" (`projectionSentence`). `runOutDate` and `bankedAtCharge` are now the projection's own, so they never disagree with it; with nothing booked they are the old numbers. Whether Mindbody's "remaining" already leaves out booked visits is one switch, `MINDBODY_REMAINING_INCLUDES_BOOKED` (false, as designed: to be checked against a real account).
+  - `rate`: Mindbody's scheduled charge (the amount most charges carry) split by the package, "special" when it differs from the table ("at $54 a session (special)", `rateSentence`); else the package table's, the prepay rate when paid in full. `money.ts` `valueAtStake` is the package's sessions at that rate.
+  - `signals`: the pace's trend (last 4 weeks against the 8 before, never before the first package on file), total sessions with those before Journey (`lib/session-total.ts`), and the package whose rhythm fits the pace.
+- **Last talked** is read from the cycle the dashboard already reads (`conversation.ts` `lastTalkOf`, `lastTalkSentence`), not stored on the snapshot, so a talk logged now shows now; a failed read says "Couldn't check".
+- **The renewal plan** (`plan.ts`; AJ: "allow in app response", and Strongsville, which doesn't auto-renew, marks who is renewing): `studios/{s}/renewals/{cycleKey}.plan`, set by anyone who works at the studio through `saveRenewalPlan` with one touch of kind "plan" in the same batch. The choices follow the decided auto-renew answer (`planChoicesFor`): renews by itself → Let it renew · Pause billing (only when it banks) · Not renewing · Not decided yet; otherwise → Renewing, same package · Upgrading · Downgrading · Pay as you go · Not renewing · Not decided yet. It never touches the outcome; a plan to renew doesn't take a client off Talk now (the new package in Mindbody does, as before); `nextStep` reads it.
+- **Names waiting** (`name-suggest.ts`): a suggestion for each Mindbody name nobody has matched, from the studio's own table (sessions and months; PIF and Roll Over noted; comp, free, won → extra sessions; unsure → none). `acceptNameSuggestions` (`useRenewalSettings.ts`) writes the accepted ones into the package names and extra-sessions names. A package holds up to 60 names (was 20).
+
 ## Where things are
 
 | File | What |
@@ -29,6 +43,9 @@ The conversation is due at the studio's threshold (10 sessions left by default).
 | `types.ts` | Settings, the snapshot, cycles, conversations |
 | `settings.ts`, `settings-form.ts` | Defaults (the website's prices), cleaning, the package-name index, the settings form |
 | `engine.ts` | **The engine.** `buildRenewalSnapshot()` — pure, the same code in the browser and the nightly job |
+| `projection.ts` | Version 3's pure pieces: the ledger's parts, pace windows, the run-out day, the projection at the commitment's end, the rate, the signals |
+| `plan.ts` | The renewal plan: the choices by the auto-renew answer, the packages a choice names, the writes, the sentences |
+| `name-suggest.ts` | Suggestions for the Mindbody names waiting to be matched, and the settings patch that accepts them |
 | `attendance.ts` | Bookings and workouts → visit rows (a late cancel, "Late cancel · session taken", is a no-show row: the pace counts it as a session USED, never a visit; Oct 2 2026); `attendanceSince` (unknown before the first synced booking, not zero). A booking is read through `lib/booking-state.ts` (Sep 24 2026): a visit when Journey logged a session for the client that day; an unlogged past booking is still a visit before its studio's `journeyCutoverDate` (or with none set — FileMaker holds that record), and from the cutover on it is neither a visit nor a miss |
 | `sentences.ts`, `options.ts`, `brief.ts` | Words: chips, situations, pace, proof; the package-options table; the Brief's journey and health lines |
 | `conversation.ts` | The 15-second conversation log and the post-session prompt |
@@ -49,8 +66,8 @@ The conversation is due at the studio's threshold (10 sessions left by default).
 | `clients/{id}.renewal` | The snapshot. Dates, never countdowns | **The nightly job only.** The rules refuse app writes that change it |
 | `studios/{s}/config/renewals` | Settings and the package table | Leaders |
 | `studios/{s}/config/renewalsSeen` | Every Mindbody name met at the studio | The job |
-| `studios/{s}/renewals/{cycleKey}` | One package term: the latest conversation, plus stage, lead and outcome | Trainers (conversation fields only), leaders, the job (outcomes) |
-| `.../touches/{id}` | One conversation. Never edited | Trainers; a leader can delete a mistake |
+| `studios/{s}/renewals/{cycleKey}` | One package term: the latest conversation, plus stage, lead and outcome, and the renewal plan (`plan`) | Trainers (conversation fields, and the plan with its context), leaders, the job (outcomes) |
+| `.../touches/{id}` | One conversation, or one plan change (`kind: "plan"`). Never edited | Trainers; a leader can delete a mistake |
 
 `cycleKey` is the Mindbody contract id, or `pif-<pricing option id>` for paid in full.
 

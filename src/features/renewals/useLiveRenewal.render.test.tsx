@@ -115,6 +115,8 @@ describe("useLiveRenewal", () => {
     const s = await mount(client, null);
     expect(s.live).not.toBeNull();
     expect(s.snapshot).toBe(s.live);
+    // The same engine as the nightly job: version 3, with its signals.
+    expect(s.live).toMatchObject({ version: 3, signals: expect.any(Object) });
   });
 
   it("works none out when the settings read failed, and falls back to last night's with her saved mark applied", async () => {
