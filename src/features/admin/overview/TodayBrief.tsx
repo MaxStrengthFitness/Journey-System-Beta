@@ -49,7 +49,8 @@
  * sessions (useTodaySessions), the renewal settings and cycles
  * (useCyclesRead: a failed read of the conversations is unknown), the
  * leaders' inactive marks (one listener the app shares: renewals count by
- * the pipeline's own rule, admin/renewals/lanes.ts), the last
+ * the pipeline's own rule, admin/renewals/lanes.ts, and Slipping away works
+ * each journey out with them, as Clients → Journey does), the last
  * 14 days of sessions, the studio's incidents, critical and dated notes and
  * the Sunday watch (useOverviewReads), the watchlist and acknowledgements,
  * the Delight queue (a failed read is unknown), the machine-fit index, and
@@ -196,7 +197,8 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
   // The Journey's five lines: the studio's own, else Max Strength's default, else the app's (wave 2).
   const studioSettings = useStudioSettings(studioId, studio);
   const lines = useMemo(() => linesOf(studioSettings.all), [studioSettings.all]);
-  // Renewals leave an Inactive client out of the to-do lanes, as the pipeline does (lanes.ts).
+  // Renewals leave an Inactive client out of the to-do lanes, as the pipeline does (lanes.ts),
+  // and Slipping away leaves out a client a leader marked Inactive, as Clients → Journey does.
   const inactiveMarks = useInactiveMarks(studioId);
   const cycleKeys = useMemo(() => clients.map((c) => (c.renewal as RenewalSnapshot | undefined)?.cycleKey).filter((k): k is string => Boolean(k)), [clients]);
   const cyclesRead = useCyclesRead(studioId, cycleKeys);
@@ -333,8 +335,10 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
   const catchCount = catchRows === null ? null : catchRows.length + (leftRows?.length ?? 0);
 
   /* ---- Slipping away: the Journey's one rule (journey/states.ts) ---- */
+  // Not worked out until the leaders' marks have answered: a client marked Inactive would be Drifting for a moment.
+  // Marks that can't be read leave every state to the rules alone (useStudioJourneys' way), and the section says so.
   const journeys = useMemo(() => {
-    if (renewalSettings.loading || studioSettings.loading || stored.loading) return null;
+    if (renewalSettings.loading || studioSettings.loading || stored.loading || inactiveMarks.loading) return null;
     return studioJourneys({
       clients,
       studioId,
@@ -354,8 +358,9 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
       watchlist: watchlist.value,
       cases: cases.cases,
       stored: stored.failed ? null : { summary: stored.summary, states: stored.states },
+      marks: inactiveMarks.failed ? null : inactiveMarks.marks,
     });
-  }, [stored, renewalSettings.loading, studioSettings.loading, clients, studioId, today, settled, tz, studios, week.entries, week.read, packageIndex, trainers, authTrainer, uid, settings, nightly.stale, lines, watchlist.value, cases.cases]);
+  }, [stored, inactiveMarks, renewalSettings.loading, studioSettings.loading, clients, studioId, today, settled, tz, studios, week.entries, week.read, packageIndex, trainers, authTrainer, uid, settings, nightly.stale, lines, watchlist.value, cases.cases]);
   const slipping = useMemo(() => {
     if (!journeys) return null;
     const both = [...listFor(journeys, "at-risk", "all"), ...listFor(journeys, "drifting", "all")];
@@ -853,6 +858,7 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
               moreLabel="on the Journey"
             />
           )}
+          {slipping !== null && inactiveMarks.failed && <p className="ops-sec__note">The leaders' inactive marks couldn't be read just now.</p>}
         </BriefSection>
       )}
 

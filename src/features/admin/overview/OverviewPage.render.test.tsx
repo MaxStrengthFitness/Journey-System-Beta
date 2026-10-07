@@ -60,7 +60,21 @@ const writes: Array<{ op: string; path: string; data?: unknown }> = [];
  * live listener's server answer, delivered when a test says so. `quiet`
  * empties the sessions, incidents and notes.
  */
-const failures = vi.hoisted(() => ({ liveSessions: false, weekCacheOnly: false, quiet: false, leftOpen: false, serverLater: [] as Array<() => void>, marks: [] as Array<Record<string, unknown>> }));
+const failures = vi.hoisted(() => ({
+  liveSessions: false,
+  weekCacheOnly: false,
+  quiet: false,
+  leftOpen: false,
+  serverLater: [] as Array<() => void>,
+  marks: [] as Array<Record<string, unknown>>,
+  /** The leaders' inactive marks (studios/solon/inactiveMarks): their rows, a refused read, or an answer held until a test says so. */
+  inactive: [] as Array<Record<string, unknown>>,
+  inactiveFails: false,
+  inactiveLater: false,
+  /** Last night's Journey record (watch/journey and clientStates); none unless a test gives one. */
+  night: null as Record<string, unknown> | null,
+  nightStates: [] as Array<Record<string, unknown>>,
+}));
 
 vi.mock("firebase/firestore", () => {
   const ref = (...parts: unknown[]) => {
@@ -144,6 +158,8 @@ vi.mock("firebase/firestore", () => {
       ]);
     // A leader's "didn't come" marks on today's bookings (wave 2).
     if (path === "studios/solon/bookingMarks") return snap(failures.marks);
+    if (path === "studios/solon/inactiveMarks") return snap(failures.inactive);
+    if (path === "studios/solon/clientStates") return snap(failures.nightStates);
     if (path === "studios/solon/openingsMarks")
       return snap([
         { id: "2-1030", weekday: 2, time: "10:30", mark: "full", note: "", by: { id: "lead", name: "Lee Leader" }, at: daysAgo(3) },
@@ -166,6 +182,12 @@ vi.mock("firebase/firestore", () => {
       let live = true;
       const t = setTimeout(() => {
         if (target.path === "sessions" && failures.liveSessions) fail?.(new Error("permission-denied"));
+        else if (target.path === "studios/solon/inactiveMarks" && failures.inactiveFails) fail?.(new Error("permission-denied"));
+        else if (target.path === "studios/solon/inactiveMarks" && failures.inactiveLater)
+          failures.serverLater.push(() => {
+            if (live) next(answer(target.path));
+          });
+        else if (target.path === "studios/solon/watch/journey" && failures.night) next({ exists: () => true, data: () => failures.night, id: "journey" });
         else if (target.path === "schedules" && failures.weekCacheOnly) {
           next({ ...answer(target.path), metadata: { fromCache: true } });
           failures.serverLater.push(() => {
@@ -213,6 +235,7 @@ vi.mock("firebase/firestore", () => {
 });
 
 import { OverviewPage } from "./OverviewPage";
+import { APP_LINES } from "../journey/states";
 import type { Client, Machine, Studio, Trainer } from "../../../types";
 import { rememberMyStudioSection, rememberedMyStudioSection } from "../../my-studio/section-memory";
 import { rememberOpeningsPart, rememberWhoseTimes, rememberedOpeningsPart, rememberedWhoseTimes } from "../../openings/ui/part-memory";
@@ -271,6 +294,11 @@ afterEach(() => {
   failures.leftOpen = false;
   failures.serverLater.length = 0;
   failures.marks = [];
+  failures.inactive = [];
+  failures.inactiveFails = false;
+  failures.inactiveLater = false;
+  failures.night = null;
+  failures.nightStates = [];
   NOW = MONDAY;
   localStorage.clear();
   vi.useRealTimers();
@@ -448,6 +476,87 @@ describe("Today, the brief", () => {
     await click(why(sinceSec, "Cy Cole"));
     expect(sinceSec.textContent).toContain("Held against today.");
     expect(sinceSec.textContent).toContain("Gone from Mindbody by 7:12 AM.");
+  });
+
+  describe("Slipping away leaves out a client a leader marked Inactive, as Clients → Journey, Week and Month do (Oct 6 2026)", () => {
+    /** Lee marked Gil Inactive on `day`. */
+    const gilMarked = (day: string) => ({ id: "c7", clientId: "c7", reason: "moved", day, markedBy: { id: "lead", name: "Lee Leader" }, markedAt: daysAgo(0) });
+    /** Last night's record, for this studio day and on the lines the studio has now: the page trusts it. */
+    const lastNight = () => ({ v: 1, asOf: dayKey(0), counts: {}, clients: 6, lines: APP_LINES, breakDays: 14, computedAt: daysAgo(0) });
+    /** Gil as last night left him: ten days out, nothing booked. */
+    const gilLastNight = (extra: Record<string, unknown>) => ({
+      id: "c7",
+      since: dayKey(3),
+      reasons: ["Usually trains every 3–4 days.", "It has been 10 days, and nothing is booked."],
+      lastVisit: dayKey(10),
+      nextBooked: null,
+      usualGapDays: 3.5,
+      rhythmVisits: 12,
+      rhythmGaps: [3, 4, 3, 4],
+      judged: true,
+      ...extra,
+    });
+    const slippingText = (el: HTMLElement) => section(el, "slipping")?.textContent ?? "";
+
+    it("with no nightly record: Gil, marked, is not listed, and the huddle doesn't ask about him", async () => {
+      failures.inactive = [gilMarked(dayKey(0))];
+      const el = await mount();
+      expect(slippingText(el)).not.toContain("Gil Galdor");
+      // Nobody else is slipping: the section folds into All clear.
+      expect(section(el, "slipping")).toBeNull();
+      expect(allClear(el)).toContain("Slipping away");
+      await click(buttonByText(el, "Start huddle"));
+      expect(document.querySelector("[data-testid='huddle']")?.textContent ?? "").not.toContain("Gil Galdor hasn't been in");
+    });
+
+    it("marked today, after last night called him Drifting: not listed", async () => {
+      failures.night = lastNight();
+      failures.nightStates = [gilLastNight({ state: "drifting", was: "steady" })];
+      failures.inactive = [gilMarked(dayKey(0))];
+      const el = await mount();
+      expect(slippingText(el)).not.toContain("Gil Galdor");
+      expect(allClear(el)).toContain("Slipping away");
+    });
+
+    it("marked before last night, which recorded the mark: not listed", async () => {
+      failures.night = lastNight();
+      failures.nightStates = [gilLastNight({ state: "inactive", inactiveKind: "manual", was: "drifting" })];
+      failures.inactive = [gilMarked(dayKey(3))];
+      const el = await mount();
+      expect(slippingText(el)).not.toContain("Gil Galdor");
+      expect(allClear(el)).toContain("Slipping away");
+    });
+
+    it("says Reading… until the marks answer, so a marked client is never listed for a moment", async () => {
+      failures.inactive = [gilMarked(dayKey(0))];
+      failures.inactiveLater = true;
+      const el = await mount();
+      expect(slippingText(el)).toContain("Reading…");
+      expect(slippingText(el)).not.toContain("Gil Galdor");
+      await act(async () => {
+        failures.serverLater.splice(0).forEach((deliver) => deliver());
+      });
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 5));
+      });
+      expect(section(el, "slipping")).toBeNull();
+      expect(allClear(el)).toContain("Slipping away");
+    });
+
+    it("when the marks can't be read, lists by the rules alone and says so once (AJ's pick)", async () => {
+      failures.inactive = [gilMarked(dayKey(0))];
+      failures.inactiveFails = true;
+      const el = await mount();
+      expect(slippingText(el)).toContain("Gil Galdor");
+      expect(slippingText(el)).toContain("The leaders' inactive marks couldn't be read just now.");
+      expect(slippingText(el).split("inactive marks couldn't be read").length).toBe(2);
+    });
+
+    it("with the marks read and nobody marked, says nothing about them", async () => {
+      const el = await mount();
+      expect(slippingText(el)).toContain("Gil Galdor");
+      expect(slippingText(el)).not.toContain("couldn't be read");
+    });
   });
 
   it("Coming up says who has nothing booked only off a nightly record, and names who nobody has talked to", async () => {
