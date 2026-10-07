@@ -13,8 +13,10 @@
  *
  *   renewals     the roster's nightly snapshots (client.renewal), the
  *                studio's renewal cycles and settings — the same lanes and
- *                next steps as Operations → Renewals (renewals/pipeline.ts),
- *                counted rather than listed
+ *                next steps as Operations → Renewals, by the same rule
+ *                (admin/renewals/lanes.ts: the studio's own clients, and an
+ *                Inactive client out of the to-do lanes), counted rather
+ *                than listed
  *   (attendance  moved to the Journey's one rule, journey/states.ts, in the
  *                redesign's Operations room, Sep 28 2026)
  *   pain         the last week's sessions (the Dial's body regions), open
@@ -32,8 +34,9 @@ import { daysMattering, mattersOn, needsReview } from "../../client-notes/matter
 import { ackKey } from "../attention/attention";
 import { regionDial } from "../../rating/session-reads";
 import { leaningLabel } from "../../renewals/conversation";
-import { laneOf, nextStep, type PipelineLane } from "../../renewals/pipeline";
-import type { RenewalCycle, RenewalSettings, RenewalSnapshot } from "../../renewals/types";
+import { nextStep, type PipelineLane } from "../../renewals/pipeline";
+import { renewalLane, type RenewalLaneContext } from "../renewals/lanes";
+import type { RenewalCycle, RenewalSnapshot } from "../../renewals/types";
 import { sessionDay } from "../insights/metrics";
 
 export type OverviewTone = "alert" | "warn" | "info";
@@ -80,19 +83,20 @@ export const RENEWALS_ROWS_SHOWN = 6;
 export function renewalsQuestion(
   clients: Client[],
   cycles: Record<string, RenewalCycle>,
-  settings: RenewalSettings,
-  today: string,
+  /** The studio, its settings, today and the Inactive rule: the pipeline's own (admin/renewals/lanes.ts). */
+  ctx: RenewalLaneContext,
   /** The conversations were read (useCyclesRead's `failed` is false). A missing cycle then means nobody talked. */
   cyclesKnown = true,
 ): RenewalsQuestion {
   const counts: Record<PipelineLane, number> = { "before-charge": 0, "talk-now": 0, "coming-up": 0, lapsed: 0, away: 0 };
   let notTalked = 0;
   const candidates: Array<OverviewRow & { lane: PipelineLane; focus: string }> = [];
+  const { settings, today } = ctx;
   for (const c of clients) {
     const s = c.renewal as RenewalSnapshot | undefined;
-    if (!c.id || !s || c.isActive === false) continue;
+    if (!c.id || !s) continue;
     const cycle = s.cycleKey ? (cycles[s.cycleKey] ?? null) : null;
-    const lane = laneOf(s, cycle, settings, today);
+    const lane = renewalLane(c, cycle, ctx);
     if (!lane) continue;
     counts[lane] += 1;
     if ((lane === "talk-now" || lane === "before-charge") && !cycle?.lastTouchAt) notTalked += 1;

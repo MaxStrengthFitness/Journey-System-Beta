@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Client, ScheduleEntry, Trainer } from "../../../types";
 import { DEFAULT_RENEWAL_SETTINGS } from "../../renewals/settings";
 import type { RenewalCycle } from "../../renewals/types";
+import type { RenewalLaneContext } from "../renewals/lanes";
 import type { WatchlistEntry } from "../attention/attention";
 import { studioJourneys, type StudioJourneysInput } from "../journey/journey-list";
 import { APP_LINES } from "../journey/states";
@@ -33,6 +34,16 @@ const snap = (extra: Record<string, unknown> = {}) => ({
   chargeWarning: false,
   renewalOnBooks: null,
   ...extra,
+});
+
+/** The pipeline's own rule (admin/renewals/lanes.ts): westlake's clients, no marks, the app's Inactive line. */
+const lanes = (over: Partial<RenewalLaneContext> = {}): RenewalLaneContext => ({
+  studioId: "westlake",
+  settings: DEFAULT_RENEWAL_SETTINGS,
+  today: TODAY,
+  inactiveMarks: new Map(),
+  inactiveDays: 90,
+  ...over,
 });
 
 const client = (id: string, first: string, extra: Record<string, unknown> = {}, renewal: Record<string, unknown> | null = null): Client =>
@@ -78,7 +89,7 @@ describe("a month's renewals", () => {
   ];
 
   it("lists every package ending in the month, soonest first, with the lane's word and the next step", () => {
-    const r = monthRenewals(clients, "2026-10", cycles, DEFAULT_RENEWAL_SETTINGS, TODAY, true);
+    const r = monthRenewals(clients, "2026-10", cycles, lanes(), true);
     expect(r.rows.map((x) => [x.name, x.day, x.badge])).toEqual([
       ["Lotho Took", "2026-10-01", "Lost"],
       ["Sam Took", "2026-10-03", "Before the charge"],
@@ -96,11 +107,38 @@ describe("a month's renewals", () => {
   });
 
   it("counts a client whose renewal timing is unknown rather than dropping her, and never says 'nobody has talked' off a failed read", () => {
-    const r = monthRenewals(clients, "2026-10", {}, DEFAULT_RENEWAL_SETTINGS, TODAY, false);
+    const r = monthRenewals(clients, "2026-10", {}, lanes(), false);
     expect(r.unknown).toBe(1);
     expect(r.notTalked).toBeNull();
     expect(r.rows.find((x) => x.clientId === "sam")!.proof).toContain("couldn't be read just now");
-    expect(monthRenewals(clients, "2026-11", {}, DEFAULT_RENEWAL_SETTINGS, TODAY, true).rows.map((x) => x.name)).toEqual(["Bilbo Took"]);
+    expect(monthRenewals(clients, "2026-11", {}, lanes(), true).rows.map((x) => x.name)).toEqual(["Bilbo Took"]);
+  });
+
+  it("follows the pipeline's rule: the studio's own clients, an Inactive client off the list but for Lapsed and Away (AJ, Oct 6 2026)", () => {
+    const quiet = { nextBookingDate: null, lastVisitDate: "2026-09-01" };
+    const list = [
+      client("frodo", "Frodo", {}, { focusDate: "2026-10-12", conversationDue: true, sessionsLeft: 8 }),
+      // Marked Inactive by a leader, with no visit since and nothing booked.
+      client("marked", "Marked", {}, { ...quiet, focusDate: "2026-10-14", conversationDue: true, sessionsLeft: 6 }),
+      // Past the Inactive line: Lapsed is the lost list, untouched.
+      client("lapsed", "Lapsed", {}, { situation: "lapsed", focusDate: "2026-10-02", lastVisitDate: "2026-06-01", nextBookingDate: null }),
+      // Away, its package ending in a month past the pipeline's horizon: Month still lists it.
+      client("snowbird", "Snowbird", {}, { situation: "away", focusDate: "2027-02-10", awayUntil: "2027-04-01" }),
+      // A visitor booked here: their own studio's renewal.
+      client("visitor", "Visitor", { homeStudioId: "solon" }, { focusDate: "2026-10-20" }),
+      // Inactive, and the timing unknown: not counted as unknown either.
+      client("unk", "Unk", {}, { ...quiet, situation: "unknown", focusDate: null, lastVisitDate: "2026-05-01" }),
+    ];
+    const ctx = lanes({ inactiveMarks: new Map([["marked", { day: "2026-09-10" }]]) });
+    const oct = monthRenewals(list, "2026-10", {}, ctx, true);
+    expect(oct.rows.map((x) => [x.name, x.badge])).toEqual([
+      ["Lapsed Took", "Lapsed"],
+      ["Frodo Took", "Talk now"],
+    ]);
+    expect(oct.unknown).toBe(0);
+    expect(monthRenewals(list, "2027-02", {}, ctx, true).rows.map((x) => [x.name, x.badge])).toEqual([["Snowbird Took", "Away"]]);
+    // Without the mark, Marked is a renewal to talk about again.
+    expect(monthRenewals(list, "2026-10", {}, lanes(), true).rows.map((x) => x.name)).toContain("Marked Took");
   });
 });
 

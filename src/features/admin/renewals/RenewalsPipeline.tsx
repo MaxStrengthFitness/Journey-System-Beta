@@ -9,14 +9,23 @@
  * Running low (AJ, Oct 6 2026: "we need a way for operations to show how
  * many clients are running out of their sessions ... In total") is the
  * session clock beside the lanes: everyone at or under the studio's renewal
- * conversation number, talked to or not, counted from the roster the app
- * already holds (running-low.ts), so a client too slow for the date window
- * below is still found. Tap the number for the list.
+ * conversation number, talked to or not (running-low.ts). Tap the number
+ * for the list.
  *
- * Reads the nightly snapshots (one query for the studio), the cycle
- * documents for just the clients on screen and on the Running low list, and
- * the studio's inactive marks (one small listener the app shares). Nothing
- * here writes.
+ * The lanes and Running low both read the studio's roster the app already
+ * holds (useStudioRoster: every client whose home is the studio, with last
+ * night's record), through the one rule Today, Week and Month count by
+ * (lanes.ts): the studio's own clients, an Inactive client out of the to-do
+ * lanes, Away as it was. Until Oct 6 2026 the lanes had their own query, a
+ * window of `renewal.focusDate`, and a client too slow for it (8 left at a
+ * quarter a week, running out next May) never reached Talk now.
+ *
+ * Reads the roster (already held), the cycle documents for just the clients
+ * a lane could hold and the Running low list (one chunked read), the
+ * studio's inactive marks (one small listener the app shares) and the
+ * missing-data count. Nothing here writes. Until the roster, the marks and
+ * the Inactive line have answered, no number is said; a roster that failed
+ * with nothing held says "—", never a confident 0.
  */
 
 import { useMemo, useState } from "react";
@@ -32,16 +41,12 @@ import {
   AdminStatTile,
   AdminTiles,
 } from "../primitives";
-import { addDays } from "../../client-history/model";
 import { studioTodayKey } from "../../../lib/studio-time";
 import {
   FILTER_LABELS,
   LANE_HINTS,
   LANE_TITLES,
-  LAPSED_LOOKBACK_DAYS,
   byMonth,
-  horizonEnd,
-  laneOf,
   matchesFilter,
   nextStep,
   sortRows,
@@ -55,13 +60,9 @@ import { useInBodyVariationLookup } from "../../inbody/useInBodyVariation";
 import { useInactiveMarks } from "../journey/inactive-store";
 import { useStudioSettings } from "../../studio-settings/useStudioSettings";
 import { leftLine, notKnownLine, runningLow, runningLowFoot } from "./running-low";
+import { mayHaveLane, renewalLane, type RenewalLaneContext } from "./lanes";
 import type { RosterStatus } from "../../../hooks/useStudioRoster";
-import {
-  useCyclesFor,
-  useMissingDataClients,
-  useMissingDataCount,
-  usePipelineClients,
-} from "../../renewals/usePipeline";
+import { useCyclesFor, useMissingDataClients, useMissingDataCount } from "../../renewals/usePipeline";
 import type { RenewalSettings } from "../../renewals/types";
 import type { Client } from "../../../types";
 import "./renewals.css";
@@ -83,49 +84,52 @@ export interface RenewalsPipelineProps {
   /** Opens the Renewal Brief for this client. */
   onOpenBrief: (client: Client) => void;
   /**
-   * The studio's roster the app already holds (useStudioRoster), for Running
-   * low: every client whose home is the studio, with last night's record.
+   * The studio's roster the app already holds (useStudioRoster): every client
+   * whose home is the studio, with last night's record. The lanes and Running
+   * low are both counted from it.
    */
   roster?: Client[];
-  /** The roster's read: Running low waits while it loads, and says nothing off a failed, empty one. */
+  /** The roster's read: the page waits while it loads, and says nothing off a failed, empty one. */
   rosterStatus?: RosterStatus;
 }
 
 export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief, roster = NO_CLIENTS, rosterStatus = "ready" }: RenewalsPipelineProps) {
   const today = studioTodayKey();
-  const from = addDays(today, -LAPSED_LOOKBACK_DAYS);
-  const to = horizonEnd(settings, today);
-  const { clients, loading, error } = usePipelineClients(studioId, from, to);
   const inactiveMarks = useInactiveMarks(studioId);
   const studioSettings = useStudioSettings(studioId);
   const inactiveDays = studioSettings.value("inactiveDays") ?? 90;
   const marks = inactiveMarks.marks;
-  // Who is at or under the number before the conversations are read: only
-  // their cycle keys join the pipeline's, in the one chunked read.
-  const lowKeys = useMemo(
-    () =>
-      runningLow({ clients: roster, studioId, cycles: {}, settings, today, inactiveMarks: marks, inactiveDays }).rows.map(
-        (r) => r.snapshot.cycleKey ?? "",
-      ),
-    [roster, studioId, settings, today, marks, inactiveDays],
+  const ctx = useMemo<RenewalLaneContext>(
+    () => ({ studioId, settings, today, inactiveMarks: marks, inactiveDays }),
+    [studioId, settings, today, marks, inactiveDays],
   );
-  const cycles = useCyclesFor(studioId, [...clients.map((c) => c.renewal?.cycleKey ?? ""), ...lowKeys].filter(Boolean));
+  // The studio's own clients: the one list the lanes and Running low read.
+  const home = useMemo(() => roster.filter((c) => c.id && c.homeStudioId === studioId), [roster, studioId]);
+  // Whose conversations to read, in the one chunked read: anyone a lane could
+  // hold (before a conversation or the Inactive rule could take them out), and
+  // everyone at or under the Running low number.
+  const cycleKeys = useMemo(() => {
+    const lanes = home.filter((c) => mayHaveLane(c, ctx)).map((c) => c.renewal?.cycleKey ?? "");
+    const lowRows = runningLow({ clients: home, studioId, cycles: {}, settings, today, inactiveMarks: marks, inactiveDays }).rows;
+    return [...lanes, ...lowRows.map((r) => r.snapshot.cycleKey ?? "")].filter(Boolean);
+  }, [home, ctx, studioId, settings, today, marks, inactiveDays]);
+  const cycles = useCyclesFor(studioId, cycleKeys);
   const low = useMemo(
-    () => runningLow({ clients: roster, studioId, cycles, settings, today, inactiveMarks: marks, inactiveDays }),
-    [roster, studioId, cycles, settings, today, marks, inactiveDays],
+    () => runningLow({ clients: home, studioId, cycles, settings, today, inactiveMarks: marks, inactiveDays }),
+    [home, studioId, cycles, settings, today, marks, inactiveDays],
   );
   // Loading until the roster, the marks and the Inactive line have answered.
   // A roster that failed with nothing held says "—", never a confident 0.
-  const lowLoading = rosterStatus === "loading" || inactiveMarks.loading || studioSettings.loading;
-  const lowUnknown = !lowLoading && rosterStatus === "error" && !roster.some((c) => c.homeStudioId === studioId);
+  const loading = rosterStatus === "loading" || inactiveMarks.loading || studioSettings.loading;
+  const unknown = !loading && rosterStatus === "error" && home.length === 0;
   const [showLow, setShowLow] = useState(false);
-  const missingCount = useMissingDataCount(studioId, clients.length);
+  const missingCount = useMissingDataCount(studioId, home.length);
   const [showMissing, setShowMissing] = useState(false);
   const missingClients = useMissingDataClients(studioId, showMissing);
   const [filter, setFilter] = useState<PipelineFilter>("all");
   const [showQuiet, setShowQuiet] = useState<Record<string, boolean>>({});
 
-  const clientsById = useMemo(() => new Map(clients.filter((c) => c.id).map((c) => [c.id as string, c])), [clients]);
+  const clientsById = useMemo(() => new Map(home.map((c) => [c.id as string, c])), [home]);
   // Each client's InBody is read against THEIR home studio's variation
   // (variationForClient in features/inbody/variation.ts), from the studios
   // already in memory: the same answer the Brief and the renewal card give.
@@ -133,11 +137,11 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief, 
 
   const rows = useMemo(() => {
     const out: PipelineRow[] = [];
-    for (const c of clients) {
+    for (const c of home) {
       const s = c.renewal;
       if (!s || !c.id) continue;
       const cycle = s.cycleKey ? cycles[s.cycleKey] ?? null : null;
-      const lane = laneOf(s, cycle, settings, today);
+      const lane = renewalLane(c, cycle, ctx);
       if (!lane) continue;
       out.push({
         clientId: c.id,
@@ -149,7 +153,7 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief, 
       });
     }
     return out;
-  }, [clients, cycles, settings, today, variationFor]);
+  }, [home, cycles, ctx, variationFor]);
 
   const visible = rows.filter((r) => matchesFilter(r, filter, settings));
   const inLane = (lane: PipelineLane) => sortRows(visible.filter((r) => r.lane === lane));
@@ -226,32 +230,33 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief, 
     );
   };
 
+  // The lanes are drawn only once every count can be stood behind: never
+  // "Nothing in this lane" while the roster loads or after it failed.
+  const ready = !loading && !unknown;
   // The calm round (Oct 3 2026): an empty pipeline is one short line, not four zero tiles and five filters.
-  const empty = !loading && rows.length === 0 && !error && low.rows.length === 0;
+  const empty = ready && rows.length === 0 && low.rows.length === 0;
   const showTiles = !empty || (missingCount ?? 0) > 0;
+  const laneValue = (lane: PipelineLane) => (unknown ? "—" : count(lane));
+  const laneTone = (lane: PipelineLane): "attention" | undefined => (!unknown && count(lane) > 0 ? "attention" : undefined);
   return (
     <div className="adm-pipeline space-y-4">
-      {error && <AdminNotice tone="warn">{error}</AdminNotice>}
+      {unknown && <AdminNotice tone="warn">Couldn't read the client list. It tries again by itself.</AdminNotice>}
 
       {showTiles && (
         <AdminTiles>
-          <AdminStatTile label="Before the charge" value={count("before-charge")} loading={loading} tone={count("before-charge") ? "attention" : undefined} foot="Banked sessions, charge inside your window" />
-          <AdminStatTile label="Talk now" value={count("talk-now")} loading={loading} tone={count("talk-now") ? "attention" : undefined} foot={`${settings.conversationAtSessionsLeft} or fewer left, or ended`} />
-          <AdminStatTile label="Coming up" value={count("coming-up")} loading={loading} foot={`Next ${settings.horizonMonths} month${settings.horizonMonths === 1 ? "" : "s"}`} />
+          <AdminStatTile label="Before the charge" value={laneValue("before-charge")} loading={loading} tone={laneTone("before-charge")} foot="Banked sessions, charge inside your window" />
+          <AdminStatTile label="Talk now" value={laneValue("talk-now")} loading={loading} tone={laneTone("talk-now")} foot={`${settings.conversationAtSessionsLeft} or fewer left, or ended`} />
+          <AdminStatTile label="Coming up" value={laneValue("coming-up")} loading={loading} foot={`Next ${settings.horizonMonths} month${settings.horizonMonths === 1 ? "" : "s"}`} />
           <AdminStatTile
             label="Running low"
-            value={lowUnknown ? "—" : low.rows.length}
-            loading={lowLoading}
-            onClick={lowLoading || lowUnknown ? undefined : () => setShowLow((v) => !v)}
+            value={unknown ? "—" : low.rows.length}
+            loading={loading}
+            onClick={ready ? () => setShowLow((v) => !v) : undefined}
             foot={
-              lowUnknown ? (
-                "Couldn't read the client list"
-              ) : (
-                <>
-                  {runningLowFoot(settings)}
-                  <span className="block">{showLow ? "Tap to hide" : "Tap to see who"}</span>
-                </>
-              )
+              <>
+                {runningLowFoot(settings)}
+                {ready && <span className="block">{showLow ? "Tap to hide" : "Tap to see who"}</span>}
+              </>
             }
           />
           <AdminStatTile
@@ -264,7 +269,7 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief, 
         </AdminTiles>
       )}
 
-      {showLow && !lowLoading && !lowUnknown && (
+      {showLow && ready && (
         <AdminPanel
           title={`Running low · ${low.rows.length}`}
           flush
@@ -283,7 +288,7 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief, 
                 <AdminRow
                   key={r.clientId}
                   onClick={() => {
-                    const c = roster.find((x) => x.id === r.clientId);
+                    const c = clientsById.get(r.clientId);
                     if (c) onOpenBrief(c);
                   }}
                   name={
@@ -311,7 +316,7 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief, 
         </AdminPanel>
       )}
 
-      {!empty && (
+      {ready && !empty && (
         <div className="adm-segmented adm-segmented--wrap" role="tablist" aria-label="Filter the pipeline">
           {FILTERS.map((f) => (
             <button key={f} type="button" role="tab" className="adm-seg" aria-selected={filter === f} onClick={() => setFilter(f)}>
@@ -350,7 +355,7 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief, 
 
       {empty ? (
         <AdminEmpty title={`No renewals to plan at ${studioName} yet`}>It fills from the nightly run, once that has pulled this studio's clients from Mindbody.</AdminEmpty>
-      ) : (
+      ) : !ready ? null : (
         <>
           {lanePanel("before-charge")}
           {lanePanel("talk-now")}
@@ -360,7 +365,7 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief, 
         </>
       )}
 
-      {!empty && (
+      {ready && !empty && (
         <p className="adm-hint">
           <CalendarClock className="inline w-3.5 h-3.5 mr-1" />
           Worked out overnight from Mindbody. Open a client for today's numbers.

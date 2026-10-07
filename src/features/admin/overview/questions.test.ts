@@ -3,6 +3,7 @@ import type { Client, ClinicalIncident, WorkoutSession } from "../../../types";
 import type { JournalEntry } from "../../../types/journal";
 import type { RenewalCycle, RenewalSettings, RenewalSnapshot } from "../../renewals/types";
 import { DEFAULT_RENEWAL_SETTINGS } from "../../renewals/settings";
+import type { RenewalLaneContext } from "../renewals/lanes";
 import { hoursThisWeek, notesToReview, painQuestion, renewalsQuestion } from "./questions";
 
 const TODAY = "2026-09-21"; // a Monday
@@ -44,9 +45,18 @@ const snapshot = (extra: Partial<RenewalSnapshot>): RenewalSnapshot =>
   }) as RenewalSnapshot;
 
 const client = (id: string, name: string, renewal: Partial<RenewalSnapshot> | null, extra: Partial<Client> = {}): Client =>
-  ({ id, firstName: name, lastName: "T", isActive: true, renewal: renewal ? snapshot(renewal) : undefined, ...extra }) as Client;
+  ({ id, firstName: name, lastName: "T", isActive: true, homeStudioId: "solon", renewal: renewal ? snapshot(renewal) : undefined, ...extra }) as Client;
 
 const settings: RenewalSettings = DEFAULT_RENEWAL_SETTINGS;
+/** The pipeline's own rule (admin/renewals/lanes.ts): Solon's clients, no marks, the app's Inactive line. */
+const ctx = (over: Partial<RenewalLaneContext> = {}): RenewalLaneContext => ({
+  studioId: "solon",
+  settings,
+  today: TODAY,
+  inactiveMarks: new Map(),
+  inactiveDays: 90,
+  ...over,
+});
 
 describe("renewalsQuestion — counted, not listed", () => {
   it("counts the lanes, names who to talk to first, and who nobody has talked to", () => {
@@ -54,12 +64,13 @@ describe("renewalsQuestion — counted, not listed", () => {
       client("a", "Ann", { conversationDue: true, sessionsLeft: 8, focusDate: "2026-10-30" }),
       client("b", "Bea", { chargeWarning: true, sessionsLeft: 30, chargeDate: "2026-10-10", focusDate: "2026-10-10" }),
       client("c", "Cal", { focusDate: "2026-11-20", chargeDate: "2026-11-20" }),
-      client("d", "Dee", { situation: "away", awayUntil: "2026-10-01" }),
+      // Away, with a package ending inside the window the pipeline's Away lane keeps (lanes.ts).
+      client("d", "Dee", { situation: "away", awayUntil: "2026-10-01", focusDate: "2026-12-01" }),
       client("e", "Eve", { conversationDue: true, sessionsLeft: 5, focusDate: "2026-10-05" }),
       client("f", "Fay", { conversationDue: true }, { isActive: false }),
     ];
     const cycles: Record<string, RenewalCycle> = {};
-    const q = renewalsQuestion(clients, cycles, settings, TODAY);
+    const q = renewalsQuestion(clients, cycles, ctx());
     expect(q.counts["talk-now"]).toBe(2);
     expect(q.counts["before-charge"]).toBe(1);
     expect(q.counts["coming-up"]).toBe(1);
@@ -79,16 +90,37 @@ describe("renewalsQuestion — counted, not listed", () => {
       "cyc-a": { clientId: "a", clientName: "Ann", cycleKey: "cyc-a", packageKey: null, chargeDate: null, lastTouchAt: 1, lastTouchBy: "u1", lastTouchByName: "Lee", latestLeaning: "leaning-no", latestConcerns: [], latestInterestedIn: null, needsLeader: false } as RenewalCycle,
       "cyc-b": { clientId: "b", clientName: "Bea", cycleKey: "cyc-b", packageKey: null, chargeDate: null, lastTouchAt: 1, lastTouchBy: "u1", lastTouchByName: "Lee", latestLeaning: null, latestConcerns: [], latestInterestedIn: null, needsLeader: false, outcome: "renewed" } as RenewalCycle,
     };
-    const q = renewalsQuestion(clients, cycles, settings, TODAY);
+    const q = renewalsQuestion(clients, cycles, ctx());
     expect(q.rows.map((r) => r.name)).toEqual(["Ann T"]);
     expect(q.rows[0].proof).toBe("Last talked to by Lee — leaning no.");
     expect(q.notTalked).toBe(0);
   });
 
   it("never says nobody has talked to them when the conversations couldn't be read", () => {
-    const q = renewalsQuestion([client("a", "Ann", { conversationDue: true, sessionsLeft: 8 })], {}, settings, TODAY, false);
+    const q = renewalsQuestion([client("a", "Ann", { conversationDue: true, sessionsLeft: 8 })], {}, ctx(), false);
     expect(q.notTalked).toBeNull();
     expect(q.rows[0].proof).toBe("Whether anyone has talked to them couldn't be read just now.");
+  });
+
+  it("counts by the pipeline's rule: the studio's own clients, however slow, and no Inactive client in a to-do lane (Oct 6 2026)", () => {
+    const clients = [
+      // 8 left at a quarter a week: runs out next May, past the old window. Counted.
+      client("a", "Ann", { conversationDue: true, sessionsLeft: 8, pacePerWeek: 0.25, focusDate: "2027-05-10" }),
+      // A visitor booked here: their own studio's renewal.
+      client("b", "Bea", { conversationDue: true, sessionsLeft: 4, focusDate: "2026-10-12" }, { homeStudioId: "westlake" }),
+      // Marked Inactive by a leader, nothing booked, no visit since.
+      client("c", "Cal", { conversationDue: true, sessionsLeft: 5, focusDate: "2026-10-12", lastVisitDate: "2026-09-01", nextBookingDate: null }),
+      // Past the Inactive line, nothing booked.
+      client("d", "Dee", { conversationDue: true, sessionsLeft: 6, focusDate: "2026-10-20", lastVisitDate: "2026-06-01", nextBookingDate: null }),
+      // Lapsed and Inactive: the lost list is untouched.
+      client("e", "Eve", { situation: "lapsed", focusDate: "2026-07-01", lastVisitDate: "2026-06-20", nextBookingDate: null }),
+    ];
+    const q = renewalsQuestion(clients, {}, ctx({ inactiveMarks: new Map([["c", { day: "2026-09-10" }]]) }));
+    expect(q.counts["talk-now"]).toBe(1);
+    expect(q.rows.map((r) => r.name)).toEqual(["Ann T"]);
+    expect(q.counts.lapsed).toBe(1);
+    // A failed read of the marks hides nobody: Cal is back.
+    expect(renewalsQuestion(clients, {}, ctx()).counts["talk-now"]).toBe(2);
   });
 });
 

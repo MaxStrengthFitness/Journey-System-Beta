@@ -47,7 +47,9 @@
  * READS PER OPEN, one studio — the Overview's own, no new query: the week's
  * schedule (changes/useStudioWeek, held to the server), today's Journey
  * sessions (useTodaySessions), the renewal settings and cycles
- * (useCyclesRead: a failed read of the conversations is unknown), the last
+ * (useCyclesRead: a failed read of the conversations is unknown), the
+ * leaders' inactive marks (one listener the app shares: renewals count by
+ * the pipeline's own rule, admin/renewals/lanes.ts), the last
  * 14 days of sessions, the studio's incidents, critical and dated notes and
  * the Sunday watch (useOverviewReads), the watchlist and acknowledgements,
  * the Delight queue (a failed read is unknown), the machine-fit index, and
@@ -97,6 +99,7 @@ import { acknowledge, clearWatch, useAcknowledgements, useWatchlist, writeWatch 
 import { listFor, studioJourneys, thisWeek, type JourneyEntry } from "../journey/journey-list";
 import { linesOf, multipleWords } from "../journey/states";
 import { useStudioCases } from "../journey/case-store";
+import { useInactiveMarks } from "../journey/inactive-store";
 import { useStoredJourney } from "../journey/useStoredJourney";
 import { useStudioSettings } from "../../studio-settings/useStudioSettings";
 import { entriesForDay } from "./floor";
@@ -193,6 +196,8 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
   // The Journey's five lines: the studio's own, else Max Strength's default, else the app's (wave 2).
   const studioSettings = useStudioSettings(studioId, studio);
   const lines = useMemo(() => linesOf(studioSettings.all), [studioSettings.all]);
+  // Renewals leave an Inactive client out of the to-do lanes, as the pipeline does (lanes.ts).
+  const inactiveMarks = useInactiveMarks(studioId);
   const cycleKeys = useMemo(() => clients.map((c) => (c.renewal as RenewalSnapshot | undefined)?.cycleKey).filter((k): k is string => Boolean(k)), [clients]);
   const cyclesRead = useCyclesRead(studioId, cycleKeys);
   // Anchored on the studio day, not the ticking clock, so the read happens once a day.
@@ -374,7 +379,16 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
     [week.entries, changesByDay, moment.rows, hotIds, clients, today, tz],
   );
   const unbooked = useMemo(() => notBookedAhead(clients), [clients]);
-  const renewals = useMemo(() => renewalsQuestion(clients, cyclesRead.cycles, settings, today, !cyclesRead.failed), [clients, cyclesRead.cycles, cyclesRead.failed, settings, today]);
+  const renewals = useMemo(
+    () =>
+      renewalsQuestion(
+        clients,
+        cyclesRead.cycles,
+        { studioId, settings, today, inactiveMarks: inactiveMarks.marks, inactiveDays: lines.inactiveDays },
+        !cyclesRead.failed,
+      ),
+    [clients, cyclesRead.cycles, cyclesRead.failed, studioId, settings, today, inactiveMarks.marks, lines.inactiveDays],
+  );
   const openingsLines = useMemo(() => {
     if (!readsWeeks) return [];
     const next = openingsNextDays({
@@ -583,7 +597,8 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
   const lookAny = watchRows.length > 0 || fit.clients > 0 || trendsLine !== null;
   const lookShown = lookAny || lookFailed;
   if (!lookShown && !lookLoading) clear.push("Worth a look");
-  const renewalsDue = renewals.counts["talk-now"] + renewals.counts["before-charge"];
+  // Said once the marks have answered, so a client a leader marked Inactive is never counted for a moment.
+  const renewalsDue = inactiveMarks.loading ? 0 : renewals.counts["talk-now"] + renewals.counts["before-charge"];
 
   return (
     <div className="adm ops-brief">

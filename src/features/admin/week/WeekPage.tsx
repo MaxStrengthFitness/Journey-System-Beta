@@ -318,7 +318,17 @@ function WeekAhead({ studio, studios, clients, trainers, authTrainer, onOpenClie
     () => (j.week.read === "ready" ? moments({ delight: [], datedNotes: [], clients, weekEntries: j.week.entries, today: j.today, cutover: studio.journeyCutoverDate ?? null, tz }).rows.filter((r) => r.kind === "milestone") : []),
     [j.week.read, clients, j.week.entries, j.today, studio.journeyCutoverDate, tz],
   );
-  const renewals = useMemo(() => renewalsQuestion(clients, {}, j.settings, j.today, false), [clients, j.settings, j.today]);
+  // The pipeline's own rule (admin/renewals/lanes.ts): the studio's own clients, an Inactive client out of the to-do lanes.
+  const renewals = useMemo(
+    () =>
+      renewalsQuestion(
+        clients,
+        {},
+        { studioId: studio.id as string, settings: j.settings, today: j.today, inactiveMarks: j.marks.marks, inactiveDays: j.lines.inactiveDays },
+        false,
+      ),
+    [clients, studio.id, j.settings, j.today, j.marks.marks, j.lines.inactiveDays],
+  );
   const readAt = j.week.readAt ? formatStudioTime(new Date(j.week.readAt), tz) : null;
   const note = useNightlyNote(j.nightly, studio, j.today, clients, tz);
   const noteCovers = note !== null && note.kind !== "unknown";
@@ -329,8 +339,9 @@ function WeekAhead({ studio, studios, clients, trainers, authTrainer, onOpenClie
   if (!backShown && !noteCovers) clear.push("Due back");
   const milestonesShown = j.week.read !== "ready" || milestones.length > 0;
   if (!milestonesShown) clear.push("Milestones");
-  const renewalsShown = renewalsDue > 0 || renewals.counts["coming-up"] > 0;
-  if (!renewalsShown && !noteCovers) clear.push("Renewals");
+  // While the marks are read, neither a count that may hold a client marked Inactive nor All clear.
+  const renewalsShown = !j.marks.loading && (renewalsDue > 0 || renewals.counts["coming-up"] > 0);
+  if (!renewalsShown && !noteCovers && !j.marks.loading) clear.push("Renewals");
   const catchShown = !j.ready || slipping.length > 0;
   if (!catchShown && !noteCovers) clear.push("To catch");
 

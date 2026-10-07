@@ -24,6 +24,10 @@
  *   - A renewal is placed in a month by the day the package effectively
  *     ends (`focusDate`, the pipeline's own key). A client whose renewal
  *     timing is unknown is COUNTED as unknown, never left out silently.
+ *   - The renewals are the studio's own clients', by the pipeline's rule
+ *     (admin/renewals/lanes.ts): an Inactive client is off the list (AJ,
+ *     Oct 6 2026: "Same rule on Month"), except on the Lapsed and Away rows,
+ *     which Inactive leaves untouched.
  *   - "Nobody has talked to them yet" is said only when the conversations
  *     were read (`cyclesKnown`); a failed read says it couldn't be read.
  *   - An anniversary comes only from a date that proves she was here: the
@@ -43,9 +47,10 @@ import { resolveClientSince, type ClientSinceSource } from "../../../lib/client-
 import { historyCoverage } from "../../../lib/prior-history";
 import { studioDateKey, formatDateWords } from "../../../lib/studio-time";
 import { leaningLabel } from "../../renewals/conversation";
-import { laneOf, nextStep, type PipelineLane } from "../../renewals/pipeline";
+import { nextStep, type PipelineLane } from "../../renewals/pipeline";
 import { situationSentence } from "../../renewals/sentences";
-import type { RenewalCycle, RenewalSettings, RenewalSnapshot } from "../../renewals/types";
+import type { RenewalCycle } from "../../renewals/types";
+import { homeRecord, leftOutAsInactive, renewalLane, type RenewalLaneContext } from "../renewals/lanes";
 import type { JourneyEntry } from "../journey/journey-list";
 import { STATE_NAMES, type JourneyState } from "../journey/states";
 import { SINCE_SOURCE_WORDS } from "../overview/moments";
@@ -148,25 +153,28 @@ export function monthRenewals(
   clients: readonly Client[],
   month: string,
   cycles: Record<string, RenewalCycle>,
-  settings: RenewalSettings,
-  today: string,
+  /** The studio, its settings, today and the Inactive rule: the pipeline's own. */
+  ctx: RenewalLaneContext,
   cyclesKnown: boolean,
 ): MonthRenewals {
+  const { settings, today } = ctx;
   const rows: MonthRow[] = [];
   let unknown = 0;
   let notTalked = 0;
   for (const c of clients) {
-    if (!c.id || c.isActive === false) continue;
-    const s = c.renewal as RenewalSnapshot | undefined;
+    // The studio's own clients: a visitor's renewal is their own studio's.
+    const s = homeRecord(c, ctx.studioId);
     if (!s) continue;
+    const cycle = s.cycleKey ? (cycles[s.cycleKey] ?? null) : null;
+    if (leftOutAsInactive(c, cycle, ctx)) continue;
     if (s.situation === "unknown") {
       unknown += 1;
       continue;
     }
     const day = s.focusDate;
     if (!day || monthOf(day) !== month) continue;
-    const cycle = s.cycleKey ? (cycles[s.cycleKey] ?? null) : null;
-    const lane = laneOf(s, cycle, settings, today);
+    // Away by the month the package ends, whatever the month: no pipeline window here.
+    const lane = renewalLane(c, cycle, ctx, { awayWindow: false });
     const outcome = cycle?.outcome ?? null;
     let badge: string;
     let tone: MonthTone;

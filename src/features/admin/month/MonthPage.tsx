@@ -89,10 +89,20 @@ export function MonthPage({ studio, studios, clients, trainers, authTrainer, onO
   );
   const cyclesRead = useCyclesRead(studio.id ?? null, cycleKeys);
 
+  // The pipeline's own rule (admin/renewals/lanes.ts): the studio's own clients, an Inactive client off the list.
   const renewals = useMemo(
-    () => monthRenewals(clients, month, cyclesRead.cycles, j.settings, j.today, !cyclesRead.loading && !cyclesRead.failed),
-    [clients, month, cyclesRead.cycles, cyclesRead.loading, cyclesRead.failed, j.settings, j.today],
+    () =>
+      monthRenewals(
+        clients,
+        month,
+        cyclesRead.cycles,
+        { studioId: studio.id as string, settings: j.settings, today: j.today, inactiveMarks: j.marks.marks, inactiveDays: j.lines.inactiveDays },
+        !cyclesRead.loading && !cyclesRead.failed,
+      ),
+    [clients, month, cyclesRead.cycles, cyclesRead.loading, cyclesRead.failed, studio.id, j.settings, j.today, j.marks.marks, j.lines.inactiveDays],
   );
+  // Nothing is said of the renewals until the marks have answered: a client marked Inactive is never listed for a moment.
+  const renewalsKnown = !j.marks.loading;
   const birthdays = useMemo(() => monthBirthdays(clients, month), [clients, month]);
   const anniversaries = useMemo(() => monthAnniversaries(clients, month, cutover, j.tz), [clients, month, cutover, j.tz]);
   const mia = useMemo(() => (j.ready ? monthMia(j.entries, j.today, month) : null), [j.ready, j.entries, j.today, month]);
@@ -107,8 +117,8 @@ export function MonthPage({ studio, studios, clients, trainers, authTrainer, onO
   // The calm round (Oct 3 2026): a list with nothing in it folds into one line;
   // one the nightly record can't judge yet is the note's, never "clear".
   const clear: string[] = [];
-  const renewalsShown = renewals.rows.length > 0 || (renewals.unknown > 0 && !covered);
-  if (!renewalsShown && !covered) clear.push("Renewals");
+  const renewalsShown = renewalsKnown && (renewals.rows.length > 0 || (renewals.unknown > 0 && !covered));
+  if (renewalsKnown && !renewalsShown && !covered) clear.push("Renewals");
   const birthdaysShown = birthdays.rows.length > 0;
   if (!birthdaysShown) clear.push("Birthdays");
   const anniversariesShown = anniversaries.rows.length > 0;
@@ -140,13 +150,13 @@ export function MonthPage({ studio, studios, clients, trainers, authTrainer, onO
 
       <CountsLine
         items={[
-          ...(covered ? [] : [{ n: renewals.rows.length, label: renewals.rows.length === 1 ? "renewal" : "renewals" }]),
+          ...(covered ? [] : [{ n: renewalsKnown ? renewals.rows.length : null, label: renewals.rows.length === 1 ? "renewal" : "renewals" }]),
           { n: birthdays.rows.length, label: birthdays.rows.length === 1 ? "birthday" : "birthdays" },
           { n: anniversaries.rows.length, label: anniversaries.rows.length === 1 ? "anniversary" : "anniversaries" },
           ...(covered ? [] : [{ n: mia ? mia.rows.length : null, label: "MIA today" }]),
         ]}
         rules={[
-          "A renewal is placed in the month its package effectively ends (the pipeline's own date); a client whose renewal timing is unknown is counted, never dropped.",
+          "A renewal is placed in the month its package effectively ends (the pipeline's own date); a client whose renewal timing is unknown is counted, never dropped. An Inactive client isn't listed, except as Lapsed or Away, as on the pipeline.",
           "Birthdays come from the date of birth on the record; anniversaries from the first day a person set on Account, else the earliest day Mindbody proves — and then they are called a guess.",
           "MIA is the Journey's one rule (Drifting · At risk · Lapsed), as of today whichever month is open. Nothing is said until the Journey is ready.",
           "Nothing here is sent to anyone.",
