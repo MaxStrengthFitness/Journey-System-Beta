@@ -171,6 +171,21 @@ export function pileUps(
     .sort((a, b) => b.talks - a.talks || a.trainerId.localeCompare(b.trainerId));
 }
 
+/**
+ * The first week after `after` with something to decide in it (moments left
+ * out), and its counts: Week ahead's "Further ahead" line, so a week that is
+ * all clear points at what comes next (AJ, Oct 7 2026). Null with nothing in
+ * the weeks drawn.
+ */
+export function nextBusyWeek(events: readonly AheadEvent[], after: string, span: AheadSpan): { monday: string; counts: GroupCounts } | null {
+  const later = events.filter((e) => e.day > after && KIND_GROUP[e.kind] !== "moment");
+  if (later.length === 0) return null;
+  const first = later.reduce((a, b) => (b.day < a.day ? b : a)).day;
+  const monday = mondayOf(first);
+  const week = weeksOf(later, span).find((w) => w.monday === monday);
+  return week ? { monday, counts: groupCounts(week.events) } : null;
+}
+
 /* ------------------------------------------------------------------ *
  * The strip: one small bar a week, tapped by month
  * ------------------------------------------------------------------ */

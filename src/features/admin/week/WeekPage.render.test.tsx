@@ -182,5 +182,9 @@ describe("Week → This week and the week ahead", () => {
     // Nobody due back: one line at the foot, not a section saying so.
     expect(el.querySelector("#brief-ahead-back")).toBeNull();
     expect(el.querySelector("[data-testid='all-clear']")?.textContent).toContain("Due back");
+    // Further ahead (Oct 7 2026): the week ahead is never the end of the page; it says what comes next.
+    const further = el.querySelector("#brief-ahead-further")?.textContent ?? "";
+    expect(further).toContain("Further ahead");
+    expect(/Next: the week of|Nothing to decide in the next six months\./.test(further)).toBe(true);
   });
 });

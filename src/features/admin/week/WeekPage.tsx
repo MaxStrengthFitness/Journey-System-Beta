@@ -54,6 +54,8 @@ import { isSlipping } from "../journey/states";
 import { useBoundaryClock } from "../../../lib/boundary-clock";
 import { bookingBoundaries } from "../../../lib/booking-state";
 import type { OpsDoor } from "../shell/places";
+import { aheadClients, eventsOf } from "../ahead/events";
+import { aheadSpan, countsWords, nextBusyWeek } from "../ahead/weeks";
 import { busiestDay, dayFacts, dayLine, mondayOf, readInFull, teamWeek, totals, weekFrom, type DayFacts } from "./review";
 import { useCoverageRecord } from "./useCoverageRecord";
 import "../shell/ops.css";
@@ -333,6 +335,28 @@ function WeekAhead({ studio, studios, clients, trainers, authTrainer, onOpenClie
   const note = useNightlyNote(j.nightly, studio, j.today, clients, tz);
   const noteCovers = note !== null && note.kind !== "unknown";
   const renewalsDue = renewals.counts["talk-now"] + renewals.counts["before-charge"];
+  // Further ahead (Oct 7 2026, AJ: a week that is all clear should say what comes next): the first
+  // week after this one with something to decide, by Ahead's own rules, with a door to Ahead.
+  const further = useMemo(() => {
+    if (!j.ready) return undefined;
+    const span = aheadSpan(j.today);
+    const list = aheadClients({
+      clients,
+      studioId: studio.id as string,
+      today: j.today,
+      until: span.until,
+      settings: j.settings,
+      laneCtx: { studioId: studio.id as string, settings: j.settings, today: j.today, inactiveMarks: j.marks.marks, inactiveDays: j.lines.inactiveDays },
+      cycles: {},
+      cyclesKnown: false,
+      journeys: new Map(j.entries.map((e) => [e.id, { journey: e.journey, nextState: e.row.next.state }])),
+      breakDays: j.breakDays,
+      lines: j.lines,
+      cutover: studio.journeyCutoverDate ?? null,
+      tz,
+    });
+    return nextBusyWeek(eventsOf(list), lastDay, span);
+  }, [j.ready, j.today, j.settings, j.marks.marks, j.lines, j.entries, j.breakDays, clients, studio.id, studio.journeyCutoverDate, tz, lastDay]);
 
   const clear: string[] = [];
   const backShown = !j.ready || dueBack.length > 0;
@@ -409,6 +433,13 @@ function WeekAhead({ studio, studios, clients, trainers, authTrainer, onOpenClie
         <BriefSection id="ahead-catch" title="To catch" count={j.ready ? slipping.length : null} door={<Door label="Journey" to="journey" onOpen={onOpen} />}>
           <p className="ops-sec__note">
             {!j.ready ? "Reading…" : `${slipping.length} ${slipping.length === 1 ? "client is" : "clients are"} drifting or at risk, with nothing booked.`}
+          </p>
+        </BriefSection>
+      )}
+      {further !== undefined && !noteCovers && (
+        <BriefSection id="ahead-further" title="Further ahead" door={<Door label="Ahead" to="ahead" onOpen={onOpen} />}>
+          <p className="ops-sec__note">
+            {further ? `Next: the week of ${dateWords(further.monday)} · ${countsWords(further.counts)}` : "Nothing to decide in the next six months."}
           </p>
         </BriefSection>
       )}

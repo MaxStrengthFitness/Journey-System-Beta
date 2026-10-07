@@ -10,6 +10,7 @@ import {
   eventInLens,
   groupCounts,
   headlineCounts,
+  nextBusyWeek,
   pileUps,
   runOf,
   stripOf,
@@ -145,5 +146,15 @@ describe("the Clients view's groups", () => {
     expect(g.coming.map((c) => c.id)).toEqual(["soon", "later"]);
     expect(g.quiet.map((c) => c.id)).toEqual(["quiet"]);
     expect(g.cantPlace.map((c) => c.id)).toEqual(["omar"]);
+  });
+});
+
+describe("the next busy week", () => {
+  it("is the first week after a day with something to decide, moments left out", () => {
+    const span = aheadSpan(TODAY);
+    const events = [ev("a", "talk", T(2)), ev("b", "birthday", T(9)), ev("c", "renews", T(20)), ev("d", "talk", T(22))];
+    // After the week ahead (T(6)): Oct 26's week holds the renewal and a talk; the birthday on T(9) is no decision.
+    expect(nextBusyWeek(events, T(6), span)).toEqual({ monday: "2026-10-26", counts: { talk: 1, date: 1, watch: 0, moment: 0 } });
+    expect(nextBusyWeek(events, T(30), span)).toBeNull();
   });
 });
