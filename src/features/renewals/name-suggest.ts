@@ -20,14 +20,17 @@
  *   - "Comp", "complimentary", "free", "won", "bonus", "gift", "referral",
  *     "prize": extra sessions (AJ, Oct 6 2026: won sessions are "added to
  *     mindbody" as pricing options). Only a pricing option: a contract is
- *     never extra sessions.
+ *     never extra sessions. A name with BOTH an extra word and a package's
+ *     own number ("SV 18 Months/144 Sessions PIF + 2 Free": a prepay comes
+ *     with two free workouts) is no suggestion, so one tap on Confirm all
+ *     can never file a whole package as extras.
  *   - Anything unsure is no suggestion: an intro, a consultation, a drop-in,
  *     a single session, month-to-month, a name with no number.
  *   A wrong match would put the wrong price in a conversation, so a missing
  *   suggestion is always the safer answer.
  */
 
-import { MAX_EXTRA_SESSION_NAMES, MAX_NAMES_PER_PACKAGE, buildPackageNameIndex, normalizeMindbodyName } from "./settings";
+import { buildPackageNameIndex, normalizeMindbodyName } from "./settings";
 import type { PackageTier, RenewalNamesSeen, RenewalSettings } from "./types";
 
 export type NameSuggestion =
@@ -45,8 +48,8 @@ const EXTRA = /\b(?:comp|comped|complimentary|free|won|winner|prize|bonus|gift(?
 const UNSURE = /\b(?:intro(?:ductory)?|consult(?:ation)?|assessment|evaluation|drop[\s-]?in|single|guest|gift\s*card|month[\s-]*to[\s-]*month|m2m|unlimited)\b/;
 const PIF = /\bpif\b|paid[\s-]*in[\s-]*full|\bprepa(?:id|y)\b/;
 const ROLL_OVER = /\broll[\s-]*overs?\b|\brollover\b/;
-const SESSIONS = /\b(\d{1,3})\s*(?:sessions?|sess\b|pif\b|prepa(?:id|y)\b)/g;
-const MONTHS = /\b(\d{1,2})\s*(?:months?|mos?|mths?)\b/g;
+const SESSIONS = /\b(\d{1,3})[\s-]*(?:sessions?|sess\b|pif\b|prepa(?:id|y)\b)/g;
+const MONTHS = /\b(\d{1,2})[\s-]*(?:months?|mos?|mths?)\b/g;
 
 function numbers(re: RegExp, text: string): number[] {
   return Array.from(new Set(Array.from(text.matchAll(re), (m) => Number(m[1])).filter((n) => n > 0)));
@@ -65,10 +68,17 @@ export function suggestName(
   const text = normalizeMindbodyName(name).replace(/[/_|]+/g, " ");
   if (!text) return null;
   if (UNSURE.test(text)) return null;
-  if (EXTRA.test(text)) return kind === "pricing-option" ? { kind: "extra" } : null;
-
   const sessions = numbers(SESSIONS, text);
   const months = numbers(MONTHS, text);
+  if (EXTRA.test(text)) {
+    // A package's own number beside the extra word: a package that comes
+    // with a bonus, or a bonus named after a package. Unsure either way.
+    const packageSized =
+      sessions.some((n) => settings.packages.some((t) => t.sessions === n)) ||
+      months.some((n) => settings.packages.some((t) => t.months === n));
+    if (packageSized) return null;
+    return kind === "pricing-option" ? { kind: "extra" } : null;
+  }
   if (sessions.length > 1 || months.length > 1) return null;
   if (sessions.length === 0 && months.length === 0) return null;
   const fits = (t: PackageTier) =>
@@ -140,47 +150,4 @@ export function waitingNames(seen: Pick<RenewalNamesSeen, "names"> | null | unde
 export function waitingLine(waiting: readonly WaitingName[]): string | null {
   if (waiting.length === 0) return null;
   return `${waiting.length} name${waiting.length === 1 ? "" : "s"} waiting`;
-}
-
-/**
- * The settings patch that matches the accepted names: each name added to its
- * package's Mindbody names, or to the extra-sessions names. Only the two
- * fields it changes, for `saveRenewalSettings` (leaders only, as today).
- * `skipped` names did not fit (the list is full, or the package is gone),
- * so a screen can say so instead of dropping them.
- */
-export function withAcceptedNames(
-  settings: RenewalSettings,
-  accepted: ReadonlyArray<{ name: string; suggestion: NameSuggestion }>,
-): { patch: Pick<RenewalSettings, "packages" | "extraSessionNames">; added: string[]; skipped: string[] } {
-  const packages = settings.packages.map((p) => ({ ...p, mindbodyNames: [...p.mindbodyNames] }));
-  const extra = [...settings.extraSessionNames];
-  const taken = new Set<string>([
-    ...packages.flatMap((p) => p.mindbodyNames.map(normalizeMindbodyName)),
-    ...extra.map(normalizeMindbodyName),
-  ]);
-  const added: string[] = [];
-  const skipped: string[] = [];
-  for (const { name, suggestion } of accepted) {
-    const shown = name.replace(/\s+/g, " ").trim().slice(0, 80);
-    const key = normalizeMindbodyName(shown);
-    if (!key || taken.has(key)) continue;
-    if (suggestion.kind === "extra") {
-      if (extra.length >= MAX_EXTRA_SESSION_NAMES) {
-        skipped.push(shown);
-        continue;
-      }
-      extra.push(shown);
-    } else {
-      const tier = packages.find((p) => p.key === suggestion.packageKey);
-      if (!tier || tier.mindbodyNames.length >= MAX_NAMES_PER_PACKAGE) {
-        skipped.push(shown);
-        continue;
-      }
-      tier.mindbodyNames.push(shown);
-    }
-    taken.add(key);
-    added.push(shown);
-  }
-  return { patch: { packages, extraSessionNames: extra }, added, skipped };
 }

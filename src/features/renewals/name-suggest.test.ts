@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { suggestName, suggestionTarget, suggestionWords, waitingLine, waitingNames, withAcceptedNames } from "./name-suggest";
+import { suggestName, suggestionTarget, suggestionWords, waitingLine, waitingNames } from "./name-suggest";
+import { assignNameInForm, formToSettings, nameWontFitInForm, settingsToForm } from "./settings-form";
 import { buildPackageNameIndex, DEFAULT_RENEWAL_SETTINGS, normalizeRenewalSettings } from "./settings";
 import type { RenewalNamesSeen } from "./types";
 
@@ -39,6 +40,17 @@ describe("suggestName on Strongsville's real names (Oct 6 2026)", () => {
     expect(key("Referral Bonus Session")).toBe("extra");
     expect(key("Session Comp", "contract")).toBeNull();
     expect(suggestionTarget(suggestName("Session Comp", settings)!)).toBe("__extra__");
+  });
+
+  it("never files a package that mentions its bonus as extra sessions", () => {
+    // A prepay comes with two free workouts: the name may say so.
+    expect(key("SV 18 Months/144 Sessions PIF + 2 Free")).toBeNull();
+    expect(key("48 Sessions PIF w/ Bonus")).toBeNull();
+    expect(key("Comp 6 Month")).toBeNull();
+  });
+
+  it("reads a hyphen between the number and its word", () => {
+    expect(key("SV 6-Month/48-Session PIF")).toBe("trial");
   });
 
   it("suggests nothing when unsure", () => {
@@ -91,34 +103,28 @@ describe("waitingNames", () => {
   });
 });
 
-describe("withAcceptedNames", () => {
-  it("adds each accepted name to its package or the extras, and the engine then reads it", () => {
-    const accepted = ["48 Sessions w/ Roll Over", "SV 18 Months/144 Sessions PIF", "SV Session Comp"].map((name) => ({
-      name,
-      suggestion: suggestName(name, settings)!,
-    }));
-    const { patch, added, skipped } = withAcceptedNames(settings, accepted);
-    expect(added).toHaveLength(3);
-    expect(skipped).toEqual([]);
-    expect(patch.packages.find((p) => p.key === "trial")?.mindbodyNames).toContain("48 Sessions w/ Roll Over");
-    expect(patch.extraSessionNames).toContain("SV Session Comp");
-    // The original settings are untouched.
-    expect(settings.packages[0].mindbodyNames).not.toContain("48 Sessions w/ Roll Over");
+describe("confirming suggestions in the settings form (the panel's path)", () => {
+  it("adds each confirmed name to its package or the extras, and the engine then reads it", () => {
+    let form = settingsToForm(settings);
+    for (const name of ["48 Sessions w/ Roll Over", "SV 18 Months/144 Sessions PIF", "SV Session Comp"]) {
+      form = { ...form, ...assignNameInForm(form, name, suggestionTarget(suggestName(name, settings)!)) };
+    }
+    const saved = formToSettings(form).settings;
     // And they survive the cleaning every read does.
-    const index = buildPackageNameIndex(normalizeRenewalSettings({ ...settings, ...patch }));
+    const index = buildPackageNameIndex(normalizeRenewalSettings(saved));
     expect(index.tierFor("48 sessions w/ roll over")?.key).toBe("trial");
     expect(index.tierFor("SV 18 Months/144 Sessions PIF")?.key).toBe("transformed");
     expect(index.isExtraSessions("SV Session Comp")).toBe(true);
+    // The original settings are untouched.
+    expect(settings.packages[0].mindbodyNames).not.toContain("48 Sessions w/ Roll Over");
   });
 
-  it("never adds a name twice, and says which didn't fit", () => {
-    const full = { ...settings, extraSessionNames: Array.from({ length: 40 }, (_, i) => `Comp ${i}`) };
-    const { added, skipped } = withAcceptedNames(full, [
-      { name: "48 Sessions - 2X Week", suggestion: suggestName("48 Sessions", settings)! },
-      { name: "Won Session", suggestion: { kind: "extra" } },
-      { name: "Old", suggestion: { kind: "package", packageKey: "gone", label: "Gone", paidInFull: false, rollOver: false } },
-    ]);
-    expect(added).toEqual([]);
-    expect(skipped).toEqual(["Won Session", "Old"]);
+  it("knows when a list is full, so a name is never dropped silently on save", () => {
+    const full = settingsToForm({ ...settings, extraSessionNames: Array.from({ length: 40 }, (_, i) => `Comp ${i}`) });
+    expect(nameWontFitInForm(full, "Won Session", "__extra__")).toBe(true);
+    // Already there: adding it changes nothing, so it "fits".
+    expect(nameWontFitInForm(full, "Comp 3", "__extra__")).toBe(false);
+    expect(nameWontFitInForm(full, "48 Sessions w/ Roll Over", "trial")).toBe(false);
+    expect(nameWontFitInForm(full, "Old", "gone")).toBe(true);
   });
 });

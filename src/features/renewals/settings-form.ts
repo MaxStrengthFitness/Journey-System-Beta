@@ -10,6 +10,7 @@
  */
 
 import {
+  MAX_EXTRA_SESSION_NAMES,
   MAX_NAMES_PER_PACKAGE,
   SETTING_LABELS,
   SETTING_LIMITS,
@@ -149,7 +150,7 @@ export function formToSettings(form: RenewalSettingsForm): {
         ? { packagesRenewAutomatically: false }
         : {}),
     packages: form.packages.map(rowToPackage),
-    extraSessionNames: parseNames(form.extraNamesText),
+    extraSessionNames: parseNames(form.extraNamesText, MAX_EXTRA_SESSION_NAMES),
   };
   const problems = validateRenewalSettings(settings);
   for (const key of NUMBER_FIELDS) {
@@ -195,6 +196,20 @@ export function settingsPatchFromForm(
     } else (out as Record<string, unknown>)[key] = parsed[key as keyof RenewalSettings];
   }
   return out;
+}
+
+/**
+ * Would this name be cut off on save? The form keeps a package's first
+ * MAX_NAMES_PER_PACKAGE names and the first MAX_EXTRA_SESSION_NAMES extras
+ * (formToSettings), so a name added past that would vanish without a word.
+ * False when the name is already in the list (adding it changes nothing).
+ */
+export function nameWontFitInForm(form: RenewalSettingsForm, name: string, target: string): boolean {
+  const text = target === "__extra__" ? form.extraNamesText : form.packages.find((r) => r.key === target)?.namesText;
+  if (text === undefined) return true;
+  const names = parseNames(text, 1000).map(normalizeMindbodyName);
+  if (names.includes(normalizeMindbodyName(name))) return false;
+  return names.length >= (target === "__extra__" ? MAX_EXTRA_SESSION_NAMES : MAX_NAMES_PER_PACKAGE);
 }
 
 /** Adds a Mindbody name to a package (or to the extra-sessions list) in the form. */

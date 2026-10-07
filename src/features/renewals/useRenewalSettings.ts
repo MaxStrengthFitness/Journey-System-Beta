@@ -11,7 +11,6 @@ import { doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "../../firebase";
 import { DEFAULT_RENEWAL_SETTINGS, hasOwnPackageTable, normalizeRenewalSettings } from "./settings";
 import type { RenewalNamesSeen, RenewalSettings } from "./types";
-import { withAcceptedNames, type NameSuggestion } from "./name-suggest";
 
 export interface RenewalSettingsState {
   settings: RenewalSettings;
@@ -122,22 +121,4 @@ export function useRenewalNamesSeen(studioId: string | null | undefined): Renewa
     );
   }, [studioId]);
   return seen;
-}
-
-/**
- * Matches the Mindbody names a leader accepted from the suggestions
- * (name-suggest.ts): each added to its package, or to the extra-sessions
- * names, in one write of the two fields (leaders only, as every renewal
- * settings write). `settings` must be the studio's own as last read, never
- * the defaults shown after a failed read: the whole package table is
- * written back. Returns what was added and what didn't fit.
- */
-export async function acceptNameSuggestions(
-  studioId: string,
-  settings: RenewalSettings,
-  accepted: ReadonlyArray<{ name: string; suggestion: NameSuggestion }>,
-): Promise<{ added: string[]; skipped: string[] }> {
-  const { patch, added, skipped } = withAcceptedNames(settings, accepted);
-  if (added.length > 0) await saveRenewalSettings(studioId, patch);
-  return { added, skipped };
 }

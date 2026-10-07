@@ -41,6 +41,7 @@ import {
 import { useDirtyForm } from "../useDirtyForm";
 import {
   assignNameInForm,
+  nameWontFitInForm,
   formToSettings,
   newPackageRow,
   settingsPatchFromForm,
@@ -48,7 +49,7 @@ import {
   type PackageRowForm,
   type RenewalSettingsForm,
 } from "../../renewals/settings-form";
-import { SETTING_LABELS } from "../../renewals/settings";
+import { MAX_EXTRA_SESSION_NAMES, MAX_NAMES_PER_PACKAGE, SETTING_LABELS } from "../../renewals/settings";
 import { suggestionTarget, suggestionWords, waitingNames, type WaitingName } from "../../renewals/name-suggest";
 import { saveRenewalSettings } from "../../renewals/useRenewalSettings";
 import type { RenewalNamesSeen, RenewalSettings } from "../../renewals/types";
@@ -136,16 +137,27 @@ export function RenewalSettingsPanel({
   const suggested = unmatched.filter((n): n is WaitingName & { suggestion: NonNullable<WaitingName["suggestion"]> } => n.suggestion !== null);
   // Confirming puts the name in its package's (or the extra sessions') list
   // in the form; the save bar writes it, like any other change here.
-  const confirm = (names: typeof suggested) => {
+  // A name past a list's limit would be dropped on save without a word, so
+  // it is not added and the panel says which ones didn't fit.
+  const [didntFit, setDidntFit] = useState<string[]>([]);
+  const assign = (pairs: Array<{ name: string; target: string }>) => {
     let draft = form.value;
     let patch: Partial<RenewalSettingsForm> = {};
-    for (const n of names) {
-      const p = assignNameInForm(draft, n.name, suggestionTarget(n.suggestion));
+    const skipped: string[] = [];
+    for (const { name, target } of pairs) {
+      if (nameWontFitInForm(draft, name, target)) {
+        skipped.push(name);
+        continue;
+      }
+      const p = assignNameInForm(draft, name, target);
       draft = { ...draft, ...p };
       patch = { ...patch, ...p };
     }
     form.setFields(patch);
+    setDidntFit(skipped);
   };
+  const confirm = (names: typeof suggested) =>
+    assign(names.map((n) => ({ name: n.name, target: suggestionTarget(n.suggestion) })));
 
   const numberField = (key: NumberKey) => (
     <AdminField key={key} label={SETTING_LABELS[key]} hint={HINTS[key]} htmlFor={`renewals-${key}`}>
@@ -435,6 +447,13 @@ export function RenewalSettingsPanel({
           ) : undefined
         }
       >
+        {didntFit.length > 0 && (
+          <AdminNotice tone="warn">
+            {didntFit.length === 1 ? "This name didn't fit" : "These names didn't fit"}: {didntFit.join(", ")}. A package holds
+            at most {MAX_NAMES_PER_PACKAGE} Mindbody names and the extra sessions {MAX_EXTRA_SESSION_NAMES}; remove one
+            that no longer sells to make room.
+          </AdminNotice>
+        )}
         {!namesSeen ? (
           <AdminEmpty title="Nothing seen yet">
             This list fills in after the nightly renewals job has run for {studioName}.
@@ -475,7 +494,7 @@ export function RenewalSettingsPanel({
                         value=""
                         onChange={(e) => {
                           if (!e.target.value) return;
-                          form.setFields(assignNameInForm(form.value, n.name, e.target.value));
+                          assign([{ name: n.name, target: e.target.value }]);
                         }}
                       >
                         <option value="">Match to…</option>
