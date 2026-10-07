@@ -55,12 +55,30 @@ Left as they are, with the reason:
 
 ## Deploy order
 
-1. On AJ's PC: `npm run test:rules` (323 passing on this branch). If it fails, stop.
-2. `firebase deploy --only firestore:rules`: the plan's branch, `plan` on the leaders' list with its shape check, plan touches. Rules only ADD access, so the running app is unaffected. No new index (no new query shape).
-3. `git push origin master` (the app).
-4. Render: **Manual Deploy** of the web service, and **Manual Build** of `journey-cron-renewals` (and the other cron, as every round since `c8b2a5cb`): a push deploys nothing on Render. The first night after the cron deploy rewrites each snapshot to version 3. Until then a row on a version-2 snapshot says "N left" and the charge date, and no "At the end".
+**`scripts/ship/ship-renewals-dashboard.ps1`**, from `.claude\worktrees\renewals-dash`: `-Stage prepare`, then `-Stage golive`. It expects master on GitHub to be exactly `27484683` (fetched Oct 7 2026) and stops otherwise, so anything that reaches master first is merged in and tested again before this ships. **The Wrap-up round ships with it**: this branch was built on `40385a83`, the Wrap-up fix merged onto master's `27484683`, and that fix is not on master yet, so the push carries both and `ship-wrapup.ps1` is retired (it would refuse anyway: it expects master at `40b868a2`). Round 59's Wrap-up lines are walked with Round 63.
+
+What golive does, stopping at the first failure:
+
+1. Tags master as it is now, `restore/2026-10-07-before-renewals-dashboard` = `27484683`, and pushes the tag.
+2. `npm run test:rules` again (323 passing on this branch; if it fails, stop), then `firebase deploy --only firestore:rules`: the plan's branch, `plan` on the leaders' list with its shape check, plan touches. Rules only ADD access, so the running app is unaffected. Then it checks the ruleset LIVE on the named database holds `renewalPlanValid` (with gcloud, or AJ types LIVE after looking in the console). No new index (no new query shape).
+3. `git push origin oct7/renewals-dashboard:master`, fast-forward only, after a fresh fetch shows master hasn't moved.
+
+Then by hand (golive prints them):
+
+4. Render: **Manual Deploy** of the web service (`version.json` names the new build), and **Manual Build** of BOTH crons, `journey-cron-renewals` (the version-3 snapshot) and `journey-cron-leaderboards` (the Wrap-up fix's machine totals read): a push deploys nothing on Render (`c8b2a5cb`). The renewals job runs at 2:30 AM Eastern; its first run on the new commit rewrites each snapshot to version 3. Until then a row on a version-2 snapshot says "N left" and the charge date, and no "At the end".
+5. **Strongsville's auto-renewal Off**, the same day, before that run: My Studio → Studio → Renewals → Auto-renewal → Off, Save. The plan picker reads the snapshot's decided answer, so Strongsville's rows offer Renewing, same package · Upgrading · Downgrading · Pay as you go · Not renewing · Not decided yet from the next night's run. Mindbody's own flag on a contract, a trainer's On auto-renewal box, or a package's own answer still wins over the studio's for that client (`auto-renew.ts`), and a paid-in-full client always gets this second list.
+6. The three checks below, then the names (Confirm, or Confirm all, then Save settings), then Round 63 of `docs/ops/TESTING-CHECKLIST.md` the morning after the first run.
+
+To undo: `git push --force origin restore/2026-10-07-before-renewals-dashboard:master`, then the same three Render buttons. The rules can stay (they only add access, and the older app never writes a plan); plans already saved stay on their cycle documents, unread; the older job writes version-2 snapshots again the next night (it replaces the whole `renewal` field).
 
 No Cloud Functions, no Mindbody calls, no Firestore structure change beyond the optional fields on `clients/{id}.renewal` (job-written) and `studios/{s}/renewals/{cycleKey}.plan`.
+
+## Not built this round
+
+- **A manual rate.** AJ's answer was to read the rate from Mindbody "for now" and confirm later; the design left out an override field on purpose. If a client's Mindbody charge is wrong, nothing in Journey corrects it yet.
+- **One-tap name confirm** (open question 3) and **Running low on the dashboard row** (open question 5): built the cautious way, waiting for AJ.
+- **The plan moving a client between lanes** (open question 2): the plan changes the row's next step only; the lanes still move on what Mindbody says.
+- **Booked visits taken off sessions left**: the arithmetic is built and tested, switched off until the first check below says Mindbody's Remaining doesn't already leave them out.
 
 ## Check before trusting two things
 
