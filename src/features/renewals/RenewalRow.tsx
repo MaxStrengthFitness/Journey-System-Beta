@@ -63,6 +63,8 @@ export interface RenewalRowProps {
   canPlan: boolean;
   /** The signed-in person's name, written on a plan. */
   authorName: string;
+  /** Which list the row is in, when a client can be on the screen twice (RenewalPlanPicker `where`). */
+  where?: string;
 }
 
 function Cell({ area, label, children }: { area: string; label: string; children: ReactNode }) {
@@ -190,6 +192,7 @@ export function RenewalRow(props: RenewalRowProps) {
           // while the conversations load, nor after their read failed.
           canSet={canPlan && planKnown(cycle, props.cyclesLoading, props.cyclesFailed)}
           authorName={authorName}
+          where={props.where}
         />
       </div>
 

@@ -206,7 +206,7 @@ describe("RenewalsPipeline — Running low", () => {
     expect(row.querySelector(".rr__cell--left .rr__value")?.textContent).toBe("9 left: 4 rolled over · 5 this contract");
     expect(row.querySelector(".rr__cell--atend")?.textContent).toContain("Runs out around Nov 20");
     expect(row.textContent).toContain("Jen Park");
-    const sel = row.querySelector<HTMLSelectElement>('select[aria-label="Renewal plan for Sasha Reyes"]')!;
+    const sel = row.querySelector<HTMLSelectElement>('select[aria-label="Renewal plan for Sasha Reyes (Running low)"]')!;
     expect(optionsOf(sel)).toContain("Same package");
     await choose(sel, "renew-same");
     expect(saved.plans).toEqual([]);

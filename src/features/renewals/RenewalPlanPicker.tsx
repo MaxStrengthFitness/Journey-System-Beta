@@ -7,7 +7,7 @@
  * The choices are the ones that fit this contract's decided auto-renew
  * answer (plan.ts, planChoicesFor): a contract that renews by itself offers
  * Let it renew · Pause billing · Not renewing; one that doesn't (Strongsville)
- * offers Renewing · Upgrading · Downgrading · Pay as you go · Not renewing.
+ * offers Same package · Upgrading · Downgrading · Pay as you go · Not renewing.
  *
  * The picker's labels are short ("Let it renew", "Pause billing"), so a
  * closed select on an iPad never cuts one off (AJ, Oct 7 2026: "fix"); the
@@ -52,6 +52,12 @@ export interface RenewalPlanPickerProps {
   canSet: boolean;
   /** The signed-in person's name, written on the plan and its touch. */
   authorName: string;
+  /**
+   * Which list this picker is in, when the client can be on the screen twice
+   * (Running low beside Talk now), so a screen reader and the leave warning
+   * tell the two apart: "Renewal plan for Sasha Reyes (Running low)".
+   */
+  where?: string;
 }
 
 function savedDraft(cycle: RenewalCycle | null | undefined): PlanDraft {
@@ -63,14 +69,15 @@ function sameDraft(a: PlanDraft, b: PlanDraft): boolean {
   return a.choice === b.choice && (a.packageKey ?? null) === (b.packageKey ?? null) && a.note.trim() === b.note.trim();
 }
 
-export function RenewalPlanPicker({ studioId, clientId, clientName, snapshot, cycle, settings, sentence, canSet, authorName }: RenewalPlanPickerProps) {
+export function RenewalPlanPicker({ studioId, clientId, clientName, snapshot, cycle, settings, sentence, canSet, authorName, where }: RenewalPlanPickerProps) {
+  const inList = where ? ` (${where})` : "";
   const id = useId();
   const saved = savedDraft(cycle);
   const [draft, setDraft] = useState<PlanDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dirty = draft !== null && !sameDraft(draft, saved);
-  useUnsavedChanges(dirty, `${clientName}'s renewal plan`, { onDiscard: () => setDraft(null) });
+  useUnsavedChanges(dirty, `${clientName}'s renewal plan${inList}`, { onDiscard: () => setDraft(null) });
 
   const plannable = canSet && isUsableCycleKey(snapshot.cycleKey);
   if (!plannable) {
@@ -120,7 +127,7 @@ export function RenewalPlanPicker({ studioId, clientId, clientName, snapshot, cy
     <div className="rr-plan">
       <AdminSelect
         id={`${id}-choice`}
-        aria-label={`Renewal plan for ${clientName}`}
+        aria-label={`Renewal plan for ${clientName}${inList}`}
         value={current.choice ?? ""}
         disabled={busy}
         onChange={(e) => pick(e.target.value)}

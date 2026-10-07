@@ -200,6 +200,7 @@ export function RenewalsPipeline({
   const renderRow = (
     r: Pick<PipelineRow, "clientId" | "name" | "snapshot" | "cycle" | "inbodyVariation">,
     leftNow?: string | null,
+    where?: string,
   ) => {
     const s = r.snapshot;
     return (
@@ -217,6 +218,7 @@ export function RenewalsPipeline({
         trainerName={s.primaryTrainerId ? trainerNames.get(s.primaryTrainerId) ?? null : null}
         proof={proofSentence(s, r.inbodyVariation)}
         leftNow={leftNow}
+        where={where}
         nextStep={nextStep(s, r.cycle, settings, today)}
         badges={
           <>
@@ -330,6 +332,7 @@ export function RenewalsPipeline({
                 return renderRow(
                   { ...r, inbodyVariation: variationFor(c) },
                   lowLeftNow(r.snapshot, today),
+                  "Running low",
                 );
               })}
             </RenewalRowList>
