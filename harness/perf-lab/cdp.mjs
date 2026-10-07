@@ -22,6 +22,16 @@ function killTree(proc) {
 }
 
 /**
+ * The .NET pattern (PowerShell's -match, which ignores case) for a command line naming this profile folder
+ * and no other: the folder followed by a quote, a space, a backslash or the end, so "...-main-2" never
+ * matches "...-main-20". Chrome keeps the folder as it was given, so slashes are compared as backslashes.
+ */
+export function strayPattern(profileDir) {
+  const dir = resolve(profileDir).split("/").join("\\");
+  return dir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?:[\\x22\\s\\\\]|$)";
+}
+
+/**
  * Any Chrome still running on this profile folder (from a rep that failed, or a run that was stopped) is
  * ended first. One left behind holds the folder: a new Chrome on it hands over to the old one and exits, the
  * lab then drives the OLD browser, and an app page still open there holds Firestore's disk cache, so every
@@ -30,11 +40,10 @@ function killTree(proc) {
  */
 function endStrays(profileDir) {
   if (process.platform !== "win32") return 0;
-  // Compared without case and with either slash: Chrome keeps the folder as it was given.
-  const dir = resolve(profileDir).split("/").join("\\").toLowerCase().replace(/'/g, "''");
+  const pattern = strayPattern(profileDir).replace(/'/g, "''");
   const ps = [
     `Get-CimInstance Win32_Process -Filter "Name='chrome.exe'"`,
-    `Where-Object { $_.CommandLine -and $_.CommandLine.Replace('/', [string][char]92).ToLower().Contains('${dir}') }`,
+    `Where-Object { $_.CommandLine -and ($_.CommandLine.Replace('/', [string][char]92) -match '${pattern}') }`,
     `ForEach-Object { taskkill /PID $_.ProcessId /T /F 2>&1 | Out-Null; 1 }`,
     `Measure-Object | ForEach-Object { $_.Count }`,
   ].join(" | ");
