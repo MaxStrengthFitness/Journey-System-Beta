@@ -18,7 +18,9 @@ A package runs on **two clocks**. Billing sends a payment every 4 weeks (6, 12 o
 
 The conversation is due at the studio's threshold (10 sessions left by default). A renewal **already signed in Mindbody** ("on the books") ends it: the client stops being prompted.
 
-**Running low** (Oct 6 2026, AJ: "a way for operations to show how many clients are running out of their sessions ... In total") is the same threshold read on its own: a number at the top of Operations → Renewals, everyone whose `sessionsLeft` is at or under it, talked to or not, with the list behind a tap. It counts from the studio's roster rather than the pipeline's date window, so a client too slow for the window is still found; a renewal on the books, a recorded renewal and an Inactive client are left out. `../admin/renewals/running-low.ts`; `docs/rounds/2026-10-06-running-low.md`.
+**Running low** (Oct 6 2026, AJ: "a way for operations to show how many clients are running out of their sessions ... In total") is the same threshold read on its own: a number at the top of Operations → Renewals, everyone whose `sessionsLeft` is at or under it, talked to or not, with the list behind a tap. It counts from the studio's roster, so a client too slow for any date window is still found; a renewal on the books, a recorded renewal and an Inactive client are left out. `../admin/renewals/running-low.ts`; `docs/rounds/2026-10-06-running-low.md`.
+
+**The lanes read the roster too, by one rule** (Oct 6 2026, the same day, on AJ's yes). Until then the pipeline had its own query, packages ending between six months ago and the planning horizon, so a client with 8 left at a quarter a week, running out next May, never reached Talk now while Operations → Today, counting from the roster, did. Now `../admin/renewals/lanes.ts` places every roster client, and the Pipeline, Today, Week and Month all ask it: the studio's own clients only; an Inactive client (Mindbody's flag, a leader's mark that still holds, or past the studio's Inactive line with nothing booked: Running low's `inactiveOnRecord`) out of Before the charge, Talk now and Coming up; Lapsed and Away untouched (Renewals' lost list stays its own list); Away keeping the old window (AJ: "Keep Away as it is"), except on Month, which lists it by month. `docs/rounds/2026-10-06-talk-now-roster.md`.
 
 ## Where things are
 
@@ -30,14 +32,14 @@ The conversation is due at the studio's threshold (10 sessions left by default).
 | `attendance.ts` | Bookings and workouts → visit rows (a late cancel, "Late cancel · session taken", is a no-show row: the pace counts it as a session USED, never a visit; Oct 2 2026); `attendanceSince` (unknown before the first synced booking, not zero). A booking is read through `lib/booking-state.ts` (Sep 24 2026): a visit when Journey logged a session for the client that day; an unlogged past booking is still a visit before its studio's `journeyCutoverDate` (or with none set — FileMaker holds that record), and from the cutover on it is neither a visit nor a miss |
 | `sentences.ts`, `options.ts`, `brief.ts` | Words: chips, situations, pace, proof; the package-options table; the Brief's journey and health lines |
 | `conversation.ts` | The 15-second conversation log and the post-session prompt |
-| `pipeline.ts` | Operations lanes, filters, next steps |
+| `pipeline.ts` | Operations lanes (`laneOf`, one snapshot), filters, next steps. Which lane a ROSTER client is in — home only, the Inactive rule, Away's window — is `../admin/renewals/lanes.ts` |
 | `outcomes.ts` | How a package ended — the nightly job's decisions |
 | `rates.ts` | Outcomes counted up for the leader-only Outcomes view; quarters |
 | `job-plan.ts` | Who gets a Mindbody pull tonight (packages when a sale happens, the cost plan, Sep 26 2026: a sale / contract / membership event first, then near the end of a package on a day they train, then never pulled, then a month old - never a past client on a timer); only at studios that have gone live (`studioIsLive`); Mindbody names seen |
 | `permissions.ts` | Who may do what — mirrors `firestore.rules` |
 | `use*.ts` | Firestore reads and writes. Nothing else here touches Firebase |
 | `*.tsx` | Trainer surfaces: the Renewal card, the log dialog, the briefing line, the Hub lane, My renewals |
-| `../admin/renewals/` | Operations → Renewals: the Pipeline (with Running low, `running-low.ts`), the Renewal Brief, Outcomes, Settings |
+| `../admin/renewals/` | Operations → Renewals: the Pipeline (lanes from the roster by `lanes.ts`, with Running low, `running-low.ts`), the Renewal Brief, Outcomes, Settings |
 | `server/renewals-job.ts` | The nightly job (Render cron `journey-cron-renewals`, 06:30 UTC); `scripts/run-renewals.ts` runs it from the PC, as a dry run by default. One studio at a time since Oct 1 2026 (job memory): a first look to choose tonight's first syncs and pulls across the company, then each studio's pulls, snapshots, outcomes, writes and client states; a client's bookings and workouts read by client on existing indexes (`docs/KNOWN-TRAPS.md`, "Jobs read per studio with select") |
 
 ## Data

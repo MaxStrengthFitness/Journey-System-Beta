@@ -28,6 +28,8 @@ A package runs on two clocks (`src/features/renewals/README.md`). The pipeline's
 
 The pipeline reads only clients whose package ends between six months ago and the end of the planning horizon (three months by default; `usePipelineClients`, by `renewal.focusDate`). A client who comes less than about once a week can have 10 left and a run-out date past the horizon, so they never reach **Talk now**. Running low counts from the studio's roster instead, so those clients show there. Talk now itself is unchanged; whether to widen its window is open.
 
+**Fixed the same day** on `oct6/talk-now-roster`, on AJ's yes: the lanes read the roster too, and an Inactive client leaves Talk now, Before the charge and Coming up, on the Pipeline, Today, Week and Month alike (`2026-10-06-talk-now-roster.md`).
+
 ## The reads
 
 No new Firestore query, no index, no Mindbody call, nothing written. The count comes from the studio's roster the app already holds (`useStudioRoster`, every client whose home is the studio, with last night's record), threaded from `AppContent` through Operations as `clientsStatus` so the tile waits while the roster loads and says "—" ("Couldn't read the client list") when it failed with nothing held, never a confident 0. The conversations for the listed clients join the pipeline's one chunked cycle read; the inactive marks are the app's shared listener (`useInactiveMarks`); the Inactive line is the studio setting (`useStudioSettings`, `inactiveDays`).

@@ -3081,5 +3081,16 @@ Round document: `docs/rounds/2026-10-06-running-low.md`. Walk it as a studio lea
 - [ ] **Check three rows against their profiles** (open each from the list: the Renewal Brief, then the profile): the total is the profile's sessions left in the contract plus any extra, plus 8 for a payment still to come. A row with a payment to come says so ("10 left in total: 2 on hand, 8 still to come").
 - [ ] **Who isn't there:** a client you know just renewed in Mindbody, a client marked Inactive, and a client whose package already ended (they are in Talk now) are not on the list. An away client is, marked Away.
 - [ ] **Change the number:** My Studio → Studio → Renewals, "Start the renewal conversation at" 12. Back on Renewals the tile says "12 or fewer left, in total" and the count goes up. Put it back to 10.
-- [ ] **A slow client:** if the list shows someone who isn't in Talk now, that is the one the pipeline's three-month window misses (the round document's "Found on the way"). Say whether Talk now should find them too.
+- [ ] **A slow client:** if the list shows someone who isn't in Talk now, that is the one the pipeline's three-month window misses (the round document's "Found on the way"). Say whether Talk now should find them too. *(Fixed on `oct6/talk-now-roster`: walk Round 61 instead.)*
 - [ ] **Under the list:** "Not counted: N clients whose sessions left aren't known yet" only when some are; it should be close to the Missing Mindbody data number.
+
+## Round 61 — Talk now from the roster · *Oct 6 2026, branch `oct6/talk-now-roster`*
+
+Round document: `docs/rounds/2026-10-06-talk-now-roster.md`. Walk it as a studio leader, after the push, in portrait and landscape, at a studio that has had a nightly run (westlake, Strongsville or Willoughby).
+
+- [ ] **Operations → Clients → Renewals:** no number and no lane shows until the client list has loaded; then the five numbers, and the lanes under them. Nothing says "Nothing in this lane right now" while it loads.
+- [ ] **A slow client:** open Running low. Anyone on it with nothing decided is in **Talk now** too, including someone whose package runs out months away ("8 left · runs out around May 18, 2027").
+- [ ] **Talk now agrees with Today:** Operations → Today's "N renewal talks due now, M before a charge" says the same N and M as the Talk now and Before the charge numbers on Renewals.
+- [ ] **An Inactive client:** on Clients → Journey → Inactive, pick someone marked inactive (or mark one, then Mark active again after). They are not in Talk now, Before the charge or Coming up, and not on Today's count. If they were recorded as lost, they are still on **Lapsed**.
+- [ ] **Away:** the Away lane holds the same people it did before the push (only packages ending in the next three months or the last six).
+- [ ] **Month:** Operations → Month, this month and next. A client marked Inactive isn't on the renewals list unless as Lapsed or Away; tap the (i) and the rule says so.
