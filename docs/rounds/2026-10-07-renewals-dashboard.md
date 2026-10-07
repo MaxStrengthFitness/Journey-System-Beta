@@ -76,8 +76,8 @@ No Cloud Functions, no Mindbody calls, no Firestore structure change beyond the 
 ## Not built this round
 
 - **A manual rate.** AJ's answer was to read the rate from Mindbody "for now" and confirm later; the design left out an override field on purpose. If a client's Mindbody charge is wrong, nothing in Journey corrects it yet.
-- **One-tap name confirm** (open question 3) and **Running low on the dashboard row** (open question 5): built the cautious way, waiting for AJ.
-- **The plan moving a client between lanes** (open question 2): the plan changes the row's next step only; the lanes still move on what Mindbody says.
+- **One-tap name confirm** (question 3): kept at two taps, on AJ's "keep". **Running low on the dashboard row** (question 5) was built after his "Yes" (below).
+- **The plan moving a client between lanes** (question 2): the plan changes the row's next step only, on AJ's "keep them there"; the lanes still move on what Mindbody says.
 - **Booked visits taken off sessions left**: the arithmetic is built and tested, switched off until the first check below says Mindbody's Remaining doesn't already leave them out.
 
 ## Check before trusting two things
@@ -86,16 +86,24 @@ No Cloud Functions, no Mindbody calls, no Firestore structure change beyond the 
 - **"w/ Roll Over" options at Strongsville**, before pressing Confirm all: open one contract client's "48 Sessions w/ Roll Over" (or 144) option and compare its count with the contract's payments. A count of 8 a payment is the usual case; the whole 48 or 144 up front is now handled (nothing to come), but say if it is something else.
 - **Tax in the charge:** look at one Solon and one Strongsville contract's next scheduled charge. If it is the package price plus tax, every client there would read "(special)"; tell Claude and the rate will compare before tax.
 
-## Open questions for AJ
+## AJ's answers (Oct 7 2026)
 
-1. The ledger says "+2 extra" (the profile header's word) rather than "+2 won", since complimentary sessions are given, not won. Keep "extra", or say "given or won"?
-2. Should a plan of Let it renew or Pause billing take a client off **Before the charge**? As built, only the new contract in Mindbody moves a client out of a lane; the plan changes the row's next step.
-3. Confirming a suggested name puts it in the form, and Save settings writes it (two taps, so it can't clash with other changes open on that screen). One tap that saves at once instead?
-4. The **Not renewing** filter also catches a client whose latest conversation leaned not renewing when no plan says otherwise. Plan only?
-5. Should Running low's list use the dashboard row too?
-6. The plan labels are long ("Pause billing in Mindbody until sessions run low"), so a closed select on an iPad cuts its end off (the sentence under it says it whole). Shorten them?
-7. Accepting names at a studio that never saved its own package table writes Max Strength's table as its own (as matching a name by hand always has). Fine, or warn first?
+The seven open questions, answered the same day, and what changed:
+
+| # | The question | AJ | What changed |
+| --- | --- | --- | --- |
+| 1 | The ledger's "+2 extra": keep "extra", or "given or won"? | "Extra is fine unless you can come up with a better" | Nothing: "extra" stays, the profile header's word |
+| 2 | Should Let it renew or Pause billing take a client off **Before the charge**? | "keep them there, they will be gone when the month rolls over" | Nothing: only the new contract in Mindbody moves a client out of a lane |
+| 3 | Confirm then Save settings (two taps), or one tap that saves? | "keep" | Nothing: two taps |
+| 4 | Should **Not renewing** keep a client whose latest conversation leaned not renewing? | "I want to know the people that had the conversation that month so it's not bad to just keep them in the same spot" | The filter is unchanged; one line under the filters, while it is on, says so: "Includes anyone whose latest conversation leaned not renewing, as well as a plan of Not renewing." (`pipeline.ts` `FILTER_HINTS`) |
+| 5 | Should Running low's list use the dashboard row? | "Yes" | Running low draws each client with `RenewalRow`, as the lanes do, plan picker included, in portrait and landscape by the list's width. A record with no ledger yet (before the first version 3 night) keeps Running low's own Left now words, the total and when it runs out (`running-low.ts` `leftLine`) |
+| 6 | Shorten the long plan labels? | "fix" | The picker says Let it renew · Pause billing · Same package · Upgrading · Downgrading · Pay as you go · Not renewing · Not decided yet, at most 15 characters (`PLAN_LABELS`, held by `plan.test.ts`). The whole meaning (`PLAN_WORDS`) is the line under the picker while choosing, the plan's sentence once saved ("Pause billing in Mindbody until sessions run low · Jen, Oct 6"), and the conversation history. The stored ids and the rules' list are unchanged |
+| 7 | Warn before names adopt Max Strength's table as a studio's own? | "yes" | At a studio that has never saved a package table of its own, Names seen in Mindbody says once, beside Confirm: "Strongsville has no package table of its own yet: saving these names saves Max Strength's standard prices as Strongsville's. Check the prices in Packages above first." It never stops the save (`RenewalSettingsPanel` `ownPackageTable`, from `useRenewalSettings`) |
+
+No rules, index, Functions or Mindbody change: the ship script's deploy order stands.
 
 ## Measured
 
-Typecheck 2 (`charts.tsx`, `EditTrainerModal.tsx`, the baseline). Tests: 12,307 passing in 765 files (`TZ=America/New_York npx vitest run --dir src --testTimeout=30000`; 12,204 in 759 before the round). Rules tests 323 (316 before; 7 for the plan). Production build clean; the first screen 462.6 KB gzip, inside the 480 KB budget.
+After AJ's answers: typecheck 2 (the baseline), 12,314 tests passing in 765 files (`TZ=America/New_York npx vitest run --dir src --testTimeout=30000`), rules tests unchanged (`firestore.rules` untouched).
+
+Before them: typecheck 2 (`charts.tsx`, `EditTrainerModal.tsx`, the baseline). Tests: 12,307 passing in 765 files (`TZ=America/New_York npx vitest run --dir src --testTimeout=30000`; 12,204 in 759 before the round). Rules tests 323 (316 before; 7 for the plan). Production build clean; the first screen 462.6 KB gzip, inside the 480 KB budget.
