@@ -129,6 +129,14 @@ export function paceRange(params: {
   today: string;
   floor: string | null;
   away: readonly AwayRange[];
+  /**
+   * Whole 4-week windows only (Ahead, Oct 7 2026): when the floor is only
+   * the 8-week pace window's start, which moves a day every night, a window
+   * cut short by it gains or loses a visit by the day of the week, and the
+   * range came and went. A real floor (the first synced booking, the
+   * package's start) still cuts a window short, as before.
+   */
+  wholeWindows?: boolean;
 }): { slowest: number; fastest: number } | null {
   const { used, today, floor, away } = params;
   if (!floor) return null;
@@ -137,6 +145,7 @@ export function paceRange(params: {
     const to = addDays(today, -7 * k);
     if (to < floor) break;
     const from0 = addDays(to, -(RANGE_WINDOW_DAYS - 1));
+    if (params.wholeWindows && from0 < floor) break;
     const p = paceBetween(used, from0 > floor ? from0 : floor, to, away);
     if (p !== null) paces.push(p);
   }
@@ -209,25 +218,31 @@ export function runOutDay(params: {
  *
  * Which day that is depends on whether Mindbody's remaining has already taken
  * the booked visits off (`MINDBODY_REMAINING_INCLUDES_BOOKED`):
- *   - It has (the default): the booked visits use sessions the count no
- *     longer holds, so the count is used AFTER them. The bookings on file now
- *     stand in for the ones on file at the count (a regular's standing
- *     bookings run about as far ahead from week to week): the pace starts
- *     that many days after the count's day.
+ *   - It has (the default): the visits booked when Mindbody counted use
+ *     sessions the count no longer holds, so the count is used AFTER them.
+ *     `heldThrough` is the last of them as Journey can see it: the last
+ *     visit, late cancel or booking within the 30 days after the count's day
+ *     (engine.ts `heldThroughOf`). Measured from the count's day, it stays
+ *     put from night to night between pulls; for a count made today it is
+ *     the last booked day. With nothing held, the pace starts on the count's day.
  *   - It hasn't: the count still holds them. The pace used the count from
  *     its day to today, then the booked days come off, then the pace again.
  *
  * Never a screen's count-down: this only places the dates, and sessions left
  * on every screen stays Mindbody's number. A count from visits (no pricing
- * options on file) is today's already (`countedOn` null).
+ * options on file) took no booking off and is today's: `countedOn` and
+ * `heldThrough` null, the version-2 arithmetic.
  */
 export function projectionStart(params: {
+  /** The count on the day Mindbody made it (engine.ts: the payments due after that day, not after tonight). */
   sessionsLeft: number | null;
   /** The day Mindbody counted (`ledger.asOf`); null when the count is today's. */
   countedOn: string | null;
   today: string;
   pacePerWeek: number | null;
-  /** The distinct booked days from today, soonest first (the bookings' read horizon). */
+  /** The last day a visit or booking held at the count reaches (the default answer only); null for none. */
+  heldThrough?: string | null;
+  /** The distinct booked days from today, soonest first (the other answer only). */
   bookedAhead: readonly string[];
   away: readonly AwayRange[];
   remainingIncludesBooked?: boolean;
@@ -240,9 +255,9 @@ export function projectionStart(params: {
       : null;
   const base = countedOn ?? today;
   if (includes) {
-    const last = bookedAhead.length > 0 ? bookedAhead[bookedAhead.length - 1] : null;
-    const span = last && last > today ? daysBetween(today, last) : 0;
-    return { from: addDays(base, span), left: sessionsLeft, booked: [], countedOn };
+    const held = params.heldThrough;
+    const from = typeof held === "string" && /^\d{4}-\d{2}-\d{2}$/.test(held) && held > base ? held : base;
+    return { from, left: sessionsLeft, booked: [], countedOn };
   }
   let left = sessionsLeft;
   if (left !== null && countedOn && countedOn < today && pacePerWeek !== null && pacePerWeek > 0) {

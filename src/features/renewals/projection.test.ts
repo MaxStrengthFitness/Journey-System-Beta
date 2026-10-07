@@ -254,23 +254,23 @@ describe("rateOf", () => {
 
 describe("projectionStart (Ahead, AJ's 2a: the dates count from the day Mindbody counted)", () => {
   const away: never[] = [];
-  it("with Mindbody's remaining already net of the bookings, starts after them, from the count's day", () => {
-    // Counted today, nothing booked: the pace starts today, as it always did.
-    expect(projectionStart({ sessionsLeft: 20, countedOn: TODAY, today: TODAY, pacePerWeek: 2, bookedAhead: [], away })).toEqual({
+  it("with Mindbody's remaining already net of the bookings, starts after the visits held at the count, from the count's day", () => {
+    // Counted today, nothing held: the pace starts today, as it always did.
+    expect(projectionStart({ sessionsLeft: 20, countedOn: TODAY, today: TODAY, pacePerWeek: 2, heldThrough: null, bookedAhead: [], away })).toEqual({
       from: TODAY,
       left: 20,
       booked: [],
       countedOn: TODAY,
     });
-    // Counted 10 days ago: the pace has been using it since then.
-    expect(projectionStart({ sessionsLeft: 20, countedOn: T(-10), today: TODAY, pacePerWeek: 2, bookedAhead: [], away }).from).toBe(T(-10));
-    // Booked through T(20): those visits use sessions the count no longer
-    // holds, so the count is used after them; the span on file now stands in
-    // for the one on file at the count.
-    expect(projectionStart({ sessionsLeft: 20, countedOn: TODAY, today: TODAY, pacePerWeek: 2, bookedAhead: [T(2), T(20)], away }).from).toBe(T(20));
-    expect(projectionStart({ sessionsLeft: 20, countedOn: T(-10), today: TODAY, pacePerWeek: 2, bookedAhead: [T(2), T(20)], away }).from).toBe(T(10));
+    // Counted 10 days ago, nothing held: the pace has been using it since then.
+    expect(projectionStart({ sessionsLeft: 20, countedOn: T(-10), today: TODAY, pacePerWeek: 2, heldThrough: null, bookedAhead: [], away }).from).toBe(T(-10));
+    // Visits held through T(20) use sessions the count no longer holds: the count is used after them.
+    expect(projectionStart({ sessionsLeft: 20, countedOn: TODAY, today: TODAY, pacePerWeek: 2, heldThrough: T(20), bookedAhead: [T(2), T(20)], away }).from).toBe(T(20));
+    expect(projectionStart({ sessionsLeft: 20, countedOn: T(-10), today: TODAY, pacePerWeek: 2, heldThrough: T(15), bookedAhead: [], away }).from).toBe(T(15));
+    // A held day before the count's own day starts nothing later.
+    expect(projectionStart({ sessionsLeft: 20, countedOn: T(-10), today: TODAY, pacePerWeek: 2, heldThrough: T(-12), bookedAhead: [], away }).from).toBe(T(-10));
     // Never subtracted a second time.
-    expect(projectionStart({ sessionsLeft: 20, countedOn: TODAY, today: TODAY, pacePerWeek: 2, bookedAhead: [T(2), T(20)], away }).left).toBe(20);
+    expect(projectionStart({ sessionsLeft: 20, countedOn: TODAY, today: TODAY, pacePerWeek: 2, heldThrough: T(20), bookedAhead: [T(2), T(20)], away }).left).toBe(20);
   });
 
   it("with Mindbody's remaining still holding the bookings, uses the pace up to today and keeps the booked days to come off first", () => {
@@ -305,5 +305,19 @@ describe("projectionStart (Ahead, AJ's 2a: the dates count from the day Mindbody
       expect(s.from).toBe(TODAY);
       expect(s.countedOn).toBeNull();
     }
+  });
+});
+
+describe("paceRange with whole windows only (Ahead, Oct 7 2026)", () => {
+  it("leaves out a window cut short by a floor that only moves with the night", () => {
+    // Every day from T(-40) to T(-30), then once a week to today.
+    const used = new Set<string>();
+    for (let d = -40; d <= -30; d++) used.add(T(d));
+    for (let d = -28; d <= 0; d += 7) used.add(T(d));
+    const floor = T(-40);
+    // Cut short: the window ending T(-14) starts at the floor (27 days, 14 visits: 3.75 a week).
+    expect(paceRange({ used, today: TODAY, floor, away: [] })).toEqual({ slowest: 1, fastest: 3.75 });
+    // Whole windows only: the two that fit after the floor, 1 and 2.25 a week.
+    expect(paceRange({ used, today: TODAY, floor, away: [], wholeWindows: true })).toEqual({ slowest: 1, fastest: 2.25 });
   });
 });

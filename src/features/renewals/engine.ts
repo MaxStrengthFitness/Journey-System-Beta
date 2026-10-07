@@ -48,6 +48,7 @@ import { buildPackageNameIndex, sessionsPerPayment, type PackageNameIndex } from
 import { decideAutoRenew, lockSaysNothingBills } from "./auto-renew";
 import {
   awayDaysBetween,
+  BOOKING_LOOKAHEAD_DAYS,
   bookedDaysAhead,
   issuedUpFront,
   ledgerParts,
@@ -720,9 +721,17 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
 
   /* ---- Session clock ---- */
   const sessionsOnHand: number | null = servicesSynced ? balance.onHand : null;
+  // The day Mindbody counted the sessions on hand (the ledger's asOf); null for a count from visits.
+  const countedOn = sessionsOnHand !== null ? countedOnOf(client, input.timeZone) : null;
   let paymentsLeft: number | null = null;
   let sessionsLeft: number | null = null;
   let sessionsLeftSource: RenewalSnapshot["sessionsLeftSource"] = null;
+  // What the count held on the day Mindbody made it, for the projection only
+  // (AJ's "2a"): the on-hand sessions then, and 8 for each payment due after
+  // that day. A payment between the pull and tonight is in neither the pull's
+  // on-hand nor tonight's payments still to come; counted from tonight its
+  // sessions would vanish from the projection until the next pull.
+  let countAtCount: number | null = null;
 
   if (current) {
     const fromEvents = paymentsLeftFromEvents(current.contract, today, chargeDate);
@@ -738,6 +747,10 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
       if (paymentsLeft === 0 || upFront) sessionsLeft = sessionsOnHand;
       else if (tier) sessionsLeft = sessionsOnHand + paymentsLeft * sessionsPerPayment(tier);
       if (sessionsLeft !== null) sessionsLeftSource = fromEvents !== null ? "mindbody" : "estimate";
+      if (sessionsLeft !== null && countedOn && countedOn < today && tier && !upFront) {
+        const then = paymentsLeftFromEvents(current.contract, countedOn, chargeDate) ?? paymentsLeftFromDates(current.start, chargeDate, tier, countedOn);
+        if (then !== null && then > paymentsLeft) countAtCount = sessionsOnHand + then * sessionsPerPayment(tier);
+      }
     } else if (
       sessionsOnHand === null &&
       tier &&
@@ -791,17 +804,27 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
   // The dates count from the day Mindbody counted (Ahead, Oct 7 2026, AJ's
   // "2a"): the count is used up from its own day, after the visits Mindbody
   // already took off for, or with the booked days coming off first where it
-  // didn't (projection.ts `projectionStart`). A count from visits is today's.
-  const countedOn = sessionsOnHand !== null ? countedOnOf(client, input.timeZone) : null;
+  // didn't (projection.ts `projectionStart`). A count from visits took no
+  // booking off and is today's: the version-2 arithmetic.
   const start = projectionStart({
-    sessionsLeft,
+    sessionsLeft: countAtCount ?? sessionsLeft,
     countedOn,
     today,
     pacePerWeek: perWeek,
+    heldThrough: sessionsOnHand !== null ? heldThroughOf(attendance, countedOn ?? today, today) : null,
     bookedAhead: bookedDaysAhead(attendance, today, null, false),
     away: awayAhead,
   });
-  const range = perWeek === null ? null : paceRange({ used: usedDays, today, floor: pace.windowStart, away: awayAhead });
+  // The 4-week windows end yesterday: the job runs before today's visits, so
+  // a window ending today would be a visit short on every day a client trains,
+  // and the range would come and go by the day of the week.
+  // A floor that is only the 8-week window's own start moves a day every
+  // night: whole 4-week windows only, or the range comes and goes by weekday.
+  const rollingFloor = pace.windowStart === addDays(today, -(PACE_WINDOW_DAYS - 1));
+  const range =
+    perWeek === null
+      ? null
+      : paceRange({ used: usedDays, today: addDays(today, -1), floor: pace.windowStart, away: awayAhead, wholeWindows: rollingFloor });
   // A count old enough that the pace would already have used it up says
   // "about now", never a day in the past.
   const runOutAt = (p: number | null): string | null => {
@@ -1111,6 +1134,24 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
     paceRange: range,
     runOutRange,
   };
+}
+
+/**
+ * How far the visits Mindbody had already taken off its count reach, as
+ * Journey can see them: the last visit, late cancel or booking after the
+ * count's day and within 30 days of it (and of today: bookings are read 30
+ * days ahead). The projection uses the count after that day (projection.ts
+ * `projectionStart`). Measured from the count's day, not from tonight, so it
+ * stays put from night to night between pulls. Null with none.
+ */
+export function heldThroughOf(attendance: readonly AttendanceRow[], countedOn: string, today: string): string | null {
+  const until = minKey(addDays(countedOn, BOOKING_LOOKAHEAD_DAYS), addDays(today, BOOKING_LOOKAHEAD_DAYS)) as string;
+  let last: string | null = null;
+  for (const a of attendance) {
+    if (a.kind !== "visit" && a.kind !== "no-show" && a.kind !== "booked") continue;
+    if (a.day > countedOn && a.day <= until && (last === null || a.day > last)) last = a.day;
+  }
+  return last;
 }
 
 /**
