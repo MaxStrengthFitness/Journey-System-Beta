@@ -339,7 +339,7 @@ function HoursPanel({ canEdit }: { canEdit: boolean }) {
  * ------------------------------------------------------------------ */
 
 function RenewalsPanel({ studioId, studioName, canEdit }: { studioId: string; studioName: string; canEdit: boolean }) {
-  const { settings, saved, loading, error } = useRenewalSettings(studioId);
+  const { settings, saved, ownPackageTable, loading, error } = useRenewalSettings(studioId);
   const namesSeen = useRenewalNamesSeen(studioId);
   if (loading) {
     return (
@@ -361,6 +361,7 @@ function RenewalsPanel({ studioId, studioName, canEdit }: { studioId: string; st
       studioName={studioName}
       settings={settings}
       saved={saved}
+      ownPackageTable={ownPackageTable}
       namesSeen={namesSeen}
       canEdit={canEdit}
     />

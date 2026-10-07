@@ -78,6 +78,12 @@ export interface RenewalSettingsPanelProps {
   settings: RenewalSettings;
   /** False while the studio is still on the defaults. */
   saved: boolean;
+  /**
+   * The studio's saved document holds a package table of its own
+   * (useRenewalSettings). Without one, saving a matched name writes Max
+   * Strength's standard table, prices included, as the studio's.
+   */
+  ownPackageTable: boolean;
   namesSeen: RenewalNamesSeen | null;
   canEdit: boolean;
 }
@@ -87,6 +93,7 @@ export function RenewalSettingsPanel({
   studioName,
   settings,
   saved,
+  ownPackageTable,
   namesSeen,
   canEdit,
 }: RenewalSettingsPanelProps) {
@@ -158,6 +165,13 @@ export function RenewalSettingsPanel({
   };
   const confirm = (names: typeof suggested) =>
     assign(names.map((n) => ({ name: n.name, target: suggestionTarget(n.suggestion) })));
+  // A studio that never saved a package table of its own is reading Max
+  // Strength's: a name saved into it saves that whole table, prices included,
+  // as the studio's (AJ, Oct 7 2026: "yes", warn first). Said once, beside
+  // Confirm, while there is a name to match or a table change unsaved; it
+  // never stops the save.
+  const adoptsStandardTable =
+    canEdit && !ownPackageTable && (unmatched.length > 0 || form.value.packages !== external.packages);
 
   const numberField = (key: NumberKey) => (
     <AdminField key={key} label={SETTING_LABELS[key]} hint={HINTS[key]} htmlFor={`renewals-${key}`}>
@@ -447,6 +461,12 @@ export function RenewalSettingsPanel({
           ) : undefined
         }
       >
+        {adoptsStandardTable && (
+          <AdminNotice tone="warn">
+            {studioName} has no package table of its own yet: saving these names saves Max Strength's standard prices as{" "}
+            {studioName}'s. Check the prices in Packages above first.
+          </AdminNotice>
+        )}
         {didntFit.length > 0 && (
           <AdminNotice tone="warn">
             {didntFit.length === 1 ? "This name didn't fit" : "These names didn't fit"}: {didntFit.join(", ")}. A package holds

@@ -33,7 +33,7 @@ import type { RenewalNamesSeen, RenewalSettings } from "../../renewals/types";
 
 let mounted: { root: Root; host: HTMLElement }[] = [];
 
-async function mount(settings: RenewalSettings, canEdit = true, namesSeen: RenewalNamesSeen | null = null) {
+async function mount(settings: RenewalSettings, canEdit = true, namesSeen: RenewalNamesSeen | null = null, ownPackageTable = true) {
   const host = document.createElement("div");
   document.body.appendChild(host);
   const root = createRoot(host);
@@ -45,6 +45,7 @@ async function mount(settings: RenewalSettings, canEdit = true, namesSeen: Renew
           studioName="Solon"
           settings={settings}
           saved
+          ownPackageTable={ownPackageTable}
           namesSeen={namesSeen}
           canEdit={canEdit}
         />
@@ -191,6 +192,33 @@ describe("RenewalSettingsPanel — suggestions for the names waiting", () => {
     const patch = saves[0].patch as { packages: Array<{ key: string; mindbodyNames: string[] }>; extraSessionNames: string[] };
     expect(patch.extraSessionNames).toContain("SV Free Session Won");
     expect(patch.packages.find((p) => p.key === "transformed")!.mindbodyNames).toContain("144 Sessions w/ Roll Over");
+  });
+
+  // AJ, Oct 7 2026 ("yes"): warn before names adopt Max Strength's table as the studio's own.
+  const WARNING = "Solon has no package table of its own yet: saving these names saves Max Strength's standard prices as Solon's. Check the prices in Packages above first.";
+
+  it("warns, once, a studio with no package table of its own that saving names saves the standard prices, and still saves", async () => {
+    const host = await mount(DEFAULT_RENEWAL_SETTINGS, true, seen, false);
+    expect(host.textContent).toContain(WARNING);
+    expect(host.textContent!.split(WARNING).length - 1).toBe(1);
+    await click(button(host, "Confirm all 3"));
+    // Still said while the confirmed names wait for the save.
+    expect(host.textContent).toContain(WARNING);
+    await click(button(host, "Save settings"));
+    expect(saves).toHaveLength(1);
+    expect(saves[0].patch.packages).toBeDefined();
+  });
+
+  it("stays quiet at a studio with its own package table, and to someone who can't change the settings", async () => {
+    const own = await mount(DEFAULT_RENEWAL_SETTINGS, true, seen, true);
+    expect(own.textContent).not.toContain("no package table of its own");
+    const reader = await mount(DEFAULT_RENEWAL_SETTINGS, false, seen, false);
+    expect(reader.textContent).not.toContain("no package table of its own");
+  });
+
+  it("stays quiet with nothing to match and nothing changed", async () => {
+    const host = await mount(DEFAULT_RENEWAL_SETTINGS, true, null, false);
+    expect(host.textContent).not.toContain("no package table of its own");
   });
 
   it("shows the suggestions without Confirm to someone who can't change the settings", async () => {
