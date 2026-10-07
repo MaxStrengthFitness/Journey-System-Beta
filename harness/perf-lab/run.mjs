@@ -465,10 +465,13 @@ class Session {
    * Two animation frames: whatever just appeared (the peek's buttons, the day header) has been laid out and
    * drawn, and its handlers are attached, before the lab taps it. A tap in the same frame as the element
    * arriving sometimes landed on the layer under it (Oct 6 2026: two client reps timed out with the peek open,
-   * and one session rep never left today).
+   * and one session rep never left today). Returns how long the wait took on the page's clock, so a scenario
+   * can leave it out of its wall.
    */
   frames() {
-    return this.ev(`new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(performance.now()))))`);
+    return this.ev(
+      `new Promise((r) => { const a = performance.now(); requestAnimationFrame(() => requestAnimationFrame(() => r(performance.now() - a))); })`,
+    );
   }
 
   async key(key, code, keyCode) {
@@ -796,8 +799,9 @@ const SCENARIO_RUNS = {
     const r = await measured(s, async () => {
       const t0 = await s.tap(cardOf(focus, 2), focus ? `${focus.name}'s card` : "a client card");
       const peek = await s.must(css(".hp .hp-btn"), "the peek");
-      // Settled before the tap (two frames: the peek's buttons drawn and live). Counted in the wall, about 30 ms.
-      await s.frames();
+      // Settled before the tap (two frames: the peek's buttons drawn and live). Left out of the wall, so the wall
+      // is the same span as before the lab waited (the Oct 6 afternoon A/B); kept apart as settleWaitMs.
+      const settleWait = await s.frames();
       const t1 = await s.tap(byText(".hp .hp-btn", "Open profile"), "Open profile");
       traceMark("client: Open profile tapped");
       const journey = await s.must(`document.querySelectorAll(".jg-row").length > 0`, "the Journey tab", 45000);
@@ -806,9 +810,9 @@ const SCENARIO_RUNS = {
       const rows = await s.ev(`document.querySelectorAll(".jg-row").length`);
       return {
         phases: [["peek", t0], ["openProfile", t1], ["afterJourney", journey]],
-        wallMs: round(journey - t0),
+        wallMs: round(journey - t0 - settleWait),
         client: focus ? { id: focus.id, name: focus.name, journeySessions: focus.journeySessions, exerciseLogs: focus.exerciseLogs, priorSessions: focus.priorSessions } : null,
-        steps: { tapToPeekMs: round(peek - t0), openToJourneyMs: round(journey - t1), journeySettledMs: settled > 0 ? round(settled - t1) : null, journeyRows: rows },
+        steps: { tapToPeekMs: round(peek - t0), settleWaitMs: round(settleWait), openToJourneyMs: round(journey - t1), journeySettledMs: settled > 0 ? round(settled - t1) : null, journeyRows: rows },
       };
     }, { span: true });
     if (process.env.PERF_LAB_SHOTS) {
