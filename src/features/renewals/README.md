@@ -18,6 +18,8 @@ A package runs on **two clocks**. Billing sends a payment every 4 weeks (6, 12 o
 
 The conversation is due at the studio's threshold (10 sessions left by default). A renewal **already signed in Mindbody** ("on the books") ends it: the client stops being prompted.
 
+**Running low** (Oct 6 2026, AJ: "a way for operations to show how many clients are running out of their sessions ... In total") is the same threshold read on its own: a number at the top of Operations → Renewals, everyone whose `sessionsLeft` is at or under it, talked to or not, with the list behind a tap. It counts from the studio's roster rather than the pipeline's date window, so a client too slow for the window is still found; a renewal on the books, a recorded renewal and an Inactive client are left out. `../admin/renewals/running-low.ts`; `docs/rounds/2026-10-06-running-low.md`.
+
 ## Where things are
 
 | File | What |
@@ -35,7 +37,7 @@ The conversation is due at the studio's threshold (10 sessions left by default).
 | `permissions.ts` | Who may do what — mirrors `firestore.rules` |
 | `use*.ts` | Firestore reads and writes. Nothing else here touches Firebase |
 | `*.tsx` | Trainer surfaces: the Renewal card, the log dialog, the briefing line, the Hub lane, My renewals |
-| `../admin/renewals/` | Operations → Renewals: the Pipeline, the Renewal Brief, Outcomes, Settings |
+| `../admin/renewals/` | Operations → Renewals: the Pipeline (with Running low, `running-low.ts`), the Renewal Brief, Outcomes, Settings |
 | `server/renewals-job.ts` | The nightly job (Render cron `journey-cron-renewals`, 06:30 UTC); `scripts/run-renewals.ts` runs it from the PC, as a dry run by default. One studio at a time since Oct 1 2026 (job memory): a first look to choose tonight's first syncs and pulls across the company, then each studio's pulls, snapshots, outcomes, writes and client states; a client's bookings and workouts read by client on existing indexes (`docs/KNOWN-TRAPS.md`, "Jobs read per studio with select") |
 
 ## Data

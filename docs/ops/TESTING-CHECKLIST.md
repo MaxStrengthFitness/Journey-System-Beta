@@ -3071,3 +3071,15 @@ Round document: `docs/rounds/2026-10-06-ipad.md`. Walk it after `ship-release.ps
 - [ ] **Operations → Renewals → a client's brief, "3. Strength":** "Reading the machine history…" for a moment, then the gains, never "Not enough machine history" first.
 - [ ] **An iPad left on the old version** (one nobody took back to the Hub since the deploy): finish a session on it for one of the three clients, then open that client on an updated iPad: the machine's count went up by exactly one, not two.
 - [ ] **Programming → Setup's suggestions and Operations → Machine fit:** they still show; they may count a little less (a set-up accepted from a suggestion no longer counts on this studio's own report). Say if that matters (the round's open question).
+
+## Round 60 — Running low on sessions · *Oct 6 2026, branch `oct6/running-low`*
+
+Round document: `docs/rounds/2026-10-06-running-low.md`. Walk it as a studio leader, after the push, in portrait and landscape, at a studio that has had a nightly run (westlake, Strongsville or Willoughby).
+
+- [ ] **Operations → Clients → Renewals:** five numbers across the top, the fourth **Running low** with "10 or fewer left, in total" and "Tap to see who" under it. No number shows until the client list has loaded, then it never jumps from 0 to the real count.
+- [ ] **Tap Running low:** the list opens under the numbers, "Running low · N", fewest left first. Each row: the name, "6 left · runs out around …", and the next step. Tap the number again (or Hide) and it closes.
+- [ ] **Check three rows against their profiles** (open each from the list: the Renewal Brief, then the profile): the total is the profile's sessions left in the contract plus any extra, plus 8 for a payment still to come. A row with a payment to come says so ("10 left in total: 2 on hand, 8 still to come").
+- [ ] **Who isn't there:** a client you know just renewed in Mindbody, a client marked Inactive, and a client whose package already ended (they are in Talk now) are not on the list. An away client is, marked Away.
+- [ ] **Change the number:** My Studio → Studio → Renewals, "Start the renewal conversation at" 12. Back on Renewals the tile says "12 or fewer left, in total" and the count goes up. Put it back to 10.
+- [ ] **A slow client:** if the list shows someone who isn't in Talk now, that is the one the pipeline's three-month window misses (the round document's "Found on the way"). Say whether Talk now should find them too.
+- [ ] **Under the list:** "Not counted: N clients whose sessions left aren't known yet" only when some are; it should be close to the Missing Mindbody data number.
