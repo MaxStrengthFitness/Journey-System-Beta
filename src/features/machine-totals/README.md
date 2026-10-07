@@ -36,7 +36,7 @@ The sum holds because nothing ever copies a count across without deleting it fro
 
 Reads, all through the merge:
 
-- **The client on screen** (`AppContent`): `useMachineTotals(selectedClientId)`, one listener, folded into that client in `clients` with `withMachineTotals`. The profile, the session (Start's prefill, the grid, the briefing, Finish's "newer on file"), the machine menu, Programming, the Equipment tab and its backfill, the phone session and Log past session all read that one object, so none of them changed.
+- **The client on screen** (`AppContent`): `useMachineTotals(selectedClientId)`, one listener, folded into that client in `clients` with `withMachineTotals`. The profile, the session (Start's prefill, the grid, the briefing, Finish's "newer on file"), the machine menu, Programming, the Equipment tab and its backfill, the phone session and Log past session all read that one object, so none of them changed. The fold hands back the same object while neither the client's document nor the answer changed (the Wrap-up round, Oct 6 2026): AppContent rebuilds its client list on every roster change, and a new object each time redrew the session, the Wrap-up and the profile for a change to somebody else.
 - **The renewal brief** (Operations -> Renewals): its own `useMachineTotals` for the client it opens.
 - **The FileMaker chart importer**: one read of the totals for the client it imports into.
 - **The nightly renewals job** (`server/renewals-job.ts`, the strength proof) and **the weekly machine-fit step** (`server/machine-fit-company.ts`, "performed since"): `getAll` of the studio's totals documents beside the clients they already read, merged the same way. A failed totals read fails that read, as a failed client read does.
@@ -60,7 +60,7 @@ Writes, each a `set` with `mergeFields` through `store.ts` (the same effect as t
 - **A failure that still holds a whole answer is known** (a listener error mid-session doesn't freeze the prefill); a failure with nothing whole is unknown.
 - **The renewal's live snapshot and the machine menu's "first time" wait too**: the brief and the profile's renewal card show the stored snapshot until the totals answer, and the menu's header and the phone's cards never say "First time on this machine" while they are out.
 
-While the totals are loading the client's own old fields stand, which before the migration is the whole story.
+While the totals are loading the client's own old fields stand, which before the migration is the whole story. **Nothing waits to draw**: the profile's Journey tab and grid draw from the client's sessions and their sets, never from the totals, and the Equipment tab's figures draw from the client's own fields (or the sessions loaded) and follow when the totals answer; only the writes above and the sentences that would be wrong wait (`profile-draws.render.test.tsx`). The lab's slower profile re-open of Oct 6 2026 was the emulator's queue, not the totals (harness/perf-lab/README.md, "Opening a profile again").
 
 ## What a list no longer has
 
@@ -81,7 +81,8 @@ Undo, if it is ever needed: the app reads both sides, so stopping before step 3 
 
 ## Tests
 
-- `totals.test.ts`: the merge rule, the write shapes, the migration's plan.
+- `totals.test.ts`: the merge rule, the write shapes, the migration's plan, and the fold keeping its object.
+- `profile-draws.render.test.tsx`: the profile draws while the totals load; the backfill (a write) waits; the Journey tab has no totals gate.
 - `split-run.test.ts`: the script's core against a fake database, and that it produces exactly the lab's `--split` shape.
 - `unsplit-run.test.ts`: the way back against the same fake database: split then unsplit reads the same, the totals documents are gone, a session written after the split counts once.
 - `jobs-read.test.ts`: the jobs' `getAll` fold.
