@@ -104,6 +104,6 @@ No rules, index, Functions or Mindbody change: the ship script's deploy order st
 
 ## Measured
 
-After AJ's answers: typecheck 2 (the baseline), 12,314 tests passing in 765 files (`TZ=America/New_York npx vitest run --dir src --testTimeout=30000`), rules tests unchanged (`firestore.rules` untouched).
+After AJ's answers and the review's fixes: typecheck 2 (the baseline), 12,316 tests passing in 765 files (`TZ=America/New_York npx vitest run --dir src --testTimeout=30000`), rules tests 323 (`firestore.rules` untouched), production build clean, the first screen 462.5 KB gzip inside the 480 KB budget (`scripts/check-bundle-budget.mjs`).
 
 Before them: typecheck 2 (`charts.tsx`, `EditTrainerModal.tsx`, the baseline). Tests: 12,307 passing in 765 files (`TZ=America/New_York npx vitest run --dir src --testTimeout=30000`; 12,204 in 759 before the round). Rules tests 323 (316 before; 7 for the plan). Production build clean; the first screen 462.6 KB gzip, inside the 480 KB budget.
