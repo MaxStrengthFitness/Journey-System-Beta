@@ -17,8 +17,15 @@ import { forgetPersonalMemory } from "../../sign-out/memory";
 afterEach(() => resetOperationsMemory());
 
 describe("the five destinations", () => {
-  it("are Today, Week, Month, Clients, Team and Setup, in that order (AJ's question 1: Setup, never Studio; Month since Sep 29 2026)", () => {
-    expect(OPS_PAGES.map((p) => p.label)).toEqual(["Today", "Week", "Month", "Clients", "Team", "Setup"]);
+  it("are Today, Week, Month, Ahead, Clients, Team and Setup, in that order (AJ's question 1: Setup, never Studio; Month since Sep 29 2026; Ahead beside it since Oct 7 2026, AJ: \"1b\")", () => {
+    expect(OPS_PAGES.map((p) => p.label)).toEqual(["Today", "Week", "Month", "Ahead", "Clients", "Team", "Setup"]);
+  });
+
+  it("Ahead is one page, like Month", () => {
+    expect(defaultSub("ahead")).toBeNull();
+    expect(resolvePlace({ page: "ahead", sub: "anything" })).toEqual({ page: "ahead", sub: null });
+    expect(placeLabel({ page: "ahead", sub: null })).toBe("Ahead");
+    expect(DOOR_PLACE.ahead).toEqual({ page: "ahead", sub: null });
   });
 
   it("Month is one page, like Today: today, this week, this month (AJ, Sep 29 2026)", () => {

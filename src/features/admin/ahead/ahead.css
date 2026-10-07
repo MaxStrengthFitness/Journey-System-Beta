@@ -1,0 +1,982 @@
+/* ==========================================================================
+   OPERATIONS -> AHEAD (Oct 7 2026; AJ: "1b 2a 3a")
+   --------------------------------------------------------------------------
+   The weeks ahead as one scroll, and every client's two clocks on one line.
+   Every class here starts with `ops-ah-` (one stylesheet owns a class:
+   src/css-class-owners.test.ts). Colours are the admin tokens only; no hex
+   below this line. Nothing tappable is under 40px, hover is decoration,
+   focus-visible is always drawn, names wrap and are never cut short.
+
+   Colour keeps the meanings the app gives it: blue is something to act on
+   and Mindbody's numbers (the talk, the sessions bar), plum is caution (the
+   charge with sessions banked, running out, may slip), the ink is a date,
+   orange is only today, and there is no crimson: it stays for Critical
+   notes, destructive buttons and rep quality.
+
+   A sticky bar in this app sits inside a padded scroller, so it takes the
+   scroller's padding back (`--scroll-pad-top`, set by useScrollerPad) and an
+   opaque ground, or rows show through it (docs/KNOWN-TRAPS.md).
+   ========================================================================== */
+
+@import "../admin.tokens.css";
+
+.ops-ah {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  container: ops-ah / inline-size;
+}
+
+/* The list beside the client, when the page is wide enough for both. */
+.ops-ah__frame {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.ops-ah__frame--pane {
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+
+.ops-ah__main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ops-ah__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.ops-ah__trainer {
+  min-height: 40px;
+  min-width: 10rem;
+}
+
+/* Who can't be placed: one quiet line, the list behind it. A well on the page ground: the tray. */
+.ops-ah-cant {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 6px 4px 14px;
+  border-radius: 12px;
+  background: var(--adm-tray);
+  color: var(--adm-ink-2);
+  font-size: 13px;
+}
+
+.ops-ah-cant__line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-height: 40px;
+}
+
+.ops-ah-cant__list {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ops-ah-cant__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- The strip: one bar a week, tapped by month ----------------- */
+
+.ops-ah-strip {
+  position: sticky;
+  top: var(--scroll-pad-top, 0px);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 2px 4px;
+  background: var(--adm-bg);
+  border-bottom: 1px solid var(--adm-divider);
+}
+
+.ops-ah-strip__cols {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 40px;
+}
+
+.ops-ah-strip__col {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 1px;
+  border-radius: 3px 3px 0 0;
+}
+
+.ops-ah-strip__col--here {
+  background: var(--adm-live-fill);
+}
+
+.ops-ah-strip__col--today::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--adm-hero);
+}
+
+.ops-ah-strip__bit {
+  display: block;
+  width: 100%;
+  border-radius: 2px;
+}
+
+.ops-ah-strip__bit--talk {
+  background: var(--adm-live);
+}
+
+.ops-ah-strip__bit--date {
+  background: var(--adm-border-strong);
+}
+
+.ops-ah-strip__bit--watch {
+  background: var(--adm-warn);
+}
+
+.ops-ah-strip__months {
+  display: flex;
+  gap: 2px;
+}
+
+.ops-ah-strip__month {
+  min-width: 0;
+  min-height: 40px;
+  padding: 6px 4px 0;
+  border: 0;
+  border-top: 1px solid var(--adm-border-strong);
+  background: transparent;
+  color: var(--adm-ink-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.ops-ah-strip__month[aria-current="true"] {
+  border-top: 2px solid var(--adm-live);
+  color: var(--adm-live-text);
+}
+
+.ops-ah-strip__month:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: 2px;
+}
+
+/* ---------- The run of weeks ------------------------------------------ */
+
+.ops-ah-run {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ops-ah-month {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 0;
+  padding: 0 2px;
+  scroll-margin-top: calc(var(--ops-ah-strip-h, 96px) + 8px);
+}
+
+.ops-ah-month__t {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--adm-ink);
+}
+
+.ops-ah-month__rule {
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--adm-divider);
+}
+
+.ops-ah-month__c {
+  font-size: 12px;
+  color: var(--adm-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+/* A week is a panel: its edge seen from outside and a short navy lift. */
+.ops-ah-week {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--adm-edge);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface);
+  background-clip: padding-box;
+  box-shadow: var(--adm-elev-2), var(--adm-panel-highlight);
+  overflow: hidden;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 220px;
+}
+
+.ops-ah-week__h {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  padding: 12px 14px 8px;
+}
+
+.ops-ah-week__t {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--adm-ink);
+}
+
+.ops-ah-week__dates {
+  font-size: 12px;
+  color: var(--adm-ink-muted);
+}
+
+.ops-ah-week__c {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--adm-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.ops-ah-week__note {
+  width: 100%;
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--adm-ink-2);
+}
+
+.ops-ah-week__pile {
+  width: 100%;
+  margin: 2px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--adm-warn);
+}
+
+.ops-ah-week__empty {
+  margin: 0;
+  padding: 0 14px 12px;
+  font-size: 13px;
+  color: var(--adm-ink-muted);
+}
+
+/* A stretch with nothing in it: drawn the way a break is drawn between sessions in a client's history. */
+.ops-ah-clear {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  color: var(--adm-ink-2);
+  font-size: 13px;
+  background: repeating-linear-gradient(135deg, var(--adm-surface-2) 0 7px, var(--adm-surface-3) 7px 9px);
+}
+
+.ops-ah-clear__b {
+  font-weight: 700;
+  color: var(--adm-ink);
+}
+
+/* ---------- One row ---------------------------------------------------- */
+
+.ops-ah-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ops-ah-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 0 10px;
+  padding: 6px 6px 6px 12px;
+  border-top: 1px solid var(--adm-divider);
+}
+
+.ops-ah-row--picked {
+  background: var(--adm-live-fill);
+}
+
+.ops-ah-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  min-height: 44px;
+  border-radius: 10px;
+  background: var(--adm-surface-2);
+  line-height: 1.1;
+}
+
+.ops-ah-day--today {
+  box-shadow: inset 0 0 0 2px var(--adm-hero);
+}
+
+.ops-ah-day__w {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--adm-ink-muted);
+}
+
+.ops-ah-day__d {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--adm-ink);
+}
+
+.ops-ah-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  min-height: 44px;
+  justify-content: center;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ops-ah-row__main:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: 2px;
+}
+
+.ops-ah-row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.ops-ah-row__name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+
+.ops-ah-row__who {
+  font-size: 12px;
+  color: var(--adm-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.ops-ah-row__text {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--adm-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.ops-ah-row__pair {
+  font-weight: 600;
+  color: var(--adm-live-text);
+}
+
+.ops-ah-row__proof {
+  grid-column: 2 / 4;
+  margin: 2px 0 6px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--adm-tray);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--adm-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.ops-ah-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--adm-surface-2);
+  color: var(--adm-ink-2);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* The small marks: the same shapes on a row's badge and on the clocks. */
+.ops-ah-glyph {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+}
+
+.ops-ah-glyph--act {
+  color: var(--adm-live);
+}
+
+.ops-ah-glyph--caution {
+  color: var(--adm-warn);
+}
+
+.ops-ah-glyph--date {
+  color: var(--adm-ink);
+}
+
+.ops-ah-glyph--moment {
+  color: var(--adm-ink-muted);
+}
+
+/* ---------- The Clients view: two clocks a row ------------------------ */
+
+.ops-ah-axis {
+  position: sticky;
+  top: var(--scroll-pad-top, 0px);
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(9rem, 34%) minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 4px 6px;
+  background: var(--adm-bg);
+  border-bottom: 1px solid var(--adm-divider);
+}
+
+.ops-ah-axis__lab {
+  align-self: end;
+  font-size: 12px;
+  color: var(--adm-ink-muted);
+}
+
+.ops-ah-axis__track {
+  position: relative;
+  height: 34px;
+}
+
+.ops-ah-axis__month {
+  position: absolute;
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  height: 16px;
+  padding-left: 4px;
+  border-left: 1px solid var(--adm-border-strong);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--adm-ink-muted);
+  white-space: nowrap;
+}
+
+.ops-ah-axis__today {
+  position: absolute;
+  bottom: -6px;
+  width: 2px;
+  height: 38px;
+  border-radius: 1px;
+  background: var(--adm-hero);
+  transform: translateX(-1px);
+}
+
+.ops-ah-axis__today-w {
+  position: absolute;
+  top: -2px;
+  left: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--adm-hero-text);
+}
+
+.ops-ah-axis__seen {
+  position: absolute;
+  bottom: -6px;
+  height: 22px;
+  border-left: 2px dotted var(--adm-ink-faint);
+}
+
+.ops-ah-axis__seen-w {
+  position: absolute;
+  top: -14px;
+  left: 4px;
+  font-size: 11px;
+  color: var(--adm-ink-muted);
+  white-space: nowrap;
+}
+
+.ops-ah-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding: 2px 4px;
+  font-size: 12px;
+  color: var(--adm-ink-2);
+}
+
+.ops-ah-legend__i {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ops-ah-key {
+  display: inline-block;
+  width: 22px;
+  height: 8px;
+  border-radius: 3px;
+}
+
+.ops-ah-key--bar {
+  background: var(--adm-live-fill);
+  box-shadow: inset 0 0 0 1px var(--adm-live);
+}
+
+.ops-ah-key--banked {
+  background: var(--adm-warn-fill);
+  box-shadow: inset 0 0 0 1px var(--adm-warn);
+}
+
+.ops-ah-key--gap {
+  background: repeating-linear-gradient(135deg, transparent 0 3px, var(--adm-warn) 3px 4.5px);
+  box-shadow: inset 0 0 0 1px var(--adm-warn);
+}
+
+.ops-ah-key--end {
+  width: 2px;
+  height: 16px;
+  border-radius: 1px;
+  background: var(--adm-ink);
+}
+
+.ops-ah-group {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: 12px 0 2px;
+  padding: 0 4px;
+}
+
+.ops-ah-group__t {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--adm-ink);
+}
+
+.ops-ah-group__c {
+  font-size: 12px;
+  color: var(--adm-ink-muted);
+}
+
+.ops-ah-clients {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--adm-edge);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface);
+  background-clip: padding-box;
+  box-shadow: var(--adm-elev-2), var(--adm-panel-highlight);
+  overflow: hidden;
+}
+
+.ops-ah-crow {
+  display: grid;
+  grid-template-columns: minmax(9rem, 34%) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 4px 10px 4px 4px;
+  border-top: 1px solid var(--adm-divider);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 56px;
+}
+
+.ops-ah-crow:first-child {
+  border-top: 0;
+}
+
+.ops-ah-crow--picked {
+  background: var(--adm-live-fill);
+}
+
+.ops-ah-crow__who {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  min-height: 48px;
+  justify-content: center;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ops-ah-crow__who:focus-visible,
+.ops-ah-crow__track:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: 2px;
+}
+
+.ops-ah-crow__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  font-size: 12px;
+  color: var(--adm-ink-muted);
+}
+
+.ops-ah-crow__track {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ops-ah-crow__cant {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--adm-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.ops-ah-fold {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 0 14px;
+  border: 1px solid var(--adm-border-strong);
+  border-radius: 12px;
+  background: var(--adm-raised);
+  color: var(--adm-ink-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ops-ah-fold:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: 2px;
+}
+
+/* The clocks themselves (ClockBar). Positions come from clocks-geometry.ts as percentages. */
+.ops-ah-clock {
+  position: absolute;
+  inset: 0;
+}
+
+.ops-ah-clock::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--adm-divider);
+}
+
+.ops-ah-clock__seg {
+  position: absolute;
+  top: 50%;
+  height: 12px;
+  transform: translateY(-50%);
+  border-radius: 4px;
+}
+
+.ops-ah-clock__seg--bar {
+  background: var(--adm-live-fill);
+  box-shadow: inset 0 0 0 1px var(--adm-live);
+}
+
+.ops-ah-clock__seg--banked {
+  background: var(--adm-warn-fill);
+  box-shadow: inset 0 0 0 1px var(--adm-warn);
+}
+
+.ops-ah-clock__seg--gap {
+  background: repeating-linear-gradient(135deg, transparent 0 3px, var(--adm-warn) 3px 4.5px);
+  box-shadow: inset 0 0 0 1px var(--adm-warn);
+}
+
+.ops-ah-clock__seg--range {
+  height: 4px;
+  top: calc(50% + 9px);
+  border-radius: 0;
+  background: repeating-linear-gradient(90deg, var(--adm-live) 0 2px, transparent 2px 5px);
+}
+
+.ops-ah-clock__seg--paused {
+  height: 6px;
+  border-radius: 0;
+  background: repeating-linear-gradient(90deg, var(--adm-ink-faint) 0 6px, transparent 6px 10px);
+}
+
+.ops-ah-clock__end {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--adm-ink);
+  transform: translateX(-1px);
+}
+
+.ops-ah-clock__today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--adm-hero);
+  transform: translateX(-1px);
+}
+
+.ops-ah-clock__mark {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  transform: translate(-50%, -50%);
+}
+
+.ops-ah-clock__mark--moment {
+  top: 8px;
+}
+
+.ops-ah-clock__beyond {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 1px 0 1px 4px;
+  background: var(--adm-surface);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--adm-ink-muted);
+  white-space: nowrap;
+}
+
+/* ---------- The client: a sheet upright, a pane beside the list on its side ---------- */
+
+.ops-ah-pane {
+  position: sticky;
+  top: var(--scroll-pad-top, 0px);
+  max-height: calc(100dvh - 12rem);
+  overflow-y: auto;
+  border: 1px solid var(--adm-edge);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface);
+  background-clip: padding-box;
+  box-shadow: var(--adm-elev-2), var(--adm-panel-highlight);
+}
+
+.ops-ah-pane__empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 24px 18px;
+  font-size: 13px;
+  color: var(--adm-ink-muted);
+}
+
+.ops-ah-pane__empty-t {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--adm-ink-2);
+}
+
+.ops-ah-sheet {
+  max-height: 82dvh;
+  overflow-y: auto;
+  background: var(--adm-surface);
+  color: var(--adm-ink);
+}
+
+.ops-ah-peek {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px 22px;
+  color: var(--adm-ink);
+}
+
+.ops-ah-peek__h {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ops-ah-peek__who {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.ops-ah-peek__name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+
+.ops-ah-peek__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  font-size: 13px;
+  color: var(--adm-ink-muted);
+}
+
+.ops-ah-peek__lead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--adm-live-fill);
+  font-size: 14px;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+
+.ops-ah-peek__lead--caution {
+  background: var(--adm-warn-fill);
+}
+
+/* The two clocks drawn large, labelled: a well inside the panel. */
+.ops-ah-peek__chart {
+  position: relative;
+  padding: 26px 10px 22px;
+  border-radius: 12px;
+  background: var(--adm-surface-2);
+}
+
+.ops-ah-peek__track {
+  position: relative;
+  height: 40px;
+}
+
+.ops-ah-peek__lab {
+  position: absolute;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--adm-ink-2);
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.ops-ah-peek__lab--top {
+  top: 6px;
+}
+
+.ops-ah-peek__lab--bottom {
+  bottom: 4px;
+}
+
+.ops-ah-peek__lab--today {
+  color: var(--adm-hero-text);
+}
+
+.ops-ah-peek__facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 14px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.ops-ah-peek__facts dt {
+  font-size: 12px;
+  color: var(--adm-ink-muted);
+}
+
+.ops-ah-peek__facts dd {
+  margin: 0;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+
+.ops-ah-peek__sub {
+  display: block;
+  font-size: 12px;
+  color: var(--adm-ink-muted);
+}
+
+.ops-ah-peek__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@container ops-ah (max-width: 560px) {
+  .ops-ah-row {
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
+    padding-left: 8px;
+  }
+
+  .ops-ah-day {
+    width: 40px;
+  }
+
+  .ops-ah-axis,
+  .ops-ah-crow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .ops-ah-axis__lab {
+    display: none;
+  }
+}
