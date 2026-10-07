@@ -27,13 +27,13 @@ vi.mock("../../renewals/useRenewalSettings", () => ({
 
 import { RenewalSettingsPanel } from "./RenewalSettingsPanel";
 import { DEFAULT_RENEWAL_SETTINGS } from "../../renewals/settings";
-import type { RenewalSettings } from "../../renewals/types";
+import type { RenewalNamesSeen, RenewalSettings } from "../../renewals/types";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 let mounted: { root: Root; host: HTMLElement }[] = [];
 
-async function mount(settings: RenewalSettings, canEdit = true) {
+async function mount(settings: RenewalSettings, canEdit = true, namesSeen: RenewalNamesSeen | null = null) {
   const host = document.createElement("div");
   document.body.appendChild(host);
   const root = createRoot(host);
@@ -45,7 +45,7 @@ async function mount(settings: RenewalSettings, canEdit = true) {
           studioName="Solon"
           settings={settings}
           saved
-          namesSeen={null}
+          namesSeen={namesSeen}
           canEdit={canEdit}
         />
       </StrictMode>,
@@ -137,5 +137,66 @@ describe("RenewalSettingsPanel — the studio's auto-renewal answer", () => {
     expect(select(host, "renewals-autorenew").disabled).toBe(true);
     expect(committed(host).disabled).toBe(true);
     expect(button(host, "Save settings")).toBeUndefined();
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * The names waiting, with suggestions (the renewals dashboard, Oct 7 2026):
+ * Strongsville had 44 Mindbody names no package claimed. A leader confirms
+ * each suggestion, or all of them, and the save bar writes them.
+ * ------------------------------------------------------------------ */
+
+const seen: RenewalNamesSeen = {
+  names: {
+    a: { name: "SV 6 Months/48 Sessions PIF", kind: "pricing-option", clients: 12 },
+    b: { name: "144 Sessions w/ Roll Over", kind: "pricing-option", clients: 8 },
+    c: { name: "SV Free Session Won", kind: "pricing-option", clients: 3 },
+    d: { name: "Intro Offer", kind: "pricing-option", clients: 2 },
+  },
+};
+
+const nameRow = (host: HTMLElement, name: string) =>
+  Array.from(host.querySelectorAll<HTMLElement>(".adm-row")).find((r) => r.querySelector(".adm-row__name")?.textContent === name);
+
+describe("RenewalSettingsPanel — suggestions for the names waiting", () => {
+  it("suggests a package or extra sessions for each name it can read, and says when it can't", async () => {
+    const host = await mount(DEFAULT_RENEWAL_SETTINGS, true, seen);
+    expect(nameRow(host, "SV 6 Months/48 Sessions PIF")?.textContent).toMatch(/Suggested: .+ · paid in full/);
+    expect(nameRow(host, "144 Sessions w/ Roll Over")?.textContent).toMatch(/Suggested: .+ · sessions roll over/);
+    expect(nameRow(host, "SV Free Session Won")?.textContent).toContain("Suggested: Extra sessions (complimentary or won)");
+    expect(nameRow(host, "Intro Offer")?.textContent).toContain("No suggestion: match it by hand");
+    expect(nameRow(host, "Intro Offer")?.querySelector("button")).toBeFalsy();
+  });
+
+  it("confirms one, and the save writes it into its package's names", async () => {
+    const host = await mount(DEFAULT_RENEWAL_SETTINGS, true, seen);
+    await click(nameRow(host, "SV 6 Months/48 Sessions PIF")?.querySelector("button"));
+    // Matched in the form at once: it leaves the waiting list.
+    expect(nameRow(host, "SV 6 Months/48 Sessions PIF")).toBeUndefined();
+    expect(saves).toEqual([]);
+    await click(button(host, "Save settings"));
+    expect(saves).toHaveLength(1);
+    const trial = (saves[0].patch.packages as Array<{ key: string; mindbodyNames: string[] }>).find((p) => p.key === "trial")!;
+    expect(trial.mindbodyNames).toContain("SV 6 Months/48 Sessions PIF");
+  });
+
+  it("confirms all at once, leaving only the name it couldn't read", async () => {
+    const host = await mount(DEFAULT_RENEWAL_SETTINGS, true, seen);
+    await click(button(host, "Confirm all 3"));
+    expect(nameRow(host, "SV 6 Months/48 Sessions PIF")).toBeUndefined();
+    expect(nameRow(host, "144 Sessions w/ Roll Over")).toBeUndefined();
+    expect(nameRow(host, "SV Free Session Won")).toBeUndefined();
+    expect(nameRow(host, "Intro Offer")).toBeDefined();
+    await click(button(host, "Save settings"));
+    const patch = saves[0].patch as { packages: Array<{ key: string; mindbodyNames: string[] }>; extraSessionNames: string[] };
+    expect(patch.extraSessionNames).toContain("SV Free Session Won");
+    expect(patch.packages.find((p) => p.key === "transformed")!.mindbodyNames).toContain("144 Sessions w/ Roll Over");
+  });
+
+  it("shows the suggestions without Confirm to someone who can't change the settings", async () => {
+    const host = await mount(DEFAULT_RENEWAL_SETTINGS, false, seen);
+    expect(nameRow(host, "SV Free Session Won")?.textContent).toContain("Suggested:");
+    expect(button(host, "Confirm")).toBeUndefined();
+    expect(button(host, "Confirm all 3")).toBeUndefined();
   });
 });

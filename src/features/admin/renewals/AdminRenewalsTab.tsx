@@ -19,7 +19,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { BarChart3, CalendarClock, ListChecks, SlidersHorizontal } from "lucide-react";
+import { BarChart3, CalendarClock, ListChecks, SlidersHorizontal, Tag } from "lucide-react";
 import type { Client, Machine, Studio, Trainer } from "../../../types";
 import { AdminButton, AdminHeader, AdminNotice, AdminScreen } from "../primitives";
 import { PickOneStudio, useOperationsScope } from "../scope-context";
@@ -28,8 +28,7 @@ import { RenewalBrief } from "./RenewalBrief";
 import { RenewalOutcomesPanel } from "./RenewalOutcomesPanel";
 import { canManageRenewals, leadsStudio, worksAt } from "../../renewals/permissions";
 import { useRenewalNamesSeen, useRenewalSettings } from "../../renewals/useRenewalSettings";
-import { buildPackageNameIndex } from "../../renewals/settings";
-import { unmatchedNames } from "../../renewals/job-plan";
+import { waitingLine, waitingNames } from "../../renewals/name-suggest";
 import type { RosterStatus } from "../../../hooks/useStudioRoster";
 
 export interface AdminRenewalsTabProps {
@@ -65,10 +64,14 @@ export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainer
   const namesSeen = useRenewalNamesSeen(studioId);
   const [view, setView] = useState<RenewalsView>("pipeline");
   // Mindbody names the package table doesn't recognize yet: those clients
-  // can't be placed, so the pointer to the settings says how many are waiting.
-  const toMatch = useMemo(
-    () => (namesSeen ? unmatchedNames(namesSeen.names ?? {}, buildPackageNameIndex(settings)).length : 0),
-    [namesSeen, settings],
+  // can't be placed. One calm line says how many are waiting, with the door
+  // to their suggestions on My Studio → Studio → Renewals (the renewals
+  // dashboard, Oct 7 2026). Never off settings that failed to read or are
+  // still another studio's: the defaults would call every name waiting.
+  const namesWaiting = useMemo(
+    () =>
+      !loading && !error && forStudioId === studioId && namesSeen ? waitingLine(waitingNames(namesSeen, settings)) : null,
+    [loading, error, forStudioId, studioId, namesSeen, settings],
   );
   // A studio that hasn't answered whether its packages renew reads as ON (AJ,
   // Sep 25 2026: on by default, off at the corporate studios). Said here, as
@@ -138,17 +141,27 @@ export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainer
           </div>
 
           {/* The calm round (Oct 3 2026): only when a setting is waiting; where the settings live is the header's door. */}
-          {(toMatch > 0 || autoRenewUnanswered) && (
+          {autoRenewUnanswered && (
             <AdminNotice tone="warn">
               <SlidersHorizontal className="w-4 h-4 shrink-0" />
               <div className="flex-1">
-                {autoRenewUnanswered ? `${studio.name} hasn't said whether its packages renew automatically, so they read as renewing. ` : ""}
-                {toMatch > 0
-                  ? `${toMatch} Mindbody package name${toMatch === 1 ? "" : "s"} ${toMatch === 1 ? "is" : "are"} waiting to be matched, so those clients can't be placed. `
-                  : ""}
+                {`${studio.name} hasn't said whether its packages renew automatically, so they read as renewing. `}
                 Set on <b>My Studio → Studio</b>.
               </div>
             </AdminNotice>
+          )}
+          {namesWaiting && (
+            <div className="adm-renewals-waiting">
+              <Tag className="w-4 h-4 shrink-0" aria-hidden />
+              <span>{namesWaiting}</span>
+              {onOpenMyStudio ? (
+                <AdminButton size="sm" variant="ghost" onClick={onOpenMyStudio}>
+                  Review suggestions
+                </AdminButton>
+              ) : (
+                <span>· Review suggestions on My Studio → Studio</span>
+              )}
+            </div>
           )}
 
           {error && <AdminNotice tone="warn">{error}</AdminNotice>}

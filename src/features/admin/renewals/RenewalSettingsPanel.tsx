@@ -48,7 +48,8 @@ import {
   type PackageRowForm,
   type RenewalSettingsForm,
 } from "../../renewals/settings-form";
-import { buildPackageNameIndex, SETTING_LABELS } from "../../renewals/settings";
+import { SETTING_LABELS } from "../../renewals/settings";
+import { suggestionTarget, suggestionWords, waitingNames, type WaitingName } from "../../renewals/name-suggest";
 import { saveRenewalSettings } from "../../renewals/useRenewalSettings";
 import type { RenewalNamesSeen, RenewalSettings } from "../../renewals/types";
 
@@ -124,12 +125,27 @@ export function RenewalSettingsPanel({
       form.value.packages.map((row) => (row.key === key ? { ...row, ...patch } : row)),
     );
 
-  const unmatched = useMemo(() => {
-    const index = buildPackageNameIndex(formToSettings(form.value).settings);
-    return Object.values(namesSeen?.names ?? {})
-      .filter((n) => n?.name && !index.tierFor(n.name) && !index.isExtraSessions(n.name))
-      .sort((a, b) => b.clients - a.clients);
-  }, [namesSeen, form.value]);
+  // The names no package claims yet, each with its suggestion (name-suggest.ts;
+  // the renewals dashboard, Oct 7 2026: Strongsville had 44 waiting). Read
+  // against the form's own table, so a name confirmed below leaves the list
+  // at once and a package being edited is what the suggestions name.
+  const unmatched = useMemo(
+    () => (namesSeen ? waitingNames(namesSeen, formToSettings(form.value).settings) : []),
+    [namesSeen, form.value],
+  );
+  const suggested = unmatched.filter((n): n is WaitingName & { suggestion: NonNullable<WaitingName["suggestion"]> } => n.suggestion !== null);
+  // Confirming puts the name in its package's (or the extra sessions') list
+  // in the form; the save bar writes it, like any other change here.
+  const confirm = (names: typeof suggested) => {
+    let draft = form.value;
+    let patch: Partial<RenewalSettingsForm> = {};
+    for (const n of names) {
+      const p = assignNameInForm(draft, n.name, suggestionTarget(n.suggestion));
+      draft = { ...draft, ...p };
+      patch = { ...patch, ...p };
+    }
+    form.setFields(patch);
+  };
 
   const numberField = (key: NumberKey) => (
     <AdminField key={key} label={SETTING_LABELS[key]} hint={HINTS[key]} htmlFor={`renewals-${key}`}>
@@ -409,8 +425,15 @@ export function RenewalSettingsPanel({
 
       <AdminPanel
         title="Names seen in Mindbody"
-        subtitle="Contract and pricing-option names found on this studio's clients that no package claims yet. Until one is matched, its clients show 'package not recognized'."
+        subtitle="Contract and pricing-option names found on this studio's clients that no package claims yet. Until one is matched, its clients show 'package not recognized'. A confirmed suggestion is matched when you save."
         flush
+        actions={
+          canEdit && suggested.length > 1 ? (
+            <AdminButton variant="quiet" size="sm" onClick={() => confirm(suggested)}>
+              Confirm all {suggested.length}
+            </AdminButton>
+          ) : undefined
+        }
       >
         {!namesSeen ? (
           <AdminEmpty title="Nothing seen yet">
@@ -426,25 +449,44 @@ export function RenewalSettingsPanel({
               <AdminRow
                 key={`${n.kind}:${n.name}`}
                 name={n.name}
-                meta={`${n.kind === "contract" ? "Contract" : "Pricing option"} · ${n.clients} client${n.clients === 1 ? "" : "s"}`}
+                meta={
+                  <span className="flex flex-col gap-0.5">
+                    <span>{`${n.kind === "contract" ? "Contract" : "Pricing option"} · ${n.clients} client${n.clients === 1 ? "" : "s"}`}</span>
+                    <span className={n.suggestion ? "font-semibold" : undefined}>
+                      {n.suggestion ? `Suggested: ${suggestionWords(n.suggestion)}` : "No suggestion: match it by hand"}
+                    </span>
+                  </span>
+                }
                 trailing={
                   canEdit ? (
-                    <AdminSelect
-                      aria-label={`Match ${n.name} to a package`}
-                      value=""
-                      onChange={(e) => {
-                        if (!e.target.value) return;
-                        form.setFields(assignNameInForm(form.value, n.name, e.target.value));
-                      }}
-                    >
-                      <option value="">Match to…</option>
-                      {form.value.packages.map((p) => (
-                        <option key={p.key} value={p.key}>
-                          {p.label.trim() || "Unnamed package"}
-                        </option>
-                      ))}
-                      <option value="__extra__">Extra sessions</option>
-                    </AdminSelect>
+                    <span className="inline-flex flex-wrap items-center justify-end gap-2">
+                      {n.suggestion && (
+                        <AdminButton
+                          variant="primary"
+                          size="sm"
+                          aria-label={`Confirm ${n.name} as ${suggestionWords(n.suggestion)}`}
+                          onClick={() => confirm([n as (typeof suggested)[number]])}
+                        >
+                          Confirm
+                        </AdminButton>
+                      )}
+                      <AdminSelect
+                        aria-label={`Match ${n.name} to a package`}
+                        value=""
+                        onChange={(e) => {
+                          if (!e.target.value) return;
+                          form.setFields(assignNameInForm(form.value, n.name, e.target.value));
+                        }}
+                      >
+                        <option value="">Match to…</option>
+                        {form.value.packages.map((p) => (
+                          <option key={p.key} value={p.key}>
+                            {p.label.trim() || "Unnamed package"}
+                          </option>
+                        ))}
+                        <option value="__extra__">Extra sessions</option>
+                      </AdminSelect>
+                    </span>
                   ) : undefined
                 }
               />

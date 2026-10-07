@@ -108,6 +108,17 @@
   max-width: 100%;
 }
 
+/* "44 names waiting · Review suggestions": one calm line above the
+   pipeline, never a warning (the renewals dashboard, Oct 7 2026). */
+.adm-renewals-waiting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 13px;
+  color: var(--adm-ink-2);
+}
+
 /* Options: the studio's package table applied to this client. */
 .adm-options-wrap {
   overflow-x: auto;

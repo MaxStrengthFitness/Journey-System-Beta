@@ -22,7 +22,7 @@ vi.mock("../scope-context", () => ({
   PickOneStudio: () => null,
 }));
 
-const hook = vi.hoisted(() => ({ state: null as any }));
+const hook = vi.hoisted(() => ({ state: null as any, seen: null as any }));
 vi.mock("../../renewals/useRenewalSettings", async () => {
   const { DEFAULT_RENEWAL_SETTINGS } = await import("../../renewals/settings");
   return {
@@ -35,7 +35,7 @@ vi.mock("../../renewals/useRenewalSettings", async () => {
         loading: false,
         error: null,
       },
-    useRenewalNamesSeen: () => null,
+    useRenewalNamesSeen: () => hook.seen,
   };
 });
 
@@ -79,6 +79,7 @@ afterEach(async () => {
   }
   mounted = [];
   hook.state = null;
+  hook.seen = null;
 });
 
 const notice = (host: HTMLElement) =>
@@ -124,5 +125,42 @@ describe("AdminRenewalsTab — the door to the studio's auto-renewal answer", ()
     };
     const { host } = await mount();
     expect(host.textContent).not.toContain("hasn't said");
+  });
+});
+
+describe("AdminRenewalsTab — the Mindbody names waiting (the renewals dashboard, Oct 7 2026)", () => {
+  const seen = {
+    names: {
+      a: { name: "SV 6 Months/48 Sessions PIF", kind: "pricing-option", clients: 12 },
+      b: { name: "Intro Offer", kind: "pricing-option", clients: 2 },
+    },
+  };
+  const answered = {
+    settings: { ...DEFAULT_RENEWAL_SETTINGS, packagesRenewAutomatically: false },
+    saved: true,
+    ownPackageTable: false,
+    forStudioId: "solon",
+    loading: false,
+    error: null,
+  };
+
+  it("says how many are waiting in one calm line, with the door to their suggestions", async () => {
+    hook.state = answered;
+    hook.seen = seen;
+    const { host, onOpenMyStudio } = await mount();
+    const line = host.querySelector<HTMLElement>(".adm-renewals-waiting")!;
+    expect(line.textContent).toContain("2 names waiting");
+    // A line, not a warning: nothing else on the page is held up by it.
+    expect(line.closest(".adm-notice")).toBeNull();
+    const review = Array.from(line.querySelectorAll("button")).find((b) => b.textContent === "Review suggestions")!;
+    await act(async () => review.click());
+    expect(onOpenMyStudio).toHaveBeenCalledTimes(1);
+  });
+
+  it("says nothing about names off settings that failed to read", async () => {
+    hook.state = { ...answered, error: "Couldn't load this studio's renewal settings. Showing the defaults." };
+    hook.seen = seen;
+    const { host } = await mount();
+    expect(host.querySelector(".adm-renewals-waiting")).toBeNull();
   });
 });
