@@ -3125,3 +3125,19 @@ Round document: `docs/rounds/2026-10-07-renewals-dashboard.md`. Shipped with `sc
 - [ ] **Names waiting:** "44 names waiting · Review suggestions" opens My Studio → Studio → Renewals; each name says its suggestion. Before Confirm all, check one "w/ Roll Over" option (the round document's check). Confirm all, Save settings; the next morning the Missing Mindbody data number is lower.
 - [ ] **Portrait and landscape:** upright, two lines of cells with the plan on the right and no word broken in the middle; on its side, one line of columns under a header.
 - [ ] **My Profile → My renewals** (as a trainer): the same row, and the plan can be set there.
+
+## Round 64 — Ahead · *Oct 7 2026, branch `oct7/ahead`*
+
+Round document: `docs/rounds/2026-10-07-ahead.md`. Walk it as a studio leader after the push, Render's Manual Deploy, both crons' Manual Build and the renewals job's first night on the new commit (2:30 AM Eastern), in portrait and landscape, at a studio with a few months of bookings.
+
+- [ ] **Operations has seven places:** Today · Week · Month · Ahead · Clients · Team · Setup, across the top upright and down the sidebar on its side. Month is unchanged.
+- [ ] **Ahead → Weeks:** one line of counts (talks due · banked at a charge · run out early · may slip · moments) with its rules on the (i); the strip of 26 weeks, a month name under it jumps there, and the strip marks the week at the top as you scroll. This week is always a card; Talk now and Before the charge say Now.
+- [ ] **A row:** the word, the client, the trainer, one sentence ("Reaches 10 left · 26 now, about 2× a week · between Nov 26 and Dec 10"); the (i) says how it was worked out. Check one Talk due by hand against Renewals: the day is the one its row's next step says ("Conversation due around …").
+- [ ] **A charge:** a client who auto-renews with sessions banked shows Before the charge thirty days ahead and Charge on the day, with about how many banked and the plan, or "no plan yet".
+- [ ] **May slip:** a client with nothing booked shows the next line ("Turns At risk if nothing is booked · last came …") within the next 30 days and never past them. Book them in Mindbody, wait for the sync, reopen Ahead: the row is gone.
+- [ ] **A lens:** Runs out early leaves only those rows; empty weeks fold into one hatched "All clear · N weeks · …" line. A trainer picked in the menu narrows everything to their clients.
+- [ ] **Ahead → Clients:** each row's bar, tick, plum banked part, hatched gap and ◆ match what the Weeks rows say for that client; Needs you now first; the clients it can't place are listed with the reason.
+- [ ] **A client's panel:** upright it slides up from the bottom and closing it keeps your place; on its side it opens beside the list. It shows the talk and run-out days with their ranges, the next visit, the Journey, and the same row Renewals draws. Set a plan there and see it on Renewals. Open client goes to the client inside Operations.
+- [ ] **Further ahead:** Week → Week ahead ends with "Next: the week of … · …" and an Ahead button that opens Ahead.
+- [ ] **The nightly record's new numbers (AJ's 2a):** on Renewals, a regular with standing bookings now says a later run-out day and more banked at the charge than the day before the push, by about how far ahead they are booked. That is the fix, not a fault; say so if one looks wrong.
+- [ ] **Names wrap, nothing is cut short,** and every tap is at least a fingertip, upright and on its side; on a phone the lenses wrap onto lines without breaking a word.
