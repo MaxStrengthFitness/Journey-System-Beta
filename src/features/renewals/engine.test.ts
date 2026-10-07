@@ -119,9 +119,9 @@ describe("the two clocks", () => {
     expect(snap.sessionsLeft).toBe(36);
     expect(snap.sessionsLeftSource).toBe("mindbody");
     expect(snap.pacePerWeek).toBe(1.5);
-    // 8 weeks at 1.5 uses 12 of the 36. The booking in 2 days is already
-    // out of Mindbody's remaining (projection.ts
-    // MINDBODY_REMAINING_INCLUDES_BOOKED), so it isn't taken off again.
+    // 8 weeks at 1.5 uses 12 of the 36. The booking in 2 days is one of those
+    // visits: Mindbody's remaining still counts it (projection.ts
+    // MINDBODY_REMAINING_INCLUDES_BOOKED, false as found), and the pace uses it.
     expect(snap.bankedAtCharge).toBe(24);
     expect(snap.projection?.leftAtEnd).toBe(24);
     expect(snap.projection?.booked).toBe(0);
@@ -198,10 +198,7 @@ describe("the two clocks", () => {
   it("is on track at exactly twice a week", () => {
     const snap = monthly({ mindbodyServices: { a: service(1, "96 Sessions - 2X Week", 0) } }, visitsAt(2, "2026-06-01"));
     expect(snap.sessionsLeft).toBe(16);
-    // The visit booked two days ahead is already out of Mindbody's count, so
-    // the 16 are used after it: 54 days at 2 a week leaves about 1 (Ahead,
-    // Oct 7 2026). Still on track: well under the 4 that make it "will bank".
-    expect(snap.bankedAtCharge).toBe(1);
+    expect(snap.bankedAtCharge).toBe(0);
     expect(snap.situation).toBe("on-track");
   });
 

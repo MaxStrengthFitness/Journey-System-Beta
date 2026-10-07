@@ -54,9 +54,11 @@ describe("bookedDaysAhead", () => {
     expect(bookedDaysAhead(rows, TODAY, null, false)).toEqual([TODAY, T(2)]);
     expect(bookedDaysAhead(rows, TODAY, T(1), false)).toEqual([TODAY]);
   });
-  it("takes nothing off as shipped: Mindbody's remaining has already taken the booked visits off", () => {
-    expect(MINDBODY_REMAINING_INCLUDES_BOOKED).toBe(true);
-    expect(bookedDaysAhead([{ day: TODAY, kind: "booked" }], TODAY, null)).toEqual([]);
+  it("as found (Oct 7 2026): Mindbody's remaining still counts the booked visits", () => {
+    expect(MINDBODY_REMAINING_INCLUDES_BOOKED).toBe(false);
+    expect(bookedDaysAhead([{ day: TODAY, kind: "booked" }], TODAY, null)).toEqual([TODAY]);
+    // The other answer takes nothing off.
+    expect(bookedDaysAhead([{ day: TODAY, kind: "booked" }], TODAY, null, true)).toEqual([]);
   });
 });
 
@@ -254,49 +256,31 @@ describe("rateOf", () => {
 
 describe("projectionStart (Ahead, AJ's 2a: the dates count from the day Mindbody counted)", () => {
   const away: never[] = [];
-  it("with Mindbody's remaining already net of the bookings, starts after the visits held at the count, from the count's day", () => {
+  it("were Mindbody's remaining net of the bookings: the count is used after the visits held at it, from its day", () => {
     // Counted today, nothing held: the pace starts today, as it always did.
-    expect(projectionStart({ sessionsLeft: 20, countedOn: TODAY, today: TODAY, pacePerWeek: 2, heldThrough: null, bookedAhead: [], away })).toEqual({
+    expect(projectionStart({ sessionsLeft: 20, countedOn: TODAY, today: TODAY, pacePerWeek: 2, heldThrough: null, bookedAhead: [], away, remainingIncludesBooked: true })).toEqual({
       from: TODAY,
       left: 20,
       booked: [],
       countedOn: TODAY,
     });
     // Counted 10 days ago, nothing held: the pace has been using it since then.
-    expect(projectionStart({ sessionsLeft: 20, countedOn: T(-10), today: TODAY, pacePerWeek: 2, heldThrough: null, bookedAhead: [], away }).from).toBe(T(-10));
+    expect(projectionStart({ sessionsLeft: 20, countedOn: T(-10), today: TODAY, pacePerWeek: 2, heldThrough: null, bookedAhead: [], away, remainingIncludesBooked: true }).from).toBe(T(-10));
     // Visits held through T(20) use sessions the count no longer holds: the count is used after them.
-    expect(projectionStart({ sessionsLeft: 20, countedOn: TODAY, today: TODAY, pacePerWeek: 2, heldThrough: T(20), bookedAhead: [T(2), T(20)], away }).from).toBe(T(20));
-    expect(projectionStart({ sessionsLeft: 20, countedOn: T(-10), today: TODAY, pacePerWeek: 2, heldThrough: T(15), bookedAhead: [], away }).from).toBe(T(15));
+    expect(projectionStart({ sessionsLeft: 20, countedOn: TODAY, today: TODAY, pacePerWeek: 2, heldThrough: T(20), bookedAhead: [T(2), T(20)], away, remainingIncludesBooked: true }).from).toBe(T(20));
+    expect(projectionStart({ sessionsLeft: 20, countedOn: T(-10), today: TODAY, pacePerWeek: 2, heldThrough: T(15), bookedAhead: [], away, remainingIncludesBooked: true }).from).toBe(T(15));
     // A held day before the count's own day starts nothing later.
-    expect(projectionStart({ sessionsLeft: 20, countedOn: T(-10), today: TODAY, pacePerWeek: 2, heldThrough: T(-12), bookedAhead: [], away }).from).toBe(T(-10));
+    expect(projectionStart({ sessionsLeft: 20, countedOn: T(-10), today: TODAY, pacePerWeek: 2, heldThrough: T(-12), bookedAhead: [], away, remainingIncludesBooked: true }).from).toBe(T(-10));
     // Never subtracted a second time.
-    expect(projectionStart({ sessionsLeft: 20, countedOn: TODAY, today: TODAY, pacePerWeek: 2, heldThrough: T(20), bookedAhead: [T(2), T(20)], away }).left).toBe(20);
+    expect(projectionStart({ sessionsLeft: 20, countedOn: TODAY, today: TODAY, pacePerWeek: 2, heldThrough: T(20), bookedAhead: [T(2), T(20)], away, remainingIncludesBooked: true }).left).toBe(20);
   });
 
-  it("with Mindbody's remaining still holding the bookings, uses the pace up to today and keeps the booked days to come off first", () => {
-    const s = projectionStart({
-      sessionsLeft: 20,
-      countedOn: T(-14),
-      today: TODAY,
-      pacePerWeek: 2,
-      bookedAhead: [T(2), T(5)],
-      away,
-      remainingIncludesBooked: false,
-    });
-    // Two weeks at 2 a week since the count.
-    expect(s).toEqual({ from: TODAY, left: 16, booked: [T(2), T(5)], countedOn: T(-14) });
-    // Away days since the count used nothing.
+  it("with Mindbody's remaining still holding the bookings (as found), uses the count at the pace from its own day", () => {
+    // The booked visits are part of the pace: never taken off a second time, and the count is never counted down.
     expect(
-      projectionStart({
-        sessionsLeft: 20,
-        countedOn: T(-14),
-        today: TODAY,
-        pacePerWeek: 2,
-        bookedAhead: [],
-        away: [{ from: T(-13), to: T(-7), reason: "Vacation" }],
-        remainingIncludesBooked: false,
-      }).left,
-    ).toBe(18);
+      projectionStart({ sessionsLeft: 20, countedOn: T(-14), today: TODAY, pacePerWeek: 2, heldThrough: T(10), bookedAhead: [T(2), T(5)], away: [] }),
+    ).toEqual({ from: T(-14), left: 20, booked: [], countedOn: T(-14) });
+    expect(projectionStart({ sessionsLeft: 20, countedOn: null, today: TODAY, pacePerWeek: 2, bookedAhead: [T(2)], away: [] }).from).toBe(TODAY);
   });
 
   it("treats a count with no usable day as today's", () => {

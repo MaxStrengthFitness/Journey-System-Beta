@@ -56,16 +56,18 @@ export const TREND_MIN_DIFF = 0.5;
  * Whether Mindbody's "remaining" on a pricing option has already taken off
  * the visits booked ahead (true: it has, so booked days must NOT come off a
  * second time). The design AJ approved (Oct 7 2026) subtracts the bookings,
- * which is right only if Mindbody doesn't. Mindbody most likely takes a
- * session off at booking, and taking them off again would count each
- * regular's standing bookings twice and move numbers that already exist
- * (banked at the charge, the run-out day, Running low's order). So it ships
- * TRUE, the version-2 arithmetic, until one real client is checked: a
- * Strongsville regular's Remaining against their future booked visits
- * (docs/rounds/2026-10-07-renewals-dashboard.md). Set it to false only if
- * Remaining still counts the booked visits.
+ * which is right only if Mindbody doesn't.
+ *
+ * FALSE, checked Oct 7 2026 (the Ahead round, from Journey's own synced data,
+ * read only): across the four studios, 60 clients whose one pricing option
+ * still holding sessions showed Remaining plus the visits booked ahead at the
+ * pull MORE than the option ever held (an option of 4 with 4 booked ahead
+ * still said 4 Remaining), which is impossible if a booking took a session
+ * off; none showed the opposite. So Remaining still counts the booked visits:
+ * the booked days come off first, then the pace (the approved design).
+ * `harness/mb-check/check.ts` in the Ahead worktree was the check.
  */
-export const MINDBODY_REMAINING_INCLUDES_BOOKED = true;
+export const MINDBODY_REMAINING_INCLUDES_BOOKED = false;
 
 /* ------------------------------------------------------------------ *
  * Away time
@@ -225,8 +227,15 @@ export function runOutDay(params: {
  *     (engine.ts `heldThroughOf`). Measured from the count's day, it stays
  *     put from night to night between pulls; for a count made today it is
  *     the last booked day. With nothing held, the pace starts on the count's day.
- *   - It hasn't: the count still holds them. The pace used the count from
- *     its day to today, then the booked days come off, then the pace again.
+ *   - It hasn't (as found, Oct 7 2026: `MINDBODY_REMAINING_INCLUDES_BOOKED`
+ *     false): the count still holds them, and the pace uses it up from its
+ *     own day. The booked visits are part of the pace, never taken off a
+ *     second time. (Taking the known bookings off first, the dashboard
+ *     round's idea, would need the visits since the count, which Journey
+ *     knows only from logged sessions, and would move the dates night to
+ *     night as the 30-day booking window slides; `bookedDaysAhead`,
+ *     `runOutDay` and `projectAtEnd` keep that arithmetic, tested, for when
+ *     it is wanted.)
  *
  * Never a screen's count-down: this only places the dates, and sessions left
  * on every screen stays Mindbody's number. A count from visits (no pricing
@@ -259,12 +268,14 @@ export function projectionStart(params: {
     const from = typeof held === "string" && /^\d{4}-\d{2}-\d{2}$/.test(held) && held > base ? held : base;
     return { from, left: sessionsLeft, booked: [], countedOn };
   }
-  let left = sessionsLeft;
-  if (left !== null && countedOn && countedOn < today && pacePerWeek !== null && pacePerWeek > 0) {
-    const days = daysBetween(countedOn, today) - awayDaysBetween(addDays(countedOn, 1), today, away);
-    left = Math.max(0, Math.round(left - (pacePerWeek * Math.max(0, days)) / 7));
-  }
-  return { from: today, left, booked: [...bookedAhead], countedOn };
+  // Mindbody's remaining still holds the booked visits (as found, Oct 7 2026):
+  // the count is used up at the client's pace from the day it was made. The
+  // visits booked ahead are part of that pace, never a second subtraction;
+  // away time is pushed past by runOutDay and projectAtEnd from this day on.
+  void pacePerWeek;
+  void bookedAhead;
+  void away;
+  return { from: base, left: sessionsLeft, booked: [], countedOn };
 }
 
 /* ------------------------------------------------------------------ *
