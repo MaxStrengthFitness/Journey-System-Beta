@@ -195,7 +195,7 @@ describe("RenewalSettingsPanel — suggestions for the names waiting", () => {
   });
 
   // AJ, Oct 7 2026 ("yes"): warn before names adopt Max Strength's table as the studio's own.
-  const WARNING = "Solon has no package table of its own yet: saving these names saves Max Strength's standard prices as Solon's. Check the prices in Packages above first.";
+  const WARNING = "Solon has no package table of its own yet: saving here makes Max Strength's standard prices Solon's own. Check the prices in Packages above first.";
 
   it("warns, once, a studio with no package table of its own that saving names saves the standard prices, and still saves", async () => {
     const host = await mount(DEFAULT_RENEWAL_SETTINGS, true, seen, false);
@@ -218,6 +218,15 @@ describe("RenewalSettingsPanel — suggestions for the names waiting", () => {
 
   it("stays quiet with nothing to match and nothing changed", async () => {
     const host = await mount(DEFAULT_RENEWAL_SETTINGS, true, null, false);
+    expect(host.textContent).not.toContain("no package table of its own");
+  });
+
+  it("warns on a package change with no name waiting, and goes quiet when it is undone", async () => {
+    const host = await mount(DEFAULT_RENEWAL_SETTINGS, true, null, false);
+    await choose(committed(host), "no");
+    expect(host.textContent).toContain(WARNING);
+    // Undone by value: the save bar has nothing to write, and the warning goes.
+    await choose(committed(host), "");
     expect(host.textContent).not.toContain("no package table of its own");
   });
 

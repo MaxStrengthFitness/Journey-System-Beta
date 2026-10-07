@@ -168,10 +168,11 @@ export function RenewalSettingsPanel({
   // A studio that never saved a package table of its own is reading Max
   // Strength's: a name saved into it saves that whole table, prices included,
   // as the studio's (AJ, Oct 7 2026: "yes", warn first). Said once, beside
-  // Confirm, while there is a name to match or a table change unsaved; it
-  // never stops the save.
+  // Confirm, while there is a name to match or a table change unsaved (by
+  // value, as the save bar sees it, so an edit undone puts it away); it never
+  // stops the save. Worded for both, a name or a price.
   const adoptsStandardTable =
-    canEdit && !ownPackageTable && (unmatched.length > 0 || form.value.packages !== external.packages);
+    canEdit && !ownPackageTable && (unmatched.length > 0 || form.changed.includes("packages"));
 
   const numberField = (key: NumberKey) => (
     <AdminField key={key} label={SETTING_LABELS[key]} hint={HINTS[key]} htmlFor={`renewals-${key}`}>
@@ -463,8 +464,8 @@ export function RenewalSettingsPanel({
       >
         {adoptsStandardTable && (
           <AdminNotice tone="warn">
-            {studioName} has no package table of its own yet: saving these names saves Max Strength's standard prices as{" "}
-            {studioName}'s. Check the prices in Packages above first.
+            {studioName} has no package table of its own yet: saving here makes Max Strength's standard prices{" "}
+            {studioName}'s own. Check the prices in Packages above first.
           </AdminNotice>
         )}
         {didntFit.length > 0 && (
