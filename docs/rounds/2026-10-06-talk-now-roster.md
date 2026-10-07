@@ -60,4 +60,4 @@ The push alone: no rules, index, Functions or Mindbody change. It goes on top of
 
 ## Left open
 
-- **Today's Slipping away** works the Journey's states out without the leaders' inactive marks (`studioJourneys` in `TodayBrief.tsx` is not given `marks`, while Week, Month and Clients → Journey are), so a client a leader marked Inactive can still be listed there as Drifting or At risk. Same family, a different section; not changed here.
+- **Today's Slipping away** works the Journey's states out without the leaders' inactive marks (`studioJourneys` in `TodayBrief.tsx` is not given `marks`, while Week, Month and Clients → Journey are), so a client a leader marked Inactive can still be listed there as Drifting or At risk. Same family, a different section; not changed here. **Fixed the same night** on `oct6/slipping-inactive`, on AJ's yes (`2026-10-06-slipping-inactive.md`).

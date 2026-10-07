@@ -8,7 +8,7 @@
 
 A client tapped anywhere opens inside Operations (`shell/ClientPage.tsx`), and a client of this studio carries **her journey and her case** there (`JourneyCase.tsx`): why, proof, what we know (the renewal line, the snapshot's own flags such as missed sessions, and the watchlist's answer), the next step with its owner and the day it becomes the leader's, and the outcome. The list stays mounted behind her, so Back is exact (a master–detail layout was the research's sketch for landscape; one client page for every door is what was built, so Today, the Journey and Moments open her the same way).
 
-**Today's Slipping away** reads the same rule (`studioJourneys`, drifting and at risk, catchable first) with Snooze and Dismiss, and a door here. The old attendance watch (`overview/questions.ts` `attendanceQuestion`, `attention/AttendanceWatchView.tsx`) is gone: one rule for "slipping", not two that could disagree. Its snooze, dismiss and back-again stay (`attention/`), on the Journey's rows and the case.
+**Today's Slipping away** reads the same rule (`studioJourneys`, drifting and at risk, catchable first) with Snooze and Dismiss, and a door here. Since Oct 6 2026 it is given the leaders' inactive marks too, and waits for them, as `useStudioJourneys` does, so a client a leader marked Inactive is never listed there as Drifting or At risk (`docs/rounds/2026-10-06-slipping-inactive.md`). The old attendance watch (`overview/questions.ts` `attendanceQuestion`, `attention/AttendanceWatchView.tsx`) is gone: one rule for "slipping", not two that could disagree. Its snooze, dismiss and back-again stay (`attention/`), on the Journey's rows and the case.
 
 ## Inactive — the end of the line (Oct 1 2026)
 

@@ -3094,3 +3094,12 @@ Round document: `docs/rounds/2026-10-06-talk-now-roster.md`. Walk it as a studio
 - [ ] **An Inactive client:** on Clients → Journey → Inactive, pick someone marked inactive (or mark one, then Mark active again after). They are not in Talk now, Before the charge or Coming up, and not on Today's count. If they were recorded as lost, they are still on **Lapsed**.
 - [ ] **Away:** the Away lane holds the same people it did before the push (only packages ending in the next three months or the last six).
 - [ ] **Month:** Operations → Month, this month and next. A client marked Inactive isn't on the renewals list unless as Lapsed or Away; tap the (i) and the rule says so.
+
+## Round 62 — Slipping away and the inactive marks · *Oct 6 2026, branch `oct6/slipping-inactive`*
+
+Round document: `docs/rounds/2026-10-06-slipping-inactive.md`. Walk it as a studio leader, after the push, in portrait and landscape.
+
+- [ ] **A marked client:** Operations → Clients → Journey → Inactive, pick someone marked inactive by a leader (or mark someone who is on Today's Slipping away, then Mark active again after). Operations → Today: they are not on **Slipping away**, and Start huddle doesn't ask about them.
+- [ ] **Marked today:** mark someone who is on Slipping away right now, go back to Today: they leave the list at once, with no reload. If they were the only one, Slipping away folds into the All clear line.
+- [ ] **No flicker:** reopen Today. Slipping away says "Reading…" for a moment at most, and a marked client never shows in it, even briefly.
+- [ ] **Booked again:** a marked client who has booked since isn't slipping either (Clients → Journey calls them Back).
