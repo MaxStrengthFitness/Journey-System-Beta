@@ -14,7 +14,8 @@
  * many clients are running out of their sessions ... In total") is the
  * session clock beside the lanes: everyone at or under the studio's renewal
  * conversation number, talked to or not (running-low.ts). Tap the number
- * for the list.
+ * for the list, drawn with the same dashboard row and plan picker as the
+ * lanes (AJ, Oct 7 2026: "Yes").
  *
  * The lanes and Running low both read the studio's roster the app already
  * holds (useStudioRoster: every client whose home is the studio, with last
@@ -193,9 +194,13 @@ export function RenewalsPipeline({
   const inLane = (lane: PipelineLane) => sortRows(visible.filter((r) => r.lane === lane));
   const count = (lane: PipelineLane) => rows.filter((r) => r.lane === lane).length;
 
-  // The renewals dashboard (Oct 7 2026): every lane's row is the dashboard
-  // row (features/renewals/RenewalRow.tsx), the one My renewals draws too.
-  const renderRow = (r: PipelineRow) => {
+  // The renewals dashboard (Oct 7 2026): every lane's row, and Running low's,
+  // is the dashboard row (features/renewals/RenewalRow.tsx), the one My
+  // renewals draws too.
+  const renderRow = (
+    r: Pick<PipelineRow, "clientId" | "name" | "snapshot" | "cycle" | "inbodyVariation">,
+    leftNow?: string | null,
+  ) => {
     const s = r.snapshot;
     return (
       <RenewalRow
@@ -211,6 +216,7 @@ export function RenewalsPipeline({
         today={today}
         trainerName={s.primaryTrainerId ? trainerNames.get(s.primaryTrainerId) ?? null : null}
         proof={proofSentence(s, r.inbodyVariation)}
+        leftNow={leftNow}
         nextStep={nextStep(s, r.cycle, settings, today)}
         badges={
           <>
@@ -251,11 +257,11 @@ export function RenewalsPipeline({
           byMonth(list).map((g) => (
             <div key={g.month}>
               <p className="adm-label px-4 pt-3">{g.label}</p>
-              <RenewalRowList label={`${LANE_TITLES[lane]}, ${g.label}`}>{g.rows.map(renderRow)}</RenewalRowList>
+              <RenewalRowList label={`${LANE_TITLES[lane]}, ${g.label}`}>{g.rows.map((r) => renderRow(r))}</RenewalRowList>
             </div>
           ))
         ) : (
-          <RenewalRowList label={LANE_TITLES[lane]}>{list.map(renderRow)}</RenewalRowList>
+          <RenewalRowList label={LANE_TITLES[lane]}>{list.map((r) => renderRow(r))}</RenewalRowList>
         )}
       </AdminPanel>
     );
@@ -314,35 +320,19 @@ export function RenewalsPipeline({
           {low.rows.length === 0 ? (
             <AdminEmpty title="Nobody is running low">{`Nobody at ${studioName} has ${settings.conversationAtSessionsLeft} or fewer sessions left.`}</AdminEmpty>
           ) : (
-            <AdminRows>
-              {low.rows.map((r) => (
-                <AdminRow
-                  key={r.clientId}
-                  onClick={() => {
-                    const c = clientsById.get(r.clientId);
-                    if (c) onOpenBrief(c);
-                  }}
-                  name={
-                    <span className="inline-flex flex-wrap items-center gap-2">
-                      {r.name}
-                      {r.cycle?.needsLeader && <AdminBadge tone="warn">Needs a leader</AdminBadge>}
-                    </span>
-                  }
-                  meta={
-                    <span className="flex flex-col gap-0.5">
-                      <span>{leftLine(r.snapshot, today)}</span>
-                      <span className="font-semibold">{nextStep(r.snapshot, r.cycle, settings, today)}</span>
-                    </span>
-                  }
-                  trailing={
-                    <span className="inline-flex items-center gap-2">
-                      {r.snapshot.situation === "away" && <AdminBadge tone="neutral">Away</AdminBadge>}
-                      <ChevronRight className="w-4 h-4 opacity-50" />
-                    </span>
-                  }
-                />
-              ))}
-            </AdminRows>
+            // The dashboard row, as the lanes draw it (AJ, Oct 7 2026: "Yes").
+            // Fewest left first, as running-low.ts sorts them. A record with
+            // no ledger yet says the total its own way: what it is made of,
+            // and when it runs out.
+            <RenewalRowList label="Running low">
+              {low.rows.map((r) => {
+                const c = clientsById.get(r.clientId);
+                return renderRow(
+                  { ...r, inbodyVariation: variationFor(c) },
+                  r.snapshot.ledger ? null : leftLine(r.snapshot, today),
+                );
+              })}
+            </RenewalRowList>
           )}
         </AdminPanel>
       )}

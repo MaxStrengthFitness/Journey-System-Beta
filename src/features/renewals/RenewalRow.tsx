@@ -1,6 +1,7 @@
 /**
  * One client on the renewals dashboard (the renewals dashboard, Oct 7 2026):
- * Operations → Clients → Renewals draws every lane's rows with it, and My
+ * Operations → Clients → Renewals draws every lane's rows and Running low's
+ * list with it (Running low since AJ's "Yes", Oct 7 2026), and My
  * renewals (a trainer's own profile) draws their own clients with it, so the
  * two say the same thing in the same words.
  *
@@ -46,6 +47,12 @@ export interface RenewalRowProps {
   trainerName?: string | null;
   /** The proof line (sentences.ts proofSentence), for the (i). */
   proof?: string | null;
+  /**
+   * The Left now cell's words, when a list says it its own way: Running low
+   * says the total and when it runs out (running-low.ts leftLine) for a
+   * client whose record has no ledger yet. Else the row's own (the ledger).
+   */
+  leftNow?: string | null;
   /** The next step (pipeline.ts nextStep), said above the plan. */
   nextStep?: string | null;
   /** Badges beside the name: "Needs a leader", the situation. */
@@ -148,7 +155,7 @@ export function RenewalRow(props: RenewalRowProps) {
         {facts.endLine && <span className="rr__line rr__line--strong">{facts.endLine}</span>}
       </Cell>
       <Cell area="left" label="Left now">
-        {facts.leftNow}
+        {props.leftNow || facts.leftNow}
       </Cell>
       {facts.atEnd && (
         <Cell area="atend" label="At the end">

@@ -153,8 +153,8 @@ const tile = (host: HTMLElement, label: string) =>
 const tileValue = (host: HTMLElement, label: string) => tile(host, label).querySelector(".adm-tile__value")?.textContent;
 const panel = (host: HTMLElement, title: string) =>
   Array.from(host.querySelectorAll<HTMLElement>(".adm-panel")).find((p) => p.querySelector(".adm-panel__title")?.textContent?.startsWith(`${title} · `)) ?? null;
-// Running low's rows are the kit's; a lane's rows are the dashboard row (Oct 7 2026).
-const names = (p: HTMLElement | null) => Array.from(p?.querySelectorAll<HTMLElement>(".adm-row__name, .rr__name") ?? []).map((n) => n.textContent);
+// Every row on the page is the dashboard row: the lanes' and Running low's (Oct 7 2026).
+const names = (p: HTMLElement | null) => Array.from(p?.querySelectorAll<HTMLElement>(".rr__name") ?? []).map((n) => n.textContent);
 
 describe("RenewalsPipeline — Running low", () => {
   it("counts the roster at or under the studio's number, in total, and lists them behind a tap", async () => {
@@ -168,14 +168,20 @@ describe("RenewalsPipeline — Running low", () => {
     await act(async () => (t as HTMLButtonElement).click());
     const low = panel(host, "Running low")!;
     expect(low.querySelector(".adm-panel__title")?.textContent).toBe("Running low · 2");
-    const rows = Array.from(low.querySelectorAll<HTMLElement>(".adm-row"));
+    // The dashboard row, as the lanes draw it (AJ, Oct 7 2026: "Yes").
+    expect(low.querySelector('[role="list"]')?.getAttribute("aria-label")).toBe("Running low");
+    const rows = Array.from(low.querySelectorAll<HTMLElement>(".rr"));
+    expect(low.querySelector(".adm-row")).toBeNull();
     // Fewest first; the renewed client and the one with 40 left aren't there.
     expect(names(low)).toEqual(["Ivan Reyes", "Nora Reyes"]);
-    expect(rows[0].textContent).toContain("3 left · runs out around Oct 17");
-    expect(rows[1].textContent).toContain("8 left · runs out around May 18, 2027");
-    expect(rows[0].textContent).toContain("Start the conversation");
+    // A record with no ledger yet: Left now says the total and when it runs out.
+    expect(rows[0].querySelector(".rr__cell--left .rr__value")?.textContent).toBe("3 left · runs out around Oct 17");
+    expect(rows[1].querySelector(".rr__cell--left .rr__value")?.textContent).toBe("8 left · runs out around May 18, 2027");
+    expect(rows[0].querySelector(".rr__next")?.textContent).toBe("Start the conversation");
+    // The plan cell is there, as on every dashboard row.
+    expect(rows[0].querySelector(".rr__cell--plan")).not.toBeNull();
 
-    await act(async () => rows[1].click());
+    await act(async () => rows[1].querySelector<HTMLElement>(".rr__open")!.click());
     expect(onOpenBrief).toHaveBeenCalledWith(roster[0]);
     expect(host.textContent).not.toContain("No renewals to plan");
   });
@@ -188,6 +194,25 @@ describe("RenewalsPipeline — Running low", () => {
     expect(host.textContent).toContain("Nobody is running low");
     expect(host.textContent).toContain("Nobody at Solon has 10 or fewer sessions left.");
   });
+
+  it("draws each client with the dashboard row: the ledger, and the plan picker that saves", async () => {
+    const { host } = await mount({ roster: [manual] });
+    await act(async () => (tile(host, "Running low") as HTMLButtonElement).click());
+    const low = panel(host, "Running low")!;
+    const row = low.querySelector<HTMLElement>(".rr")!;
+    expect(row.querySelector(".rr__name")?.textContent).toBe("Sasha Reyes");
+    // A record with a ledger says it the way the lanes do.
+    expect(row.querySelector(".rr__cell--left .rr__value")?.textContent).toBe("9 left: 4 rolled over · 5 this contract");
+    expect(row.textContent).toContain("Jen Park");
+    const sel = row.querySelector<HTMLSelectElement>('select[aria-label="Renewal plan for Sasha Reyes"]')!;
+    expect(optionsOf(sel)).toContain("Same package");
+    await choose(sel, "renew-same");
+    expect(saved.plans).toEqual([]);
+    const save = Array.from(row.querySelectorAll<HTMLButtonElement>("button")).find((b) => b.textContent === "Save plan")!;
+    await act(async () => save.click());
+    expect(saved.plans).toHaveLength(1);
+    expect(saved.plans[0]).toMatchObject({ studioId: "solon", cycleKey: "7001", clientId: "s1", draft: { choice: "renew-same" } });
+  });
 });
 
 describe("RenewalsPipeline — the lanes, from the roster (Oct 6 2026)", () => {
@@ -197,6 +222,8 @@ describe("RenewalsPipeline — the lanes, from the roster (Oct 6 2026)", () => {
     const talk = panel(host, "Talk now")!;
     // Soonest first: Ivan runs out on Oct 17, Nora next May.
     expect(names(talk)).toEqual(["Ivan Reyes", "Nora Reyes"]);
+    // A lane says each row's own Left now (never a list's, nor its place in the list).
+    expect(Array.from(talk.querySelectorAll(".rr__cell--left .rr__value")).map((v) => v.textContent)).toEqual(["3 left", "8 left"]);
     await act(async () => talk.querySelectorAll<HTMLElement>(".rr__open")[1].click());
     expect(onOpenBrief).toHaveBeenCalledWith(roster[0]);
   });
