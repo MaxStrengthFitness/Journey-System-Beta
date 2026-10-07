@@ -321,8 +321,10 @@ export interface SessionLedger {
  *   leftAtEnd = sessionsLeft − booked − pace × paceWeeks
  *
  * `booked` is the client's bookings from today to the end, as far as the
- * bookings are read (30 days ahead); after the last booked day, the pace.
- * Away time ahead (Vacation, Snowbird, Medical) uses no sessions.
+ * bookings are read (30 days ahead), counted only while Mindbody's remaining
+ * still includes them (projection.ts `MINDBODY_REMAINING_INCLUDES_BOOKED`; as
+ * shipped they are 0); after the last booked day, the pace. Away time ahead
+ * (Vacation, Snowbird, Medical) uses no sessions.
  */
 export interface RenewalProjection {
   /** The commitment's end (the snapshot's `commitmentEnd`). */
@@ -332,8 +334,8 @@ export interface RenewalProjection {
   booked: number;
   /** The last booked day counted; null when nothing is booked. */
   bookedThrough: string | null;
-  /** Weeks after the last booked day (or today) to the end, away time taken off. One decimal. */
-  paceWeeks: number;
+  /** Weeks after the last booked day (or today) to the end, away time taken off. One decimal. Null without a pace (it would change every night for nothing). */
+  paceWeeks: number | null;
   /** The pace the projection used (the snapshot's `pacePerWeek`). Null below the minimum sample. */
   pacePerWeek: number | null;
   /** Sessions left when the commitment ends; 0 when they run out first; null when there's not enough to project. */

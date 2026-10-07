@@ -202,6 +202,17 @@ describe("options", () => {
     expect(opts.find((o) => o.tier.key === "committed")!.isCurrent).toBe(true);
   });
 
+  it("compares with what the client actually pays when Mindbody's charge says so (a special)", () => {
+    // Committed at the Life Transformed rate: $432 every 4 weeks, $54 a session.
+    const opts = optionsFor(DEFAULT_RENEWAL_SETTINGS, "committed", 2, { perSession: 54, payment: 432 });
+    const lt = opts.find((o) => o.tier.key === "transformed")!;
+    expect(lt.perSessionDiff).toBe(0);
+    expect(lt.paymentDiff).toBe(0);
+    expect(lt.savingsVsCurrent).toBe(0);
+    // Their own package at the table's price would cost them $6 a session more.
+    expect(opts.find((o) => o.tier.key === "committed")!.perSessionDiff).toBe(6);
+  });
+
   it("is honest about fit at the client's real pace", () => {
     const committed = DEFAULT_PACKAGES[1];
     expect(fitNote(committed, 1.5)).toBe(

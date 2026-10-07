@@ -301,15 +301,23 @@ export function projectionSentence(s: Pick<RenewalSnapshot, "projection"> | null
 
 /**
  * How the projection was worked out, for its (i): "52 left, 6 booked, then
- * 1.5× a week for 21 weeks". Null without a projection to explain.
+ * 1.5× a week for 21 weeks". Extra sessions are counted in what's projected,
+ * and said the way the ledger says them ("50 + 2 extra left, …"), so the
+ * row's two numbers never disagree. Null without a projection to explain.
  */
-export function projectionWorking(s: Pick<RenewalSnapshot, "projection" | "sessionsLeft"> | null | undefined): string | null {
+export function projectionWorking(
+  s: Pick<RenewalSnapshot, "projection" | "sessionsLeft"> & Partial<Pick<RenewalSnapshot, "ledger">> | null | undefined,
+): string | null {
   const p = s?.projection;
   if (!p || p.leftAtEnd === null || s?.sessionsLeft === null || s?.sessionsLeft === undefined) return null;
+  const extra = s.ledger && s.ledger.total === s.sessionsLeft ? s.ledger.extra : 0;
+  const weeks = p.paceWeeks === null ? null : Math.round(p.paceWeeks);
   return [
-    `${s.sessionsLeft} left`,
+    extra > 0 && s.sessionsLeft > extra ? `${s.sessionsLeft - extra} + ${extra} extra left` : `${s.sessionsLeft} left`,
     p.booked > 0 ? `${p.booked} booked` : null,
-    p.pacePerWeek !== null ? `then ${paceLabel(p.pacePerWeek)} a week for ${Math.round(p.paceWeeks)} week${Math.round(p.paceWeeks) === 1 ? "" : "s"}` : null,
+    p.pacePerWeek !== null && weeks !== null
+      ? `${p.booked > 0 ? "then " : ""}${paceLabel(p.pacePerWeek)} a week for ${weeks} week${weeks === 1 ? "" : "s"}`
+      : null,
   ]
     .filter(Boolean)
     .join(", ");

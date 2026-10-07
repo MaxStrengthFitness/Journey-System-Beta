@@ -49,6 +49,7 @@ import { decideAutoRenew, lockSaysNothingBills } from "./auto-renew";
 import {
   awayDaysBetween,
   bookedDaysAhead,
+  issuedUpFront,
   ledgerParts,
   paceRange,
   paceTrendOf,
@@ -726,8 +727,14 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
     const fromEvents = paymentsLeftFromEvents(current.contract, today, chargeDate);
     const fromDates = paymentsLeftFromDates(current.start, chargeDate, tier, today);
     paymentsLeft = fromEvents ?? fromDates;
+    // A contract whose whole package was issued up front on one pricing
+    // option (count at least the package's sessions, bought under this
+    // contract: "48 Sessions w/ Roll Over" may be one) already holds the
+    // sessions its payments pay for: adding 8 a payment again would count
+    // them twice (projection.ts issuedUpFront).
+    const upFront = tier !== null && issuedUpFront(client.mindbodyServices, index, current.start, tier, mindbodyDayKey);
     if (sessionsOnHand !== null && paymentsLeft !== null) {
-      if (paymentsLeft === 0) sessionsLeft = sessionsOnHand;
+      if (paymentsLeft === 0 || upFront) sessionsLeft = sessionsOnHand;
       else if (tier) sessionsLeft = sessionsOnHand + paymentsLeft * sessionsPerPayment(tier);
       if (sessionsLeft !== null) sessionsLeftSource = fromEvents !== null ? "mindbody" : "estimate";
     } else if (

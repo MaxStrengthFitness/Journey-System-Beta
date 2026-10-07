@@ -121,7 +121,11 @@ export function RenewalBrief({
   // Not said until the totals have answered: an empty list would read as "no gains".
   const totalsKnown = machineTotalsKnown(client);
   const gains = totalsKnown ? strengthGains(client, machineNames) : [];
-  const options = s ? optionsFor(settings, s.packageKey, s.pacePerWeek) : [];
+  // "Vs today's rate" is what the client pays: Mindbody's charge when it is
+  // on file (a special included), else the table's price for their package.
+  const options = s
+    ? optionsFor(settings, s.packageKey, s.pacePerWeek, s.rate?.source === "mindbody" ? s.rate : null)
+    : [];
   const verdict = s ? upgradeVerdict(s, settings, inbodyVariation) : null;
   const currentTier = s ? settings.packages.find((p) => p.key === s.packageKey) ?? null : null;
   const hasLongerPackage = currentTier ? settings.packages.some((p) => p.months > currentTier.months) : false;

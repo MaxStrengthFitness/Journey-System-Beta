@@ -14,10 +14,11 @@
  *   - Never a second balance. Sessions left is Mindbody's number (engine.ts,
  *     `sessionsLeft`); the ledger only says where its parts came from, and
  *     its total IS sessions left.
- *   - The projection is the old "banked at the charge" with the bookings in
- *     it: the bookings Mindbody holds from today to the end come off first,
- *     then the client's pace after the last booked day. Without bookings it
- *     is the same arithmetic as before, to the session.
+ *   - The projection is the old "banked at the charge" carried to the
+ *     commitment's end. Booked days come off first ONLY while Mindbody's
+ *     remaining still counts them (`MINDBODY_REMAINING_INCLUDES_BOOKED`); as
+ *     shipped it doesn't subtract them, so it is the version-2 arithmetic to
+ *     the session.
  *   - Below the pace's minimum sample (21 observed days) there is no
  *     projection, only "Not enough to project yet".
  *   - Away time ahead uses no sessions.
@@ -52,13 +53,19 @@ export const TREND_SHARE = 0.25;
 /** ...and at least half a visit a week, so 1 against 1.25 is "steady". */
 export const TREND_MIN_DIFF = 0.5;
 /**
- * Whether Mindbody's "remaining" on a pricing option already leaves out the
- * visits booked ahead. The design AJ approved (Oct 7 2026) subtracts the
- * bookings from sessions left, which is right when it doesn't; this is the
- * one switch if a check against a real account shows Mindbody takes a
- * session off at booking. See the round document.
+ * Whether Mindbody's "remaining" on a pricing option has already taken off
+ * the visits booked ahead (true: it has, so booked days must NOT come off a
+ * second time). The design AJ approved (Oct 7 2026) subtracts the bookings,
+ * which is right only if Mindbody doesn't. Mindbody most likely takes a
+ * session off at booking, and taking them off again would count each
+ * regular's standing bookings twice and move numbers that already exist
+ * (banked at the charge, the run-out day, Running low's order). So it ships
+ * TRUE, the version-2 arithmetic, until one real client is checked: a
+ * Strongsville regular's Remaining against their future booked visits
+ * (docs/rounds/2026-10-07-renewals-dashboard.md). Set it to false only if
+ * Remaining still counts the booked visits.
  */
-export const MINDBODY_REMAINING_INCLUDES_BOOKED = false;
+export const MINDBODY_REMAINING_INCLUDES_BOOKED = true;
 
 /* ------------------------------------------------------------------ *
  * Away time
@@ -143,15 +150,18 @@ export function paceRange(params: {
 
 /**
  * The distinct days booked from today to `until` (and never past the
- * bookings' read horizon), soonest first. Empty when Mindbody's remaining
- * already counts them (`MINDBODY_REMAINING_INCLUDES_BOOKED`).
+ * bookings' read horizon), soonest first, that still have to come off
+ * sessions left. Empty while Mindbody's remaining has already taken them off
+ * (`MINDBODY_REMAINING_INCLUDES_BOOKED`, the default; tests pass the other
+ * answer to check the arithmetic for the day it is flipped).
  */
 export function bookedDaysAhead(
   rows: ReadonlyArray<{ day: string; kind: string }>,
   today: string,
   until: string | null,
+  remainingIncludesBooked: boolean = MINDBODY_REMAINING_INCLUDES_BOOKED,
 ): string[] {
-  if (MINDBODY_REMAINING_INCLUDES_BOOKED) return [];
+  if (remainingIncludesBooked) return [];
   const horizon = addDays(today, BOOKING_LOOKAHEAD_DAYS);
   const last = until && until < horizon ? until : horizon;
   return Array.from(
@@ -219,7 +229,9 @@ export function projectAtEnd(params: {
     endsOnSource,
     booked: booked.length,
     bookedThrough,
-    paceWeeks: Math.round(weeks * 10) / 10,
+    // Only with a pace to multiply it by: without one it would change every
+    // night and rewrite a snapshot that otherwise says the same thing.
+    paceWeeks: pacePerWeek === null ? null : Math.round(weeks * 10) / 10,
     pacePerWeek,
     leftAtEnd,
     leftAtEndLow: low,
@@ -264,12 +276,44 @@ export function ledgerParts(
   return { carriedIn, thisContract, extra };
 }
 
+/**
+ * Did Mindbody issue the running contract's whole package up front, on one
+ * pricing option bought under it (its count at least the package's
+ * sessions, its day on or after the contract's start)? Then the payments
+ * still to come are already on hand, and sessions left is what's on hand:
+ * adding a payment's sessions for each one would count them twice. Most
+ * monthly contracts issue a payment's worth at a time, and this is false.
+ * An option with no day, or a contract with no start, is never assumed to
+ * be up front.
+ */
+export function issuedUpFront(
+  services: Record<string, MindbodyService> | undefined,
+  index: PackageNameIndex,
+  contractStart: string | null,
+  tier: PackageTier,
+  dayOf: (v: unknown) => string | null,
+): boolean {
+  if (!contractStart) return false;
+  return Object.values(services ?? {}).some((s) => {
+    if (!s || !(typeof s.count === "number" && s.count >= tier.sessions)) return false;
+    if (index.tierFor(s.name)?.key !== tier.key) return false;
+    const day = dayOf(s.activeDate) ?? dayOf(s.paymentDate);
+    return day !== null && day >= contractStart;
+  });
+}
+
 /* ------------------------------------------------------------------ *
  * The rate
  * ------------------------------------------------------------------ */
 
 /** A payment differing from the package table's by at least this much is a special rate. */
 export const SPECIAL_RATE_MIN_DIFF = 1;
+/**
+ * Mindbody's charge sets the rate only when at least this many scheduled
+ * charges agree on it and no other amount is as common: one odd charge (a
+ * prorated first one, a fee) never makes a client "special".
+ */
+export const RATE_MIN_AGREEING_CHARGES = 2;
 
 function cents(n: number): number {
   return Math.round(n * 100) / 100;
@@ -277,8 +321,10 @@ function cents(n: number): number {
 
 /**
  * What the client pays. A monthly contract with Mindbody's scheduled
- * charges on file: the amount most of them charge (a first, prorated charge
- * doesn't set the rate), split into sessions by the package; "special" when
+ * charges on file: the amount most of them charge, when at least two agree
+ * and no other amount is as common (a first, prorated charge doesn't set
+ * the rate; a tie is no evidence), split into sessions by the package;
+ * "special" when
  * it differs from the package table's payment (AJ, Oct 7 2026: "i believe
  * so, we will say yes for now" — a 6-month commitment at the 18-month rate).
  * Otherwise the package table's rate: paid in full at the prepay rate.
@@ -293,11 +339,16 @@ export function rateOf(params: {
     const amounts = (contract.upcomingAutopayEvents ?? [])
       .map((e) => e?.chargeAmount)
       .filter((n): n is number => typeof n === "number" && Number.isFinite(n) && n > 0);
-    if (amounts.length > 0) {
-      const counts = new Map<number, number>();
-      for (const a of amounts) counts.set(a, (counts.get(a) ?? 0) + 1);
-      let payment = amounts[amounts.length - 1];
-      for (const [a, n] of counts) if (n > (counts.get(payment) ?? 0)) payment = a;
+    const counts = new Map<number, number>();
+    for (const a of amounts) counts.set(cents(a), (counts.get(cents(a)) ?? 0) + 1);
+    const ranked = Array.from(counts.entries()).sort((x, y) => y[1] - x[1]);
+    const top = ranked[0];
+    // Fewer than two agreeing charges, or a tie, would let the stored order
+    // decide the rate: fall back to the package's instead.
+    const clear =
+      top !== undefined && top[1] >= RATE_MIN_AGREEING_CHARGES && (ranked.length < 2 || ranked[1][1] < top[1]);
+    if (clear) {
+      const payment = top[0];
       return {
         perSession: tier ? cents(payment / sessionsPerPayment(tier)) : null,
         payment: cents(payment),
@@ -364,11 +415,21 @@ export function paceTrendWindows(params: {
 }
 
 /**
- * The package whose sessions a week (sessions ÷ its weeks of billing) are
- * closest to the client's pace; the current package on a tie, then the
- * longer. At Max Strength every package is 2 a week, so this is the current
- * package unless a studio sells another rhythm; how a package fits the pace
- * is said by options.ts `fitNote`. Null without a pace.
+ * Another package fits the pace better only when its sessions a week are
+ * closer to the pace than the current package's by at least this much: a
+ * quarter of a session a week, the precision a pace is known to.
+ */
+export const SUGGEST_MIN_BETTER = 0.25;
+
+/**
+ * The package whose sessions a week (sessions ÷ its weeks of billing) fit
+ * the client's pace clearly better than the one they are on, else the one
+ * they are on. Null without a pace, and null when the current package isn't
+ * known: with nothing to compare against, any answer would be a confident,
+ * made-up upsell, and a confident wrong claim is worse than none. At Max
+ * Strength every package is 2 a week, so this is the current package unless
+ * a studio sells another rhythm; how a package fits the pace is said by
+ * options.ts `fitNote`.
  */
 export function suggestPackage(
   packages: readonly PackageTier[],
@@ -376,13 +437,13 @@ export function suggestPackage(
   currentKey: string | null,
 ): string | null {
   if (pacePerWeek === null || pacePerWeek <= 0 || packages.length === 0) return null;
-  const perWeek = (t: PackageTier) => t.sessions / Math.max(1, t.payments * 4);
-  const ranked = [...packages].sort((a, b) => {
-    const d = Math.abs(perWeek(a) - pacePerWeek) - Math.abs(perWeek(b) - pacePerWeek);
-    if (Math.abs(d) > 1e-9) return d;
-    if (a.key === currentKey) return -1;
-    if (b.key === currentKey) return 1;
-    return b.months - a.months;
-  });
-  return ranked[0].key;
+  const current = currentKey ? packages.find((t) => t.key === currentKey) : undefined;
+  if (!current) return null;
+  const miss = (t: PackageTier) => Math.abs(t.sessions / Math.max(1, t.payments * 4) - pacePerWeek);
+  let best = current;
+  for (const t of packages) {
+    if (t.key === current.key) continue;
+    if (miss(current) - miss(t) >= SUGGEST_MIN_BETTER - 1e-9 && miss(t) < miss(best)) best = t;
+  }
+  return best.key;
 }

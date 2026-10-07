@@ -16,7 +16,6 @@ import {
   rateSentence,
   tenureSentence,
 } from "./sentences";
-import { valueAtStake } from "./money";
 import type { Client, MindbodyContract, MindbodyService } from "../../types";
 
 const TODAY = "2026-09-11";
@@ -183,25 +182,28 @@ describe("the projection at the commitment's end", () => {
   const base = (attendance: AttendanceRow[], over: Partial<Client> = {}) =>
     buildRenewalSnapshot(input({ client: rolledOver(over), attendance }));
 
-  it("takes the bookings off first, then the pace after the last booked day, with a range from the 4-week paces", () => {
+  it("does not take the bookings Mindbody holds off a second time (as shipped), with a range from the 4-week paces", () => {
+    // MINDBODY_REMAINING_INCLUDES_BOOKED: Mindbody's remaining has already
+    // taken the booked visits off, so the projection is the pace from today.
     const s = base([...SLOWING, ...booked(T(1), T(5), T(8))]);
     expect(s.pacePerWeek).toBe(1.5);
     expect(s.commitmentEnd).toBe(END);
     expect(s.commitmentEndSource).toBe("mindbody");
     const p = s.projection!;
-    expect(p.booked).toBe(3);
-    expect(p.bookedThrough).toBe(T(8));
-    // 132 days after the last booking: 18.9 weeks.
-    expect(p.paceWeeks).toBe(18.9);
-    // 54 − 3 − 1.5 × 18.86 = 22.7.
-    expect(p.leftAtEnd).toBe(23);
-    // Fastest 4 weeks (2×): 54 − 3 − 37.7 = 13. Slowest (1×): 54 − 3 − 18.9 = 32.
-    expect(p.leftAtEndLow).toBe(13);
-    expect(p.leftAtEndHigh).toBe(32);
+    expect(p.booked).toBe(0);
+    expect(p.bookedThrough).toBeNull();
+    // 140 days to the end: 20 weeks.
+    expect(p.paceWeeks).toBe(20);
+    // 54 − 1.5 × 20 = 24, exactly what version 2 said with or without bookings.
+    expect(p.leftAtEnd).toBe(24);
+    expect(s.bankedAtCharge).toBe(base(SLOWING).bankedAtCharge);
+    // Fastest 4 weeks (2×): 54 − 40 = 14. Slowest (1×): 54 − 20 = 34.
+    expect(p.leftAtEndLow).toBe(14);
+    expect(p.leftAtEndHigh).toBe(34);
     expect(p.runOutDate).toBeNull();
-    expect(s.bankedAtCharge).toBe(23);
-    expect(projectionSentence(s, TODAY)).toBe("About 23 left when the commitment ends Jan 29, 2027 (13–32)");
-    expect(projectionWorking(s)).toBe("54 left, 3 booked, then 1.5× a week for 19 weeks");
+    expect(projectionSentence(s, TODAY)).toBe("About 24 left when the commitment ends Jan 29, 2027 (14–34)");
+    // The extras are in what is projected, said the way the ledger says them.
+    expect(projectionWorking(s)).toBe("52 + 2 extra left, 1.5× a week for 20 weeks");
   });
 
   it("with nothing booked is the old banked-at-the-charge arithmetic", () => {
@@ -225,19 +227,12 @@ describe("the projection at the commitment's end", () => {
       mindbodyServices: { a: service(1, "96 Sessions - 2X Week", 6, T(-3)) },
     });
     expect(s.sessionsLeft).toBe(6);
-    // Two booked, then 4 more at 2 a week: 14 days after the last booking.
-    expect(s.runOutDate).toBe(T(17));
-    expect(s.projection?.runOutDate).toBe(T(17));
+    // 6 at 2 a week from today (the bookings are already out of Mindbody's
+    // remaining): 21 days, the version-2 day.
+    expect(s.runOutDate).toBe(T(21));
+    expect(s.projection?.runOutDate).toBe(T(21));
     expect(s.projection?.leftAtEnd).toBe(0);
-    expect(projectionSentence(s, TODAY)).toBe("Runs out around Sep 28, 18 weeks before it ends");
-  });
-
-  it("runs out on a booked day when the bookings use the last of them", () => {
-    const s = base([...visitsAt(2, "2026-06-01"), ...booked(T(1), T(3), T(5))], {
-      mindbodyContracts: { "9001": contract({ id: 9001, startDate: START, endDate: END, upcomingAutopayEvents: [] }) },
-      mindbodyServices: { a: service(1, "96 Sessions - 2X Week", 2, T(-3)) },
-    });
-    expect(s.runOutDate).toBe(T(3));
+    expect(projectionSentence(s, TODAY)).toBe("Runs out around Oct 2, 17 weeks before it ends");
   });
 
   it("says 'Not enough to project yet' below the pace's minimum sample", () => {
@@ -291,8 +286,6 @@ describe("the rate", () => {
     const s = withCharges(432);
     expect(s.rate).toEqual({ perSession: 54, payment: 432, source: "mindbody", packageRate: 60, special: true });
     expect(rateSentence(s)).toBe("at $54 a session (special)");
-    // Worth the package's sessions at the rate she pays.
-    expect(valueAtStake(s.rate, { sessions: 96 })).toBe(5184);
   });
 
   it("is the package's rate when Mindbody charges the table's price", () => {
@@ -328,7 +321,6 @@ describe("the rate", () => {
       }),
     );
     expect(s.rate).toBeNull();
-    expect(valueAtStake(s.rate, { sessions: 96 })).toBeNull();
   });
 });
 
@@ -395,5 +387,36 @@ describe("sameSnapshot sees the version 3 fields", () => {
     const b = { ...a, ledger: { ...a.ledger!, carriedIn: a.ledger!.carriedIn - 1, thisContract: a.ledger!.thisContract + 1 } };
     expect(sameSnapshot(a, a)).toBe(true);
     expect(sameSnapshot(a, b)).toBe(false);
+  });
+});
+
+describe("a contract whose whole package was issued up front", () => {
+  it("doesn't count the payments to come twice: sessions left is what's on hand", () => {
+    // A Committed contract, but Mindbody put all 96 on one option at the start
+    // (one way a "96 Sessions w/ Roll Over" option could be issued).
+    const s = buildRenewalSnapshot(
+      input({
+        client: client({
+          mindbodyContracts: {
+            "9001": contract({
+              id: 9001,
+              startDate: START,
+              endDate: END,
+              upcomingAutopayEvents: [14, 42, 70, 98].map((d) => ({ scheduleDate: T(d), chargeAmount: 480 })),
+            }),
+          },
+          mindbodyServices: { a: service(1, "96 Sessions - 2X Week", 40, addDays(START, 1), { count: 96 }) },
+        }),
+        attendance: SLOWING,
+      }),
+    );
+    expect(s.paymentMode).toBe("monthly");
+    expect(s.sessionsLeft).toBe(40);
+    expect(s.ledger).toMatchObject({ thisContract: 40, toCome: 0, total: 40 });
+  });
+
+  it("still adds a payment's sessions for each payment to come when Mindbody issues them a payment at a time", () => {
+    const s = buildRenewalSnapshot(input({ client: rolledOver(), attendance: SLOWING }));
+    expect(s.ledger?.toCome).toBe(32);
   });
 });

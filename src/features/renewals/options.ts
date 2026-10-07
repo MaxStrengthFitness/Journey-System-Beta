@@ -91,20 +91,29 @@ export function wholePackage(tier: PackageTier): { monthly: number; prepaid: num
   return { monthly, prepaid, agrees };
 }
 
+/**
+ * `paying` is what the client actually pays, when Mindbody's scheduled
+ * charges say so (the snapshot's `rate` with source "mindbody", a special
+ * included): the differences are then against that, not the table's price
+ * for their package, so "Vs today's rate" is the client's own today.
+ */
 export function optionsFor(
   settings: RenewalSettings,
   currentKey: string | null,
   pacePerWeek: number | null,
+  paying?: { perSession: number | null; payment: number | null } | null,
 ): PackageOption[] {
   const current = settings.packages.find((p) => p.key === currentKey) ?? null;
+  const baseRate = current ? (paying?.perSession ?? current.ratePerSession) : null;
+  const basePayment = current ? (paying?.payment ?? current.paymentAmount) : null;
   return [...settings.packages]
     .sort(byPackageLength)
     .map((tier) => {
       const isCurrent = tier.key === currentKey;
-      const perSessionDiff = current ? money(tier.ratePerSession - current.ratePerSession) : null;
-      const paymentDiff = current ? money(tier.paymentAmount - current.paymentAmount) : null;
+      const perSessionDiff = baseRate !== null ? money(tier.ratePerSession - baseRate) : null;
+      const paymentDiff = basePayment !== null ? money(tier.paymentAmount - basePayment) : null;
       const savingsVsCurrent =
-        current && !isCurrent ? money(tier.sessions * (current.ratePerSession - tier.ratePerSession)) : null;
+        baseRate !== null && !isCurrent ? money(tier.sessions * (baseRate - tier.ratePerSession)) : null;
       const whole = wholePackage(tier);
       return {
         tier,

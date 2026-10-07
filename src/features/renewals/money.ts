@@ -23,18 +23,3 @@ export function signedMoney(n: number | null): string {
   if (cents === 0) return "—";
   return `${cents < 0 ? "−" : "+"}${formatMoney(Math.abs(cents))}`;
 }
-
-/**
- * What a renewal of the client's package is worth at the rate the client
- * actually pays (the snapshot's `rate`: Mindbody's charge when it is on file,
- * a special included, else the package table's): the package's sessions ×
- * that rate. Null when either is unknown — never the table's price passed
- * off as hers.
- */
-export function valueAtStake(
-  rate: { perSession: number | null } | null | undefined,
-  tier: { sessions: number } | null | undefined,
-): number | null {
-  if (!rate || rate.perSession === null || !tier || !(tier.sessions > 0)) return null;
-  return Math.round(rate.perSession * tier.sessions * 100) / 100;
-}

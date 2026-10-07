@@ -119,12 +119,12 @@ describe("the two clocks", () => {
     expect(snap.sessionsLeft).toBe(36);
     expect(snap.sessionsLeftSource).toBe("mindbody");
     expect(snap.pacePerWeek).toBe(1.5);
-    // Version 3: the booking in 2 days uses one, then 1.5 a week for the
-    // 54 days after it (11.6): 36 − 1 − 11.6 ≈ 23. (Version 2 ignored the
-    // booking and said 24: 8 weeks at 1.5 uses 12 of the 36.)
-    expect(snap.bankedAtCharge).toBe(23);
-    expect(snap.projection?.leftAtEnd).toBe(23);
-    expect(snap.projection?.booked).toBe(1);
+    // 8 weeks at 1.5 uses 12 of the 36. The booking in 2 days is already
+    // out of Mindbody's remaining (projection.ts
+    // MINDBODY_REMAINING_INCLUDES_BOOKED), so it isn't taken off again.
+    expect(snap.bankedAtCharge).toBe(24);
+    expect(snap.projection?.leftAtEnd).toBe(24);
+    expect(snap.projection?.booked).toBe(0);
     expect(snap.situation).toBe("will-bank");
     // 56 days out: outside the default 30-day warning window.
     expect(snap.chargeWarning).toBe(false);
