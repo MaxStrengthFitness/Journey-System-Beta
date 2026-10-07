@@ -536,7 +536,7 @@ describe("RenewalsPipeline — the dashboard row", () => {
     await act(async () => tab("Not renewing").click());
     expect(names(panel(host, "Talk now"))).toEqual(["Sasha Reyes"]);
     // AJ, Oct 7 2026: it keeps the conversations that leaned not renewing, and says so.
-    expect(host.textContent).toContain("Includes anyone whose latest conversation leaned not renewing, as well as a plan of Not renewing.");
+    expect(host.textContent).toContain("Includes a plan of Not renewing, and anyone whose latest conversation leaned not renewing unless a plan says they're renewing.");
     await act(async () => tab("Plan: not decided").click());
     expect(host.textContent).not.toContain("latest conversation leaned not renewing");
     expect(names(panel(host, "Talk now"))).toEqual(["Ivan Reyes", "Nora Reyes"]);

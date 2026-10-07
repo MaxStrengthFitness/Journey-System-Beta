@@ -159,12 +159,13 @@ export const FILTER_LABELS: Record<PipelineFilter, string> = {
 /**
  * What a filter takes in, said once under the filters while it is on; only
  * where the label alone could mislead. Not renewing includes a client whose
- * latest conversation leaned not renewing, plan or no plan (AJ, Oct 7 2026:
- * "I want to know the people that had the conversation that month so it's
- * not bad to just keep them in the same spot").
+ * latest conversation leaned not renewing, unless a plan says renewing
+ * (row-facts.ts saidNotRenewing; AJ, Oct 7 2026: "I want to know the people
+ * that had the conversation that month so it's not bad to just keep them in
+ * the same spot").
  */
 export const FILTER_HINTS: Partial<Record<PipelineFilter, string>> = {
-  "not-renewing": "Includes anyone whose latest conversation leaned not renewing, as well as a plan of Not renewing.",
+  "not-renewing": "Includes a plan of Not renewing, and anyone whose latest conversation leaned not renewing unless a plan says they're renewing.",
 };
 
 /**
