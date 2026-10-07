@@ -54,9 +54,11 @@
   gap: 8px 12px;
 }
 
-.ops-ah__trainer {
+.ops-ah__controls .ops-ah__trainer {
+  width: auto;
   min-height: 40px;
   min-width: 10rem;
+  max-width: 18rem;
 }
 
 /* Who can't be placed: one quiet line, the list behind it. A well on the page ground: the tray. */
@@ -202,8 +204,9 @@
 
 .ops-ah-month {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 4px 10px;
   margin: 8px 0 0;
   padding: 0 2px;
   scroll-margin-top: calc(var(--ops-ah-strip-h, 96px) + 8px);
@@ -211,6 +214,7 @@
 
 .ops-ah-month__t {
   margin: 0;
+  white-space: nowrap;
   font-size: 17px;
   font-weight: 700;
   color: var(--adm-ink);
@@ -788,13 +792,12 @@
   top: 8px;
 }
 
+/* Above the bar's right end, never over it: the banked part, the end's tick and the range under the bar stay seen. */
 .ops-ah-clock__beyond {
   position: absolute;
   right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  padding: 1px 0 1px 4px;
-  background: var(--adm-surface);
+  top: 0;
+  padding: 0 0 0 4px;
   font-size: 11px;
   font-weight: 600;
   color: var(--adm-ink-muted);
@@ -978,5 +981,21 @@
 
   .ops-ah-axis__lab {
     display: none;
+  }
+}
+
+/* On a phone Operations gives every segmented button an equal share of one
+   row (ops.css), which is right for two or three and breaks seven lens words
+   mid-word. Ahead's lenses wrap onto lines of their own natural widths. */
+@media (max-width: 599px) {
+  .ops-seg.ops-ah-lenses {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .ops-seg.ops-ah-lenses button {
+    flex: 1 1 auto;
+    padding: 4px 12px;
+    overflow-wrap: normal;
   }
 }

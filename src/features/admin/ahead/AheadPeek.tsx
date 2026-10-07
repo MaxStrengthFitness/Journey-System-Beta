@@ -55,7 +55,7 @@ export function AheadPeekBody(p: AheadPeekProps) {
   const talkRange = s ? conversationDueRange(s, settings, today) : null;
   const slip = c.events.find((e) => e.kind === "may-slip") ?? null;
   const next = c.journey?.nextBooking ?? s?.nextBookingDate ?? null;
-  const label = (pos: number) => ({ left: `${Math.max(9, Math.min(91, pos))}%` });
+  const label = (pos: number) => ({ left: `${pos}%` });
 
   return (
     <div className="ops-ah-peek">
@@ -87,19 +87,15 @@ export function AheadPeekBody(p: AheadPeekProps) {
 
       {!c.cantPlace && s && (
         <div className="ops-ah-peek__chart" aria-hidden="true">
-          <span className="ops-ah-peek__lab ops-ah-peek__lab--top ops-ah-peek__lab--today" style={label(marks.today)}>
-            Today
-          </span>
-          {marks.end !== null && marks.endWord && (
-            <span className="ops-ah-peek__lab ops-ah-peek__lab--top" style={label(marks.end)}>
-              {marks.endWord} {dayLabel(s.commitmentEnd ?? s.chargeDate, today)}
+          {chartLabels(marks, talk && !talk.now ? at(talk.day, axis) : null).map((l) => (
+            <span
+              key={l.key}
+              className={`ops-ah-peek__lab ops-ah-peek__lab--${l.row}${l.key === "today" ? " ops-ah-peek__lab--today" : ""}`}
+              style={label(l.at)}
+            >
+              {l.key === "today" ? "Today" : l.key === "end" ? `${marks.endWord} ${dayLabel(s.commitmentEnd ?? s.chargeDate, today)}` : `Talk ~${dayLabel(talk?.day, today)}`}
             </span>
-          )}
-          {talk && !talk.now && (
-            <span className="ops-ah-peek__lab ops-ah-peek__lab--bottom" style={label(at(talk.day, axis))}>
-              Talk ~{dayLabel(talk.day, today)}
-            </span>
-          )}
+          ))}
           <div className="ops-ah-peek__track">
             <ClockBar marks={marks} today={today} />
           </div>
@@ -227,4 +223,29 @@ export function AheadSheet({ peek }: { peek: AheadPeekProps }) {
       </SheetContent>
     </Sheet>
   );
+}
+
+/** Labels this close (in % of the chart's width) would print over each other: a label is about a quarter of the pane wide. */
+const LABEL_ROOM = 28;
+/** A label is centred on its mark, so it is kept this far from either edge. */
+const clampLabel = (at: number) => Math.max(9, Math.min(91, at));
+
+/**
+ * Where the chart's three labels go: Today on top; the end on top when it is
+ * clear of Today, else underneath; the talk underneath when that is clear of
+ * whatever is there. A label with no room is left out: the facts below say it.
+ */
+export function chartLabels(
+  marks: Pick<ReturnType<typeof clockMarks>, "today" | "end" | "endWord">,
+  talkAt: number | null,
+): Array<{ key: "today" | "end" | "talk"; at: number; row: "top" | "bottom" }> {
+  const out: Array<{ key: "today" | "end" | "talk"; at: number; row: "top" | "bottom" }> = [{ key: "today", at: clampLabel(marks.today), row: "top" }];
+  const clear = (row: "top" | "bottom", at: number) => out.every((l) => l.row !== row || Math.abs(l.at - at) >= LABEL_ROOM);
+  if (marks.end !== null && marks.endWord) {
+    const end = clampLabel(marks.end);
+    if (clear("top", end)) out.push({ key: "end", at: end, row: "top" });
+    else if (clear("bottom", end)) out.push({ key: "end", at: end, row: "bottom" });
+  }
+  if (talkAt !== null && clear("bottom", clampLabel(talkAt))) out.push({ key: "talk", at: clampLabel(talkAt), row: "bottom" });
+  return out;
 }

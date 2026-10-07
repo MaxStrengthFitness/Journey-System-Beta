@@ -121,14 +121,14 @@ export function WeekRun(props: WeekRunProps) {
             }
             const w = item.week;
             const piles = filtered ? [] : pileUps(w.events, trainerOf);
-            const title = w.index === 0 ? "This week" : w.index === 1 ? "Next week" : `Week of ${dayLabel(w.monday, today)}`;
+            // "This week" and "Next week" say their dates beside them; any other week's title is its dates.
+            const dates = `${dayLabel(w.monday, today)} – ${w.sunday.slice(0, 7) === w.monday.slice(0, 7) ? Number(w.sunday.slice(8, 10)) : dayLabel(w.sunday, today)}`;
+            const title = w.index === 0 ? "This week" : w.index === 1 ? "Next week" : dates;
             return (
               <section key={w.monday} className="ops-ah-week" data-week={w.index} aria-label={title}>
                 <header className="ops-ah-week__h">
                   <h4 className="ops-ah-week__t">{title}</h4>
-                  <span className="ops-ah-week__dates">
-                    {dayLabel(w.monday, today)} – {dayLabel(w.sunday, today)}
-                  </span>
+                  {w.index <= 1 && <span className="ops-ah-week__dates">{dates}</span>}
                   <span className="ops-ah-week__c">{countsWords(groupCounts(w.events))}</span>
                   {piles.map((p) => (
                     <p key={p.trainerId} className="ops-ah-week__pile">
@@ -193,7 +193,8 @@ function EventRow({
   const name = c?.name ?? "A client";
   return (
     <li className={cn("ops-ah-row", picked && "ops-ah-row--picked")}>
-      <span className={cn("ops-ah-day", e.day === today && "ops-ah-day--today")} aria-hidden="true">
+      {/* The orange ring is today's date, as on a client's calendar; a "now" row (Talk now, inside the charge window) says Now instead, so a column of them isn't a column of orange. */}
+      <span className={cn("ops-ah-day", e.day === today && !e.now && "ops-ah-day--today")} aria-hidden="true">
         <span className="ops-ah-day__w">{e.now ? "Now" : weekdayOf(e.day)}</span>
         <span className="ops-ah-day__d">{dayOfMonth(e.day)}</span>
       </span>

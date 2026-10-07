@@ -208,7 +208,7 @@ export function AheadPage({ studio, studios, clients, rosterStatus, trainers, au
             </AdminSelect>
           )}
         </div>
-        <div className="ops-seg" role="group" aria-label="Lens">
+        <div className="ops-seg ops-ah-lenses" role="group" aria-label="Lens">
           {lenses.map((l) => (
             <button key={l.id} type="button" aria-pressed={activeLens === l.id} onClick={() => setLens(l.id)}>
               {l.label}
