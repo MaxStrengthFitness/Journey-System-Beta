@@ -30,6 +30,7 @@ import { canManageRenewals, leadsStudio, worksAt } from "../../renewals/permissi
 import { useRenewalNamesSeen, useRenewalSettings } from "../../renewals/useRenewalSettings";
 import { buildPackageNameIndex } from "../../renewals/settings";
 import { unmatchedNames } from "../../renewals/job-plan";
+import type { RosterStatus } from "../../../hooks/useStudioRoster";
 
 export interface AdminRenewalsTabProps {
   authTrainer: Trainer;
@@ -41,11 +42,14 @@ export interface AdminRenewalsTabProps {
   machines: Machine[];
   /** Opens My Studio → Studio, where the settings live. */
   onOpenMyStudio?: () => void;
+  /** The studio's roster the app already holds, and its read: the pipeline's Running low counts from it. */
+  roster?: Client[];
+  rosterStatus?: RosterStatus;
 }
 
 type RenewalsView = "pipeline" | "outcomes";
 
-export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainers, machines, onOpenMyStudio }: AdminRenewalsTabProps) {
+export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainers, machines, onOpenMyStudio, roster, rosterStatus }: AdminRenewalsTabProps) {
   const manageable = useMemo(
     () => studios.filter((s) => s.id && canManageRenewals(authTrainer, s.id)),
     [studios, authTrainer],
@@ -158,6 +162,8 @@ export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainer
                 studioName={studio.name}
                 settings={settings}
                 onOpenBrief={setBriefClient}
+                roster={roster}
+                rosterStatus={rosterStatus}
               />
             </div>
           )}

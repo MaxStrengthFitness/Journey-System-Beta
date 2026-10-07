@@ -1,13 +1,22 @@
 /**
  * Operations → Renewals → Pipeline (proposal §4.2).
  *
- * Four numbers across the top, then lanes by how soon something is lost:
+ * Five numbers across the top, then lanes by how soon something is lost:
  * before the charge, talk now, coming up (by month), and the win-back list.
  * Each row: who, their package on both clocks in one line, the latest
  * leaning, one line of proof, and the next step. Tap a row for the Brief.
  *
- * Reads the nightly snapshots (one query for the studio) and the cycle
- * documents for just the clients on screen. Nothing here writes.
+ * Running low (AJ, Oct 6 2026: "we need a way for operations to show how
+ * many clients are running out of their sessions ... In total") is the
+ * session clock beside the lanes: everyone at or under the studio's renewal
+ * conversation number, talked to or not, counted from the roster the app
+ * already holds (running-low.ts), so a client too slow for the date window
+ * below is still found. Tap the number for the list.
+ *
+ * Reads the nightly snapshots (one query for the studio), the cycle
+ * documents for just the clients on screen and on the Running low list, and
+ * the studio's inactive marks (one small listener the app shares). Nothing
+ * here writes.
  */
 
 import { useMemo, useState } from "react";
@@ -43,6 +52,10 @@ import {
 import { chipText, proofSentence, SITUATION_TONE } from "../../renewals/sentences";
 import { latestLine } from "../../renewals/conversation";
 import { useInBodyVariationLookup } from "../../inbody/useInBodyVariation";
+import { useInactiveMarks } from "../journey/inactive-store";
+import { useStudioSettings } from "../../studio-settings/useStudioSettings";
+import { leftLine, notKnownLine, runningLow, runningLowFoot } from "./running-low";
+import type { RosterStatus } from "../../../hooks/useStudioRoster";
 import {
   useCyclesFor,
   useMissingDataClients,
@@ -54,6 +67,7 @@ import type { Client } from "../../../types";
 import "./renewals.css";
 
 const FILTERS: PipelineFilter[] = ["all", "needs-leader", "price", "upgrade", "not-talked"];
+const NO_CLIENTS: Client[] = [];
 
 const TONE_BADGE: Record<string, "ok" | "warn" | "alert" | "neutral"> = {
   ok: "ok",
@@ -68,17 +82,43 @@ export interface RenewalsPipelineProps {
   settings: RenewalSettings;
   /** Opens the Renewal Brief for this client. */
   onOpenBrief: (client: Client) => void;
+  /**
+   * The studio's roster the app already holds (useStudioRoster), for Running
+   * low: every client whose home is the studio, with last night's record.
+   */
+  roster?: Client[];
+  /** The roster's read: Running low waits while it loads, and says nothing off a failed, empty one. */
+  rosterStatus?: RosterStatus;
 }
 
-export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief }: RenewalsPipelineProps) {
+export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief, roster = NO_CLIENTS, rosterStatus = "ready" }: RenewalsPipelineProps) {
   const today = studioTodayKey();
   const from = addDays(today, -LAPSED_LOOKBACK_DAYS);
   const to = horizonEnd(settings, today);
   const { clients, loading, error } = usePipelineClients(studioId, from, to);
-  const cycles = useCyclesFor(
-    studioId,
-    clients.map((c) => c.renewal?.cycleKey ?? "").filter(Boolean),
+  const inactiveMarks = useInactiveMarks(studioId);
+  const studioSettings = useStudioSettings(studioId);
+  const inactiveDays = studioSettings.value("inactiveDays") ?? 90;
+  const marks = inactiveMarks.marks;
+  // Who is at or under the number before the conversations are read: only
+  // their cycle keys join the pipeline's, in the one chunked read.
+  const lowKeys = useMemo(
+    () =>
+      runningLow({ clients: roster, studioId, cycles: {}, settings, today, inactiveMarks: marks, inactiveDays }).rows.map(
+        (r) => r.snapshot.cycleKey ?? "",
+      ),
+    [roster, studioId, settings, today, marks, inactiveDays],
   );
+  const cycles = useCyclesFor(studioId, [...clients.map((c) => c.renewal?.cycleKey ?? ""), ...lowKeys].filter(Boolean));
+  const low = useMemo(
+    () => runningLow({ clients: roster, studioId, cycles, settings, today, inactiveMarks: marks, inactiveDays }),
+    [roster, studioId, cycles, settings, today, marks, inactiveDays],
+  );
+  // Loading until the roster, the marks and the Inactive line have answered.
+  // A roster that failed with nothing held says "—", never a confident 0.
+  const lowLoading = rosterStatus === "loading" || inactiveMarks.loading || studioSettings.loading;
+  const lowUnknown = !lowLoading && rosterStatus === "error" && !roster.some((c) => c.homeStudioId === studioId);
+  const [showLow, setShowLow] = useState(false);
   const missingCount = useMissingDataCount(studioId, clients.length);
   const [showMissing, setShowMissing] = useState(false);
   const missingClients = useMissingDataClients(studioId, showMissing);
@@ -187,7 +227,7 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief }
   };
 
   // The calm round (Oct 3 2026): an empty pipeline is one short line, not four zero tiles and five filters.
-  const empty = !loading && rows.length === 0 && !error;
+  const empty = !loading && rows.length === 0 && !error && low.rows.length === 0;
   const showTiles = !empty || (missingCount ?? 0) > 0;
   return (
     <div className="adm-pipeline space-y-4">
@@ -199,6 +239,22 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief }
           <AdminStatTile label="Talk now" value={count("talk-now")} loading={loading} tone={count("talk-now") ? "attention" : undefined} foot={`${settings.conversationAtSessionsLeft} or fewer left, or ended`} />
           <AdminStatTile label="Coming up" value={count("coming-up")} loading={loading} foot={`Next ${settings.horizonMonths} month${settings.horizonMonths === 1 ? "" : "s"}`} />
           <AdminStatTile
+            label="Running low"
+            value={lowUnknown ? "—" : low.rows.length}
+            loading={lowLoading}
+            onClick={lowLoading || lowUnknown ? undefined : () => setShowLow((v) => !v)}
+            foot={
+              lowUnknown ? (
+                "Couldn't read the client list"
+              ) : (
+                <>
+                  {runningLowFoot(settings)}
+                  <span className="block">{showLow ? "Tap to hide" : "Tap to see who"}</span>
+                </>
+              )
+            }
+          />
+          <AdminStatTile
             label="Missing Mindbody data"
             value={missingCount ?? "—"}
             loading={missingCount === null && loading}
@@ -206,6 +262,53 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief }
             foot={showMissing ? "Tap to hide" : "Tap to see who"}
           />
         </AdminTiles>
+      )}
+
+      {showLow && !lowLoading && !lowUnknown && (
+        <AdminPanel
+          title={`Running low · ${low.rows.length}`}
+          flush
+          actions={
+            <AdminButton variant="ghost" size="sm" onClick={() => setShowLow(false)}>
+              Hide
+            </AdminButton>
+          }
+          footer={low.notKnown > 0 ? <p className="adm-hint px-4 pb-3">{notKnownLine(low.notKnown)}</p> : undefined}
+        >
+          {low.rows.length === 0 ? (
+            <AdminEmpty title="Nobody is running low">{`Nobody at ${studioName} has ${settings.conversationAtSessionsLeft} or fewer sessions left.`}</AdminEmpty>
+          ) : (
+            <AdminRows>
+              {low.rows.map((r) => (
+                <AdminRow
+                  key={r.clientId}
+                  onClick={() => {
+                    const c = roster.find((x) => x.id === r.clientId);
+                    if (c) onOpenBrief(c);
+                  }}
+                  name={
+                    <span className="inline-flex flex-wrap items-center gap-2">
+                      {r.name}
+                      {r.cycle?.needsLeader && <AdminBadge tone="warn">Needs a leader</AdminBadge>}
+                    </span>
+                  }
+                  meta={
+                    <span className="flex flex-col gap-0.5">
+                      <span>{leftLine(r.snapshot, today)}</span>
+                      <span className="font-semibold">{nextStep(r.snapshot, r.cycle, settings, today)}</span>
+                    </span>
+                  }
+                  trailing={
+                    <span className="inline-flex items-center gap-2">
+                      {r.snapshot.situation === "away" && <AdminBadge tone="neutral">Away</AdminBadge>}
+                      <ChevronRight className="w-4 h-4 opacity-50" />
+                    </span>
+                  }
+                />
+              ))}
+            </AdminRows>
+          )}
+        </AdminPanel>
       )}
 
       {!empty && (

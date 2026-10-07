@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine, ScheduleEntry } from "../../types";
+import type { RosterStatus } from "../../hooks/useStudioRoster";
 import { ChevronLeft } from "lucide-react";
 import "./admin.css";
 import "./shell/ops.css";
@@ -54,6 +55,8 @@ interface Props {
     collectionName: "studios" | "networks" | "trainers",
   ) => Promise<void>;
   clients?: Client[];
+  /** The roster's read (useStudioRoster): Renewals' Running low waits for it and never says 0 off a failed one. */
+  clientsStatus?: RosterStatus;
   sessions?: WorkoutSession[];
   machines?: Machine[];
   /**
@@ -180,6 +183,7 @@ function OperationsShell({
   isAdmin,
   onRefresh,
   clients = [],
+  clientsStatus,
   sessions = [],
   machines = [],
   schedules = [],
@@ -401,7 +405,7 @@ function OperationsShell({
           return studio ? <JourneyPage key={tabKey} studio={studio} studios={studios} clients={clients} trainers={trainers} authTrainer={authTrainer} onOpenClient={openClient} /> : noStudio;
         }
         return (
-          <AdminRenewalsTab key={tabKey} authTrainer={authTrainer} studios={studios} activeStudioId={activeStudioId ?? null} trainers={trainers} machines={machines} onOpenMyStudio={openMyStudio} />
+          <AdminRenewalsTab key={tabKey} authTrainer={authTrainer} studios={studios} activeStudioId={activeStudioId ?? null} trainers={trainers} machines={machines} onOpenMyStudio={openMyStudio} roster={clients} rosterStatus={clientsStatus} />
         );
       case "team":
         if (place.sub === "week") {

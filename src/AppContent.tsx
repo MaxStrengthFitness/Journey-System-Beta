@@ -1977,6 +1977,7 @@ export default function AppContent({
                     isAdmin={isAdmin}
                     onRefresh={handleManualRefresh}
                     clients={clients}
+                    clientsStatus={rosterStatus}
                     sessions={sessions}
                     machines={machines}
                     schedules={schedules}
