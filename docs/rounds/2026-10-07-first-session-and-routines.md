@@ -1,10 +1,13 @@
 # The first session, and a routine's plan (research and structure, Oct 7 2026)
 
-**Status: compiled, not built.** AJ asked for the research and the structure
-gathered and organised, with the screen design saved for a later round:
-"compile all the information so that way we organize and ready to go. So you
-can build like the structure of it, but we don't really need to go into the
-deep design UI of it." Nothing in `src/` changed in this round.
+**Status: the structure is built, the screens are not.** AJ first asked for
+the research and the structure gathered and organised, with the screen design
+saved for a later round ("compile all the information so that way we organize
+and ready to go"); then, after the interview: "yes lets apply this all and get
+started on building our routine and first time sessions". Built on this
+branch (§8): the first-session grid fix, the routine plan's pure half
+(`src/features/routine-plan/`), its store and rules. The screens wait for the
+design round.
 
 Branch `oct7/first-session` (this document only), on master's `cf4a2ff8`.
 
@@ -227,6 +230,42 @@ And, on the Wrap-up (given with his answer to Q4):
      day B starts (5.3).
 6. The Firestore OK: **unsure**. What it would mean is in 5.3, "What yes means";
    it can wait for the build round.
+
+## 2c. AJ's last answers (Oct 7 2026, late) and his go
+
+> "yes lets apply this all and get started on building our routine and first
+> time sessions"
+
+That is the yes to the weak-area proposal (5.4b) and to building. Then, on §7:
+
+1. **Free-form sessions:** "on the person's record and the trainer's own
+   history only, never in the studio's numbers, machine fit or machine trends,
+   and the person is a temporary profile, these profiles can exist in the
+   studio but not count towards studio averages, these can be used for friends
+   family and trainers and maybe even potential franchise owners unless
+   they're a client."
+4. **Adds on by default:** "I guess we could do an option where like a when a
+   routine is being built, it could be like in a routine is being built toggle
+   type thing." Built as `plan.building`.
+5. **B's build-out:** "the client will still be performing the A routine each
+   session, but that A routine might go A routine, then A routine with one
+   machine edited, then back to the regular A routine, then A routine with two
+   machines edited, and then back to A routine, and then A routine with three
+   machines edited. So that's like the B routine. So the B routine is now three
+   of the A routine session machines and three of the B routine machines. And
+   then slowly the B routine will phase out those last three machines as the
+   client progressively learns the remaining machines." Built as B = A with
+   the swaps made so far, alternating with A (`b-routine.ts`).
+6. **The Firestore OK:** "go for what you think is best." The plan on the
+   routine and its changes beside it (5.3), as proposed.
+7. **The Academy's starting weights:** "Thing I don't like about the Academy
+   starting weights is they don't really follow too much. I think we can use
+   this as a crutch until we have reliable data within our app. But let's go
+   ahead and just have this as a reference point, not as an end-all be-all."
+   Built as a reference with its source, never typed in (`starting-weights.ts`).
+
+Questions 2 (which Academy template) and 3 (the injury map) stay head
+office's, for later.
 
 ---
 
@@ -703,3 +742,48 @@ the weak-area proposal (5.4b). The questions as first asked:
    own clients give a number? Lean: show the range, labelled the Academy's,
    since it is MSF's own written guidance and the floor needs a starting
    point; the app still never moves a weight after that.
+
+## 8. What was built (Oct 7 2026, after AJ's go)
+
+Branch `oct7/first-session` on master's `cf4a2ff8`, one commit a phase:
+
+| Commit | What |
+| --- | --- |
+| `76731d19` | **The first-session grid.** The grid says `data-past="none"` with no past sessions and the stylesheet drops the session tracks for it, so the names sit down the side with Today beside them, on the session, the profile's Journey tab and a phone. `journey-grid/no-history.render.test.tsx` mounts it. Seen in a preview page at the session's size: before, one 1694px column with every name and Today cell stacked; after, 184 · 100 · 84px columns, one row a machine |
+| `2b791698`, `3790d48c` | **The routine plan's pure half**, `src/features/routine-plan/` (27 tests): which kind of no routine (`client-kind.ts`), the Academy's starting plan on this floor (`starting-plan.ts`; every one of the eleven templates starts with no sequencing rule broken on day one, which caught Lumbar straight into Leg Press in one template's consultation and repairs it), the plan's progress, changes and the Wrap-up's Next time (`plan.ts`), B molded in (`b-routine.ts`), a weak area (`focus.ts`; AJ's Seated Dip → Overhead Press is a test), the Academy's starting ranges (`starting-weights.ts`) |
+| `0f6a48b5` | **The plan's storage and rules**: `routines/{id}.plan` and `routines/{id}/planChanges` (append-only, signed, the server's time), `store.ts` the only writer, 5 rules tests |
+| this commit | `CLAUDE.md` (the row and the decision), this section, the rounds index |
+
+**Measured** in the worktree on AJ's PC, its files in LF: suite **12,415**
+passing in 773 files (`TZ=America/New_York npx vitest run --dir src
+--testTimeout=30000`; the Ahead round's 12,385 in 771 plus this round's 30 in
+2); typecheck **2** (`charts.tsx`, `EditTrainerModal.tsx`); rules tests **328**
+on the emulator (323 plus 5). The production build and the bundle check were
+not run in this round: nothing on the first screen changed except the grid's
+stylesheet rule and one attribute.
+
+**Not built, and why:**
+
+- **The screens** (Programming's Start a plan, the briefing for a new-to-studio
+  client, the Wrap-up's Next time, B's build-out, the focus, the Academy's
+  range beside the weight): the design round, as AJ asked.
+- **The studio setting `startingRoutines`** (A, or A and B, Q3): the settings
+  registry holds numbers only, so a choice needs its own control, and nothing
+  reads it until the first-time setup exists; it lands with that screen.
+- **Practice profiles** (§2c Q1): a flag on a temporary profile and every
+  studio count, machine fit and machine trends leaving it out; a cross-cutting
+  change of its own, after the screens.
+- **The middle delt**: Lateral Raise's primary muscle and a `delts-side` id
+  wait on the body figure's side view (§2b).
+- **The injury layer**: parked behind head office's answers.
+- **Retiring the old pieces** (`ConsultationSetupWizard`, `calculateStartingWeight`,
+  the intro-session path, and Start saving a "Today only" list as Routine A):
+  they go when the new setup replaces them, in the screens round, so nothing
+  a trainer uses today disappears first.
+
+**To ship** (when AJ chooses; nothing writes a plan yet, so the rules and the
+code are dormant and only the grid fix is seen): the rules first (`npm run
+test:rules`, then `firebase deploy --only firestore:rules`; they only add
+access), then the push to master, then Render's Manual Deploy on the web
+service and Manual Build on both crons. A ship script comes with the screens
+round; the grid fix alone can go as a push.

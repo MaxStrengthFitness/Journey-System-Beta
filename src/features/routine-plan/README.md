@@ -15,7 +15,7 @@ folder is the pure half: no React, no Firestore except `store.ts`.
 | `b-routine.ts` | B molded in: B's routine is A with the swaps made so far; A and B alternate from the day B starts; suggested same-category swaps |
 | `focus.ts` | A weak area: is it in both A and B, a swap within the same category before an addition, single-joint machines first, and the areas the Academy answers with a setting |
 | `starting-weights.ts` | The Academy's starting ranges (the "MSF + Imagine Strength Equipment Loading Guidelines" sheet): a reference beside the weight, never typed in, never shown once the client has a weight |
-| `store.ts` | (next phase) The only writer: a plan on `routines/{id}.plan`, its changes appended at `routines/{id}/planChanges` |
+| `store.ts` | The only writer, in one batch: a plan on `routines/{id}.plan`, its changes appended at `routines/{id}/planChanges` |
 
 ## Rules that hold here
 
