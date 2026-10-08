@@ -49,6 +49,10 @@ committed — only the extracted text. Spreadsheets that matter
 are still Drive-only; if their numbers get encoded in the app, add them here
 in a structured form at the same time.
 
+**Oct 7 2026: the first of the two is now here** (`MSF - Suggested Starting
+Weights.txt`, see "Checked against Drive" below); the paragraph that follows
+is kept as it was written.
+
 **Those two are now the biggest gap in this corpus.** Sep 20 2026: the demo
 loads round searched every file for a per-machine starting weight and there is
 none — no table, no percentage of bodyweight, no percentage of 1RM. The only
@@ -58,6 +62,43 @@ in the app are running on unvetted guesses in the meantime and both should be
 replaced from the spreadsheet: the catalog's `baselineLoad` (which
 `suggestedWeight()` offers to real trainers for real clients) and
 `src/features/demo-mode/loads.ts` (demo only, and says so at the top).
+
+## Checked against Drive, Oct 7 2026
+
+AJ opened the MSF Academy Drive folder and asked for everything the corpus
+didn't have. Every folder and subfolder was compared by name, count and date
+(the nine Academy sections, the Executive Summary, Initial Setups' 19 equipment
+overviews and 18 quick reference guides, Workout Setups and Instruction).
+Brought in:
+
+- `Academy/Academy 6 - .../MSF - Suggested Starting Weights.txt` — **the
+  starting-weight table this README called the biggest gap.** It is a Google
+  Sheet now (titled "MSF + Imagine Strength Equipment Loading Guidelines"):
+  a range for each of the twenty machines, female and male, Novice and
+  Advanced, "for a new client OR a new exercise for an existing client", with
+  the sheet's own notes on reading it. Whether `Exercise Loading
+  Guidelines.xlsx` is the same table under its old name is not known; it is
+  not in the Academy folder.
+- `Academy/Academy 2 - .../Academy - Benefits of Resistance Training 9 - Sarcopenia.txt`
+  (Jun 1 2026, never brought in).
+- `Academy/Research.txt` refreshed (Drive changed it on Oct 2 2026: the
+  frequency studies, the ACSM 2026 position stand, the retirement-age RCT).
+
+Left in Drive on purpose:
+
+- `Fundamentals of High Intensity Exercise_MSF (1).pdf` — the 19-page designed
+  version of `MSF Fundamentals of High Intensity Exercise`, whose text is
+  already here (the same opening; not compared page by page).
+- `Global consensus on optimal exercise recommendations for enhancing healthy
+  longevity in older adults (ICFSR).pdf` — a published paper by outside
+  authors; this repository is public, so its text is not copied. `Research.txt`
+  keeps its Drive link and the two quotes MSF chose.
+
+Outside the Academy folder, the same Drive account shares other MSF documents
+(the Mastery Series, MSF Overview, the Resistance Training Workshop, Exercise
+Categories, the Training Roundtable links). Some are the sources of the
+corpus's other folders (`Academy 2/`, the top-level `Academy 6 - .../`); they
+were not compared in this pass.
 
 ## Refreshing
 

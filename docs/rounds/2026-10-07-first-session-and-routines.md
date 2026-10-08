@@ -159,6 +159,75 @@ And, on the Wrap-up (given with his answer to Q4):
   never required (the same rule as a setting's reason on the machine menu),
   and every change is kept with who, when and why.
 
+## 2b. AJ's answers to the research (Oct 7 2026, the same evening)
+
+**B's purpose.**
+
+> "B routines is definitely for variety. Sometimes, but it sometimes it also
+> can be to allow us to still hit areas of the body while allowing a recovery
+> on certain muscle groups. The academy has a lot of information on why we do
+> B routines."
+
+- B's purposes: variety, and recovery (a region hit twice a week while its
+  heaviest work is split over the two days). §4 has the Academy's lines.
+
+**The injury logic waits.**
+
+> "Ideally, it would be awesome if we had the logic in our program to just be
+> able to do that with all of the machines. But I don't know if we can
+> actually realistically do that for the current moment. So we don't really
+> need to focus on this too much. I just want to be able to build the
+> routines. We can build the injury logic later."
+
+- **The build is routines first**: the starting plan, the plan, B's build-out,
+  the Wrap-up. The injury layer (5.4) is parked, and its map is a question
+  sheet for head office: `docs/rounds/2026-10-07-injury-map-questions.md`.
+
+**Weak points.**
+
+> "I think you need to take charge on this one or ask me further questions
+> because I'm not fully understanding."
+
+- Claude's proposal is 5.4b; it waits for AJ's yes.
+
+**Lateral Raise and the middle delt.**
+
+> "Yeah, we need to somehow figure out a side view for our viewer, I guess."
+
+- The body figure draws front and back only, so the middle delt has nowhere to
+  be shown. A side view (or the middle delt drawn on the front and back
+  shoulder caps) is a design-round item; the data fix (Lateral Raise's primary
+  muscle, a `delts-side` id) goes with it.
+
+**§7's questions.**
+
+1. Free-form sessions: **the lean, as written** ("This 'lean' is spot on. If you
+   let practice sessions, staff workouts, or one-offs bleed into the studio's
+   main data, it will immediately pollute your KPIs").
+2. Which Academy template: **saved for later**.
+3. The injury map: **"make a document that makes this easy to answer but we
+   will save this for later"**: the question sheet named above.
+4. Adds on by default: **only while the routine is short of its plan** ("Restricting
+   the 'add by default' behavior to the initial build-out phase protects the
+   stability of the client's long-term routine").
+5. B's build-out:
+
+   > "The client's probably going to run the A routine with one of the B
+   > routines swapped in with their current. So you pretty much need to be
+   > able to build the B routine on what you want it to be, but transition the
+   > B routine in by swapping out one A routine each time. So it's essentially
+   > the B routine has started, but the B routine starts out as the A routine
+   > with just one machine different. But there are times where a trainer
+   > might do two machines different or three machines different in a single
+   > session."
+
+   - **B is planned whole, and starts as a copy of A with one machine
+     different.** Each step swaps in more of B's intended machines, usually one
+     at a time, sometimes two or three in a session. A and B alternate from the
+     day B starts (5.3).
+6. The Firestore OK: **unsure**. What it would mean is in 5.3, "What yes means";
+   it can wait for the build round.
+
 ---
 
 ## 3. What happens today
@@ -241,9 +310,20 @@ machines after four to six workouts (LTP:23-25). **This is AJ's "start with
 three, then the fourth, fifth, sixth" in the Academy's own words.**
 
 **Starting weights.** "intentionally underestimating the strength of the new
-client", landing "at a 10 - 12 or more rep set" (EST:204-208). No per-machine
-table: only Cervical "start with 20 pounds" and the low-back Lumbar test at 20
-lb for about 3 reps. AJ's ruling stands: no house starting weight.
+client", landing "at a 10 - 12 or more rep set" (EST:204-208). **There is a
+per-machine table after all**: AJ pointed at the Academy's Drive the same
+evening, and `MSF - Suggested Starting Weights` (a sheet titled "MSF + Imagine
+Strength Equipment Loading Guidelines", last changed Jun 2 2026, never brought
+into the repo before) gives a range for every machine, female and male, Novice
+and Advanced, "for a new client OR a new exercise for an existing client"
+(now `docs/msf-academy/Academy/Academy 6 - .../MSF - Suggested Starting
+Weights.txt`). Its own notes: "relatively challenging but within their
+control"; between the ranges for someone new to training but fit; below Novice
+for the severely deconditioned or an injury history; and lower for a machine
+that comes later in the workout, since the ranges assume fresh strength. AJ's
+Sep 28 ruling ("no house starting weight", wanting weights "from our clients
+data once we have it") was made while this table was missing; whether the
+first-time setup may show its range is §7 question 7.
 
 **Intensity.** Novices "do not require maximal effort" (PUSH:87-90); most
 clients approach failure in 6-10 reps "eventually ... This can easily take
@@ -263,9 +343,17 @@ keeping "Consistency of the stimulus" (AB:43-45). The ideal would be one
 routine repeated "with zero variation, indefinitely", but clients get bored
 (AB:35-39). So B works **the same regions with different machines**: CR+PO in
 A matches SR+Pd in B; LP in A matches LE+ABD+Lumbar in B (AB:105-114), and "key
-exercises should be repeated in the A and B" (EST:32-33). **The Academy does
-not describe B as accessory, recovery or weak-point work**: AJ's purposes go
-beyond it (§2, Q5).
+exercises should be repeated in the A and B" (EST:32-33). **B is also how the
+week recovers** (AJ, §2b: "it also can be to allow us to still hit areas of the
+body while allowing a recovery on certain muscle groups"). The ideal routine is
+"as many exercises as can be recovered from" (AB:35-36); Leg Extension and Leg
+Press are "more beneficial on two non-consecutive days as we are ensuring a
+more frequent stimulus for the quads while allowing enough time for recovery"
+(EST:119-126); Lumbar and Leg Press are eventually split across the two
+(AB:115-130); recovery is half of "the stimulus-response equation" (`Academy\MSF
+Fundamentals of High Intensity Exercise.txt`:74-78). So B spreads the heavy
+work of a region over two days, so the region is hit twice a week and still
+recovers. (A first search of the Academy missed this; AJ caught it.)
 
 **How B is molded in.** A takes "two to three weeks alone to begin to master"
 (AB:150-151) and runs "no less than 5 to 7 times before beginning to add new
@@ -447,22 +535,54 @@ The heart of it. Every routine may carry a plan:
 - **The Wrap-up's "Next time"** (Q3): today's machines, plus the plan's next
   machine when the trainer added one, join the routine by default, each with a
   tick to leave it out. Nothing else writes the routine from a session.
-- **B's plan** is the same shape: which of A's machines it replaces, one at a
-  time, about a week apart (AB:152-154), with the Academy's complementary pairs
-  offered (`COMPLEMENTARY_PAIRS`, `MODEL_AB_ROUTINE`, the template's eventual B).
-  It starts when the trainer starts it (the Academy's 5-7 sessions of A is said,
-  not enforced), or at once where the studio starts A and B together.
+- **B's plan** (AJ, §2b question 5) is B planned whole, with a purpose (variety,
+  recovery, or both), as **swaps against A**: each of B's intended machines
+  names the A machine it replaces, offered from the Academy's complementary
+  pairs (`COMPLEMENTARY_PAIRS`, `MODEL_AB_ROUTINE`, the template's eventual B).
+  **B starts as a copy of A with one machine different**, and A and B alternate
+  from that day. Each later step swaps in more of B, usually one about a week
+  apart (AB:152-154), sometimes two or three in one session, the trainer's
+  call. So B's `machineIds` is always "A with the swaps made so far", and B is
+  done when every planned swap is in. It starts when the trainer starts it (the
+  Academy's 5-7 sessions of A first is said, never enforced), or at once where
+  the studio starts A and B together.
+- **When A changes during B's build-out**, the machines B hasn't swapped yet
+  follow A (they are A's), and B's own swaps stay. The design round shows it.
 
 **Where it lives** (a Firestore structure change, so AJ's OK first): the plan on
 the routine's own document, `routines/{id}.plan` = `{ purpose, intended:
-machineId[], madeBy, madeAt }`, and its changes in `routines/{id}/planChanges/{changeId}`
-= `{ at, byUid, kind: "add" | "remove" | "swap" | "reorder" | "purpose", machineIds,
-reason? }`, appended, never edited. Any trainer who works at the client's
-studio writes both (`firestore.rules`, with tests). One read per routine on the
-screens that already read routines; no Mindbody call; the change list is read
-only when opened, with its index.
+machineId[], swaps?: { replaces, with }[] (B only), madeBy, madeAt }`, and its
+changes in `routines/{id}/planChanges/{changeId}` = `{ at, byUid, kind: "add" |
+"remove" | "swap" | "reorder" | "purpose", machineIds, reason? }`, appended,
+never edited. Any trainer who works at the client's studio writes both
+(`firestore.rules`, with tests). One read per routine on the screens that
+already read routines; no Mindbody call; the change list is read only when
+opened, with its index.
 
-### 5.4 The injury layer, and a focus
+**What yes means** (AJ was unsure, §2b question 6). In plain words:
+
+- **What is added**: one new optional box on each routine (its plan) and a
+  list beside each routine (the plan's changes). Nothing existing moves or is
+  renamed; a routine without a plan works exactly as it does today, and every
+  screen that reads routines keeps reading `machineIds`.
+- **Who can change it**: anyone who works at the client's studio, as for the
+  routine itself. The rules get a test for it.
+- **Cost**: a plan is read with the routine it sits on, so no extra read on
+  the floor; the change list is read only when someone opens it, and written
+  once per change. No Mindbody call.
+- **The way back**: the fields are optional, so removing the feature leaves
+  routines untouched; a script can delete the plans if ever wanted.
+- **The studio setting** `startingRoutines` (A, or A and B) goes in the same
+  place as the studio's other numbers (`config/settings`, through the studio
+  settings registry), which already exists; it adds one value, not a document.
+
+**The alternative with no structure change**, if AJ would rather wait: keep the
+plan as a note thread on the client's record (kind "plan"), written through the
+notes' one writer. It costs the builder its checks (the plan is words, not
+machines), so it is the weaker answer; Claude's lean is yes to the plan on the
+routine.
+
+### 5.4 The injury layer (parked, AJ §2b: "We can build the injury logic later")
 
 - **An injury is an open Health or Incident note with a body part** (the notes
   round's body map). While it is open, every routine row, the briefing's routine
@@ -478,11 +598,42 @@ only when opened, with its index.
   Rotation; shoulder → Overhead Press, Chest Press, Seated Dip, Flye, Lateral
   Raise, Pulldown; neck → Cervical; hip → Abduction, Adduction, Leg Press. Head
   office confirms it before it ships (§7).
-- **A focus** (weak delts) is a plan's purpose with a body area: the builder
-  lists the machines that work it, where each fits in the order, and what it
-  would push out to stay within 5-8 machines, and says the Academy's one rule
-  (in both A and B). It needs §3 row 7 fixed first (Lateral Raise is middle
-  delt).
+  The question sheet for head office is
+  `docs/rounds/2026-10-07-injury-map-questions.md`.
+
+### 5.4b A weak area (Claude's proposal; AJ: "take charge on this one")
+
+The problem in one line: a trainer finds the client weak somewhere (the delts)
+and wants the routine to do something about it, without throwing machines in
+at random.
+
+What the Academy gives to work with (§4): it has no special weak-point rule,
+but it does say three things that answer it — a region you want to grow must
+be hit **in both workouts of the week**; when you add a machine for a region,
+it goes in **if time permits or in place of a lower-priority one**; and extra
+slots beyond the Big 5 go to **single-joint machines** (Lateral Raise, the arm
+machines). It rejects pre-exhausting a weak muscle as a default.
+
+So, the proposal: **a focus is one more thing a plan can say**, next to its
+purpose. The trainer picks the area (delts, glutes, grip, …) from the body
+map, and the builder answers three questions, as suggestions with one tap each:
+
+1. **Is it in both A and B?** "Delts: Overhead Press in A, nothing in B." Offer
+   the machine for B that works it.
+2. **Can a swap do it instead of an addition?** Prefer a machine of the same
+   family in place of one already there: Seated Dip → Overhead Press (both
+   pushes), so the routine stays the same length and stays balanced. This is
+   AJ's own example.
+3. **If adding, which single-joint machine, and what it pushes out** to stay in
+   5-8 machines and the time.
+
+Some weak areas are settings, not machines, and the builder says so instead:
+weak grip "will adapt"; weak triceps get a gap. Nothing reorders the routine to
+put the weak area first, and nothing moves a weight.
+
+It needs §3 row 7 fixed first (Lateral Raise is middle delt) and the body
+figure to show the middle delt (§2b). One question waits for AJ: is this the
+right idea (yes), or should a focus do something else?
 
 ### 5.5 Free-form sessions
 
@@ -496,13 +647,17 @@ or family member, practice. A real record, unlike Demo Mode. Where it counts is
 1. The grid's zero-session bug (5.0). A push alone.
 2. The pure core, no screens: `starting-plan.ts` (template match → a plan for
    this floor), `plan.ts` (the plan model: next rung, apply a change, the
-   Wrap-up's default list), `injury-layer.ts` (open notes → flagged machines and
-   their offers), each with tests; the Lateral Raise and side-delt data fix;
-   Leg Press–Lumbar caught both ways in `SEQUENCING_RULES`.
+   Wrap-up's default list while the routine is short of its plan, B's swaps
+   against A), each with tests; Leg Press–Lumbar caught both ways in
+   `SEQUENCING_RULES`.
 3. The rules and the plan's storage (after AJ's OK), with rules tests.
 4. The screens, after the design round: Programming's Start a plan, the
-   briefing for a new-to-studio client, the Wrap-up's Next time, the flags.
-5. Free-form, once §7's question is answered.
+   briefing for a new-to-studio client, the Wrap-up's Next time, B's build-out.
+5. Free-form sessions (AJ's yes to the lean): a session kind kept out of the
+   studio's numbers, machine fit and machine trends.
+6. Later, each on AJ's word: the weak-area focus (5.4b), the middle delt and
+   the figure's side view, the injury layer (5.4, after head office answers the
+   question sheet), the template question (§7 2).
 
 ## 6. Rules this keeps
 
@@ -519,6 +674,11 @@ or family member, practice. A real record, unlike Demo Mode. Where it counts is
 
 ## 7. Open questions (for AJ and head office, before the build)
 
+**Answered the same evening** (§2b): 1 yes to the lean · 2 saved for later · 3
+a question sheet, saved for later · 4 yes to the lean · 5 B starts as A with
+one machine different · 6 unsure, see 5.3 "What yes means". Still open: 6, and
+the weak-area proposal (5.4b). The questions as first asked:
+
 1. **Free-form sessions: where do they count?** Lean: on the person's record and
    the trainer's own history only, never in the studio's numbers, machine fit or
    machine trends, and the person is a temporary profile unless they're a
@@ -534,3 +694,12 @@ or family member, practice. A real record, unlike Demo Mode. Where it counts is
    with one machine swapped?** The Academy doesn't say.
 6. **The Firestore OK** for `routines/{id}.plan` and `planChanges` (5.3), and the
    studio setting `startingRoutines`.
+7. **The Academy's starting weights** (added after the Drive check, §4). On a
+   first session, or a machine new to the client, may the setup show the
+   sheet's range as a range with its source ("Academy's starting range:
+   60-100 lb"), never typed into the weight cell, with the trainer picking
+   which of the sheet's four columns fits (the sheet is split by gender, and
+   the app never guesses one on screen)? Or does the Sep 28 ruling stand until Journey's
+   own clients give a number? Lean: show the range, labelled the Academy's,
+   since it is MSF's own written guidance and the floor needs a starting
+   point; the app still never moves a weight after that.
