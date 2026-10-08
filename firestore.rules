@@ -2186,6 +2186,30 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow update: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow delete: if isSuperAdmin() || isFranchiseOwner();
+
+      // A ROUTINE'S PLAN'S CHANGES (Oct 7 2026, src/features/routine-plan).
+      // The plan itself is `plan` on the routine, written by the update rule
+      // above. Each change to it is appended here in the same batch, by any
+      // trainer (AJ: "anyone can go ahead and change a plan"), signed by the
+      // signed-in person with the server's time, and never edited or
+      // removed, so the next trainer reads who changed it and why.
+      function planChangeOk(d) {
+        return d.keys().hasAll(['kind', 'machineIds', 'byUid', 'at'])
+          && d.keys().hasOnly(['kind', 'machineIds', 'reason', 'value', 'byUid', 'byName', 'at'])
+          && d.kind in ['start', 'add', 'remove', 'swap', 'reorder', 'purpose', 'building', 'focus']
+          && d.machineIds is list && d.machineIds.size() <= 30
+          && d.byUid == request.auth.uid
+          && d.at == request.time
+          && (!('reason' in d) || (d.reason is string && d.reason.size() <= 500))
+          && (!('value' in d) || (d.value is string && d.value.size() <= 500))
+          && (!('byName' in d) || (d.byName is string && d.byName.size() <= 120));
+      }
+
+      match /planChanges/{changeId} {
+        allow read: if isAuthenticated();
+        allow create: if isAnyAuthenticatedTrainer() && planChangeOk(request.resource.data);
+        allow update, delete: if false;
+      }
     }
 
     match /routineAdjustments/{adjustmentId} {

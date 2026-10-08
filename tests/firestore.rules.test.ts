@@ -6955,3 +6955,85 @@ describe("the renewal plan", () => {
     );
   });
 });
+
+/* OCT 7 2026 (first session and routines): a routine's plan is `plan` on the
+   routine, and each change to it is appended to routines/{id}/planChanges by
+   any trainer, signed and timed, never edited or removed. Its own block so
+   other branches' rules edits merge cleanly. */
+describe("oct7 first session: a routine's plan and its changes", () => {
+  const ctx = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+  async function seed() {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      const person = (id: string, role: string, home: string) =>
+        setDoc(doc(db, "trainers", id), { fullName: id, initials: "XX", role, primaryHomeStudioId: home, accessibleStudioIds: [home] });
+      await person("trainerP7", "LifeTransformer", "studioA");
+      await person("otherP7", "LifeTransformer", "studioB");
+      await setDoc(doc(db, "routines", "r1"), { clientId: "c1", name: "Routine A", machineIds: ["m-leg-press"], studioId: "studioA" });
+      await setDoc(doc(db, "routines", "r1", "planChanges", "c0"), {
+        kind: "start", machineIds: ["m-leg-press", "m-compound-row"], byUid: "trainerP7", at: new Date("2026-10-07T14:00:00Z"),
+      });
+    });
+  }
+
+  const change = (uid: string, over: Record<string, unknown> = {}) => ({
+    kind: "swap",
+    machineIds: ["m-dip", "m-overhead-press"],
+    reason: "Delts weak",
+    byUid: uid,
+    byName: `Trainer ${uid}`,
+    at: serverTimestamp(),
+    ...over,
+  });
+  const changes = (db: ReturnType<typeof ctx>) => collection(db, "routines", "r1", "planChanges");
+
+  it("lets any trainer write the plan, the routine and its change in one batch", async () => {
+    await seed();
+    for (const uid of ["trainerP7", "otherP7"]) {
+      const db = ctx(uid);
+      const batch = writeBatch(db);
+      batch.update(doc(db, "routines", "r1"), {
+        plan: { purpose: "Learning the protocol", intended: ["m-leg-press", "m-compound-row", "m-lumbar"], building: true, madeByUid: "trainerP7" },
+        machineIds: ["m-leg-press", "m-compound-row"],
+      });
+      batch.set(doc(changes(db)), { kind: "add", machineIds: ["m-compound-row"], byUid: uid, at: serverTimestamp() });
+      await assertSucceeds(batch.commit());
+    }
+  });
+
+  it("pins the change to the signed-in person and the server's time, and keeps the shape", async () => {
+    await seed();
+    const db = ctx("trainerP7");
+    await assertSucceeds(addDoc(changes(db), change("trainerP7")));
+    await assertSucceeds(addDoc(changes(db), change("trainerP7", { kind: "building", machineIds: [], value: "off", reason: "Routine settled" })));
+    await assertFails(addDoc(changes(db), change("otherP7")));
+    await assertFails(addDoc(changes(db), change("trainerP7", { at: new Date("2026-01-01T00:00:00Z") })));
+    await assertFails(addDoc(changes(db), change("trainerP7", { kind: "rename" })));
+    await assertFails(addDoc(changes(db), change("trainerP7", { machineIds: "m-dip" })));
+    await assertFails(addDoc(changes(db), change("trainerP7", { machineIds: Array.from({ length: 31 }, () => "m-dip") })));
+    await assertFails(addDoc(changes(db), change("trainerP7", { reason: "x".repeat(501) })));
+    await assertFails(addDoc(changes(db), change("trainerP7", { extra: true })));
+    const { machineIds: _m, ...noMachines } = change("trainerP7");
+    void _m;
+    await assertFails(addDoc(changes(db), noMachines));
+  });
+
+  it("is read by anyone signed in, and by nobody signed out", async () => {
+    await seed();
+    await assertSucceeds(getDocs(changes(ctx("otherP7"))));
+    await assertFails(getDocs(collection(testEnv.unauthenticatedContext().firestore(), "routines", "r1", "planChanges")));
+  });
+
+  it("is never edited or removed", async () => {
+    await seed();
+    const ref = doc(ctx("trainerP7"), "routines", "r1", "planChanges", "c0");
+    await assertFails(updateDoc(ref, { reason: "changed my mind" }));
+    await assertFails(deleteDoc(ref));
+  });
+
+  it("keeps someone with no trainer record out", async () => {
+    await seed();
+    await assertFails(addDoc(changes(ctx("strangerP7")), change("strangerP7")));
+  });
+});
