@@ -981,6 +981,10 @@ export function JourneyGrid({
       data-live={live ? "true" : "false"}
       data-stats={showStats ? "true" : "false"}
       data-older={hasOlderColumn ? "true" : "false"}
+      // No past sessions: the stylesheet drops the session tracks, because
+      // repeat(0, …) is invalid and takes the whole template with it (the
+      // "one long line" of a first session, Oct 7 2026).
+      data-past={cols > 0 ? "some" : "none"}
       data-autoload={autoOlder ? "true" : "false"}
       data-dense={fitVars?.dense ? "line" : "stack"}
       data-settings={settingsDisplay}

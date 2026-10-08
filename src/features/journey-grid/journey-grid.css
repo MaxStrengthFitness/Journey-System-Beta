@@ -184,6 +184,20 @@
   isolation: isolate;
 }
 
+/* No past sessions (a first session, a profile with nothing logged). The
+   count must be at least 1: repeat(0, …) is invalid CSS, and arriving through
+   var() it makes the whole declaration invalid, so the grid fell back to one
+   column and stacked every name and Today cell down it (Oct 7 2026, AJ: "it
+   just shows the machine in one long line"). Same template, no session
+   tracks; Today sits beside the names. */
+.jg[data-past="none"] .jg-grid {
+  grid-template-columns:
+    var(--jg-col-machine)
+    var(--jg-track-stat)
+    var(--jg-track-older)
+    var(--jg-track-live);
+}
+
 /* Turn an optional track on by giving its variable a width. */
 .jg[data-stats="true"] { --jg-track-stat:  var(--jg-col-stat); }
 .jg[data-older="true"] { --jg-track-older: var(--jg-col-older); }
@@ -2872,6 +2886,8 @@ div.jg-today { cursor: default; }
       repeat(var(--jg-cols), var(--jg-col-session))
       var(--jg-track-live);
   }
+  /* With no past sessions, .jg[data-past="none"] .jg-grid (above) outranks
+     this template, so a phone drops the session tracks too. */
   .jg-view--journey .jg-stat,
   .jg-view--journey .jg-stat-head {
     position: relative;
