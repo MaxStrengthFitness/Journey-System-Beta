@@ -77,6 +77,10 @@ read Solon's data. That is the architecture you want and it's already built.
 
 ## 4. The one real time bomb
 
+> **Fixed Sep 26 2026.** The cost plan deleted `calculateFacilityAnalyticsV2`
+> (D1; see the note at the top of `functions/src/index.ts`). This section is
+> kept as the reasoning, as written on Sep 22.
+
 `functions/src/index.ts`, line 28 onward. A Cloud Function called
 `calculateFacilityAnalyticsV2`, scheduled `"0 2 * * *"` — **every night at 2am.**
 
@@ -154,7 +158,7 @@ per-client loops on screen. That's the hard part and it's done. What's left is
 housekeeping:
 
 1. **Fix or delete the 2am function.** Before beta. It's the only thing here
-   that gets unboundedly worse.
+   that gets unboundedly worse. (Done: deleted Sep 26 2026.)
 2. **Scope the trainers listener.** Small job, do it when convenient.
 3. **Respect the Mindbody ceiling.** Already in hand.
 

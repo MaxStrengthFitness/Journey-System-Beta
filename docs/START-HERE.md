@@ -1,6 +1,7 @@
 # Start here — how Journey is put together
 
-*Written for AJ, Sep 21 2026. If you read one document about this project,
+*Written for AJ, Sep 21 2026; the deploy steps, the checks and the counts were
+brought up to date on Oct 7 2026. If you read one document about this project,
 read this one. It should take about fifteen minutes and it assumes you do not
 write code.*
 
@@ -146,8 +147,6 @@ You do not need to remember this. You need to know it exists, so you can point.
 | `src/types.ts` | The shared vocabulary: the shape of a Client, a Session, a Machine |
 | `src/AppContent.tsx` | The traffic controller. Decides which screen shows |
 
-### "I want to change…" → look here
-
 ### The screens, as a trainer meets them
 
 AJ's own tour, Sep 21 2026.
@@ -161,7 +160,7 @@ AJ's own tour, Sep 21 2026.
 | **Client profile** | Opened from the directory or the roster: the whole record of a person. "The four tabs run by depth: Journey (what she has done, the glance on the floor), Programming (what she's meant to do), Notes & Profile (who she is), Activity Archive (the whole record). Don't reorder, merge or add a tab without asking." |
 | **Start Session** | The door to the Active Session — briefing, live grid, wrap-up. Ranks 1 to 3 |
 | **Learning** | The protocol, every machine, and guides and coaching cues on becoming a better trainer |
-| **My Studio** | "How can I help the team right now?" Relay · Openings · Machines · Team · Studio. **Openings** (since Sep 27 2026) is when the studio is usually busy, what opened up this week, what to offer a client for good, and who's usually in |
+| **My Studio** | "How can I help the team right now?" Relay · Openings · Machines · Team · Studio. **Openings** (since Sep 27 2026) is when the studio is usually busy, what opened up in the next 7 days, what to offer a client for good, and who's usually in |
 | **My Profile** | A trainer's own rundown — who's coming up, how their coaching is going — and, since Sep 27 2026, **My standing week**: when they usually take clients (up to three blocks a day) and their regulars, proposed to a studio leader, and the days they're away; and, since the Openings round, **Your week** (clients trained, session time, first session to last) and **My clients** (the clients they have trained most). Another trainer's profile can't be opened in the app, so colleagues' agreed weeks are seen on My Studio → Openings → Who's usually in |
 | **Operations** | "Where are we going wrong, and where are we going right?" Take what the app has gathered, put it together, see what it says |
 | **Admins dashboard** | Corporate setting the standard, the machines, and getting everyone set up for success |
@@ -275,11 +274,15 @@ them is most of what makes a request land correctly.
 - **Adopt** — a studio chooses to take a new machine. Nothing is ever pushed
   onto a floor.
 - **The template boundary** — *Max Strength owns the method; a studio owns its
-  hardware.* A location can change the name, seat positions, dials and
-  starting weight of the unit in their room. It cannot change the musculature,
-  the cadence, the turnarounds or the cues — those are the product, and every
-  location reads the same words. A studio may **add** a safety warning; it can
-  never remove one.
+  hardware.* The method (the musculature, the cadence, the turnarounds, the
+  cues) is the product, and every location starts from the same words. A
+  location sets up the unit in its room: the name, seat positions, dials and
+  starting weight. Since Sep 28 2026 a studio may change anything on its own
+  copy, the method included (AJ answered "Yes, as built" on Oct 2 2026); the
+  change reaches that floor only, and head office sees every difference on
+  Compare. A studio may **add** a safety warning, and may take one of the
+  catalog's off its own copy only with a reason, which is recorded and shown
+  to head office (AJ, Sep 21 2026; built Sep 28 2026).
 - **An offer** — a studio can submit one of its own machines to the catalog.
   Corporate reads it, may rewrite it, then publishes.
 
@@ -296,34 +299,42 @@ Roughly, every time:
    any single phase can be undone without losing the rest.
 4. **Three checks run:**
    - **Typecheck** — does the code contradict itself? We compare the error
-     *count* to a baseline (currently 4). It is not zero and that is fine.
-   - **Tests** — more than 6,000 small checks that pure logic still does what
-     it should. These run in seconds.
+     *count* to a baseline (2 as of Oct 7 2026). It is not zero and that is
+     fine.
+   - **Tests** — more than 12,000 small checks that pure logic still does what
+     it should.
    - **Build** — does it actually assemble into a website?
 5. **You look at it on the iPad**, for anything a trainer touches. This step
    cannot be skipped or automated. A green typecheck and green tests have all
    passed before while a screen crashed on every tap.
-6. **It merges to `master`** — and *that* is the deploy. Trainers have it.
+6. **It merges to `master`** — which is not yet the deploy. Nothing reaches
+   trainers until you press **Manual Deploy** on the Render web service (and
+   **Manual Build** on both cron jobs). A push deploys nothing; Render can't
+   see the repo (checked Oct 6 2026).
 
 **Three things deploy separately and are easy to forget:**
 
 - `firestore.rules` — the security wall. Needs `npm run test:rules` on your PC
   first (it needs Java installed), then a Firebase deploy.
 - **Indexes** — Firestore needs to be told in advance about certain searches.
-  A missing one shows up as an empty list, not an error, which is nasty.
-- **Cloud Functions** — the Mindbody webhook handlers.
+  Ours is the Enterprise edition, which builds none by itself: a search with
+  no index still answers, by reading the whole collection and billing for it,
+  so nothing fails and nothing looks wrong — it only costs and slows. A test
+  (`firestore-indexes.test.ts`) fails for any search without one.
+- **Cloud Functions** — the Mindbody webhook handlers and the trainer rollups.
 
-The order is always: **indexes → rules tests → rules → push the app.** Rules go
-first when they only *add* access, so the running app is unaffected and the new
-version finds its permissions already waiting.
+The order is always: **indexes → rules tests → rules → push → Manual Deploy on
+Render.** Rules go first when they only *add* access, so the running app is
+unaffected and the new version finds its permissions already waiting.
 
 ### What only you can do
 
-Claude's shell on your PC can run `git` and the typecheck, but not the test
-suite or the build. So these are yours:
+Claude's shell on your PC can run `git`, the typecheck, the test suite and the
+build when it works in a worktree that shares the main checkout's libraries;
+what it cannot do is the live side. So these are yours:
 
 - `npm run test:rules` — the only real check on the security wall
-- Deploying rules, indexes and Cloud Functions
+- Deploying rules, indexes and Cloud Functions, and pressing Deploy on Render
 - Looking at the iPad
 - Anything that writes to the live database from a script
 
@@ -423,8 +434,9 @@ These exist because each one was learned the hard way. In plain language:
 ## 10. A last word about "vibe coding"
 
 You built this app end to end without writing code, and it is a real system:
-about 220,000 lines, 3,750 automated checks, a security model, a franchise
-model and a method encoded in it. That is not a small thing.
+about 500,000 lines (tests included), more than 12,000 automated checks, a
+security model, a franchise model and a method encoded in it (counted Oct 7
+2026). That is not a small thing.
 
 The part of this that is genuinely yours — and that no amount of code
 knowledge substitutes for — is knowing what happens in the room. Whether a

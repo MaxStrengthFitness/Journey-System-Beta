@@ -1,7 +1,7 @@
 # Trainer identity — the fix, and the migration that is still pending
 
 Round: Sep 6 2026, branch `trainer-identity-fix` off `master`.
-Diagnosis lives in `ADMIN-OVERHAUL-PREP.md`; this is what was done about it.
+Diagnosis lives in `ADMIN-OVERHAUL-PREP.md` (not in `master`: it exists only in commit `5b0774ed` on a side branch); this is what was done about it.
 
 ## The bug, in one paragraph
 
@@ -86,6 +86,12 @@ references → tombstone the old document. Same reasoning as the claim: the
 person must never be without a working profile at any point in between.
 
 ## Flagged, not fixed — for the rules sweep
+
+*(Closed since this was written, checked Oct 7 2026: `selfCreatedRoleIsAllowed()`
+in `firestore.rules` caps the role of a self-made profile, and on Oct 3 2026 a
+self-made profile must be the owner's bootstrap or a claim of a placeholder a
+leader set up — `docs/rounds/2026-10-03-trainer-self-create.md`. What follows
+is the original flag, kept as the record.)*
 
 `firestore.rules` currently allows **any authenticated user to create
 `trainers/{their own uid}` with any role**, including `Admin`. The clause is

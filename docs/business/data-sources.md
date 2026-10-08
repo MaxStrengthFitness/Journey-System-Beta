@@ -12,13 +12,13 @@ Journey is one of four places client information lives. This page says which sys
 | Declined cards | Mindbody | **Not tracked** (AJ, Sep 11 2026). Only Mindbody's autopay status is shown | — |
 | The renewal snapshot — situation, both clocks, flags, proof | Journey (worked out from the rows above) | The nightly renewals job (`server/renewals-job.ts`). Single-client screens also work it out live | `client.renewal` — **only the job writes it** |
 | Renewal conversations, stage, lead, outcome | Journey | Trainers and leaders in the app; outcomes also recorded by the nightly job | `studios/{id}/renewals/{cycle}`, conversations in `.../touches` |
-| Workouts — sets, weight, reps, time under tension, rep quality | Journey | Entered on the iPad during the session | `sessions`, `exerciseLogs`; running totals in `client.machineStats` |
+| Workouts — sets, weight, reps, time under tension, rep quality | Journey | Entered on the iPad during the session | `sessions`, `exerciseLogs`; running totals in `client.machineStats` (since the roster split, Oct 6 2026, in `clients/{id}/machineTotals/current`) |
 | Machine settings per client | Journey | Entered by trainers | `clientMachineSettings` |
 | Coaching notes and focuses | Journey | Journal composer, in-session notes | `journalEntries` (Mindbody's own notes arrive read-only as `mindbodyNotes`) |
 | Check-ins and how the client felt | Journey | The briefing (pre-session) and the Wrap-up (post-session) | Fields on `sessions` |
 | 90-day progress report | Journey | Progress report editor | `progressReports`, summary on `client.subjectiveSnapshot` |
 | InBody body composition | InBody (LookinBody) | Typed in from the printout: the client's Notes & Profile → Body & Pulse → the InBody card (Add scan). Relay's InBody task opens it there | `clients/{id}/inbodyScans`; the first-to-latest change on `client.inbodySummary` |
-| History before Journey | FileMaker | The legacy CSV importer now; a full import after beta launch | `sessions`, `exerciseLogs` |
+| History before Journey | Mindbody's visit count (FileMaker's detail is on hold) | Since Oct 2 2026 the sessions before Journey are guessed from Mindbody's visit count and confirmed once by a trainer (Notes & Profile → Account); the legacy CSV importer still exists, and a full FileMaker import is not being built | `client.priorHistory`; imported detail, if any, in `sessions`, `exerciseLogs` |
 | Package prices, renewal timing, Mindbody names | Each studio | My Studio → Studio → Renewals (leaders) | `studios/{id}/config/renewals` |
 | Training method | MSF Academy | `docs/msf-academy/`, the Learning tab | Bundled content |
 
@@ -29,13 +29,13 @@ Journey is one of four places client information lives. This page says which sys
 - **Never invent a Mindbody-owned date.** If Journey has to estimate one, it is stored with a marker saying it is an estimate, and the screen says so (the "In Journey since" rule).
 - A Mindbody client document's id **is** their Mindbody client id. Journey never matches people by name.
 
-## Coverage right now
+## Coverage (as of the Sep 9 2026 dry run)
 
-From the Sep 9 2026 dry run against production: 627 clients, 203 sessions (all belonging to 8 clients), and at most 16 clients with any contract or membership on file. Journey is only starting to collect workouts, and most history is still in FileMaker.
+From the Sep 9 2026 dry run against production (not re-counted since): 627 clients, 203 sessions (all belonging to 8 clients), and at most 16 clients with any contract or membership on file. Journey is only starting to collect workouts, and most history is still in FileMaker.
 
 ## FileMaker
 
-AJ, Sep 10 2026: the import happens once beta fully launches; the data is still being obtained from the previous developers. Some clients have years of history. The likely limit is 1–2 years back — older history "would be fun to look at" but isn't needed.
+AJ, Sep 10 2026: the import happens once beta fully launches; the data is still being obtained from the previous developers. (Superseded Oct 2 2026: AJ decided to make the app work without the FileMaker data; see [migration-and-prior-history.md](migration-and-prior-history.md).) Some clients have years of history. The likely limit is 1–2 years back — older history "would be fun to look at" but isn't needed.
 
 ## InBody
 

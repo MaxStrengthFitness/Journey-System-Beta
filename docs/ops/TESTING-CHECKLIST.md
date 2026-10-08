@@ -14,6 +14,8 @@ The "if it fails" half matters more than the tick box. Most of these were writte
 
 **Order is not decoration.** Gate 0 makes the rest meaningful. Round 1 is the scroll-trap sweep, first on the tablet, because one of those bugs locks you out of the app entirely and there is no point testing screen six if you cannot reach screen one.
 
+**Names that have moved since the early rounds were written (checked Oct 7 2026).** Gate 0 and Rounds 1 to 13 describe the screens of Sep 5–19 2026, and each round names its branch and date. Where a step names a screen that is gone, read it as its successor: Operations' **Overview** is now **Today** (Operations has seven destinations now: Today · Week · Month · Ahead · Clients · Team · Setup, five when it was rebuilt on Sep 28); the **Planner** is **Relay**, and its Floor · Mine · Notes are **Board · Tracker · Journal** (the Board was rebuilt on Oct 3 and the Network tab moved to Operations → All my studios on Sep 27); the **History** tab is the **Activity Archive**; the machine sheet, the profile's machine window and the grid's ⋯ popover are the one **machine menu** (Oct 4); Switch Trainer and Log Out Facility are one **Sign out** (Oct 2); there is no studio accent colour and no "Restore standard machines". Gate 0's wipe-list step is moot: the browser's database wipe was removed on Sep 20.
+
 **Keep the Findings log at the bottom open as you go.** One line and a screenshot per finding. That log is what comes back into the roadmap — it is the "what to remove or adjust" list, and it is worth more than the ticks.
 
 **Viewports that matter.** A 13" iPad Pro is **1366×1024** landscape and **1024×1366** portrait. An 11" is **1194×834** / **834×1194**. Remember that **1024 portrait is Tailwind's `lg` breakpoint, not `xl`** — that is the exact trap the client-profile header hit on Sep 5. Test both orientations and both themes; dark mode is not cosmetic here, several fixes this month were dark-mode-only.
@@ -1377,7 +1379,8 @@ colleague's card, offline, the new names and looks) is walked in Round 22.
 
 What an open Journey does when a new version is pushed. The round document is
 `docs/rounds/2026-09-26-new-version.md`. Walk it at the **next real deploy**
-(any push to `master`), with two iPads open on the live app before the push:
+(AJ's Manual Deploy on Render; a push to `master` alone deploys nothing), with
+two iPads open on the live app before the deploy:
 one in Safari, one from the Home Screen icon if you have it. Nothing to deploy
 first. Wait for Render to say the deploy is live before each step.
 

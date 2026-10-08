@@ -1,12 +1,12 @@
 # Renewals and retention
 
-Source: AJ, Sep 10 2026. The build plan that implements this is `OPERATIONS-RENEWALS-PROPOSAL.md` in the repo root.
+Source: AJ, Sep 10 2026. The build plan that implements this is `docs/rounds/OPERATIONS-RENEWALS-PROPOSAL.md`.
 
 ## Why it matters
 
 The studio wants clients to see that every session is worth what they pay, because the studio is committed to their data and progress. The goal is to stop reacting to cancellations and get ahead of renewals.
 
-## How renewals happen today
+## How renewals happen (as AJ described them, Sep 10 2026)
 
 - Trainers try to start the renewal conversation **about 10 sessions before the end**. It isn't systematic yet.
 - **Trainers ask.** Head trainers and studio leaders get involved when the client has concerns about **price or progress**.

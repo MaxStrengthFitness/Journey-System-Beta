@@ -15,11 +15,14 @@ and what is deliberately parked. It is re-cut at every gate.
 *Last re-cut: Sep 21 2026, after the catalog gate round. §5 and the follow-up
 pile brought up to Sep 27 2026 after the voice review follow-up, and the
 follow-up pile again after Openings the same night, after the directory and
-opportunities round on Sep 28, and after the calm Hub the same night.*
+opportunities round on Sep 28, and after the calm Hub the same night. The
+status block below and the items that had been finished were checked against
+`origin/master` on Oct 7 2026; the follow-up pile is still as the Sep 28–29
+rounds left it, so check a round's own document before trusting a line there.*
 
 ---
 
-## Where the project is right now
+## Where the project stands (checked Oct 7 2026)
 
 **Beta is Nov 1 2026** for the corporate locations, and **Jan 1 2027** for the
 first franchises, rolled out in small batches (AJ, Sep 22). There are about
@@ -33,21 +36,24 @@ and a slow Wednesday is 4; and clients arrive carrying **10 to 200+ sessions
 each** of FileMaker history.
 
 Journey is **pre-alpha**. AJ is the only user; no trainer has run a real
-session on it. Everything built through Sep 20 is merged into `master` and
-**deployed** — `master` and `origin/master` are level, and every push to
-`master` goes live at `maxstrength-app-beta.onrender.com`.
+session on it. `origin/master` is `cf4a2ff8` (Oct 7 2026) and the Render web
+service serves that build, deployed Oct 7 2026. **A push to `master` does not
+deploy it** (checked Oct 6 2026: Render has no access to the repo). Every
+deploy is AJ pressing Manual Deploy on the web service and Manual Build on
+both cron jobs (`journey-cron-renewals`, `journey-cron-leaderboards`);
+`docs/ops/RENDER-DEPLOYMENT.md` has the current state.
 
-That means the app on the iPad is current. What is *not* guaranteed current is
-the **database side**: several rounds since Sep 17 changed `firestore.rules`
-and added indexes, and those deploy separately with the Firebase CLI. See
-**Confirm before anything else**, below.
+The **database side** deploys separately from the app: `firestore.rules`,
+indexes and Cloud Functions go out with the Firebase CLI (the ship scripts in
+`scripts/ship/` do it in order). Whether the live rules match the repo's is
+still worth checking — see **Confirm before anything else**, below.
 
 | | |
 | --- | --- |
-| Typecheck (`npx tsc --noEmit`) | **10** errors — the baseline. Compare the count; never expect zero |
-| Tests (`TZ=America/New_York npx vitest run src`) | **3,545** passing in 237 files on `master` |
-| Branch | everything on `master`; `catalog-gate` is the one round waiting to merge |
-| Deploys | every push to `master` deploys the app. Rules, indexes and Cloud Functions do not |
+| Typecheck (`npx tsc --noEmit`) | **2** errors — the baseline (`charts.tsx`, `EditTrainerModal.tsx`). Compare the count; never expect zero |
+| Tests (`TZ=America/New_York npx vitest run src`) | **12,385** passing in 771 files on `oct7/ahead`, Oct 7 2026; `CLAUDE.md` keeps the running count |
+| Branch | everything is on `master` except `oct7/first-session`, which is built and waiting to merge |
+| Deploys | a push to `master` deploys nothing; AJ deploys by hand on Render (above). Rules, indexes and Cloud Functions are deployed separately |
 
 ---
 
@@ -63,30 +69,34 @@ expensive to be wrong about.
    app is asking for things it is not allowed to read and screens fail quietly.
    *Check:* `npx tsx scripts/fetch-live-rules.ts`, then diff against
    `firestore.rules`.
-2. **Are the composite indexes deployed?** Same rounds, same story. A missing
-   index shows up as an empty list rather than an error.
+2. **Are the composite indexes deployed?** Same rounds, same story. On the
+   Enterprise edition a missing index does not fail: the query still answers by
+   scanning the whole collection, billed by the byte.
    *Check:* `npx tsx scripts/fetch-live-indexes.ts` against
    `firestore.indexes.json`.
-3. **Has `npm run test:rules` been run since Sep 17?** It needs JDK 21 and it
-   only runs on AJ's PC. Nothing else verifies the rules.
+3. **Do the rules tests pass on the rules you are about to deploy?**
+   `npm run test:rules` needs JDK 21; it passed with 323 tests on Oct 7 2026.
+   AJ's run is the one that counts, and nothing else verifies the rules.
 
 The deploy order, when they do need deploying, is in `CLAUDE.md`: indexes →
-rules tests → rules → push.
+rules tests → rules → push → Manual Deploy on Render.
 
 ---
 
 ## Now
 
-### 1. Merge the catalog gate
-`catalog-gate` (17 commits) is built, typechecked and green, and touches no
-rules. It closes the one hole in the machine template boundary: a studio's own
-machine carried the *method*, and publishing it to the catalog adopted those
-words company-wide unread. Round: `docs/rounds/2026-09-20-catalog-gate.md`.
+### 1. Try the catalog gate by hand
+The catalog gate is merged to `master` (its first commit is `497d1307`, Sep 21
+2026) and touches no rules. It closes the one hole in the machine template
+boundary: a studio's own machine carried the *method*, and publishing it to
+the catalog adopted those words company-wide unread. Round:
+`docs/rounds/2026-09-20-catalog-gate.md`. Since Sep 28 2026 an administrator
+decides an offer from Admins → Standard → Waiting for review.
 
-**Worth doing by hand first**, because no studio has ever actually offered a
-machine: make a custom machine on a studio floor → offer it → Admin → Catalog
-→ read it, correct a cue, publish → check the studio's floor says corporate
-adjusted it.
+**Worth doing by hand**, because no studio has ever actually offered a
+machine: make a custom machine on a studio floor → offer it → Admins →
+Standard → Waiting for review → read it, correct a cue, publish → check the
+studio's floor says corporate adjusted it.
 
 ### 2. Tidy the working copy
 The repo root has collected about 13 MB of archives, logs and dumps again, and
@@ -98,36 +108,40 @@ commands are in **`docs/ops/REPO-HYGIENE.md`**; the scripts already exist
 ### 3. The pre-beta audit, and the Mindbody migration it has to solve
 
 **The audit ran on Sep 21** — `docs/rounds/2026-09-21-pre-beta-audit.md`. Its
-findings and AJ's answers are built on the `prior-history` branch. What it was
-pointed at:
+findings and AJ's answers were built on the `prior-history` branch, which is
+merged into `master`. What it was pointed at:
 
 - **The client directory shows no data.** SOLVED, and it is four columns, not
   three. Membership, Sessions Remaining and Next Session all read
-  `client.renewal`, which `server/renewals-job.ts:378` is the only writer of
-  anywhere — and the rules forbid the app from writing it. The nightly job has
-  never run. Fix: `npx tsx scripts/run-renewals.ts --commit` once, no code
-  change. Last Session is a different cause: no session documents yet.
-- **Mindbody sync is per-client and manual — and it is THE beta blocker.**
-  The plan is now written: **`docs/rounds/2026-09-22-mindbody-sync-plan.md`**,
+  `client.renewal`, which the nightly renewals job is the only writer of
+  anywhere — and the rules forbid the app from writing it. That job now runs
+  nightly as the Render cron `journey-cron-renewals` (created Oct 5 2026; it
+  had never run before that night). Last Session is a different cause: no
+  session documents yet.
+- **Mindbody sync was per-client and manual — and it was THE beta blocker.**
+  The plan is written: **`docs/rounds/2026-09-22-mindbody-sync-plan.md`**,
   costed against AJ's real numbers. Short version: the whole forty-location
   backfill is about 30,000 Mindbody calls, roughly $100 once or free spread
-  across nights, so **money is not the constraint**. The constraint is that
-  `server/mindbody-client.ts` has **no retry, no backoff and no 429 handling at
-  all**, and one 429 mid-run loses a client's data silently. That floor has to
-  be built first and **needs AJ's explicit OK**, because it is inside the
-  Mindbody integration.
-  Prerequisite, never yet run: `scripts/check-mindbody-client-collisions.ts`.
-  The two sites share one client-id namespace, and if two people share an id a
-  bulk sync writes one person's details over the other's.
+  across nights, so **money is not the constraint**. The floor the plan asked
+  for is built: `server/mindbody-client.ts` retries with backoff on 429, 408
+  and 5xx and times a call out after 30 s (floor Sep 22 2026; the lean sync
+  went live Sep 25; `docs/rounds/2026-09-26-cost-plan.md`). The collision check
+  ran on Sep 23 and the client-identity round settled the rule for two people
+  on one number (`docs/rounds/2026-09-23-client-identity.md`). What is left of
+  the backfill is bringing each studio's clients in before its cutover date,
+  with `scripts/onboard-studio.ts` at a pace AJ chooses.
 
 ### 4. Two things AJ named on Sep 22
 
 - **Admins cannot control the standard set.** AJ removed Torso Rotation from
-  the standard twenty **by accident**, because there is no good way to manage
+  the standard twenty **by accident**, because there was no good way to manage
   it from the dashboard. Admins need to own that template — it is the basis
   every new studio builds from, and with forty locations coming it gets used
-  forty times. The machine is on a lot of floors; its timing bug is fixed on
-  `prior-history`.
+  forty times. Built since: a machine is marked Standard on its own page in
+  the catalog editor (`admin/catalog/StandardMachineSwitch.tsx`, Sep 28 2026;
+  "Restore standard machines" is gone by AJ's call), and Admins → Standard
+  holds the Standard template. The machine's timing bug was fixed on
+  `prior-history`, which is merged.
 - **An offline session, not attached to a person.** Mindbody is rarely down and
   a client always exists in Mindbody — but the app must still be able to record
   a session when the internet or Mindbody is not there, and let someone import
@@ -137,8 +151,10 @@ pointed at:
 ### 5. The polish pass — the last piece of beta prep
 Phase 1 of beta prep is otherwise done. What is left is the look and feel:
 transitions between screens, loading states, how buttons read pressed /
-disabled / focused, speed, the token and colour drift (322 raw hex values in
-`.tsx` files), and the sign-in screen in light mode.
+disabled / focused, speed, and the token and colour drift (322 raw hex values
+in `.tsx` files when counted in September; the colour rounds of Oct 4 2026 now
+hold what is left with `neutral-ramp.test.ts`). The sign-in screen in light
+mode is moot: the front door has been always dark since Oct 3 2026.
 
 **Done in the voice review follow-up (Sep 27 2026,
 `docs/rounds/2026-09-27-voice-review-followup.md`):** the Wrap-up follows the
@@ -148,19 +164,22 @@ type (display-face titles, 14px bold sentence-case buttons, the 11 / 12 / 14 /
 17 / 30 scale), and have 40px taps, whole names and nothing hover-only.
 Tests hold each of them (`wiki/learning-tokens.test.ts`,
 `wiki/learning-scale.test.ts`, `my-studio/look.test.ts`,
-`studio-tasks/studio-tokens.test.ts`). **Still open:** the Operations kit's
-own look (`.adm-btn` 12px spaced capitals, `.adm-panel__title` 13px,
-`.adm-badge` 10px — off the scale, and still drawing My Studio → Machines',
-Studio's and Team's (Standing weeks, the staff list, temporary profiles)
-buttons and panel heads); header strips on Relay's own Floor and
-Mine cards; the Floor's landscape two-column layout (`.sh__split`, AJ's call);
-the clinical strip's small title; the chosen profile tab's colour; and AJ's
-screen audit, which confirms the names and looks this round chose.
+`studio-tasks/studio-tokens.test.ts`). **Settled since:** the Navy Frame
+(colour) and Type and depth (Oct 4–5 2026) rounds moved the whole app onto one
+colour scheme, type scale and depth, and brought the Operations kit onto it
+(`.adm-panel__title` is 17px upright, `.adm-badge` 12px, every button 14/700);
+the Relay Board was rebuilt on Oct 3 2026, so the strips on Relay's old Floor
+and Mine cards are gone. **Not re-checked:** the Floor's landscape two-column
+layout (`.sh__split`, AJ's call), the clinical strip's small title, the chosen
+profile tab's colour, and AJ's screen audit, which confirms the names and looks
+those rounds chose.
 
-### 5. Reconcile the architecture document with what is built
+### 6. Reconcile the architecture document with what is built
 `docs/ARCHITECTURE.md` §2–§4 are marked "review pending" and several of their
-numbers have drifted (it says Operations has fourteen tabs; it has nine plus a
-separate Admins dashboard). The document is good and worth keeping true.
+numbers have drifted (§2.5 still describes Operations as nine tabs; it has
+seven destinations now, five when the Operations room was built on Sep 28
+2026, with the Admins dashboard its own room).
+The document is good and worth keeping true.
 
 ---
 
@@ -184,9 +203,6 @@ it is the list that separates "AJ's app" from "an app other people use".
   what a trainer sees when the Wi-Fi drops mid-set and comes back.
 - **The "Mindbody is down / walk-in not in Mindbody" decision.** There is no
   answer today and it will happen in week one.
-- **Take the database wipe off the browser.** `executeAppCleanse` deletes
-  every document in eleven collections from a button in the app. Behind an
-  environment guard, an admin-only server route, or gone.
 - **An environment badge outside production**, so nobody demos against live.
 - **A written rollback plan** for rules, functions and the front end.
 - **CI as a required check on `master`** once it has been green for a week;
@@ -210,17 +226,24 @@ closed by My Studio; the cross-studio task writes are the one still open.
 - The new-studio runbook; rosters for Westlake and Willoughby; the tracker and
   routine builder reading the studio's own floor only.
 - **Demo Mode and the tutorials.** The `demo-mode-foundation` branch is
-  retired to the tag `archive/demo-mode-foundation`; Demo Mode gets rebuilt
-  from scratch once more of the app has settled.
-- **The FileMaker migration.** Field mapping to the data dictionary (§3.2),
-  the importer in the `scripts/migrate-machine-id.ts` shape, blanks imported
-  as *Skipped: unknown (FileMaker)*. The Mindbody notes import comes first.
-  Machine settings already have a manual path (Programming → Setup → Quick
-  entry), and `parseShorthand` in `features/machine-fit/shorthand.ts` is the
-  function an importer hands every settings string to.
+  retired to the tag `archive/demo-mode-foundation`. Demo Mode was rebuilt
+  from scratch on Sep 20 2026 as a real practice studio
+  (`src/features/demo-mode/`, `docs/rounds/2026-09-20-demo-mode.md`); the
+  tutorials are still to do.
+- **The FileMaker migration — on hold.** Field mapping to the data dictionary
+  (§3.2), the importer in the `scripts/migrate-machine-id.ts` shape, blanks
+  imported as *Skipped: unknown (FileMaker)*. AJ decided on Oct 2 2026 to make
+  the app work without the FileMaker data: a client's sessions before Journey
+  come from Mindbody's visit count and a trainer's confirmation
+  (`docs/business/migration-and-prior-history.md`), so nothing here is being
+  built until the FileMaker extraction is done. Machine settings already have
+  a manual path (Programming → Setup → Quick entry), and `parseShorthand` in
+  `features/machine-fit/shorthand.ts` is the function an importer hands every
+  settings string to.
 - The Monday-morning questions 2–4 as automatic in-app flags.
-- Mindbody `staff.*` and contract/membership webhooks, after the collision
-  check.
+- Mindbody's webhook already handles `staff.*`, contract, membership and sale
+  events in code (`functions/src/mindbody/index.ts`); whether Mindbody sends
+  them all is not checked here.
 - **Teams in Journey (proposed Oct 3 2026, waiting on Jeff and AJ).** Max
   Strength already runs on Microsoft 365 and everyone uses Teams, and
   Journey's own messaging (Relay's asks, comments, note shares) is thin. The
@@ -230,7 +253,9 @@ closed by My Studio; the cross-studio task writes are the one still open.
   what of Relay retires. It would change one line of **Not building** below
   (Teams may notify; Journey still sends nothing). The proposal is
   `docs/rounds/2026-10-03-teams-proposal.md`.
-- Accessibility pass; cold-load timing on a studio iPad.
+- Accessibility pass. (Cold-load timing on a studio iPad was first measured by
+  the speed and iPad rounds, Oct 5–6 2026: each cold open sends a boot report
+  to Render's logs, and the perf lab in `harness/perf-lab/` is the tool.)
 - Architected for, not built: automated retention beyond flags (in-app only),
   the InBody Web API per studio, badges and awards, CSV export of a client's
   history, a second time zone, `strict` TypeScript, Cloud Functions tests in CI.
@@ -252,14 +277,13 @@ coaching. Nothing for a company other than Max Strength Fitness.
 Small things left behind by a round, grouped by where they live. None is
 urgent; all are written down so they are not rediscovered.
 
-**Machines and the catalog** — **the template boundary is superseded and not
-yet rebuilt** (AJ, Sep 21): a franchisee may change anything on their own copy,
-safety included, with head office keeping the catalog and the approvals. The
-round is three things that must ship together — open `canEdit` /
-`scopeOverrides`, let the additive merge in `resolve-machine.ts` express a
-removal, and build the **divergence view** so head office can see which
-studios changed what and why a safety line was removed. Half of it is worse
-than none of it; the reasoning is written at the top of `src/lib/machine-template.ts`.
+**Machines and the catalog** — **the template boundary was superseded (AJ, Sep
+21) and rebuilt on Sep 28 2026** (codex wave 2, `docs/rounds/2026-09-28-codex-2.md`):
+a franchisee may change anything on their own copy, safety included, with head
+office keeping the catalog and the approvals. Removing a safety line needs a
+reason, and the divergence view (Admins → Standard → Machines → a machine →
+Compare) shows head office which studios changed what and why. The reasoning
+is at the top of `src/lib/machine-template.ts`.
 Also: **the company-wide settings numbers are currently blended across models**
 (a Hoist seat 4 averaged with a Nautilus seat 4) and cannot be fixed until a
 model is recorded on a roster entry — see `src/features/machine-fit/README.md`;
@@ -276,18 +300,19 @@ from the newest session, so the FileMaker importer must number from history
 instead; the Journey grid truncates machine names and shows ~7 columns in
 portrait.
 
-**Renewals and Operations** — the renewals dry-run has not been done; Render
-Blueprint sync for `journey-cron-renewals`; Operations → Renewals settings
+**Renewals and Operations** — the nightly renewals job has run since the Render
+cron `journey-cron-renewals` was made by hand on Oct 5 2026 (the Blueprint was
+never linked, so there is no Blueprint sync to do; `render.yaml` is the written
+record of the dashboard); Operations → Renewals settings
 matched to the Mindbody package names; the collision-checker batching fix; the
 `hub_announcements` delete rule; the Render cron service is still named
 `journey-cron-leaderboards` although it runs the machine-trends job.
 
 **Mindbody and sync** — restore the bookings the old sweep cancelled
-(Operations → Mindbody → Sync with a past start date, per studio); the
-directory's Last Session column reads `sessions` with `limit(100)` across 30
-clients and no order, so a client with many sessions can hide another's
-latest; `calculateFacilityAnalyticsV2` still reads every exercise log nightly
-and nothing reads its output.
+(Operations → Mindbody → Sync with a past start date, per studio). (The
+directory's old Last Session query and the nightly `calculateFacilityAnalyticsV2`
+are both gone: the directory was rebuilt on Sep 28 2026 and the function was
+deleted by the cost plan on Sep 26 2026.)
 
 **The voice review follow-up (Sep 27 2026)** — to do by hand: delete the
 `taskInstances` (status, localDate) index in the Firebase console (it left the
@@ -359,16 +384,16 @@ small file of its own (about 4 kB off the first download).
 
 **The Machine Catalog (Sep 28 2026)** — to do by hand: walk Round 29 of the testing checklist. Decisions for AJ: the nineteen rulings in `docs/rounds/2026-09-28-codex-source-check.md` (the Leg Press's knee replacement first; "follow the Academy" answers all of them), then administrators make the corrections in the catalog editor (AJ, Sep 28 2026: not in code); the machine window's "Studio standard" starting weight where a studio set none; the four body-figure markings that need no redrawing. Wave 2 built the reason, the aliases and the model tier's read side; next: the Catalog's Edit our floor door, head office's view (R6), pointing Admins → Standard at it (R7). Technical leftovers: `MachineUpkeepCard` has no host; the older coaching text in `machine-database.ts` is unchecked; a floor never loaded on this iPad, opened offline, reads as empty (the roster listener needs `includeMetadataChanges` to tell a cache-only answer apart).
 
-**The Operations room (Sep 28 2026)** — to do by hand: walk Round 30 of the testing checklist. Waiting on AJ's OK, all in the round document's "Not built": a no-show mark; client states written by the nightly job; case fields on the attendance watchlist; a nightly summary per studio; the lines as studio settings; trainers' own cases in Relay → Mine; a place for 1:1 notes. His questions are the round document's "Open, for AJ" (the client page inside Operations, "This week so far", the chance check's floors, kudos on Team, the huddle on one iPad). Technical leftovers: ARCHITECTURE §2.5 still describes nine tabs (the round document has a replacement); `.adm-ins-bad` has no reader.
+**The Operations room (Sep 28 2026)** — to do by hand: walk Round 30 of the testing checklist. As the round left it, these waited on AJ's OK (its "Not built"); a no-show mark (`bookingMarks`), client states written by the nightly job, the lines as studio settings, trainers' own cases (Relay → Tracker → Follow-ups) and a place for 1:1 notes (Oct 3 2026) have been built since, and case fields on the attendance watchlist and a nightly summary per studio were not re-checked. His questions are the round document's "Open, for AJ" (the client page inside Operations, "This week so far", the chance check's floors, kudos on Team, the huddle on one iPad). Technical leftovers: ARCHITECTURE §2.5 still describes nine tabs (the round document has a replacement); `.adm-ins-bad` has no reader.
 
-**The Relay room (Sep 28 2026), waiting on AJ**: a quiet-floor number per studio (q3; 2 for every studio meanwhile); a cover ask that keeps its time; Since you were in (a last-seen marker per trainer, a new-to-the-studio lookup); the Journal (note types, templates, shelves, hunches; Opening's things to carry and Close out's day log); announcements that ask "I've read it" (q7: the retired `readBy` stamp and the private `announcementReads`); a studio's own cleaning log; claim times. Questions: the open question's three weeks on the briefing, closing it on her Notes page, trainers naming one person, Opening's 90 minutes. Technical: a load status from `useLiveSchedule` for Right now and Opening; folding Capture's "The Board" into the Ask sheet.
+**The Relay room (Sep 28 2026), as it stood then** (superseded in part: the second and third waves built the quiet-floor number as a studio setting, cover asks that keep their time, Since you were in, the Journal, claim times and announcements that ask "I've read it", and the Board was rebuilt on Oct 3 2026, which removed Opening and Close out; `docs/rounds/2026-10-03-relay-board.md`): a quiet-floor number per studio (q3; 2 for every studio meanwhile); a cover ask that keeps its time; Since you were in (a last-seen marker per trainer, a new-to-the-studio lookup); the Journal (note types, templates, shelves, hunches; Opening's things to carry and Close out's day log); announcements that ask "I've read it" (q7: the retired `readBy` stamp and the private `announcementReads`); a studio's own cleaning log; claim times. Questions: the open question's three weeks on the briefing, closing it on her Notes page, trainers naming one person, Opening's 90 minutes. Technical: a load status from `useLiveSchedule` for Right now and Opening; folding Capture's "The Board" into the Ask sheet.
 
 **Decisions still waiting on AJ** — whether the tracker should suggest starting
 weights at all; the three unwired Academy safety rules; who runs the payroll
 export and how often; the bootstrap e-mail hard-coded in
 `useAuthInitialization`; whether to raise the app's tap-target floor from 40px
-to Apple's 44px; what to do with the App Cleanse and the unused server and
-Mindbody routes.
+to Apple's 44px; what to do with the unused server and Mindbody routes (the
+browser's App Cleanse button was removed on Sep 20 2026).
 
 ---
 

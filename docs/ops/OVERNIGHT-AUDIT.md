@@ -70,7 +70,7 @@ The rubric in short — every finding should tie back to one of these:
 2. THE EVIDENCE RULE — this is the part that matters most
 ═══════════════════════════════════════════════════════════════════
 
-An outside audit of this codebase was run recently and was mostly wrong. It
+An outside audit of this codebase was run in September 2026 and was mostly wrong. It
 recommended migrating to a library version already in use, adding a function
 already used in twelve files, enabling a setting already enabled, and named a
 file as the source of a bug when that file contains no code that could cause
@@ -142,8 +142,8 @@ proposal, not code:
   - How many clients and how many bookings are actually involved? Count them,
     don't estimate.
   - How many Mindbody API calls per client does Master Sync currently make?
-    ROADMAP.md notes that client/clientcompleteinfo could cut it from five to
-    two — verify and cost both.
+    An earlier ROADMAP.md noted that client/clientcompleteinfo could cut it
+    from five to two (no longer on that page) — verify and cost both.
   - What are the real limits? Mindbody's rate limits, Firestore write costs,
     and the read quota. There is precedent: a 429 quota storm on Aug 30 2026
     — find it in the history and learn what caused it.
@@ -224,7 +224,8 @@ You MAY NOT, in this run:
 Everything else is a proposal in the document.
 
 Verify before you finish: npx tsc --noEmit (count must not exceed the
-baseline of 10), and the test suite green. AJ runs test:rules; you cannot.
+baseline in CLAUDE.md, 2 as of Oct 7 2026), and the test suite green. AJ runs
+test:rules; you cannot.
 
 ═══════════════════════════════════════════════════════════════════
 7. HOW TO WRITE IT

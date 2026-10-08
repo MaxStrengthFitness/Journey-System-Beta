@@ -58,7 +58,8 @@ vendor group in `vite.config.ts`) before raising the number.
 
 | | |
 |---|---|
-| `docs/business/` | The studio's rules: packages and pricing, renewals, roles, data sources, glossary |
+| `docs/START-HERE.md` | The project in fifteen minutes, written for someone who does not code |
+| `docs/business/` | The studio's rules: packages and pricing, renewals, roles, data sources, glossary, what a session is, prior history, running costs |
 | `docs/rounds/` | What each round of work changed, and why |
 | `scripts/` | Migrations, diagnostics and the ship scripts |
 | `functions/` | Cloud Functions, including the Mindbody webhook pipeline |

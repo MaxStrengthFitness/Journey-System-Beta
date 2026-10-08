@@ -10,9 +10,24 @@ see [Later: turning notifications on](#later-turning-notifications-on) at the
 bottom, which is the only part of this document that could put a message in
 front of anyone.
 
+> **Where Render stands (checked Oct 7 2026) — read this before the steps
+> below, which are the Sep 20 2026 plan.** `render.yaml` is not linked to
+> Render: there is no Blueprint instance, so nothing in it is applied by a
+> push or a sync. The dashboard is the source of truth and `render.yaml` is the
+> written record of it (its header says so). There are three live services:
+> the web service and two cron jobs, `journey-cron-renewals` (nightly) and
+> `journey-cron-leaderboards` (weekly machine trends), both created by hand in
+> the dashboard on Oct 5 2026 (Ohio, Starter). **A push to `master` deploys
+> nothing** (Render has no access to the repo): every deploy is AJ pressing
+> **Manual Deploy** on the web service and **Manual Build** on both cron jobs,
+> or a cron keeps running its old commit. Steps 2 and 3 below (push the branch,
+> create the blueprint) were never done that way, so skip them; Steps 1, 4 and
+> 5 still describe real things. The Cloud Functions `onBookingReminderWrite` and
+> `sendDailySummary` no longer exist (deleted Oct 5 2026).
+
 ---
 
-## What you are adding
+## What you are adding (the Sep 20 2026 plan)
 
 You have one service today: the web app at `maxstrength-app-beta.onrender.com`.
 You are adding one more, and putting both under one file in git.
@@ -35,15 +50,14 @@ plan assigns to Postgres.
 
 ### What is unchanged, and worth knowing
 
-`functions/src/index.ts` has two Cloud Functions writing into the
-`notificationQueue` collection - `onBookingReminderWrite` on every booking for
-a reminders-enabled studio, and `sendDailySummary` each morning. Nothing has
-ever read those documents back out.
-
-That does not change here. They keep accumulating in Firestore, harmlessly,
-exactly as they have been. Deploying the worker is what would give them a
-reader, and the worker is not being deployed. Nothing in this blueprint alters
-what any studio, coach or client experiences today.
+Until Oct 5 2026, `functions/src/index.ts` had two Cloud Functions writing
+into the `notificationQueue` collection - `onBookingReminderWrite` on every
+booking for a reminders-enabled studio, and `sendDailySummary` each morning.
+Nothing ever read those documents back out. The speed round deleted both
+functions (Oct 5 2026), so nothing writes to that queue any more; what they
+wrote before is still there, unread. Deploying the worker would give those old
+documents a reader, and the worker is not being deployed. Nothing in this
+blueprint alters what any studio, coach or client experiences today.
 
 ---
 

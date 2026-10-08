@@ -80,6 +80,10 @@ Add-Content .gitignore "`n# Git bundles used to move branches between machines`n
 
 ## 5. Untracked files that should be decided, not deleted
 
+*(Oct 7 2026: the five ship scripts and `docs/JOURNEY-BRIEFING.md` below have
+since been committed and are tracked; `DEMO-MODE-RUNBOOK.md` is not in the
+repo. This section is the Sep 21 inventory.)*
+
 Five ship scripts were written but never committed, while their siblings in the
 same folder are tracked:
 
@@ -88,8 +92,9 @@ same folder are tracked:
 
 Two documents are in the same state:
 
-- `DEMO-MODE-RUNBOOK.md` at the root — Demo Mode is retired to the tag
-  `archive/demo-mode-foundation` and will be rebuilt, so this is history.
+- `DEMO-MODE-RUNBOOK.md` at the root — the old Demo Mode is retired to the tag
+  `archive/demo-mode-foundation` (Demo Mode was rebuilt from scratch on Sep 20
+  2026, `src/features/demo-mode/`), so this is history.
   Belongs in `docs/ops/` or deleted.
 - `docs/JOURNEY-BRIEFING.md` (44 KB) — worth a look before deciding; if it is
   still true, commit it; if it has been superseded by `docs/START-HERE.md` and
@@ -114,10 +119,13 @@ like it was meant to live in `src/`.
 
 ---
 
-## 7. Twenty-three merged branches
+## 7. Twenty-three merged branches (the Sep 21 count)
 
-Everything except `catalog-gate` and `claude-experiment` is merged into
-`master` and can go. `cleanup-branches.ps1` already exists for this:
+*(Oct 7 2026: `catalog-gate` has since merged, and the local branch list is far
+longer now — 156 of 179 local branches are merged into `origin/master`.)*
+
+On Sep 21 everything except `catalog-gate` and `claude-experiment` was merged
+into `master` and could go. `cleanup-branches.ps1` already exists for this:
 
 ```powershell
 .\scripts\ship\cleanup-branches.ps1

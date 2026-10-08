@@ -2,6 +2,8 @@
 
 *Written Oct 3 2026 by Claude Code, from the code as it stands on master. Paste the whole of this into a claude.ai chat (or a Project's instructions) before talking. It is a companion to `docs/ops/CONVERSATION-BRIEF.md`, which covers Journey in general; this one goes deep on one subject.*
 
+*Superseded in part, Oct 7 2026: the notes round (Oct 3 2026, `docs/rounds/2026-10-03-client-notes.md`) came out of this interview, and sections 3 and 4 describe the notes as they were before it. The categories are now Coaching & equipment · Health (injury or pain, surgery, medication, diagnosis, care outside the studio) · Incident · Retention · FORD / Life · Preference, not the seven below; a Heads up is read out at four sessions, not days; Health, Incident and Retention reach the studio's leaders on Operations → Today; and the floor's notes on a machine are one dated list per machine. `src/features/client-notes/README.md` has what was built.*
+
 ---
 
 ## 0. What to paste as the first message

@@ -39,7 +39,7 @@ Journey is the coaching app for Max Strength Fitness studios, replacing the Clar
 - **The Active Session**: the *briefing* before (strictly pre-session), the tracker during, the *Wrap-up* after.
 - **Learning**: the Machine Catalog (the studio's own floor first) and the Academy (the method's text).
 - **My Studio**: *Relay* (*Board · Tracker · Journal*: help the team right now, asks, hand-offs), *Openings* (when the studio is busy, what opened up), *Machines*, *Team* (people and standards), *Studio* (the studio's own settings, edited by its leaders).
-- **Operations** (studio leaders and up): *Today · Week · Month · Clients · Team · Setup*. Where a leader looks to find what's going wrong and what's going right.
+- **Operations** (studio leaders and up): *Today · Week · Month · Ahead · Clients · Team · Setup*. Where a leader looks to find what's going wrong and what's going right.
 - **Admins** (head office only): *Home · Studios · Standard · Machinery*. Sets the standard and supports studios remotely.
 
 **Roles**: Life Transformer (a trainer), Head Trainer, Studio Leader, Studio Owner, Franchise Owner, Founder / Overseer, System Administrator. A trainer can also be given "the grant" to help run a studio. *My Studio answers "how can I help the team right now?"; Operations answers "where are we going wrong, and right?"*
@@ -58,7 +58,7 @@ If a request touches one of these, name the rule and ask how AJ wants to handle 
 6. **Recognition, never ranking**, among trainers.
 7. **Max Strength owns the method; a studio owns its hardware.** Studios may set up their own machines; the method's words are head office's.
 8. **Names are never cut short**, and nothing tappable is smaller than a fingertip.
-9. **Every push goes live** on the studio iPads.
+9. **What is on the main branch goes live** on the studio iPads when AJ presses Deploy on Render (a push alone deploys nothing), so unfinished work waits on a branch.
 
 ## 5. How to run a request (the voice note)
 

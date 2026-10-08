@@ -50,7 +50,7 @@ Words the studios use, and what they mean in the app. The full training-method g
 
 | Term | Meaning |
 | --- | --- |
-| Hub | The studio's shared screen: today's shift, clients waiting, the board, the playbook |
+| Hub | Where a trainer lands: the day's bookings on a calm grid with a column per trainer, a peek on tap, and an Opportunities layer listing the day's moments (birthdays, milestones, things to ask about). The calm Hub, Sep 28 2026 |
 | Journey Grid | A client's machine-by-session history, and the live session view |
 | Now bar | The fixed bar in a live session showing the current machine and what's next |
 | Briefing | The pre-session screen, and only that: check-in, critical notes, plan |

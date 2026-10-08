@@ -32,7 +32,7 @@ This gets the Journey System running on your PC. The only two things that decide
 
 ## 2. Install dependencies
 
-Open PowerShell in `J:\MSF\Journey-System-Beta-master` and run:
+Open PowerShell in `C:\Users\austi\Projects\Journey-System-Beta-master` (the working copy; copies under `J:\` are stale) and run:
 
 ```powershell
 npm ci
@@ -70,12 +70,9 @@ This file is gitignored, so your values stay local.
 
 ## 6. Make yourself the admin
 
-The codebase came back with the contractor's personal Gmail hardcoded as the auto-provisioned super-admin. Replace `developertesting336@gmail.com` with **the Gmail you'll sign in with** in these two files:
+The first sign-in auto-creates a "System Admin" profile only for one hardcoded Gmail address (AJ's), in the "Bootstrap the owner" block of `src/hooks/useAuthInitialization.ts` (around line 473). The contractor's address that used to be hardcoded here, in that file and in `src/components/StudioSelectionView.tsx`, is gone (checked Oct 7 2026). To sign in with a different Gmail against a test project, replace the address in that one block, or create a `trainers/{uid}` document for yourself by hand in the Firebase console.
 
-- `src/hooks/useAuthInitialization.ts` (line ~83) — this is the check that auto-creates a "System Admin" profile on first sign-in
-- `src/components/StudioSelectionView.tsx` (line ~62)
-
-(There's a third occurrence in `scripts/purge-database.ts` line ~34 — see the warning below before touching that script.)
+`scripts/purge-database.ts` keeps its own preserved address (`PRESERVED_EMAIL`, around line 63) — see the warning below before touching that script.
 
 ## 7. First run with real sign-in
 
