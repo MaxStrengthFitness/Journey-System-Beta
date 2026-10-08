@@ -6,7 +6,21 @@
  * `intended` is the road. A machine the trainer added that the plan doesn't
  * name is an extra, kept where the trainer put it, never dropped.
  */
-import type { PlanChange, RoutinePlan } from "./types";
+import { STARTING_COLUMN_LABEL, type StartingColumn } from "./starting-weights";
+import type { CantDo, PlanChange, RoutinePlan } from "./types";
+
+/**
+ * What changed, offered on the Re-plan sheet (AJ, Oct 8 2026: "we might have
+ * a plan for a routine but find something out in those first few sessions
+ * that drastically changes it or we could have a client who is getting
+ * surgery"). A choice, never required; the trainer may write their own.
+ */
+export const REPLAN_REASONS = [
+  "Surgery coming up",
+  "Found something in the first sessions",
+  "Client asked",
+  "Training at another studio",
+] as const;
 
 export interface PlanProgress {
   /** Machines of the plan the routine has, out of the plan's total. */
@@ -68,10 +82,43 @@ export function routineWith(
 }
 
 /**
+ * The plan with a can't-do entry in it, replacing any earlier entry for the
+ * same machine (a second mark changes the reason or the until; it never
+ * stacks). The road itself is reshaped by `reshapeForCantDo` (cant-do.ts),
+ * which knows the floor; this only keeps the entry.
+ */
+export function planWithCantDo(plan: RoutinePlan, entry: CantDo): RoutinePlan {
+  const rest = (plan.cantDo ?? []).filter((c) => c.machineId !== entry.machineId);
+  return { ...plan, cantDo: [...rest, entry] };
+}
+
+/** The plan with no can't-do entry for these machines. The road is put back by `reopenCantDo` (cant-do.ts). */
+export function planWithoutCantDo(plan: RoutinePlan, machineIds: readonly string[]): RoutinePlan {
+  if (!plan.cantDo) return plan;
+  return { ...plan, cantDo: plan.cantDo.filter((c) => !machineIds.includes(c.machineId)) };
+}
+
+/** A column the sheet has, or "none" (Don't show ranges); anything else is not a column. */
+export function isStartingColumnChoice(value: unknown): value is StartingColumn | "none" {
+  return value === "none" || (typeof value === "string" && Object.prototype.hasOwnProperty.call(STARTING_COLUMN_LABEL, value));
+}
+
+/**
  * A change applied to a plan. Returns the new plan; the routine itself is
  * moved by the caller (a session's Finish, the Wrap-up, Programming).
+ *
+ * A "cantdo" change's value holds only its words ("Surgery · cleared"), so
+ * the entry it records (who, the day, what stood in) is passed beside it as
+ * `cantDo`; without one, the change has nothing to record and the plan is
+ * returned as it was. Reshaping the road for it is `reshapeForCantDo`'s, and
+ * putting a reopened machine back is `reopenCantDo`'s (cant-do.ts): both need
+ * the floor or the routine, which a change alone doesn't carry.
  */
-export function applyPlanChange(plan: RoutinePlan, change: Pick<PlanChange, "kind" | "machineIds" | "value">): RoutinePlan {
+export function applyPlanChange(
+  plan: RoutinePlan,
+  change: Pick<PlanChange, "kind" | "machineIds" | "value">,
+  cantDo?: CantDo,
+): RoutinePlan {
   const ids = change.machineIds;
   switch (change.kind) {
     case "start":
@@ -109,6 +156,20 @@ export function applyPlanChange(plan: RoutinePlan, change: Pick<PlanChange, "kin
         .filter(Boolean);
       return { ...plan, focus };
     }
+    case "cantdo":
+      return cantDo ? planWithCantDo(plan, cantDo) : plan;
+    case "cando":
+      return planWithoutCantDo(plan, ids);
+    case "replan": {
+      // The road starts again from what the trainer kept; a machine named
+      // twice is kept once, where it first stands.
+      const intended = ids.filter((id, i) => ids.indexOf(id) === i);
+      return { ...plan, intended };
+    }
+    case "column":
+      // A value that isn't one of the sheet's columns is skipped, never bent
+      // into one (the studio settings' rule).
+      return isStartingColumnChoice(change.value) ? { ...plan, startingColumn: change.value } : plan;
   }
 }
 

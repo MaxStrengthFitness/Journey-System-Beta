@@ -221,8 +221,11 @@ the app's own routines kit (`features/routines/`, `routines.css`).
 ### 4.4 Can't do
 
 - **Stored on Routine A's plan.** `plan.cantDo: Array<{ machineId, reason?,
-  until: "cleared" | "always" | "YYYY-MM-DD", byUid, byName?, day }>`. B, the
-  briefing, the floor and every suggestion read it.
+  until: "cleared" | "always" | "YYYY-MM-DD", byUid, byName?, day,
+  replacedBy?, onRoad? }>`. B, the briefing, the floor and every suggestion
+  read it. `replacedBy` is what stood in when it was marked; `onRoad` whether
+  the machine was on the plan's road then, so Reopen never adds a machine the
+  road didn't have. A dated `until` is the last day the mark holds.
 - **Reasons** (all optional): Surgery · Injury or pain · Doesn't fit the
   machine · Not cleared yet · Client won't.
 - **Marking one reshapes the plan.** The Academy's documented substitute is
@@ -329,7 +332,11 @@ the app's own routines kit (`features/routines/`, `routines.css`).
   - `cando`: `machineIds` [id];
   - `replan`: `machineIds` = the new intended; `value` = what changed;
   - `column`: `value` = the column.
-- `RoutinePreset.start?` holds `dayOne`, `steps?`, `matchWords?`, `default?` and `source?`.
+- `RoutinePreset.start?` holds `dayOne`, `steps?`, `matchWords?`, `default?`,
+  `source?` and `kind?` (`clear` · `condition` · `goal`, the Academy's row
+  kinds: a condition's match outranks a goal's whatever order the presets are
+  read in; the seed writes the Academy's). `default` counts only on a company
+  preset.
 - **Rules.**
   - `planChangeOk` accepts the four new kinds.
   - `studios/{s}/config/{configId}` gains `startingRoutines` with its validator.

@@ -22,18 +22,26 @@
  *   promising the model A the Academy puts two months out. A trainer may aim
  *   it at the eventual A instead;
  * - keeps only machines on the studio's floor, and says which it couldn't.
+ *
+ * Since the design round (Oct 8 2026) the screens start from starting
+ * routines, which admins make and studios choose (`starting-routines.ts`);
+ * the Academy's eleven are its fallback, built from these templates by
+ * `academyStartingRoutines()`. This file keeps the templates' own path and
+ * the floor helpers both use.
+ *
+ * Gender is used nowhere (AJ, Oct 8 2026, "3a": "A client whose intake names
+ * nothing gets the studio's default starting routine. Gender is used nowhere
+ * in choosing a start"). The Academy's two "no reported issues" rows were
+ * picked by Mindbody's gender until then; now an intake that names nothing
+ * leaves the pick to the trainer, and the two rows are named by what tells
+ * them apart, never by sex (`academyTemplateName`).
  */
 import { canonicalMachineId } from "../catalog/machine-identity";
-import {
-  SELECTION_TEMPLATES,
-  matchTemplates,
-  preferenceFromGender,
-  type SelectionTemplate,
-} from "../routine-builder/academy";
+import { SELECTION_TEMPLATES, matchTemplates, type SelectionTemplate } from "../routine-builder/academy";
 import { autoSequence } from "../routine-builder/engine";
 import type { RoutinePlan } from "./types";
 
-const TEMPLATE_SOURCE =
+export const TEMPLATE_SOURCE =
   "docs/msf-academy/Academy 6 - General Recommendations for Programming and Progression/Programming and Progression 7 - Exercise Selection Template.txt";
 
 export interface FloorMachine {
@@ -54,34 +62,67 @@ export const STEP_LABEL: Record<AcademyStepKey, string> = {
 };
 
 export interface AcademyStep {
-  key: AcademyStepKey;
+  /**
+   * Which step: an Academy template's `AcademyStepKey`, or, for a starting
+   * routine, `step-1`, `step-2` ... in the order the steps join.
+   */
+  key: string;
   label: string;
-  /** The step's machines that are on this floor, as floor ids, in the Academy's order. */
+  /** The step's machines that are on this floor, as floor ids, in order. */
   machineIds: string[];
   /** The step's machines this floor doesn't have (catalog ids). */
   missing: string[];
 }
 
-export interface StartingSuggestion {
+export interface StartingAlternative {
   templateId: string;
-  /** The template's name without the Academy's sex split ("No reported issues"): the app never says a client's gender. */
   label: string;
-  /** Why this template, in a sentence a trainer can read aloud. */
+  /**
+   * Its road on this floor, in order (floor ids). A screen shows the first
+   * few, so two starts with similar names are told apart by their machines.
+   */
+  machineIds: string[];
+}
+
+export interface StartingSuggestion {
+  /** The template or starting routine picked, or null when the trainer has to pick (`needsChoice`). */
+  templateId: string | null;
+  /** Its name as a screen says it, never with the Academy's sex split; null with no pick. */
+  label: string | null;
+  /** Why this one, in a sentence a trainer can read aloud. */
   why: string;
-  source: string;
+  /** Where it came from (a document path, or head office's words), when known. */
+  source: string | null;
+  /** Empty when nothing is picked. */
   steps: AcademyStep[];
   /**
-   * True when Journey had nothing to choose the row by (no condition in the
-   * intake and no gender from Mindbody): the trainer picks the row.
+   * True when Journey had nothing to choose by: no condition in the intake
+   * and no default. The trainer picks; nothing is picked for them.
    */
   needsChoice: boolean;
-  /** Every other template that could apply, so the trainer can switch. */
-  alternatives: Array<{ templateId: string; label: string }>;
+  /** Every other start that could apply, matched ones first, so the trainer can switch. */
+  alternatives: StartingAlternative[];
 }
 
 /** The template's name as a screen may say it. */
 export function sayableTemplateLabel(t: Pick<SelectionTemplate, "label">): string {
   return t.label.replace(/\s+—\s+(female|male)$/i, "");
+}
+
+/**
+ * The Academy's two "no reported issues" rows, named by what tells them
+ * apart rather than by sex: each name is two machines its road has and the
+ * other's hasn't (the test holds that). The condition and goal rows keep
+ * their label.
+ */
+const CLEAR_ROW_NAME: Record<string, string> = {
+  "clear-female": "No reported issues · with Seated Dip and Adduction",
+  "clear-male": "No reported issues · with Chest Press and Pulldown",
+};
+
+/** A template's name for a screen and for the seed: never "female" or "male". */
+export function academyTemplateName(t: Pick<SelectionTemplate, "id" | "label">): string {
+  return CLEAR_ROW_NAME[t.id] ?? sayableTemplateLabel(t);
 }
 
 /** Catalog id → this floor's id for it (the first unit on the floor). */
@@ -92,6 +133,17 @@ export function floorIndex(floor: readonly FloorMachine[]): Map<string, string> 
     if (canonical && !byCanonical.has(canonical)) byCanonical.set(canonical, m.id);
   }
   return byCanonical;
+}
+
+/**
+ * Floor id → the catalog machine it is: what the floor says first (a studio's
+ * unit `unit-7` knows it is `m-leg-press`), else `canonicalMachineId`. The
+ * Academy's rules and tables read catalog ids; a plan holds floor ids.
+ */
+export function floorCanonical(floor: readonly FloorMachine[]): (id: string) => string {
+  const byFloorId = new Map<string, string>();
+  for (const m of floor) byFloorId.set(m.id, m.canonicalId ?? canonicalMachineId(m.id, m.name));
+  return (id: string) => byFloorId.get(id) ?? canonicalMachineId(id);
 }
 
 function stepOf(key: AcademyStepKey, ids: readonly string[], index: Map<string, string>): AcademyStep {
@@ -116,11 +168,29 @@ function stepsFor(t: SelectionTemplate, index: Map<string, string>): AcademyStep
   ];
 }
 
+/**
+ * A template's road in catalog ids: the consultation's machines the second
+ * workout leaves out, then the second workout, repaired against the
+ * sequencing rules when the two had to be joined. The same road
+ * `startingPlanFrom` makes on a floor, and the one the seed writes.
+ */
+export function academyRoad(t: Pick<SelectionTemplate, "consult" | "secondWorkout">): string[] {
+  const extras = t.consult.filter((id) => !t.secondWorkout.includes(id));
+  return extras.length > 0 ? repairOrder([...extras, ...t.secondWorkout]) : [...t.secondWorkout];
+}
+
+function onFloor(ids: readonly string[], index: Map<string, string>): string[] {
+  const out: string[] = [];
+  for (const id of ids) {
+    const floorId = index.get(id);
+    if (floorId && !out.includes(floorId)) out.push(floorId);
+  }
+  return out;
+}
+
 export interface StartingInput {
   /** The intake's words: medical history, goals, the clinical profile, open Health notes. */
   intakeText?: string | null;
-  /** Mindbody's gender, used only to pick between the Academy's two "no reported issues" rows; never shown. */
-  gender?: string | null;
   floor: readonly FloorMachine[];
   /** A template the trainer picked, overriding the match. */
   templateId?: string | null;
@@ -129,40 +199,32 @@ export interface StartingInput {
 export function suggestStartingPlan(input: StartingInput): StartingSuggestion {
   const index = floorIndex(input.floor);
   const matched = matchTemplates(input.intakeText);
-  const preference = preferenceFromGender(input.gender);
-  const clear = SELECTION_TEMPLATES.filter((t) => t.kind === "clear");
-  const clearForClient =
-    clear.find((t) => t.id === `clear-${preference}`) ?? clear[0];
 
-  let chosen: SelectionTemplate;
+  let chosen: SelectionTemplate | null = null;
   let why: string;
-  let needsChoice = false;
   const picked = input.templateId ? SELECTION_TEMPLATES.find((t) => t.id === input.templateId) : undefined;
   if (picked) {
     chosen = picked;
-    why = `The Academy's template the trainer picked: ${sayableTemplateLabel(picked)}.`;
+    why = `The Academy's template the trainer picked: ${academyTemplateName(picked)}.`;
   } else if (matched.length > 0) {
     chosen = matched[0];
     why = `From the Academy's template for ${sayableTemplateLabel(chosen).toLowerCase()}, matched from the intake.`;
   } else {
-    chosen = clearForClient;
-    needsChoice = preference === "neutral";
-    why = needsChoice
-      ? "Nothing in the intake names a condition. Pick which of the Academy's starting templates fits."
-      : "Nothing in the intake names a condition: the Academy's starting template.";
+    why = "Nothing in the intake names a condition. Pick which of the Academy's starting templates fits.";
   }
 
-  const alternatives = [...matched, ...clear]
-    .filter((t, i, all) => t.id !== chosen.id && all.findIndex((x) => x.id === t.id) === i)
-    .map((t) => ({ templateId: t.id, label: sayableTemplateLabel(t) }));
+  // Matched templates first, then the rest in the Academy's order.
+  const alternatives = [...matched, ...SELECTION_TEMPLATES]
+    .filter((t, i, all) => t.id !== chosen?.id && all.findIndex((x) => x.id === t.id) === i)
+    .map((t) => ({ templateId: t.id, label: academyTemplateName(t), machineIds: onFloor(academyRoad(t), index) }));
 
   return {
-    templateId: chosen.id,
-    label: sayableTemplateLabel(chosen),
+    templateId: chosen?.id ?? null,
+    label: chosen ? academyTemplateName(chosen) : null,
     why,
     source: TEMPLATE_SOURCE,
-    steps: stepsFor(chosen, index),
-    needsChoice,
+    steps: chosen ? stepsFor(chosen, index) : [],
+    needsChoice: chosen === null,
     alternatives,
   };
 }
@@ -189,19 +251,19 @@ export function startingPlanFrom(
   // out later, the way the Academy's own path does), and the order is then
   // repaired against the sequencing rules.
   const extras = consult.filter((id) => !target.includes(id));
-  const intended = extras.length > 0 ? orderOnFloor([...extras, ...target]) : [...target];
+  const intended = extras.length > 0 ? repairOrder([...extras, ...target]) : [...target];
   // Day one is the plan's order with only the consultation's machines in,
   // which can leave two machines side by side that the plan kept apart
   // (Lumbar straight into Leg Press once Compound Row isn't between them),
   // so it is repaired against the sequencing rules too.
-  const startWith = orderOnFloor(intended.filter((id) => consult.includes(id)));
+  const startWith = repairOrder(intended.filter((id) => consult.includes(id)));
   return {
     plan: {
       purpose: through === "second" ? "Learning the protocol: the starting routine" : "The core: the routine the client is built on",
       purposeKinds: ["core"],
       intended,
       building: true,
-      templateId: s.templateId,
+      ...(s.templateId ? { templateId: s.templateId } : null),
       madeByUid: who.uid,
       ...(who.name ? { madeByName: who.name } : null),
     },
@@ -212,10 +274,14 @@ export function startingPlanFrom(
 /**
  * The sequencing rules work on catalog ids; a plan holds floor ids. Repair the
  * order on the catalog ids and map back, keeping a unit the rules don't know
- * where the trainer put it.
+ * where the trainer put it. `canonicalOf` is the floor's own answer when the
+ * caller has the floor (`floorCanonical`).
  */
-function orderOnFloor(ids: readonly string[]): string[] {
-  const canonical = ids.map((id) => canonicalMachineId(id));
+export function repairOrder(
+  ids: readonly string[],
+  canonicalOf: (id: string) => string = (id) => canonicalMachineId(id),
+): string[] {
+  const canonical = ids.map((id) => canonicalOf(id));
   const ordered = autoSequence(canonical);
   const used = new Set<number>();
   const out: string[] = [];

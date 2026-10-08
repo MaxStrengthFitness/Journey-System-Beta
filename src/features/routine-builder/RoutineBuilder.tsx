@@ -275,7 +275,6 @@ export function RoutineBuilder({
           counterpartLabel={counterpartLabel ?? (slot === "B" ? "Routine A" : "the other routine")}
           machineName={machineName}
           available={availableIds}
-          gender={client?.gender}
           templates={templates}
           activeTemplateIds={templateIds ?? []}
           onToggleTemplate={

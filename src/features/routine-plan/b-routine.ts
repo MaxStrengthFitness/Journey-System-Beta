@@ -22,14 +22,9 @@
  * groups").
  */
 import { canonicalMachineId } from "../catalog/machine-identity";
-import {
-  COMPLEMENTARY_PAIRS,
-  MACHINE_CATEGORY,
-  MODEL_AB_ROUTINE,
-  SELECTION_TEMPLATES,
-  preferenceFromGender,
-} from "../routine-builder/academy";
+import { COMPLEMENTARY_PAIRS, MACHINE_CATEGORY, MODEL_AB_ROUTINE } from "../routine-builder/academy";
 import { floorIndex, type FloorMachine } from "./starting-plan";
+import { academyTemplateOf } from "./starting-routines";
 import type { PlanSwap } from "./types";
 
 /** How many of B's planned swaps the B routine has made today. */
@@ -84,22 +79,31 @@ export function bWithNextSwaps(
 /**
  * Suggested swaps for B, from A: for each A machine in A's order, a machine
  * of the same Academy category that A doesn't have, preferring the
- * template's eventual B, then the Academy's model B, then the Academy's named
+ * template's eventual B, then the model B, then the Academy's named
  * complementary pairs, and only machines on the floor. Same regions,
  * different machines, which is what the Academy says B is. A suggestion the
  * trainer edits; an A machine with nothing to pair stays in B as it is.
+ *
+ * The template is the plan's `templateId` read through `academyTemplateOf`,
+ * which knows a starting routine's id (`academy-knee`) and a template's own
+ * (`knee`), so a plan made from a starting routine keeps its eventual B.
+ *
+ * The model B is the app's blend of the Academy's model A/B without its sex
+ * split (`MODEL_AB_ROUTINE.neutral`): the A/B document has only a female and
+ * a male row, and Mindbody's gender picked between them until Oct 8 2026,
+ * when AJ's "3a" ("Gender is used nowhere in choosing a start") took it out
+ * of every suggestion.
  */
 export function suggestBSwaps(input: {
   aRoutine: readonly string[];
   floor: readonly FloorMachine[];
   templateId?: string | null;
-  gender?: string | null;
 }): PlanSwap[] {
   const index = floorIndex(input.floor);
   const canonicalOf = (id: string) => canonicalMachineId(id);
   const aCanonical = new Set(input.aRoutine.map(canonicalOf));
-  const template = input.templateId ? SELECTION_TEMPLATES.find((t) => t.id === input.templateId) : undefined;
-  const model = MODEL_AB_ROUTINE[preferenceFromGender(input.gender)];
+  const template = academyTemplateOf(input.templateId);
+  const model = MODEL_AB_ROUTINE.neutral;
   const pairPartners = (id: string) =>
     COMPLEMENTARY_PAIRS.flatMap((p) => (p.machineIds.includes(id) ? p.machineIds.filter((x) => x !== id) : []));
 

@@ -1,13 +1,30 @@
 import { describe, expect, it } from "vitest";
 import { SELECTION_TEMPLATES } from "../routine-builder/academy";
 import { findViolations } from "../routine-builder/engine";
-import { startingKindOf } from "./client-kind";
-import { floorIndex, startingPlanFrom, suggestStartingPlan, sayableTemplateLabel, type FloorMachine } from "./starting-plan";
-import { applyPlanChange, nextTimeRows, planAfterWrapUp, planProgress, progressLine, routineAfterWrapUp, routineWith } from "./plan";
+import { isProvisionalNewClient, startingKindOf } from "./client-kind";
+import {
+  academyTemplateName,
+  floorIndex,
+  startingPlanFrom,
+  suggestStartingPlan,
+  sayableTemplateLabel,
+  type FloorMachine,
+} from "./starting-plan";
+import {
+  applyPlanChange,
+  isStartingColumnChoice,
+  nextTimeRows,
+  planAfterWrapUp,
+  planProgress,
+  planWithCantDo,
+  progressLine,
+  routineAfterWrapUp,
+  routineWith,
+} from "./plan";
 import { bRoutineOf, bStatus, bWithNextSwaps, suggestBSwaps, swapsMade } from "./b-routine";
 import { focusAdvice } from "./focus";
 import { ACADEMY_STARTING_WEIGHTS, academyStartingReference } from "./starting-weights";
-import type { RoutinePlan } from "./types";
+import type { CantDo, RoutinePlan } from "./types";
 
 /** The twenty MSF machines, as a floor that uses the catalog ids. */
 const ALL: FloorMachine[] = [
@@ -19,33 +36,78 @@ const ALL: FloorMachine[] = [
 const who = { uid: "u-sam", name: "Sam" };
 
 describe("which kind of no routine", () => {
+  const base = { known: true, hasRoutine: false, journeySessions: 0, coverage: "complete" as const, provisionalNewClient: false };
+
   it("calls a client new to the studio only when Journey holds the whole, empty story", () => {
-    expect(startingKindOf({ hasRoutine: false, journeySessions: 0, coverage: "complete" }).kind).toBe("new-to-studio");
+    expect(startingKindOf(base).kind).toBe("new-to-studio");
   });
   it("never calls a client with sessions before Journey new", () => {
-    const a = startingKindOf({ hasRoutine: false, journeySessions: 0, coverage: "partial" });
+    const a = startingKindOf({ ...base, coverage: "partial" });
     expect(a.kind).toBe("new-to-journey");
     expect(a.says).not.toMatch(/new client|first session/i);
   });
   it("says it can't tell rather than guessing", () => {
-    expect(startingKindOf({ hasRoutine: false, journeySessions: 0, coverage: "unknown" }).kind).toBe("unknown");
-    expect(startingKindOf({ hasRoutine: false, journeySessions: null, coverage: "complete" }).kind).toBe("unknown");
+    expect(startingKindOf({ ...base, coverage: "unknown" }).kind).toBe("unknown");
+    expect(startingKindOf({ ...base, journeySessions: null }).kind).toBe("unknown");
   });
   it("leaves a client with a routine alone", () => {
-    expect(startingKindOf({ hasRoutine: true, journeySessions: 0, coverage: "complete" }).kind).toBe("established");
+    expect(startingKindOf({ ...base, hasRoutine: true }).kind).toBe("established");
+  });
+  it("claims nothing while the routines or the session count haven't answered", () => {
+    // A read that hasn't answered is "can't tell", never new: an empty cache
+    // answer looks exactly like a client with no routine and no sessions.
+    expect(startingKindOf({ ...base, known: false }).kind).toBe("unknown");
+    expect(startingKindOf({ ...base, known: false, hasRoutine: true }).kind).toBe("unknown");
+    expect(startingKindOf({ ...base, known: false, provisionalNewClient: true }).kind).toBe("unknown");
+  });
+  it("treats Add Client's walk-in as new to the studio, whatever Mindbody hasn't said yet", () => {
+    expect(startingKindOf({ ...base, coverage: "unknown", journeySessions: null, provisionalNewClient: true }).kind).toBe(
+      "new-to-studio",
+    );
+    expect(startingKindOf({ ...base, provisionalNewClient: true, hasRoutine: true }).kind).toBe("established");
+  });
+  it("tells Add Client's new client from a profile made while Mindbody was down", () => {
+    expect(isProvisionalNewClient({ provisional: true, provisionalReason: "New client, not in Mindbody yet" })).toBe(true);
+    expect(isProvisionalNewClient({ provisional: true, provisionalReason: "Mindbody is down" })).toBe(false);
+    expect(isProvisionalNewClient({ provisional: false, provisionalReason: "New client, not in Mindbody yet" })).toBe(false);
+    // Merged into the real record: the real record answers now.
+    expect(
+      isProvisionalNewClient({ provisional: true, provisionalReason: "New client, not in Mindbody yet", supersededById: "c-9" }),
+    ).toBe(false);
+    expect(isProvisionalNewClient(null)).toBe(false);
+  });
+  it("never says new client, first session or nothing before Journey, whatever the kind", () => {
+    // "Complete" allows up to five Mindbody visits before Journey (a
+    // consultation and an intro), so "nothing before Journey" would be wrong.
+    const inputs = [
+      base,
+      { ...base, provisionalNewClient: true },
+      { ...base, coverage: "partial" as const },
+      { ...base, journeySessions: 3 },
+      { ...base, coverage: "unknown" as const },
+      { ...base, known: false },
+      { ...base, hasRoutine: true },
+    ];
+    for (const input of inputs) {
+      expect(startingKindOf(input).says).not.toMatch(/new client|first session|nothing before journey/i);
+    }
+    expect(startingKindOf(base).says).toBe("Starting out at the studio: start a plan.");
   });
 });
 
 describe("the starting plan", () => {
   it("matches a condition from the intake before the plain template", () => {
-    const s = suggestStartingPlan({ intakeText: "Lower back pain after lifting boxes", gender: "female", floor: ALL });
+    const s = suggestStartingPlan({ intakeText: "Lower back pain after lifting boxes", floor: ALL });
     const t = SELECTION_TEMPLATES.find((x) => x.id === s.templateId)!;
     expect(t.kind).toBe("condition");
     expect(s.why).toMatch(/matched from the intake/);
   });
 
   it("starts a client with no reported issues on the consultation's machines (LP, CR, Lumbar)", () => {
-    const s = suggestStartingPlan({ intakeText: "", gender: "female", floor: ALL });
+    // Changed on purpose (Oct 8 2026): this picked the row from Mindbody's
+    // gender. AJ, "3a": "Gender is used nowhere in choosing a start", so the
+    // trainer picks the row and the test picks it the same way.
+    const s = suggestStartingPlan({ intakeText: "", floor: ALL, templateId: "clear-female" });
     expect(s.templateId).toBe("clear-female");
     const { plan, startWith } = startingPlanFrom(s, who);
     expect([...startWith].sort()).toEqual(["m-compound-row", "m-leg-press", "m-lumbar"]);
@@ -55,21 +117,39 @@ describe("the starting plan", () => {
   });
 
   it("never says the client's gender: the template's sex split stays off screen", () => {
-    for (const t of SELECTION_TEMPLATES) expect(sayableTemplateLabel(t)).not.toMatch(/\b(female|male)\b/i);
-    const s = suggestStartingPlan({ gender: "male", floor: ALL });
-    expect(s.label).not.toMatch(/\b(female|male)\b/i);
-    expect(s.why).not.toMatch(/\b(female|male|woman|man)\b/i);
+    for (const t of SELECTION_TEMPLATES) {
+      expect(sayableTemplateLabel(t)).not.toMatch(/\b(female|male)\b/i);
+      expect(academyTemplateName(t)).not.toMatch(/\b(female|male)\b/i);
+    }
+    for (const t of SELECTION_TEMPLATES) {
+      const s = suggestStartingPlan({ floor: ALL, templateId: t.id });
+      expect(s.label).not.toMatch(/\b(female|male)\b/i);
+      expect(s.why).not.toMatch(/\b(female|male|woman|man)\b/i);
+      for (const a of s.alternatives) expect(a.label).not.toMatch(/\b(female|male)\b/i);
+    }
   });
 
-  it("asks the trainer to pick when there is nothing to choose a row by", () => {
+  it("asks the trainer to pick when the intake names nothing, and picks nothing for them", () => {
+    // Changed on purpose (Oct 8 2026): with no gender from Mindbody this used
+    // to fall back to the first row anyway. AJ, "3a": "Gender is used nowhere
+    // in choosing a start", so an intake that names nothing picks no row.
     const s = suggestStartingPlan({ floor: ALL });
     expect(s.needsChoice).toBe(true);
-    expect(s.alternatives.length).toBeGreaterThan(0);
+    expect(s.templateId).toBeNull();
+    expect(s.label).toBeNull();
+    expect(s.steps).toEqual([]);
+    expect(s.alternatives).toHaveLength(SELECTION_TEMPLATES.length);
+    // Each alternative carries its machines, so the two no-reported-issues
+    // rows are told apart by more than their names.
+    const clear = s.alternatives.filter((a) => a.templateId.startsWith("clear-"));
+    expect(clear).toHaveLength(2);
+    expect(clear[0].label).not.toBe(clear[1].label);
+    expect(clear[0].machineIds).not.toEqual(clear[1].machineIds);
   });
 
   it("keeps only machines on the floor and says which it couldn't", () => {
     const floor = ALL.filter((m) => m.id !== "m-lumbar");
-    const s = suggestStartingPlan({ gender: "female", floor });
+    const s = suggestStartingPlan({ templateId: "clear-female", floor });
     const consult = s.steps.find((x) => x.key === "consult")!;
     expect(consult.machineIds).not.toContain("m-lumbar");
     expect(consult.missing).toContain("m-lumbar");
@@ -77,7 +157,7 @@ describe("the starting plan", () => {
 
   it("maps the Academy's machines onto a studio's own floor ids", () => {
     const floor: FloorMachine[] = ALL.map((m) => ({ id: `unit-${m.id}`, canonicalId: m.id }));
-    const s = suggestStartingPlan({ gender: "female", floor });
+    const s = suggestStartingPlan({ templateId: "clear-female", floor });
     const { startWith } = startingPlanFrom(s, who);
     expect(startWith.every((id) => id.startsWith("unit-"))).toBe(true);
     expect(floorIndex(floor).get("m-leg-press")).toBe("unit-m-leg-press");
@@ -94,7 +174,7 @@ describe("the starting plan", () => {
   });
 
   it("can aim at the eventual A instead of the learning-curve routine", () => {
-    const s = suggestStartingPlan({ gender: "female", floor: ALL });
+    const s = suggestStartingPlan({ templateId: "clear-female", floor: ALL });
     const eventual = startingPlanFrom(s, who, "eventualA").plan;
     const a = s.steps.find((x) => x.key === "eventualA")!.machineIds;
     for (const id of a) expect(eventual.intended).toContain(id);
@@ -132,6 +212,37 @@ describe("the plan", () => {
     const reordered = applyPlanChange(PLAN, { kind: "reorder", machineIds: ["m-leg-press", "m-lumbar"] }).intended;
     expect(reordered.slice(0, 2)).toEqual(["m-leg-press", "m-lumbar"]);
     expect([...reordered].sort()).toEqual([...PLAN.intended].sort());
+  });
+
+  const mark: CantDo = { machineId: "m-dip", reason: "Surgery", until: "cleared", day: "2026-10-08", byUid: "u-sam", replacedBy: [] };
+
+  it("keeps a can't-do entry carried beside its change, one per machine", () => {
+    const marked = applyPlanChange(PLAN, { kind: "cantdo", machineIds: ["m-dip"], value: "Surgery · cleared" }, mark);
+    expect(marked.cantDo).toEqual([mark]);
+    // A second mark changes the reason or the until; it never stacks.
+    const again = applyPlanChange(marked, { kind: "cantdo", machineIds: ["m-dip"] }, { ...mark, reason: "Injury or pain" });
+    expect(again.cantDo).toEqual([{ ...mark, reason: "Injury or pain" }]);
+    // The road is reshaped by reshapeForCantDo, which knows the floor; the change alone never moves it.
+    expect(marked.intended).toEqual(PLAN.intended);
+    // With no entry beside it there is nothing to record.
+    expect(applyPlanChange(PLAN, { kind: "cantdo", machineIds: ["m-dip"], value: "Surgery · cleared" })).toBe(PLAN);
+  });
+
+  it("reopens, re-plans and keeps the starting column", () => {
+    const marked = planWithCantDo(PLAN, mark);
+    expect(applyPlanChange(marked, { kind: "cando", machineIds: ["m-dip"] }).cantDo).toEqual([]);
+    const replanned = applyPlanChange(PLAN, {
+      kind: "replan",
+      machineIds: ["m-leg-press", "m-compound-row", "m-leg-press"],
+      value: "Surgery coming up",
+    });
+    expect(replanned.intended).toEqual(["m-leg-press", "m-compound-row"]);
+    expect(applyPlanChange(PLAN, { kind: "column", machineIds: [], value: "female-novice" }).startingColumn).toBe("female-novice");
+    expect(applyPlanChange(PLAN, { kind: "column", machineIds: [], value: "none" }).startingColumn).toBe("none");
+    // Not one of the sheet's columns: skipped, never bent into one.
+    expect(applyPlanChange(PLAN, { kind: "column", machineIds: [], value: "heavy" })).toBe(PLAN);
+    expect(isStartingColumnChoice("male-advanced")).toBe(true);
+    expect(isStartingColumnChoice("toString")).toBe(false);
   });
 });
 

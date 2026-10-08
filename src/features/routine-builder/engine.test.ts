@@ -8,6 +8,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+import * as academy from "./academy";
 import {
   BIG_FIVE,
   EXERCISE_COUNT,
@@ -18,7 +19,6 @@ import {
   SELECTION_TEMPLATES,
   asAcademyString,
   matchTemplates,
-  preferenceFromGender,
 } from "./academy";
 import {
   analyzeRotation,
@@ -442,11 +442,11 @@ describe("presentation helpers", () => {
     expect(asAcademyString(MODEL_AB_ROUTINE.female.a)).toBe("ADD, SD, CR, TR, OH, PO, LP");
   });
 
-  it("maps client gender onto a model preference, tolerating dirty data", () => {
-    expect(preferenceFromGender("Female")).toBe("female");
-    expect(preferenceFromGender("M")).toBe("male");
-    expect(preferenceFromGender("Other")).toBe("neutral");
-    expect(preferenceFromGender(undefined)).toBe("neutral");
+  // "maps client gender onto a model preference" is gone with
+  // `preferenceFromGender`: AJ, Oct 8 2026, "3a: Gender is used nowhere in
+  // choosing a start". The routine builder seeds from the neutral model.
+  it("has no way left to pick a model from a client's gender", () => {
+    expect(Object.keys(academy)).not.toContain("preferenceFromGender");
   });
 });
 

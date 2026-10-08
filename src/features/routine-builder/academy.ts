@@ -860,10 +860,6 @@ export function matchTemplates(text: string | null | undefined): SelectionTempla
   return hits.sort((a, b) => rank[a.kind] - rank[b.kind]);
 }
 
-/** Default A/B model for a client, from `Client.gender`. */
-export function preferenceFromGender(gender: string | null | undefined): ClientPreference {
-  const g = (gender ?? "").trim().toLowerCase();
-  if (g === "female" || g === "f") return "female";
-  if (g === "male" || g === "m") return "male";
-  return "neutral";
-}
+// `preferenceFromGender` picked the female or male model from Mindbody's
+// gender until Oct 8 2026. It is gone: AJ's "3a", "Gender is used nowhere in
+// choosing a start". The routine builder's model is `MODEL_AB_ROUTINE.neutral`.

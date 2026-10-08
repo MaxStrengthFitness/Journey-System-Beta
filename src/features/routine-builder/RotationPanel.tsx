@@ -31,7 +31,6 @@ import {
   MODEL_AB_ROUTINE,
   SELECTION_TEMPLATES,
   TWICE_WEEKLY_RULE,
-  preferenceFromGender,
 } from "./academy";
 import { muscleLabel, type RotationAnalysis } from "./engine";
 import type { SelectionTemplate } from "./academy";
@@ -43,7 +42,6 @@ export interface RotationPanelProps {
   machineName: (id: string) => string;
   /** Machine ids on this studio's floor, for filtering a seeded routine. */
   available: string[];
-  gender?: string | null;
   /** Templates matched from intake, or chosen by the trainer. */
   templates: SelectionTemplate[];
   activeTemplateIds: string[];
@@ -62,7 +60,6 @@ export function RotationPanel({
   counterpartLabel,
   machineName,
   available,
-  gender,
   templates,
   activeTemplateIds,
   onToggleTemplate,
@@ -76,8 +73,10 @@ export function RotationPanel({
 
   const seedFrom = (ids: string[]) => onSeed?.(ids.filter((id) => onFloor.has(id)));
 
-  const preference = preferenceFromGender(gender);
-  const model = MODEL_AB_ROUTINE[preference];
+  // The model is the app's blend of the Academy's A/B pair without its sex
+  // split. Mindbody's gender picked the female or male row until Oct 8 2026;
+  // AJ's "3a": "Gender is used nowhere in choosing a start".
+  const model = MODEL_AB_ROUTINE.neutral;
   const modelIds = slot === "B" ? model.b : model.a;
 
   return (
