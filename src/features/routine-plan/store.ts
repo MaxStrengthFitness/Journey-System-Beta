@@ -13,6 +13,13 @@
  * moves on (CLAUDE.md, "a tap on the floor never awaits a write"). The routine's
  * own `machineIds`, when a change moves it, goes in the same batch, so the
  * plan and the routine can't disagree after a refusal.
+ *
+ * Two writers:
+ * - `startPlan`: a plan's first write, Keep this lineup, Save Routine A, Add
+ *   a plan, or Start's batch for a client starting out at the studio. It
+ *   makes Routine A when the client has none, or puts the plan on the
+ *   routine they have, with the plan's first change.
+ * - `savePlanChange`: every change after that.
  */
 import {
   collection,
@@ -26,6 +33,59 @@ import { withoutUndefined } from "../studio-tasks/task-wizard";
 import type { PlanChange, RoutinePlan } from "./types";
 
 export const PLAN_CHANGES = "planChanges";
+
+export interface StartPlanInput {
+  /** The routine the plan goes on, or null to make it (the client has no routine of that name yet). */
+  routineId: string | null;
+  clientId: string;
+  /** The client's home studio, as every routine carries it. */
+  studioId: string;
+  name: "Routine A" | "Routine B";
+  /** What the client does now: day one, or the routine as it stands. */
+  machineIds: string[];
+  plan: RoutinePlan;
+  /** The plan's first change, usually "start". */
+  change: PlanChange;
+}
+
+export interface StartedPlan {
+  /** The routine's id, named on this iPad before anything is sent, so a screen can draw it at once. */
+  routineId: string;
+  /** The batch's commit, for whoever wants to toast a refusal; never awaited by a tap. */
+  commit: Promise<void>;
+}
+
+/**
+ * A plan's first write, in ONE batch: the routine (made here when
+ * `routineId` is null, with the shape every routine create in the app
+ * writes; otherwise its `machineIds` and `plan` set on the routine it has)
+ * and the plan's first change beside it, signed and timed by the server.
+ * Nothing is written before the trainer keeps the lineup, and nothing waits
+ * on this: the id is made on this iPad, so the caller draws Routine A at
+ * once and the commit settles behind it.
+ */
+export function startPlan(db: Firestore, input: StartPlanInput): StartedPlan {
+  const batch = writeBatch(db);
+  const routineRef = input.routineId ? doc(db, "routines", input.routineId) : doc(collection(db, "routines"));
+  if (input.routineId) {
+    batch.update(routineRef, withoutUndefined({ machineIds: input.machineIds, plan: input.plan }));
+  } else {
+    batch.set(
+      routineRef,
+      withoutUndefined({
+        clientId: input.clientId,
+        name: input.name,
+        machineIds: input.machineIds,
+        plan: input.plan,
+        createdAt: serverTimestamp(),
+        studioId: input.studioId,
+      }),
+    );
+  }
+  const changeRef = doc(collection(db, "routines", routineRef.id, PLAN_CHANGES));
+  batch.set(changeRef, withoutUndefined({ ...input.change, at: serverTimestamp() }));
+  return { routineId: routineRef.id, commit: batch.commit() };
+}
 
 /**
  * Writes the plan, its change, and (when given) the routine's machines in one

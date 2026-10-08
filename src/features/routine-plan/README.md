@@ -5,8 +5,9 @@ client, pick a starting routine and do the session." The research, his
 interview answers in his own words, and the structure are
 `docs/rounds/2026-10-07-first-session-and-routines.md`; read it first. The
 screens round is `docs/rounds/2026-10-08-first-session-screens.md` (AJ's
-picks, "1d 2a 3a" and "1a 2a 3a GO"). This folder is the pure half: no React,
-no Firestore except `store.ts`.
+picks, "1d 2a 3a" and "1a 2a 3a GO"). This folder is mostly the pure half:
+no React and no Firestore except `store.ts`, `starting-store.ts` and the one
+hook, `useStartingRoutines.ts` (see "The Firestore half" below).
 
 | File | What it answers |
 | --- | --- |
@@ -20,7 +21,12 @@ no Firestore except `store.ts`.
 | `b-routine.ts` | B molded in: B's routine is A with the swaps made so far; A and B alternate from the day B starts; suggested same-category swaps (the starting template's eventual B, then the app's model B) |
 | `focus.ts` | A weak area: is it in both A and B, a swap within the same category before an addition, single-joint machines first, and the areas the Academy answers with a setting |
 | `starting-weights.ts` | The Academy's starting ranges (the "MSF + Imagine Strength Equipment Loading Guidelines" sheet): a reference beside the weight, never typed in, never shown once the client has a weight |
-| `store.ts` | The only writer, in one batch: a plan on `routines/{id}.plan`, its changes appended at `routines/{id}/planChanges` |
+| `changes-list.ts` | A routine's Changes as one list, newest first: the plan's changes and the old `routineAdjustments`, each with who (a plan change by the Auth uid, `authUid ?? id`, then the name it was signed with; an adjustment by the trainer's id), what (a sentence), the reason when one was given, and a Re-plan as a divider. The drawer's one save, written as an adjustment and a plan change in one batch, is said once (`planChangesAndAdjustments`) |
+| `starting-read.ts` | Starting routines and a studio's choice as they come back from the database: each document checked, the choice's `use: null` "all of head office's", a value that isn't usable skipped; the choice cleaned before it is written (at most 80, the rules' number); what Start a plan offers (`routinesToOffer`: the app's, else the Academy's eleven) |
+| `starting-seed.ts` | What `scripts/seed-starting-routines.ts` writes: each Academy routine as a company preset with its `start` part, a one-line description and an id that never name a gender, and a run's plan that skips every id already there and every one an earlier run wrote (the seed's record, `system/startingRoutinesSeed`) |
+| `store.ts` | The only writer of a plan, in one batch: `startPlan` (a plan's first write: Routine A made, or the plan put on the routine the client has, with its first change; the id made on the iPad, the commit never awaited) and `savePlanChange` (every change after it); `readPlanChanges` for the Changes list |
+| `starting-store.ts` | Starting routines and a studio's choice, read and written (the Firestore half of `starting-read.ts`) |
+| `useStartingRoutines.ts` | The hook a screen asks: one read of each per mount, no listener, the Academy's eleven while it waits or when the read fails, the choice null (unknown) until it answers, `reload()` |
 
 ## Rules that hold here
 
@@ -49,3 +55,111 @@ no Firestore except `store.ts`.
 - **Everything the Academy says is a suggestion with its source**, and the
   Academy's own words for its templates stand: "guidelines or ideas rather
   than formal rules".
+
+## The Firestore half (AJ's OK: Oct 7 2026, "go for what you think is best"; Oct 8 2026, "1a")
+
+**Where it lives.**
+
+- `routines/{id}.plan`: a routine's plan, one optional field on the routine
+  (`Routine.plan`, src/types.ts). A routine without one works exactly as
+  before; every reader still reads `machineIds`. Both routine readers (the
+  profile's one read, the tracker's listener) spread the document, so the plan
+  arrives with the routine and costs no second read.
+- `routines/{id}/planChanges/{changeId}`: each change, appended in the same
+  batch as the plan, signed with the Auth uid and the server's time, never
+  edited or removed. Read only when someone opens the Changes
+  (`readPlanChanges`: one routine's small list, no query, so no index).
+- `routinePresets/{id}` with a `start` part (`RoutinePreset.start`): a
+  starting routine. Head office's are company tier, written by
+  administrators; a studio's own are studio tier, written by its leaders.
+  Both on the routinePresets rules as they were. The Edit routine drawer
+  leaves them out (`drawerTemplates`, src/lib/routine-templates.ts):
+  applying one there would make its whole road the routine and skip the
+  plan. Its built-in templates stay while head office has no routine
+  templates of its own, starting routines not counted, so the seed never
+  takes them away. Admins see and edit them in the routine template editor.
+- `studios/{s}/config/startingRoutines` = `{ use, defaultId, updatedAt,
+  updatedBy }`: the studio's choice. `use: null` is all of head office's; a
+  list (at most 80) is exactly the ones ticked. Its leaders write it, everyone
+  who works there reads it (the renewals config's readers and writers).
+
+**Every write is one batch, and a tap never waits on it.** `startPlan`
+names the routine's id on the iPad and returns the commit for a toast on
+refusal. `saveStartingChoice` is a leader's Save on My Studio, awaited by
+that button only.
+
+**The reads.**
+
+- Starting routines: two queries on `routinePresets`, head office's (`tier ==
+  "company"`, `scope == "global"`) and the studio's own (`tier == "studio"`,
+  `scope == studioId`), served by one composite index (tier, scope) in
+  firestore.indexes.json. They ask on `scope`, not `studioId`, because a
+  company preset has no `studioId` and an index holds only the documents
+  that have every field it names.
+- The studio's choice: one `getDoc`.
+- One read of each when Start a plan, the briefing's plan card or the choice
+  opens; no listener and no Mindbody call.
+- A failed read is unknown, never "none":
+  - the choice stays null;
+  - an empty answer from the cache alone is not an answer;
+  - Start a plan offers the Academy's eleven built in code (`fromCode`),
+    whose ids are the seed's own, so it is never blocked by a read.
+
+**The rules** (firestore.rules, tests in tests/firestore.rules.test.ts, the
+"oct7 first session" and "oct8 first session" blocks):
+
+- `planChangeOk` accepts the twelve kinds: the eight of Oct 7, plus `cantdo`,
+  `cando`, `replan` and `column` (Oct 8). Every other check is as it was.
+- `studios/{s}/config/{configId}` accepts `startingRoutines` through
+  `startingChoiceValid`:
+  - exactly the four fields;
+  - `use` null or a list of at most 80;
+  - `defaultId` null or an id of at most 200 characters;
+  - signed with the Auth uid and the server's time.
+- `routinePresets` is unchanged: the company tier is administrators', so a
+  `start` part rides on it.
+- `startPlan`'s two batches are both committed on the emulator: the oct7
+  block's update of a routine the client has, and the oct8 block's Routine A
+  made with its plan and a `start` change naming the starting routine.
+
+**The seed.** `scripts/seed-starting-routines.ts` writes the Academy's eleven
+as `routinePresets/academy-<template>`: company tier, scope "global", nobody's
+default. The documents are `starting-seed.ts`'s, and a test reads each one
+back as exactly the routine the fallback builds.
+
+- **No id names a gender.** The two no-reported-issues rows are
+  `academy-clear-dip-adduction` and `academy-clear-chest-pulldown`
+  (`academyRoutineId`), by what tells them apart, as their names are. An id
+  is stored where nobody renames it (every plan's `templateId`, every
+  studio's `use` and `defaultId`), so it was renamed with the name before the
+  seed first runs. `academyTemplateOf` reads them back to the Academy rows.
+- It is a dry run unless `--commit` is passed.
+- On production it needs `service-account.json` and the project id typed
+  twice (`--confirm-project`).
+- It never overwrites: it skips every id that is there now, and writes with
+  `create`, so an administrator's edit survives.
+- It never brings one back: every id a run writes is listed in the seed's
+  record, `system/startingRoutinesSeed` (`{ ids, lastWrittenAt }`, Admin SDK
+  only; no rule names it, so the rules' safety net keeps the app out), in the
+  same batch. A listed id that is gone was retired by an administrator (the
+  template editor retires by Delete), so a later run leaves it out and says
+  so; `--again academy-arms` brings one back on purpose.
+- A run after an interrupted one finishes the rest: the batch, record
+  included, is all or nothing.
+- It imports only pure modules from src.
+
+The fallback is for an app that holds no starting routines (the design
+round's §4.2), so if head office ever removes every one, Start a plan offers
+the Academy's eleven from code again, said as the Academy's. To take one out
+of a studio's list, its leaders untick it in the studio's choice.
+
+Checked on a local emulator (Oct 8 2026): a dry run, a commit of the eleven,
+a second run that skipped all eleven, a run after `academy-arms` was deleted
+that left it out and said so, and `--again academy-arms`, which brought it
+back. AJ runs it when he chooses. Until then, Start a plan offers the same
+eleven from code. The commands:
+
+```
+npx tsx scripts/seed-starting-routines.ts --project gen-lang-client-0731527386 --confirm-project gen-lang-client-0731527386
+npx tsx scripts/seed-starting-routines.ts --project gen-lang-client-0731527386 --confirm-project gen-lang-client-0731527386 --commit
+```

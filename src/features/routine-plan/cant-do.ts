@@ -331,7 +331,8 @@ export function cantDoLine(
   return [nameOf(entry.machineId), entry.reason?.trim(), when].filter(Boolean).join(" · ");
 }
 
-function listWords(names: readonly string[]): string {
+/** "Leg Press", "Leg Press and Lumbar", "Leg Press, Lumbar and Abs": names said as a list, every one whole. */
+export function listWords(names: readonly string[]): string {
   if (names.length <= 1) return names[0] ?? "";
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }

@@ -4,6 +4,7 @@ import { findViolations } from "../routine-builder/engine";
 import { suggestBSwaps } from "./b-routine";
 import { TEMPLATE_SOURCE, startingPlanFrom, suggestStartingPlan, type FloorMachine } from "./starting-plan";
 import {
+  academyRoutineId,
   academyStartingRoutines,
   academyTemplateOf,
   matchedWord,
@@ -38,9 +39,17 @@ describe("the Academy's eleven as starting routines", () => {
     expect(byId("academy-low-back").name).toBe("Low back issues");
   });
 
+  it("gives every one an id without a gender, since ids are stored where nobody renames them", () => {
+    for (const r of ACADEMY) expect(r.id).not.toMatch(/(fe)?male|wom[ae]n|\bm[ae]n\b/i);
+    expect(new Set(ACADEMY.map((r) => r.id)).size).toBe(ACADEMY.length);
+    expect(academyRoutineId("clear-female")).toBe("academy-clear-dip-adduction");
+    expect(academyRoutineId("clear-male")).toBe("academy-clear-chest-pulldown");
+    expect(academyRoutineId("knee")).toBe("academy-knee");
+  });
+
   it("names the two no-reported-issues rows by machines each road has and the other's hasn't", () => {
-    const a = byId("academy-clear-female");
-    const b = byId("academy-clear-male");
+    const a = byId("academy-clear-dip-adduction");
+    const b = byId("academy-clear-chest-pulldown");
     const named: Record<string, string> = {
       "Seated Dip": "m-dip",
       Adduction: "m-hip-add",
@@ -62,7 +71,7 @@ describe("the Academy's eleven as starting routines", () => {
 
   it("is the road and day one the Academy's own path makes, so the seed and the fallback agree", () => {
     for (const t of SELECTION_TEMPLATES) {
-      const r = byId(`academy-${t.id}`);
+      const r = byId(academyRoutineId(t.id));
       const legacy = startingPlanFrom(suggestStartingPlan({ floor: ALL, templateId: t.id }), who);
       expect(r.machineIds, t.id).toEqual(legacy.plan.intended);
       expect(r.dayOne, t.id).toEqual(legacy.startWith);
@@ -93,8 +102,8 @@ describe("the Academy's eleven as starting routines", () => {
   });
 
   it("says what each workout adds, and only that", () => {
-    const male = byId("academy-clear-male");
-    expect(male.steps).toEqual([
+    const chestPulldown = byId("academy-clear-chest-pulldown");
+    expect(chestPulldown.steps).toEqual([
       { label: "Consultation", machineIds: ["m-compound-row", "m-lumbar", "m-leg-press"] },
       { label: "First workout adds", machineIds: ["m-chest-press", "m-overhead-press"] },
       { label: "Second workout adds", machineIds: ["m-pulldown"] },
@@ -107,7 +116,7 @@ describe("the Academy's eleven as starting routines", () => {
   });
 
   it("lists the plain rows first, then conditions, then goals", () => {
-    const kinds = ACADEMY.map((r) => SELECTION_TEMPLATES.find((t) => `academy-${t.id}` === r.id)!.kind);
+    const kinds = ACADEMY.map((r) => SELECTION_TEMPLATES.find((t) => academyRoutineId(t.id) === r.id)!.kind);
     expect(kinds.slice(0, 2)).toEqual(["clear", "clear"]);
     expect(kinds.lastIndexOf("condition")).toBeLessThan(kinds.indexOf("goal"));
   });
@@ -241,24 +250,24 @@ describe("which starting routine fits", () => {
   it("gives a client whose intake names nothing the studio's default, then head office's", () => {
     const studio = suggestFromStartingRoutines({
       routines: ACADEMY,
-      choice: { use: null, defaultId: "academy-clear-male" },
+      choice: { use: null, defaultId: "academy-clear-chest-pulldown" },
       intakeText: "Wants to feel stronger",
       floor: ALL,
       studioName: "Westlake",
     });
-    expect(studio.templateId).toBe("academy-clear-male");
+    expect(studio.templateId).toBe("academy-clear-chest-pulldown");
     expect(studio.why).toBe("Westlake's default");
     expect(
-      suggestFromStartingRoutines({ routines: ACADEMY, choice: { use: null, defaultId: "academy-clear-male" }, floor: ALL }).why,
+      suggestFromStartingRoutines({ routines: ACADEMY, choice: { use: null, defaultId: "academy-clear-chest-pulldown" }, floor: ALL }).why,
     ).toBe("This studio's default");
 
-    const routines = ACADEMY.map((r) => (r.id === "academy-clear-female" ? { ...r, isDefault: true } : r));
+    const routines = ACADEMY.map((r) => (r.id === "academy-clear-dip-adduction" ? { ...r, isDefault: true } : r));
     const headOffice = suggestFromStartingRoutines({ routines, choice: null, floor: ALL });
-    expect(headOffice.templateId).toBe("academy-clear-female");
+    expect(headOffice.templateId).toBe("academy-clear-dip-adduction");
     expect(headOffice.why).toBe("Head office's default");
     // A studio's own routine is never called head office's default.
     const studioOwn = ACADEMY.map((r) =>
-      r.id === "academy-clear-female" ? { ...r, isDefault: true, tier: "studio" as const, studioId: "s-west" } : r,
+      r.id === "academy-clear-dip-adduction" ? { ...r, isDefault: true, tier: "studio" as const, studioId: "s-west" } : r,
     );
     const notHeadOffice = suggestFromStartingRoutines({ routines: studioOwn, choice: null, floor: ALL });
     expect(notHeadOffice.templateId).toBeNull();
@@ -283,12 +292,12 @@ describe("which starting routine fits", () => {
   it("offers exactly the routines the studio chose, and none it left out", () => {
     const only = suggestFromStartingRoutines({
       routines: ACADEMY,
-      choice: { use: ["academy-knee", "academy-clear-male"], defaultId: null },
+      choice: { use: ["academy-knee", "academy-clear-chest-pulldown"], defaultId: null },
       intakeText: "Lower back pain",
       floor: ALL,
     });
     expect(only.needsChoice).toBe(true);
-    expect(only.alternatives.map((a) => a.templateId)).toEqual(["academy-clear-male", "academy-knee"]);
+    expect(only.alternatives.map((a) => a.templateId)).toEqual(["academy-clear-chest-pulldown", "academy-knee"]);
     // Only use: null means all of head office's (the design round, §4.2). A
     // studio that ticked none, or whose picks were all retired, is offered
     // none, and the sentence says why.
@@ -314,7 +323,7 @@ describe("which starting routine fits", () => {
   it("takes the trainer's pick over the rest", () => {
     const s = suggestFromStartingRoutines({
       routines: ACADEMY,
-      choice: { use: null, defaultId: "academy-clear-male" },
+      choice: { use: null, defaultId: "academy-clear-chest-pulldown" },
       intakeText: "Lower back pain",
       floor: ALL,
       pickedId: "academy-shoulder",
@@ -374,13 +383,13 @@ describe("which starting routine fits", () => {
 
 describe("the plan a starting routine makes", () => {
   it("makes the plan on this floor, being built, signed and dated", () => {
-    const { plan, startWith } = startingPlanFromRoutine(byId("academy-clear-female"), who, ALL, "2026-10-08");
+    const { plan, startWith } = startingPlanFromRoutine(byId("academy-clear-dip-adduction"), who, ALL, "2026-10-08");
     expect(plan).toEqual({
       purpose: "Learning the protocol: the starting routine",
       purposeKinds: ["core"],
       intended: ["m-lumbar", "m-compound-row", "m-dip", "m-hip-add", "m-pullover", "m-leg-press"],
       building: true,
-      templateId: "academy-clear-female",
+      templateId: "academy-clear-dip-adduction",
       madeByUid: "u-sam",
       madeByName: "Sam",
       madeAt: "2026-10-08",
@@ -406,7 +415,7 @@ describe("the plan a starting routine makes", () => {
     // A studio whose Leg Press, Compound Row and Lumbar are its own units the
     // catalog doesn't know: the road's first machines start instead.
     const floor = ALL.filter((m) => !["m-leg-press", "m-compound-row", "m-lumbar"].includes(m.id));
-    const r = byId("academy-clear-male");
+    const r = byId("academy-clear-chest-pulldown");
     const { plan, startWith } = startingPlanFromRoutine(r, who, floor, "2026-10-08");
     expect(startWith.length).toBe(r.dayOne.length);
     expect([...startWith].sort()).toEqual([...plan.intended.slice(0, r.dayOne.length)].sort());
@@ -417,7 +426,7 @@ describe("the plan a starting routine makes", () => {
 
   it("leaves a machine the floor lacks off the plan", () => {
     const floor = ALL.filter((m) => m.id !== "m-dip");
-    const { plan } = startingPlanFromRoutine(byId("academy-clear-female"), who, floor, "2026-10-08");
+    const { plan } = startingPlanFromRoutine(byId("academy-clear-dip-adduction"), who, floor, "2026-10-08");
     expect(plan.intended).not.toContain("m-dip");
     expect(plan.intended).toHaveLength(5);
   });
@@ -431,9 +440,16 @@ describe("a plan's starting template, in either spelling", () => {
     expect(academyTemplateOf(null)).toBeUndefined();
   });
 
+  it("reads the two no-reported-issues routines back to their Academy rows, whose ids it never shows", () => {
+    expect(academyTemplateOf("academy-clear-dip-adduction")?.id).toBe("clear-female");
+    expect(academyTemplateOf("academy-clear-chest-pulldown")?.id).toBe("clear-male");
+    expect(academyTemplateOf("clear-male")?.id).toBe("clear-male");
+    for (const t of SELECTION_TEMPLATES) expect(academyTemplateOf(academyRoutineId(t.id))?.id).toBe(t.id);
+  });
+
   it("keeps B's suggested swaps on a plan made from a starting routine", () => {
     for (const t of SELECTION_TEMPLATES) {
-      const { plan } = startingPlanFromRoutine(byId(`academy-${t.id}`), who, ALL, "2026-10-08");
+      const { plan } = startingPlanFromRoutine(byId(academyRoutineId(t.id)), who, ALL, "2026-10-08");
       const aRoutine = plan.intended;
       expect(suggestBSwaps({ aRoutine, floor: ALL, templateId: plan.templateId }), t.id).toEqual(
         suggestBSwaps({ aRoutine, floor: ALL, templateId: t.id }),

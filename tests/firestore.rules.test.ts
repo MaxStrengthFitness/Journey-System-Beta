@@ -7019,6 +7019,21 @@ describe("oct7 first session: a routine's plan and its changes", () => {
     await assertFails(addDoc(changes(db), noMachines));
   });
 
+  // Oct 8 2026 (the first-session screens): can't do, reopened, a re-plan and
+  // the Academy sheet's column are changes too, appended the same way.
+  it("accepts the four kinds the first-session screens write, and still refuses a kind it doesn't know", async () => {
+    await seed();
+    const db = ctx("otherP7");
+    await assertSucceeds(addDoc(changes(db), change("otherP7", { kind: "cantdo", machineIds: ["m-dip"], value: "Surgery · cleared" })));
+    await assertSucceeds(addDoc(changes(db), change("otherP7", { kind: "cando", machineIds: ["m-dip"], reason: "Cleared by the surgeon" })));
+    await assertSucceeds(
+      addDoc(changes(db), change("otherP7", { kind: "replan", machineIds: ["m-leg-press", "m-compound-row"], value: "Surgery coming up" })),
+    );
+    await assertSucceeds(addDoc(changes(db), change("otherP7", { kind: "column", machineIds: [], value: "male-novice" })));
+    await assertFails(addDoc(changes(db), change("otherP7", { kind: "delete", machineIds: [] })));
+    await assertFails(addDoc(changes(db), change("otherP7", { kind: "cantDo", machineIds: ["m-dip"] })));
+  });
+
   it("is read by anyone signed in, and by nobody signed out", async () => {
     await seed();
     await assertSucceeds(getDocs(changes(ctx("otherP7"))));
@@ -7035,5 +7050,148 @@ describe("oct7 first session: a routine's plan and its changes", () => {
   it("keeps someone with no trainer record out", async () => {
     await seed();
     await assertFails(addDoc(changes(ctx("strangerP7")), change("strangerP7")));
+  });
+});
+
+/* OCT 8 2026 (the first-session screens, AJ's "1a"): starting routines.
+   Head office's are routine presets with a `start` part, on the
+   routinePresets rules as they are; each studio's choice is
+   studios/{s}/config/startingRoutines, written by its leaders and read by
+   everyone who works there (src/features/routine-plan/starting-store.ts).
+   Its own block, as the oct7 one above. */
+describe("oct8 first session: starting routines and a studio's choice", () => {
+  const ctx = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+  async function seed() {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      const person = (id: string, role: string, home: string) =>
+        setDoc(doc(db, "trainers", id), { fullName: id, initials: "XX", role, primaryHomeStudioId: home, accessibleStudioIds: [home] });
+      await person("adminP8", "Admin", "studioA");
+      await person("leaderP8", "StudioLeader", "studioA");
+      await person("trainerP8", "LifeTransformer", "studioA");
+      await person("otherLeaderP8", "StudioLeader", "studioB");
+      await person("otherTrainerP8", "LifeTransformer", "studioB");
+    });
+  }
+
+  const choiceRef = (db: ReturnType<typeof ctx>, studio = "studioA") => doc(db, "studios", studio, "config", "startingRoutines");
+  const choice = (uid: string, over: Record<string, unknown> = {}) => ({
+    use: ["academy-knee", "academy-low-back"],
+    defaultId: "academy-knee",
+    updatedAt: serverTimestamp(),
+    updatedBy: uid,
+    ...over,
+  });
+
+  it("lets a studio's leaders write its choice, and everyone who works there read it", async () => {
+    await seed();
+    const leader = ctx("leaderP8");
+    await assertSucceeds(setDoc(choiceRef(leader), choice("leaderP8")));
+    // "All of head office's" is null; an empty list is "none ticked".
+    await assertSucceeds(setDoc(choiceRef(leader), choice("leaderP8", { use: null, defaultId: null })));
+    await assertSucceeds(setDoc(choiceRef(leader), choice("leaderP8", { use: [] })));
+    await assertSucceeds(getDoc(choiceRef(ctx("trainerP8"))));
+    // Someone who works at another studio, trainer or leader, doesn't read it; nor does a stranger.
+    await assertFails(getDoc(choiceRef(ctx("otherTrainerP8"))));
+    await assertFails(getDoc(choiceRef(ctx("otherLeaderP8"))));
+    await assertFails(getDoc(choiceRef(ctx("strangerP8"))));
+    await assertFails(setDoc(choiceRef(ctx("trainerP8")), choice("trainerP8")));
+    await assertFails(setDoc(choiceRef(ctx("otherLeaderP8")), choice("otherLeaderP8")));
+    await assertFails(deleteDoc(choiceRef(leader)));
+  });
+
+  it("holds the choice to its shape, signed by the person and the server's time", async () => {
+    await seed();
+    const db = ctx("leaderP8");
+    await assertFails(setDoc(choiceRef(db), choice("trainerP8")));
+    await assertFails(setDoc(choiceRef(db), choice("leaderP8", { updatedAt: new Date("2026-01-01T00:00:00Z") })));
+    await assertFails(setDoc(choiceRef(db), choice("leaderP8", { extra: true })));
+    await assertFails(setDoc(choiceRef(db), choice("leaderP8", { use: "academy-knee" })));
+    await assertFails(setDoc(choiceRef(db), choice("leaderP8", { use: Array.from({ length: 81 }, (_, i) => `r-${i}`) })));
+    await assertSucceeds(setDoc(choiceRef(db), choice("leaderP8", { use: Array.from({ length: 80 }, (_, i) => `r-${i}`) })));
+    await assertFails(setDoc(choiceRef(db), choice("leaderP8", { defaultId: 7 })));
+    await assertFails(setDoc(choiceRef(db), choice("leaderP8", { defaultId: "x".repeat(201) })));
+    const { defaultId: _d, ...noDefault } = choice("leaderP8");
+    void _d;
+    await assertFails(setDoc(choiceRef(db), noDefault));
+  });
+
+  const startingPreset = (over: Record<string, unknown> = {}) => ({
+    name: "Knee issues",
+    description: "For a client with a knee problem.",
+    machineIds: ["m-leg-curl", "m-leg-press", "m-compound-row"],
+    scope: "global",
+    tier: "company",
+    start: { dayOne: ["m-leg-curl", "m-leg-press"], matchWords: ["knee"], default: false, kind: "condition", source: "The Academy" },
+    createdAt: serverTimestamp(),
+    createdBy: "adminP8",
+    ...over,
+  });
+
+  it("lets only an administrator write head office's starting routine, start part and all", async () => {
+    await seed();
+    await assertSucceeds(setDoc(doc(ctx("adminP8"), "routinePresets", "academy-knee"), startingPreset()));
+    await assertFails(setDoc(doc(ctx("trainerP8"), "routinePresets", "academy-core"), startingPreset({ createdBy: "trainerP8" })));
+    await assertFails(setDoc(doc(ctx("leaderP8"), "routinePresets", "academy-core"), startingPreset({ createdBy: "leaderP8" })));
+    // Nor can a trainer make it head office's default by editing its start part.
+    await assertFails(updateDoc(doc(ctx("trainerP8"), "routinePresets", "academy-knee"), { "start.default": true }));
+    await assertSucceeds(updateDoc(doc(ctx("adminP8"), "routinePresets", "academy-knee"), { "start.default": true }));
+  });
+
+  it("lets a studio's leaders write their own studio's starting routine, and every trainer read them by Start a plan's queries", async () => {
+    await seed();
+    const own = (uid: string) => startingPreset({ tier: "studio", scope: "studioA", studioId: "studioA", createdBy: uid });
+    await assertSucceeds(setDoc(doc(ctx("leaderP8"), "routinePresets", "a-walkin"), own("leaderP8")));
+    await assertFails(setDoc(doc(ctx("otherLeaderP8"), "routinePresets", "b-walkin"), own("otherLeaderP8")));
+    const db = ctx("trainerP8");
+    await assertSucceeds(getDocs(query(collection(db, "routinePresets"), where("tier", "==", "company"), where("scope", "==", "global"))));
+    await assertSucceeds(getDocs(query(collection(db, "routinePresets"), where("tier", "==", "studio"), where("scope", "==", "studioA"))));
+  });
+
+  // Exactly what store.ts's startPlan sends for a client with no Routine A
+  // (`routineId: null`): the routine made with its plan, and the plan's first
+  // change, named for the starting routine, in one batch.
+  it("lets a trainer keep a starting lineup: Routine A made with its plan and its first change, in one batch", async () => {
+    await seed();
+    const db = ctx("trainerP8");
+    const intended = ["m-leg-press", "m-compound-row", "m-lumbar", "m-chest-press"];
+    const batch = writeBatch(db);
+    const routineRef = doc(collection(db, "routines"));
+    batch.set(routineRef, {
+      clientId: "c-new",
+      name: "Routine A",
+      machineIds: ["m-leg-press", "m-compound-row"],
+      plan: {
+        purpose: "Learning the protocol: the starting routine",
+        purposeKinds: ["core"],
+        intended,
+        building: true,
+        templateId: "academy-low-back",
+        madeByUid: "trainerP8",
+        madeByName: "trainerP8",
+        madeAt: "2026-10-08",
+      },
+      createdAt: serverTimestamp(),
+      studioId: "studioA",
+    });
+    batch.set(doc(collection(db, "routines", routineRef.id, "planChanges")), {
+      kind: "start",
+      machineIds: intended,
+      value: "Low back issues",
+      byUid: "trainerP8",
+      byName: "trainerP8",
+      at: serverTimestamp(),
+    });
+    await assertSucceeds(batch.commit());
+
+    // Signed as someone else, the same batch is refused whole.
+    const forged = writeBatch(db);
+    const forgedRef = doc(collection(db, "routines"));
+    forged.set(forgedRef, { clientId: "c-new", name: "Routine A", machineIds: ["m-leg-press"], studioId: "studioA" });
+    forged.set(doc(collection(db, "routines", forgedRef.id, "planChanges")), {
+      kind: "start", machineIds: ["m-leg-press"], byUid: "leaderP8", at: serverTimestamp(),
+    });
+    await assertFails(forged.commit());
   });
 });

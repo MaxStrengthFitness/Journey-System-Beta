@@ -466,6 +466,24 @@ service cloud.firestore {
           && d.updatedBy == request.auth.uid;
     }
 
+    /* A STUDIO'S STARTING ROUTINES (Oct 8 2026, AJ: "studios will chose
+       their own, admins will create the routines to pick from in the app
+       during beta"; src/features/routine-plan/starting-store.ts).
+       studios/{s}/config/startingRoutines: which of head office's starting
+       routines this studio's trainers see (`use`: null is all of them, a list
+       is exactly the ones ticked, at most 80, STARTING_CHOICE_MAX) and the
+       studio's default (`defaultId`), signed with the Auth uid and the
+       server's time. The routines themselves are routinePresets with a
+       `start` part, on that collection's rules, unchanged. */
+    function startingChoiceValid(d) {
+      return d.keys().hasAll(['use', 'defaultId', 'updatedAt', 'updatedBy'])
+          && d.keys().hasOnly(['use', 'defaultId', 'updatedAt', 'updatedBy'])
+          && (d.use == null || (d.use is list && d.use.size() <= 80))
+          && (d.defaultId == null || (d.defaultId is string && d.defaultId.size() <= 200))
+          && d.updatedBy == request.auth.uid
+          && d.updatedAt == request.time;
+    }
+
     /**
      * studios/{s}/config/renewals. The app cleans every value again when it
      * reads them (features/renewals/settings.ts), so this only has to keep
@@ -2193,10 +2211,15 @@ service cloud.firestore {
       // trainer (AJ: "anyone can go ahead and change a plan"), signed by the
       // signed-in person with the server's time, and never edited or
       // removed, so the next trainer reads who changed it and why.
+      // Oct 8 2026 (the first-session screens, AJ's "1a"): four more kinds,
+      // cantdo and cando (a machine the client can't do, and reopened),
+      // replan (the road started again, kept in the history) and column
+      // (the Academy weight sheet's column picked); nothing else moved.
       function planChangeOk(d) {
         return d.keys().hasAll(['kind', 'machineIds', 'byUid', 'at'])
           && d.keys().hasOnly(['kind', 'machineIds', 'reason', 'value', 'byUid', 'byName', 'at'])
-          && d.kind in ['start', 'add', 'remove', 'swap', 'reorder', 'purpose', 'building', 'focus']
+          && d.kind in ['start', 'add', 'remove', 'swap', 'reorder', 'purpose', 'building', 'focus',
+                        'cantdo', 'cando', 'replan', 'column']
           && d.machineIds is list && d.machineIds.size() <= 30
           && d.byUid == request.auth.uid
           && d.at == request.time
@@ -2240,6 +2263,11 @@ service cloud.firestore {
     // preset as a company standard; checking only the stored one would let
     // an admin's template be downgraded and then edited by anyone. The write
     // has to be legal at the tier it comes from AND the tier it lands on.
+    //
+    // A STARTING ROUTINE (Oct 8 2026) is a company or studio preset with an
+    // optional `start` part (src/features/routine-plan/starting-routines.ts):
+    // it rides on these rules as they are, so only administrators write head
+    // office's, and a studio's leaders their studio's own.
     function presetTier(data) {
       return data.get('tier', 'trainer');
     }
@@ -2758,13 +2786,16 @@ service cloud.firestore {
       // the open-read posture.
       // The studio's own settings (config/settings, Sep 28 2026) are read by
       // the same people as its renewal settings and written by the same
-      // leaders; the company's defaults are system/studioDefaults.
+      // leaders; the company's defaults are system/studioDefaults. So is its
+      // choice of starting routines (config/startingRoutines, Oct 8 2026):
+      // "the studio's leaders change it; everyone who works there reads it".
       match /config/{configId} {
         allow read: if isAuthenticated()
                     && renewalsReadable(studioId, getRole(), callerTrainer());
         allow create, update: if isAuthenticated()
                     && ((configId == 'renewals' && renewalSettingsValid(request.resource.data))
-                        || (configId == 'settings' && studioSettingsValid(request.resource.data)))
+                        || (configId == 'settings' && studioSettingsValid(request.resource.data))
+                        || (configId == 'startingRoutines' && startingChoiceValid(request.resource.data)))
                     && renewalsManageable(studioId, getRole(), callerTrainer());
         allow delete: if false;
       }

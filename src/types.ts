@@ -10,6 +10,8 @@ import type {
   ClientSubjectiveSnapshot,
   SubjectiveAssessment,
 } from "./features/subjective-report/types";
+import type { RoutinePlan } from "./features/routine-plan/types";
+import type { RoutinePresetStart } from "./features/routine-plan/starting-routines";
 
 export type UserRole =
   | "Admin"
@@ -1110,6 +1112,16 @@ export interface Routine {
    */
   templateMachineIds?: string[];
   templateAppliedAt?: any;
+  /**
+   * The routine's plan (AJ, Oct 7 2026; src/features/routine-plan): the rest
+   * of the road, while `machineIds` stays what the client does now, so every
+   * reader that predates it keeps working. Absent on a routine made before
+   * the plan existed, which works exactly as before. Written only through
+   * `routine-plan/store.ts`, with each change appended beside it at
+   * `routines/{id}/planChanges`. Routine A's plan also holds what the client
+   * can't do and the Academy sheet column picked, read by A and B.
+   */
+  plan?: RoutinePlan;
   createdAt?: any;
   updatedAt?: any;
 }
@@ -1150,6 +1162,19 @@ export interface RoutinePreset {
    */
   tier?: RoutinePresetTier;
   studioId?: string;
+  /**
+   * What makes a preset a STARTING ROUTINE (AJ, Oct 8 2026, "1a": "studios
+   * will chose their own, admins will create the routines to pick from in
+   * the app during beta"): the machines a first session runs, the steps in
+   * the order they join, the words in an intake that suggest it, head
+   * office's default, where it came from and what it answers. Absent on every
+   * other preset. Only a company or a studio preset is read as one, and only
+   * a company one can be head office's default; read a stored document
+   * through `startingRoutineFromPreset` (routine-plan/starting-routines.ts),
+   * which checks every field. The Academy's eleven are seeded once by
+   * `scripts/seed-starting-routines.ts`.
+   */
+  start?: RoutinePresetStart;
   createdBy?: string;
   createdByName?: string;
   createdAt?: any;

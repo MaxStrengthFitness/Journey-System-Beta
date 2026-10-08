@@ -117,7 +117,9 @@ export interface CantDo {
 
 /**
  * What each kind of change carries in `machineIds` and `value`:
- * - "start": `machineIds` the plan's machines; `value` unused.
+ * - "start": `machineIds` the plan's machines; `value` the starting
+ *   routine's name when the plan came from one ("Low back issues"), so the
+ *   Changes list can say where it started without reading the preset.
  * - "add": the machines added. "remove": the machines taken out.
  * - "swap": `[from, to]`. "reorder": the new order.
  * - "purpose": `value` the new words. "building": `value` "on" or "off".

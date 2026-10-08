@@ -50,6 +50,10 @@ export function normalizeRoutinePreset(
     scope,
     tier: raw?.tier ?? (scope === "global" ? "company" : "trainer"),
     studioId: raw?.studioId ?? (scope === "global" ? undefined : scope),
+    // A starting routine's part (Oct 8 2026) is carried as it came, so the
+    // template editor can show it; it is read as a starting routine only
+    // through routine-plan's `startingRoutineFromPreset`, which checks it.
+    ...(raw?.start !== undefined ? { start: raw.start } : null),
     createdBy: raw?.createdBy,
     createdByName: raw?.createdByName,
     createdAt: raw?.createdAt,
@@ -86,6 +90,43 @@ export function highestAuthorableTier(
   if (canAuthorTier(trainer, "company")) return "company";
   if (canAuthorTier(trainer, "studio")) return "studio";
   return null;
+}
+
+/**
+ * Whether a preset is a starting routine: it has a `start` part (Oct 8 2026,
+ * src/features/routine-plan/starting-routines.ts). Its `machineIds` is a
+ * plan's whole road, not a routine to apply.
+ */
+export function isStartingRoutinePreset(preset: Pick<RoutinePreset, "start">): boolean {
+  return typeof preset.start === "object" && preset.start !== null;
+}
+
+/**
+ * The templates the Edit routine drawer offers: presets that are routines.
+ * A starting routine is left out, because applying one there would make its
+ * whole road the client's routine and skip the plan (day one, then each
+ * step as it joins); Start a plan on Programming is where one is used.
+ *
+ * Head office's list falls back to the built-in templates while head office
+ * has no routine templates of its own, starting routines not counted, so
+ * seeding the Academy's eleven (scripts/seed-starting-routines.ts) never
+ * takes the built-in ones away. Each list by name.
+ */
+export function drawerTemplates(
+  presets: readonly RoutinePreset[],
+  studioId: string | null | undefined,
+  builtIn: readonly RoutinePreset[],
+): { company: RoutinePreset[]; studio: RoutinePreset[] } {
+  const routines = presets.filter((p) => !isStartingRoutinePreset(p));
+  const byName = (a: RoutinePreset, b: RoutinePreset) => (a.name || "").localeCompare(b.name || "");
+  const company = routines.filter((p) => p.tier === "company").sort(byName);
+  // This studio's own templates first, then trainer-saved presets.
+  const studio = studioId
+    ? routines
+        .filter((p) => p.studioId === studioId)
+        .sort((a, b) => (a.tier === "studio" ? 0 : 1) - (b.tier === "studio" ? 0 : 1) || byName(a, b))
+    : [];
+  return { company: company.length > 0 ? company : [...builtIn], studio };
 }
 
 /**

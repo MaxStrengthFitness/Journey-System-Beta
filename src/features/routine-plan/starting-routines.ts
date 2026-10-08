@@ -48,8 +48,8 @@ export interface StartingRoutineStep {
 
 /**
  * The `start` part of a routine preset: what makes a preset a starting
- * routine. The storage phase adds it to `RoutinePreset` as `start?`; this is
- * its shape.
+ * routine (`RoutinePreset.start`, src/types.ts). A stored one is read through
+ * `startingRoutineFromPreset`, never trusted as it arrives.
  */
 export interface RoutinePresetStart {
   /** The machines a first session runs, a subset of the preset's `machineIds`. */
@@ -106,15 +106,37 @@ export interface StartingRoutineChoice {
 export const ACADEMY_ROUTINE_PREFIX = "academy-";
 
 /**
+ * The two no-reported-issues rows' ids, which say what tells them apart
+ * rather than the Academy's sex split its own template ids carry. AJ, "2a":
+ * the eleven are brought in "renamed without 'female' or 'male'", and a
+ * routine's id is stored where nobody renames it later (every plan's
+ * `templateId`, every studio's `use` and `defaultId`, the seeded documents'
+ * own ids), so the id is renamed with the name, before the seed first runs.
+ * The words are the machines each name says (`academyTemplateName`).
+ */
+const ACADEMY_ROUTINE_IDS: Readonly<Record<string, string>> = {
+  "clear-female": `${ACADEMY_ROUTINE_PREFIX}clear-dip-adduction`,
+  "clear-male": `${ACADEMY_ROUTINE_PREFIX}clear-chest-pulldown`,
+};
+
+/** A seeded Academy row's id, for the seed and the fallback alike: `academy-knee`, `academy-clear-dip-adduction`. */
+export function academyRoutineId(templateId: string): string {
+  return ACADEMY_ROUTINE_IDS[templateId] ?? `${ACADEMY_ROUTINE_PREFIX}${templateId}`;
+}
+
+/**
  * The Academy template a plan's `templateId` names, or undefined: a starting
- * routine seeded from the Academy (`academy-knee`), or, on a plan made before
- * starting routines existed, the template's own id (`knee`). A routine head
- * office wrote has no Academy template. Every reader of a plan's template
- * goes through here, so the two spellings never drift (B's suggested swaps
- * read the template's eventual B).
+ * routine seeded from the Academy (`academy-knee`,
+ * `academy-clear-dip-adduction`), or, on a plan made before starting
+ * routines existed, the template's own id (`knee`). A routine head office
+ * wrote has no Academy template. Every reader of a plan's template goes
+ * through here, so the spellings never drift (B's suggested swaps read the
+ * template's eventual B).
  */
 export function academyTemplateOf(templateId: string | null | undefined): SelectionTemplate | undefined {
   if (!templateId) return undefined;
+  const seeded = SELECTION_TEMPLATES.find((t) => academyRoutineId(t.id) === templateId);
+  if (seeded) return seeded;
   const id = templateId.startsWith(ACADEMY_ROUTINE_PREFIX) ? templateId.slice(ACADEMY_ROUTINE_PREFIX.length) : templateId;
   return SELECTION_TEMPLATES.find((t) => t.id === id);
 }
@@ -129,6 +151,16 @@ function listRank(r: Pick<StartingRoutine, "kind">): number {
 /** A match's weight: a condition first, then a routine with no kind, a goal, and no reported issues last. */
 function matchRank(r: Pick<StartingRoutine, "kind">): number {
   return r.kind === "condition" ? 0 : r.kind === "goal" ? 2 : r.kind === "clear" ? 3 : 1;
+}
+
+/**
+ * Routines in the order a trainer looks for one (no reported issues,
+ * conditions, routines with no kind, goals), each kind by name: a list read
+ * from the database draws the same way whatever order it came back in
+ * (`starting-read.ts`).
+ */
+export function inListOrder(routines: readonly StartingRoutine[]): StartingRoutine[] {
+  return [...routines].sort((a, b) => listRank(a) - listRank(b) || a.name.localeCompare(b.name));
 }
 
 /** A stable sort: equal ranks keep the order they came in. */
@@ -250,8 +282,9 @@ const ACADEMY_WORD_FORMS: Readonly<Record<string, readonly string[]>> = {
 
 /**
  * The Academy's eleven Exercise Selection Template rows as starting routines:
- * the transform the seed writes (`routinePresets/academy-<templateId>`) and
- * the fallback Start a plan uses before it has run.
+ * the transform the seed writes (`routinePresets/academy-<template>`, the two
+ * no-reported-issues rows by `academyRoutineId`'s words) and the fallback
+ * Start a plan uses before it has run.
  *
  * - The road is the consultation's machines the second workout leaves out,
  *   then the second workout, repaired against the sequencing rules (the same
@@ -289,7 +322,7 @@ export function academyStartingRoutines(): StartingRoutine[] {
         adds("Second workout adds", t.secondWorkout),
       ].filter((s) => s.machineIds.length > 0);
       return {
-        id: `${ACADEMY_ROUTINE_PREFIX}${t.id}`,
+        id: academyRoutineId(t.id),
         name: academyTemplateName(t),
         machineIds,
         dayOne,

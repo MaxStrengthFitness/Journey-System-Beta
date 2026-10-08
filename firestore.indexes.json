@@ -829,6 +829,20 @@
       ]
     },
     {
+      "collectionGroup": "routinePresets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tier",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "scope",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "journalEntries",
       "queryScope": "COLLECTION",
       "fields": [

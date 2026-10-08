@@ -35,6 +35,7 @@ import { GLOBAL_ROUTINE_PRESETS } from "../data/routine-presets";
 import {
   describeDeviation,
   deviationSummary,
+  drawerTemplates,
   normalizeRoutinePreset,
   templateProvenance,
 } from "../lib/routine-templates";
@@ -275,28 +276,17 @@ export function EditRoutineDrawer({
   }, [isOpen]);
 
   /**
-   * Company standards. Falls back to the hardcoded set while the collection
-   * has none, so an empty database degrades to the previous behavior rather
-   * than to an empty menu.
+   * Company standards, and this studio's own templates first, then
+   * trainer-saved presets. Company falls back to the hardcoded set while the
+   * collection has none, so an empty database degrades to the previous
+   * behavior rather than to an empty menu. Starting routines (a preset with a
+   * `start` part, Oct 8 2026) are Start a plan's, never applied here
+   * (`drawerTemplates`).
    */
-  const companyTemplates = useMemo(() => {
-    const fromDb = allPresets
-      .filter((p) => p.tier === "company")
-      .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-    return fromDb.length > 0 ? fromDb : GLOBAL_ROUTINE_PRESETS;
-  }, [allPresets]);
-
-  /** This studio's own templates first, then trainer-saved presets. */
-  const studioPresets = useMemo(() => {
-    if (!activeStudioId) return [];
-    return allPresets
-      .filter((p) => p.studioId === activeStudioId)
-      .sort(
-        (a, b) =>
-          (a.tier === "studio" ? 0 : 1) - (b.tier === "studio" ? 0 : 1) ||
-          (a.name || "").localeCompare(b.name || ""),
-      );
-  }, [allPresets, activeStudioId]);
+  const { company: companyTemplates, studio: studioPresets } = useMemo(
+    () => drawerTemplates(allPresets, activeStudioId, GLOBAL_ROUTINE_PRESETS),
+    [allPresets, activeStudioId],
+  );
 
   // Last-performed weight + date per machine, sourced from this client's
   // own session logs (round 4). Sorted by sessionNumber first (an

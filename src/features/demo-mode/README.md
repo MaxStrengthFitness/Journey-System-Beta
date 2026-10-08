@@ -75,6 +75,24 @@ studio twice; either half makes it demo.
 | `DemoBanner.tsx` | One line across every screen, the Active Session included |
 | `SetUpDemoCard.tsx` | Set up and reset, from the studio selection screen |
 
+## What a Reset leaves behind
+
+A Reset overwrites the documents whose ids the seed derives and deletes
+nothing (`seed-write.ts`: "A wipe is deliberately NOT part of this"). So
+anything the app makes inside Demo Mode under an id of its own outlives a
+Reset. Two of these come from routine plans (Oct 8 2026,
+`src/features/routine-plan/store.ts`):
+
+- **A Routine A made by Start a plan** for a demo client with no routine:
+  `startPlan` names a new id on the iPad, which no seed derives, so a Reset
+  never touches it.
+- **A plan's changes** (`routines/{id}/planChanges`). A Reset overwrites a
+  derived routine whole, so its `plan` goes, but the changes stay: the rules
+  keep them append-only, and nobody, a leader included, can delete one. After
+  a Reset that routine's Changes list still shows them.
+
+Both are practice data in the demo studio only, and reach no real studio.
+
 ## The week ahead
 
 Round: **the demo week, Sep 20 2026** (`docs/rounds/2026-09-20-demo-week.md`).

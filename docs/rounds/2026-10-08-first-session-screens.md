@@ -156,7 +156,12 @@ with me".
 - **The seed.** `scripts/seed-starting-routines.ts` writes the eleven as
   `routinePresets/academy-<templateId>`, company tier. It is a dry run by
   default; `--commit` writes. Names carry no gender: the two "No reported
-  issues" rows are named by what tells them apart.
+  issues" rows are named by what tells them apart, and so are their ids
+  (`academy-clear-dip-adduction`, `academy-clear-chest-pulldown`), because an
+  id is stored for good in plans and studios' choices. It never overwrites a
+  routine, and never brings back one an administrator removed: every id it
+  writes is listed in `system/startingRoutinesSeed`, and `--again <id>` brings
+  one back on purpose.
 
 ### 4.3 Programming → Routine A: Start a plan, and the Lineup
 
