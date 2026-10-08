@@ -82,7 +82,7 @@ a whole set-up, and how many clients. It is built from the per-studio
   other aggregate (`src/lib/set-outcome.ts`).
 - **Never a client row.** The document is readable by any signed-in trainer;
   clients are studio-scoped. "This client vs everyone" is the client's own
-  `machineStats` (already on the profile) against the distribution here.
+  `machineStats` (already on the profile; its own document since Oct 6 2026, `machine-totals/README.md`) against the distribution here.
 - **Settings are normalised** so the old label-keyed snapshots (`"Chest Pad"`)
   and the newer slug-keyed ones (`chest-pad`) count together, `"Seat 6"`
   under `seat` counts as `6`, and a number is one value however it was typed

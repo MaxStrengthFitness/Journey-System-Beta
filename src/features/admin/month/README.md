@@ -2,11 +2,11 @@
 
 *Sep 29 2026. AJ: "in operations we need the ability to be able to see all of a given month's renewals, birthdays and anniversaries and MIA list. A lot of studio leadership will normally ask themselves: what do I need to worry about today, this week and this month. Today the clients coming in matter the most. Tomorrow is making sure we are ready for them and the rest this week. The sooner we can get ahead of an issue the better."*
 
-Today is the brief and Week is the week; **Month** is the third of AJ's three questions, and the sixth destination of Operations for that reason (`shell/places.ts`: Today · Week · Month · Clients · Team · Setup). It is one page, like Today.
+Today is the brief and Week is the week; **Month** is the third of AJ's three questions, and the sixth destination of Operations for that reason (`shell/places.ts`: Today · Week · Month · Clients · Team · Setup; Ahead joined beside it on Oct 7 2026, making seven). It is one page, like Today.
 
 ## The page
 
-`MonthPage.tsx`. The month in words with ‹ › either side (a year each way) and **This month** when away from it; a bottom line by rules ("October will have 6 renewals, 4 birthdays and 3 anniversaries. 5 clients are MIA today."); then four sections, each a card of rows grouped by day, and each row opening the client inside Operations:
+`MonthPage.tsx`. The month in words with ‹ › either side (a year each way) and **This month** when away from it; a counts line (renewals, birthdays, anniversaries and MIA today, `CountsLine`, its rules behind an (i); the month's written bottom line, "October will have 6 renewals, 4 birthdays and 3 anniversaries. 5 clients are MIA today.", went in the calm round, Oct 3 2026); then four sections, each a card of rows grouped by day, and each row opening the client inside Operations:
 
 | Section | What it lists | What it refuses to say |
 | --- | --- | --- |
@@ -25,6 +25,6 @@ Every date the app could infer for when a client started — her first session i
 
 ## Files
 
-- `month.ts` — pure: the months, the four lists, the sentence, the day groups; `month.test.ts`.
+- `month.ts` — pure: the months, the four lists, the day groups (the month's sentence, `monthSentence`, went in the calm round, Oct 3 2026); `month.test.ts`.
 - `MonthPage.tsx` — the screen; `MonthPage.render.test.tsx` mounts it over a studio's worth of answers.
 - `../shell/places.ts` — the destination; `../shell/OperationsNav.tsx` its icon; `../shell/ops.css` the month nav and the row head (`ops-month-*`).

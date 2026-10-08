@@ -25,7 +25,7 @@ to people actually built the same way. Narrowing shrinks the sample, which is
 why every claim carries a named minimum and says so when it has not got one.
 
 **Settings and weight do not pool at the same level** (AJ, Sep 21 2026), and
-this folder currently treats them as though they do.
+this folder still treats them as though they do (checked Oct 7 2026).
 
 > "I just want to be able to compare weights across all compound rows, whereas
 > I would more want to see … compare all settings on the Nautilus compound row."
@@ -43,7 +43,9 @@ is inherently one model. The **company tier is not**: the weekly job rolls one
 catalog `machineId`, so a Hoist seat 4 and a Nautilus seat 4 are averaged as
 though they were the same value. Weight is unaffected. Nothing can fix this
 until a model is recorded on a roster entry (see the machines README's open
-questions); once it is, the pattern can still pool company-wide while the
+questions). Format v2's `modelId` and the model record now hold one
+(`machine-codex/README.md`, Sep 28 2026), but nothing in this folder reads them
+yet; once it does, the pattern can still pool company-wide while the
 actual numbers scope per model.
 
 Two uses, and they are not the same job: **forward**, a good starting point

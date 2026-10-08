@@ -41,7 +41,7 @@ None of its own beyond the studio's package table (`useRenewalSettings`, the one
 
 **The nightly marks, once per studio visit** (wave 2 hub, for All stars): `use-hub-marks.ts`, ONE `getDoc` of `studios/{s}/watch/hubMarks` (`allStars: [{ clientId, weeksWithVisit, perWeek }]`, `computedAt`), written each night by the renewals job (the Operations helper's addition, wave 2). Held like the FORD read; judged against the Hub's clock, so marks turning three days old fall silent. Opened only for someone who works at the studio (`mayReadWeeks`). No index (a read by id); the existing `watch/{watchId}` rule already lets the studio's people read it and nobody in the app write it.
 
-## Built, and waiting for a read (hub cherry round, Sep 28 2026)
+## Built in the cherry round, wired in wave 2 hub (Sep 28 2026)
 
 Two rules were built and tested here and deliberately **not wired**, because the data each needs is in nothing the Hub holds, and the reads that would bring it need AJ's OK (the house rules: no new query shape or index, no new stored field, no scan). **AJ said yes to both** ("all yes", Sep 28 2026), and wave 2 hub wired both (see Decisions and Reads above; `docs/rounds/2026-09-28-hub-2.md`): Get to know from one FORD read per studio visit, All stars from the nightly job's document rather than a stored field on each client. What the cherry round wrote:
 

@@ -319,7 +319,7 @@ timing of Generate, and whether any insight reads wrong; Journal and History
 in dark mode (not harness-verifiable — both subscribe to Firestore).
 
 Follow-ups worth a card: `ClientClinicalReviewView.tsx` and its preloader
-are superseded and can be deleted once the new tab has been used for a week;
+were superseded (and deleted in the Sep 6 2026 cleanup);
 the `subjectiveSnapshot` panel from the old review has no home yet; the
 CSV importer already feeds the trainer tally, but the Mindbody visit import
 does not and probably should not (visits are not coached sessions).
@@ -461,7 +461,7 @@ dialog, the discard dialog and the Edit Routine drawer sit beside
 `ProgrammingTab` rather than inside it. The codex is the exception, on
 purpose: its pages write the record through its one form (the Save bar's
 one `updateDoc`), notes and FORD through their own writers, and nothing
-else; the doors that LEAVE the tab (Relay, through the old Planner door; the
+else; the doors that LEAVE the tab (Relay, through `relay/intent.ts`; the
 Archive's reports; a machine; the Set-up; the Migration Hub) are still the
 profile's, handed in
 as `CodexHosts`. Since the cleanup (phase 19) the codex asks for no report

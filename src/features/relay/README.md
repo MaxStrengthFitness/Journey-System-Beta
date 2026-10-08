@@ -4,8 +4,8 @@
 (`features/my-studio/MyStudioView`), which owns the masthead, the Relay
 context and the Capture sheet now; `PlannerView` draws the board under it.
 Relay's **Team** tab became My Studio's Team section (`team/TeamPanel`, beside
-the studio's staff), and the Network tab moved to Operations → Overview → All
-my studios (voice-review round, Sep 27 2026; its ranking of studios was
+the studio's staff), and the Network tab moved to Operations → All my studios
+(voice-review round, Sep 27 2026; its ranking of studios was
 dropped), so the board's tabs were **Floor · Mine · Notes**, and since the Relay room (Sep 28 2026; AJ, q1) they read **Board · Tracker · Journal** (the ids `floor`, `mine`, `notes` never change). Relay is first for the trainer
 between clients (AJ, Sep 27: leaders "have operations and the hub").
 Read `features/my-studio/README.md` first.
@@ -21,7 +21,7 @@ Sep 27), the Network tab (now on Operations), the Calendar layer, kudos. Everyth
 
 The tabs were **Floor · Mine · Notes · Team · Network** until the My Studio
 round moved Team out and the voice-review round (Sep 27 2026) moved Network
-to Operations → Overview → All my studios (`features/admin/network/`). The
+to Operations → All my studios (`features/admin/network/`). The
 table under **Tabs** is what each one holds today.
 
 Round: Learning + Planner, Sep 2026. AJ's brief:
@@ -54,8 +54,8 @@ People are listed by name, never ranked, with no "Behind" verdict. It reads
 the Floor's paths.
 
 **Network is not a tab.** The network's focus and a launch at every studio
-are on Operations → Overview → All my studios, and at the foot of the
-Overview for a franchise owner who sees one studio
+are on Operations → All my studios, and at the foot of Today (the
+Overview until Sep 28 2026) for a franchise owner who sees one studio
 (`features/admin/network/`). The ranking of studios was dropped.
 
 ## Decisions
@@ -68,7 +68,7 @@ Overview for a franchise owner who sees one studio
 
   The old list and its `?classic-todo` escape hatch were deleted in the cost
   round (Sep 2026).
-- **A masthead like Learning's** (Learning + Planner round). A title, the tabs, and the studio and day on the right. AJ said both screens lacked "a good header", and both got the same one.
+- **A masthead like Learning's** (Learning + Planner round; replaced by the one header below on Sep 28 2026). A title, the tabs, and the studio and day on the right. AJ said both screens lacked "a good header", and both got the same one.
   - Embedded in the Planner, the hub's own title and date give way to one line: "Shared with everyone at {studio}".
 - **One header** (Relay room, Sep 28 2026; the redesign's phase 1, AJ's pick). My Studio's masthead, Relay's tabs and the Now Bar were three bars, about a quarter of an upright iPad before any work. They are one bar (`my-studio/StudioHeader`): the section (its menu holds the five sections), Relay's tabs, the day, what's new ("● 2 new", Since you were in), Ask and +; under it, the bar the Board, the Tracker and the Journal fill with their parts (`RelayContext.slots`). The time button, the day strip and Tracking went in the Relay Board rebuild (Oct 3 2026; AJ: "Drop both"). The floating Capture button went with it: Ask asks the team, + holds your own to-do, reminder or note (and a leader's studio task or team job). "Just now" is a still list on the Floor (`board/JustNow.tsx`).
 - **My tasks shows what already existed.** Personal tasks were mixed into the studio's shift strip with a "Just you" badge. "New personal task" could only be reached through Manage → task form → back.
@@ -81,10 +81,10 @@ Overview for a franchise owner who sees one studio
   - **A leader's assignment is simply yours** (AJ, q5): Done and "I can't", never "Take it · Not me · Later". "I can't" puts an ask back on the board for anyone, steps you off a team job, or opens Capture to ask the team to take a chore (only a leader may take a name off a chore, by the rules). The first two can be undone for eight seconds (the Board's `UndoBar`); stepping back onto a job you were on rings nobody's bell.
   - **An empty list is said only once every read has answered**: a read on its way is "Loading…", a failed one says some of the list couldn't be loaded, and neither says "Nothing on your list today".
   - The list you are on is module memory, and a sign-out forgets it.
-- **Since you were in** (the second wave, Sep 28 2026; AJ: "all yes" to the marker and the lookup). The top of the Board's side column says what changed since this trainer last opened the Board at this studio: notices from leadership, who is new to the studio this week, machines off the floor or flagged, answers kept in the Playbook, hearts to you. New means after the marker, `studios/{s}/lastSeen/{uid}` (one small document, only that person's; read once a session and moved to now). "New this week" is her FIRST-EVER visit, never her first Journey session, from the client list and bookings the app already streams; a client it can't judge is counted under "couldn't check", and a list still loading or failed says so. Team today beside it is by chore (`board/team-today.ts`).
-- **The tab is remembered for the session** (module state, not storage), and a sign-out forgets it. A fresh load starts on the Floor, where the shift rings are. Since the one header, a tab change asks about typing first (a leave scope in `MyStudioView`), as a section change does.
-- **A client's profile can open the Planner** at a note: **Write a plan**, **Jot a note**, or **Edit in your Planner** on a shared note. The profile leaves its request in `intent.ts`, and the Planner reads it when it mounts. That avoids threading more state through AppContent, since the Planner is not mounted while the profile is showing.
-- **A bell notification can open the Planner too** (rework): its link is `{ view: "studio-tasks", id }` with `id` = `job:<jobId>`, `share:<noteId>` or `mine`, turned into an intent by `plannerIntentFromLink` in `AppContent`.
+- **Since you were in** (the second wave, Sep 28 2026; AJ: "all yes" to the marker and the lookup). One pill in the header, "● 2 new" (the top of the Board's side column until the Relay Board rebuild, Oct 3 2026), opens what changed since this trainer last opened the Board at this studio: notices from leadership, who is new to the studio this week, machines off the floor or flagged, answers kept in the Playbook, hearts to you. New means after the marker, `studios/{s}/lastSeen/{uid}` (one small document, only that person's; read once a session and moved to now). "New this week" is her FIRST-EVER visit, never her first Journey session, from the client list and bookings the app already streams; a client it can't judge is counted under "couldn't check", and a list still loading or failed says so. (Team today, the by-chore list that sat beside it, went in the Relay Board rebuild, Oct 3 2026.)
+- **The tab is remembered for the session** (module state, not storage), and a sign-out forgets it. A fresh load starts on the Board (the tab id is `floor`). Since the one header, a tab change asks about typing first (a leave scope in `MyStudioView`), as a section change does.
+- **A client's profile can open Relay** at a note: **Write a plan**, **Jot a note**, or **Edit in Relay** on a shared note. The profile leaves its request in `intent.ts`, and Relay (`PlannerView`) reads it when it mounts. That avoids threading more state through AppContent, since Relay is not mounted while the profile is showing.
+- **A bell notification can open Relay too** (rework): its link is `{ view: "studio-tasks", id }` with `id` = `job:<jobId>`, `share:<noteId>` or `mine`, turned into an intent by `plannerIntentFromLink` in `AppContent`.
 
 - **The third wave (Sep 29 2026; the second wave's three leftovers, `docs/rounds/2026-09-29-relay-3.md`).** (1) **When a job was taken and when it was finished**: a join stamps `claims.{uid}` on the team job (the signed-in uid, one map key, the name and the server's time; stepping off removes it), and the sheet, the card and the Tracker's job rows say "Claimed by Sam 10:12 AM · done 10:40 AM" (`jobs/jobs.ts` `jobTimesLine`). A leader naming someone is not a claim. (2) **Trainers' own cases** sit under the Tracker's Follow-ups (`my-cases.ts`, `useMyCases.ts`: `studios/{s}/cases` where `owner.id` is the Auth uid, open, by `dueOn`, the cases index), overdue first, with `MyCaseEditor` changing only what the rules let the owner change (the next step, the due day, the outcome, the reason) through `saveCase`. (3) **Announcements that ask "I've read it"** (q7): `asksRead` on the notice, a checkbox on the composer; on Since you were in the notice stays new until this person taps "I've read it", one merge write of `acks.{id}` on their own `announcementReads/{uid}` (the retired `readBy` stamp is untouched). Nobody is pinged. Since the Atlas answers (Oct 2 2026) the answer is also written, by the reader alone, to `hub_announcements/{id}/acks/{uid}`, so the poster and the studio's leaders see "9 of 12 have read it" (`admin/announcements/read-count.ts`), and Mark all read says "I've read it" on every notice that asks. Opening an ask to read it no longer claims it: only Take it does. A leader naming someone on a team job stamps `namedBy.{id}` ("Put on it by Sam 10:05 AM"), and leaders keep private Team member notes in the Journal.
 
@@ -103,9 +103,8 @@ Overview for a franchise owner who sees one studio
 | File | What |
 | --- | --- |
 | `PlannerView.tsx` | Relay's tabs' content and the Context Panel beside it. Since the Relay room (Sep 28 2026) the tabs are in My Studio's one header (`features/my-studio/StudioHeader`), so the shell chooses the tab (`PLANNER_TABS`, `initialPlannerTab`, `rememberPlannerTab`) and a tab change is a leave scope |
-| `GlanceBand.tsx` | The Floor's three at-a-glance tiles, drawn by `studio-tasks/StudioHubView` (it was the Planner's Studio tab) |
 | `MyTasksPanel.tsx` + `tracker.ts` (+ test) + `tracker.css` | The Tracker (it was Mine, and My tasks before that), its pure lists by when, and its rail (prefix `rtk`). `Tracker.render.test.tsx` mounts it. `my-tasks.ts` keeps `taskMeta` (a row's small print); its `myTaskBuckets`, and `board/mine.ts`'s `handedAsks`, went with Mine |
-| `jobs/` | Team jobs: `types.ts`, `jobs.ts` (+ test), `mutations.ts`, `useTeamJobs.ts`, `JobComposer`, `JobSheet`, `TeamJobsLane`. `claims` and `jobTimesLine` since the third wave (Sep 29 2026) |
+| `jobs/` | Team jobs: `types.ts`, `jobs.ts` (+ test), `mutations.ts`, `useTeamJobs.ts`, `JobComposer`, `JobSheet` (`TeamJobsLane` went in the Relay Board rebuild, Oct 3 2026). `claims` and `jobTimesLine` since the third wave (Sep 29 2026) |
 | `my-cases.ts` (+ test), `useMyCases.ts`, `MyCaseEditor.tsx` (+ render test) | The cases a trainer owns, under the Tracker's Follow-ups (the third wave, Sep 29 2026) |
 | `team/` | My Studio → Team, people and standards: `accountability.ts` (+ test), `useInitiativeProgress.ts`, `TeamPanel` |
 | `reminders/` | `reminders.ts` (+ test), `useReminderBell.ts`, `PlannerReminders` (the watcher). The Calendar's strip is `board/RelayStrip` since the Relay round; the older `ReminderStrip` was deleted, unused, in the beta-prep trim (Sep 17 2026) |

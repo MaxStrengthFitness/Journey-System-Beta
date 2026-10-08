@@ -123,7 +123,7 @@ chose. The new editor:
   `defaultSettings`, or from the studio roster override where one exists.
 - **Auto-fills only absolute standards** — a value that is the same for every
   client on that machine. Today that is `Gap: 0`, and it is driven by a single
-  predicate (`isAbsoluteStandard`) rather than scattered `if (key === 'gap')`
+  function (`absoluteStandardFor`, `adapters.ts`) rather than scattered `if (key === 'gap')`
   checks, so adding the next one is a one-line change.
 - **Never saves a ghost.** A field left showing its placeholder is saved as
   empty, and the machine stays "Not set up". That is honest; the old flow's 5%
@@ -193,7 +193,7 @@ what replaced each, and why, is the machine menu's README → "What retired".
 | `equipment.css` | Layout, sticky rails, drill-in transition |
 | `EquipmentTab.tsx` | Shell, selection state, responsive mode; the right pane is the machine menu's body, inline (`menuHost`) |
 | `EquipmentSummaryBar.tsx` | Usage sentence + search |
-| `MachineRail.tsx` | Sectioned list + `MachineRailItem` |
+| `MachineRail.tsx` | Sectioned list + `RailItem` |
 | `SetupGuide.tsx` | Catalog setup / execution cues (`part`: the whole guide, or its set-up or execution half) |
 | `NoteIndicator.tsx` | The note icon, in the one note key (§2.6) |
 | `WatchOutCard.tsx` | The client's clinical watch-outs for one machine, quoted from the matrix (the machine menu's safety strip draws it compact) |
@@ -322,7 +322,9 @@ left open for AJ (the round document's open items).*
 
 Where the numbers come from, in order of trust:
 
-1. `client.machineStats[machineId]` — the lifetime rollup that
+1. `client.machineStats[machineId]` — (since Oct 6 2026 stored in
+   `clients/{id}/machineTotals/current` and folded onto the client on screen by
+   `withMachineTotals`: `machine-totals/README.md`) the lifetime rollup that
    `lib/client-rollups.ts` maintains on every session save and CSV import
    (`firstPerformedDate`, `firstWeight`, `lastPerformedDate`, `lastWeight`,
    `timesPerformed`). Trusted only once `client.machineStatsBackfilledAt` is

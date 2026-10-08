@@ -1,6 +1,6 @@
 # A new version, picked up safely
 
-Every push to `master` puts a new Journey on Render. This folder is how an open Journey notices, and how it loads the new version without interrupting anything on the floor. The round is `docs/rounds/2026-09-26-new-version.md`.
+Every deploy puts a new Journey on Render (since Oct 6 2026 a push to `master` deploys nothing by itself: AJ presses Manual Deploy on the web service). This folder is how an open Journey notices, and how it loads the new version without interrupting anything on the floor. The round is `docs/rounds/2026-09-26-new-version.md`.
 
 ## Why it is needed
 

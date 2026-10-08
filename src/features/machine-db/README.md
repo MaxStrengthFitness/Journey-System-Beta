@@ -89,7 +89,7 @@ Before this round, the machine notes, upkeep log, playbook and wiki blocks accep
 
 ## Not in this round
 
-Session screens still use the app-wide machine list (AppContent's `machines`), not each studio's roster. `useSessionMachines` exists for that, but nothing uses it yet. So a machine adopted here appears in the studio's Catalog, but not yet in the session tracker's picker. Wiring sessions to the roster is on the roadmap.
+When this round was written (Sep 2026), session screens used the app-wide machine list (AppContent's `machines`), not each studio's roster, so a machine adopted here appeared in the studio's Catalog but not in the session tracker's picker. That was closed on Sep 20 2026: the Active Session reads the studio's own floor (`useStudioMachines` through `lib/floor-machines.ts`), so an adopted machine is in the picker. (`useSessionMachines` was never written; nothing in the code has that name.)
 
 ## Files
 

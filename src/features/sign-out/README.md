@@ -30,8 +30,8 @@ Everything else goes, in four places:
    (`SESSION_HANDOFF_PREFIXES`: where a client's profile should open, machine
    fit's Setup hint) and leaves note drafts alone.
 4. **Module memory** - `memory.ts`. A module that keeps a memory in module
-   scope (the Planner's tab, My Studio's section, the Operations span, a
-   waiting Planner request, the Catalog scope, Relay's "Not me") registers its
+   scope (Relay's tab, My Studio's section, the Operations span, a
+   waiting Relay request (`PlannerIntent`), the Catalog scope, Relay's "Not me") registers its
    reset with `forgetOnSignOut` beside the variable. `memory.ts` imports
    nothing, so any module can use it without growing the main bundle.
 

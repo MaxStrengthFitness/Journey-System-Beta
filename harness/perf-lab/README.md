@@ -105,7 +105,7 @@ Every profile but `floor` adds 60 ms of latency at 20 Mbps down / 10 up (gym Wi-
 | a `cold` | Empty profile, first sign-in: load, sign in, the studio greeting, Start | the Hub's cards painted and the app's `journey:hub-data` mark, whichever is later, from navigation; plus the sign-in screen, the greeting, Start tap to the Hub and the other boot marks |
 | b `warm` | Reload: the same renderer with its memory caches, HTTP and Firestore caches kept | the same, from navigation |
 | b2 `relaunch` | **The headline open.** Chrome closed and started again on the same profile (an iPad's Home Screen app that iOS put away): a fresh renderer with nothing in memory, the disk caches kept | the same, from navigation |
-| b3 `afterdeploy` | The first open after a deploy (every push to master): relaunched with the HTTP cache and V8's code cache emptied, the Firestore cache (IndexedDB) kept | the same, from navigation |
+| b3 `afterdeploy` | The first open after a deploy (every Manual Deploy on Render): relaunched with the HTTP cache and V8's code cache emptied, the Firestore cache (IndexedDB) kept | the same, from navigation |
 | c `idle` | The Hub left open 70 s, so a minute tick falls inside | long tasks only |
 | d `client` | Winifred Ashcombe's card on today's Hub, the peek, Open profile | the Journey tab's grid rows painted, from the tap |
 | e `session` | Theodora Pemberton's card on tomorrow's Hub, Start session, the briefing's Start, 5 sets typed and Next, the machine menu opened and closed; then Finish, Finish session | **wall = start -> briefing + briefing -> Now Bar + the five sets + the menu**, the app's own work a trainer waits on. Each step is reported; Finish (to the Wrap-up, and the database's answer) is reported apart, as the emulator's |

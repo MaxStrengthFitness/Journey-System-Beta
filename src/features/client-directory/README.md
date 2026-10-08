@@ -54,7 +54,7 @@ A new prop on the row, or a new input to the row model that changes over time, m
 
 - **Note marks** (a dot for an open note you haven't marked off). Doing it honestly for 300 rows needs a roll-up on the client document (`openThreads`) — a Firestore structure change that needs AJ's OK. The seam is the `marks` prop (a map of client id → `DirectoryMark`); it defaults to none and the gutter column is not even drawn. **Do not add a per-client query to fill it.**
 - **Every-studio search** (and Admin → Clients folded in): needs `searchPrefixes` on the client document (structure change) and per-studio queries.
-- **The header quick-find popover** and retiring the Hub's search cards: next round, on this engine (`searchNames`, `compareTier`).
+- **The header quick-find popover**: not built as of Oct 7 2026; it would sit on this engine (`searchNames`, `compareTier`). The Hub's search cards were retired on Oct 1 2026: the header's search shows its results on the Hub as this Directory's own rows (`SearchResults.tsx`).
 - **Save view**, **"Find clients like…"**, Last-in / Next / Left / trainer tokens, the A–Z scrub strip, the landscape detail pane, collapsing the header while the keyboard is up.
 - **Mindbody id search** and searching `mindbody_name`: not in the first version.
 - **The sort following the trainer across iPads** needs the trainer document (a structure change); it is local storage per trainer, which a sign-out clears (`features/sign-out`), so it lasts while they are signed in on that iPad.

@@ -3,8 +3,8 @@
 **A real studio that everybody can enter, full of people who do not exist.**
 
 Demo Mode is how a trainer learns the app without touching a client's record,
-how a studio leader rehearses a Monday, and — tomorrow — how AJ shows the app to
-his boss on the live Render URL without opening a real client's history in front
+how a studio leader rehearses a Monday, and — the use it was built for on Sep 20
+2026 — how AJ shows the app to his boss on the live Render URL without opening a real client's history in front
 of him.
 
 Round: **Demo Mode, Sep 20 2026** (branch `claude-experiment`). The design is
@@ -112,8 +112,8 @@ that is the one place the pattern is arranged for the demo rather than for
 realism: the Hub opens on today, and a trainer who lands on an empty grid
 concludes the demo is broken rather than that the studio is shut.
 
-One booking in the run is **cancelled**, so Operations → Overview → Changes has
-something to find. It lands on a client with another booking that week — her
+One booking in the run is **cancelled**, so Operations → Week → This week so far
+(its Changes view) has something to find. It lands on a client with another booking that week — her
 standing one, booked a fortnight earlier like every demo appointment — so since
 Sep 26 (only a real rebook reads as a reschedule, `isRealRebook`) it reads as a
 cancellation whose proof names the booking she still holds: the case a
@@ -319,7 +319,7 @@ studio-scoped, so a demo session coached by a real trainer would land on that
 person's real career totals — with demo trainers, the rollups write to demo
 trainer documents and the leak closes itself, with no Cloud Functions change.
 It also means the studio-leader half of the app (Team, Staff & Roles, the
-Overview's team panel) has somebody on it, which is exactly the half a studio
+Overview's team panel; Staff & Roles and the Overview are People & access and Today since Sep 28 2026) has somebody on it, which is exactly the half a studio
 leader is being shown.
 
 **The names** are Lord of the Rings, from the **films** rather than the books,

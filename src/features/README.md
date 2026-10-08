@@ -24,7 +24,10 @@ New code goes here.
 | `client-story/` | Notes & Profile → Story: the client's dated moments, newest first, each from a record somebody already made | `README.md` |
 | `routines/` | Profile, Programming tab: Routine A and Routine B | `RoutinesTab.tsx` |
 | `routine-builder/` | The routine builder the Edit Routine drawer opens, with the Academy's programming rules | `engine.ts`, `academy.ts` |
-| `equipment/` | Profile, Programming tab: All Machines, the one machine window, setting suggestions | `README.md` |
+| `equipment/` | Profile, Programming tab: All Machines, setting suggestions. The one card for a client on a machine is `machine-menu/` since Oct 4 2026 | `README.md` |
+| `machine-menu/` | The machine menu: ONE card for a client on one machine (safety, the settings, notes, the Staircase), opened from the Active Session and the profile | `README.md` |
+| `machine-totals/` | A client's machine maps in their own document (`clients/{id}/machineTotals/current`, since Oct 6 2026) | `README.md` |
+| `next-weight/` | The Wrap-up's next-session weight (`NextWeightCard`) | `next-weight.ts` |
 | `client-history/` | Profile, Activity Archive: Calendar and Sessions | `README.md` |
 | `clinical-review/` | Profile, Activity Archive: Trends (the Kaizen Deep Dive) | `facts.ts` |
 | `progress-report/` | The Client Progress Report, the five-step conversation | `README.md` |
@@ -32,8 +35,8 @@ New code goes here.
 | `ford/` | FORD: the client's FORD page (Notes & Profile → FORD), mid-session capture, the Wrap-up's sweep, the Delight queue | `README.md` |
 | `client-life/` | The life editors: Work and Recreation on the FORD page's bands, Experience on Body & Pulse | `life.ts` |
 | `goals/` | The Goals section of the record: the original why, goals, focus | `goals.ts` |
-| `clinical-flags/` | The Body section's watch-out banner and the condition picker | `BodyWatchOuts.tsx` |
-| `client-admin/` | The record's Admin section: the contract panel and the tier lock | `contract.ts` |
+| `clinical-flags/` | The condition picker (the Body page's watch-out banner is `client-codex/body/WatchOutsCard.tsx` since the client codex) | `ClinicalFlagPicker.tsx` |
+| `client-admin/` | The record's Account page: the membership (`MembershipSection`) and the tier lock | `contract.ts` |
 | `inbody/` | InBody scans (health data: read its rules note first) | `README.md` |
 | `renewals/` | The renewal engine, pipeline and conversation log. Its Operations screens are in `admin/renewals/` | `README.md` |
 | `calendar/` | The Calendar screen | `README.md` |
@@ -45,13 +48,17 @@ New code goes here.
 
 | Folder | What it is | Read first |
 | --- | --- | --- |
-| `my-studio/` | My Studio on the bottom bar: Relay · Machines · Team · Studio, the masthead, and the two doors (Capture, the Context Panel) | `README.md` |
-| `relay/` | Relay (was the Planner, was To-Do), My Studio's first section: the tab bar (Floor · Mine · Notes), Mine, Notes, and My Studio → Team's people and standards (`team/`). Relay's own pieces are in `board/`. The view id is still `studio-tasks`. The network's focus and launch are not here: they are on Operations (`admin/network/`) | `README.md`, then `board/README.md` |
+| `my-studio/` | My Studio on the bottom bar: Relay · Openings · Machines · Team · Studio, the one header, and the two doors (Capture, the Context Panel) | `README.md` |
+| `relay/` | Relay (was the Planner, was To-Do), My Studio's first section: the tab bar (Board · Tracker · Journal; ids `floor`, `mine`, `notes`), the Tracker, the Journal, and My Studio → Team's people and standards (`team/`). Relay's own pieces are in `board/`. The view id is still `studio-tasks`. The network's focus and launch are not here: they are on Operations (`admin/network/`) | `README.md`, then `board/README.md` |
 | `standing-week/` | Each trainer's usual week, proposed on My Profile, agreed on My Studio → Team, and checked against the coming week's Mindbody bookings (a check, never a booking) | `README.md` |
-| `studio-tasks/` | Relay's Floor tab AND the task data layer (templates, instances, requests, initiatives, the playbook, upkeep). The Catalog, the Hub and Operations import it too, which is why it is not inside `relay/` | `README.md` |
+| `openings/` | When the studio is usually busy, what opened up and what to offer (My Studio → Openings; never books): the pure core, the Sunday job's summary, the screens in `ui/` | `README.md`, then `ui/README.md` |
+| `studio-tasks/` | Relay's Board (the `floor` tab) AND the task data layer (templates, instances, requests, initiatives, the playbook, upkeep). The Catalog, the Hub and Operations import it too, which is why it is not inside `relay/` | `README.md` |
 | `notifications/` | The bell in the header, and announcements | `NotificationBell.tsx` |
 | `comments/` | Comments with @tags at the foot of Learning pages | `README.md` |
 | `feedback/` | The always-there bug and idea reporter | `FeedbackButton.tsx` |
+| `hub-schedule/` | The Hub's Schedule layer: the grid, its cards, the day header, the spotlight and the peek | `README.md` |
+| `hub-opportunities/` | The Hub's Opportunities layer (the Run-sheet) and the day's moments, worked out once for the Hub | `README.md` |
+| `client-directory/` | The Client Directory: the smart table, its one row model and its one name search | `README.md` |
 
 ## Learning
 
@@ -63,6 +70,8 @@ New code goes here.
 | `academy/` | The MSF Academy pages, built from `docs/msf-academy/` by `scripts/build-academy-content.ts` | `academy-machines.ts` |
 | `machine-db/` | All MSF machines: sharing a machine, adopting one onto a studio's floor | `README.md` |
 | `machine-trends/` | The pure core of the weekly machine-trends job (aggregates only) | `README.md` |
+| `machine-codex/` | The Machine Codex: format v2's optional fields, the model record `machineModels/{id}` and Compare | `README.md` |
+| `floor-notes/` | The floor's notes on a machine: one dated list per machine, a note being a thread | `README.md` |
 
 ## Operations, people and settings
 
@@ -73,6 +82,7 @@ New code goes here.
 | `trainer-profile/` | A trainer's own profile, the Kaizen Roster, the Edit Trainer modal | `README.md` |
 | `trainer-identity/` | Claiming a placeholder trainer profile at first sign-in | `claim.ts` |
 | `settings/` | Trainer Settings: what is left after the settings tiers round | `TrainerSettingsView.tsx` |
+| `studio-settings/` | A studio's own numbers (the quiet floor, the Journey's lines, the machines' care) with head office's default beneath them | `README.md` |
 
 ## The whole app
 
@@ -83,6 +93,9 @@ New code goes here.
 | `unsaved-changes/` | The one registry of typed-but-unsaved work, and the one question before leaving it | `README.md` |
 | `new-version/` | Noticing a deploy and loading it safely, never over a session, a send or typing | `README.md` |
 | `home-screen/` | Journey as a Home Screen app: the manifest, the status bar and the safe areas | `README.md` |
+| `front-door/` | Sign in, checking you in, the greeting, the studio picker and the access request | `README.md` |
+| `boot-timing/` | How long an open of Journey took: three marks on the timeline and one boot report to Render's logs | `README.md` |
+| `phone/` | Journey Lite: the same app laid out for a phone (`usePhone()`), never a second app | `README.md` |
 
 ## Which machine hook when
 
@@ -95,6 +108,6 @@ Four hooks hand out machines. They are layers, not copies:
 | `hooks/useStudioMachines` | Every machine ONE studio has, fully resolved: the catalog plus `studios/{id}/roster`, merged by the one policy in `lib/resolve-machine.ts` | Anything about THIS studio's floor: the profile, the tracker's settings, Operations' equipment panel |
 | `features/catalog/useCatalogMachines` | The machines this studio has, ready to draw: the list above, de-duplicated across id conventions and joined to anatomy | You are drawing a Learning or Catalog page |
 
-Known gap (ROADMAP): sessions still use the app-wide list, not the studio's
-roster, so a studio's own or adopted machines are not in the session picker
-yet.
+Since Sep 20 2026 the Active Session reads the studio's own floor
+(`useStudioMachines` through `lib/floor-machines.ts`), not the app-wide list,
+so a studio's own or adopted machines are in the session picker.

@@ -42,7 +42,7 @@ This is a web app with a manifest, not an App Store app. There is no service wor
 
 **The orientation is never locked.** The manifest says `"orientation": "any"`. Trainers use the iPad both ways (portrait mostly). iPadOS does not reliably honour a lock anyway: the Screen Orientation lock API is not in Safari, and iPadOS 26 and later expects apps to handle any window size.
 
-**No service worker.** Every push to `master` deploys. A caching service worker is the standard way to pin a device to an old build, and nothing here needs one. The Home Screen app loads `/` from the server like a tab does. `/` is sent `no-cache`, which is why `start_url` is `/` and never `/index.html`: `express.static` would cache that one for an hour.
+**No service worker.** Every deploy replaces the whole build (since Oct 6 2026 a push to `master` deploys nothing by itself: AJ presses Manual Deploy on Render). A caching service worker is the standard way to pin a device to an old build, and nothing here needs one. The Home Screen app loads `/` from the server like a tab does. `/` is sent `no-cache`, which is why `start_url` is `/` and never `/index.html`: `express.static` would cache that one for an hour.
 
 **The icon is the Journey J.** It was drawn from AJ's mock (a copper road on teal that rises into a gold arrow, with the MAX tiles) and the Max Strength logo. The road bends into a J for Journey, and its dashed centre line runs up into the arrow. The arrowhead is the MAX "^" at the same angle, shading from gold into Max Strength's own orange (#F36D21). The J stands on the three tiles in their exact colours. There is no text in the icon, because iPadOS prints "Journey" under it; the wordmark is in the lockup.
 

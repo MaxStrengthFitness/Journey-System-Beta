@@ -167,7 +167,7 @@ AS IT ARRIVES: `openMyStudioSection("openings", () => showOpenings("next",
 { kind: "anyone" }))`. My Studio runs the arrival only when the move happens
 (after the leave question), just before the section mounts, so a "Keep
 editing" leaves Openings' part and chip as they were (the final review; before
-it, the door set them first). The Overview, outside My Studio, sets them and
+it, the door set them first). Today (Operations), outside My Studio, sets them and
 then switches the app's view, as master's other doors do: it has no typing
 to keep.
 

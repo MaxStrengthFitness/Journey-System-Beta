@@ -92,7 +92,7 @@ moved that very booking (`movedFromStart`), when she is booked at her time
 with another trainer, or when her booking for it was cancelled (a stamped
 cancellation) and a REAL rebook followed that Monday–Sunday week — one that
 appeared with the cancellation and starts after it: `isRealRebook`
-(`admin/changes/changes.ts`, the one rule Operations → Changes and the client
+(`admin/changes/changes.ts`, the one rule Operations → Week → Changes and the client
 calendar read too; AJ, Sep 26 2026: "rebooked" only for a real rebook). Any
 other booking that week proves nothing: a twice-a-week client's standing
 Thursday was booked all along.
@@ -142,7 +142,7 @@ saw, flagged `fromCache`, before the server answers or while offline. The
 bookings read used to report that as a finished read, so an iPad with no
 connection listed every agreed slot the cache lacked as open, with a Free
 slot badge. Now Team asks `useWeekSchedule` for `{ confirmed: true }` (an
-opt-in: the Operations Overview reads exactly as before), which listens with
+opt-in: Operations → Today, the Overview until Sep 28 2026, reads exactly as before), which listens with
 `includeMetadataChanges` — without it a listener is never told when the
 server merely confirms the rows the cache held, and a wait would never end —
 and `serverRead` says loading until the server has answered, and **offline**
@@ -287,7 +287,7 @@ shortened week to both the proposal and the agreed week: Team then reads
 too. If the trainer re-proposes on that build, the proposal is shortened,
 and Team reads "changed" only when a week was already agreed. The new rules
 accept both writes (21 is a ceiling, not a floor), and nothing in the new
-code can tell which build wrote. So after the push, each iPad loads the new
+code can tell which build wrote. So after the deploy, each iPad loads the new
 version (go to the Hub, or tap the new-version line under the header)
 before anyone proposes, agrees or re-saves a week with three blocks on a
 day. To repair a week that was cut, the trainer enters the missing blocks

@@ -51,8 +51,8 @@ Every record is written only from this folder (or `features/admin/bugs/` for the
 
 ## Not built, and why
 
-- **See as**: drawing a studio's own screens inside Admins. The studio screens read the app's active studio, so they would have to take a studio as an input: a large refactor, not tonight.
-- **The MSF Standard's dated changes and the divergence view**, with the Sep 21 rule (q7): a merge and data change; and **q4** (the catalog changing under studios that adopted a machine), which AJ wants to talk through.
+- **See as**: drawing a studio's own screens inside Admins. The studio screens read the app's active studio, so they would have to take a studio as an input: a large refactor, not built (Sep 28 2026).
+- **The MSF Standard's dated changes and the divergence view**, with the Sep 21 rule (q7): a merge and data change (since built, in part: the standard's change log, `machine-codex/change-log.ts`, "What changed" on a catalog machine's page, Sep 29 2026, and Compare, `admin/machines/compare/`, Sep 28 2026); and **q4** (the catalog changing under studios that adopted a machine), which AJ wants to talk through.
 - **Ask the leader**: a setup item sent to the top of a leader's My Studio (it would write into Relay's data). The third wave's proposal is in `docs/rounds/2026-09-29-admins-3.md`.
 
 ## The third wave (Sep 29 2026)

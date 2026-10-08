@@ -140,7 +140,7 @@ recurrence.test.ts   26 tests — the whole scheduling policy, no Firestore
 mutations.ts         every write; batching, lazy creation, template CRUD
 useStudioTasks.ts    live templates + instances joined to the derived plan
 useMachineUpkeep.ts  per-machine cleaning/service/flag state, for the Catalog
-StudioHubView.tsx    the trainer screen (the Planner's Studio lane)
+StudioHubView.tsx    the trainer screen (Relay's Floor tab, drawn as the Board)
 TaskManager.tsx      the manager's editor
 TaskNoteDialog.tsx   complete-with-note, and the flag
 MachineUpkeepCard.tsx rendered by features/catalog
@@ -154,19 +154,23 @@ just-completed task look like the oldest one.
 
 ---
 
-## 7. Still to do
+## 7. Still to do when the round was built (Sep 2026)
 
-- **Deploy `firestore.rules`.** New `taskTemplates` and `taskInstances` blocks.
+- **Deploy `firestore.rules`.** New `taskTemplates` and `taskInstances` blocks
+  (they are in `firestore.rules` now).
   Until deployed, every write from this feature fails with a permission error.
 - **Verify on the iPad.** Both themes, portrait and landscape. Author a daily
   all-machines cleaning task, check off three, "Mark all", flag one with a note,
   confirm the badge and the Upkeep section in the Catalog. An AM+PM template
   producing two separate cards. A weekly task on a day it is not due showing
   nothing. Sign in at a second studio and confirm none of it is there.
-- **InBody has no screen of its own.** `target.action: 'inbody'` opens the client
-  profile, which is the closest honest destination; `assessment` opens the
-  consultation wizard and `progress-report` opens the report editor. When an
-  InBody flow exists, point it there.
+- **Where a client task's action opens** (`AppContent`'s `openClientTask`):
+  `target.action: 'inbody'` opens Notes & Profile → Body & Pulse at the InBody
+  card, where a scan is added; `assessment` (the Pulse task, the key predates
+  the name) opens the same page at the Pulse card; `progress-report` always
+  starts a new report in the report editor. (Until Sep 27 2026 `inbody` opened
+  the client profile, and until Sep 24 2026 `assessment` opened the consultation
+  wizard.)
 - No scheduled reminder or digest. Everything is pull, not push.
 - A studio with hundreds of days of history will eventually want the instances
   query bounded by date range rather than by day; the current query is a single
@@ -338,8 +342,13 @@ instead of not seeing the button. **Restore the gate when RBAC lands.**
 The To-Do screen rebuilt as a community hub: *what the team is doing, what the
 team needs to do, and how the team has solved this before.*
 
-**Routing.** The Planner (`features/relay`) renders for
-`currentView === "studio-tasks"`; `StudioHubView` is its Studio lane. The
+**Routing.** Relay (`features/relay`, the Planner then) renders for
+`currentView === "studio-tasks"`; `StudioHubView` is its Floor tab, drawn as
+the Board since the Relay Board rebuild (Oct 3 2026,
+`relay/board/README.md`), so the lanes below are Sep 2026's layout:
+`ShiftStrip`, `ClientTasksLane` and `PlaybookLane` were deleted in that
+rebuild (`RequestsLane` stays, opened beside the Board; the playbook is read
+through `MachinePlaybookCard` and Since you were in). The
 original `StudioTasksView` and its `?classic-todo` escape hatch were deleted
 in the cost round (Sep 2026) once the hub had had its week on the floor.
 
@@ -364,7 +373,7 @@ board only**. MINE is a filter across every lane, not a fifth lane.
 
 Nobody running back-to-back sessions writes documentation. Ask them to and you
 get an empty wiki and a vague sense of failure. But they already answer each
-other, and that answer is currently thrown away when a request is resolved.
+other, and that answer used to be thrown away when a request was resolved.
 
 So: `ResolveDialog` offers to keep the answer, with the title and machine
 pre-filled — the marginal cost of contributing is one checkbox on a thing you
@@ -409,16 +418,13 @@ fails is worse than no button.
 
 ### Still open
 
-- **`kind: "initiative"` has no composer.** It is excluded from `KINDS`
+- **`kind: "initiative"` has no quick composer.** It is excluded from `KINDS`
   deliberately (a trainer posting "everyone do five assessments" should not be
-  one tap away, and the quick composer has no room to ask for a target), but
-  that means there is currently **no UI that creates one** — it belongs in
-  ManagePanel. Until then an initiative can only be created directly in
-  Firestore.
-- **`useTaskActions` is used by the hub only.** `StudioTasksView` still
-  carries its own copies of the same write handlers. That duplication is
-  deliberate for the review window — nothing that works today goes through new
-  code — and comes out when the hub replaces it.
+  one tap away, and the quick composer has no room to ask for a target). It is
+  created in ManagePanel (`PostInitiativeDialog`), and a launch at every studio
+  is Operations → All my studios (`admin/network/network-actions.ts`).
+- **`useTaskActions` is the one set of write handlers.** `StudioTasksView` and
+  its own copies of them were deleted in the cost round (Sep 2026).
 - **The board's write rule is still wide.** Same caveat as the section above:
   any authenticated trainer may write any field on a `taskRequests` document
   except `createdBy`. `target` is now one of those fields.
@@ -448,7 +454,7 @@ by the asker; `client-notes/thread-write.ts` `openQuestionThread`).
 
 Every place an ask is claimed, replied to, answered or reopened goes through
 it: the Board's card and its Undo (`relay/board/card-actions.tsx`,
-`Board.tsx`), Close out's hand-back, the Tracker, and this lane
+`Board.tsx`), the Tracker, and this lane
 (`RequestsLane.tsx`: its card names the client, "About Nancy Took · on her
 record until it's answered", and "Answered lately" keeps a closed question's
 answer on screen). No rules change: `journalEntries` pins only the author and
@@ -464,8 +470,9 @@ ask's session start (ms since epoch), beside its studio day in
 the ask's `expiresAt` is that same moment, so it comes down when the
 session starts. This lane sorts two covers by it (`board.ts` `buildBoard`,
 after heat, kind and claim) and says "needed at 4:20 PM" on the card; the
-Board's Help door deals today's covers soonest first and keeps a cover for a
-later day from pressing on today. A cover posted before the field, or with
+Board (since Oct 3 2026; it was the Help door's list) draws a cover needed
+today as an orange card under Team and keeps a cover for a later day under
+This week, so it doesn't press on today. A cover posted before the field, or with
 no time, reads as it always did. No rules change: `taskRequests` restricts
 no keys (the "wave 2 relay" rules tests hold a cover posted with its time
 and taken by a teammate).

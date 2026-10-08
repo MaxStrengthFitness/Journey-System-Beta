@@ -140,7 +140,7 @@ Two things were wrong before this round:
 Email: the Email button opens the trainer's own mail app with subject and a
 short body filled in; they print to PDF and attach. The app itself still
 never contacts clients — no provider is wired and client-contact features
-are switched off (see RENDER-DEPLOYMENT.md).
+are switched off (see `docs/ops/RENDER-DEPLOYMENT.md`).
 
 ## Reporting round, Sep 2026
 

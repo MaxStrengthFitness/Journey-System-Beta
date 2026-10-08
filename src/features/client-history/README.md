@@ -183,7 +183,7 @@ says how many before Save.
 Both in `session-edits.ts`, both pure, both tested:
 
 - **`machineVoteDelta(before, after)`** — `machineStats.<id>.timesPerformed`
-  is a running total kept at write time (one vote per machine per completed
+  (kept in the client's `machineTotals` document since Oct 6 2026) is a running total kept at write time (one vote per machine per completed
   session, performed sets only), so an edit has to move it. It takes the
   session's whole set list on both sides, not the added and removed rows,
   because a machine with two sets can lose its vote while staying in the
@@ -240,7 +240,7 @@ often books the new slot first) — and had not already happened (nobody
 rebooks into the past). A standing booking, or one with no `createdAt`,
 leaves the line at "cancelled". The rule is the Changes list's own
 (`isRealRebook`, `REBOOK_WINDOW_MS` in `admin/changes/changes.ts`), so
-Operations → Changes and this calendar can never read one booking two ways.
+Operations → Week → Changes and this calendar can never read one booking two ways.
 Nothing new is stored.
 
 **Past still-booked rows add nothing.** The visit layer speaks for the past,

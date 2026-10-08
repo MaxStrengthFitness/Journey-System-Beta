@@ -96,8 +96,9 @@
   above the title on every lens (All MSF gets it through MachineDatabase's
   `scopeSwitch`). The lens is module memory (`rememberedLens`), forgotten at
   sign-out. machine-db's two-way `ScopeSwitch` is no longer drawn by the
-  Catalog; its import was left in `CatalogWikiView.tsx` on purpose so the
-  share-switch change merging tonight lands cleanly (drop it after).
+  Catalog; its import was left in `CatalogWikiView.tsx` for a night (Sep 28
+  2026) so the share-switch change merging then landed cleanly, and has since
+  been dropped.
 - **The body** (`BodyLens`, rules in `body-lens.ts`) is the app's own anatomy
   model (`components/anatomy/BodyModel`), as AJ asked, with every part it can
   light also in a list beside it (grouped Upper body · Trunk · Lower body,

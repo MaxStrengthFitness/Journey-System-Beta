@@ -11,8 +11,8 @@ of that document). Built:
   with nothing that reads or writes the database;
 - **the rest of the round** (the same night, branch `openings`): the Sunday
   job's step (`server/openings-step.ts`) and the report script, the screens
-  (`ui/`, with their own `README.md`), marks, Team's and the Overview's
-  lines, the Wrap-up's Times with room, the standing week's three blocks,
+  (`ui/`, with their own `README.md`), marks, Team's and Today's (the
+  Overview's until Sep 28 2026) lines, the Wrap-up's Times with room, the standing week's three blocks,
   and My Profile's Your week and My clients. They all call this core rather
   than keep a rule of their own; the round document says what each built.
 
@@ -38,12 +38,12 @@ promise it. Journey doesn't book."
 | `next-days.ts` | Next 7 days (`nextDays`): the lines, their reasons, room ahead, and the Wrap-up's `timesWithRoom` |
 | `back-from.ts` | "Booked again from" (`backFrom`), the read's range and batches, and "was the month read in full today" (`monthReadToday`) |
 | `offer.ts` | A new regular time (`offers`): the checks against agreed regulars, the coming weeks and this week |
-| `present.ts` | Every sentence, from the proposal's own words, and names as AJ's relaxed answer has them. The screens' own words too (the waiting lines, the gate, "Mark this time", the Wrap-up's sheet, Team's and the Overview's lines): no screen types a sentence of its own |
+| `present.ts` | Every sentence, from the proposal's own words, and names as AJ's relaxed answer has them. The screens' own words too (the waiting lines, the gate, "Mark this time", the Wrap-up's sheet, Team's and Today's lines): no screen types a sentence of its own |
 | `fixtures.ts` | Test fixtures only: a studio with two agreed trainers and a Sunday run of Sun Nov 8 2026 |
 
 `isStaffBlock` (a Mindbody "Unavailable" block is never a booking) lives in
 `src/lib/booking-state.ts`, beside the other answers about a booking; Team's
-check and Operations → Changes ask it too. On Openings a block is also the
+check and Operations → Week → Changes ask it too. On Openings a block is also the
 trainer's blocked time, as the Calendar and Relay draw it: a live block
 placed with a trainer takes that trainer out of "in" for the half-hours it
 covers (`room.ts` `addBlock`), in the Sunday job's fold, in the next 7 days
@@ -168,7 +168,7 @@ call it.
   doesn't count: closing that needs a new stamp from the sync. Her own
   rebook on another day doesn't take the time back (the time is still open);
   "booked again from" says when she is next in. So the line says "and nobody
-  has booked into it since", never "not rebooked": on Operations → Changes a
+  has booked into it since", never "not rebooked": on Operations → Week → Changes a
   rebook is her own other booking that week (a reschedule), and the two
   screens must not use one word for two things.
 - **A regular's line is about the slot, never her week**: "A regular isn't
@@ -224,8 +224,8 @@ the next 7 days with `nextDays` (bookings from
 `useWeekSchedule(..., { confirmed: true })`, `serverRead` for `read`), a new
 regular time with `offers`, and the marks with `marksByTime`. Team's line is
 `teamLine(nextDays(...))`, built with the same `worksHere` and `staffIds`
-Openings uses, its door opening Openings on "Anyone"; the Overview's is
-`overviewLines`, the Wrap-up's times `timesWithRoom` and `timesWithRoomByDay`.
+Openings uses, its door opening Openings on "Anyone"; Today's (the Overview's until
+Sep 28 2026) is `overviewLines`, the Wrap-up's times `timesWithRoom` and `timesWithRoomByDay`.
 
 ### What the shared docs must say (the docs phase, phase 13)
 
@@ -244,13 +244,13 @@ round document). They stay here as the record of what the core asked for.
   in" only on judged days; client names only after a tap; every offer ends
   "Check it in Mindbody before you promise it. Journey doesn't book."; a
   Mindbody "Unavailable" block is never a booking (Openings, Team's check,
-  Operations → Changes).
+  Operations → Week → Changes).
 - **ARCHITECTURE, the data dictionary**: `studios/{s}/watch/openings` (the
   Sunday job's summary: `v`, `builtAt`, `tz`, `row`, `since`, `weeks`
   {`m`, `d` {`n`, `x` "r"/"c", `j`, `q` "a"/"p"}}, `who`, `agreed`, `cells`
   {`s` f/r/n/o/b, `b`, `r`, `c`, `l`, `i`}; no client names or ids;
   written only by the Sunday job, read by Openings, the Wrap-up's sheet,
-  Team's and the Overview's lines) and `studios/{s}/openingsMarks/{weekday-HHMM}`
+  Team's and Today's lines) and `studios/{s}/openingsMarks/{weekday-HHMM}`
   (`weekday`, `time`, `mark` "full"/"room", `note` ≤ 200, `by` {Auth uid,
   name}, `at` server time; anyone who works at the studio, as themselves;
   review after 60 days). The decision log: Team's "next seven days" becomes

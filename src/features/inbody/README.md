@@ -1,6 +1,6 @@
 # InBody scans
 
-Renewals round, Sep 2026 (Phase 7). The proposal is `OPERATIONS-RENEWALS-PROPOSAL.md` §4.5. The scanner's normal variation came with the client codex (Sep 2026, AJ's decision 8).
+Renewals round, Sep 2026 (Phase 7). The proposal is `docs/rounds/OPERATIONS-RENEWALS-PROPOSAL.md` §4.5. The scanner's normal variation came with the client codex (Sep 2026, AJ's decision 8).
 
 ## What it does
 

@@ -336,9 +336,9 @@ with the team); My clients is who you have TRAINED, for "my off time".
   the sign-in uid, a claimed placeholder's). Imported sessions tallied only
   under initials are not claimed. Only clients whose home is this studio
   (`homeStudioId`, else `studioId`); inactive clients are left out, as Relay
-  → Mine leaves them out.
+  → Mine (the Tracker) leaves them out.
 - **Order:** coached lately first — the nightly renewal snapshot's
-  `renewal.coachIds`, the list Relay → Mine reads — most sessions with you,
+  `renewal.coachIds`, the list Relay → Mine (the Tracker) reads — most sessions with you,
   then by name; then everyone else you have trained. `MY_CLIENTS_SHOWN` (12)
   before "Show all N".
 - **The past in Journey's words.** "42 sessions with you in Journey", never

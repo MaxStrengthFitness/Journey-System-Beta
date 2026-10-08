@@ -57,7 +57,7 @@ AJ, Sep 27 2026: "Ideally the end session note is made for the next sessions pre
 
 **It is on Notes once.** The journal hook adapts every recent session's `sessions.notes` into a read-only "Session summary", which put the Note for the next trainer on Notes a second time (a bug since Sep 18). `sessionsWithoutJournalCopy` (`hooks/useClientJournal.ts`) now leaves a session's copy out when a journal entry has the same session, `origin: "post_session"` and the same words as the journal keeps them. It checks every native entry, archived ones too, so archiving the journal copy does not bring the read-only one back. Words edited later in History differ, and both stay; sessions from before Sep 18 keep their card.
 
-Settled life notes (a birthday, an anniversary) **still show on Notes** in this phase (`notesOnRecord`'s `lifeOnFord` is off); the FORD phase moves them into their pillars and turns it on.
+Settled life notes (a birthday, an anniversary) **show on FORD, not Notes**, since the client codex's FORD phase: the codex passes `notesOnRecord` `lifeOnFord: true` (`client-codex/codex-data.ts`) and FORD draws them in their pillars. (`lifeOnFord` is off by default, which is how they showed on Notes before that phase.)
 
 ## `mattering.ts` — when a note matters, and when its window has ended
 
@@ -93,4 +93,4 @@ Pure: no React, no Firestore, no clock of its own. `record-selectors.test.ts` ru
 
 ## Outside the record — the Hub card's red triangle
 
-A Critical note also marks the client's appointment card on the Hub (AJ, Sep 24 2026 — question 12 of the Sep 20 audit). It lives outside this folder, in `lib/hub-critical-notes.ts` (the rule) and `hooks/useHubCriticalNotes.ts` (one live read of the day's booked clients' Critical notes, thirty to a query), but it reads with this folder's rules: a Critical thread ROOT that `mattersOn` the booking's studio day, and never a thread update. Like `CriticalLine`, it **ignores dismissals**, and a client whose notes could not be read is unknown, never clear. So anything that changes what "a Critical note that matters" means here changes the Hub too, and `hub-critical-notes.test.ts` / `ScheduleBlock.render.test.tsx` will say so.
+A Critical note also marks the client's appointment card on the Hub (AJ, Sep 24 2026 — question 12 of the Sep 20 audit). It lives outside this folder, in `lib/hub-critical-notes.ts` (the rule) and `hooks/useHubCriticalNotes.ts` (one live read of the day's booked clients' Critical notes, thirty to a query), but it reads with this folder's rules: a Critical thread ROOT that `mattersOn` the booking's studio day, and never a thread update. Like `CriticalLine`, it **ignores dismissals**, and a client whose notes could not be read is unknown, never clear. So anything that changes what "a Critical note that matters" means here changes the Hub too, and `hub-critical-notes.test.ts` / `hub-schedule/HubCard.render.test.tsx` will say so.

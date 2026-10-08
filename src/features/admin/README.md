@@ -1,6 +1,7 @@
 # Admin surface — house rules
 
-The read-only audit before this round (`ADMIN-OVERHAUL-PREP.md`) counted
+The read-only audit before this round (`ADMIN-OVERHAUL-PREP.md`, which lives only in
+the tag `archive/demo-mode-foundation`, commit `5b0774ed`, never on master) counted
 twenty admin screens and 197 controls, and found the screens disagreeing on
 **twelve separate axes**. Not one of them was wrong on its own; the problem
 was that no two agreed, so every screen had to be learned separately and
@@ -22,7 +23,8 @@ room (Sep 28 2026, `docs/rounds/2026-09-28-operations.md`) put the nine under
 **five destinations — Today · Week · Clients · Team · Setup** — each tab's
 screen mounted as it was, and **Month** joined them on Sep 29 2026 (Today ·
 Week · Month · Clients · Team · Setup: "what do I need to worry about
-today, this week and this month"). `shell/places.ts` is the list.
+today, this week and this month"). **Ahead** joined beside Month on Oct 7 2026 (the seventh:
+Today · Week · Month · Ahead · Clients · Team · Setup; `ahead/`). `shell/places.ts` is the list.
 
 | Destination → page | Folder or file |
 | --- | --- |
@@ -31,6 +33,7 @@ today, this week and this month"). `shell/places.ts` is the list.
 | Clients → Journey (was the Overview's attendance watch) | `journey/` — `JourneyPage.tsx`, the rhythm (`rhythm.ts`), the states (`states.ts`), the case (`case.ts`), the studio's Journey in one pass (`journey-list.ts`, `useStudioJourneys.ts`), and her journey and case on the client page (`JourneyCase.tsx`). Read `journey/README.md` |
 | Week → Last week · This week so far · Week ahead | `week/` — `WeekPage.tsx` draws all three: last week (a counts line, a note only when a day wasn't read in full, day by day, who started slipping and who came back, the renewals decided, the team in name order), this week so far (with the Changes view, `changes/ChangesView.tsx`) and the next seven days. `review.ts` is the pure half (the week's days, done means logged, late cancels and "cancelled late", how many days were read in full, each trainer's week); `useCoverageRecord.ts` reads the whole-read record's month documents |
 | Month | `month/` — `MonthPage.tsx`: a given month's renewals (by the day the package effectively ends), birthdays, anniversaries (from her first day, a guessed one said to be a guess) and the MIA list (the Journey's Drifting · At risk · Lapsed, as of today); `month.ts` is the pure half. Read its README first |
+| Ahead | `ahead/` — everything past this week on one scroll, as Weeks (what needs a leader, and when) or Clients (each client's two clocks on one axis): `AheadPage.tsx`, `weeks.ts`, `ClientClocks.tsx`. Read its README first |
 | Clients → Renewals | `renewals/` (the engine is `src/features/renewals/`) |
 | Clients → Moments (was Delight queue) | `src/features/ford/` (drawn by the shell) |
 | Clients → Trends (was Insights) | `trends/` — `TrendsPage.tsx`, the quarter's lines (`trends.ts`: renewal outcomes, a longer package, start groups, studio rhythm, lost reasons, and the two that wait for stored history), each with its named minimum, then `insights/AdminInsightsTab.tsx` below (By trainer in name order, never ranked) |
@@ -230,8 +233,8 @@ of the sidebar when wide and in the top row when upright (`shell/OperationsNav`
   the studios that reach them, the studio tier the studios they run, and
   last the Demo Mode realm rule (inside Demo Mode the list is the practice
   studio alone, so there is nothing to span). A tab that can aggregate reads
-  `ops.studios` and spans them (Hours, Staff & Roles, and the Overview, which
-  becomes the network view: `network/`, the setup view and, for franchise
+  `ops.studios` and spans them (Hours, Staff & Roles, and the Overview, now
+  Today, which becomes the network view: `network/`, the setup view and, for franchise
   owners and the company, Focus this quarter and Launch an initiative —
   `overview/README.md`, "Under All my studios"); a tab that reads one studio
   renders `<PickOneStudio what="…" />` under "all" and nothing else.
