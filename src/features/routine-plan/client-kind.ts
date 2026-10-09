@@ -29,7 +29,7 @@ import { ADD_CLIENT_REASONS, isProvisional } from "../admin/provisional/provisio
 import type { ProvisionalFields } from "../admin/provisional/types";
 
 export type StartingKind =
-  /** Has a routine already; nothing to set up. */
+  /** Has a routine already, or a plan kept with Routine A still empty; nothing to set up. */
   | "established"
   /** Starting out at the studio: the first-time setup suggests a starting plan. */
   | "new-to-studio"
@@ -47,6 +47,16 @@ export interface StartingKindInput {
   known: boolean;
   /** The client has a Routine A (or B) with at least one machine. */
   hasRoutine: boolean;
+  /**
+   * The client's Routine A carries a plan, machines or none. A plan kept for
+   * a client starting out leaves Routine A empty, because the consult is not
+   * Routine A (AJ, Oct 8 2026: "sometimes the consult machines will not be
+   * the same as their a routine"): the plan is set up, so the client is
+   * never offered Start a plan again, before the consult or after it.
+   * Required, so every caller says: left out, a kept plan would be offered
+   * Start a plan again.
+   */
+  hasPlan: boolean;
   /** Journey's own sessions for the client, or null when unknown. */
   journeySessions: number | null;
   coverage: HistoryCoverage;
@@ -82,6 +92,9 @@ export function startingKindOf(input: StartingKindInput): StartingKindAnswer {
   if (!input.known) return { kind: "unknown", says: CANT_TELL };
   if (input.hasRoutine) {
     return { kind: "established", says: "Has a routine." };
+  }
+  if (input.hasPlan) {
+    return { kind: "established", says: "Has a plan." };
   }
   if (input.provisionalNewClient) {
     return { kind: "new-to-studio", says: "Starting out at the studio: start a plan." };

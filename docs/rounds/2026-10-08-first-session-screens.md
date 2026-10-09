@@ -91,17 +91,38 @@ His second answers were **"1a 2a 3a GO"**:
 Then: "ill be gone for the next few hours, continue to work without verifying
 with me".
 
+His third answers (Oct 8 2026) were **"1a 2a 3a"**:
+
+- **1a.** After Round 1, Round 2 continues on this branch, in its own
+  commits, and both rounds ship together after one iPad walk (§3).
+- **2a.** The seed marks no head office default. An administrator marks one
+  in the app; until then, and unless the studio has set its own default, a
+  trainer picks the starting routine for a client whose intake names nothing
+  (`needsChoice`).
+- **3a.** A routine-less walk-in's machines are offered **unticked** on the
+  Wrap-up, never ticked into Routine A by default. He added:
+
+  > "this also counts with the consult visit, sometimes the consult machines
+  > will not be the same as their a routine"
+
+  So **the consult is not Routine A.** The plan keeps the first visit's
+  machines as its own `dayOne`, Routine A starts empty, and the Wrap-up asks
+  which of today's machines start it (§4.3, §4.5, §4.7, §5).
+
 ## 3. Round 1 and Round 2
 
 - **Round 1 (this build):**
   - items 1–5 and 9;
   - can't-do, re-plan and order effects (his Oct 8 note);
   - starting routines made by admins and chosen by studios.
-- **Round 2 (after Round 1):**
+- **Round 2 (after Round 1, on this branch):**
   - B molded in (item 6);
   - the weak-area focus (item 7);
   - the studio's "A, or A and B together" setting (item 8). It only means
     something once B is built the new way.
+- **How they ship** (AJ's "1a", Oct 8 2026). Round 2 continues on this
+  branch in its own commits, each typechecked on its own. Neither round ships
+  alone: both go to `master` together after one iPad walk of the two.
 
 ## 4. The screens (Round 1)
 
@@ -161,7 +182,10 @@ with me".
   id is stored for good in plans and studios' choices. It never overwrites a
   routine, and never brings back one an administrator removed: every id it
   writes is listed in `system/startingRoutinesSeed`, and `--again <id>` brings
-  one back on purpose.
+  one back on purpose. It marks **no head office default** (AJ's third "2a",
+  §2): an administrator marks one in the app, and until then, unless the
+  studio has set its own default, a trainer picks for a client whose intake
+  names nothing.
 
 ### 4.3 Programming → Routine A: Start a plan, and the Lineup
 
@@ -178,11 +202,24 @@ the app's own routines kit (`features/routines/`, `routines.css`).
   - **Another start**: alternative cards, each shown by its first machines.
   - Tapping a row opens the row sheet: Move up, Move down, Swap for (the same
     Academy family on this floor and the Academy's substitutes), Not for
-    {First}, Take out.
-  - **Keep this lineup** (blue) writes Routine A with day one, the plan
-    (building on) and its first change (`start`), in **one batch, not
-    awaited**. Nothing is written before it, and a typed or changed draft
-    registers with `useUnsavedChanges`.
+    {First}, Take out. Before Keep this lineup these change the draft (its
+    `plan.dayOne` and `intended`; `startWith` is a list of its own). Once
+    kept, a move is a `reorder` change written in the order the Lineup draws
+    (day one, then On deck), and day one takes the order it gives day one's
+    machines, so a Move up on a Day one row reaches the consult.
+  - **Keep this lineup** (blue) writes the plan (building on, with day one
+    as `plan.dayOne`), an **EMPTY Routine A** and the plan's first change
+    (`start`), in **one batch, not awaited** (`startPlan` with
+    `machineIds: []`). Day one is the first visit's machines, never Routine
+    A's: the consult is not Routine A (AJ's "3a", §2). Nothing is written
+    before it, and a typed or changed draft registers with
+    `useUnsavedChanges`.
+  - Once kept, Programming draws the plan with Routine A empty and day one
+    on it ("0 of 6 · day one: Leg Press, Compound Row and Lumbar",
+    `progressLine` with the plan's `dayOne`). A client whose Routine A
+    carries a plan is never offered Start a plan again
+    (`startingKindOf`'s `hasPlan`, required so no caller can leave it
+    out), before the consult or after it.
 - **No routine, new to Journey.**
   - The floor grouped by the Academy's families on one side; "{First}'s Routine
     A" filling 1, 2, 3 as machines are tapped on the other. Tap a row to move or
@@ -196,7 +233,12 @@ the app's own routines kit (`features/routines/`, `routines.css`).
     segmented meter; and the **Routine A is being built** switch.
   - **The lineup:**
     - "In Routine A": the routine's rows, as today's RoutinesTab draws them.
-    - On deck, where only the Next row has "Add to A now".
+    - On deck, where only the Next row has "Add to A now". It is **not
+      offered while Routine A is empty and the plan has a day one**
+      (`runsDayOne`): one machine in an empty Routine A would become
+      everything the consult runs, and day one would drop without a word.
+      Day one's rows are drawn where Routine A's would be, and the Wrap-up
+      starts Routine A (§4.7).
     - The bench.
     - The order effects as slim rows between the two rows that trip them.
   - **Re-plan** opens a sheet:
@@ -237,7 +279,9 @@ the app's own routines kit (`features/routines/`, `routines.css`).
   used when it is on this floor and allowed, else a machine of the same family,
   else the machine simply leaves the plan. The screen says what it did ("Chest
   Flye instead of Seated Dip").
-- **Reopen** puts the machine back where it stood.
+- **Reopen** puts the machine back where it stood: in its stand-in's place,
+  on the road and on day one; or, when nothing stands in for it on day one,
+  where it stood on day one when it was marked (`dayOneAt` on the entry).
 - **A health reason offers a Health note.** With Surgery or Injury or pain, one
   tap (asked, never automatic) writes a Health note (`category` Surgery or
   Injury or pain) through the notes' one writer, so it reaches the leaders.
@@ -254,10 +298,29 @@ the app's own routines kit (`features/routines/`, `routines.css`).
   - **Change today**: a sheet to take a machine out of today or add the plan's
     next one or any floor machine;
   - one order-effect line when today trips one.
+- **Today's machines are `todayFor`** (`routine-plan/plan.ts`): Routine A's
+  machines when it has any; else the plan's day one, in the order the plan
+  keeps it (the consult, and any visit while Routine A is still empty); else
+  none. Never the whole floor.
+- **Every reader that seeds a session from Routine A switches to
+  `todayFor({ routine, plan })`.** With an empty Routine A each of these
+  gives `[]` today, so the consult would open empty:
+  - `features/briefing/BriefingScreen.tsx`: the routine picked for today
+    (`setAdjustedMachineIds(routineA?.machineIds || [])`, twice), the list
+    the briefing compares against (`return routineA?.machineIds ?? null`),
+    and the ids Start passes (`routineA?.machineIds || []`);
+  - `components/WorkoutTrackerView.tsx`: the fallback that seeds a session
+    with no `sessionMachineIds` from its routine
+    (`setActiveMachineIds(routine.machineIds)`);
+  - `features/routines/next-routine.ts` (`nextRoutine`), which answers the
+    empty Routine A: a caller that draws or starts its machines reads
+    `todayFor` with Routine A's plan.
 - **What Start does.** Start passes today's machines and, for a new-to-the-studio
   client, the plan **up** to the tracker. `BriefingScreen` stays write-free; the
-  tracker writes Routine A, the plan and the `start` change **in the Start batch,
-  never awaited**.
+  tracker writes the plan (with day one) on an **EMPTY Routine A** and the
+  `start` change **in the Start batch, never awaited** (`startPlan` with
+  `machineIds: []`). Today's machines are the session's, never Routine A's:
+  the consult is not Routine A (AJ's "3a", §2).
 - **The old create path is gone.** Start no longer saves a list labelled "Today
   only" as Routine A.
 - **New to Journey.** One line ("{First} has a routine from before Journey"),
@@ -279,6 +342,9 @@ the app's own routines kit (`features/routines/`, `routines.css`).
     `column` plan change to Routine A's plan. With no plan it is kept for that
     session only, and the line says so.
 - **The next machine.**
+  - It is the plan's first machine today's session doesn't have
+    (`planProgress` over today's machines, not Routine A's, which is empty
+    on day one).
   - On the last machine, the Now Bar's Next slot becomes a dashed blue row:
     "Next in the plan · Hip Abduction · Add", beside "Add another machine".
   - An empty Now Bar offers **Add a machine** and the plan's next one.
@@ -299,17 +365,36 @@ the app's own routines kit (`features/routines/`, `routines.css`).
 - **The rows** are `nextTimeRows`: machines performed today that the routine
   lacks.
   - Each has a 40px tick on the firm edge, blue when on.
-  - They are ticked while the plan is being built, unticked otherwise.
+  - While Routine A has machines, they are ticked while the plan is being
+    built, unticked otherwise.
   - Each says "Next in the plan" or "Added today · not in the plan".
+- **The consult rule** (AJ's "3a", Oct 8 2026: "this also counts with the
+  consult visit, sometimes the consult machines will not be the same as their
+  a routine").
+  - When Routine A is **empty at the session's start** (the consult, or any
+    visit while Routine A still has nothing), **every row starts unticked**,
+    the plan being built or not.
+  - The card asks **"Tick the ones that start Routine A"**, with a quick
+    **Tick all**.
+  - A row from the plan's day one says "Day one" (`why: "day-one"`); the rest
+    say "Next in the plan" or "Added today · not in the plan" as above.
+  - Nothing ticked leaves Routine A empty, and the next visit runs day one
+    again (`todayFor`).
+  - Routine A starts with the ticked machines in the road's order, the order
+    every later Wrap-up keeps (`routineAfterWrapUp` → `routineWith`), so it
+    never flips at the second visit. When two of them side by side trip a
+    sequencing rule, the order effects say so, quietly.
 - **Under them**, the Road strip of Routine A for next time, live as ticks
-  change, and its progress line.
+  change, and its progress line ("0 of 6 · day one: …" while nothing is
+  ticked on an empty Routine A).
 - **When it writes.** It writes **once, on every way out**: Back to Hub, leaving
   the app, sign-out, unmount. That is the effort default's pattern. It writes
   `routineAfterWrapUp` and `planAfterWrapUp` with an `add` change, never awaited,
-  with a toast on refusal.
-- **With no routine** (a new-to-Journey session built on the fly), the rows
-  start unticked: "Tick to start Routine A with them". Ticking writes Routine A
-  with no plan.
+  with a toast on refusal. Nothing ticked writes nothing.
+- **With no routine** (a new-to-Journey session built on the fly) it is the
+  same case as the consult: the rows start unticked under the same heading,
+  **"Tick the ones that start Routine A"**, with **Tick all**. Ticking writes
+  Routine A with no plan.
 - **A Free session has no Next time.**
 
 ### 4.8 Retired (item 9)
@@ -328,10 +413,25 @@ the app's own routines kit (`features/routines/`, `routines.css`).
 ## 5. Data and rules (AJ's OK, "1a")
 
 - `Routine.plan?: RoutinePlan` (`src/types.ts`).
-- `RoutinePlan` gains three fields:
+- `RoutinePlan` gains four fields:
   - `cantDo?: CantDo[]` (Routine A's plan);
   - `startingColumn?: StartingColumn` (Routine A's plan);
-  - `madeAt?: "YYYY-MM-DD"`.
+  - `madeAt?: "YYYY-MM-DD"`;
+  - `dayOne?: string[]` (Routine A's plan; AJ's "3a", §2): the first visit's
+    machines, the starting routine's day one on this floor, in the order the
+    plan keeps it. Kept on the plan because the consult is not Routine A:
+    the plan's first write leaves Routine A empty, a session runs day one
+    while Routine A has nothing (`runsDayOne`, `todayFor`), and nothing puts
+    day one into Routine A by itself: the Wrap-up's ticks start it. Day one
+    follows the road: a machine taken out, swapped, dropped by a new start
+    or a re-plan, or marked can't do leaves it the same way; a reorder gives
+    it the order it gives day one's machines; a reopened machine goes back
+    where it stood (`applyPlanChange`, `markCantDo`, `reopenCantDo`). The
+    plan is a map on the routine's own document and no rule checks its keys,
+    so this needs no rules change.
+- `CantDo` gains `dayOneAt?: number`: where the machine stood on day one
+  when it was marked, written only when it was on it, so Reopen can put it
+  back there when nothing stands in for it.
 - `PlanChangeKind` gains four kinds:
   - `cantdo`: `machineIds` [id]; `value` = "reason · until";
   - `cando`: `machineIds` [id];

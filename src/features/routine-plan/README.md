@@ -12,20 +12,20 @@ screens in `ui/`.
 
 | File | What it answers |
 | --- | --- |
-| `types.ts` | `RoutinePlan` (purpose, the machines intended, the "being built" toggle, a focus, B's swaps; since Oct 8 the can't-do bench, the Academy sheet column picked, the day it was made), `CantDo` and `PlanChange` (twelve kinds, each kind's `machineIds` and `value` written down on `PlanChangeKind`) |
-| `client-kind.ts` | Which kind of "no routine": new to the studio (Journey holds the whole, empty story, or Add Client's walk-in, `isProvisionalNewClient`), new to Journey (sessions before it: no suggestion), or can't tell (including a read that hasn't answered, `known`). Never "new client", "first session" or "nothing before Journey": the client is "starting out at the studio" |
-| `starting-routines.ts` | Starting routines (AJ: "studios will chose their own, admins will create the routines to pick from"): a routine preset's `start` part read safely (`startingRoutineFromPreset`), the Academy's eleven as the seed and the fallback (`academyStartingRoutines`, named without "female" or "male"), which one fits (`suggestFromStartingRoutines`: the intake's whole words, a condition's routine before a goal's whatever order they were read in, then the studio's default, then head office's, else the trainer picks; a studio's choice is exactly the routines it ticked, `use: null` alone meaning all; gender never read), the plan one makes on this floor (`startingPlanFromRoutine`), and the Academy template a plan's `templateId` names, in either spelling (`academyTemplateOf`) |
-| `starting-plan.ts` | The Academy's own templates (`SELECTION_TEMPLATES`: consultation → first → second workout → eventual A and B) on this floor, and the plan one makes: day one is the consultation's machines, the plan aims at the second workout by default. Also the floor helpers every file here uses (`floorIndex`, `floorCanonical`, `repairOrder`) and the templates' names without the sex split (`academyTemplateName`) |
-| `cant-do.ts` | Can't do (AJ's "2a"): marking a machine reshapes the road and today's routine (the Academy's substitute, else the same family on this floor, else it leaves; `markCantDo` is the whole tap), reopening puts it back where its stand-in stands (and never adds a machine the road didn't have, `onRoad`), a dated mark holds through its day and ends by itself once it has passed, the bench's words, and the Health note a surgery or an injury offers |
+| `types.ts` | `RoutinePlan` (purpose, the machines intended, the "being built" toggle, a focus, B's swaps; since Oct 8 the can't-do bench, the Academy sheet column picked, the day it was made, and day one, `dayOne`: the first visit's machines, kept on the plan because the consult is not Routine A), `CantDo` and `PlanChange` (twelve kinds, each kind's `machineIds` and `value` written down on `PlanChangeKind`) |
+| `client-kind.ts` | Which kind of "no routine": new to the studio (Journey holds the whole, empty story, or Add Client's walk-in, `isProvisionalNewClient`), new to Journey (sessions before it: no suggestion), or can't tell (including a read that hasn't answered, `known`). A client whose Routine A carries a plan is set up even while Routine A is empty (`hasPlan`), so a kept plan is never offered Start a plan again, before the consult or after it. Never "new client", "first session" or "nothing before Journey": the client is "starting out at the studio" |
+| `starting-routines.ts` | Starting routines (AJ: "studios will chose their own, admins will create the routines to pick from"): a routine preset's `start` part read safely (`startingRoutineFromPreset`), the Academy's eleven as the seed and the fallback (`academyStartingRoutines`, named without "female" or "male"), which one fits (`suggestFromStartingRoutines`: the intake's whole words, a condition's routine before a goal's whatever order they were read in, then the studio's default, then head office's, else the trainer picks; a studio's choice is exactly the routines it ticked, `use: null` alone meaning all; gender never read), the plan one makes on this floor (`startingPlanFromRoutine`, day one on the plan as `dayOne`, never in Routine A), and the Academy template a plan's `templateId` names, in either spelling (`academyTemplateOf`) |
+| `starting-plan.ts` | The Academy's own templates (`SELECTION_TEMPLATES`: consultation → first → second workout → eventual A and B) on this floor, and the plan one makes: day one is the consultation's machines (on the plan, `dayOne`), the plan aims at the second workout by default. Also the floor helpers every file here uses (`floorIndex`, `floorCanonical`, `repairOrder`) and the templates' names without the sex split (`academyTemplateName`) |
+| `cant-do.ts` | Can't do (AJ's "2a"): marking a machine reshapes the road, today's routine and the plan's day one (the Academy's substitute, else the same family on this floor, else it leaves; `markCantDo` is the whole tap), reopening puts it back where its stand-in stands, on day one too, or where it stood on day one when nothing stands in there (`dayOneAt`; and never adds a machine the road didn't have, `onRoad`), a dated mark holds through its day and ends by itself once it has passed, the bench's words, and the Health note a surgery or an injury offers |
 | `order-effects.ts` | The Academy's sequencing rules as quiet sentences between the two machines that trip them ("Lumbar directly into Leg Press · the Academy says avoid"), never a block |
-| `plan.ts` | How far along (3 of 6 · next), a change applied (the bench's entry rides beside a "cantdo" change, `planWithCantDo`), the Re-plan sheet's reasons, the Wrap-up's "Next time" (performed machines the routine lacks; ticked by default only while the plan is being built; a short day never shrinks the routine) |
+| `plan.ts` | How far along (3 of 6 · next; "0 of 6 · day one: …" while Routine A is empty), whether a visit runs day one (`runsDayOne`: Routine A empty and a day one on the plan, when nothing offers "Add to A now") and what a session runs by default (`todayFor`: the routine's machines, else the plan's day one, else none, never the whole floor), a change applied (the bench's entry rides beside a "cantdo" change, `planWithCantDo`; day one follows a remove, a swap, a new start and a re-plan, and a reorder moves it as the screen drew it), the Re-plan sheet's reasons, the Wrap-up's "Next time" (performed machines the routine lacks; ticked by default only while the plan is being built and Routine A has machines; with Routine A empty, the consult, every row unticked and day one's rows said as such; Routine A started from the ticks takes the road's order, as every later Wrap-up does; a short day never shrinks the routine) |
 | `b-routine.ts` | B molded in: B's routine is A with the swaps made so far; A and B alternate from the day B starts; suggested same-category swaps (the starting template's eventual B, then the app's model B) |
 | `focus.ts` | A weak area: is it in both A and B, a swap within the same category before an addition, single-joint machines first, and the areas the Academy answers with a setting |
 | `starting-weights.ts` | The Academy's starting ranges (the "MSF + Imagine Strength Equipment Loading Guidelines" sheet): a reference beside the weight, never typed in, never shown once the client has a weight |
 | `changes-list.ts` | A routine's Changes as one list, newest first: the plan's changes and the old `routineAdjustments`, each with who (a plan change by the Auth uid, `authUid ?? id`, then the name it was signed with; an adjustment by the trainer's id), what (a sentence), the reason when one was given, and a Re-plan as a divider. The drawer's one save, written as an adjustment and a plan change in one batch, is said once (`planChangesAndAdjustments`) |
 | `starting-read.ts` | Starting routines and a studio's choice as they come back from the database: each document checked, the choice's `use: null` "all of head office's", a value that isn't usable skipped; the choice cleaned before it is written (at most 80, the rules' number); what Start a plan offers (`routinesToOffer`: the app's, else the Academy's eleven) |
 | `starting-seed.ts` | What `scripts/seed-starting-routines.ts` writes: each Academy routine as a company preset with its `start` part, a one-line description and an id that never name a gender, and a run's plan that skips every id already there and every one an earlier run wrote (the seed's record, `system/startingRoutinesSeed`) |
-| `store.ts` | The only writer of a plan, in one batch: `startPlan` (a plan's first write: Routine A made, or the plan put on the routine the client has, with its first change; the id made on the iPad, the commit never awaited) and `savePlanChange` (every change after it); `readPlanChanges` for the Changes list |
+| `store.ts` | The only writer of a plan, in one batch: `startPlan` (a plan's first write: Routine A made, EMPTY for a client starting out with day one on the plan, or the plan put on the routine the client has, with its first change; the id made on the iPad, the commit never awaited) and `savePlanChange` (every change after it); `readPlanChanges` for the Changes list. Nothing writes day one into Routine A |
 | `starting-store.ts` | Starting routines and a studio's choice, read and written (the Firestore half of `starting-read.ts`) |
 | `useStartingRoutines.ts` | The hook a screen asks: one read of each per mount, no listener, the Academy's eleven while it waits or when the read fails, the choice null (unknown) until it answers, `reload()` |
 | `start-part.ts` | The routine template editor's "For new clients" part, the pure half: a stored `start` part read for the editor (`readStartPart`), day one tapped on and off (only the template's machines, day one's own order kept, since the Academy's is repaired and not the road's), the words that suggest it (lower case, once, at most 40), head office's default, the one thing that refuses a save (nothing on day one), what a save writes (`startPartForSave`: no machine the template lost, no empty list, `default` on a company template only, never `undefined`), the other defaults a save takes the flag off, the list's "Starting routine · day one: …" line and a source said in words ("From the Academy's Exercise Selection Template"). Three things keep the editor from losing what it can't show: the steps follow day one while the first of them is day one (a seeded routine's "Consultation", so On deck never calls a machine off day one by that name), a part switched off is kept beside the template without the default (`parkedStartOf`), and a word typed but not added goes in with Save (`withPendingWord`) |
@@ -35,12 +35,30 @@ screens in `ui/`.
 
 ## Rules that hold here
 
+- **The consult is not Routine A** (AJ, Oct 8 2026, "3a", and: "this also
+  counts with the consult visit, sometimes the consult machines will not be
+  the same as their a routine"). A plan for a client starting out carries the
+  first visit's machines as `plan.dayOne`; its first write (Keep this lineup,
+  Start's batch) makes Routine A EMPTY. While Routine A has nothing, a session
+  runs day one (`runsDayOne`, `todayFor`); the Wrap-up offers every machine of
+  such a visit unticked ("Tick the ones that start Routine A"), and nothing
+  puts day one into Routine A by itself: the Wrap-up's ticks start it, or a
+  trainer editing Routine A on purpose. Nothing offers to put a single machine
+  into an empty Routine A ("Add to A now") while a visit runs day one, since
+  that machine would become everything the visit runs. Day one follows the
+  road: whatever leaves the plan, is swapped, is dropped by a new start or a
+  re-plan, or is marked can't do leaves day one the same way; a reorder moves
+  it as the trainer moved it; a reopened machine goes back where it stood.
 - **A plan never blocks a session** and nothing in it is required; any trainer
   changes it, mid-session included (AJ: "you shouldn't really be blocked").
   The reason for a change is asked, never required, and kept.
-- **The routine's `machineIds` is what the client does now** and stays the
-  field every screen reads. The plan is the rest of the road; its order is the
-  routine's order, so a reorder on Programming is a plan change too.
+- **The routine's `machineIds` is what the client does now.** The plan is the
+  rest of the road; Routine A's order is the road's order (`routineWith`, the
+  Wrap-up's ticks included, from Routine A's first machine), so a reorder on
+  Programming is a plan change too. The one exception is an EMPTY Routine A
+  with a day one: then a visit runs `todayFor` (day one, in its own order),
+  and every reader that seeds a session from Routine A's `machineIds` reads
+  `todayFor` instead (the round document, §4.5, names them).
 - **The app suggests machines, never a weight.** The Academy's starting range
   is a reference with its source (AJ: "a crutch until we have reliable data
   within our app ... not as an end-all be-all").
@@ -143,14 +161,20 @@ a leader's at the desk, awaited by its button.
   - signed with the Auth uid and the server's time.
 - `routinePresets` is unchanged: the company tier is administrators', so a
   `start` part rides on it.
-- `startPlan`'s two batches are both committed on the emulator: the oct7
-  block's update of a routine the client has, and the oct8 block's Routine A
-  made with its plan and a `start` change naming the starting routine.
+- `startPlan`'s two batches are both committed in the rules tests: the
+  oct7 block's update of a routine the client has, and the oct8 block's
+  Routine A made with its plan and a `start` change naming the starting
+  routine. Since the consult rule (Oct 8 2026) that Routine A is made EMPTY
+  with day one on the plan; the plan is a map on the routine and no rule
+  checks its keys, so `dayOne` needed no rules change.
 
 **The seed.** `scripts/seed-starting-routines.ts` writes the Academy's eleven
 as `routinePresets/academy-<template>`: company tier, scope "global", nobody's
-default. The documents are `starting-seed.ts`'s, and a test reads each one
-back as exactly the routine the fallback builds.
+default (AJ, Oct 8 2026, "2a": an administrator marks head office's default
+in the app; until then, and unless the studio has set its own default, a
+trainer picks for a client whose intake names nothing). The documents are
+`starting-seed.ts`'s, and a test reads each one back as exactly the routine
+the fallback builds.
 
 - **No id names a gender.** The two no-reported-issues rows are
   `academy-clear-dip-adduction` and `academy-clear-chest-pulldown`

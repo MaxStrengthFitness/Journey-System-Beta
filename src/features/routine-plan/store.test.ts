@@ -49,6 +49,7 @@ const plan: RoutinePlan = {
   purpose: "Learning the protocol: the starting routine",
   purposeKinds: ["core"],
   intended: ["m-leg-press", "m-compound-row", "m-lumbar", "m-chest-press"],
+  dayOne: ["m-leg-press", "m-compound-row", "m-lumbar"],
   building: true,
   templateId: "academy-low-back",
   madeByUid: "uid-sam",
@@ -71,13 +72,19 @@ beforeEach(() => {
 });
 
 describe("startPlan: a plan's first write, in one batch", () => {
-  it("makes Routine A with day one, the plan and its first change when the client has none", async () => {
+  // Changed on purpose (Oct 8 2026): this made Routine A with day one in it.
+  // AJ, asked whether a walk-in's machines should be ticked into Routine A by
+  // default, answered "3a" (unticked) and added: "this also counts with the
+  // consult visit, sometimes the consult machines will not be the same as
+  // their a routine". So Keep this lineup and Start's batch pass no machines:
+  // Routine A is made EMPTY, and the plan carries day one (`plan.dayOne`).
+  it("makes an EMPTY Routine A with the plan carrying day one, and its first change, when the client has none", async () => {
     const started = startPlan(db, {
       routineId: null,
       clientId: "c1",
       studioId: "westlake",
       name: "Routine A",
-      machineIds: ["m-leg-press", "m-compound-row", "m-lumbar"],
+      machineIds: [],
       plan,
       change,
     });
@@ -91,31 +98,41 @@ describe("startPlan: a plan's first write, in one batch", () => {
       data: {
         clientId: "c1",
         name: "Routine A",
-        machineIds: ["m-leg-press", "m-compound-row", "m-lumbar"],
+        machineIds: [],
         plan,
         createdAt: "SERVER_TIME",
         studioId: "westlake",
       },
     });
+    // Day one is on the plan and nowhere in Routine A: nothing writes it there by itself.
+    expect((routine!.data.plan as RoutinePlan).dayOne).toEqual(["m-leg-press", "m-compound-row", "m-lumbar"]);
+    expect(routine!.data.machineIds).toEqual([]);
     expect(first).toEqual({ op: "set", path: "routines/auto-1/planChanges/auto-2", data: { ...change, at: "SERVER_TIME" } });
     await started.commit;
     expect(fake.batches[0]!.committed).toBe(true);
   });
 
   it("puts the plan on the routine the client has, with the change beside it", () => {
+    // Add a plan: the routine as it stands is what the client does, so the
+    // plan has no day one of its own.
+    const { dayOne: _dayOne, ...fromRoutine } = plan;
     const started = startPlan(db, {
       routineId: "r-a",
       clientId: "c1",
       studioId: "westlake",
       name: "Routine A",
       machineIds: ["m-leg-press", "m-compound-row"],
-      plan,
+      plan: fromRoutine,
       change: { kind: "start", machineIds: plan.intended, byUid: "uid-sam" },
     });
     expect(started.routineId).toBe("r-a");
     const ops = fake.batches[0]!.ops;
     expect(ops).toHaveLength(2);
-    expect(ops[0]).toEqual({ op: "update", path: "routines/r-a", data: { machineIds: ["m-leg-press", "m-compound-row"], plan } });
+    expect(ops[0]).toEqual({
+      op: "update",
+      path: "routines/r-a",
+      data: { machineIds: ["m-leg-press", "m-compound-row"], plan: fromRoutine },
+    });
     expect(ops[1]!.path).toMatch(/^routines\/r-a\/planChanges\//);
     // Only what the routine is updated with: never the client, the name or a creation time on an existing one.
     expect(ops[0]!.data).not.toHaveProperty("clientId");

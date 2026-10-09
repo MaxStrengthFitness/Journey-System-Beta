@@ -520,13 +520,23 @@ export function suggestFromStartingRoutines(input: StartingRoutinesInput): Start
  * changed it: the road on this floor's ids, in its order, being built, with
  * day one (on this floor, in the plan's order, repaired against the
  * sequencing rules, since a subset can put two machines side by side that the
- * road kept apart) as the routine's first machines. A machine the floor lacks
- * isn't on the plan; the suggestion's steps say which.
+ * road kept apart) kept on the plan as `dayOne` and returned as `startWith`
+ * (a list of its own: a draft edits `plan.dayOne`, the one Keep this lineup
+ * writes).
+ * A machine the floor lacks isn't on the plan; the suggestion's steps say
+ * which.
+ *
+ * Day one is the first visit's machines, never Routine A's: the consult is
+ * not Routine A (AJ, Oct 8 2026: "this also counts with the consult visit,
+ * sometimes the consult machines will not be the same as their a routine").
+ * The plan's first write leaves Routine A empty (`startPlan` with no
+ * machines), a session runs day one while Routine A has nothing
+ * (`todayFor`), and the Wrap-up asks which of today's machines start it.
  *
  * When none of day one is on this floor (a studio whose Leg Press is its own
  * unit the catalog doesn't know), day one is the road's first machines on
- * this floor, as many as day one names, so Keep this lineup never writes an
- * empty Routine A; the suggestion's steps still list day one's machines as
+ * this floor, as many as day one names, so the first visit never opens with
+ * nothing to run; the suggestion's steps still list day one's machines as
  * missing, so the screen says why.
  */
 export function startingPlanFromRoutine(
@@ -548,6 +558,7 @@ export function startingPlanFromRoutine(
       purpose: "Learning the protocol: the starting routine",
       purposeKinds: ["core"],
       intended,
+      dayOne: [...startWith],
       building: true,
       templateId: routine.id,
       madeByUid: who.uid,

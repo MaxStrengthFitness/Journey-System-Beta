@@ -5,6 +5,14 @@
  * Pure. The routine's `machineIds` is what the client does now; the plan's
  * `intended` is the road. A machine the trainer added that the plan doesn't
  * name is an extra, kept where the trainer put it, never dropped.
+ *
+ * The consult is not Routine A (AJ, Oct 8 2026: "this also counts with the
+ * consult visit, sometimes the consult machines will not be the same as their
+ * a routine"). A plan for a client starting out carries the first visit's
+ * machines as `dayOne` and leaves Routine A empty: a session runs day one
+ * while Routine A has nothing (`todayFor`), and the Wrap-up offers today's
+ * machines unticked, so the trainer ticks the ones that start Routine A
+ * (`nextTimeRows`, his "3a").
  */
 import { STARTING_COLUMN_LABEL, type StartingColumn } from "./starting-weights";
 import type { CantDo, PlanChange, RoutinePlan } from "./types";
@@ -46,11 +54,69 @@ export function planProgress(plan: Pick<RoutinePlan, "intended">, routine: reado
   };
 }
 
-/** "3 of 6 · next: Chest Press". Names come from the caller (a floor's names, never truncated). */
-export function progressLine(progress: PlanProgress, nameOf: (id: string) => string): string {
+/** "Leg Press", "Leg Press and Lumbar", "Leg Press, Lumbar and Abs": names said as a list, every one whole. */
+export function listWords(names: readonly string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+/**
+ * "3 of 6 · next: Chest Press". Names come from the caller (a floor's names,
+ * never truncated).
+ *
+ * With Routine A still empty and a day one on the plan (`dayOne`, the plan's
+ * own), the line says what the first visit runs instead of a next machine:
+ * "0 of 6 · day one: Leg Press, Compound Row and Lumbar". The consult is not
+ * Routine A, so nothing of it counts until the Wrap-up ticks it in.
+ */
+export function progressLine(
+  progress: PlanProgress,
+  nameOf: (id: string) => string,
+  dayOne?: readonly string[] | null,
+): string {
   if (progress.of === 0) return "No machines planned yet";
+  // have 0 and no extras is exactly an empty routine: every machine it holds is one or the other.
+  if (progress.have === 0 && progress.extras.length === 0 && dayOne && dayOne.length > 0) {
+    return `0 of ${progress.of} · day one: ${listWords(dayOne.map(nameOf))}`;
+  }
   if (progress.complete) return `All ${progress.of} planned machines in`;
   return `${progress.have} of ${progress.of} · next: ${nameOf(progress.next!)}`;
+}
+
+interface TodayInput {
+  /** The routine's `machineIds`. */
+  routine: readonly string[] | null | undefined;
+  plan: Pick<RoutinePlan, "dayOne"> | null | undefined;
+}
+
+/**
+ * Whether a visit runs the plan's day one by default: Routine A has nothing
+ * and the plan has a day one (the consult, or any visit before the Wrap-up's
+ * ticks start Routine A). While it does, the screens draw day one where
+ * Routine A's rows would be, and nothing offers to put a single machine into
+ * Routine A (Programming's "Add to A now"): one machine in an empty Routine A
+ * would become everything a visit runs, and day one would silently drop.
+ * The Wrap-up starts Routine A.
+ */
+export function runsDayOne(input: TodayInput): boolean {
+  return !(input.routine && input.routine.length > 0) && (input.plan?.dayOne?.length ?? 0) > 0;
+}
+
+/**
+ * The machines a session runs by default (AJ, Oct 8 2026: "sometimes the
+ * consult machines will not be the same as their a routine"):
+ * - the routine's machines, when it has any;
+ * - else the plan's day one, in the order the plan keeps it (the consult, or
+ *   any visit while Routine A still has nothing, `runsDayOne`);
+ * - else none: the trainer adds machines as they go.
+ * Never the whole floor, and never written anywhere: what Start passes to the
+ * session as today's. Every reader that seeds a session from Routine A's
+ * `machineIds` reads this instead (the round document, §4.5).
+ */
+export function todayFor(input: TodayInput): string[] {
+  if (input.routine && input.routine.length > 0) return [...input.routine];
+  const dayOne = input.plan?.dayOne ?? [];
+  return dayOne.filter((id, i) => dayOne.indexOf(id) === i);
 }
 
 /**
@@ -98,6 +164,15 @@ export function planWithoutCantDo(plan: RoutinePlan, machineIds: readonly string
   return { ...plan, cantDo: plan.cantDo.filter((c) => !machineIds.includes(c.machineId)) };
 }
 
+/**
+ * The plan with day one changed by `change`, when it has a day one; a plan
+ * without one stays without one (never a `dayOne: undefined`, which
+ * Firestore refuses).
+ */
+function withDayOne(plan: RoutinePlan, change: (dayOne: string[]) => string[]): RoutinePlan {
+  return plan.dayOne ? { ...plan, dayOne: change(plan.dayOne) } : plan;
+}
+
 /** A column the sheet has, or "none" (Don't show ranges); anything else is not a column. */
 export function isStartingColumnChoice(value: unknown): value is StartingColumn | "none" {
   return value === "none" || (typeof value === "string" && Object.prototype.hasOwnProperty.call(STARTING_COLUMN_LABEL, value));
@@ -113,6 +188,19 @@ export function isStartingColumnChoice(value: unknown): value is StartingColumn 
  * returned as it was. Reshaping the road for it is `reshapeForCantDo`'s, and
  * putting a reopened machine back is `reopenCantDo`'s (cant-do.ts): both need
  * the floor or the routine, which a change alone doesn't carry.
+ *
+ * Day one follows the road (`RoutinePlan.dayOne`): a machine removed leaves
+ * it, a swap is made on it too, and a new start or a re-plan keeps only the
+ * day-one machines still on the new road, so a visit while Routine A is empty
+ * never runs a machine the plan has let go. Adding to the road never puts a
+ * machine on day one.
+ *
+ * A reorder gives day one the order it gives day one's machines: the trainer
+ * moved them, so a visit runs them that way. A screen writes the order it
+ * draws (the Lineup draws day one first, then On deck), so a move on the
+ * deck leaves day one as it was, and a move on day one moves it there. Day
+ * one's order is not repaired against the Academy's sequencing rules after a
+ * trainer's move: those are quiet sentences, never a block (order-effects.ts).
  */
 export function applyPlanChange(
   plan: RoutinePlan,
@@ -122,28 +210,38 @@ export function applyPlanChange(
   const ids = change.machineIds;
   switch (change.kind) {
     case "start":
-      return { ...plan, intended: [...ids] };
+      return withDayOne({ ...plan, intended: [...ids] }, (dayOne) => dayOne.filter((id) => ids.includes(id)));
     case "add": {
       const intended = [...plan.intended];
       for (const id of ids) if (!intended.includes(id)) intended.push(id);
       return { ...plan, intended };
     }
     case "remove":
-      return { ...plan, intended: plan.intended.filter((id) => !ids.includes(id)) };
+      return withDayOne(
+        { ...plan, intended: plan.intended.filter((id) => !ids.includes(id)) },
+        (dayOne) => dayOne.filter((id) => !ids.includes(id)),
+      );
     case "swap": {
       const [from, to] = ids;
       if (!from || !to) return plan;
-      const intended = plan.intended.includes(to)
-        ? plan.intended.filter((id) => id !== from)
-        : plan.intended.map((id) => (id === from ? to : id));
+      // The machine coming in takes the one going out's place, unless it is
+      // there already: then the one going out simply leaves.
+      const swapIn = (list: readonly string[]) =>
+        list.includes(to) ? list.filter((id) => id !== from) : list.map((id) => (id === from ? to : id));
       const swaps = plan.swaps?.map((s) => (s.with === from ? { ...s, with: to } : s));
-      return { ...plan, intended, ...(swaps ? { swaps } : null) };
+      return withDayOne({ ...plan, intended: swapIn(plan.intended), ...(swaps ? { swaps } : null) }, swapIn);
     }
     case "reorder": {
       // Every planned machine stays: an id the new order forgot keeps its place at the end.
       const kept = ids.filter((id) => plan.intended.includes(id));
       const rest = plan.intended.filter((id) => !kept.includes(id));
-      return { ...plan, intended: [...kept, ...rest] };
+      const intended = [...kept, ...rest];
+      // Day one takes the road's new order among its own machines; one the
+      // road doesn't hold (never written so, but read safely) stays after them.
+      return withDayOne({ ...plan, intended }, (dayOne) => [
+        ...intended.filter((id) => dayOne.includes(id)),
+        ...dayOne.filter((id) => !intended.includes(id)),
+      ]);
     }
     case "purpose":
       return { ...plan, purpose: change.value ?? plan.purpose };
@@ -164,7 +262,7 @@ export function applyPlanChange(
       // The road starts again from what the trainer kept; a machine named
       // twice is kept once, where it first stands.
       const intended = ids.filter((id, i) => ids.indexOf(id) === i);
-      return { ...plan, intended };
+      return withDayOne({ ...plan, intended }, (dayOne) => dayOne.filter((id) => intended.includes(id)));
     }
     case "column":
       // A value that isn't one of the sheet's columns is skipped, never bent
@@ -179,8 +277,14 @@ export interface NextTimeRow {
   machineId: string;
   /** Ticked when the Wrap-up opens. */
   defaultOn: boolean;
-  /** Why it is on the list, for the row's small line. */
-  why: "planned" | "added-today";
+  /**
+   * Why it is on the list, for the row's small line:
+   * - "day-one": one of the plan's day one, run while Routine A had nothing
+   *   (the consult);
+   * - "planned": next in the plan;
+   * - "added-today": added today, not in the plan.
+   */
+  why: "day-one" | "planned" | "added-today";
 }
 
 /**
@@ -194,18 +298,33 @@ export interface NextTimeRow {
  * (AJ's toggle) every row starts ticked; once it isn't, a one-off machine
  * starts unticked, because "an established routine changes on purpose".
  * No plan at all: offered unticked, the same as an established routine.
+ *
+ * The consult is not Routine A (AJ, Oct 8 2026, "3a", and: "this also counts
+ * with the consult visit, sometimes the consult machines will not be the same
+ * as their a routine"). So when the routine is EMPTY at the session's start
+ * (the consult, or any visit while Routine A has nothing), every row starts
+ * unticked, the plan being built or not, and the trainer ticks which of
+ * today's machines start Routine A. Those rows say why by the plan's day one
+ * first ("day-one"), then the road ("planned"), then neither ("added-today").
  */
 export function nextTimeRows(input: {
-  plan: Pick<RoutinePlan, "intended" | "building"> | null;
+  plan: Pick<RoutinePlan, "intended" | "building" | "dayOne"> | null;
+  /** The routine's machines at the session's start. */
   routine: readonly string[];
   performedToday: readonly string[];
 }): NextTimeRow[] {
-  const building = input.plan?.building === true;
+  const empty = input.routine.length === 0;
+  const defaultOn = !empty && input.plan?.building === true;
+  const dayOne = empty ? (input.plan?.dayOne ?? []) : [];
   const rows: NextTimeRow[] = [];
   for (const id of input.performedToday) {
     if (input.routine.includes(id) || rows.some((r) => r.machineId === id)) continue;
-    const planned = input.plan?.intended.includes(id) ?? false;
-    rows.push({ machineId: id, defaultOn: building, why: planned ? "planned" : "added-today" });
+    const why: NextTimeRow["why"] = dayOne.includes(id)
+      ? "day-one"
+      : (input.plan?.intended.includes(id) ?? false)
+        ? "planned"
+        : "added-today";
+    rows.push({ machineId: id, defaultOn, why });
   }
   return rows;
 }
@@ -213,14 +332,22 @@ export function nextTimeRows(input: {
 /**
  * The routine for next time from the Wrap-up's ticks, in the plan's order.
  * With no plan, the ticked machines join at the end in the order performed.
+ *
+ * An EMPTY Routine A started from the ticks (the consult, "Tick the ones that
+ * start Routine A") takes the road's order too, not day one's: every later
+ * Wrap-up puts Routine A in the road's order (`routineWith`), so starting it
+ * any other way would only flip its order at the next visit. The order
+ * effects say, quietly, when a few machines of the road side by side trip a
+ * sequencing rule; the session's own order is the trainer's that day.
  */
 export function routineAfterWrapUp(input: {
   plan: Pick<RoutinePlan, "intended"> | null;
   routine: readonly string[];
   ticked: readonly string[];
 }): string[] {
-  if (!input.plan) return [...input.routine, ...input.ticked.filter((id) => !input.routine.includes(id))];
-  return routineWith(input.plan, input.routine, input.ticked);
+  const ticked = input.ticked.filter((id, i) => input.ticked.indexOf(id) === i);
+  if (!input.plan) return [...input.routine, ...ticked.filter((id) => !input.routine.includes(id))];
+  return routineWith(input.plan, input.routine, ticked);
 }
 
 /**

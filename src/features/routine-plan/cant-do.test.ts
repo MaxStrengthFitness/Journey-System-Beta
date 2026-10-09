@@ -196,6 +196,94 @@ describe("reopening a machine", () => {
   });
 });
 
+describe("day one, while Routine A is empty", () => {
+  // AJ, Oct 8 2026: "this also counts with the consult visit, sometimes the
+  // consult machines will not be the same as their a routine". Day one rides
+  // on the plan and Routine A is empty until the Wrap-up ticks machines in,
+  // so a mark made before the consult has to reach day one, or the consult
+  // would run a machine the client can't do.
+  const PLANNED: RoutinePlan = { ...PLAN, dayOne: DAY_ONE };
+
+  it("puts the stand-in in the machine's place on day one", () => {
+    const m = markCantDo({ plan: PLANNED, routine: [], machineId: "m-lumbar", until: "cleared", day: "2026-10-08", by: who, floor: ALL });
+    expect(m.entry.replacedBy).toEqual(["m-abs"]);
+    expect(m.plan.dayOne).toEqual(["m-abs", "m-compound-row", "m-leg-press"]);
+    expect(m.plan.intended[0]).toBe("m-abs");
+    // Routine A stays empty: nothing here puts day one into it.
+    expect(m.routine).toEqual([]);
+  });
+
+  it("lets the machine leave day one when nothing on this floor fits", () => {
+    const floor = ROAD.filter((id) => id !== "m-lumbar").map((id) => ({ id }));
+    const m = markCantDo({ plan: PLANNED, routine: [], machineId: "m-lumbar", until: "cleared", day: "2026-10-08", by: who, floor });
+    expect(m.entry.replacedBy).toEqual([]);
+    expect(m.plan.dayOne).toEqual(["m-compound-row", "m-leg-press"]);
+  });
+
+  it("leaves day one alone for a machine that isn't on it, and adds none to a plan without one", () => {
+    const m = markCantDo({ plan: PLANNED, routine: [], machineId: "m-dip", until: "cleared", day: "2026-10-08", by: who, floor: ALL });
+    expect(m.plan.dayOne).toEqual(DAY_ONE);
+    const plain = markCantDo({ plan: PLAN, routine: DAY_ONE, machineId: "m-lumbar", until: "cleared", day: "2026-10-08", by: who, floor: ALL });
+    expect("dayOne" in plain.plan).toBe(false);
+  });
+
+  it("puts the machine back on day one where its stand-in stands when it is reopened", () => {
+    const m = markCantDo({ plan: PLANNED, routine: [], machineId: "m-lumbar", until: "cleared", day: "2026-10-08", by: who, floor: ALL });
+    const reopened = reopenCantDo(m.plan, [], "m-lumbar");
+    expect(reopened.dayOne).toEqual(DAY_ONE);
+    expect(reopened.intended).toEqual(ROAD);
+    expect(reopened.cantDo).toEqual([]);
+  });
+
+  it("remembers where the machine stood on day one, only when it was on it", () => {
+    const m = markCantDo({ plan: PLANNED, routine: [], machineId: "m-leg-press", until: "cleared", day: "2026-10-08", by: who, floor: ALL });
+    expect(m.entry.dayOneAt).toBe(2);
+    // A mark made again finds it off day one already, so the first mark's place stands.
+    const again = markCantDo({ plan: m.plan, routine: [], machineId: "m-leg-press", reason: "Surgery", until: "always", day: "2026-10-09", by: who, floor: ALL });
+    expect(again.entry.dayOneAt).toBe(2);
+    // Not on day one, or no day one: no key at all (never `undefined`, which Firestore refuses).
+    const off = markCantDo({ plan: PLANNED, routine: [], machineId: "m-dip", until: "cleared", day: "2026-10-08", by: who, floor: ALL });
+    expect("dayOneAt" in off.entry).toBe(false);
+    const plain = markCantDo({ plan: PLAN, routine: DAY_ONE, machineId: "m-lumbar", until: "cleared", day: "2026-10-08", by: who, floor: ALL });
+    expect("dayOneAt" in plain.entry).toBe(false);
+  });
+
+  it("puts the machine back on day one where it stood when nothing stood in for it", () => {
+    // §4.4: "Reopen puts the machine back where it stood". Marked before the
+    // consult on a floor where nothing stands in, the Lumbar left day one;
+    // reopened before the consult, the consult runs it again.
+    const floor = ROAD.filter((id) => id !== "m-lumbar").map((id) => ({ id }));
+    const m = markCantDo({ plan: PLANNED, routine: [], machineId: "m-lumbar", until: "cleared", day: "2026-10-08", by: who, floor });
+    expect(m.plan.dayOne).toEqual(["m-compound-row", "m-leg-press"]);
+    const reopened = reopenCantDo(m.plan, [], "m-lumbar");
+    expect(reopened.dayOne).toEqual(DAY_ONE);
+    expect(reopened.intended.at(-1)).toBe("m-lumbar");
+    expect(reopened.cantDo).toEqual([]);
+  });
+
+  it("puts it back where it stood when its stand-in has left day one since, at the end when day one is shorter now", () => {
+    const m = markCantDo({ plan: PLANNED, routine: [], machineId: "m-lumbar", until: "cleared", day: "2026-10-08", by: who, floor: ALL });
+    const moved = { ...m.plan, dayOne: ["m-compound-row", "m-leg-press"] };
+    expect(reopenCantDo(moved, [], "m-lumbar").dayOne).toEqual(DAY_ONE);
+    const short: RoutinePlan = {
+      ...PLAN,
+      intended: ROAD.filter((id) => id !== "m-leg-press"),
+      dayOne: ["m-compound-row"],
+      cantDo: [{ machineId: "m-leg-press", until: "cleared", day: "2026-10-08", byUid: "u-sam", replacedBy: [], dayOneAt: 5 }],
+    };
+    expect(reopenCantDo(short, [], "m-leg-press").dayOne).toEqual(["m-compound-row", "m-leg-press"]);
+  });
+
+  it("keeps day one as it is when the stand-in is in Routine A by then", () => {
+    // After the Wrap-up ticked Abdominals into Routine A, reopening the
+    // Lumbar puts it on deck beside it; day one is no longer what runs.
+    const m = markCantDo({ plan: PLANNED, routine: [], machineId: "m-lumbar", until: "cleared", day: "2026-10-08", by: who, floor: ALL });
+    const reopened = reopenCantDo(m.plan, ["m-abs", "m-compound-row"], "m-lumbar");
+    expect(reopened.dayOne).toEqual(m.plan.dayOne);
+    expect(reopened.intended.slice(0, 2)).toEqual(["m-lumbar", "m-abs"]);
+  });
+});
+
 describe("whether a mark still holds", () => {
   const dated: CantDo = { machineId: "m-dip", reason: "Surgery", until: "2026-10-20", day: "2026-10-08", byUid: "u-sam" };
 

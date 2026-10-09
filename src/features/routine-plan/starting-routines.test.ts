@@ -382,12 +382,16 @@ describe("which starting routine fits", () => {
 });
 
 describe("the plan a starting routine makes", () => {
-  it("makes the plan on this floor, being built, signed and dated", () => {
+  it("makes the plan on this floor, being built, signed and dated, with day one on it", () => {
     const { plan, startWith } = startingPlanFromRoutine(byId("academy-clear-dip-adduction"), who, ALL, "2026-10-08");
     expect(plan).toEqual({
       purpose: "Learning the protocol: the starting routine",
       purposeKinds: ["core"],
       intended: ["m-lumbar", "m-compound-row", "m-dip", "m-hip-add", "m-pullover", "m-leg-press"],
+      // Day one rides on the plan, never in Routine A (AJ, Oct 8 2026: "this
+      // also counts with the consult visit, sometimes the consult machines
+      // will not be the same as their a routine").
+      dayOne: startWith,
       building: true,
       templateId: "academy-clear-dip-adduction",
       madeByUid: "u-sam",
@@ -395,6 +399,8 @@ describe("the plan a starting routine makes", () => {
       madeAt: "2026-10-08",
     });
     expect([...startWith].sort()).toEqual(["m-compound-row", "m-leg-press", "m-lumbar"]);
+    // Two lists: a draft that edits the plan's day one never changes `startWith`, or back.
+    expect(plan.dayOne).not.toBe(startWith);
     expect(Object.values(startingPlanFromRoutine(byId("academy-knee"), { uid: "u-1" }, ALL, "2026-10-08").plan)).not.toContain(
       undefined,
     );
@@ -406,12 +412,13 @@ describe("the plan a starting routine makes", () => {
       const { plan, startWith } = startingPlanFromRoutine(r, who, floor, "2026-10-08");
       expect(plan.intended.every((id) => id.startsWith("unit-")), r.id).toBe(true);
       expect(startWith.length, r.id).toBeGreaterThan(0);
+      expect(plan.dayOne, r.id).toEqual(startWith);
       const canonical = startWith.map((id) => id.replace(/^unit-/, ""));
       expect(findViolations(canonical).filter((v) => v.severity === "avoid"), r.id).toEqual([]);
     }
   });
 
-  it("never starts with an empty day one when none of day one is on this floor", () => {
+  it("never starts the first visit with nothing to run when none of day one is on this floor", () => {
     // A studio whose Leg Press, Compound Row and Lumbar are its own units the
     // catalog doesn't know: the road's first machines start instead.
     const floor = ALL.filter((m) => !["m-leg-press", "m-compound-row", "m-lumbar"].includes(m.id));
@@ -419,6 +426,7 @@ describe("the plan a starting routine makes", () => {
     const { plan, startWith } = startingPlanFromRoutine(r, who, floor, "2026-10-08");
     expect(startWith.length).toBe(r.dayOne.length);
     expect([...startWith].sort()).toEqual([...plan.intended.slice(0, r.dayOne.length)].sort());
+    expect(plan.dayOne).toEqual(startWith);
     // The suggestion still says day one's machines are missing.
     const s = suggestFromStartingRoutines({ routines: [r], choice: null, floor, pickedId: r.id });
     expect(s.steps[0].missing).toEqual(expect.arrayContaining(["m-leg-press", "m-compound-row", "m-lumbar"]));

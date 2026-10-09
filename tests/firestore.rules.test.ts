@@ -7151,8 +7151,11 @@ describe("oct8 first session: starting routines and a studio's choice", () => {
 
   // Exactly what store.ts's startPlan sends for a client with no Routine A
   // (`routineId: null`): the routine made with its plan, and the plan's first
-  // change, named for the starting routine, in one batch.
-  it("lets a trainer keep a starting lineup: Routine A made with its plan and its first change, in one batch", async () => {
+  // change, named for the starting routine, in one batch. Routine A is made
+  // EMPTY and the plan carries day one, because the consult is not Routine A
+  // (AJ, Oct 8 2026: "this also counts with the consult visit, sometimes the
+  // consult machines will not be the same as their a routine").
+  it("lets a trainer keep a starting lineup: an empty Routine A made with its plan and its first change, in one batch", async () => {
     await seed();
     const db = ctx("trainerP8");
     const intended = ["m-leg-press", "m-compound-row", "m-lumbar", "m-chest-press"];
@@ -7161,11 +7164,12 @@ describe("oct8 first session: starting routines and a studio's choice", () => {
     batch.set(routineRef, {
       clientId: "c-new",
       name: "Routine A",
-      machineIds: ["m-leg-press", "m-compound-row"],
+      machineIds: [],
       plan: {
         purpose: "Learning the protocol: the starting routine",
         purposeKinds: ["core"],
         intended,
+        dayOne: ["m-leg-press", "m-compound-row"],
         building: true,
         templateId: "academy-low-back",
         madeByUid: "trainerP8",

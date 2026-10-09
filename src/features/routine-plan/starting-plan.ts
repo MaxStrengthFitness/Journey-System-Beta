@@ -230,14 +230,25 @@ export function suggestStartingPlan(input: StartingInput): StartingSuggestion {
 }
 
 export interface StartingPlan {
+  /** The plan, its day one (`plan.dayOne`) included. */
   plan: RoutinePlan;
-  /** The routine's machines on day one: the consultation's, in the plan's order. */
+  /**
+   * Day one: the first visit's machines, the consultation's, in the plan's
+   * order; the same machines as `plan.dayOne`, as a list of its own, so a
+   * draft that changes one never changes the other (a screen's draft edits
+   * `plan.dayOne`, the list Keep this lineup writes). Never Routine A's: the
+   * consult is not Routine A (AJ, Oct 8 2026: "sometimes the consult
+   * machines will not be the same as their a routine"), so the plan's first
+   * write leaves Routine A empty and a session runs day one while it is
+   * (`todayFor`).
+   */
   startWith: string[];
 }
 
 /**
  * The plan a suggestion makes, before any trainer has changed it.
  * `through` is the step the plan aims at: the second workout by default.
+ * Day one rides on the plan (`dayOne`), never in Routine A.
  */
 export function startingPlanFrom(
   s: StartingSuggestion,
@@ -262,6 +273,7 @@ export function startingPlanFrom(
       purpose: through === "second" ? "Learning the protocol: the starting routine" : "The core: the routine the client is built on",
       purposeKinds: ["core"],
       intended,
+      dayOne: [...startWith],
       building: true,
       ...(s.templateId ? { templateId: s.templateId } : null),
       madeByUid: who.uid,

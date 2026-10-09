@@ -11,7 +11,8 @@
  *
  * His pick, "2a": can't-do lives on the client's plan (Routine A's), read by
  * A and B. So the Academy's template is a first draft, never a script:
- * - marking a machine reshapes the road and today's routine: the Academy's
+ * - marking a machine reshapes the road, today's routine and the plan's day
+ *   one (the first visit's machines while Routine A is empty): the Academy's
  *   documented substitute when it is on this floor and allowed, else a
  *   machine of the same Academy family on this floor, else the machine simply
  *   leaves (`reshapeForCantDo`), and the screen says what it did
@@ -28,7 +29,7 @@
 import type { HealthFlavour } from "../../types/journal";
 import { HEALTH_FLAVOURS } from "../client-notes/note-catalog";
 import { EXERCISE_SUBSTITUTES, MACHINE_CATEGORY } from "../routine-builder/academy";
-import { planWithCantDo, planWithoutCantDo } from "./plan";
+import { listWords, planWithCantDo, planWithoutCantDo } from "./plan";
 import { floorCanonical, floorIndex, type FloorMachine } from "./starting-plan";
 import type { CantDo, PlanChange, RoutinePlan } from "./types";
 
@@ -154,6 +155,10 @@ export interface CantDoMark {
  * entry, the reshaped road and routine, and the change. Nothing here is
  * required but the until; a mark made again keeps what first stood in, so
  * changing a reason or a day never loses the stand-in.
+ *
+ * The plan's day one (`RoutinePlan.dayOne`, the first visit's machines while
+ * Routine A is empty) is reshaped the same way: the stand-in takes the
+ * machine's place there too, or the machine simply leaves it.
  */
 export function markCantDo(input: {
   plan: RoutinePlan;
@@ -181,6 +186,10 @@ export function markCantDo(input: {
   // A mark made again finds the machine already off the road, so where it
   // stood is the first mark's answer.
   const onRoad = earlier?.onRoad ?? input.plan.intended.includes(input.machineId);
+  // Where it stood on day one, so Reopen can put it back there when nothing
+  // stands in for it; the same first-mark answer as `onRoad`.
+  const onDayOne = input.plan.dayOne?.indexOf(input.machineId) ?? -1;
+  const dayOneAt = earlier?.dayOneAt ?? (onDayOne >= 0 ? onDayOne : null);
   const reason = input.reason?.trim();
   const entry: CantDo = {
     machineId: input.machineId,
@@ -191,9 +200,11 @@ export function markCantDo(input: {
     ...(input.by.name ? { byName: input.by.name } : null),
     replacedBy,
     onRoad,
+    ...(dayOneAt !== null ? { dayOneAt } : null),
   };
+  const dayOne = input.plan.dayOne ? { dayOne: replaceAt(input.plan.dayOne, input.machineId, reshaped.replacedBy) } : null;
   return {
-    plan: planWithCantDo({ ...input.plan, intended: reshaped.intended }, entry),
+    plan: planWithCantDo({ ...input.plan, intended: reshaped.intended, ...dayOne }, entry),
     routine: reshaped.routine,
     entry,
     change: {
@@ -241,6 +252,14 @@ function standInOnRoad(plan: RoutinePlan, machineId: string, seen: Set<string> =
  * the road (nothing on this floor fitted), it goes back at the end of the
  * road, where the trainer moves it. A machine that isn't on the bench changes
  * nothing.
+ *
+ * Day one (`RoutinePlan.dayOne`) follows the road: where the stand-in leaves
+ * the road, the machine takes its place on day one too. When nothing stands
+ * in on day one (nothing on this floor fitted, or the stand-in has left day
+ * one since), the machine goes back on day one where it stood when it was
+ * marked (`CantDo.dayOneAt`). When the client does the stand-in now, day one
+ * stays as it is (Routine A has machines, so day one no longer runs), and
+ * the machine is on deck.
  */
 export function reopenCantDo(plan: RoutinePlan, routine: readonly string[], machineId: string): RoutinePlan {
   const entry = plan.cantDo?.find((c) => c.machineId === machineId);
@@ -248,12 +267,29 @@ export function reopenCantDo(plan: RoutinePlan, routine: readonly string[], mach
   const standIn = standInOnRoad(plan, machineId);
   const base = planWithoutCantDo(plan, [machineId]);
   if (plan.intended.includes(machineId) || entry.onRoad === false) return base;
-  if (!standIn) return { ...base, intended: [...plan.intended, machineId] };
+  if (!standIn) return { ...base, intended: [...plan.intended, machineId], ...backOnDayOne(base, entry, null) };
   const at = plan.intended.indexOf(standIn);
-  const intended = routine.includes(standIn)
-    ? [...plan.intended.slice(0, at), machineId, ...plan.intended.slice(at)]
-    : replaceAt(plan.intended, standIn, [machineId]);
-  return { ...base, intended };
+  if (routine.includes(standIn)) {
+    return { ...base, intended: [...plan.intended.slice(0, at), machineId, ...plan.intended.slice(at)] };
+  }
+  return { ...base, intended: replaceAt(plan.intended, standIn, [machineId]), ...backOnDayOne(base, entry, standIn) };
+}
+
+/**
+ * Day one with a reopened machine back on it: in its stand-in's place when
+ * the stand-in is on day one, else where the machine stood when it was
+ * marked (`dayOneAt`, at the end when day one is shorter now). Nothing when
+ * the plan has no day one, the machine wasn't on it, or it is there already;
+ * never a `dayOne: undefined`, which Firestore refuses.
+ */
+function backOnDayOne(plan: RoutinePlan, entry: CantDo, standIn: string | null): { dayOne: string[] } | null {
+  const dayOne = plan.dayOne;
+  if (!dayOne || dayOne.includes(entry.machineId)) return null;
+  if (standIn && dayOne.includes(standIn)) return { dayOne: replaceAt(dayOne, standIn, [entry.machineId]) };
+  const at = entry.dayOneAt;
+  if (typeof at !== "number" || !Number.isInteger(at) || at < 0) return null;
+  const i = Math.min(at, dayOne.length);
+  return { dayOne: [...dayOne.slice(0, i), entry.machineId, ...dayOne.slice(i)] };
 }
 
 /* ── Whether a mark still holds ───────────────────────────────────────── */
@@ -331,11 +367,8 @@ export function cantDoLine(
   return [nameOf(entry.machineId), entry.reason?.trim(), when].filter(Boolean).join(" · ");
 }
 
-/** "Leg Press", "Leg Press and Lumbar", "Leg Press, Lumbar and Abs": names said as a list, every one whole. */
-export function listWords(names: readonly string[]): string {
-  if (names.length <= 1) return names[0] ?? "";
-  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-}
+/** Names said as a list (plan.ts's, kept here for the readers that import it from this file). */
+export { listWords };
 
 /**
  * What the reshape did, said: "Chest Flye instead of Seated Dip", or, with

@@ -20,6 +20,8 @@ import {
   progressLine,
   routineAfterWrapUp,
   routineWith,
+  runsDayOne,
+  todayFor,
 } from "./plan";
 import { bRoutineOf, bStatus, bWithNextSwaps, suggestBSwaps, swapsMade } from "./b-routine";
 import { focusAdvice } from "./focus";
@@ -36,7 +38,7 @@ const ALL: FloorMachine[] = [
 const who = { uid: "u-sam", name: "Sam" };
 
 describe("which kind of no routine", () => {
-  const base = { known: true, hasRoutine: false, journeySessions: 0, coverage: "complete" as const, provisionalNewClient: false };
+  const base = { known: true, hasRoutine: false, hasPlan: false, journeySessions: 0, coverage: "complete" as const, provisionalNewClient: false };
 
   it("calls a client new to the studio only when Journey holds the whole, empty story", () => {
     expect(startingKindOf(base).kind).toBe("new-to-studio");
@@ -52,6 +54,17 @@ describe("which kind of no routine", () => {
   });
   it("leaves a client with a routine alone", () => {
     expect(startingKindOf({ ...base, hasRoutine: true }).kind).toBe("established");
+  });
+  it("leaves a client with a plan alone while Routine A is still empty, before the consult and after it", () => {
+    // AJ, Oct 8 2026: "this also counts with the consult visit, sometimes the
+    // consult machines will not be the same as their a routine". Keep this
+    // lineup makes Routine A empty with day one on the plan, so a kept plan
+    // is set up: never Start a plan again, and never "no routine yet" once
+    // the consult is in Journey.
+    expect(startingKindOf({ ...base, hasPlan: true })).toEqual({ kind: "established", says: "Has a plan." });
+    expect(startingKindOf({ ...base, hasPlan: true, journeySessions: 1 }).kind).toBe("established");
+    // A read that hasn't answered still claims nothing.
+    expect(startingKindOf({ ...base, hasPlan: true, known: false }).kind).toBe("unknown");
   });
   it("claims nothing while the routines or the session count haven't answered", () => {
     // A read that hasn't answered is "can't tell", never new: an empty cache
@@ -87,6 +100,7 @@ describe("which kind of no routine", () => {
       { ...base, coverage: "unknown" as const },
       { ...base, known: false },
       { ...base, hasRoutine: true },
+      { ...base, hasPlan: true },
     ];
     for (const input of inputs) {
       expect(startingKindOf(input).says).not.toMatch(/new client|first session|nothing before journey/i);
@@ -114,6 +128,11 @@ describe("the starting plan", () => {
     expect(plan.building).toBe(true);
     expect(plan.intended.length).toBeGreaterThan(startWith.length);
     expect(plan.madeByUid).toBe("u-sam");
+    // Day one rides on the plan, not in Routine A (AJ, Oct 8 2026: "sometimes
+    // the consult machines will not be the same as their a routine").
+    expect(plan.dayOne).toEqual(startWith);
+    // Two lists, so a draft that edits one never changes the other.
+    expect(plan.dayOne).not.toBe(startWith);
   });
 
   it("never says the client's gender: the template's sex split stays off screen", () => {
@@ -188,11 +207,66 @@ const PLAN: RoutinePlan = {
   madeByUid: "u-sam",
 };
 
+const NAMES: Record<string, string> = {
+  "m-dip": "Seated Dip",
+  "m-leg-press": "Leg Press",
+  "m-compound-row": "Compound Row",
+  "m-lumbar": "Lumbar",
+  "m-abs": "Abdominals",
+};
+const nameOf = (id: string) => NAMES[id] ?? id;
+
 describe("the plan", () => {
   it("says how far along a routine is and what comes next", () => {
     const p = planProgress(PLAN, ["m-lumbar", "m-compound-row", "m-leg-press"]);
     expect(p).toMatchObject({ have: 3, of: 6, next: "m-dip", complete: false, extras: [] });
     expect(progressLine(p, (id) => ({ "m-dip": "Seated Dip" })[id] ?? id)).toBe("3 of 6 · next: Seated Dip");
+  });
+
+  it("says day one while Routine A is empty, since the consult is not Routine A", () => {
+    // AJ, Oct 8 2026: "this also counts with the consult visit, sometimes the
+    // consult machines will not be the same as their a routine".
+    const dayOne = ["m-leg-press", "m-compound-row", "m-lumbar"];
+    expect(progressLine(planProgress(PLAN, []), nameOf, dayOne)).toBe("0 of 6 · day one: Leg Press, Compound Row and Lumbar");
+    // Once Routine A has a machine, the line counts it and names the next.
+    expect(progressLine(planProgress(PLAN, ["m-leg-press"]), nameOf, dayOne)).toBe("1 of 6 · next: Lumbar");
+    // An extra alone is a routine with a machine in it, so it is counted, not called day one.
+    expect(progressLine(planProgress(PLAN, ["m-abs"]), nameOf, dayOne)).toBe("0 of 6 · next: Lumbar");
+    // No day one: the line as before.
+    expect(progressLine(planProgress(PLAN, []), nameOf)).toBe("0 of 6 · next: Lumbar");
+    expect(progressLine(planProgress(PLAN, []), nameOf, [])).toBe("0 of 6 · next: Lumbar");
+    expect(progressLine(planProgress({ intended: [] }, []), nameOf, dayOne)).toBe("No machines planned yet");
+  });
+
+  it("runs the routine when it has machines, else the plan's day one, else nothing", () => {
+    // AJ, Oct 8 2026: "sometimes the consult machines will not be the same as
+    // their a routine". The consult, and any visit while Routine A is empty,
+    // runs day one in the order the plan keeps it.
+    const planned: RoutinePlan = { ...PLAN, dayOne: ["m-leg-press", "m-compound-row", "m-lumbar"] };
+    expect(todayFor({ routine: [], plan: planned })).toEqual(["m-leg-press", "m-compound-row", "m-lumbar"]);
+    expect(todayFor({ routine: ["m-lumbar", "m-dip"], plan: planned })).toEqual(["m-lumbar", "m-dip"]);
+    expect(todayFor({ routine: [], plan: PLAN })).toEqual([]);
+    expect(todayFor({ routine: null, plan: null })).toEqual([]);
+    expect(todayFor({ routine: undefined, plan: planned })).toEqual(planned.dayOne);
+    // Never the whole floor, and a list it hands out is the caller's to change.
+    const today = todayFor({ routine: [], plan: planned });
+    today.push("m-abs");
+    expect(planned.dayOne).toHaveLength(3);
+  });
+
+  it("says when a visit runs day one, so nothing offers to put a single machine into an empty Routine A", () => {
+    // AJ, Oct 8 2026: "sometimes the consult machines will not be the same as
+    // their a routine". One machine in an empty Routine A ("Add to A now")
+    // would become everything the consult runs: day one would drop without a
+    // word. The Wrap-up starts Routine A.
+    const planned: RoutinePlan = { ...PLAN, dayOne: ["m-leg-press", "m-compound-row", "m-lumbar"] };
+    expect(runsDayOne({ routine: [], plan: planned })).toBe(true);
+    expect(runsDayOne({ routine: null, plan: planned })).toBe(true);
+    expect(todayFor({ routine: routineWith(planned, [], ["m-lumbar"]), plan: planned })).toEqual(["m-lumbar"]);
+    expect(runsDayOne({ routine: ["m-lumbar"], plan: planned })).toBe(false);
+    expect(runsDayOne({ routine: [], plan: PLAN })).toBe(false);
+    expect(runsDayOne({ routine: [], plan: { ...PLAN, dayOne: [] } })).toBe(false);
+    expect(runsDayOne({ routine: [], plan: null })).toBe(false);
   });
 
   it("keeps a machine the trainer added that the plan doesn't name, where it was", () => {
@@ -226,6 +300,52 @@ describe("the plan", () => {
     expect(marked.intended).toEqual(PLAN.intended);
     // With no entry beside it there is nothing to record.
     expect(applyPlanChange(PLAN, { kind: "cantdo", machineIds: ["m-dip"], value: "Surgery · cleared" })).toBe(PLAN);
+  });
+
+  it("keeps day one following the road: out, swapped, started again or re-planned away, and moved as the trainer moves it", () => {
+    // AJ, Oct 8 2026: "sometimes the consult machines will not be the same as
+    // their a routine": day one is the plan's own list while Routine A is
+    // empty, so it must never run a machine the plan has let go.
+    const planned: RoutinePlan = { ...PLAN, dayOne: ["m-leg-press", "m-compound-row", "m-lumbar"] };
+    expect(applyPlanChange(planned, { kind: "remove", machineIds: ["m-lumbar"] }).dayOne).toEqual(["m-leg-press", "m-compound-row"]);
+    expect(applyPlanChange(planned, { kind: "swap", machineIds: ["m-compound-row", "m-simple-row"] }).dayOne).toEqual([
+      "m-leg-press",
+      "m-simple-row",
+      "m-lumbar",
+    ]);
+    // A swap to a machine already on day one leaves the one going out, never a machine twice.
+    expect(applyPlanChange(planned, { kind: "swap", machineIds: ["m-compound-row", "m-leg-press"] }).dayOne).toEqual([
+      "m-leg-press",
+      "m-lumbar",
+    ]);
+    expect(
+      applyPlanChange(planned, { kind: "replan", machineIds: ["m-compound-row", "m-chest-press", "m-leg-press"], value: "Surgery coming up" })
+        .dayOne,
+    ).toEqual(["m-leg-press", "m-compound-row"]);
+    // A new start (another starting routine on a draft) keeps only day one's machines still on its road.
+    expect(applyPlanChange(planned, { kind: "start", machineIds: ["m-compound-row", "m-chest-press", "m-leg-press"] }).dayOne).toEqual([
+      "m-leg-press",
+      "m-compound-row",
+    ]);
+    // A Move up on a day-one row of the Lineup is a reorder, and it has to
+    // reach the consult: day one takes the order the reorder gives its
+    // machines. A screen writes the order it draws, day one first, then On deck.
+    const drawn = (dayOne: string[]) => [...dayOne, ...planned.intended.filter((id) => !dayOne.includes(id))];
+    // Compound Row moved up on day one: the consult runs it first.
+    const movedUp = applyPlanChange(planned, { kind: "reorder", machineIds: drawn(["m-compound-row", "m-leg-press", "m-lumbar"]) });
+    expect(movedUp.dayOne).toEqual(["m-compound-row", "m-leg-press", "m-lumbar"]);
+    expect(movedUp.intended.slice(0, 3)).toEqual(["m-compound-row", "m-leg-press", "m-lumbar"]);
+    // A move on the deck leaves day one as it was.
+    const deckMoved = [...planned.dayOne!, "m-pullover", "m-dip", "m-hip-add"];
+    expect(applyPlanChange(planned, { kind: "reorder", machineIds: deckMoved }).dayOne).toEqual(planned.dayOne);
+    // Never a machine lost or added: day one keeps exactly its machines.
+    expect([...movedUp.dayOne!].sort()).toEqual([...planned.dayOne!].sort());
+    // Adding to the road never puts a machine on day one.
+    expect(applyPlanChange(planned, { kind: "add", machineIds: ["m-abs"] }).dayOne).toEqual(planned.dayOne);
+    // A plan without a day one gets none (never `dayOne: undefined`, which Firestore refuses).
+    for (const kind of ["start", "remove", "swap", "reorder", "replan"] as const) {
+      expect("dayOne" in applyPlanChange(PLAN, { kind, machineIds: ["m-dip", "m-overhead-press"] }), kind).toBe(false);
+    }
   });
 
   it("reopens, re-plans and keeps the starting column", () => {
@@ -269,6 +389,68 @@ describe("the Wrap-up's next time", () => {
     expect(routineAfterWrapUp({ plan: PLAN, routine, ticked: ["m-dip"] })).toEqual(["m-lumbar", "m-compound-row", "m-dip", "m-leg-press"]);
     expect(planAfterWrapUp(PLAN, ["m-abs"]).intended).toContain("m-abs");
     expect(planAfterWrapUp(PLAN, ["m-dip"])).toBe(PLAN);
+  });
+
+  describe("the consult is not Routine A", () => {
+    // AJ, Oct 8 2026, asked whether a walk-in's machines should be ticked into
+    // Routine A by default, answered "3a" (unticked) and added: "this also
+    // counts with the consult visit, sometimes the consult machines will not
+    // be the same as their a routine".
+    const DAY_ONE = ["m-leg-press", "m-compound-row", "m-lumbar"];
+    const planned: RoutinePlan = { ...PLAN, dayOne: DAY_ONE };
+
+    it("offers every machine of a visit with an empty Routine A unticked, even while the plan is being built", () => {
+      const rows = nextTimeRows({ plan: planned, routine: [], performedToday: [...DAY_ONE, "m-dip", "m-abs"] });
+      expect(rows).toEqual([
+        { machineId: "m-leg-press", defaultOn: false, why: "day-one" },
+        { machineId: "m-compound-row", defaultOn: false, why: "day-one" },
+        { machineId: "m-lumbar", defaultOn: false, why: "day-one" },
+        { machineId: "m-dip", defaultOn: false, why: "planned" },
+        { machineId: "m-abs", defaultOn: false, why: "added-today" },
+      ]);
+      // A plan made before day one existed, or none at all: unticked the same.
+      expect(nextTimeRows({ plan: PLAN, routine: [], performedToday: ["m-dip"] })).toEqual([
+        { machineId: "m-dip", defaultOn: false, why: "planned" },
+      ]);
+      expect(nextTimeRows({ plan: null, routine: [], performedToday: ["m-abs"] })).toEqual([
+        { machineId: "m-abs", defaultOn: false, why: "added-today" },
+      ]);
+    });
+
+    it("ticks as before once Routine A has machines and the plan is being built, and calls nothing day one then", () => {
+      const rows = nextTimeRows({ plan: planned, routine: ["m-leg-press"], performedToday: ["m-leg-press", "m-lumbar", "m-abs"] });
+      expect(rows).toEqual([
+        { machineId: "m-lumbar", defaultOn: true, why: "planned" },
+        { machineId: "m-abs", defaultOn: true, why: "added-today" },
+      ]);
+    });
+
+    it("starts Routine A with only the ticked machines, in the road's order", () => {
+      // Nothing ticked: Routine A stays empty, and the next visit runs day one again.
+      expect(routineAfterWrapUp({ plan: planned, routine: [], ticked: [] })).toEqual([]);
+      expect(todayFor({ routine: routineAfterWrapUp({ plan: planned, routine: [], ticked: [] }), plan: planned })).toEqual(DAY_ONE);
+      // Not day one's order: every later Wrap-up puts Routine A in the road's
+      // order (routineWith), so starting it in day one's would only flip it at
+      // the next visit. Routine A follows the road from its first machine; the
+      // order effects say, quietly, when two side by side trip a rule.
+      const started = routineAfterWrapUp({ plan: planned, routine: [], ticked: ["m-lumbar", "m-leg-press"] });
+      expect(started).toEqual(["m-lumbar", "m-leg-press"]);
+      expect(routineAfterWrapUp({ plan: planned, routine: started, ticked: ["m-abs"] }).slice(0, 2)).toEqual(started);
+      // The plan's order, then what the plan doesn't name, a machine ticked twice kept once.
+      expect(
+        routineAfterWrapUp({ plan: planned, routine: [], ticked: ["m-abs", "m-pullover", "m-compound-row", "m-dip", "m-dip"] }),
+      ).toEqual(["m-compound-row", "m-dip", "m-pullover", "m-abs"]);
+      // A plan with no day one: the same.
+      expect(routineAfterWrapUp({ plan: PLAN, routine: [], ticked: ["m-leg-press", "m-lumbar"] })).toEqual(["m-lumbar", "m-leg-press"]);
+    });
+
+    it("says how far along from the ticks, Routine A counted from nothing", () => {
+      const next = routineAfterWrapUp({ plan: planned, routine: [], ticked: ["m-leg-press", "m-compound-row"] });
+      expect(progressLine(planProgress(planned, next), nameOf, planned.dayOne)).toBe("2 of 6 · next: Lumbar");
+      expect(progressLine(planProgress(planned, []), nameOf, planned.dayOne)).toBe(
+        "0 of 6 · day one: Leg Press, Compound Row and Lumbar",
+      );
+    });
   });
 });
 

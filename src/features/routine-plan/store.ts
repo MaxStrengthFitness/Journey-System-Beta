@@ -20,6 +20,14 @@
  *   makes Routine A when the client has none, or puts the plan on the
  *   routine they have, with the plan's first change.
  * - `savePlanChange`: every change after that.
+ *
+ * The consult is not Routine A (AJ, Oct 8 2026: "this also counts with the
+ * consult visit, sometimes the consult machines will not be the same as their
+ * a routine"). For a client starting out at the studio (Keep this lineup,
+ * Start's batch) the caller passes no machines: Routine A is made EMPTY and
+ * the plan carries the first visit's machines as `plan.dayOne`. Nothing here
+ * writes day one into Routine A by itself; the Wrap-up's ticks start it
+ * (`routineAfterWrapUp`), or a trainer editing Routine A on purpose.
  */
 import {
   collection,
@@ -41,8 +49,13 @@ export interface StartPlanInput {
   /** The client's home studio, as every routine carries it. */
   studioId: string;
   name: "Routine A" | "Routine B";
-  /** What the client does now: day one, or the routine as it stands. */
+  /**
+   * What the client does now: the routine as it stands (Save Routine A, Add
+   * a plan), or `[]` for a client starting out at the studio, whose first
+   * visit's machines ride on the plan (`plan.dayOne`), never here.
+   */
   machineIds: string[];
+  /** The plan, with `dayOne` when it came from a starting routine. */
   plan: RoutinePlan;
   /** The plan's first change, usually "start". */
   change: PlanChange;
@@ -63,6 +76,10 @@ export interface StartedPlan {
  * Nothing is written before the trainer keeps the lineup, and nothing waits
  * on this: the id is made on this iPad, so the caller draws Routine A at
  * once and the commit settles behind it.
+ *
+ * It writes exactly the `machineIds` it is given. For a client starting out
+ * that is `[]`: Routine A is made empty, with day one on the plan, because
+ * the consult is not Routine A.
  */
 export function startPlan(db: Firestore, input: StartPlanInput): StartedPlan {
   const batch = writeBatch(db);

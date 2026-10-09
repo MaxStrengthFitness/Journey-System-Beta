@@ -43,9 +43,35 @@ export interface RoutinePlan {
   /** Every machine the routine is meant to have, in order. */
   intended: string[];
   /**
-   * "A routine is being built" (AJ's toggle, Oct 7 2026). While it is on, the
-   * Wrap-up adds today's machines to the routine by default; once a trainer
-   * turns it off, the routine changes only on purpose.
+   * The first visit's machines: the starting routine's day one on this floor
+   * (floor ids), in the order the plan keeps them, which was checked against
+   * the Academy's sequencing rules when the plan was made. Routine A's plan
+   * only; absent on a plan put on a routine the client already has.
+   *
+   * Kept on the plan, never in Routine A, because the consult is not Routine
+   * A (AJ, Oct 8 2026: "this also counts with the consult visit, sometimes
+   * the consult machines will not be the same as their a routine"). A plan's
+   * first write leaves Routine A empty; while Routine A has nothing, a
+   * session runs day one by default (`runsDayOne`, `todayFor`, plan.ts), and
+   * the Wrap-up asks which of today's machines start Routine A, every one
+   * unticked (`nextTimeRows`). Nothing puts day one into Routine A by itself.
+   *
+   * Day one follows the road: a machine taken out of the plan, swapped,
+   * dropped by a new start or a re-plan, or marked can't do leaves day one
+   * the same way, so a visit while Routine A is empty never runs a machine
+   * the plan has let go; a reorder gives day one the order it gives day
+   * one's machines, and a reopened machine goes back where it stood
+   * (`CantDo.dayOneAt`). What a visit actually ran is its session's record,
+   * not this list.
+   */
+  dayOne?: string[];
+  /**
+   * "A routine is being built" (AJ's toggle, Oct 7 2026). While it is on and
+   * Routine A has machines, the Wrap-up adds today's machines to the routine
+   * by default; once a trainer turns it off, the routine changes only on
+   * purpose. While Routine A is empty (the consult), every machine is
+   * offered unticked either way, because the consult is not Routine A
+   * (`nextTimeRows`).
    */
   building: boolean;
   /** Weak areas the routine sets out to work, as muscle ids. */
@@ -113,15 +139,27 @@ export interface CantDo {
    * road (`reopenCantDo`). Absent is read as on the road.
    */
   onRoad?: boolean;
+  /**
+   * Where the machine stood on the plan's day one when it was marked (its
+   * index), so reopening puts it back there when nothing stands in for it
+   * on day one (`reopenCantDo`). Absent when it wasn't on day one, or the
+   * plan has none.
+   */
+  dayOneAt?: number;
 }
 
 /**
  * What each kind of change carries in `machineIds` and `value`:
- * - "start": `machineIds` the plan's machines; `value` the starting
- *   routine's name when the plan came from one ("Low back issues"), so the
- *   Changes list can say where it started without reading the preset.
- * - "add": the machines added. "remove": the machines taken out.
- * - "swap": `[from, to]`. "reorder": the new order.
+ * - "start": `machineIds` the plan's machines (its road, never Routine A's,
+ *   which a plan for a client starting out leaves empty; day one keeps only
+ *   what is on it); `value` the starting routine's name when the plan came
+ *   from one ("Low back issues"), so the Changes list can say where it
+ *   started without reading the preset.
+ * - "add": the machines added (never to day one). "remove": the machines
+ *   taken out (of day one too).
+ * - "swap": `[from, to]` (on day one too). "reorder": the new order of the
+ *   road, as the screen draws it; day one takes the order it gives day one's
+ *   machines.
  * - "purpose": `value` the new words. "building": `value` "on" or "off".
  * - "focus": `value` the muscle ids, comma-separated.
  * - "cantdo": `[machineId]`; `value` "reason · until" (`cantDoValue`), the
@@ -129,8 +167,9 @@ export interface CantDo {
  *   what stood in) rides beside the change (`applyPlanChange`'s third
  *   argument, `planWithCantDo`).
  * - "cando": `[machineId]`, the machine reopened.
- * - "replan": `machineIds` the new intended road; `value` what changed (one
- *   of `REPLAN_REASONS`, or the trainer's words).
+ * - "replan": `machineIds` the new intended road (day one keeps only what
+ *   is still on it); `value` what changed (one of `REPLAN_REASONS`, or the
+ *   trainer's words).
  * - "column": `value` the Academy sheet column picked, or "none".
  */
 export type PlanChangeKind =
