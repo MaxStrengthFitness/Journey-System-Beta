@@ -10,7 +10,7 @@ AJ called the old screen "a sad list". What he wants from it, in his words: "whe
 | --- | --- |
 | `row.ts` | **One row per client**: what every cell says and the key it sorts by. `prepareDirectory` indexes the held bookings and the last day's sessions once; `buildDirectoryRow` / `buildDirectoryRows` do the rest. Pure |
 | `buckets.ts` | The sorts, their words ("Last in: most recent first"), and the sections each sort breaks the list into. Unknowns always last, ties by the name she goes by. Pure |
-| `search.ts` | The one name matcher: normalisation, the nickname table (read both ways), tiers, labelled close matches, bold ranges. Pure |
+| `search.ts` | The one name matcher: normalisation, the nickname table (read both ways), tiers, labelled close matches, bold ranges. Pure. The Active Session's Who's this? picker finds people with it too (`features/tracker/ClientSelectionDialog.tsx`, the open session round, Oct 9 2026) |
 | `tokens.ts` | Descriptions become removable filters ("female nurses over 60", "5'6", "renewing this month"), with "not on file" counts and ambiguity reporting. Pure |
 | `SortPicker.tsx` | The sort: a pill that says it in words and a panel of tiles grouped Visits · Sessions and package · The person, with the order as a two-way switch (Oct 3 2026, AJ: the drop-down was "so basic and just an eye sore to open"). On the Hub's scale: 40px controls, 14px/700, 11px caps labels, the peek's card |
 | `views.ts` | All · Mine · Kaizen · In today, the Mine definition, and the sort remembered per trainer on this iPad |

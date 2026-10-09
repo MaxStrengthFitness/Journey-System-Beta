@@ -2653,6 +2653,12 @@ div.jg-today { cursor: default; }
 .jg-sbar__btn:active { background: var(--jg-surface-3); transform: translateY(1px); box-shadow: var(--jg-press); }
 .jg-sbar__btn span { display: none; }
 @media (min-width: 640px) { .jg-sbar__btn span { display: inline; } }
+/* Who's this? on an open session (the open session round, Oct 9 2026): the
+   same raised button, its words and icon in the live blue (a choice, never
+   the loud orange), and its words always shown: the icon alone says nothing. */
+.jg-sbar__btn--who { color: var(--jg-live-text); }
+.jg-sbar__btn--who svg { color: var(--jg-live-text); }
+.jg-sbar__btn--who span { display: inline; }
 
 /* A gap that is a decision: everything left of it is pressed all session;
    everything right of it ends the session. */

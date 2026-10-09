@@ -7199,3 +7199,154 @@ describe("oct8 first session: starting routines and a studio's choice", () => {
     await assertFails(forged.commit());
   });
 });
+
+// WHO'S THIS? (the open session round, Oct 9 2026). An open session's sets
+// carry no client; naming the client is ONE batch that gives the session its
+// client and every set the same one (src/features/open-session/assign.ts).
+// The set rule kept a set's client fixed, so Assign moved the session and
+// its sets were refused, silently. Now a set with no client may take the
+// client its own session is given in the same batch, while that session is
+// still open, and nothing else about a set's client may change.
+describe("open session: Who's this? gives the session and its sets one client", () => {
+  const OPEN = "openSess";
+  const CLIENT = "assignClient";
+  const SETS = [
+    { id: `${OPEN}_m-leg-press`, machineId: "m-leg-press" },
+    { id: `${OPEN}_m-pulldown`, machineId: "m-pulldown" },
+    { id: `${OPEN}_m-torso-rotation_Left`, machineId: "m-torso-rotation", side: "Left" },
+    { id: `${OPEN}_m-torso-rotation_Right`, machineId: "m-torso-rotation", side: "Right" },
+  ];
+  const as = (uid: string) => testEnv.authenticatedContext(uid).firestore();
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "clients", CLIENT), {
+        firstName: "Sam", lastName: "Open", isActive: true, homeStudioId: "studioA", sessionCount: 4,
+      });
+      // As Open session starts one: no client, an empty list, run by trainerA at studio A.
+      await setDoc(doc(db, "sessions", OPEN), {
+        isUnassigned: true, sessionType: "Standard", sessionNumber: 0, date: "2026-10-09",
+        hostedAtStudioId: "studioA", clientHomeStudioId: null, isCrossTrain: false,
+        sessionMachineIds: ["m-leg-press", "m-pulldown", "m-torso-rotation"],
+        trainerInitials: "TA", trainerName: "Trainer A", trainerId: "trainerA", startedByTrainerId: "trainerA",
+        status: "In-Progress", pausedAt: null, totalPausedMs: 0,
+      });
+      // Its sets, as the tracker writes them with no client: no clientId field at all.
+      for (const s of SETS) {
+        await setDoc(doc(db, "exerciseLogs", s.id), {
+          sessionId: OPEN, machineId: s.machineId, ...(s.side ? { side: s.side } : {}),
+          weight: "100", reps: "10", machineSettings: {}, studioId: "studioA", homeStudioId: "", clientHomeStudioId: "",
+        });
+      }
+    });
+  });
+
+  /** The assign batch as the tracker builds it. */
+  const assignBatch = (
+    db: ReturnType<typeof as>,
+    client = CLIENT,
+    setClient = client,
+    sets: { id: string; machineId: string }[] = SETS,
+  ) => {
+    const b = writeBatch(db);
+    b.update(doc(db, "sessions", OPEN), {
+      clientId: client, isUnassigned: false, mindbodyClientId: null, clientName: "Sam Open",
+      homeStudioId: "studioA", clientHomeStudioId: "studioA", isCrossTrain: false, sessionNumber: 5,
+      lastHeartbeatAt: serverTimestamp(),
+    });
+    for (const s of sets) {
+      b.set(doc(db, "exerciseLogs", s.id), {
+        sessionId: OPEN, machineId: s.machineId, clientId: setClient, homeStudioId: "studioA", clientHomeStudioId: "studioA",
+      }, { merge: true });
+    }
+    return b;
+  };
+
+  it("passes for the session's trainer: the session and every set get the client in one batch", async () => {
+    const db = as("trainerA");
+    await assertSucceeds(assignBatch(db).commit());
+    const after = await getDoc(doc(db, "exerciseLogs", SETS[2].id));
+    expect(after.data()?.clientId).toBe(CLIENT);
+    expect(after.data()?.weight).toBe("100");
+  });
+
+  /* The review (Oct 9 2026): each set's rule reads the trainer, the session
+     before the write and the session after it, against a limit of 20
+     document reads a batch. Four sets could not tell whether repeated reads
+     of the same documents are counted once, so this assigns a whole
+     FileMaker-floor session: the four above and eight more machines on both
+     sides, twenty sets in one batch with the session. */
+  it("passes for a whole floor's session: twenty sets and the session in one batch", async () => {
+    const more = Array.from({ length: 8 }, (_, i) => `m-floor-${i + 1}`).flatMap((machineId) =>
+      (["Left", "Right"] as const).map((side) => ({ id: `${OPEN}_${machineId}_${side}`, machineId, side })),
+    );
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      for (const s of more) {
+        await setDoc(doc(db, "exerciseLogs", s.id), {
+          sessionId: OPEN, machineId: s.machineId, side: s.side,
+          weight: "80", reps: "9", machineSettings: {}, studioId: "studioA", homeStudioId: "", clientHomeStudioId: "",
+        });
+      }
+    });
+    const all = [...SETS, ...more];
+    expect(all).toHaveLength(20);
+    const db = as("trainerA");
+    await assertSucceeds(assignBatch(db, CLIENT, CLIENT, all).commit());
+    const last = await getDoc(doc(db, "exerciseLogs", all[19].id));
+    expect(last.data()?.clientId).toBe(CLIENT);
+    expect(last.data()?.reps).toBe("9");
+  });
+
+  it("a set that has a client can't be moved, even in the assign batch", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), "exerciseLogs", SETS[0].id), { clientId: "someoneElse" });
+    });
+    await assertFails(assignBatch(as("trainerA")).commit());
+  });
+
+  it("a set can't take a client its session doesn't get", async () => {
+    await assertFails(assignBatch(as("trainerA"), CLIENT, "someoneElse").commit());
+  });
+
+  it("a set can't take a client on its own, with the session left open", async () => {
+    const db = as("trainerA");
+    await assertFails(
+      setDoc(doc(db, "exerciseLogs", SETS[0].id), { sessionId: OPEN, machineId: "m-leg-press", clientId: CLIENT }, { merge: true }),
+    );
+  });
+
+  it("once the session has its client, a set left behind can't follow on its own", async () => {
+    const db = as("trainerA");
+    const b = writeBatch(db);
+    b.update(doc(db, "sessions", OPEN), { clientId: CLIENT, isUnassigned: false });
+    b.set(doc(db, "exerciseLogs", SETS[0].id), { sessionId: OPEN, machineId: "m-leg-press", clientId: CLIENT }, { merge: true });
+    await assertSucceeds(b.commit());
+    await assertFails(
+      setDoc(doc(db, "exerciseLogs", SETS[1].id), { sessionId: OPEN, machineId: "m-pulldown", clientId: CLIENT }, { merge: true }),
+    );
+    // ...while a set that has the client is written as before.
+    await assertSucceeds(
+      setDoc(doc(db, "exerciseLogs", SETS[0].id), { sessionId: OPEN, machineId: "m-leg-press", reps: "11" }, { merge: true }),
+    );
+  });
+
+  it("a set can't change sessions on the way", async () => {
+    const db = as("trainerA");
+    const b = writeBatch(db);
+    b.update(doc(db, "sessions", OPEN), { clientId: CLIENT, isUnassigned: false });
+    b.set(doc(db, "exerciseLogs", SETS[0].id), { sessionId: "sessionA", machineId: "m-leg-press", clientId: CLIENT }, { merge: true });
+    await assertFails(b.commit());
+  });
+
+  it("a trainer the session is nothing to is refused the batch", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "trainers", "trainerC"), {
+        fullName: "Trainer C", initials: "TC", role: "LifeTransformer",
+        primaryHomeStudioId: "studioC", accessibleStudioIds: ["studioC"],
+      });
+    });
+    await assertFails(assignBatch(as("trainerC")).commit());
+  });
+});

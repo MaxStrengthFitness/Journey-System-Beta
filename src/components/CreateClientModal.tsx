@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UserPlus, Loader2, AlertTriangle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { Client, Studio } from "../types";
-import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
+import { sayAfterClose } from "../features/machine-menu/late-refusal";
+import { useUnsavedChanges } from "../features/unsaved-changes";
 import { canSaveNewClient, newClientPayload } from "../lib/new-client-intake";
 import { studiosInRealm } from "../features/demo-mode/access";
 import {
@@ -26,13 +27,28 @@ import {
  * onto her real record once Mindbody has her. The "Existing client" tab and
  * its route to the legacy chart importer are gone: Journey no longer waits on
  * FileMaker.
+ *
+ * Saving never waits on the network (the open session round's review, Oct 9
+ * 2026: a tap on the floor never waits). The id is made on the iPad, the
+ * write is issued, and the new client is handed on in the same tap, so an
+ * open session is given to them at once, offline too; a refusal is said in a
+ * toast. Before, Save awaited the write: offline it said "Saving" for ever,
+ * and a session waiting on it was never given to anyone. The form's typing
+ * is registered (features/unsaved-changes), and let go the moment it is
+ * saved, so handing the client on never asks about the very form it saves.
  */
 
 interface CreateClientModalProps {
   clients: Client[];
   initialName?: string;
   onClose: () => void;
-  onClientCreated: (clientId: string) => void;
+  /**
+   * The new client (or the one already on file, from the duplicate warning),
+   * with what was written: an open session gives itself to them at once,
+   * before the studio's client list has them (the open session round, Oct 9
+   * 2026).
+   */
+  onClientCreated: (clientId: string, client?: Client) => void;
   studios: Studio[];
   /**
    * The studio this iPad is working in. The home studio starts on it and can
@@ -69,7 +85,25 @@ export function CreateClientModal({
 
   // Submission & Validation States
   const [isSubmitting, setIsSubmitting] = useState(false);
+  /* Saved once: a second tap landing in the same moment adds nobody else. */
+  const savedRef = useRef(false);
   const [duplicateWarning, setDuplicateWarning] = useState<Client | null>(null);
+
+  /* Typing here is typing a leave asks about: over an open session the form
+     is drawn on the session, and a screen change would take it away. */
+  const startFirst = nameParts[0] || "";
+  const startLast = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
+  const dirty =
+    firstName !== startFirst ||
+    lastName !== startLast ||
+    !!phone ||
+    !!email ||
+    !!gender ||
+    !!age ||
+    !!discoveryNotes ||
+    homeStudioId !== (activeStudioId || "") ||
+    reason !== ADD_CLIENT_REASONS[0];
+  const unsaved = useUnsavedChanges(dirty, "the new client", { onDiscard: onClose });
 
   const canSave = canSaveNewClient({ firstName, lastName, homeStudioId });
 
@@ -77,7 +111,7 @@ export function CreateClientModal({
   // offer is Demo Mode, and from anywhere else Demo Mode is never offered.
   const homeStudioChoices = studiosInRealm(studios, activeStudioId);
 
-  const executeSave = async (force: boolean = false) => {
+  const executeSave = (force: boolean = false) => {
     if (!canSave) return;
 
     if (!force) {
@@ -92,49 +126,55 @@ export function CreateClientModal({
       }
     }
 
+    if (savedRef.current) return;
+    savedRef.current = true;
     setIsSubmitting(true);
 
-    try {
-      // Only what was answered: no placeholder height, no invented package,
-      // no blank fields (lib/new-client-intake.ts).
-      const clientData = newClientPayload({
-        kind: "prospect",
-        firstName,
-        lastName,
-        phone,
-        email,
-        gender,
-        age,
-        homeStudioId,
-        discoveryNotes,
-      });
+    // Only what was answered: no placeholder height, no invented package,
+    // no blank fields (lib/new-client-intake.ts).
+    const clientData = newClientPayload({
+      kind: "prospect",
+      firstName,
+      lastName,
+      phone,
+      email,
+      gender,
+      age,
+      homeStudioId,
+      discoveryNotes,
+    });
 
-      const docRef = await addDoc(collection(db, "clients"), {
-        ...clientData,
-        ...provisionalStamp({ reason, authorId }),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+    /* The id is made here, and the write is issued, never awaited. */
+    const ref = doc(collection(db, "clients"));
+    const name = `${clientData.firstName ?? ""} ${clientData.lastName ?? ""}`.trim() || "The new client";
+    setDoc(ref, {
+      ...clientData,
+      ...provisionalStamp({ reason, authorId }),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }).catch((e) => {
+      console.error("[add client] the new client was refused", e);
+      sayAfterClose(`${name} wasn't added to the studio's clients. Add them again.`);
+    });
 
-      onClientCreated(docRef.id);
-      onClose();
-    } catch (e) {
-      handleFirestoreError(e, OperationType.CREATE, "clients");
-    } finally {
-      setIsSubmitting(false);
-    }
+    unsaved.release();
+    onClientCreated(ref.id, { id: ref.id, ...clientData } as Client);
+    onClose();
   };
 
   const handleSaveClick = () => executeSave(false);
 
   return (
-    // Rendered before the app shell exists (AppContent returns it early), so it
-    // keeps clear of the iPad status bar and home indicator itself
+    // A fixed layer at the true edge: rendered before the app shell exists
+    // (AppContent returns it early), or over an open session (the tracker
+    // portals it to the page, the open session round, Oct 9 2026). Either way
+    // it keeps clear of the iPad status bar and home indicator itself
     // (features/home-screen), and the card may use all the height between.
-    <div className="fixed inset-0 z-40 flex items-center justify-center px-4 sm:px-6 pt-safe-4 pb-safe-4 sm:pt-safe-6 sm:pb-safe-6 bg-slate-900/60 dark:bg-slate-950/90">
+    // The veil is the navy scrim every dialog uses, never a raw slate.
+    <div className="fixed inset-0 z-40 flex items-center justify-center px-4 sm:px-6 pt-safe-4 pb-safe-4 sm:pt-safe-6 sm:pb-safe-6 bg-(--scrim)">
       <Card className="w-full max-w-2xl bg-card border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-full rounded-[32px] overflow-hidden relative text-foreground">
         {duplicateWarning && (
-          <div className="absolute inset-0 z-50 bg-slate-950/50 dark:bg-slate-950/80 flex items-center justify-center p-6">
+          <div className="absolute inset-0 z-50 bg-(--scrim) flex items-center justify-center p-6">
             <div className="bg-card border border-amber-500 rounded-[24px] p-8 max-w-md w-full shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-2 bg-amber-500"></div>
               <div className="flex flex-col items-center text-center gap-6">
@@ -159,8 +199,9 @@ export function CreateClientModal({
                     variant="outline"
                     className="flex-1 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                     onClick={() => {
+                      unsaved.release();
                       if (duplicateWarning.id) {
-                        onClientCreated(duplicateWarning.id);
+                        onClientCreated(duplicateWarning.id, duplicateWarning);
                       }
                       onClose();
                     }}

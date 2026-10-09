@@ -200,7 +200,20 @@ export async function completeWorkoutSession(
    * written only where nothing newer is on file — a session finished days
    * late must never overwrite what she did since.
    */
-  options?: { asOfDay?: string | null },
+  options?: {
+    asOfDay?: string | null;
+    /**
+     * Whether a machine missing from `clientMachineSettings` is KNOWN to have
+     * nothing on file: the server has answered the client's settings (the
+     * open session round's review, Oct 9 2026). False when they have not
+     * (an open session given its client at Finish, a moment ago, or a read
+     * the iPad's cache answered empty): a machine with no entry then writes
+     * only today's weight, never `settings: {}` (a merge would still replace
+     * the client's saved seat and positions with nothing) and never a
+     * starting weight over the one on file. Leaving it out means known.
+     */
+    settingsOnFileKnown?: boolean;
+  },
 ): Promise<{ totalsSaved: boolean | null }> {
   if (!currentSession?.id) return { totalsSaved: null };
   const batch = writeBatch(db);
@@ -390,13 +403,16 @@ export async function completeWorkoutSession(
           const settingId = `${selectedClient.id}_${log.machineId}`;
           const settingRef = doc(db, 'clientMachineSettings', settingId);
           const currentSettingsObj = clientMachineSettings[log.machineId];
+          /* Unknown is never "nothing on file": with no entry and the
+             client's settings not answered by the server, the stored seat,
+             positions and starting weight are left exactly as they are. */
+          const onFileKnown = options?.settingsOnFileKnown !== false || !!currentSettingsObj;
 
           const updateObj: any = {
             clientId: selectedClient.id,
             homeStudioId: homeStudioId,
             clientHomeStudioId: homeStudioId,
             machineId: log.machineId,
-            settings: currentSettingsObj?.settings || {},
             updatedBy: userId,
             currentWeight: Number(log.weight),
             // A weight set for this session at the last Wrap-up is used up now
@@ -404,8 +420,9 @@ export async function completeWorkoutSession(
             nextWeight: deleteField(),
             updatedAt: serverTimestamp()
           };
+          if (onFileKnown) updateObj.settings = currentSettingsObj?.settings || {};
 
-          if (!currentSettingsObj?.startingWeight) {
+          if (onFileKnown && !currentSettingsObj?.startingWeight) {
             updateObj.startingWeight = Number(log.weight);
             updateObj.startingWeightDate = new Date().toISOString();
           }

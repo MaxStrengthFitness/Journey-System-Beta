@@ -868,6 +868,24 @@ service cloud.firestore {
              data.machineId is string;
     }
 
+    /* WHO'S THIS? (the open session round, Oct 9 2026). An open session is
+       started before its client is chosen, so its sets carry no client; the
+       trainer names the client later, mid-session or at Finish, in ONE batch
+       that gives the session its client and every set the same one
+       (src/features/open-session/assign.ts). A set's client never changes
+       otherwise. This is the one way it may: a set with NO client takes the
+       client its own session is given in the same write, and only while that
+       session is still open (unassigned before the write). A set that has a
+       client keeps it; a set cannot take a client its session doesn't get;
+       and once the session has a client, a set on its own cannot follow. */
+    function logTakesItsSessionsClient(before, after) {
+      return before.get('clientId', null) == null
+          && after.get('clientId', null) is string
+          && after.clientId.size() > 0
+          && get(/databases/$(database)/documents/sessions/$(after.sessionId)).data.get('isUnassigned', false) == true
+          && getAfter(/databases/$(database)/documents/sessions/$(after.sessionId)).data.get('clientId', null) == after.clientId;
+    }
+
     function isValidSchedule(data) {
       return hasRequiredFields(['clientName', 'trainerName', 'startTime', 'endTime', 'status', 'serviceName', 'source']);
     }
@@ -2407,8 +2425,10 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isAnyAuthenticatedTrainer() && isValidLog(request.resource.data);
       allow update: if isAuthenticated() && isAnyAuthenticatedTrainer() && isValidLog(request.resource.data) && (
-        resource.data.get('sessionId', null) == request.resource.data.get('sessionId', null) &&
-        resource.data.get('clientId', null) == request.resource.data.get('clientId', null)
+        resource.data.get('sessionId', null) == request.resource.data.get('sessionId', null) && (
+          resource.data.get('clientId', null) == request.resource.data.get('clientId', null)
+          || logTakesItsSessionsClient(resource.data, request.resource.data)
+        )
       );
       /* HISTORY EDITING (Sep 17 2026). Taking a machine off a session that
          already happened means deleting its set, and only a super admin or a

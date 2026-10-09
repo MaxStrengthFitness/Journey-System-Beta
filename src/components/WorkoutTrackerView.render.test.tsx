@@ -35,7 +35,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { StrictMode, act } from "react";
+import { StrictMode, act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
 /* ------------------------------------------------------------------ *
@@ -211,6 +211,16 @@ const netCtl = {
   /** While true, a batch's commit waits for the test to refuse it (`refusals`). */
   refuseLater: false,
   refusals: [] as ((e: unknown) => void)[],
+  /** The iPad's own copy can't be read (getDocsFromCache throws). */
+  cacheFails: false,
+  /** The sessions listeners hold only the sessions their equality clauses name (clientId, isUnassigned, ...). */
+  filterSessions: false,
+  /** While set, a read of the session's sets (the iPad's copy and the server's) waits on it (Who's this?, Oct 9 2026). */
+  readGate: null as Promise<void> | null,
+  /** The iPad's copy holds none of the session's sets (they were typed on another iPad). */
+  cacheEmpty: false,
+  /** How many times the SERVER was asked for a session's sets (`getDocs` on exerciseLogs). */
+  serverLogReads: 0,
 };
 const never = () => new Promise<any>(() => {});
 
@@ -260,7 +270,13 @@ vi.mock("firebase/firestore", async (importOriginal) => {
         return () => {};
       }
       const emit = () => {
-        const docs = docsFor(at);
+        // Opt in: the sessions a query names by equality, as Firestore answers it (Who's this?, Oct 9 2026).
+        const docs =
+          netCtl.filterSessions && at === 'sessions'
+            ? docsFor(at).filter((d: any) =>
+                (q?.__where ?? []).every((w: any) => Array.isArray(w.value) || d.data()?.[w.field] === w.value),
+              )
+            : docsFor(at);
         // Both shapes: the briefing (mounted since the Sep 24 tests) also
         // listens to single documents, which answer exists()/data().
         const single = singleDocs[at];
@@ -285,7 +301,18 @@ vi.mock("firebase/firestore", async (importOriginal) => {
       };
     },
     getDocs: async (q: any) => {
+      if (q?.__path === "exerciseLogs") {
+        netCtl.serverLogReads += 1;
+        if (netCtl.readGate) await netCtl.readGate;
+      }
       const docs = docsFor(q?.__path ?? "");
+      return { docs, size: docs.length, empty: docs.length === 0, forEach: (f: any) => docs.forEach(f) };
+    },
+    // The iPad's own copy (Who's this?, the open session round, Oct 9 2026): what the database holds, at once.
+    getDocsFromCache: async (q: any) => {
+      if (netCtl.readGate) await netCtl.readGate;
+      if (netCtl.cacheFails) throw new Error("the iPad's copy could not be read");
+      const docs = netCtl.cacheEmpty ? [] : docsFor(q?.__path ?? "");
       return { docs, size: docs.length, empty: docs.length === 0, forEach: (f: any) => docs.forEach(f) };
     },
     getDoc: async (ref: any) => {
@@ -478,6 +505,11 @@ beforeEach(() => {
   netCtl.fail = new Set();
   netCtl.refuseLater = false;
   netCtl.refusals = [];
+  netCtl.cacheFails = false;
+  netCtl.filterSessions = false;
+  netCtl.readGate = null;
+  netCtl.cacheEmpty = false;
+  netCtl.serverLogReads = 0;
   setViewSpy.mockClear();
   Object.defineProperty(navigator, "onLine", { configurable: true, get: () => true });
   sessionDocs = SESSION_DOCS;
@@ -539,7 +571,6 @@ function Tracker({ who = client }: { who?: Client } = {}) {
       user={{ uid: "uid-coach", email: "coach@maxstrengthfitness.com" } as any}
       setView={setViewSpy}
       setSelectedClientId={vi.fn()}
-      onStartNewClientOnboarding={vi.fn()}
       authTrainer={trainer}
       isSyncing={false}
       setIsSyncing={vi.fn()}
@@ -937,7 +968,6 @@ describe("the Active Session never draws a blank page (session record, Sep 26 20
         user={{ uid: "uid-coach", email: "coach@maxstrengthfitness.com" } as any}
         setView={props.setView}
         setSelectedClientId={vi.fn()}
-        onStartNewClientOnboarding={vi.fn()}
         authTrainer={trainer}
         isSyncing={false}
         setIsSyncing={vi.fn()}
@@ -1170,7 +1200,6 @@ describe("a session another trainer is running opens read-only, and live (sessio
           user={{ uid: "uid-coach", email: "coach@maxstrengthfitness.com" } as any}
           setView={vi.fn()}
           setSelectedClientId={vi.fn()}
-          onStartNewClientOnboarding={vi.fn()}
           authTrainer={trainer}
           isSyncing={false}
           setIsSyncing={vi.fn()}
@@ -1221,7 +1250,6 @@ describe("an open session on the Active Session (the open session round, Oct 9 2
         user={{ uid: "uid-coach", email: "coach@maxstrengthfitness.com" } as any}
         setView={vi.fn()}
         setSelectedClientId={vi.fn()}
-        onStartNewClientOnboarding={vi.fn()}
         authTrainer={trainer}
         isSyncing={false}
         setIsSyncing={vi.fn()}
@@ -1343,7 +1371,6 @@ describe("the FileMaker floor (the open session round, Oct 9 2026)", () => {
         user={{ uid: "uid-coach", email: "coach@maxstrengthfitness.com" } as any}
         setView={vi.fn()}
         setSelectedClientId={vi.fn()}
-        onStartNewClientOnboarding={vi.fn()}
         authTrainer={trainer}
         isSyncing={false}
         setIsSyncing={vi.fn()}
@@ -2918,5 +2945,547 @@ describe("the Wrap-up's Next time, from Finish to the routine (Oct 8 2026)", () 
     const out = routineWrites();
     expect(out).toHaveLength(1);
     expect(out[0].data).toMatchObject({ clientId: CLIENT_ID, name: "Routine A", machineIds: ["sm-solon-rear-delt"] });
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Who's this? (the open session round, Oct 9 2026; finding 3)
+ * ------------------------------------------------------------------ */
+
+/**
+ * AJ's picks "1b 2a 3a" (docs/rounds/2026-10-09-open-session.md §3): "Who's
+ * this? in the session bar assigns the client at any time, or still at
+ * Finish. After that it is an ordinary client session: the client's
+ * settings, history, the Wrap-up and Next time." Assign used to await every
+ * step, write the sets one at a time (refused by the rules), mark the session
+ * Completed and open the profile, so Finish never ran, and New client left
+ * the session behind.
+ */
+describe("Who's this? gives an open session its client (the open session round, Oct 9 2026)", () => {
+  const OPEN_ID = "sess-open";
+  const settle = async () => {
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+  };
+  /** The open session as the database holds it: Open session's fields, with every write to it since laid over them. */
+  const openSessionAsWritten = () => {
+    const now = new Date();
+    const out: Record<string, unknown> = {
+      isUnassigned: true,
+      status: "In-Progress",
+      sessionType: "Standard",
+      sessionNumber: 0,
+      trainerId: "t-doc",
+      startedByTrainerId: "t-doc",
+      trainerInitials: "JC",
+      hostedAtStudioId: STUDIO_ID,
+      clientHomeStudioId: null,
+      sessionMachineIds: ["m-leg-press"],
+      startTime: now,
+      lastHeartbeatAt: now,
+      createdAt: now,
+    };
+    for (const w of writes) {
+      if (w.path !== `sessions/${OPEN_ID}`) continue;
+      for (const [k, v] of Object.entries(w.data ?? {})) {
+        if (v && typeof v === "object" && "__server" in (v as object)) continue;
+        out[k] = v;
+      }
+    }
+    return out;
+  };
+  /** A set on the open session, typed before anyone knew who it was: no client. */
+  const openSet = (machineId: string) => ({
+    id: `${OPEN_ID}_${machineId}`,
+    data: () => ({ sessionId: OPEN_ID, machineId, weight: "100", reps: "10", studioId: STUDIO_ID }),
+  });
+  /** What AppContent does with the client on screen: the tracker sets it, and it comes back as the clientId. */
+  const chosen: (string | null)[] = [];
+  /** Which of AppContent's setters each change came through: the one that asks first, or the raw one. */
+  const via: ("asks" | "now")[] = [];
+  function Floor({ people = [client] }: { people?: Client[] }) {
+    const [cid, setCid] = useState<string | null>(null);
+    return (
+      <WorkoutTrackerView
+        clientId={cid}
+        clients={people}
+        machines={appWideMachines}
+        trainers={[trainer]}
+        user={{ uid: "uid-coach", email: "coach@maxstrengthfitness.com" } as any}
+        setView={setViewSpy}
+        setSelectedClientId={(id) => {
+          chosen.push(id);
+          via.push("asks");
+          setCid(id);
+        }}
+        setSelectedClientIdNow={(id) => {
+          chosen.push(id);
+          via.push("now");
+          setCid(id);
+        }}
+        authTrainer={trainer}
+        isSyncing={false}
+        setIsSyncing={vi.fn()}
+        schedules={[]}
+      />
+    );
+  }
+  beforeEach(() => {
+    chosen.length = 0;
+    via.length = 0;
+    // The client's sessions stream holds this session once the batch has given it the client, not before.
+    netCtl.filterSessions = true;
+    sessionDocs = [{ id: OPEN_ID, data: openSessionAsWritten }];
+    netCtl.logs = [openSet("m-leg-press"), openSet("sm-solon-rear-delt")];
+  });
+
+  const barName = (host: HTMLElement) => host.querySelector(".jg-sbar__name")?.textContent;
+  const whoButton = (host: HTMLElement) => host.querySelector<HTMLButtonElement>("button.jg-sbar__btn--who");
+  const button = (text: string) =>
+    Array.from(document.querySelectorAll<HTMLButtonElement>("button")).find((b) => b.textContent?.trim() === text);
+  const pick = async (name: string) => {
+    const row = Array.from(document.querySelectorAll('[data-testid="client-picker-name"]')).find((n) => n.textContent === name);
+    expect(row, `${name} in the picker`).toBeTruthy();
+    await act(async () => (row!.closest("button") as HTMLButtonElement).click());
+    await settle();
+    await settle();
+    // The iPad's copy has the batch now: the client's sessions stream says so, as Firestore's own cache does.
+    await act(async () => {
+      for (const l of snapshotListeners.filter((x) => x.live && x.path === "sessions")) l.emit();
+    });
+    await settle();
+  };
+  const sessionAssignWrite = () =>
+    writes.find((w) => w.path === `sessions/${OPEN_ID}` && w.data?.isUnassigned === false && (w.batch ?? 0) > 0);
+  const type = async (input: HTMLInputElement, value: string) => {
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  };
+  /** Taps a name in the picker and nothing more: the reads may still be out. */
+  const tapName = async (name: string) => {
+    const row = Array.from(document.querySelectorAll('[data-testid="client-picker-name"]')).find((n) => n.textContent === name);
+    expect(row, `${name} in the picker`).toBeTruthy();
+    await act(async () => (row!.closest("button") as HTMLButtonElement).click());
+  };
+  const gate = () => {
+    let open!: () => void;
+    netCtl.readGate = new Promise<void>((r) => (open = r));
+    return async () => {
+      await act(async () => {
+        open();
+        await new Promise((r) => setTimeout(r, 0));
+      });
+      await settle();
+    };
+  };
+  /** The new client Add client wrote: its id is made on the iPad. */
+  const madeClient = (first: string) => writes.find((w) => /^clients\/auto-\d+$/.test(w.path) && w.data?.firstName === first);
+  const addClient = async (first: string, last: string) => {
+    expect(document.body.textContent).toContain("Add a client");
+    await type(document.querySelector<HTMLInputElement>('input[placeholder="First"]')!, first);
+    await type(document.querySelector<HTMLInputElement>('input[placeholder="Last"]')!, last);
+    await act(async () => button("Create temporary profile")!.click());
+    await settle();
+    await settle();
+  };
+
+  it("an open session says so, and its bar has Who's this? in place of Notes and Pulse", async () => {
+    const host = await mount(<Floor />);
+    expect(barName(host)).toBe("Open session");
+    expect(whoButton(host)).toBeTruthy();
+    expect(whoButton(host)!.textContent).toContain("Who's this?");
+    expect(host.querySelector('button[aria-label="Session notes"]')).toBeNull();
+  });
+
+  it("mid-session: the session carries on as the client's, at once and offline, with the client's listeners open", async () => {
+    netCtl.hang = true; // offline: no write ever answers
+    const host = await mount(<Floor />);
+    const openListeners = snapshotListeners.filter(
+      (l) => l.path === "sessions" && (l.where ?? []).some((w) => w.field === "isUnassigned"),
+    );
+    expect(openListeners.length).toBeGreaterThan(0);
+    await act(async () => whoButton(host)!.click());
+    expect(document.body.textContent).toContain("Choose the client. The session carries on as theirs.");
+    await pick("Judy Client");
+
+    // The same session, now the client's: no new session, nothing finished, no profile.
+    expect(chosen).toEqual([CLIENT_ID]);
+    expect(barName(host)).toBe("Judy Client");
+    expect(host.querySelector(".jg-sbar__finish")).toBeTruthy();
+    expect(whoButton(host)).toBeNull();
+    expect(host.querySelector('button[aria-label="Session notes"]')).toBeTruthy();
+    expect(host.querySelector('[data-testid="nothing-on-screen"]')).toBeNull();
+    expect(writes.filter((w) => w.path.startsWith("sessions/auto-"))).toEqual([]);
+    expect(writes.some((w) => w.data?.status === "Completed")).toBe(false);
+    expect(setViewSpy).not.toHaveBeenCalledWith("profile");
+    // The open sessions' listener closed; the client's settings and routines opened.
+    expect(openListeners.every((l) => !l.live)).toBe(true);
+    for (const coll of ["clientMachineSettings", "routines"]) {
+      const live = snapshotListeners.filter((l) => l.live && l.path === coll);
+      expect(live.length, coll).toBeGreaterThan(0);
+      expect(live.every((l) => (l.where ?? []).some((w) => w.field === "clientId" && w.value === CLIENT_ID)), coll).toBe(true);
+    }
+    // Today's list is the session's still: the machine added stays added.
+    expect(host.querySelector('[aria-label$="machines logged"]')?.getAttribute("aria-label")).toMatch(/of 1 machines logged$/);
+  });
+
+  it("is ONE batch: the session gets the client's fields as Start writes them, and every set of the session gets the client", async () => {
+    const host = await mount(<Floor />);
+    await act(async () => whoButton(host)!.click());
+    await pick("Judy Client");
+
+    const session = sessionAssignWrite()!;
+    expect(session, "the session's write").toBeTruthy();
+    expect(session.data).toMatchObject({
+      clientId: CLIENT_ID,
+      isUnassigned: false,
+      clientName: "Judy Client",
+      homeStudioId: STUDIO_ID,
+      clientHomeStudioId: STUDIO_ID,
+      isCrossTrain: false,
+      // Her count is 11: this is her twelfth, numbered as Start numbers it.
+      sessionNumber: 12,
+      mindbodyClientId: null,
+    });
+    expect(session.data.status, "still running").toBeUndefined();
+    const sets = writes.filter((w) => w.path.startsWith("exerciseLogs/") && w.data?.clientId === CLIENT_ID);
+    expect(sets.map((w) => w.path).sort()).toEqual([`exerciseLogs/${OPEN_ID}_m-leg-press`, `exerciseLogs/${OPEN_ID}_sm-solon-rear-delt`]);
+    for (const w of sets) {
+      expect(w.batch, `${w.path} in the session's batch`).toBe(session.batch);
+      expect(w.merge, `${w.path} merged: its numbers untouched`).toBe(true);
+      expect(w.data).toEqual({
+        sessionId: OPEN_ID,
+        machineId: w.path.endsWith("m-leg-press") ? "m-leg-press" : "sm-solon-rear-delt",
+        clientId: CLIENT_ID,
+        homeStudioId: STUDIO_ID,
+        clientHomeStudioId: STUDIO_ID,
+      });
+    }
+    // Never one set at a time outside the batch.
+    expect(writes.filter((w) => w.path.startsWith("exerciseLogs/") && !w.batch && w.data?.clientId)).toEqual([]);
+    // The iPad's copy holds every set (its sets listener had the server's answer): the server isn't asked.
+    expect(netCtl.serverLogReads).toBe(0);
+    // Her twelfth session: her first Journey day is not hers to mark again.
+    expect(writes.some((w) => w.path === `clients/${CLIENT_ID}` && w.data && "firstSessionDate" in w.data)).toBe(false);
+    // Asked about at the tap, the client on screen changes without asking again.
+    expect(via).toEqual(["now"]);
+  });
+
+  it("a late answer from the open sessions' listener, the session gone from it, never takes the session off the screen", async () => {
+    const host = await mount(<Floor />);
+    const openListeners = snapshotListeners.filter(
+      (l) => l.path === "sessions" && (l.where ?? []).some((w) => w.field === "isUnassigned"),
+    );
+    await act(async () => whoButton(host)!.click());
+    await pick("Judy Client");
+    // Firestore may answer a listener once more as it closes: the session has left the open ones.
+    await act(async () => {
+      for (const l of openListeners) l.emit();
+    });
+    await settle();
+    expect(barName(host)).toBe("Judy Client");
+    // The session itself, not just the client's name: its progress and its clock are still drawn.
+    expect(host.querySelector('[aria-label$="machines logged"]')).toBeTruthy();
+    expect(host.querySelector(".jg-sbar__finish")).toBeTruthy();
+    expect(host.querySelector('[data-testid="nothing-on-screen"]')).toBeNull();
+  });
+
+  it("gives it to one client only, when two are tapped at once as the picker closes", async () => {
+    const other = { ...client, id: "c-sam", firstName: "Sam", lastName: "Other", sessionCount: 2 } as Client;
+    const host = await mount(<Floor people={[client, other]} />);
+    await act(async () => whoButton(host)!.click());
+    const rows = Array.from(document.querySelectorAll('[data-testid="client-picker-name"]')).map((n) => n.closest("button") as HTMLButtonElement);
+    await act(async () => {
+      rows[0].click();
+      rows[1].click();
+    });
+    await settle();
+    await settle();
+    const assigns = writes.filter((w) => w.path === `sessions/${OPEN_ID}` && w.data?.isUnassigned === false);
+    expect(assigns).toHaveLength(1);
+    expect(chosen).toHaveLength(1);
+  });
+
+  it("a set still on the typing timer is sent first, with no client, then named in the batch", async () => {
+    netCtl.logs = []; // nothing on record yet: the set typed is on this iPad only
+    const host = await mount(<Floor />);
+    const reps = host.querySelector<HTMLInputElement>('input[aria-label="reps to failure"]');
+    expect(reps).not.toBeNull();
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(reps!, "11");
+      reps!.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const legPress = `exerciseLogs/${OPEN_ID}_m-leg-press`;
+    expect(writes.filter((w) => w.path === legPress), "still on the typing timer").toHaveLength(0);
+    await act(async () => whoButton(host)!.click());
+    await pick("Judy Client");
+    const sent = writes.findIndex((w) => w.path === legPress && w.data?.reps === "11");
+    const named = writes.findIndex((w) => w.path === legPress && w.data?.clientId === CLIENT_ID);
+    expect(sent, "sent").toBeGreaterThanOrEqual(0);
+    expect(writes[sent].data.clientId, "sent before anyone knew who it was").toBeUndefined();
+    expect(named, "named in the batch").toBeGreaterThan(sent);
+    expect(writes[named].batch).toBe(sessionAssignWrite()!.batch);
+  });
+
+  it("with the iPad's copy unreadable, still names every set the screen holds", async () => {
+    netCtl.cacheFails = true;
+    const host = await mount(<Floor />);
+    await act(async () => whoButton(host)!.click());
+    await pick("Judy Client");
+    const session = sessionAssignWrite()!;
+    expect(session).toBeTruthy();
+    const sets = writes.filter((w) => w.path.startsWith("exerciseLogs/") && w.data?.clientId === CLIENT_ID && w.batch === session.batch);
+    expect(sets).toHaveLength(2);
+  });
+
+  it("at Finish: Assign to client, then the End session question comes back as the client's, and its Finish runs the Wrap-up with Next time", async () => {
+    const host = await mount(<Floor />);
+    await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
+    expect(document.body.textContent).toContain("Who is this session for?");
+    await act(async () => button("Assign to client")!.click());
+    expect(document.body.textContent).toContain("Choose the client, then finish their session.");
+    await pick("Judy Client");
+
+    // The question is back, now the client's: the note for the next trainer and Finish session.
+    expect(document.body.textContent).toContain("Note for the next trainer");
+    expect(document.body.textContent).not.toContain("Who is this session for?");
+    await act(async () => button("Finish session")!.click());
+    await settle();
+    await settle();
+
+    expect(document.body.textContent).toContain("Wrap-up · session saved");
+    expect(setViewSpy).not.toHaveBeenCalledWith("profile");
+    const finished = writes.find((w) => w.path === `sessions/${OPEN_ID}` && w.data?.status === "Completed")!;
+    expect(finished.data.clientId).toBe(CLIENT_ID);
+    expect(writes.some((w) => w.path === `clients/${CLIENT_ID}` && w.data?.completedSessions)).toBe(true);
+    // Next time: the open session's machine, offered to start Routine A.
+    const card = document.querySelector('[data-testid="next-time"]');
+    expect(card, "Next time").not.toBeNull();
+    expect(card!.textContent).toContain("Tick the ones that start Routine A.");
+    expect(card!.textContent).toContain("Leg Press (Hoist)");
+  });
+
+  it("a refused batch is said in a toast, and the session is open again on screen, never a blank one", async () => {
+    netCtl.refuseLater = true;
+    const host = await mount(<Floor />);
+    await act(async () => whoButton(host)!.click());
+    await pick("Judy Client");
+    expect(barName(host)).toBe("Judy Client");
+    const session = sessionAssignWrite()!;
+    // The database refuses it: its writes never landed.
+    for (let i = writes.length - 1; i >= 0; i--) if (writes[i].batch === session.batch) writes.splice(i, 1);
+    await act(async () => {
+      for (const refuse of netCtl.refusals.splice(0)) refuse(new Error("permission-denied"));
+    });
+    await settle();
+    await settle();
+    expect(document.body.textContent).toContain(
+      "The session didn't go onto Judy's record, so it is still open. Check the connection, then press Who's this? again.",
+    );
+    expect(chosen).toEqual([CLIENT_ID, null]);
+    expect(barName(host)).toBe("Open session");
+    expect(whoButton(host)).toBeTruthy();
+    expect(host.querySelector('[data-testid="nothing-on-screen"]')).toBeNull();
+  });
+
+  it("New client from Finish adds the person and gives them this session, which is never left behind", async () => {
+    const host = await mount(<Floor />);
+    await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
+    await act(async () => button("Create new client")!.click());
+    await addClient("Ana", "Walkin");
+
+    // The new client was written (its id made on the iPad), and the session given to them.
+    const made = madeClient("Ana")!;
+    expect(made, "the new client's write").toBeTruthy();
+    const newId = made.path.split("/")[1];
+    expect(chosen).toEqual([newId]);
+    expect(sessionAssignWrite()!.data).toMatchObject({ clientId: newId, clientName: "Ana Walkin", sessionNumber: 1, clientHomeStudioId: STUDIO_ID });
+    expect(writes.filter((w) => w.path.startsWith("exerciseLogs/") && w.data?.clientId === newId)).toHaveLength(2);
+    // Her first session: her first Journey day is marked, as a client Start marks it, in its own write.
+    const firstDay = writes.find((w) => w.path === `clients/${newId}` && w.data?.firstSessionDate);
+    expect(firstDay, "her first Journey day").toBeTruthy();
+    expect(firstDay!.batch ?? 0).toBe(0);
+    // Still the session, now hers, before the studio's client list has her; the question is back as hers.
+    expect(barName(host)).toBe("Ana Walkin");
+    expect(document.body.textContent).not.toContain("Add a client");
+    expect(button("Finish session")).toBeTruthy();
+    expect(setViewSpy).not.toHaveBeenCalledWith("clients");
+  });
+
+  it("New client from Who's this? mid-session, offline: the session carries on as the new client's, in the same tap", async () => {
+    netCtl.hang = true; // offline: the new client's write never answers, and nothing waits for it
+    const host = await mount(<Floor />);
+    await act(async () => whoButton(host)!.click());
+    await act(async () => button("New client")!.click());
+    await addClient("Ana", "Walkin");
+    const newId = madeClient("Ana")!.path.split("/")[1];
+    expect(chosen).toEqual([newId]);
+    expect(sessionAssignWrite()!.data.clientId).toBe(newId);
+    expect(barName(host)).toBe("Ana Walkin");
+    expect(host.querySelector(".jg-sbar__finish")).toBeTruthy();
+    expect(button("Finish session")).toBeUndefined();
+  });
+
+  /* The review's findings (Oct 9 2026). */
+  it("a set typed while the reads are out is in the batch: the sets are gathered when it is built, never at the tap", async () => {
+    netCtl.logs = []; // nothing on record yet
+    const open = gate();
+    const host = await mount(<Floor />);
+    await act(async () => whoButton(host)!.click());
+    await tapName("Judy Client");
+    expect(sessionAssignWrite(), "not built yet: the reads are out").toBeUndefined();
+    // The screen did not wait: the session is hers, and a set is typed on it.
+    expect(barName(host)).toBe("Judy Client");
+    const reps = host.querySelector<HTMLInputElement>('input[aria-label="reps to failure"]')!;
+    await type(reps, "12");
+    await open();
+    const legPress = `exerciseLogs/${OPEN_ID}_m-leg-press`;
+    const sent = writes.findIndex((w) => w.path === legPress && w.data?.reps === "12");
+    const named = writes.findIndex((w) => w.path === legPress && w.data?.clientId === CLIENT_ID && w.batch === sessionAssignWrite()!.batch);
+    expect(sent, "sent first, with no client").toBeGreaterThanOrEqual(0);
+    expect(writes[sent].data.clientId).toBeUndefined();
+    expect(named, "named in the batch").toBeGreaterThan(sent);
+  });
+
+  it("when the iPad's copy may not hold every set (its sets listener hasn't had the server's answer), the server's list is read and every set named", async () => {
+    netCtl.hold.add("exerciseLogs"); // the sets listener never answers
+    netCtl.cacheEmpty = true; // typed on another iPad: this one's copy has none
+    const host = await mount(<Floor />);
+    await act(async () => whoButton(host)!.click());
+    await pick("Judy Client");
+    expect(netCtl.serverLogReads).toBe(1);
+    const session = sessionAssignWrite()!;
+    const sets = writes.filter((w) => w.path.startsWith("exerciseLogs/") && w.data?.clientId === CLIENT_ID && w.batch === session.batch);
+    expect(sets.map((w) => w.path).sort()).toEqual([`exerciseLogs/${OPEN_ID}_m-leg-press`, `exerciseLogs/${OPEN_ID}_sm-solon-rear-delt`]);
+  });
+
+  it("Finish tapped while the reads are out: the assign is issued first, with what is known, and Finish never waits", async () => {
+    const open = gate();
+    const host = await mount(<Floor />);
+    await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
+    await act(async () => button("Assign to client")!.click());
+    await tapName("Judy Client");
+    await act(async () => button("Finish session")!.click());
+    await settle();
+    await settle();
+    expect(document.body.textContent).toContain("Wrap-up · session saved");
+    const assign = sessionAssignWrite()!;
+    const finished = writes.find((w) => w.path === `sessions/${OPEN_ID}` && w.data?.status === "Completed")!;
+    expect(assign, "the assign").toBeTruthy();
+    expect(assign.batch!).toBeLessThan(finished.batch!);
+    // The sets the screen held were named in it.
+    expect(writes.filter((w) => w.path.startsWith("exerciseLogs/") && w.batch === assign.batch && w.data?.clientId === CLIENT_ID)).toHaveLength(2);
+    await open(); // the reads answer late: nothing is issued twice
+    expect(writes.filter((w) => w.path === `sessions/${OPEN_ID}` && w.data?.isUnassigned === false)).toHaveLength(1);
+  });
+
+  it("Finish straight after Who's this?, before the client's settings answer: her saved settings and starting weight are left alone", async () => {
+    netCtl.hold.add("clientMachineSettings");
+    const host = await mount(<Floor />);
+    await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
+    await act(async () => button("Assign to client")!.click());
+    await pick("Judy Client");
+    await act(async () => button("Finish session")!.click());
+    await settle();
+    await settle();
+    expect(document.body.textContent).toContain("Wrap-up · session saved");
+    const setting = writes.find((w) => w.path === `clientMachineSettings/${CLIENT_ID}_m-leg-press`)!;
+    expect(setting, "today's weight is still written").toBeTruthy();
+    expect(setting.data.currentWeight).toBe(100);
+    for (const kept of ["settings", "startingWeight", "startingWeightDate"]) expect(setting.data, kept).not.toHaveProperty(kept);
+  });
+
+  it("the same when the iPad's cache answers her settings empty: empty from the cache is not 'nothing on file'", async () => {
+    netCtl.fromCache.add("clientMachineSettings");
+    netCtl.noBaseSettings = true; // this iPad never read them
+    const host = await mount(<Floor />);
+    await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
+    await act(async () => button("Assign to client")!.click());
+    await pick("Judy Client");
+    await act(async () => button("Finish session")!.click());
+    await settle();
+    await settle();
+    const setting = writes.find((w) => w.path === `clientMachineSettings/${CLIENT_ID}_m-leg-press`)!;
+    expect(setting.data).not.toHaveProperty("settings");
+    expect(setting.data).not.toHaveProperty("startingWeight");
+  });
+
+  it("a refused batch sends the session's sets again without the client, and takes the client back without asking", async () => {
+    netCtl.refuseLater = true;
+    const host = await mount(<Floor />);
+    await act(async () => whoButton(host)!.click());
+    await pick("Judy Client");
+    const session = sessionAssignWrite()!;
+    for (let i = writes.length - 1; i >= 0; i--) if (writes[i].batch === session.batch) writes.splice(i, 1);
+    const before = writes.length;
+    await act(async () => {
+      for (const refuse of netCtl.refusals.splice(0)) refuse(new Error("permission-denied"));
+    });
+    await settle();
+    const resent = writes.slice(before).filter((w) => w.path.startsWith("exerciseLogs/"));
+    expect(resent.map((w) => w.path).sort()).toEqual([`exerciseLogs/${OPEN_ID}_m-leg-press`, `exerciseLogs/${OPEN_ID}_sm-solon-rear-delt`]);
+    for (const w of resent) {
+      expect(w.merge).toBe(true);
+      expect(w.data, w.path).not.toHaveProperty("clientId");
+      expect(w.data.weight).toBe("100");
+      expect(w.data.reps).toBe("10");
+    }
+    expect(barName(host)).toBe("Open session");
+    // Never through the setter that asks: there is nothing left behind to ask about.
+    expect(via).toEqual(["now", "now"]);
+  });
+
+  it("a refusal that lands after the trainer left the screen is said, and changes nothing on the screen they are on now", async () => {
+    netCtl.refuseLater = true;
+    function Away() {
+      const [here, setHere] = useState(true);
+      return (
+        <>
+          <button type="button" data-testid="leave" onClick={() => setHere(false)}>
+            Leave
+          </button>
+          {here && <Floor />}
+        </>
+      );
+    }
+    const host = await mount(<Away />);
+    await act(async () => whoButton(host)!.click());
+    await pick("Judy Client");
+    await act(async () => (host.querySelector('[data-testid="leave"]') as HTMLButtonElement).click());
+    const before = writes.length;
+    await act(async () => {
+      for (const refuse of netCtl.refusals.splice(0)) refuse(new Error("permission-denied"));
+    });
+    await settle();
+    expect(document.body.textContent).toContain("so it is still open");
+    // The client chosen stays chosen: nothing reaches for the screen the trainer is on now.
+    expect(chosen).toEqual([CLIENT_ID]);
+    // The sets are still sent again without the client.
+    const resent = writes.slice(before).filter((w) => w.path.startsWith("exerciseLogs/"));
+    expect(resent.length).toBeGreaterThan(0);
+    for (const w of resent) expect(w.data, w.path).not.toHaveProperty("clientId");
+  });
+
+  it("a refusal that lands after Finish ran says nothing about Who's this?: Finish's own batch names the client", async () => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, get: () => false });
+    netCtl.refuseLater = true;
+    const host = await mount(<Floor />);
+    await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
+    await act(async () => button("Assign to client")!.click());
+    await pick("Judy Client");
+    await act(async () => button("Finish session")!.click());
+    await settle();
+    await settle();
+    expect(document.body.textContent).toContain("Wrap-up · session saved");
+    // The assign's batch is refused, late.
+    await act(async () => {
+      netCtl.refusals[0](new Error("permission-denied"));
+    });
+    await settle();
+    expect(document.body.textContent).not.toContain("press Who's this? again");
+    expect(document.body.textContent).toContain("Wrap-up · session saved");
   });
 });

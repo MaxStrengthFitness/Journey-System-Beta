@@ -169,7 +169,7 @@ import { FeedbackProvider, FeedbackButton } from "./features/feedback";
 import { NotificationBell } from "./features/notifications";
 import { plannerIntentFromLink, requestPlanner } from "./features/relay/intent";
 import { PlannerReminders } from "./features/relay/reminders/PlannerReminders";
-import { LeaveConfirmDialog, useGuardedSetter, useGuardedState, useLeaveGuard } from "./features/unsaved-changes";
+import { LeaveConfirmDialog, useGuardedSetter, useLeaveGuard } from "./features/unsaved-changes";
 import { sendSetsNow, signOutQuestion, unsentWritesWaiting } from "./features/session-record/sign-out-check";
 // Type-only, and from the module rather than the barrel, so nothing about the
 // studio-tasks chunk is pulled into the initial bundle.
@@ -508,9 +508,11 @@ export default function AppContent({
   >(null);
   // Guarded like `currentView`: a different client is a different screen,
   // and the client record stays MOUNTED across the change (see its discard).
-  const [selectedClientId, setSelectedClientId] = useGuardedState<
-    string | null
-  >(null);
+  // The raw setter goes to the Active Session alone, for Who's this? (asked
+  // at its own tap) and for taking back a client the database refused (the
+  // open session round, Oct 9 2026); every button gets the guarded one.
+  const [selectedClientId, setSelectedClientIdNow] = useState<string | null>(null);
+  const setSelectedClientId = useGuardedSetter(selectedClientId, setSelectedClientIdNow);
   const [selectedClientDoc, setSelectedClientDoc] = useState<Client | null>(
     null,
   );
@@ -1846,7 +1848,7 @@ export default function AppContent({
                     user={user}
                     setView={setView}
                     setSelectedClientId={setSelectedClientId}
-                    onStartNewClientOnboarding={startNewClientOnboarding}
+                    setSelectedClientIdNow={setSelectedClientIdNow}
                     authTrainer={authTrainer}
                     isSyncing={isSyncing}
                     setIsSyncing={setIsSyncing}

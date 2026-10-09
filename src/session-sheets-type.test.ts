@@ -141,6 +141,9 @@ const COMPONENTS = [
   "features/journey-grid/SessionFlagsSheet.tsx",
   "features/tracker/StaleSessionDialog.tsx",
   "features/tracker/ClientSelectionDialog.tsx",
+  // New client from an open session's Who's this? (the open session round,
+  // Oct 9 2026): portalled over the running session.
+  "components/CreateClientModal.tsx",
   "contexts/ToastContext.tsx",
   "features/unsaved-changes/LeaveConfirmDialog.tsx",
 ];

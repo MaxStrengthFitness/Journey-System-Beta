@@ -173,7 +173,7 @@ const PAYS_AN_INSET: Record<string, { uses: number; reason: string }> = {
   "features/journey-grid/SessionFlagsSheet.tsx": { uses: 2, reason: "the watch-outs slide-over: full height, over the bottom bar" },
   "features/journey-grid/journey-grid.css": { uses: 1, reason: "the routine order sheet: a dialog pinned to the bottom edge" },
   "features/front-door/kit.tsx": { uses: 1, reason: "the front door's pane (sign in, checking you in, the greeting, the studio picker, the access request): before the shell exists" },
-  "components/CreateClientModal.tsx": { uses: 4, reason: "new-client onboarding: returned before the shell exists" },
+  "components/CreateClientModal.tsx": { uses: 4, reason: "new-client onboarding: a fixed layer at the true edge, returned before the shell exists or portalled over an open session" },
   "features/packages/packages.css": { uses: 2, reason: "the packages sheet: a full-screen dialog, both edges" },
   "features/subjective-report/subjective-report.css": { uses: 3, reason: "Pulse client mode (full screen) and the quick log in a narrow window" },
   "features/admin/renewals/renewals.css": { uses: 1, reason: "the renewal brief: a full-height panel over the shell" },

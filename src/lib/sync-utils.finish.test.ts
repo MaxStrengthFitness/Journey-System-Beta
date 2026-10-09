@@ -269,4 +269,38 @@ describe("completeWorkoutSession", () => {
     const sessionWrite = calls.batchWrites.find((w) => w.path === "sessions/sess1")!;
     expect(sessionWrite.data).not.toHaveProperty("notes");
   });
+
+  /* The open session round's review (Oct 9 2026): Who's this? at Finish
+     opens the client's settings a moment before Finish runs. A machine
+     missing from settings nobody has read from the server is not "nothing on
+     file": a merged `settings: {}` would still replace the saved seat and
+     positions, and a starting weight would be written over the real one. */
+  it("with the client's settings not known yet, writes today's weight and leaves the saved settings and starting weight alone", async () => {
+    await completeWorkoutSession({} as never, session, client, logs, "", trainer, {}, "uid-t1", undefined, { settingsOnFileKnown: false });
+    const setting = calls.batchWrites.find((w) => w.path === "clientMachineSettings/c1_m1")!;
+    expect(setting.data.currentWeight).toBe(180);
+    expect(setting.options).toEqual({ merge: true });
+    for (const kept of ["settings", "startingWeight", "startingWeightDate"]) {
+      expect(setting.data, kept).not.toHaveProperty(kept);
+    }
+  });
+
+  it("not known yet, a machine whose settings ARE on screen writes them back as before", async () => {
+    const onScreen = { m1: { machineId: "m1", settings: { seat: "4" }, startingWeight: 150 } };
+    await completeWorkoutSession({} as never, session, client, logs, "", trainer, onScreen, "uid-t1", undefined, { settingsOnFileKnown: false });
+    const m1 = calls.batchWrites.find((w) => w.path === "clientMachineSettings/c1_m1")!;
+    expect(m1.data.settings).toEqual({ seat: "4" });
+    expect(m1.data).not.toHaveProperty("startingWeight");
+    // m2 has no entry: left alone.
+    const m2 = calls.batchWrites.find((w) => w.path === "clientMachineSettings/c1_m2")!;
+    expect(m2.data).not.toHaveProperty("settings");
+    expect(m2.data).not.toHaveProperty("startingWeight");
+  });
+
+  it("known (the default): a first time on a machine records its starting weight, as before", async () => {
+    await finish();
+    const setting = calls.batchWrites.find((w) => w.path === "clientMachineSettings/c1_m1")!;
+    expect(setting.data.settings).toEqual({});
+    expect(setting.data.startingWeight).toBe(180);
+  });
 });
