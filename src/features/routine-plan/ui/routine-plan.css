@@ -841,6 +841,7 @@ button.rpl-cell--next {
   cursor: pointer;
 }
 .rpl-tick:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 1px; }
+.rpl-tick:disabled { cursor: default; }
 .rpl-tick__box {
   flex: 0 0 40px;
   display: inline-flex;
@@ -1124,6 +1125,43 @@ button.rpl-cell--next {
   font-size: 14px;
   font-weight: 700;
   color: var(--eq-ink-2);
+}
+
+/* ---------- The Wrap-up's Next time ----------------------------------------- */
+
+/* Inside the Wrap-up's own card, so no panel of its own: the line that asks
+   (it names the routine), Tick all beside it, the ticks as rows divided by
+   the soft hairline (a row, never a box of its own), and the Road for next
+   time under them. */
+.rpl-next {
+  gap: 10px;
+}
+.rpl-next__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+.rpl-next__ask {
+  flex: 1 1 220px;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+.rpl-next__rows {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.rpl-next__row + .rpl-next__row {
+  border-top: 1px solid var(--eq-divider);
 }
 
 /* ---------- A phone ------------------------------------------------------- */

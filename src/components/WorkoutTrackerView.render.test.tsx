@@ -195,6 +195,8 @@ const netCtl = {
     delete netCtl.held[path];
   },
   routines: [] as { id: string; data: () => any }[],
+  /** The session's sets already on record (the Wrap-up's Next time reads what was performed). */
+  logs: [] as { id: string; data: () => any }[],
   moreSettings: [] as { id: string; data: () => any }[],
   /** Leave out the client's leg-press settings (a first time on it: no weight on file). */
   noBaseSettings: false,
@@ -223,6 +225,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     if (p === "clientMachineSettings") return [...(netCtl.noBaseSettings ? [] : SETTINGS_DOCS), ...netCtl.moreSettings];
     if (p === "journalEntries") return journalDocs;
     if (p === "routines") return netCtl.routines;
+    if (p === "exerciseLogs") return netCtl.logs;
     return [];
   };
 
@@ -461,6 +464,7 @@ beforeEach(() => {
   netCtl.hold = new Set();
   netCtl.held = {};
   netCtl.routines = [];
+  netCtl.logs = [];
   netCtl.moreSettings = [];
   netCtl.noBaseSettings = false;
   netCtl.moreRoster = [];
@@ -1874,5 +1878,250 @@ describe("the floor on day one, the tracker's own gates (Oct 9 2026)", () => {
     await act(async () => netCtl.release("routines"));
     // The routine answered: today is the plan's day one.
     expect(host.querySelector(".jg-nb__name")?.textContent).toBe("Leg Press (Hoist)");
+  });
+});
+
+/**
+ * THE WRAP-UP'S NEXT TIME, FROM FINISH TO THE ROUTINE (the first-session
+ * design round, Oct 8 2026, §4.7). Finish freezes the session's routine,
+ * its plan and today's performed machines; the Wrap-up offers the machines
+ * the routine lacks; Back to Hub writes the ticked ones ONCE, through
+ * routine-plan/store.ts, in one batch, never waited on. AJ, Oct 8 2026
+ * ("3a"): "this also counts with the consult visit, sometimes the consult
+ * machines will not be the same as their a routine".
+ */
+describe("the Wrap-up's Next time, from Finish to the routine (Oct 8 2026)", () => {
+  const settle = async () => {
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+  };
+  const performed = (machineId: string) => ({
+    id: `${SESSION_ID}_${machineId}`,
+    data: () => ({ sessionId: SESSION_ID, clientId: CLIENT_ID, machineId, weight: "100", reps: "10", studioId: STUDIO_ID }),
+  });
+  const running = (extra: Record<string, unknown>) => [{ id: SESSION_ID, data: () => ({ ...SESSION_DOCS[0].data(), ...extra }) }];
+  const consultA = {
+    id: "ra-1",
+    data: () => ({
+      clientId: CLIENT_ID,
+      name: "Routine A",
+      machineIds: [],
+      plan: { purpose: "", intended: ["m-leg-press", "sm-solon-rear-delt"], dayOne: ["m-leg-press"], building: true, madeByUid: "uid-coach" },
+    }),
+  };
+  const finishToWrapUp = async () => {
+    const host = await mount(<Tracker />);
+    await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
+    const finish = Array.from(document.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Finish session")!;
+    await act(async () => finish.click());
+    await settle();
+    await settle();
+    expect(document.body.textContent).toContain("Wrap-up · session saved");
+    return host;
+  };
+  const card = () => document.querySelector('[data-testid="next-time"]');
+  const tickFor = (name: string) =>
+    Array.from(card()!.querySelectorAll<HTMLButtonElement>('[role="checkbox"]')).find((t) => t.textContent?.includes(name))!;
+  const backToHub = async () => {
+    const back = Array.from(document.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Back to Hub")!;
+    await act(async () => back.click());
+    await settle();
+  };
+  const routineWrites = () => writes.filter((w) => w.path.startsWith("routines"));
+
+  it("the consult: today's machines offered unticked; the ticked one starts Routine A, with its plan change, in one batch on Back to Hub", async () => {
+    sessionDocs = running({ routineId: "ra-1", sessionMachineIds: ["m-leg-press", "sm-solon-rear-delt"] });
+    netCtl.routines = [consultA];
+    netCtl.logs = [performed("m-leg-press"), performed("sm-solon-rear-delt")];
+    netCtl.hang = false;
+    await finishToWrapUp();
+    expect(card()!.textContent).toContain("Tick the ones that start Routine A.");
+    expect(tickFor("Leg Press (Hoist)").getAttribute("aria-checked")).toBe("false");
+    expect(tickFor("Leg Press (Hoist)").textContent).toContain("Day one");
+    expect(tickFor("Rear Delt Hoist").textContent).toContain("Next in the plan");
+
+    writes.length = 0;
+    await act(async () => tickFor("Leg Press (Hoist)").click());
+    expect(routineWrites(), "a tick writes nothing").toEqual([]);
+    await backToHub();
+    expect(setViewSpy).toHaveBeenCalledWith("clients");
+    const out = routineWrites();
+    expect(out.map((w) => w.path.replace(/auto-\d+/, "*"))).toEqual(["routines/ra-1", "routines/ra-1/planChanges/*"]);
+    expect(out[0].batch).toBeGreaterThan(0);
+    expect(out[1].batch).toBe(out[0].batch);
+    expect(out[0].data.machineIds).toEqual(["m-leg-press"]);
+    expect(out[0].data.plan.dayOne).toEqual(["m-leg-press"]);
+    expect(out[1].data).toEqual({ kind: "add", machineIds: ["m-leg-press"], value: "routine", byUid: "uid-coach", byName: "Jane Coach", at: { __server: true } });
+  });
+
+  it("nothing ticked writes nothing: Routine A stays empty", async () => {
+    sessionDocs = running({ routineId: "ra-1", sessionMachineIds: ["m-leg-press", "sm-solon-rear-delt"] });
+    netCtl.routines = [consultA];
+    netCtl.logs = [performed("m-leg-press")];
+    await finishToWrapUp();
+    expect(card()).not.toBeNull();
+    writes.length = 0;
+    await backToHub();
+    expect(routineWrites()).toEqual([]);
+  });
+
+  it("a session built on the fly for a client with no Routine A: the ticks make Routine A, with no plan", async () => {
+    sessionDocs = running({ routineId: null, sessionMachineIds: ["m-leg-press"] });
+    netCtl.routines = [];
+    netCtl.logs = [performed("m-leg-press")];
+    await finishToWrapUp();
+    expect(card()!.textContent).toContain("Tick the ones that start Routine A.");
+    writes.length = 0;
+    await act(async () => tickFor("Leg Press (Hoist)").click());
+    await backToHub();
+    const out = routineWrites();
+    expect(out).toHaveLength(1);
+    expect(out[0].path).toMatch(/^routines\/auto-\d+$/);
+    expect(out[0].data).toEqual({ clientId: CLIENT_ID, name: "Routine A", machineIds: ["m-leg-press"], createdAt: { __server: true }, studioId: STUDIO_ID });
+    // With its "created" record in the same batch, as the Edit routine drawer writes one.
+    const record = writes.find((w) => w.path.startsWith("routineAdjustments/"))!;
+    expect(record.batch).toBe(out[0].batch);
+    expect(record.data).toMatchObject({
+      clientId: CLIENT_ID,
+      routineId: out[0].path.split("/")[1],
+      previousMachineIds: [],
+      newMachineIds: ["m-leg-press"],
+      changeType: "created",
+    });
+  });
+
+  it("a session another iPad already finished has no Next time: that iPad writes its own", async () => {
+    // The review (Oct 9 2026): both iPads wrote, two "add" entries on the
+    // plan or two Routine As; pain notes already skip this case.
+    finishCtl.serverStatus = "Completed";
+    sessionDocs = running({ routineId: "ra-1", sessionMachineIds: ["m-leg-press", "sm-solon-rear-delt"] });
+    netCtl.routines = [consultA];
+    netCtl.logs = [performed("m-leg-press")];
+    await finishToWrapUp();
+    expect(document.body.textContent).toContain("already finished on another iPad");
+    expect(card()).toBeNull();
+    writes.length = 0;
+    await backToHub();
+    expect(routineWrites()).toEqual([]);
+  });
+
+  it("a machine the plan let go during the session (its set already logged) is never offered back", async () => {
+    // Routine A has the Rear Delt and is being built; Leg Press is next on the road.
+    const built = (intended: string[]) => ({
+      id: "ra-1",
+      data: () => ({
+        clientId: CLIENT_ID,
+        name: "Routine A",
+        machineIds: ["sm-solon-rear-delt"],
+        plan: { purpose: "", intended, building: true, madeByUid: "uid-coach" },
+      }),
+    });
+    const both = () => {
+      sessionDocs = running({ routineId: "ra-1", sessionMachineIds: ["sm-solon-rear-delt", "m-leg-press"] });
+      netCtl.logs = [performed("sm-solon-rear-delt"), performed("m-leg-press")];
+    };
+
+    // Nothing changed: Leg Press joins, ticked while Routine A is being built.
+    both();
+    netCtl.routines = [built(["sm-solon-rear-delt", "m-leg-press"])];
+    await finishToWrapUp();
+    expect(tickFor("Leg Press (Hoist)").getAttribute("aria-checked")).toBe("true");
+    for (const m of mounted) {
+      await act(async () => m.root.unmount());
+      m.host.remove();
+    }
+    mounted = [];
+
+    // Re-planned mid-session after Leg Press's set ("Today's set stays. The
+    // plan changes from next session."): it is not offered back.
+    both();
+    netCtl.routines = [built(["sm-solon-rear-delt", "m-leg-press"])];
+    const host = await mount(<Tracker />);
+    netCtl.routines = [built(["sm-solon-rear-delt"])];
+    await act(async () => {
+      for (const l of snapshotListeners.filter((x) => x.live && x.path === "routines")) l.emit();
+    });
+    await settle();
+    await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
+    const finish = Array.from(document.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Finish session")!;
+    await act(async () => finish.click());
+    await settle();
+    await settle();
+    expect(document.body.textContent).toContain("Wrap-up · session saved");
+    expect(card()).toBeNull();
+    writes.length = 0;
+    await backToHub();
+    expect(routineWrites()).toEqual([]);
+  });
+
+  it("a session started here as Routine A for a client with no routine has Next time, even over the whole floor", async () => {
+    // The review (Oct 9 2026): how this iPad started the session wins over
+    // the whole-floor guess, which is only for a session resumed after a
+    // reload. (The briefing offers no Free start today, so a Free session
+    // reaches the Wrap-up only that way: the test above.)
+    sessionDocs = [];
+    netCtl.routines = [];
+    const before = { ...client, sessionCount: 4, historyIsComplete: true } as Client;
+    const host = await mount(<Tracker who={before} />);
+    await settle();
+    await act(async () => document.querySelector<HTMLButtonElement>(".br__cta")!.click());
+    await settle();
+    const started = writes.find((w) => w.path.startsWith("sessions/auto-") && w.data?.status === "In-Progress")!;
+    const sid = started.path.split("/")[1];
+    expect(started.data.routineId).toBeNull();
+    // The trainer ran both machines on the floor as they went.
+    sessionDocs = [{ id: sid, data: () => ({ ...SESSION_DOCS[0].data(), routineId: null, sessionMachineIds: ["m-leg-press", "sm-solon-rear-delt"] }) }];
+    netCtl.logs = ["m-leg-press", "sm-solon-rear-delt"].map((machineId) => ({
+      id: `${sid}_${machineId}`,
+      data: () => ({ sessionId: sid, clientId: CLIENT_ID, machineId, weight: "100", reps: "10", studioId: STUDIO_ID }),
+    }));
+    await act(async () => {
+      for (const l of snapshotListeners.filter((x) => x.live && (x.path === "sessions" || x.path === "exerciseLogs"))) l.emit();
+    });
+    await settle();
+    await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
+    const finish = Array.from(document.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Finish session")!;
+    await act(async () => finish.click());
+    await settle();
+    await settle();
+    expect(document.body.textContent).toContain("Wrap-up · session saved");
+    expect(card()!.textContent).toContain("Tick the ones that start Routine A.");
+    expect(tickFor("Leg Press (Hoist)").getAttribute("aria-checked")).toBe("false");
+    expect(tickFor("Rear Delt Hoist")).toBeTruthy();
+  });
+
+  it("a refusal is said in a toast, and the Hub came at once", async () => {
+    sessionDocs = running({ routineId: "ra-1", sessionMachineIds: ["m-leg-press"] });
+    netCtl.routines = [consultA];
+    netCtl.logs = [performed("m-leg-press")];
+    await finishToWrapUp();
+    await act(async () => tickFor("Leg Press (Hoist)").click());
+    netCtl.refuseLater = true;
+    await backToHub();
+    expect(setViewSpy).toHaveBeenCalledWith("clients");
+    await act(async () => {
+      for (const refuse of netCtl.refusals) refuse(new Error("permission-denied"));
+    });
+    await settle();
+    expect(document.body.textContent).toContain("Next time didn't save. Add the machines to Routine A on Programming.");
+  });
+
+  it("no Next time for a session that ran no routine over the whole floor (a Free session), nor when the client has a Routine A it didn't run", async () => {
+    sessionDocs = running({ routineId: null, sessionMachineIds: ["m-leg-press", "sm-solon-rear-delt"] });
+    netCtl.routines = [];
+    netCtl.logs = [performed("m-leg-press")];
+    await finishToWrapUp();
+    expect(card()).toBeNull();
+    for (const m of mounted) {
+      await act(async () => m.root.unmount());
+      m.host.remove();
+    }
+    mounted = [];
+
+    sessionDocs = running({ routineId: null, sessionMachineIds: ["m-leg-press"] });
+    netCtl.routines = [{ id: "ra-1", data: () => ({ clientId: CLIENT_ID, name: "Routine A", machineIds: ["sm-solon-rear-delt"] }) }];
+    await finishToWrapUp();
+    expect(card()).toBeNull();
   });
 });

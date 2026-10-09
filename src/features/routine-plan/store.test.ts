@@ -41,7 +41,7 @@ vi.mock("firebase/firestore", () => {
 });
 
 import { writeBatch } from "firebase/firestore";
-import { addStartPlanToBatch, savePlanChange, saveRoutineEdit, startPlan } from "./store";
+import { addStartPlanToBatch, saveNextTime, savePlanChange, saveRoutineEdit, startPlan } from "./store";
 import type { PlanChange, RoutinePlan } from "./types";
 
 const db = {} as never;
@@ -277,5 +277,91 @@ describe("saveRoutineEdit: the Edit routine drawer keeps the plan", () => {
       saveRoutineEdit(db, "r-a", { routine: { machineIds: [] }, plan, changes: [], adjustment: { clientId: "c1" } }),
     ).rejects.toThrow("permission-denied");
     expect(fake.batches).toHaveLength(1);
+  });
+});
+
+describe("saveNextTime: the Wrap-up's Next time, once, in one batch", () => {
+  // The design round, section 4.7: "It writes routineAfterWrapUp and
+  // planAfterWrapUp with an add change, never awaited, with a toast on
+  // refusal." With no routine, "Ticking writes Routine A with no plan."
+  const owner = { clientId: "c1", studioId: "westlake", trainerId: "t-sam" };
+
+  it("a routine with a plan: the plan, its changes and the routine's machines, one batch", async () => {
+    const kept: RoutinePlan = { ...plan, intended: [...plan.intended, "m-ext"] };
+    await saveNextTime(
+      db,
+      {
+        kind: "plan",
+        routineId: "r-a",
+        plan: kept,
+        change: { kind: "add", machineIds: ["m-leg-press"], value: "routine", byUid: "uid-sam" },
+        also: [{ kind: "add", machineIds: ["m-ext"], byUid: "uid-sam" }],
+        machineIds: ["m-leg-press", "m-ext"],
+      },
+      owner,
+    );
+    expect(fake.batches).toHaveLength(1);
+    const ops = fake.batches[0]!.ops;
+    expect(ops.map((o) => [o.op, o.path.replace(/auto-\d+/, "*")])).toEqual([
+      ["update", "routines/r-a"],
+      ["set", "routines/r-a/planChanges/*"],
+      ["set", "routines/r-a/planChanges/*"],
+    ]);
+    expect(ops[0]!.data).toEqual({ plan: kept, machineIds: ["m-leg-press", "m-ext"] });
+    expect(ops[1]!.data).toEqual({ kind: "add", machineIds: ["m-leg-press"], value: "routine", byUid: "uid-sam", at: "SERVER_TIME" });
+    expect(fake.batches[0]!.committed).toBe(true);
+  });
+
+  it("a routine with no plan: its machines and when, never a plan, and the change's record beside it", async () => {
+    // A plan-less routine's history is its routineAdjustments (the Edit
+    // routine drawer's shape): without one, Programming's "changed … by"
+    // would name an older change for a routine changed today (the review).
+    await saveNextTime(
+      db,
+      { kind: "routine", routineId: "r-a", machineIds: ["m-leg-press", "m-lumbar"], previousMachineIds: ["m-leg-press"] },
+      owner,
+    );
+    expect(fake.batches).toHaveLength(1);
+    const ops = fake.batches[0]!.ops;
+    expect(ops.map((o) => [o.op, o.path.replace(/auto-\d+/, "*")])).toEqual([
+      ["update", "routines/r-a"],
+      ["set", "routineAdjustments/*"],
+    ]);
+    expect(ops[0]!.data).toEqual({ machineIds: ["m-leg-press", "m-lumbar"], updatedAt: "SERVER_TIME" });
+    expect(ops[1]!.data).toEqual({
+      clientId: "c1",
+      routineId: "r-a",
+      previousMachineIds: ["m-leg-press"],
+      newMachineIds: ["m-leg-press", "m-lumbar"],
+      trainerId: "t-sam",
+      studioId: "westlake",
+      changeType: "machines",
+      createdAt: "SERVER_TIME",
+    });
+  });
+
+  it("no routine: Routine A made with the ticked machines and no plan, its id made on this iPad, with its 'created' record", async () => {
+    await saveNextTime(db, { kind: "create", name: "Routine A", machineIds: ["m-leg-press"] }, owner);
+    expect(fake.batches).toHaveLength(1);
+    const [op, record] = fake.batches[0]!.ops;
+    expect(op!.op).toBe("set");
+    expect(op!.path).toMatch(/^routines\/auto-\d+$/);
+    expect(op!.data).toEqual({ clientId: "c1", name: "Routine A", machineIds: ["m-leg-press"], createdAt: "SERVER_TIME", studioId: "westlake" });
+    expect(op!.data).not.toHaveProperty("plan");
+    expect(record!.path).toMatch(/^routineAdjustments\/auto-\d+$/);
+    expect(record!.data).toMatchObject({
+      routineId: op!.path.split("/")[1],
+      previousMachineIds: [],
+      newMachineIds: ["m-leg-press"],
+      changeType: "created",
+      trainerId: "t-sam",
+    });
+  });
+
+  it("hands back a refusal for the caller to say", async () => {
+    fake.refuse = true;
+    await expect(
+      saveNextTime(db, { kind: "routine", routineId: "r-a", machineIds: [], previousMachineIds: ["m-lumbar"] }, owner),
+    ).rejects.toThrow("permission-denied");
   });
 });

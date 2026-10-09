@@ -14,7 +14,7 @@
  * own `machineIds`, when a change moves it, goes in the same batch, so the
  * plan and the routine can't disagree after a refusal.
  *
- * Three writers:
+ * Four writers:
  * - `startPlan`: a plan's first write, Keep this lineup, Save Routine A or
  *   Add a plan. It makes Routine A when the client has none, or puts the
  *   plan on the routine they have, with the plan's first change.
@@ -24,6 +24,9 @@
  * - `savePlanChange`: every change after that.
  * - `saveRoutineEdit`: the Edit routine drawer's save on a routine with a
  *   plan, the routine, its adjustment and the plan's changes together.
+ * - `saveNextTime`: the Wrap-up's Next time, the ticked machines into the
+ *   routine once on the way out (through `savePlanChange` when the routine
+ *   has a plan; Routine A made with no plan when there is no routine).
  *
  * The consult is not Routine A (AJ, Oct 8 2026: "this also counts with the
  * consult visit, sometimes the consult machines will not be the same as their
@@ -43,6 +46,7 @@ import {
   type WriteBatch,
 } from "firebase/firestore";
 import { withoutUndefined } from "../studio-tasks/task-wizard";
+import type { NextTimeWrite } from "./next-time";
 import type { PlanChange, RoutinePlan } from "./types";
 
 export const PLAN_CHANGES = "planChanges";
@@ -181,6 +185,72 @@ export function saveRoutineEdit(
   for (const change of input.changes) {
     const changeRef = doc(collection(db, "routines", routineId, PLAN_CHANGES));
     batch.set(changeRef, withoutUndefined({ ...change, at: serverTimestamp() }));
+  }
+  return batch.commit();
+}
+
+/**
+ * The Wrap-up's Next time (the design round, §4.7): the ticked machines
+ * into the routine, ONCE, on the way out, in one batch, never awaited by a
+ * tap (the caller toasts a refusal). The one write a session makes to a
+ * routine's machines, and only from the Wrap-up's ticks:
+ * - a routine with a plan: `savePlanChange` (the plan, its change(s) and
+ *   the routine's machines together);
+ * - a routine with no plan: its `machineIds` and `updatedAt`, never a
+ *   plan, so "no plan" stays true (the routines rule allows a trainer's
+ *   update), with the `routineAdjustments` record every other change to a
+ *   plan-less routine writes (the Edit routine drawer's shape, `changeType`
+ *   "machines"), so Programming's "changed … by" names this change;
+ * - no routine (a session built on the fly, for a client with no Routine
+ *   A): Routine A made with the ticked machines and NO plan, in the shape
+ *   every routine create in the app writes, its id made on this iPad, with
+ *   its "created" record beside it.
+ * `owner` is the client the routine belongs to and their home studio, as
+ * every routine carries it, and the trainer the record names (the
+ * trainer's record id, as the drawer writes it: Programming reads the
+ * trainer list by it).
+ */
+export function saveNextTime(
+  db: Firestore,
+  write: NextTimeWrite,
+  owner: { clientId: string; studioId: string; trainerId: string },
+): Promise<void> {
+  if (write.kind === "plan") {
+    return savePlanChange(db, write.routineId, {
+      plan: write.plan,
+      change: write.change,
+      machineIds: write.machineIds,
+      ...(write.also ? { also: write.also } : null),
+    });
+  }
+  const batch = writeBatch(db);
+  const adjustment = (routineId: string, previousMachineIds: string[], changeType: "machines" | "created") =>
+    withoutUndefined({
+      clientId: owner.clientId,
+      routineId,
+      previousMachineIds,
+      newMachineIds: write.machineIds,
+      trainerId: owner.trainerId || "unknown",
+      studioId: owner.studioId,
+      changeType,
+      createdAt: serverTimestamp(),
+    });
+  if (write.kind === "routine") {
+    batch.update(doc(db, "routines", write.routineId), { machineIds: write.machineIds, updatedAt: serverTimestamp() });
+    batch.set(doc(collection(db, "routineAdjustments")), adjustment(write.routineId, write.previousMachineIds, "machines"));
+  } else {
+    const routineRef = doc(collection(db, "routines"));
+    batch.set(
+      routineRef,
+      withoutUndefined({
+        clientId: owner.clientId,
+        name: write.name,
+        machineIds: write.machineIds,
+        createdAt: serverTimestamp(),
+        studioId: owner.studioId,
+      }),
+    );
+    batch.set(doc(collection(db, "routineAdjustments")), adjustment(routineRef.id, [], "created"));
   }
   return batch.commit();
 }

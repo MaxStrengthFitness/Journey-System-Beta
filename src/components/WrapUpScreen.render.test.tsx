@@ -996,6 +996,16 @@ describe("the Wrap-up follows the theme, and keeps its confetti", () => {
         onLeave={vi.fn()}
         unsavedDraft={{ body: "Mentioned her daughter's wedding", category: null } as any}
         machines={[{ id: "m1", name: "Leg Press", anatomicalRegion: "Lower Body" } as any]}
+        // Next time's card is on the screen too, so the sweeps below cover it.
+        nextTime={{
+          routineId: "ra",
+          routineName: "Routine A",
+          machineIds: [],
+          plan: { purpose: "", intended: ["m1", "m2"], dayOne: ["m1"], building: true, madeByUid: "uid-jane" },
+          performed: ["m1"],
+          names: { m1: "Leg Press", m2: "Lumbar" },
+        }}
+        onNextTime={vi.fn()}
       />
     );
   }
@@ -1008,6 +1018,8 @@ describe("the Wrap-up follows the theme, and keeps its confetti", () => {
 
   it("draws no Tailwind palette colour of its own: every colour it sets is a token", async () => {
     const host = await mount(<FullScreen />);
+    // Next time's card is drawn, so it is swept too.
+    expect(host.querySelector('[data-testid="next-time"]')).toBeTruthy();
     // The To-file tray is the notes feature's own component (its category
     // chips carry their own dots); this is about what the Wrap-up draws.
     const offenders = Array.from(host.querySelectorAll("[class]"))
@@ -1087,7 +1099,8 @@ describe("the Wrap-up follows the theme, and keeps its confetti", () => {
   it("keeps every text size in its source on the scale, and no cyan focus left: the Wrap-up and the Times with room sheet it opens", () => {
     const here = dirname(fileURLToPath(import.meta.url));
     // The sheet is drawn in a portal, out of the DOM palette test's reach, so its source is held here too (the final review).
-    for (const f of ["WrapUpScreen.tsx", "../features/openings/ui/TimesWithRoomSheet.tsx"]) {
+    // Next time's card (the first-session design round, Oct 8 2026) is held with them: it draws on this screen.
+    for (const f of ["WrapUpScreen.tsx", "../features/openings/ui/TimesWithRoomSheet.tsx", "../features/routine-plan/ui/NextTimeCard.tsx"]) {
       const src = readFileSync(join(here, f), "utf8");
       const sizes = new Set([...src.matchAll(/text-\[(\d+(?:\.\d+)?)px\]/g)].map((m) => Number(m[1])));
       // 22 joined the codex scale on Oct 4 2026 (type and depth, phase 2).
@@ -1501,5 +1514,315 @@ describe("the renewal prompt follows the auto-renewal mark", () => {
     const autoRenewMark = { renews: false, contractId: "8000", setAt: "2026-09-25T14:00:00.000Z" };
     const host = await mount(<RenewalScreen who={{ autoRenewMark }} />);
     expect(buttonByText(host, "Talk about it today?")).toBeTruthy();
+  });
+});
+
+/*
+ * NEXT TIME (the first-session design round, Oct 8 2026, §4.7). A card
+ * after the next session's weights: today's performed machines the routine
+ * lacks, each a tick, with the Road for next time under them. AJ, Oct 7
+ * 2026: "in the wrap-up that it just by default adds on, but you can say,
+ * like, tick it off"; and Oct 8 ("3a"): "this also counts with the consult
+ * visit, sometimes the consult machines will not be the same as their a
+ * routine". It hands the ticks over ONCE, on every way out, never per tick.
+ */
+describe("Next time: the machines that carry into the routine", () => {
+  const NAMES: Record<string, string> = {
+    "m-leg-press": "Leg Press",
+    "m-row": "Compound Row",
+    "m-lumbar": "Lumbar",
+    "m-chest": "Chest Press",
+    "m-ext": "Leg Extension With A Long Studio Name For Its Second Unit",
+    "m-curl": "Leg Curl",
+  };
+  const plan = (extra: Record<string, unknown> = {}) => ({
+    purpose: "",
+    intended: ["m-leg-press", "m-row", "m-lumbar", "m-chest", "m-ext"],
+    dayOne: ["m-leg-press", "m-row", "m-lumbar"],
+    building: true,
+    madeByUid: "uid-sam",
+    ...extra,
+  });
+  /** The consult: Routine A empty, the plan carrying day one. */
+  const consult = (performed = ["m-leg-press", "m-row", "m-lumbar", "m-ext"]) => ({
+    routineId: "ra",
+    routineName: "Routine A",
+    machineIds: [] as string[],
+    plan: plan(),
+    performed,
+    names: NAMES,
+  });
+  /** Routine A with machines, being built. */
+  const building = () => ({
+    routineId: "ra",
+    routineName: "Routine A",
+    machineIds: ["m-leg-press", "m-row", "m-lumbar"],
+    plan: plan(),
+    performed: ["m-leg-press", "m-row", "m-lumbar", "m-chest", "m-curl"],
+    names: NAMES,
+  });
+
+  function NextScreen({ next, onNextTime, onLeave = vi.fn() }: { next: any; onNextTime?: (t: string[]) => void; onLeave?: () => void }) {
+    return (
+      <WrapUpScreen
+        client={client}
+        session={session}
+        logs={[]}
+        lines={[]}
+        journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
+        schedules={[]}
+        authTrainer={trainer}
+        onEffort={vi.fn()}
+        onLeave={onLeave}
+        nextTime={next}
+        onNextTime={onNextTime}
+        machines={[]}
+      />
+    );
+  }
+
+  const card = (host: ParentNode) => host.querySelector('[data-testid="next-time"]') as HTMLElement | null;
+  const ticks = (host: ParentNode) => Array.from(card(host)!.querySelectorAll<HTMLButtonElement>('[role="checkbox"]'));
+  const tickFor = (host: ParentNode, name: string) => ticks(host).find((t) => t.textContent?.includes(name))!;
+  const bracket = (host: ParentNode) => card(host)!.querySelector(".rpl-road__group--bracket");
+  const setHidden = (hidden: boolean) => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => (hidden ? "hidden" : "visible") });
+    document.dispatchEvent(new Event("visibilitychange"));
+  };
+  afterEach(() => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+  });
+
+  it("sits after the next session's weights, headed Next time in the label voice", async () => {
+    const host = await mount(
+      <WrapUpScreen
+        client={client}
+        session={session}
+        logs={[]}
+        lines={[{ machineId: "m-ext", name: NAMES["m-ext"], outcome: "performed", weight: 40, count: 10 } as any]}
+        journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
+        schedules={[]}
+        authTrainer={trainer}
+        onEffort={vi.fn()}
+        onNextWeight={vi.fn()}
+        onLeave={vi.fn()}
+        nextTime={consult(["m-ext"]) as any}
+        onNextTime={vi.fn()}
+        machines={[]}
+      />,
+    );
+    const heads = Array.from(host.querySelectorAll("section > div:first-child")).map((d) => d.textContent);
+    expect(heads.indexOf("Next time")).toBe(heads.indexOf("Next session's weights") + 1);
+    const head = Array.from(host.querySelectorAll("div")).find((d) => d.textContent === "Next time")!;
+    expect(head.className.split(/\s+/)).toEqual(expect.arrayContaining(["text-[14px]", "font-bold", "text-ink-d2"]));
+    expect(head.className).not.toMatch(/uppercase/);
+  });
+
+  it("the consult: every row unticked, 'Tick the ones that start Routine A', Tick all, day one said as such", async () => {
+    const host = await mount(<NextScreen next={consult()} onNextTime={vi.fn()} />);
+    const c = card(host)!;
+    expect(c.textContent).toContain("Tick the ones that start Routine A.");
+    expect(ticks(host).map((t) => t.getAttribute("aria-checked"))).toEqual(["false", "false", "false", "false"]);
+    expect(tickFor(host, "Leg Press").textContent).toContain("Day one");
+    expect(tickFor(host, "Leg Extension").textContent).toContain("Next in the plan");
+    // Nothing ticked: the next visit runs day one again, and the line says so.
+    expect(bracket(host)!.textContent).toContain("Next time · 3");
+    expect(c.querySelector(".rpl-road__progress")!.textContent).toBe("0 of 5 · day one: Leg Press, Compound Row and Lumbar");
+    await click(buttonByText(c, "Tick all"));
+    expect(ticks(host).every((t) => t.getAttribute("aria-checked") === "true")).toBe(true);
+    expect(buttonByText(c, "Untick all")).toBeTruthy();
+  });
+
+  it("while a routine with machines is being built, today's join, ticked", async () => {
+    const host = await mount(<NextScreen next={building()} onNextTime={vi.fn()} />);
+    expect(card(host)!.textContent).toContain("Routine A is being built, so today's machines join it. Untick one to leave it out.");
+    expect(ticks(host).map((t) => [t.textContent, t.getAttribute("aria-checked")])).toEqual([
+      ["Chest PressNext in the plan", "true"],
+      ["Leg CurlAdded today · not in the plan", "true"],
+    ]);
+    // No Tick all here: the rows start ticked.
+    expect(buttonByText(card(host)!, "Tick all")).toBeUndefined();
+  });
+
+  it("an established routine changes on purpose: rows start unticked", async () => {
+    const host = await mount(<NextScreen next={{ ...building(), plan: plan({ building: false }) }} onNextTime={vi.fn()} />);
+    expect(card(host)!.textContent).toContain("Tick a machine to keep it in Routine A.");
+    expect(ticks(host).every((t) => t.getAttribute("aria-checked") === "false")).toBe(true);
+  });
+
+  it("the Road for next time follows the ticks, live", async () => {
+    const host = await mount(<NextScreen next={consult()} onNextTime={vi.fn()} />);
+    await click(tickFor(host, "Lumbar"));
+    expect(tickFor(host, "Lumbar").getAttribute("aria-checked")).toBe("true");
+    expect(bracket(host)!.textContent).toContain("Next time · 1");
+    expect(bracket(host)!.textContent).toContain("Joins");
+    expect(card(host)!.querySelector(".rpl-road__progress")!.textContent).toBe("1 of 5 · next: Leg Press");
+    await click(tickFor(host, "Leg Press"));
+    expect(bracket(host)!.textContent).toContain("Next time · 2");
+    // The road's order, not the order ticked.
+    const names = Array.from(bracket(host)!.querySelectorAll(".rpl-road__name")).map((n) => n.textContent);
+    expect(names).toEqual(["Leg Press", "Lumbar"]);
+    await click(tickFor(host, "Lumbar"));
+    expect(bracket(host)!.textContent).toContain("Next time · 1");
+  });
+
+  it("writes nothing per tick, and once on Back to Hub with the ticked ids in today's order", async () => {
+    const onNextTime = vi.fn();
+    const onLeave = vi.fn();
+    const host = await mount(<NextScreen next={consult()} onNextTime={onNextTime} onLeave={onLeave} />);
+    await click(tickFor(host, "Leg Extension"));
+    await click(tickFor(host, "Leg Press"));
+    expect(onNextTime).not.toHaveBeenCalled();
+    await click(buttonByText(host, "Back to Hub"));
+    expect(onNextTime).toHaveBeenCalledTimes(1);
+    expect(onNextTime).toHaveBeenCalledWith(["m-leg-press", "m-ext"]);
+    expect(onLeave).toHaveBeenCalledTimes(1);
+    // The unmount after leaving hands over nothing a second time.
+    const m = mounted.pop()!;
+    await act(async () => m.root.unmount());
+    m.host.remove();
+    await settle();
+    expect(onNextTime).toHaveBeenCalledTimes(1);
+  });
+
+  it("untouched, leaving writes the default ticks", async () => {
+    const onNextTime = vi.fn();
+    const host = await mount(<NextScreen next={building()} onNextTime={onNextTime} />);
+    await click(buttonByText(host, "Back to Hub"));
+    expect(onNextTime).toHaveBeenCalledTimes(1);
+    expect(onNextTime).toHaveBeenCalledWith(["m-chest", "m-curl"]);
+  });
+
+  it("nothing ticked writes nothing: Routine A stays empty and the next visit runs day one again", async () => {
+    const onNextTime = vi.fn();
+    const host = await mount(<NextScreen next={consult()} onNextTime={onNextTime} />);
+    await click(buttonByText(host, "Back to Hub"));
+    await settle();
+    expect(onNextTime).not.toHaveBeenCalled();
+  });
+
+  it("writes when the screen goes without Back to Hub (the bottom bar, the header), once", async () => {
+    const onNextTime = vi.fn();
+    await mount(<NextScreen next={building()} onNextTime={onNextTime} />);
+    const m = mounted.pop()!;
+    await act(async () => m.root.unmount());
+    m.host.remove();
+    await settle();
+    expect(onNextTime).toHaveBeenCalledTimes(1);
+    expect(onNextTime).toHaveBeenCalledWith(["m-chest", "m-curl"]);
+  });
+
+  // Changed on purpose (the review of this phase, Oct 9 2026): the ticks
+  // locked after the iPad was locked, so opening Mindbody to book the next
+  // visit and coming back left them disabled. They stay open now; an
+  // unchanged way out never hands them over twice.
+  it("writes when the iPad is locked, stays, keeps the ticks open, and an unchanged way out never writes twice", async () => {
+    const onNextTime = vi.fn();
+    const host = await mount(<NextScreen next={building()} onNextTime={onNextTime} />);
+    await click(tickFor(host, "Leg Curl"));
+    await act(async () => setHidden(true));
+    expect(onNextTime).toHaveBeenCalledWith(["m-chest"]);
+    await act(async () => setHidden(false));
+    expect(ticks(host).some((t) => t.disabled)).toBe(false);
+    expect(card(host)!.textContent).toContain("Untick one to leave it out.");
+    await act(async () => setHidden(true));
+    await click(buttonByText(host, "Back to Hub"));
+    const m = mounted.pop()!;
+    await act(async () => m.root.unmount());
+    m.host.remove();
+    await settle();
+    expect(onNextTime).toHaveBeenCalledTimes(1);
+  });
+
+  it("ticks changed after the iPad was locked are handed over again on the way out, once", async () => {
+    const onNextTime = vi.fn();
+    const host = await mount(<NextScreen next={building()} onNextTime={onNextTime} />);
+    await click(tickFor(host, "Leg Curl"));
+    await act(async () => setHidden(true));
+    await act(async () => setHidden(false));
+    // Back from booking the next visit: Leg Curl after all.
+    await click(tickFor(host, "Leg Curl"));
+    expect(onNextTime).toHaveBeenCalledTimes(1);
+    await click(buttonByText(host, "Back to Hub"));
+    expect(onNextTime.mock.calls).toEqual([[["m-chest"]], [["m-chest", "m-curl"]]]);
+    const m = mounted.pop()!;
+    await act(async () => m.root.unmount());
+    m.host.remove();
+    await settle();
+    expect(onNextTime).toHaveBeenCalledTimes(2);
+  });
+
+  it("everything unticked after the iPad was locked is handed over too, as nothing", async () => {
+    const onNextTime = vi.fn();
+    const host = await mount(<NextScreen next={building()} onNextTime={onNextTime} />);
+    await act(async () => setHidden(true));
+    await act(async () => setHidden(false));
+    await click(tickFor(host, "Chest Press"));
+    await click(tickFor(host, "Leg Curl"));
+    await click(buttonByText(host, "Back to Hub"));
+    expect(onNextTime.mock.calls).toEqual([[["m-chest", "m-curl"]], [[]]]);
+  });
+
+  it("locked with nothing ticked writes nothing and stays open, so a tick made after it is written on leaving", async () => {
+    const onNextTime = vi.fn();
+    const host = await mount(<NextScreen next={consult()} onNextTime={onNextTime} />);
+    await act(async () => setHidden(true));
+    await act(async () => setHidden(false));
+    expect(onNextTime).not.toHaveBeenCalled();
+    await click(tickFor(host, "Lumbar"));
+    await click(buttonByText(host, "Back to Hub"));
+    expect(onNextTime.mock.calls).toEqual([[["m-lumbar"]]]);
+  });
+
+  it("writes when a sign-out asks every screen to send now", async () => {
+    const onNextTime = vi.fn();
+    await mount(<NextScreen next={building()} onNextTime={onNextTime} />);
+    await act(async () => {
+      window.dispatchEvent(new Event("journey:send-sets-now"));
+    });
+    expect(onNextTime).toHaveBeenCalledWith(["m-chest", "m-curl"]);
+  });
+
+  it("no routine (a session built on the fly): the same ask as the consult, and no 'not in the plan'", async () => {
+    const host = await mount(
+      <NextScreen
+        next={{ routineId: null, routineName: "Routine A", machineIds: [], plan: null, performed: ["m-leg-press", "m-curl"], names: NAMES }}
+        onNextTime={vi.fn()}
+      />,
+    );
+    const c = card(host)!;
+    expect(c.textContent).toContain("Tick the ones that start Routine A.");
+    expect(buttonByText(c, "Tick all")).toBeTruthy();
+    expect(c.textContent).not.toContain("not in the plan");
+    expect(tickFor(host, "Leg Curl").textContent).toContain("Added today");
+    // Nothing ticked, nothing to draw for next time.
+    expect(c.querySelector(".rpl-road")).toBeNull();
+    await click(tickFor(host, "Leg Curl"));
+    expect(bracket(host)!.textContent).toContain("Next time · 1");
+  });
+
+  it("no card for a Free session (no snapshot), or when nothing is left to offer", async () => {
+    const free = await mount(<NextScreen next={null} onNextTime={vi.fn()} />);
+    expect(card(free)).toBeNull();
+    const none = await mount(<NextScreen next={{ ...building(), performed: ["m-leg-press"] }} onNextTime={vi.fn()} />);
+    expect(card(none)).toBeNull();
+    expect(none.textContent).not.toMatch(/next time/i);
+  });
+
+  it("draws a long machine name whole, and each tick a 40px box on the firm edge, blue when on", async () => {
+    const host = await mount(<NextScreen next={consult()} onNextTime={vi.fn()} />);
+    const label = Array.from(card(host)!.querySelectorAll(".rpl-tick__label")).find((l) => l.textContent === NAMES["m-ext"]);
+    expect(label).toBeTruthy();
+    expect(label!.className).not.toMatch(/truncate|line-clamp/);
+    const here = dirname(fileURLToPath(import.meta.url));
+    const css = readFileSync(join(here, "../features/routine-plan/ui/routine-plan.css"), "utf8").replace(/\r\n/g, "\n");
+    const box = css.match(/\.rpl-tick__box \{([^}]*)\}/)![1];
+    expect(box).toMatch(/width: 40px/);
+    expect(box).toMatch(/height: 40px/);
+    expect(box).toMatch(/border: 1\.5px solid var\(--eq-border-strong\)/);
+    expect(css).toMatch(/\.rpl-tick__box\[data-on="true"\],[^{]*\{[^}]*background-color: var\(--eq-live\)/);
+    // No orange here: orange is Start session and Finish.
+    const src = readFileSync(join(here, "../features/routine-plan/ui/NextTimeCard.tsx"), "utf8");
+    expect(src).not.toMatch(/--eq-hero|--eq-go|orange/);
   });
 });

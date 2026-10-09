@@ -65,6 +65,8 @@ import { bookedWeekdays } from "../features/packages/booked-days";
 import { DOOR_BUTTON, sheetTitle } from "../features/packages/package-copy";
 import { PackagesSheet } from "../features/packages/PackagesSheet";
 import { NextWeightCard, type SaveNextWeight } from "../features/next-weight/NextWeightCard";
+import { nextTimeOffer, sameTicks, tickedInOrder, type NextTimeSnapshot } from "../features/routine-plan/next-time";
+import { NextTimeCard } from "../features/routine-plan/ui/NextTimeCard";
 /**
  * THE WRAP-UP — the post-session screen (rebuilt in the tracker round, Sep 2026).
  *
@@ -119,6 +121,20 @@ import { NextWeightCard, type SaveNextWeight } from "../features/next-weight/Nex
  *
  * There is NO save button. The session was submitted when End Session was
  * confirmed (commitEndSession in the tracker). "Back to Hub" only leaves.
+ *
+ * NEXT TIME (the first-session design round, Oct 8 2026, §4.7), after the
+ * next session's weights: the machines performed today that the routine
+ * lacks, each a tick, and the Road for next time under them. Ticked by
+ * default only while a routine with machines is being built; with the
+ * routine empty when the session finished (the consult: AJ, "sometimes the
+ * consult machines will not be the same as their a routine") or none at
+ * all, every row starts unticked under "Tick the ones that start Routine A".
+ * The ticks are handed to the host ONCE, on every way out, like the
+ * effort's default (`onNextTime`), never per tick; nothing ticked writes
+ * nothing. A way out that leaves the screen standing (the iPad locked,
+ * another app opened to book the next visit) never locks them: changed
+ * after it, they are handed over again on the next way out. The card is
+ * routine-plan/ui/NextTimeCard.tsx; what it reads is frozen at Finish.
  *
  * The screen follows the app theme, all of it. Its surfaces are the
  * `bg-dark` / `ink-d` tokens, which go light in the light theme, and every
@@ -274,6 +290,23 @@ export interface WrapUpScreenProps {
    * Resolving to `false` means the write failed. Without it there is no card.
    */
   onNextWeight?: SaveNextWeight;
+  /**
+   * NEXT TIME (the first-session design round, Oct 8 2026, §4.7): the
+   * routine the session ran, its machines and its plan, and today's
+   * performed machines, frozen at Finish (routine-plan/next-time.ts). Null
+   * for a Free session, and whenever Journey can't tell: no card.
+   */
+  nextTime?: NextTimeSnapshot | null;
+  /**
+   * The ticked machines, handed over ONCE on the way out (Back to Hub, the
+   * iPad locked, a sign-out, the screen going), never per tick, beside the
+   * effort's default; nothing ticked hands over nothing. A way out that
+   * leaves the screen standing keeps the ticks open, and a later way out
+   * hands them over again only when they changed (the host writes the
+   * difference). The host writes them through routine-plan/store.ts and
+   * never waits on it. Without it there is no card.
+   */
+  onNextTime?: (ticked: string[]) => void;
   /** Leaves the screen; the Profile note (if any) is filed on the way out with its Loudness and "until" day. */
   onLeave: (profileNote: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => void | Promise<void>;
   /**
@@ -425,6 +458,8 @@ export function WrapUpScreen({
   authTrainer,
   onEffort,
   onNextWeight,
+  nextTime = null,
+  onNextTime,
   onLeave,
   onFile,
   unsavedDraft = null,
@@ -444,6 +479,23 @@ export function WrapUpScreen({
   // Whether the effort has been written yet: untouched, the way out writes
   // the default once.
   const effortWrittenRef = useRef(false);
+  /* NEXT TIME (the first-session design round, Oct 8 2026, §4.7). The rows
+     come from the snapshot frozen at Finish, so nothing arriving reshuffles
+     them while the trainer ticks; the ticks start as `nextTimeRows` says
+     (ticked only while a routine with machines is being built). They are
+     handed over ONCE, on the way out, beside the effort's default; ticked
+     defaults left untouched are handed over too. A way out that leaves the
+     screen standing (the iPad locked, another app) keeps them open, and the
+     next way out hands them over again only if they changed. */
+  const offersNextTime = !!onNextTime;
+  const nextRows = useMemo(() => (nextTime && offersNextTime ? nextTimeOffer(nextTime) : []), [nextTime, offersNextTime]);
+  const [nextTicked, setNextTicked] = useState<string[]>(() => nextRows.filter((r) => r.defaultOn).map((r) => r.machineId));
+  const nextTimeRef = useRef({ rows: nextRows, ticked: nextTicked });
+  nextTimeRef.current = { rows: nextRows, ticked: nextTicked };
+  const onNextTimeRef = useRef(onNextTime);
+  onNextTimeRef.current = onNextTime;
+  // What was last handed over, in today's order; null until the first.
+  const nextHandedRef = useRef<string[] | null>(null);
   const [notes, setNotes] = useState("");
   const [importance, setImportance] = useState<JournalImportance>("standard");
   const [effectiveUntil, setEffectiveUntil] = useState("");
@@ -580,6 +632,7 @@ export function WrapUpScreen({
     leftRef.current = true;
     setLeaving(true);
     fileEffortDefault();
+    fileNextTime();
     const note = profileNoteNow();
     notesRef.current = { ...notesRef.current, notes: "" };
     void onLeave(note);
@@ -590,6 +643,7 @@ export function WrapUpScreen({
     const onHide = () => {
       if (document.visibilityState !== "hidden") return;
       fileEffortDefault();
+      fileNextTime();
       if (fileWithoutLeaving()) {
         setNotes("");
         setNoteFiledHere(true);
@@ -598,6 +652,7 @@ export function WrapUpScreen({
     // A sign-out asks every screen to send now, while the person is signed in.
     const onSignOut = () => {
       fileEffortDefault();
+      fileNextTime();
       if (fileWithoutLeaving()) {
         setNotes("");
         setNoteFiledHere(true);
@@ -632,6 +687,27 @@ export function WrapUpScreen({
     effortWrittenRef.current = true;
     Promise.resolve(onEffortRef.current(0, true)).catch(() => undefined);
   };
+  /**
+   * Next time's ticks, handed over once on the way out (never per tick), in
+   * today's order. The first time, nothing ticked hands over nothing, so a
+   * tick made after the iPad was locked is still written when the trainer
+   * leaves. After that, only ticks changed since the last hand-over are
+   * handed over again (unticking everything included): the iPad locked, or
+   * another app opened to book the next visit, never locks the ticks, and
+   * an unchanged way out writes nothing twice. The host writes only the
+   * difference.
+   */
+  const fileNextTime = (): boolean => {
+    const hand = onNextTimeRef.current;
+    if (!hand) return false;
+    const { rows, ticked } = nextTimeRef.current;
+    const picked = tickedInOrder(rows, ticked);
+    const handed = nextHandedRef.current;
+    if (handed === null ? picked.length === 0 : sameTicks(handed, picked)) return false;
+    nextHandedRef.current = picked;
+    hand(picked);
+    return true;
+  };
   // Every way out that unmounts the screen without Back to Hub (the bottom
   // bar, the header, a studio switch) still files the Profile note and the
   // effort's default. The check waits a tick, so React's development double
@@ -645,6 +721,7 @@ export function WrapUpScreen({
       setTimeout(() => {
         if (aliveRef.current) return;
         fileEffortDefault();
+        fileNextTime();
         fileWithoutLeaving();
       }, 0);
     };
@@ -803,6 +880,25 @@ export function WrapUpScreen({
             <Card delay={0.08}>
               <Kicker>Next session's weights</Kicker>
               <NextWeightCard lines={lines} onSave={onNextWeight} />
+            </Card>
+          )}
+
+          {/* 1c · next time (the first-session design round, Oct 8 2026,
+                 §4.7): today's performed machines the routine lacks, ticked
+                 into it for next time, with the Road for next time under
+                 them. Written once on the way out, never per tick. No card
+                 for a Free session, or when there is nothing to offer. */}
+          {nextTime && nextRows.length > 0 && (
+            <Card delay={0.1}>
+              <Kicker>Next time</Kicker>
+              <NextTimeCard
+                snapshot={nextTime}
+                rows={nextRows}
+                ticked={nextTicked}
+                onTicked={setNextTicked}
+                firstName={clientFirstName(client)}
+                todayYmd={todayKey}
+              />
             </Card>
           )}
 

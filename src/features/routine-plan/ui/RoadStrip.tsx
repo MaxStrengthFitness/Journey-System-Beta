@@ -29,6 +29,12 @@ export interface RoadStripProps {
   progress?: PlanProgress | null;
   /** What the strip is, for a screen reader: "Routine A's plan". */
   label?: string;
+  /**
+   * What a station under the bracket is, for a screen reader: "today", or
+   * the bracket's own words where it isn't today (the Wrap-up's Road says
+   * "next time").
+   */
+  inWords?: string;
 }
 
 const KIND_WORDS: Record<RoadStationKind, string> = {
@@ -38,7 +44,8 @@ const KIND_WORDS: Record<RoadStationKind, string> = {
   cantdo: "can't do",
 };
 
-export function RoadStrip({ groups, nameOf, progressLine, progress, label = "The plan" }: RoadStripProps) {
+export function RoadStrip({ groups, nameOf, progressLine, progress, label = "The plan", inWords }: RoadStripProps) {
+  const kindWords = (kind: RoadStationKind) => (kind === "in" && inWords ? inWords : KIND_WORDS[kind]);
   const total = groups.reduce((n, g) => n + g.stations.length, 0);
   let at = 0;
   return (
@@ -53,7 +60,7 @@ export function RoadStrip({ groups, nameOf, progressLine, progress, label = "The
                 const i = at++;
                 const lineClass = s.kind === "in" ? "rpl-road__line rpl-road__line--in" : "rpl-road__line";
                 return (
-                  <li key={s.id} className="rpl-road__stop" data-kind={s.kind} aria-label={`${nameOf(s.id)}, ${KIND_WORDS[s.kind]}`}>
+                  <li key={s.id} className="rpl-road__stop" data-kind={s.kind} aria-label={`${nameOf(s.id)}, ${kindWords(s.kind)}${s.mark && s.kind === "in" ? `, ${s.mark.toLowerCase()}` : ""}`}>
                     <span className="rpl-road__track" aria-hidden="true">
                       {i > 0 && <span className={`${lineClass} rpl-road__line--before`} />}
                       {i < total - 1 && <span className={`${lineClass} rpl-road__line--after`} />}

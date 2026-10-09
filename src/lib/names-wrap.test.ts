@@ -148,7 +148,8 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   // The briefing's plan card (the first-session design round, Oct 8 2026, §4.5).
   { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-brief__title", what: "\"{First}'s starting lineup\" and \"How does {First} start?\" on the briefing" },
   { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-brief__lead", what: "\"{First} has a routine from before Journey\" on the briefing" },
-  { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-tick__label", what: "a machine on Change today's ticks" },
+  { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-tick__label", what: "a machine on Change today's ticks, and on the Wrap-up's Next time" },
+  { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-next__ask", what: "\"Tick the ones that start Routine A.\" on the Wrap-up's Next time, the routine by name" },
   { file: "features/briefing/briefing.css", cls: "br-routine__touch", what: "\"Mind the limits on {machines}\" under the routine line and the plan card's Road" },
   { file: "features/routines/routines.css", cls: "rt-row__name", what: "a machine in Routine A or B on Programming" },
   { file: "features/routines/routines.css", cls: "rt-row__plan", what: "the plan's word under a Routine A machine in the Lineup (\"instead of Seated Dip\")" },

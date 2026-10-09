@@ -70,7 +70,17 @@ import { SEND_SETS_NOW_EVENT } from "../features/session-record/sign-out-check";
 import { NothingOnScreen } from "../features/session-record/NothingOnScreen";
 import { nothingKind } from "../features/session-record/nothing-on-screen";
 import { nextRoutine } from "../features/routines/next-routine";
-import { addStartPlanToBatch } from "../features/routine-plan/store";
+import { addStartPlanToBatch, saveNextTime } from "../features/routine-plan/store";
+import {
+  nextTimeAtFinish,
+  nextTimeOffer,
+  nextTimeWrite,
+  ranAsFree,
+  routineHolds,
+  withRoutineNow,
+  type NextTimeSnapshot,
+} from "../features/routine-plan/next-time";
+import { findRoutineByLetter } from "../lib/routine-utils";
 import { startChangeOf, type StartPlanAtStart } from "../features/routine-plan/briefing-plan";
 import { isStartingColumnChoice, todayFor } from "../features/routine-plan/plan";
 import { orderEffects } from "../features/routine-plan/order-effects";
@@ -83,7 +93,7 @@ import {
 } from "../features/routine-plan/session-plan";
 import { floorCanonical } from "../features/routine-plan/starting-plan";
 import type { PlanWrite } from "../features/routine-plan/lineup";
-import { machineNamer } from "../features/routine-plan/ui/host";
+import { floorMachinesOf, machineNamer } from "../features/routine-plan/ui/host";
 import { useSessionPlan } from "../features/routine-plan/ui/useSessionPlan";
 import { SessionPlanSheet } from "../features/routine-plan/ui/SessionPlanSheet";
 import { SessionOrderLine } from "../features/routine-plan/ui/SessionOrderLine";
@@ -131,6 +141,16 @@ interface PostSessionSnapshot {
    * this goes false when the answer comes.
    */
   queued?: boolean;
+  /**
+   * The Wrap-up's Next time (the first-session design round, Oct 8 2026,
+   * §4.7): the session's routine, that routine's machines and its plan, and
+   * today's performed machines, frozen here at Finish so a later routines
+   * snapshot can't reshuffle the rows while the trainer ticks
+   * (routine-plan/next-time.ts). Null for a Free session, whenever the
+   * routines weren't known, and when another iPad finished the session
+   * (that iPad has its own): no card.
+   */
+  nextTime: NextTimeSnapshot | null;
 }
 
 const LOG_WRITE_DEBOUNCE_MS = 600;
@@ -1548,6 +1568,38 @@ export function WorkoutTrackerView({
     clientHomeStudioId: string;
     studioId: string;
   } | null>(null);
+  /*
+   * How the session on screen was started (A, B or Free), for the Wrap-up's
+   * Next time: a Free session has none (the first-session design round,
+   * Oct 8 2026, §4.7). A session resumed after a reload has no record of
+   * it here, and Finish falls back to reading a session with no routine
+   * that runs the whole floor as Free.
+   */
+  const startedAsRef = useRef<{ sessionId: string; routineType: StartRoutineType } | null>(null);
+  /*
+   * Every machine the session's routine and Routine A held while the session
+   * ran (their machines, their plans' road and day one: `routineHolds`),
+   * gathered as the routines change, for the Wrap-up's Next time: a machine
+   * held then and held by neither at Finish was let go today (a Swap in the
+   * plan, a Re-plan or a Can't do from the session's corner after its set
+   * was logged: "Today's set stays. The plan changes from next session.";
+   * or an edit on Programming), and is never offered back (the review of
+   * the Next time phase, Oct 9 2026). A ref, never a write.
+   */
+  const heldDuringSessionRef = useRef<{ sessionId: string; ids: string[] } | null>(null);
+  /** What the Wrap-up's Next time last wrote, for this session: a later hand-over writes only the difference. */
+  const nextTimeHandedRef = useRef<{ sessionId: string; ticked: string[] } | null>(null);
+  useEffect(() => {
+    const sessionId = currentSession?.id;
+    if (!sessionId || !routinesKnown) return;
+    const own = currentSession.routineId ? routines.find((r) => r.id === currentSession.routineId) : null;
+    const held = heldDuringSessionRef.current?.sessionId === sessionId ? heldDuringSessionRef.current.ids : [];
+    const ids = [...held];
+    for (const id of [...routineHolds(own), ...routineHolds(findRoutineByLetter(routines, "A"))]) {
+      if (!ids.includes(id)) ids.push(id);
+    }
+    heldDuringSessionRef.current = { sessionId, ids };
+  }, [currentSession?.id, currentSession?.routineId, routines, routinesKnown]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** The prefilled sets for a session, as batch writes. Never over a set this iPad holds. */
   const seedsFor = (sessionId: string, machineIds: string[], clientHomeStudioId: string, studioId: string) =>
@@ -1775,6 +1827,7 @@ export function WorkoutTrackerView({
         at: Date.now(),
       };
       currentSessionIdRef.current = sessionRef.id;
+      startedAsRef.current = { sessionId: sessionRef.id, routineType };
       // The device remembers the live session, so the bottom tab can bring
       // the trainer straight back after a crash (lib/live-session.ts).
       rememberLiveSession(sessionRef.id);
@@ -2441,6 +2494,38 @@ export function WorkoutTrackerView({
         }),
       );
 
+      /* The Wrap-up's Next time (the first-session design round, Oct 8
+         2026, §4.7), frozen now: the routine the session ran as the live
+         listener holds it, and today's performed machines. A Free session
+         has none; one resumed after a reload with no record of how it
+         started is read as Free when it ran no routine over the whole
+         floor (`ranAsFree`). Routines not known yet: no card, never a
+         guess. A machine let go today (the client can't do it, or the
+         routine held it while the session ran and doesn't now) is never
+         offered back. Not when another iPad finished the session: that
+         iPad has its own Next time, and two would write the routine twice
+         (or make two Routine As), as its pain notes are its own. */
+      const startedAs = startedAsRef.current?.sessionId === sessionId ? startedAsRef.current.routineType : null;
+      const ranFree = ranAsFree({
+        startedAs,
+        routineId: currentSession.routineId,
+        floor: floorMachines.map((m) => m.id),
+        today: activeMachineIds,
+      });
+      const nextTime = alreadyFinished
+        ? null
+        : nextTimeAtFinish({
+            free: ranFree,
+            routineId: currentSession.routineId,
+            routines: routinesKnown ? routines : null,
+            performed: lines.filter((l) => l.outcome === "performed").map((l) => l.machineId),
+            floor: floorMachinesOf(floorMachines),
+            nameOf: machineNamer(floorMachines, machines),
+            todayYmd: studioTodayKey(),
+            heldDuringSession:
+              heldDuringSessionRef.current?.sessionId === sessionId ? heldDuringSessionRef.current.ids : [],
+          });
+
       setPostSession({
         session: { ...currentSession, status: "Completed", endTime: new Date() },
         client: selectedClient,
@@ -2450,6 +2535,7 @@ export function WorkoutTrackerView({
         draft: hasDraftText(noteDraft) ? noteDraft : null,
         nextTrainerNote: nextTrainerNote ? { id: null, body: nextTrainerNote } : null,
         queued,
+        nextTime,
       });
       clearSessionDraft(currentSession?.id);
       setNoteDraft(null);
@@ -2522,6 +2608,75 @@ export function WorkoutTrackerView({
         return false;
       },
     );
+  };
+
+  /**
+   * The Wrap-up's Next time (the first-session design round, Oct 8 2026,
+   * §4.7): the machines ticked for next time go into the routine the
+   * session ran, ONCE, on the way out (the Wrap-up hands them over on Back
+   * to Hub, the iPad locked, a sign-out or the screen going; never per
+   * tick). The one write a session makes to a routine's machines, through
+   * routine-plan/store.ts's `saveNextTime` in one batch: with a plan, the
+   * plan and its change beside the routine (`routineAfterWrapUp`,
+   * `planAfterWrapUp`); with none, the routine's machines alone; with no
+   * routine, Routine A made with them and no plan (or the Routine A made
+   * since Finish, never a second). Issued, never awaited; a refusal is said
+   * in a toast.
+   *
+   * The write starts from the routine as the live listener holds it NOW
+   * (`withRoutineNow`), never from what Finish froze, so a change made on
+   * another iPad or on Programming while the Wrap-up stood open is kept; the
+   * rows stay the card's, frozen at Finish. Handed over again (the ticks
+   * changed after a way out that left the screen standing, the iPad locked),
+   * it writes only the difference from what it wrote last
+   * (`nextTimeHandedRef`, this session's).
+   *
+   * AJ, Oct 7 2026: "in the wrap-up that it just by default adds on, but you
+   * can say, like, tick it off". And Oct 8 2026 ("3a"): "this also counts
+   * with the consult visit, sometimes the consult machines will not be the
+   * same as their a routine".
+   */
+  const savePostSessionNextTime = (ticked: string[]) => {
+    const snap = postSession;
+    const frozen = snap?.nextTime;
+    if (!snap || !frozen) return;
+    const sessionId = snap.session.id ?? "";
+    const earlier = nextTimeHandedRef.current?.sessionId === sessionId ? nextTimeHandedRef.current.ticked : null;
+    const live =
+      routinesKnown && clientId === snap.client.id
+        ? frozen.routineId
+          ? routines.find((r) => r.id === frozen.routineId)
+          : findRoutineByLetter(routines, "A")
+        : undefined;
+    const now = withRoutineNow(frozen, live);
+    const refused = (error: unknown) => {
+      console.error("[wrap-up] next time not saved", error);
+      toastError(`Next time didn't save. Add the machines to ${now.routineName} on Programming.`);
+    };
+    // The Routine A an earlier hand-over made isn't in sight (the client's
+    // routines not read here now): never a second one.
+    if (!now.routineId && earlier && earlier.length > 0) {
+      refused(new Error("the Routine A made earlier is not in sight"));
+      return;
+    }
+    const write = nextTimeWrite(
+      now,
+      ticked,
+      user?.uid ? { uid: user.uid, ...(authTrainer?.fullName ? { name: authTrainer.fullName } : null) } : null,
+      { rows: nextTimeOffer(frozen), earlier },
+    );
+    if (!write) return;
+    nextTimeHandedRef.current = { sessionId, ticked: [...ticked] };
+    const owner = {
+      clientId: snap.client.id,
+      studioId: snap.client.homeStudioId || contextActiveStudioId || "",
+      trainerId: authTrainer?.id || user?.uid || "",
+    };
+    try {
+      saveNextTime(db, write, owner).catch(refused);
+    } catch (error) {
+      refused(error);
+    }
   };
 
   /**
@@ -3740,6 +3895,8 @@ export function WorkoutTrackerView({
         authTrainer={authTrainer}
         onEffort={savePostSessionEffort}
         onNextWeight={savePostSessionNextWeight}
+        nextTime={postSession.nextTime}
+        onNextTime={savePostSessionNextTime}
         onLeave={leavePostSession}
         onFile={filePostSessionNotes}
         unsavedDraft={postSession.draft}

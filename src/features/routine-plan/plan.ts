@@ -327,15 +327,17 @@ export interface NextTimeRow {
  *
  * The consult is not Routine A (AJ, Oct 8 2026, "3a", and: "this also counts
  * with the consult visit, sometimes the consult machines will not be the same
- * as their a routine"). So when the routine is EMPTY at the session's start
- * (the consult, or any visit while Routine A has nothing), every row starts
- * unticked, the plan being built or not, and the trainer ticks which of
- * today's machines start Routine A. Those rows say why by the plan's day one
- * first ("day-one"), then the road ("planned"), then neither ("added-today").
+ * as their a routine"). So when the routine is EMPTY (the consult, or any
+ * visit while Routine A has nothing: nothing puts a machine into an empty
+ * Routine A during a session, so empty at Finish is empty at the start),
+ * every row starts unticked, the plan being built or not, and the trainer
+ * ticks which of today's machines start Routine A. Those rows say why by the
+ * plan's day one first ("day-one"), then the road ("planned"), then neither
+ * ("added-today").
  */
 export function nextTimeRows(input: {
   plan: Pick<RoutinePlan, "intended" | "building" | "dayOne"> | null;
-  /** The routine's machines at the session's start. */
+  /** The routine's machines as Finish froze them (next-time.ts's `nextTimeAtFinish`). */
   routine: readonly string[];
   performedToday: readonly string[];
 }): NextTimeRow[] {

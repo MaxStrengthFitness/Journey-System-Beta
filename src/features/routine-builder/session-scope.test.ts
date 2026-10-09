@@ -185,7 +185,10 @@ describe("mid-session changes stay in session state", () => {
   it("the session screen never updates or replaces a routine document", () => {
     // Rewriting an existing routine from here is not allowed. (Making one
     // was, through the briefing's Create_A / Create_B path, until the
-    // first-session design round, Oct 8 2026: see the next test.)
+    // first-session design round, Oct 8 2026: see the next test.) The
+    // Wrap-up's Next time is the one way a session's machines reach a
+    // routine, and it goes through routine-plan/store.ts, never a write of
+    // the tracker's own (the last test in this block).
     const writes = [
       ...SESSION_PATH.matchAll(/\b(updateDoc|setDoc|deleteDoc)\s*\(\s*doc\([^)]*?["']routines["']/g),
     ];
@@ -258,6 +261,51 @@ describe("mid-session changes stay in session state", () => {
     const add = WTV.slice(at, at + 300);
     expect(add).toMatch(/applySessionMachineIds/);
     expect(/["']routines["']/.test(add)).toBe(false);
+  });
+
+  // Changed on purpose (the first-session design round, Oct 8 2026, §4.7).
+  // This file held that "the Wrap-up decides what the routine keeps" with
+  // nothing on the session path to do it. AJ, Oct 7 2026: "in the wrap-up
+  // that it just by default adds on, but you can say, like, tick it off";
+  // "Any trainer who trains the client can definitely change the plan ...
+  // You should be able to change that and make the call as a trainer
+  // because you're training them that day." And Oct 8 ("3a"): "this also
+  // counts with the consult visit, sometimes the consult machines will not
+  // be the same as their a routine". So the Wrap-up's Next time carries the
+  // ticked machines into the routine: ONCE, on the way out, never per tick,
+  // through routine-plan/store.ts's `saveNextTime` alone, issued and never
+  // awaited, a refusal said in a toast. The card and the Wrap-up write
+  // nothing themselves: they hand the ticks up.
+  it("the Wrap-up's Next time writes the routine once, on the way out, through routine-plan/store.ts alone, never awaited", () => {
+    expect(WTV).toMatch(/import \{ addStartPlanToBatch, saveNextTime \} from "\.\.\/features\/routine-plan\/store";/);
+    const body = bodyOf(WTV, "savePostSessionNextTime");
+    expect(body, "savePostSessionNextTime not found").not.toBe("");
+    expect(body).toMatch(/saveNextTime\(db, write,/);
+    expect(body, "a tap never waits on it").not.toMatch(/await/);
+    expect(body).toMatch(/\.catch\(refused\)/);
+    expect(MUTATORS.filter((m) => new RegExp(`\\b${m}\\s*\\(`).test(body)), "no write of the tracker's own").toEqual([]);
+    expect(WTV).toMatch(/onNextTime=\{savePostSessionNextTime\}/);
+
+    // The card, its pure half and the Wrap-up hand the ticks up and write nothing.
+    for (const file of [
+      "src/components/WrapUpScreen.tsx",
+      "src/features/routine-plan/ui/NextTimeCard.tsx",
+      "src/features/routine-plan/next-time.ts",
+    ]) {
+      const src = code(read(file));
+      expect(MUTATORS.filter((m) => new RegExp(`\\b${m}\\s*\\(`).test(src)), file).toEqual([]);
+      expect(src, file).not.toMatch(/from\s+["'][^"']*\/(?:store|usePlanActions|starting-store)["']/);
+    }
+    // Once, never per tick: the Wrap-up hands them over from its ways out,
+    // and again only when the ticks changed after a way out that left the
+    // screen standing (the iPad locked: the review of this phase, Oct 9
+    // 2026), so an unchanged way out never writes twice.
+    const WRAP = code(read("src/components/WrapUpScreen.tsx"));
+    expect(WRAP.match(/fileNextTime\(\)/g)?.length, "Back to Hub, locked, a sign-out and the screen going").toBe(4);
+    expect(WRAP).toMatch(/if \(handed === null \? picked\.length === 0 : sameTicks\(handed, picked\)\) return false;/);
+    expect(WRAP).toMatch(/nextHandedRef\.current = picked;/);
+    // The tracker writes only the difference from what it last wrote.
+    expect(body).toMatch(/earlier \}/);
   });
 
   it("the builder's \"Today only\" is true on the briefing and in a session", () => {
