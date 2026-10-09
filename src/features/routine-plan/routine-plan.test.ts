@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SELECTION_TEMPLATES } from "../routine-builder/academy";
 import { findViolations } from "../routine-builder/engine";
-import { isProvisionalNewClient, startingKindOf } from "./client-kind";
+import { isProvisionalNewClient, LEARNING_CURVE_SESSIONS, pastLearningCurve, startingKindOf } from "./client-kind";
 import {
   academyTemplateName,
   floorIndex,
@@ -106,6 +106,39 @@ describe("which kind of no routine", () => {
       expect(startingKindOf(input).says).not.toMatch(/new client|first session|nothing before journey/i);
     }
     expect(startingKindOf(base).says).toBe("Starting out at the studio: start a plan.");
+  });
+
+  /* The Academy: "after the initial 'learning curve' period of around 4 to
+     6 workouts". The briefing and the routine drawer both ask this one rule. */
+  describe("a short routine is called thin only past the learning curve", () => {
+    const past = {
+      known: true,
+      coverage: "complete" as const,
+      journeySessions: LEARNING_CURVE_SESSIONS,
+      routineABeingBuilt: false,
+    };
+    it("six sessions, or trained here before Journey", () => {
+      expect(LEARNING_CURVE_SESSIONS).toBe(6);
+      expect(pastLearningCurve(past)).toBe(true);
+      expect(pastLearningCurve({ ...past, coverage: "unknown", journeySessions: 40 })).toBe(true);
+      expect(pastLearningCurve({ ...past, coverage: "partial", journeySessions: 0 })).toBe(true);
+      expect(pastLearningCurve({ ...past, coverage: "partial", journeySessions: null })).toBe(true);
+    });
+    it("not a client whose whole story is in Journey and still inside the curve, with a routine or without", () => {
+      // Two sessions, coverage complete: a hand-built Routine A or none at
+      // all, the client is still learning the machines.
+      expect(pastLearningCurve({ ...past, journeySessions: 2 })).toBe(false);
+      expect(pastLearningCurve({ ...past, journeySessions: 0 })).toBe(false);
+      expect(pastLearningCurve({ ...past, journeySessions: 5 })).toBe(false);
+    });
+    it("never while Routine A is being built, nor when Journey can't tell", () => {
+      expect(pastLearningCurve({ ...past, routineABeingBuilt: true })).toBe(false);
+      expect(pastLearningCurve({ ...past, coverage: "partial", routineABeingBuilt: true })).toBe(false);
+      expect(pastLearningCurve({ ...past, known: false })).toBe(false);
+      expect(pastLearningCurve({ ...past, coverage: "unknown", journeySessions: 3 })).toBe(false);
+      expect(pastLearningCurve({ ...past, coverage: "unknown", journeySessions: null })).toBe(false);
+      expect(pastLearningCurve({ ...past, journeySessions: null })).toBe(false);
+    });
   });
 });
 

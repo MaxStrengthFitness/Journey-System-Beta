@@ -47,11 +47,9 @@ describe("messages name today's places", () => {
     expect(source).not.toMatch(/>\s*Edit in Body\s*</);
   });
 
-  it("a lost consultation note is added from Notes & Profile, not the Journal", () => {
-    const source = read("components/ConsultationWizard.tsx");
-    expect(source).not.toContain("Add it from the Journal");
-    expect(source).toContain("Add it from Notes & Profile → Notes.");
-  });
+  // "A lost consultation note is added from Notes & Profile" was held here
+  // until ConsultationWizard.tsx, which said it, was deleted (the
+  // first-session design round, Oct 8 2026, §4.8).
 
   it("the Hub's search draws the Directory's rows, not cards with a History door of their own (hub fixes, Oct 1 2026)", () => {
     const source = read("components/ClientsView.tsx");

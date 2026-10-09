@@ -1,31 +1,13 @@
 import { describe, expect, it } from "vitest";
-import {
-  ageOnFile,
-  canSaveNewClient,
-  consultationNoteBody,
-  consultationPatch,
-  demographicsPatch,
-  knownGender,
-  newClientPayload,
-  parseAge,
-  suggestedStartingWeight,
-  type NewClientAnswers,
-} from "./consultation-answers";
-import { calculateStartingWeight } from "./consultation-utils";
+import { canSaveNewClient, newClientPayload, parseAge, type NewClientAnswers } from "./consultation-answers";
 
-describe("knownGender", () => {
-  it("knows the two the screens offer, and nothing else", () => {
-    expect(knownGender("Male")).toBe("Male");
-    expect(knownGender("Female")).toBe("Female");
-    // "Other" and "Prefer not to say" are real answers from intake, but not
-    // ones these screens can pick; treating them as unanswered leaves them on
-    // file untouched.
-    expect(knownGender("Other")).toBeNull();
-    expect(knownGender("")).toBeNull();
-    expect(knownGender(undefined)).toBeNull();
-    expect(knownGender(null)).toBeNull();
-  });
-});
+/*
+ * The consultation screens' own helpers (knownGender, ageOnFile,
+ * demographicsPatch, consultationPatch, suggestedStartingWeight,
+ * consultationNoteBody) went with the two screens in the first-session design
+ * round (Oct 8 2026, §4.8; item 9 of AJ's brief, retiring the old pieces).
+ * What is left is Add Client's intake, and it still invents nothing.
+ */
 
 describe("parseAge", () => {
   it("reads a typed age", () => {
@@ -43,78 +25,6 @@ describe("parseAge", () => {
     expect(parseAge(undefined)).toBeNull();
     expect(parseAge(null)).toBeNull();
     expect(parseAge(Number.NaN)).toBeNull();
-  });
-});
-
-describe("ageOnFile", () => {
-  const now = new Date("2026-09-24T12:00:00");
-
-  it("is the typed age first, then the birth date", () => {
-    expect(ageOnFile({ age: 58, dateOfBirth: "1990-01-01" }, now)).toBe(58);
-    expect(ageOnFile({ dateOfBirth: "1960-03-10" }, now)).toBe(66);
-  });
-
-  it("is null when nothing is on file — never 40", () => {
-    expect(ageOnFile({}, now)).toBeNull();
-    expect(ageOnFile({ age: 0 }, now)).toBeNull();
-    expect(ageOnFile(null, now)).toBeNull();
-  });
-});
-
-describe("demographicsPatch", () => {
-  it("writes only what was answered", () => {
-    expect(demographicsPatch({ gender: "Female", age: 52 })).toEqual({ gender: "Female", age: 52 });
-    expect(demographicsPatch({ gender: "Male", age: null })).toEqual({ gender: "Male" });
-    expect(demographicsPatch({ gender: null, age: 52 })).toEqual({ age: 52 });
-  });
-
-  it("writes nothing at all when nothing was answered — no Male, no 40", () => {
-    const patch = demographicsPatch({ gender: null, age: null });
-    expect(patch).toEqual({});
-    expect("gender" in patch).toBe(false);
-    expect("age" in patch).toBe(false);
-  });
-});
-
-describe("consultationPatch", () => {
-  const blank = { gender: null, age: null, occupation: "", medicalHistory: "", activity: "", goals: "" };
-
-  it("is empty when every question was left alone", () => {
-    expect(consultationPatch(blank)).toEqual({});
-  });
-
-  it("leaves a blank text answer out rather than writing an empty string over what is on file", () => {
-    const patch = consultationPatch({ ...blank, occupation: "Nurse", goals: "   " });
-    expect(patch).toEqual({ occupation: "Nurse" });
-    expect("goals" in patch).toBe(false);
-  });
-
-  it("has no undefined anywhere (Firestore refuses it)", () => {
-    const patch = consultationPatch({ ...blank, gender: "Female" });
-    expect(Object.values(patch)).not.toContain(undefined);
-  });
-});
-
-describe("suggestedStartingWeight", () => {
-  it("makes no suggestion until both gender and age are answered", () => {
-    expect(suggestedStartingWeight("Leg Press", null, 50, "Novice")).toBeNull();
-    expect(suggestedStartingWeight("Leg Press", "Female", null, "Novice")).toBeNull();
-    expect(suggestedStartingWeight("Leg Press", null, null, "Novice")).toBeNull();
-  });
-
-  it("is the ordinary calculation once they are", () => {
-    expect(suggestedStartingWeight("Leg Press", "Female", 50, "Novice")).toBe(
-      calculateStartingWeight("Leg Press", "Female", 50, "Novice"),
-    );
-  });
-});
-
-describe("consultationNoteBody", () => {
-  it("says the age only when it was given", () => {
-    expect(consultationNoteBody({ age: 61, skillLevel: "Novice", goals: "Bone density" })).toBe(
-      "Consultation. Age: 61, Skill: Novice. Goals: Bone density",
-    );
-    expect(consultationNoteBody({ age: null, skillLevel: "Novice", goals: "" })).toBe("Consultation. Skill: Novice.");
   });
 });
 

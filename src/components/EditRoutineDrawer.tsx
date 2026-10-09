@@ -34,6 +34,8 @@ import { useUnsavedChanges } from "../features/unsaved-changes";
 import { planChangeFromEdit } from "../features/routine-plan/drawer-sync";
 import { signedChange } from "../features/routine-plan/lineup";
 import { saveRoutineEdit } from "../features/routine-plan/store";
+import { pastLearningCurve } from "../features/routine-plan/client-kind";
+import type { HistoryCoverage } from "../lib/prior-history";
 import { GLOBAL_ROUTINE_PRESETS } from "../data/routine-presets";
 import {
   describeDeviation,
@@ -81,6 +83,12 @@ interface EditRoutineDrawerProps {
    * last-performed weight/date for the sequence list (round 4). */
   sessions: WorkoutSession[];
   allLogs: ExerciseLog[];
+  /**
+   * How much of the client's story Journey holds (`coverageOfClient`). With
+   * the session count it decides whether a short routine is called thin
+   * (`pastLearningCurve`, the briefing's rule too); unknown claims nothing.
+   */
+  coverage?: HistoryCoverage;
   /** Which routine to open on ("Routine A" / "Routine B"), or null when closed. */
   target: RoutineSlot | null;
   onClose: () => void;
@@ -112,6 +120,7 @@ export function EditRoutineDrawer({
   authTrainer,
   sessions,
   allLogs,
+  coverage = "unknown",
   target,
   onClose,
   onSaved,
@@ -816,7 +825,19 @@ export function EditRoutineDrawer({
             counterpartMachineIds={counterpartMachineIds}
             counterpartLabel={activeSlot === "Routine A" ? "Routine B" : "Routine A"}
             purposeText={purposeText}
-            established={sessions.length >= 6}
+            /* The briefing's rule (routine-plan/client-kind.ts): six
+               sessions, or trained here before Journey; never while
+               Routine A is being built (§4.8, Oct 8 2026). It was
+               `sessions.length >= 6`, so the two screens could disagree. */
+            established={pastLearningCurve({
+              known: true,
+              coverage,
+              journeySessions: Math.max(
+                typeof client?.sessionCount === "number" ? client.sessionCount : 0,
+                sessions.length,
+              ),
+              routineABeingBuilt: routineFor("Routine A").plan?.building === true,
+            })}
           />
         </div>
 

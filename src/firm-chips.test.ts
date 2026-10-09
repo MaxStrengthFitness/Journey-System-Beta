@@ -410,8 +410,12 @@ function tsxFiles(dir: string): string[] {
   return out;
 }
 
-/** Their own palette and voice (the round's NOT_THIS_ROUND), or not mounted. */
-const NOT_THIS_ROUND = /ClientProgressReportView|ConsultationWizard\.tsx|LegacyChartImporter|ErrorBoundary|MuscleSelector|[\\/]progress-report[\\/]/;
+/**
+ * Their own palette and voice (the round's NOT_THIS_ROUND), or not mounted.
+ * (ConsultationWizard.tsx left it when it was deleted with the old
+ * first-time setup, the first-session design round, Oct 8 2026, §4.8.)
+ */
+const NOT_THIS_ROUND = /ClientProgressReportView|LegacyChartImporter|ErrorBoundary|MuscleSelector|[\\/]progress-report[\\/]/;
 const HAIRLINE_CLASS =
   /(?<![\w:-])border-(?:border|div-d|slate-(?:100|200|300)|\(--(?:divider|edge|[a-z]+-border|[a-z]+-line|[a-z]+-divider)\))(?:\/\d+)?(?![\w-])/;
 /** An opening tag with up to three levels of braces in its attributes. */

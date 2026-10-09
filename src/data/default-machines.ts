@@ -8,12 +8,13 @@
  * It lived inside AppContent.tsx (264 lines of data in the middle of the app
  * shell) until the beta-prep trim, Sep 17 2026.
  *
- * A TRAP WORTH KNOWING: every `name` here is UPPERCASE ("LEG PRESS"), while
- * the starting-weight table in lib/consultation-utils.ts is keyed in Title
- * Case ("Leg Press") and looked up exactly. So the tracker's first-time
- * starting-weight seed, which passes `machine.name`, has never matched a
- * default machine and has never suggested a weight. Left as found - turning
- * it on is a product decision (see docs/rounds/2026-09-17-beta-prep-trim.md).
+ * Every `name` here is UPPERCASE ("LEG PRESS"). Nothing keys a starting
+ * weight by name any more: the old Title Case table (lib/consultation-utils)
+ * never matched these names, so the tracker's first-time starting-weight
+ * seed never suggested a weight, and both went with the old first-time
+ * setup (the first-session design round, Oct 8 2026, §4.8). The Academy's
+ * starting ranges are keyed by catalog id (features/routine-plan/
+ * starting-weights.ts) and shown beside the weight, never typed into it.
  */
 import type { Machine } from "../types";
 

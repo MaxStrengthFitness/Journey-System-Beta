@@ -31,7 +31,11 @@ describe("the neck machine resolves to the documented exercise", () => {
 });
 
 // calculateStartingWeight's Academy pins moved with the function's rule to
-// src/lib/consultation-utils.test.ts (beta-prep trim, Sep 17 2026).
+// src/lib/consultation-utils.test.ts (beta-prep trim, Sep 17 2026), and went
+// with it when the old first-time setup was retired (the first-session
+// design round, Oct 8 2026, §4.8). Nothing suggests a weight now: the
+// Academy's starting range is a reference beside it
+// (features/routine-plan/starting-weights.ts).
 
 describe("warnings the Academy states are actually present", () => {
   const has = (id: string, needle: string) =>

@@ -342,8 +342,12 @@ function countBarePaletteUtilities(): number {
  * count had fallen below the budget in the rounds between, and the Edit
  * routine drawer and Routine B's dialog no longer draw a "Reason required"
  * in Tailwind amber and emerald (the reason is asked, never required).
+ *
+ * Oct 8 2026 (the first-session screens, the old first-time setup retired):
+ * 109 -> 105, the count again. ConsultationWizard was deleted and its 4
+ * utilities went with it.
  */
-const BARE_PALETTE_BUDGET = 109;
+const BARE_PALETTE_BUDGET = 105;
 
 describe("colour drift does not creep back", () => {
   it(`has at most ${BARE_PALETTE_BUDGET} non-theme-aware palette utilities`, () => {

@@ -170,38 +170,45 @@ describe("seedLogs", () => {
   const base = (over: Partial<SeedArgs> = {}): SeedArgs => ({
     sessionId: "s1",
     machineIds: ["m-a", "m-torso-rotation", "m-new"],
-    prefill: { "m-a": { weight: "100", reps: "8", isTSC: false } },
+    prefill: { "m-a": { weight: "100", reps: "8", isTSC: false }, "m-torso-rotation": { weight: "30" } },
     settings: {},
     nameOf: (id) => ({ "m-a": "Leg Press", "m-torso-rotation": "Torso Rotation", "m-new": "Pulldown" })[id],
-    client: { gender: "Female", age: 62 },
     clientId: "c1",
     clientHomeStudioId: "solon",
     studioId: "solon",
     createdAt: "NOW",
     hasLocal: () => false,
-    startingWeight: () => 40,
     ...over,
   });
 
-  it("one set per machine, two for a per-side machine, with a weight and never a count", () => {
+  it("one set per machine with a weight on record, two for a per-side machine, and never a count", () => {
     const seeds = seedLogs(base());
-    expect(seeds.map((s) => s.id)).toEqual(["s1_m-a", "s1_m-torso-rotation_Left", "s1_m-torso-rotation_Right", "s1_m-new"]);
+    expect(seeds.map((s) => s.id)).toEqual(["s1_m-a", "s1_m-torso-rotation_Left", "s1_m-torso-rotation_Right"]);
     const a = seeds[0].payload;
     expect(a).toMatchObject({ sessionId: "s1", machineId: "m-a", clientId: "c1", weight: "100", createdAt: "NOW", isTSC: false });
     expect(a).not.toHaveProperty("reps");
-    expect(seeds[3].payload.weight).toBe("40");
-    expect(seeds[1].payload.side).toBe("Left");
+    expect(seeds[1].payload).toMatchObject({ side: "Left", weight: "30" });
+    expect(seeds[2].payload).toMatchObject({ side: "Right", weight: "30" });
   });
 
   it("never seeds over a set this iPad already holds: a typed weight survives a late seed", () => {
     const seeds = seedLogs(base({ hasLocal: (key) => key === "s1_m-a" }));
     expect(seeds.map((s) => s.id)).not.toContain("s1_m-a");
-    expect(seeds).toHaveLength(3);
+    expect(seeds).toHaveLength(2);
   });
 
-  it("leaves out a machine with nothing on record and no estimate", () => {
-    const seeds = seedLogs(base({ machineIds: ["m-new"], startingWeight: () => 0 }));
-    expect(seeds).toEqual([]);
+  // Changed on purpose (the first-session design round, Oct 8 2026, §4.8):
+  // a machine with nothing on record used to be seeded with the old
+  // starting-weight estimate, which took a client with no gender on file as
+  // "Male" and an unknown age as 45. The estimate is retired with the old
+  // first-time setup; the trainer types the first weight, and the Academy's
+  // range is a reference beside it, never typed in (AJ, Oct 7 2026: "just
+  // have this as a reference point, not as an end-all be-all").
+  it("a machine with nothing on record gets no set and no weight: the app never suggests one", () => {
+    expect(seedLogs(base({ machineIds: ["m-new"] }))).toEqual([]);
+    // Whatever is on the client: nothing here reads a gender or an age.
+    const seeds = seedLogs(base());
+    expect(seeds.map((s) => s.payload.machineId)).not.toContain("m-new");
   });
 
   it("writes nothing undefined (Firestore refuses it)", () => {

@@ -40,7 +40,8 @@ import { describe, expect, it } from "vitest";
  * drawer, Confirm Switch, Send to the team, Create Temporary Profile, Save
  * Trainer Profile) are the theme's blue with its own words, the fill kept on
  * hover; the selections (the notes sheet's open tab, the feedback kinds,
- * First-time setup's chips, a trainer's studios) are the blue too; the demo
+ * First-time setup's chips until it was retired on Oct 8 2026, a trainer's
+ * studios) are the blue too; the demo
  * card's "Yes, reset it" is a destructive confirm; and a caution icon is
  * plum. The lists below hold each one by name.
  *
@@ -119,16 +120,17 @@ function over(fg: string, bg: string, alpha: number): string {
 
 /**
  * Left as they are on purpose, and not this round: the always-dark screens
- * (neutral-ramp.test.ts keeps the same list), the unmounted consultation
- * wizard (kept for the consultation redesign), the progress report (always
- * navy, white paper in print) and the front door (always dark, --fd-*).
+ * (neutral-ramp.test.ts keeps the same list), the progress report (always
+ * navy, white paper in print) and the front door (always dark, --fd-*). The
+ * unmounted consultation wizard was on this list until it was deleted with
+ * the old first-time setup (the first-session design round, Oct 8 2026,
+ * §4.8).
  */
 const NOT_THIS_ROUND = [
   "components/AccessRequestView.tsx",
   "components/ErrorBoundary.tsx",
   "features/admin/import/LegacyChartImporter.tsx",
   "components/ClientProgressReportView.tsx",
-  "components/ConsultationWizard.tsx",
   "features/progress-report/",
   "features/front-door/",
 ];
@@ -250,11 +252,12 @@ describe("a solid logo-orange button has navy words and keeps its fill on hover"
     });
   }
 
-  // Orange is now and go: these stay the logo orange.
+  // Orange is now and go: these stay the logo orange. (First-time setup's
+  // "Start consult workout" stood here until the screen was retired, Oct 8
+  // 2026: a client starting out starts from the briefing's Start session.)
   it.each([
     ["Start a new session (a stale session)", "features/tracker/StaleSessionDialog.tsx", 1],
     ["Finish session (the End Session dialog)", "components/WorkoutTrackerView.tsx", 1],
-    ["Start consult workout", "components/ConsultationSetupWizard.tsx", 1],
   ])("%s is the logo orange with navy words, restated on hover", (_name, file, count) => {
     const strings = classStrings(read(file), file).filter(
       (s) => has(s.body, "bg-cta") && has(s.body, "text-cta-foreground") && has(s.body, "hover:bg-cta"),
@@ -267,30 +270,13 @@ describe("a solid logo-orange button has navy words and keeps its fill on hover"
       "components/ActiveSessionTimer.tsx",
       "features/trainer-profile/EditTrainerModal.tsx",
       "features/client-profile/ProfileHeader.tsx",
-      "components/ConsultationSetupWizard.tsx",
     ]) {
       expect(read(file), file).not.toMatch(/rgba\((?:240,\s*108,\s*34|239,\s*83,\s*2)/);
     }
-    // The Start consult workout glow: Go's depth, the token (type and depth,
-    // the sweep, Oct 5 2026; it was a 30px arbitrary glow, past the round's
-    // short resting shadows). The wizard's picked chips are the blue since
-    // AJ's answer of Oct 4 2026, with the blue's own lift.
-    const wizard = read("components/ConsultationSetupWizard.tsx");
-    expect(wizard).toContain("shadow-(--go-lift)");
-    expect(wizard).not.toContain("shadow-[0_10px_30px_var(--cta)]");
-  });
-
-  it("First-time setup (in the session for a prospect) writes in the theme's ink, never white or the logo orange", () => {
-    // Its ground is the bg-dark ladder, which follows the theme, so white
-    // words vanished in light (the title was 1.26:1).
-    const wizard = read("components/ConsultationSetupWizard.tsx");
-    expect(wizard).not.toMatch(/(?:^|[\s"'`:])text-white(?=[\s"'`]|$)/m);
-    expect(wizard).not.toMatch(/(?:^|[\s"'`])text-cta(?=[\s"'`]|$)/m);
-    expect(wizard).not.toMatch(/bg-cta\/\d/);
-    for (const t of BOTH) {
-      expect(ratio(colour(t, "--eq-hero-text"), colour(t, "--eq-surface")), `${t}: the weights`).toBeGreaterThanOrEqual(4.5);
-      expect(ratio(colour(t, "--eq-hero-text"), colour(t, "--eq-bg")), `${t}: Skip Setup`).toBeGreaterThanOrEqual(4.5);
-    }
+    // First-time setup (ConsultationSetupWizard) was on this list, with its
+    // Start consult workout glow and its picked chips and ink held below,
+    // until it was retired in the first-session design round (Oct 8 2026,
+    // §4.8; item 9 of AJ's brief).
   });
 });
 
@@ -409,14 +395,10 @@ describe("the session sheets", () => {
     expect(sidebar).toContain('? "bg-primary hover:bg-primary text-primary-foreground"');
     expect(sidebar).not.toMatch(/bg-\(--eq-go\)/);
     expect(tracker).toContain("focus-visible:ring-(--eq-hero) focus-visible:border-(--eq-hero)");
-    // The introductory-session banner: words and icons in the go pair. Its
-    // words are written as said since type and depth's phase 13 (they were
-    // typed in capitals), so the slice ends at them in that case.
-    const banner = tracker.slice(tracker.indexOf("{isIntroSession && ("), tracker.indexOf("New client introductory session"));
-    expect(tracker.indexOf("New client introductory session")).toBeGreaterThan(tracker.indexOf("{isIntroSession && ("));
-    expect(banner).toMatch(/className="bg-\(--eq-go\) /);
-    expect(banner.match(/text-\(--eq-go-on\)/g) ?? []).toHaveLength(2);
-    expect(banner).not.toMatch(/text-foreground/);
+    // The introductory-session banner (words and icons in the go pair) was
+    // held here until the intro-session path, which no caller ever set, was
+    // removed (the first-session design round, Oct 8 2026, §4.8).
+    expect(tracker).not.toContain("New client introductory session");
   });
 
   it("their orange marks clear 3:1 on the sheet (the page ground), in both modes", () => {
@@ -628,20 +610,6 @@ describe("a selection is blue", () => {
     expect(someStringHas("features/feedback/FeedbackDrawer.tsx", ["bg-primary", "border-primary", "text-primary-foreground"])).toBe(true);
     expect(drawer).toContain('kind === k ? "text-primary-foreground" : "opacity-50"');
     expect(drawer).not.toMatch(/--eq-hero|(?:bg|text|border)-cta/);
-  });
-
-  it("First-time setup's gender and skill chips: the picked one is the blue, with the blue's glow", () => {
-    const wizard = read("components/ConsultationSetupWizard.tsx");
-    // The sweep (Oct 5 2026) gave the picked chip the solid blue's own lift
-    // in place of a 20px arbitrary glow and a scale, and the unpicked ones the
-    // raised recipe on the 3:1 edge (they were the ground's own tone).
-    const picked = '"bg-primary text-primary-foreground border-primary shadow-(--solid-lift)"';
-    expect(wizard.split(picked)).toHaveLength(3);
-    expect(wizard).not.toMatch(/border-cta shadow/);
-    for (const t of BOTH) {
-      expect(ratio(colour(t, "--primary"), colour(t, "--bg-dark")), `${t}: a chip on the ground`).toBeGreaterThanOrEqual(3);
-      expect(ratio(colour(t, "--primary"), colour(t, "--raised")), `${t}: beside the unpicked, raised chip`).toBeGreaterThanOrEqual(3);
-    }
   });
 
   it("a trainer's studios and their profile edit: no retired orange, no Tailwind orange or indigo", () => {

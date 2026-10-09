@@ -1144,9 +1144,13 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
 };
 
 /*
- * Starting weights are NOT calculated here. There used to be a second
- * calculateStartingWeight in this file, carrying the Academy's 20 lb ceiling
- * for the Cervical Extension - and nothing called it, so the rule never
- * reached a trainer. The one function, with the ceiling, is
- * src/lib/consultation-utils.ts (beta-prep trim, Sep 17 2026).
+ * Starting weights are NOT calculated here, or anywhere. There used to be a
+ * second calculateStartingWeight in this file, carrying the Academy's 20 lb
+ * ceiling for the Cervical Extension, and nothing called it; the one the app
+ * called (src/lib/consultation-utils.ts, beta-prep trim, Sep 17 2026) was
+ * retired with the old first-time setup (the first-session design round,
+ * Oct 8 2026, §4.8). The Academy's starting ranges are a reference beside
+ * the weight, keyed by catalog id, never typed into it
+ * (src/features/routine-plan/starting-weights.ts); the neck's
+ * never-to-failure rule is held in this file's own text (machine-database.test.ts).
  */

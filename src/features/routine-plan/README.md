@@ -80,7 +80,14 @@ screens in `ui/`.
   `todayFor` instead (the round document, §4.5, names them).
 - **The app suggests machines, never a weight.** The Academy's starting range
   is a reference with its source (AJ: "a crutch until we have reliable data
-  within our app ... not as an end-all be-all").
+  within our app ... not as an end-all be-all"). It is the only starting
+  reference left: the old first-time setup's estimate
+  (`calculateStartingWeight`, by machine name, gender, age and skill) and the
+  start seed that typed it into the set's weight (`session-record/start-plan.ts`
+  `seedLogs`, which took a client with no gender on file as "Male" and an
+  unknown age as 45) were retired with `ConsultationSetupWizard` (the round
+  document, §4.8), and a machine with nothing on record starts with no
+  weight.
 - **No gender on screen, and none in choosing a start** (AJ, Oct 8 2026,
   "3a": "Gender is used nowhere in choosing a start"). The Academy's templates
   and its weight sheet are split by sex; nothing here reads a client's gender

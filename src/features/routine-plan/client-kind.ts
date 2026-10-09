@@ -116,3 +116,49 @@ export function startingKindOf(input: StartingKindInput): StartingKindAnswer {
   }
   return { kind: "unknown", says: CANT_TELL };
 }
+
+/**
+ * Sessions past which a client is out of the Academy's learning curve: "after
+ * the initial 'learning curve' period of around 4 to 6 workouts" (Exercise
+ * Selection and Long-Term Programming). The top of the range, so a client is
+ * never called thin while still inside it.
+ */
+export const LEARNING_CURVE_SESSIONS = 6;
+
+export interface LearningCurveInput {
+  /**
+   * The client's routines and the session count have answered. False while
+   * either is loading or its read failed: then nothing is claimed.
+   */
+  known: boolean;
+  coverage: HistoryCoverage;
+  /** The client's sessions as Journey counts them (`client.sessionCount`), or null when unknown. */
+  journeySessions: number | null;
+  /** Routine A carries a plan whose switch is on (`plan.building`). */
+  routineABeingBuilt: boolean;
+}
+
+/**
+ * Whether the routine builder may call a short routine thin for this client
+ * (`analyzeRoutine`'s `established`: "Most established clients run at least
+ * 6"). The Academy puts it after the learning curve: "most clients typically
+ * perform at least 6 exercises per workout (after the initial 'learning
+ * curve' period of around 4 to 6 workouts)" (Exercise Selection and
+ * Long-Term Programming). So it is true only for a client with at least
+ * `LEARNING_CURVE_SESSIONS` sessions, or one who trained here before Journey
+ * (coverage "partial"). Never while Routine A is being built (its plan's
+ * switch), when a short routine is the plan; never for a client whose whole
+ * story is in Journey and is still inside the curve, routine or not; and
+ * never when Journey can't tell, which claims nothing.
+ *
+ * The briefing and the routine drawer both ask it, so one client gets one
+ * answer on both screens. It replaced the briefing's intro-session flag
+ * (`established={!isIntroSession}`, which no caller ever set) and the
+ * drawer's `sessions.length >= 6` (the first-session design round, Oct 8
+ * 2026, §4.8).
+ */
+export function pastLearningCurve(input: LearningCurveInput): boolean {
+  if (!input.known || input.routineABeingBuilt) return false;
+  if (input.journeySessions !== null && input.journeySessions >= LEARNING_CURVE_SESSIONS) return true;
+  return input.coverage === "partial";
+}

@@ -1436,6 +1436,27 @@ describe("session writes never wait on the network (speed round, Oct 5 2026; R9)
     expect(json).not.toContain("__undefined__");
   });
 
+  /* The old first-time setup (ConsultationSetupWizard) stood in front of the
+     briefing for a client flagged for a consultation. It is retired (the
+     first-session design round, Oct 8 2026, §4.8): such a client, as Add
+     Client makes one, opens the briefing like everyone else, and opening it
+     writes nothing to the client. Finish still marks the consultation done. */
+  it("a client flagged for a consultation opens the briefing, never the old First-time setup, and nothing is written on opening", async () => {
+    sessionDocs = [];
+    netCtl.routines = [];
+    const prospect = { ...client, sessionCount: 0, requiresConsultation: true, consultationCompleted: false } as Client;
+    const host = await mount(<Tracker who={prospect} />);
+    await settle();
+    expect(startButton()).toBeTruthy();
+    expect(host.textContent).not.toContain("First-time setup");
+    expect(writes.some((w) => w.path.startsWith("clients/"))).toBe(false);
+    // Start is the briefing's, as for any client: the session runs.
+    await act(async () => startButton()!.click());
+    await settle();
+    expect(host.querySelector(".jg-sbar")).toBeTruthy();
+    expect(startedSession()).toBeTruthy();
+  });
+
   it("no routine and nothing chosen: the session starts empty, never the whole floor, and makes no routine", async () => {
     sessionDocs = [];
     netCtl.routines = [];

@@ -708,7 +708,6 @@ export default function AppContent({
     [selectedClientDoc, rosterClients, selectedClientId, selectedTotals],
   );
   const [isReorderingTrainers, setIsReorderingTrainers] = useState(false);
-  const [isIntroSession, setIsIntroSession] = useState(false);
   /**
    * The header's Refresh and the calendar's: asks Mindbody for part of the
    * schedule, re-reads it here, and writes down the days it read in full
@@ -746,17 +745,11 @@ export default function AppContent({
     void pullScheduleFromMindbody();
   };
 
-  const setView = (view: View, data?: { isIntroSession?: boolean }) => {
-    const go = () => {
-      if (data?.isIntroSession) {
-        setIsIntroSession(true);
-      } else {
-        setIsIntroSession(false);
-      }
-      setCurrentView(view);
-    };
-    // The intro flag moves WITH the screen: set, and then the move refused
-    // at "unsaved changes", it would start the next session as an intro.
+  const setView = (view: View) => {
+    const go = () => setCurrentView(view);
+    // A move to another screen asks the unsaved-changes gate first. (The
+    // intro-session flag that rode along here, and that no caller ever set,
+    // went with the first-session design round, Oct 8 2026, §4.8.)
     if (view === currentView) go();
     else guardLeave(go);
   };
@@ -1853,7 +1846,6 @@ export default function AppContent({
                     authTrainer={authTrainer}
                     isSyncing={isSyncing}
                     setIsSyncing={setIsSyncing}
-                    isIntroSession={isIntroSession}
                     rightControls={headerRightControls}
                     trainerDropdown={headerTrainerDropdown}
                     onStudioClick={openStudioPicker}

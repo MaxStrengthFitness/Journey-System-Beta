@@ -139,7 +139,7 @@ import { usePhone } from "../phone/device";
 import { clientDisplayName, clientFirstName } from "../../lib/client-name";
 import { useLeaveGuard, useUnsavedChanges } from "../unsaved-changes";
 import { openProfileAt } from "../client-profile/profile-nav";
-import { isProvisionalNewClient, startingKindOf } from "../routine-plan/client-kind";
+import { isProvisionalNewClient, pastLearningCurve, startingKindOf } from "../routine-plan/client-kind";
 import { openHealthWords, planIntakeText } from "../routine-plan/intake";
 import { planProgress, progressLine, todayFor } from "../routine-plan/plan";
 import { roadGroups } from "../routine-plan/lineup";
@@ -218,7 +218,6 @@ export interface BriefingScreenProps {
    */
   sessionsAreAll?: boolean;
   logs?: ExerciseLog[];
-  isIntroSession?: boolean;
   rightControls?: React.ReactNode;
   trainerDropdown?: React.ReactNode;
   onStudioClick?: () => void;
@@ -240,7 +239,6 @@ export function BriefingScreen({
   sessions = [],
   sessionsAreAll = false,
   logs = [],
-  isIntroSession = false,
   rightControls,
   trainerDropdown,
   onStudioClick,
@@ -301,20 +299,6 @@ export function BriefingScreen({
   };
 
   useEffect(() => {
-    if (isIntroSession) {
-      const demoRoutine = routines.find((r) => r.name === "Demo Routine");
-      if (
-        demoRoutine &&
-        demoRoutine.machineIds &&
-        demoRoutine.machineIds.length > 0
-      ) {
-        setSelectedRoutineType(routineA ? "A" : "Create_A");
-        setAdjustedMachineIds(demoRoutine.machineIds);
-        setIsAdjusting(true);
-        return;
-      }
-    }
-
     let type: "A" | "B" | "Free" | "Create_A" | "Create_B" = routineA ? "A" : "Create_A";
     if (targetRoutine) {
       if (matchesRoutineLetter(targetRoutine, "A")) type = routineA ? "A" : "Create_A";
@@ -336,7 +320,7 @@ export function BriefingScreen({
     } else {
       setAdjustedMachineIds([]);
     }
-  }, [targetRoutine, routineA, routineAToday, routineB, routinePickedByTrainer, isIntroSession, routines]);
+  }, [targetRoutine, routineA, routineAToday, routineB, routinePickedByTrainer]);
 
   /**
    * Any change to the sequence — reorder, add, remove, a one-tap rule fix —
@@ -1356,7 +1340,17 @@ export function BriefingScreen({
                         : "Routine B"
                     }
                     purposeText={purposeText}
-                    established={!isIntroSession}
+                    /* Past the learning curve: six sessions, or trained
+                       here before Journey; never while Routine A is being
+                       built, nor when Journey can't tell. The routine
+                       drawer asks the same rule (it was the intro-session
+                       flag, which nothing set; §4.8). */
+                    established={pastLearningCurve({
+                      known: routinesKnown,
+                      coverage,
+                      journeySessions: sessionCount,
+                      routineABeingBuilt: routineA?.plan?.building === true,
+                    })}
                   />
                 </div>
               )}

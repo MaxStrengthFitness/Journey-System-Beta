@@ -104,7 +104,9 @@ vi.mock("../client-profile/profile-nav", async (importOriginal) => {
 // The Routine Builder is its own feature with its own render tests; here it
 // is a stub so the briefing's own work is what is under test.
 vi.mock("../routine-builder", () => ({
-  RoutineBuilder: (p: any) => <div data-testid="routine-builder" data-count={p.machineIds?.length ?? 0} />,
+  RoutineBuilder: (p: any) => (
+    <div data-testid="routine-builder" data-count={p.machineIds?.length ?? 0} data-established={String(!!p.established)} />
+  ),
 }));
 
 // The journal hook is live Firestore; the briefing reads three of its lists.
@@ -1130,5 +1132,48 @@ describe("how the client starts (the first-session design round, Oct 8 2026)", (
     expect(startingReads.count).toBe(0);
     await click(buttonByText(host, "Start session"));
     expect(onStart.mock.calls[0][5]).toBeUndefined();
+  });
+
+  /* The builder's "thin" advice ("Most established clients run at least
+     6") was gated on the intro-session flag, which nothing set, so every
+     client was "established". It is the Academy's learning curve now ("after
+     the initial 'learning curve' period of around 4 to 6 workouts"): six
+     sessions, or trained here before Journey, never while Routine A is
+     being built, and the routine drawer asks the same rule (the
+     first-session design round, Oct 8 2026, §4.8). */
+  describe("calls a short routine thin only past the learning curve", () => {
+    const plan = { purpose: "The core", intended: ["m-leg-press", "m-compound-row", "m-lumbar"], building: true, madeByUid: "uid-sam" };
+    const building = { id: "rA", clientId: "c-new", name: "Routine A", machineIds: ["m-leg-press"], plan } as unknown as Routine;
+    const settled = { ...building, plan: { ...plan, building: false } } as unknown as Routine;
+    const handBuilt = { id: "rA", clientId: "c-new", name: "Routine A", machineIds: ["m-leg-press", "m-lumbar", "m-dip"] } as unknown as Routine;
+    const establishedOf = async (el: React.ReactElement) => {
+      const host = await mount(el);
+      await click(host.querySelector('[data-testid="briefing-routine-line"]')!);
+      return host.querySelector('[data-testid="routine-builder"]')!.getAttribute("data-established");
+    };
+
+    it("never while Routine A is being built", async () => {
+      expect(await establishedOf(<Fresh who={{ ...fresh, sessionCount: 9 } as Client} rs={[building]} />)).toBe("false");
+    });
+
+    it("not a client starting out, with a routine or a settled plan, however it was made", async () => {
+      // Whole story in Journey, no session yet: a routine made on Programming
+      // before the first visit, or a plan whose switch is off.
+      expect(await establishedOf(<Fresh rs={[settled]} />)).toBe("false");
+      expect(await establishedOf(<Fresh rs={[handBuilt]} />)).toBe("false");
+      // Two sessions in: still inside the curve.
+      expect(await establishedOf(<Fresh who={{ ...fresh, sessionCount: 2 } as Client} rs={[handBuilt]} />)).toBe("false");
+    });
+
+    it("six sessions in, or trained here before Journey", async () => {
+      expect(await establishedOf(<Fresh who={{ ...fresh, sessionCount: 6 } as Client} rs={[settled]} />)).toBe("true");
+      expect(
+        await establishedOf(<Fresh who={{ ...fresh, sessionCount: 1, historyIsComplete: false } as Client} coverage="partial" rs={[handBuilt]} />),
+      ).toBe("true");
+    });
+
+    it("claims nothing when Journey can't tell (the routines not read yet)", async () => {
+      expect(await establishedOf(<Fresh who={{ ...fresh, sessionCount: 9 } as Client} rs={[settled]} known={false} />)).toBe("false");
+    });
   });
 });

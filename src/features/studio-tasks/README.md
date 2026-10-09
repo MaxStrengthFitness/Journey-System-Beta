@@ -170,7 +170,7 @@ just-completed task look like the oldest one.
   the name) opens the same page at the Pulse card; `progress-report` always
   starts a new report in the report editor. (Until Sep 27 2026 `inbody` opened
   the client profile, and until Sep 24 2026 `assessment` opened the consultation
-  wizard.)
+  wizard, which was deleted on Oct 8 2026.)
 - No scheduled reminder or digest. Everything is pull, not push.
 - A studio with hundreds of days of history will eventually want the instances
   query bounded by date range rather than by day; the current query is a single

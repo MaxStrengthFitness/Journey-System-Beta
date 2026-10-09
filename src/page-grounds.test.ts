@@ -127,15 +127,15 @@ describe("the grounds people see are the theme's ground", () => {
 /**
  * Left white on purpose (plan, phase 6). The progress report is the client's
  * document: navy on screen and white paper in print. The always-dark screens
- * pin their own colours. ConsultationWizard is unmounted, kept for the
- * consultation redesign (docs/ARCHITECTURE.md), and not retinted.
+ * pin their own colours. (ConsultationWizard, unmounted and never retinted,
+ * was here until it was deleted in the first-session design round, Oct 8
+ * 2026, §4.8.)
  */
 const LEFT_WHITE = [
   "components/ClientProgressReportView.tsx",
   "features/progress-report/",
   "features/admin/import/LegacyChartImporter.tsx",
   "components/ErrorBoundary.tsx",
-  "components/ConsultationWizard.tsx",
 ];
 
 function walk(dir: string, out: string[] = []): string[] {

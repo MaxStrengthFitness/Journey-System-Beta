@@ -192,7 +192,7 @@ export function ClientProfileView({
   onSelectReport: (id: string) => void;
   /** Start a NEW progress report for this client — never reopen the last one. */
   onNewReport: () => void;
-  setView: (v: View, data?: { isIntroSession?: boolean }) => void;
+  setView: (v: View) => void;
   setSelectedClientId: (id: string | null) => void;
   hasQuotaError?: boolean;
   user?: any;
@@ -2172,6 +2172,7 @@ export function ClientProfileView({
             authTrainer={authTrainer}
             allLogs={allLogs}
             sessions={sessions}
+            coverage={clientCoverage}
             target={editRoutineTarget}
             onClose={() => setEditRoutineTarget(null)}
             onSaved={(updated) => setRoutines(updated)}

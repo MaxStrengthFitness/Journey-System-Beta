@@ -3,7 +3,6 @@ import {
   Users,
   AlertCircle,
   Trash2,
-  Sparkles,
   MessageSquare,
   ChevronLeft,
   Settings2,
@@ -65,7 +64,6 @@ import {
   startClientPatch,
   type StartRoutineType,
 } from "../features/session-record/start-plan";
-import { calculateStartingWeight } from "../lib/consultation-utils";
 import { SEND_SETS_NOW_EVENT } from "../features/session-record/sign-out-check";
 import { NothingOnScreen } from "../features/session-record/NothingOnScreen";
 import { nothingKind } from "../features/session-record/nothing-on-screen";
@@ -277,8 +275,6 @@ const ClientCheckInPanel = React.lazy(loadClientCheckInPanel);
 import { SessionJournalSidebar } from "./journal/SessionJournalSidebar";
 import { BriefingScreen } from "../features/briefing";
 import { WrapUpScreen } from "./WrapUpScreen";
-import { ConsultationSetupWizard } from "./ConsultationSetupWizard";
-import { ageOnFile, demographicsPatch } from "../lib/consultation-answers";
 import { studioTodayKey } from "../lib/studio-time";
 import { sessionLinkOf } from "../features/client-notes/session-link";
 
@@ -318,7 +314,6 @@ export function WorkoutTrackerView({
   isSyncing,
   setIsSyncing,
   schedules,
-  isIntroSession,
   rightControls,
   trainerDropdown,
   onStudioClick,
@@ -331,13 +326,12 @@ export function WorkoutTrackerView({
   schedules: any[];
   trainers: Trainer[];
   user: FirebaseUser;
-  setView: (v: View, data?: { isIntroSession?: boolean }) => void;
+  setView: (v: View) => void;
   setSelectedClientId: (id: string | null) => void;
   onStartNewClientOnboarding: (v: string) => void;
   authTrainer: Trainer | null;
   isSyncing: boolean;
   setIsSyncing: (v: boolean) => void;
-  isIntroSession?: boolean;
   rightControls?: React.ReactNode;
   trainerDropdown?: React.ReactNode;
   onStudioClick?: () => void;
@@ -1609,7 +1603,6 @@ export function WorkoutTrackerView({
       prefill: prefillOf(selectedClient, clientMachineSettings),
       settings: clientMachineSettings,
       nameOf: (id) => floorMachines.find((m) => m.id === id)?.name,
-      client: selectedClient,
       clientId: clientId || "",
       clientHomeStudioId,
       studioId,
@@ -1617,7 +1610,6 @@ export function WorkoutTrackerView({
       // A set this iPad already sent counts too: its echo may not be in logsRef yet.
       hasLocal: (key) =>
         !!logsRef.current[key] || pendingLogWritesRef.current.has(key) || writtenLogIdsRef.current.has(key),
-      startingWeight: (name, gender, age) => calculateStartingWeight(name, gender, age, "Novice"),
     });
 
   /**
@@ -4025,54 +4017,13 @@ export function WorkoutTrackerView({
       />
     ) : null;
 
-    const shouldShowWizard =
-      selectedClient.requiresConsultation === true &&
-      selectedClient.consultationCompleted === false;
-
-    if (shouldShowWizard) {
-      return (
-        <>
-          <ConsultationSetupWizard
-            clientName={clientFirstName(selectedClient)}
-            initialGender={selectedClient.gender ?? null}
-            initialAge={ageOnFile(selectedClient)}
-            onComplete={async (setupData) => {
-              // The gender only when one was picked. This used to write the
-              // wizard's "Male" default over whatever was on file, on Skip too.
-              await updateDoc(doc(db, "clients", selectedClient.id!), {
-                ...demographicsPatch({ gender: setupData.gender }),
-                consultationCompleted: true,
-                requiresConsultation: false,
-                updatedAt: serverTimestamp(),
-              }).catch((e) => console.error(e));
-
-              if (setupData.routine && setupData.routine.length > 0) {
-                const machineNames: string[] = setupData.routine.map((r) => r.name);
-                const customMachineIds = floorMachines
-                  .filter((m) => machineNames.includes(m.name))
-                  .map((m) => m.id as string);
-                startNewSession(
-                  "A",
-                  undefined,
-                  customMachineIds,
-                  "Consultation Baseline Protocol Generated",
-                );
-              } else {
-                // If skipped, we don't start a session, just let the state refresh
-                // which will cause the wizard to disappear because consultationCompleted is now true
-                setIsPreSessionMode(true); // Land them on the BriefingScreen instead of hiding it
-              }
-            }}
-            onCancel={() => {
-              setIsPreSessionMode(false);
-              setView("profile");
-            }}
-          />
-          {staleAsk}
-        </>
-      );
-    }
-
+    /* Every client goes to the briefing, one flagged for a consultation
+       included: a client starting out at the studio gets the plan card
+       there (routine-plan/client-kind.ts), and Finish marks the
+       consultation done. The First-time setup that stood here
+       (ConsultationSetupWizard: a fixed trio, a gender asked for, an
+       estimated starting weight) is retired (the first-session design
+       round, Oct 8 2026, §4.8). */
     return (
       <>
         <BriefingScreen
@@ -4117,7 +4068,6 @@ export function WorkoutTrackerView({
               (l: any) => !l.clientId || l.clientId === clientId,
             ) as any
           }
-          isIntroSession={isIntroSession}
           rightControls={rightControls}
           trainerDropdown={trainerDropdown}
           onStudioClick={onStudioClick}
@@ -4135,15 +4085,6 @@ export function WorkoutTrackerView({
         "h-full min-h-0 flex flex-col overflow-hidden relative",
       )}
     >
-      {isIntroSession && (
-        <div className="bg-(--eq-go) p-3 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-(color:--eq-go)/20 border border-white/20 mt-2 mx-4 relative z-40">
-          <Sparkles className="w-5 h-5 text-(--eq-go-on)" />
-          <span className="text-(--eq-go-on) font-bold text-sm">
-            New client introductory session: conversational baseline
-          </span>
-          <Sparkles className="w-5 h-5 text-(--eq-go-on)" />
-        </div>
-      )}
       {/* Zone 1 — session bar. In flow, one row, 48px. It used to be a
           position:fixed two-row overlay (min-h-25) that the grid had to pad
           around; the shell is a real flex column now, so it just sits here.

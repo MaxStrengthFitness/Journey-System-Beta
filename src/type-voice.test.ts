@@ -263,9 +263,11 @@ const TSX_DISPLAY_SLANT: Record<string, { count: number; why: string }> = {
   "components/AppHeader.tsx": { count: 1, why: `${BRAND}: the studio's name on the frame` },
   "features/client-profile/ProfileHeader.tsx": { count: 2, why: `${GO}: Start session's label and In progress, its other state` },
 };
+// ConsultationWizard.tsx left this list and TSX_OLD_VOICE when it was
+// deleted with the old first-time setup (the first-session design round,
+// Oct 8 2026, §4.8).
 const TSX_QUIET_SLANT: Record<string, { count: number; why: string }> = {
   "components/ClientProgressReportView.tsx": { count: 5, why: "the report's quoted narrative, a 4P note, the client's own why and the trainer's summary, and the window's hint" },
-  "components/ConsultationWizard.tsx": { count: 4, why: "the consultation script's lines, quoted as the trainer says them" },
   "components/EditRoutineDrawer.tsx": { count: 1, why: EMPTY },
   "components/WrapUpScreen.tsx": { count: 1, why: PLACEHOLDER },
   "features/admin/import/LegacyChartImporter.tsx": { count: 1, why: EMPTY },
@@ -940,7 +942,6 @@ const TSX_OLD_VOICE: Record<string, { counts: [number, number, number]; why: str
   "components/ErrorBoundary.tsx": { counts: [3, 3, 0], why: "the error screen: always dark, its own palette (the Navy Frame's NOT_THIS_ROUND)" },
   "features/admin/import/LegacyChartImporter.tsx": { counts: [39, 19, 12], why: "the legacy chart importer: always dark, its own palette (the Navy Frame's NOT_THIS_ROUND)" },
   "features/demo-mode/SetUpDemoCard.tsx": { counts: [10, 10, 3], why: "on the front door's studio picker: always dark, the front door's own voice (Oct 3 2026)" },
-  "components/ConsultationWizard.tsx": { counts: [25, 16, 0], why: NOT_MOUNTED },
   "components/anatomy/MuscleSelector.tsx": { counts: [1, 1, 1], why: NOT_MOUNTED },
 };
 

@@ -231,13 +231,10 @@ describe("3. nothing animates forever but a loader, and a loop never repaints (W
     expect(found).toEqual([]);
   });
 
-  it("the intro session's banner is still: it is on screen for the whole session", () => {
-    const banner = /New client introductory session/.exec(read("components/WorkoutTrackerView.tsx"));
-    expect(banner).not.toBeNull();
-    const src = read("components/WorkoutTrackerView.tsx");
-    const open = src.lastIndexOf("<div", banner!.index);
-    expect(src.slice(open, banner!.index)).not.toMatch(/animate-/);
-  });
+  // "The intro session's banner is still" was held here until the banner
+  // went with the intro-session path, which no caller ever set (the
+  // first-session design round, Oct 8 2026, §4.8). The tracker's one
+  // transient animation is counted above.
 });
 
 /* ---------------------------------------------------------------------------

@@ -399,16 +399,65 @@ the app's own routines kit (`features/routines/`, `routines.css`).
 
 ### 4.8 Retired (item 9)
 
-- `ConsultationSetupWizard.tsx` and its test.
-- `ConsultationWizard.tsx` (mounted nowhere) and its test.
-- `calculateStartingWeight` and the starting-weight seed in `start-plan.ts`.
-- The intro-session path (`isIntroSession`, the "Demo Routine" preload, the
-  banner).
-- Start's create path from a "Today only" list.
-- Every test and doc that names them is changed on purpose.
+What went, and what replaced each:
+
+| Went | What it did | What replaced it |
+| --- | --- | --- |
+| `components/ConsultationSetupWizard.tsx` and its render test | The tracker's **First-time setup**, drawn instead of the briefing for a client with `requiresConsultation` and not `consultationCompleted`: a fixed trio (Leg Press, Chest Press or Seated Dip by gender, Lumbar), a gender and an age asked for, a skill level, an estimated starting weight per row, and "Start consult workout" | The briefing, for every client. A client starting out at the studio gets the plan card there (§4.5), and Programming's **Start a plan** (§4.3), both from `routine-plan/client-kind.ts` `startingKindOf` and the starting routines (§4.2). Finish still marks the consultation done |
+| `components/ConsultationWizard.tsx` and its render test | The Initial Consultation, unmounted since Sep 24 2026: wrote the client's answers, a "Demo Routine", a session and a setup note | Nothing new: its route went on Sep 24 2026, and a client's details are on Notes & Profile |
+| `lib/consultation-utils.ts` and its test (`calculateStartingWeight`, `MACHINE_DICTIONARY`, `ACADEMY_STARTING_WEIGHT`, `statedStartingWeight`, the `Gender` / `SkillLevel` / `MachineSelection` types) | A starting-weight heuristic by machine name, gender, age and skill | The Academy's sheet, `routine-plan/starting-weights.ts`: a range beside the weight on a first time on a machine, in the column the trainer picked, never typed into the weight (§4.6) |
+| The starting-weight seed in `session-record/start-plan.ts` (`SeedArgs.client`, `SeedArgs.startingWeight`, the default-weight branch) and its caller in `WorkoutTrackerView` (`seedsFor`) | Filled a machine with nothing on record with the heuristic's number, taking a client with no gender on file as "Male" and an unknown age as 45: ghost data written as a load | Nothing: a machine with nothing on record starts with no set and no weight, and the trainer types the first one. Only a weight on record (the last performed, the settings' prescription or starting weight) is prefilled, as before |
+| The consultation screens' helpers in `lib/consultation-answers.ts` (`knownGender`, `ageOnFile`, `demographicsPatch`, `consultationPatch`, `suggestedStartingWeight`, `consultationNoteBody`) and their tests | What the two wizards wrote | The file keeps Add Client's intake (`canSaveNewClient`, `NewClientAnswers`, `newClientPayload`, and `parseAge`, which it uses), which still invents nothing |
+| The intro-session path: `isIntroSession` in `AppContent` (its state and the flag `setView` carried), the prop on `WorkoutTrackerView` (its "New client introductory session" banner and the `Sparkles` icons) and on `BriefingScreen` (the "Demo Routine" preload), and `ClientProfileView`'s `setView` type | Nothing: no caller ever passed it true | The briefing's plan card. The routine builder's `established` (whether a short routine is called thin) was `!isIntroSession`, so every client was "established"; it is now `pastLearningCurve` (`client-kind.ts`), the Academy's learning curve ("around 4 to 6 workouts"): at least six sessions (`LEARNING_CURVE_SESSIONS`) or trained here before Journey (coverage "partial"), never while Routine A is being built, never when Journey can't tell. The routine drawer (`EditRoutineDrawer`, which said `sessions.length >= 6`) asks the same rule, so the two screens give one client one answer |
+| Start's create path from a "Today only" list | Saved the briefing's list as Routine A or B | Gone in Round 1 (§4.5): Start makes only Routine A from a starting plan, empty, with the plan carrying day one |
+
+- **Tests changed on purpose**, each with a comment saying why:
+  `loud-orange.test.ts` (Start consult workout, the wizard's glow, ink and
+  chips, the intro banner, `ConsultationWizard` in `NOT_THIS_ROUND`),
+  `type-voice.test.ts` (`ConsultationWizard` off both allow-lists),
+  `page-grounds.test.ts` and `firm-chips.test.ts` (off the skip-lists),
+  `client-profile/tab-words.test.ts` (the wizard's lost-note line),
+  `paint-cost.test.ts` (the still intro banner), `start-plan.test.ts` (no
+  estimate: a machine with nothing on record gets no set),
+  `consultation-answers.test.ts` (the intake only). `BriefingScreen.render.test.tsx`
+  and `routine-plan.test.ts` hold `pastLearningCurve` (a client starting
+  out with a routine or a settled plan is not called thin);
+  `neutral-ramp.test.ts` (the budget 109 -> 105, `ConsultationWizard`'s four
+  utilities gone); `WorkoutTrackerView.render.test.tsx` holds that a client
+  flagged for a consultation opens the briefing, never First-time setup,
+  with nothing written on opening.
+- **Docs changed:** `docs/ARCHITECTURE.md` (the screen map and the session
+  flow), `docs/ops/TESTING-CHECKLIST.md`, `docs/KNOWN-TRAPS.md`,
+  `src/features/studio-tasks/README.md`, `src/features/unsaved-changes/README.md`,
+  `src/features/routine-plan/README.md`, and the comments in
+  `data/default-machines.ts` and `data/machine-database.ts`.
+- **The neck.** The CODED 20 lb ceiling for the Cervical Extension ("Most
+  clients will start with 20 pounds, the lightest increment available on
+  this exercise", Comprehensive Equipment Overview) lived only in
+  `calculateStartingWeight` (`ACADEMY_STARTING_WEIGHT`), and went with it.
+  It never reached the floor: the start seed passed the machine's stored
+  name, the standard list's is "CX (4 WAY NECK)", and the heuristic's exact
+  lookup returned 0 for it before the ceiling applied (the deleted test
+  pinned that 0). So retiring it lost no floor behaviour. The Academy's
+  sheet (`starting-weights.ts`) is now the only starting reference in code,
+  shown as a range with its source and never typed into a weight, so
+  nothing in the app writes a load on the neck. The never-to-failure rule
+  stays in the machine's own text (`data/machine-database.test.ts`).
+  **What stays, and disagrees:** the catalog's own words for the machine,
+  `data/machine-definitions.ts` m-neck's `startingWeightStackGap`, still say
+  "The standard starting weight is 20 lbs (the lightest increment)", while
+  the sheet's neck row reads 20 lb (Female · Novice) up to 30–40 lb (Male ·
+  Advanced), and that row is now drawn beside the weight. **For AJ and the
+  administrators:** which is the neck's start, the catalog's 20 lb line or
+  the sheet's row? The catalog line is corrected in the catalog editor, not
+  in code (CLAUDE.md, "No Restore standard machines"); the sheet is
+  `MSF - Suggested Starting Weights.txt`.
 - **What stays.** `requiresConsultation` and `consultationCompleted` stay
-  written; the Hub's "Consultation" chip reads them. The profile's "Profile
-  setup needed" banner now points at Start a plan.
+  written (Add Client's `newClientPayload`; Finish sets `consultationCompleted`);
+  the Hub's "Consultation" chip reads them. The profile's "Profile setup
+  needed" banner now points at Start a plan. `scripts/ship/ship-sep10.ps1`
+  still names `ConsultationWizard.tsx`: it is the Sep 10 release's record and
+  is left as it was.
 
 ## 5. Data and rules (AJ's OK, "1a")
 

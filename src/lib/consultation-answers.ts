@@ -1,37 +1,35 @@
 /**
- * WHAT A CONSULTATION MAY WRITE — only what somebody answered.
+ * WHAT NEW-CLIENT INTAKE MAY WRITE — only what somebody answered.
  *
  * Interim fix, Sep 24 2026 (AJ: "Eliminate Ghost Data Injection"). Both
- * consultation screens started every client as a 40-year-old man: the Initial
- * Consultation defaulted age to 40 and gender to Male and saved both, and the
- * tracker's First-Time Setup started on Male and wrote it over whatever gender
- * the client already had — on Skip too. New-client intake wrote a height of
- * 5'10" and a session count nobody had sold. Height, gender and age feed
- * Machine fit's cohorts (features/machine-fit/factors.ts) and the session's
- * cohort snapshot, so an invented profile did not stay on one screen: it
- * became a data point about people like her.
+ * consultation screens started every client as a 40-year-old man, and
+ * new-client intake wrote a height of 5'10" and a session count nobody had
+ * sold. Height, gender and age feed Machine fit's cohorts
+ * (features/machine-fit/factors.ts) and the session's cohort snapshot, so an
+ * invented profile did not stay on one screen: it became a data point about
+ * people like her.
  *
  * The rules this file holds:
  *
  *   - An unanswered field is never written. It is left ABSENT — not null, not
  *     a default, not an empty string.
- *   - A default never overwrites a stored value. The screens start from what
- *     is on file, and a blank answer leaves the stored value alone.
- *   - A suggestion that needs an unanswered fact is not made. A starting load
- *     worked out for a man of 40 is a confident wrong number, and a confident
- *     wrong number is worse than a missing one.
+ *   - A default never overwrites a stored value.
  *
- * Pure, no Firestore. The consultation redesign will replace these screens;
- * until then this is the one place they decide what to write.
+ * The two consultation screens are gone (the first-session design round,
+ * Oct 8 2026, §4.8): the tracker's First-time setup (ConsultationSetupWizard)
+ * and the unmounted Initial Consultation (ConsultationWizard), with the
+ * starting-weight heuristic they shared (lib/consultation-utils.ts). A client
+ * starting out at the studio gets a starting plan (features/routine-plan:
+ * Programming's Start a plan and the briefing's plan card), and the Academy's
+ * starting range is a reference beside the weight, never typed into it
+ * (routine-plan/starting-weights.ts). What is left here is Add Client's
+ * intake (CreateClientModal), which still writes `requiresConsultation` and
+ * `consultationCompleted`: the Hub's Consultation chip reads them, and Finish
+ * marks the consultation done.
+ *
+ * Pure, no Firestore.
  */
-import { calculateStartingWeight, type Gender, type SkillLevel } from "./consultation-utils";
-import { safeToDate } from "./utils";
 import { withoutUndefined } from "../features/studio-tasks/task-wizard";
-
-/** A gender the consultation screens can pick, or null when nobody has said. */
-export function knownGender(value: unknown): Gender | null {
-  return value === "Male" || value === "Female" ? value : null;
-}
 
 /**
  * A typed age, or null when it is blank or not an age.
@@ -44,85 +42,6 @@ export function parseAge(input: unknown): number | null {
   if (!Number.isFinite(n)) return null;
   const whole = Math.floor(n);
   return whole >= 1 && whole <= 120 ? whole : null;
-}
-
-/** The age already on file: the typed age, then one worked out from the birth date. */
-export function ageOnFile(
-  client: { age?: unknown; dateOfBirth?: unknown } | null | undefined,
-  now: Date = new Date(),
-): number | null {
-  if (!client) return null;
-  const typed = parseAge(client.age);
-  if (typed !== null) return typed;
-  const birth = safeToDate(client.dateOfBirth);
-  if (!birth) return null;
-  const years = new Date(now.getTime() - birth.getTime()).getUTCFullYear() - 1970;
-  return parseAge(years);
-}
-
-/** Gender and age for the client record: only the ones that were answered. */
-export function demographicsPatch(answers: {
-  gender?: Gender | null;
-  age?: number | null;
-}): { gender?: Gender; age?: number } {
-  const gender = knownGender(answers.gender);
-  const age = parseAge(answers.age);
-  return withoutUndefined({
-    gender: gender ?? undefined,
-    age: age ?? undefined,
-  });
-}
-
-/**
- * Everything the Initial Consultation writes to the client record.
- *
- * A text answer is written when something was typed. A blank one is left out,
- * so it never replaces what is already on file with an empty string.
- */
-export function consultationPatch(answers: {
-  gender: Gender | null;
-  age: number | null;
-  occupation: string;
-  medicalHistory: string;
-  activity: string;
-  goals: string;
-}): Record<string, string | number> {
-  const typed = (s: string) => (s.trim() ? s : undefined);
-  return withoutUndefined({
-    ...demographicsPatch(answers),
-    occupation: typed(answers.occupation),
-    medicalHistory: typed(answers.medicalHistory),
-    activity: typed(answers.activity),
-    goals: typed(answers.goals),
-  }) as Record<string, string | number>;
-}
-
-/**
- * The suggested starting load, or null when gender or age is unanswered.
- * (A known machine name with both answered can still come back 0 — see the
- * exact-name note in calculateStartingWeight. That is left as found.)
- */
-export function suggestedStartingWeight(
-  machineName: string,
-  gender: Gender | null,
-  age: number | null,
-  skillLevel: SkillLevel,
-): number | null {
-  if (!gender || age === null) return null;
-  return calculateStartingWeight(machineName, gender, age, skillLevel);
-}
-
-/** The setup note the Initial Consultation files to the Journal. */
-export function consultationNoteBody(answers: {
-  age: number | null;
-  skillLevel: SkillLevel;
-  goals: string;
-}): string {
-  const facts = [answers.age !== null ? `Age: ${answers.age}` : null, `Skill: ${answers.skillLevel}`]
-    .filter(Boolean)
-    .join(", ");
-  const goals = answers.goals.trim();
-  return `Consultation. ${facts}.${goals ? ` Goals: ${goals}` : ""}`;
 }
 
 /* ------------------------------------------------------------------ *

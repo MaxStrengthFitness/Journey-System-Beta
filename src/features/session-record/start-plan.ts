@@ -208,9 +208,8 @@ export interface SeedArgs {
   machineIds: string[];
   prefill: Record<string, Partial<Prefill>>;
   settings: Record<string, ClientMachineSetting>;
-  /** A machine's name on this floor, for the novice estimate. */
+  /** A machine's name on this floor, to know a per-side machine. */
   nameOf: (machineId: string) => string | undefined;
-  client: Pick<Client, "gender" | "age"> | null | undefined;
   clientId: string;
   clientHomeStudioId: string;
   studioId: string;
@@ -222,8 +221,6 @@ export interface SeedArgs {
    * the trainer typed while the seed waited can never be overwritten by it.
    */
   hasLocal: (key: string) => boolean;
-  /** The estimate for a machine with nothing on record (consultation-utils). */
-  startingWeight: (machineName: string, gender: "Male" | "Female", age: number) => number;
 }
 
 export interface Seed {
@@ -234,10 +231,20 @@ export interface Seed {
 /**
  * The placeholder sets a session starts with: one per machine (two for a
  * per-side machine), carrying the weight it starts at and never a count.
+ *
+ * Only a machine with something on record (`prefillOf`: the last performed
+ * set, the settings' prescription or starting weight) is seeded. A machine
+ * with nothing gets no set and no weight: the trainer types the first. The
+ * starting-weight estimate that used to fill it went with the old first-time
+ * setup (the first-session design round, Oct 8 2026, §4.8): it defaulted a
+ * client with no gender on file to "Male" and an unknown age to 45, an
+ * invented profile written as a load. The Academy's starting range is shown
+ * beside the weight as a reference instead, never typed into it
+ * (routine-plan/starting-weights.ts).
  */
 export function seedLogs(a: SeedArgs): Seed[] {
   const out: Seed[] = [];
-  const payloadOf = (prev: Partial<Prefill> | undefined, mId: string, side?: "Left" | "Right", defaultWeight?: number | null) => {
+  const payloadOf = (prev: Partial<Prefill>, mId: string, side?: "Left" | "Right") => {
     const payload: Record<string, unknown> = {
       sessionId: a.sessionId,
       clientId: a.clientId,
@@ -249,35 +256,25 @@ export function seedLogs(a: SeedArgs): Seed[] {
       createdAt: a.createdAt,
     };
     if (side) payload.side = side;
-    if (prev) {
-      if (prev.weight) payload.weight = String(prev.weight);
-      // Never reps, seconds or a quality: today's count is the trainer's.
-      if (prev.isStaticHold !== undefined) payload.isStaticHold = Boolean(prev.isStaticHold);
-      if (prev.isTSC !== undefined) payload.isTSC = Boolean(prev.isTSC);
-    } else if (defaultWeight) {
-      payload.weight = String(defaultWeight);
-    }
+    if (prev.weight) payload.weight = String(prev.weight);
+    // Never reps, seconds or a quality: today's count is the trainer's.
+    if (prev.isStaticHold !== undefined) payload.isStaticHold = Boolean(prev.isStaticHold);
+    if (prev.isTSC !== undefined) payload.isTSC = Boolean(prev.isTSC);
     return cleanPayload(payload) as Record<string, unknown>;
   };
-  const push = (mId: string, side: "Left" | "Right" | undefined, prev: Partial<Prefill> | undefined, defaultWeight: number | null) => {
+  const push = (mId: string, side: "Left" | "Right" | undefined, prev: Partial<Prefill> | undefined) => {
     const id = logDocId(a.sessionId, mId, side);
     if (a.hasLocal(id)) return;
-    if (!prev && !defaultWeight) return;
-    out.push({ id, payload: payloadOf(prev, mId, side, defaultWeight) });
+    if (!prev) return;
+    out.push({ id, payload: payloadOf(prev, mId, side) });
   };
   for (const mId of a.machineIds) {
     const name = a.nameOf(mId);
-    let defaultWeight: number | null = null;
-    if (!a.prefill[mId] && a.client && name) {
-      const gender = a.client.gender === "Female" ? "Female" : "Male";
-      const w = a.startingWeight(name, gender, a.client.age || 45);
-      defaultWeight = w > 0 ? w : null;
-    }
     if (isPerSideMachine({ id: mId, name })) {
-      push(mId, "Left", a.prefill[`${mId}_Left`] || a.prefill[mId], defaultWeight);
-      push(mId, "Right", a.prefill[`${mId}_Right`] || a.prefill[mId], defaultWeight);
+      push(mId, "Left", a.prefill[`${mId}_Left`] || a.prefill[mId]);
+      push(mId, "Right", a.prefill[`${mId}_Right`] || a.prefill[mId]);
     } else {
-      push(mId, undefined, a.prefill[mId], defaultWeight);
+      push(mId, undefined, a.prefill[mId]);
     }
   }
   return out;
