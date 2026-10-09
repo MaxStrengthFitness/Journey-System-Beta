@@ -237,6 +237,9 @@ export async function acknowledgeFlag(args: {
   note?: string;
 }): Promise<void> {
   const { clientId, homeStudioId, machineId, ackKey, value, author, note } = args;
+  // Never with no client (the open session round, Oct 9 2026): that was the
+  // ghost record `clientMachineSettings/_{machineId}`, which nobody reads.
+  if (!(clientId ?? "").trim()) throw new Error("A review of a setting names its client: nothing was written.");
   const ack: Record<string, string> = { value, by: author.id, byName: author.fullName, at: new Date().toISOString() };
   if (note?.trim()) ack.note = note.trim();
   await setDoc(

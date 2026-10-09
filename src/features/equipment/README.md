@@ -290,6 +290,25 @@ of them are on the iPad and survive a reload; the reason is optional, and
 issues its write and hands back the database's answer; on the floor wait on
 either only through `settleOrQueue` (`features/session-record/finish-wait.ts`).
 
+**Every write names a client** (the open session round, Oct 9 2026; finding
+4). An open session's card saved with `clientId: ""`, to the ghost
+`clientMachineSettings/_{machineId}` nobody reads; its settings are held on
+the session now (`features/open-session/README.md`). So `saveSettings` throws
+before writing anything with no client (it is no longer `async`: the refusal
+comes back at the call, which every caller makes inside a try), and
+`addMachineNote` refuses a note with no client. The open session's Assign
+uses `queueSettingsSave`: the settings document and its history row go into
+the caller's batch (all or nothing with the session getting its client), and
+nothing is written outside it until the caller runs `afterCommit` once that
+batch has committed (the journal copy and the machine-fit row; a refused
+batch leaves neither). `dialsOnly` writes only the dials that change, by name
+and merged, so every other dial stays as the database holds it whatever
+`saved` said; `writeDials` names dials written even when `saved` already
+shows them (a held set-up's, off a stale copy). The session card saves
+`dialsOnly`, with no fit row, until the server has answered for the client's
+settings. Old ghost records may still be in production; nothing reads an
+empty client, so they are harmless.
+
 ### 3.5 In-session prompt (phase 6)
 
 Retired. `SetupPromptDialog` opened before the old performance entry pop-up

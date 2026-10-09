@@ -7349,4 +7349,86 @@ describe("open session: Who's this? gives the session and its sets one client", 
     });
     await assertFails(assignBatch(as("trainerC")).commit());
   });
+
+  /* SETTINGS HELD ON THE SESSION (the open session round, Oct 9 2026; AJ's
+     "3a"). Before its client is chosen, the machine card keeps what was
+     typed on the session, `heldSetup.{machineId}` (it went to the ghost
+     `clientMachineSettings/_{machineId}`); Assign saves each machine to the
+     client in its own batch and deletes `heldSetup` in the session's write
+     (src/features/open-session/held-store.ts). No rule changed: the
+     sessions update rule already lets the session's trainer write it. */
+  it("lets the session's trainer keep a set-up on the open session, one machine at its own path", async () => {
+    const db = as("trainerA");
+    await assertSucceeds(
+      updateDoc(doc(db, "sessions", OPEN), {
+        "heldSetup.m-leg-press": { values: { Seat: "12" }, at: serverTimestamp(), byUid: "trainerA" },
+      }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(db, "sessions", OPEN), {
+        // A value taken from a suggestion keeps its source beside it (the review, Oct 9 2026).
+        "heldSetup.m-pulldown": { values: { "Back pad": "3" }, sources: { "Back pad": "suggested" }, at: serverTimestamp(), byUid: "trainerA" },
+      }),
+    );
+    const after = await getDoc(doc(db, "sessions", OPEN));
+    expect(after.data()?.heldSetup?.["m-leg-press"]?.values).toEqual({ Seat: "12" });
+    expect(after.data()?.heldSetup?.["m-pulldown"]?.values).toEqual({ "Back pad": "3" });
+    expect(after.data()?.heldSetup?.["m-pulldown"]?.sources).toEqual({ "Back pad": "suggested" });
+    expect(after.data()?.isUnassigned).toBe(true);
+  });
+
+  it("refuses a held set-up from a trainer the session is nothing to", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "trainers", "trainerC"), {
+        fullName: "Trainer C", initials: "TC", role: "LifeTransformer",
+        primaryHomeStudioId: "studioC", accessibleStudioIds: ["studioC"],
+      });
+    });
+    await assertFails(
+      updateDoc(doc(as("trainerC"), "sessions", OPEN), {
+        "heldSetup.m-leg-press": { values: { Seat: "12" }, at: serverTimestamp(), byUid: "trainerC" },
+      }),
+    );
+  });
+
+  it("passes the assign batch that saves the held set-up to the client and clears it from the session", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), "sessions", OPEN), {
+        heldSetup: { "m-leg-press": { values: { Seat: "12" }, sources: { Seat: "suggested" }, byUid: "trainerA" } },
+      });
+      // What the client already has on the machine: the move writes only the dial it set.
+      await setDoc(doc(context.firestore(), "clientMachineSettings", `${CLIENT}_m-leg-press`), {
+        clientId: CLIENT, machineId: "m-leg-press", settings: { Seat: "4", "Back pad": "3" },
+      });
+    });
+    const db = as("trainerA");
+    // As the tracker builds it: the session's write names its client and deletes what it held, in one update.
+    const b = writeBatch(db);
+    b.update(doc(db, "sessions", OPEN), {
+      clientId: CLIENT, isUnassigned: false, mindbodyClientId: null, clientName: "Sam Open",
+      homeStudioId: "studioA", clientHomeStudioId: "studioA", isCrossTrain: false, sessionNumber: 5,
+      lastHeartbeatAt: serverTimestamp(), heldSetup: deleteField(),
+    });
+    for (const st of SETS) {
+      b.set(doc(db, "exerciseLogs", st.id), {
+        sessionId: OPEN, machineId: st.machineId, clientId: CLIENT, homeStudioId: "studioA", clientHomeStudioId: "studioA",
+      }, { merge: true });
+    }
+    b.set(
+      doc(db, "clientMachineSettings", `${CLIENT}_m-leg-press`),
+      { clientId: CLIENT, machineId: "m-leg-press", settings: { Seat: "12" }, sources: { Seat: "suggested" }, updatedAt: new Date(), updatedBy: "trainerA" },
+      { merge: true },
+    );
+    b.set(doc(collection(db, "machines", "m-leg-press", "settingHistory")), {
+      clientId: CLIENT, timestamp: new Date().toISOString(), trainerId: "trainerA", trainerName: "Trainer A",
+      changeType: "SETTINGS", oldValue: "Seat: 4", newValue: "Seat: 12", reason: "Settings update",
+    });
+    await assertSucceeds(b.commit());
+    const session = await getDoc(doc(db, "sessions", OPEN));
+    expect(session.data()?.heldSetup).toBeUndefined();
+    expect(session.data()?.clientId).toBe(CLIENT);
+    const setting = await getDoc(doc(db, "clientMachineSettings", `${CLIENT}_m-leg-press`));
+    expect(setting.data()?.settings).toEqual({ Seat: "12", "Back pad": "3" });
+    expect(setting.data()?.sources).toEqual({ Seat: "suggested" });
+  });
 });

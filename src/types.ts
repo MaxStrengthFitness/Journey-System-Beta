@@ -1366,6 +1366,36 @@ export interface WorkoutSession {
    */
   countsTowardTotals?: boolean;
   createdAt?: any;
+  /**
+   * SETTINGS HELD ON AN OPEN SESSION (the open session round, Oct 9 2026;
+   * AJ's "3a", his OK for this one new field). An open session has no client
+   * until Who's this?, so the machine card's Save keeps what was typed here,
+   * by machine id, instead of on a client (it went to a ghost record,
+   * `clientMachineSettings/_{machineId}`, that nobody read). The card reads
+   * it back as what is saved and the Now Bar's Set up counts it; at Assign
+   * each machine's values are saved to the client and the field is deleted
+   * in the same batch (features/open-session/held-setup.ts). Each entry is
+   * `{ values, sources?, at, byUid }`.
+   */
+  heldSetup?: Record<string, HeldSetupEntry>;
+}
+
+/** One machine's settings held on an open session (`WorkoutSession.heldSetup`). */
+export interface HeldSetupEntry {
+  /** The dials as the card saved them, dial key → value; a dial with no value is left out. */
+  values: Record<string, string>;
+  /**
+   * Where a held value came from, when it isn't typed: "suggested" when the
+   * trainer tapped Use (one dial's, or Use studio standard for all) and left
+   * it alone. Moved onto the client's settings with the values at Assign, so
+   * machine fit never counts its own suggestion as evidence
+   * (machine-fit/fit-index.ts). Absent means every value is typed.
+   */
+  sources?: Record<string, "typed" | "suggested" | "legacy">;
+  /** The server's time of the save (pending as `serverTimestamp()` on this iPad until it lands). */
+  at?: any;
+  /** Who saved them: the Auth uid. */
+  byUid?: string;
 }
 
 export interface SessionNote {

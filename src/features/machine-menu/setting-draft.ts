@@ -41,6 +41,7 @@
  */
 import { absoluteValueFor } from "../equipment/adapters";
 import type { SettingSource } from "../machine-fit/types";
+import { HELD_SETUP_LINE } from "../open-session/held-setup";
 import { UNDO_REASON, type SettingPair } from "./setting-history";
 
 /** A dial as the draft needs it. `SettingFieldSpec` (equipment/types.ts) fits. */
@@ -458,6 +459,77 @@ export function closedSaveWords(
   const name = changeName(changes, firstSetup);
   const tail = outcome === "queued" ? " on this iPad · it sends when the Wi-Fi is back" : "";
   return `${machine}${who ? ` for ${who}` : ""}: ${name} saved${tail}`;
+}
+
+/* ------------------------------------------------------------------ *
+ * Kept on an open session (the open session round, Oct 9 2026; AJ's "3a")
+ * ------------------------------------------------------------------ */
+
+/**
+ * What the strip says once Save has kept the settings on an open session,
+ * before its client is chosen (features/open-session/held-setup.ts): "Set-up
+ * kept on this session", "Seat 12 kept on this session"; offline "… kept on
+ * this iPad · it sends when the Wi-Fi is back"; "Couldn't keep Seat 12".
+ * The same Undo and Try again as a save. The heading says where they go
+ * (`HELD_SETUP_LINE`).
+ */
+export function heldOutcomeWords(
+  changes: readonly SettingPair[],
+  firstSetup: boolean,
+  outcome: SaveOutcome,
+  withAction = true,
+): string {
+  const name = changeName(changes, firstSetup);
+  switch (outcome) {
+    case "saved":
+      return `${capitalise(name)} kept on this session${withAction ? " · Undo" : ""}`;
+    case "queued":
+      return `${capitalise(name)} kept on this iPad · it sends when the Wi-Fi is back${withAction ? " · Undo" : ""}`;
+    case "failed":
+      return `Couldn't keep ${name}${withAction ? " · Try again" : ""}`;
+  }
+}
+
+/**
+ * The toast once Set up's Save has closed the card in an open session: "Chest
+ * Fly: set-up kept on this session · saved to the client when you choose
+ * them", or "… kept on this iPad · it sends when the Wi-Fi is back".
+ */
+export function closedHeldWords(
+  machineName: string,
+  changes: readonly SettingPair[],
+  firstSetup: boolean,
+  outcome: Exclude<SaveOutcome, "failed">,
+): string {
+  const machine = clean(machineName) || "This machine";
+  const name = changeName(changes, firstSetup);
+  if (outcome === "queued") return `${machine}: ${name} kept on this iPad · it sends when the Wi-Fi is back`;
+  return `${machine}: ${name} ${HELD_SETUP_LINE.charAt(0).toLowerCase()}${HELD_SETUP_LINE.slice(1)}`;
+}
+
+/**
+ * A keep the database refused after the card closed, in an open session
+ * (the review, Oct 9 2026; `refusedLaterWords` said "for the client" right
+ * after the toast had said "kept on this session"): "Leg Press: couldn't keep
+ * Seat 5 on this session. Set it again on the machine's card."
+ */
+export function refusedHeldWords(machineName: string, changes: readonly SettingPair[], firstSetup: boolean, undo = false): string {
+  const machine = clean(machineName) || "This machine";
+  const what = `${undo ? "undo" : "keep"} ${changeName(changes, firstSetup)}`;
+  return `${machine}: couldn't ${what} on this session. Set it again on the machine's card.`;
+}
+
+/**
+ * An Undo of a set-up kept on an open session that came after the session
+ * had its client (the review, Oct 9 2026): the set-up went to the client
+ * with it, so nothing is taken back here. On the card: "Already saved to
+ * Judy · change it here"; in the toast: "Leg Press: already saved to Judy ·
+ * change it on the machine's card".
+ */
+export function heldClosedWords(machineName: string, clientFirstName: string, onCard: boolean): string {
+  const who = clean(clientFirstName) || "the client";
+  if (onCard) return `Already saved to ${who} · change it here`;
+  return `${clean(machineName) || "This machine"}: already saved to ${who} · change it on the machine's card`;
 }
 
 /* ------------------------------------------------------------------ *

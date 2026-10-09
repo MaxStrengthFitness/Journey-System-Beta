@@ -89,3 +89,90 @@ in the code:
 
 One commit per phase, each typechecked on its own (baseline 2). Measurements at
 the end.
+
+### Settings held on the session until Assign (3a; finding 4)
+
+- **The card's Save in an open session keeps the set-up on the session**:
+  `sessions/{id}.heldSetup.{machineId}` = `{ values, sources?, at, byUid }`
+  (the Auth uid, the server's time; `sources` only for a value taken from a
+  suggestion), one update, issued and never awaited
+  (`features/open-session/held-store.ts` `keepHeldSetup`). The card says
+  "Kept on this session · saved to the client when you choose them" where
+  "Last changed" would be, asks no reason (nothing would carry it) and offers
+  no fit review. It reads the held values back as what is saved, so reopening
+  shows them; the Now Bar's Set up counts them and is offered in an open
+  session again; each set typed after it carries them as its settings. No
+  setting history, journal copy or machine-fit row is written for them: there
+  is no client yet.
+- **At Assign** (Who's this?, or at Finish) every held machine's settings
+  document and history row for the chosen client go **into the assign's own
+  batch** (`equipment/mutations.ts` `queueSettingsSave`), and `heldSetup` is
+  deleted in the session's write in that batch: all of it lands, or none of it
+  does and the values are still on the session. A held value wins only for
+  the dials it set (`heldOverSaved`), and the write names only those dials, by
+  name, whatever this iPad read (`dialsOnly` with `writeDials`), so every
+  other dial the client already has stays as the database holds it, and a
+  stale copy can't drop a held value either. A suggested value reaches the
+  client as suggested. The **journal copy and the machine-fit row go only once
+  that batch has committed** (`afterCommit`): a refused assign leaves neither,
+  and choosing the client again files no second copy.
+- **Only the server's word says what the client had.** The client's settings
+  are read beside the sets (the iPad's copy, then the server's for 3 seconds
+  at most) when the session holds a set-up at the tap. Only the server's
+  answer, in by the time the batch is built, lets a move say "Initial setup"
+  or write the client's machine-fit row (it is written whole, `rows.{clientId}`,
+  and would otherwise replace her other dials and their reviews with the held
+  ones). Off the iPad's copy, a slow server, Finish inside the 3 seconds, or a
+  set-up kept after the tap (no read at all), the history row says "Settings
+  update" and the fit row waits for the rebuild or the next save.
+- **No write names an empty client any more.** `saveSettings` throws before
+  writing anything with no client, `acknowledgeFlag` the same, and
+  `addMachineNote` refuses a note with no client (the journal used to drop it
+  and still answer "saved"). A note about the client before Who's this? says
+  "Choose who this is first (Who's this?) · your words stay here", writing
+  nothing and offering no Try again; "The machine itself" still files. A card
+  with no client and nowhere to keep its settings reads only.
+- **Old ghost records may exist in production**:
+  `clientMachineSettings/_{machineId}` documents with `clientId: ""`, and
+  setting-history rows with `clientId: ""`, written by open sessions before
+  this round. They are harmless: nothing reads an empty client (every reader
+  queries by a client's id). They are left alone; nothing deletes data.
+- The rules are unchanged: the sessions update rule already lets the session's
+  trainer (or anyone at its studio) write `heldSetup`. Rules tests: the
+  trainer keeps a set-up (with a suggested value's source), a trainer the
+  session is nothing to is refused, and the assign batch that saves the held
+  set-up to the client and deletes `heldSetup` passes.
+
+**The review's fixes (Oct 9 2026).** Two reviewers read the phase before it
+was committed; what they found and what was done:
+
+- The journal copy and the fit row were issued while the assign's batch was
+  being built, so a refused assign half-wrote: they wait for the commit now.
+- A move off an unread or cache-only answer claimed a first set-up and
+  replaced the client's machine-fit row with only the held dials: only the
+  server's answer claims either now.
+- A held value a stale copy already showed was left out of the write and
+  then cleared with the hold: the held dials are written by name.
+- A suggested value was saved to the client as typed, so machine fit could
+  learn from its own suggestion: the held entry keeps `sources` beside the
+  values (inside the one new field AJ OK'd; flagged for him) and Assign passes
+  them on.
+- **An Undo that outlived Assign** (the toast's ten seconds, or a card still
+  open as the session got its client) wrote `heldSetup` onto a session that had
+  its client, where nothing moves it, or wrote the client's whole map from the
+  open session's save. An Undo now goes where its save went, and a keep is
+  refused once the session's assign batch is built: the card says "Already
+  saved to Judy · change it here", the toast "Leg Press: already saved to Judy
+  · change it on the machine's card".
+- After Assign the iPad's copy of the client's settings can hold only the
+  moved dials until the server answers, and the card's next whole-map save
+  would wipe her others: until the tracker's settings listener has had the
+  server's answer for the client (`settingsUnsure`), the session card writes
+  only the dials it changes, no fit row and no first set-up claim.
+- A failed held set-up stopped the whole assign: the held part is worked out
+  in its own `try`, and on a throw the values stay on the session while the
+  session and its sets still get the client.
+- A refused keep, once the card had closed, was said "for the client": it says
+  "on this session" now (`refusedHeldWords`). A note about the client before
+  Who's this? said "Couldn't save" with a Try again that could never work: it
+  says to choose who this is.

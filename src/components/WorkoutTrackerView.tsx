@@ -310,6 +310,19 @@ import {
   setsToAssign,
   type HeldSet,
 } from "../features/open-session/assign";
+import {
+  hasHeldSetup,
+  heldAsSettings,
+  heldClosedError,
+  heldKey,
+  heldMoves,
+  heldSetupEntry,
+  heldSourcesOf,
+  heldValuesOf,
+  type OnFile,
+} from "../features/open-session/held-setup";
+import { keepHeldSetup, queueHeldMoves } from "../features/open-session/held-store";
+import type { SettingSource } from "../features/machine-fit/types";
 import { useLeaveGuard } from "../features/unsaved-changes";
 import "../features/journey-grid/journey-grid.css";
 type RoutineType = "A" | "B" | "Free";
@@ -675,6 +688,74 @@ export function WorkoutTrackerView({
   useEffect(() => {
     watchedSessionRef.current = watchedSession;
   }, [watchedSession]);
+
+  /*
+   * SETTINGS HELD ON AN OPEN SESSION (the open session round, Oct 9 2026;
+   * finding 4, AJ's "3a"). While no client is on screen (an open session,
+   * or one Who's this? is giving its client while its batch's reads are
+   * out), the machine card's Save keeps what was typed on the session
+   * (`heldSetup.{machineId}`, features/open-session) instead of on a client:
+   * it went to the ghost `clientMachineSettings/_{machineId}`, which nobody
+   * read. The card, the Now Bar's Set up, the grid's chips and each set's
+   * settings read the held values as the saved ones (`shownSettings`), so
+   * reopening the card shows them. At Assign they are saved to the client in
+   * the assign's batch, which deletes `heldSetup` (assignSessionToClient).
+   * A watched open session shows its held values, read only.
+   */
+  const noClientYet = !clientId && !!currentSession;
+  const heldSession = clientId ? null : (currentSession ?? watchedSession);
+  const heldNow = heldValuesOf(heldSession);
+  const heldNowKey = heldKey(heldNow);
+  const heldSourcesNow = heldSourcesOf(heldSession);
+  const heldSourcesKey = heldKey(heldSourcesNow);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const heldSettings = useMemo(() => heldAsSettings(heldNow, heldSourcesNow), [heldNowKey, heldSourcesKey]);
+  const shownSettings: Record<string, ClientMachineSetting> = clientId ? clientMachineSettings : heldSettings;
+  /* The session on screen as it is now, for Assign's batch: what is held is
+     gathered when the batch is built, so a set-up kept while its reads were
+     out is moved too. A keep writes it here at once as well (below), so a
+     batch built before the next draw still sees it. */
+  const currentSessionRef = useRef<WorkoutSession | null>(null);
+  currentSessionRef.current = currentSession;
+  /* The sessions whose Assign batch has been built, with the client's name:
+     from then on a keep is refused (the review, Oct 9 2026). An Undo that
+     outlived Assign (the toast's ten seconds, or a card still open) would
+     write `heldSetup` onto a session that has its client, where nothing
+     moves it again, and say "undone" while the client keeps the value; the
+     card says where the set-up is instead. Forgotten if the batch is refused
+     (the session is open again). */
+  const heldClosedRef = useRef<Map<string, string>>(new Map());
+  /* The card's Save while no client is on screen: kept on this iPad's copy
+     of the session at once (the card reads it back), and one update issued,
+     never awaited; its promise is the database's answer, which the card
+     waits on only through settleOrQueue. Signed with the Auth uid. */
+  const authUid = user?.uid ?? "";
+  const keepHeldHere = React.useCallback(
+    (sessionId: string, machineId: string, values: Record<string, string>, sources?: Record<string, SettingSource> | null): Promise<unknown> => {
+      const closedFor = heldClosedRef.current.get(sessionId);
+      if (closedFor !== undefined) return Promise.reject(heldClosedError(closedFor));
+      if (!authUid) return Promise.reject(new Error("Nobody is signed in: the set-up was not kept."));
+      const entry = heldSetupEntry(values, authUid, Timestamp.now(), sources);
+      const withEntry = (s: WorkoutSession | null) =>
+        s && s.id === sessionId ? { ...s, heldSetup: { ...(s.heldSetup ?? {}), [machineId]: entry } } : s;
+      currentSessionRef.current = withEntry(currentSessionRef.current);
+      setCurrentSession(withEntry);
+      return keepHeldSetup({ sessionId, machineId, values, sources, byUid: authUid });
+    },
+    [authUid],
+  );
+  const holdSessionId = noClientYet ? (currentSession?.id ?? null) : null;
+  const holdSetupDoor = useMemo(
+    () =>
+      holdSessionId
+        ? {
+            sessionId: holdSessionId,
+            keep: (machineId: string, values: Record<string, string>, sources?: Record<string, SettingSource> | null) =>
+              keepHeldHere(holdSessionId, machineId, values, sources),
+          }
+        : null,
+    [holdSessionId, keepHeldHere],
+  );
   /* Every id this person's sessions may carry; the listeners read the ref. */
   const myIds = useMemo(() => myTrainerIds(authTrainer, user?.uid), [authTrainer, user?.uid]);
   const myIdsRef = useRef(myIds);
@@ -2363,13 +2444,69 @@ export function WorkoutTrackerView({
           const { sets, withClient } = setsToAssign(sessionId, client.id, [onScreen, queued, read]);
           if (withClient.length > 0) console.warn("[assign] sets that already have another client are left as they are", withClient);
           const batch = writeBatch(db);
-          batch.update(doc(db, "sessions", sessionId), patch);
+          /* THE SETTINGS HELD ON THE SESSION go to the client in this same
+             batch (AJ's "3a"; features/open-session/held-setup.ts), gathered
+             now, so a set-up kept while the reads were out goes too; from
+             here on a keep is refused (`heldClosedRef`). Each machine's
+             settings document and history row for the client, writing only
+             the dials the held set-up set, by name (`dialsOnly`,
+             `writeDials`): a held value wins only for those, and every other
+             dial the client already has stays as the database holds it,
+             whatever this iPad read of them. Then `heldSetup` is deleted in
+             the session's own write: all of it lands or none of it does, and
+             a refused batch leaves the values on the session. The journal
+             copies and the machine-fit rows go only once the batch has
+             committed (`afterHeld`). A move that couldn't be put in the
+             batch, or a held set-up that couldn't be worked out at all,
+             keeps the values on the session and never stops the assign. */
+          heldClosedRef.current.set(sessionId, clientFirstName(client));
+          const sessionNow = currentSessionRef.current?.id === sessionId ? currentSessionRef.current : session;
+          let clearHeld = hasHeldSetup(sessionNow);
+          let afterHeld: () => void = () => {};
+          const held = heldValuesOf(sessionNow);
+          if (Object.keys(held).length > 0) {
+            try {
+              if (!authUid) throw new Error("Nobody is signed in: the held set-up stays on the session.");
+              const moves = heldMoves({
+                held,
+                sources: heldSourcesOf(sessionNow),
+                // Only the server's answer says what is on file (no first set-up claimed, no fit row, off a copy).
+                onFile: onFileRead.server ? onFileServer : onFileCache,
+                serverAnswered: onFileRead.server,
+                fieldsOf: (machineId) => {
+                  const m = floorMachines.find((x) => x.id === machineId);
+                  return m ? fieldsForMachine(m, dialCatalogById, studioDialStandards) : [];
+                },
+              });
+              const link = sessionLinkOf({ ...sessionNow, ...patch, id: sessionId } as WorkoutSession, studioTodayKey());
+              const { failed, afterCommit } = queueHeldMoves(batch, {
+                clientId: client.id,
+                moves,
+                nameOf: (machineId) => floorMachines.find((x) => x.id === machineId)?.name || "Machine",
+                author: { id: authUid, fullName: authTrainer?.fullName || authTrainer?.initials || "Unknown", initials: authTrainer?.initials },
+                journal: {
+                  studioId: sessionNoteStudioId(client, contextActiveStudioId || authTrainer?.primaryHomeStudioId),
+                  origin: "in_session",
+                  sessionId,
+                  sessionNumber: link.sessionNumber,
+                  sessionDay: link.sessionDay,
+                },
+                homeStudioId: client.homeStudioId || null,
+              });
+              afterHeld = afterCommit;
+              if (failed.length > 0) clearHeld = false;
+            } catch (error) {
+              console.error("[assign] the set-up held on the session stays there", error);
+              clearHeld = false;
+            }
+          }
+          batch.update(doc(db, "sessions", sessionId), clearHeld ? { ...patch, heldSetup: deleteField() } : patch);
           for (const set of sets) {
             batch.set(doc(db, "exerciseLogs", set.id), assignSetPatch(sessionId, set, client), { merge: true });
           }
           // Never awaited. The mark that it is being assigned stays while it is on screen:
           // the open sessions' listener must not take it off as it leaves their list.
-          batch.commit().catch((error) => assignRefused(sessionId, session, client, error));
+          batch.commit().then(afterHeld, (error) => assignRefused(sessionId, session, client, error));
           markSent();
         } catch (error) {
           assignRefused(sessionId, session, client, error);
@@ -2402,6 +2539,11 @@ export function WorkoutTrackerView({
          ahead of its own (`assignIssueRef`). */
       const setsQuery = query(collection(db, "exerciseLogs"), where("sessionId", "==", sessionId));
       const read: HeldSet[] = [];
+      // What the client has on file, by machine (read below only when the session holds settings),
+      // and whether the server answered by the time the batch is built.
+      const onFileCache: Record<string, OnFile> = {};
+      const onFileServer: Record<string, OnFile> = {};
+      const onFileRead = { server: false };
       const take = (snap: { docs: { id: string; data: () => unknown }[] }) => {
         for (const d of snap.docs) {
           const data = (d.data() ?? {}) as Partial<ExerciseLog>;
@@ -2426,6 +2568,37 @@ export function WorkoutTrackerView({
           ]),
         );
       }
+      /* With settings held on the session (AJ's "3a"): what the client
+         already has on file, so each move's history row says what it changed
+         from. The tracker's own settings listener's query (its index), the
+         iPad's copy and, online, the server's for a moment at most. The
+         settings rest on neither: a move writes only the dials it set. Only
+         the server's answer, in by the time the batch is built, lets a move
+         claim a first set-up or write the client's machine-fit row (the
+         review, Oct 9 2026): off the iPad's copy, a slow server, or a set-up
+         kept after this tap (no read at all), neither is claimed. */
+      if (hasHeldSetup(session)) {
+        const settingsQuery = query(collection(db, "clientMachineSettings"), where("clientId", "==", client.id));
+        const takeSettings = (into: Record<string, OnFile>) => (snap: { docs: { data: () => unknown }[] }) => {
+          for (const d of snap.docs) {
+            const data = (d.data() ?? {}) as Partial<ClientMachineSetting>;
+            if (data.machineId) into[data.machineId] = { settings: data.settings ?? null, sources: data.sources ?? null, fitAcks: data.fitAcks ?? null };
+          }
+        };
+        reads.push(getDocsFromCache(settingsQuery).then(takeSettings(onFileCache), () => undefined));
+        if (online) {
+          reads.push(
+            Promise.race([
+              getDocs(settingsQuery).then((snap) => {
+                takeSettings(onFileServer)(snap);
+                // getDocs answers from the iPad's copy when the server can't: that is not the server's word.
+                onFileRead.server = (snap as { metadata?: { fromCache?: boolean } }).metadata?.fromCache !== true;
+              }, () => undefined),
+              new Promise((done) => setTimeout(done, ASSIGN_SERVER_READ_WAIT_MS)),
+            ]),
+          );
+        }
+      }
       Promise.all(reads).then(issueOnce, issueOnce);
     });
   };
@@ -2439,6 +2612,8 @@ export function WorkoutTrackerView({
      the screen they are on now is left alone. */
   const assignRefused = (sessionId: string, before: WorkoutSession, client: Client, error: unknown) => {
     console.error("[assign] the session was not given its client", error);
+    // Open again in the database: its card may keep a set-up on it once more.
+    heldClosedRef.current.delete(sessionId);
     if (assigningRef.current?.sessionId === sessionId) assigningRef.current = null;
     if (assignIssueRef.current?.sessionId === sessionId) assignIssueRef.current = null;
     if (justStartedSessionRef.current?.id === sessionId) justStartedSessionRef.current = null;
@@ -2463,7 +2638,9 @@ export function WorkoutTrackerView({
     if (!trackerMountedRef.current) return;
     setAssignedHereId(null);
     setShowEndConfirmation(false);
-    setCurrentSession(before);
+    /* Open again as it was, with what it holds now: a set-up kept while the
+       batch was on its way went in its own write and is on the session. */
+    setCurrentSession((cur) => (cur?.id === sessionId && cur.heldSetup ? { ...before, heldSetup: cur.heldSetup } : before));
     setLogs((prev) => {
       const next: Record<string, ExerciseLog> = {};
       for (const [key, log] of Object.entries(prev)) {
@@ -3421,7 +3598,8 @@ export function WorkoutTrackerView({
     side?: "Left" | "Right",
   ) => {
     const key = logDocId(sessionId, machineId, side);
-    const currentSettings = clientMachineSettings[machineId]?.settings || {};
+    // The client's settings, or what an open session holds for the machine (AJ's "3a").
+    const currentSettings = shownSettings[machineId]?.settings || {};
 
     /* The per-machine clock goes onto the log the first time anything is
        written for the machine — never earlier, so the weight-only placeholder
@@ -3609,29 +3787,27 @@ export function WorkoutTrackerView({
      an empty answer from the iPad's cache may be a cold cache, and a first
      set-up saved off it would write the client's other dials over when it
      syncs (the review, Oct 9 2026). Something saved is said off either.
-     An open session with no client yet offers no Set up at all: its
-     settings would go to the ghost record nobody reads (finding 4) until
-     they are held on the session (3a). */
+     An open session with no client yet counts what it HOLDS (AJ's "3a":
+     the card keeps its settings on the session, `heldSetup`): the session
+     is its own record, so what it holds is known, and Set up is offered. */
   const { byId: dialCatalogById } = useMachineCatalog();
   const studioDialStandards = activeStudio?.machineSettings;
-  const noClientYet = !!currentSession?.isUnassigned && !clientId;
   const setupById = useMemo(() => {
     const out: Record<string, { notSet?: number; firstSetup?: boolean }> = {};
-    if (noClientYet) return out;
     for (const m of floorMachines) {
       if (!m.id) continue;
-      const saved = clientMachineSettings[m.id]?.settings ?? {};
+      const saved = shownSettings[m.id]?.settings ?? {};
       const fields = fieldsForMachine(m, dialCatalogById, studioDialStandards);
       const first = isFirstSetup(saved);
-      const known = settingsServerRead || (settingsRead && !first);
+      const known = noClientYet || settingsServerRead || (settingsRead && !first);
       out[m.id] = { notSet: notSetCount(fields, saved), ...(known ? { firstSetup: first } : {}) };
     }
     return out;
-  }, [floorMachines, dialCatalogById, studioDialStandards, clientMachineSettings, settingsRead, settingsServerRead, noClientYet]);
-  /* The card's Set up, from the Now Bar and the phone's card: none while
-     an open session has no client (above). Stable either way (the bar is
-     memo). */
-  const onSetUpDoor = noClientYet ? undefined : onSetUpMachine;
+  }, [floorMachines, dialCatalogById, studioDialStandards, shownSettings, settingsRead, settingsServerRead, noClientYet]);
+  /* The card's Set up, from the Now Bar and the phone's card: in an open
+     session too, since its settings are held on the session until Assign.
+     Stable (the bar is memo). */
+  const onSetUpDoor = onSetUpMachine;
 
   const gridRows = useMemo(() => {
     const ordered = [...floorMachines].sort(
@@ -3655,11 +3831,12 @@ export function WorkoutTrackerView({
     );
     // Which notes are open is a studio-day question (client-notes/threads.ts).
     const noteDay = studioTodayKey();
-    return toJourneyRows(ordered, historyLogs, clientMachineSettings, starred).map(
+    // The client's settings, or what an open session holds (`shownSettings`).
+    return toJourneyRows(ordered, historyLogs, shownSettings, starred).map(
       (row) => {
         const machine = ordered.find((m) => m.id === row.machine.id);
         if (!machine) return row;
-        const setting = clientMachineSettings[machine.id!];
+        const setting = shownSettings[machine.id!];
         const entries = orderMachineSettings(
           setting?.settings || {},
           machine.standardSettings || {},
@@ -3729,7 +3906,7 @@ export function WorkoutTrackerView({
   }, [
     floorMachines,
     historyLogs,
-    clientMachineSettings,
+    shownSettings,
     studioFloorById,
     gridHistory,
     selectedClient?.currentMachineMetrics,
@@ -4122,10 +4299,15 @@ export function WorkoutTrackerView({
   const machineMenuHost = useMemo<MachineMenuHost>(
     () => ({
       door: "session",
+      // No client yet (an open session): "" names nobody, and the card keeps
+      // its settings on the session through `holdSetup`, never on a client.
       clientId: clientId || "",
       client: selectedClient,
       machines: floorMachines,
-      clientSettings: clientMachineSettings,
+      clientSettings: shownSettings,
+      holdSetup: holdSetupDoor,
+      // Until the server has answered for the client's settings, the card writes only the dials it changes.
+      settingsUnsure: !!clientId && !settingsServerRead,
       author: authTrainer
         ? { id: user.uid, fullName: authTrainer.fullName || authTrainer.initials || "Unknown", initials: authTrainer.initials }
         : null,
@@ -4152,7 +4334,9 @@ export function WorkoutTrackerView({
       clientId,
       selectedClient,
       floorMachines,
-      clientMachineSettings,
+      shownSettings,
+      holdSetupDoor,
+      settingsServerRead,
       authTrainer,
       user?.uid,
       contextActiveStudioId,

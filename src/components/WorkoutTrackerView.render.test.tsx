@@ -221,6 +221,8 @@ const netCtl = {
   cacheEmpty: false,
   /** How many times the SERVER was asked for a session's sets (`getDocs` on exerciseLogs). */
   serverLogReads: 0,
+  /** While set, the SERVER's answer to a read of a client's settings (`getDocs`) waits on it (Assign, Oct 9 2026). */
+  settingsServerGate: null as Promise<void> | null,
 };
 const never = () => new Promise<any>(() => {});
 
@@ -305,6 +307,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
         netCtl.serverLogReads += 1;
         if (netCtl.readGate) await netCtl.readGate;
       }
+      if (q?.__path === "clientMachineSettings" && netCtl.settingsServerGate) await netCtl.settingsServerGate;
       const docs = docsFor(q?.__path ?? "");
       return { docs, size: docs.length, empty: docs.length === 0, forEach: (f: any) => docs.forEach(f) };
     },
@@ -510,6 +513,7 @@ beforeEach(() => {
   netCtl.readGate = null;
   netCtl.cacheEmpty = false;
   netCtl.serverLogReads = 0;
+  netCtl.settingsServerGate = null;
   setViewSpy.mockClear();
   Object.defineProperty(navigator, "onLine", { configurable: true, get: () => true });
   sessionDocs = SESSION_DOCS;
@@ -1514,18 +1518,86 @@ describe("the FileMaker floor (the open session round, Oct 9 2026)", () => {
     expect(document.querySelector(".mm-dialog [data-editor]")).toBeNull();
   });
 
-  /* The review (Oct 9 2026): an open session with no client yet would save
-     Set up's settings to the ghost record nobody reads (finding 4), and the
-     button would still say "Set up" after the save. Until the settings are
-     held on the session (3a), it offers no Set up there. */
-  it("offers no Set up in an open session with no client yet: nothing would reach the client", async () => {
-    sessionDocs = openSession();
+  /* Changed on purpose (the open session round, Oct 9 2026; AJ's "3a":
+     "Settings typed before the client is chosen are kept on the session
+     (`sessions/{id}.heldSetup.{machineId}`) and saved to the client at
+     Assign"). Until they were held, an open session offered no Set up: its
+     settings went to the ghost record nobody reads (finding 4). Now Set up
+     is offered, and Save keeps the set-up on the session, never on a
+     client. */
+  /** The open session as the database holds it: every write to it laid over it, dotted paths and deletes as Firestore applies them. */
+  const openSessionWritten = () => [
+    {
+      id: OPEN_ID,
+      data: () => {
+        const out: Record<string, any> = { ...openSession()[0].data() };
+        for (const w of writes) {
+          if (w.path !== `sessions/${OPEN_ID}`) continue;
+          for (const [k, v] of Object.entries(w.data ?? {})) {
+            if ((v as any)?._methodName === "deleteField") {
+              delete out[k];
+              continue;
+            }
+            const [head, ...rest] = k.split(".");
+            if (rest.length === 0) out[k] = v;
+            else out[head] = { ...(out[head] ?? {}), [rest.join(".")]: v };
+          }
+        }
+        return out;
+      },
+    },
+  ];
+  const clientWrites = () =>
+    writes.filter((w) => w.path.startsWith("clientMachineSettings/") || /^machines\/[^/]+\/settingHistory\//.test(w.path));
+
+  it("offers Set up in an open session with no client yet, and Save keeps the set-up on the session, never on a client", async () => {
+    sessionDocs = openSessionWritten();
     const host = await mount(<Open />);
     await act(async () => plus(host, "Rear Delt Hoist")!.click());
-    const setup = setupBtn(host);
-    expect(setup === null || (setup.disabled && setup.getAttribute("data-kind") !== "setup")).toBe(true);
-    expect(host.textContent).not.toContain("not set");
-    expect(writes.filter((w) => w.path.startsWith("clientMachineSettings/"))).toEqual([]);
+    const setup = setupBtn(host)!;
+    // What the session holds is known (it is the session's own record): Set up, and how many dials are empty.
+    expect(setup.getAttribute("data-kind")).toBe("setup");
+    expect(setup.textContent).toBe("Set up· 1 not set");
+    await act(async () => setup.click());
+    await settle();
+    expect(document.querySelector(".mm-dialog [data-held]")?.textContent).toBe("Kept on this session · saved to the client when you choose them");
+    const input = document.querySelector<HTMLInputElement>('.mm-dialog [data-block="settings"] [data-editor="field"] input')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "12");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const save = [...document.querySelectorAll<HTMLButtonElement>(".mm-dialog button")].find((b) => b.textContent === "Save set-up");
+    await act(async () => save!.click());
+    await settle();
+    // The card closed, and the toast says where the set-up went.
+    expect(document.querySelector(".mm-dialog .mm-card")).toBeNull();
+    expect(document.body.textContent).toContain("Rear Delt Hoist: set-up kept on this session · saved to the client when you choose them");
+
+    // ONE write, to the session: no client's settings, no history row, no journal copy.
+    const kept = writes.filter((w) => w.path === `sessions/${OPEN_ID}` && Object.keys(w.data ?? {}).some((k) => k.startsWith("heldSetup")));
+    expect(kept).toHaveLength(1);
+    expect(kept[0].batch ?? 0, "its own update, never a batch").toBe(0);
+    expect(kept[0].data).toEqual({ "heldSetup.sm-solon-rear-delt": { values: { Seat: "12" }, at: { __server: true }, byUid: "uid-coach" } });
+    expect(clientWrites(), "nothing written for a client").toEqual([]);
+    expect(journalDocs).toEqual([]);
+    expect(writes.some((w) => w.data?.clientId === ""), "no write ever names clientId ''").toBe(false);
+
+    // The Now Bar counts it: the setting itself, nothing left to set.
+    expect(setupBtn(host)!.getAttribute("data-kind")).toBe("settings");
+    expect(setupBtn(host)!.textContent).toContain("12");
+    expect(setupBtn(host)!.textContent).not.toContain("not set");
+
+    // Reopening the card (the grid's name, and again after the database answers) shows what the session keeps.
+    await act(async () => {
+      for (const l of snapshotListeners.filter((x) => x.live && x.path === "sessions")) l.emit();
+    });
+    const nameDoor = [...host.querySelectorAll<HTMLButtonElement>(".jg-machine__btn")].find((b) => b.textContent?.includes("Rear Delt Hoist"));
+    await act(async () => nameDoor!.click());
+    await settle();
+    const seat = document.querySelector('.mm-dialog [data-dial="Seat"]');
+    expect(seat?.textContent).toContain("12");
+    expect(seat?.textContent).not.toContain("Not set");
+    expect(document.querySelector('.mm-dialog [data-strip="edit"]')).toBeNull();
   });
 
   /* The review (Oct 9 2026): only the server's answer says nothing is on
@@ -3207,7 +3279,14 @@ describe("Who's this? gives an open session its client (the open session round, 
       if (w.path !== `sessions/${OPEN_ID}`) continue;
       for (const [k, v] of Object.entries(w.data ?? {})) {
         if (v && typeof v === "object" && "__server" in (v as object)) continue;
-        out[k] = v;
+        // A delete, and a dotted path (a set-up held on the session), as Firestore applies them.
+        if ((v as { _methodName?: string } | null)?._methodName === "deleteField") {
+          delete out[k];
+          continue;
+        }
+        const [head, ...rest] = k.split(".");
+        if (rest.length > 0) out[head] = { ...((out[head] as object) ?? {}), [rest.join(".")]: v };
+        else out[k] = v;
       }
     }
     return out;
@@ -3704,5 +3783,195 @@ describe("Who's this? gives an open session its client (the open session round, 
     await settle();
     expect(document.body.textContent).not.toContain("press Who's this? again");
     expect(document.body.textContent).toContain("Wrap-up · session saved");
+  });
+  /* SETTINGS HELD ON THE SESSION (the open session round, Oct 9 2026; AJ's
+     "3a": "Settings typed before the client is chosen are kept on the
+     session ... and saved to the client at Assign"). */
+  const openCard = async (host: HTMLElement, machine: string) => {
+    const door = [...host.querySelectorAll<HTMLButtonElement>(".jg-machine__btn")].find((b) => b.textContent?.includes(machine));
+    expect(door, `${machine}'s name`).toBeTruthy();
+    await act(async () => door!.click());
+    await settle();
+  };
+  /** Sets one empty dial in the open card and saves: the card stays open (not Set up's door). */
+  const keepDial = async (label: string, value: string) => {
+    const empty = document.querySelector<HTMLButtonElement>(`.mm-dialog button[aria-label="${label}: not set. Set it"]`);
+    expect(empty, `${label} is not set`).toBeTruthy();
+    await act(async () => empty!.click());
+    await type(document.querySelector<HTMLInputElement>('.mm-dialog [data-editor="field"] input')!, value);
+    const save = [...document.querySelectorAll<HTMLButtonElement>(".mm-dialog button")].find((b) => /^Save /.test(b.textContent ?? ""));
+    await act(async () => save!.click());
+    await settle();
+  };
+  const heldWrites = () => writes.filter((w) => w.path === `sessions/${OPEN_ID}` && Object.keys(w.data ?? {}).some((k) => k.startsWith("heldSetup.")));
+  const isDelete = (v: unknown) => (v as { _methodName?: string } | null)?._methodName === "deleteField";
+
+  it("Who's this? saves the set-up held on the session to the client in the assign's batch, over what the client has, and clears it", async () => {
+    const host = await mount(<Floor />);
+    await openCard(host, "Leg Press (Hoist)");
+    expect(document.querySelector(".mm-dialog [data-held]")).toBeTruthy();
+    await keepDial("Seat Distance", "9");
+    expect(heldWrites().map((w) => w.data)).toEqual([
+      { "heldSetup.m-leg-press": { values: { "Seat Distance": "9" }, at: { __server: true }, byUid: "uid-coach" } },
+    ]);
+    expect(writes.filter((w) => w.path.startsWith("clientMachineSettings/")), "nothing for a client yet").toEqual([]);
+
+    await act(async () => whoButton(host)!.click());
+    await pick("Judy Client");
+
+    const session = sessionAssignWrite()!;
+    expect(isDelete(session.data.heldSetup), "heldSetup cleared in the session's own write").toBe(true);
+    const setting = writes.find((w) => w.path === `clientMachineSettings/${CLIENT_ID}_m-leg-press` && w.batch === session.batch)!;
+    expect(setting, "the client's settings, in the same batch").toBeTruthy();
+    expect(setting.merge).toBe(true);
+    // Only the dial the session held: Seat Angle P2, which the client already has, is the database's to keep.
+    expect(setting.data).toMatchObject({ clientId: CLIENT_ID, machineId: "m-leg-press", settings: { "Seat Distance": "9" }, updatedBy: "uid-coach" });
+    expect(Object.keys(setting.data.settings)).toEqual(["Seat Distance"]);
+    const history = writes.find((w) => /^machines\/m-leg-press\/settingHistory\//.test(w.path))!;
+    expect(history.batch).toBe(session.batch);
+    expect(history.data).toMatchObject({ clientId: CLIENT_ID, trainerId: "uid-coach", changeType: "SETTINGS", oldValue: "Seat Distance: 7", newValue: "Seat Distance: 9" });
+    // Its journal copy is the client's, at this session's link, filed once the batch has committed.
+    const copy = journalDocs.map((d) => d.data()).find((d) => d.machineId === "m-leg-press");
+    expect(copy).toMatchObject({ clientId: CLIENT_ID, sessionId: OPEN_ID, origin: "in_session" });
+    // The server said what the client had: her machine-fit row, whole, after the commit and outside the batch.
+    const fit = writes.find((w) => w.path === `studios/${STUDIO_ID}/machineFit/m-leg-press`);
+    expect(fit, "the client's machine-fit row").toBeTruthy();
+    expect(fit!.batch ?? 0).toBe(0);
+    // No write ever names clientId "": never the ghost `_{machineId}`.
+    expect(writes.some((w) => w.data?.clientId === "")).toBe(false);
+    expect(writes.some((w) => /^clientMachineSettings\/_/.test(w.path))).toBe(false);
+  });
+
+  it("a set-up kept while Who's this?'s reads are out goes to the client in the same batch", async () => {
+    const open = gate();
+    const host = await mount(<Floor />);
+    await act(async () => whoButton(host)!.click());
+    await tapName("Judy Client");
+    expect(sessionAssignWrite(), "not built yet").toBeUndefined();
+    // The session is the client's on screen; the client is not chosen yet: the card still keeps it on the session.
+    await openCard(host, "Rear Delt Hoist");
+    await keepDial("Seat", "12");
+    expect(heldWrites()).toHaveLength(1);
+    await open();
+    const session = sessionAssignWrite()!;
+    expect(isDelete(session.data.heldSetup)).toBe(true);
+    const setting = writes.find((w) => w.path === `clientMachineSettings/${CLIENT_ID}_sm-solon-rear-delt`)!;
+    expect(setting?.batch).toBe(session.batch);
+    expect(setting.data.settings).toEqual({ Seat: "12" });
+    expect(writes.some((w) => w.data?.clientId === "")).toBe(false);
+    /* The review (Oct 9 2026): nothing was held at the tap, so the client's
+       settings were never read. Her settings may hold more: no first set-up
+       is claimed, and no machine-fit row replaces hers with only this dial. */
+    const history = writes.find((w) => /^machines\/sm-solon-rear-delt\/settingHistory\//.test(w.path))!;
+    expect(history.data).toMatchObject({ changeType: "SETTINGS", reason: "Settings update" });
+    expect(writes.some((w) => /\/machineFit\//.test(w.path)), "no fit row off settings never read").toBe(false);
+  });
+
+  it("a refused assign leaves the set-up on the session, and the card still shows it", async () => {
+    netCtl.refuseLater = true;
+    const host = await mount(<Floor />);
+    await openCard(host, "Leg Press (Hoist)");
+    await keepDial("Seat Distance", "9");
+    await act(async () => whoButton(host)!.click());
+    await pick("Judy Client");
+    const session = sessionAssignWrite()!;
+    for (let i = writes.length - 1; i >= 0; i--) if (writes[i].batch === session.batch) writes.splice(i, 1);
+    await act(async () => {
+      for (const refuse of netCtl.refusals.splice(0)) refuse(new Error("permission-denied"));
+    });
+    await settle();
+    expect(barName(host)).toBe("Open session");
+    // Nothing reached the client (the review: nor her journal, nor the studio's fit rows), and the session still holds the set-up.
+    expect(writes.filter((w) => w.path.startsWith("clientMachineSettings/"))).toEqual([]);
+    expect(journalDocs.map((d) => d.data()).filter((d) => d.machineId === "m-leg-press"), "no journal copy").toEqual([]);
+    expect(writes.filter((w) => /\/machineFit\//.test(w.path)), "no fit row").toEqual([]);
+    expect(openSessionAsWritten().heldSetup).toMatchObject({ "m-leg-press": { values: { "Seat Distance": "9" } } });
+    await act(async () => {
+      for (const l of snapshotListeners.filter((x) => x.live && x.path === "sessions")) l.emit();
+    });
+    await settle();
+    const dial = document.querySelector('.mm-dialog [data-dial="Seat Distance"]');
+    expect(dial?.textContent).toContain("9");
+  });
+
+  /* The review (Oct 9 2026). */
+  const plusFor = (host: HTMLElement, name: string) =>
+    host.querySelector<HTMLButtonElement>(`button.jg-today__add[aria-label="Add ${name} to today's session"]`);
+  const setupButton = (host: HTMLElement) => host.querySelector<HTMLButtonElement>('[data-testid="nb-setup"]');
+
+  it("Finish before the server answers the client's settings: the held set-up is moved, but no first set-up is claimed and no fit row written", async () => {
+    netCtl.settingsServerGate = new Promise<void>(() => {}); // the server never answers in time
+    const host = await mount(<Floor />);
+    await openCard(host, "Rear Delt Hoist");
+    await keepDial("Seat", "12");
+    await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
+    await act(async () => button("Assign to client")!.click());
+    await tapName("Judy Client");
+    await act(async () => button("Finish session")!.click());
+    await settle();
+    await settle();
+    expect(document.body.textContent).toContain("Wrap-up · session saved");
+    const session = sessionAssignWrite()!;
+    expect(isDelete(session.data.heldSetup)).toBe(true);
+    const setting = writes.find((w) => w.path === `clientMachineSettings/${CLIENT_ID}_sm-solon-rear-delt` && w.batch === session.batch)!;
+    expect(setting, "moved in the assign's batch").toBeTruthy();
+    expect(setting.merge).toBe(true);
+    expect(setting.data.settings).toEqual({ Seat: "12" });
+    const history = writes.find((w) => /^machines\/sm-solon-rear-delt\/settingHistory\//.test(w.path))!;
+    expect(history.data.changeType, "never a first set-up off a read the server didn't answer").toBe("SETTINGS");
+    expect(writes.some((w) => /\/machineFit\//.test(w.path))).toBe(false);
+    expect(writes.some((w) => w.data?.clientId === "")).toBe(false);
+  });
+
+  it("the toast's Undo after Who's this? takes nothing back: no set-up is kept on a session that has its client, and the toast says where it is", async () => {
+    const host = await mount(<Floor />);
+    await act(async () => plusFor(host, "Rear Delt Hoist")!.click());
+    await act(async () => setupButton(host)!.click());
+    await settle();
+    await type(document.querySelector<HTMLInputElement>('.mm-dialog [data-block="settings"] [data-editor="field"] input')!, "12");
+    const save = [...document.querySelectorAll<HTMLButtonElement>(".mm-dialog button")].find((b) => b.textContent === "Save set-up");
+    await act(async () => save!.click());
+    await settle();
+    expect(heldWrites()).toHaveLength(1);
+    const undo = [...document.querySelectorAll<HTMLButtonElement>("[data-toast-action]")].find((b) =>
+      b.closest("[role]")?.textContent?.includes("kept on this session") ?? b.parentElement?.textContent?.includes("kept on this session"),
+    );
+    expect(undo, "the toast's Undo").toBeTruthy();
+
+    await act(async () => whoButton(host)!.click());
+    await pick("Judy Client");
+    const session = sessionAssignWrite()!;
+    expect(isDelete(session.data.heldSetup)).toBe(true);
+    const settingWrites = () => writes.filter((w) => w.path.startsWith("clientMachineSettings/"));
+    const before = settingWrites().length;
+
+    await act(async () => undo!.click());
+    await settle();
+    await settle();
+    expect(heldWrites(), "nothing kept on the session once it has its client").toHaveLength(1);
+    expect(settingWrites(), "and nothing written to the client's settings").toHaveLength(before);
+    expect(document.body.textContent).toContain("Rear Delt Hoist: already saved to Judy · change it on the machine's card");
+  });
+
+  /* The strip's Undo across Assign (a card that stays open as the session
+     gets its client) is held in DialTiles.render.test.tsx: here the card
+     draws again as the client's, and the strip goes with it. */
+
+  it("a note about the client before Who's this? writes nothing and says to choose who this is", async () => {
+    const host = await mount(<Floor />);
+    await openCard(host, "Leg Press (Hoist)");
+    const box = document.querySelector<HTMLTextAreaElement>(".mm-dialog .mm-cmp__text");
+    expect(box, "the note box").toBeTruthy();
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(box, "Knee tracks in");
+      box!.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const add = [...document.querySelectorAll<HTMLButtonElement>(".mm-dialog button")].find((b) => b.textContent?.trim() === "Add note");
+    expect(add, "Add note").toBeTruthy();
+    await act(async () => add!.click());
+    await settle();
+    expect(document.querySelector(".mm-dialog")?.textContent).toContain("Choose who this is first (Who's this?) · your words stay here");
+    expect(journalDocs).toEqual([]);
+    expect(writes.some((w) => /^clientMachineSettings\/_/.test(w.path))).toBe(false);
   });
 });

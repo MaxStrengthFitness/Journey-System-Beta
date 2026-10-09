@@ -43,7 +43,7 @@ import type { MachineCatalogEntry } from "../../types/machines";
 import { SetupGuide } from "../equipment/SetupGuide";
 import { useScrollerPad } from "../client-profile/use-scroller-pad";
 import { usePhone } from "../phone/device";
-import { DialTiles } from "./DialTiles";
+import { DialTiles, type HeldTarget } from "./DialTiles";
 import { blockOrder, menuLayoutFor, type BlockId, type MenuLayout } from "./doors";
 import { MachineTimeline } from "./MachineTimeline";
 import { MenuHeader } from "./MenuHeader";
@@ -198,6 +198,20 @@ export function MachineMenuBody({
     [host.door, layout, data.safety.count, data.firstTime],
   );
 
+  /* An open session before its client is chosen (the open session round,
+     Oct 9 2026; AJ's "3a"): the settings' Save keeps the values on the
+     session, never on a client. `key` is where this iPad notes what is held
+     for the toast's Undo, never a client's id. */
+  const holdSetup = host.holdSetup ?? null;
+  const equipmentId = equipment?.id ?? null;
+  const hold = useMemo<HeldTarget | null>(
+    () =>
+      holdSetup && !host.clientId && equipmentId
+        ? { key: `held:${holdSetup.sessionId}`, keep: (values, sources) => holdSetup.keep(equipmentId, values, sources) }
+        : null,
+    [holdSetup, host.clientId, equipmentId],
+  );
+
   if (!equipment || !model) return null;
 
   const machineNameOf = (id: string) => host.machines.find((m) => m.id === id)?.name ?? null;
@@ -255,6 +269,8 @@ export function MachineMenuBody({
             onDirtyChange={setSettingsDirty}
             focusDial={focusDial}
             onSaveClose={closeOnSave ? onClose : undefined}
+            hold={hold}
+            settingsUnsure={!!host.settingsUnsure}
           />
         );
       case "notes":

@@ -492,10 +492,15 @@ describe("SessionNowBar's settings button: Set up · 2 not set, then the setting
     expect(draws.n, "a new function: a draw").toBe(before + 1);
   });
 
-  it("is handed one stable function by the tracker: a callback with no deps, and none at all while an open session has no client", () => {
+  /* Changed on purpose (the open session round, Oct 9 2026; AJ's "3a":
+     "Settings typed before the client is chosen are kept on the session").
+     An open session offered no Set up while its settings went to a ghost
+     record; they are held on the session now, so Set up is offered there
+     too, and the door is the one stable callback in every session. */
+  it("is handed one stable function by the tracker, a callback with no deps, in an open session too (its settings are held on the session)", () => {
     const src = readFileSync(resolve(__dirname, "../../components/WorkoutTrackerView.tsx"), "utf8");
     expect(src).toMatch(/const onSetUpMachine = React\.useCallback\(\(id: string\) => \{[^}]*\}, \[\]\);/);
-    expect(src).toMatch(/const onSetUpDoor = noClientYet \? undefined : onSetUpMachine;/);
+    expect(src).toMatch(/const onSetUpDoor = onSetUpMachine;/);
     expect(src.match(/onSetUp=\{onSetUpDoor\}/g)).toHaveLength(2);
   });
 

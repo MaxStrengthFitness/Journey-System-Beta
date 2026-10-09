@@ -70,6 +70,7 @@ import { normalizeSettingKey } from "../machine-trends/trends";
 import { forgetPersonalMemory } from "../sign-out/memory";
 import { LEG_PRESS_HISTORY, TODAY } from "./fixtures";
 import { UNDO_REASON, parseSettingHistory } from "./setting-history";
+import { heldClosedError } from "../open-session/held-setup";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -812,5 +813,189 @@ describe("Set up from the Now Bar (focusDial, onSaveClose)", () => {
     await click(byText(host, "Save set-up"));
     expect(onSaveClose).not.toHaveBeenCalled();
     expect(host.querySelector('[data-strip="edit"]')!.textContent).toContain("Couldn't save set-up");
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Kept on an open session (the open session round, Oct 9 2026; AJ's "3a")
+ * ------------------------------------------------------------------ */
+
+describe("an open session before its client is chosen: the settings are kept on the session", () => {
+  afterEach(() => {
+    delete (window as unknown as { __showToast?: unknown }).__showToast;
+  });
+  /** The session's keeper: each call is one write, the dials whole. */
+  const keeper = () => {
+    const kept: Record<string, string>[] = [];
+    return { kept, hold: { key: "held:sess-open", keep: (values: Record<string, string>) => (kept.push(values), Promise.resolve()) } };
+  };
+
+  it("Save keeps the dials on the session, never saves to a client, and the heading says where they go", async () => {
+    const { kept, hold } = keeper();
+    const host = await mount(<Tiles clientId="" clientFirstName="the client" hold={hold} history={null} historyState="loading" />);
+    expect(host.querySelector("[data-held]")!.textContent).toBe("Kept on this session · saved to the client when you choose them");
+    expect(host.querySelector("[data-last-changed]")).toBeNull();
+    await click(button(host, "Seat up one"));
+    // Nothing would carry a reason to the client: none is asked.
+    expect(host.querySelector('[data-strip="edit"]')!.textContent).not.toContain("Why?");
+    await click(byText(host, "Save Seat 5"));
+    expect(saves.calls, "never saveSettings: no client, so no ghost record").toEqual([]);
+    expect(kept).toEqual([{ ...SAVED, seat: "5" }]);
+    expect(host.querySelector('[data-strip="done"]')!.textContent).toContain("Seat 5 kept on this session");
+    expect(byText(host, "Undo")).not.toBeNull();
+  });
+
+  it("Undo keeps the old values back on the session, the same way", async () => {
+    const { kept, hold } = keeper();
+    const host = await mount(<Tiles clientId="" hold={hold} />);
+    await click(button(host, "Seat up one"));
+    await click(byText(host, "Save Seat 5"));
+    await click(byText(host, "Undo"));
+    expect(saves.calls).toEqual([]);
+    expect(kept).toEqual([{ ...SAVED, seat: "5" }, SAVED]);
+    expect(host.querySelector('[data-strip="done"]')!.textContent).toContain("Seat back to 4");
+  });
+
+  it("Set up's Save closes the card, and the toast says the set-up is kept, with an Undo that keeps it off again", async () => {
+    const show = vi.fn();
+    (window as unknown as { __showToast?: typeof show }).__showToast = show;
+    const { kept, hold } = keeper();
+    const onSaveClose = vi.fn();
+    const host = await mount(<Tiles clientId="" saved={{}} fields={[FIELDS[0], FIELDS[1]]} hold={hold} focusDial onSaveClose={onSaveClose} />);
+    await typeKeys(host, "12");
+    await click(byText(host, "Save set-up"));
+    expect(onSaveClose).toHaveBeenCalledTimes(1);
+    expect(kept).toEqual([{ seat: "12" }]);
+    const [words, , , action] = show.mock.calls[0];
+    expect(words).toBe("Leg Press: set-up kept on this session · saved to the client when you choose them");
+    await closeLast();
+    await act(async () => action.run());
+    expect(kept).toEqual([{ seat: "12" }, {}]);
+    expect(saves.calls).toEqual([]);
+  });
+
+  it("a keep the database refuses keeps the change and says so", async () => {
+    const hold = { key: "held:sess-open", keep: () => Promise.reject(new Error("permission-denied")) };
+    const host = await mount(<Tiles clientId="" saved={{}} hold={hold} />);
+    await click(button(host, "Use 6 for Seat"));
+    await click(byText(host, "Save set-up"));
+    expect(host.querySelector('[data-strip="edit"]')!.textContent).toContain("Couldn't keep set-up");
+    expect(saves.calls).toEqual([]);
+  });
+
+  it("opens on what the session holds: reopening shows the kept values", async () => {
+    const { hold } = keeper();
+    const host = await mount(<Tiles clientId="" saved={{ seat: "12" }} hold={hold} />);
+    expect(tile(host, "seat").textContent).toContain("12");
+    expect(host.querySelector('[data-strip="edit"]')).toBeNull();
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * The open session round's review (Oct 9 2026)
+ * ------------------------------------------------------------------ */
+
+describe("the review: a kept set-up's sources, an Undo that outlives Assign, and settings that may not be the server's", () => {
+  afterEach(() => {
+    delete (window as unknown as { __showToast?: unknown }).__showToast;
+  });
+  /** Draws the last card again with new props, as its host does when Assign gives the session its client. */
+  const redraw = async (node: ReactNode) => {
+    const m = mounted[mounted.length - 1];
+    await act(async () => m.root.render(node));
+  };
+  /** A session's keeper that refuses once the session has its client (`heldClosedError`), as the tracker's does. */
+  const sessionKeeper = () => {
+    const state = { closed: false, kept: [] as { values: Record<string, string>; sources: unknown }[] };
+    const hold = {
+      key: "held:sess-open",
+      keep: (values: Record<string, string>, sources?: unknown) => {
+        if (state.closed) return Promise.reject(heldClosedError("Judy"));
+        state.kept.push({ values, sources: sources ?? null });
+        return Promise.resolve();
+      },
+    };
+    return { state, hold };
+  };
+
+  it("keeps a value taken from a suggestion as suggested, beside it, so it reaches the client as one", async () => {
+    const { state, hold } = sessionKeeper();
+    const host = await mount(<Tiles clientId="" saved={{}} hold={hold} />);
+    await click(button(host, "Use 6 for Seat"));
+    await click(byText(host, "Save set-up"));
+    expect(state.kept).toEqual([{ values: { seat: "6" }, sources: { seat: "suggested" } }]);
+    expect(saves.calls).toEqual([]);
+  });
+
+  it("the strip's Undo after Assign takes nothing back, never writes the client's map, and says where the set-up is with nothing to try again", async () => {
+    const { state, hold } = sessionKeeper();
+    await mount(<Tiles clientId="" hold={hold} />);
+    const host = mounted[mounted.length - 1].host;
+    await click(button(host, "Seat up one"));
+    await click(byText(host, "Save Seat 5"));
+    expect(state.kept).toHaveLength(1);
+    // Who's this?: the batch has gone, and the card is the client's now, its Undo still on the strip.
+    state.closed = true;
+    await redraw(<Tiles clientId="judy" clientFirstName="Judy" saved={{ ...SAVED, seat: "5" }} hold={null} />);
+    await click(byText(host, "Undo"));
+    expect(saves.calls, "never the client's whole map from a save kept on the session").toEqual([]);
+    expect(state.kept).toHaveLength(1);
+    const done = host.querySelector('[data-strip="done"]')!;
+    expect(done.textContent).toContain("Already saved to Judy · change it here");
+    expect(byText(host, "Try again")).toBeNull();
+    expect(tile(host, "seat").textContent).toContain("5");
+  });
+
+  it("the toast's Undo after Assign says so in the toast, and keeps nothing", async () => {
+    const show = vi.fn();
+    (window as unknown as { __showToast?: typeof show }).__showToast = show;
+    const { state, hold } = sessionKeeper();
+    const host = await mount(<Tiles clientId="" saved={{}} fields={[FIELDS[0]]} hold={hold} focusDial onSaveClose={vi.fn()} />);
+    await typeKeys(host, "12");
+    await click(byText(host, "Save set-up"));
+    const [, , , action] = show.mock.calls[0];
+    await closeLast();
+    state.closed = true;
+    await act(async () => action.run());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(state.kept).toHaveLength(1);
+    expect(saves.calls).toEqual([]);
+    expect(show.mock.calls.at(-1)![0]).toBe("Leg Press: already saved to Judy · change it on the machine's card");
+  });
+
+  it("a keep refused later, once the card has closed, says so for the session, never 'for the client'", async () => {
+    const show = vi.fn();
+    (window as unknown as { __showToast?: typeof show }).__showToast = show;
+    let refuse!: (e: unknown) => void;
+    const hold = { key: "held:sess-open", keep: () => new Promise<void>((_resolve, reject) => (refuse = reject)) };
+    const host = await mount(<Tiles clientId="" saved={{}} fields={[FIELDS[0]]} hold={hold} focusDial onSaveClose={vi.fn()} online={false} />);
+    await typeKeys(host, "12");
+    await click(byText(host, "Save set-up"));
+    await closeLast();
+    await act(async () => {
+      refuse(new Error("permission-denied"));
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    const words = show.mock.calls.map((c) => c[0]);
+    expect(words).toContain("Leg Press: couldn't keep set-up on this session. Set it again on the machine's card.");
+    expect(words.some((w) => String(w).includes("for the client"))).toBe(false);
+  });
+
+  it("with settings that may not be the server's yet, Save and Undo write only the dials they change, no fit row and no first set-up", async () => {
+    const host = await mount(<Tiles saved={{}} homeStudioId="westlake" settingsUnsure />);
+    await click(button(host, "Use 6 for Seat"));
+    await click(byText(host, "Save set-up"));
+    expect(saves.calls[0]).toMatchObject({ clientId: "avery", dialsOnly: true, homeStudioId: null, isInitialSetup: false });
+    await click(byText(host, "Undo"));
+    expect(saves.calls[1]).toMatchObject({ clientId: "avery", dialsOnly: true, homeStudioId: null });
+  });
+
+  it("with the server's settings, the ordinary save: the whole map, its fit row, and a first set-up", async () => {
+    const host = await mount(<Tiles saved={{}} homeStudioId="westlake" />);
+    await click(button(host, "Use 6 for Seat"));
+    await click(byText(host, "Save set-up"));
+    expect(saves.calls[0]).toMatchObject({ dialsOnly: false, homeStudioId: "westlake", isInitialSetup: true });
   });
 });

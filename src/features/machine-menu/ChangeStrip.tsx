@@ -42,6 +42,12 @@ export interface ChangeStripProps {
   saving: boolean;
   /** "Couldn't save Seat 5" after a refused save; the draft is kept, and Save tries again. */
   failedWords?: string | null;
+  /**
+   * Whether "Why?" is asked: by default every change but a first set-up. An
+   * open session's set-up, kept on the session until its client is chosen
+   * (the open session round, Oct 9 2026), asks none: nothing would carry it.
+   */
+  asksWhy?: boolean;
 }
 
 export function ChangeStrip({
@@ -55,9 +61,10 @@ export function ChangeStrip({
   onSave,
   saving,
   failedWords = null,
+  asksWhy: asks,
 }: ChangeStripProps) {
   const otherId = useId();
-  const why = asksWhy(firstSetup);
+  const why = asks ?? asksWhy(firstSetup);
   return (
     <div className="mm-strip" data-strip="edit">
       <p className="mm-strip__line">

@@ -55,7 +55,7 @@ import type { JournalContext, MutationAuthor } from "../equipment/mutations";
 import type { EquipmentMachine } from "../equipment/types";
 import { factorsOf } from "../machine-fit/factors";
 import { useFitData, type FitData } from "../machine-fit/fit-store";
-import type { FitFactors } from "../machine-fit/types";
+import type { FitFactors, SettingSource } from "../machine-fit/types";
 import { useSendState } from "../session-record/useSendState";
 import { useStudioSettings } from "../studio-settings/useStudioSettings";
 import type { TileField } from "./DialTiles";
@@ -124,6 +124,29 @@ export interface MachineMenuHost {
   onNoteDraftChange?: (draft: SessionNoteDraft) => void;
   /** Watching another trainer's session: that trainer's name. The whole card reads only. */
   watching?: string | null;
+  /**
+   * An open session before its client is chosen (the open session round,
+   * Oct 9 2026; AJ's "3a"): the card's Save keeps the values on the session
+   * (`sessions/{id}.heldSetup.{machineId}`, through `keep`), never on a
+   * client, and `clientSettings` holds what the session keeps. Assign saves
+   * them to the client. Absent everywhere else; a card with no client and
+   * nowhere to keep its settings reads only.
+   */
+  holdSetup?: {
+    sessionId: string;
+    /** `sources`: where a value came from when it isn't typed ("suggested"), kept beside it. */
+    keep: (machineId: string, values: Record<string, string>, sources?: Record<string, SettingSource> | null) => Promise<unknown>;
+  } | null;
+  /**
+   * The client's settings may not be the server's yet (the session door,
+   * until its listener has had the server's answer for the client; the open
+   * session round's review, Oct 9 2026): an empty or partial copy on this
+   * iPad, such as the dials Assign has just moved there. The card's Save
+   * then writes only the dials it changes, by name, and no machine-fit row
+   * (both are written whole from `clientSettings`, and would wipe the
+   * client's other dials). Absent: the settings are as read.
+   */
+  settingsUnsure?: boolean;
   /** The profile: open the session a note was written in. */
   onOpenSession?: (sessionId: string) => void;
 }
@@ -488,7 +511,8 @@ export function useMachineMenuData(
     firstTime,
     today,
     journalContext,
-    readOnly: !!host.watching,
+    // No client and nowhere to keep a change (the open session round): nothing to write to.
+    readOnly: !!host.watching || (!clientId && !host.holdSetup),
     online,
   };
 }

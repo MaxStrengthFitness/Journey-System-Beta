@@ -104,6 +104,7 @@ import {
   makeItAboutWords,
   noteOrigin,
   noteRefusedLaterWords,
+  NOTE_NEEDS_CLIENT,
   noteSaveLine,
   reachesLeaders,
   resolvedLabel,
@@ -346,6 +347,14 @@ export function MenuNotes({
     }
     const w = clientNoteOf(d);
     if (!w) return;
+    /* No client yet (an open session before Who's this?; the open session
+       round's review, Oct 9 2026): nothing to file it on, so nothing is
+       written (addMachineNote refuses it) and the words stay. Said plainly,
+       never a Try again that can't work; "The machine itself" still saves. */
+    if (!clientId.trim()) {
+      setStatus({ text: NOTE_NEEDS_CLIENT, retry: false });
+      return;
+    }
     let write: Promise<MachineNote | null>;
     try {
       write = addMachineNote({

@@ -27,7 +27,7 @@
  * floor").
  */
 
-import { collection, doc, setDoc, writeBatch } from "firebase/firestore";
+import { collection, deleteField, doc, setDoc, writeBatch, type WriteBatch } from "firebase/firestore";
 import { db } from "../../firebase";
 import { createJournalEntry } from "../../hooks/useClientJournal";
 import type { JournalEntry, JournalImportance, JournalKind, JournalOrigin, NoteBodyMark } from "../../types/journal";
@@ -177,6 +177,25 @@ export interface SaveSettingsArgs {
   homeStudioId?: string | null;
   /** The "right for this client" reviews already on the document, carried onto the rewritten index row. */
   existingAcks?: Record<string, { value?: unknown } | undefined> | null;
+  /**
+   * Write only the dials this save changes (`settings.{dial}`,
+   * `sources.{dial}`, merged), so a dial it didn't change stays exactly as
+   * the DATABASE holds it, whatever `saved` said (the open session round,
+   * Oct 9 2026). For a save made while the client's settings may not be the
+   * server's yet: Assign (a client the iPad has never opened, offline), and
+   * the session's card until the server has answered for the client. The
+   * whole-map write below would put the other dials back as `saved` had
+   * them, wiping a saved seat. A cleared dial is deleted.
+   */
+  dialsOnly?: boolean;
+  /**
+   * With `dialsOnly`: dials written whatever `saved` says (the open session
+   * round, Oct 9 2026; the review). A held set-up's dials at Assign: `saved`
+   * may be this iPad's stale copy, and a held value that happens to equal it
+   * would otherwise be left out, and lost once the session's hold is
+   * cleared. Their source is this save's (`changedSources`), else typed.
+   */
+  writeDials?: readonly string[];
 }
 
 export interface SaveSettingsResult {
@@ -192,6 +211,133 @@ export interface SaveSettingsResult {
   settings: Record<string, string>;
   /** The sources map as written, whole. */
   sources: Record<string, SettingSource>;
+}
+
+/** What one settings save writes, worked out before anything is written. */
+interface SettingsPlan {
+  args: SaveSettingsArgs;
+  result: SaveSettingsResult;
+  /** One moment for the whole save: the document's updatedAt, the history row's timestamp and the journal copy's occurredAt. */
+  now: Date;
+  /** The dials a `dialsOnly` save writes, by name. */
+  dials: Record<string, unknown> | null;
+  dialSources: Record<string, unknown> | null;
+}
+
+/**
+ * A SETTINGS SAVE ALWAYS NAMES ITS CLIENT (the open session round, Oct 9
+ * 2026; finding 4). The machine card in an open session, before its client
+ * was chosen, saved with `clientId: ""`: the ghost record
+ * `clientMachineSettings/_{machineId}`, shared by every open session and
+ * never reaching anyone. Those settings are held on the session now
+ * (features/open-session/held-setup.ts), and a save with no client throws
+ * here, before anything is written. Old ghost records may still be in
+ * production; nothing reads an empty client, so they are harmless and left
+ * alone.
+ *
+ * Null when there is nothing to write.
+ */
+function planSettingsSave(args: SaveSettingsArgs): SettingsPlan | null {
+  const { clientId, machineId, fields, saved, draft, reason = "", isInitialSetup, changedSources, existingSources, dialsOnly = false } = args;
+  if (!(clientId ?? "").trim() || !(machineId ?? "").trim()) {
+    throw new Error("A settings save names its client and its machine: nothing was written.");
+  }
+  const changes = diffSettings(fields, saved, draft);
+  const forced = new Set(dialsOnly ? (args.writeDials ?? []) : []);
+  if (changes.length === 0 && !fields.some((f) => forced.has(f.key))) return null;
+
+  const summary = describeChanges(changes);
+  const actualReason = (reason ?? "").trim() || (isInitialSetup ? "Initial setup" : "Settings update");
+  const settings = nextSettings(fields, saved, draft);
+  const sources = nextSources(fields, saved, settings, existingSources, changedSources);
+
+  let dials: Record<string, unknown> | null = null;
+  let dialSources: Record<string, unknown> | null = null;
+  if (dialsOnly) {
+    // Only the dials that change, and the ones the caller names, each by
+    // name: `merge: true` walks into the maps, so every other dial (and every
+    // other source) stays as the database holds it. A cleared dial is
+    // deleted outright, never left as a merge that brings it back.
+    dials = {};
+    dialSources = {};
+    for (const f of fields) {
+      const before = (saved[f.key] ?? "").toString().trim();
+      const after = (draft[f.key] ?? "").toString().trim();
+      const moved = before !== after;
+      if (!moved && !forced.has(f.key)) continue;
+      dials[f.key] = f.key in settings ? settings[f.key] : deleteField();
+      // A named dial `saved` already shows: its source is this save's, never the stale copy's.
+      const source = moved ? sources[f.key] : changedSources?.[f.key];
+      dialSources[f.key] = source && source !== "typed" && f.key in settings ? source : deleteField();
+    }
+  }
+  return {
+    args,
+    result: { changes, summary, reason: actualReason, settings, sources },
+    now: new Date(),
+    dials,
+    dialSources,
+  };
+}
+
+/** The settings document and its history row, into `batch`. */
+function queuePlan(batch: WriteBatch, plan: SettingsPlan): void {
+  const { clientId, machineId, author, isInitialSetup } = plan.args;
+  const { changes, reason, settings, sources } = plan.result;
+  const settingsRef = doc(db, "clientMachineSettings", `${clientId}_${machineId}`);
+  if (plan.dials && plan.dialSources) {
+    batch.set(
+      settingsRef,
+      { clientId, machineId, settings: plan.dials, sources: plan.dialSources, updatedAt: plan.now, updatedBy: author.id },
+      { merge: true },
+    );
+  } else {
+    // `mergeFields`, not `merge: true`. A merge walks INTO a map, so a cleared
+    // field was never actually removed — it came back on the next load. Naming
+    // the fields replaces `settings` and `sources` whole and still leaves the
+    // weights, the notes and the fit reviews on the document alone.
+    batch.set(
+      settingsRef,
+      {
+        clientId,
+        machineId,
+        settings,
+        sources,
+        updatedAt: plan.now,
+        updatedBy: author.id,
+      },
+      { mergeFields: ["clientId", "machineId", "settings", "sources", "updatedAt", "updatedBy"] },
+    );
+  }
+  // A save that changes nothing this iPad can see (a held dial `saved`
+  // already shows, written by name all the same) has no change to record.
+  if (changes.length === 0) return;
+  batch.set(doc(collection(db, "machines", machineId, "settingHistory")), {
+    clientId,
+    timestamp: plan.now.toISOString(),
+    trainerId: author.id,
+    trainerName: author.fullName,
+    changeType: isInitialSetup ? "INITIAL_SETUP" : "SETTINGS",
+    oldValue: changes.map((c) => `${c.label}: ${c.from || "—"}`).join(", "),
+    newValue: changes.map((c) => `${c.label}: ${c.to || "—"}`).join(", "),
+    reason,
+  });
+}
+
+/** The journal copy and the studio's machine-fit row: issued, never awaited, never thrown. */
+function issueCopies(plan: SettingsPlan): void {
+  const { clientId, machineId, author, machineName, journal, fileNote = true, homeStudioId, existingAcks } = plan.args;
+  const { changes, summary, reason, settings, sources } = plan.result;
+  if (changes.length === 0) return;
+  // Box 10: the audit reason a trainer just typed is coaching knowledge, not
+  // just compliance. It belongs in the one place anyone looks for this
+  // client's history.
+  if (fileNote) {
+    void fileToJournal(clientId, author, journal, `${machineName} — ${summary}. ${reason}`, machineId, "standard", plan.now);
+  }
+  // The studio's machine-fit index: who is set to what. The settings above
+  // are the record.
+  void upsertFitRow({ homeStudioId, machineId, clientId, settings, sources, acks: existingAcks, at: plan.now.getTime() });
 }
 
 /**
@@ -216,87 +362,47 @@ export interface SaveSettingsResult {
  * database has the settings and their row, and rejects if it refuses them.
  * On the floor the caller waits on it only through `settleOrQueue`
  * (session-record/finish-wait.ts): offline it is already saved on the iPad.
+ *
+ * Never with no client (`planSettingsSave`): that throws at the call. NOT
+ * ASYNC, on purpose, so the refusal comes back there (every caller issues it
+ * inside a try) before anything is written.
  */
-export async function saveSettings({
-  clientId,
-  machineId,
-  fields,
-  saved,
-  draft,
-  reason = "",
-  author,
-  isInitialSetup,
-  machineName,
-  journal,
-  fileNote = true,
-  changedSources,
-  existingSources,
-  homeStudioId,
-  existingAcks,
-}: SaveSettingsArgs): Promise<SaveSettingsResult | null> {
-  const changes = diffSettings(fields, saved, draft);
-  if (changes.length === 0) return null;
-
-  const summary = describeChanges(changes);
-  const actualReason = (reason ?? "").trim() || (isInitialSetup ? "Initial setup" : "Settings update");
-
-  const settings = nextSettings(fields, saved, draft);
-  const sources = nextSources(fields, saved, settings, existingSources, changedSources);
-
-  // One moment for the whole save: the document's updatedAt, the history
-  // row's timestamp and the journal copy's occurredAt are the same instant.
-  const now = new Date();
-
+export function saveSettings(args: SaveSettingsArgs): Promise<SaveSettingsResult | null> {
+  const plan = planSettingsSave(args);
+  if (!plan) return Promise.resolve(null);
   const batch = writeBatch(db);
-  // `mergeFields`, not `merge: true`. A merge walks INTO a map, so a cleared
-  // field was never actually removed — it came back on the next load. Naming
-  // the fields replaces `settings` and `sources` whole and still leaves the
-  // weights, the notes and the fit reviews on the document alone.
-  batch.set(
-    doc(db, "clientMachineSettings", `${clientId}_${machineId}`),
-    {
-      clientId,
-      machineId,
-      settings,
-      sources,
-      updatedAt: now,
-      updatedBy: author.id,
-    },
-    { mergeFields: ["clientId", "machineId", "settings", "sources", "updatedAt", "updatedBy"] },
-  );
-  batch.set(doc(collection(db, "machines", machineId, "settingHistory")), {
-    clientId,
-    timestamp: now.toISOString(),
-    trainerId: author.id,
-    trainerName: author.fullName,
-    changeType: isInitialSetup ? "INITIAL_SETUP" : "SETTINGS",
-    oldValue: changes.map((c) => `${c.label}: ${c.from || "—"}`).join(", "),
-    newValue: changes.map((c) => `${c.label}: ${c.to || "—"}`).join(", "),
-    reason: actualReason,
-  });
+  queuePlan(batch, plan);
   const committed = batch.commit();
+  issueCopies(plan);
+  return committed.then(() => plan.result);
+}
 
-  // Box 10: the audit reason a trainer just typed is coaching knowledge, not
-  // just compliance. It belongs in the one place anyone looks for this
-  // client's history. Issued now, never awaited into the result.
-  if (fileNote) {
-    void fileToJournal(
-      clientId,
-      author,
-      journal,
-      `${machineName} — ${summary}. ${actualReason}`,
-      machineId,
-      "standard",
-      now,
-    );
-  }
+/** A settings save put into a caller's batch (`queueSettingsSave`). */
+export interface QueuedSettingsSave {
+  result: SaveSettingsResult;
+  /**
+   * The journal copy and the machine-fit row, for the caller to issue once
+   * its batch has COMMITTED, never before: a refused batch then leaves no
+   * journal copy and no fit row for settings that never landed, and choosing
+   * the client again files no second copy.
+   */
+  afterCommit: () => void;
+}
 
-  // The studio's machine-fit index: who is set to what. Never awaited into
-  // the result and never thrown — the settings above are the record.
-  void upsertFitRow({ homeStudioId, machineId, clientId, settings, sources, acks: existingAcks, at: now.getTime() });
-
-  await committed;
-  return { changes, summary, reason: actualReason, settings, sources };
+/**
+ * The same save, its settings document and history row put into the
+ * CALLER's batch, committing nothing and issuing nothing outside it (the
+ * open session round, Oct 9 2026; the review): an open session's Assign
+ * moves the settings held on the session to the client in the same write
+ * that gives the session its client and clears what it held, so all of it
+ * lands or none of it does. Null when there is nothing to write; throws
+ * with no client, before anything is put in the batch.
+ */
+export function queueSettingsSave(batch: WriteBatch, args: SaveSettingsArgs): QueuedSettingsSave | null {
+  const plan = planSettingsSave(args);
+  if (!plan) return null;
+  queuePlan(batch, plan);
+  return { result: plan.result, afterCommit: () => issueCopies(plan) };
 }
 
 /* ------------------------------------------------------------------ *
@@ -377,6 +483,14 @@ export function addMachineNote({
 }: AddNoteArgs): Promise<MachineNote | null> {
   const body = (content ?? "").trim();
   if (!body) return Promise.resolve(null);
+  /* A note about the client needs the client (the open session round, Oct 9
+     2026; finding 4). With none (an open session before Who's this?) the
+     journal wrote nothing and still answered "saved", and the old list's
+     branch below would have written the ghost `clientMachineSettings/_{machineId}`.
+     Refused instead, so the card says it couldn't save and keeps the words. */
+  if (!(clientId ?? "").trim()) {
+    return Promise.reject(new Error("A note about the client needs the client: nothing was written."));
+  }
 
   // The loudness the note box chose; without one, the old checkbox's answer.
   // Only the old checkbox still writes "maintenance:" into the words.

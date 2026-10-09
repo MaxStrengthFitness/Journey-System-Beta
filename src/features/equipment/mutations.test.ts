@@ -30,6 +30,7 @@ const w = vi.hoisted(() => ({
 
 vi.mock("../../firebase", () => ({ db: { __fake: true } }));
 vi.mock("firebase/firestore", () => ({
+  deleteField: () => ({ __delete: true }),
   collection: (_db: unknown, ...p: string[]): Ref => ({ __path: p.join("/") }),
   doc: (base: unknown, ...p: string[]): Ref => {
     // doc(collectionRef) makes an id up front, as Firestore does.
@@ -79,7 +80,7 @@ vi.mock("../machine-fit/fit-store", () => ({
   },
 }));
 
-import { addMachineNote, saveSettings, type SaveSettingsArgs } from "./mutations";
+import { addMachineNote, queueSettingsSave, saveSettings, type SaveSettingsArgs } from "./mutations";
 import type { SettingFieldSpec } from "./types";
 import { settleOrQueue } from "../session-record/finish-wait";
 import { undoPayload } from "../machine-menu/setting-draft";
@@ -267,6 +268,99 @@ describe("saveSettings: one batch, and the journal copy beside it", () => {
   });
 });
 
+/* The open session round (Oct 9 2026; finding 4): an open session's card
+   saved with no client, to the ghost `clientMachineSettings/_{machineId}`.
+   Its settings are held on the session now, and moved to the client at
+   Assign, in the assign's own batch, writing only the dials it set. */
+describe("saveSettings: always a client, and the Assign's own batch", () => {
+  it("throws before writing anything when there is no client: never the ghost `_{machineId}`", () => {
+    expect(() => saveSettings(args({ clientId: "" }))).toThrow("names its client");
+    expect(() => saveSettings(args({ clientId: "   " }))).toThrow("names its client");
+    expect(w.batches).toHaveLength(0);
+    expect(w.journal).toHaveLength(0);
+    expect(w.fit).toHaveLength(0);
+    expect(w.setDocs).toHaveLength(0);
+  });
+
+  /* The review (Oct 9 2026): the journal copy and the fit row went out at
+     once even into a caller's batch, so a refused assign left a journal note
+     and a fit row for settings that never landed, and choosing the client
+     again filed a second copy. Now nothing leaves the batch until the
+     caller's commit has answered (`afterCommit`). */
+  it("queueSettingsSave puts its two writes into the caller's batch, commits nothing, and writes nothing outside it until afterCommit", async () => {
+    const callerSets: BatchSet[] = [];
+    const batch = { set: (ref: Ref, data: Record<string, unknown>, opts?: unknown) => callerSets.push({ path: ref.__path, data, opts }) };
+    const queued = queueSettingsSave(batch as never, args());
+    expect(w.batches, "no batch of its own").toHaveLength(0);
+    expect(callerSets.map((s) => s.path)).toEqual(["clientMachineSettings/c1_leg", "machines/leg/settingHistory/auto-1"]);
+    expect(queued!.result).toMatchObject({ summary: "Seat 4 → 5" });
+    await flush();
+    expect(w.journal, "no journal copy before the caller's commit").toHaveLength(0);
+    expect(w.fit, "no fit row before the caller's commit").toHaveLength(0);
+    expect(w.setDocs).toHaveLength(0);
+    // The caller's batch committed: now the copy and the row.
+    queued!.afterCommit();
+    await flush();
+    expect(w.journal).toHaveLength(1);
+    expect(w.journal[0]).toMatchObject({ clientId: "c1", draft: { body: "Leg Press — Seat 4 → 5. Range of motion" } });
+    expect(w.fit).toHaveLength(1);
+  });
+
+  it("queueSettingsSave answers null and puts nothing in the batch when nothing changes, and throws with no client", () => {
+    const callerSets: BatchSet[] = [];
+    const batch = { set: (ref: Ref, data: Record<string, unknown>, opts?: unknown) => callerSets.push({ path: ref.__path, data, opts }) };
+    expect(queueSettingsSave(batch as never, args({ draft: { Seat: "4", "Back pad": "3" } }))).toBeNull();
+    expect(() => queueSettingsSave(batch as never, args({ clientId: "" }))).toThrow("names its client");
+    expect(callerSets).toEqual([]);
+  });
+
+  /* The review (Oct 9 2026): a held dial `saved` (a stale copy) already
+     showed was left out, and the hold cleared anyway: the value never
+     reached the database. `writeDials` writes it by name all the same. */
+  it("with dialsOnly and writeDials writes a named dial `saved` already shows, with this save's source, and records no change it can't see", async () => {
+    await saveSettings(
+      args({ saved: { Seat: "12" }, draft: { Seat: "12" }, dialsOnly: true, writeDials: ["Seat"], changedSources: { Seat: "suggested" } }),
+    );
+    const [batch] = w.batches;
+    expect(batch.sets.map((s) => s.path), "the settings, and no history row for a change it can't see").toEqual(["clientMachineSettings/c1_leg"]);
+    expect(batch.sets[0].data.settings).toEqual({ Seat: "12" });
+    expect(batch.sets[0].data.sources).toEqual({ Seat: "suggested" });
+    await flush();
+    expect(w.journal, "no journal copy of nothing").toHaveLength(0);
+    expect(w.fit).toHaveLength(0);
+  });
+
+  it("with dialsOnly and writeDials, a typed named dial takes its old source off, by name", async () => {
+    await saveSettings(args({ saved: { Seat: "12" }, draft: { Seat: "12", "Back pad": "3" }, dialsOnly: true, writeDials: ["Seat", "Back pad"] }));
+    const [settings, history] = w.batches[0].sets;
+    expect(settings.data.settings).toEqual({ Seat: "12", "Back pad": "3" });
+    expect(settings.data.sources).toEqual({ Seat: { __delete: true }, "Back pad": { __delete: true } });
+    expect(history.data).toMatchObject({ oldValue: "Back pad: —", newValue: "Back pad: 3" });
+  });
+
+  it("writeDials means nothing without dialsOnly: the ordinary whole-map save", async () => {
+    expect(await saveSettings(args({ draft: { Seat: "4", "Back pad": "3" }, writeDials: ["Seat"] }))).toBeNull();
+    expect(w.batches).toHaveLength(0);
+  });
+
+  it("with dialsOnly writes only the dials that change, merged, so the database keeps every other dial", async () => {
+    // What this iPad read: nothing (a client it never opened). The held Seat goes on; Back pad is the database's.
+    await saveSettings(args({ saved: {}, draft: { Seat: "12" }, isInitialSetup: true, dialsOnly: true, changedSources: undefined }));
+    const [settings, history] = w.batches[0].sets;
+    expect(settings.opts).toEqual({ merge: true });
+    expect(settings.data).toMatchObject({ clientId: "c1", machineId: "leg", settings: { Seat: "12" }, updatedBy: "uid-ana" });
+    // "typed" is the default and isn't stored: the dial's old source is taken off, by name.
+    expect(settings.data.sources).toEqual({ Seat: { __delete: true } });
+    expect(Object.keys(settings.data.settings as object)).toEqual(["Seat"]);
+    expect(history.data).toMatchObject({ changeType: "INITIAL_SETUP", oldValue: "Seat: —", newValue: "Seat: 12" });
+  });
+
+  it("with dialsOnly deletes a dial it clears, by name, and leaves the unchanged ones out", async () => {
+    await saveSettings(args({ saved: { Seat: "4", "Back pad": "3" }, draft: { Seat: "", "Back pad": "3" }, dialsOnly: true }));
+    expect(w.batches[0].sets[0].data.settings).toEqual({ Seat: { __delete: true } });
+  });
+});
+
 describe("addMachineNote: filed by what it is for, never waited on", () => {
   const note = (over: Partial<Parameters<typeof addMachineNote>[0]> = {}) =>
     addMachineNote({
@@ -332,6 +426,13 @@ describe("addMachineNote: filed by what it is for, never waited on", () => {
 
   it("writes nothing for an empty note", async () => {
     await expect(note({ content: "   " })).resolves.toBeNull();
+    expect(w.journal).toHaveLength(0);
+    expect(w.setDocs).toHaveLength(0);
+  });
+
+  it("refuses a note with no client, and writes nothing: never 'saved' for nothing, never the ghost `_{machineId}`", async () => {
+    await expect(note({ clientId: "" })).rejects.toThrow("needs the client");
+    await expect(note({ clientId: "", journal: undefined })).rejects.toThrow("needs the client");
     expect(w.journal).toHaveLength(0);
     expect(w.setDocs).toHaveLength(0);
   });
