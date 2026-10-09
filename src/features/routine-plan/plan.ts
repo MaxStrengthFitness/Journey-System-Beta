@@ -18,6 +18,16 @@ import { STARTING_COLUMN_LABEL, type StartingColumn } from "./starting-weights";
 import type { CantDo, PlanChange, RoutinePlan } from "./types";
 
 /**
+ * An "add" or "remove" change's `value` when it moves Routine A's own
+ * machines and leaves the road as it was: "Add to A now" puts a planned
+ * machine into Routine A, and the Lineup's "Take out of Routine A" takes one
+ * out while the plan keeps it on deck. Without it an "add" puts a machine on
+ * the road and a "remove" takes it off the plan too. The caller moves the
+ * routine's own machines in the same batch.
+ */
+export const ROUTINE_ONLY = "routine";
+
+/**
  * What changed, offered on the Re-plan sheet (AJ, Oct 8 2026: "we might have
  * a plan for a routine but find something out in those first few sessions
  * that drastically changes it or we could have a client who is getting
@@ -212,23 +222,36 @@ export function applyPlanChange(
     case "start":
       return withDayOne({ ...plan, intended: [...ids] }, (dayOne) => dayOne.filter((id) => ids.includes(id)));
     case "add": {
+      // Into Routine A only ("Add to A now"): the machine is on the road already.
+      if (change.value === ROUTINE_ONLY) return plan;
       const intended = [...plan.intended];
       for (const id of ids) if (!intended.includes(id)) intended.push(id);
       return { ...plan, intended };
     }
     case "remove":
+      // Out of Routine A only ("Take out of Routine A", the Lineup's row
+      // sheet): the plan keeps the machine on deck, so the road is as it was.
+      // The caller moves the routine's own machines in the same batch.
+      if (change.value === ROUTINE_ONLY) return plan;
       return withDayOne(
         { ...plan, intended: plan.intended.filter((id) => !ids.includes(id)) },
         (dayOne) => dayOne.filter((id) => !ids.includes(id)),
       );
     case "swap": {
-      const [from, to] = ids;
-      if (!from || !to) return plan;
-      // The machine coming in takes the one going out's place, unless it is
-      // there already: then the one going out simply leaves.
-      const swapIn = (list: readonly string[]) =>
-        list.includes(to) ? list.filter((id) => id !== from) : list.map((id) => (id === from ? to : id));
-      const swaps = plan.swaps?.map((s) => (s.with === from ? { ...s, with: to } : s));
+      // `[from, ...to]`: one machine for another, or for the Academy's
+      // documented set ("Leg Extension + Hip Abduction"), which together take
+      // its place in the order given.
+      const [from, ...to] = ids;
+      if (!from || to.length === 0) return plan;
+      // The machines coming in take the one going out's place, unless they
+      // are there already: then the one going out simply leaves.
+      const swapIn = (list: readonly string[]) => {
+        const at = list.indexOf(from);
+        if (at === -1) return [...list];
+        const incoming = to.filter((id, i) => to.indexOf(id) === i && !list.includes(id));
+        return [...list.slice(0, at), ...incoming, ...list.slice(at + 1)];
+      };
+      const swaps = plan.swaps?.map((s) => (s.with === from ? { ...s, with: to[0] } : s));
       return withDayOne({ ...plan, intended: swapIn(plan.intended), ...(swaps ? { swaps } : null) }, swapIn);
     }
     case "reorder": {

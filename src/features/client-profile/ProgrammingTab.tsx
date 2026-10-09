@@ -58,6 +58,9 @@ import type {
   WorkoutSession,
 } from "../../types";
 import { EquipmentTab } from "../equipment";
+import { planProgress, runsDayOne } from "../routine-plan/plan";
+import type { PlanHost } from "../routine-plan/ui/host";
+import { UnsavedChangesScope, useLeaveScope } from "../unsaved-changes";
 import type { MachineMenuHost } from "../machine-menu/useMachineMenuData";
 import { SetupView } from "../machine-fit/ui/SetupView";
 import { RoutinesTab } from "../routines";
@@ -113,6 +116,12 @@ export interface ProgrammingTabProps {
    */
   machineMenuHost?: MachineMenuHost;
   disabled?: boolean;
+  /**
+   * Routine A's plan (the first-session design round, Oct 8 2026): what the
+   * profile hands down so Routine A can show Start a plan, the Lineup and
+   * Add a plan. The profile owns the read and every write.
+   */
+  plan?: PlanHost | null;
 }
 
 export function ProgrammingTab({
@@ -140,7 +149,20 @@ export function ProgrammingTab({
   onSelectMachine,
   machineMenuHost,
   disabled = false,
+  plan = null,
 }: ProgrammingTabProps) {
+  /*
+   * Routine A and B are unmounted when hidden, and Routine A's plan holds
+   * typing (a starting lineup not yet kept, a purpose, a reason). So a move
+   * to another segment asks first about what is typed in them, and only
+   * them: All Machines and Setup are kept mounted, so they sit outside this
+   * scope and a move never asks about Setup's drafts.
+   */
+  const segments = useLeaveScope();
+  const changeView = (next: ProgrammingView) => {
+    if (next === view) return;
+    segments.guard(() => onViewChange(next));
+  };
   /*
    * The roster is mounted the first time it is opened and never unmounted
    * after that — "keep alive from first use". Mounting it up front would cost
@@ -216,14 +238,31 @@ export function ProgrammingTab({
     };
   }, [floor, clientSettings, model, isBActive]);
 
+  // Routine A with a plan says how far along it is: "3 of 6 planned", or "day one planned" while Routine A is empty.
+  const aPlan = model.a.plan;
+  const aPlanMeta = aPlan
+    ? runsDayOne({ routine: model.a.machineIds, plan: aPlan })
+      ? "day one planned"
+      : (() => {
+          const p = planProgress(aPlan, model.a.machineIds);
+          return `${p.have} of ${p.of} planned${model.todayName === "Routine A" ? " · today" : ""}`;
+        })()
+    : null;
+
   const items = useMemo<SubnavItem<ProgrammingView>[]>(
     () => [
       {
         id: "routine-a",
         label: "Routine A",
-        meta:
-          model.rowsA.length === 0
-            ? "not set up"
+        meta: aPlanMeta
+          ? aPlanMeta
+          : model.rowsA.length === 0
+            ? // A read that hasn't answered, or failed, never says "not set up".
+              plan?.status === "loading"
+              ? "reading"
+              : plan?.status === "failed"
+                ? "can't tell"
+                : "not set up"
             : `${model.rowsA.length} machines${model.todayName === "Routine A" ? " · today" : ""}`,
         // The dot is "there is something here to deal with", and the only
         // thing on a prescription that qualifies is a machine with no load.
@@ -263,7 +302,7 @@ export function ProgrammingTab({
         flag: setup.prescribedMissing > 0,
       },
     ],
-    [model, isBActive, coverage, setup, toReview],
+    [model, isBActive, coverage, setup, toReview, aPlanMeta, plan?.status],
   );
 
   const context = (
@@ -342,12 +381,14 @@ export function ProgrammingTab({
         label="Programming views"
         items={items}
         value={view}
-        onChange={onViewChange}
+        onChange={changeView}
         context={context}
       />
 
-      {view === "routine-a" && <RoutinesTab {...routineProps} view="Routine A" />}
-      {view === "routine-b" && <RoutinesTab {...routineProps} view="Routine B" />}
+      <UnsavedChangesScope scope={segments}>
+        {view === "routine-a" && <RoutinesTab {...routineProps} view="Routine A" plan={plan} />}
+        {view === "routine-b" && <RoutinesTab {...routineProps} view="Routine B" />}
+      </UnsavedChangesScope>
 
       {/* Mounted from the first time the roster is opened, hidden after that.
           See decision 3 in the header: this pane owns a selection and a

@@ -20,10 +20,16 @@
  * (edit, use today, toggle B) is a callback back into ClientProfileView,
  * which already owns the Firestore writes and the reason dialog.
  */
-import { memo, useState } from "react";
-import { ChevronDown, Pencil, PlayCircle, ShieldAlert, Sparkles } from "lucide-react";
+import { memo, useMemo, useState, type ReactNode } from "react";
+import { ChevronDown, Pencil, PlayCircle, Sparkles } from "lucide-react";
 import type { Client, ClientMachineSetting, ExerciseLog, Machine, Routine, RoutineAdjustment, Trainer, WorkoutSession } from "../../types";
+import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { planFromRoutine, signedChange } from "../routine-plan/lineup";
+import { machineNamer, type PlanHost } from "../routine-plan/ui/host";
+import { PlanLineup } from "../routine-plan/ui/PlanLineup";
+import { StartPlanPanel } from "../routine-plan/ui/StartPlanPanel";
+import { RoutineRowItem } from "./RoutineRowItem";
 import {
   relativeTime,
   shortStamp,
@@ -79,103 +85,22 @@ export interface RoutinesTabProps {
    * is what keeps this component mountable on its own.
    */
   model?: RoutinesModel;
+  /**
+   * Routine A's plan (the first-session design round, Oct 8 2026): what the
+   * profile hands Programming so Routine A can show Start a plan, the
+   * Lineup, or "Add a plan". Omit it and Routine A draws as it always has.
+   * Only the single Routine A view draws the plan.
+   */
+  plan?: PlanHost | null;
 }
-
-/* ------------------------------------------------------------------ *
- * Row
- * ------------------------------------------------------------------ */
-
-const Row = memo(function Row({ row, onSelect }: { row: RoutineRow; onSelect?: (id: string) => void }) {
-  const outcome =
-    row.outcome === null ? null : row.isHold ? `${row.outcome}s hold` : `${row.outcome} ${row.outcome === 1 ? "rep" : "reps"}`;
-  const showStart = row.startingWeight !== null && row.weight !== null && row.startingWeight !== row.weight;
-  const pct = row.progressionPct;
-  const worst = row.watchOuts[0]?.tone ?? null;
-  const Tag: "button" | "div" = onSelect ? "button" : "div";
-  return (
-    <li className={["rt-row", row.missing ? "rt-row--missing" : ""].filter(Boolean).join(" ")}>
-      <Tag
-        type={onSelect ? "button" : undefined}
-        className="rt-row__hit"
-        onClick={onSelect ? () => onSelect(row.machineId) : undefined}
-        aria-label={onSelect ? `Open ${row.name}` : undefined}
-      >
-        <span className="rt-row__n" aria-hidden="true">
-          {row.order}
-        </span>
-        <span className="rt-row__main">
-          {/* Line 1 is the All Machines rail's line 1: name, progression, flags. */}
-          <span className="rt-row__top">
-            <span className="rt-row__name">{row.name}</span>
-            {pct !== null && (
-              <span
-                className={`eq-item__prog ${pct > 0 ? "eq-item__prog--up" : pct < 0 ? "eq-item__prog--down" : ""}`}
-                title={`${pct > 0 ? "+" : ""}${pct}% since the first set`}
-              >
-                {pct > 0 ? "+" : ""}
-                {pct}%
-              </span>
-            )}
-            {worst && (
-              <span
-                className="eq-watch-chip"
-                data-tone={worst}
-                title={row.watchOuts.map((w) => w.condition).join(", ")}
-              >
-                <ShieldAlert size={12} strokeWidth={2.6} aria-hidden />
-                {row.watchOuts.length === 1 ? row.watchOuts[0].condition : `${row.watchOuts.length} watch-outs`}
-              </span>
-            )}
-          </span>
-          {/* Line 2 is the rail's line 2: setup chips and how often. */}
-          <span className="rt-row__sub">
-            {row.settings.length > 0 && (
-              <span className="eq-item__settings" aria-label="Setup">
-                {row.settings.map(([k, v], i) => (
-                  <span key={`${k}${i}`} className="eq-item__chip">
-                    {k} {v}
-                  </span>
-                ))}
-              </span>
-            )}
-            {row.timesPerformed > 0 && (
-              <span className="eq-item__count" title={`Performed in ${row.timesPerformed} sessions`}>
-                {row.timesPerformed}×
-              </span>
-            )}
-            {row.region ? <span className="rt-row__region">{row.region}</span> : null}
-            {row.note ? <span className="rt-row__note">“{row.note}”</span> : null}
-            {row.missing ? <span className="rt-row__region">Not on this studio's roster</span> : null}
-          </span>
-        </span>
-        <span className="rt-row__nums">
-          {row.weight === null ? (
-            <span className="eq-item__empty">No load yet</span>
-          ) : (
-            <span className="rt-row__load">
-              {showStart && (
-                <span className="rt-row__start">
-                  {row.startingWeight} <span aria-hidden="true">→</span>{" "}
-                </span>
-              )}
-              <b>{row.weight}</b> <small>lb</small>
-            </span>
-          )}
-          <span className="rt-row__outcome">{outcome ?? (row.weight === null ? "" : "no set logged")}</span>
-        </span>
-      </Tag>
-    </li>
-  );
-});
 
 /* ------------------------------------------------------------------ *
  * One routine panel
  * ------------------------------------------------------------------ */
 
-interface PanelProps {
+interface HeadProps {
   name: RoutineName;
   routine: Routine;
-  rows: RoutineRow[];
   latest: RoutineChange | null;
   active: boolean;
   isToday: boolean;
@@ -184,70 +109,84 @@ interface PanelProps {
   disabled: boolean;
   onEdit: () => void;
   onToggle?: (checked: boolean) => void;
-  onSelectMachine?: (id: string) => void;
 }
 
-const RoutinePanel = memo(function RoutinePanel({ name, routine, rows, latest, active, isToday, usedLast, disabled, onEdit, onToggle, onSelectMachine }: PanelProps) {
+/** A routine panel's head: its letter, name, the last change, B's switch, Edit. The plan's Lineup draws the same head. */
+function RoutineHead({ name, routine, latest, active, isToday, usedLast, disabled, onEdit, onToggle }: HeadProps) {
   const letter = name.endsWith("B") ? "B" : "A";
   const drift = templateDrift(routine);
   const count = routine.machineIds.length;
   const subParts: string[] = [`${count} ${count === 1 ? "machine" : "machines"}`];
   if (latest) subParts.push(`changed ${relativeTime(latest.when)} by ${latest.trainerInitials}`);
   else subParts.push(routine.updatedAt || routine.createdAt ? "no changes logged" : "not created yet");
+  return (
+    <header className="rt-routine__head">
+      <span className="rt-badge" aria-hidden="true">
+        {letter}
+      </span>
+      <div className="rt-routine__title">
+        <h3 id={`rt-title-${letter}`} className="rt-routine__name">
+          {name}
+          {isToday && (
+            <span className="rt-today" aria-label="Chosen for today">
+              <PlayCircle size={12} strokeWidth={2.6} aria-hidden="true" /> Today
+            </span>
+          )}
+          {!active && <span className="rt-off">Off</span>}
+        </h3>
+        <p className="rt-routine__sub">
+          {subParts.join(" · ")}
+          {routine.templateName && (
+            <>
+              {" · "}
+              <span className="rt-routine__tpl" title={drift && (drift.added || drift.removed) ? `${drift.added} added, ${drift.removed} removed since the template was applied` : "Matches the template"}>
+                <Sparkles size={11} strokeWidth={2.4} aria-hidden="true" />
+                {routine.templateName}
+                {drift && (drift.added || drift.removed) ? ` (+${drift.added} −${drift.removed})` : ""}
+              </span>
+            </>
+          )}
+        </p>
+      </div>
+      <div className="rt-routine__actions">
+        {onToggle && (
+          <label className="rt-switch">
+            <span>{active ? "B on" : "B off"}</span>
+            <Switch checked={active} disabled={disabled} onCheckedChange={onToggle} aria-label={active ? "Turn Routine B off" : "Turn Routine B on"} className="scale-90" />
+          </label>
+        )}
+        {active && (
+          <>
+            <button type="button" className="rt-btn" onClick={onEdit} disabled={disabled}>
+              <Pencil size={13} strokeWidth={2.4} aria-hidden="true" />
+              Edit
+            </button>
+            {/* "Use today" set a choice the session never read (AJ, Sep 26
+                2026: "Used last on" instead). */}
+            {usedLast && <span className="rt-used">{usedLast}</span>}
+          </>
+        )}
+      </div>
+    </header>
+  );
+}
 
+interface PanelProps extends HeadProps {
+  rows: RoutineRow[];
+  onSelectMachine?: (id: string) => void;
+  /** Under the rows: Routine A's quiet "Add a plan". */
+  foot?: ReactNode;
+}
+
+const RoutinePanel = memo(function RoutinePanel({ rows, onSelectMachine, foot, ...head }: PanelProps) {
+  const { name, active, isToday, disabled, onEdit } = head;
+  const letter = name.endsWith("B") ? "B" : "A";
   return (
     <section
       className={["rt-routine", isToday ? "rt-routine--today" : "", !active ? "rt-routine--off" : ""].filter(Boolean).join(" ")}
       aria-labelledby={`rt-title-${letter}`}
     >
-      <header className="rt-routine__head">
-        <span className="rt-badge" aria-hidden="true">
-          {letter}
-        </span>
-        <div className="rt-routine__title">
-          <h3 id={`rt-title-${letter}`} className="rt-routine__name">
-            {name}
-            {isToday && (
-              <span className="rt-today" aria-label="Chosen for today">
-                <PlayCircle size={12} strokeWidth={2.6} aria-hidden="true" /> Today
-              </span>
-            )}
-            {!active && <span className="rt-off">Off</span>}
-          </h3>
-          <p className="rt-routine__sub">
-            {subParts.join(" · ")}
-            {routine.templateName && (
-              <>
-                {" · "}
-                <span className="rt-routine__tpl" title={drift && (drift.added || drift.removed) ? `${drift.added} added, ${drift.removed} removed since the template was applied` : "Matches the template"}>
-                  <Sparkles size={11} strokeWidth={2.4} aria-hidden="true" />
-                  {routine.templateName}
-                  {drift && (drift.added || drift.removed) ? ` (+${drift.added} −${drift.removed})` : ""}
-                </span>
-              </>
-            )}
-          </p>
-        </div>
-        <div className="rt-routine__actions">
-          {onToggle && (
-            <label className="rt-switch">
-              <span>{active ? "B on" : "B off"}</span>
-              <Switch checked={active} disabled={disabled} onCheckedChange={onToggle} aria-label={active ? "Turn Routine B off" : "Turn Routine B on"} className="scale-90" />
-            </label>
-          )}
-          {active && (
-            <>
-              <button type="button" className="rt-btn" onClick={onEdit} disabled={disabled}>
-                <Pencil size={13} strokeWidth={2.4} aria-hidden="true" />
-                Edit
-              </button>
-              {/* "Use today" set a choice the session never read (AJ, Sep 26
-                  2026: "Used last on" instead). */}
-              {usedLast && <span className="rt-used">{usedLast}</span>}
-            </>
-          )}
-        </div>
-      </header>
+      <RoutineHead {...head} />
 
       {rows.length === 0 ? (
         <div className="rt-empty">
@@ -265,10 +204,11 @@ const RoutinePanel = memo(function RoutinePanel({ name, routine, rows, latest, a
       ) : (
         <ol className="rt-list">
           {rows.map((row) => (
-            <Row key={`${row.machineId}-${row.order}`} row={row} onSelect={row.missing ? undefined : onSelectMachine} />
+            <RoutineRowItem key={`${row.machineId}-${row.order}`} row={row} onSelect={row.missing ? undefined : onSelectMachine} />
           ))}
         </ol>
       )}
+      {foot}
     </section>
   );
 });
@@ -336,6 +276,7 @@ export function RoutinesTab({
   view = "both",
   hideSummary = false,
   model,
+  plan: host = null,
 }: RoutinesTabProps) {
   // Hooks are unconditional; the computed model is thrown away when the
   // parent supplied one. Cheap — every memo inside it is keyed on the same
@@ -366,6 +307,65 @@ export function RoutinesTab({
 
   const showA = view === "both" || view === "Routine A";
   const showB = view === "both" || view === "Routine B";
+
+  /*
+   * Routine A's plan (the first-session design round, Oct 8 2026), on the
+   * single Routine A view only:
+   *   - a plan on Routine A: the Lineup, with its own Changes (the plan's and
+   *     these adjustments, one list), so the list below is not drawn;
+   *   - no routine (Routine A empty, no plan) and the client isn't set up
+   *     elsewhere: Start a plan, which waits for the routines' read and says
+   *     "can't tell" when it failed, never "no routine";
+   *   - a routine with no plan: as it has always been drawn, and a quiet
+   *     "Add a plan" under it.
+   */
+  const nameOf = useMemo(() => machineNamer(host?.floor ?? [], machines), [host?.floor, machines]);
+  const planView = !!host && view === "Routine A";
+  const aSaved = !!a.id && !a.id.startsWith("temp-");
+  const aPlan = aSaved && a.plan ? a.plan : null;
+  const aEmpty = a.machineIds.length === 0;
+  // Whether there is a routine is the routines' own read, never the kind:
+  // the kind waits for the session count too, and a count that never
+  // answers must not offer Start a plan over a Routine B with machines.
+  const anyRoutine = !aEmpty || b.machineIds.length > 0;
+  const aMode: "lineup" | "start" | "panel" = !host || !planView
+    ? "panel"
+    : aPlan
+      ? "lineup"
+      : aEmpty && (host.status !== "ready" || !anyRoutine)
+        ? "start"
+        : "panel";
+  const firstName = client?.firstName?.trim() || "";
+  const headA: HeadProps = {
+    name: "Routine A",
+    routine: a,
+    latest: latestA,
+    active: true,
+    isToday: todayName === "Routine A",
+    usedLast: usedLastA,
+    disabled,
+    onEdit: () => onEdit("Routine A"),
+  };
+  const who = host?.who ?? null;
+  const addPlan =
+    host && planView && !aPlan && !aEmpty && aSaved && host.status === "ready" && who && !disabled ? (
+      <div className="rt-addplan">
+        <span className="rt-addplan__text">Plan the rest of Routine A's road, so every trainer follows one plan.</span>
+        <Button
+          variant="outline"
+          onClick={() =>
+            host.actions.start({
+              routineId: a.id ?? null,
+              machineIds: [...a.machineIds],
+              plan: planFromRoutine(a.machineIds, who, host.todayYmd),
+              change: signedChange({ kind: "start", machineIds: [...a.machineIds] }, who),
+            })
+          }
+        >
+          Add a plan
+        </Button>
+      </div>
+    ) : null;
 
   return (
     <div className="rt" data-disabled={disabled || undefined} data-view={view === "both" ? undefined : "single"}>
@@ -408,19 +408,23 @@ export function RoutinesTab({
       )}
 
       <div className="rt-body">
-        {showA && (
-        <RoutinePanel
-          name="Routine A"
-          routine={a}
-          rows={rowsA}
-          latest={latestA}
-          active
-          isToday={todayName === "Routine A"}
-          usedLast={usedLastA}
-          disabled={disabled}
-          onEdit={() => onEdit("Routine A")}
-          onSelectMachine={onSelectMachine}
-        />
+        {showA && aMode === "panel" && <RoutinePanel {...headA} rows={rowsA} onSelectMachine={onSelectMachine} foot={addPlan} />}
+        {showA && aMode === "start" && host && (
+          <StartPlanPanel host={host} firstName={firstName} nameOf={nameOf} routineAId={aSaved ? (a.id ?? null) : null} />
+        )}
+        {showA && aMode === "lineup" && host && aPlan && (
+          <PlanLineup
+            routine={{ ...a, id: a.id as string, plan: aPlan }}
+            rows={rowsA}
+            head={<RoutineHead {...headA} />}
+            host={host}
+            firstName={firstName}
+            nameOf={nameOf}
+            adjustments={adjustments}
+            trainers={trainers}
+            onSelectMachine={onSelectMachine}
+            disabled={disabled}
+          />
         )}
         {showB && (
         <RoutinePanel
@@ -439,6 +443,7 @@ export function RoutinesTab({
         )}
       </div>
 
+      {aMode === "lineup" ? null : (
       <section className="rt-changes" aria-labelledby="rt-changes-title">
         <button type="button" className="rt-changes__head" onClick={() => setChangesOpen((o) => !o)} aria-expanded={changesOpen} aria-controls="rt-changes-list">
           <span id="rt-changes-title" className="rt-changes__title">
@@ -470,6 +475,7 @@ export function RoutinesTab({
           </ol>
         )}
       </section>
+      )}
     </div>
   );
 }

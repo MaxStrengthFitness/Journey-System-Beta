@@ -179,9 +179,28 @@ describe("the client profile is the only place a routine is rewritten", () => {
     expect(DRAWER).toMatch(/\b(updateDoc|addDoc)\s*\(/);
   });
 
-  it("every routine rewrite is gated on an audit reason", () => {
-    // The reason gate is what makes a permanent change reviewable later. If it
-    // goes, deviations from a studio standard become untraceable.
-    expect(DRAWER).toMatch(/reason\.trim\(\)\.length\s*[<>]=?\s*3/);
+  // Changed on purpose (the first-session design round, Oct 8 2026). This
+  // held that every rewrite was GATED on a reason of three characters or
+  // more. AJ, Oct 7 2026: "Any trainer who trains the client can definitely
+  // change the plan ... You should be able to change that and make the call
+  // as a trainer because you're training them that day." And: "it's nice to
+  // be able to communicate like, hey, I'm changing this plan because of this
+  // reason". So the reason is ASKED, NEVER REQUIRED: the drawer still asks
+  // and keeps what was typed beside the change, and Apply works without it.
+  it("every routine rewrite asks for a reason and never requires one", () => {
+    expect(DRAWER, "the reason gate is gone on purpose").not.toMatch(/reason\.trim\(\)\.length\s*[<>]=?\s*\d/);
+    expect(DRAWER).toMatch(/Why\? It helps the next trainer\. Optional\./);
+    // What was typed still rides on the change, when there is any.
+    expect(DRAWER).toMatch(/\.\.\.\(why \? \{ notes: why \} : \{\}\)/);
+  });
+
+  it("a drawer save on a routine with a plan writes the matching plan change in the same batch", () => {
+    // The drawer keeps the plan (the design round, section 4.3): the
+    // routine, its adjustment and the plan change, one batch, written by the
+    // plan's own writer (routine-plan/store.ts `saveRoutineEdit`, whose
+    // store.test.ts holds the one batch), never a batch of the drawer's own.
+    expect(DRAWER).toMatch(/planChangeFromEdit\(/);
+    expect(DRAWER).toMatch(/saveRoutineEdit\(db,/);
+    expect(DRAWER, "the plan is written through store.ts, not here").not.toMatch(/writeBatch|PLAN_CHANGES/);
   });
 });

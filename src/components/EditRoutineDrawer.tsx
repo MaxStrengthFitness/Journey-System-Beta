@@ -27,10 +27,13 @@ import {
   ClipboardCheck,
   Lock,
 } from "lucide-react";
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
 import { cn, safeToDate } from "../lib/utils";
 import { isPerformedLog } from "../lib/set-outcome";
 import { useUnsavedChanges } from "../features/unsaved-changes";
+import { planChangeFromEdit } from "../features/routine-plan/drawer-sync";
+import { signedChange } from "../features/routine-plan/lineup";
+import { saveRoutineEdit } from "../features/routine-plan/store";
 import { GLOBAL_ROUTINE_PRESETS } from "../data/routine-presets";
 import {
   describeDeviation,
@@ -444,9 +447,32 @@ export function EditRoutineDrawer({
     }
   };
 
+  /*
+   * The reason is ASKED, NEVER REQUIRED (the first-session design round,
+   * Oct 8 2026; it required three characters until then). AJ, Oct 7 2026:
+   * "Any trainer who trains the client can definitely change the plan ...
+   * You should be able to change that and make the call as a trainer because
+   * you're training them that day", and "it's nice to be able to communicate
+   * like, hey, I'm changing this plan because of this reason".
+   *
+   * THE DRAWER KEEPS THE PLAN (the round's section 4.3). On a routine with a
+   * plan, the save writes the routine, its adjustment and the matching plan
+   * change (remove, add, reorder: routine-plan/drawer-sync.ts) in ONE batch
+   * through the plan's own writer (routine-plan/store.ts `saveRoutineEdit`),
+   * so the plan and the routine never drift. A routine without one saves as
+   * it always has. A plan's changes are signed with the Auth uid the rules
+   * pin, so without one the save is refused with a sentence rather than
+   * written without its plan.
+   */
   const handleSave = async () => {
-    if (!clientId || reason.trim().length < 3) return;
+    if (!clientId) return;
+    const why = reason.trim();
     const current = routineFor(activeSlot);
+    const uid = auth.currentUser?.uid;
+    if (current.plan && !current.id?.startsWith("temp-") && !uid) {
+      toastError("Sign in again to change a routine with a plan.");
+      return;
+    }
     /**
      * Written only when a template was applied in this session. Otherwise
      * absent, so editing an untemplated routine never invents provenance and
@@ -480,28 +506,40 @@ export function EditRoutineDrawer({
           previousMachineIds: [],
           newMachineIds: machineIds,
           trainerId: authTrainer?.id || "unknown",
-          notes: reason,
+          ...(why ? { notes: why } : {}),
           studioId: client?.homeStudioId || activeStudioId || "",
           changeType: "created",
           createdAt: serverTimestamp(),
         });
       } else {
-        await updateDoc(doc(db, "routines", finalId), {
-          machineIds,
-          ...provenance,
-          updatedAt: serverTimestamp(),
-        });
-        await addDoc(collection(db, "routineAdjustments"), {
+        const adjustment = {
           clientId,
           routineId: finalId,
           previousMachineIds: snapshot,
           newMachineIds: machineIds,
           trainerId: authTrainer?.id || "unknown",
-          notes: reason,
+          ...(why ? { notes: why } : {}),
           studioId: client?.homeStudioId || activeStudioId || "",
           changeType: "machines",
           createdAt: serverTimestamp(),
-        });
+        };
+        const kept = current.plan && uid ? planChangeFromEdit({ before: snapshot, after: machineIds, plan: current.plan }) : null;
+        if (kept && uid) {
+          const who = { uid, ...(authTrainer?.fullName ? { name: authTrainer.fullName } : null) };
+          await saveRoutineEdit(db, finalId, {
+            routine: { machineIds, ...provenance, updatedAt: serverTimestamp() },
+            plan: kept.plan,
+            changes: kept.changes.map((c) => signedChange(c, who, why)),
+            adjustment,
+          });
+        } else {
+          await updateDoc(doc(db, "routines", finalId), {
+            machineIds,
+            ...provenance,
+            updatedAt: serverTimestamp(),
+          });
+          await addDoc(collection(db, "routineAdjustments"), adjustment);
+        }
       }
 
       const qRoutines = query(
@@ -541,8 +579,8 @@ export function EditRoutineDrawer({
                 Edit routine
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500 mt-1">
-                Adjust the machine order, remove/add machines, and provide a
-                mandatory reason explaining this clinical adjustment.
+                Adjust the machine order, add or take out machines, and say
+                why if you like.
               </DialogDescription>
             </div>
             <Button
@@ -793,37 +831,20 @@ export function EditRoutineDrawer({
         <div className="border-t border-div-l shrink-0 bg-card">
           <div className="px-5 sm:px-6 pt-4 pb-3">
             <label className="block text-[14px] font-bold text-ink-d2 mb-2">
-              Notes — Why are you making this change?{" "}
-              <span className="text-red-500">*</span>
+              Why? It helps the next trainer. Optional.
             </label>
             <Textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               onFocus={() => setNotesFocused(true)}
               onBlur={() => setNotesFocused(false)}
-              placeholder="e.g., Decreasing spinal load post L4 herniation flare-up; swapping leg press for leg extension today."
+              placeholder="Optional, e.g. swapping Leg Press for Leg Extension while the knee settles."
               rows={2}
               className="rounded-xl resize-none text-slate-800 dark:text-neutral-100"
             />
-            <div className="flex justify-between items-center mt-2">
-              <p className="text-[12px] text-muted-foreground">
-                Provide a brief clinical rationale for{" "}
-                {client?.firstName ? `${client.firstName}'s` : "the client's"}{" "}
-                profile logs.
-              </p>
-              <p
-                className={cn(
-                  "text-[12px] font-semibold",
-                  reason.trim().length >= 3
-                    ? "text-emerald-500"
-                    : "text-amber-500",
-                )}
-              >
-                {reason.trim().length >= 3
-                  ? "✓ Reason captured"
-                  : "Reason required"}
-              </p>
-            </div>
+            <p className="text-[12px] text-muted-foreground mt-2">
+              Kept on {client?.firstName ? `${client.firstName}'s` : "the client's"} routine changes, for the next trainer.
+            </p>
           </div>
 
           <div className="px-5 sm:px-6 pb-5 sm:pb-6 pt-3 border-t border-div-l/40 flex justify-end gap-3">
@@ -836,7 +857,7 @@ export function EditRoutineDrawer({
             </Button>
             <Button
               onClick={handleSave}
-              disabled={reason.trim().length < 3 || isSaving || !isDirty}
+              disabled={isSaving || !isDirty}
               className="bg-primary text-primary-foreground hover:bg-primary rounded-xl text-[14px] font-bold"
             >
               {isSaving ? "Saving Changes..." : `Apply ${activeSlot}`}

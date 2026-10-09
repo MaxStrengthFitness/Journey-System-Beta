@@ -16,6 +16,7 @@ import {
   replaceAt,
   reshapeForCantDo,
   standInLine,
+  untilDayFrom,
   untilWords,
 } from "./cant-do";
 import type { FloorMachine } from "./starting-plan";
@@ -306,6 +307,14 @@ describe("whether a mark still holds", () => {
     expect(activeCantDo(plan, "2026-10-21").map((c) => c.machineId)).toEqual(["m-abs"]);
     expect(activeCantDo(plan, "2026-10-10")).toHaveLength(2);
     expect(activeCantDo(null, "2026-10-10")).toEqual([]);
+  });
+
+  it("takes a typed until-date only when it is today or later: a day gone would make a mark that has already ended", () => {
+    expect(untilDayFrom("2026-10-20", "2026-10-08")).toBe("2026-10-20");
+    expect(untilDayFrom("2026-10-08", "2026-10-08")).toBe("2026-10-08");
+    expect(untilDayFrom("2026-10-07", "2026-10-08")).toBeNull();
+    expect(untilDayFrom("", "2026-10-08")).toBeNull();
+    expect(untilDayFrom("Oct 20", "2026-10-08")).toBeNull();
   });
 
   it("lets an ended mark stand in again, and holds the active ones out", () => {

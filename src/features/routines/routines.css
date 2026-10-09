@@ -430,6 +430,74 @@ button.rt-row__hit:focus-visible { outline: 2px solid var(--eq-focus-ring); outl
   color: var(--eq-ink-faint);
 }
 
+/* The plan's word under a machine in the Lineup ("instead of Seated Dip",
+   "not in the plan"): it can name a machine, so it wraps. */
+.rt-row__plan {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--eq-live-text);
+  overflow-wrap: anywhere;
+}
+
+/* Routine A without a plan: a quiet offer under its rows (the first-session
+   design round, Oct 8 2026), never a banner. */
+.rt-addplan {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--eq-divider);
+}
+.rt-addplan__text {
+  flex: 1 1 220px;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--eq-ink-muted);
+}
+
+/* ---------- A row as a cell of the plan's Lineup --------------------- */
+
+/* Routine A's rows inside the Lineup (routine-plan/ui/PlanLineup, Oct 8
+   2026): the place in the order outside the row, the row a raised cell on
+   the firm edge (it opens the machine's card), an action beside it. What
+   the row says is the list's, unchanged. */
+.rt-cellrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  list-style: none;
+}
+.rt-cellrow__lead {
+  flex: 0 0 32px;
+  display: flex;
+  justify-content: center;
+}
+.rt-cellrow .rt-cellrow__hit {
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
+}
+.rt-cellrow div.rt-cellrow__hit {
+  border-color: var(--eq-edge);
+  box-shadow: var(--eq-elev-list);
+}
+.rt-cellrow button.rt-cellrow__hit:active { transform: translateY(1px); box-shadow: var(--eq-press); }
+@media (max-width: 599px) {
+  .rt-cellrow__lead { flex-basis: 28px; }
+}
+
 /* ---------- Empty panel --------------------------------------------- */
 
 .rt-empty {

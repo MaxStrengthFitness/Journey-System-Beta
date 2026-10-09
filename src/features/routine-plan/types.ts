@@ -156,10 +156,14 @@ export interface CantDo {
  *   from one ("Low back issues"), so the Changes list can say where it
  *   started without reading the preset.
  * - "add": the machines added (never to day one). "remove": the machines
- *   taken out (of day one too).
- * - "swap": `[from, to]` (on day one too). "reorder": the new order of the
- *   road, as the screen draws it; day one takes the order it gives day one's
- *   machines.
+ *   taken out (of day one too). With `value` "routine" (`ROUTINE_ONLY`,
+ *   plan.ts) either moves Routine A's own machines and leaves the road as it
+ *   was: "Add to A now" puts a planned machine into Routine A, and "Take out
+ *   of Routine A" takes one out while the plan keeps it on deck.
+ * - "swap": `[from, to]`, or `[from, ...set]` for the Academy's documented
+ *   substitutes, which take its place together (on day one too). "reorder":
+ *   the new order of the road, as the screen draws it; day one takes the
+ *   order it gives day one's machines.
  * - "purpose": `value` the new words. "building": `value` "on" or "off".
  * - "focus": `value` the muscle ids, comma-separated.
  * - "cantdo": `[machineId]`; `value` "reason · until" (`cantDoValue`), the

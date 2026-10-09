@@ -16,7 +16,7 @@ import {
   deleteDoc,
   startAfter,
 } from "firebase/firestore";
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
 import { studioHour, formatStudioTime, studioTodayKey, studioDayKeyOf } from "../lib/studio-time";
 import { beforeJourneyGuess, sessionTotalOf } from "../lib/session-total";
 import { useClientLateCancels } from "../features/admin/attention/booking-marks";
@@ -127,6 +127,11 @@ import {
   toJourneySessions,
 } from "../features/journey-grid";
 import { EditRoutineDrawer } from "./EditRoutineDrawer";
+import { isProvisionalNewClient, startingKindOf } from "../features/routine-plan/client-kind";
+import { openHealthWords, planIntakeText } from "../features/routine-plan/intake";
+import type { PlanHost } from "../features/routine-plan/ui/host";
+import { usePlanActions } from "../features/routine-plan/ui/usePlanActions";
+import { useUnsavedChanges } from "../features/unsaved-changes";
 import {
   ProfileHeader,
   canEditPriorHistory,
@@ -216,6 +221,9 @@ export function ClientProfileView({
   const [settingsStatus, setSettingsStatus] = useState<
     "loading" | "ready" | "failed"
   >("loading");
+  // Moves when a plan write was refused, so the routines are read again and
+  // Programming shows what was saved (routine-plan/ui/usePlanActions).
+  const [routinesReadNonce, setRoutinesReadNonce] = useState(0);
   /*
    * KAIZEN ROSTER.
    *
@@ -847,6 +855,40 @@ export function ClientProfileView({
     };
   }, [clientId, hasQuotaError]);
 
+  /*
+   * Read the routines AGAIN after a plan write was refused
+   * (routine-plan/ui/usePlanActions), so Programming shows what was saved.
+   * Unlike a client switch it clears nothing: what is drawn stays drawn, and
+   * "ready", until the fresh answer replaces it, so a refusal never blanks
+   * the Lineup or leaves the Edit routine drawer without the real Routine A
+   * (it would make a second one). A read that fails says "can't tell" and
+   * keeps the list.
+   */
+  const routinesClientRef = useRef(clientId);
+  routinesClientRef.current = clientId;
+  useEffect(() => {
+    const forClient = routinesClientRef.current;
+    if (routinesReadNonce === 0 || !forClient || hasQuotaError) return;
+    let cancelled = false;
+    const landed = () => !cancelled && routinesClientRef.current === forClient;
+    getDocs(query(collection(db, "routines"), where("clientId", "==", forClient)))
+      .then((snap) => {
+        if (!landed()) return;
+        setRoutines(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Routine));
+        setRoutinesStatus("ready");
+      })
+      .catch((error) => {
+        if (!landed()) return;
+        console.error("Error reading the routines again:", error);
+        setRoutinesStatus("failed");
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Only a refusal reads again; a client switch is the effect above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routinesReadNonce]);
+
   useEffect(() => {
     if (!clientId || hasQuotaError) return;
 
@@ -888,10 +930,25 @@ export function ClientProfileView({
     setToggleBReason("");
     setIsToggleReasonDialogOpen(true);
   };
+  // The reason typed in the B dialog and not yet saved (a screen holding typing registers).
+  const toggleBUnsaved = useUnsavedChanges(
+    isToggleReasonDialogOpen && toggleBReason.trim() !== "",
+    "the reason for turning Routine B on or off",
+    { onDiscard: () => setToggleBReason("") },
+  );
 
+  /*
+   * The reason for turning B on or off is ASKED, NEVER REQUIRED (the
+   * first-session design round, Oct 8 2026). AJ, Oct 7 2026: "Any trainer
+   * who trains the client can definitely change the plan ... You should be
+   * able to change that and make the call as a trainer because you're
+   * training them that day", and "it's nice to be able to communicate like,
+   * hey, I'm changing this plan because of this reason". It required three
+   * characters until then. Round 2 reworks B; the write path is as it was.
+   */
   const handleConfirmToggleB = async () => {
     if (pendingToggleBValue === null || !clientId) return;
-    if (toggleBReason.trim().length < 3) return;
+    const toggleReason = toggleBReason.trim();
 
     setIsSavingToggle(true);
     try {
@@ -920,7 +977,7 @@ export function ClientProfileView({
         previousMachineIds: routine?.machineIds || [],
         newMachineIds: routine?.machineIds || [],
         trainerId: authTrainer?.id || "unknown",
-        notes: toggleBReason,
+        ...(toggleReason ? { notes: toggleReason } : {}),
         studioId: client?.homeStudioId || activeStudioId || "",
         changeType: pendingToggleBValue ? "enabled" : "disabled",
         createdAt: serverTimestamp(),
@@ -1398,6 +1455,118 @@ export function ClientProfileView({
   );
 
   /*
+   * ROUTINE A'S PLAN (the first-session design round, Oct 8 2026, §4.3).
+   * This view owns the routines' one read and every write to them, so it
+   * holds the plan's actions (`usePlanActions`: issued through
+   * routine-plan/store.ts, never awaited, this view's routines patched at
+   * once because the read is not live, a refusal toasted and read again)
+   * and works out which kind of "no routine" the client is. The kind claims
+   * nothing until both the routines and the session count have answered
+   * (`known`); a failed read is "can't tell", never "no routine".
+   */
+  const planAuthUid = auth.currentUser?.uid || user?.uid || null;
+  const planActions = usePlanActions({
+    clientId,
+    studioId: client?.homeStudioId || activeStudioId || "",
+    setRoutines,
+    onError: toastError,
+    onRefused: () => setRoutinesReadNonce((n) => n + 1),
+    author: planAuthUid
+      ? {
+          id: planAuthUid,
+          initials: (authTrainer?.initials || "TR").toUpperCase(),
+          fullName: authTrainer?.fullName || "Coach",
+        }
+      : null,
+  });
+  const routineAForPlan = routines.find((r) => r.name === "Routine A");
+  // What the routines' own read says, whatever the session count says: a
+  // count that never answers must not offer Start a plan to a client who
+  // has a routine or a plan.
+  const hasRoutineRead = routines.some(
+    (r) => (r.name === "Routine A" || r.name === "Routine B") && (r.machineIds?.length ?? 0) > 0,
+  );
+  const hasPlanRead = !!routineAForPlan?.plan;
+  const startingKind = useMemo(
+    () =>
+      startingKindOf({
+        known: routinesStatus === "ready" && journeyCompletedCount !== null,
+        hasRoutine: hasRoutineRead,
+        hasPlan: hasPlanRead,
+        journeySessions: journeyCompletedCount,
+        coverage: clientCoverage,
+        provisionalNewClient: isProvisionalNewClient(client),
+      }),
+    [routinesStatus, journeyCompletedCount, hasRoutineRead, hasPlanRead, clientCoverage, client],
+  );
+  // The studio's day, worked out every render (a string, so the host stays
+  // the same object until it moves): a profile left open past midnight
+  // dates a can't-do mark and its "Back on" from today, never yesterday.
+  const planToday = studioTodayKey();
+  // The intake a starting routine is matched on, its open Health notes
+  // included (the design round, §4.2), from the journal this view already
+  // streams for the machine notes: one listener, no new read.
+  const planHealthWords = useMemo(
+    () => openHealthWords(machineJournalRead.all ?? null).join(" · "),
+    [machineJournalRead.all],
+  );
+  const planIntake = useMemo(
+    () =>
+      planIntakeText({
+        medicalHistory: client?.medicalHistory,
+        goals: client?.goals,
+        clinicalProfile: client?.clinicalProfile,
+        healthNotes: planHealthWords ? [planHealthWords] : [],
+      }),
+    [client?.medicalHistory, client?.goals, client?.clinicalProfile, planHealthWords],
+  );
+  const planHost = useMemo<PlanHost>(
+    () => ({
+      status: routinesStatus,
+      kind: startingKind,
+      floor: codexFloor,
+      studioId: activeStudioId ?? null,
+      studioName: profileStudioName,
+      who: planAuthUid
+        ? { uid: planAuthUid, ...(authTrainer?.fullName ? { name: authTrainer.fullName } : null) }
+        : null,
+      todayYmd: planToday,
+      intakeText: planIntake,
+      actions: planActions,
+    }),
+    [
+      routinesStatus,
+      startingKind,
+      codexFloor,
+      activeStudioId,
+      profileStudioName,
+      planAuthUid,
+      authTrainer?.fullName,
+      planToday,
+      planIntake,
+      planActions,
+    ],
+  );
+  /**
+   * What the setup banner says (the design round, §4.8: it "now points at
+   * Start a plan"), from the routines' own read: no routine and no plan,
+   * the door Programming offers (Start a plan, or Enter their routine for a
+   * client who trained here before Journey); a plan kept with Routine A
+   * still empty, day one is planned; otherwise as it always said. A read
+   * that hasn't answered or failed claims nothing.
+   */
+  const setupBanner: "start" | "enter" | "planned" | null =
+    routinesStatus !== "ready"
+      ? null
+      : hasPlanRead && (routineAForPlan?.machineIds?.length ?? 0) === 0
+        ? "planned"
+        : !hasPlanRead && !hasRoutineRead
+          ? startingKind.kind === "new-to-journey"
+            ? "enter"
+            : "start"
+          : null;
+
+  /*
    * NOTES & PROFILE (the client codex) — what it is handed from here.
    *
    * The doors that leave the tab belong to this view, which owns the other
@@ -1645,15 +1814,37 @@ export function ClientProfileView({
             >
               <div className="bg-(--eq-live-fill) border-2 border-(--eq-live)/30 rounded-3xl p-4 flex items-center gap-4 text-(--eq-live-text)">
                 <AlertCircle className="w-6 h-6 shrink-0" />
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <p className="text-[14px] font-bold">
                     Profile setup needed
                   </p>
-                  <p className="text-[14px] font-medium mt-0.5">
-                    Set up their routine in Programming, and their details
-                    in Notes &amp; Profile.
-                  </p>
+                  {/* A client with no routine is pointed at the door
+                      Programming offers (the first-session design round,
+                      §4.8): the consult wizard it used to open is retired. */}
+                  {setupBanner === "start" ? (
+                    <p className="text-[14px] font-medium mt-0.5">
+                      Start a plan on Programming → Routine A, and add their details in Notes &amp; Profile.
+                    </p>
+                  ) : setupBanner === "enter" ? (
+                    <p className="text-[14px] font-medium mt-0.5">
+                      Enter their routine on Programming → Routine A, and add their details in Notes &amp; Profile.
+                    </p>
+                  ) : setupBanner === "planned" ? (
+                    <p className="text-[14px] font-medium mt-0.5">
+                      Day one is planned on Programming → Routine A. Add their details in Notes &amp; Profile.
+                    </p>
+                  ) : (
+                    <p className="text-[14px] font-medium mt-0.5">
+                      Set up their routine in Programming, and their details
+                      in Notes &amp; Profile.
+                    </p>
+                  )}
                 </div>
+                {(setupBanner === "start" || setupBanner === "enter") && (
+                  <Button className="hover:bg-primary" onClick={() => nav.setProgrammingView("routine-a")}>
+                    {setupBanner === "enter" ? "Enter their routine" : "Start a plan"}
+                  </Button>
+                )}
               </div>
             </motion.div>
           );
@@ -1911,12 +2102,17 @@ export function ClientProfileView({
             onSelectMachine={openMachineWindow}
             machineMenuHost={machineMenuHost}
             disabled={!!hasQuotaError}
+            plan={planHost}
           />
 
-          {/* Dialog/Modal for Routine B Toggle Reason */}
+          {/* Dialog for turning Routine B on or off: the reason is asked,
+              never required (the first-session design round, Oct 8 2026). */}
           <Dialog
             open={isToggleReasonDialogOpen}
-            onOpenChange={setIsToggleReasonDialogOpen}
+            onOpenChange={(open) => {
+              if (open) setIsToggleReasonDialogOpen(true);
+              else toggleBUnsaved.guard(() => setIsToggleReasonDialogOpen(false));
+            }}
           >
             <DialogContent
               showCloseButton={false}
@@ -1924,49 +2120,36 @@ export function ClientProfileView({
             >
               <DialogHeader>
                 <DialogTitle className="text-foreground">
-                  Reason Required for Protocol B Change
+                  {pendingToggleBValue ? "Turn Routine B on" : "Turn Routine B off"}
                 </DialogTitle>
-                <DialogDescription className="text-xs text-slate-500 mt-1">
-                  Please provide a brief justification to explain why you are{" "}
-                  {pendingToggleBValue ? "enabling" : "disabling"} the optional
-                  Routine B protocol for {client?.firstName}.
+                <DialogDescription className="text-[14px] text-muted-foreground mt-1">
+                  Why? It helps the next trainer. Optional.
                 </DialogDescription>
               </DialogHeader>
               <div className="mt-4 space-y-4">
                 <Textarea
                   value={toggleBReason}
                   onChange={(e) => setToggleBReason(e.target.value)}
-                  placeholder="e.g., Sandra is experiencing shoulder tightness; setting up B as a low-impact chest day."
+                  placeholder="Optional"
+                  aria-label="Why"
                   rows={3}
-                  className="rounded-xl border-input bg-slate-50/50 dark:bg-slate-950/20 text-xs text-slate-800 dark:text-neutral-200 resize-none"
+                  className="rounded-xl border-input bg-slate-50/50 dark:bg-slate-950/20 text-[14px] text-slate-800 dark:text-neutral-200 resize-none"
                 />
-                <div className="flex justify-between items-center gap-3 text-[12px]">
-                  <span className="text-muted-foreground font-medium">
-                    Be brief and clinical for Sandra's logs.
-                  </span>
-                  <span
-                    className={cn(
-                      "font-semibold",
-                      toggleBReason.trim().length >= 3
-                        ? "text-emerald-500"
-                        : "text-amber-500",
-                    )}
-                  >
-                    {toggleBReason.trim().length >= 3 ? "✓ Reason captured" : "Reason required"}
-                  </span>
-                </div>
               </div>
               <div className="mt-6 flex justify-end gap-3 border-t border-div-l/40 pt-4">
                 <Button
                   variant="ghost"
-                  onClick={() => setIsToggleReasonDialogOpen(false)}
+                  onClick={() => toggleBUnsaved.guard(() => setIsToggleReasonDialogOpen(false))}
                   className="rounded-xl"
                 >
                   Cancel
                 </Button>
                 <Button
-                  onClick={handleConfirmToggleB}
-                  disabled={toggleBReason.trim().length < 3 || isSavingToggle}
+                  onClick={() => {
+                    toggleBUnsaved.release();
+                    void handleConfirmToggleB();
+                  }}
+                  disabled={isSavingToggle}
                   className="bg-primary text-primary-foreground hover:bg-primary rounded-xl"
                 >
                   {isSavingToggle ? "Saving..." : "Confirm switch"}

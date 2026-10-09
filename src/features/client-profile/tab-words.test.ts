@@ -147,6 +147,20 @@ describe("buttons land where they say", () => {
     expect(source).not.toContain("'Equipment' tab");
     expect(source).toMatch(/Set up their routine in Programming, and their details\s+in Notes &amp; Profile\./);
   });
+
+  // The first-session design round (Oct 8 2026, section 4.8): "The profile's
+  // 'Profile setup needed' banner now points at Start a plan", for a client
+  // with no routine, with a door straight to Programming -> Routine A.
+  it("the setup-needed alert points a client with no routine at Start a plan", () => {
+    const source = read("components/ClientProfileView.tsx");
+    expect(source).toMatch(/Start a plan on Programming → Routine A, and add their details in Notes &amp; Profile\./);
+    expect(source).toMatch(/nav\.setProgrammingView\("routine-a"\)/);
+    // The door Programming offers: a client who trained here before Journey
+    // enters their routine, and a plan kept with Routine A still empty is
+    // set up already (day one is planned), never asked to start again.
+    expect(source).toMatch(/Enter their routine on Programming → Routine A, and add their details in Notes &amp; Profile\./);
+    expect(source).toMatch(/Day one is planned on Programming → Routine A\. Add their details in Notes &amp; Profile\./);
+  });
 });
 
 describe("the Activity Archive's tooltip", () => {

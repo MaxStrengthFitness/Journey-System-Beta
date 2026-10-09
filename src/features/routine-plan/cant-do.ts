@@ -308,6 +308,16 @@ export function cantDoActive(entry: Pick<CantDo, "until">, todayYmd: string): bo
   return todayYmd <= entry.until;
 }
 
+/**
+ * A typed until-date a new mark can hold to: a whole day, today or later,
+ * else null. A date picker's `min` is only a hint (a typed or pasted day
+ * gets past it), and a day already gone would write a mark that had ended
+ * before it was made.
+ */
+export function untilDayFrom(date: string, todayYmd: string): string | null {
+  return YMD.test(date) && date >= todayYmd ? date : null;
+}
+
 /** The day after a `YYYY-MM-DD` key, worked on the key alone, never through a time zone. */
 export function dayAfterKey(key: string): string {
   const m = YMD.exec(key);

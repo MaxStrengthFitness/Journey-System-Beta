@@ -1,0 +1,1067 @@
+/* ==========================================================================
+   Routine A's plan on Programming: Start a plan, the Lineup, its sheets, and
+   the Road's one-line route (the design round, Oct 8 2026; AJ's "1d").
+
+   Drawn in the Hub's palette (--eq-*, on :root, so the sheets, which are
+   portalled to <body>, have it too), on the app's look:
+   - a machine, a routine or a person's name wraps and is never cut short
+     (names-wrap.test.ts holds every class here that carries one);
+   - everything tappable is 40px tall at least, a row 48;
+   - a chip, a tile or a card a trainer taps draws the firm 3:1 edge, and a
+     picked one is the blue with its own words (firm-chips.test.ts);
+   - a panel is the edge seen from outside and a short navy lift; a box inside
+     it is a well; nothing animates a shadow; a press is a transform;
+   - type on the 11 / 12 / 14 / 17 / 22 scale, no capitals, no slant;
+   - orange is never here: Start session and Finish are the floor's.
+   ========================================================================== */
+
+@import "../../equipment/equipment.tokens.css";
+
+.rpl {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--eq-ink);
+  min-width: 0;
+}
+
+/* Two columns from a landscape iPad: the lineup, and what sits beside it. */
+.rpl-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+@media (min-width: 1000px) and (orientation: landscape) {
+  .rpl-grid { grid-template-columns: minmax(0, 1fr) 360px; }
+}
+.rpl-grid--even {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 760px) {
+  .rpl-grid--even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+/* Routine A's panel beside its Changes on a landscape iPad takes its whole
+   column (one routine alone is held to 860px; routines.css). */
+.rt .rpl-grid > .rt-routine.rpl-routine { max-width: none; }
+
+.rpl-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* A PANEL: the edge seen from outside, the fill clipped to the padding box,
+   a short navy lift; its head a 17/700 title with no band and no rule. */
+.rpl-panel {
+  background: var(--eq-surface);
+  background-clip: padding-box;
+  border: 1px solid var(--eq-edge);
+  border-radius: var(--eq-radius);
+  box-shadow: var(--eq-elev-2), var(--eq-panel-highlight);
+  padding: 16px;
+  min-width: 0;
+}
+.rpl-panel__head {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+.rpl-panel__title {
+  flex: 1 1 200px;
+  min-width: 0;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+.rpl-panel__right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.rpl-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* A sentence under a title or beside a control. It can name a machine or a
+   routine, so it wraps anywhere. */
+.rpl-line {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--eq-ink-2);
+  overflow-wrap: anywhere;
+}
+.rpl-meta {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--eq-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- The plan's head, inside Routine A's panel -------------------- */
+
+.rpl-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid var(--eq-divider);
+}
+.rpl-head__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+}
+.rpl-purpose {
+  flex: 1 1 220px;
+  min-width: 0;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+.rpl-purpose--none {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--eq-ink-2);
+}
+.rpl-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rpl-progress__line {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+/* The segmented meter: one segment a planned machine. */
+.rpl-meter {
+  display: flex;
+  gap: 4px;
+}
+.rpl-meter__seg {
+  flex: 1 1 0;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--eq-tray);
+}
+.rpl-meter__seg[data-kind="in"] { background: var(--eq-live); }
+.rpl-meter__seg[data-kind="next"] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--eq-live);
+}
+
+/* "Routine A is being built": the row is the switch's label, so it is the
+   target, in a well. */
+.rpl-switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
+  cursor: pointer;
+}
+.rpl-switch__text {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.rpl-switch__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--eq-ink);
+}
+.rpl-switch__sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--eq-ink-2);
+}
+
+.rpl-head__edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rpl-saidwrap { padding: 8px 12px 0; }
+
+.rpl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------- The lineup --------------------------------------------------- */
+
+.rpl-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rpl-list--flush { padding: 0; }
+
+.rpl-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-height: 40px;
+  padding-top: 4px;
+}
+.rpl-group__label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+.rpl-group__count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--eq-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.rpl-group__rule {
+  flex: 1 1 16px;
+  height: 1px;
+  min-width: 16px;
+  background: var(--eq-divider);
+}
+
+.rpl-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.rpl-row__lead {
+  flex: 0 0 32px;
+  display: flex;
+  justify-content: center;
+}
+.rpl-row__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The place in the order: solid in the routine, dashed on deck, blue next. */
+.rpl-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--eq-ink);
+  color: var(--eq-surface);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.rpl-num--deck {
+  background: transparent;
+  border: 1.5px dashed var(--eq-border-strong);
+  color: var(--eq-ink-muted);
+}
+.rpl-num--next {
+  background: transparent;
+  border: 1.5px dashed var(--eq-live);
+  color: var(--eq-live-text);
+}
+.rpl-num--bench {
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-muted);
+}
+
+/* A cell: one machine in the lineup. */
+.rpl-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-edge);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-list);
+  color: var(--eq-ink);
+  font: inherit;
+  text-align: left;
+}
+/* A cell a trainer taps is raised on the firm 3:1 edge, and presses in. */
+button.rpl-cell {
+  border-color: var(--eq-border-strong);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
+  cursor: pointer;
+}
+button.rpl-cell:active { transform: translateY(1px); box-shadow: var(--eq-press); }
+button.rpl-cell:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 1px; }
+.rpl-cell--deck,
+button.rpl-cell--deck {
+  background: transparent;
+  border: 1.5px dashed var(--eq-border-strong);
+  box-shadow: none;
+}
+.rpl-cell--next,
+button.rpl-cell--next {
+  background: transparent;
+  border: 1.5px dashed var(--eq-live);
+  box-shadow: none;
+}
+.rpl-cell__text {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 2px;
+}
+.rpl-cell__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+}
+.rpl-cell__name {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+.rpl-cell--deck .rpl-cell__name { color: var(--eq-ink-2); }
+.rpl-cell__sub {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--eq-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.rpl-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--eq-live-fill);
+  color: var(--eq-live-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* An order effect: a quiet sentence between the two rows that trip it. */
+.rpl-effect {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 8px 0 48px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--eq-ink-2);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rpl-effect:active { transform: translateY(1px); }
+.rpl-effect:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: -2px; }
+.rpl-effect__bar {
+  flex: 0 0 3px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--eq-warn);
+}
+.rpl-effect__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.rpl-effect__why {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 0 48px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
+}
+.rpl-effect__why p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+/* The bench: what the client can't do, in a well. */
+.rpl-bench {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 48px;
+  padding: 8px 8px 8px 12px;
+  border-radius: 12px;
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
+}
+.rpl-bench__text {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 180px;
+  min-width: 0;
+  gap: 2px;
+}
+.rpl-bench__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+.rpl-bench__line {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--eq-ink-2);
+  overflow-wrap: anywhere;
+}
+
+/* "Chest Flye instead of Seated Dip": what a change did, said once. */
+.rpl-said {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 2px 2px 2px 12px;
+  border-radius: 12px;
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
+}
+.rpl-said__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+.rpl-said__icon { flex: 0 0 auto; color: var(--eq-live-text); }
+
+/* Where a suggestion came from: a tag, never a control (it has no pointer). */
+.rpl-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--eq-border);
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-2);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+/* A well with words in it (the why of a start, the Academy's why). */
+.rpl-well {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+.rpl-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--eq-divider);
+}
+
+/* ---------- Start a plan ------------------------------------------------- */
+
+/* Another start: a card shown by its first machines (two starts can share a
+   name), raised on the firm edge; the picked one is the blue on its tint. */
+.rpl-starts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+.rpl-start {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 64px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
+  color: var(--eq-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rpl-start:active { transform: translateY(1px); box-shadow: var(--eq-press); }
+.rpl-start:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 1px; }
+.rpl-start[aria-pressed="true"] {
+  border-color: var(--eq-live);
+  background-color: var(--eq-live-fill);
+  box-shadow: inset 0 0 0 1px var(--eq-live), var(--eq-elev-1);
+}
+.rpl-start__machines {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+.rpl-start__meta {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--eq-ink-muted);
+  overflow-wrap: anywhere;
+}
+.rpl-start[aria-pressed="true"] .rpl-start__meta { color: var(--eq-live-text); }
+
+/* The two doors when Journey can't tell. */
+.rpl-doors {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+@media (min-width: 640px) {
+  .rpl-doors { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+.rpl-door {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 96px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
+  color: var(--eq-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rpl-door:active { transform: translateY(1px); box-shadow: var(--eq-press); }
+.rpl-door:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 1px; }
+.rpl-door__icon {
+  flex: 0 0 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--eq-surface-2);
+  color: var(--eq-live-text);
+}
+.rpl-door__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.rpl-door__title {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--eq-ink);
+}
+.rpl-door__line {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--eq-ink-2);
+  overflow-wrap: anywhere;
+}
+
+/* This studio's floor, by the Academy's families. */
+.rpl-floor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.rpl-family__label {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--eq-ink-muted);
+}
+.rpl-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+.rpl-tile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
+  color: var(--eq-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rpl-tile:active { transform: translateY(1px); box-shadow: var(--eq-press); }
+.rpl-tile:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 1px; }
+.rpl-tile[aria-pressed="true"] {
+  border-color: var(--eq-live);
+  background-color: var(--eq-live);
+  color: var(--eq-live-on);
+  box-shadow: var(--eq-glow-live), var(--eq-solid-light);
+}
+.rpl-tile__n {
+  flex: 0 0 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--eq-live-on);
+  color: var(--eq-live);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.rpl-tile__name {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.rpl-tile--held {
+  border: 0;
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
+  color: var(--eq-ink-2);
+  cursor: default;
+}
+
+/* ---------- Sheets -------------------------------------------------------- */
+
+.rpl-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 760px;
+  max-height: 88dvh;
+  margin: 0 auto;
+  padding: 16px 16px 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: var(--eq-ink);
+}
+.rpl-sheet__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.rpl-sheet__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.rpl-sheet__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+.rpl-sheet__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rpl-sheet__label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+.rpl-sheet__foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* A chip a trainer taps: the firm 3:1 edge on a raised fill; picked, the
+   blue with its own words. On a sheet both step up with the popover. */
+.rpl-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rpl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-raised);
+  color: var(--eq-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.rpl-sheet .rpl-chip {
+  border-color: var(--eq-popover-edge);
+  background: var(--eq-popover-raised);
+}
+.rpl-chip:active { transform: translateY(1px); }
+.rpl-chip:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 1px; }
+.rpl-chip[aria-pressed="true"],
+.rpl-sheet .rpl-chip[aria-pressed="true"] {
+  border-color: var(--eq-live);
+  background-color: var(--eq-live);
+  color: var(--eq-live-on);
+}
+.rpl-chip:disabled { opacity: 0.55; cursor: default; }
+
+/* A field: sunk inside the firm edge. */
+.rpl-field {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
+  color: var(--eq-ink);
+  font: inherit;
+  font-size: 14px;
+}
+.rpl-sheet .rpl-field { border-color: var(--eq-popover-edge); }
+.rpl-field:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 1px; }
+.rpl-field::placeholder { color: var(--eq-ink-muted); }
+
+/* A tick a trainer taps, with its words (the Health note a surgery offers). */
+.rpl-tick {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 4px 12px 4px 4px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--eq-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rpl-tick:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 1px; }
+.rpl-tick__box {
+  flex: 0 0 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1.5px solid var(--eq-border-strong);
+  background: var(--eq-raised);
+  color: var(--eq-live-on);
+}
+.rpl-sheet .rpl-tick__box { border-color: var(--eq-popover-edge); background: var(--eq-popover-raised); }
+.rpl-tick__box[data-on="true"],
+.rpl-sheet .rpl-tick__box[data-on="true"] {
+  border-color: var(--eq-live);
+  background-color: var(--eq-live);
+}
+.rpl-tick__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.rpl-tick__label { font-size: 14px; font-weight: 600; color: var(--eq-ink); }
+.rpl-tick__sub { font-size: 12px; font-weight: 500; color: var(--eq-ink-2); overflow-wrap: anywhere; }
+
+/* The Changes: who, when, what, and the reason when one was given. */
+.rpl-changes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.rpl-change {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--eq-divider);
+}
+.rpl-change:last-child { border-bottom: 0; }
+.rpl-change__who {
+  flex: 0 0 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-2);
+  font-size: 11px;
+  font-weight: 700;
+}
+.rpl-change__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.rpl-change__what {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+.rpl-change__meta {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--eq-ink-muted);
+  overflow-wrap: anywhere;
+}
+/* A Re-plan: a divider, nothing before it erased. */
+.rpl-replan {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+}
+.rpl-replan__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rpl-replan__rule {
+  flex: 1 1 auto;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--eq-border-strong);
+}
+.rpl-replan__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--eq-surface-2);
+  color: var(--eq-ink);
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.rpl-replan__meta {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--eq-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- The Road: the plan as one line ------------------------------- */
+
+.rpl-road {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.rpl-road__groups {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  row-gap: 16px;
+  min-width: 0;
+}
+.rpl-road__group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.rpl-road__label {
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--eq-ink-muted);
+  overflow-wrap: anywhere;
+}
+.rpl-road__group--bracket .rpl-road__label { color: var(--eq-live-text); }
+.rpl-road__bracket {
+  height: 8px;
+  margin: 4px 16px;
+}
+.rpl-road__group--bracket .rpl-road__bracket {
+  border: 2px solid var(--eq-live);
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+}
+.rpl-road__stops {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rpl-road__stop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 104px;
+}
+.rpl-road__track {
+  position: relative;
+  width: 100%;
+  height: 32px;
+}
+.rpl-road__line {
+  position: absolute;
+  top: 15px;
+  height: 0;
+  border-top: 3px dashed var(--eq-border-strong);
+}
+.rpl-road__line--in { border-top-style: solid; border-top-color: var(--eq-live); }
+.rpl-road__line--before { left: 0; right: 50%; }
+.rpl-road__line--after { left: 50%; right: 0; }
+.rpl-road__dot {
+  position: absolute;
+  top: 5px;
+  left: calc(50% - 11px);
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px dashed var(--eq-border-strong);
+  background: var(--eq-surface);
+}
+.rpl-road__dot[data-kind="in"] { border: 2px solid var(--eq-live); background: var(--eq-live); }
+.rpl-road__dot[data-kind="next"] { border: 3px solid var(--eq-live); background: var(--eq-surface); }
+.rpl-road__dot[data-kind="cantdo"] { border: 2px solid var(--eq-border-strong); background: var(--eq-surface-2); }
+.rpl-road__dot[data-kind="cantdo"]::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: -4px;
+  width: 26px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--eq-ink-muted);
+  transform: rotate(-45deg);
+}
+.rpl-road__name {
+  margin-top: 4px;
+  padding: 0 4px;
+  max-width: 100%;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+.rpl-road__stop[data-kind="planned"] .rpl-road__name,
+.rpl-road__stop[data-kind="cantdo"] .rpl-road__name { color: var(--eq-ink-2); }
+.rpl-road__mark {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--eq-live-text);
+}
+.rpl-road__progress {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- A phone ------------------------------------------------------- */
+
+@media (max-width: 599px) {
+  .rpl-panel { padding: 12px; }
+  .rpl-list { padding: 4px 8px 8px; }
+  .rpl-row__lead { flex-basis: 28px; }
+  .rpl-effect { padding-left: 36px; }
+  .rpl-effect__why { margin-left: 36px; }
+  .rpl-tiles { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .rpl-road__stop { width: 88px; }
+}

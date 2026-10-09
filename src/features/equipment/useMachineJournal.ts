@@ -27,6 +27,13 @@ export interface MachineJournalRead {
   /** Her journal's entries that name a machine; null while unread or after a failed read. */
   entries: JournalEntry[] | null;
   state: MachineJournalState;
+  /**
+   * Every entry the same read holds, for a host that wants more than the
+   * machine notes from the one listener (the profile's Routine A plan reads
+   * the open Health notes, routine-plan/intake.ts); null while unread or
+   * after a failed read.
+   */
+  all?: JournalEntry[] | null;
 }
 
 /** Only the entries that name a machine. */
@@ -35,27 +42,24 @@ const onMachines = (entries: readonly JournalEntry[]): JournalEntry[] =>
 
 export function useMachineJournalRead(clientId: string | null | undefined, given?: readonly JournalEntry[] | null): MachineJournalRead {
   const skip = given !== undefined || !clientId;
-  const [held, setHeld] = useState<{ clientId: string; entries: JournalEntry[] | null; failed: boolean } | null>(null);
+  const [held, setHeld] = useState<{ clientId: string; entries: JournalEntry[] | null; all: JournalEntry[] | null; failed: boolean } | null>(null);
   useEffect(() => {
     if (skip || !clientId) return;
     return onSnapshot(
       query(collection(db, "journalEntries"), where("clientId", "==", clientId), orderBy("occurredAt", "desc"), limit(STREAM_LIMIT)),
       (snap) => {
-        setHeld({
-          clientId,
-          entries: onMachines(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as JournalEntry)),
-          failed: false,
-        });
+        const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as JournalEntry);
+        setHeld({ clientId, entries: onMachines(all), all, failed: false });
       },
       (err) => {
         console.warn("[machine notes] her journal couldn't be read", err);
-        setHeld({ clientId, entries: null, failed: true });
+        setHeld({ clientId, entries: null, all: null, failed: true });
       },
     );
   }, [skip, clientId]);
-  if (given !== undefined) return { entries: given ? [...given] : null, state: given ? "ready" : "loading" };
-  if (!held || held.clientId !== clientId) return { entries: null, state: "loading" };
-  return { entries: held.entries, state: held.failed ? "failed" : "ready" };
+  if (given !== undefined) return { entries: given ? [...given] : null, state: given ? "ready" : "loading", all: given ? [...given] : null };
+  if (!held || held.clientId !== clientId) return { entries: null, state: "loading", all: null };
+  return { entries: held.entries, state: held.failed ? "failed" : "ready", all: held.all };
 }
 
 export function useMachineJournal(clientId: string | null | undefined, given?: readonly JournalEntry[] | null): JournalEntry[] | null {

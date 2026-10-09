@@ -14,12 +14,14 @@
  * own `machineIds`, when a change moves it, goes in the same batch, so the
  * plan and the routine can't disagree after a refusal.
  *
- * Two writers:
+ * Three writers:
  * - `startPlan`: a plan's first write, Keep this lineup, Save Routine A, Add
  *   a plan, or Start's batch for a client starting out at the studio. It
  *   makes Routine A when the client has none, or puts the plan on the
  *   routine they have, with the plan's first change.
  * - `savePlanChange`: every change after that.
+ * - `saveRoutineEdit`: the Edit routine drawer's save on a routine with a
+ *   plan, the routine, its adjustment and the plan's changes together.
  *
  * The consult is not Routine A (AJ, Oct 8 2026: "this also counts with the
  * consult visit, sometimes the consult machines will not be the same as their
@@ -108,11 +110,15 @@ export function startPlan(db: Firestore, input: StartPlanInput): StartedPlan {
  * Writes the plan, its change, and (when given) the routine's machines in one
  * batch. Returns the commit for whoever wants to toast a refusal; never await
  * it on a tap.
+ *
+ * `also` is the rest of one tap's changes, appended in the same batch: a
+ * Re-plan that marks machines the client can't do is a "replan" and a
+ * "cantdo" for each, and they land together or not at all.
  */
 export function savePlanChange(
   db: Firestore,
   routineId: string,
-  input: { plan: RoutinePlan; change: PlanChange; machineIds?: string[] },
+  input: { plan: RoutinePlan; change: PlanChange; machineIds?: string[]; also?: readonly PlanChange[] },
 ): Promise<void> {
   const batch = writeBatch(db);
   const routineRef = doc(db, "routines", routineId);
@@ -123,8 +129,42 @@ export function savePlanChange(
       ...(input.machineIds ? { machineIds: input.machineIds } : null),
     }),
   );
-  const changeRef = doc(collection(db, "routines", routineId, PLAN_CHANGES));
-  batch.set(changeRef, withoutUndefined({ ...input.change, at: serverTimestamp() }));
+  for (const change of [input.change, ...(input.also ?? [])]) {
+    const changeRef = doc(collection(db, "routines", routineId, PLAN_CHANGES));
+    batch.set(changeRef, withoutUndefined({ ...change, at: serverTimestamp() }));
+  }
+  return batch.commit();
+}
+
+/**
+ * A save in the Edit routine drawer on a routine with a plan (the design
+ * round, §4.3: "The drawer keeps the plan"), in ONE batch: the drawer's own
+ * fields on the routine (its machines, a template's provenance, `updatedAt`)
+ * with the plan beside them in one update, the drawer's `routineAdjustments`
+ * record, and the plan's changes (`drawer-sync.ts`'s `planChangeFromEdit`,
+ * signed). They land together or not at all, so the plan and the routine
+ * never drift. The drawer awaits it (a drawer save is not a tap on the
+ * floor) and says a refusal.
+ */
+export function saveRoutineEdit(
+  db: Firestore,
+  routineId: string,
+  input: {
+    /** The drawer's own fields on the routine. */
+    routine: Record<string, unknown>;
+    plan: RoutinePlan;
+    changes: readonly PlanChange[];
+    /** The drawer's adjustment record, as it has always written one. */
+    adjustment: Record<string, unknown>;
+  },
+): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(doc(db, "routines", routineId), withoutUndefined({ ...input.routine, plan: input.plan }));
+  batch.set(doc(collection(db, "routineAdjustments")), withoutUndefined(input.adjustment));
+  for (const change of input.changes) {
+    const changeRef = doc(collection(db, "routines", routineId, PLAN_CHANGES));
+    batch.set(changeRef, withoutUndefined({ ...change, at: serverTimestamp() }));
+  }
   return batch.commit();
 }
 

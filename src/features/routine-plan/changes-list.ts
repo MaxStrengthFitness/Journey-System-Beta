@@ -28,7 +28,7 @@
 import type { RoutineAdjustment, Trainer } from "../../types";
 import { cantDoLine, listWords, parseCantDoValue } from "./cant-do";
 import { FOCUS_AREAS } from "./focus";
-import { isStartingColumnChoice } from "./plan";
+import { ROUTINE_ONLY, isStartingColumnChoice } from "./plan";
 import { STARTING_COLUMN_LABEL } from "./starting-weights";
 import type { StoredPlanChange } from "./store";
 import type { PlanChangeKind } from "./types";
@@ -151,11 +151,13 @@ export function planChangeWhat(
     case "start":
       return value ? `Started the plan from ${value}` : "Started the plan";
     case "add":
-      return names.length > 0 ? `Added ${listWords(names)}` : "Changed the plan";
+      if (names.length === 0) return "Changed the plan";
+      return value === ROUTINE_ONLY ? `Added ${listWords(names)} to ${routine}` : `Added ${listWords(names)}`;
     case "remove":
-      return names.length > 0 ? `Took ${listWords(names)} out of the plan` : "Changed the plan";
+      if (names.length === 0) return "Changed the plan";
+      return value === ROUTINE_ONLY ? `Took ${listWords(names)} out of ${routine}` : `Took ${listWords(names)} out of the plan`;
     case "swap":
-      return names.length >= 2 ? `${names[1]} instead of ${names[0]}` : "Changed the plan";
+      return names.length >= 2 ? `${listWords(names.slice(1))} instead of ${names[0]}` : "Changed the plan";
     case "reorder":
       return names.length > 0 ? `New order: ${names.join(", ")}` : "Changed the order";
     case "purpose":
