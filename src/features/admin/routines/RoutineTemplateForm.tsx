@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RoutineBuilder } from "../../routine-builder";
+import { StartPartEditor } from "../../routine-plan/ui/StartPartEditor";
 import type { Machine, RoutinePreset } from "../../../types";
 import type { MachineCatalogEntry } from "../../../types/machines";
 
@@ -31,15 +32,31 @@ import type { MachineCatalogEntry } from "../../../types/machines";
  * Machines come from the global catalog, so a template may name a machine a
  * given studio does not own. That is expected and handled at apply time,
  * where the routine drawer filters to what the studio actually has.
+ *
+ * FOR NEW CLIENTS (the design round, Oct 8 2026). Under the builder, a
+ * template can be switched on as a starting routine: its day one, the words
+ * in an intake that suggest it and, on a company template, head office's
+ * default (`routine-plan/ui/StartPartEditor`, the pure half
+ * `routine-plan/start-part.ts`). It edits the draft's `start` part like any
+ * other field, and the tab's Save writes it. AJ: "studios will chose their
+ * own, admins will create the routines to pick from in the app during beta".
  */
 export function RoutineTemplateForm({
   value,
   onChange,
   catalog,
+  otherDefaultName = null,
+  pendingWord,
+  onPendingWordChange,
 }: {
   value: RoutinePreset;
   onChange: (next: RoutinePreset) => void;
   catalog: MachineCatalogEntry[];
+  /** The company template that is head office's starting default now, when it is another one. */
+  otherDefaultName?: string | null;
+  /** A word that suggests the routine, typed but not added yet: the tab's, so it counts as unsaved and Save puts it in. */
+  pendingWord: string;
+  onPendingWordChange: (word: string) => void;
 }) {
   const set = <K extends keyof RoutinePreset>(k: K, v: RoutinePreset[K]) =>
     onChange({ ...value, [k]: v });
@@ -57,6 +74,12 @@ export function RoutineTemplateForm({
         .map((m) => ({ id: m.id, name: m.name ?? m.id })),
     [catalog],
   );
+
+  /** Every catalog machine's name, retired ones included: a template may still name one. */
+  const nameOf = useMemo(() => {
+    const names = new Map(catalog.map((m) => [m.id, m.name ?? m.id] as const));
+    return (id: string) => names.get(id) ?? id;
+  }, [catalog]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -110,6 +133,25 @@ export function RoutineTemplateForm({
           established
         />
       </div>
+
+      <div className="h-px bg-border" />
+
+      <StartPartEditor
+        start={value.start}
+        onChange={(start) => {
+          // Absent, never undefined, while the switch is off: the draft is
+          // compared field by field, and the write leaves it out.
+          const { start: _was, ...rest } = value;
+          onChange(start ? { ...rest, start } : rest);
+        }}
+        machineIds={value.machineIds ?? []}
+        nameOf={nameOf}
+        tier={value.tier ?? "company"}
+        otherDefaultName={otherDefaultName}
+        parked={value.startParked}
+        word={pendingWord}
+        onWordChange={onPendingWordChange}
+      />
     </div>
   );
 }

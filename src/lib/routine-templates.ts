@@ -54,6 +54,9 @@ export function normalizeRoutinePreset(
     // template editor can show it; it is read as a starting routine only
     // through routine-plan's `startingRoutineFromPreset`, which checks it.
     ...(raw?.start !== undefined ? { start: raw.start } : null),
+    // One switched off in the editor keeps its part beside it, for the
+    // editor to bring back (`startParked`); nothing else reads it.
+    ...(raw?.startParked !== undefined ? { startParked: raw.startParked } : null),
     createdBy: raw?.createdBy,
     createdByName: raw?.createdByName,
     createdAt: raw?.createdAt,

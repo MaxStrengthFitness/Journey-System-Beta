@@ -202,6 +202,11 @@ const CHIPS: Chip[] = [
   ["features/machine-menu/machine-menu.css", ".mm-choice", "var(--eq-border-strong)", null, '.mm-choice[aria-pressed="true"]'],
   ["features/machine-menu/machine-menu.css", ".mm-head__pill", "var(--eq-border-strong)", null, null],
   ["features/machine-menu/machine-menu.css", ".mm-seg", "var(--eq-border-strong)", null, null],
+  // Starting routines (the first-session design round, Oct 8 2026): the
+  // template editor's Day one picks (the picked one the blue on its tint)
+  // and the words that suggest a routine, each a chip a tap takes out.
+  ["features/routine-plan/ui/starting-routines.css", ".srt-pick", "var(--adm-border-strong)", null, '.srt-pick[aria-pressed="true"]'],
+  ["features/routine-plan/ui/starting-routines.css", ".srt-word", "var(--adm-border-strong)", null, null],
 ];
 
 /** The colour a rule's edge is drawn in: the shorthand's var(), or border-color. */

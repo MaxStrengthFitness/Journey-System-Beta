@@ -1175,6 +1175,16 @@ export interface RoutinePreset {
    * `scripts/seed-starting-routines.ts`.
    */
   start?: RoutinePresetStart;
+  /**
+   * A starting routine switched off in the template editor: its `start`
+   * part as it was, kept beside the template so switching it back on brings
+   * it back whole (Oct 8 2026). The editor has no control for a seeded
+   * routine's steps, source or kind, so removing them would lose them for
+   * good. Head office's default is never kept. Read by the template editor
+   * alone (`admin/routines/template-save.ts`); nothing else treats it as a
+   * starting routine, so while it is here the template is an ordinary one.
+   */
+  startParked?: RoutinePresetStart;
   createdBy?: string;
   createdByName?: string;
   createdAt?: any;

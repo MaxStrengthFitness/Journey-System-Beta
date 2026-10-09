@@ -32,6 +32,14 @@ const SAVED_FLASH_MS = 2200;
 export interface DirtyForm<T extends object> {
   /** What to bind inputs to. Always controlled. */
   value: T;
+  /**
+   * The value last committed, as this form believes it: what was read, or
+   * what its own save just wrote. For a screen whose next edit depends on
+   * what is saved, not on what was first read (a save moves this; the
+   * value the screen was handed does not move until the database is read
+   * again).
+   */
+  baseline: T;
   setField: <K extends keyof T>(key: K, value: T[K]) => void;
   setFields: (patch: Partial<T>) => void;
   discard: () => void;
@@ -163,6 +171,7 @@ export function useDirtyForm<T extends object>(
 
   return {
     value: state.draft,
+    baseline: state.baseline,
     setField,
     setFields,
     discard,

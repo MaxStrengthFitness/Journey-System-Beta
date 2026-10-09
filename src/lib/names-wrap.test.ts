@@ -102,6 +102,18 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   { file: "features/renewals/renewal-row.css", cls: "rr__name", what: "the client on a renewals dashboard row" },
   { file: "features/renewals/renewal-row.css", cls: "rr__trainer", what: "the primary trainer on a renewals dashboard row" },
   { file: "features/renewals/renewal-row.css", cls: "rr-plan__sentence", what: "who set the renewal plan, on its row" },
+  // Starting routines (the first-session design round, Oct 8 2026): the
+  // template editor's "For new clients" part, the template list's line, and
+  // My Studio → Studio → Starting routines.
+  { file: "features/admin/admin.css", cls: "adm-tpl__start", what: "\"Starting routine · day one: Leg Press · Compound Row\" on a template's card" },
+  { file: "features/routine-plan/ui/starting-routines.css", cls: "srt-pick__name", what: "a template's machine on the editor's Day one" },
+  { file: "features/routine-plan/ui/starting-routines.css", cls: "srt-line", what: "\"Day one: Leg Press · Compound Row · Lumbar Extension\" under the editor's picks" },
+  { file: "features/routine-plan/ui/starting-routines.css", cls: "srt-row__name", what: "a starting routine's name on My Studio → Studio" },
+  { file: "features/routine-plan/ui/starting-routines.css", cls: "srt-row__meta", what: "a starting routine's day one, by its machines, on My Studio → Studio" },
+  { file: "features/routine-plan/ui/starting-routines.css", cls: "srt-opt__text", what: "head office's default, by name, on No default of our own" },
+  { file: "features/routine-plan/ui/starting-routines.css", cls: "srt-read", what: "head office's default, by name, on No default of our own, as a reader sees it" },
+  { file: "features/routine-plan/ui/starting-routines.css", cls: "srt__hint", what: "head office's default, by name, under the editor's Head office's default switch" },
+  { file: "features/routine-plan/ui/starting-routines.css", cls: "srt-source", what: "\"Westlake's own choice\" on My Studio → Studio, the studio by name" },
 ];
 
 const rulesFor = (entry: (typeof NAME_RULES)[number]) =>

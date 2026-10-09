@@ -1,0 +1,290 @@
+/* ==========================================================================
+   Starting routines: the template editor's "For new clients" part and
+   My Studio → Studio → Starting routines (the design round, Oct 8 2026).
+
+   Drawn in the Operations kit's colours (--adm-*, on :root, so the editor's
+   dialog, which sits outside .adm, has them too), on the app's look:
+   - a machine or a routine's name wraps and is never cut short
+     (names-wrap.test.ts holds every class here that carries one);
+   - everything tappable is 40px tall at least;
+   - a chip or a toggle draws the firm 3:1 edge, and a picked one is the
+     blue on its tint with its own edge (firm-chips.test.ts);
+   - type on the 11 / 12 / 14 / 17 scale, no capitals.
+   ========================================================================== */
+
+.srt {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: var(--adm-ink);
+}
+
+.srt__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--adm-ink);
+}
+
+.srt__label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--adm-ink-2);
+}
+
+/* A hint can name a routine ("Now: Knee issues."), so it wraps anywhere. */
+.srt__hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--adm-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.srt__part {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* The switch rows: the label is the target, so it is 40px tall. */
+.srt-switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--adm-ink);
+  cursor: pointer;
+}
+
+/* Day one: the template's machines, each a row a tap marks. */
+.srt-picks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.srt-pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--adm-border-strong);
+  border-radius: 12px;
+  background: var(--adm-raised);
+  color: var(--adm-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.srt-pick[aria-pressed="true"] {
+  border-color: var(--adm-live);
+  background-color: var(--adm-live-fill);
+  color: var(--adm-live-text);
+}
+
+.srt-pick:focus-visible,
+.srt-word:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: 2px;
+}
+
+.srt-pick__n {
+  flex: none;
+  min-width: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--adm-ink-muted);
+}
+
+.srt-pick[aria-pressed="true"] .srt-pick__n {
+  color: var(--adm-live-text);
+}
+
+.srt-pick__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.srt-pick__mark {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+/* "Day one: Leg Press · Compound Row · Lumbar Extension". */
+.srt-line {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+
+.srt-line--wants {
+  color: var(--adm-warn);
+}
+
+/* The words that suggest it: each a chip a tap takes out. */
+.srt-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.srt-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--adm-border-strong);
+  border-radius: 999px;
+  background: var(--adm-raised);
+  color: var(--adm-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.srt-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.srt-add__input {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+/* Where a routine came from, or whose choice the list is ("Westlake's own
+   choice"): it can carry the studio's name, so it wraps anywhere. */
+.srt-source {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--adm-ink-2);
+  overflow-wrap: anywhere;
+}
+
+/* My Studio → Studio → Starting routines: one row a routine. */
+.srt-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.srt-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 4px 0;
+  border-top: 1px solid var(--adm-divider);
+}
+
+.srt-row:first-child {
+  border-top: 0;
+}
+
+.srt-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 260px;
+  min-width: 0;
+  padding: 8px 0;
+}
+
+.srt-row__name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+
+.srt-row__meta {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--adm-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.srt-row__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.srt-row__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 16px;
+}
+
+/* A check or a radio with its words: the label is the target, 40px tall. */
+.srt-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--adm-ink);
+  cursor: pointer;
+}
+
+.srt-opt input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--adm-live);
+}
+
+.srt-opt__text {
+  overflow-wrap: anywhere;
+}
+
+/* Someone who reads the panel sees words, not locked boxes: a disabled box
+   fades on an iPad, and which routines are offered is what they came to
+   read. */
+.srt-row__controls--read {
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+/* "No default of our own: Start a plan suggests head office's, Knee issues",
+   read, not tapped. It names a routine, so it wraps anywhere. */
+.srt-read {
+  margin: 0;
+  padding: 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+
+.srt-foot {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: var(--adm-ink-muted);
+}

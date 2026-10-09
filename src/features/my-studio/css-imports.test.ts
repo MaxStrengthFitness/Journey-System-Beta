@@ -53,6 +53,8 @@ const HOSTS = [
   "features/openings/ui/WhoseChips.tsx",
   "features/openings/ui/WhosInPart.tsx",
   "features/openings/ui/MarkThisTime.tsx",
+  // Starting routines on Studio (the first-session design round, Oct 8 2026).
+  "features/routine-plan/ui/StartingRoutinesPanel.tsx",
 ] as const;
 
 /**

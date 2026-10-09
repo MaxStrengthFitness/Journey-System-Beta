@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc,
+  addDoc, collection, deleteDoc, deleteField, doc, onSnapshot, serverTimestamp, writeBatch,
 } from "firebase/firestore";
 import {
   Building2, ClipboardList, Globe2, Pencil, Plus, Trash2, Upload,
@@ -11,11 +11,15 @@ import { useMachineCatalog } from "../../../hooks/useMachineCatalog";
 import { OperationType, handleFirestoreError } from "../../../lib/firestore-errors";
 import { canAuthorTier, normalizeRoutinePreset } from "../../../lib/routine-templates";
 import { useToast } from "../../../contexts/ToastContext";
+import { useUnsavedChanges } from "../../unsaved-changes";
+import { otherDefaults, startListLine, startPartForSave, startPartProblem, withPendingWord } from "../../routine-plan/start-part";
 import { RoutineTemplateForm, emptyRoutineTemplate } from "./RoutineTemplateForm";
+import { editorDraftOf, isEmptyEdit, templateChanged, templateEdit } from "./template-save";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AdminBadge,
   AdminButton,
   AdminEmpty,
   AdminField,
@@ -46,6 +50,24 @@ import "../admin.css";
  * see those at all before, which meant the thing trainers actually reach for
  * was invisible to the people responsible for standards. A leader can
  * promote a good one into a studio template in one tap.
+ *
+ * STARTING ROUTINES (the design round, Oct 8 2026; AJ: "studios will chose
+ * their own, admins will create the routines to pick from in the app during
+ * beta"). A template switched on under "For new clients" is a starting
+ * routine: the editor holds its day one, the words that suggest it and, on a
+ * company template, head office's default, and its card here says so
+ * ("Starting routine · day one: Leg Press · Compound Row"). Saving one as
+ * head office's default takes the flag off any other company template IN THE
+ * SAME BATCH, so there is never more than one. One switched off keeps its
+ * part beside the template (`startParked`), so switching it back on brings
+ * back what the editor couldn't put back itself: a seeded routine's steps,
+ * its source and its kind.
+ *
+ * An edit writes only what changed, each field whole, through `update`
+ * (`template-save.ts` says why: a merge left a word taken out, or a default
+ * switched off, in the database). The open editor joins the unsaved-changes
+ * registry, a word typed but not added included, and its own close asks
+ * first; Save puts a typed word in rather than dropping it.
  */
 
 type SubTab = "company" | "studio";
@@ -70,7 +92,11 @@ export function AdminRoutineTemplatesTab({
   const [subTab, setSubTab] = useState<SubTab>(canCompany ? "company" : "studio");
   const [presets, setPresets] = useState<RoutinePreset[]>([]);
   const [draft, setDraft] = useState<RoutinePreset | null>(null);
+  /** The template as the editor opened it: what the draft is compared with, and the edit's diff measured from. */
+  const [opened, setOpened] = useState<RoutinePreset | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  /** A word that suggests the routine, typed in the editor but not added yet. */
+  const [pendingWord, setPendingWord] = useState("");
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   /** The template whose delete is waiting on a second tap (fix pile, Sep 2026: it committed on one). */
@@ -125,65 +151,126 @@ export function AdminRoutineTemplatesTab({
   );
 
   const openNew = (tier: RoutinePresetTier) => {
-    setEditingId(null);
-    setDraft({
+    const blank: RoutinePreset = {
       ...emptyRoutineTemplate(),
       tier,
       scope: tier === "company" ? "global" : (studioId ?? ""),
       studioId: tier === "company" ? undefined : (studioId ?? undefined),
-    });
+    };
+    setEditingId(null);
+    setOpened(blank);
+    setDraft(blank);
   };
 
   const openEdit = (p: RoutinePreset) => {
+    const shown = editorDraftOf(normalizeRoutinePreset(p));
     setEditingId(p.id ?? null);
-    setDraft(normalizeRoutinePreset(p));
+    setOpened(shown);
+    setDraft(shown);
   };
 
-  const close = () => { setDraft(null); setEditingId(null); };
+  const close = () => { setDraft(null); setOpened(null); setEditingId(null); setPendingWord(""); };
+
+  /**
+   * Typing in the editor that isn't saved: a new template counts once
+   * anything is in it, and so does a word typed but not added.
+   */
+  const dirty =
+    !!draft && !!opened && (templateChanged(draft, opened) || (!!draft.start && pendingWord.trim() !== ""));
+  const leave = useUnsavedChanges(
+    dirty,
+    editingId ? `the template "${opened?.name || "without a name"}"` : "the new template",
+    { onDiscard: close },
+  );
+
+  /** Head office's starting default now, when it is a template other than the one open. */
+  const otherDefault = draft?.tier === "company" ? otherDefaults(presets, editingId)[0] ?? null : null;
 
   const handleSave = async () => {
-    if (!draft) return;
-    const name = draft.name.trim();
+    if (!draft || !opened) return;
+    // A word typed but not added goes in with the save, never dropped.
+    let toSave = draft;
+    if (draft.start && pendingWord.trim()) {
+      const folded = withPendingWord(draft.start, pendingWord);
+      if (folded.problem) { toastError(folded.problem); return; }
+      toSave = { ...draft, start: folded.start };
+    }
+    const name = toSave.name.trim();
     if (!name) { toastError("Give the template a name first."); return; }
-    if (draft.machineIds.length === 0) {
+    if (toSave.machineIds.length === 0) {
       toastError("A template needs at least one machine.");
       return;
     }
-    const tier = draft.tier ?? "company";
-    if (tier === "studio" && !draft.studioId) {
+    const tier = toSave.tier ?? "company";
+    if (tier === "studio" && !toSave.studioId) {
       toastError("Pick a studio for this template first.");
       return;
     }
+    const startProblem = startPartProblem(toSave.start, toSave.machineIds);
+    if (startProblem) { toastError(startProblem); return; }
+    const start = startPartForSave(toSave.start, { machineIds: toSave.machineIds, tier });
+    let switchedOff = false;
 
     setSaving(true);
     try {
       const uid = auth.currentUser?.uid ?? null;
-      const base = {
-        name,
-        description: draft.description?.trim() ?? "",
-        machineIds: draft.machineIds,
-        machineNotes: draft.machineNotes ?? {},
+      const who = {
         tier,
-        scope: tier === "company" ? "global" : draft.studioId!,
+        scope: tier === "company" ? "global" : toSave.studioId!,
         // Omitted, not null, for company templates: the rules read
         // studioId through .get(...,'') and an absent field is the honest
         // representation of "this belongs to no single studio".
-        ...(tier === "studio" ? { studioId: draft.studioId } : {}),
+        ...(tier === "studio" ? { studioId: toSave.studioId } : {}),
         updatedAt: serverTimestamp(),
         updatedBy: uid,
       };
 
+      const batch = writeBatch(db);
       if (editingId) {
-        await setDoc(doc(db, "routinePresets", editingId), base, { merge: true });
+        // Only what changed, each field whole (template-save.ts). A part
+        // switched off is kept beside the template, and one switched back
+        // on takes the kept copy with it.
+        const edit = templateEdit(toSave, opened);
+        if (isEmptyEdit(edit)) { close(); return; }
+        switchedOff = edit.removeStart;
+        batch.update(doc(db, "routinePresets", editingId), {
+          ...edit.fields,
+          ...(edit.removeStart ? { start: deleteField() } : null),
+          ...(edit.park ? { startParked: edit.park } : null),
+          ...(edit.unpark ? { startParked: deleteField() } : null),
+          ...who,
+        });
       } else {
-        await addDoc(collection(db, "routinePresets"), {
-          ...base,
+        batch.set(doc(collection(db, "routinePresets")), {
+          name,
+          description: toSave.description?.trim() ?? "",
+          machineIds: toSave.machineIds,
+          machineNotes: toSave.machineNotes ?? {},
+          ...(start ? { start } : null),
+          ...who,
           createdAt: serverTimestamp(),
           createdBy: uid,
           createdByName: authTrainer?.fullName ?? "Admin",
         });
       }
-      toastSuccess(`"${name}" saved.`);
+      // Head office's default is one template: saving this one as it takes
+      // the flag off any other, in the same batch.
+      const replaced = start?.default === true ? otherDefaults(presets, editingId) : [];
+      for (const other of replaced) {
+        batch.update(doc(db, "routinePresets", other.id!), {
+          "start.default": deleteField(),
+          updatedAt: serverTimestamp(),
+          updatedBy: uid,
+        });
+      }
+      await batch.commit();
+      toastSuccess(
+        replaced.length > 0
+          ? `"${name}" saved. It is head office's starting default now, in place of ${replaced.map((p) => `"${p.name}"`).join(" and ")}.`
+          : switchedOff
+            ? `"${name}" saved. Start a plan no longer offers it.`
+            : `"${name}" saved.`,
+      );
       close();
     } catch (err) {
       console.error(err);
@@ -312,12 +399,21 @@ export function AdminRoutineTemplatesTab({
         </AdminEmpty>
       ) : (
         <div className="adm-cards">
-          {list.map((p) => (
+          {list.map((p) => {
+            const startLine = startListLine(p, nameFor);
+            const isDefault = p.tier === "company" && startLine !== null && p.start?.default === true;
+            return (
             <AdminPanel key={p.id} className="adm-tpl">
               <div className="adm-tpl__body">
                 <h4 className="adm-tpl__name">{p.name}</h4>
                 {p.description && (
                   <p className="adm-tpl__desc">{p.description}</p>
+                )}
+                {startLine && <p className="adm-tpl__start">{startLine}</p>}
+                {isDefault && (
+                  <span>
+                    <AdminBadge tone="live">Head office's default</AdminBadge>
+                  </span>
                 )}
                 <ol className="adm-tpl__seq">
                   {p.machineIds.map((id, i) => (
@@ -351,7 +447,8 @@ export function AdminRoutineTemplatesTab({
                 </div>
               </div>
             </AdminPanel>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -384,7 +481,8 @@ export function AdminRoutineTemplatesTab({
         </AdminPanel>
       )}
 
-      <Dialog open={!!draft} onOpenChange={(o) => !o && close()}>
+      {/* Its own close asks first when something is typed (the unsaved-changes registry). */}
+      <Dialog open={!!draft} onOpenChange={(o) => !o && leave.guard(close)}>
         <DialogContent className="max-h-[92dvh] sm:max-w-5xl lg:max-w-6xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -397,16 +495,20 @@ export function AdminRoutineTemplatesTab({
                 value={draft}
                 onChange={setDraft}
                 catalog={catalog}
+                otherDefaultName={otherDefault?.name ?? null}
+                pendingWord={pendingWord}
+                onPendingWordChange={setPendingWord}
               />
               <div className="adm adm-dialog__actions">
-                <AdminButton variant="ghost" onClick={close}>
+                <AdminButton variant="ghost" onClick={() => leave.guard(close)}>
                   Cancel
                 </AdminButton>
+                {/* A Save is blue (the Navy Frame's follow-up, Oct 4 2026): orange is only now and go. */}
                 <AdminButton
-                  variant="hero"
+                  variant="primary"
                   onClick={handleSave}
                   busy={saving}
-                  disabled={saving}
+                  disabled={saving || (!!editingId && !dirty)}
                 >
                   {editingId ? "Save changes" : "Create template"}
                 </AdminButton>
@@ -420,9 +522,13 @@ export function AdminRoutineTemplatesTab({
         open={deleting !== null}
         title={deleting ? `Delete "${deleting.name}"?` : ""}
         body={
-          subTab === "company"
-            ? "Every studio loses this standard. Routines already built from it on clients' records are not touched."
-            : "This studio loses the template. Routines already built from it on clients' records are not touched."
+          deleting && startListLine(deleting, nameFor) !== null
+            ? subTab === "company"
+              ? "Every studio loses this standard, and Start a plan stops offering it as a starting routine. Plans already started from it, and routines built from it, are not touched."
+              : "This studio loses the template, and Start a plan stops offering it as a starting routine. Plans already started from it, and routines built from it, are not touched."
+            : subTab === "company"
+              ? "Every studio loses this standard. Routines already built from it on clients' records are not touched."
+              : "This studio loses the template. Routines already built from it on clients' records are not touched."
         }
         confirmLabel="Delete"
         destructive

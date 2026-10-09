@@ -6,8 +6,9 @@ interview answers in his own words, and the structure are
 `docs/rounds/2026-10-07-first-session-and-routines.md`; read it first. The
 screens round is `docs/rounds/2026-10-08-first-session-screens.md` (AJ's
 picks, "1d 2a 3a" and "1a 2a 3a GO"). This folder is mostly the pure half:
-no React and no Firestore except `store.ts`, `starting-store.ts` and the one
-hook, `useStartingRoutines.ts` (see "The Firestore half" below).
+no React and no Firestore except `store.ts`, `starting-store.ts`, the one
+hook, `useStartingRoutines.ts` (see "The Firestore half" below), and the
+screens in `ui/`.
 
 | File | What it answers |
 | --- | --- |
@@ -27,6 +28,10 @@ hook, `useStartingRoutines.ts` (see "The Firestore half" below).
 | `store.ts` | The only writer of a plan, in one batch: `startPlan` (a plan's first write: Routine A made, or the plan put on the routine the client has, with its first change; the id made on the iPad, the commit never awaited) and `savePlanChange` (every change after it); `readPlanChanges` for the Changes list |
 | `starting-store.ts` | Starting routines and a studio's choice, read and written (the Firestore half of `starting-read.ts`) |
 | `useStartingRoutines.ts` | The hook a screen asks: one read of each per mount, no listener, the Academy's eleven while it waits or when the read fails, the choice null (unknown) until it answers, `reload()` |
+| `start-part.ts` | The routine template editor's "For new clients" part, the pure half: a stored `start` part read for the editor (`readStartPart`), day one tapped on and off (only the template's machines, day one's own order kept, since the Academy's is repaired and not the road's), the words that suggest it (lower case, once, at most 40), head office's default, the one thing that refuses a save (nothing on day one), what a save writes (`startPartForSave`: no machine the template lost, no empty list, `default` on a company template only, never `undefined`), the other defaults a save takes the flag off, the list's "Starting routine · day one: …" line and a source said in words ("From the Academy's Exercise Selection Template"). Three things keep the editor from losing what it can't show: the steps follow day one while the first of them is day one (a seeded routine's "Consultation", so On deck never calls a machine off day one by that name), a part switched off is kept beside the template without the default (`parkedStartOf`), and a word typed but not added goes in with Save (`withPendingWord`) |
+| `starting-choice.ts` | My Studio → Studio → Starting routines, the pure half: the choice in one order so an undone tap is no change, ticking and unticking (unticking one while following head office's list makes the studio's own list; ticking every one again goes back to following it; unticking the default clears it), the default (ticked as well), back to head office's list, the source line ("Following head office's list" or "Westlake's own choice"), what No default of our own means here, and a machine's name (the Academy's for a movement) |
+| `ui/StartPartEditor.tsx` | The "For new clients" part under the template editor's builder (`admin/routines/RoutineTemplateForm.tsx`): Offer as a starting routine, Day one (a row a tap marks), Words that suggest it, Head office's default (company templates only), the source read only. It says what the switch does to the Edit routine drawer, and that a studio keeping its own list ticks a new one on My Studio → Studio. A routine switched off in an earlier sitting comes back as it was (`startParked`). Controlled, the word being typed included, so it counts as unsaved; the tab's Save writes it |
+| `ui/StartingRoutinesPanel.tsx` | My Studio → Studio → Starting routines: each routine available to the studio with its day one, Our trainers see this and one Default, a blue Save through `useDirtyForm` (`saveStartingChoice`), what a tick means measured from what was last saved (the form's baseline, which its Save moves), read in words (Our trainers see this · Not offered here · Default, never faded boxes) with who changes it for everyone who doesn't lead the studio, loading and failed never "none", and the Academy's eleven said as such before head office has added any. `ui/starting-routines.css` is both screens' stylesheet |
 
 ## Rules that hold here
 
@@ -77,16 +82,36 @@ hook, `useStartingRoutines.ts` (see "The Firestore half" below).
   applying one there would make its whole road the routine and skip the
   plan. Its built-in templates stay while head office has no routine
   templates of its own, starting routines not counted, so the seed never
-  takes them away. Admins see and edit them in the routine template editor.
+  takes them away. Admins see and edit them in the routine template editor,
+  under "For new clients" (`ui/StartPartEditor.tsx`, Admins → Standard →
+  Standard template, and Operations → Setup → Floor for a studio's own).
+  An edit there writes only the fields that changed, each whole, through
+  `update` (`admin/routines/template-save.ts`): a merge would have kept a
+  word taken out, or a default switched off, in the stored map. Saving one
+  as head office's default takes `start.default` off any other company
+  template in the same batch, so there is only ever one.
+- `routinePresets/{id}.startParked`: a starting routine switched off in the
+  editor keeps its `start` part here, head office's default left out, so
+  switching it back on brings back what the editor has no control for (a
+  seeded routine's steps, source and kind) and the day one and words it had.
+  Only the editor reads it; while it is here the template is an ordinary one
+  (in the Edit routine drawer, never offered on Start a plan), and switching
+  it back on removes it in the same write. On the routinePresets rules as
+  they were (they check the tier, not the keys).
 - `studios/{s}/config/startingRoutines` = `{ use, defaultId, updatedAt,
   updatedBy }`: the studio's choice. `use: null` is all of head office's; a
-  list (at most 80) is exactly the ones ticked. Its leaders write it, everyone
-  who works there reads it (the renewals config's readers and writers).
+  list (at most 80) is exactly the ones ticked. Its leaders write it on My
+  Studio → Studio → Starting routines (`ui/StartingRoutinesPanel.tsx`),
+  everyone who works there reads it there, in words (the renewals config's
+  readers and writers). A studio's own list is exactly what is ticked, so a
+  routine added later, head office's or one its own leaders switch on, waits
+  until a leader ticks it; both screens say so.
 
 **Every write is one batch, and a tap never waits on it.** `startPlan`
 names the routine's id on the iPad and returns the commit for a toast on
 refusal. `saveStartingChoice` is a leader's Save on My Studio, awaited by
-that button only.
+that button only, and the template editor's Save is an administrator's or
+a leader's at the desk, awaited by its button.
 
 **The reads.**
 

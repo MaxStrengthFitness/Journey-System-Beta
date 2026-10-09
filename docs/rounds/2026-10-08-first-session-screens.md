@@ -342,6 +342,11 @@ the app's own routines kit (`features/routines/`, `routines.css`).
   kinds: a condition's match outranks a goal's whatever order the presets are
   read in; the seed writes the Academy's). `default` counts only on a company
   preset.
+- `RoutinePreset.startParked?`: a starting routine switched off in the
+  template editor keeps its `start` part here, head office's default left
+  out, so switching it back on brings back a seeded routine's steps, source
+  and kind, which the editor has no control for. Only the editor reads it;
+  switching back on removes it in the same write.
 - **Rules.**
   - `planChangeOk` accepts the four new kinds.
   - `studios/{s}/config/{configId}` gains `startingRoutines` with its validator.

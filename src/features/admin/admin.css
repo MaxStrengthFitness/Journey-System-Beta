@@ -1842,6 +1842,17 @@
   color: var(--adm-ink-muted);
 }
 
+/* "Starting routine · day one: Leg Press · Compound Row" (the design round,
+   Oct 8 2026). It names machines, so it wraps and is never cut short. */
+.adm-tpl__start {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--adm-ink-2);
+  overflow-wrap: anywhere;
+}
+
 .adm-tpl__seq {
   margin: 4px 0 0;
   padding: 0;

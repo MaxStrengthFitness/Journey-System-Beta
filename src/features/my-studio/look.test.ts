@@ -67,6 +67,10 @@ const FILES = [
   // The floor's notes on a machine (notes round, Oct 3 2026): on Machines'
   // door and the Catalog page, in --eq-* colours like standing-week.css.
   "features/floor-notes/floor-notes.css",
+  // Starting routines on Studio (the first-session design round, Oct 8
+  // 2026), and the routine template editor's "For new clients" part, in the
+  // Operations kit's --adm-* colours.
+  "features/routine-plan/ui/starting-routines.css",
 ] as const;
 
 /**
@@ -298,6 +302,10 @@ const TAP_CLASSES = [
   "op-btn", // Who's usually in: show the regulars' names
   "fn-btn", // the floor's notes: Add note, Add an update, Close
   "fn-fold", // Closed · N
+  "srt-opt", // Starting routines: Our trainers see this, Default
+  "srt-pick", // the template editor's Day one picks
+  "srt-word", // a word that suggests a starting routine, tapped to take it out
+  "srt-switch", // Offer as a starting routine, Head office's default
 ] as const;
 
 const px = (v: string) => (/^\d+(?:\.\d+)?px$/.test(v.trim()) ? parseFloat(v) : null);

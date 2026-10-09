@@ -22,6 +22,7 @@ import { mayOpenOperations } from "../admin/operations-access";
 import { leadsHere } from "../relay/leads";
 import { mayReadWeeks } from "../standing-week/present";
 import { StudioSettingsPanel } from "../studio-settings/StudioSettingsPanel";
+import { StartingRoutinesPanel } from "../routine-plan/ui/StartingRoutinesPanel";
 import { StudioActivityPanel } from "./StudioActivityPanel";
 import "../admin/admin.css";
 import "./my-studio.css";
@@ -48,6 +49,10 @@ import "./my-studio.css";
  *                     administrator
  *   The studio's day  shift hours and the deep-clean interval (from Relay's
  *                     Standards), on the dirty-tracked save bar
+ *   Starting routines which of head office's starting routines Start a plan
+ *                     offers here, and the studio's default (the design
+ *                     round, Oct 8 2026 — routine-plan/ui/
+ *                     StartingRoutinesPanel)
  *   InBody            the scanner's normal variation: how big a change has
  *                     to be before any screen calls it one (client codex,
  *                     Sep 2026 — InBodyVariationPanel, features/inbody/
@@ -135,6 +140,12 @@ export function StudioSection({ authTrainer, trainers }: StudioSectionProps) {
           (AJ, Sep 28 2026: "let the admins assign the default within the
           app"). The deep clean moved here from The studio's day. */}
       <StudioSettingsPanel studioId={studioId} studio={studio} canEdit={canEdit} />
+
+      {/* Which of head office's starting routines Start a plan offers here,
+          and the studio's default (the design round, Oct 8 2026; AJ:
+          "studios will chose their own, admins will create the routines to
+          pick from"). */}
+      <StartingRoutinesPanel studioId={studioId} studioName={studio.name} canEdit={canEdit} />
 
       <InBodyVariationPanel studioId={studioId} studio={studio} trainers={trainers ?? NONE} canEdit={canEdit} />
 
