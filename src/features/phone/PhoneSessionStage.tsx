@@ -28,6 +28,7 @@ import { studioTodayKey } from "../../lib/studio-time";
 import { QualityMark } from "../journey-grid/QualityMark";
 import { knownElsewhere } from "../machine-menu/header-words";
 import { noteKey } from "../machine-menu/note-key";
+import { setupButtonOf } from "../journey-grid/setup-button";
 import {
   cardLogged,
   cardNextOf,
@@ -67,6 +68,13 @@ export interface PhoneSessionStageProps {
   onCommit: () => void;
   /** The machine menu (features/machine-menu): settings, notes and how the client has done. */
   onOpenMachine: (machineId: string) => void;
+  /**
+   * The card's settings as one button, the iPad Now Bar's (the open
+   * session round, Oct 9 2026; AJ's "2a"): "Set up · 2 not set" on a first
+   * time, the settings once set, opening the machine card on the first empty
+   * dial. Absent, the settings are words, as before.
+   */
+  onSetUp?: (machineId: string) => void;
   /** Reorder, add or take off a machine (the iPad's RoutineOrderSheet). */
   onReorder: () => void;
   /**
@@ -121,6 +129,7 @@ export function PhoneSessionStage({
   onChange,
   onCommit,
   onOpenMachine,
+  onSetUp,
   onReorder,
   planNext = null,
   onAddPlanned,
@@ -193,6 +202,7 @@ export function PhoneSessionStage({
                 }}
                 onChange={(patch) => onChange(id, patch)}
                 onOpenMachine={() => onOpenMachine(id)}
+                onSetUp={onSetUp ? () => onSetUp(id) : undefined}
                 noPast={noPastWords({
                   knownElsewhere: knownElsewhere(
                     { metric: totals?.currentMachineMetrics?.[id] ?? null, stat: totals?.machineStats?.[id] ?? null },
@@ -275,6 +285,7 @@ function MachineCard({
   onNext,
   onChange,
   onOpenMachine,
+  onSetUp,
   noPast,
 }: {
   order: number;
@@ -291,6 +302,8 @@ function MachineCard({
   onNext: () => void;
   onChange: (patch: Partial<LiveSet>) => void;
   onOpenMachine: () => void;
+  /** The settings button: the machine card on the first empty dial. */
+  onSetUp?: () => void;
   /** What the strip says with no past times on the card (`noPastWords`). */
   noPast: string;
 }) {
@@ -303,6 +316,7 @@ function MachineCard({
   const outcome = value?.outcome ?? null;
   const bloodFlow = outcome === "practice" && value?.bloodFlow === true;
   const settings = machine.settings ? Object.entries(machine.settings) : [];
+  const setup = onSetUp ? setupButtonOf(machine) : null;
   const nextIs = cardNextOf(nextName, planNext);
   const ghost = seconds
     ? last?.isTSC && typeof last.seconds === "number"
@@ -332,7 +346,12 @@ function MachineCard({
         </button>
       </div>
 
-      {settings.length > 0 && (
+      {setup ? (
+        /* One 40px button, the Now Bar's: it wraps, never cut. */
+        <button type="button" className="ph-card__setup" data-kind={setup.kind} aria-label={setup.aria} onClick={onSetUp}>
+          {setup.words}
+        </button>
+      ) : settings.length > 0 && (
         <p className="ph-card__settings">
           {settings.map(([k, v]) => (
             <span key={k} title={machine.settingLabels?.[k] ?? k}>

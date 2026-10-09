@@ -461,8 +461,15 @@ export function SetupView({
     const all = Object.values(drafts.drafts).flatMap((d) => Object.values(d.sources));
     return all.length > 0 && all.every((s) => s === "legacy");
   }, [drafts]);
-  const reasonRequired = plan.needsReason && !legacy;
-  const canSave = plan.entries.length > 0 && !saving && !!author && (!reasonRequired || reason.trim().length > 0);
+  /* A reason is ASKED when saved values change, never required (the open
+     session round, Oct 9 2026, finding 5). AJ, Oct 8 2026: "You should be
+     able to change that and make the call as a trainer because you're
+     training them that day"; "it's nice to be able to communicate like,
+     hey, I'm changing this plan because of this reason". With none typed,
+     the save carries its own default (setup-plan.ts `reasonFor`: "Settings
+     update"), as the machine card's does. It was required here. */
+  const asksReason = plan.needsReason && !legacy;
+  const canSave = plan.entries.length > 0 && !saving && !!author;
 
   const save = async () => {
     if (!author || plan.entries.length === 0) return;
@@ -765,13 +772,13 @@ export function SetupView({
                 <span className="fit-save__suggested"> &middot; {counts.suggested} accepted from suggestions</span>
               ) : null}
             </p>
-            {reasonRequired ? (
+            {asksReason ? (
               <input
                 className="fit-save__reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Reason for changing saved settings (required)"
-                aria-label="Reason for the change"
+                placeholder="Why the change? (optional)"
+                aria-label="Reason for the change, optional"
               />
             ) : null}
             <div className="fit-save__actions">

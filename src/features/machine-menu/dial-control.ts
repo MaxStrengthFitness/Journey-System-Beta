@@ -261,6 +261,39 @@ export function wordChips(field: DialField, recordValues: readonly string[]): Wo
 }
 
 /* ------------------------------------------------------------------ *
+ * The editor's field: which keypad
+ * ------------------------------------------------------------------ */
+
+/**
+ * The keypad a dial's typing field asks for (the open session round, Oct 9
+ * 2026, finding 5: an empty dial's field came up on the letter keyboard, so
+ * "12" took a switch to the numbers first).
+ *
+ * A stepper says its own (a number dial "decimal", a letter dial "text").
+ * A field (rule 5) asks for the number pad when the field is a number, when
+ * everything known about the dial is a number (what is saved, the studio
+ * standard, the values on the client's record and this studio's), and when
+ * nothing is known at all: the floor's dials are numbers ("Seat 12, Back pad
+ * 3"), and the iPad's number keys still switch to letters. A word on the
+ * record or the standard ("High") keeps the letters.
+ */
+export function editorKeypad(field: DialField, control: DialControl, ctx: DialContext = {}): "decimal" | "text" {
+  if (control.kind === "stepper") return control.keypad;
+  if (control.kind === "options") return "text";
+  if (field.type === "number") return "decimal";
+  const fit = fitFieldOf(field);
+  const known = [
+    ctx.saved,
+    field.ghost,
+    ...(ctx.recordValues ?? []),
+    ...(ctx.studioValues ?? []).map((v) => shownValue(fit, v)),
+  ]
+    .map((v) => (v === null || v === undefined ? "" : String(v).trim()))
+    .filter((v) => v !== "");
+  return known.every((v) => NUMBER.test(v)) ? "decimal" : "text";
+}
+
+/* ------------------------------------------------------------------ *
  * Stepping
  * ------------------------------------------------------------------ */
 

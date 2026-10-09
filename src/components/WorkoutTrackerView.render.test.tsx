@@ -1471,6 +1471,79 @@ describe("the FileMaker floor (the open session round, Oct 9 2026)", () => {
     expect(pluses(host).map((b) => b.getAttribute("aria-label"))).toEqual(["Add Lumbar to today's session"]);
   });
 
+  /* Quick settings (AJ's "2a"): the Now Bar's settings are one button, and
+     on a first time it opens the machine card straight on the empty dial,
+     on the number pad; Save closes it. A client's session: Set up saves to
+     the client. */
+  const setupBtn = (host: HTMLElement) => host.querySelector<HTMLButtonElement>('[data-testid="nb-setup"]');
+  const settle = () =>
+    act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+  const routineLess = () => [{ id: SESSION_ID, data: () => ({ ...SESSION_DOCS[0].data(), routineId: null, sessionMachineIds: [] }) }];
+
+  it("the Now Bar's Set up opens the card on the first empty dial, and Save closes it, saved to the client", async () => {
+    sessionDocs = routineLess();
+    netCtl.routines = [];
+    const host = await mount(<Tracker />);
+    await act(async () => plus(host, "Rear Delt Hoist")!.click());
+    const setup = setupBtn(host)!;
+    expect(setup.getAttribute("data-kind")).toBe("setup");
+    expect(setup.textContent).toBe("Set up· 1 not set");
+    await act(async () => setup.click());
+    await settle();
+    const input = document.querySelector<HTMLInputElement>('.mm-dialog [data-block="settings"] [data-editor="field"] input');
+    expect(input).not.toBeNull();
+    expect(document.querySelector(".mm-dialog [data-editor] .mm-pos__title")?.textContent).toBe("Seat");
+    expect(input!.getAttribute("inputmode")).toBe("decimal");
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "12");
+      input!.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const save = [...document.querySelectorAll<HTMLButtonElement>(".mm-dialog button")].find((b) => b.textContent === "Save set-up");
+    await act(async () => save!.click());
+    await settle();
+    expect(document.querySelector(".mm-dialog .mm-card")).toBeNull();
+    const saved = writes.filter((w) => w.path.startsWith("clientMachineSettings/"));
+    expect(saved.map((w) => [w.path, w.data.settings])).toEqual([[`clientMachineSettings/${CLIENT_ID}_sm-solon-rear-delt`, { Seat: "12" }]]);
+    // From any other door (the grid's name) the card is the ordinary one: no editor open.
+    const nameDoor = [...host.querySelectorAll<HTMLButtonElement>(".jg-machine__btn")].find((b) => b.textContent?.includes("Rear Delt Hoist"));
+    await act(async () => nameDoor!.click());
+    await settle();
+    expect(document.querySelector(".mm-dialog .mm-card")).not.toBeNull();
+    expect(document.querySelector(".mm-dialog [data-editor]")).toBeNull();
+  });
+
+  /* The review (Oct 9 2026): an open session with no client yet would save
+     Set up's settings to the ghost record nobody reads (finding 4), and the
+     button would still say "Set up" after the save. Until the settings are
+     held on the session (3a), it offers no Set up there. */
+  it("offers no Set up in an open session with no client yet: nothing would reach the client", async () => {
+    sessionDocs = openSession();
+    const host = await mount(<Open />);
+    await act(async () => plus(host, "Rear Delt Hoist")!.click());
+    const setup = setupBtn(host);
+    expect(setup === null || (setup.disabled && setup.getAttribute("data-kind") !== "setup")).toBe(true);
+    expect(host.textContent).not.toContain("not set");
+    expect(writes.filter((w) => w.path.startsWith("clientMachineSettings/"))).toEqual([]);
+  });
+
+  /* The review (Oct 9 2026): only the server's answer says nothing is on
+     file. An empty answer from the iPad's cache (a cold cache, offline) is
+     not "Set up": a first set-up saved off it would write the client's other
+     dials over when it syncs. */
+  it("never says Set up off an empty answer from the iPad's cache", async () => {
+    sessionDocs = routineLess();
+    netCtl.routines = [];
+    netCtl.fromCache.add("clientMachineSettings");
+    netCtl.noBaseSettings = true;
+    const host = await mount(<Tracker />);
+    await act(async () => plus(host, "Rear Delt Hoist")!.click());
+    const setup = setupBtn(host)!;
+    expect(setup.getAttribute("data-kind")).toBe("settings");
+    expect(setup.textContent).not.toContain("not set");
+  });
+
   it("records only what was added, in the order done, never the floor, and touches no routine", async () => {
     netCtl.moreRoster = [LUMBAR];
     sessionDocs = openSession();

@@ -220,7 +220,9 @@ describe("the labels that left the display face's capitals", () => {
 
   it.each([
     [".jg-nb__kicker", "12px", "Load · Set · Form · No set?"],
-    [".jg-nb__chip b", "11px", "a setting's name over its value"],
+    // The read-only tiles' 11px name ("jg-nb__chip b") became the settings
+    // button's, beside its value (the open session round, Oct 9 2026).
+    [".jg-nb__setk", "12px", "a setting's name beside its value, on the settings button"],
     [".jg-nb__ubtn", "12px", "Reps over Sec"],
     [".jg-clock__label", "12px", "Elapsed / Paused"],
     [".jg-order__status", "12px", "Done / Now / Skipped"],
@@ -295,8 +297,34 @@ describe("the session's controls are raised on the edge AJ said yes to (2A)", ()
     expect(active["box-shadow"]).toBe("var(--jg-press)");
   });
 
-  it("the setting tiles are not buttons, so they never lift", () => {
-    expect(merged(".jg-nb__chip")["box-shadow"]).toBeUndefined();
+  /* Deliberately rewritten (the open session round, Oct 9 2026; AJ's "2a":
+     "the only thing is with the new routine is a client has no settings so
+     you need to be able to adjust the settings quickly while running the
+     routine"). This held "the setting tiles are not buttons, so they never
+     lift" until then: the tiles were read-only spans at 32px. They are one
+     button now, which opens the machine card on the first empty dial, so it
+     is a raised control on the 3:1 edge at 40px, and presses. */
+  it("the setting button is a raised control at 40px: the lift, a top light, its 3:1 edge, and a press", () => {
+    const body = merged(".jg-nb__setup");
+    expect(body.background).toBe("var(--jg-raised)");
+    expect(body["box-shadow"]).toBe("var(--jg-elev-1), inset 0 1px 0 var(--jg-highlight)");
+    expect(body.border).toBe("1px solid var(--jg-control-edge)");
+    expect(body["min-height"]).toBe("40px");
+    expect(body["white-space"]).toBe("normal");
+    const active = merged(".jg-nb__setup:active");
+    expect(active.transform).toBe("translateY(1px)");
+    expect(active["box-shadow"]).toBe("var(--jg-press)");
+    // Disabled, it lies flat.
+    expect(merged(".jg-nb__setup:disabled")["box-shadow"]).toBe("none");
+    // The read-only tiles are gone with their rules.
+    expect(RULES.some((r) => r.selectors.some((s) => s.includes("jg-nb__chip")))).toBe(false);
+  });
+
+  /* AJ, Oct 3 2026, the quieter Now Bar: "everything in the green box is
+     very large", and the settings came down a size (the tiles' values were
+     14px). The button keeps them there. */
+  it("the setting button's values stay a size down, at 14px, as the quieter bar set them", () => {
+    expect(merged(".jg-nb__setv")["font-size"]).toBe("14px");
   });
 });
 

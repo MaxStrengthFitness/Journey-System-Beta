@@ -122,9 +122,13 @@ chose. The new editor:
   (`Seat: 3–5`), pulled from the catalog's `settingFields.helpText` /
   `defaultSettings`, or from the studio roster override where one exists.
 - **Auto-fills only absolute standards** — a value that is the same for every
-  client on that machine. Today that is `Gap: 0`, and it is driven by a single
-  function (`absoluteStandardFor`, `adapters.ts`) rather than scattered `if (key === 'gap')`
-  checks, so adding the next one is a one-line change.
+  client on that machine. Today that is the gap, and WHICH dial is driven by a
+  single list (`ABSOLUTE_DIALS`, `isAbsoluteDial`, `adapters.ts`) rather than
+  scattered `if (key === 'gap')` checks, so adding the next one is a one-line
+  change. WHAT it fills is the machine's own value (`absoluteValueFor`); a
+  machine with none leaves the dial empty. It fell back to `Gap: 0` until Oct 9
+  2026, and the first save on such a machine wrote Gap 0 (the open session
+  round, finding 5).
 - **Never saves a ghost.** A field left showing its placeholder is saved as
   empty, and the machine stays "Not set up". That is honest; the old flow's 5%
   configured number was not.

@@ -55,6 +55,10 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   { file: "features/phone/phone.css", cls: "ph-card__next", what: "\"Next: Leg Press\" and \"Next in the plan: Hip Abduction · Add\" on the phone's card in hand" },
   // The FileMaker floor on a phone (the open session round, Oct 9 2026).
   { file: "features/phone/phone.css", cls: "ph-floor__name", what: "a machine on the rest of the floor, under a phone's session cards" },
+  // The settings button (the open session round, Oct 9 2026; AJ's "2a"):
+  // "Gap 1 · Seat 12 · Back pad 3", a dial's own name beside each value.
+  { file: "features/journey-grid/journey-grid.css", cls: "jg-nb__setup", what: "the Now Bar's settings button, the dials by name (\"Seat Angle 4 · Shoulder Pads 3\")" },
+  { file: "features/phone/phone.css", cls: "ph-card__setup", what: "the phone card's settings button, the dials by name" },
   { file: "features/routine-builder/routine-builder.css", cls: "rb-row__name", what: "a machine in the routine builder's list" },
   { file: "features/routine-builder/routine-builder.css", cls: "rb-pick__name", what: "a machine in the routine builder's picker" },
   { file: "features/routine-builder/routine-builder.css", cls: "rb-warn__pair", what: "the two machines a sequencing warning names" },

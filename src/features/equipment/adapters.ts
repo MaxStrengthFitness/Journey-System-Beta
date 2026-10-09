@@ -65,20 +65,26 @@ export const slug = (s: string): string =>
  * Dials that are identical for every client on a machine, so pre-filling them
  * is a fact rather than a guess. Keep this list short and evidence-based —
  * everything NOT here stays a ghost the trainer has to confirm.
+ *
+ * It says WHICH dial only. Until Oct 9 2026 it also held a value, "0", that
+ * the dial fell back to when the machine had none, so the first save on any
+ * machine with no Gap standard (the Chest Press, the Leg Press and eight more
+ * of the twenty) wrote "Gap 0" for a client nobody had set a gap for (the
+ * open session round, finding 5). A machine with no gap of its own now
+ * leaves the dial empty, "Not set", like every other dial.
  */
-const ABSOLUTE_STANDARDS: Record<string, string> = {
-  gap: "0",
-};
+const ABSOLUTE_DIALS: ReadonlySet<string> = new Set(["gap"]);
 
-export function absoluteStandardFor(key: string, label: string): string | undefined {
-  return ABSOLUTE_STANDARDS[slug(key)] ?? ABSOLUTE_STANDARDS[slug(label)];
+/** The dial is the same for every client on a machine (today, the gap). */
+export function isAbsoluteDial(key: string, label: string): boolean {
+  return ABSOLUTE_DIALS.has(slug(key)) || ABSOLUTE_DIALS.has(slug(label));
 }
 
 /**
- * WHICH dial pre-fills for real comes from ABSOLUTE_STANDARDS above. WHAT it
- * pre-fills comes from this machine's own resolved default.
+ * WHICH dial pre-fills for real comes from ABSOLUTE_DIALS above. WHAT it
+ * pre-fills comes from this machine's own resolved default, and nothing else.
  *
- * Until Sep 20 2026 (Claude Experiment, phase C) the constant supplied both,
+ * Until Sep 20 2026 (Claude Experiment, phase C) a constant supplied both,
  * so every machine pre-filled `gap: "0"` — written, saved, and then counted
  * as evidence by machine trends and machine fit ("most clients here use gap
  * 0"). The generated catalog disagrees: the Academy's starting gap is 2 on
@@ -87,18 +93,17 @@ export function absoluteStandardFor(key: string, label: string): string | undefi
  *
  * `ghost` is already the right value — the studio's roster override, else the
  * machine's standardSettings, else the catalog's defaultSettings — so an
- * absolute dial now pre-fills the machine's answer and falls back to the
- * constant only where the machine has none.
+ * absolute dial pre-fills the machine's answer. Where the machine has none
+ * it is undefined: an ordinary empty dial, never "0" (Oct 9 2026).
  */
 export function absoluteValueFor(
   key: string,
   label: string,
   ghost: string | null,
 ): string | undefined {
-  const constant = absoluteStandardFor(key, label);
-  if (constant === undefined) return undefined;
+  if (!isAbsoluteDial(key, label)) return undefined;
   const fromMachine = (ghost ?? "").trim();
-  return fromMachine !== "" ? fromMachine : constant;
+  return fromMachine !== "" ? fromMachine : undefined;
 }
 
 /** MACHINE_DATABASE authors free-text categories; the summary needs five buckets. */
@@ -211,6 +216,24 @@ export function buildFields(
   }
 
   return fields;
+}
+
+/**
+ * A machine's dials as the machine card draws them, with this studio's
+ * standards: `toEquipmentMachines`' own rule, for a screen that needs the
+ * dials without the rest (the Now Bar's Set up, the open session round,
+ * Oct 9 2026), so the two can never count a different list.
+ */
+export function fieldsForMachine(
+  machine: Machine,
+  catalogById: Readonly<Record<string, MachineCatalogEntry>>,
+  studioMachineSettings?: Readonly<Record<string, Record<string, string>>> | null,
+): SettingFieldSpec[] {
+  const id = machine.id;
+  if (!id) return [];
+  const catalog = catalogById[id];
+  const studioStandards = studioMachineSettings?.[id] || machine.standardSettings || catalog?.defaultSettings || {};
+  return buildFields(machine, catalog, studioStandards);
 }
 
 /* ------------------------------------------------------------------ *
@@ -463,9 +486,6 @@ export function toEquipmentMachines({
     const catalog = catalogById[id];
     const setting = clientSettings?.[id];
 
-    const studioStandards =
-      studioMachineSettings?.[id] || machine.standardSettings || catalog?.defaultSettings || {};
-
     const settings = setting?.settings || {};
     const notes = setting?.machineNotes || [];
     // The one list (machine-notes.ts): her journal's notes on the machine
@@ -493,7 +513,7 @@ export function toEquipmentMachines({
       kinematic: machine.kinematicClassification || kb?.kinematicClassification || catalog?.kinematicClassification || null,
       category: kb?.category || machine.anatomicalRegion || catalog?.anatomicalRegion || null,
       region: regionOf(kb?.category || machine.anatomicalRegion || catalog?.anatomicalRegion, machine.name),
-      fields: buildFields(machine, catalog, studioStandards),
+      fields: fieldsForMachine(machine, catalogById, studioMachineSettings),
       guide: buildGuide(machine, catalog),
       bodyType: catalog?.bodyTypeAdjustments ?? null,
       baselineLoad: {

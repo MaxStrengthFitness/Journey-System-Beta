@@ -16,11 +16,22 @@ import {
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
+/**
+ * One button beside the words, for as long as the toast lasts: Undo after
+ * the machine card's Set up has saved and closed (the open session round,
+ * Oct 9 2026). A tap runs it and takes the toast away.
+ */
+export interface ToastAction {
+  label: string;
+  run: () => void;
+}
+
 export interface ToastMessage {
   id: string;
   message: string;
   type: ToastType;
   duration?: number;
+  action?: ToastAction;
   /** On its way out: drawn for TOAST_EXIT_MS more, fading, then gone. */
   leaving?: boolean;
 }
@@ -38,7 +49,7 @@ const TOAST_IN = "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide
 const TOAST_OUT = "motion-safe:animate-out motion-safe:fade-out-0 motion-safe:zoom-out-90 duration-150 fill-mode-forwards";
 
 interface ToastContextType {
-  toast: (message: string, type?: ToastType, duration?: number) => void;
+  toast: (message: string, type?: ToastType, duration?: number, action?: ToastAction) => void;
   success: (message: string, duration?: number) => void;
   error: (message: string, duration?: number) => void;
   warning: (message: string, duration?: number) => void;
@@ -60,9 +71,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addToast = useCallback(
-    (message: string, type: ToastType = "info", duration = 4000) => {
+    (message: string, type: ToastType = "info", duration = 4000, action?: ToastAction) => {
       const id = Math.random().toString(36).substring(2, 9);
-      setToasts((prev) => [...prev, { id, message, type, duration }]);
+      setToasts((prev) => [...prev, { id, message, type, duration, ...(action ? { action } : {}) }]);
 
       if (duration > 0) {
         setTimeout(() => {
@@ -96,8 +107,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         message: string,
         type?: ToastType,
         duration?: number,
+        action?: ToastAction,
       ) => {
-        addToast(message, type, duration);
+        addToast(message, type, duration, action);
       };
     }
     return () => {
@@ -165,6 +177,21 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 <div className="flex-1 text-[14px] font-semibold leading-snug">
                   {t.message}
                 </div>
+                {/* The one action (Undo), 40px, in the toast's own words'
+                    colour on its own edge, so it reads on every kind. */}
+                {t.action && !t.leaving ? (
+                  <button
+                    type="button"
+                    data-toast-action=""
+                    onClick={() => {
+                      removeToast(t.id);
+                      t.action!.run();
+                    }}
+                    className="-my-2.5 h-10 shrink-0 rounded-lg border border-current px-3 text-[14px] font-bold text-current"
+                  >
+                    {t.action.label}
+                  </button>
+                ) : null}
                 {/* 40px to tap, the toast's own words' colour (the grey was
                     about 2.5:1 on the dark toasts). */}
                 <button

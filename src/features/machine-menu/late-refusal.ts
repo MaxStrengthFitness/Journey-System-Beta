@@ -32,10 +32,28 @@ export function whenRefusedLater<T>(write: Promise<T>, refused: (err: unknown) =
  * Say a late refusal once the card has closed: the app's toast, through the
  * hook ToastProvider puts on the window (lib/firestore-errors.ts says its
  * errors the same way). Silent where there is no provider (a test, or a
- * screen drawn before the shell).
+ * screen drawn before the shell). "info" says something that is not a
+ * refusal once the card has closed (a save still only on this iPad, an
+ * Undo with nothing left to take back).
  */
-export function sayAfterClose(text: string): void {
+export function sayAfterClose(text: string, type: "error" | "info" = "error", ms = 8000): void {
   if (typeof window === "undefined") return;
   const show = (window as unknown as { __showToast?: (message: string, type?: string, duration?: number) => void }).__showToast;
-  show?.(text, "error", 8000);
+  show?.(text, type, ms);
+}
+
+/**
+ * Say a save that closed the card, with Undo beside it for `ms` (the Now
+ * Bar's Set up, the open session round, Oct 9 2026: "Save closes the card,
+ * with a 10-second Undo"). The app's toast, through the same window hook;
+ * silent where there is no provider.
+ */
+export function sayWithUndo(text: string, onUndo: () => void, ms: number): void {
+  if (typeof window === "undefined") return;
+  const show = (
+    window as unknown as {
+      __showToast?: (message: string, type?: string, duration?: number, action?: { label: string; run: () => void }) => void;
+    }
+  ).__showToast;
+  show?.(text, "success", ms, { label: "Undo", run: onUndo });
 }

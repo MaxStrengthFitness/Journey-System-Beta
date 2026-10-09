@@ -70,6 +70,10 @@ export interface MachineMenuBodyProps {
   inline?: boolean;
   /** A layout to use instead of the viewport's (tests, the inline pane). */
   layout?: MenuLayout;
+  /** Quick set-up (the Now Bar's Set up): the first empty dial's editor open at once. */
+  focusDial?: boolean;
+  /** Save closes the card through `onClose`, with Undo in the toast. */
+  closeOnSave?: boolean;
 }
 
 /** The viewport's size, kept up to date through a turn of the iPad. */
@@ -99,7 +103,18 @@ function useViewport(): { width: number; height: number } {
   return size;
 }
 
-export function MachineMenuBody({ host, machineId, catalogById, onClose, onBack, titleAs, inline = false, layout: forcedLayout }: MachineMenuBodyProps) {
+export function MachineMenuBody({
+  host,
+  machineId,
+  catalogById,
+  onClose,
+  onBack,
+  titleAs,
+  inline = false,
+  layout: forcedLayout,
+  focusDial = false,
+  closeOnSave = false,
+}: MachineMenuBodyProps) {
   // A new number reads the studio's notes on the unit again (a floor note was added here).
   const [floorRound, setFloorRound] = useState(0);
   const data = useMachineMenuData(host, machineId, catalogById, floorRound);
@@ -238,6 +253,8 @@ export function MachineMenuBody({ host, machineId, catalogById, onClose, onBack,
             onLastChanged={onLastChanged}
             onAddHealthNote={onAddHealthNote}
             onDirtyChange={setSettingsDirty}
+            focusDial={focusDial}
+            onSaveClose={closeOnSave ? onClose : undefined}
           />
         );
       case "notes":

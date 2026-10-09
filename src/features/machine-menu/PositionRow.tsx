@@ -17,12 +17,31 @@
  *
  * Picking changes the DRAFT only: nothing is written until Save on the
  * change strip. Done closes the row.
+ *
+ * NEXT (the open session round, Oct 9 2026; AJ's "2a"): on Set up's walk,
+ * while another dial is still empty, the head's button is Next, the solid
+ * blue, and it opens that dial's editor; Enter in the field does the same.
+ * On the last empty dial it is Done again. The card passes `onNext` only on
+ * that walk, so every other door keeps Done.
  */
 import { useEffect, useId, useRef } from "react";
 import type { WordChip } from "./dial-control";
 import "./machine-menu.css";
 
 const clean = (v: string | null | undefined) => (v ?? "").trim();
+
+/** The head's one button: Next to the next empty dial, or Done. */
+function StepButton({ nextLabel, onNext, onDone }: { nextLabel?: string | null; onNext?: (() => void) | null; onDone: () => void }) {
+  return onNext ? (
+    <button type="button" className="mm-btn mm-btn--live" data-step="next" aria-label={nextLabel ? `Next: ${nextLabel}` : "Next"} onClick={onNext}>
+      Next
+    </button>
+  ) : (
+    <button type="button" className="mm-btn" data-step="done" onClick={onDone}>
+      Done
+    </button>
+  );
+}
 
 export interface PositionRowProps {
   label: string;
@@ -38,9 +57,12 @@ export interface PositionRowProps {
   kind?: "positions" | "options";
   onPick: (value: string) => void;
   onDone: () => void;
+  /** Another dial is still empty: Next opens it (its label, for a screen reader). */
+  onNext?: (() => void) | null;
+  nextLabel?: string | null;
 }
 
-export function PositionRow({ label, positions, current, saved, standard, kind = "positions", onPick, onDone }: PositionRowProps) {
+export function PositionRow({ label, positions, current, saved, standard, kind = "positions", onPick, onDone, onNext = null, nextLabel = null }: PositionRowProps) {
   const titleId = useId();
   const now = clean(saved).toLowerCase();
   const picked = clean(current).toLowerCase();
@@ -50,9 +72,7 @@ export function PositionRow({ label, positions, current, saved, standard, kind =
         <span className="mm-pos__title" id={titleId}>
           {label}: {kind === "options" ? "pick one" : "pick a position"}
         </span>
-        <button type="button" className="mm-btn" onClick={onDone}>
-          Done
-        </button>
+        <StepButton nextLabel={nextLabel} onNext={onNext} onDone={onDone} />
       </div>
       <div className="mm-pos__btns">
         {positions.map((p) => {
@@ -89,9 +109,12 @@ export interface ValueEditorProps {
   chips?: readonly WordChip[];
   onChange: (value: string) => void;
   onDone: () => void;
+  /** Another dial is still empty: Next (and Enter) opens it. */
+  onNext?: (() => void) | null;
+  nextLabel?: string | null;
 }
 
-export function ValueEditor({ label, value, keypad, chips = [], onChange, onDone }: ValueEditorProps) {
+export function ValueEditor({ label, value, keypad, chips = [], onChange, onDone, onNext = null, nextLabel = null }: ValueEditorProps) {
   const inputId = useId();
   const ref = useRef<HTMLInputElement | null>(null);
   // Opened with the value selected, so typing replaces it.
@@ -107,9 +130,7 @@ export function ValueEditor({ label, value, keypad, chips = [], onChange, onDone
         <label className="mm-pos__title" htmlFor={inputId}>
           {label}
         </label>
-        <button type="button" className="mm-btn" onClick={onDone}>
-          Done
-        </button>
+        <StepButton nextLabel={nextLabel} onNext={onNext} onDone={onDone} />
       </div>
       {chips.length > 0 ? (
         <div className="mm-choices" role="group" aria-label={`${label}: values on the record`}>
@@ -134,9 +155,16 @@ export function ValueEditor({ label, value, keypad, chips = [], onChange, onDone
         // inputMode over type=number: iPad Safari's spinner is a fingertip
         // hazard, and the number pad is what the trainer wants.
         inputMode={keypad}
+        enterKeyHint={onNext ? "next" : "done"}
         autoComplete="off"
+        data-keypad={keypad}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter") return;
+          e.preventDefault();
+          (onNext ?? onDone)();
+        }}
       />
     </div>
   );

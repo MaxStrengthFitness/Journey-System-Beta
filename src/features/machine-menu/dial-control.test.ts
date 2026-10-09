@@ -4,6 +4,7 @@ import {
   MAX_POSITIONS,
   canStep,
   dialControl,
+  editorKeypad,
   recordValuesFor,
   scaleOf,
   stepDial,
@@ -173,5 +174,43 @@ describe("where the values come from", () => {
       rows: [{ pairs: [{ label: "Back pad", from: "3", to: "1" }, { label: "Seat", from: "4", to: "5" }] }],
     });
     expect(values).toEqual(["3", "2", "1"]);
+  });
+});
+
+describe("the editor's keypad (the open session round, Oct 9 2026, finding 5)", () => {
+  const BLANK: DialField = { key: "seat", label: "Seat", type: "text", ghost: null };
+
+  it("asks for the number pad on an empty dial nothing is known about: the floor's dials are numbers", () => {
+    const c = dialControl(BLANK, { current: null, saved: "" });
+    expect(c.kind).toBe("text");
+    expect(editorKeypad(BLANK, c, { saved: "" })).toBe("decimal");
+  });
+
+  it("asks for the number pad when the standard and the record are numbers", () => {
+    const c = dialControl(SEAT, { current: null, saved: "" });
+    expect(editorKeypad(SEAT, c, { saved: "" })).toBe("decimal");
+    expect(editorKeypad(BLANK, dialControl(BLANK, {}), { recordValues: ["12"] })).toBe("decimal");
+    expect(editorKeypad({ ...BLANK, type: "number" }, dialControl(BLANK, {}), { recordValues: ["High"] })).toBe("decimal");
+  });
+
+  it("keeps the letters for a word dial", () => {
+    const c = dialControl(FOOT, { current: null, saved: "" });
+    expect(editorKeypad(FOOT, c, { saved: "" })).toBe("text");
+    expect(editorKeypad(BLANK, dialControl(BLANK, {}), { saved: "High" })).toBe("text");
+  });
+
+  it("takes a stepper's own keypad: a number dial's numbers, a letter dial's letters", () => {
+    const numbers = dialControl(BLANK, { saved: "4", recordValues: ["3", "40"] });
+    expect(editorKeypad(BLANK, numbers, { saved: "4" })).toBe("decimal");
+    const letters = dialControl(BLANK, { saved: "B", recordValues: ["A"] });
+    expect(editorKeypad(BLANK, letters, { saved: "B" })).toBe("text");
+  });
+
+  it("judges an empty dial's editor from what is saved, so a half-typed digit never makes it a one-position row", () => {
+    // What the card opened the editor with until Oct 9 2026: the draft "1" made a stepper with one position.
+    const fromDraft = stepper(dialControl(BLANK, { current: "1", saved: "" }));
+    expect(fromDraft.positions).toEqual(["1"]);
+    // What it is judged from now: the saved value, nothing typed.
+    expect(dialControl(BLANK, { current: null, saved: "" }).kind).toBe("text");
   });
 });

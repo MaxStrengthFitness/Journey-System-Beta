@@ -12,6 +12,21 @@ import { createRoot, type Root } from "react-dom/client";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+/* How many times the bar has drawn: it works out its settings button once a
+   draw, so counting that counts the bar's renders (the memo test below). A
+   pass-through otherwise. */
+const draws = vi.hoisted(() => ({ n: 0 }));
+vi.mock("./setup-button", async (importOriginal) => {
+  const real = await importOriginal<typeof import("./setup-button")>();
+  return {
+    ...real,
+    setupButtonOf: (...args: Parameters<typeof real.setupButtonOf>) => {
+      draws.n++;
+      return real.setupButtonOf(...args);
+    },
+  };
+});
+
 import { SessionNowBar } from "./SessionNowBar";
 import type { JourneyRow, LiveSet } from "./types";
 import { hasWeightOnFile, startingRangeSlot } from "../routine-plan/session-plan";
@@ -395,5 +410,101 @@ describe("SessionNowBar on day one: never orange, and First time on this machine
     expect(host.querySelector<HTMLInputElement>('input[aria-label="Weight in pounds"]')!.value).toBe("");
     act(() => root!.render(<SessionNowBar row={firstTime} history={[]} onChange={() => {}} />));
     expect(host.querySelector('[data-testid="nb-first"]')).toBeNull();
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * The settings button (the open session round, Oct 9 2026; AJ's "2a")
+ * ------------------------------------------------------------------ */
+
+describe("SessionNowBar's settings button: Set up · 2 not set, then the settings themselves", () => {
+  const fly = (machine: Partial<JourneyRow["machine"]>): JourneyRow => ({
+    machine: { id: "m-chest-fly", name: "Chest Fly", group: "Push", settings: { G: "1" }, settingLabels: { G: "Gap" }, ...machine },
+    sets: {},
+  });
+  // The bar's other props, the same each draw, as the tracker's memoised ones are.
+  const NO_HISTORY: never[] = [];
+  const onChange = () => {};
+  function draw(r: JourneyRow, onSetUp?: (id: string) => void) {
+    if (!host) {
+      host = document.createElement("div");
+      document.body.appendChild(host);
+      root = createRoot(host);
+    }
+    act(() => root!.render(<SessionNowBar row={r} history={NO_HISTORY} onChange={onChange} onSetUp={onSetUp} />));
+    return host;
+  }
+  const setup = () => host!.querySelector<HTMLButtonElement>('[data-testid="nb-setup"]');
+
+  it("is one button on a first time, Set up · 2 not set, and a tap opens the card on that machine", () => {
+    const onSetUp = vi.fn();
+    draw(fly({ dialsNotSet: 2, firstSetup: true }), onSetUp);
+    const b = setup()!;
+    expect(b.tagName).toBe("BUTTON");
+    expect(b.className).toBe("jg-nb__setup");
+    expect(b.getAttribute("data-kind")).toBe("setup");
+    expect(b.textContent).toBe("Set up· 2 not set");
+    expect(b.getAttribute("aria-label")).toBe("Set up Chest Fly: 2 not set. Opens the machine card on the first one.");
+    act(() => b.click());
+    expect(onSetUp).toHaveBeenCalledWith("m-chest-fly");
+    // The read-only tiles are gone.
+    expect(host!.querySelector(".jg-nb__chip")).toBeNull();
+  });
+
+  it("says the settings themselves once set, with their full names, and opens the card the same way", () => {
+    const onSetUp = vi.fn();
+    draw(
+      fly({ settings: { G: "1", S: "12", B: "3" }, settingLabels: { G: "Gap", S: "Seat", B: "Back pad" }, dialsNotSet: 0, firstSetup: false }),
+      onSetUp,
+    );
+    const b = setup()!;
+    expect(b.getAttribute("data-kind")).toBe("settings");
+    expect([...b.querySelectorAll(".jg-nb__setkv")].map((kv) => kv.textContent)).toEqual(["Gap1", "·Seat12", "·Back pad3"]);
+    expect(b.getAttribute("aria-label")).toBe("Chest Fly settings: Gap 1 · Seat 12 · Back pad 3. Opens the machine card to change them.");
+    act(() => b.click());
+    expect(onSetUp).toHaveBeenCalledWith("m-chest-fly");
+  });
+
+  it("never claims a count while the settings are unread, and is no button with nothing to show", () => {
+    draw(fly({ dialsNotSet: 2 }));
+    expect(setup()!.textContent).toBe("Gap1");
+    draw({ machine: { id: "m-neck", name: "Neck", group: "Neck", dialsNotSet: 0, firstSetup: true }, sets: {} });
+    expect(setup()).toBeNull();
+  });
+
+  it("does nothing without a door: disabled, never a dead tap", () => {
+    draw(fly({ dialsNotSet: 2, firstSetup: true }));
+    expect(setup()!.disabled).toBe(true);
+  });
+
+  /* The bar is memo: given the same row and the same onSetUp it does not
+     draw again, and a new function each time would draw it on every one of
+     the tracker's renders. So the tracker hands it ONE function for the
+     life of the screen (a callback with no deps, as onAddPlanned is). */
+  it("does not draw again for the same row and the same onSetUp (the bar is memo), and does for a new function", () => {
+    const onSetUp = vi.fn();
+    const r = fly({ dialsNotSet: 2, firstSetup: true });
+    draw(r, onSetUp);
+    const before = draws.n;
+    draw(r, onSetUp);
+    expect(draws.n, "same props: no draw").toBe(before);
+    draw(r, () => {});
+    expect(draws.n, "a new function: a draw").toBe(before + 1);
+  });
+
+  it("is handed one stable function by the tracker: a callback with no deps, and none at all while an open session has no client", () => {
+    const src = readFileSync(resolve(__dirname, "../../components/WorkoutTrackerView.tsx"), "utf8");
+    expect(src).toMatch(/const onSetUpMachine = React\.useCallback\(\(id: string\) => \{[^}]*\}, \[\]\);/);
+    expect(src).toMatch(/const onSetUpDoor = noClientYet \? undefined : onSetUpMachine;/);
+    expect(src.match(/onSetUp=\{onSetUpDoor\}/g)).toHaveLength(2);
+  });
+
+  it("is drawn as a raised control at 40px that wraps, never cut (journey-grid.css)", () => {
+    const css = readFileSync(resolve(__dirname, "journey-grid.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const rule = /\.jg-nb__setup\s*\{([^}]*)\}/.exec(css)![1];
+    expect(rule).toMatch(/min-height:\s*40px/);
+    expect(rule).toMatch(/white-space:\s*normal/);
+    expect(rule).toMatch(/background:\s*var\(--jg-raised\)/);
+    expect(rule).not.toMatch(/text-overflow|nowrap|line-clamp/);
   });
 });

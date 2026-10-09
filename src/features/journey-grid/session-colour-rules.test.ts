@@ -233,7 +233,9 @@ describe("small words on every machine read in the muted ink, never the faint", 
  * holds which rules draw with it.
  */
 const CONTROLS = [
-  [".jg-nb__chip", "solid", "the Now Bar's setting chips"],
+  // The Now Bar's setting chips became one settings button (the open
+  // session round, Oct 9 2026; AJ's "2a"), on the same edge.
+  [".jg-nb__setup", "solid", "the Now Bar's settings button"],
   [".jg-nb__sbtn", "solid", "the Now Bar's steppers"],
   [".jg-nb__unit", "solid", "the Now Bar's REPS | SEC switch"],
   [".jg-nb__qbtn", "solid", "the Now Bar's quality buttons"],

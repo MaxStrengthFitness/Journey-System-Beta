@@ -91,7 +91,11 @@ export interface SetupPlanEntry {
 
 export interface SetupPlan {
   entries: SetupPlanEntry[];
-  /** True when values that were already saved are being changed: the Save needs a reason. */
+  /**
+   * True when values that were already saved are being changed: the Save
+   * ASKS for a reason, never requires one (the open session round, Oct 9
+   * 2026); with none typed, `reasonFor` gives the default.
+   */
   needsReason: boolean;
   settingsChanged: number;
   weightsChanged: number;

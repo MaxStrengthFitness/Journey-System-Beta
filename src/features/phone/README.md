@@ -36,7 +36,11 @@ Each card, in the order the floor needs it (the-floor.md, "Where the eye goes"):
    The loudest open note on the machine shows beside the name in the one
    note key (`machine-menu/note-key.ts`): a plum circle for a Heads up, the
    Hub's crimson triangle for Critical.
-2. **Its settings**, the short keys the grid uses, each speaking its full name.
+2. **Its settings**, one 40px button since the open session round (Oct 9
+   2026; AJ's "2a"), the iPad Now Bar's (`journey-grid/setup-button.ts`):
+   "Set up · 2 not set" on a first time, the settings by their full names
+   once set, opening the machine card on the first empty dial; Save closes
+   it, with Undo in the toast. Without `onSetUp`, the short keys as words.
 3. **Its last five times**, side by side, newest on the right (`lastTimes`):
    the date, the weight, the count, the star or the kaizen. They are the
    machine's own last five times, not her last five sessions: a card stands

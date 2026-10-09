@@ -202,16 +202,34 @@ describe("the Setup screen", () => {
     expect(reviews[reviews.length - 1]).toBe(0);
   });
 
-  it("asks for a reason only when saved values are changed", () => {
+  /* Asked, never required (the open session round, Oct 9 2026, finding 5).
+     This test held the reason REQUIRED until then: Save stayed disabled until
+     one was typed. AJ, Oct 8 2026: "You should be able to change that and
+     make the call as a trainer because you're training them that day", and
+     "it's nice to be able to communicate like, hey, I'm changing this plan
+     because of this reason" — so it is asked, and Save never waits for it. */
+  it("asks for a reason only when saved values are changed, and never requires one", async () => {
     const el = mount(saved({ Gap: "0", Seat: "4" }));
     click(button(el, /^Set up/));
     type(cell(el, "Compound Row Chest"), "3"); // filling an empty field: still set-up
     expect(el.querySelector(".fit-save__reason")).toBeNull();
     type(cell(el, "Compound Row Seat"), "5"); // changing a saved one: an override
-    expect(el.querySelector(".fit-save__reason")).not.toBeNull();
-    expect((button(el, "Save set-up") as HTMLButtonElement).disabled).toBe(true);
-    type(el.querySelector(".fit-save__reason") as HTMLInputElement, "Longer femurs than the seat suggests");
+    const ask = el.querySelector(".fit-save__reason") as HTMLInputElement;
+    expect(ask).not.toBeNull();
+    expect(ask.placeholder).toBe("Why the change? (optional)");
     expect((button(el, "Save set-up") as HTMLButtonElement).disabled).toBe(false);
+    await clickAsync(button(el, "Save set-up"));
+    expect(spy.commits).toHaveLength(1);
+    expect(spy.commits[0].reason).toBe("");
+  });
+
+  it("carries a typed reason when one is given", async () => {
+    const el = mount(saved({ Gap: "0", Seat: "4" }));
+    click(button(el, /^Set up/));
+    type(cell(el, "Compound Row Seat"), "5");
+    type(el.querySelector(".fit-save__reason") as HTMLInputElement, "Longer femurs than the seat suggests");
+    await clickAsync(button(el, "Save set-up"));
+    expect(spy.commits[0].reason).toBe("Longer femurs than the seat suggests");
   });
 
   it("reads a line of FileMaker shorthand in Quick entry, keeps what it cannot place, and needs no reason", async () => {

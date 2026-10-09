@@ -299,3 +299,29 @@ describe("PhoneSessionStage with the floor showing", () => {
     expect(q(".ph-stage__empty").textContent).toBe("No machines in today's routine yet.");
   });
 });
+
+/* The phone's card gets the Now Bar's settings button (the open session
+   round, Oct 9 2026; AJ's "2a"): Set up on a first time, the settings once
+   set, and a tap opens the machine card on the first empty dial. */
+describe("PhoneSessionStage's settings button", () => {
+  const firstTime = (id: string, name: string): JourneyRow => ({
+    machine: { id, name, group: "Push", settings: { G: "1" }, settingLabels: { G: "Gap" }, dialsNotSet: 2, firstSetup: true },
+    sets: {},
+  });
+
+  it("says Set up · 2 not set on a first time and opens the card on that machine", () => {
+    const onSetUp = vi.fn();
+    mount({ rows: [firstTime("fly", "Chest Fly"), ROWS[1]], focusId: "fly", onSetUp });
+    const buttons = qa(".ph-card__setup");
+    expect(buttons.map((b) => b.textContent)).toEqual(["Set up · 2 not set", "Seat 4"]);
+    act(() => buttons[0].click());
+    expect(onSetUp).toHaveBeenCalledWith("fly");
+    expect(qa(".ph-card__settings")).toHaveLength(0);
+  });
+
+  it("keeps the settings as words without a door, as before", () => {
+    mount();
+    expect(qa(".ph-card__setup")).toHaveLength(0);
+    expect(qa(".ph-card__settings")).toHaveLength(2);
+  });
+});

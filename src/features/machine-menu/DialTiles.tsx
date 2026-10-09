@@ -37,6 +37,31 @@
  * the unsaved-changes registry ("Leg Press settings for Avery"), so leaving
  * asks first. A watched session (another trainer's) shows values only.
  *
+ * QUICK SET-UP (the open session round, Oct 9 2026; AJ's "2a": "a client has
+ * no settings so you need to be able to adjust the settings quickly while
+ * running the routine"). The Now Bar's Set up opens the card with
+ * `focusDial`: the first empty dial's editor is open at once, on the number
+ * pad for a number dial; Next (or Enter) opens the next empty dial; "Use
+ * studio standard for all" fills every empty dial that has one (two or more,
+ * still unsaved until Save); and with `onSaveClose` Save closes the card and
+ * the app's toast says it, with Undo for ten seconds (the strip's own Undo,
+ * the same payload). Seat 12 and Back pad 3 on a first time: Set up, "12",
+ * Next, "3", Save set-up — three taps and the digits.
+ *
+ * THE EDITOR HOLDS STILL WHILE YOU TYPE (finding 5). Which editor a dial
+ * opens (a row of positions or a field) and its keypad are judged once, as
+ * it opens, and held while it is open (`judgeEditor`): it was judged from
+ * the draft on every render, so the first digit typed into an empty dial
+ * made it a one-position stepper and the field turned into a row holding
+ * "1" (a Seat of 12 cost eleven + taps), and machine fit answering
+ * mid-typing swapped it too. An empty dial is always a field; a row with
+ * fewer than two positions is a field.
+ *
+ * Next is Set up's walk only (`focusDial`); every other door keeps Done.
+ * The toast's Undo, once the card has closed, is laid onto what this iPad
+ * knows the settings are at the tap (`known-settings.ts`, `undoOnto`), so a
+ * later save is never taken back with it.
+ *
  * The draft is measured against what the card opened with (fixed dials
  * seeded), so opening is never dirty. After a save the card holds what it
  * wrote until the settings document's listener catches up, so the strip
@@ -68,25 +93,33 @@ import type { FitFactors, SettingSource } from "../machine-fit/types";
 import { readStoredSpec } from "../machine-fit/ui/stored-spec";
 import { FINISH_WAIT_MS, settleOrQueue } from "../session-record/finish-wait";
 import { ChangeResult, ChangeStrip } from "./ChangeStrip";
-import { canStep, dialControl, recordValuesFor, stepDial, studioValuesFor, wordChips, type DialControl } from "./dial-control";
+import { canStep, dialControl, editorKeypad, recordValuesFor, stepDial, studioValuesFor, wordChips, type DialControl } from "./dial-control";
 import { FitLine } from "./FitLine";
 import { fitAckOf, fitLineSentence, menuAudit, rareStudioFlags } from "./fit-line";
 import { PositionRow, ValueEditor } from "./PositionRow";
 import {
   UNDO_MS,
+  USE_ALL_FROM,
+  USE_ALL_LABEL,
   asksWhy,
   changeWords,
+  closedSaveWords,
   draftChanges,
+  firstEmptyDial,
   isDraftDirty,
   isFirstSetup,
+  nextEmptyDial,
+  nothingToUndoWords,
   offersHealthNote,
   reasonOf,
   rebaseDraft,
   refusedLaterWords,
   saveOutcomeWords,
   seedDraft,
+  standardsForEmpty,
   suggestedSources,
   tileState,
+  undoOnto,
   undoOutcomeWords,
   undoPayload,
   unsavedSettingsLabel,
@@ -97,7 +130,8 @@ import {
 } from "./setting-draft";
 import { lastChange, lastChangedLine, type SettingPair, type SettingRow } from "./setting-history";
 import type { SettingHistoryState } from "./useSettingHistory";
-import { sayAfterClose, whenRefusedLater } from "./late-refusal";
+import { sayAfterClose, sayWithUndo, whenRefusedLater } from "./late-refusal";
+import { knownSettings, noteKnownSettings } from "./known-settings";
 import "./machine-menu.css";
 
 /** Calls `then` if the write has not answered either way within FINISH_WAIT_MS. */
@@ -165,6 +199,17 @@ export interface DialTilesProps {
   onAddHealthNote?: (changeWords: string) => void;
   /** A change is unsaved (the note box's Add steps down while it is). */
   onDirtyChange?: (dirty: boolean) => void;
+  /**
+   * Quick set-up (the Now Bar's Set up): open on the first empty dial's
+   * editor at once. Read when the card opens.
+   */
+  focusDial?: boolean;
+  /**
+   * Save closes the card (the Now Bar's Set up): called once a save is on
+   * this iPad, after the app's toast has said it with Undo for ten seconds.
+   * Absent, the strip says it in place, as before.
+   */
+  onSaveClose?: () => void;
 }
 
 type Values = Record<string, string>;
@@ -175,6 +220,72 @@ interface UndoState {
   changes: SettingPair[];
   firstSetup: boolean;
   sources: Record<string, SettingSource> | null;
+}
+
+/** The open editor's row or field and its keypad, judged as it opened and held while it is open. */
+interface EditorLock {
+  key: string;
+  control: DialControl;
+  keypad: "decimal" | "text";
+}
+
+/** Everything an Undo writes with besides its payload: the card's, kept by value so it still works once the card has closed. */
+interface UndoTarget {
+  clientId: string;
+  machineId: string;
+  machineName: string;
+  clientFirstName: string;
+  fields: readonly TileField[];
+  author: MutationAuthor;
+  journal?: JournalContext;
+  sources: Record<string, SettingSource> | null;
+  homeStudioId: string | null;
+  fitAcks: EquipmentMachine["fitAcks"] | null;
+}
+
+/** Undo's write, through the same path as a save, never waited on (R9). */
+function writeUndo(t: UndoTarget, u: UndoState): Promise<SaveSettingsResult | null> {
+  try {
+    // What the settings are once it lands, for a later toast's Undo (known-settings.ts).
+    noteKnownSettings(t.clientId, t.machineId, nextSettings([...t.fields], u.payload.saved, u.payload.draft));
+    return saveSettings({
+      clientId: t.clientId,
+      machineId: t.machineId,
+      fields: [...t.fields],
+      author: t.author,
+      machineName: t.machineName,
+      journal: t.journal,
+      existingSources: u.sources ?? t.sources,
+      homeStudioId: t.homeStudioId,
+      existingAcks: t.fitAcks,
+      ...u.payload,
+    });
+  } catch (err) {
+    return Promise.reject(err);
+  }
+}
+
+/**
+ * The toast's Undo, once the card has closed: the same write as the strip's
+ * Undo, laid onto what this iPad knows the settings are at the tap
+ * (`undoOnto`), so a later save on the same client and machine (Set up
+ * again) is never taken back with it; a dial changed since is left alone,
+ * and with none left it writes nothing and says so. A refusal is said in
+ * the app's toast, since the card that would have said it is gone.
+ */
+function undoAfterClose(t: UndoTarget, u: UndoState): void {
+  const laid = undoOnto(t.fields, u.payload, knownSettings(t.clientId, t.machineId) ?? u.payload.saved);
+  if (!laid) {
+    sayAfterClose(nothingToUndoWords(t.machineName, t.clientFirstName), "info", 6000);
+    return;
+  }
+  const back = new Set(t.fields.filter((f) => laid.keys.includes(f.key)).map((f) => f.label));
+  const changes = u.changes.filter((c) => back.has(c.label));
+  const v: UndoState = { ...u, payload: laid.payload, changes: changes.length > 0 ? changes : u.changes };
+  whenRefusedLater(writeUndo(t, v), (err) => {
+    console.error("[machine menu] undo refused after the card closed", err);
+    sayAfterClose(refusedLaterWords(t.machineName, t.clientFirstName, v.changes, v.firstSetup, true));
+  });
 }
 
 /** What the strip says once Save or Undo has been tapped. */
@@ -217,6 +328,8 @@ export function DialTiles({
   onLastChanged,
   onAddHealthNote,
   onDirtyChange,
+  focusDial = false,
+  onSaveClose,
 }: DialTilesProps) {
   // What this card wrote, until the settings document's listener says so too.
   const [written, setWritten] = useState<Values | null>(null);
@@ -226,6 +339,11 @@ export function DialTiles({
   const seed = seedDraft(fields, base);
   const seedKey = JSON.stringify(seed);
   const [seededFrom, setSeededFrom] = useState<{ key: string; seed: Values }>(() => ({ key: seedKey, seed }));
+  // The draft as it is about to be once a moved seed is rebased below: the
+  // queued update isn't applied until the next render, and Set up's first
+  // empty dial is judged in this one (a fixed gap the catalog has just
+  // filled is not empty).
+  const draftNow = seededFrom.key !== seedKey ? rebaseDraft(draft, seededFrom.seed, seed) : draft;
   // The seed moved under the draft (the catalog's fields arriving, a catalog
   // edit, another iPad's save): rebase it here, during render (React's
   // "adjusting state when a prop changes"), so no frame ever shows a change
@@ -242,6 +360,16 @@ export function DialTiles({
     setDraft(nextDraft);
   };
   const [editing, setEditing] = useState<string | null>(null);
+  // The open editor's row or field, held while it is open (judgeEditor, below).
+  const [editorLock, setEditorLock] = useState<EditorLock | null>(null);
+  // Quick set-up: the first empty dial's editor opens as soon as the dials
+  // are known (the catalog's can arrive a moment after the card), once.
+  const [focusArmed, setFocusArmed] = useState(focusDial && !readOnly);
+  if (focusArmed && fields.length > 0) {
+    setFocusArmed(false);
+    const first = firstEmptyDial(fields, draftNow);
+    if (first) setEditing(first);
+  }
   const [reason, setReason] = useState<ReasonChip | null>(null);
   const [otherText, setOtherText] = useState("");
   // Dial key → the value Use put there: saved as "suggested" while it stands.
@@ -249,6 +377,10 @@ export function DialTiles({
   const [saving, setSaving] = useState(false);
   const [failedWords, setFailedWords] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
+  // A save that closes the card: the toast's words and its Undo, said once
+  // the save's own render has committed (the leave gate then sees no change).
+  const [closing, setClosing] = useState<{ words: string; target: UndoTarget; undo: UndoState } | null>(null);
+  const sectionRef = useRef<HTMLElement | null>(null);
   // Whether the card is still open, for a refusal that comes after it closed.
   const live = useRef(true);
   useEffect(() => {
@@ -257,6 +389,22 @@ export function DialTiles({
       live.current = false;
     };
   }, []);
+
+  const onSaveCloseRef = useRef(onSaveClose);
+  onSaveCloseRef.current = onSaveClose;
+  useEffect(() => {
+    if (!closing) return;
+    const { words, target, undo: u } = closing;
+    sayWithUndo(words, () => undoAfterClose(target, u), UNDO_MS);
+    onSaveCloseRef.current?.();
+  }, [closing]);
+
+  // An editor that opens (Set up's first, Next's) comes into view, by as
+  // little as it takes: the safety strip above stays where it is when it fits.
+  useEffect(() => {
+    if (!editing) return;
+    sectionRef.current?.querySelector<HTMLElement>("[data-editor]")?.scrollIntoView?.({ block: "nearest" });
+  }, [editing]);
 
   const dirty = !readOnly && isDraftDirty(fields, draft, base);
   const dirtyRef = useRef(dirty);
@@ -272,6 +420,14 @@ export function DialTiles({
     firstSaved.current = savedKey;
     setWritten(null);
   }, [savedKey]);
+
+  // What this card knows the settings are (the listener's, or what it just
+  // wrote), for a toast's Undo once a card has closed (known-settings.ts).
+  const baseKey = JSON.stringify(base);
+  useEffect(() => {
+    if (!readOnly) noteKnownSettings(clientId, machineId, base);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseKey, clientId, machineId, readOnly]);
 
   useEffect(() => {
     onDirtyChange?.(dirty);
@@ -304,13 +460,53 @@ export function DialTiles({
   /* ---------------- the values each dial can step through ---------------- */
 
   const studioRows = fit && fit.status === "ready" ? (fit.sources[machineId]?.studio ?? null) : null;
-  const controlOf = (f: TileField): DialControl =>
-    dialControl(f, {
-      current: draft[f.key],
-      saved: base[f.key],
-      studioValues: fit && fit.status === "ready" ? studioValuesFor(f, studioRows) : null,
-      recordValues: recordValuesFor(f, { snapshots, rows: history }),
-    });
+  const contextOf = (f: TileField) => ({
+    saved: base[f.key],
+    studioValues: fit && fit.status === "ready" ? studioValuesFor(f, studioRows) : null,
+    recordValues: recordValuesFor(f, { snapshots, rows: history }),
+  });
+  /** The tile's ±: judged with the value on the tile, so a dial Use filled steps. */
+  const controlOf = (f: TileField): DialControl => dialControl(f, { ...contextOf(f), current: draft[f.key] });
+  /**
+   * The editor's row or field, and its keypad, judged ONCE as it opens and
+   * held while it is open (finding 5, and the review that followed it). It
+   * was judged again on every render from the half-typed draft, so the
+   * first digit typed into an empty dial turned the field into a row
+   * holding "1"; and judged again when machine fit or the record answered,
+   * it still swapped under the finger mid-typing. So it is judged from what
+   * is on the tile as it opens (a value stepped past the record with ± is
+   * in the row), and held.
+   *
+   * An EMPTY dial is typed, on the number pad for a number: the spans seen
+   * on this floor and on the record (rules 3 and 4) may not hold a new
+   * client's value (Seat 12 where the studio's clients sit at 3 to 9), and
+   * the number pad is what Set up opens on. A field's own options and range
+   * (rules 1 and 2) are still a row.
+   */
+  const judgeEditor = (f: TileField, onTile: string): EditorLock => {
+    const ctx = contextOf(f);
+    let control = dialControl(f, { ...ctx, current: onTile });
+    const empty = clean(onTile) === "" && clean(base[f.key]) === "";
+    if (empty && control.kind === "stepper" && (control.rule === 3 || control.rule === 4)) control = { ...control, positions: null };
+    return { key: f.key, control, keypad: editorKeypad(f, control, ctx) };
+  };
+  const lockField = editing ? (fields.find((f) => f.key === editing) ?? null) : null;
+  let editorLockNow = editorLock;
+  if (lockField && editorLock?.key !== lockField.key) {
+    editorLockNow = judgeEditor(lockField, draftNow[lockField.key] ?? "");
+    setEditorLock(editorLockNow);
+  } else if (!lockField && editorLock !== null) {
+    editorLockNow = null;
+    setEditorLock(null);
+  }
+
+  /** Open a dial's editor (Next, Set up). */
+  const openEditor = (key: string) => setEditing(key);
+  /** Close the editor; with a change waiting, its Save comes into view. */
+  const closeEditor = () => {
+    setEditing(null);
+    window.setTimeout(() => sectionRef.current?.querySelector<HTMLElement>('[data-strip="edit"]')?.scrollIntoView?.({ block: "nearest" }), 0);
+  };
 
   // The dials hold still only for the tick a save is issued in (R9: Save
   // never waits on the database's answer): what the save wrote replaces the
@@ -334,6 +530,20 @@ export function DialTiles({
       : null;
 
   /* ---------------- save and undo ---------------- */
+
+  /** What an Undo writes with, kept by value (the toast's Undo outlives the card). */
+  const undoTarget = (who: MutationAuthor): UndoTarget => ({
+    clientId,
+    machineId,
+    machineName,
+    clientFirstName,
+    fields,
+    author: who,
+    journal,
+    sources,
+    homeStudioId,
+    fitAcks,
+  });
 
   const save = async () => {
     if (!author || readOnly || saving || changes.length === 0) return;
@@ -397,6 +607,14 @@ export function DialTiles({
     // saveSettings builds, so Undo puts back exactly what changed.
     const after = outcome.kind === "saved" && outcome.value ? outcome.value.settings : nextSettings([...fields], before, sent);
     const kind: SaveOutcome = outcome.kind === "queued" && onlineNow ? "saved" : outcome.kind;
+    const undoState: UndoState = {
+      payload: undoPayload(fields, before, after),
+      changes: saveChanges,
+      firstSetup: wasFirst,
+      sources: outcome.kind === "saved" && outcome.value ? outcome.value.sources : null,
+    };
+    // What the settings are now, for a toast's Undo after this card has closed (known-settings.ts).
+    noteKnownSettings(clientId, machineId, after);
     holdDraft(after, seedDraft(fields, after));
     setReason(null);
     setOtherText("");
@@ -404,19 +622,29 @@ export function DialTiles({
     setEditing(null);
     setResult({
       words: saveOutcomeWords(saveChanges, wasFirst, kind, false),
-      undo: {
-        payload: undoPayload(fields, before, after),
-        changes: saveChanges,
-        firstSetup: wasFirst,
-        sources: outcome.kind === "saved" && outcome.value ? outcome.value.sources : null,
-      },
+      undo: undoState,
       retryUndo: null,
       pain: offersHealthNote(why) ? changeWords(saveChanges) : null,
     });
+    // Set up from the Now Bar: the card closes, and the toast keeps the Undo.
+    // A save for pain stays open, so its Add a Health note is still there.
+    const closes = !!onSaveClose && !offersHealthNote(why);
+    if (closes) {
+      setClosing({
+        words: closedSaveWords(machineName, clientFirstName, saveChanges, wasFirst, kind === "queued" ? "queued" : "saved"),
+        target: undoTarget(author),
+        undo: undoState,
+      });
+    }
     if (outcome.kind === "queued" && onlineNow) {
       const shown = saveOutcomeWords(saveChanges, wasFirst, "saved", false);
       whenStillOut(write, () => {
-        if (!live.current) return;
+        // The card closed on this save (Set up): its toast said "saved", and
+        // the strip that would correct it is gone, so the toast says it.
+        if (!live.current) {
+          if (closes) sayAfterClose(closedSaveWords(machineName, clientFirstName, saveChanges, wasFirst, "queued"), "info", 8000);
+          return;
+        }
         setResult((r) => (r && r.words === shown ? { ...r, words: saveOutcomeWords(saveChanges, wasFirst, "queued", false) } : r));
       });
     }
@@ -426,23 +654,7 @@ export function DialTiles({
   const undo = async (u: UndoState) => {
     if (!author || readOnly) return;
     setResult(null);
-    let write: Promise<SaveSettingsResult | null>;
-    try {
-      write = saveSettings({
-        clientId,
-        machineId,
-        fields: [...fields],
-        author,
-        machineName,
-        journal,
-        existingSources: u.sources ?? sources,
-        homeStudioId,
-        existingAcks: fitAcks,
-        ...u.payload,
-      });
-    } catch (err) {
-      write = Promise.reject(err);
-    }
+    const write = writeUndo(undoTarget(author), u);
     // The tiles show the old values straight away; a refusal puts the save's back.
     holdDraft(u.payload.draft, seedDraft(fields, u.payload.draft));
     // Never waited on, as a save isn't (R9).
@@ -606,10 +818,17 @@ export function DialTiles({
   const editor = () => {
     if (readOnly || !editingField) return null;
     const f = editingField;
-    const control = controlOf(f);
+    // Held from the moment it opened (judgeEditor); the first render's own judgement until then.
+    const lock = editorLockNow?.key === f.key ? editorLockNow : judgeEditor(f, draft[f.key] ?? "");
+    const control = lock.control;
     const standard = clean(f.ghost) || null;
-    const done = () => setEditing(null);
+    const done = closeEditor;
     const pick = (v: string) => setValue(f.key, v);
+    // Next: the next dial still empty, on Set up's walk through them only
+    // (focusDial); none left, Done. Every other door keeps Done.
+    const nextKey = focusDial ? nextEmptyDial(fields, draft, f.key) : null;
+    const onNext = nextKey ? () => openEditor(nextKey) : null;
+    const nextLabel = nextKey ? (fields.find((x) => x.key === nextKey)?.label ?? null) : null;
     const suggestLine = suggestion ? (
       <p className="mm-suggest">
         <span>
@@ -630,18 +849,43 @@ export function DialTiles({
         </button>
       </p>
     ) : null;
+    // Keyed by the dial, so Next to another dial is a fresh editor (its field focused).
     if (control.kind === "options") {
       return (
         <>
-          <PositionRow label={f.label} positions={control.options} current={draft[f.key]} saved={base[f.key]} standard={standard} kind="options" onPick={pick} onDone={done} />
+          <PositionRow
+            key={f.key}
+            label={f.label}
+            positions={control.options}
+            current={draft[f.key]}
+            saved={base[f.key]}
+            standard={standard}
+            kind="options"
+            onPick={pick}
+            onDone={done}
+            onNext={onNext}
+            nextLabel={nextLabel}
+          />
           {suggestLine}
         </>
       );
     }
-    if (control.kind === "stepper" && control.positions) {
+    // A row of one position is no jump at all: a field instead.
+    if (control.kind === "stepper" && control.positions && control.positions.length > 1) {
       return (
         <>
-          <PositionRow label={f.label} positions={control.positions} current={draft[f.key]} saved={base[f.key]} standard={standard} onPick={pick} onDone={done} />
+          <PositionRow
+            key={f.key}
+            label={f.label}
+            positions={control.positions}
+            current={draft[f.key]}
+            saved={base[f.key]}
+            standard={standard}
+            onPick={pick}
+            onDone={done}
+            onNext={onNext}
+            nextLabel={nextLabel}
+          />
           {suggestLine}
         </>
       );
@@ -649,20 +893,39 @@ export function DialTiles({
     return (
       <>
         <ValueEditor
+          key={f.key}
           label={f.label}
           value={draft[f.key] ?? ""}
-          keypad={control.kind === "stepper" ? control.keypad : "text"}
+          keypad={lock.keypad}
           chips={control.kind === "text" ? control.chips : wordChips(f, [])}
           onChange={pick}
           onDone={done}
+          onNext={onNext}
+          nextLabel={nextLabel}
         />
         {suggestLine}
       </>
     );
   };
 
+  /* ---------------- Use studio standard for all ---------------- */
+
+  // Every empty dial with a studio standard, filled in one tap (two or more:
+  // one has its own Use). Still the draft: nothing is written until Save,
+  // and each is marked used, so it saves as "suggested" for machine fit.
+  const standards = readOnly ? {} : standardsForEmpty(fields, draft);
+  const standardKeys = Object.keys(standards);
+  const useAll = () => {
+    if (saving || standardKeys.length === 0) return;
+    setDraft((d) => ({ ...d, ...standards }));
+    setUsed((u) => ({ ...u, ...standards }));
+    setEditing((e) => (e && standards[e] !== undefined ? null : e));
+    setFailedWords(null);
+    setResult(null);
+  };
+
   return (
-    <section className="mm-blk" data-block="settings" aria-label="Settings">
+    <section ref={sectionRef} className="mm-blk" data-block="settings" aria-label="Settings">
       <div className="mm-blk-head">
         <h3 className="mm-h">Settings</h3>
         {lastWords ? (
@@ -682,6 +945,13 @@ export function DialTiles({
         <p className="mm-none">This machine has no adjustable settings on its catalog entry.</p>
       ) : (
         <>
+          {standardKeys.length >= USE_ALL_FROM ? (
+            <div className="mm-useall">
+              <button type="button" className="mm-btn" data-use-all="" disabled={saving} onClick={useAll}>
+                {USE_ALL_LABEL}
+              </button>
+            </div>
+          ) : null}
           <div className="mm-tiles">
             {fields.map(tile)}
           </div>

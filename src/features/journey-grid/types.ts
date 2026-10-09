@@ -61,6 +61,19 @@ export interface JourneyMachine {
   /** Short key → full name, e.g. { G: "Gap", B: "Back Pad" }. The rail shows
    *  the short key and speaks the full one, so "B 6" is never a guess. */
   settingLabels?: Record<string, string>;
+  /**
+   * How many of the machine's dials the card would open empty on for this
+   * client (machine-menu/setting-draft.ts `notSetCount`, over the card's own
+   * dial list): the Now Bar's "Set up · 2 not set" (the open session round,
+   * Oct 9 2026). Absent: not worked out.
+   */
+  dialsNotSet?: number;
+  /**
+   * Nothing is saved for this client on this machine, as far as a read that
+   * has ANSWERED says (true), something is (false), or the settings haven't
+   * been read yet (absent): only true may say "Set up".
+   */
+  firstSetup?: boolean;
   /** The ★ "core lift" flag in the current UI. */
   starred?: boolean;
   /**

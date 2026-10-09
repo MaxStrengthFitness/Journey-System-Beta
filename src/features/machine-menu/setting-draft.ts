@@ -6,12 +6,19 @@
  *
  *   - THE SEED. The draft opens as the saved settings, with one exception
  *     kept from today's Settings card: a FIXED dial — one that is the same
- *     for every client on the machine (`ABSOLUTE_STANDARDS` in
+ *     for every client on the machine (`ABSOLUTE_DIALS` in
  *     equipment/adapters.ts, today the gap) — opens already filled with the
  *     machine's own value (`absoluteValueFor`) when nothing is saved for it,
- *     "Same for every client", and saves with the next save. Everything else
- *     empty stays empty: the studio standard is a "Use 6" button, never a
- *     value nobody chose.
+ *     "Same for every client", and saves with the next save. A machine with
+ *     no value of its own leaves it empty: it filled with "0" until Oct 9
+ *     2026, and the first save wrote Gap 0 (the open session round, finding
+ *     5). Everything else empty stays empty: the studio standard is a "Use
+ *     6" button, never a value nobody chose.
+ *   - QUICK SET-UP (the open session round, Oct 9 2026; AJ's "2a"): the empty
+ *     dials in order (`firstEmptyDial`, `nextEmptyDial`), how many a machine
+ *     has (`notSetCount`, the Now Bar's "Set up · 2 not set"), "Use studio
+ *     standard for all" (`standardsForEmpty`), and what the toast says once
+ *     a save has closed the card (`closedSaveWords`).
  *   - DIRTY is measured against that seed, so opening the card never sets
  *     off the unsaved-changes question.
  *   - WHAT A SAVE WRITES is the draft against what is SAVED (a seeded fixed
@@ -26,7 +33,9 @@
  *   - UNDO writes the old values back through the same path, with the reason
  *     "Undone" and no second journal copy, so the setting changes list both
  *     rows honestly while the chart and "Last changed" net them out
- *     (setting-history.ts).
+ *     (setting-history.ts). The toast's Undo, once Set up's Save has closed
+ *     the card, is laid onto what the settings are when it is tapped
+ *     (`undoOnto`), so it never takes back a later save.
  *
  * PURE — no React, no Firestore.
  */
@@ -135,6 +144,56 @@ export function changedKeys(fields: readonly DraftField[], draft: Values, saved:
   const seed = seedDraft(fields, saved);
   return fields.filter((f) => clean(draft[f.key]) !== clean(seed[f.key])).map((f) => f.key);
 }
+
+/* ------------------------------------------------------------------ *
+ * Quick set-up: the empty dials, in order
+ * ------------------------------------------------------------------ */
+
+/** The dials with nothing on them in this draft, in the field order. */
+export function emptyDials(fields: readonly DraftField[], draft: Values): string[] {
+  return fields.filter((f) => clean(draft[f.key]) === "").map((f) => f.key);
+}
+
+/** The first empty dial, where Set up opens the card; null when every dial has a value. */
+export function firstEmptyDial(fields: readonly DraftField[], draft: Values): string | null {
+  return emptyDials(fields, draft)[0] ?? null;
+}
+
+/**
+ * Where Next goes from `from`: the next empty dial after it in the field
+ * order, then round to the first, never `from` itself. Null when no other
+ * dial is empty (the editor's button says Done).
+ */
+export function nextEmptyDial(fields: readonly DraftField[], draft: Values, from: string): string | null {
+  const keys = fields.map((f) => f.key);
+  const at = keys.indexOf(from);
+  const empty = new Set(emptyDials(fields, draft));
+  for (let i = 1; i <= keys.length; i++) {
+    const k = keys[(Math.max(at, 0) + i) % keys.length];
+    if (k !== from && empty.has(k)) return k;
+  }
+  return null;
+}
+
+/**
+ * How many dials the card would open empty on for this client: what is
+ * saved, a fixed dial with the machine's own value filled (seedDraft). The
+ * Now Bar's "Set up · 2 not set".
+ */
+export function notSetCount(fields: readonly DraftField[], saved: Values): number {
+  return emptyDials(fields, seedDraft(fields, saved)).length;
+}
+
+/** The empty dials that have a studio standard, dial key → the standard. */
+export function standardsForEmpty(fields: readonly DraftField[], draft: Values): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const f of fields) if (clean(draft[f.key]) === "" && clean(f.ghost) !== "") out[f.key] = clean(f.ghost);
+  return out;
+}
+
+/** "Use studio standard for all" shows from two empty dials with a standard up; one has its own Use. */
+export const USE_ALL_FROM = 2;
+export const USE_ALL_LABEL = "Use studio standard for all";
 
 /* ------------------------------------------------------------------ *
  * A tile, at rest and changed
@@ -323,6 +382,46 @@ export function undoPayload(fields: readonly DraftField[], before: Values, after
 }
 
 /**
+ * An Undo laid onto the settings as they are NOW (the open session round's
+ * review, Oct 9 2026). The toast's Undo outlives the card that made the
+ * save: Set up, Seat 12, Save; Set up again, Back pad 3, Save; then the
+ * first toast's Undo. Its payload was the map as the first save wrote it,
+ * and `saveSettings` writes the map whole, so it put back `{}` and took
+ * Back pad 3 with it.
+ *
+ * So: start from `current`, and take back only the dials this save changed
+ * that still hold what it saved. A dial changed since is left as it is now.
+ * Null when none is left to take back (nothing to write). `changes` keeps
+ * only the dials taken back, for the words.
+ */
+export function undoOnto(
+  fields: readonly DraftField[],
+  u: UndoPayload,
+  current: Values,
+): { payload: UndoPayload; keys: string[] } | null {
+  const saved: Record<string, string> = {};
+  for (const [k, v] of Object.entries(current)) if (clean(v) !== "") saved[k] = clean(v);
+  const draft: Record<string, string> = { ...saved };
+  const keys: string[] = [];
+  for (const f of fields) {
+    const wrote = clean(u.saved[f.key]);
+    const back = clean(u.draft[f.key]);
+    // This save didn't change the dial, or it has changed since.
+    if (wrote === back || clean(saved[f.key]) !== wrote) continue;
+    draft[f.key] = back;
+    keys.push(f.key);
+  }
+  return keys.length > 0 ? { payload: { ...u, saved, draft }, keys } : null;
+}
+
+/** "Leg Press for Avery: changed again since, so nothing was undone." */
+export function nothingToUndoWords(machineName: string, clientFirstName: string): string {
+  const machine = clean(machineName) || "This machine";
+  const who = clean(clientFirstName);
+  return `${machine}${who ? ` for ${who}` : ""}: changed again since, so nothing was undone.`;
+}
+
+/**
  * A save the card said was "saved on this iPad" that the database refused
  * later, once the card had closed: the app's toast says it ("Leg Press for
  * Avery: couldn't save Seat 5. Set it again on the machine's card.").
@@ -338,6 +437,27 @@ export function refusedLaterWords(
   const who = clean(clientFirstName);
   const what = undo ? `undo ${changeName(changes, firstSetup)}` : `save ${changeName(changes, firstSetup)}`;
   return `${machine}${who ? ` for ${who}` : ""}: couldn't ${what}. Set it again on the machine's card.`;
+}
+
+/**
+ * What the toast says once Save has closed the card (Set up from the Now
+ * Bar, the open session round, Oct 9 2026), with Undo beside it for ten
+ * seconds: "Chest Fly for Avery: set-up saved", or "… set-up saved on this
+ * iPad · it sends when the Wi-Fi is back". The card is gone, so it names the
+ * machine and the client, as `refusedLaterWords` does.
+ */
+export function closedSaveWords(
+  machineName: string,
+  clientFirstName: string,
+  changes: readonly SettingPair[],
+  firstSetup: boolean,
+  outcome: Exclude<SaveOutcome, "failed">,
+): string {
+  const machine = clean(machineName) || "This machine";
+  const who = clean(clientFirstName);
+  const name = changeName(changes, firstSetup);
+  const tail = outcome === "queued" ? " on this iPad · it sends when the Wi-Fi is back" : "";
+  return `${machine}${who ? ` for ${who}` : ""}: ${name} saved${tail}`;
 }
 
 /* ------------------------------------------------------------------ *

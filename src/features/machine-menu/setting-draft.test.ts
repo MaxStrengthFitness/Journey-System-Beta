@@ -6,14 +6,22 @@ import {
   PAIN_REASON,
   REASON_CHIPS,
   UNDO_MS,
+  USE_ALL_FROM,
+  USE_ALL_LABEL,
   WHY_PROMPT,
   asksWhy,
   changeWords,
   changedKeys,
+  closedSaveWords,
   draftChanges,
+  emptyDials,
+  firstEmptyDial,
   isDraftDirty,
   isFirstSetup,
   isFixedDial,
+  nextEmptyDial,
+  nothingToUndoWords,
+  notSetCount,
   offersHealthNote,
   reasonOf,
   rebaseDraft,
@@ -21,8 +29,10 @@ import {
   saveLabel,
   saveOutcomeWords,
   seedDraft,
+  standardsForEmpty,
   suggestedSources,
   tileState,
+  undoOnto,
   undoOutcomeWords,
   undoPayload,
   unsavedSettingsLabel,
@@ -44,9 +54,25 @@ const SAVED = { seat: "4", backPad: "3", footPlate: "High" };
 describe("the seed: fixed dials filled, nothing else", () => {
   it("seeds the gap with the machine's own value on a first set-up, and leaves the rest empty", () => {
     expect(seedDraft(ROW, {})).toEqual({ seat: "", gap: "2" });
-    expect(seedDraft([{ key: "gap", label: "Gap", ghost: null }], {})).toEqual({ gap: "0" });
     expect(isFixedDial(ROW[1])).toBe(true);
     expect(isFixedDial(ROW[0])).toBe(false);
+  });
+
+  /* Deliberately changed (the open session round, Oct 9 2026, finding 5):
+     this said { gap: "0" } until then, so the first save on a machine with
+     no Gap standard (ten of the twenty) wrote Gap 0 for a client nobody had
+     set a gap for. With no value of its own the gap is an ordinary empty
+     dial, and nothing is written for it. */
+  it("leaves the gap empty, never 0, on a machine with no gap of its own, and a first save writes nothing for it", () => {
+    const noGap: DraftField[] = [
+      { key: "gap", label: "Gap", ghost: null },
+      { key: "seat", label: "Seat", ghost: null },
+    ];
+    expect(seedDraft(noGap, {})).toEqual({ gap: "", seat: "" });
+    expect(isFixedDial(noGap[0])).toBe(false);
+    const draft = { ...seedDraft(noGap, {}), seat: "12" };
+    expect(draftChanges(noGap, {}, draft)).toEqual([{ label: "Seat", from: "", to: "12" }]);
+    expect(nextSettings(noGap, {}, draft)).toEqual({ seat: "12" });
   });
 
   it("never fills a studio standard as a value", () => {
@@ -208,6 +234,33 @@ describe("Undo", () => {
   });
 });
 
+describe("the toast's Undo, laid onto the settings as they are now (undoOnto)", () => {
+  // Set up, Seat 12, Save; Set up again, Back pad 3, Save; then the first toast's Undo.
+  const first = undoPayload(LEG_PRESS, {}, { seat: "12" });
+
+  it("takes back only what this save changed, and keeps a later save", () => {
+    const laid = undoOnto(LEG_PRESS, first, { seat: "12", backPad: "3" })!;
+    expect(laid.keys).toEqual(["seat"]);
+    expect(nextSettings(LEG_PRESS, laid.payload.saved, laid.payload.draft)).toEqual({ backPad: "3" });
+    expect(draftChanges(LEG_PRESS, laid.payload.saved, laid.payload.draft)).toEqual([{ label: "Seat", from: "12", to: "" }]);
+    expect(laid.payload).toMatchObject({ reason: UNDO_REASON, isInitialSetup: false, fileNote: false });
+  });
+
+  it("is the save's own Undo when nothing has changed since", () => {
+    const laid = undoOnto(LEG_PRESS, first, { seat: "12" })!;
+    expect(laid.payload).toEqual(first);
+  });
+
+  it("leaves a dial changed since alone, and is nothing at all when every one has", () => {
+    const two = undoPayload(LEG_PRESS, {}, { seat: "12", backPad: "3" });
+    const laid = undoOnto(LEG_PRESS, two, { seat: "13", backPad: "3" })!;
+    expect(laid.keys).toEqual(["backPad"]);
+    expect(nextSettings(LEG_PRESS, laid.payload.saved, laid.payload.draft)).toEqual({ seat: "13" });
+    expect(undoOnto(LEG_PRESS, first, { seat: "13" })).toBeNull();
+    expect(nothingToUndoWords("Leg Press", "Avery")).toBe("Leg Press for Avery: changed again since, so nothing was undone.");
+  });
+});
+
 describe("the rest", () => {
   it("marks a value Use filled as suggested while it is still the draft's", () => {
     expect(suggestedSources({ seat: "6" }, { seat: "6" })).toEqual({ seat: "suggested" });
@@ -224,9 +277,10 @@ describe("rebaseDraft: the seed moved under the draft", () => {
   const seat: DraftField = { key: "seat", label: "Seat" };
   const gap: DraftField = { key: "gap", label: "Gap", ghost: null };
 
-  it("lets an untouched dial follow the catalog arriving: a fixed gap 0 → its catalog 2, and a catalog-only dial its saved value", () => {
+  // An empty gap (it was "0" until Oct 9 2026) → its catalog 2.
+  it("lets an untouched dial follow the catalog arriving: an empty gap → its catalog 2, and a catalog-only dial its saved value", () => {
     const before = seedDraft([gap], {});
-    expect(before).toEqual({ gap: "0" });
+    expect(before).toEqual({ gap: "" });
     const after = seedDraft([{ ...gap, ghost: "2" }, seat], { seat: "5" });
     const draft = rebaseDraft(before, before, after);
     expect(draft).toEqual({ gap: "2", seat: "5" });
@@ -255,5 +309,57 @@ describe("a save refused after the card closed", () => {
     const changes = [{ label: "Seat", from: "4", to: "5" }];
     expect(refusedLaterWords("Leg Press", "Avery", changes, false)).toBe("Leg Press for Avery: couldn't save Seat 5. Set it again on the machine's card.");
     expect(refusedLaterWords("Leg Press", "", changes, false, true)).toBe("Leg Press: couldn't undo Seat 5. Set it again on the machine's card.");
+  });
+});
+
+describe("quick set-up: the empty dials (the open session round, Oct 9 2026; AJ's \"2a\")", () => {
+  const CHEST_FLY: DraftField[] = [
+    { key: "Gap", label: "Gap", ghost: "1" },
+    { key: "Back Pad", label: "Back pad", ghost: null },
+    { key: "Seat", label: "Seat", ghost: null },
+  ];
+
+  it("counts the dials the card opens empty on: a fixed gap with its own value is not one", () => {
+    expect(notSetCount(CHEST_FLY, {})).toBe(2);
+    expect(notSetCount(CHEST_FLY, { Seat: "12" })).toBe(1);
+    expect(notSetCount(CHEST_FLY, { Seat: "12", "Back Pad": "3" })).toBe(0);
+    expect(notSetCount([], {})).toBe(0);
+  });
+
+  it("finds the first empty dial, and Next walks the rest in order, round to the start, never the one in hand", () => {
+    const seed = seedDraft(CHEST_FLY, {});
+    expect(emptyDials(CHEST_FLY, seed)).toEqual(["Back Pad", "Seat"]);
+    expect(firstEmptyDial(CHEST_FLY, seed)).toBe("Back Pad");
+    expect(nextEmptyDial(CHEST_FLY, seed, "Back Pad")).toBe("Seat");
+    expect(nextEmptyDial(CHEST_FLY, seed, "Seat")).toBe("Back Pad");
+    // Back pad typed: from it, Seat; from Seat, nothing left (Done).
+    const typed = { ...seed, "Back Pad": "3" };
+    expect(nextEmptyDial(CHEST_FLY, typed, "Back Pad")).toBe("Seat");
+    expect(nextEmptyDial(CHEST_FLY, typed, "Seat")).toBeNull();
+    expect(firstEmptyDial(CHEST_FLY, { ...typed, Seat: "12" })).toBeNull();
+  });
+
+  it("offers the studio standard for every empty dial that has one, and nothing for a dial with a value", () => {
+    const fields: DraftField[] = [
+      { key: "seat", label: "Seat", ghost: "6" },
+      { key: "backPad", label: "Back pad", ghost: "3" },
+      { key: "footPlate", label: "Foot plate", ghost: null },
+    ];
+    expect(standardsForEmpty(fields, { seat: "", backPad: "", footPlate: "" })).toEqual({ seat: "6", backPad: "3" });
+    expect(standardsForEmpty(fields, { seat: "5", backPad: "", footPlate: "" })).toEqual({ backPad: "3" });
+    expect(USE_ALL_FROM).toBe(2);
+    expect(USE_ALL_LABEL).toBe("Use studio standard for all");
+  });
+
+  it("says a save that closed the card with the machine and the client, as the late refusal does", () => {
+    const changes = [
+      { label: "Seat", from: "", to: "12" },
+      { label: "Back pad", from: "", to: "3" },
+    ];
+    expect(closedSaveWords("Chest Fly", "Avery", changes, true, "saved")).toBe("Chest Fly for Avery: set-up saved");
+    expect(closedSaveWords("Chest Fly", "Avery", changes, true, "queued")).toBe(
+      "Chest Fly for Avery: set-up saved on this iPad · it sends when the Wi-Fi is back",
+    );
+    expect(closedSaveWords("Leg Press", "", [{ label: "Seat", from: "4", to: "5" }], false, "saved")).toBe("Leg Press: Seat 5 saved");
   });
 });

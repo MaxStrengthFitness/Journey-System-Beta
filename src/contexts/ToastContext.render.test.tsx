@@ -95,4 +95,34 @@ describe("ToastProvider", () => {
     });
     expect(document.body.textContent).not.toContain("Synced");
   });
+
+  /* The machine card's Set up closes on Save and leaves its Undo here, for
+     ten seconds (the open session round, Oct 9 2026; AJ's "2a"). */
+  it("draws one action beside the words, runs it once on a tap and goes; untapped, it goes with the toast", () => {
+    vi.useFakeTimers();
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    act(() => root!.render(<ToastProvider>{null}</ToastProvider>));
+    const show = (window as unknown as { __showToast: (m: string, t?: string, d?: number, a?: { label: string; run: () => void }) => void }).__showToast;
+    const run = vi.fn();
+    act(() => show("Chest Fly for Avery: set-up saved", "success", 10_000, { label: "Undo", run }));
+    const undo = () => document.body.querySelector<HTMLButtonElement>("[data-toast-action]");
+    expect(undo()?.textContent).toBe("Undo");
+    expect(undo()?.className).toContain("h-10");
+    act(() => undo()!.click());
+    expect(run).toHaveBeenCalledTimes(1);
+    act(() => {
+      vi.advanceTimersByTime(TOAST_EXIT_MS);
+    });
+    expect(document.body.textContent).not.toContain("set-up saved");
+
+    const later = vi.fn();
+    act(() => show("Leg Press for Avery: set-up saved", "success", 10_000, { label: "Undo", run: later }));
+    act(() => {
+      vi.advanceTimersByTime(10_000 + TOAST_EXIT_MS);
+    });
+    expect(later).not.toHaveBeenCalled();
+    expect(undo()).toBeNull();
+  });
 });

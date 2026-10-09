@@ -1078,6 +1078,15 @@
   gap: 12px;
 }
 
+/* "Use studio standard for all" (the open session round, Oct 9 2026; AJ's
+   "2a"): one everyday button over the tiles, from two empty dials with a
+   standard up. */
+.mm-useall {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* A tile is a WELL (type and depth): the well tone, its inner shadow, no
    edge (kept transparent, so a changed tile's blue edge moves nothing),
    radius 12. Its ± are raised out of it. It was a box on the 3:1 edge

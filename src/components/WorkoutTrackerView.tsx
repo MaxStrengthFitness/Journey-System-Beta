@@ -274,6 +274,9 @@ import { addFloorNote } from "../features/floor-notes/store";
 import { ActiveSessionTimer } from "./ActiveSessionTimer";
 import { MachineMenu } from "../features/machine-menu/MachineMenu";
 import type { MachineMenuHost } from "../features/machine-menu/useMachineMenuData";
+import { isFirstSetup, notSetCount } from "../features/machine-menu/setting-draft";
+import { fieldsForMachine } from "../features/equipment/adapters";
+import { useMachineCatalog } from "../hooks/useMachineCatalog";
 /* Lazy, and the reason is measurable: the assessment panel is a 162 kB
    chunk (50 kB gzipped) that most sessions never open. A static import
    would put it on the critical path of the one screen a trainer opens
@@ -561,6 +564,19 @@ export function WorkoutTrackerView({
   // there is one card: it used to be two (settings, notes) and a trainer had
   // to know which of two targets to hit (features/machine-menu).
   const [menuMachineId, setMenuMachineId] = useState<string | null>(null);
+  /* The card was opened by the Now Bar's Set up (the open session round, Oct
+     9 2026; AJ's "2a"): on the first empty dial, and Save closes it. Any
+     other door opens it as before. */
+  const [menuQuickFor, setMenuQuickFor] = useState<string | null>(null);
+  const openMachineMenu = React.useCallback((id: string) => {
+    setMenuQuickFor(null);
+    setMenuMachineId(id);
+  }, []);
+  /* Stable for the memo'd Now Bar: the setters never change. */
+  const onSetUpMachine = React.useCallback((id: string) => {
+    setMenuQuickFor(id);
+    setMenuMachineId(id);
+  }, []);
   // The 90-day assessment, opened mid-session. See the panel at the bottom
   // of this file for why it is a slide-over and not a screen.
   const [isShowingAssessment, setIsShowingAssessment] = useState(false);
@@ -3585,6 +3601,38 @@ export function WorkoutTrackerView({
     return kept;
   }, [logs, shownSessionId]);
 
+  /* THE SETTINGS BUTTON'S COUNT (the open session round, Oct 9 2026; AJ's
+     "2a"): how many of each machine's dials the card would open empty on,
+     over the card's own dial list (equipment/adapters.ts `fieldsForMachine`,
+     the shared catalog read: no new listener), and whether anything is
+     saved. "Nothing saved" (Set up) is said only off the SERVER's answer:
+     an empty answer from the iPad's cache may be a cold cache, and a first
+     set-up saved off it would write the client's other dials over when it
+     syncs (the review, Oct 9 2026). Something saved is said off either.
+     An open session with no client yet offers no Set up at all: its
+     settings would go to the ghost record nobody reads (finding 4) until
+     they are held on the session (3a). */
+  const { byId: dialCatalogById } = useMachineCatalog();
+  const studioDialStandards = activeStudio?.machineSettings;
+  const noClientYet = !!currentSession?.isUnassigned && !clientId;
+  const setupById = useMemo(() => {
+    const out: Record<string, { notSet?: number; firstSetup?: boolean }> = {};
+    if (noClientYet) return out;
+    for (const m of floorMachines) {
+      if (!m.id) continue;
+      const saved = clientMachineSettings[m.id]?.settings ?? {};
+      const fields = fieldsForMachine(m, dialCatalogById, studioDialStandards);
+      const first = isFirstSetup(saved);
+      const known = settingsServerRead || (settingsRead && !first);
+      out[m.id] = { notSet: notSetCount(fields, saved), ...(known ? { firstSetup: first } : {}) };
+    }
+    return out;
+  }, [floorMachines, dialCatalogById, studioDialStandards, clientMachineSettings, settingsRead, settingsServerRead, noClientYet]);
+  /* The card's Set up, from the Now Bar and the phone's card: none while
+     an open session has no client (above). Stable either way (the bar is
+     memo). */
+  const onSetUpDoor = noClientYet ? undefined : onSetUpMachine;
+
   const gridRows = useMemo(() => {
     const ordered = [...floorMachines].sort(
       (a, b) =>
@@ -3663,6 +3711,9 @@ export function WorkoutTrackerView({
             settingLabels: entries.length
               ? Object.fromEntries(entries.map(([k, , full]) => [k, full]))
               : undefined,
+            // The Now Bar's settings button: "Set up · 2 not set" (Oct 9 2026).
+            dialsNotSet: setupById[machine.id!]?.notSet,
+            firstSetup: setupById[machine.id!]?.firstSetup,
             // The mark beside the name: the loudest open note, in the one
             // note key (machine menu, Oct 2026).
             alert: machineNoteLoudness({ ...noteInput, today: noteDay }) ?? undefined,
@@ -3683,6 +3734,7 @@ export function WorkoutTrackerView({
     gridHistory,
     selectedClient?.currentMachineMetrics,
     machineJournal,
+    setupById,
   ]);
 
   const gridSections = useMemo<GridSection[]>(() => {
@@ -4122,7 +4174,10 @@ export function WorkoutTrackerView({
       menuWatching,
     ],
   );
-  const closeMachineMenu = React.useCallback(() => setMenuMachineId(null), []);
+  const closeMachineMenu = React.useCallback(() => {
+    setMenuMachineId(null);
+    setMenuQuickFor(null);
+  }, []);
 
   /*
    * ROUTINE A'S PLAN ON THE FLOOR (the first-session design round, Oct 8
@@ -4369,6 +4424,8 @@ export function WorkoutTrackerView({
      to ask. */
   useEffect(() => {
     if (screen !== "tracker" && screen !== "watch") setMenuMachineId(null);
+    // And it opens as an ordinary card next time, never as Set up's.
+    if (screen !== "tracker" && screen !== "watch") setMenuQuickFor(null);
   }, [screen]);
 
   if (screen === "post-session" && postSession) {
@@ -4475,7 +4532,7 @@ export function WorkoutTrackerView({
           title="Machine"
           /* The machine menu, read only: its settings, notes and chart,
              with no box, no buttons and no saves (machine menu design §F). */
-          onOpenMachine={(id) => setMenuMachineId(id)}
+          onOpenMachine={openMachineMenu}
         />
       </WatchingSession>
       <MachineMenu open={!!menuMachineId} machineId={menuMachineId} onClose={closeMachineMenu} host={machineMenuHost} />
@@ -4749,8 +4806,18 @@ export function WorkoutTrackerView({
           this machine. Every write goes through
           features/equipment/mutations.ts and never waits on the database.
           It replaces the machine sheet, which replaced two modals that used
-          to sit here (settings, and notes behind a separate small icon). */}
-      <MachineMenu open={!!menuMachineId} machineId={menuMachineId} onClose={closeMachineMenu} host={machineMenuHost} />
+          to sit here (settings, and notes behind a separate small icon).
+          The Now Bar's Set up (and the phone card's) opens it on the first
+          empty dial, and its Save closes it with Undo in the toast (the
+          open session round, Oct 9 2026; AJ's "2a"). */}
+      <MachineMenu
+        open={!!menuMachineId}
+        machineId={menuMachineId}
+        onClose={closeMachineMenu}
+        host={machineMenuHost}
+        focusDial={!!menuMachineId && menuQuickFor === menuMachineId}
+        closeOnSave={!!menuMachineId && menuQuickFor === menuMachineId}
+      />
 
       {/* Who's this? The client picker for an open session, from the
           session bar or from Finish (the open session round, Oct 9 2026). */}
@@ -5082,7 +5149,9 @@ export function WorkoutTrackerView({
           onFocus={(id) => setFocusMachineOverride(id)}
           onChange={onGridLiveChange}
           onCommit={flushAllLogWrites}
-          onOpenMachine={(id) => setMenuMachineId(id)}
+          onOpenMachine={openMachineMenu}
+          /* The card's Set up, as the iPad's Now Bar (AJ's "2a"). */
+          onSetUp={onSetUpDoor}
           onReorder={() => setIsOrderSheetOpen(true)}
           planNext={planNext}
           onAddPlanned={onAddPlanned}
@@ -5154,7 +5223,7 @@ export function WorkoutTrackerView({
                audit's hesitation, and both did the same thing. It OPENS the
                machine menu on every tap (onOpenMachine): the old row trace
                toggled, so a machine just closed would not reopen. */
-            onOpenMachine={(id) => setMenuMachineId(id)}
+            onOpenMachine={openMachineMenu}
             layout="fill"
             /* Rows shrink to fit what is on screen (44 → 26px) instead of a
                fixed 44px that showed ~15 machines and hid the rest below
@@ -5219,7 +5288,9 @@ export function WorkoutTrackerView({
                 )
               : null
           }
-          onOpenFlag={gridFocusMachineId ? () => setMenuMachineId(gridFocusMachineId) : undefined}
+          onOpenFlag={gridFocusMachineId ? () => openMachineMenu(gridFocusMachineId) : undefined}
+          /* Set up: the card on the first empty dial, Save closes it (AJ's "2a"). */
+          onSetUp={onSetUpDoor}
           level={traineeLevelOf(selectedClient)}
           layout={nowBarSide ? "side" : "bar"}
           readMachineSeconds={readFocusedMachineSeconds}
@@ -5424,7 +5495,7 @@ export function WorkoutTrackerView({
             journalStream={flagJournalStream}
             onOpenMachine={(id) => {
               setIsShowingSessionNotes(false);
-              setMenuMachineId(id);
+              openMachineMenu(id);
             }}
             onClose={() => setIsShowingSessionNotes(false)}
           />

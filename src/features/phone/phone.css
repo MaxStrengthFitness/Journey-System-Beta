@@ -131,6 +131,31 @@
   font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
+/* The settings as one button, the iPad Now Bar's (the open session round,
+   Oct 9 2026; AJ's "2a"): raised on the 3:1 edge, 40px, wrapping, opening
+   the machine card on the first empty dial. */
+.ph-card__setup {
+  align-self: flex-start;
+  margin: -4px 0 0 36px;
+  min-height: 40px;
+  max-width: calc(100% - 36px);
+  padding: 4px 12px;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 10px;
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
+  color: var(--eq-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.ph-card__setup:active { transform: translateY(1px); box-shadow: var(--eq-press); }
 .ph-card__settings abbr {
   text-decoration: none;
   color: var(--eq-ink-muted);
