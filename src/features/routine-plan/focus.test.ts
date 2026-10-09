@@ -408,6 +408,19 @@ describe("the words", () => {
     expect(focusCountWords({ routines: ["B"], counts: { B: 4 } })).toBe("B's plan goes to 4 · under the Academy's 6");
   });
 
+  // §5.4b, answer 3: "what it pushes out to stay in 5-8 machines" (the whole-branch review, Oct 9 2026: past the 8 it named nothing).
+  it("past the Academy's 8, names the plan's lowest-priority machine the addition is better in place of, never moving it", () => {
+    const a8 = ["m-lumbar", "m-compound-row", "m-dip", "m-hip-add", "m-pullover", "m-leg-press", "m-leg-curl", "m-abs"];
+    const p = panel({ aRoutine: a8, aFirst: a8 });
+    const add = p.adds[0]!;
+    expect(add.counts.A).toBe(9);
+    // From the plan's end: one that doesn't work the area and isn't one of the Big 5's families.
+    expect(add.inPlaceOf).toBe("m-abs");
+    expect(focusCountWords(add, (id) => `<${id}>`)).toBe("A's plan goes to 9 · past the Academy's 8: in place of <m-abs>?");
+    // Inside the count, nothing is named.
+    expect(panel().adds[0]!.inPlaceOf).toBeUndefined();
+  });
+
   it("words the third question by what it offers", () => {
     expect(focusAddQuestion({ adds: [] })).toBe("Or add a single-joint machine?");
     const one = { key: "k", machineId: "m-hip-abd", routines: ["A" as const], counts: { A: 7 }, singleJoint: true, writeOn: "A" as const };

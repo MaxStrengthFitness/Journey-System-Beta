@@ -453,6 +453,9 @@ describe("the Academy's column, picked once per client (AJ's \"3a\")", () => {
     expect(text()).toContain("Not shown");
     await tap("Change column");
     expect(text()).toContain("Which of the Academy's columns fits Dana?");
+    // Don't show ranges is the fifth answer, beside the four, and the current one is the blue chip (the whole-branch review, Oct 9 2026).
+    expect(control("Don't show ranges").getAttribute("aria-pressed")).toBe("true");
+    expect(control("Female · Advanced").getAttribute("aria-pressed")).toBe("false");
     await tap("Female · Advanced");
     expect(store.calls).toHaveLength(2);
     expect(store.calls[1].input.change).toMatchObject({ kind: "column", value: "female-advanced" });

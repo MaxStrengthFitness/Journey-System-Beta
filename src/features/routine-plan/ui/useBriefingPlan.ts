@@ -43,8 +43,9 @@ import { planWithTodayAsDayOne, todayChanged } from "../briefing-plan";
 import type { Who } from "../lineup";
 import { todayFor } from "../plan";
 import { startingSourceWords } from "../start-part";
-import { TEMPLATE_SOURCE, academyTemplateName, type StartingAlternative, type StartingSuggestion } from "../starting-plan";
-import { academyTemplateOf, startingPlanFromRoutine, suggestFromStartingRoutines, type StartingRoutine } from "../starting-routines";
+import { notOnFloorLine } from "../starting-choice";
+import type { StartingAlternative, StartingSuggestion } from "../starting-plan";
+import { startedFromWords, startingPlanFromRoutine, suggestFromStartingRoutines, type StartingRoutine } from "../starting-routines";
 import { cantDoDayWords } from "../cant-do";
 import type { RoutinePlan } from "../types";
 import { useStartingRoutines } from "../useStartingRoutines";
@@ -105,6 +106,12 @@ export interface BriefingPlanState {
   pick: (id: string) => void;
   /** The Academy's eleven from Journey's own copy, not the app's. */
   fromCode: boolean;
+  /**
+   * "Not on Westlake's floor: Leg Curl" ("starting" only): the starting
+   * routine's machines this floor lacks, said under the Road, never dropped
+   * silently (§4.2), as Start a plan says it. Null when it has them all.
+   */
+  notOnFloor: string | null;
   /** What Start hands up ("starting" with a plan and a signer only). */
   startPlan: StartPlanAtStart | null;
   /**
@@ -180,13 +187,8 @@ export function useBriefingPlan(input: BriefingPlanInput): BriefingPlanState {
       : null;
     why = suggestion.why;
   } else if (view === "kept" && input.kept) {
-    // The Lineup's own words for where a kept plan started (PlanLineup).
-    const academy = academyTemplateOf(input.kept.templateId);
-    sourceWords = input.kept.templateId
-      ? academy
-        ? `Started from ${academyTemplateName(academy)} · ${startingSourceWords(TEMPLATE_SOURCE)}`
-        : "Started from a starting routine"
-      : null;
+    // The Lineup's own words for where a kept plan started (PlanLineup), by name.
+    sourceWords = startedFromWords(input.kept);
     // Who and when, never where: a plan is kept on Programming or by Start
     // on the briefing, and the plan doesn't record which.
     const by = input.kept.madeByName?.trim();
@@ -250,6 +252,7 @@ export function useBriefingPlan(input: BriefingPlanInput): BriefingPlanState {
       setOverride(null);
     },
     fromCode: starting.fromCode,
+    notOnFloor: startingView && suggestion && plan ? notOnFloorLine(suggestion.steps.flatMap((s) => s.missing), input.studioName) : null,
     startPlan,
     b,
     bChanged: b.changed,

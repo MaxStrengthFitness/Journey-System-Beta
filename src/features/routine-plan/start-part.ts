@@ -38,9 +38,19 @@ export const MATCH_WORD_MAX_LENGTH = 40;
 /** The most words one routine may carry. Each is a whole-word search of every intake, so the list stays short. */
 export const MATCH_WORDS_MAX = 40;
 
-const KINDS: readonly SelectionPurposeKind[] = ["clear", "condition", "goal"];
+/*
+ * THE START PART'S FIELD READERS, the one copy (the whole-branch review, Oct
+ * 9 2026: the editor's reader here and the app's, `startingRoutineFromPreset`,
+ * each had their own, and `starting-read.ts` a third `cleanIds`, so the editor
+ * could show a part the app read differently). Every reader of a stored part
+ * or a studio's choice reads its fields through these.
+ */
 
-function cleanIds(value: unknown): string[] {
+/** What a starting routine answers, as the Academy sorts its rows. */
+export const START_KINDS: readonly SelectionPurposeKind[] = ["clear", "condition", "goal"];
+
+/** A list of ids as stored: strings, trimmed, each once; anything else is no id. */
+export function cleanIds(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   const out: string[] = [];
   for (const v of value) {
@@ -55,7 +65,8 @@ export function cleanMatchWord(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function cleanWords(value: unknown): string[] {
+/** A part's match words as stored: each as the matcher reads it, once. */
+export function cleanWords(value: unknown): string[] {
   const out: string[] = [];
   for (const raw of Array.isArray(value) ? value : []) {
     const word = typeof raw === "string" ? cleanMatchWord(raw) : "";
@@ -64,13 +75,21 @@ function cleanWords(value: unknown): string[] {
   return out;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+/** A part's steps as stored, every one, its label trimmed and its ids clean (a label-less step included: the caller decides). */
+export function rawSteps(value: unknown): StartingRoutineStep[] {
+  return (Array.isArray(value) ? value : []).map((s: unknown) => {
+    const step = isRecord(s) ? s : {};
+    return { label: typeof step.label === "string" ? step.label.trim() : "", machineIds: cleanIds(step.machineIds) };
+  });
 }
 
-/** Whether a stored preset carries a `start` part at all (the editor's switch). */
-export function hasStartPart(preset: Pick<RoutinePreset, "start"> | null | undefined): boolean {
-  return isRecord(preset?.start);
+/** A part's kind, when it is one of the Academy's. */
+export function startKindOf(value: unknown): SelectionPurposeKind | undefined {
+  return START_KINDS.find((k) => k === value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
@@ -82,15 +101,10 @@ export function hasStartPart(preset: Pick<RoutinePreset, "start"> | null | undef
  */
 export function readStartPart(raw: unknown): RoutinePresetStart | undefined {
   if (!isRecord(raw)) return undefined;
-  const steps: StartingRoutineStep[] = (Array.isArray(raw.steps) ? raw.steps : [])
-    .map((s: unknown) => {
-      const step = isRecord(s) ? s : {};
-      return { label: typeof step.label === "string" ? step.label.trim() : "", machineIds: cleanIds(step.machineIds) };
-    })
-    .filter((s) => s.label !== "" && s.machineIds.length > 0);
+  const steps = rawSteps(raw.steps).filter((s) => s.label !== "" && s.machineIds.length > 0);
   const matchWords = cleanWords(raw.matchWords);
   const source = typeof raw.source === "string" ? raw.source.trim() : "";
-  const kind = KINDS.find((k) => k === raw.kind);
+  const kind = startKindOf(raw.kind);
   return {
     dayOne: cleanIds(raw.dayOne),
     ...(steps.length > 0 ? { steps } : null),
@@ -261,7 +275,7 @@ export function startPartForSave(
     .filter((s) => s.label !== "" && s.machineIds.length > 0);
   const matchWords = cleanWords(start.matchWords);
   const source = start.source?.trim();
-  const kind = KINDS.find((k) => k === start.kind);
+  const kind = startKindOf(start.kind);
   return withoutUndefined({
     dayOne: dayOneOf(start, road),
     steps: steps.length > 0 ? steps : undefined,

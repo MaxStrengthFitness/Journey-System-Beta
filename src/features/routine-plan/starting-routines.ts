@@ -26,6 +26,8 @@
  */
 import type { RoutinePreset } from "../../types";
 import { SELECTION_TEMPLATES, type SelectionPurposeKind, type SelectionTemplate } from "../routine-builder/academy";
+import { cleanIds, cleanWords, rawSteps, startKindOf, startingSourceWords } from "./start-part";
+import type { RoutinePlan } from "./types";
 import {
   TEMPLATE_SOURCE,
   academyRoad,
@@ -141,7 +143,28 @@ export function academyTemplateOf(templateId: string | null | undefined): Select
   return SELECTION_TEMPLATES.find((t) => t.id === id);
 }
 
-const KINDS: readonly SelectionPurposeKind[] = ["clear", "condition", "goal"];
+/**
+ * Where a kept plan started, in words, for the Lineup's head and the
+ * briefing's kept card (one sentence, both screens): "Started from Low back
+ * issues · From the Academy's Exercise Selection Template". The name the
+ * plan stored when it was made (`templateName`, any routine an
+ * administrator wrote included), else the Academy's for an Academy id; its
+ * source as stored, else the Academy's file for an Academy id. "Started from
+ * a starting routine" only for a plan made before names were stored from a
+ * routine that isn't the Academy's. Null for a plan with no starting routine
+ * (every suggestion names its source, and a plan built by hand has none).
+ */
+export function startedFromWords(
+  plan: Pick<RoutinePlan, "templateId" | "templateName" | "templateSource"> | null | undefined,
+): string | null {
+  if (!plan?.templateId) return null;
+  const academy = academyTemplateOf(plan.templateId);
+  const name = plan.templateName?.trim() || (academy ? academyTemplateName(academy) : "");
+  const source = startingSourceWords(plan.templateSource) ?? (academy ? startingSourceWords(TEMPLATE_SOURCE) : null);
+  if (!name) return source ? `Started from a starting routine · ${source}` : "Started from a starting routine";
+  return source ? `Started from ${name} · ${source}` : `Started from ${name}`;
+}
+
 
 /** The order a trainer looks for one: no reported issues, conditions, routines with no kind, goals. */
 function listRank(r: Pick<StartingRoutine, "kind">): number {
@@ -172,22 +195,6 @@ function byRank<T>(list: readonly T[], rank: (x: T) => number): T[] {
 }
 
 /* ── From a stored preset ─────────────────────────────────────────────── */
-
-function cleanIds(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  const out: string[] = [];
-  for (const v of value) {
-    const id = typeof v === "string" ? v.trim() : "";
-    if (id && !out.includes(id)) out.push(id);
-  }
-  return out;
-}
-
-function cleanWords(value: unknown): string[] {
-  return cleanIds(value)
-    .map((w) => w.toLowerCase().replace(/\s+/g, " "))
-    .filter((w, i, all) => all.indexOf(w) === i);
-}
 
 type StoredPreset = Partial<Pick<RoutinePreset, "id" | "name" | "machineIds" | "tier" | "studioId" | "scope">> & {
   start?: unknown;
@@ -223,20 +230,16 @@ export function startingRoutineFromPreset(preset: StoredPreset | null | undefine
   const dayOne = cleanIds(start.dayOne);
   if (dayOne.length === 0) return null;
 
-  const rawSteps = Array.isArray(start.steps)
-    ? start.steps.map((s: unknown) => {
-        const raw = (s ?? {}) as { label?: unknown; machineIds?: unknown };
-        return { label: typeof raw.label === "string" ? raw.label.trim() : "", machineIds: cleanIds(raw.machineIds) };
-      })
-    : [];
-  const steps: StartingRoutineStep[] = rawSteps.filter((s) => s.label !== "" && s.machineIds.length > 0);
+  // The start part's fields through its one reader (start-part.ts); a label-less step's machines still join the road.
+  const allSteps = rawSteps(start.steps);
+  const steps: StartingRoutineStep[] = allSteps.filter((s) => s.label !== "" && s.machineIds.length > 0);
 
   const road = cleanIds(preset.machineIds);
   const machineIds = [
     ...dayOne.filter((m) => !road.includes(m)),
     ...road,
   ];
-  for (const s of rawSteps) for (const m of s.machineIds) if (!machineIds.includes(m)) machineIds.push(m);
+  for (const s of allSteps) for (const m of s.machineIds) if (!machineIds.includes(m)) machineIds.push(m);
 
   const source = typeof start.source === "string" ? start.source.trim() : "";
   const studioId =
@@ -245,7 +248,7 @@ export function startingRoutineFromPreset(preset: StoredPreset | null | undefine
       : scope !== "global"
         ? scope
         : undefined;
-  const kind = KINDS.find((k) => k === start.kind);
+  const kind = startKindOf(start.kind);
   return {
     id,
     name: (typeof preset.name === "string" ? preset.name.trim() : "") || "Starting routine",
@@ -561,6 +564,9 @@ export function startingPlanFromRoutine(
       dayOne: [...startWith],
       building: true,
       templateId: routine.id,
+      // Its name and source as they are now, so a screen names the start with no second read.
+      ...(routine.name.trim() ? { templateName: routine.name.trim().slice(0, 200) } : null),
+      ...(routine.source?.trim() ? { templateSource: routine.source.trim().slice(0, 500) } : null),
       madeByUid: who.uid,
       ...(who.name ? { madeByName: who.name } : null),
       madeAt: todayYmd,

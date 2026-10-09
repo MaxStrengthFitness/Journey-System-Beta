@@ -45,6 +45,7 @@ import { logDocId } from "../../lib/exercise-log-id";
 import { isPerSideMachine } from "../../lib/floor-machines";
 import { findRoutineByLetter } from "../../lib/routine-utils";
 import { todayFor } from "../routine-plan/plan";
+import { runnableToday } from "../routine-plan/cant-do";
 import type { StartPlanAtStart } from "../routine-plan/briefing-plan";
 
 export type StartRoutineType = "A" | "B" | "Free";
@@ -53,8 +54,12 @@ export type StartRoutineType = "A" | "B" | "Free";
 export type StartRoutine =
   /** A Free session: no routine. */
   | { kind: "free" }
-  /** The client's own routine of that letter. */
-  | { kind: "existing"; routine: Routine }
+  /**
+   * The client's own routine of that letter. `aPlan` and `todayYmd` (when
+   * Start knows the day) leave out of today what the client can't do
+   * (`runnableToday`: Routine A's plan's marks, read by A and B).
+   */
+  | { kind: "existing"; routine: Routine; aPlan?: Routine["plan"] | null; todayYmd?: string }
   /**
    * The client has no Routine A (the routines are known) and the briefing
    * handed up a starting plan: Routine A is made EMPTY in the start batch
@@ -74,6 +79,8 @@ export function resolveStartRoutine(a: {
   routinesKnown: boolean;
   /** A client starting out: the plan the briefing hands up, kept by Start (Routine A only). */
   startPlan?: StartPlanAtStart | null;
+  /** The studio's day: with it, today leaves out what the client can't do. */
+  todayYmd?: string;
 }): StartRoutine {
   if (a.routineType === "Free") return { kind: "free" };
   const name = `Routine ${a.routineType}`;
@@ -92,7 +99,10 @@ export function resolveStartRoutine(a: {
       return { kind: "plan", name: "Routine A", routineId: found.id, startPlan };
     }
   }
-  if (found) return { kind: "existing", routine: found };
+  if (found) {
+    const aPlan = findRoutineByLetter(a.routines, "A")?.plan ?? null;
+    return { kind: "existing", routine: found, ...(a.todayYmd ? { aPlan, todayYmd: a.todayYmd } : null) };
+  }
   return { kind: "none", name };
 }
 
@@ -101,14 +111,18 @@ export function resolveStartRoutine(a: {
  * adjusted wins, exactly as it was handed up, an empty one included (the
  * briefing said "0 machines" and Start runs that); otherwise what the routine
  * runs today (`todayFor`: its machines, else its plan's day one while it is
- * empty). With no routine, the list as chosen, none when none was: never the
- * whole floor.
+ * empty), less any machine the client can't do (`runnableToday`). With no
+ * routine, the list as chosen, none when none was: never the whole floor.
  */
 export function plannedMachinesOf(routine: StartRoutine, customMachines?: string[] | null): string[] {
   const custom = customMachines ? [...customMachines] : null;
   switch (routine.kind) {
-    case "existing":
-      return custom ?? todayFor({ routine: routine.routine.machineIds ?? [], plan: routine.routine.plan });
+    case "existing": {
+      if (custom) return custom;
+      const today = todayFor({ routine: routine.routine.machineIds ?? [], plan: routine.routine.plan });
+      // Never a machine the client can't do (a Routine B's own swap, or a B from before Round 2).
+      return routine.todayYmd ? runnableToday(today, routine.aPlan, routine.todayYmd) : today;
+    }
     case "plan":
       return [...routine.startPlan.machineIds];
     case "unknown":
@@ -117,6 +131,39 @@ export function plannedMachinesOf(routine: StartRoutine, customMachines?: string
     case "none":
       return custom ?? [];
   }
+}
+
+/**
+ * Today's list once a session started before the client's routines were
+ * known learns its routine (the tracker's follow-up, R9). The trainer can
+ * add machines from the first moment (the empty Now Bar's Add a machine,
+ * the last machine's Add another), so neither list simply wins (the
+ * whole-branch review, Oct 9 2026: the list used to be either the trainer's,
+ * dropping the routine's machines, or, while the routines loaded, nothing
+ * could be added at all):
+ * - the trainer changed nothing: what the routine runs today (`planned`);
+ * - the routine adds nothing to what Start began with: the trainer's list;
+ * - otherwise the routine's machines first, in its order, less any the
+ *   trainer took out of what Start began with, then every other machine of
+ *   the trainer's, in the trainer's order.
+ * Each machine once.
+ */
+export function followUpList(a: {
+  /** What Start began with (`plannedMachinesOf` while the routine was unknown). */
+  started: readonly string[];
+  /** Today's list on screen now. */
+  current: readonly string[];
+  /** What the routine runs today, now that it is known. */
+  planned: readonly string[];
+}): string[] {
+  const same = (x: readonly string[], y: readonly string[]) => x.length === y.length && x.every((id, i) => id === y[i]);
+  const once = (ids: readonly string[]) => ids.filter((id, i) => ids.indexOf(id) === i);
+  if (same(a.current, a.started)) return once(a.planned);
+  if (same(a.planned, a.started)) return once(a.current);
+  const takenOut = a.started.filter((id) => !a.current.includes(id));
+  const out = once(a.planned).filter((id) => !takenOut.includes(id));
+  for (const id of a.current) if (!out.includes(id)) out.push(id);
+  return out;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canSaveNewClient, newClientPayload, parseAge, type NewClientAnswers } from "./consultation-answers";
+import { canSaveNewClient, newClientPayload, parseAge, type NewClientAnswers } from "./new-client-intake";
 
 /*
  * The consultation screens' own helpers (knownGender, ageOnFile,

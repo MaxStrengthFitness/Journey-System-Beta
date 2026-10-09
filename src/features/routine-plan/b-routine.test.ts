@@ -23,6 +23,7 @@ import {
   aRunsSince,
   alternateLine,
   bColumnOf,
+  bFollowForPlanWrite,
   bFollowOf,
   bFollowsA,
   bIntendedOf,
@@ -42,7 +43,6 @@ import {
   bToggleOpensPlanB,
   isBPlan,
   isPlannedB,
-  plannedBFirstSwap,
   plannedBFollowOf,
   plannedBLine,
   plannedBOf,
@@ -58,6 +58,7 @@ import {
   usableSwaps,
 } from "./b-routine";
 import { planChangeWhat } from "./changes-list";
+import { runnableToday } from "./cant-do";
 import type { FloorMachine } from "./starting-plan";
 import type { CantDo, PlanSwap, RoutinePlan } from "./types";
 
@@ -557,7 +558,8 @@ describe("B planned with the starting lineup", () => {
     expect(started.change).toEqual({ kind: "start", machineIds: ["m-leg-press", "m-ext"], value: B_START, byUid: "uid-sam", byName: "Sam Lee" });
     // The swaps it keeps are for A's machines now; Hip Adduction isn't on A's road at all.
     expect(started.plan.swaps).toEqual(SWAPS.slice(0, 2));
-    expect(plannedBFirstSwap({ swaps: SWAPS, aRoutine: aAfter, aPlan, floor: ALL, todayYmd: TODAY })).toEqual(SWAPS[0]);
+    // The first swap the start makes, as the Wrap-up's line reads it (`plannedBStartSwaps`).
+    expect(plannedBStartSwaps({ swaps: SWAPS, aRoutine: aAfter, aPlan, floor: ALL, todayYmd: TODAY }).ready[0]).toEqual(SWAPS[0]);
   });
 
   it("starts nothing unless the ticks START Routine A and B is planned and empty", () => {
@@ -635,7 +637,7 @@ describe("B planned with the starting lineup", () => {
     // Off the floor (the one frozen at Finish): neither.
     const offFloor = plannedBStartSwaps({ swaps, aRoutine: ["m-leg-press"], aPlan, floor: ALL.filter((m) => m.id !== "m-ext"), todayYmd: TODAY });
     expect(offFloor.ready).toEqual([]);
-    expect(plannedBFirstSwap({ swaps, aRoutine: ["m-leg-press"], aPlan, floor: ALL.filter((m) => m.id !== "m-ext"), todayYmd: TODAY })).toBeNull();
+    expect(offFloor.ready[0]).toBeUndefined();
   });
 
   it("says a planned B by the swaps it can still keep, the first the one it would start with", () => {
@@ -685,5 +687,82 @@ describe("B planned with the starting lineup", () => {
     expect(plannedBFollowOf([a, planned], "r-b", { intended: road })).toBeNull();
     expect(plannedBFollowOf([a, { ...planned, machineIds: ["m-ext"] }], "r-a", { intended: road })).toBeNull();
     expect(plannedBFollowOf([a], "r-a", { intended: road })).toBeNull();
+  });
+});
+
+/*
+ * Can't-do reaches B (AJ, Oct 8 2026, "2a": "Can't-do lives on the client's
+ * plan, read by A and B"; the whole-branch review, Oct 9 2026). Marking a
+ * machine only B runs (one of its swaps) left it in Routine B, and every B
+ * session ran it; the briefing drew it as today's.
+ */
+describe("a machine the client can't do leaves B too", () => {
+  const surgery = (machineId: string, until: CantDo["until"] = "cleared"): CantDo => ({
+    machineId,
+    reason: "Surgery",
+    until,
+    day: TODAY,
+    byUid: "uid-sam",
+    replacedBy: [],
+    onRoad: false,
+  });
+  const aPlanWith = (cantDo: CantDo[]): RoutinePlan => ({ purpose: "", intended: A, building: false, madeByUid: "uid-sam", cantDo });
+  const routinesOf = (bMachines: string[], bPlan: RoutinePlan = bPlanOf()): Routine[] => [
+    { id: "rA", name: "Routine A", clientId: "c1", machineIds: A, plan: aPlanWith([]) },
+    { id: "rB", name: "Routine B", clientId: "c1", machineIds: bMachines, plan: bPlan },
+  ];
+
+  it("one of B's swaps made gives its place back to A's machine, and the swap waits next in line", () => {
+    const b2 = bRoutineOf(A, SWAPS, 2); // Leg Extension and Simple Row in
+    const follow = bFollowForPlanWrite({
+      routines: routinesOf(b2),
+      aRoutineId: "rA",
+      aPlan: aPlanWith([surgery("m-ext")]),
+      todayYmd: TODAY,
+    })!;
+    expect(follow.routineId).toBe("rB");
+    expect(follow.machineIds).toEqual(["m-leg-press", "m-simple-row", "m-chest-press", "m-lumbar", "m-hip-add"]);
+    // Simple Row's swap still counts as made; Leg Extension's waits after it, "can't do for now".
+    expect(follow.swaps).toEqual([SWAPS[1], SWAPS[0], SWAPS[2]]);
+    expect(swapsReady(A, follow.swaps!, follow.machineIds!, ["m-ext"])).toBe(0);
+    expect(bStatus(follow.swaps!, follow.machineIds!)).toMatchObject({ made: 1, next: SWAPS[0] });
+  });
+
+  it("writes nothing to B when B doesn't hold the machine, when the mark has ended, or for a B of its own", () => {
+    const b1 = bRoutineOf(A, SWAPS, 1);
+    expect(bFollowForPlanWrite({ routines: routinesOf(b1), aRoutineId: "rA", aPlan: aPlanWith([surgery("m-abs")]), todayYmd: TODAY })).toBeNull();
+    expect(
+      bFollowForPlanWrite({ routines: routinesOf(b1), aRoutineId: "rA", aPlan: aPlanWith([surgery("m-ext", "2026-10-01")]), todayYmd: TODAY }),
+    ).toBeNull();
+    const own: Routine[] = [
+      { id: "rA", name: "Routine A", clientId: "c1", machineIds: A },
+      { id: "rB", name: "Routine B", clientId: "c1", machineIds: ["m-ext", "m-lumbar"] },
+    ];
+    expect(bFollowForPlanWrite({ routines: own, aRoutineId: "rA", aPlan: aPlanWith([surgery("m-ext")]), todayYmd: TODAY })).toBeNull();
+  });
+
+  it("acts on the mark over what B takes when A moves too, in one answer", () => {
+    const b1 = bRoutineOf(A, SWAPS, 1);
+    const aNew = A.filter((id) => id !== "m-lumbar");
+    const follow = bFollowForPlanWrite({
+      routines: routinesOf(b1),
+      aRoutineId: "rA",
+      aMachines: aNew,
+      aPlan: aPlanWith([surgery("m-ext")]),
+      todayYmd: TODAY,
+    })!;
+    expect(follow.machineIds).toEqual(["m-leg-press", "m-compound-row", "m-chest-press", "m-hip-add"]);
+  });
+
+  it("a session on B never seeds it, and B's Road draws it crossed", () => {
+    const b1 = bRoutineOf(A, SWAPS, 1);
+    const aPlan = aPlanWith([surgery("m-ext")]);
+    const today = runnableToday(b1, aPlan, TODAY);
+    expect(today).not.toContain("m-ext");
+    const groups = bRoadGroups({ bPlan: bPlanOf(), today, bRoutine: b1, cantDo: aPlan.cantDo, todayYmd: TODAY, nameOf, firstName: "Tom" });
+    expect(groups.find((g) => g.key === "today")!.stations.map((s) => s.id)).not.toContain("m-ext");
+    expect(groups.find((g) => g.key === "cantdo")!.stations).toEqual([{ id: "m-ext", kind: "cantdo" }]);
+    // A Routine B of its own (no plan of swaps): the guard alone leaves it out of today.
+    expect(runnableToday(["m-ext", "m-lumbar"], aPlan, TODAY)).toEqual(["m-lumbar"]);
   });
 });

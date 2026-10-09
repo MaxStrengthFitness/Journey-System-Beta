@@ -140,10 +140,11 @@ import { usePhone } from "../phone/device";
 import { clientDisplayName, clientFirstName } from "../../lib/client-name";
 import { useLeaveGuard, useUnsavedChanges } from "../unsaved-changes";
 import { openProfileAt } from "../client-profile/profile-nav";
-import { isProvisionalNewClient, pastLearningCurve, startingKindOf } from "../routine-plan/client-kind";
+import { isProvisionalNewClient, learningCurveInputOf, pastLearningCurve, startingKindOf } from "../routine-plan/client-kind";
 import { openHealthWords, planIntakeText } from "../routine-plan/intake";
 import { focusLine } from "../routine-plan/focus";
 import { planProgress, progressLine, todayFor } from "../routine-plan/plan";
+import { runnableToday } from "../routine-plan/cant-do";
 import { roadGroups } from "../routine-plan/lineup";
 import { bProgressOf, bRoadGroups, bStatus, bStatusLine, isBPlan, plannedBTarget, swapsOf } from "../routine-plan/b-routine";
 import {
@@ -248,8 +249,13 @@ export function BriefingScreen({
   coverage = "unknown",
   studios = null,
 }: BriefingScreenProps) {
+  /* "TodayOnly_A" / "TodayOnly_B": the client has no routine of that letter,
+     so today's list is chosen here and is the session's alone ("Not set up
+     yet · today only"); Start makes no routine from it. They were
+     "Create_A" / "Create_B" while Start still saved the list as a routine
+     (until Oct 8 2026; renamed in the whole-branch review, Oct 9 2026). */
   const [selectedRoutineType, setSelectedRoutineType] = useState<
-    "A" | "B" | "Free" | "Create_A" | "Create_B"
+    "A" | "B" | "Free" | "TodayOnly_A" | "TodayOnly_B"
   >("A");
   const [adjustedMachineIds, setAdjustedMachineIds] = useState<string[]>([]);
   const [adjustmentNote, setAdjustmentNote] = useState("");
@@ -279,6 +285,16 @@ export function BriefingScreen({
     () => todayFor({ routine: routineA?.machineIds, plan: routineA?.plan }),
     [routineA],
   );
+  /* What Routine B runs today: its machines less any the client can't do
+     (Routine A's plan's marks, read by A and B: AJ's "2a"), so a B swap or a
+     Routine B from before Round 2 never seeds a machine marked "Surgery ·
+     until cleared" (the whole-branch review, Oct 9 2026). Start leaves them
+     out the same way (start-plan.ts). */
+  const bTodayKey = studioTodayKey();
+  const routineBToday = useMemo(
+    () => runnableToday(routineB?.machineIds ?? [], routineA?.plan, bTodayKey),
+    [routineB, routineA, bTodayKey],
+  );
 
   /** Set once the trainer picks a routine by hand, so a background refetch of
    *  `routines` cannot silently reset their choice back to the suggestion. */
@@ -293,23 +309,23 @@ export function BriefingScreen({
     setRoutinePickedByTrainer(true);
     setIsAdjusting(false);
     if (type === "A") {
-      setSelectedRoutineType(routineA ? "A" : "Create_A");
+      setSelectedRoutineType(routineA ? "A" : "TodayOnly_A");
       setAdjustedMachineIds(routineAToday);
     } else {
-      setSelectedRoutineType(routineB ? "B" : "Create_B");
-      setAdjustedMachineIds(routineB?.machineIds || []);
+      setSelectedRoutineType(routineB ? "B" : "TodayOnly_B");
+      setAdjustedMachineIds(routineBToday);
     }
   };
 
   useEffect(() => {
-    let type: "A" | "B" | "Free" | "Create_A" | "Create_B" = routineA ? "A" : "Create_A";
+    let type: "A" | "B" | "Free" | "TodayOnly_A" | "TodayOnly_B" = routineA ? "A" : "TodayOnly_A";
     if (targetRoutine) {
-      if (matchesRoutineLetter(targetRoutine, "A")) type = routineA ? "A" : "Create_A";
-      else if (matchesRoutineLetter(targetRoutine, "B")) type = routineB ? "B" : "Create_B";
+      if (matchesRoutineLetter(targetRoutine, "A")) type = routineA ? "A" : "TodayOnly_A";
+      else if (matchesRoutineLetter(targetRoutine, "B")) type = routineB ? "B" : "TodayOnly_B";
     }
 
     if (type === "B" && !routineB) {
-      type = "Create_B";
+      type = "TodayOnly_B";
     }
 
     // A hand-picked routine wins over the suggestion.
@@ -317,13 +333,13 @@ export function BriefingScreen({
 
     setSelectedRoutineType(type);
     if (type === "B") {
-      setAdjustedMachineIds(routineB?.machineIds || []);
+      setAdjustedMachineIds(routineBToday);
     } else if (type === "A") {
       setAdjustedMachineIds(routineAToday);
     } else {
       setAdjustedMachineIds([]);
     }
-  }, [targetRoutine, routineA, routineAToday, routineB, routinePickedByTrainer]);
+  }, [targetRoutine, routineA, routineAToday, routineB, routineBToday, routinePickedByTrainer]);
 
   /**
    * Any change to the sequence — reorder, add, remove, a one-tap rule fix —
@@ -408,9 +424,9 @@ export function BriefingScreen({
 
   /** The other half of the rotation, for the twice-weekly analysis. */
   const counterpartIds = useMemo(() => {
-    if (selectedRoutineType === "A" || selectedRoutineType === "Create_A")
+    if (selectedRoutineType === "A" || selectedRoutineType === "TodayOnly_A")
       return routineB?.machineIds ?? null;
-    if (selectedRoutineType === "B" || selectedRoutineType === "Create_B")
+    if (selectedRoutineType === "B" || selectedRoutineType === "TodayOnly_B")
       return routineA ? routineAToday : null;
     return null;
   }, [selectedRoutineType, routineA, routineAToday, routineB]);
@@ -587,11 +603,11 @@ export function BriefingScreen({
 
   const selectedRoutineIds =
     isAdjusting ||
-    ["Free", "Create_A", "Create_B"].includes(selectedRoutineType)
+    ["Free", "TodayOnly_A", "TodayOnly_B"].includes(selectedRoutineType)
       ? adjustedMachineIds
       : selectedRoutineType === "A"
         ? routineAToday
-        : routineB?.machineIds || [];
+        : routineBToday;
 
   /* ---------------------------------------------------------------- *
    * THE STACK (AJ's walk, Oct 3 2026; stack.ts is the pure half).
@@ -642,7 +658,7 @@ export function BriefingScreen({
   /* The routine, as one line until it is opened. */
   const [routineOpen, setRoutineOpen] = useState(false);
   const routineLetter =
-    selectedRoutineType === "B" || selectedRoutineType === "Create_B" ? "B" : "A";
+    selectedRoutineType === "B" || selectedRoutineType === "TodayOnly_B" ? "B" : "A";
   const codes = routineCodes(selectedRoutineIds, machines);
   const touching = machinesTouchingLimits(selectedRoutineIds, machines, flagIds);
 
@@ -817,13 +833,13 @@ export function BriefingScreen({
       return;
     }
     onStart(
-      selectedRoutineType === "Create_B"
+      selectedRoutineType === "TodayOnly_B"
         ? "B"
-        : selectedRoutineType === "Create_A"
+        : selectedRoutineType === "TodayOnly_A"
           ? "A"
           : (selectedRoutineType as any),
       isAdjusting ||
-        ["Free", "Create_A", "Create_B"].includes(selectedRoutineType)
+        ["Free", "TodayOnly_A", "TodayOnly_B"].includes(selectedRoutineType)
         ? adjustedMachineIds
         : undefined,
       adjustmentNote,
@@ -1299,8 +1315,8 @@ export function BriefingScreen({
                   const lastRun = type === "A" ? lastRunA : lastRunB;
                   const active =
                     type === "A"
-                      ? ["A", "Create_A"].includes(selectedRoutineType)
-                      : ["B", "Create_B"].includes(selectedRoutineType);
+                      ? ["A", "TodayOnly_A"].includes(selectedRoutineType)
+                      : ["B", "TodayOnly_B"].includes(selectedRoutineType);
                   return (
                     <button
                       key={type}
@@ -1375,9 +1391,9 @@ export function BriefingScreen({
                   <RoutineBuilder
                     mode="briefing"
                     slot={
-                      selectedRoutineType === "B" || selectedRoutineType === "Create_B"
+                      selectedRoutineType === "B" || selectedRoutineType === "TodayOnly_B"
                         ? "B"
-                        : selectedRoutineType === "A" || selectedRoutineType === "Create_A"
+                        : selectedRoutineType === "A" || selectedRoutineType === "TodayOnly_A"
                           ? "A"
                           : null
                     }
@@ -1388,7 +1404,7 @@ export function BriefingScreen({
                     history={machineHistory}
                     counterpartMachineIds={counterpartIds}
                     counterpartLabel={
-                      selectedRoutineType === "B" || selectedRoutineType === "Create_B"
+                      selectedRoutineType === "B" || selectedRoutineType === "TodayOnly_B"
                         ? "Routine A"
                         : "Routine B"
                     }
@@ -1398,12 +1414,7 @@ export function BriefingScreen({
                        built, nor when Journey can't tell. The routine
                        drawer asks the same rule (it was the intro-session
                        flag, which nothing set; §4.8). */
-                    established={pastLearningCurve({
-                      known: routinesKnown,
-                      coverage,
-                      journeySessions: sessionCount,
-                      routineABeingBuilt: routineA?.plan?.building === true,
-                    })}
+                    established={pastLearningCurve(learningCurveInputOf({ routinesKnown, coverage, client, routineA }))}
                   />
                 </div>
               )}

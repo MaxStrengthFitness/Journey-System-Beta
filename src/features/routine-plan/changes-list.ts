@@ -29,8 +29,8 @@ import type { RoutineAdjustment, Trainer } from "../../types";
 import { B_PLANNED, B_START, B_SWAP_KEPT, B_SWAP_MADE, B_SWAP_PLANNED } from "./b-routine";
 import { cantDoLine, listWords, parseCantDoValue } from "./cant-do";
 import { FOCUS_AREAS } from "./focus";
-import { ROUTINE_ONLY, isStartingColumnChoice } from "./plan";
-import { STARTING_COLUMN_LABEL } from "./starting-weights";
+import { DAY_ONE, ROUTINE_ONLY, isStartingColumnChoice } from "./plan";
+import { STARTING_COLUMN_LEVEL } from "./starting-weights";
 import type { StoredPlanChange } from "./store";
 import type { PlanChangeKind } from "./types";
 
@@ -126,7 +126,8 @@ function person(t: TrainerLike | undefined, signedAs: string | undefined): { who
 
 function columnWords(value: string | undefined): string {
   if (value === "none") return "Academy's starting ranges: not shown";
-  if (isStartingColumnChoice(value)) return `Academy's starting ranges: the ${STARTING_COLUMN_LABEL[value]} column`;
+  // The level alone, never the sheet's sex word: this list is read by every trainer.
+  if (isStartingColumnChoice(value)) return `Academy's starting ranges: the ${STARTING_COLUMN_LEVEL[value]} column`;
   return value ? `Academy's starting ranges: ${value}` : "Academy's starting ranges";
 }
 
@@ -161,9 +162,11 @@ export function planChangeWhat(
       return value ? `Started the plan from ${value}` : "Started the plan";
     case "add":
       if (names.length === 0) return "Changed the plan";
+      if (value === DAY_ONE) return `Put ${listWords(names)} on day one`;
       return value === ROUTINE_ONLY ? `Added ${listWords(names)} to ${routine}` : `Added ${listWords(names)}`;
     case "remove":
       if (names.length === 0) return "Changed the plan";
+      if (value === DAY_ONE) return `Took ${listWords(names)} off day one`;
       return value === ROUTINE_ONLY ? `Took ${listWords(names)} out of ${routine}` : `Took ${listWords(names)} out of the plan`;
     case "swap":
       // Routine B's swaps against A (b-routine.ts): one made, one planned, one kept as A has it.

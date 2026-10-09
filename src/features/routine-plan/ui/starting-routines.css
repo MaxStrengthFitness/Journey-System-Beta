@@ -60,6 +60,19 @@
   cursor: pointer;
 }
 
+/* The switch and its (i) on one row; the how-to opens under it. */
+.srt-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.srt__how {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 /* Day one: the template's machines, each a row a tap marks. */
 .srt-picks {
   display: grid;

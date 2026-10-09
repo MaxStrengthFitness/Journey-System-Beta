@@ -98,10 +98,15 @@ export function highestAuthorableTier(
 /**
  * Whether a preset is a starting routine: it has a `start` part (Oct 8 2026,
  * src/features/routine-plan/starting-routines.ts). Its `machineIds` is a
- * plan's whole road, not a routine to apply.
+ * plan's whole road, not a routine to apply. The one answer to "is this a
+ * starting routine" (the whole-branch review, Oct 9 2026: the template
+ * editor asked a second rule of its own): a part is a record, never a list,
+ * as the editor (`readStartPart`) and the app (`startingRoutineFromPreset`)
+ * read it, so a stored `start: []` is an ordinary template in the drawer.
  */
-export function isStartingRoutinePreset(preset: Pick<RoutinePreset, "start">): boolean {
-  return typeof preset.start === "object" && preset.start !== null;
+export function isStartingRoutinePreset(preset: Pick<RoutinePreset, "start"> | null | undefined): boolean {
+  const start = preset?.start;
+  return typeof start === "object" && start !== null && !Array.isArray(start);
 }
 
 /**

@@ -1,6 +1,6 @@
 /**
- * A starting plan for a client new to the studio, from the Academy's own
- * templates (AJ, Oct 7 2026: "they're going to go through the leg press.
+ * The Academy's starting templates and the floor helpers every starting
+ * routine reads (AJ, Oct 7 2026: "they're going to go through the leg press.
  * Possibly the compound row. Also maybe the lumbar. ... the trainer should be
  * able to definitely customize this and change it. Routines need to be very
  * modular").
@@ -8,36 +8,32 @@
  * The Academy's Exercise Selection Template (`SELECTION_TEMPLATES`, Academy 6
  * `Programming and Progression 7`) gives, for each kind of client, the
  * consultation's machines, the first and second workouts, and the eventual A
- * and B. They were in the code and nothing read the first three until now.
- * The document's own framing stands: "these are just suggestions and can be
- * used more for guidelines or ideas rather than formal rules", so this offers,
- * names its source, and writes nothing.
+ * and B. The document's own framing stands: "these are just suggestions and
+ * can be used more for guidelines or ideas rather than formal rules".
  *
- * The plan it makes:
- * - starts with the consultation's machines ("Leg Press plus one more,
- *   preferably compound row", Programming and Progression 1);
- * - intends, by default, the second workout: the learning-curve routine that
- *   "may be repeated for several subsequent sessions" before A is built
- *   (Programming and Progression 2), so the plan reads "3 of 6" rather than
- *   promising the model A the Academy puts two months out. A trainer may aim
- *   it at the eventual A instead;
- * - keeps only machines on the studio's floor, and says which it couldn't.
- *
- * Since the design round (Oct 8 2026) the screens start from starting
- * routines, which admins make and studios choose (`starting-routines.ts`);
- * the Academy's eleven are its fallback, built from these templates by
- * `academyStartingRoutines()`. This file keeps the templates' own path and
- * the floor helpers both use.
+ * What lives here:
+ * - a template's road (`academyRoad`: the consultation's machines, then the
+ *   second workout, the learning-curve routine that "may be repeated for
+ *   several subsequent sessions" before A is built, Programming and
+ *   Progression 2), the one `academyStartingRoutines()` (starting-routines.ts)
+ *   and the seed build the Academy's eleven from;
+ * - a template's name, never with the sex split (`academyTemplateName`);
+ * - the floor helpers (`floorIndex`, `floorCanonical`) and the sequencing
+ *   repair (`repairOrder`);
+ * - the suggestion's shape (`StartingSuggestion`), which
+ *   `suggestFromStartingRoutines` returns.
+ * The plan a start makes is starting-routines.ts's `startingPlanFromRoutine`,
+ * the one builder (the whole-branch review, Oct 9 2026: a second, older
+ * builder from the templates themselves had stayed here, read by tests only,
+ * and was deleted so the two could never drift).
  *
  * Gender is used nowhere (AJ, Oct 8 2026, "3a": "A client whose intake names
  * nothing gets the studio's default starting routine. Gender is used nowhere
- * in choosing a start"). The Academy's two "no reported issues" rows were
- * picked by Mindbody's gender until then; now an intake that names nothing
- * leaves the pick to the trainer, and the two rows are named by what tells
- * them apart, never by sex (`academyTemplateName`).
+ * in choosing a start"). The Academy's two "no reported issues" rows are
+ * named by what tells them apart, never by sex (`academyTemplateName`).
  */
 import { canonicalMachineId } from "../catalog/machine-identity";
-import { SELECTION_TEMPLATES, matchTemplates, type SelectionTemplate } from "../routine-builder/academy";
+import type { SelectionTemplate } from "../routine-builder/academy";
 import { autoSequence } from "../routine-builder/engine";
 import type { RoutinePlan } from "./types";
 
@@ -51,21 +47,8 @@ export interface FloorMachine {
   canonicalId?: string;
 }
 
-export type AcademyStepKey = "consult" | "first" | "second" | "eventualA" | "eventualB";
-
-export const STEP_LABEL: Record<AcademyStepKey, string> = {
-  consult: "Consultation",
-  first: "First workout",
-  second: "Second workout",
-  eventualA: "Eventual A",
-  eventualB: "Eventual B",
-};
-
 export interface AcademyStep {
-  /**
-   * Which step: an Academy template's `AcademyStepKey`, or, for a starting
-   * routine, `step-1`, `step-2` ... in the order the steps join.
-   */
+  /** Which step: `step-1`, `step-2` ... in the order a starting routine's steps join. */
   key: string;
   label: string;
   /** The step's machines that are on this floor, as floor ids, in order. */
@@ -146,87 +129,16 @@ export function floorCanonical(floor: readonly FloorMachine[]): (id: string) => 
   return (id: string) => byFloorId.get(id) ?? canonicalMachineId(id);
 }
 
-function stepOf(key: AcademyStepKey, ids: readonly string[], index: Map<string, string>): AcademyStep {
-  const machineIds: string[] = [];
-  const missing: string[] = [];
-  for (const id of ids) {
-    const onFloor = index.get(id);
-    if (onFloor) {
-      if (!machineIds.includes(onFloor)) machineIds.push(onFloor);
-    } else if (!missing.includes(id)) missing.push(id);
-  }
-  return { key, label: STEP_LABEL[key], machineIds, missing };
-}
-
-function stepsFor(t: SelectionTemplate, index: Map<string, string>): AcademyStep[] {
-  return [
-    stepOf("consult", t.consult, index),
-    stepOf("first", t.firstWorkout, index),
-    stepOf("second", t.secondWorkout, index),
-    stepOf("eventualA", t.eventualA, index),
-    stepOf("eventualB", t.eventualB, index),
-  ];
-}
-
 /**
  * A template's road in catalog ids: the consultation's machines the second
  * workout leaves out, then the second workout, repaired against the
- * sequencing rules when the two had to be joined. The same road
- * `startingPlanFrom` makes on a floor, and the one the seed writes.
+ * sequencing rules when the two had to be joined. The road
+ * `academyStartingRoutines()` makes each of the eleven with, and the one the
+ * seed writes.
  */
 export function academyRoad(t: Pick<SelectionTemplate, "consult" | "secondWorkout">): string[] {
   const extras = t.consult.filter((id) => !t.secondWorkout.includes(id));
   return extras.length > 0 ? repairOrder([...extras, ...t.secondWorkout]) : [...t.secondWorkout];
-}
-
-function onFloor(ids: readonly string[], index: Map<string, string>): string[] {
-  const out: string[] = [];
-  for (const id of ids) {
-    const floorId = index.get(id);
-    if (floorId && !out.includes(floorId)) out.push(floorId);
-  }
-  return out;
-}
-
-export interface StartingInput {
-  /** The intake's words: medical history, goals, the clinical profile, open Health notes. */
-  intakeText?: string | null;
-  floor: readonly FloorMachine[];
-  /** A template the trainer picked, overriding the match. */
-  templateId?: string | null;
-}
-
-export function suggestStartingPlan(input: StartingInput): StartingSuggestion {
-  const index = floorIndex(input.floor);
-  const matched = matchTemplates(input.intakeText);
-
-  let chosen: SelectionTemplate | null = null;
-  let why: string;
-  const picked = input.templateId ? SELECTION_TEMPLATES.find((t) => t.id === input.templateId) : undefined;
-  if (picked) {
-    chosen = picked;
-    why = `The Academy's template the trainer picked: ${academyTemplateName(picked)}.`;
-  } else if (matched.length > 0) {
-    chosen = matched[0];
-    why = `From the Academy's template for ${sayableTemplateLabel(chosen).toLowerCase()}, matched from the intake.`;
-  } else {
-    why = "Nothing in the intake names a condition. Pick which of the Academy's starting templates fits.";
-  }
-
-  // Matched templates first, then the rest in the Academy's order.
-  const alternatives = [...matched, ...SELECTION_TEMPLATES]
-    .filter((t, i, all) => t.id !== chosen?.id && all.findIndex((x) => x.id === t.id) === i)
-    .map((t) => ({ templateId: t.id, label: academyTemplateName(t), machineIds: onFloor(academyRoad(t), index) }));
-
-  return {
-    templateId: chosen?.id ?? null,
-    label: chosen ? academyTemplateName(chosen) : null,
-    why,
-    source: TEMPLATE_SOURCE,
-    steps: chosen ? stepsFor(chosen, index) : [],
-    needsChoice: chosen === null,
-    alternatives,
-  };
 }
 
 export interface StartingPlan {
@@ -243,44 +155,6 @@ export interface StartingPlan {
    * (`todayFor`).
    */
   startWith: string[];
-}
-
-/**
- * The plan a suggestion makes, before any trainer has changed it.
- * `through` is the step the plan aims at: the second workout by default.
- * Day one rides on the plan (`dayOne`), never in Routine A.
- */
-export function startingPlanFrom(
-  s: StartingSuggestion,
-  who: { uid: string; name?: string },
-  through: "second" | "eventualA" = "second",
-): StartingPlan {
-  const consult = s.steps.find((x) => x.key === "consult")?.machineIds ?? [];
-  const target = s.steps.find((x) => x.key === through)?.machineIds ?? [];
-  // The consultation's machines come first in time; a template whose
-  // consultation machine isn't in the target keeps it (the trainer swaps it
-  // out later, the way the Academy's own path does), and the order is then
-  // repaired against the sequencing rules.
-  const extras = consult.filter((id) => !target.includes(id));
-  const intended = extras.length > 0 ? repairOrder([...extras, ...target]) : [...target];
-  // Day one is the plan's order with only the consultation's machines in,
-  // which can leave two machines side by side that the plan kept apart
-  // (Lumbar straight into Leg Press once Compound Row isn't between them),
-  // so it is repaired against the sequencing rules too.
-  const startWith = repairOrder(intended.filter((id) => consult.includes(id)));
-  return {
-    plan: {
-      purpose: through === "second" ? "Learning the protocol: the starting routine" : "The core: the routine the client is built on",
-      purposeKinds: ["core"],
-      intended,
-      dayOne: [...startWith],
-      building: true,
-      ...(s.templateId ? { templateId: s.templateId } : null),
-      madeByUid: who.uid,
-      ...(who.name ? { madeByName: who.name } : null),
-    },
-    startWith,
-  };
 }
 
 /**

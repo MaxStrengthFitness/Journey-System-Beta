@@ -25,11 +25,27 @@
 
 export type StartingColumn = "female-novice" | "female-advanced" | "male-novice" | "male-advanced";
 
+/**
+ * The sheet's own labels for its four columns: drawn ONLY inside the pick
+ * sheet, where the trainer picks one (AJ's "3a": "labelled as the sheet
+ * labels them"). Anywhere else a column is said by its level alone
+ * (`STARTING_COLUMN_LEVEL`): on-screen text never says a client's sex (the
+ * whole-branch review, Oct 9 2026; CLAUDE.md, "On-screen text never guesses
+ * a client's gender").
+ */
 export const STARTING_COLUMN_LABEL: Record<StartingColumn, string> = {
   "female-novice": "Female · Novice",
   "female-advanced": "Female · Advanced",
   "male-novice": "Male · Novice",
   "male-advanced": "Male · Advanced",
+};
+
+/** A column said outside the pick sheet: its level, never the sheet's sex word ("the Novice column"). */
+export const STARTING_COLUMN_LEVEL: Record<StartingColumn, string> = {
+  "female-novice": "Novice",
+  "female-advanced": "Advanced",
+  "male-novice": "Novice",
+  "male-advanced": "Advanced",
 };
 
 export interface WeightRange {

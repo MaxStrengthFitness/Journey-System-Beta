@@ -71,6 +71,7 @@ import { activeCantDo } from "../cant-do";
 import { focusCellWords, type FocusRole } from "../focus";
 import { FAMILY_SOURCE, SUBSTITUTES_SOURCE, effectsAbove, namesOf, signedChange } from "../lineup";
 import type { OrderEffect } from "../order-effects";
+import { sameList } from "../plan";
 import { startingSourceWords } from "../start-part";
 import type { FloorMachine } from "../starting-plan";
 import type { PlanSwap, RoutinePlan } from "../types";
@@ -153,7 +154,6 @@ export interface BColumnParts {
   sheets: ReactNode;
 }
 
-const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 
 /** Why the next swap waits, said under B's head, with where to change it. */
 export function bWaitWords(wait: BSwapWait, next: PlanSwap, nameOf: (id: string) => string): string {

@@ -31,7 +31,7 @@
  * front and rear delt ids, and Lateral Raise is read as the map has it.
  */
 import { MACHINE_ANATOMY, type MuscleId } from "../../data/machine-anatomy-map";
-import { CATEGORY_LABEL, EXERCISE_COUNT, MACHINE_CATEGORY } from "../routine-builder/academy";
+import { CATEGORY_LABEL, EXERCISE_COUNT, FOUNDATIONAL_CATEGORIES, MACHINE_CATEGORY } from "../routine-builder/academy";
 import { bIntendedOf, bSlotKept, bSlotPlanned, droppedFromB, swapsMade, swapsOf, type BEdit } from "./b-routine";
 import type { PlanEdit } from "./lineup";
 import { applyPlanChange, listWords } from "./plan";
@@ -373,6 +373,13 @@ export interface FocusAddRow {
   singleJoint: boolean;
   /** Whose plan the "add" is written on: A's (B follows A), or B's own. */
   writeOn: FocusWhich;
+  /**
+   * Past the Academy's 8 (`EXERCISE_COUNT`): the lowest-priority machine on
+   * that plan, the one the addition is better in place of (`lowerPriorityOf`),
+   * named, never moved (§5.4b, answer 3: "what it pushes out to stay in 5-8
+   * machines"). Absent inside the count, or with no such machine.
+   */
+  inPlaceOf?: string;
 }
 
 export interface FocusPanel {
@@ -548,6 +555,15 @@ export function focusPanelOf(input: FocusPanelInput): FocusPanel | null {
 
   /* 3 · Or add: one for a routine missing the area that its plan doesn't answer yet. */
   const aPlanLen = aPlan.length;
+  /* Past the Academy's 8, the plan's lowest-priority machine, named: from its
+     end, one that doesn't work the area and isn't one of the Big 5's
+     families (the Academy's foundation: horizontal and vertical push and
+     pull, a leg press). */
+  const lowerPriorityOf = (road: readonly string[]): string | undefined =>
+    [...road].reverse().find((id) => {
+      const family = MACHINE_CATEGORY[canonicalOf(id)];
+      return roleOf(id) === null && !(family && FOUNDATIONAL_CATEGORIES.includes(family));
+    });
   // B's plan, counted: B as planned, and what B runs today that no planned swap replaces.
   const bPlanLen = bNow && b.kind === "plan" ? once([...bAsPlanned, ...bNow.filter((id) => !swaps.some((s) => s.replaces === id))]).length : 0;
   const adds: FocusAddRow[] = [];
@@ -557,6 +573,7 @@ export function focusPanelOf(input: FocusPanelInput): FocusPanel | null {
     if (x) {
       // On A's road, B takes it too once it is in Routine A (B follows A).
       const reachesB = b.kind === "plan";
+      const over = aPlanLen + 1 > EXERCISE_COUNT.soft.max ? lowerPriorityOf(aPlan) : undefined;
       adds.push({
         key: `add:A:${x.machineId}`,
         machineId: x.machineId,
@@ -564,12 +581,14 @@ export function focusPanelOf(input: FocusPanelInput): FocusPanel | null {
         counts: { A: aPlanLen + 1, ...(reachesB ? { B: bPlanLen + 1 } : null) },
         singleJoint: isSingleJoint(canonicalOf(x.machineId)),
         writeOn: "A",
+        ...(over ? { inPlaceOf: over } : null),
       });
     }
   }
   if (b.kind === "plan" && missingFrom.includes("B") && !onPlan.includes("B") && !adds.some((r) => r.routines.includes("B"))) {
     const x = firstAdd("B");
     if (x) {
+      const over = bPlanLen + 1 > EXERCISE_COUNT.soft.max ? lowerPriorityOf(bAsPlanned) : undefined;
       adds.push({
         key: `add:B:${x.machineId}`,
         machineId: x.machineId,
@@ -577,6 +596,7 @@ export function focusPanelOf(input: FocusPanelInput): FocusPanel | null {
         counts: { B: bPlanLen + 1 },
         singleJoint: isSingleJoint(canonicalOf(x.machineId)),
         writeOn: "B",
+        ...(over ? { inPlaceOf: over } : null),
       });
     }
   }
@@ -727,16 +747,22 @@ export function focusAddQuestion(panel: Pick<FocusPanel, "adds">): string {
  * lower-priority machine" (A/B Routines: "if time permits or used to replace
  * a lower priority muscle group"), "B's plan goes to 5 · under the Academy's
  * 6". A plan's count is its routine and what is on deck, not the routine
- * alone.
+ * alone. Past the 8, the machine it is better in place of is named when
+ * there is one (`inPlaceOf`): "… past the Academy's 8: in place of
+ * Pullover?", a question, never a move.
  */
-export function focusCountWords(row: Pick<FocusAddRow, "routines" | "counts">): string {
+export function focusCountWords(row: Pick<FocusAddRow, "routines" | "counts" | "inPlaceOf">, nameOf?: (id: string) => string): string {
   const { min, max } = EXERCISE_COUNT.soft;
   const ns = row.routines.map((w) => row.counts[w] ?? 0);
   const who =
     row.routines.length === 2 && ns[0] === ns[1]
       ? `A's and B's plans go to ${ns[0]}`
       : row.routines.map((w, i) => `${w}'s plan goes to ${ns[i]}`).join(" · ");
-  if (ns.some((n) => n > max)) return `${who} · past the Academy's ${max}: better in place of a lower-priority machine`;
+  if (ns.some((n) => n > max)) {
+    return row.inPlaceOf && nameOf
+      ? `${who} · past the Academy's ${max}: in place of ${nameOf(row.inPlaceOf)}?`
+      : `${who} · past the Academy's ${max}: better in place of a lower-priority machine`;
+  }
   if (ns.some((n) => n < min)) return `${who} · under the Academy's ${min}`;
   return `${who} · inside the Academy's ${min} to ${max}`;
 }

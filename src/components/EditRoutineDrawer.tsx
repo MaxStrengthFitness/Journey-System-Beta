@@ -35,7 +35,8 @@ import { planChangeFromEdit } from "../features/routine-plan/drawer-sync";
 import { signedChange } from "../features/routine-plan/lineup";
 import { saveRoutineEdit } from "../features/routine-plan/store";
 import { bFollowOf, bToggleOpensPlanB, plannedBFollowOf } from "../features/routine-plan/b-routine";
-import { pastLearningCurve } from "../features/routine-plan/client-kind";
+import { learningCurveInputOf, pastLearningCurve } from "../features/routine-plan/client-kind";
+import { matchesRoutineLetter } from "../lib/routine-utils";
 import type { HistoryCoverage } from "../lib/prior-history";
 import { GLOBAL_ROUTINE_PRESETS } from "../data/routine-presets";
 import {
@@ -90,6 +91,13 @@ interface EditRoutineDrawerProps {
    * (`pastLearningCurve`, the briefing's rule too); unknown claims nothing.
    */
   coverage?: HistoryCoverage;
+  /**
+   * The client's routines have answered (the profile's listener): with the
+   * session count, whether a short routine is called thin, as the briefing
+   * asks it (`learningCurveInputOf`). Absent, true: the drawer opens only
+   * over routines the profile has read.
+   */
+  routinesKnown?: boolean;
   /** Which routine to open on ("Routine A" / "Routine B"), or null when closed. */
   target: RoutineSlot | null;
   onClose: () => void;
@@ -124,6 +132,7 @@ export function EditRoutineDrawer({
   sessions,
   allLogs,
   coverage = "unknown",
+  routinesKnown = true,
   target,
   onClose,
   onSaved,
@@ -162,10 +171,13 @@ export function EditRoutineDrawer({
   } | null>(null);
 
   // Both routine slots, falling back to an unsaved placeholder — mirrors the
-  // temp-a/temp-b pattern the Routines tab cards already use.
+  // temp-a/temp-b pattern the Routines tab cards already use. Either
+  // spelling of the name ("Routine A", or an older seeder's "A"), as every
+  // other screen finds it (`matchesRoutineLetter`), so a save never makes a
+  // second Routine A beside a routine named "A".
   const routineFor = useCallback(
     (name: RoutineSlot): Routine => {
-      const found = routines.find((r) => r.name === name);
+      const found = routines.find((r) => matchesRoutineLetter(r, name === "Routine A" ? "A" : "B"));
       return (
         found || {
           id: name === "Routine A" ? "temp-a" : "temp-b",
@@ -821,8 +833,10 @@ export function EditRoutineDrawer({
             rule warnings and the suggestions all live in the shared builder
             now. What stays in this file is what is genuinely specific to
             editing a client's BASELINE routine: the A/B slot switch, the
-            preset tiers, template provenance, the mandatory reason, and the
-            Firestore write. */}
+            preset tiers, template provenance, the optional reason (asked,
+            never required, since Oct 8 2026), and the Firestore write: on a
+            routine with a plan, through routine-plan/store.ts's
+            `saveRoutineEdit`, the plan's matching changes in the same batch. */}
         {/* WHY THIS SCROLLS NOW (Sep 16 2026 fix — "the Add button is cut
             off on the iPad"). The builder scrolls its own list and pins its
             Add / Ideas / Warnings bar under it, which only works inside a box
@@ -852,15 +866,9 @@ export function EditRoutineDrawer({
                sessions, or trained here before Journey; never while
                Routine A is being built (§4.8, Oct 8 2026). It was
                `sessions.length >= 6`, so the two screens could disagree. */
-            established={pastLearningCurve({
-              known: true,
-              coverage,
-              journeySessions: Math.max(
-                typeof client?.sessionCount === "number" ? client.sessionCount : 0,
-                sessions.length,
-              ),
-              routineABeingBuilt: routineFor("Routine A").plan?.building === true,
-            })}
+            established={pastLearningCurve(
+              learningCurveInputOf({ routinesKnown, coverage, client, routineA: routineFor("Routine A") }),
+            )}
           />
         </div>
 

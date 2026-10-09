@@ -179,6 +179,19 @@ describe("PhoneSessionStage", () => {
     expect(p.onAddPlanned).toHaveBeenCalledTimes(1);
     expect(p.onAddPlanned).toHaveBeenCalledWith("m-hip-abd");
     expect(p.onFocus).not.toHaveBeenCalled();
+    // A door left open, never the press-me-to-finish: the quiet dashed blue, the last machine's cue kept under it (the whole-branch review, Oct 9 2026).
+    expect(next.className).toContain("ph-card__next--plan");
+    expect(q(".ph-card.is-in-hand .ph-card__last").textContent).toBe("Last machine · Finish is at the top");
+  });
+
+  // AJ's Q6, "you shouldn't really be blocked": a can't-do mid-session on a phone (the whole-branch review, Oct 9 2026).
+  it("opens the plan's sheet from the phone, the iPad corner's door; nothing without a plan", () => {
+    const onOpenPlan = vi.fn();
+    mount({ focusId: "leg", plan: { have: 2, of: 6 }, onOpenPlan });
+    const door = q<HTMLButtonElement>('[data-testid="phone-plan"]');
+    expect(door.textContent).toBe("The plan · 2 of 6");
+    act(() => door.click());
+    expect(onOpenPlan).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the last card's quiet word when the plan has nothing next, and Next on any other card", () => {

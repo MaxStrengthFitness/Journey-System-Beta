@@ -56,6 +56,7 @@ import { finishedElsewhereAtTap, settleOrQueue } from "../features/session-recor
 import {
   cleanPayload,
   discardLogIds,
+  followUpList,
   refusedStartSweep,
   plannedMachinesOf,
   prefillOf,
@@ -68,7 +69,7 @@ import { SEND_SETS_NOW_EVENT } from "../features/session-record/sign-out-check";
 import { NothingOnScreen } from "../features/session-record/NothingOnScreen";
 import { nothingKind } from "../features/session-record/nothing-on-screen";
 import { nextRoutine } from "../features/routines/next-routine";
-import { addPlannedBAtStart, addStartPlanToBatch, saveNextTime } from "../features/routine-plan/store";
+import { addPlannedBAtStart, addStartPlanToBatch, saveNextTime, setRoutineBActive } from "../features/routine-plan/store";
 import { bFollowOf, plannedBFollowOf, plannedBStart } from "../features/routine-plan/b-routine";
 import {
   nextTimeAtFinish,
@@ -83,6 +84,7 @@ import {
 import { findRoutineByLetter } from "../lib/routine-utils";
 import { plannedBAtStart, startChangeOf, type StartPlanAtStart } from "../features/routine-plan/briefing-plan";
 import { isStartingColumnChoice, todayFor } from "../features/routine-plan/plan";
+import { isProvisionalNewClient } from "../features/routine-plan/client-kind";
 import { orderEffects } from "../features/routine-plan/order-effects";
 import {
   hasWeightOnFile,
@@ -1697,7 +1699,7 @@ export function WorkoutTrackerView({
          (only once the routines are known to hold none), none (today's list
          as chosen; Start never saves it as a routine), or not decided yet
          (start-plan.ts). */
-      const routine = resolveStartRoutine({ routineType, customMachines, routines, routinesKnown, startPlan });
+      const routine = resolveStartRoutine({ routineType, customMachines, routines, routinesKnown, startPlan, todayYmd: date });
 
       // STATISTICAL ROUTING & CROSS-TRAIN DETECTION
       // The session should log where it physically happened (the currently active studio)
@@ -1741,18 +1743,22 @@ export function WorkoutTrackerView({
          together (its setting `newClientsStart`; item 8): Routine B with its
          plan and NO machines, in this same batch, B off until the Wrap-up
          that starts Routine A starts it. Never over a Routine B of the
-         client's own. */
-      if (routine.kind === "plan") {
-        addPlannedBAtStart(db, batch, {
-          routines,
-          clientId,
-          studioId: selectedClient?.homeStudioId || "",
-          b: plannedBAtStart(routine.startPlan, {
-            uid: user.uid,
-            ...(authTrainer?.fullName ? { name: authTrainer.fullName } : null),
-          }),
-        });
-      }
+         client's own. Over the client's own EMPTY Routine B, B is switched
+         off by its own write after the batch is issued, never inside it: a
+         client the rules refuse an update to must never take the session
+         down (store.ts's header; the whole-branch review, Oct 9 2026). */
+      const plannedB =
+        routine.kind === "plan"
+          ? addPlannedBAtStart(db, batch, {
+              routines,
+              clientId,
+              studioId: selectedClient?.homeStudioId || "",
+              b: plannedBAtStart(routine.startPlan, {
+                uid: user.uid,
+                ...(authTrainer?.fullName ? { name: authTrainer.fullName } : null),
+              }),
+            })
+          : null;
       const routineId = routine.kind === "existing" ? routine.routine.id : (madeRoutineId ?? undefined);
 
       /* What this session intends to run. Recorded on the document from the
@@ -1829,6 +1835,7 @@ export function WorkoutTrackerView({
       const committing = batch.commit();
       committing.catch((error) => startRefused(sessionRef.id, error, plannedMachineIds));
       markSent();
+      if (plannedB?.turnsBOff) setRoutineBActive(db, clientId, false).catch(() => {});
 
       // Protects this session from being cleared by a snapshot that predates it.
       justStartedSessionRef.current = {
@@ -1844,9 +1851,15 @@ export function WorkoutTrackerView({
 
       /* A routine not decided yet: the session holds the list the briefing
          gave (often none) until it is, and the machine list is not taken
-         from the floor as if it were a Free session. */
+         from the floor as if it were a Free session. That list is on screen
+         now (`seededSessionId`), so the Now Bar offers Add from the first
+         moment, offline and before the routines ever answer (the consult on
+         slow Wi-Fi; the whole-branch review, Oct 9 2026): what the trainer
+         adds meanwhile is kept beside the routine's machines when they come
+         (`followUpList`). */
       if (routine.kind === "unknown") {
         seededMachinesForSession.current = sessionRef.id;
+        setSeededSessionId(sessionRef.id);
         activeMachineIdsRef.current = plannedMachineIds;
         setActiveMachineIds(plannedMachineIds);
       }
@@ -1989,12 +2002,13 @@ export function WorkoutTrackerView({
         routines,
         routinesKnown: true,
         startPlan: f.startPlan,
+        todayYmd: studioTodayKey(),
       });
       const planned = plannedMachinesOf(routine, f.customMachines);
-      // A list the trainer already changed in the meantime stays theirs.
-      const keepTrainersList =
-        activeMachineIdsRef.current.join(",") !== f.plannedMachineIds.join(",");
-      const machinesToWrite = keepTrainersList ? activeMachineIdsRef.current : planned;
+      /* The routine's machines and whatever the trainer added while it
+         loaded, together: neither list drops the other (`followUpList`). */
+      const onScreen = [...activeMachineIdsRef.current];
+      const machinesToWrite = followUpList({ started: f.plannedMachineIds, current: onScreen, planned });
       const batch = writeBatch(db);
       let routineId: string | null = null;
       if (routine.kind === "existing") {
@@ -2021,8 +2035,10 @@ export function WorkoutTrackerView({
             ...(authTrainer?.fullName ? { name: authTrainer.fullName } : null),
           }),
         }).routineId;
-        // B planned beside it ("A and B together"), in the same batch, as at Start.
-        addPlannedBAtStart(db, batch, {
+        // B planned beside it ("A and B together"), in the same batch, as at
+        // Start; B switched off over an empty B of the client's own by its
+        // own write, never in this batch (store.ts's header).
+        const plannedB = addPlannedBAtStart(db, batch, {
           routines,
           clientId: f.clientId,
           studioId: selectedClient?.homeStudioId || "",
@@ -2031,9 +2047,11 @@ export function WorkoutTrackerView({
             ...(authTrainer?.fullName ? { name: authTrainer.fullName } : null),
           }),
         });
+        if (plannedB?.turnsBOff) setRoutineBActive(db, f.clientId, false).catch(() => {});
       }
-      // No routine and the same list: nothing to say to the session.
-      const sameList = machinesToWrite.join(",") === f.plannedMachineIds.join(",");
+      // No routine and the same list as recorded: nothing to say to the session.
+      const sameIds = (a: readonly string[], b: readonly string[]) => a.join(",") === b.join(",");
+      const sameList = sameIds(machinesToWrite, f.plannedMachineIds) && sameIds(machinesToWrite, onScreen);
       if (routineId !== null || !sameList) {
         batch.update(doc(db, "sessions", f.sessionId), {
           routineId,
@@ -2052,8 +2070,11 @@ export function WorkoutTrackerView({
           ? ({ ...cur, routineId, sessionMachineIds: machinesToWrite } as WorkoutSession)
           : cur,
       );
-      if (!keepTrainersList) {
-        seededMachinesForSession.current = f.sessionId;
+      // Today's list is the session's from here, on screen either way.
+      seededMachinesForSession.current = f.sessionId;
+      setSeededSessionId(f.sessionId);
+      if (!sameIds(machinesToWrite, onScreen)) {
+        activeMachineIdsRef.current = machinesToWrite;
         setActiveMachineIds(machinesToWrite);
       }
     }
@@ -2524,27 +2545,38 @@ export function WorkoutTrackerView({
          routine held it while the session ran and doesn't now) is never
          offered back. Not when another iPad finished the session: that
          iPad has its own Next time, and two would write the routine twice
-         (or make two Routine As), as its pain notes are its own. */
-      const startedAs = startedAsRef.current?.sessionId === sessionId ? startedAsRef.current.routineType : null;
-      const ranFree = ranAsFree({
-        startedAs,
-        routineId: currentSession.routineId,
-        floor: floorMachines.map((m) => m.id),
-        today: activeMachineIds,
-      });
-      const nextTime = alreadyFinished
-        ? null
-        : nextTimeAtFinish({
-            free: ranFree,
-            routineId: currentSession.routineId,
-            routines: routinesKnown ? routines : null,
-            performed: lines.filter((l) => l.outcome === "performed").map((l) => l.machineId),
-            floor: floorMachinesOf(floorMachines),
-            nameOf: machineNamer(floorMachines, machines),
-            todayYmd: studioTodayKey(),
-            heldDuringSession:
-              heldDuringSessionRef.current?.sessionId === sessionId ? heldDuringSessionRef.current.ids : [],
-          });
+         (or make two Routine As), as its pain notes are its own.
+         Worked out in its own try: the finish batch is already issued, so
+         a plan this can't read (any trainer may write one, and the rules
+         don't check its shape) costs the card, never the Wrap-up. A
+         missing Next time is acceptable; a stuck Finish is not (the
+         whole-branch review, Oct 9 2026). */
+      let nextTime: NextTimeSnapshot | null = null;
+      try {
+        const startedAs = startedAsRef.current?.sessionId === sessionId ? startedAsRef.current.routineType : null;
+        const ranFree = ranAsFree({
+          startedAs,
+          routineId: currentSession.routineId,
+          floor: floorMachines.map((m) => m.id),
+          today: activeMachineIds,
+        });
+        nextTime = alreadyFinished
+          ? null
+          : nextTimeAtFinish({
+              free: ranFree,
+              routineId: currentSession.routineId,
+              routines: routinesKnown ? routines : null,
+              performed: lines.filter((l) => l.outcome === "performed").map((l) => l.machineId),
+              floor: floorMachinesOf(floorMachines),
+              nameOf: machineNamer(floorMachines, machines),
+              todayYmd: studioTodayKey(),
+              heldDuringSession:
+                heldDuringSessionRef.current?.sessionId === sessionId ? heldDuringSessionRef.current.ids : [],
+            });
+      } catch (error) {
+        console.error("[finish] next time not worked out", error);
+        nextTime = null;
+      }
 
       setPostSession({
         session: { ...currentSession, status: "Completed", endTime: new Date() },
@@ -3806,8 +3838,17 @@ export function WorkoutTrackerView({
   const [rangeSheet, setRangeSheet] = useState<"pick" | "about" | null>(null);
   const onStartingRange = React.useCallback((mode: "pick" | "about") => setRangeSheet(mode), []);
   const rangePlan = sessionPlan.plan;
-  const rangeFirstTimeKnown =
+  /* Journey holds this client's whole story: coverage "complete", or Add
+     Client's walk-in ("New client, not in Mindbody yet": AJ's door two, "a
+     client walked in ... run a session right then and there on a consult")
+     with no Journey session yet, which has no Mindbody count to make its
+     coverage complete (the whole-branch review, Oct 9 2026: such a client
+     never saw "First time on this machine" or the Academy's range). */
+  const wholeStoryHere =
     clientCoverage === "complete" ||
+    (isProvisionalNewClient(selectedClient) && !(selectedClient?.sessionCount ?? 0));
+  const rangeFirstTimeKnown =
+    wholeStoryHere ||
     !!rangePlan?.dayOne?.length ||
     !!rangePlan?.templateId ||
     // A column a trainer picked for this client (on the plan, or in this
@@ -3856,20 +3897,21 @@ export function WorkoutTrackerView({
      round: "the text feels like clutter"), and the machine menu says
      "Nothing recorded on this machine". */
   const focusNoHistory = useMemo(() => {
-    if (!currentSession || !gridFocusRow || !totalsKnown || !sessionsAllRead || clientCoverage !== "complete") return null;
+    if (!currentSession || !gridFocusRow || !totalsKnown || !sessionsAllRead || !wholeStoryHere) return null;
     if (Object.keys(gridFocusRow.sets).length > 0) return null;
     const id = gridFocusRow.machine.id;
     const elsewhere = knownElsewhere(
       { metric: selectedClient?.currentMachineMetrics?.[id] ?? null, stat: selectedClient?.machineStats?.[id] ?? null },
       planTodayYmd,
     );
-    return elsewhere ? null : noMachineHistoryLine(clientCoverage);
+    // The walk-in is a whole story too: said as one ("complete").
+    return elsewhere ? null : noMachineHistoryLine("complete");
   }, [
     currentSession,
     gridFocusRow,
     totalsKnown,
     sessionsAllRead,
-    clientCoverage,
+    wholeStoryHere,
     selectedClient?.currentMachineMetrics,
     selectedClient?.machineStats,
     planTodayYmd,
@@ -4579,6 +4621,9 @@ export function WorkoutTrackerView({
           onReorder={() => setIsOrderSheetOpen(true)}
           planNext={planNext}
           onAddPlanned={onAddPlanned}
+          /* The plan's sheet from the phone too (the iPad's corner's door). */
+          plan={currentSession && sessionPlan.plan && sessionPlan.progress ? { have: sessionPlan.progress.have, of: sessionPlan.progress.of } : null}
+          onOpenPlan={onOpenPlan}
           step={2}
           /* A card with no past times says what that means, the machine
              menu's way: never "first time" for a machine a running total

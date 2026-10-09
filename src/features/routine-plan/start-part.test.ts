@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { RoutinePreset } from "../../types";
+import { isStartingRoutinePreset } from "../../lib/routine-templates";
 import {
   MATCH_WORDS_MAX,
   cleanMatchWord,
   dayOneLine,
   dayOneOf,
-  hasStartPart,
   newStartPart,
   otherDefaults,
   parkedStartOf,
@@ -43,8 +43,10 @@ describe("reading a stored start part", () => {
     expect(readStartPart(null)).toBeUndefined();
     expect(readStartPart("yes")).toBeUndefined();
     expect(readStartPart(["m-leg-press"])).toBeUndefined();
-    expect(hasStartPart({ start: undefined })).toBe(false);
-    expect(hasStartPart({ start: { dayOne: [] } })).toBe(true);
+    // One rule for "is this a starting routine" (lib/routine-templates.ts): a part is a record, never a list.
+    expect(isStartingRoutinePreset({ start: undefined })).toBe(false);
+    expect(isStartingRoutinePreset({ start: { dayOne: [] } })).toBe(true);
+    expect(isStartingRoutinePreset({ start: [] as never })).toBe(false);
   });
 
   it("checks every field and leaves an empty list out, so a part read twice compares equal", () => {

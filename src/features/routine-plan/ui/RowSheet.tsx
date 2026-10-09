@@ -23,8 +23,12 @@ export interface RowSheetProps {
   onMove?: (dir: -1 | 1) => void;
   canUp: boolean;
   canDown: boolean;
-  /** Before the plan is kept: on or off day one. */
-  dayOne?: { on: boolean; toggle: () => void } | null;
+  /**
+   * On or off day one: before the plan is kept (the draft), and once kept
+   * while day one runs (Routine A still empty). `disabled`: the last machine
+   * on day one, which can't come off it (the consult would open empty).
+   */
+  dayOne?: { on: boolean; toggle: () => void; disabled?: boolean } | null;
   /** The Next machine, when Routine A takes one now. */
   addNow?: (() => void) | null;
   /** Take out: of Routine A only, and/or out of the plan. */
@@ -69,7 +73,7 @@ export function RowSheet({
           </Button>
         )}
         {dayOne && (
-          <Button variant="outline" onClick={dayOne.toggle}>
+          <Button variant="outline" disabled={dayOne.disabled} onClick={dayOne.toggle}>
             {dayOne.on ? <CalendarX aria-hidden="true" /> : <CalendarPlus aria-hidden="true" />}
             {dayOne.on ? "Not on day one" : "Do it on day one"}
           </Button>

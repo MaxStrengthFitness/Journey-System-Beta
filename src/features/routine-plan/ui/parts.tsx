@@ -190,6 +190,25 @@ export function SourceTag({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * The how-to of a part, behind one (i) (the whole-branch review, Oct 9 2026;
+ * the Operations voice: "a row is one line, its how-to and source on its
+ * (i)"; AJ, Oct 3 2026: "there's just so many words on there"). The button
+ * sits where it is placed (beside the part's action); the words open under
+ * it in the plan's well, one tap away, never on screen until asked.
+ */
+export function HowItWorks({ label, children }: { label: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="ghost" size="icon" aria-label={label} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <Info aria-hidden="true" />
+      </Button>
+      {open && <p className="rpl-well rpl-how">{children}</p>}
+    </>
+  );
+}
+
 /** What the last change did ("Chest Flye instead of Seated Dip"), said once, dismissed with a tap. */
 export function SaidLine({ children, onClear }: { children: ReactNode; onClear?: () => void }) {
   return (

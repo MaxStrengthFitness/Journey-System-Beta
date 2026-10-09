@@ -332,6 +332,24 @@ export function activeCantDo(plan: Pick<RoutinePlan, "cantDo"> | null | undefine
   return (plan?.cantDo ?? []).filter((c) => cantDoActive(c, todayYmd));
 }
 
+/**
+ * A routine's machines for today with every machine the client can't do
+ * left out (Routine A's plan's marks that hold today, read by A and B: AJ's
+ * "2a"). What a session on Routine B is seeded with and what the briefing
+ * draws for it (the whole-branch review, Oct 9 2026: a machine marked "Surgery
+ * · until cleared" stayed in a Routine B made before Round 2, or one of B's
+ * own swaps, and every B session ran it). A Routine A's own machines are
+ * reshaped when the mark is made, so for A this changes nothing.
+ */
+export function runnableToday(
+  machineIds: readonly string[],
+  aPlan: Pick<RoutinePlan, "cantDo"> | null | undefined,
+  todayYmd: string,
+): string[] {
+  const held = new Set(activeCantDo(aPlan, todayYmd).map((c) => c.machineId));
+  return held.size === 0 ? [...machineIds] : machineIds.filter((id) => !held.has(id));
+}
+
 /* ── The words ────────────────────────────────────────────────────────── */
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

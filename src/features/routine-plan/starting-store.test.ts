@@ -14,6 +14,8 @@ const fake = vi.hoisted(() => ({
   queries: [] as Array<{ path: string; wheres: Where[] }>,
   answers: new Map<string, Snap | Error>(),
   choice: null as Record<string, unknown> | null | Error,
+  /** The choice's getDoc answered only from this iPad's cache. */
+  choiceFromCache: false,
   writes: [] as Array<{ path: string; data: Record<string, unknown>; opts: unknown }>,
 }));
 
@@ -32,7 +34,7 @@ vi.mock("firebase/firestore", () => ({
   getDoc: async (ref: { path: string }) => {
     if (fake.choice instanceof Error) throw fake.choice;
     const data = fake.choice;
-    return { exists: () => data !== null, data: () => data ?? undefined, ref };
+    return { exists: () => data !== null, data: () => data ?? undefined, ref, metadata: { fromCache: fake.choiceFromCache } };
   },
   setDoc: async (ref: { path: string }, data: Record<string, unknown>, opts?: unknown) => {
     fake.writes.push({ path: ref.path, data, opts });
@@ -57,6 +59,7 @@ beforeEach(() => {
   fake.queries.length = 0;
   fake.answers.clear();
   fake.choice = null;
+  fake.choiceFromCache = false;
   fake.writes.length = 0;
 });
 
@@ -93,10 +96,10 @@ describe("readStartingRoutines", () => {
   });
 
   it("answers 'none' from the server, but keeps an empty answer from the cache unknown", async () => {
-    expect(await readStartingRoutines(db, "westlake")).toEqual({ routines: [], known: true });
+    expect(await readStartingRoutines(db, "westlake")).toEqual({ routines: [], known: true, seeded: false });
     fake.answers.set("company", snap([], true));
     fake.answers.set("studio", snap([], true));
-    expect(await readStartingRoutines(db, "westlake")).toEqual({ routines: [], known: false });
+    expect(await readStartingRoutines(db, "westlake")).toEqual({ routines: [], known: false, seeded: false });
     // A cache that holds them is an answer.
     fake.answers.set("company", snap([knee], true));
     expect((await readStartingRoutines(db, "westlake")).known).toBe(true);
@@ -118,6 +121,22 @@ describe("readStartingChoice", () => {
     expect(await readStartingChoice(db, "westlake")).toEqual({ use: null, defaultId: null });
     fake.choice = new Error("unavailable");
     await expect(readStartingChoice(db, "westlake")).rejects.toThrow("unavailable");
+  });
+
+  it("a missing document only the iPad's cache answered is unknown, never 'hasn't chosen'", async () => {
+    fake.choiceFromCache = true;
+    await expect(readStartingChoice(db, "westlake")).rejects.toThrow(/cache/);
+    // A document the cache holds is an answer.
+    fake.choice = { use: ["academy-knee"], defaultId: null };
+    expect(await readStartingChoice(db, "westlake")).toEqual({ use: ["academy-knee"], defaultId: null });
+  });
+});
+
+describe("the seed's traces", () => {
+  it("says the seed ran when head office's read holds a starting routine, even one switched off", async () => {
+    const parked = { id: "academy-knee", name: "Knee issues", tier: "company", scope: "global", machineIds: ["m-leg-curl"], startParked: { dayOne: ["m-leg-curl"] } };
+    fake.answers.set("company", snap([parked]));
+    expect(await readStartingRoutines(db, "westlake")).toEqual({ routines: [], known: true, seeded: true });
   });
 });
 

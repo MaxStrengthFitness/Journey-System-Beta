@@ -3144,3 +3144,44 @@ Round document: `docs/rounds/2026-10-07-ahead.md`. Walk it as a studio leader af
 - [ ] **Further ahead:** Week → Week ahead ends with "Next: the week of … · …" and an Ahead button that opens Ahead.
 - [ ] **The nightly record's new numbers (AJ's 2a):** on Renewals, a client whose sessions were last pulled from Mindbody weeks ago now says an earlier run-out day (and fewer banked at the charge) than the day before the push, by about the sessions used since the pull; a client pulled this week is about the same. That is the fix, not a fault; say so if one looks wrong.
 - [ ] **Names wrap, nothing is cut short,** and every tap is at least a fingertip, upright and on its side; on a phone the lenses wrap onto lines without breaking a word.
+
+## Round 65 — The first session and routine plans · *Oct 9 2026, branch `claude/first-session-routine-plan-ui-2f8dc1`*
+
+Round document: `docs/rounds/2026-10-08-first-session-screens.md` (and the research, `2026-10-07-first-session-and-routines.md`). Rounds 1 and 2 ship together after this one walk (AJ's "1a"). Walk it as a trainer and then a studio leader, after the rules and indexes are deployed and the starting-routines seed has run (`scripts/seed-starting-routines.ts`, dry run first), in portrait and landscape, then once on a phone. Use a test client made with Add Client ("New client, not in Mindbody yet"), one client with sessions before Journey and no routine, and one with a Routine A and B.
+
+**Starting routines (head office, then a studio)**
+- [ ] **Admins → Standard → Standard template:** open an Academy routine; "For new clients" is on, the (i) beside the switch opens how it works, day one is marked, the words are there. Switch one off and save: Start a plan no longer offers it. Switch it back on: it comes back as it was.
+- [ ] **My Studio → Studio → Starting routines:** a leader ticks a few and picks the studio's default; a trainer sees the list locked.
+
+**Programming → Start a plan (the test client)**
+- [ ] **The lineup:** "{First}'s starting lineup" with Day one solid, On deck dashed (the first Next), "Not for {First}", and the Source tag naming the routine with its why on the (i). The how-to is behind the (i) beside Keep, not under it.
+- [ ] **Another start:** each start shown by its first machines; picking one changes the lineup. On a floor missing a machine, "Not on {studio}'s floor: …" says which.
+- [ ] **A row:** Move up, Move down, Do it on day one / Not on day one, Swap for (with sources), Not for {First}, Take out. Nothing is saved until Keep; leaving with a changed draft asks first.
+- [ ] **Keep this lineup:** Programming draws the plan with Routine A empty and "0 of N · day one: …"; Start a plan is never offered again.
+- [ ] **A and B together** (set it on My Studio → Studio → This studio's settings): "Routine B, planned with A" sits under the lineup with its swaps; "How B starts" is on the (i). Keep keeps both; B stays off.
+
+**The Lineup, once kept**
+- [ ] **Day one while it runs:** open a deck row → Do it on day one → Save change: it joins day one; the last machine on day one can't come off it. The switch's line under "Routine A is being built" isn't repeated while day one runs.
+- [ ] **Can't do:** mark a machine "Surgery · until cleared": the stand-in takes its place ("Chest Flye instead of Seated Dip"), the bench says it, and the Health note is offered (ticked: it reaches Operations → Today). The picked weak-area chip and "B is for" chip stay readable for a reader who can't write.
+- [ ] **Re-plan:** what changed, machines out for now, then "Start again from" lists the studio's starts, this plan's marked; pick another and Start again: the Source tag names the new one; the Changes show a Re-planned divider.
+- [ ] **Changes:** a right column on its side, a "Changes · N" sheet upright; each with who, when, what and the reason. A column picked says "the Novice column", never "Female" or "Male".
+
+**The briefing**
+- [ ] **The test client:** the plan card, today under the Today bracket, Change today, Another start, one order-effect line when today trips one, "Not on {studio}'s floor" when the floor lacks one. Start keeps the plan (Routine A empty, its plan and the start change).
+- [ ] **Trained here before Journey:** one line and the door to Programming; Start runs an empty session, never the whole floor.
+- [ ] **A client with a Routine B and a can't-do on one of B's swaps:** the B session's list leaves that machine out, and B's Road draws it crossed under "Not for {First}".
+
+**The floor on day one**
+- [ ] **Slow Wi-Fi (turn the Wi-Fi off before Start for the test client):** the session starts at once; the empty bar offers Add a machine; add one; turn the Wi-Fi back on: the routine's machines arrive and the one added is still there.
+- [ ] **First time on a machine:** "First time on this machine" for the test client; the weight is blank. "Academy's starting range" (14px, dashed) opens the four columns and Don't show ranges as a fifth chip, the current one blue; pick one: the range line shows beside the blank weight, with its (i).
+- [ ] **The last machine:** "Next in the plan · {machine} · Add" in the quiet dashed blue beside Add another machine; Add puts it in today only.
+- [ ] **The plan from the corner:** the grid's corner → "The plan · 3 of 6": Swap in the plan, Can't do, Re-plan; a change after a machine's set is logged says "Today's set stays. The plan changes from next session."
+- [ ] **On a phone:** the last card's offer is the dashed blue with "Last machine · Finish is at the top" under it; "The plan · N of M" beside Reorder opens the same sheet.
+
+**The Wrap-up's Next time**
+- [ ] **The consult:** "Tick the ones that start Routine A.", every row unticked, Tick all. Tick two machines that sit badly side by side (Lumbar before Leg Press): the order effect says so under the Road, quietly. Back to Hub writes Routine A once.
+- [ ] **A and B together:** the consult's ticks say "Routine B starts too: …"; after Back to Hub, Programming shows B with one machine different and the B switch on.
+- [ ] **A plan whose every machine is in Routine A, the switch still on:** a one-off machine starts unticked under "Tick a machine to keep it in Routine A."
+
+**Everywhere**
+- [ ] **Names wrap, nothing is cut short,** every tap is at least a fingertip, Save and every selection blue, orange only on Start session and Finish; light and dark.

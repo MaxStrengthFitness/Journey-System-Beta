@@ -1423,7 +1423,9 @@ div.jg-today { cursor: default; }
    here. The line is the readout's own quiet words with an (i), the whole
    line the tap (40px), wrapping rather than running past the bar; it is a
    reference beside the weight, never in it. Before a column is picked, a
-   quiet dashed button asks for one, No set?'s quiet look. */
+   quiet dashed button asks for one, No set?'s quiet look. Both are buttons,
+   so neither speaks in the readout's 11px (the whole-branch review, Oct 9
+   2026): the line is 12px in ink-2, the ask the button voice, 14/700. */
 .jg-nb__range {
   appearance: none;
   display: inline-flex;
@@ -1434,9 +1436,9 @@ div.jg-today { cursor: default; }
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--jg-ink-muted);
+  color: var(--jg-ink-2);
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.3;
   text-align: inherit;
@@ -1459,7 +1461,7 @@ div.jg-today { cursor: default; }
   background: transparent;
   color: var(--jg-ink-2);
   font: inherit;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   white-space: normal;
   cursor: pointer;

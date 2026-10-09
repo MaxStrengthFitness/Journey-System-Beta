@@ -60,7 +60,7 @@ import {
 import { progressLine } from "../plan";
 import { TODAY_SET_STAYS, sessionPlanProgress, todayAfterBench, todayAfterReplace, todayMatch, type TodayChange } from "../session-plan";
 import type { FloorMachine } from "../starting-plan";
-import { STARTING_COLUMN_LABEL, type StartingColumn } from "../starting-weights";
+import { STARTING_COLUMN_LEVEL, type StartingColumn } from "../starting-weights";
 import type { RoutinePlan } from "../types";
 import { CantDoSheet, type CantDoSave } from "./CantDoSheet";
 import type { HealthNoteCall } from "./host";
@@ -257,7 +257,7 @@ export function SessionPlanSheet({
     }
     const kept = benched.some(keptToday);
     back(
-      [done.fresh ? "Started again from the starting routine, with what we know" : "Re-planned", kept ? TODAY_SET_STAYS : null]
+      [done.fresh ? `Started again from ${done.fresh.templateName ?? "the starting routine"}, with what we know` : "Re-planned", kept ? TODAY_SET_STAYS : null]
         .filter(Boolean)
         .join(". "),
     );
@@ -369,7 +369,7 @@ export function SessionPlanSheet({
               {startingColumn === "none"
                 ? "Not shown"
                 : startingColumn
-                  ? `${STARTING_COLUMN_LABEL[startingColumn]} · shown on a first time on a machine`
+                  ? `${STARTING_COLUMN_LEVEL[startingColumn]} column · shown on a first time on a machine`
                   : "No column picked yet"}
             </p>
             <div className="rpl-actions">

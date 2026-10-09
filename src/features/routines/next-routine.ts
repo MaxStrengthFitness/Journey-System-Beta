@@ -11,6 +11,7 @@
  * says when it was last used.
  */
 import type { Routine, WorkoutSession } from "../../types";
+import { matchesRoutineLetter } from "../../lib/routine-utils";
 import { parseSessionDate } from "../../lib/utils";
 import { studioDayKeyOf, studioTodayKey } from "../../lib/studio-time";
 
@@ -42,11 +43,13 @@ export function nextRoutine(
   isBActive: boolean,
 ): Routine | null {
   if (routines.length === 0) return null;
-  const a = routines.find((r) => r.name === "Routine A");
-  const b = routines.find((r) => r.name === "Routine B");
+  // Either spelling ("Routine A", or an older seeder's "A"): one rule for
+  // which routine is A or B on every screen (lib/routine-utils.ts).
+  const a = routines.find((r) => matchesRoutineLetter(r, "A"));
+  const b = routines.find((r) => matchesRoutineLetter(r, "B"));
   if (a && b && isBActive) {
     const last = routines.find((r) => r.id === lastCompletedRoutineId);
-    return last?.name === "Routine A" ? b : a;
+    return matchesRoutineLetter(last, "A") ? b : a;
   }
   return a ?? routines[0];
 }

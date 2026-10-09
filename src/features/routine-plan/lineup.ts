@@ -46,6 +46,7 @@ import {
 } from "./cant-do";
 import { orderEffects, type OrderEffect } from "./order-effects";
 import {
+  DAY_ONE,
   ROUTINE_ONLY,
   applyPlanChange,
   listWords,
@@ -53,11 +54,12 @@ import {
   progressLine,
   routineWith,
   runsDayOne,
+  sameList,
   todayFor,
   type PlanProgress,
 } from "./plan";
 import { floorCanonical, floorIndex, type FloorMachine } from "./starting-plan";
-import type { CantDo, PlanChange, RoutinePlan } from "./types";
+import { PLAN_CHANGE_MACHINES_MAX, type CantDo, type PlanChange, type RoutinePlan } from "./types";
 
 /** The signed-in person a change is signed with: the Auth uid (the rules pin it), and their name. */
 export interface Who {
@@ -272,20 +274,23 @@ export interface PlanWrite {
   machineIds?: string[];
 }
 
-const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 const once = (ids: readonly string[]) => ids.filter((id, i) => !!id && ids.indexOf(id) === i);
 
 /**
  * A change signed by the signed-in person, with the reason when one was
  * given (asked, never required) and nothing `undefined`, which Firestore
- * refuses. The words are held to the rules' 500 and 120 characters.
+ * refuses. The words are held to the rules' 500 and 120 characters, and the
+ * machines to the rules' 30 (`PLAN_CHANGE_MACHINES_MAX`): a "start", a
+ * "reorder" or a "replan" names the whole road, which a template may make
+ * longer, and one change over the limit would refuse the batch it rides in
+ * (Start's own, with the session). The plan beside it carries the whole road.
  */
 export function signedChange(change: UnsignedChange, who: Who, reason?: string | null): PlanChange {
   const why = reason?.trim();
   const value = change.value?.trim();
   return {
     kind: change.kind,
-    machineIds: [...change.machineIds],
+    machineIds: change.machineIds.slice(0, PLAN_CHANGE_MACHINES_MAX),
     ...(value ? { value: value.slice(0, 500) } : null),
     ...(why ? { reason: why.slice(0, 500) } : null),
     byUid: who.uid,
@@ -435,11 +440,19 @@ export interface ReplanInput {
    */
   outReason?: string | null;
   /**
-   * "Start again from the starting routine with what we know": the starting
-   * routine's road and day one on this floor (`startingPlanFromRoutine`).
-   * Null: "Edit the lineup by hand", the road as it is.
+   * "Start again from {a starting routine} with what we know": that starting
+   * routine's road and day one on this floor (`startingPlanFromRoutine`),
+   * the plan's own or another one (Another start, AJ's Oct 8 note), with its
+   * id, name and source, which the plan takes. Null: "Edit the lineup by
+   * hand", the road as it is.
    */
-  fresh: { intended: readonly string[]; dayOne: readonly string[] } | null;
+  fresh: {
+    intended: readonly string[];
+    dayOne: readonly string[];
+    templateId?: string;
+    templateName?: string;
+    templateSource?: string;
+  } | null;
   todayYmd: string;
   who: Who;
   floor: readonly FloorMachine[];
@@ -479,7 +492,16 @@ export function replanned(input: ReplanInput): ReplanEdit {
     const dayOne = plan.dayOne
       ? (runs ? once(input.fresh.dayOne) : plan.dayOne).filter((id) => intended.includes(id))
       : null;
-    plan = { ...plan, intended, ...(dayOne ? { dayOne } : null) };
+    // The start it came from now: its id, and its name and source as they are (never the old one's).
+    const { templateName: _name, templateSource: _source, ...rest } = plan;
+    const from = input.fresh.templateId
+      ? {
+          templateId: input.fresh.templateId,
+          ...(input.fresh.templateName ? { templateName: input.fresh.templateName } : null),
+          ...(input.fresh.templateSource ? { templateSource: input.fresh.templateSource } : null),
+        }
+      : null;
+    plan = { ...(from ? rest : plan), intended, ...(dayOne ? { dayOne } : null), ...from };
     for (const c of active) {
       if (!plan.intended.includes(c.machineId) && !routine.includes(c.machineId)) continue;
       const again = markCantDo({
@@ -609,6 +631,22 @@ export function withDayOneToggled(plan: RoutinePlan, machineId: string, on: bool
   const dayOne = plan.dayOne ?? [];
   if (on) return dayOne.includes(machineId) ? plan : { ...plan, dayOne: routineWith(plan, dayOne, [machineId]) };
   return { ...plan, dayOne: dayOne.filter((id) => id !== machineId) };
+}
+
+/**
+ * A kept plan's day one changed on Programming while it runs (Routine A
+ * still empty, `runsDayOne`): a machine of the road put on day one, in the
+ * road's order, or taken off it, the road as it was; an "add" or "remove"
+ * with `DAY_ONE` (the whole-branch review, Oct 9 2026). Null when nothing
+ * changes, when day one doesn't run, or when it would leave day one with
+ * nothing (the consult would open empty).
+ */
+export function dayOneToggled(plan: RoutinePlan, routine: readonly string[], machineId: string, on: boolean): PlanEdit | null {
+  if (!runsDayOne({ routine, plan })) return null;
+  const dayOne = plan.dayOne ?? [];
+  if (on ? dayOne.includes(machineId) || !plan.intended.includes(machineId) : !dayOne.includes(machineId) || dayOne.length <= 1) return null;
+  const change: UnsignedChange = { kind: on ? "add" : "remove", machineIds: [machineId], value: DAY_ONE };
+  return { plan: applyPlanChange(plan, change), routine: [...routine], change };
 }
 
 /** A floor machine tapped in a draft built by hand: in (on day one or on deck) or out. */

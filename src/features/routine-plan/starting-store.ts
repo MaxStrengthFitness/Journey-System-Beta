@@ -45,6 +45,7 @@ import {
 import {
   NO_CHOICE,
   STARTING_CHOICE_DOC,
+  seededFrom,
   startingChoiceFromDoc,
   startingChoiceToWrite,
   startingRoutinesFromPresets,
@@ -71,10 +72,11 @@ export async function readStartingRoutines(db: Firestore, studioId?: string | nu
       ? getDocs(query(collection(db, "routinePresets"), where("tier", "==", "studio"), where("scope", "==", studioId)))
       : Promise.resolve(null),
   ]);
-  const routines = startingRoutinesFromPresets(docsOf(company), docsOf(studio), studioId);
+  const companyDocs = docsOf(company);
+  const routines = startingRoutinesFromPresets(companyDocs, docsOf(studio), studioId);
   const fromCacheOnly = company.metadata.fromCache && (studio === null || studio.metadata.fromCache);
   const empty = company.empty && (studio === null || studio.empty);
-  return { routines, known: !(fromCacheOnly && empty) };
+  return { routines, known: !(fromCacheOnly && empty), seeded: seededFrom(companyDocs) };
 }
 
 const choiceRef = (db: Firestore, studioId: string) => doc(db, "studios", studioId, "config", STARTING_CHOICE_DOC);
@@ -82,11 +84,18 @@ const choiceRef = (db: Firestore, studioId: string) => doc(db, "studios", studio
 /**
  * The studio's choice. No document is "hasn't chosen" (`use: null`, all of
  * head office's, no studio default); a failed read throws, and the caller
- * keeps it unknown, never "hasn't chosen".
+ * keeps it unknown, never "hasn't chosen". So does a "no document" only
+ * this iPad's cache gave (offline): the iPad may have cached it missing
+ * before a leader saved the studio's choice, and reading that as "hasn't
+ * chosen" would suggest a routine the studio left out and skip its default
+ * without a word (the whole-branch review, Oct 9 2026).
  */
 export async function readStartingChoice(db: Firestore, studioId: string): Promise<StartingRoutineChoice> {
   const snap = await getDoc(choiceRef(db, studioId));
-  return snap.exists() ? startingChoiceFromDoc(snap.data()) : { ...NO_CHOICE };
+  const fromCache = snap.metadata?.fromCache === true;
+  if (snap.exists()) return startingChoiceFromDoc(snap.data());
+  if (fromCache) throw new Error("The studio's starting-routine choice was answered only from this iPad's cache.");
+  return { ...NO_CHOICE };
 }
 
 /**

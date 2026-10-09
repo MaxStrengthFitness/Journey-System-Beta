@@ -11,7 +11,9 @@
  * change: what the next visit runs under the "Next time" bracket (a machine
  * joining marked "Joins"), the rest of the plan hollow with the next stop,
  * and the progress line ("0 of 6 · day one: …" while nothing is ticked on
- * an empty Routine A).
+ * an empty Routine A). When two machines side by side in it trip one of the
+ * Academy's sequencing rules, one of them joining now, the order effect says
+ * so under the Road, quietly (`nextTimeEffects`), live as the ticks change.
  *
  * When the routine was empty at the end of the session, or there is none
  * (AJ's "3a", Oct 8 2026: "this also counts with the consult visit,
@@ -33,6 +35,7 @@ import {
   nextTimeAsk,
   nextTimeAskWords,
   nextTimeBLine,
+  nextTimeEffects,
   nextTimeProgressLine,
   nextTimeRoad,
   nextTimeWhyWords,
@@ -40,7 +43,7 @@ import {
   type NextTimeSnapshot,
 } from "../next-time";
 import type { NextTimeRow } from "../plan";
-import { TickRow } from "./parts";
+import { OrderNote, TickRow } from "./parts";
 import { RoadStrip } from "./RoadStrip";
 import "./routine-plan.css";
 
@@ -64,6 +67,8 @@ export function NextTimeCard({ snapshot, rows, ticked, onTicked, firstName, toda
   const line = useMemo(() => nextTimeProgressLine(after, nameOf), [after, nameOf]);
   // A Routine B planned with the starting lineup starts with Routine A (the studio's "A and B together").
   const bLine = useMemo(() => nextTimeBLine(snapshot, after, todayYmd), [snapshot, after, todayYmd]);
+  // The order effects the ticks bring: the first, quietly, as the briefing says one.
+  const effect = useMemo(() => nextTimeEffects(snapshot, after, picked)[0] ?? null, [snapshot, after, picked]);
   const ask = nextTimeAsk(snapshot);
   const hasPlan = !!snapshot.plan;
   const allOn = rows.length > 0 && picked.length === rows.length;
@@ -104,6 +109,11 @@ export function NextTimeCard({ snapshot, rows, ticked, onTicked, firstName, toda
           label={`${snapshot.routineName}, next time`}
           inWords="next time"
         />
+      )}
+      {effect && (
+        <ul className="rpl-list rpl-list--flush" aria-label="Order effects">
+          <OrderNote effect={effect} />
+        </ul>
       )}
       {bLine && <p className="rpl-meta">{bLine}</p>}
     </div>

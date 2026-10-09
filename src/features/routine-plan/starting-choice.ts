@@ -31,6 +31,20 @@ export function routineMachineName(id: string, catalogName?: string | null): str
   return ACADEMY_MOVEMENT_NAME[id] ?? (catalogName?.trim() || id);
 }
 
+/**
+ * "Not on Westlake's floor: Leg Curl, Lumbar Extension": a starting
+ * routine's machines this floor lacks (a suggestion's steps' `missing`),
+ * said, never dropped silently (the design round, §4.2; AJ, Oct 8 2026: "not
+ * every studio has the same machines"). One sentence for every door that
+ * makes a plan from a starting routine: Start a plan, the briefing's walk-in
+ * card and Re-plan's "Start again from". Null when the floor has them all.
+ */
+export function notOnFloorLine(missing: readonly string[], studioName: string | null | undefined): string | null {
+  const ids = missing.filter((id, i) => !!id && missing.indexOf(id) === i);
+  if (ids.length === 0) return null;
+  return `Not on ${studioName?.trim() || "this studio"}'s floor: ${ids.map((id) => routineMachineName(id)).join(", ")}`;
+}
+
 /** The list in the panel's order, ids it doesn't list kept at the end as they came, each once. */
 export function canonicalUse(use: readonly string[], routineIds: readonly string[]): string[] {
   const listed = routineIds.filter((id) => use.includes(id));

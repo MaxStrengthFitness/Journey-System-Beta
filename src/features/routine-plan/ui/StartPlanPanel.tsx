@@ -61,14 +61,14 @@ import {
   withFloorTapped,
   type Who,
 } from "../lineup";
-import { routineMachineName } from "../starting-choice";
+import { notOnFloorLine } from "../starting-choice";
 import { startingSourceWords } from "../start-part";
 import { startingPlanFromRoutine, suggestFromStartingRoutines, type StartingRoutine } from "../starting-routines";
 import type { RoutinePlan } from "../types";
 import { useStartingRoutines } from "../useStartingRoutines";
 import { CantDoSheet, type CantDoSave } from "./CantDoSheet";
 import { floorMachinesOf, type HealthNoteCall, type PlanHost } from "./host";
-import { BenchEntry, Chip, DoorButton, GroupHead, LineupRow, NextPill, OrderNote, SaidLine, SourceTag } from "./parts";
+import { BenchEntry, Chip, DoorButton, GroupHead, HowItWorks, LineupRow, NextPill, OrderNote, SaidLine, SourceTag } from "./parts";
 import { FloorPicker } from "./pickers";
 import { PlannedBPart, plannedBReadOf, usePlannedB } from "./PlannedBPart";
 import { RowSheet } from "./RowSheet";
@@ -495,17 +495,12 @@ function StartNew({
         )}
       </div>
       <div className="rpl-panel__body">
-        <p className="rpl-meta">{host.kind.kind === "new-to-studio" ? host.kind.says : "Starting out at the studio: start a plan."}</p>
         {mode === "start" && whyOpen && sourceWords && <p className="rpl-well">{suggestion.why}</p>}
         {said && <SaidLine onClear={() => setSaid(null)}>{said}</SaidLine>}
         <ol className="rpl-list rpl-list--flush" aria-label="The lineup">
           {items}
         </ol>
-        {missing.length > 0 && (
-          <p className="rpl-meta">
-            Not on {host.studioName ?? "this studio"}'s floor: {missing.map((id) => routineMachineName(id)).join(", ")}
-          </p>
-        )}
+        {missing.length > 0 && <p className="rpl-meta">{notOnFloorLine(missing, host.studioName)}</p>}
         <PlannedBPart state={bPart} nameOf={nameOf} floor={floor} todayYmd={today} />
         <div className="rpl-foot">
           <div className="rpl-actions">
@@ -522,10 +517,11 @@ function StartNew({
                 Back to the starting routines
               </Button>
             )}
+            {/* The how-to, one tap away (the whole-branch review, Oct 9 2026: say each point once, the action words on screen). */}
+            <HowItWorks label="How Keep this lineup works">
+              Nothing is saved until you keep it. Day one is the first visit's; its Wrap-up asks which machines start Routine A.
+            </HowItWorks>
           </div>
-          <p className="rpl-meta">
-            Nothing is saved until you keep it. Day one is the first visit's; its Wrap-up asks which machines start Routine A.
-          </p>
           {!who && <p className="rpl-meta">Sign in again to keep a plan.</p>}
         </div>
       </div>
@@ -543,7 +539,6 @@ function StartNew({
       </div>
       <div className="rpl-panel__body">
         {picking && <p className="rpl-line">{suggestion.why}</p>}
-        {starting.fromCode && starting.status === "ready" && <p className="rpl-meta">The Academy's starting routines, until head office adds its own.</p>}
         {starting.fromCode && unread && <p className="rpl-meta">These are the Academy's, from Journey's own copy.</p>}
         <div className="rpl-starts">
           {starts.map((s) => {

@@ -349,6 +349,9 @@ describe("Start a plan at a studio that starts new clients on A and B together",
   it("plans B beside the lineup, and Keep keeps both plans in ONE start, B against A's planned road", async () => {
     await mount(<StartPlanPanel host={AB()} firstName="Dana" nameOf={nameOf} routineAId={null} bTarget={{ routineId: null }} />);
     expect(text()).toContain("Routine B, planned with A");
+    // The how-to behind its (i), one tap away (the whole-branch review, Oct 9 2026).
+    expect(text()).not.toContain("B starts at the Wrap-up that starts Routine A");
+    await tap("How B starts");
     expect(text()).toContain("B starts at the Wrap-up that starts Routine A, as A with one machine different.");
     expect(page().querySelector("button[aria-label$=', starts with']")).not.toBeNull();
     // Nothing is written before Keep, and an untouched B is no unsaved work.
@@ -449,7 +452,7 @@ describe("Start a plan at a studio that starts new clients on A and B together",
     // Offered, not assumed: an untouched part is no unsaved work, and keeps no B.
     expect(status!.anyDirty()).toBe(false);
     await tap("Plan B with A");
-    expect(text()).toContain("B starts at the Wrap-up that starts Routine A");
+    expect(text()).toContain("Routine B, planned with A");
     expect(status!.anyDirty()).toBe(true);
     await tap(/Keep this lineup/);
     expect(calls.starts[0].b?.plan.swaps?.length).toBeGreaterThan(0);
@@ -544,6 +547,36 @@ describe("the Lineup", () => {
     expect(text()).toContain(`0 of 6 · day one: ${nameOf("m-leg-press")}, ${nameOf("m-compound-row")} and ${nameOf("m-lumbar")}`);
     expect(text()).toContain("Routine A is empty until the first visit");
     expect(has("Add to A now")).toBe(false);
+  });
+
+  // The whole-branch review (Oct 9 2026): once kept, day one could only change
+  // by leaving the plan (AJ, Oct 8 2026: "trainers may build the session before
+  // the client comes in"). While day one runs, a row moves on or off it.
+  it("while day one runs, a row goes on or off day one, the road as it was, in one change", async () => {
+    await mount(lineup([]));
+    // The switch's line isn't said twice: the group's note says what the Wrap-up asks.
+    expect(text()).not.toContain("The first visit's Wrap-up asks which machines start Routine A");
+    await tap(`Change ${nameOf("m-chest-press")} in the plan`);
+    await tap("Do it on day one");
+    await tap("Save change");
+    const w = calls.saves[0].write;
+    expect(w.change).toMatchObject({ kind: "add", machineIds: ["m-chest-press"], value: "dayone" });
+    expect(w.plan.dayOne).toEqual(["m-leg-press", "m-compound-row", "m-lumbar", "m-chest-press"]);
+    expect(w.plan.intended).toEqual(PLAN.intended);
+    expect(w.machineIds).toBeUndefined();
+
+    await tap(`Change ${nameOf("m-lumbar")} in the plan`);
+    await tap("Not on day one");
+    await tap("Save change");
+    expect(calls.saves[1].write.change).toMatchObject({ kind: "remove", machineIds: ["m-lumbar"], value: "dayone" });
+    expect(calls.saves[1].write.plan.dayOne).not.toContain("m-lumbar");
+    expect(calls.saves[1].write.plan.intended).toContain("m-lumbar");
+  });
+
+  it("the last machine on day one can't come off it: the consult would open empty", async () => {
+    await mount(lineup([], { ...PLAN, dayOne: ["m-leg-press"] }));
+    await tap(`Change ${nameOf("m-leg-press")} in the plan`);
+    expect(button("Not on day one").disabled).toBe(true);
   });
 
   it("offers Add to A now on the Next row only once Routine A has machines", async () => {
@@ -677,6 +710,32 @@ describe("the Lineup", () => {
     expect(w.plan.intended).not.toContain("m-compound-row");
     expect(w.also).toEqual([expect.objectContaining({ kind: "cantdo", machineIds: ["m-compound-row"] })]);
     expect(w.plan.cantDo?.map((c) => c.machineId)).toEqual(["m-compound-row"]);
+  });
+
+  /*
+   * Another start, after Keep (AJ's Oct 8 note: "we might have a plan for a
+   * routine but find something out in those first few sessions that
+   * drastically changes it"; the whole-branch review, Oct 9 2026: Re-plan
+   * could only start again from the plan's own starting routine).
+   */
+  it("re-plans from Another start: the plan takes that start's road, its id and its name", async () => {
+    await mount(lineup(["m-leg-press"]));
+    await tap("Re-plan");
+    await act(async () => {});
+    const starts = Array.from(page().querySelectorAll<HTMLButtonElement>(".rpl-start"));
+    // The plan's own first, marked; picked by default.
+    expect(starts[0]!.textContent).toContain("Low back issues · this plan's");
+    expect(starts[0]!.getAttribute("aria-pressed")).toBe("true");
+    const knee = starts.find((b) => b.textContent?.includes("Knee issues"))!;
+    expect(knee, "another start offered").toBeTruthy();
+    await act(async () => knee.click());
+    await tap(/^Start again from Knee issues with what we know$/);
+    const w = calls.saves[0].write;
+    expect(w.change).toMatchObject({ kind: "replan" });
+    expect(w.plan.templateId).toBe("academy-knee");
+    expect(w.plan.templateName).toBe("Knee issues");
+    expect(w.change.machineIds).toEqual(w.plan.intended);
+    expect(text()).toContain("Started again from Knee issues, with what we know");
   });
 
   it("re-plans by hand: the road as it is, the history still gets its divider", async () => {

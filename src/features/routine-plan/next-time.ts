@@ -10,9 +10,9 @@
  * - the rows are today's PERFORMED machines the routine lacks
  *   (`nextTimeRows`, plan.ts); a machine skipped on a short day is never on
  *   the list, so a tired day never shrinks the routine;
- * - while Routine A has machines and is being built, they start ticked
- *   ("Untick one to leave it out"); otherwise unticked ("Tick a machine to
- *   keep it");
+ * - while Routine A has machines and is being built, still short of its
+ *   plan (`stillBuilding`), they start ticked ("Untick one to leave it
+ *   out"); otherwise unticked ("Tick a machine to keep it");
  * - with Routine A EMPTY when the session finished (the consult, or any
  *   visit while Routine A still has nothing) or no routine at all (a session
  *   built on the fly for a client with no Routine A), every row starts
@@ -46,6 +46,7 @@
 import type { Routine } from "../../types";
 import { matchesRoutineLetter } from "../../lib/routine-utils";
 import { activeCantDo } from "./cant-do";
+import { orderEffects, type OrderEffect } from "./order-effects";
 import { roadGroups, signedChange, type RoadGroup, type Who } from "./lineup";
 import {
   ROUTINE_ONLY,
@@ -56,6 +57,8 @@ import {
   planProgress,
   progressLine,
   routineAfterWrapUp,
+  sameList,
+  stillBuilding,
   todayFor,
   type NextTimeRow,
   type PlanProgress,
@@ -112,6 +115,13 @@ export interface NextTimeSnapshot {
    * 8: the card checked no floor, the write the live one).
    */
   plannedBFloor?: string[];
+  /**
+   * The floor's machines the card names, each with the catalog machine it
+   * is, so the order effects read a studio's own unit as the machine it is
+   * (`nextTimeEffects`). Absent on a snapshot made before Oct 9 2026: the
+   * effects then read catalog ids as they are.
+   */
+  floor?: FloorMachine[];
 }
 
 const strings = (list: unknown): string[] =>
@@ -262,6 +272,7 @@ export function nextTimeAtFinish(input: {
   for (const id of [...ids, ...(plannedB ?? []).flatMap((s) => [s.replaces, s.with])]) {
     if (typeof id === "string" && id && !(id in names)) names[id] = input.nameOf(id);
   }
+  const floor = input.floor.filter((m) => m.id in names).map((m) => ({ id: m.id, ...(m.canonicalId ? { canonicalId: m.canonicalId } : null) }));
   return {
     routineId: routine?.id ?? null,
     routineName: routineWords(routine?.name),
@@ -270,7 +281,25 @@ export function nextTimeAtFinish(input: {
     performed,
     names,
     ...(plannedB && plannedB.length > 0 ? { plannedB, plannedBFloor: input.floor.map((m) => m.id) } : null),
+    ...(floor.length > 0 ? { floor } : null),
   };
+}
+
+/**
+ * The order effects the ticks bring, said quietly under the Road (the design
+ * round, §4.7: "When two of them side by side trip a sequencing rule, the
+ * order effects say so, quietly"; AJ's Oct 8 note puts order effects on
+ * every surface): the Academy's rules that two machines side by side in what
+ * the next visit runs trip, where one of them is a machine joining now.
+ * What the routine already ran together is not said again here; a sentence,
+ * never a block.
+ */
+export function nextTimeEffects(snap: Pick<NextTimeSnapshot, "names" | "floor">, after: Pick<NextTimeAfter, "runs">, ticked: readonly string[]): OrderEffect[] {
+  if (ticked.length === 0) return [];
+  const nameOf = (id: string) => snap.names[id] || id;
+  return orderEffects(after.runs, nameOf, snap.floor).filter(
+    (e) => e.scope === "adjacent" && e.machineIds.some((id) => ticked.includes(id)),
+  );
 }
 
 /** The floor frozen beside a planned B at Finish (`plannedBFloor`), as the write's floor: ids only. */
@@ -319,14 +348,16 @@ export function nextTimeOffer(snap: NextTimeSnapshot): NextTimeRow[] {
  * The line over the rows:
  * - "start": the routine was empty when the session finished, or there is
  *   none (the consult, a session built on the fly): the ticks start it;
- * - "building": Routine A has machines and is being built: today's join;
- * - "keep": an established routine changes on purpose.
+ * - "building": Routine A has machines, is being built and is still short
+ *   of its plan (`stillBuilding`): today's join;
+ * - "keep": an established routine changes on purpose (a plan whose
+ *   machines are all in, its switch left on, included).
  */
 export type NextTimeAsk = "start" | "building" | "keep";
 
 export function nextTimeAsk(snap: Pick<NextTimeSnapshot, "machineIds" | "plan">): NextTimeAsk {
   if (snap.machineIds.length === 0) return "start";
-  return snap.plan?.building === true ? "building" : "keep";
+  return stillBuilding(snap.plan, snap.machineIds) ? "building" : "keep";
 }
 
 export function nextTimeAskWords(ask: NextTimeAsk, routineName: string): string {
@@ -352,10 +383,8 @@ export function tickedInOrder(rows: readonly NextTimeRow[], ticked: readonly str
   return rows.filter((r) => ticked.includes(r.machineId)).map((r) => r.machineId);
 }
 
-/** Two hand-overs alike: the same machines (each in the rows' order, `tickedInOrder`). */
-export function sameTicks(a: readonly string[], b: readonly string[]): boolean {
-  return a.length === b.length && a.every((id, i) => id === b[i]);
-}
+/** Two hand-overs alike: the same machines (each in the rows' order, `tickedInOrder`). plan.ts's `sameList`, by the name the Wrap-up reads it. */
+export const sameTicks: (a: readonly string[], b: readonly string[]) => boolean = sameList;
 
 export interface NextTimeAfter {
   /** The routine's machines for next time. */

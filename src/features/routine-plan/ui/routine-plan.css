@@ -532,6 +532,8 @@ button.rpl-cell--next {
   color: var(--eq-ink);
   overflow-wrap: anywhere;
 }
+/* A part's how-to, opened from its (i) beside an action: its own line under the row. */
+.rpl-how { flex-basis: 100%; }
 
 .rpl-foot {
   display: flex;
@@ -806,6 +808,9 @@ button.rpl-cell--next {
   color: var(--eq-live-on);
 }
 .rpl-chip:disabled { opacity: 0.55; cursor: default; }
+/* A reader's picked chip (the weak area, "B is for") is the answer they read:
+   never faded, so its words on the blue keep their contrast. */
+.rpl-chip[aria-pressed="true"]:disabled { opacity: 1; }
 
 /* A field: sunk inside the firm edge. */
 .rpl-field {

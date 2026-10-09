@@ -9,7 +9,7 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
 import { Client, Studio } from "../types";
 import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
-import { canSaveNewClient, newClientPayload } from "../lib/consultation-answers";
+import { canSaveNewClient, newClientPayload } from "../lib/new-client-intake";
 import { studiosInRealm } from "../features/demo-mode/access";
 import {
   ADD_CLIENT_REASONS,
@@ -96,7 +96,7 @@ export function CreateClientModal({
 
     try {
       // Only what was answered: no placeholder height, no invented package,
-      // no blank fields (lib/consultation-answers.ts).
+      // no blank fields (lib/new-client-intake.ts).
       const clientData = newClientPayload({
         kind: "prospect",
         firstName,

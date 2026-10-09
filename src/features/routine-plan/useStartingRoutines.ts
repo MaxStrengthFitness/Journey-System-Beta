@@ -93,10 +93,12 @@ export function useStartingRoutines(
       const offered = routinesToOffer(answer);
       const choice = c.status === "fulfilled" ? c.value : null;
       const ok = answer !== null && answer.known && choice !== null;
+      // A studio's own routines beside the Academy's code copy (before the seed).
+      const own = offered.fromCode ? offered.routines.filter((r) => r.tier === "studio") : [];
       setRead({
         key,
         // The same list as before the answer, so a screen holding it sees no change.
-        routines: offered.fromCode ? academyFallback() : offered.routines,
+        routines: offered.fromCode ? (own.length > 0 ? [...academyFallback(), ...own] : academyFallback()) : offered.routines,
         fromCode: offered.fromCode,
         choice,
         status: ok ? "ready" : "failed",

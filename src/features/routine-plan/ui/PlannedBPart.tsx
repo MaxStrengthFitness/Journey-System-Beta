@@ -51,7 +51,7 @@ import type { FloorMachine } from "../starting-plan";
 import type { PlanChange, PlanSwap, RoutinePlan } from "../types";
 import { BSwapsEditor } from "./BSwapsEditor";
 import type { NewClientsStartRead } from "./host";
-import { Chip, PlanSheet, SourceTag } from "./parts";
+import { Chip, HowItWorks, PlanSheet, SourceTag } from "./parts";
 import "./routine-plan.css";
 
 const same = (a: readonly PlanSwap[], b: readonly PlanSwap[]) =>
@@ -233,11 +233,14 @@ export function PlannedBPart({ state, nameOf, floor, todayYmd, heading = true }:
   return (
     <section className="rpl-sheet__section" aria-label="Routine B, planned with A">
       {head}
-      <p className="rpl-meta">
-        B starts at the Wrap-up that starts Routine A, as A with one machine different. Then A and B alternate, and B takes its
-        next swap as you choose. A swap for a machine A takes later waits for it.
-      </p>
-      <SourceTag>{B_SWAPS_SOURCE}</SourceTag>
+      {/* The source on screen, the how-to on its (i) (the whole-branch review, Oct 9 2026). */}
+      <div className="rpl-actions">
+        <SourceTag>{B_SWAPS_SOURCE}</SourceTag>
+        <HowItWorks label="How B starts">
+          B starts at the Wrap-up that starts Routine A, as A with one machine different. Then A and B alternate, and B takes its
+          next swap as you choose. A swap for a machine A takes later waits for it.
+        </HowItWorks>
+      </div>
       {state.swaps.length === 0 && <p className="rpl-meta">Nothing on this floor to swap in yet. Add one for a machine of A below.</p>}
       <BSwapsEditor
         aRoutine={state.road}

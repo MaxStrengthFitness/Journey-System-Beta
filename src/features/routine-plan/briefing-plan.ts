@@ -26,7 +26,7 @@ import { activeCantDo } from "./cant-do";
 import type { StartingKind } from "./client-kind";
 import { signedChange, type Who } from "./lineup";
 import { orderEffects, type OrderEffect } from "./order-effects";
-import { runsDayOne } from "./plan";
+import { runsDayOne, sameList } from "./plan";
 import type { FloorMachine } from "./starting-plan";
 import type { PlanChange, RoutinePlan } from "./types";
 
@@ -186,7 +186,6 @@ export function todayEffect(
   return orderEffects(today, nameOf, floor)[0] ?? null;
 }
 
-const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 
 /** Whether the trainer changed today: the list on the card differs from the one it opened with. */
 export function todayChanged(today: readonly string[], opened: readonly string[]): boolean {

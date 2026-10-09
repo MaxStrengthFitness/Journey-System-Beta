@@ -7,7 +7,9 @@
  *
  * Two faces of one sheet, opened from the Now Bar:
  * - "pick": the sheet's four columns with its own labels, and Don't show
- *   ranges. The app never picks one, and never from the client's gender.
+ *   ranges, five answers to one question, the current one the blue chip.
+ *   The app never picks one, and never from the client's gender. The
+ *   sheet's labels are drawn here only; elsewhere a column is its level.
  * - "about": the (i) on the range line: the sheet's notes and its source,
  *   Change column and Don't show ranges.
  *
@@ -24,7 +26,7 @@
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { startingSourceWords } from "../start-part";
-import { STARTING_COLUMN_LABEL, STARTING_WEIGHTS_NOTES, STARTING_WEIGHTS_SOURCE, type StartingColumn } from "../starting-weights";
+import { STARTING_COLUMN_LABEL, STARTING_COLUMN_LEVEL, STARTING_WEIGHTS_NOTES, STARTING_WEIGHTS_SOURCE, type StartingColumn } from "../starting-weights";
 import { Chip, PlanSheet, SourceTag } from "./parts";
 
 const COLUMNS = Object.keys(STARTING_COLUMN_LABEL) as StartingColumn[];
@@ -54,16 +56,16 @@ export function StartingRangeSheet({ open, mode, firstName, column, keptOnPlan, 
       meta={mode === "pick" ? "A reference beside the weight, never a weight." : "A reference, not a rule."}
       onClose={onClose}
       footer={
-        <>
-          <Button variant="ghost" onClick={() => onPick("none")}>
-            Don't show ranges
-          </Button>
-          {mode === "about" && (
+        mode === "about" ? (
+          <>
+            <Button variant="ghost" onClick={() => onPick("none")}>
+              Don't show ranges
+            </Button>
             <Button variant="outline" onClick={onChangeColumn}>
               Change column
             </Button>
-          )}
-        </>
+          </>
+        ) : undefined
       }
     >
       {mode === "pick" ? (
@@ -75,6 +77,11 @@ export function StartingRangeSheet({ open, mode, firstName, column, keptOnPlan, 
                 {STARTING_COLUMN_LABEL[c]}
               </Chip>
             ))}
+            {/* The fifth answer, beside the four: picked, it is the blue chip (every selection is blue). */}
+            <Chip on={column === "none"} onClick={() => onPick("none")}>
+              {column === "none" && <Check size={16} aria-hidden="true" />}
+              Don't show ranges
+            </Chip>
           </div>
           <p className="rpl-meta">{kept}</p>
         </section>
@@ -87,7 +94,7 @@ export function StartingRangeSheet({ open, mode, firstName, column, keptOnPlan, 
               </li>
             ))}
           </ul>
-          {column && column !== "none" && <p className="rpl-meta">Column: {STARTING_COLUMN_LABEL[column]} · {kept}</p>}
+          {column && column !== "none" && <p className="rpl-meta">Column: {STARTING_COLUMN_LEVEL[column]} · {kept}</p>}
         </section>
       )}
       {source && (

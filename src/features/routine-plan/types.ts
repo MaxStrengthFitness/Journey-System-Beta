@@ -94,6 +94,17 @@ export interface RoutinePlan {
    * which knows both.
    */
   templateId?: string;
+  /**
+   * The starting routine's name and its source as they were when the plan
+   * was made from it (`startingPlanFromRoutine`), so the Lineup and the
+   * briefing name the start ("Started from Low back issues · From the
+   * Academy's …") with no second read, a routine an administrator wrote
+   * included (the whole-branch review, Oct 9 2026: it said only "Started
+   * from a starting routine"). Absent on a plan made before Oct 9 2026; the
+   * screens then fall back to the Academy's name for an Academy id.
+   */
+  templateName?: string;
+  templateSource?: string;
   madeByUid: string;
   madeByName?: string;
   /** The studio's day the plan was made, `YYYY-MM-DD`, so "Started Oct 7 by Sam" needs no second read. */
@@ -198,6 +209,17 @@ export interface CantDo {
  * - "purpose": `value` B's purpose in words ("Variety: …"), the kinds beside
  *   it on the plan (`purposeKinds`).
  */
+/**
+ * The most machines one change may name: firestore.rules' `planChangeOk`
+ * holds the same number (`machineIds.size() <= 30`). A change is a record,
+ * not the plan (the plan is written whole beside it), so a longer road is
+ * named up to here and the plan still carries all of it. Capped where every
+ * change is signed (`lineup.ts` `signedChange`) and again where every change
+ * is written (`store.ts`), so no road a template allows can refuse Start's
+ * own batch.
+ */
+export const PLAN_CHANGE_MACHINES_MAX = 30;
+
 export type PlanChangeKind =
   | "start"
   | "add"
@@ -219,7 +241,7 @@ export type PlanChangeKind =
  */
 export interface PlanChange {
   kind: PlanChangeKind;
-  /** The machines the change is about, by kind (see `PlanChangeKind`). */
+  /** The machines the change is about, by kind (see `PlanChangeKind`); at most `PLAN_CHANGE_MACHINES_MAX`. */
   machineIds: string[];
   reason?: string;
   /** The change's words, by kind (see `PlanChangeKind`). */

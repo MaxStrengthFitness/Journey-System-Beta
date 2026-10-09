@@ -28,6 +28,18 @@ import type { CantDo, PlanChange, RoutinePlan } from "./types";
 export const ROUTINE_ONLY = "routine";
 
 /**
+ * An "add" or "remove" change's `value` when it puts a machine of the road
+ * on the plan's day one, or takes one off it, the road as it was: what the
+ * consult runs, changed on Programming once the plan is kept (the
+ * whole-branch review, Oct 9 2026; AJ, Oct 8 2026: "trainers may build the
+ * session before the client comes in"). Before Keep the draft's own row
+ * sheet does it; after, a kept day one could only change by leaving the
+ * plan. No rules change: the kind is one the rules take and `value` is
+ * words.
+ */
+export const DAY_ONE = "dayone";
+
+/**
  * What changed, offered on the Re-plan sheet (AJ, Oct 8 2026: "we might have
  * a plan for a routine but find something out in those first few sessions
  * that drastically changes it or we could have a client who is getting
@@ -68,6 +80,29 @@ export function planProgress(plan: Pick<RoutinePlan, "intended">, routine: reado
 export function listWords(names: readonly string[]): string {
   if (names.length <= 1) return names[0] ?? "";
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+/** Two lists alike: the same ids in the same order. The one copy the routine plan's modules share. */
+export function sameList(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((x, i) => x === b[i]);
+}
+
+/**
+ * Routine A is still being built: the plan's switch is on AND the routine is
+ * still short of its plan (AJ's answer to "adds on by default", the research
+ * §2b Q4: "only while the routine is short of its plan ... protects the
+ * stability of the client's long-term routine"). Once every planned machine
+ * is in, a one-off machine on a later day is an extra, never ticked in by
+ * default, even with the switch left on; nothing turns the switch off by
+ * itself. The Wrap-up's default ticks (`nextTimeRows`), its words
+ * (`nextTimeAsk`) and the learning curve (`pastLearningCurve`) all ask this.
+ */
+export function stillBuilding(
+  plan: Pick<RoutinePlan, "intended" | "building"> | null | undefined,
+  routine: readonly string[] | null | undefined,
+): boolean {
+  if (!plan || plan.building !== true || !Array.isArray(plan.intended)) return false;
+  return planProgress(plan, routine ?? []).next !== null;
 }
 
 /**
@@ -227,6 +262,12 @@ export function applyPlanChange(
     case "add": {
       // Into Routine A only ("Add to A now"): the machine is on the road already.
       if (change.value === ROUTINE_ONLY) return plan;
+      // Onto day one, in the road's order: the road as it was.
+      if (change.value === DAY_ONE) {
+        const dayOne = plan.dayOne ?? [];
+        const onRoad = ids.filter((id) => plan.intended.includes(id) && !dayOne.includes(id));
+        return onRoad.length > 0 ? { ...plan, dayOne: routineWith(plan, dayOne, onRoad) } : plan;
+      }
       const intended = [...plan.intended];
       for (const id of ids) if (!intended.includes(id)) intended.push(id);
       return { ...plan, intended };
@@ -236,6 +277,8 @@ export function applyPlanChange(
       // sheet): the plan keeps the machine on deck, so the road is as it was.
       // The caller moves the routine's own machines in the same batch.
       if (change.value === ROUTINE_ONLY) return plan;
+      // Off day one only: the plan keeps it on the road.
+      if (change.value === DAY_ONE) return withDayOne(plan, (dayOne) => dayOne.filter((id) => !ids.includes(id)));
       return withDayOne(
         { ...plan, intended: plan.intended.filter((id) => !ids.includes(id)) },
         (dayOne) => dayOne.filter((id) => !ids.includes(id)),
@@ -321,9 +364,10 @@ export interface NextTimeRow {
  * Only machines PERFORMED today that the routine doesn't have yet are offered:
  * a machine skipped on a short day stays in the routine and is not on the
  * list, so a tired day never shrinks it. While the plan is being built
- * (AJ's toggle) every row starts ticked; once it isn't, a one-off machine
- * starts unticked, because "an established routine changes on purpose".
- * No plan at all: offered unticked, the same as an established routine.
+ * (AJ's toggle) and the routine is still short of its plan (`stillBuilding`)
+ * every row starts ticked; once it isn't, a one-off machine starts
+ * unticked, because "an established routine changes on purpose". No plan at
+ * all: offered unticked, the same as an established routine.
  *
  * The consult is not Routine A (AJ, Oct 8 2026, "3a", and: "this also counts
  * with the consult visit, sometimes the consult machines will not be the same
@@ -342,7 +386,7 @@ export function nextTimeRows(input: {
   performedToday: readonly string[];
 }): NextTimeRow[] {
   const empty = input.routine.length === 0;
-  const defaultOn = !empty && input.plan?.building === true;
+  const defaultOn = !empty && stillBuilding(input.plan, input.routine);
   const dayOne = empty ? (input.plan?.dayOne ?? []) : [];
   const rows: NextTimeRow[] = [];
   for (const id of input.performedToday) {

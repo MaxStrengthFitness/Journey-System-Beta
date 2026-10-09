@@ -52,6 +52,7 @@ import { healthNoteOffer, standInLine } from "../cant-do";
 import {
   addedNow,
   buildingChanged,
+  dayOneToggled,
   effectsAbove,
   healthNoteBody,
   healthNoteBodyFor,
@@ -69,9 +70,8 @@ import {
   type PlanEdit,
 } from "../lineup";
 import { focusCellWords } from "../focus";
-import { startingSourceWords } from "../start-part";
-import { TEMPLATE_SOURCE, academyTemplateName } from "../starting-plan";
-import { academyTemplateOf } from "../starting-routines";
+import { stillBuilding } from "../plan";
+import { startedFromWords } from "../starting-routines";
 import type { RoutinePlan } from "../types";
 import { useBColumn, type BSide } from "./BColumn";
 import { CantDoSheet, type CantDoSave } from "./CantDoSheet";
@@ -243,7 +243,7 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
       });
     }
     changed();
-    setSaid(done.fresh ? "Started again from the starting routine, with what we know" : "Re-planned. Tap any machine to change it.");
+    setSaid(done.fresh ? `Started again from ${done.fresh.templateName ?? "the starting routine"}, with what we know` : "Re-planned. Tap any machine to change it.");
     setSheet(null);
   };
 
@@ -286,6 +286,20 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
         canUp={at > 0}
         canDown={at >= 0 && at < group.length - 1}
         onMove={(dir) => ask(`Move ${name} ${dir < 0 ? "up" : "down"}`, movedIn(plan, routineIds, id, dir, today))}
+        dayOne={
+          model.dayOneRuns && planned
+            ? {
+                on: inFirst,
+                disabled: inFirst && model.first.length <= 1,
+                toggle: () =>
+                  ask(
+                    inFirst ? `Take ${name} off day one` : `Put ${name} on day one`,
+                    dayOneToggled(plan, routineIds, id, !inFirst),
+                    inFirst ? `${name} is on deck` : `${name} is on day one`,
+                  ),
+              }
+            : null
+        }
         addNow={id === model.next && !model.dayOneRuns ? () => ask(`Add ${name} to Routine A now`, addedNow(plan, routineIds, id)) : null}
         takeOut={takeOut}
         onSwap={(to) => ask(`${to.map(nameOf).join(" + ")} instead of ${name}`, swappedIn(plan, routineIds, id, to), `${to.map(nameOf).join(" + ")} instead of ${name}`)}
@@ -296,12 +310,8 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
   })();
 
   /* ── The head ── */
-  const academy = academyTemplateOf(plan.templateId);
-  const startedFrom = plan.templateId
-    ? academy
-      ? `Started from ${academyTemplateName(academy)} · ${startingSourceWords(TEMPLATE_SOURCE)}`
-      : "Started from a starting routine"
-    : null;
+  // Named, whoever wrote the starting routine (`templateName`, stored when the plan was made).
+  const startedFrom = startedFromWords(plan);
   const planHead = (
     <div className="rpl-head">
       {purposeDraft === null ? (
@@ -345,13 +355,16 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
       <label className="rpl-switch">
         <span className="rpl-switch__text">
           <span className="rpl-switch__label">Routine A is being built</span>
-          <span className="rpl-switch__sub">
-            {model.dayOneRuns
-              ? "The first visit's Wrap-up asks which machines start Routine A"
-              : plan.building
+          {/* While day one runs the group's note says what the Wrap-up asks: said once (the whole-branch review, Oct 9 2026). */}
+          {!model.dayOneRuns && (
+            <span className="rpl-switch__sub">
+              {stillBuilding(plan, routineIds)
                 ? "The Wrap-up adds the day's new machines by default"
-                : "Routine A changes only on purpose"}
-          </span>
+                : plan.building
+                  ? "Every planned machine is in Routine A"
+                  : "Routine A changes only on purpose"}
+            </span>
+          )}
         </span>
         <Switch
           checked={plan.building}
@@ -590,6 +603,7 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
           floor={floor}
           nameOf={nameOf}
           studioId={host.studioId}
+          studioName={host.studioName}
           who={who}
           todayYmd={today}
           onClose={() => setSheet(null)}

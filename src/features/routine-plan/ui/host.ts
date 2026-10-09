@@ -1,13 +1,15 @@
 /**
  * What Programming → Routine A's plan screens are handed by the profile
- * (ClientProfileView owns the routines' one read and every write; the design
- * round, §4.3). The screens draw and ask; the profile's `usePlanActions`
- * issues the writes through `routine-plan/store.ts`, never awaited, patches
- * its own routines at once (its read is not live) and toasts a refusal.
+ * (ClientProfileView owns the routines' one listener and every write; the
+ * design round, §4.3). The screens draw and ask; the profile's
+ * `usePlanActions` issues the writes through `routine-plan/store.ts`, never
+ * awaited, patches its own routines at once (so a tap draws before the
+ * listener answers) and toasts a refusal, which the listener undoes.
  */
 import type { Machine, Routine } from "../../../types";
 import type { HealthFlavour } from "../../../types/journal";
 import type { HistoryCoverage } from "../../../lib/prior-history";
+import { matchesRoutineLetter } from "../../../lib/routine-utils";
 import { ACADEMY_MOVEMENT_NAME } from "../../catalog/names";
 import type { StartingKindAnswer } from "../client-kind";
 import type { PlanWrite, Who } from "../lineup";
@@ -81,7 +83,11 @@ export interface PlanActions {
 export type RoutinesStatus = "loading" | "ready" | "failed";
 
 export interface PlanHost {
-  /** The profile's one read of the routines: the plan's doors wait for "ready", and "failed" is can't tell. */
+  /**
+   * The profile's live read of the routines: the plan's doors wait for
+   * "ready" (an empty answer from the iPad's cache stays "loading"), and
+   * "failed" is can't tell.
+   */
   status: RoutinesStatus;
   /** Which kind of "no routine" the client is (`startingKindOf`). */
   kind: StartingKindAnswer;
@@ -151,12 +157,18 @@ export function machineNamer(floor: readonly Machine[], machines: readonly Machi
   return (id: string) => names.get(id) || ACADEMY_MOVEMENT_NAME[id] || id;
 }
 
-/** Routine A, when the client has one in Firestore (never the profile's `temp-a` stand-in). */
+/**
+ * Routine A, when the client has one in Firestore (never the profile's
+ * `temp-a` stand-in). Either spelling of its name ("Routine A", or an older
+ * seeder's "A"), as the briefing, Start, B-follows-A and the Wrap-up find it
+ * (`matchesRoutineLetter`): one rule for which routine is A, so no screen
+ * here sees "no Routine A" and makes a second one beside it.
+ */
 export function savedRoutineA(routines: readonly Routine[]): Routine | null {
-  return routines.find((r) => r.name === "Routine A" && !!r.id && !r.id.startsWith("temp-")) ?? null;
+  return routines.find((r) => matchesRoutineLetter(r, "A") && !!r.id && !r.id.startsWith("temp-")) ?? null;
 }
 
-/** Routine B, when the client has one in Firestore (never the profile's `temp-b` stand-in). */
+/** Routine B, when the client has one in Firestore (never the profile's `temp-b` stand-in); either spelling, as `savedRoutineA`. */
 export function savedRoutineB(routines: readonly Routine[]): Routine | null {
-  return routines.find((r) => r.name === "Routine B" && !!r.id && !r.id.startsWith("temp-")) ?? null;
+  return routines.find((r) => matchesRoutineLetter(r, "B") && !!r.id && !r.id.startsWith("temp-")) ?? null;
 }

@@ -63,7 +63,7 @@ import { ACADEMY_MOVEMENT_NAME } from "../../catalog/names";
 import { UnsavedChangesProvider } from "../../unsaved-changes";
 import { RoutinesTab } from "../../routines/RoutinesTab";
 import { startingKindOf } from "../client-kind";
-import { machineNamer, type PlanHost } from "./host";
+import type { PlanHost } from "./host";
 import { newClientsStartOf, useNewClientsStart } from "./useNewClientsStart";
 
 const IDS = [

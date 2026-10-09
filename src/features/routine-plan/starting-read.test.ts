@@ -9,6 +9,7 @@ import {
   NO_CHOICE,
   STARTING_CHOICE_MAX,
   routinesToOffer,
+  seededFrom,
   startingChoiceFromDoc,
   startingChoiceToWrite,
   startingRoutinesFromPresets,
@@ -96,6 +97,34 @@ describe("what Start a plan offers", () => {
       expect(offered.fromCode).toBe(true);
       expect(offered.routines.map((r) => r.id)).toEqual(academy.map((r) => r.id));
     }
+  });
+
+  /*
+   * The whole-branch review (Oct 9 2026): "none" was always read as "before
+   * the seed", so a studio whose administrator retired every starting
+   * routine was offered the Academy's eleven again, and a studio that made
+   * one of its own before the seed lost the Academy's. Only head office's
+   * routines, and the seed's own traces, decide it.
+   */
+  it("after the seed, every one retired is an empty offer, never the Academy's eleven back", () => {
+    expect(routinesToOffer({ routines: [], known: true, seeded: true })).toEqual({ routines: [], fromCode: false });
+  });
+
+  it("before the seed, a studio's own routine sits beside the Academy's eleven, never in place of them", () => {
+    const own = { ...academy[0]!, id: "w-walkin", name: "Walk-in", tier: "studio" as const, studioId: "westlake" };
+    const offered = routinesToOffer({ routines: [own], known: true });
+    expect(offered.fromCode).toBe(true);
+    expect(offered.routines.map((r) => r.id)).toEqual([...academy.map((r) => r.id), "w-walkin"]);
+    // After the seed, the studio's own is offered with what head office has: here, nothing more.
+    expect(routinesToOffer({ routines: [own], known: true, seeded: true })).toEqual({ routines: [own], fromCode: false });
+  });
+
+  it("knows the seed ran from a starting routine, one switched off, or a seeded id, and not from an ordinary template", () => {
+    expect(seededFrom([{ id: "p1", name: "P", machineIds: [], start: { dayOne: ["m-leg-press"] } } as never])).toBe(true);
+    expect(seededFrom([{ id: "p2", name: "P", machineIds: [], startParked: { dayOne: ["m-leg-press"] } } as never])).toBe(true);
+    expect(seededFrom([{ id: "academy-knee", name: "Knee", machineIds: [] } as never])).toBe(true);
+    expect(seededFrom([{ id: "upper-lower", name: "Upper / lower", machineIds: ["m-leg-press"] } as never])).toBe(false);
+    expect(seededFrom([])).toBe(false);
   });
 });
 

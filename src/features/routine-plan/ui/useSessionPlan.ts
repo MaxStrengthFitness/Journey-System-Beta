@@ -29,7 +29,7 @@ import { createJournalEntry, type JournalAuthor } from "../../../hooks/useClient
 import type { Machine, Routine } from "../../../types";
 import { DEFAULT_IMPORTANCE, storedNoteOf } from "../../client-notes/note-catalog";
 import type { SessionLinkFields } from "../../client-notes/session-link";
-import { bFollowOf, plannedBFollowOf } from "../b-routine";
+import { bFollowForPlanWrite } from "../b-routine";
 import { signedChange, type PlanWrite, type Who } from "../lineup";
 import { applyPlanChange, isStartingColumnChoice, type PlanProgress } from "../plan";
 import { sessionPlanProgress, usablePlan } from "../session-plan";
@@ -131,11 +131,16 @@ export function useSessionPlan(input: SessionPlanInput): SessionPlan {
       if (!a?.id) return;
       // A change that moves Routine A's machines (a swap in the plan, a
       // can't-do, a re-plan) takes Routine B with it when B follows A, in
-      // the same batch (b-routine.ts `bFollowOf`).
-      // A B planned with the starting lineup follows A's road with its plan alone (`plannedBFollowOf`).
-      const follow =
-        (w.machineIds ? bFollowOf(ref.current.routines, a.id, w.machineIds) : null) ??
-        plannedBFollowOf(ref.current.routines, a.id, w.plan);
+      // the same batch; a B planned with the starting lineup follows A's
+      // road with its plan alone; and a machine the client can't do leaves
+      // B too (AJ's "2a"): b-routine.ts `bFollowForPlanWrite`, one answer.
+      const follow = bFollowForPlanWrite({
+        routines: ref.current.routines,
+        aRoutineId: a.id,
+        aMachines: w.machineIds ?? null,
+        aPlan: w.plan,
+        todayYmd: ref.current.todayYmd,
+      });
       let commit: Promise<void>;
       try {
         commit = savePlanChange(db, a.id, follow ? { ...w, follow } : w);

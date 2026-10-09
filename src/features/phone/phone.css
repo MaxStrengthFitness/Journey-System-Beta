@@ -371,6 +371,21 @@
   color: var(--eq-ink-muted);
   cursor: default;
 }
+/* The plan's next machine: a door left open, not the primary action, so it
+   never reads as press me to finish (the iPad's .jg-nb__next--add): the
+   blue words on a dashed blue edge, no fill, still 48px. */
+.ph-card__next--plan {
+  background: transparent;
+  border: 1.5px dashed var(--eq-live);
+  color: var(--eq-live-text);
+}
+.ph-card__last {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--eq-ink-2);
+  text-align: center;
+}
 /* An empty list with the plan's next machine to offer (the first-session
    design round, Oct 8 2026, §4.6): the card's Next, full width. */
 .ph-stage__plan {
@@ -379,8 +394,16 @@
   margin: 0 0 12px;
 }
 
+/* Reorder and the plan's door, side by side, wrapping on a narrow phone. */
+.ph-stage__doors {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
 .ph-stage__reorder {
-  margin: 12px auto 0;
+  margin: 0;
   min-height: 44px;
   padding: 0 16px;
   display: flex;

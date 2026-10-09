@@ -42,6 +42,7 @@ import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { CoverageStrip, MachinePicker, SequenceMachineRow, analyzeRoutine } from "../routine-builder";
 import "../routine-builder/routine-builder.css";
 import { EARLIEST_PLACEABLE_DAY, todayKey } from "./model";
+import { todayFor } from "../routine-plan/plan";
 import { newSetDoc } from "./session-edits";
 import { BACKFILL_NOTE } from "./HistoryList";
 
@@ -190,13 +191,17 @@ export function LogPastSessionDialog({
    * Inject a routine whole. Machines already on the list are left where they
    * are rather than moved to the routine's order — a trainer who has already
    * put three machines in the order they remember should not have that order
-   * rearranged by adding the rest.
+   * rearranged by adding the rest. What the routine runs (`todayFor`): its
+   * machines, else its plan's day one while Routine A is still empty, so a
+   * consult logged after the fact gets the plan's day one, never nothing
+   * (the first-session design round, §4.5: "Every reader that seeds a
+   * session from Routine A switches to todayFor").
    */
   const injectRoutine = (routine: Routine) => {
     setRoutineId(routine.id ?? null);
     setEntries((prev) => {
       const have = new Set(prev.map((e) => e.machineId));
-      const additions = (routine.machineIds || [])
+      const additions = todayFor({ routine: routine.machineIds, plan: routine.plan })
         .filter((id) => id && !have.has(id))
         .map(blankEntry);
       return [...prev, ...additions];
@@ -405,11 +410,11 @@ export function LogPastSessionDialog({
                       type="button"
                       className="lps-chip"
                       onClick={() => injectRoutine(r)}
-                      title={`Add all ${(r.machineIds || []).length} machines from ${r.name}`}
+                      title={`Add all ${todayFor({ routine: r.machineIds, plan: r.plan }).length} machines from ${r.name}`}
                     >
                       <ListPlus size={14} aria-hidden />
                       {r.name}
-                      <b>{(r.machineIds || []).length}</b>
+                      <b>{todayFor({ routine: r.machineIds, plan: r.plan }).length}</b>
                     </button>
                   ))}
                 </div>

@@ -1914,6 +1914,32 @@ describe("the floor on day one, the tracker's own gates (Oct 9 2026)", () => {
     expect(weightCell(host).value).toBe("120");
   });
 
+  /*
+   * Add Client's walk-in (AJ's door two: "a client walked in ... run a
+   * session right then and there on a consult") has no Mindbody count, so
+   * its coverage is unknown; with no Journey session it is a whole story all
+   * the same (the whole-branch review, Oct 9 2026: it never saw "First time
+   * on this machine", nor the Academy's range without a plan).
+   */
+  it("Add Client's walk-in is a whole story: 'First time on this machine' and the range offer, with no plan", async () => {
+    sessionDocs = running(["m-leg-press"]);
+    netCtl.routines = [{ id: "ra-1", data: () => ({ clientId: CLIENT_ID, name: "Routine A", machineIds: ["m-leg-press"] }) }];
+    netCtl.noBaseSettings = true;
+    const walkIn = { ...client, sessionCount: 0, provisional: true, provisionalReason: "New client, not in Mindbody yet" } as Client;
+    const host = await mount(<Tracker who={walkIn} />);
+    expect(host.textContent ?? "").toContain("First time on this machine");
+    expect(ask(host), "the Academy's range is offered").not.toBeNull();
+    for (const m of mounted) {
+      await act(async () => m.root.unmount());
+      m.host.remove();
+    }
+    mounted = [];
+    // A client Journey can't call new says neither.
+    const unknown = await mount(<Tracker />);
+    expect(unknown.textContent ?? "").not.toContain("First time on this machine");
+    expect(ask(unknown)).toBeNull();
+  });
+
   it("says nothing until the settings arrive, and nothing at all when their read failed", async () => {
     sessionDocs = running(["m-leg-press"]);
     netCtl.routines = [planned({ startingColumn: "female-novice" })];
@@ -1973,6 +1999,54 @@ describe("the floor on day one, the tracker's own gates (Oct 9 2026)", () => {
     expect(recorded.at(-1)?.data.sessionMachineIds, "today's order, on the session").toEqual(["m-leg-curl"]);
     expect(host.querySelector(".jg-nb__name")?.textContent, "the machine in hand follows the swap").toBe("Leg Curl (Hoist)");
     expect(body.textContent).toContain("Leg Curl (Hoist) instead of Leg Press (Hoist)");
+  });
+
+  /*
+   * The consult on slow Wi-Fi (the whole-branch review, Oct 9 2026): Start
+   * pressed before the client's routines answered never marked today's list
+   * as on screen, so the Now Bar offered no Add for the whole session (and
+   * forever offline). The list Start began with is on screen at once, and
+   * what the trainer adds while the routines load is kept beside the
+   * routine's machines when they come (`followUpList`).
+   */
+  it("started before the routines answer: Add is offered at once, and what was added stays beside the routine's machines", async () => {
+    sessionDocs = [];
+    netCtl.routines = [
+      { id: "r-a", data: () => ({ clientId: CLIENT_ID, name: "Routine A", machineIds: ["m-leg-press"] }) },
+    ];
+    netCtl.hold.add("routines");
+    const host = await mount(<Tracker />);
+    await act(async () => document.querySelector<HTMLButtonElement>(".br__cta")!.click());
+    expect(host.querySelector(".jg-sbar")).toBeTruthy();
+    const started = writes.find((w) => w.path.startsWith("sessions/auto-") && w.data?.status === "In-Progress")!;
+    const sid = started.path.split("/")[1];
+    expect(started.data.routineId).toBeNull();
+    // Nothing in today's order yet, and Add a machine is there, not held.
+    expect(host.textContent ?? "").toContain("Nothing in today's order yet.");
+    const add = [...host.querySelectorAll<HTMLButtonElement>(".jg-nb__addmore")].find((b) => b.textContent?.includes("Add a machine"));
+    expect(add, "Add a machine while the routines load").toBeTruthy();
+    expect(add!.disabled).toBe(false);
+
+    // The trainer adds the rear delt from the floor while the routines load.
+    await act(async () => add!.click());
+    const tap = document.body.querySelector<HTMLButtonElement>('[aria-label="Add Rear Delt Hoist to today\'s routine"]');
+    expect(tap, "the floor to add from").not.toBeNull();
+    await act(async () => tap!.click());
+    const recorded = writes.filter((w) => w.path === `sessions/${sid}` && Array.isArray(w.data?.sessionMachineIds) && !("routineId" in w.data));
+    expect(recorded.at(-1)?.data.sessionMachineIds).toEqual(["sm-solon-rear-delt"]);
+
+    await act(async () => netCtl.release("routines"));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    const named = writes.filter((w) => w.path === `sessions/${sid}` && w.data?.routineId === "r-a");
+    expect(named, "the session names the routine once it is known").toHaveLength(1);
+    // The routine's machine first, and the one the trainer added is kept after it, never dropped.
+    expect(named[0].data.sessionMachineIds).toEqual(["m-leg-press", "sm-solon-rear-delt"]);
+    // Today's list is on screen: the last machine offers Add another machine, enabled.
+    const another = [...host.querySelectorAll<HTMLButtonElement>("button")].find((b) => b.textContent?.includes("Add another machine"));
+    expect(another, "Add another machine on the last machine").toBeTruthy();
+    expect(another!.disabled).toBe(false);
   });
 
   it("until today's list is read, the empty bar offers nothing to add (an add would be recorded as the whole list)", async () => {
@@ -2193,11 +2267,17 @@ describe("the Wrap-up's Next time, from Finish to the routine (Oct 8 2026)", () 
       "routines/rb-1",
       "routines/rb-1/planChanges/*",
     ]);
+    // ONE batch: A's ticks and B started, together or not at all.
+    expect(new Set(out.map((w) => w.batch)).size).toBe(1);
+    // Changed on purpose (the whole-branch review, Oct 9 2026): B on rode in
+    // that batch, so a client the rules refuse an update to threw away the
+    // ticks that start Routine A. B goes on by its own write, once the batch
+    // has landed (a batch refused leaves B off).
     const bOn = writes.filter((w) => w.path === `clients/${CLIENT_ID}` && w.data && "isRoutineBActive" in w.data);
     expect(bOn).toHaveLength(1);
     expect(bOn[0].data).toEqual({ isRoutineBActive: true });
-    // ONE batch: A's ticks, B started, and B on, together or not at all.
-    expect(new Set([...out, ...bOn].map((w) => w.batch)).size).toBe(1);
+    expect(bOn[0].batch, "its own write, never in the batch").toBeUndefined();
+    expect(writes.indexOf(bOn[0])).toBeGreaterThan(writes.indexOf(out[out.length - 1]));
     expect(out[0].data.machineIds).toEqual(["m-leg-press"]);
     // B starts as A with one machine different.
     expect(out[2].data.machineIds).toEqual(["sm-solon-rear-delt"]);

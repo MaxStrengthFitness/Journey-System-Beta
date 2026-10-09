@@ -9,6 +9,7 @@
 
 import type { Client, ClientMachineSetting, ExerciseLog, Machine, Routine, RoutineAdjustment, Trainer, WorkoutSession } from "../../types";
 import { orderMachineSettings, parseSessionDate } from "../../lib/utils";
+import { matchesRoutineLetter } from "../../lib/routine-utils";
 import { isPerformedLog } from "../../lib/set-outcome";
 import { canQuoteLifetime, type HistoryCoverage } from "../../lib/prior-history";
 import { machineWatchOuts, type WatchOut } from "../../lib/clinical-watchouts";
@@ -61,11 +62,15 @@ export type RoutineName = "Routine A" | "Routine B";
 /**
  * The profile always shows both routines, even before either exists in
  * Firestore. A missing one is represented by a `temp-a` / `temp-b` stand-in
- * that the mutation handlers know to create on first use.
+ * that the mutation handlers know to create on first use. Either spelling
+ * of the name ("Routine A", or an older seeder's "A") is the routine, as the
+ * briefing and Start read it (`matchesRoutineLetter`), so Programming never
+ * draws an empty stand-in, or offers Start a plan, beside a routine the
+ * client has.
  */
 export function resolveRoutine(routines: Routine[], name: RoutineName, clientId: string, studioId: string): Routine {
   return (
-    routines.find((r) => r.name === name) || {
+    routines.find((r) => matchesRoutineLetter(r, name === "Routine A" ? "A" : "B")) || {
       id: name === "Routine A" ? "temp-a" : "temp-b",
       name,
       clientId,

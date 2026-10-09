@@ -20,7 +20,7 @@
  * machine menu (settings, notes) opens from a machine's name, as on the iPad.
  */
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, ListOrdered, Minus, Plus } from "lucide-react";
+import { ChevronRight, ListOrdered, Minus, Plus, Route } from "lucide-react";
 import type { JourneyRow, JourneySession, LiveSet, RepQuality } from "../journey-grid/types";
 import type { Client } from "../../types";
 import type { HistoryCoverage } from "../../lib/prior-history";
@@ -67,6 +67,15 @@ export interface PhoneSessionStageProps {
   planNext?: { id: string; name: string } | null;
   /** Adds the plan's next machine to today's order (today only) and makes it the card in hand. */
   onAddPlanned?: (machineId: string) => void;
+  /**
+   * Routine A's plan, how far along ("The plan · 3 of 6"), and the door to
+   * its sheet, the iPad's corner's (Swap in the plan, Can't do, Re-plan, the
+   * Academy column): on a phone too, so a can't-do mid-session is never out
+   * of reach (AJ's Q6: "you shouldn't really be blocked"; the whole-branch
+   * review, Oct 9 2026). Absent without a plan.
+   */
+  plan?: { have: number; of: number } | null;
+  onOpenPlan?: () => void;
   step?: number;
   /**
    * What a card with no past times may say (machine menu, Oct 2026): every
@@ -97,6 +106,8 @@ export function PhoneSessionStage({
   onReorder,
   planNext = null,
   onAddPlanned,
+  plan = null,
+  onOpenPlan,
   step = 2,
   everythingRead = false,
   coverage = "unknown",
@@ -123,7 +134,7 @@ export function PhoneSessionStage({
         <>
           <p className="ph-stage__empty">No machines in today's routine yet.</p>
           {planNext && onAddPlanned && (
-            <button type="button" className="ph-card__next ph-stage__plan" onClick={() => onAddPlanned(planNext.id)}>
+            <button type="button" className="ph-card__next ph-card__next--plan ph-stage__plan" onClick={() => onAddPlanned(planNext.id)}>
               Next in the plan: <span>{planNext.name}</span> · Add
             </button>
           )}
@@ -174,10 +185,18 @@ export function PhoneSessionStage({
           })}
         </ol>
       )}
-      <button type="button" className="ph-stage__reorder" onClick={onReorder}>
-        <ListOrdered size={16} aria-hidden />
-        Reorder or add a machine
-      </button>
+      <div className="ph-stage__doors">
+        <button type="button" className="ph-stage__reorder" onClick={onReorder}>
+          <ListOrdered size={16} aria-hidden />
+          Reorder or add a machine
+        </button>
+        {plan && onOpenPlan && (
+          <button type="button" className="ph-stage__reorder" data-testid="phone-plan" onClick={onOpenPlan}>
+            <Route size={16} aria-hidden />
+            The plan · {plan.have} of {plan.of}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -387,9 +406,16 @@ function MachineCard({
 
       {inHand &&
         (nextIs.kind === "plan" ? (
-          <button type="button" className="ph-card__next" onClick={() => onAddPlanned(nextIs.id)}>
-            Next in the plan: <span>{nextIs.name}</span> · Add
-          </button>
+          /* A door left open, never the press-me-to-finish: the quiet dashed
+             blue the iPad's Now Bar draws it in (.jg-nb__next--add), with the
+             last machine's cue kept under it (the whole-branch review, Oct 9
+             2026). */
+          <>
+            <button type="button" className="ph-card__next ph-card__next--plan" onClick={() => onAddPlanned(nextIs.id)}>
+              Next in the plan: <span>{nextIs.name}</span> · Add
+            </button>
+            <p className="ph-card__last">Last machine · Finish is at the top</p>
+          </>
         ) : (
           <button type="button" className="ph-card__next" onClick={onNext} disabled={nextIs.kind === "last"}>
             {nextIs.kind === "next" ? (

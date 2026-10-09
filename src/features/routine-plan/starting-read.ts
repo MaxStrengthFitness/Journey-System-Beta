@@ -13,12 +13,14 @@
  * `routinesToOffer`'s.
  */
 import {
+  ACADEMY_ROUTINE_PREFIX,
   academyStartingRoutines,
   inListOrder,
   startingRoutineFromPreset,
   type StartingRoutine,
   type StartingRoutineChoice,
 } from "./starting-routines";
+import { cleanIds } from "./start-part";
 
 /** The studio's choice: `studios/{studioId}/config/startingRoutines`. */
 export const STARTING_CHOICE_DOC = "startingRoutines";
@@ -54,15 +56,6 @@ export function startingRoutinesFromPresets(
   const own = studioId ? read(studio).filter((r) => r.tier === "studio" && r.studioId === studioId) : [];
   const out: StartingRoutine[] = [];
   for (const r of [...inListOrder(heads), ...inListOrder(own)]) if (!out.some((x) => x.id === r.id)) out.push(r);
-  return out;
-}
-
-function cleanIds(value: readonly unknown[]): string[] {
-  const out: string[] = [];
-  for (const v of value) {
-    const id = typeof v === "string" ? v.trim() : "";
-    if (id && !out.includes(id)) out.push(id);
-  }
   return out;
 }
 
@@ -105,6 +98,31 @@ export interface StartingRoutinesAnswer {
    * iPad offline that never read them): not known, never "there are none".
    */
   known: boolean;
+  /**
+   * The seed has run, by what head office's presets hold (`seededFrom`): a
+   * starting routine of head office's, one switched off in the template
+   * editor (`startParked`), or a seeded Academy id. With it, an empty list
+   * is head office's answer (every one retired), never "before the seed";
+   * absent, false.
+   */
+  seeded?: boolean;
+}
+
+/**
+ * Whether head office's presets show the seed has run (`seeded`): any one
+ * with a `start` part, or one switched off in the template editor
+ * (`startParked`: the editor keeps the part there), or a seeded Academy id
+ * (`academy-…`). A routine an administrator DELETED leaves no trace here:
+ * with every one of them deleted, the app can't tell that from "before the
+ * seed", and offers the Academy's eleven from code (the seed script never
+ * brings one back; this offer writes nothing).
+ */
+export function seededFrom(company: readonly StoredPresetDoc[]): boolean {
+  return company.some((d) => {
+    const raw = d as { id?: unknown; start?: unknown; startParked?: unknown };
+    const isPart = (v: unknown) => typeof v === "object" && v !== null && !Array.isArray(v);
+    return isPart(raw.start) || isPart(raw.startParked) || (typeof raw.id === "string" && raw.id.startsWith(ACADEMY_ROUTINE_PREFIX));
+  });
 }
 
 export interface OfferedRoutines {
@@ -120,14 +138,28 @@ export interface OfferedRoutines {
 }
 
 /**
- * What Start a plan offers. The app's starting routines when the read found
- * any; the Academy's eleven when it answered with none (before the seed has
- * run: the design round's §4.2) or didn't answer at all (`null`, a failed
- * read, or an empty answer from the cache), so a walk-in's setup is never
- * blocked by a read. The screen says which (`fromCode`), and a failed read
- * says so too.
+ * What Start a plan offers.
+ * - The read didn't answer (`null`, a failed read, or an empty answer from
+ *   the cache): the Academy's eleven from code, so a walk-in's setup is
+ *   never blocked by a read. The screen says so.
+ * - Head office has starting routines, or the seed has run (`seeded`): the
+ *   app's, as read, the studio's own beside head office's; an empty list
+ *   when an administrator retired every one (the template editor's toast
+ *   says "Start a plan no longer offers it", and this keeps that true: the
+ *   trainer builds the lineup, `needsChoice`).
+ * - Before the seed (head office has none and no sign of the seed): the
+ *   Academy's eleven from code (the design round's §4.2), with the studio's
+ *   own beside them, so a studio that made one of its own before the seed
+ *   ran doesn't lose the Academy's.
+ * Only head office's routines decide the fallback (the whole-branch review,
+ * Oct 9 2026: an empty list read as "before the seed" brought back routines
+ * head office had retired, and a studio's own routine hid the Academy's).
+ * `fromCode` says the Academy's code copy is in the list.
  */
 export function routinesToOffer(answer: StartingRoutinesAnswer | null): OfferedRoutines {
-  if (answer && answer.known && answer.routines.length > 0) return { routines: answer.routines, fromCode: false };
-  return { routines: academyStartingRoutines(), fromCode: true };
+  if (!answer || !answer.known) return { routines: academyStartingRoutines(), fromCode: true };
+  const company = answer.routines.filter((r) => r.tier === "company");
+  if (company.length > 0 || answer.seeded) return { routines: answer.routines, fromCode: false };
+  const own = answer.routines.filter((r) => r.tier === "studio");
+  return { routines: [...academyStartingRoutines(), ...own], fromCode: true };
 }

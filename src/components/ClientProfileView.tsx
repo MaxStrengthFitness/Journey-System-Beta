@@ -120,6 +120,7 @@ import {
 import { useActiveSessionCheck } from "../hooks/useActiveSessionCheck";
 import { useStudioMachines } from "../hooks/useStudioMachines";
 import { floorWithHistoryMachines, studioFloorOf } from "../lib/floor-machines";
+import { findRoutineByLetter, matchesRoutineLetter } from "../lib/routine-utils";
 import { resolveMachineOrder } from "../data/machine-display-order";
 import {
   RecentJourneyView,
@@ -224,9 +225,6 @@ export function ClientProfileView({
   const [settingsStatus, setSettingsStatus] = useState<
     "loading" | "ready" | "failed"
   >("loading");
-  // Moves when a plan write was refused, so the routines are read again and
-  // Programming shows what was saved (routine-plan/ui/usePlanActions).
-  const [routinesReadNonce, setRoutinesReadNonce] = useState(0);
   /*
    * KAIZEN ROSTER.
    *
@@ -630,8 +628,8 @@ export function ClientProfileView({
           : selectedRoutineTodayId
             ? "Routine A"
             : null,
-      countA: routines.find((r) => r.name === "Routine A")?.machineIds?.length ?? 0,
-      countB: routines.find((r) => r.name === "Routine B")?.machineIds?.length ?? 0,
+      countA: findRoutineByLetter(routines, "A")?.machineIds?.length ?? 0,
+      countB: findRoutineByLetter(routines, "B")?.machineIds?.length ?? 0,
       isBActive: !!client?.isRoutineBActive,
     }),
   });
@@ -821,76 +819,57 @@ export function ClientProfileView({
     }
   };
 
+  /*
+   * THE CLIENT'S ROUTINES, LIVE (the whole-branch review, Oct 9 2026). One
+   * listener on `routines where clientId ==` for the client on screen (the
+   * (clientId, name) index serves it; it holds at most a Routine A and a
+   * Routine B). It was one `getDocs` when the profile opened, and every plan
+   * action rebuilt the plan from that copy and wrote it whole: a Can't do
+   * marked on the floor, or the Wrap-up's ticks, landed after the profile
+   * opened were dropped by the next Move up here, without a word. Live, a
+   * change from another iPad is here before the next tap, a refused write
+   * comes back as the server's answer (no second read), and Plan B's and
+   * Start a plan's "has none" are asked of what is there now.
+   *
+   * An EMPTY answer from this iPad's cache is not an answer (KNOWN-TRAPS: a
+   * snapshot the cache answered is not a read; the tracker's own rule):
+   * offline, a client whose routines this iPad never read would read as
+   * having none, and Keep, Save Routine A or Start B would make a second
+   * Routine A or B beside the client's own once the iPad reconnected. So it
+   * keeps the status "loading" (the plan's doors wait for "ready") until the
+   * server says so; metadata changes are listened to because the server
+   * confirming an empty list changes no document.
+   */
   useEffect(() => {
-    // Clear first. This view is not remounted between clients, and the fetch
-    // below only ever WRITES on resolve — so between switching client and the
-    // round-trip landing, the previous client's routines were still in state
-    // and the Journey tab's A/B filters resolved against them.
+    // Clear first. This view is not remounted between clients, so between
+    // switching client and the first answer, the previous client's routines
+    // would still be in state and the Journey tab's A/B filters would
+    // resolve against them.
     setRoutines([]);
     // Nothing read under a quota error: unknown, not "no routines".
     setRoutinesStatus(hasQuotaError ? "failed" : "loading");
     if (!clientId || hasQuotaError) return;
-    // A slower read for the previous client must not land on this one.
-    let cancelled = false;
 
-    const fetchRoutines = async () => {
-      try {
-        const routinesQuery = query(
-          collection(db, "routines"),
-          where("clientId", "==", clientId),
-        );
-        const snap = await getDocs(routinesQuery);
-        if (cancelled) return;
-        const routinesData = snap.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data() }) as Routine,
-        );
-        setRoutines(routinesData);
-        setRoutinesStatus("ready");
-      } catch (error: any) {
-        if (!cancelled) setRoutinesStatus("failed");
-        handleFirestoreError(error, OperationType.GET, "routines");
-      }
-    };
-
-    fetchRoutines();
-    return () => {
-      cancelled = true;
-    };
-  }, [clientId, hasQuotaError]);
-
-  /*
-   * Read the routines AGAIN after a plan write was refused
-   * (routine-plan/ui/usePlanActions), so Programming shows what was saved.
-   * Unlike a client switch it clears nothing: what is drawn stays drawn, and
-   * "ready", until the fresh answer replaces it, so a refusal never blanks
-   * the Lineup or leaves the Edit routine drawer without the real Routine A
-   * (it would make a second one). A read that fails says "can't tell" and
-   * keeps the list.
-   */
-  const routinesClientRef = useRef(clientId);
-  routinesClientRef.current = clientId;
-  useEffect(() => {
-    const forClient = routinesClientRef.current;
-    if (routinesReadNonce === 0 || !forClient || hasQuotaError) return;
-    let cancelled = false;
-    const landed = () => !cancelled && routinesClientRef.current === forClient;
-    getDocs(query(collection(db, "routines"), where("clientId", "==", forClient)))
-      .then((snap) => {
-        if (!landed()) return;
-        setRoutines(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Routine));
-        setRoutinesStatus("ready");
-      })
-      .catch((error) => {
-        if (!landed()) return;
-        console.error("Error reading the routines again:", error);
+    let seen = false;
+    const unsubscribe = onSnapshot(
+      query(collection(db, "routines"), where("clientId", "==", clientId)),
+      { includeMetadataChanges: true },
+      (snap) => {
+        const trusted = !(snap.empty && snap.metadata?.fromCache);
+        // A metadata-only answer changes no routine: no new list, no redraw.
+        if (!seen || snap.docChanges().length > 0) {
+          seen = true;
+          setRoutines(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Routine));
+        }
+        setRoutinesStatus(trusted ? "ready" : "loading");
+      },
+      (error) => {
         setRoutinesStatus("failed");
-      });
-    return () => {
-      cancelled = true;
-    };
-    // Only a refusal reads again; a client switch is the effect above.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routinesReadNonce]);
+        handleFirestoreError(error, OperationType.GET, "routines");
+      },
+    );
+    return () => unsubscribe();
+  }, [clientId, hasQuotaError]);
 
   useEffect(() => {
     if (!clientId || hasQuotaError) return;
@@ -1002,16 +981,7 @@ export function ClientProfileView({
         client.isRoutineBActive = pendingToggleBValue;
       }
 
-      // Re-trigger routines fetch
-      const qRoutines = query(
-        collection(db, "routines"),
-        where("clientId", "==", clientId),
-      );
-      const snap = await getDocs(qRoutines);
-      setRoutines(
-        snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Routine),
-      );
-
+      // The routines are live (the listener above): nothing to read again.
       setIsToggleReasonDialogOpen(false);
       setToggleBReason("");
     } catch (err) {
@@ -1471,11 +1441,12 @@ export function ClientProfileView({
 
   /*
    * ROUTINE A'S PLAN (the first-session design round, Oct 8 2026, §4.3).
-   * This view owns the routines' one read and every write to them, so it
-   * holds the plan's actions (`usePlanActions`: issued through
+   * This view owns the routines' one listener and every write to them, so
+   * it holds the plan's actions (`usePlanActions`: issued through
    * routine-plan/store.ts, never awaited, this view's routines patched at
-   * once because the read is not live, a refusal toasted and read again)
-   * and works out which kind of "no routine" the client is. The kind claims
+   * once so the tap draws before the listener answers, a refusal toasted
+   * and undone by the listener) and works out which kind of "no routine"
+   * the client is. The kind claims
    * nothing until both the routines and the session count have answered
    * (`known`); a failed read is "can't tell", never "no routine".
    */
@@ -1486,7 +1457,7 @@ export function ClientProfileView({
     routines,
     setRoutines,
     onError: toastError,
-    onRefused: () => setRoutinesReadNonce((n) => n + 1),
+    // No re-read after a refusal: the routines' listener brings the server's answer back by itself.
     author: planAuthUid
       ? {
           id: planAuthUid,
@@ -1495,12 +1466,16 @@ export function ClientProfileView({
         }
       : null,
   });
-  const routineAForPlan = routines.find((r) => r.name === "Routine A");
+  // Either spelling ("Routine A", or an older seeder's "A"): the rule the
+  // briefing, Start and the plan's writers use, so Programming never offers
+  // Start a plan, and Keep never makes a second Routine A, beside a routine
+  // the client has (`matchesRoutineLetter`).
+  const routineAForPlan = findRoutineByLetter(routines, "A");
   // What the routines' own read says, whatever the session count says: a
   // count that never answers must not offer Start a plan to a client who
   // has a routine or a plan.
   const hasRoutineRead = routines.some(
-    (r) => (r.name === "Routine A" || r.name === "Routine B") && (r.machineIds?.length ?? 0) > 0,
+    (r) => (matchesRoutineLetter(r, "A") || matchesRoutineLetter(r, "B")) && (r.machineIds?.length ?? 0) > 0,
   );
   const hasPlanRead = !!routineAForPlan?.plan;
   const startingKind = useMemo(
@@ -2167,7 +2142,7 @@ export function ClientProfileView({
                   placeholder="Optional"
                   aria-label="Why"
                   rows={3}
-                  className="rounded-xl border-input bg-slate-50/50 dark:bg-slate-950/20 text-[14px] text-slate-800 dark:text-neutral-200 resize-none"
+                  className="rounded-xl border-input bg-(--well) shadow-(--elev-0) text-[14px] text-foreground resize-none"
                 />
               </div>
               <div className="mt-6 flex justify-end gap-3 border-t border-div-l/40 pt-4">
@@ -2225,6 +2200,7 @@ export function ClientProfileView({
             allLogs={allLogs}
             sessions={sessions}
             coverage={clientCoverage}
+            routinesKnown={routinesStatus === "ready"}
             target={editRoutineTarget}
             onClose={() => setEditRoutineTarget(null)}
             onSaved={(updated) => setRoutines(updated)}

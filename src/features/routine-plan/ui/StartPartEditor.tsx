@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { Check, Plus, X } from "lucide-react";
+import { Check, Info, Plus, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import type { RoutinePresetTier } from "../../../types";
@@ -77,6 +78,10 @@ export function StartPartEditor({
 }: StartPartEditorProps) {
   const kept = useRef<RoutinePresetStart | undefined>(undefined);
   const [problem, setProblem] = useState<string | null>(null);
+  /* The part's how-to, behind one (i) (the whole-branch review, Oct 9 2026:
+     five hint paragraphs; the Operations voice, "a row is one line, its
+     how-to on its (i)"). What the switch does now stays on screen. */
+  const [howOpen, setHowOpen] = useState(false);
 
   const on = start !== undefined;
   const dayOne = dayOneOf(start, machineIds);
@@ -107,23 +112,38 @@ export function StartPartEditor({
     <section className="adm srt" aria-label="For new clients">
       <div className="srt__part">
         <h3 className="srt__title">For new clients</h3>
-        <label className="srt-switch">
-          <Switch checked={on} onCheckedChange={(v) => toggle(v === true)} aria-label="Offer as a starting routine" />
-          <span>Offer as a starting routine</span>
-        </label>
+        <div className="srt-switch-row">
+          <label className="srt-switch">
+            <Switch checked={on} onCheckedChange={(v) => toggle(v === true)} aria-label="Offer as a starting routine" />
+            <span>Offer as a starting routine</span>
+          </label>
+          <Button variant="ghost" size="icon" aria-label="How starting routines work" aria-expanded={howOpen} onClick={() => setHowOpen((o) => !o)}>
+            <Info aria-hidden="true" />
+          </Button>
+        </div>
         <p className="srt__hint">
           {on
-            ? "Start a plan offers it for a client starting out at the studio: day one first, then the rest of the template in its order. While it is on, it is not in the Edit routine drawer."
+            ? "Start a plan offers it to a client starting out at the studio."
             : parked
-              ? "Switch it back on and Start a plan offers it again just as it was, day one, words and all. While it is off, it is an ordinary template in the Edit routine drawer."
-              : "Switch it on to offer this template on Start a plan, for a client starting out at the studio. It then leaves the Edit routine drawer."}
+              ? "Switch it back on and Start a plan offers it again just as it was, day one, words and all."
+              : "Switch it on to offer this template on Start a plan."}
         </p>
-        {on ? (
-          <p className="srt__hint">
-            {tier === "company"
-              ? "A studio that keeps its own list of starting routines offers it once a leader there ticks it on My Studio → Studio → Starting routines."
-              : "If this studio keeps its own list of starting routines, a leader ticks it on My Studio → Studio → Starting routines as well."}
-          </p>
+        {howOpen ? (
+          <div className="srt__how">
+            <p className="srt__hint">
+              Day one first, then the rest of the template in its order. While it is on, it is not in the Edit routine drawer; while it is
+              off, it is an ordinary template there.
+            </p>
+            <p className="srt__hint">
+              {tier === "company"
+                ? "A studio that keeps its own list of starting routines offers it once a leader there ticks it on My Studio → Studio → Starting routines."
+                : "If this studio keeps its own list of starting routines, a leader ticks it on My Studio → Studio → Starting routines as well."}
+            </p>
+            <p className="srt__hint">
+              Words: when a client's intake or a Health note says one, Start a plan suggests this routine first. Whole words, in any
+              case: "low back", "sciatica".
+            </p>
+          </div>
         ) : null}
         {source ? <p className="srt-source">{source}</p> : null}
       </div>
@@ -164,10 +184,6 @@ export function StartPartEditor({
 
           <div className="srt__part" role="group" aria-label="Words that suggest it">
             <p className="srt__label">Words that suggest it</p>
-            <p className="srt__hint">
-              When a client's intake or a Health note says one of these, Start a plan suggests this routine first. Whole
-              words, in any case: "low back", "sciatica".
-            </p>
             {(start.matchWords ?? []).length > 0 ? (
               <div className="srt-words">
                 {(start.matchWords ?? []).map((w) => (

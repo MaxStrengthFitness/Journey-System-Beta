@@ -4,11 +4,13 @@
  * this hook and hands its actions to Programming.
  *
  * A tap never waits on the network (CLAUDE.md): each action issues its batch
- * through `store.ts` and moves on. Because the profile's read of the
- * routines is one `getDocs`, not a listener, the action patches the
- * profile's routines at once, so Programming draws the change before the
- * batch is even sent. A refusal comes back as a toast, and the profile reads
- * its routines again (`onRefused`) so the screen shows what was saved.
+ * through `store.ts` and moves on. The action patches the host's routines at
+ * once, so Programming draws the change before the batch is even sent. The
+ * profile's read of the routines is a live listener (the whole-branch
+ * review, Oct 9 2026: it was one `getDocs`, and every action rebuilt the
+ * plan from that old copy, dropping a change another iPad had made since),
+ * so a refusal comes back as a toast and the listener's answer puts back
+ * what was saved; a host without a listener can read again (`onRefused`).
  *
  * B, molded in (Round 2, item 6): a change that moves Routine A's machines
  * writes Routine B beside it in the same batch when B follows A
@@ -28,7 +30,8 @@ import { db } from "../../../firebase";
 import { createJournalEntry } from "../../../hooks/useClientJournal";
 import type { Routine } from "../../../types";
 import { DEFAULT_IMPORTANCE, storedNoteOf } from "../../client-notes/note-catalog";
-import { bFollowOf, plannedBFollowOf } from "../b-routine";
+import { bFollowForPlanWrite } from "../b-routine";
+import { studioTodayKey } from "../../../lib/studio-time";
 import { readPlanChanges, savePlanChange, startPlan, startRoutineB } from "../store";
 import type { HealthNoteCall, PlanActions, StartBCall, StartPlanCall } from "./host";
 import type { PlanWrite } from "../lineup";
@@ -46,7 +49,7 @@ export interface PlanActionsInput {
   setRoutines: Dispatch<SetStateAction<Routine[]>>;
   /** A refusal, said. */
   onError: (message: string) => void;
-  /** Read the routines again after a refusal, so the screen shows what was saved. */
+  /** Read the routines again after a refusal, for a host whose routines aren't live (the profile's are: it passes none). */
   onRefused?: () => void;
   /** Who signs a Health note: the Auth uid, and how the journal shows them. */
   author: { id: string; initials: string; fullName: string } | null;
@@ -115,11 +118,16 @@ export function usePlanActions(input: PlanActionsInput): PlanActions {
   const save = useCallback(
     (routineId: string, write: PlanWrite) => {
       // Routine B follows a change to Routine A's machines, in the same batch;
-      // a B planned with the starting lineup follows A's road with its plan alone.
-      const routinesNow = ref.current.routines ?? [];
-      const follow =
-        (write.machineIds ? bFollowOf(routinesNow, routineId, write.machineIds) : null) ??
-        plannedBFollowOf(routinesNow, routineId, write.plan);
+      // a B planned with the starting lineup follows A's road with its plan
+      // alone; and a machine the client can't do leaves B too (AJ's "2a":
+      // can't-do is read by A and B), all in one answer.
+      const follow = bFollowForPlanWrite({
+        routines: ref.current.routines ?? [],
+        aRoutineId: routineId,
+        aMachines: write.machineIds ?? null,
+        aPlan: write.plan,
+        todayYmd: studioTodayKey(),
+      });
       let commit: Promise<void>;
       try {
         commit = savePlanChange(db, routineId, follow ? { ...write, follow } : write);

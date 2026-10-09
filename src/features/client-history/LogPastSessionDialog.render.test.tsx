@@ -57,7 +57,7 @@ const routines = [
 let root: Root | null = null;
 let host: HTMLDivElement | null = null;
 
-function mount() {
+function mount(withRoutines: Routine[] = routines) {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
@@ -71,7 +71,7 @@ function mount() {
         clientHomeStudioId="westlake"
         machines={machines}
         trainers={trainers}
-        routines={routines}
+        routines={withRoutines}
         timeZone="America/New_York"
       />,
     ),
@@ -147,6 +147,27 @@ describe("LogPastSessionDialog", () => {
     // Every machine is asked for, and every one still says it has no reps.
     expect(text()).toContain("0 of 2 machines with numbers");
     expect(text()).toContain("saved as a machine that was not done");
+  });
+
+  // The whole-branch review (Oct 9 2026): a consult missed and logged after
+  // the fact injected nothing, because Routine A is empty while its plan's
+  // day one runs (§4.5: every reader that seeds from Routine A reads todayFor).
+  it("injects a kept plan's day one while Routine A is still empty", () => {
+    mount([
+      {
+        id: "rA",
+        clientId: "c1",
+        name: "Routine A",
+        machineIds: [],
+        plan: { purpose: "", intended: ["leg-press", "pulldown", "chest-press"], dayOne: ["leg-press", "pulldown"], building: true, madeByUid: "u1" },
+      },
+    ] as Routine[]);
+    setValue(document.body.querySelector("select") as HTMLSelectElement, "t1");
+    click("Next");
+    click("Routine A");
+    expect(text()).toContain("Leg Press");
+    expect(text()).toContain("Pulldown");
+    expect(text()).toContain("2 machines");
   });
 
   it("does not offer Next from the machines pane with nothing on it", () => {

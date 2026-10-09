@@ -1618,6 +1618,28 @@ describe("Next time: the machines that carry into the routine", () => {
     expect(head.className).not.toMatch(/uppercase/);
   });
 
+  /*
+   * The design round, §4.7: "When two of them side by side trip a
+   * sequencing rule, the order effects say so, quietly" (the whole-branch
+   * review, Oct 9 2026: the card never said one). Live as the ticks change.
+   */
+  it("says the order effect two ticked machines side by side trip, quietly, as the ticks change", async () => {
+    const next = {
+      ...consult(["m-lumbar", "m-leg-press"]),
+      plan: plan({ intended: ["m-lumbar", "m-leg-press", "m-row", "m-chest"], dayOne: ["m-lumbar", "m-leg-press"] }),
+    };
+    const host = await mount(<NextScreen next={next} onNextTime={vi.fn()} />);
+    const c = card(host)!;
+    expect(c.textContent).not.toContain("the Academy says avoid");
+    await click(tickFor(host, "Lumbar"));
+    // One machine alone trips nothing.
+    expect(c.textContent).not.toContain("Lumbar directly into Leg Press");
+    await click(tickFor(host, "Leg Press"));
+    expect(c.textContent).toContain("Lumbar directly into Leg Press · the Academy says avoid");
+    await click(tickFor(host, "Lumbar"));
+    expect(c.textContent).not.toContain("Lumbar directly into Leg Press");
+  });
+
   it("the consult: every row unticked, 'Tick the ones that start Routine A', Tick all, day one said as such", async () => {
     const host = await mount(<NextScreen next={consult()} onNextTime={vi.fn()} />);
     const c = card(host)!;

@@ -19,7 +19,7 @@
  *
  * Pure. The reason the drawer asks (never requires) rides on every change.
  */
-import { applyPlanChange } from "./plan";
+import { applyPlanChange, sameList } from "./plan";
 import type { PlanChange, RoutinePlan } from "./types";
 
 export interface DrawerPlanEdit {
@@ -29,7 +29,6 @@ export interface DrawerPlanEdit {
 }
 
 const once = (ids: readonly string[]) => ids.filter((id, i) => !!id && ids.indexOf(id) === i);
-const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 
 /**
  * The plan after a drawer save that took the routine from `before` to

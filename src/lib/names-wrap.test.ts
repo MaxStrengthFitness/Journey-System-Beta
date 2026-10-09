@@ -158,6 +158,7 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-bstart__title", what: "\"B starts as a copy of A with one machine different\" down B's column" },
   // A weak area (Round 2 of the design round, item 7): the three answers.
   { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-focus__line", what: "a routine's line on a weak area, \"Helpers only: Compound Row, Seated Dip and Pulldown\"" },
+  { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-focus__sub", what: "\"instead of Seated Dip\" under a weak area's Keep in B" },
   { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-focus__what", what: "a weak area's suggestion, \"Overhead Press for Seated Dip\" and \"Add Lateral Raise\"" },
   { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-focus__text", what: "the Academy's setting before a machine, naming the Triceps Extension" },
   { file: "features/briefing/briefing.css", cls: "br-routine__touch", what: "\"Mind the limits on {machines}\" under the routine line and the plan card's Road" },

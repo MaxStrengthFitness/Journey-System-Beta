@@ -6,14 +6,21 @@
  * What changed? (Surgery coming up · Found something in the first sessions ·
  * Client asked · Training at another studio, or the trainer's own words, all
  * optional), which machines are out for now and until when, and then either
- * "Start again from the starting routine with what we know" or "Edit the
- * lineup by hand". The history gets a divider; nothing before it is erased.
- * "Surgery coming up" with machines out puts them on the bench as a
- * surgery, and offers the one-tap Health note a surgery offers (AJ's "2a"),
- * one note for them all, unticked until the trainer ticks it.
+ * "Start again from {a starting routine} with what we know" or "Edit the
+ * lineup by hand". The starting routine is the plan's own by default, or
+ * Another start (AJ's Oct 8 note puts it on every surface: "we might have a
+ * plan for a routine but find something out in those first few sessions
+ * that drastically changes it"; the whole-branch review, Oct 9 2026: once
+ * kept, a different start had no path, and a plan built by hand none at
+ * all): the studio's starting routines, each shown by its first machines,
+ * with what this floor lacks said, never dropped. The history gets a
+ * divider; nothing before it is erased. "Surgery coming up" with machines
+ * out puts them on the bench as a surgery, and offers the one-tap Health
+ * note a surgery offers (AJ's "2a"), one note for them all, unticked until
+ * the trainer ticks it.
  *
- * Mounted only while open, so the one read of the starting routines (to find
- * the one the plan started from) happens only when someone re-plans.
+ * Mounted only while open, so the one read of the starting routines and the
+ * studio's choice happens only when someone re-plans.
  */
 import { useMemo, useState } from "react";
 import { RotateCcw } from "lucide-react";
@@ -22,7 +29,8 @@ import { useUnsavedChanges } from "../../unsaved-changes";
 import { healthNoteOffer, untilDayFrom } from "../cant-do";
 import { replanCantDoReason, type Who } from "../lineup";
 import { REPLAN_REASONS } from "../plan";
-import { startingPlanFromRoutine } from "../starting-routines";
+import { notOnFloorLine } from "../starting-choice";
+import { startingPlanFromRoutine, suggestFromStartingRoutines } from "../starting-routines";
 import type { FloorMachine } from "../starting-plan";
 import type { CantDo, RoutinePlan } from "../types";
 import { useStartingRoutines } from "../useStartingRoutines";
@@ -36,8 +44,12 @@ const UNTIL = [
 ] as const;
 
 export interface ReplanDone {
-  /** The starting routine's road and day one on this floor, or null for "Edit the lineup by hand". */
-  fresh: { intended: string[]; dayOne: string[] } | null;
+  /**
+   * The starting routine's road and day one on this floor, with its id,
+   * name and source (the plan's own or Another start), or null for "Edit
+   * the lineup by hand".
+   */
+  fresh: { intended: string[]; dayOne: string[]; templateId: string; templateName?: string; templateSource?: string } | null;
   why: string | null;
   out: string[];
   until: CantDo["until"];
@@ -60,14 +72,18 @@ export interface ReplanSheetProps {
   floor: readonly FloorMachine[];
   nameOf: (id: string) => string;
   studioId: string | null;
+  /** For "Not on Westlake's floor: …"; "this studio" without it. */
+  studioName?: string | null;
   who: Who;
   todayYmd: string;
   onClose: () => void;
   onDone: (done: ReplanDone) => void;
 }
 
-export function ReplanSheet({ firstName, plan, lineup, bench, floor, nameOf, studioId, who, todayYmd, onClose, onDone }: ReplanSheetProps) {
+export function ReplanSheet({ firstName, plan, lineup, bench, floor, nameOf, studioId, studioName = null, who, todayYmd, onClose, onDone }: ReplanSheetProps) {
   const [pick, setPick] = useState<string | null>(null);
+  /** Another start, picked here; null: the plan's own. */
+  const [fromId, setFromId] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
   const [out, setOut] = useState<string[]>([]);
   const [until, setUntil] = useState<(typeof UNTIL)[number]["id"]>("cleared");
@@ -76,12 +92,41 @@ export function ReplanSheet({ firstName, plan, lineup, bench, floor, nameOf, stu
   const unsaved = useUnsavedChanges(typed.trim() !== "", "the re-plan of Routine A", { onDiscard: () => setTyped("") });
 
   const starting = useStartingRoutines(studioId);
-  const routine = plan.templateId ? starting.routines.find((r) => r.id === plan.templateId) ?? null : null;
+  /* The starts this studio offers (its choice, on this floor), each by its
+     first machines, the plan's own first. */
+  const offered = useMemo(() => {
+    if (starting.status === "loading") return [];
+    const s = suggestFromStartingRoutines({ routines: starting.routines, choice: starting.choice, floor, pickedId: plan.templateId ?? null, studioName });
+    const all = s.templateId
+      ? [{ templateId: s.templateId, label: s.label ?? "", machineIds: s.steps.flatMap((x) => x.machineIds) }, ...s.alternatives]
+      : s.alternatives;
+    const own = plan.templateId ? all.find((a) => a.templateId === plan.templateId) : undefined;
+    return own ? [own, ...all.filter((a) => a !== own)] : all;
+  }, [starting.status, starting.routines, starting.choice, floor, plan.templateId, studioName]);
+  const pickedId = fromId ?? (plan.templateId && offered.some((o) => o.templateId === plan.templateId) ? plan.templateId : null);
+  const routine = pickedId ? (starting.routines.find((r) => r.id === pickedId) ?? null) : null;
   const fresh = useMemo(() => {
     if (!routine) return null;
     const made = startingPlanFromRoutine(routine, who, floor, todayYmd);
-    return { intended: made.plan.intended, dayOne: made.startWith };
+    return {
+      intended: made.plan.intended,
+      dayOne: made.startWith,
+      templateId: routine.id,
+      ...(made.plan.templateName ? { templateName: made.plan.templateName } : null),
+      ...(made.plan.templateSource ? { templateSource: made.plan.templateSource } : null),
+    };
   }, [routine, who, floor, todayYmd]);
+  // This floor only: what the picked start's road lacks here, said.
+  const missingLine = useMemo(
+    () =>
+      routine
+        ? notOnFloorLine(
+            suggestFromStartingRoutines({ routines: [routine], choice: null, floor, pickedId: routine.id }).steps.flatMap((s) => s.missing),
+            studioName,
+          )
+        : null,
+    [routine, floor, studioName],
+  );
 
   const why = [pick, typed.trim()].filter(Boolean).join(" · ") || null;
   const untilValue: CantDo["until"] | null = until === "date" ? untilDayFrom(date, todayYmd) : until;
@@ -114,10 +159,10 @@ export function ReplanSheet({ firstName, plan, lineup, bench, floor, nameOf, stu
           <Button variant="outline" disabled={!ready} onClick={() => done("hand")}>
             Edit the lineup by hand
           </Button>
-          {plan.templateId && (
+          {routine && (
             <Button className={`hover:bg-primary ${WRAPS}`} disabled={!ready || !fresh} onClick={() => done("fresh")}>
               <RotateCcw aria-hidden="true" />
-              Start again from {routine?.name ?? "the starting routine"} with what we know
+              Start again from {routine.name} with what we know
             </Button>
           )}
         </>
@@ -176,9 +221,37 @@ export function ReplanSheet({ firstName, plan, lineup, bench, floor, nameOf, stu
           sub={`Filed under ${offer.label}, so the studio's leaders see it on Operations → Today.`}
         />
       )}
-      {plan.templateId && !routine && starting.status === "loading" && <p className="rpl-meta">Reading the starting routines…</p>}
-      {plan.templateId && !routine && starting.status !== "loading" && (
-        <p className="rpl-meta">The starting routine this plan came from isn't offered any more, so the lineup is edited by hand.</p>
+      {starting.status === "loading" && <p className="rpl-meta">Reading the starting routines…</p>}
+      {offered.length > 0 && (
+        <section className="rpl-sheet__section">
+          <p className="rpl-sheet__label">Start again from</p>
+          <div className="rpl-starts">
+            {offered.map((s) => {
+              const firstThree = s.machineIds.slice(0, 3).map(nameOf).join(" · ");
+              const more = s.machineIds.length > 3 ? `+${s.machineIds.length - 3} more · ` : "";
+              return (
+                <button
+                  key={s.templateId}
+                  type="button"
+                  className="rpl-start"
+                  aria-pressed={s.templateId === pickedId}
+                  onClick={() => setFromId(s.templateId)}
+                >
+                  <span className="rpl-start__machines">{firstThree || s.label}</span>
+                  <span className="rpl-start__meta">
+                    {more}
+                    {s.label}
+                    {s.templateId === plan.templateId ? " · this plan's" : ""}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {missingLine && <p className="rpl-meta">{missingLine}</p>}
+        </section>
+      )}
+      {plan.templateId && !pickedId && starting.status !== "loading" && (
+        <p className="rpl-meta">The starting routine this plan came from isn't offered any more. Pick another start, or edit the lineup by hand.</p>
       )}
     </PlanSheet>
   );

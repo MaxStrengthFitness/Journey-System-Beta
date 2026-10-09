@@ -67,13 +67,12 @@ import { matchesRoutineLetter } from "../../lib/routine-utils";
 import { studioDayKeyOf } from "../../lib/studio-time";
 import { activeCantDo } from "./cant-do";
 import type { RoadGroup } from "./lineup";
-import type { PlanProgress } from "./plan";
+import { sameList, type PlanProgress } from "./plan";
 import { floorCanonical, floorIndex, type FloorMachine } from "./starting-plan";
 import { academyTemplateOf } from "./starting-routines";
 import type { CantDo, PlanChange, PlanPurposeKind, PlanSwap, RoutinePlan } from "./types";
 
 const once = (ids: readonly string[]) => ids.filter((id, i) => !!id && ids.indexOf(id) === i);
-const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 const sameSwaps = (a: readonly PlanSwap[], b: readonly PlanSwap[]) =>
   a.length === b.length && a.every((s, i) => s.replaces === b[i]!.replaces && s.with === b[i]!.with);
 
@@ -132,16 +131,6 @@ export interface BStatus {
 export function bStatus(swaps: readonly PlanSwap[], bRoutine: readonly string[]): BStatus {
   const made = swapsMade(swaps, bRoutine);
   return { made, of: swaps.length, next: swaps[made] ?? null, built: made >= swaps.length };
-}
-
-/** The B routine after `count` more swaps (1 by default; AJ: "sometimes two or three"). */
-export function bWithNextSwaps(
-  aRoutine: readonly string[],
-  swaps: readonly PlanSwap[],
-  bRoutine: readonly string[],
-  count = 1,
-): string[] {
-  return bRoutineOf(aRoutine, swaps, Math.min(swaps.length, swapsMade(swaps, bRoutine) + count));
 }
 
 /**
@@ -425,6 +414,103 @@ export function plannedBFollowOf(
   const swapsMoved = !sameSwaps(next, swaps);
   if (sameList(intended, b.plan.intended) && !swapsMoved) return null;
   return { routineId: b.id, intended, ...(swapsMoved ? { swaps: next } : null) };
+}
+
+/**
+ * Routine B with the client's can't-do marks acted on (AJ, Oct 8 2026, "2a":
+ * "Can't-do lives on the client's plan, read by A and B"; the whole-branch
+ * review, Oct 9 2026). Marking a machine reshapes A's road, A's routine and
+ * day one; a machine only B runs (one of its swaps, made) was left in B, and
+ * the next B session ran it. For each mark that holds today on a machine a
+ * started B holds and Routine A doesn't:
+ * - one of B's swaps made: the place goes back to A's machine (as "Keep {A}
+ *   in B" gives it back), or, when A has no machine there any more, B simply
+ *   loses it; the swap stays planned, next in line, and waits ("can't do for
+ *   now", `bSwapWait`) until the mark ends, when it can be swapped in again;
+ * - any other machine of B's own: the mark's stand-in takes its place when
+ *   B hasn't got it, else it leaves B.
+ * Starts from `base` (what B takes when A moves, `bFollowOf`), or B as it
+ * stands. Null when nothing changes, or B is planned and not started, or B
+ * has no plan of swaps (a Routine B of its own from before Round 2 is left
+ * as it is: a session on it leaves the machine out, `runnableToday`).
+ */
+export function bAfterCantDo(input: {
+  b: Pick<Routine, "id" | "machineIds" | "plan">;
+  base: BFollow | null;
+  /** Routine A's machines after the change. */
+  aMachines: readonly string[];
+  /** Routine A's plan after the change: its can't-do marks. */
+  aPlan: Pick<RoutinePlan, "cantDo"> | null | undefined;
+  todayYmd: string;
+}): BFollow | null {
+  const { b } = input;
+  if (!b.id || !isBPlan(b.plan) || isPlannedB(b)) return input.base;
+  const held = activeCantDo(input.aPlan, input.todayYmd);
+  const heldIds = held.map((c) => c.machineId);
+  let machines = [...(input.base?.machineIds ?? b.machineIds ?? [])];
+  let swaps = input.base?.swaps ? [...input.base.swaps] : swapsOf(b.plan);
+  let moved = false;
+  for (const entry of held) {
+    const m = entry.machineId;
+    if (!machines.includes(m) || input.aMachines.includes(m)) continue;
+    const made = swapsMade(swaps, machines);
+    const si = swaps.findIndex((s, k) => k < made && s.with === m);
+    if (si >= 0) {
+      const s = swaps[si]!;
+      const back = input.aMachines.includes(s.replaces) && !machines.includes(s.replaces) && !heldIds.includes(s.replaces) ? s.replaces : null;
+      machines = back ? machines.map((id) => (id === m ? back : id)) : machines.filter((id) => id !== m);
+      // The swap waits, next in line after the swaps still in B.
+      const rest = swaps.filter((_, k) => k !== si);
+      const madeNow = swapsMade(rest, machines);
+      swaps = [...rest.slice(0, madeNow), s, ...rest.slice(madeNow)];
+    } else {
+      const stand = (entry.replacedBy ?? []).find((id) => !machines.includes(id) && !heldIds.includes(id));
+      machines = stand ? machines.map((id) => (id === m ? stand : id)) : machines.filter((id) => id !== m);
+    }
+    moved = true;
+  }
+  if (!moved) return input.base;
+  const swapsMoved = !sameSwaps(swaps, swapsOf(b.plan));
+  return {
+    routineId: b.id,
+    machineIds: machines,
+    intended: input.base?.intended ?? [...b.plan.intended],
+    ...(swapsMoved ? { swaps } : null),
+  };
+}
+
+/**
+ * Everything a write to Routine A's plan must also write to Routine B, in
+ * the SAME batch, or null: B following A's machines (`bFollowOf`, when A's
+ * machines moved), a planned B following A's road (`plannedBFollowOf`), and
+ * B acting on the client's can't-do marks (`bAfterCantDo`). The one answer
+ * every writer of A's plan asks (Programming's Lineup, the session's plan
+ * sheet), so none of them leaves B running a machine the client can't do.
+ */
+export function bFollowForPlanWrite(input: {
+  routines: readonly RoutineLike[];
+  aRoutineId: string | null | undefined;
+  /** Routine A's machines when the write moves them, else absent. */
+  aMachines?: readonly string[] | null;
+  aPlan: RoutinePlan | null | undefined;
+  todayYmd: string;
+}): BFollow | null {
+  const { routines, aRoutineId } = input;
+  const base =
+    (input.aMachines ? bFollowOf(routines, aRoutineId, input.aMachines) : null) ??
+    plannedBFollowOf(routines, aRoutineId, input.aPlan);
+  if (!aRoutineId || !input.aPlan) return base;
+  const a = routines.find((r) => r.id === aRoutineId);
+  if (!a || !matchesRoutineLetter(a, "A")) return base;
+  const b = routines.find((r) => matchesRoutineLetter(r, "B") && !!r.id && !r.id.startsWith("temp-"));
+  if (!b) return base;
+  return bAfterCantDo({
+    b,
+    base,
+    aMachines: input.aMachines ?? a.machineIds ?? [],
+    aPlan: input.aPlan,
+    todayYmd: input.todayYmd,
+  });
 }
 
 /* ── B's purpose ───────────────────────────────────────────────────────── */
@@ -822,21 +908,6 @@ export function plannedBWords(input: {
 
 /** Said under a planned B while Routine A is still empty: when it starts. */
 export const PLANNED_B_WHEN = "It starts with Routine A, at the Wrap-up that starts A.";
-
-/**
- * The first swap a planned B would start with, if Routine A were `aRoutine`
- * (the Wrap-up's Next time says it live as the ticks change), or null.
- */
-export function plannedBFirstSwap(input: {
-  swaps: readonly PlanSwap[];
-  aRoutine: readonly string[];
-  aPlan: Pick<RoutinePlan, "cantDo" | "intended"> | null;
-  floor: readonly Pick<FloorMachine, "id">[];
-  todayYmd: string;
-}): PlanSwap | null {
-  if (input.aRoutine.length === 0) return null;
-  return plannedBStartSwaps(input).ready[0] ?? null;
-}
 
 /** Turning B on with nothing in B opens Plan B instead of making an empty Routine B (the critic's #22). */
 export function bToggleOpensPlanB(on: boolean, b: Pick<Routine, "machineIds"> | null | undefined): boolean {
@@ -1286,7 +1357,12 @@ export function bRoadGroups(input: {
     {
       key: "cantdo",
       label: first ? `Not for ${first}` : "Can't do",
-      stations: held.filter((id) => named.has(id) && !today.includes(id)).map((id) => ({ id, kind: "cantdo" as const })),
+      // Today leaves the client's can't-do out (`runnableToday`), so a machine B
+      // runs that is marked is drawn crossed here; one a trainer put in today
+      // on purpose is today's.
+      stations: held
+        .filter((id) => (named.has(id) || input.bRoutine.includes(id)) && !today.includes(id))
+        .map((id) => ({ id, kind: "cantdo" as const })),
     },
   ];
   return groups.filter((g) => g.stations.length > 0);

@@ -1,6 +1,6 @@
 # The first session and a routine's plan: the screens (design round, Oct 8 2026)
 
-**Status: Round 1 in build on `claude/first-session-routine-plan-ui-2f8dc1`.**
+**Status: Rounds 1 and 2 built on `claude/first-session-routine-plan-ui-2f8dc1`, with the whole-branch review's fixes (Oct 9 2026, §7); not shipped, waiting for one iPad walk of both (AJ's "1a", walk-through Round 65 in `docs/ops/TESTING-CHECKLIST.md`).**
 This branch is master's `e8c5cb22` with the seven `oct7/first-session` commits
 replayed on top (the research, the grid fix, the routine plan's pure half, its
 store and rules). It is not pushed. The research and the structure are
@@ -45,12 +45,25 @@ Mid-round, he added this, and every screen is designed to it:
 > session before the client comes in or on the fly"
 
 So the Academy's template is a **first draft**, never a script, and five things
-appear on every surface:
+appear on every surface that changes the plan:
 - **Can't do**, with a reason and an until.
 - **Another start**.
 - **Re-plan**, kept in the history.
 - **This floor only**.
 - **Order effects**, as quiet sentences.
+
+Where each lives (the whole-branch review, Oct 9 2026): Programming's Start a
+plan and Lineup have all five (Another start on Start a plan, and inside
+Re-plan once a plan is kept); the session's plan sheet, from the grid's corner
+and the phone's door, has Can't do, Re-plan (with Another start) and the
+order-effect line; the briefing's walk-in card has Another start, This floor
+only and the order effect, and **stays write-free** (`session-scope.test.ts`):
+a can't-do learned at the door is marked after Start, from the corner, a tap
+away; the Wrap-up's Next time says the order effects its ticks bring. The
+Academy's **helping** pairs (`COMPLEMENTARY_PAIRS`, "the documented safe
+partner for the Lumbar") are not said as order effects: only its "avoid" and
+"caution" rules are, so a list of good pairs never adds words to every
+screen. Said here so the walk tests what was built.
 
 ## 2. AJ's picks
 
@@ -171,9 +184,17 @@ His third answers (Oct 8 2026) were **"1a 2a 3a"**:
   3. If there is no default, the trainer picks (`needsChoice`). Every
      alternative is shown by its machines, so two with similar names can be
      told apart.
-- **Before the seed has run.** If the app holds no starting routines, Start a
-  plan falls back to the Academy's eleven, built in code by the same transform
-  the seed uses (`academyStartingRoutines()`), labelled as the Academy's.
+- **Before the seed has run.** If head office holds no starting routines and
+  nothing shows the seed ran, Start a plan falls back to the Academy's eleven,
+  built in code by the same transform the seed uses
+  (`academyStartingRoutines()`), labelled as the Academy's, with a studio's own
+  beside them. Decided from evidence, never from an empty list (the
+  whole-branch review, Oct 9 2026): a starting routine of head office's, one
+  switched off in the template editor (`startParked`) or a seeded `academy-` id
+  means the seed ran (`seededFrom`), so every one retired is an empty offer
+  (the trainer builds the lineup), never the eleven back. Only one case can't
+  be told apart: every seeded routine deleted outright leaves no trace, and the
+  code copy is offered again (it writes nothing).
 - **The seed.** `scripts/seed-starting-routines.ts` writes the eleven as
   `routinePresets/academy-<templateId>`, company tier. It is a dry run by
   default; `--commit` writes. Names carry no gender: the two "No reported
@@ -206,7 +227,12 @@ the app's own routines kit (`features/routines/`, `routines.css`).
     `plan.dayOne` and `intended`; `startWith` is a list of its own). Once
     kept, a move is a `reorder` change written in the order the Lineup draws
     (day one, then On deck), and day one takes the order it gives day one's
-    machines, so a Move up on a Day one row reaches the consult.
+    machines, so a Move up on a Day one row reaches the consult. While day
+    one runs (Routine A still empty), a row also goes on or off day one (Do
+    it on day one · Not on day one), the road as it was, an "add" or
+    "remove" with the value `dayone`; the last machine on day one can't come
+    off it (the whole-branch review, Oct 9 2026: once kept, day one could
+    only change by leaving the plan).
   - **Keep this lineup** (blue) writes the plan (building on, with day one
     as `plan.dayOne`), an **EMPTY Routine A** and the plan's first change
     (`start`), in **one batch, not awaited** (`startPlan` with
@@ -350,14 +376,27 @@ the app's own routines kit (`features/routines/`, `routines.css`).
   - An empty Now Bar offers **Add a machine** and the plan's next one.
   - Adding is today only (`applySessionMachineIds`). The Wrap-up decides what
     the routine keeps.
-- **The Plan chip.** The session bar gets **Plan · 3 of 6**, which opens a sheet:
+- **The plan, from the grid's corner.** The grid corner's menu has **The plan ·
+  3 of 6** (the session bar has no toolbar: the Oct 3 2026 session top, option 1,
+  put Routine / All, Reorder and the Key in that corner, and the plan joined
+  them), and on a phone **The plan · 3 of 6** sits beside Reorder at the foot of
+  the cards. It opens a sheet. **For AJ before the iPad walk:** "1d" named "the
+  session's Plan chip" a glance surface; the build puts it one tap into the
+  corner instead. Is the corner right, or should the bar show it?
   - the Road strip of the plan;
   - per machine, **Swap in the plan** and **Can't do**;
   - **Re-plan**.
   - A change there writes the plan through `store.ts`, not awaited; that is
     AJ's Q6 ("you shouldn't really be blocked"). It changes today's order only
     when that machine has no set logged today.
-- **On a phone.** The last card's Next becomes "Next in the plan · Add".
+- **On a phone.** The last card's Next becomes "Next in the plan · Add", the
+  iPad's quiet dashed blue, with "Last machine · Finish is at the top" kept
+  under it; **The plan · 3 of 6** opens the same sheet. The Academy's range
+  and the order-effect line stay the iPad's (`features/phone/README.md`).
+- **A walk-in.** Add Client's walk-in ("New client, not in Mindbody yet") has
+  no Mindbody count, so its coverage is unknown; with no Journey session it is
+  a whole story all the same, and gets "First time on this machine" and the
+  range.
 
 ### 4.7 The Wrap-up's Next time
 
@@ -366,7 +405,8 @@ the app's own routines kit (`features/routines/`, `routines.css`).
   lacks.
   - Each has a 40px tick on the firm edge, blue when on.
   - While Routine A has machines, they are ticked while the plan is being
-    built, unticked otherwise.
+    built and Routine A is still short of it (`stillBuilding`: AJ's "only
+    while the routine is short of its plan"), unticked otherwise.
   - Each says "Next in the plan" or "Added today · not in the plan".
 - **The consult rule** (AJ's "3a", Oct 8 2026: "this also counts with the
   consult visit, sometimes the consult machines will not be the same as their
@@ -406,8 +446,8 @@ What went, and what replaced each:
 | `components/ConsultationSetupWizard.tsx` and its render test | The tracker's **First-time setup**, drawn instead of the briefing for a client with `requiresConsultation` and not `consultationCompleted`: a fixed trio (Leg Press, Chest Press or Seated Dip by gender, Lumbar), a gender and an age asked for, a skill level, an estimated starting weight per row, and "Start consult workout" | The briefing, for every client. A client starting out at the studio gets the plan card there (§4.5), and Programming's **Start a plan** (§4.3), both from `routine-plan/client-kind.ts` `startingKindOf` and the starting routines (§4.2). Finish still marks the consultation done |
 | `components/ConsultationWizard.tsx` and its render test | The Initial Consultation, unmounted since Sep 24 2026: wrote the client's answers, a "Demo Routine", a session and a setup note | Nothing new: its route went on Sep 24 2026, and a client's details are on Notes & Profile |
 | `lib/consultation-utils.ts` and its test (`calculateStartingWeight`, `MACHINE_DICTIONARY`, `ACADEMY_STARTING_WEIGHT`, `statedStartingWeight`, the `Gender` / `SkillLevel` / `MachineSelection` types) | A starting-weight heuristic by machine name, gender, age and skill | The Academy's sheet, `routine-plan/starting-weights.ts`: a range beside the weight on a first time on a machine, in the column the trainer picked, never typed into the weight (§4.6) |
-| The starting-weight seed in `session-record/start-plan.ts` (`SeedArgs.client`, `SeedArgs.startingWeight`, the default-weight branch) and its caller in `WorkoutTrackerView` (`seedsFor`) | Filled a machine with nothing on record with the heuristic's number, taking a client with no gender on file as "Male" and an unknown age as 45: ghost data written as a load | Nothing: a machine with nothing on record starts with no set and no weight, and the trainer types the first one. Only a weight on record (the last performed, the settings' prescription or starting weight) is prefilled, as before |
-| The consultation screens' helpers in `lib/consultation-answers.ts` (`knownGender`, `ageOnFile`, `demographicsPatch`, `consultationPatch`, `suggestedStartingWeight`, `consultationNoteBody`) and their tests | What the two wizards wrote | The file keeps Add Client's intake (`canSaveNewClient`, `NewClientAnswers`, `newClientPayload`, and `parseAge`, which it uses), which still invents nothing |
+| The starting-weight seed in `session-record/start-plan.ts` (`SeedArgs.client`, `SeedArgs.startingWeight`, the default-weight branch), and the estimate arguments `WorkoutTrackerView`'s `seedsFor` passed it (the client and the starting weight; `seedsFor` itself stays, prefilling only a weight on record) | Filled a machine with nothing on record with the heuristic's number, taking a client with no gender on file as "Male" and an unknown age as 45: ghost data written as a load | Nothing: a machine with nothing on record starts with no set and no weight, and the trainer types the first one. Only a weight on record (the last performed, the settings' prescription or starting weight) is prefilled, as before |
+| The consultation screens' helpers in `lib/consultation-answers.ts` (`knownGender`, `ageOnFile`, `demographicsPatch`, `consultationPatch`, `suggestedStartingWeight`, `consultationNoteBody`) and their tests | What the two wizards wrote | The file keeps Add Client's intake (`canSaveNewClient`, `NewClientAnswers`, `newClientPayload`, and `parseAge`, which it uses), which still invents nothing; renamed `lib/new-client-intake.ts` in the whole-branch review (Oct 9 2026), what it holds |
 | The intro-session path: `isIntroSession` in `AppContent` (its state and the flag `setView` carried), the prop on `WorkoutTrackerView` (its "New client introductory session" banner and the `Sparkles` icons) and on `BriefingScreen` (the "Demo Routine" preload), and `ClientProfileView`'s `setView` type | Nothing: no caller ever passed it true | The briefing's plan card. The routine builder's `established` (whether a short routine is called thin) was `!isIntroSession`, so every client was "established"; it is now `pastLearningCurve` (`client-kind.ts`), the Academy's learning curve ("around 4 to 6 workouts"): at least six sessions (`LEARNING_CURVE_SESSIONS`) or trained here before Journey (coverage "partial"), never while Routine A is being built, never when Journey can't tell. The routine drawer (`EditRoutineDrawer`, which said `sessions.length >= 6`) asks the same rule, so the two screens give one client one answer |
 | Start's create path from a "Today only" list | Saved the briefing's list as Routine A or B | Gone in Round 1 (§4.5): Start makes only Routine A from a starting plan, empty, with the plan carrying day one |
 
@@ -841,5 +881,66 @@ customization." The research (§5.2) named the setting `startingRoutines`
 
 ## 7. Build log
 
-One commit per phase, each typechecked on its own (baseline 2). Measurements
-are recorded at the end.
+One commit per phase, each typechecked on its own (baseline 2):
+
+| Commit | Phase |
+| --- | --- |
+| `b0b19d79`, `8d6049c3`, `a92a7de0`, `73e15ff6` | The research, AJ's answers and this design round's document |
+| `c109b06e` | The Journey grid for a client with no past sessions |
+| `035457c7`, `ce22ea20`, `77cbbacb` | The routine plan's pure half, its store and rules (the Oct 7 branch, replayed) |
+| `11d03d9f`, `f0eb5fd3`, `88e056dd`, `106cb86a` | Can't-do, re-plan, starting routines from presets, the plan on Routine and presets, the studio's choice, the seed; the consult is not Routine A |
+| `c8d15ad7`, `e4ef50dd`, `ad15bd7a`, `0b2f2b86`, `71c7d68f` | Round 1's screens: Programming, the briefing, the floor, the Wrap-up's Next time, the retirements |
+| `ddac6e8e`, `39a9238d`, `af09f0a3` | Round 2: B molded in, the weak area, A or A and B together |
+| the review commit | The whole-branch review's fixes (below) |
+
+**Measured** at the review commit, in this worktree on AJ's PC
+(`TZ=America/New_York npx vitest run --dir src --testTimeout=30000`, files in
+LF): typecheck **2**; **13,127** tests passing in **802** files. The
+review changed no rule, so the rules tests stand as the round's commits left
+them (AJ's `npm run test:rules` is the run that counts). Production build and
+`check:bundle` are for the ship script.
+
+**The whole-branch review** (Oct 9 2026; five reviewers, every finding checked
+in the code first). What it changed:
+
+- **The floor.** A session started before the client's routines answered (the
+  consult on slow Wi-Fi) offered no Add for the whole session: today's list is
+  on screen from Start, and what the trainer adds while the routines load is
+  kept beside the routine's machines when they come (`followUpList`). Finish
+  works out Next time in its own `try`, so a plan it can't read costs the card,
+  never the Wrap-up.
+- **The client's document is never in someone else's batch.** B switched off
+  over an empty Routine B rode in Start's batch, and B switched on in the
+  Wrap-up's: a client the rules refuse an update to (a cross-train trainer's,
+  or one with no last name) took the session, or the ticks that start Routine
+  A, down with it. Both are their own writes now (`setRoutineBActive`); B goes
+  on only after the Wrap-up's batch lands.
+- **The data.** Programming reads the client's routines live (one listener, at
+  most two documents), so a change from the floor is never rewritten from an
+  old copy; an empty answer from the iPad's cache stays "loading", never "no
+  routine". A plan's first write on an empty routine leaves its machines out,
+  so it never empties a routine another iPad filled. A change names at most the
+  rules' 30 machines. The studio's choice answered only from the cache is
+  unknown. The starting routines' fallback decides "before the seed" from
+  evidence (§4.2). One rule for which routine is A or B (either spelling,
+  `matchesRoutineLetter`) on Programming, the drawer and every writer. A kept
+  plan names its starting routine (`templateName`).
+- **The spec.** Can't-do reaches B: a machine B runs as its own swap gives its
+  place back to A's machine, the swap waiting next in line
+  (`bFollowForPlanWrite`), and no session on B, nor the briefing, runs a
+  machine the client can't do (`runnableToday`). A kept day one changes on
+  Programming while it runs (a "dayone" add or remove). This floor only on the
+  briefing's card and in Re-plan; Another start inside Re-plan; the Wrap-up's
+  order effects; adding by default only while a routine is short of its plan
+  (`stillBuilding`); Add Client's walk-in gets the first-time lines; the
+  phone gets the plan's sheet; a weak area's addition past the Academy's 8
+  names what it is better in place of; Log past session seeds from `todayFor`.
+- **The look.** Each point said once, the how-to behind an (i); the phone's
+  plan offer in the quiet dashed blue; the Academy's columns said by their
+  level outside the pick sheet (never the sheet's sex word); Don't show ranges
+  a fifth chip; the range ask in the button voice; a reader's picked chip never
+  faded; the weak area's sub line held by `names-wrap.test.ts`; the B dialog's
+  reason on tokens.
+- **Left as they are, and said:** the order effects' helping pairs (§1); the
+  briefing's write-free card (§1); the plan's door in the corner, a question
+  for AJ (§4.6).

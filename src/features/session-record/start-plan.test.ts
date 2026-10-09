@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   cleanPayload,
   discardLogIds,
+  followUpList,
   refusedStartSweep,
   plannedMachinesOf,
   prefillOf,
@@ -258,5 +259,52 @@ describe("refusedStartSweep: a late-refused Start never deletes a set the traine
     const { remove, kept } = refusedStartSweep("s1", logs, ["m-a", "m-b", "m-c", "m-d", "m-e"], (id) => id === "s1_m-c");
     expect(kept.sort()).toEqual(["s1_m-a", "s1_m-c", "s1_m-d"]);
     expect(remove.sort()).toEqual(["s1_m-b", "s1_m-e"]);
+  });
+});
+
+/*
+ * The whole-branch review (Oct 9 2026). A session on Routine B never seeds a
+ * machine the client can't do (Routine A's plan's marks, read by A and B:
+ * AJ's "2a"); and a session started before the routines answered keeps what
+ * the trainer added meanwhile beside the routine's machines.
+ */
+describe("a session's today, and the list once its routine is known", () => {
+  it("leaves out of a B session what the client can't do, once the day is known", () => {
+    const aWithMark: Routine = {
+      ...A,
+      plan: {
+        purpose: "",
+        intended: A.machineIds,
+        building: false,
+        madeByUid: "uid-sam",
+        cantDo: [{ machineId: "m-chest-press", until: "cleared", day: "2026-10-09", byUid: "uid-sam" }],
+      },
+    };
+    const b = resolveStartRoutine({ routineType: "B", routines: [aWithMark, B], routinesKnown: true, todayYmd: "2026-10-09" });
+    expect(plannedMachinesOf(b)).toEqual([]);
+    // A list the trainer chose on the briefing is theirs, as handed up.
+    expect(plannedMachinesOf(b, ["m-chest-press"])).toEqual(["m-chest-press"]);
+    // A mark that has ended holds nothing back.
+    const ended = { ...aWithMark, plan: { ...aWithMark.plan!, cantDo: [{ ...aWithMark.plan!.cantDo![0]!, until: "2026-10-01" }] } };
+    expect(plannedMachinesOf(resolveStartRoutine({ routineType: "B", routines: [ended, B], routinesKnown: true, todayYmd: "2026-10-09" }))).toEqual([
+      "m-chest-press",
+    ]);
+  });
+
+  it("followUpList: the routine's machines first, the trainer's additions kept, a machine taken out left out", () => {
+    // Nothing changed meanwhile: what the routine runs.
+    expect(followUpList({ started: [], current: [], planned: ["m-leg-press", "m-pulldown"] })).toEqual(["m-leg-press", "m-pulldown"]);
+    // Added while the routines loaded: kept after the routine's machines.
+    expect(followUpList({ started: [], current: ["m-abs"], planned: ["m-leg-press", "m-pulldown"] })).toEqual([
+      "m-leg-press",
+      "m-pulldown",
+      "m-abs",
+    ]);
+    // The routine adds nothing new: the trainer's list as it is.
+    expect(followUpList({ started: ["m-leg-press"], current: ["m-abs", "m-leg-press"], planned: ["m-leg-press"] })).toEqual(["m-abs", "m-leg-press"]);
+    // A machine the trainer took out of what Start began with stays out.
+    expect(
+      followUpList({ started: ["m-leg-press", "m-lumbar"], current: ["m-lumbar", "m-abs"], planned: ["m-leg-press", "m-pulldown", "m-lumbar"] }),
+    ).toEqual(["m-pulldown", "m-lumbar", "m-abs"]);
   });
 });

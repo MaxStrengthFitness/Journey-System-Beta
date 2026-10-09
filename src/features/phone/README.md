@@ -63,7 +63,11 @@ Each card, in the order the floor needs it (the-floor.md, "Where the eye goes"):
    adds it to TODAY only, through the tracker's `onAddPlanned` (the one
    recorder, `applySessionMachineIds`); the Wrap-up decides what the routine
    keeps. An empty list offers the same. `cardNextOf` (phone-session.ts) is
-   which Next a card draws.
+   which Next a card draws. The offer is the iPad's quiet dashed blue
+   (`.ph-card__next--plan`, never the card's loud blue Next), with "Last
+   machine · Finish is at the top" kept under it: adding is a door left
+   open, never the step that comes next (the whole-branch review, Oct 9
+   2026).
 
 The card in hand IS the Now Bar's machine (`gridFocusMachineId`), so the
 machine clocks, the progress count and Finish read the same thing on a phone
@@ -75,6 +79,15 @@ auto "completed" mark and the heartbeat are the iPad's.
 What a phone leaves to the iPad: the grid and its older columns, the
 analytics, the stopwatch and the per-machine flag line. Reorder, add or take
 off a machine is the iPad's own RoutineOrderSheet, from the foot of the list.
+Beside it, while Routine A has a plan, **The plan · 3 of 6** opens the iPad
+corner's plan sheet (`SessionPlanSheet`: Swap in the plan, Can't do,
+Re-plan, the Academy column), so a can't-do mid-session is never out of
+reach on a phone (AJ's Q6: "you shouldn't really be blocked"; the
+whole-branch review, Oct 9 2026). Left to the iPad on purpose: the Academy's
+starting range in the Now Bar's readout and the one order-effect line under
+the grid (the card's own "First time on this machine." is the phone's
+first-time line); a column picked on the plan's sheet still shows on the
+iPad.
 
 ## Tests
 

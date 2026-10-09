@@ -52,7 +52,7 @@ still worth checking — see **Confirm before anything else**, below.
 | --- | --- |
 | Typecheck (`npx tsc --noEmit`) | **2** errors — the baseline (`charts.tsx`, `EditTrainerModal.tsx`). Compare the count; never expect zero |
 | Tests (`TZ=America/New_York npx vitest run src`) | **12,385** passing in 771 files on `oct7/ahead`, Oct 7 2026; `CLAUDE.md` keeps the running count |
-| Branch | everything is on `master` except `oct7/first-session`, which is built and waiting to merge |
+| Branch | everything is on `master` except `claude/first-session-routine-plan-ui-2f8dc1` (the first-session screens, Rounds 1 and 2 with the whole-branch review's fixes, Oct 9 2026; it replayed and replaces `oct7/first-session`), built and waiting for one iPad walk (Round 65) before it merges |
 | Deploys | a push to `master` deploys nothing; AJ deploys by hand on Render (above). Rules, indexes and Cloud Functions are deployed separately |
 
 ---

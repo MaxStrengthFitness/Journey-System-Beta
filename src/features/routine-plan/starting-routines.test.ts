@@ -2,12 +2,13 @@ import { describe, expect, it } from "vitest";
 import { SELECTION_TEMPLATES } from "../routine-builder/academy";
 import { findViolations } from "../routine-builder/engine";
 import { suggestBSwaps } from "./b-routine";
-import { TEMPLATE_SOURCE, startingPlanFrom, suggestStartingPlan, type FloorMachine } from "./starting-plan";
+import { TEMPLATE_SOURCE, academyRoad, repairOrder, type FloorMachine } from "./starting-plan";
 import {
   academyRoutineId,
   academyStartingRoutines,
   academyTemplateOf,
   matchedWord,
+  startedFromWords,
   startingPlanFromRoutine,
   startingRoutineFromPreset,
   suggestFromStartingRoutines,
@@ -69,12 +70,17 @@ describe("the Academy's eleven as starting routines", () => {
     }
   });
 
-  it("is the road and day one the Academy's own path makes, so the seed and the fallback agree", () => {
+  // Changed on purpose (the whole-branch review, Oct 9 2026): this compared
+  // against an older builder from the templates themselves, read by tests
+  // only and deleted; the road and day one are the template's own, checked
+  // against the Academy's rows directly.
+  it("is the template's road (the consultation, then the second workout) and its consultation as day one", () => {
     for (const t of SELECTION_TEMPLATES) {
       const r = byId(academyRoutineId(t.id));
-      const legacy = startingPlanFrom(suggestStartingPlan({ floor: ALL, templateId: t.id }), who);
-      expect(r.machineIds, t.id).toEqual(legacy.plan.intended);
-      expect(r.dayOne, t.id).toEqual(legacy.startWith);
+      expect(r.machineIds, t.id).toEqual(academyRoad(t));
+      expect(r.dayOne, t.id).toEqual(repairOrder(academyRoad(t).filter((id) => t.consult.includes(id))));
+      for (const id of t.consult) expect(r.machineIds, t.id).toContain(id);
+      for (const id of t.secondWorkout) expect(r.machineIds, t.id).toContain(id);
       expect(r.matchWords.slice(0, t.keywords.length)).toEqual(t.keywords.map((k) => k.toLowerCase()));
       expect(r.kind, t.id).toBe(t.kind);
     }
@@ -394,6 +400,9 @@ describe("the plan a starting routine makes", () => {
       dayOne: startWith,
       building: true,
       templateId: "academy-clear-dip-adduction",
+      // Named as it was when the plan was made (the whole-branch review, Oct 9 2026).
+      templateName: byId("academy-clear-dip-adduction").name,
+      templateSource: TEMPLATE_SOURCE,
       madeByUid: "u-sam",
       madeByName: "Sam",
       madeAt: "2026-10-08",
@@ -469,5 +478,29 @@ describe("a plan's starting template, in either spelling", () => {
     expect(suggestBSwaps({ aRoutine: plan.intended, floor: ALL, templateId: plan.templateId })).not.toEqual(
       suggestBSwaps({ aRoutine: plan.intended, floor: ALL }),
     );
+  });
+});
+
+/*
+ * The whole-branch review (Oct 9 2026): a kept plan whose starting routine an
+ * administrator wrote said only "Started from a starting routine". A plan
+ * made from a starting routine stores its name and source, and the Lineup
+ * and the briefing name it ("every suggestion names its source", §4.3).
+ */
+describe("where a kept plan started, named", () => {
+  it("a plan made from a starting routine carries its name and source", () => {
+    const own: StartingRoutine = { ...byId("academy-low-back"), id: "w-walkin", name: "Walk-in lineup", tier: "studio", source: "Westlake's own" };
+    const { plan } = startingPlanFromRoutine(own, who, ALL, "2026-10-09");
+    expect(plan).toMatchObject({ templateId: "w-walkin", templateName: "Walk-in lineup", templateSource: "Westlake's own" });
+    expect(startedFromWords(plan)).toBe("Started from Walk-in lineup · From Westlake's own");
+  });
+
+  it("an Academy plan says the Academy's name and file; an older plan falls back to them by its id", () => {
+    const { plan } = startingPlanFromRoutine(byId("academy-low-back"), who, ALL, "2026-10-09");
+    expect(startedFromWords(plan)).toMatch(/^Started from Low back issues · From the Academy's /);
+    expect(startedFromWords({ templateId: "academy-low-back" })).toBe(startedFromWords(plan));
+    // An administrator's routine kept before names were stored: said plainly, never a guess.
+    expect(startedFromWords({ templateId: "hq-shoulder" })).toBe("Started from a starting routine");
+    expect(startedFromWords({})).toBeNull();
   });
 });

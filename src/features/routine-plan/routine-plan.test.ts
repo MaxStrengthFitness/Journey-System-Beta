@@ -1,15 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { SELECTION_TEMPLATES } from "../routine-builder/academy";
 import { findViolations } from "../routine-builder/engine";
-import { isProvisionalNewClient, LEARNING_CURVE_SESSIONS, pastLearningCurve, startingKindOf } from "./client-kind";
-import {
-  academyTemplateName,
-  floorIndex,
-  startingPlanFrom,
-  suggestStartingPlan,
-  sayableTemplateLabel,
-  type FloorMachine,
-} from "./starting-plan";
+import { isProvisionalNewClient, LEARNING_CURVE_SESSIONS, learningCurveInputOf, pastLearningCurve, startingKindOf } from "./client-kind";
+import { academyTemplateName, floorIndex, sayableTemplateLabel, type FloorMachine } from "./starting-plan";
+import { academyStartingRoutines, academyTemplateOf, startingPlanFromRoutine, suggestFromStartingRoutines } from "./starting-routines";
 import {
   applyPlanChange,
   isStartingColumnChoice,
@@ -21,12 +15,15 @@ import {
   routineAfterWrapUp,
   routineWith,
   runsDayOne,
+  stillBuilding,
   todayFor,
 } from "./plan";
-import { bRoutineOf, bStatus, bWithNextSwaps, suggestBSwaps, swapsMade } from "./b-routine";
+import { bIntendedOf, bRoutineOf, bStatus, bSwappedIn, suggestBSwaps, swapsMade } from "./b-routine";
 import { focusAdvice } from "./focus";
 import { ACADEMY_STARTING_WEIGHTS, academyStartingReference } from "./starting-weights";
 import type { CantDo, RoutinePlan } from "./types";
+import { savedRoutineA, savedRoutineB } from "./ui/host";
+import { resolveRoutine } from "../routines/routine-rows";
 
 /** The twenty MSF machines, as a floor that uses the catalog ids. */
 const ALL: FloorMachine[] = [
@@ -139,24 +136,60 @@ describe("which kind of no routine", () => {
       expect(pastLearningCurve({ ...past, coverage: "unknown", journeySessions: null })).toBe(false);
       expect(pastLearningCurve({ ...past, journeySessions: null })).toBe(false);
     });
+    // The whole-branch review (Oct 9 2026): the drawer and the briefing fed
+    // the rule different inputs; now both ask learningCurveInputOf.
+    it("one set of inputs for both screens: the routines' answer, the client's count, and a plan still short of its road", () => {
+      const routineA = { machineIds: ["m-a", "m-b"], plan: { purpose: "", intended: ["m-a", "m-b", "m-c"], building: true, madeByUid: "u" } };
+      const client = { sessionCount: 9 };
+      expect(learningCurveInputOf({ routinesKnown: true, coverage: "complete", client, routineA })).toEqual({
+        known: true,
+        coverage: "complete",
+        journeySessions: 9,
+        routineABeingBuilt: true,
+      });
+      // The plan's every machine in, the switch left on: no longer being built.
+      const done = { ...routineA, machineIds: ["m-a", "m-b", "m-c"] };
+      expect(pastLearningCurve(learningCurveInputOf({ routinesKnown: true, coverage: "complete", client, routineA: done }))).toBe(true);
+      // No count on the client, or the routines unread: nothing claimed.
+      expect(learningCurveInputOf({ routinesKnown: true, coverage: "complete", client: {}, routineA: done }).journeySessions).toBeNull();
+      expect(pastLearningCurve(learningCurveInputOf({ routinesKnown: false, coverage: "complete", client, routineA: done }))).toBe(false);
+    });
   });
 });
 
+/*
+ * The starting plan, through the one builder every screen uses (the
+ * whole-branch review, Oct 9 2026: these held an older builder from the
+ * Academy's templates themselves, read by tests only, deleted so the two
+ * could never drift): the Academy's eleven as starting routines
+ * (`academyStartingRoutines`), the suggestion (`suggestFromStartingRoutines`)
+ * and the plan a start makes (`startingPlanFromRoutine`).
+ */
 describe("the starting plan", () => {
+  const ACADEMY = academyStartingRoutines();
+  const suggest = (input: { intakeText?: string; pickedId?: string; floor?: FloorMachine[] } = {}) =>
+    suggestFromStartingRoutines({
+      routines: ACADEMY,
+      choice: null,
+      intakeText: input.intakeText ?? null,
+      floor: input.floor ?? ALL,
+      pickedId: input.pickedId ?? null,
+    });
+  const routineOf = (id: string) => ACADEMY.find((r) => r.id === id)!;
+
   it("matches a condition from the intake before the plain template", () => {
-    const s = suggestStartingPlan({ intakeText: "Lower back pain after lifting boxes", floor: ALL });
-    const t = SELECTION_TEMPLATES.find((x) => x.id === s.templateId)!;
-    expect(t.kind).toBe("condition");
-    expect(s.why).toMatch(/matched from the intake/);
+    const s = suggest({ intakeText: "Lower back pain after lifting boxes" });
+    expect(academyTemplateOf(s.templateId)!.kind).toBe("condition");
+    expect(s.why).toMatch(/Matched from the intake/);
   });
 
   it("starts a client with no reported issues on the consultation's machines (LP, CR, Lumbar)", () => {
     // Changed on purpose (Oct 8 2026): this picked the row from Mindbody's
     // gender. AJ, "3a": "Gender is used nowhere in choosing a start", so the
     // trainer picks the row and the test picks it the same way.
-    const s = suggestStartingPlan({ intakeText: "", floor: ALL, templateId: "clear-female" });
-    expect(s.templateId).toBe("clear-female");
-    const { plan, startWith } = startingPlanFrom(s, who);
+    const s = suggest({ pickedId: "academy-clear-dip-adduction" });
+    expect(s.templateId).toBe("academy-clear-dip-adduction");
+    const { plan, startWith } = startingPlanFromRoutine(routineOf(s.templateId!), who, ALL, "2026-10-09");
     expect([...startWith].sort()).toEqual(["m-compound-row", "m-leg-press", "m-lumbar"]);
     expect(plan.building).toBe(true);
     expect(plan.intended.length).toBeGreaterThan(startWith.length);
@@ -173,8 +206,8 @@ describe("the starting plan", () => {
       expect(sayableTemplateLabel(t)).not.toMatch(/\b(female|male)\b/i);
       expect(academyTemplateName(t)).not.toMatch(/\b(female|male)\b/i);
     }
-    for (const t of SELECTION_TEMPLATES) {
-      const s = suggestStartingPlan({ floor: ALL, templateId: t.id });
+    for (const r of ACADEMY) {
+      const s = suggest({ pickedId: r.id });
       expect(s.label).not.toMatch(/\b(female|male)\b/i);
       expect(s.why).not.toMatch(/\b(female|male|woman|man)\b/i);
       for (const a of s.alternatives) expect(a.label).not.toMatch(/\b(female|male)\b/i);
@@ -185,7 +218,7 @@ describe("the starting plan", () => {
     // Changed on purpose (Oct 8 2026): with no gender from Mindbody this used
     // to fall back to the first row anyway. AJ, "3a": "Gender is used nowhere
     // in choosing a start", so an intake that names nothing picks no row.
-    const s = suggestStartingPlan({ floor: ALL });
+    const s = suggest();
     expect(s.needsChoice).toBe(true);
     expect(s.templateId).toBeNull();
     expect(s.label).toBeNull();
@@ -193,7 +226,7 @@ describe("the starting plan", () => {
     expect(s.alternatives).toHaveLength(SELECTION_TEMPLATES.length);
     // Each alternative carries its machines, so the two no-reported-issues
     // rows are told apart by more than their names.
-    const clear = s.alternatives.filter((a) => a.templateId.startsWith("clear-"));
+    const clear = s.alternatives.filter((a) => a.templateId.startsWith("academy-clear-"));
     expect(clear).toHaveLength(2);
     expect(clear[0].label).not.toBe(clear[1].label);
     expect(clear[0].machineIds).not.toEqual(clear[1].machineIds);
@@ -201,35 +234,25 @@ describe("the starting plan", () => {
 
   it("keeps only machines on the floor and says which it couldn't", () => {
     const floor = ALL.filter((m) => m.id !== "m-lumbar");
-    const s = suggestStartingPlan({ templateId: "clear-female", floor });
-    const consult = s.steps.find((x) => x.key === "consult")!;
-    expect(consult.machineIds).not.toContain("m-lumbar");
-    expect(consult.missing).toContain("m-lumbar");
+    const s = suggest({ pickedId: "academy-clear-dip-adduction", floor });
+    expect(s.steps.flatMap((x) => x.machineIds)).not.toContain("m-lumbar");
+    expect(s.steps.flatMap((x) => x.missing)).toContain("m-lumbar");
   });
 
   it("maps the Academy's machines onto a studio's own floor ids", () => {
     const floor: FloorMachine[] = ALL.map((m) => ({ id: `unit-${m.id}`, canonicalId: m.id }));
-    const s = suggestStartingPlan({ templateId: "clear-female", floor });
-    const { startWith } = startingPlanFrom(s, who);
+    const { startWith } = startingPlanFromRoutine(routineOf("academy-clear-dip-adduction"), who, floor, "2026-10-09");
     expect(startWith.every((id) => id.startsWith("unit-"))).toBe(true);
     expect(floorIndex(floor).get("m-leg-press")).toBe("unit-m-leg-press");
   });
 
   it("makes a plan every Academy template can start, with no sequencing rule broken on day one", () => {
-    for (const t of SELECTION_TEMPLATES) {
-      const s = suggestStartingPlan({ floor: ALL, templateId: t.id });
-      const { plan, startWith } = startingPlanFrom(s, who);
-      expect(startWith.length, t.id).toBeGreaterThan(0);
-      expect(startWith.every((id) => plan.intended.includes(id)), t.id).toBe(true);
-      expect(findViolations(startWith).filter((v) => v.severity === "avoid"), `${t.id} day one`).toEqual([]);
+    for (const r of ACADEMY) {
+      const { plan, startWith } = startingPlanFromRoutine(r, who, ALL, "2026-10-09");
+      expect(startWith.length, r.id).toBeGreaterThan(0);
+      expect(startWith.every((id) => plan.intended.includes(id)), r.id).toBe(true);
+      expect(findViolations(startWith).filter((v) => v.severity === "avoid"), `${r.id} day one`).toEqual([]);
     }
-  });
-
-  it("can aim at the eventual A instead of the learning-curve routine", () => {
-    const s = suggestStartingPlan({ templateId: "clear-female", floor: ALL });
-    const eventual = startingPlanFrom(s, who, "eventualA").plan;
-    const a = s.steps.find((x) => x.key === "eventualA")!.machineIds;
-    for (const id of a) expect(eventual.intended).toContain(id);
   });
 });
 
@@ -413,6 +436,20 @@ describe("the Wrap-up's next time", () => {
     expect(nextTimeRows({ plan: null, routine, performedToday: ["m-abs"] })[0].defaultOn).toBe(false);
   });
 
+  /*
+   * AJ's answer to "adds on by default" (the research, §2b Q4): "only while
+   * the routine is short of its plan ... protects the stability of the
+   * client's long-term routine" (the whole-branch review, Oct 9 2026: the
+   * switch alone decided, so a finished plan still ticked every one-off in).
+   */
+  it("stops adding on by default once every planned machine is in, the switch left on", () => {
+    const done = { ...PLAN, intended: ["m-lumbar", "m-compound-row", "m-leg-press"] };
+    expect(stillBuilding(done, routine)).toBe(false);
+    expect(stillBuilding(PLAN, routine)).toBe(true);
+    const rows = nextTimeRows({ plan: done, routine, performedToday: ["m-abs"] });
+    expect(rows).toEqual([{ machineId: "m-abs", defaultOn: false, why: "added-today" }]);
+  });
+
   it("never shrinks the routine on a short day", () => {
     expect(nextTimeRows({ plan: PLAN, routine, performedToday: ["m-leg-press"] })).toEqual([]);
     expect(routineAfterWrapUp({ plan: PLAN, routine, ticked: [] })).toEqual(routine);
@@ -498,7 +535,9 @@ describe("B, molded in", () => {
   it("starts as A with one machine different, and grows a swap at a time", () => {
     const b1 = bRoutineOf(A, swaps, 1);
     expect(b1.filter((id, i) => id !== A[i])).toEqual(["m-hip-abd"]);
-    const b3 = bWithNextSwaps(A, swaps, b1, 2);
+    // Two more at once ("sometimes two or three"), as Programming's Swap in makes them.
+    const bPlan = { purpose: "", intended: bIntendedOf(A, swaps), swaps, building: false, madeByUid: "uid-sam" };
+    const b3 = bSwappedIn(A, bPlan, b1, 2)!.machineIds;
     expect(swapsMade(swaps, b3)).toBe(3);
     expect(bStatus(swaps, b3).built).toBe(true);
     expect(bStatus(swaps, b1)).toMatchObject({ made: 1, of: 3, next: swaps[1] });
@@ -561,5 +600,26 @@ describe("the Academy's starting ranges", () => {
     expect(academyStartingReference({ canonicalMachineId: "m-leg-press", column: "female-novice", hasWeight: true })).toBeNull();
     expect(academyStartingReference({ canonicalMachineId: "sm-solon-sled", column: "male-novice", hasWeight: false })).toBeNull();
     expect(academyStartingReference({ canonicalMachineId: "m-neck", column: "female-novice", hasWeight: false })!.says).toMatch(/: 20 lb/);
+  });
+});
+
+/*
+ * One rule for which routine is Routine A or B (the whole-branch review, Oct
+ * 9 2026): the briefing, Start and B-follows-A took an older seeder's "A";
+ * Programming, the drawer and the plan's writers matched "Routine A" only, so
+ * a client whose routine was named "A" was offered Start a plan, and Keep
+ * made a second Routine A beside it.
+ */
+describe("which routine is Routine A or B, either spelling", () => {
+  it("is found by the profile's helpers and Programming's stand-in as the briefing finds it", () => {
+    const legacyA = { id: "r-a", clientId: "c1", name: "A", machineIds: ["m-leg-press"] };
+    const legacyB = { id: "r-b", clientId: "c1", name: "b", machineIds: ["m-ext"] };
+    expect(savedRoutineA([legacyA, legacyB])?.id).toBe("r-a");
+    expect(savedRoutineB([legacyA, legacyB])?.id).toBe("r-b");
+    // Programming's stand-in is never drawn beside a routine named "A".
+    expect(resolveRoutine([legacyA], "Routine A", "c1", "westlake").id).toBe("r-a");
+    expect(resolveRoutine([legacyA], "Routine B", "c1", "westlake").id).toBe("temp-b");
+    // A stand-in is never "saved".
+    expect(savedRoutineA([{ id: "temp-a", clientId: "c1", name: "Routine A", machineIds: [] }])).toBeNull();
   });
 });

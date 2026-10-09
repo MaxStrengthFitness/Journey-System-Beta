@@ -126,6 +126,7 @@ export function BriefingPlanCard({ state, view, firstName, nameOf, floor, todayY
         <>
           {today.length === 0 && <p className="rpl-line">Nothing picked for today. Start and add machines as you go.</p>}
           <RoadStrip groups={groups} nameOf={nameOf} label={`${first}'s plan, today first`} />
+          {view === "starting" && state.notOnFloor && <p className="rpl-meta">{state.notOnFloor}</p>}
           {limits}
           {effect && (
             <ul className="rpl-list rpl-list--flush" aria-label="Today's order">

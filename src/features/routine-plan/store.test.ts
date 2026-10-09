@@ -9,7 +9,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type Op = { op: "set" | "update"; path: string; data: Record<string, unknown> };
-const fake = vi.hoisted(() => ({ batches: [] as Array<{ ops: Op[]; committed: boolean }>, autoId: 0, refuse: false }));
+const fake = vi.hoisted(() => ({
+  batches: [] as Array<{ ops: Op[]; committed: boolean }>,
+  /** Writes made on their own, outside any batch (the client's `isRoutineBActive`). */
+  alone: [] as Op[],
+  autoId: 0,
+  refuse: false,
+}));
 
 vi.mock("firebase/firestore", () => {
   const ref = (path: string) => ({ path, id: path.split("/").pop()! });
@@ -25,6 +31,10 @@ vi.mock("firebase/firestore", () => {
     },
     serverTimestamp: () => "SERVER_TIME",
     getDocs: async () => ({ docs: [] }),
+    updateDoc: (r: { path: string }, data: Record<string, unknown>) => {
+      fake.alone.push({ op: "update", path: r.path, data });
+      return Promise.resolve();
+    },
     writeBatch: () => {
       const batch = { ops: [] as Op[], committed: false };
       fake.batches.push(batch);
@@ -68,9 +78,13 @@ const change: PlanChange = {
 
 beforeEach(() => {
   fake.batches.length = 0;
+  fake.alone.length = 0;
   fake.autoId = 0;
   fake.refuse = false;
 });
+
+/** Lets every settled promise's handlers run. */
+const settle = () => new Promise((r) => setTimeout(r, 0));
 
 describe("startPlan: a plan's first write, in one batch", () => {
   // Changed on purpose (Oct 8 2026): this made Routine A with day one in it.
@@ -193,7 +207,11 @@ describe("addStartPlanToBatch: the same first write, in Start's own batch (§4.5
     expect(fake.batches[0]!.committed).toBe(false);
   });
 
-  it("puts the plan on the empty Routine A the client has, never a second one", () => {
+  // Changed on purpose (the whole-branch review, Oct 9 2026): this wrote
+  // `machineIds: []` with the plan, which emptied a Routine A another iPad
+  // had put machines in since it was read. An empty list is a client
+  // starting out, so only the plan goes on.
+  it("puts the plan on the empty Routine A the client has, never a second one, and never empties its machines", () => {
     const batch = writeBatch(db);
     const { routineId } = addStartPlanToBatch(db, batch, {
       routineId: "r-empty",
@@ -205,7 +223,36 @@ describe("addStartPlanToBatch: the same first write, in Start's own batch (§4.5
       change,
     });
     expect(routineId).toBe("r-empty");
-    expect(fake.batches[0]!.ops[0]).toEqual({ op: "update", path: "routines/r-empty", data: { machineIds: [], plan } });
+    expect(fake.batches[0]!.ops[0]).toEqual({ op: "update", path: "routines/r-empty", data: { plan } });
+  });
+});
+
+describe("a change names at most the rules' 30 machines", () => {
+  it("a road longer than 30 is written whole on the plan, and its change names the first 30", async () => {
+    const road = Array.from({ length: 34 }, (_, i) => `m-${i}`);
+    await savePlanChange(db, "r-a", {
+      plan: { ...plan, intended: road },
+      change: { kind: "reorder", machineIds: road, byUid: "uid-sam" },
+      also: [{ kind: "replan", machineIds: road, byUid: "uid-sam" }],
+    });
+    const ops = fake.batches[0]!.ops;
+    expect((ops[0]!.data.plan as RoutinePlan).intended).toHaveLength(34);
+    for (const change of ops.slice(1)) expect(change.data.machineIds).toEqual(road.slice(0, 30));
+  });
+
+  it("Start's own batch: a starting routine's long road can't refuse the session", () => {
+    const road = Array.from({ length: 31 }, (_, i) => `m-${i}`);
+    const batch = writeBatch(db);
+    addStartPlanToBatch(db, batch, {
+      routineId: null,
+      clientId: "c1",
+      studioId: "westlake",
+      name: "Routine A",
+      machineIds: [],
+      plan: { ...plan, intended: road },
+      change: { kind: "start", machineIds: road, byUid: "uid-sam" },
+    });
+    expect(fake.batches[0]!.ops[1]!.data.machineIds).toHaveLength(30);
   });
 });
 
@@ -542,7 +589,11 @@ describe("B planned with the starting lineup", () => {
     expect(fake.batches[0]!.committed).toBe(true);
   });
 
-  it("puts the planned B on the empty, plan-less Routine B the client has, never a second one, and turns B OFF in the same batch", () => {
+  // Changed on purpose (the whole-branch review, Oct 9 2026): B was turned
+  // off IN the batch, so a client the rules refuse an update to (a
+  // cross-train trainer's, or one Mindbody stored with no last name) took
+  // the whole Keep, or Start's session, down with it. It is its own write now.
+  it("puts the planned B on the empty, plan-less Routine B the client has, never a second one, and turns B OFF on its own", () => {
     startPlan(
       db,
       { routineId: "r-a", clientId: "c1", studioId: "westlake", name: "Routine A", machineIds: [], plan, change },
@@ -550,10 +601,12 @@ describe("B planned with the starting lineup", () => {
     );
     expect(fake.batches).toHaveLength(1);
     const ops = fake.batches[0]!.ops;
-    expect(ops.find((o) => o.path === "routines/r-b")).toEqual({ op: "update", path: "routines/r-b", data: { machineIds: [], plan: bPlan } });
-    // An empty Routine B turned on before Round 2 would be alternated into with nothing in it (the
+    expect(ops.find((o) => o.path === "routines/r-b")).toEqual({ op: "update", path: "routines/r-b", data: { plan: bPlan } });
+    // Never the client in the plan's batch...
+    expect(ops.some((o) => o.path.startsWith("clients/"))).toBe(false);
+    // ...but an empty Routine B turned on before Round 2 would be alternated into with nothing in it (the
     // critic's #22; the review of item 8): the one field the B switch writes, off, alone.
-    expect(ops.filter((o) => o.path.startsWith("clients/"))).toEqual([{ op: "update", path: "clients/c1", data: { isRoutineBActive: false } }]);
+    expect(fake.alone).toEqual([{ op: "update", path: "clients/c1", data: { isRoutineBActive: false } }]);
   });
 
   it("a change to A's road takes a planned B's plan with it, in the same batch, and never Routine B's machines", async () => {
@@ -577,7 +630,10 @@ describe("B planned with the starting lineup", () => {
 
   it("Start's own batch: the planned B goes in where plannedBTarget allows, and never over a Routine B of the client's own", () => {
     const batch = writeBatch(db);
-    expect(addPlannedBAtStart(db, batch, { routines: [], clientId: "c1", studioId: "westlake", b: { plan: bPlan, change: planned } })).toBe("auto-1");
+    expect(addPlannedBAtStart(db, batch, { routines: [], clientId: "c1", studioId: "westlake", b: { plan: bPlan, change: planned } })).toEqual({
+      routineId: "auto-1",
+      turnsBOff: false,
+    });
     expect(fake.batches[0]!.ops.map((o) => [o.op, o.path])).toEqual([
       ["set", "routines/auto-1"],
       ["set", "routines/auto-1/planChanges/auto-2"],
@@ -590,7 +646,22 @@ describe("B planned with the starting lineup", () => {
     expect(addPlannedBAtStart(db, batch2, { routines: [], clientId: "c1", studioId: "westlake", b: null })).toBeNull();
   });
 
-  it("the Wrap-up that starts Routine A starts B too: A's ticks, B as A with one swap, its start, and B turned on, ONE batch", async () => {
+  it("Start's own batch over the client's empty Routine B: says B must go off, and never puts the client in the batch", () => {
+    const batch = writeBatch(db);
+    const empty = { id: "r-b", name: "Routine B", machineIds: [] };
+    expect(addPlannedBAtStart(db, batch, { routines: [empty], clientId: "c1", studioId: "westlake", b: { plan: bPlan, change: planned } })).toEqual({
+      routineId: "r-b",
+      turnsBOff: true,
+    });
+    expect(fake.batches[0]!.ops.some((o) => o.path.startsWith("clients/"))).toBe(false);
+    // The caller (the tracker) issues it apart: nothing is written here.
+    expect(fake.alone).toEqual([]);
+  });
+
+  // Changed on purpose (the whole-branch review, Oct 9 2026): B was turned on
+  // IN this batch, so a client the rules refuse an update to threw away the
+  // ticks that start Routine A. B goes on after the batch lands, on its own.
+  it("the Wrap-up that starts Routine A starts B too: A's ticks, B as A with one swap and its start in ONE batch, then B turned on", async () => {
     const startB = {
       routineId: "r-b",
       clientId: "c1",
@@ -618,11 +689,33 @@ describe("B planned with the starting lineup", () => {
       ["set", "routines/r-a/planChanges/*"],
       ["update", "routines/r-b"],
       ["set", "routines/r-b/planChanges/*"],
-      ["update", "clients/c1"],
     ]);
     expect(ops[2]!.data).toEqual({ machineIds: startB.machineIds, plan: startB.plan });
     expect(ops[3]!.data).toEqual({ ...startB.change, at: "SERVER_TIME" });
-    // The one field the B switch has always written, alone: never a whole client write.
-    expect(ops[4]!.data).toEqual({ isRoutineBActive: true });
+    await settle();
+    // The one field the B switch has always written, alone, after the batch landed: never a whole client write.
+    expect(fake.alone).toEqual([{ op: "update", path: "clients/c1", data: { isRoutineBActive: true } }]);
+  });
+
+  it("a Wrap-up batch refused leaves B off: never a Routine B switched on whose machines weren't saved", async () => {
+    fake.refuse = true;
+    const startB = {
+      routineId: "r-b",
+      clientId: "c1",
+      machineIds: ["m-ext"],
+      plan: bPlan,
+      change: { kind: "start" as const, machineIds: ["m-leg-press", "m-ext"], value: "B", byUid: "uid-sam" },
+    };
+    await expect(
+      saveNextTime(
+        db,
+        { kind: "routine", routineId: "r-a", machineIds: ["m-leg-press"], previousMachineIds: [] },
+        { clientId: "c1", studioId: "westlake", trainerId: "t-sam" },
+        null,
+        startB,
+      ),
+    ).rejects.toThrow("permission-denied");
+    await settle();
+    expect(fake.alone).toEqual([]);
   });
 });

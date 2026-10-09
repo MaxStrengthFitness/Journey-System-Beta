@@ -25,8 +25,10 @@
  * session": the client is "starting out at the studio".
  */
 import type { HistoryCoverage } from "../../lib/prior-history";
+import type { Routine } from "../../types";
 import { ADD_CLIENT_REASONS, isProvisional } from "../admin/provisional/provisional";
 import type { ProvisionalFields } from "../admin/provisional/types";
+import { stillBuilding } from "./plan";
 
 export type StartingKind =
   /** Has a routine already, or a plan kept with Routine A still empty; nothing to set up. */
@@ -151,14 +153,42 @@ export interface LearningCurveInput {
  * story is in Journey and is still inside the curve, routine or not; and
  * never when Journey can't tell, which claims nothing.
  *
- * The briefing and the routine drawer both ask it, so one client gets one
- * answer on both screens. It replaced the briefing's intro-session flag
- * (`established={!isIntroSession}`, which no caller ever set) and the
- * drawer's `sessions.length >= 6` (the first-session design round, Oct 8
- * 2026, §4.8).
+ * The briefing and the routine drawer both ask it, with the SAME inputs
+ * (`learningCurveInputOf`), so one client gets one answer on both screens.
+ * It replaced the briefing's intro-session flag (`established={!isIntroSession}`,
+ * which no caller ever set) and the drawer's `sessions.length >= 6` (the
+ * first-session design round, Oct 8 2026, §4.8).
  */
 export function pastLearningCurve(input: LearningCurveInput): boolean {
   if (!input.known || input.routineABeingBuilt) return false;
   if (input.journeySessions !== null && input.journeySessions >= LEARNING_CURVE_SESSIONS) return true;
   return input.coverage === "partial";
+}
+
+/**
+ * The learning curve's inputs, worked out one way for every screen that asks
+ * (the whole-branch review, Oct 9 2026: the drawer said `known: true` and
+ * counted the sessions it had loaded, the briefing waited for the routines
+ * and read the client's count, so one client could be "established" in one
+ * and not the other):
+ * - known: the client's routines have answered (a failed or unanswered
+ *   read claims nothing);
+ * - the sessions: the client's own count (`sessionCount`), null when absent;
+ * - Routine A being built: its plan's switch on AND still short of its plan
+ *   (`stillBuilding`), so a finished plan with the switch left on never
+ *   keeps a client inside the curve for good.
+ */
+export function learningCurveInputOf(input: {
+  routinesKnown: boolean;
+  coverage: HistoryCoverage;
+  client: { sessionCount?: unknown } | null | undefined;
+  routineA: Pick<Routine, "machineIds" | "plan"> | null | undefined;
+}): LearningCurveInput {
+  const count = input.client?.sessionCount;
+  return {
+    known: input.routinesKnown,
+    coverage: input.coverage,
+    journeySessions: typeof count === "number" ? count : null,
+    routineABeingBuilt: stillBuilding(input.routineA?.plan, input.routineA?.machineIds),
+  };
 }

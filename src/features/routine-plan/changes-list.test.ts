@@ -131,8 +131,15 @@ describe("what, in a sentence", () => {
     expect(say({ kind: "cantdo", machineIds: ["m-dip"], value: "2026-11-20" })).toBe("Can't do: Seated Dip · until Nov 20");
   });
 
-  it("says the Academy sheet's column as the sheet labels it, or that ranges are off", () => {
-    expect(say({ kind: "column", value: "female-novice" })).toBe("Academy's starting ranges: the Female · Novice column");
+  it("says a machine put on or taken off a kept plan's day one", () => {
+    expect(say({ kind: "add", machineIds: ["m-dip"], value: "dayone" })).toBe("Put Seated Dip on day one");
+    expect(say({ kind: "remove", machineIds: ["m-dip"], value: "dayone" })).toBe("Took Seated Dip off day one");
+  });
+
+  it("says the Academy sheet's column by its level, or that ranges are off", () => {
+    // The level alone outside the pick sheet: never the sheet's sex word (the whole-branch review, Oct 9 2026).
+    expect(say({ kind: "column", value: "female-novice" })).toBe("Academy's starting ranges: the Novice column");
+    expect(say({ kind: "column", value: "male-advanced" })).not.toMatch(/male|female/i);
     expect(say({ kind: "column", value: "none" })).toBe("Academy's starting ranges: not shown");
   });
 

@@ -84,7 +84,9 @@ function Harness({
   limits = null,
   aAndBTogether = false,
   bPlannable = true,
+  floor = FLOOR,
 }: {
+  floor?: Machine[];
   view: BriefingPlanView;
   intake?: string | null;
   kept?: RoutinePlan | null;
@@ -98,7 +100,7 @@ function Harness({
     view,
     studioId: "westlake",
     studioName: "Westlake",
-    floor: FLOOR,
+    floor,
     intakeText: intake,
     who,
     todayYmd: TODAY,
@@ -109,7 +111,7 @@ function Harness({
   latest = state;
   if (view !== "starting" && view !== "kept") return null;
   return (
-    <BriefingPlanCard state={state} view={view} firstName={firstName} nameOf={nameOf} floor={FLOOR} todayYmd={TODAY} limits={limits} />
+    <BriefingPlanCard state={state} view={view} firstName={firstName} nameOf={nameOf} floor={floor} todayYmd={TODAY} limits={limits} />
   );
 }
 
@@ -185,6 +187,21 @@ afterEach(() => {
 });
 
 describe("a client starting out: the starting lineup's first visit, on the Road", () => {
+  // The whole-branch review (Oct 9 2026): "This floor only" (§4.2: "a machine
+  // the floor lacks is said, never dropped silently") was said on Programming
+  // and not on the briefing's walk-in card: the Road just looked shorter.
+  it("says a machine of the starting routine the floor lacks, never drops it silently", async () => {
+    await mount(<Harness view="starting" floor={FLOOR.filter((m) => m.id !== "m-lumbar")} />);
+    expect(text()).toContain("Low back issues");
+    expect(text()).toContain(`Not on Westlake's floor: ${ACADEMY_MOVEMENT_NAME["m-lumbar"]}`);
+    expect(latest!.today).not.toContain("m-lumbar");
+  });
+
+  it("says nothing of the floor when it has every machine", async () => {
+    await mount(<Harness view="starting" />);
+    expect(text()).not.toContain("Not on Westlake's floor");
+  });
+
   it("puts day one under the Today bracket, the rest hollow with the next stop, and says where it came from", async () => {
     await mount(<Harness view="starting" />);
     expect(text()).toContain("Dana's starting lineup");

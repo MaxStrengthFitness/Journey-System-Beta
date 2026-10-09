@@ -320,7 +320,7 @@ export function useFocusArea(input: FocusAreaInput): FocusAreaParts {
                   </span>
                   <span className="rpl-focus__sub">
                     {row.singleJoint ? "Single-joint · " : ""}
-                    {focusCountWords(row)}
+                    {focusCountWords(row, nameOf)}
                   </span>
                 </div>
                 {canWrite && (

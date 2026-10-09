@@ -10,15 +10,24 @@
  * Leg Press, so the Pulldown moves up. All of that is normal coaching, and
  * none of it is a decision about the client's programme.
  *
- * So: a mid-session change is temporary and must never write back to the
- * client's routine. Permanent routine changes are made on the client profile
- * and nowhere else.
- *
- * One exception, on purpose (the first-session design round, Oct 8 2026):
- * Routine A's PLAN may be changed mid-session (AJ's Q6, quoted at its test
- * below), through routine-plan/store.ts alone and never awaited. Today's
- * order stays the session's own, and the Wrap-up decides what the routine
- * keeps.
+ * So: a mid-session change to TODAY'S ORDER is temporary and never writes
+ * back to the client's routine. Permanent routine changes are made on the
+ * client profile, with three sanctioned writers outside it (the
+ * first-session design round, Oct 8 2026; restated by the whole-branch
+ * review, Oct 9 2026), each through routine-plan/store.ts alone and each
+ * issued, never awaited by a tap:
+ *   1. Start, for a client starting out at the studio: Routine A made EMPTY
+ *      from the starting plan the briefing handed up, the plan carrying day
+ *      one (`addStartPlanToBatch`, a planned B beside it with
+ *      `addPlannedBAtStart`), in the Start batch;
+ *   2. the session's plan sheet (the grid's corner, and the phone's door):
+ *      Routine A's PLAN, and Routine A's machines when a swap, a can't-do or
+ *      a re-plan moves them, Routine B following in the same batch (AJ's Q6,
+ *      quoted at its test below); today's order changes only for a machine
+ *      with no set logged today;
+ *   3. the Wrap-up's Next time: the ticked machines into the routine, once,
+ *      on the way out (`saveNextTime`).
+ * Nothing else on the session path writes a routine.
  *
  * These tests read the source and assert that directly, in the same spirit as
  * journey-grid/contrast.test.ts parsing the token file. A unit test of the
@@ -185,7 +194,8 @@ describe("mid-session changes stay in session state", () => {
   it("the session screen never updates or replaces a routine document", () => {
     // Rewriting an existing routine from here is not allowed. (Making one
     // was, through the briefing's Create_A / Create_B path, until the
-    // first-session design round, Oct 8 2026: see the next test.) The
+    // first-session design round, Oct 8 2026: see the next test. Those states
+    // are TodayOnly_A / TodayOnly_B now, today's list and no routine.) The
     // Wrap-up's Next time is the one way a session's machines reach a
     // routine, and it goes through routine-plan/store.ts, never a write of
     // the tracker's own (the last test in this block).
@@ -200,7 +210,8 @@ describe("mid-session changes stay in session state", () => {
 
   // Changed on purpose (the first-session design round, Oct 8 2026, §4.8).
   // Start used to save the list the briefing built under a "Today only"
-  // label as the client's Routine A or B (the Create_A / Create_B path).
+  // label as the client's Routine A or B (the Create_A / Create_B path,
+  // TodayOnly_A / TodayOnly_B since the whole-branch review, Oct 9 2026).
   // The consult is not Routine A (AJ, Oct 8 2026: "this also counts with
   // the consult visit, sometimes the consult machines will not be the same
   // as their a routine"), so today's list is the session's alone. The one
@@ -281,8 +292,13 @@ describe("mid-session changes stay in session state", () => {
     // also adds B planned beside a starting plan, through the plan's own
     // writer (`addPlannedBAtStart`). AJ, Oct 7 2026: "Some studios may start
     // building an A and B routine immediately for a client. So we need to be
-    // able to have that customization." Still store.ts alone.
-    expect(WTV).toMatch(/import \{ addPlannedBAtStart, addStartPlanToBatch, saveNextTime \} from "\.\.\/features\/routine-plan\/store";/);
+    // able to have that customization." Still store.ts alone. And (the
+    // whole-branch review, Oct 9 2026) B switched off over a client's own
+    // empty Routine B is its own write, `setRoutineBActive`, never inside
+    // Start's batch: a refused client field must never take the session down.
+    expect(WTV).toMatch(
+      /import \{ addPlannedBAtStart, addStartPlanToBatch, saveNextTime, setRoutineBActive \} from "\.\.\/features\/routine-plan\/store";/,
+    );
     const body = bodyOf(WTV, "savePostSessionNextTime");
     expect(body, "savePostSessionNextTime not found").not.toBe("");
     expect(body).toMatch(/saveNextTime\(db, write,/);
@@ -322,7 +338,7 @@ describe("mid-session changes stay in session state", () => {
   });
 });
 
-describe("the client profile is the only place a routine is rewritten", () => {
+describe("the Edit routine drawer's rewrite of a routine", () => {
   const DRAWER = code(read("src/components/EditRoutineDrawer.tsx"));
 
   it("EditRoutineDrawer writes routines and logs an adjustment", () => {
