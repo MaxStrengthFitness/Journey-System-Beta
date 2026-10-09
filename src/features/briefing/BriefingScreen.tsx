@@ -141,6 +141,7 @@ import { useLeaveGuard, useUnsavedChanges } from "../unsaved-changes";
 import { openProfileAt } from "../client-profile/profile-nav";
 import { isProvisionalNewClient, pastLearningCurve, startingKindOf } from "../routine-plan/client-kind";
 import { openHealthWords, planIntakeText } from "../routine-plan/intake";
+import { focusLine } from "../routine-plan/focus";
 import { planProgress, progressLine, todayFor } from "../routine-plan/plan";
 import { roadGroups } from "../routine-plan/lineup";
 import { bProgressOf, bRoadGroups, bStatus, bStatusLine, isBPlan, swapsOf } from "../routine-plan/b-routine";
@@ -726,6 +727,8 @@ export function BriefingScreen({
           return {
             groups: bRoadGroups({
               bPlan: routineB.plan,
+              // With Routine A's machines, B's own on deck (a weak area's addition for B) is on the Road too.
+              aRoutine: routineA?.machineIds ?? [],
               today: selectedRoutineIds,
               bRoutine: routineB.machineIds ?? [],
               cantDo: routineA?.plan?.cantDo,
@@ -733,11 +736,16 @@ export function BriefingScreen({
               nameOf: planNameOf,
               firstName,
             }),
-            line: bStatusLine(status, planNameOf),
+            // The client's weak area, from Routine A's plan, read by A and B (Round 2, item 7).
+            line: [bStatusLine(status, planNameOf), focusLine(routineA?.plan)].filter(Boolean).join(" · "),
             progress: bProgressOf(status),
           };
         })()
       : null;
+  /* A session on a Routine B of its own (no plan of swaps, so no Road): the
+     weak area still reaches the next trainer, on the routine line. */
+  const routineFocus =
+    (planView === "routine" || planView === "in-progress") && routineLetter === "B" && !bRoad ? focusLine(routineA?.plan) : null;
   /* The plan card's safety line: today's machines against the client's
      limits, as the routine line says it for a routine (the routine line is
      not drawn for a plan card). */
@@ -1314,6 +1322,7 @@ export function BriefingScreen({
                   {selectedRoutineIds.length} {selectedRoutineIds.length === 1 ? "machine" : "machines"}
                   {routinePickedByTrainer ? "" : " · suggested"}
                   {isAdjusting ? " · changed for today" : ""}
+                  {routineFocus ? ` · ${routineFocus}` : ""}
                 </span>
                 {codes.length > 0 && <span className="br-routine__codes">{codes.join(" · ")}</span>}
                 {touching.length > 0 && (
@@ -1335,7 +1344,7 @@ export function BriefingScreen({
                     groups={inProgress.groups}
                     nameOf={planNameOf}
                     label="Routine A's plan"
-                    progressLine={progressLine(inProgress.progress, planNameOf, routineA.plan.dayOne)}
+                    progressLine={[progressLine(inProgress.progress, planNameOf, routineA.plan.dayOne), focusLine(routineA.plan)].filter(Boolean).join(" · ")}
                     progress={inProgress.progress}
                   />
                 </div>

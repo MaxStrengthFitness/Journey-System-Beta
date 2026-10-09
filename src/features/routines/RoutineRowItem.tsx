@@ -47,7 +47,8 @@ export const RoutineRowItem = memo(function RoutineRowItem({ row, onSelect, vari
       type={onSelect ? "button" : undefined}
       className={cell ? "rt-row__hit rt-cellrow__hit" : "rt-row__hit"}
       onClick={onSelect ? () => onSelect(row.machineId) : undefined}
-      aria-label={onSelect ? `Open ${row.name}` : undefined}
+      // The plan's word read aloud too (the label replaces the visible words), a weak area's tint included.
+      aria-label={onSelect ? (note ? `Open ${row.name} · ${note}` : `Open ${row.name}`) : undefined}
     >
       {!cell && (
         <span className="rt-row__n" aria-hidden="true">

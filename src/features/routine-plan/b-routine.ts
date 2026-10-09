@@ -236,7 +236,7 @@ function extrasOf(list: readonly string[], aMachines: readonly string[], swaps: 
  * B keeps them out when A moves and when a swap goes in; rebuilding B from
  * A would otherwise put them back without anyone choosing it.
  */
-function droppedFromB(aRoutine: readonly string[], swaps: readonly PlanSwap[], bRoutine: readonly string[]): string[] {
+export function droppedFromB(aRoutine: readonly string[], swaps: readonly PlanSwap[], bRoutine: readonly string[]): string[] {
   const made = swaps.slice(0, swapsMade(swaps, bRoutine));
   return aRoutine.filter((id) => !bRoutine.includes(id) && !made.some((s) => s.replaces === id));
 }
@@ -596,6 +596,31 @@ export function bColumnOf(aRoutine: readonly string[], bPlan: Pick<RoutinePlan, 
   return { rows, extras, gone, status };
 }
 
+/**
+ * B's own on deck: machines on B's plan's road that Routine B doesn't hold
+ * yet and that are neither A's nor a swap's (a weak area's addition for B,
+ * focus.ts `focusAddToB`). Drawn under B's column; Routine B takes one only
+ * on purpose (the Wrap-up after a B session, or the Edit routine drawer).
+ */
+export function bOnDeck(aRoutine: readonly string[], bPlan: Pick<RoutinePlan, "intended" | "swaps">, bRoutine: readonly string[]): string[] {
+  const intended = Array.isArray(bPlan.intended) ? bPlan.intended : [];
+  return once(extrasOf(intended, aRoutine, swapsOf(bPlan))).filter((id) => !bRoutine.includes(id));
+}
+
+/**
+ * A machine taken off B's own on deck (a tap on "On deck in B"): a "remove"
+ * on B's plan, Routine B as it was. Null when it isn't on B's own deck, so
+ * a swap's machine or one of A's is never taken off from here.
+ */
+export function bOnDeckRemoved(aRoutine: readonly string[], bPlan: RoutinePlan, bRoutine: readonly string[], machineId: string): BEdit | null {
+  if (!bOnDeck(aRoutine, bPlan, bRoutine).includes(machineId)) return null;
+  return {
+    plan: { ...bPlan, intended: bPlan.intended.filter((id) => id !== machineId) },
+    machineIds: [...bRoutine],
+    changes: [{ kind: "remove", machineIds: [machineId] }],
+  };
+}
+
 /* ── B's changes ───────────────────────────────────────────────────────── */
 
 /** One tap's edit to B: its plan, Routine B's machines, and the change(s), unsigned. */
@@ -870,11 +895,14 @@ export const B_SWAPS_SOURCE = "From the Academy's AB Routines and Exercise Selec
  * "the Road's one-line route wherever a glance is all there is"): today's
  * machines under the bracket, then the swaps still to come, each its
  * incoming machine with the A machine it replaces under it, the first the
- * next stop; then any machine B's plan names that the client can't do,
- * crossed.
+ * next stop; then B's own on deck (a weak area's addition for B, given
+ * Routine A's machines, `bOnDeck`), so the next trainer sees it; then any
+ * machine B's plan names that the client can't do, crossed.
  */
 export function bRoadGroups(input: {
   bPlan: Pick<RoutinePlan, "swaps" | "intended">;
+  /** Routine A's machines: with them, B's own on deck is drawn. */
+  aRoutine?: readonly string[];
   /** Today's machines, in today's order. */
   today: readonly string[];
   /** B as it stands: which swaps are made. */
@@ -891,6 +919,9 @@ export function bRoadGroups(input: {
   const held = activeCantDo({ cantDo: input.cantDo ? [...input.cantDo] : undefined }, input.todayYmd).map((c) => c.machineId);
   const coming = swaps.slice(made).filter((s) => !today.includes(s.with) && !held.includes(s.with));
   const named = new Set([...input.bPlan.intended, ...swaps.map((s) => s.with)]);
+  const deck = input.aRoutine
+    ? bOnDeck(input.aRoutine, input.bPlan, input.bRoutine).filter((id) => !today.includes(id) && !held.includes(id))
+    : [];
   const first = input.firstName?.trim();
   const groups: RoadGroup[] = [
     { key: "today", label: `Today · ${today.length}`, bracket: true, stations: today.map((id) => ({ id, kind: "in" as const })) },
@@ -903,6 +934,7 @@ export function bRoadGroups(input: {
           : { id: s.with, kind: "planned" as const, mark: `for ${input.nameOf(s.replaces)}` },
       ),
     },
+    { key: "deck", label: "On deck in B", stations: deck.map((id) => ({ id, kind: "planned" as const })) },
     {
       key: "cantdo",
       label: first ? `Not for ${first}` : "Can't do",

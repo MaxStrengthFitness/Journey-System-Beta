@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import type { Machine } from "../../../types";
 import { changeTodayRows, todayEffect, todayWith } from "../briefing-plan";
 import { activeCantDo } from "../cant-do";
+import { focusLine } from "../focus";
 import { roadGroups } from "../lineup";
 import { DoorButton, OrderNote, PlanSheet, SourceTag, TickRow } from "./parts";
 import { floorMachinesOf } from "./host";
@@ -131,7 +132,10 @@ export function BriefingPlanCard({ state, view, firstName, nameOf, floor, todayY
             </ul>
           )}
           <p className="rpl-meta">
-            {view === "starting" ? "Starts Routine A's plan · nothing is saved until Start" : "Day one · Routine A starts at the Wrap-up"}
+            {view === "starting"
+              ? "Starts Routine A's plan · nothing is saved until Start"
+              : // A kept plan's weak area, so the next trainer sees it at a glance (Round 2, item 7).
+                ["Day one · Routine A starts at the Wrap-up", focusLine(plan)].filter(Boolean).join(" · ")}
           </p>
         </>
       ) : picking ? (

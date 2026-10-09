@@ -383,6 +383,11 @@ describe("a plan kept with Routine A still empty", () => {
     await tap("Who kept this plan");
     expect(text()).toContain("Kept by Sam Lee, Oct 8.");
   });
+
+  it("says the plan's weak area at a glance, for the next trainer (Round 2, item 7)", async () => {
+    await mount(<Harness view="kept" kept={{ ...expected.plan, madeAt: TODAY, focus: ["delts"] }} />);
+    expect(text()).toContain("Day one · Routine A starts at the Wrap-up · Focus: Delts");
+  });
 });
 
 describe("a view with no card reads nothing", () => {

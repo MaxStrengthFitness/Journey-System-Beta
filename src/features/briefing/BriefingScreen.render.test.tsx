@@ -1134,6 +1134,22 @@ describe("how the client starts (the first-session design round, Oct 8 2026)", (
     expect(onStart.mock.calls[0][5]).toBeUndefined();
   });
 
+  /* A weak area (Round 2 of the design round, item 7): the plan's focus is
+     said on the glance line, so the next trainer sees it before Start. */
+  it("a plan in progress with a weak area: 'Focus: Delts' on the Road's line", async () => {
+    const plan = {
+      purpose: "The core",
+      intended: ["m-leg-press", "m-compound-row", "m-lumbar"],
+      building: true,
+      focus: ["delts"],
+      madeByUid: "uid-sam",
+    };
+    const a = { id: "rA", clientId: "c-new", name: "Routine A", machineIds: ["m-leg-press"], plan } as unknown as Routine;
+    const host = await mount(<Fresh rs={[a]} onStart={vi.fn()} />);
+    const road = host.querySelector('[data-testid="briefing-plan-road"]')!;
+    expect(road.textContent).toContain(`1 of 3 · next: ${nameOfId("m-compound-row")} · Focus: Delts`);
+  });
+
   /* B, molded in (Round 2 of the design round, item 6): a client on Routine
      B sees the Road for B as the glance, "B · 1 of 2 swaps", and nothing
      else on the briefing changes. */
@@ -1182,6 +1198,59 @@ describe("how the client starts (the first-session design round, Oct 8 2026)", (
     expect(host.querySelector('[data-testid="briefing-plan-road"]')).toBeNull();
     await click(buttonByText(host, "Start session"));
     expect(onStart.mock.calls[0][0]).toBe("B");
+  });
+
+  /* A weak area (Round 2 of the design round, item 7): the focus kept on
+     Routine A's plan reaches a session on B too, and an addition for B
+     alone is on B's Road, so the next trainer sees both before Start. */
+  describe("a weak area on a session on Routine B", () => {
+    const aPlan = { purpose: "The core", intended: ["m-leg-press", "m-compound-row", "m-lumbar"], building: false, focus: ["delts"], madeByUid: "uid-sam" };
+    const a = { id: "rA", clientId: "c-new", name: "Routine A", machineIds: ["m-leg-press", "m-compound-row", "m-lumbar"], plan: aPlan } as unknown as Routine;
+    const briefing = (b: Routine) => (
+      <BriefingScreen
+        authTrainer={trainer}
+        client={{ ...fresh, sessionCount: 12, isRoutineBActive: true } as Client}
+        coverage="complete"
+        studioId="s1"
+        studioName="Westlake"
+        targetRoutine={b}
+        lastSession={null}
+        sessions={[]}
+        routinesKnown
+        onStart={vi.fn()}
+        onClose={() => {}}
+        machines={floor}
+        routines={[a, b]}
+        trainers={[trainer]}
+      />
+    );
+
+    it("with B's plan: 'Focus: Delts' on B's Road line, and B's own on deck on the Road", async () => {
+      const bPlan = {
+        purpose: "Variety: the same regions, different machines",
+        purposeKinds: ["variety"],
+        intended: ["m-ext", "m-pulldown", "m-lumbar", "m-lateral-raise"],
+        swaps: [
+          { replaces: "m-leg-press", with: "m-ext" },
+          { replaces: "m-compound-row", with: "m-pulldown" },
+        ],
+        building: false,
+        madeByUid: "uid-sam",
+      };
+      const b = { id: "rB", clientId: "c-new", name: "Routine B", machineIds: ["m-ext", "m-compound-row", "m-lumbar"], plan: bPlan } as unknown as Routine;
+      const host = await mount(briefing(b));
+      const road = host.querySelector('[data-testid="briefing-b-road"]')!;
+      expect(road.textContent).toContain(`B · 1 of 2 swaps · next: ${nameOfId("m-pulldown")} for ${nameOfId("m-compound-row")} · Focus: Delts`);
+      expect(road.textContent).toContain("On deck in B");
+      expect(road.textContent).toContain(nameOfId("m-lateral-raise"));
+    });
+
+    it("with a Routine B of its own (no Road): 'Focus: Delts' on the routine line", async () => {
+      const b = { id: "rB", clientId: "c-new", name: "Routine B", machineIds: ["m-ext", "m-pulldown", "m-lumbar"] } as unknown as Routine;
+      const host = await mount(briefing(b));
+      expect(host.querySelector('[data-testid="briefing-b-road"]')).toBeNull();
+      expect(host.querySelector('[data-testid="briefing-routine-line"]')!.textContent).toMatch(/Routine B · 3 machines.* · Focus: Delts/);
+    });
   });
 
   /* The builder's "thin" advice ("Most established clients run at least

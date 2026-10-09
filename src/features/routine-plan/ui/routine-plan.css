@@ -1349,6 +1349,206 @@ button.rpl-bcell:focus-visible { outline: 2px solid var(--eq-focus-ring); outlin
   color: var(--eq-ink);
 }
 
+/* B's own on deck (a weak area's addition for B): quiet, like a place B follows, until it is tapped. */
+.rpl-bcell[data-kind="deck"]:not([aria-pressed="true"]) .rpl-bcell__name { color: var(--eq-ink-2); }
+
+/* ---------- A weak area (Round 2, item 7) -------------------------------- */
+
+/* The quiet control under the plan's heads: Weak area, its chips, the
+   legend, and (portrait) the three answers. */
+.rpl-focus {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid var(--eq-divider);
+}
+.rpl-focus__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--eq-ink-2);
+}
+.rpl-focus__key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.rpl-focus__swatch {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+.rpl-focus__swatch--primary {
+  background: var(--eq-live-fill);
+  border: 1px solid var(--eq-live);
+}
+.rpl-focus__swatch--helper {
+  background: var(--eq-raised);
+  border: 1px solid var(--eq-live);
+  outline: 1px solid var(--eq-live);
+  outline-offset: -2px;
+}
+
+/* The three answers, numbered. */
+.rpl-focus__answers {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+.rpl-focus__answers > * { align-self: stretch; }
+.rpl-focus__answers > .rpl-source { align-self: flex-start; }
+.rpl-focus__list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rpl-focus__answer {
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+.rpl-focus__n {
+  display: grid;
+  place-items: center;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--eq-ink);
+  color: var(--eq-surface);
+  font-size: 12px;
+  font-weight: 700;
+}
+.rpl-focus__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.rpl-focus__q {
+  margin: 0;
+  padding-top: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--eq-ink);
+}
+.rpl-focus__text {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+/* A routine's line: its tag, and the machines that work the area. */
+.rpl-focus__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+.rpl-focus__line {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+/* Which routine an answer is about: words, never a control (no pointer, the soft edge). */
+.rpl-focus__tag {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--eq-border);
+  background: var(--eq-surface);
+  color: var(--eq-ink-2);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+/* A suggestion: in a well, its words and its one tap. */
+.rpl-focus__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
+}
+.rpl-focus__rowtext {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.rpl-focus__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.rpl-focus__what {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+.rpl-focus__sub {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--eq-ink-2);
+  overflow-wrap: anywhere;
+}
+
+/* The tints: a machine that works the area as a main mover on the blue
+   tint, a helper on a blue outline (a ring two pixels deep, drawn inside
+   the edge so nothing moves). A picked B cell keeps its own blue. */
+.rt-cellrow.rpl-tint--primary .rt-cellrow__hit,
+.rpl-row.rpl-tint--primary .rpl-cell,
+.rpl-bcell[data-focus="primary"]:not([aria-pressed="true"]) {
+  background-color: var(--eq-live-fill);
+  border-color: var(--eq-live);
+}
+.rt-cellrow.rpl-tint--helper .rt-cellrow__hit,
+.rpl-row.rpl-tint--helper .rpl-cell,
+.rpl-bcell[data-focus="helper"]:not([aria-pressed="true"]) {
+  border-color: var(--eq-live);
+  outline: 1px solid var(--eq-live);
+  outline-offset: -2px;
+}
+/* The keyboard's focus ring still wins on a tinted cell. */
+.rt-cellrow.rpl-tint--helper .rt-cellrow__hit:focus-visible,
+.rpl-row.rpl-tint--helper .rpl-cell:focus-visible,
+.rpl-bcell[data-focus]:focus-visible {
+  outline: 2px solid var(--eq-focus-ring);
+  outline-offset: 1px;
+}
+/* "Focus: Delts" in the plan's head. */
+.rpl-focusline {
+  font-weight: 600;
+  color: var(--eq-ink);
+}
+
 /* ---------- A phone ------------------------------------------------------- */
 
 @media (max-width: 599px) {

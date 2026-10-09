@@ -21,6 +21,12 @@
  * the next one, B is for), and before B starts one quiet cell and Plan B
  * (`BColumn.tsx`). On deck and the bench stay A's, across both columns.
  *
+ * A weak area (Round 2, item 7; `FocusArea.tsx`): "Focus: Delts" in the
+ * head, a quiet Weak area control under the heads, the machines that work
+ * the area tinted on A's rows, On deck and B's cells, and the Academy's three
+ * answers under the chips, or beside the lineup above the Changes on a
+ * landscape iPad. Never a reorder, never a weight.
+ *
  * Every change: AJ, Oct 7 2026, "Any trainer who trains the client can
  * definitely change the plan ... You should be able to change that and make
  * the call as a trainer because you're training them that day", and "it's
@@ -61,12 +67,14 @@ import {
   writeOf,
   type PlanEdit,
 } from "../lineup";
+import { focusCellWords } from "../focus";
 import { startingSourceWords } from "../start-part";
 import { TEMPLATE_SOURCE, academyTemplateName } from "../starting-plan";
 import { academyTemplateOf } from "../starting-routines";
 import type { RoutinePlan } from "../types";
 import { useBColumn, type BSide } from "./BColumn";
 import { CantDoSheet, type CantDoSave } from "./CantDoSheet";
+import { useFocusArea } from "./FocusArea";
 import { floorMachinesOf, type PlanHost } from "./host";
 import { BenchEntry, GroupHead, LineupRow, NextPill, Num, OrderNote, PlanMeter, PlanSheet, SaidLine, SourceTag } from "./parts";
 import { PlanChangesList } from "./PlanChangesList";
@@ -118,16 +126,6 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
   const model = useMemo(() => lineupOf(plan, routineIds, today, nameOf), [plan, routineIds, today, nameOf]);
   const effects = useMemo(() => effectsAbove(model.first, nameOf, floor), [model.first, nameOf, floor]);
   const rowOf = useMemo(() => new Map(rows.map((r) => [r.machineId, r])), [rows]);
-  /** A machine standing in for one on the bench: "instead of Seated Dip". */
-  /* B's column beside Routine A's rows, once Routine A has machines to copy. */
-  const bParts = useBColumn({ b, aRoutine: routineIds, aPlan: plan, host, floor, nameOf, canWrite });
-  const ab = bParts.mode !== "none" && !model.dayOneRuns && model.first.length > 0;
-  const aside = ab ? "rpl-aside" : undefined;
-  const insteadOf = useMemo(() => {
-    const out = new Map<string, string>();
-    for (const b of model.bench) if (b.active) for (const m of b.entry.replacedBy ?? []) out.set(m, b.entry.machineId);
-    return out;
-  }, [model.bench]);
 
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [said, setSaid] = useState<string | null>(null);
@@ -143,6 +141,53 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
     setNonce((n) => n + 1);
     if (!wide) setCount(null);
   };
+
+  /* A weak area (Round 2, item 7): the control, the tints and the three answers. */
+  const focus = useFocusArea({
+    routineId,
+    plan,
+    routine: routineIds,
+    first: model.first,
+    deck: model.deck,
+    b,
+    host,
+    floor,
+    nameOf,
+    canWrite,
+    beside: wide,
+    onChanged: changed,
+  });
+  const focusRoleOf = (id: string) => (focus.roles && focus.area ? focus.roles.get(id) : undefined);
+  /** A tinted row's class beside its place in the A | B lineup: a main mover on the blue tint, a helper on the blue outline. */
+  const tintOf = (id: string, side?: string) => {
+    const role = focusRoleOf(id);
+    return [side, role ? `rpl-tint rpl-tint--${role}` : null].filter(Boolean).join(" ") || undefined;
+  };
+  /** The tint said in words too ("works the delts", "helps"), so colour is never the only way to read it. */
+  const tintWords = (id: string) => {
+    const role = focusRoleOf(id);
+    return role && focus.area ? focusCellWords(role, focus.area) : null;
+  };
+
+  /* B's column beside Routine A's rows, once Routine A has machines to copy. */
+  const bParts = useBColumn({
+    b,
+    aRoutine: routineIds,
+    aPlan: plan,
+    host,
+    floor,
+    nameOf,
+    canWrite,
+    focus: focus.roles && focus.area ? { area: focus.area, roles: focus.roles } : null,
+  });
+  const ab = bParts.mode !== "none" && !model.dayOneRuns && model.first.length > 0;
+  const aside = ab ? "rpl-aside" : undefined;
+  /** A machine standing in for one on the bench: "instead of Seated Dip". */
+  const insteadOf = useMemo(() => {
+    const out = new Map<string, string>();
+    for (const b of model.bench) if (b.active) for (const m of b.entry.replacedBy ?? []) out.set(m, b.entry.machineId);
+    return out;
+  }, [model.bench]);
   const save = (edit: PlanEdit, reason: string | null, words?: string | null) => {
     if (!who) return;
     host.actions.save(routineId, writeOf(edit, routineIds, who, reason));
@@ -290,6 +335,7 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
           </div>
         </div>
       )}
+      {focus.headLine && <p className="rpl-line rpl-focusline">{focus.headLine}</p>}
       <div className="rpl-progress">
         <p className="rpl-progress__line">{model.line}</p>
         {model.progress.of > 0 && <PlanMeter progress={model.progress} />}
@@ -354,7 +400,11 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
     for (const e of effects.get(i) ?? []) items.push(<OrderNote key={`e-${e.ruleId}-${i}`} effect={e} className={aside} />);
     if (ab) items.push(...bParts.notesFor(id));
     const instead = insteadOf.get(id);
-    const note = [instead ? `instead of ${nameOf(instead)}` : null, !model.dayOneRuns && !plan.intended.includes(id) ? "not in the plan" : null]
+    const note = [
+      instead ? `instead of ${nameOf(instead)}` : null,
+      !model.dayOneRuns && !plan.intended.includes(id) ? "not in the plan" : null,
+      tintWords(id),
+    ]
       .filter(Boolean)
       .join(" · ");
     const row = rowOf.get(id);
@@ -368,7 +418,7 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
           note={note || null}
           onSelect={row.missing ? undefined : onSelectMachine}
           action={changeButton(id)}
-          className={aside}
+          className={tintOf(id, aside)}
         />,
       );
     } else {
@@ -381,7 +431,7 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
           onOpen={openCard(id)}
           openLabel={`Open ${nameOf(id)}`}
           action={changeButton(id)}
-          className={aside}
+          className={tintOf(id, aside)}
         />,
       );
     }
@@ -403,6 +453,7 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
   model.deck.forEach((id, j) => {
     const isNext = j === 0;
     const instead = insteadOf.get(id);
+    const sub = [instead ? `instead of ${nameOf(instead)}` : null, tintWords(id)].filter(Boolean).join(" · ");
     items.push(
       <LineupRow
         key={`k-${id}`}
@@ -410,9 +461,11 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
         tone={isNext ? "next" : "deck"}
         name={nameOf(id)}
         badge={isNext ? <NextPill /> : undefined}
-        sub={instead ? `instead of ${nameOf(instead)}` : undefined}
+        sub={sub || undefined}
+        className={tintOf(id)}
         onOpen={openCard(id)}
-        openLabel={`Open ${nameOf(id)}`}
+        // The row's words read aloud too (the label replaces them), the tint's included.
+        openLabel={sub ? `Open ${nameOf(id)} · ${sub}` : `Open ${nameOf(id)}`}
         action={
           <>
             {isNext && canWrite && !model.dayOneRuns && (
@@ -477,6 +530,7 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
         {head}
         {planHead}
         {ab && bParts.head}
+        {focus.control}
         {said && (
           <div className="rpl-saidwrap">
             <SaidLine onClear={() => setSaid(null)}>{said}</SaidLine>
@@ -487,13 +541,17 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
         </ol>
       </section>
       {wide && (
-        <aside className="rpl-panel" aria-label="Changes">
-          <div className="rpl-panel__head">
-            <h3 className="rpl-panel__title">Changes</h3>
-            {count !== null && <span className="rpl-meta">{count}</span>}
-          </div>
-          {changes}
-        </aside>
+        <div className="rpl-col">
+          {/* A weak area's answers, beside the lineup they tint. */}
+          {focus.panel}
+          <aside className="rpl-panel" aria-label="Changes">
+            <div className="rpl-panel__head">
+              <h3 className="rpl-panel__title">Changes</h3>
+              {count !== null && <span className="rpl-meta">{count}</span>}
+            </div>
+            {changes}
+          </aside>
+        </div>
       )}
 
       {rowSheet}
@@ -532,6 +590,7 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
         </PlanSheet>
       )}
       {bParts.sheets}
+      {focus.sheets}
       {sheet?.kind === "reason" && (
         <ReasonSheet
           open

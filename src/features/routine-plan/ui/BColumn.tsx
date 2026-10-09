@@ -52,6 +52,8 @@ import {
   bSlotPlanned,
   bStatusLine,
   bSwapChoices,
+  bOnDeck,
+  bOnDeckRemoved,
   bSwapWait,
   bSwappedIn,
   isBPlan,
@@ -63,6 +65,7 @@ import {
   type BSwapWait,
 } from "../b-routine";
 import { activeCantDo } from "../cant-do";
+import { focusCellWords, type FocusRole } from "../focus";
 import { FAMILY_SOURCE, SUBSTITUTES_SOURCE, effectsAbove, namesOf, signedChange } from "../lineup";
 import type { OrderEffect } from "../order-effects";
 import { startingSourceWords } from "../start-part";
@@ -114,6 +117,12 @@ export interface BColumnInput {
   floor: readonly FloorMachine[];
   nameOf: (id: string) => string;
   canWrite: boolean;
+  /**
+   * A weak area's tints (Round 2, item 7; focus.ts): how each machine B runs
+   * works the area, by floor id. A cell is tinted by the machine at its
+   * place and says it in words beside the tint. Absent: no tints.
+   */
+  focus?: { area: string; roles: ReadonlyMap<string, FocusRole> } | null;
 }
 
 export interface BColumnParts {
@@ -168,7 +177,7 @@ export function BAcademyLine({ aRunsLine }: { aRunsLine: string | null }) {
 }
 
 export function useBColumn(input: BColumnInput): BColumnParts {
-  const { b, aRoutine, aPlan, host, floor, nameOf, canWrite } = input;
+  const { b, aRoutine, aPlan, host, floor, nameOf, canWrite, focus = null } = input;
   const mode = bModeOf(aRoutine, b);
   const bRoutine = b?.routine ?? null;
   const bPlan = mode === "plan" && bRoutine && isBPlan(bRoutine.plan) ? bRoutine.plan : null;
@@ -387,7 +396,9 @@ export function useBColumn(input: BColumnInput): BColumnParts {
   const cellFor = (aId: string): ReactNode[] => {
     const row = column?.rows.find((r) => r.aId === aId);
     if (!row) return [];
-    const { name, sub } = cellWords(row);
+    const { name, sub: words } = cellWords(row);
+    const role = row.bId ? focus?.roles.get(row.bId) : undefined;
+    const sub = role && focus ? `${words} · ${focusCellWords(role, focus.area)}` : words;
     const pressed = picked === row.aId;
     const inner = (
       <>
@@ -405,6 +416,7 @@ export function useBColumn(input: BColumnInput): BColumnParts {
             type="button"
             className="rpl-bcell"
             data-kind={row.kind}
+            data-focus={role}
             aria-pressed={pressed}
             aria-label={`Routine B: ${name} · ${sub}`}
             onClick={() => setPicked(pressed ? null : row.aId)}
@@ -412,7 +424,7 @@ export function useBColumn(input: BColumnInput): BColumnParts {
             {inner}
           </button>
         ) : (
-          <span className="rpl-bcell" data-kind={row.kind}>
+          <span className="rpl-bcell" data-kind={row.kind} data-focus={role}>
             {inner}
           </span>
         )}
@@ -423,17 +435,80 @@ export function useBColumn(input: BColumnInput): BColumnParts {
   const notesFor = (aId: string): ReactNode[] =>
     (effects.get(aId) ?? []).map((e) => <OrderNote key={`be-${e.ruleId}-${aId}`} effect={e} className="rpl-bside" />);
 
-  const extras: ReactNode[] = (column?.extras ?? []).map((e) => (
-    <li key={`bx-${e.id}`} className="rpl-bside">
-      <span className="rpl-bcell" data-kind="own">
-        <ArrowLeftRight size={18} className="rpl-bcell__icon" aria-hidden="true" />
-        <span className="rpl-bcell__text">
-          <span className="rpl-bcell__name">{nameOf(e.id)}</span>
-          <span className="rpl-bcell__sub">{e.for ? `B's own · for ${nameOf(e.for)}, no longer in A` : "In B only"}</span>
+  const tinted = (id: string, words: string): { sub: string; role: FocusRole | undefined } => {
+    const role = focus?.roles.get(id);
+    return { sub: role && focus ? `${words} · ${focusCellWords(role, focus.area)}` : words, role };
+  };
+  const extras: ReactNode[] = (column?.extras ?? []).map((e) => {
+    const t = tinted(e.id, e.for ? `B's own · for ${nameOf(e.for)}, no longer in A` : "In B only");
+    return (
+      <li key={`bx-${e.id}`} className="rpl-bside">
+        <span className="rpl-bcell" data-kind="own" data-focus={t.role}>
+          <ArrowLeftRight size={18} className="rpl-bcell__icon" aria-hidden="true" />
+          <span className="rpl-bcell__text">
+            <span className="rpl-bcell__name">{nameOf(e.id)}</span>
+            <span className="rpl-bcell__sub">{t.sub}</span>
+          </span>
         </span>
+      </li>
+    );
+  });
+  /* B's own on deck (a weak area's addition for B, focus.ts): on B's plan,
+     not in Routine B yet; Routine B takes one only on purpose. A tap offers
+     to take it off B's plan again, so nothing put there is there for good. */
+  for (const id of bPlan ? bOnDeck(aRoutine, bPlan, bIds) : []) {
+    const t = tinted(id, "On deck in B");
+    const key = `deck:${id}`;
+    const pressed = picked === key;
+    const text = (
+      <span className="rpl-bcell__text">
+        <span className="rpl-bcell__name">{nameOf(id)}</span>
+        <span className="rpl-bcell__sub">{t.sub}</span>
       </span>
-    </li>
-  ));
+    );
+    extras.push(
+      <li key={`bd-${id}`} className="rpl-bside">
+        {canWrite ? (
+          <button
+            type="button"
+            className="rpl-bcell"
+            data-kind="deck"
+            data-focus={t.role}
+            aria-pressed={pressed}
+            aria-label={`Routine B: ${nameOf(id)} · ${t.sub}`}
+            onClick={() => setPicked(pressed ? null : key)}
+          >
+            {text}
+          </button>
+        ) : (
+          <span className="rpl-bcell" data-kind="deck" data-focus={t.role}>
+            {text}
+          </span>
+        )}
+      </li>,
+    );
+    if (pressed && bPlan) {
+      extras.push(
+        <li key={`bds-${id}`} className="rpl-bstrip" role="group" aria-label={`${nameOf(id)}, on deck in B`}>
+          <div className="rpl-bstrip__head">
+            <p className="rpl-bstrip__title">{nameOf(id)}, on deck in B</p>
+            <Button variant="ghost" size="icon" aria-label="Close" onClick={() => setPicked(null)}>
+              <X aria-hidden="true" />
+            </Button>
+          </div>
+          <div className="rpl-actions">
+            <Button
+              variant="outline"
+              className="h-auto min-h-10 max-w-full shrink whitespace-normal py-2 text-left"
+              onClick={() => ask(`Take ${nameOf(id)} off B's plan`, bOnDeckRemoved(aRoutine, bPlan, bIds, id), `${nameOf(id)} off B's plan`)}
+            >
+              Take off B's plan
+            </Button>
+          </div>
+        </li>,
+      );
+    }
+  }
   /* A swap still to come whose A machine has left A: no place shows it, so it
      waits under the rows, and a tap offers to leave it out of B's plan. */
   for (const s of column?.gone ?? []) {

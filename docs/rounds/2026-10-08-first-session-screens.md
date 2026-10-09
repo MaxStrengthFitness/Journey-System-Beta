@@ -558,6 +558,136 @@ identity (AJ's "1d").
     (`nextTimeAtFinish` names the routine "Routine A"), so nothing there
     goes against "B starts as A with one machine different".
 
+## 4c. Round 2: the weak-area focus (item 7)
+
+AJ, Oct 7 2026: "we discovered that the client has very weak delts. What
+can we do about to adjust the routines currently?" He asked Claude to take
+charge ("I think you need to take charge on this one"), and said yes to the
+proposal (`2026-10-07-first-session-and-routines.md` §5.4b: "yes lets apply
+this all"). Built from the prototype's Focus screen
+(`harness/proto/d-lineup.tsx`) on Programming's Lineup (`PlanLineup`), with
+`routine-plan/focus.ts` as the pure half and `ui/FocusArea.tsx` as the
+screen.
+
+- **A quiet "Weak area" control** under the plan's heads: one outline
+  button that opens the areas as chips (`FOCUS_AREAS`: Delts, Chest, Upper
+  back, Biceps, Triceps, Grip, Low back, Core, Glutes, Quads, Hamstrings,
+  Inner thigh, Neck). One at a time; a second tap on the picked one takes
+  the focus off.
+- **Picking one is a plan change.** A `focus` change on Routine A's plan
+  (`plan.focus`, the area's key, `focusChanged`), its reason asked and never
+  required, one write, never awaited. The next trainer sees **"Focus:
+  Delts"** in the plan's head and on the briefing's glance line (the Road's
+  progress line for a plan in progress, B's Road line for a session on B,
+  the routine line for a session on a Routine B of its own, and the kept
+  plan card's line). A stored focus opens the control by itself, also when
+  it arrives after the Lineup is on screen (another iPad's pick).
+- **The tints.** The A | B lineup tints every machine that works the area:
+  a main mover on the blue tint (`--eq-live-fill`, the blue edge), a helper
+  on a blue outline, Routine A's rows, On deck and B's cells alike. Each is
+  said in words beside it too ("works the delts", "helps"), and read aloud
+  with the row ("Open Lateral Raise · works the delts"), so colour is never
+  the only way to read it, and a small legend says which is which. A
+  machine the client can't do is never tinted.
+- **The three answers**, numbered, each a one-tap suggestion, with the
+  source on the panel ("Academy · Exercise Selection Template / A/B
+  Routines"):
+  1. **In A and B?** One line a routine (`focusLineWords`): "Overhead
+     Press", "Lateral Raise (on deck)", "Helpers only: Compound Row and
+     Seated Dip", "Nothing works the delts", or "Not started · B starts as a
+     copy of A". Each routine is judged as it RUNS (Routine A, or day one
+     while it runs, and Routine B today), because the Academy asks for the
+     area in both workouts of the week; what is only on the plan (A's On
+     deck; B's swaps still to come, B's own on deck, and A's On deck, which
+     B takes once it is in Routine A) is named on the line and said under
+     it: "On A's plan, not in Routine A yet." (the review of item 7: read as
+     the plan, a Lateral Raise fourth on deck said "Nothing to change" while
+     nothing the client ran that week worked the delts). A place a trainer
+     took out of B stays out of B's line, and a machine the client can't do
+     is never counted, a swap B plans for it included.
+  2. **A swap in the same family, instead of an addition?** "Overhead Press
+     for Seated Dip · A and B", its family and "keeps the count", and
+     **Swap** (blue) → Why → one write. On A it swaps a machine in Routine A
+     (or day one), never one on deck, so B follows in the same batch
+     wherever it holds A's machine at that place, and the row says "A and
+     B" by that, whatever B's own answer would be. Rows for B alone come
+     after it and never offer the machine or the place of an "A and B" row:
+     first **Keep {A} in B** where B's swap took A's main mover out (§5.4b:
+     "Delts: Overhead Press in A, nothing in B. Offer the machine for B that
+     works it"; `bSlotKept`, as B's cells offer it), then a change to a swap
+     already in B (B's machine with it, today), then a swap added to B's
+     plan where B follows A, last in B's order (`bSlotPlanned`), said "on
+     B's plan, after its other swaps" and offered only while B's plan
+     doesn't answer the area already. At most two a routine.
+  3. **Or add a single-joint machine?** "Add Lateral Raise · Single-joint ·
+     A's and B's plans go to 7 · inside the Academy's 6 to 8"
+     (`EXERCISE_COUNT`; a plan's count is its routine and what is on deck),
+     "past the Academy's 8: better in place of a lower-priority machine"
+     (A/B Routines: "if time permits or used to replace a lower priority
+     muscle group"), or "under the Academy's 6"; and **Add to the plan** →
+     Why → an `add` on deck, never into today's routine. One addition a
+     routine still missing the area, and none for a routine whose plan
+     answers it already ("Already on A's plan: Lateral Raise (on deck).").
+     The Academy's named extras come first ("add in the lateral raise and
+     some direct, single joint arm exercises"), then the single-joint
+     machines as the catalog classes them (`SINGLE_JOINT`, held to
+     `kinematicClass: "rotary-single-joint"`: Leg Extension, Leg Curl, Hip
+     Abduction and Adduction, Chest Flye, Pullover, Simple Row and the
+     trunk machines included), then a compound one, and the question says
+     "Or add a machine?" when what it offers isn't single-joint. On A's plan
+     the addition reaches B too, once it is in Routine A (B follows A); on B
+     alone it goes on B's own deck (`plan.intended`), drawn under B's column
+     as "On deck in B" (`bOnDeck`), where a tap offers **Take off B's plan**
+     (one `remove` on B's plan, `bOnDeckRemoved`), and on the briefing's
+     Road for a session on B ("On deck in B"), so it is never there for good
+     and never out of sight.
+  The Academy's setting first where the area is answered by one (grip
+  adapts with the pulls already there; triceps get a gap setting), and the
+  answers end "Nothing here moves the order or a weight." With a Routine B
+  of its own (from before Round 2) missing the area, the answers say "B
+  changes on Routine B." rather than that the floor has nothing.
+- **What it never offers.** A machine the client can't do (Routine A's
+  plan's, read by A and B: AJ's "2a"), compared as the catalog machine, so
+  a second unit of the same machine is never offered either; for A, a
+  machine on A's road already or one B swaps in; for B, a new machine that
+  is one of A's (B is for variety; A's own comes back to B only as a Keep,
+  as Plan B and B's cells offer it) or one on B's plan already; a B of its
+  own from before Round 2 (no plan of swaps) is read on line 1 and never
+  changed from here. Nothing reorders a routine to put the area first, and
+  nothing moves a weight.
+- **Where it sits.** Portrait and on a phone, the answers sit under the
+  chips; on a landscape iPad they are a panel of their own ("Weak delts")
+  above the Changes, beside the lineup they tint.
+- **The middle delt still waits.** The Academy names Lateral Raise's target
+  as the middle delt, but the anatomy map has no `delts-side` id, because
+  the body figure draws front and back only (§2b of the research: "we need
+  to somehow figure out a side view for our viewer"). Until the side view
+  and its id arrive, the Delts area works through the front and rear delt
+  ids (`delts-front`, `delts-rear`), and Lateral Raise is read as the map has
+  it (front delt).
+- **No rules change, no new query.** `planChanges` already took `focus`
+  (Oct 7); `plan.focus` is a field on the plan map the rules don't check.
+  It holds the area's key (`delts`), which the Changes list already read
+  ("Focus: Delts", "Took the focus off"). Nothing is read that the Lineup
+  didn't already hold. Taking a machine off B's own deck is a `remove`,
+  which the rules already take.
+- **The review of item 7** (two reviewers, before the commit) found, and
+  this fixed: an A swap that reaches B labelled "A" only, with B offered
+  the same machine on its own row; an addition for B alone that could
+  never be taken off and that no screen on the floor showed; "In A and B?"
+  read off the plans, so On deck said "Nothing to change"; "single-joint"
+  knowing only the upper-body isolation machines, so Leg Press came ahead
+  of Hip Abduction; can't-do and "one of A's" compared by floor id rather
+  than catalog machine; B's planned swap to a machine the client can't do,
+  and a place taken out of B, counted as working the area; no Keep {A} in
+  B; "A goes to 7" read as the routine; "past the Academy's 8" with no
+  word of what to do instead; untrue "nothing on this floor" words with a
+  Routine B of its own; a focus that arrived later never opening the
+  control; the focus missing from a session on a Routine B of its own; and
+  the tint not read aloud on On deck rows. Each is held by a test in
+  `focus.test.ts`, `ui/FocusArea.render.test.tsx` or the briefing's render
+  test.
+
 ## 5. Data and rules (AJ's OK, "1a")
 
 - `Routine.plan?: RoutinePlan` (`src/types.ts`).

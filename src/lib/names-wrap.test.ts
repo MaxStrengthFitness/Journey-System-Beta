@@ -156,6 +156,10 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-bstrip__title", what: "\"In B, instead of {machine}\" over a B place's choices" },
   { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-bacademy__text", what: "the Academy's line about B beside Routine A's runs" },
   { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-bstart__title", what: "\"B starts as a copy of A with one machine different\" down B's column" },
+  // A weak area (Round 2 of the design round, item 7): the three answers.
+  { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-focus__line", what: "a routine's line on a weak area, \"Helpers only: Compound Row, Seated Dip and Pulldown\"" },
+  { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-focus__what", what: "a weak area's suggestion, \"Overhead Press for Seated Dip\" and \"Add Lateral Raise\"" },
+  { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-focus__text", what: "the Academy's setting before a machine, naming the Triceps Extension" },
   { file: "features/briefing/briefing.css", cls: "br-routine__touch", what: "\"Mind the limits on {machines}\" under the routine line and the plan card's Road" },
   { file: "features/routines/routines.css", cls: "rt-row__name", what: "a machine in Routine A or B on Programming" },
   { file: "features/routines/routines.css", cls: "rt-row__plan", what: "the plan's word under a Routine A machine in the Lineup (\"instead of Seated Dip\")" },

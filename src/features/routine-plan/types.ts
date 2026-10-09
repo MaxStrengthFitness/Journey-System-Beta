@@ -74,7 +74,12 @@ export interface RoutinePlan {
    * (`nextTimeRows`).
    */
   building: boolean;
-  /** Weak areas the routine sets out to work, as muscle ids. */
+  /**
+   * The weak area the plan sets out to work, as `FOCUS_AREAS` keys (focus.ts:
+   * `delts`, `grip`), kept on Routine A's plan and read by A and B. Programming
+   * picks one at a time (Round 2, item 7); `focusAreasOf` reads it safely, and
+   * "Focus: Delts" is said in the plan's head and on the briefing's glance.
+   */
   focus?: string[];
   /**
    * B only: B planned whole, as swaps against A, in the order they come in.
@@ -165,7 +170,8 @@ export interface CantDo {
  *   the new order of the road, as the screen draws it; day one takes the
  *   order it gives day one's machines.
  * - "purpose": `value` the new words. "building": `value` "on" or "off".
- * - "focus": `value` the muscle ids, comma-separated.
+ * - "focus": `value` the area keys (`FOCUS_AREAS`, focus.ts), comma-separated;
+ *   none ("") takes the focus off.
  * - "cantdo": `[machineId]`; `value` "reason · until" (`cantDoValue`), the
  *   until alone when no reason was given. The entry itself (who, the day,
  *   what stood in) rides beside the change (`applyPlanChange`'s third
