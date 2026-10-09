@@ -394,6 +394,69 @@
   margin: 0 0 12px;
 }
 
+/* The rest of the floor (the FileMaker floor, the open session round, Oct 9
+   2026): a plain list of names under today's cards, in the walking order,
+   each with a 40px Add. Rows on the page ground divided by a hairline, no
+   card and no lift: the card is for the machine in hand. A name wraps,
+   never cut (names-wrap.test.ts); the Add is the plan's dashed blue door,
+   never orange. */
+.ph-floor {
+  margin: 16px 0 0;
+}
+.ph-floor__head {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--eq-ink-2);
+}
+.ph-floor__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ph-floor__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 6px 0;
+  border-top: 1px solid var(--eq-divider);
+}
+.ph-floor__row:last-child { border-bottom: 1px solid var(--eq-divider); }
+.ph-floor__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--eq-ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.ph-floor__out {
+  flex: none;
+  color: var(--eq-ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.ph-floor__add {
+  flex: none;
+  min-height: 40px;
+  min-width: 72px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1.5px dashed var(--eq-live);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--eq-live-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 /* Reorder and the plan's door, side by side, wrapping on a narrow phone. */
 .ph-stage__doors {
   display: flex;

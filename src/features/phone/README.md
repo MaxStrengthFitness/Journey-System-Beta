@@ -89,6 +89,19 @@ the grid (the card's own "First time on this machine." is the phone's
 first-time line); a column picked on the plan's sheet still shows on the
 iPad.
 
+**The FileMaker floor on a phone** (the open session round, Oct 9 2026; AJ's
+"1b"). While the floor is showing (an open session, a client session with no
+routine: the tracker's `showAllMachines`), today's machines stay cards and the
+rest of the floor follows them as a plain list of names in the walking order
+(`floor`, `.ph-floor`), each name whole and wrapping (`names-wrap.test.ts`)
+with its own 40px **Add** in the plan's quiet dashed blue. Add sends what
+waits on the card in hand, then calls the tracker's add (`onAddMachine`, the
+grid's +): the machine joins today's list and is the card in hand. An empty
+day says "Tap Add on a machine you're doing." A machine out of service on
+the roster is listed with "Out of service" in place of its Add. The tracker
+lets a second add inside 400ms go (`journey-grid/add-bounce.ts`). The
+session records only what was added, never the floor.
+
 ## Tests
 
 `phone-session.test.ts` and `day-list.test.ts` are the pure halves;

@@ -19,6 +19,7 @@ import {
   nextTimeWhyWords,
   nextTimeWrite,
   ranAsFree,
+  ranWholeFloorUnchosen,
   routineHolds,
   routineWords,
   sameTicks,
@@ -399,16 +400,39 @@ describe("a machine let go today is never offered back", () => {
 describe("whether the session ran Free", () => {
   const floor = ["m-leg-press", "m-lumbar"];
   it("started here: as it was started, however much of the floor it ran", () => {
-    expect(ranAsFree({ startedAs: "Free", routineId: null, floor, today: [] })).toBe(true);
+    expect(ranAsFree({ startedAs: "Free", routineId: null, recorded: floor, floor, today: [] })).toBe(true);
     // A session built on the fly as Routine A for a client with no routine is never Free.
-    expect(ranAsFree({ startedAs: "A", routineId: null, floor, today: floor })).toBe(false);
-    expect(ranAsFree({ startedAs: "B", routineId: "rb", floor, today: floor })).toBe(false);
+    expect(ranAsFree({ startedAs: "A", routineId: null, recorded: floor, floor, today: floor })).toBe(false);
+    expect(ranAsFree({ startedAs: "B", routineId: "rb", recorded: floor, floor, today: floor })).toBe(false);
   });
-  it("resumed (no record here): no routine over the whole floor reads as Free; anything less doesn't", () => {
-    expect(ranAsFree({ startedAs: null, routineId: null, floor, today: ["m-lumbar", "m-leg-press"] })).toBe(true);
-    expect(ranAsFree({ startedAs: null, routineId: null, floor, today: ["m-lumbar"] })).toBe(false);
-    expect(ranAsFree({ startedAs: null, routineId: "ra", floor, today: floor })).toBe(false);
-    expect(ranAsFree({ startedAs: null, routineId: null, floor: [], today: [] })).toBe(false);
+  it("resumed (no record here), an old session with no list of its own: no routine over the whole floor reads as Free; anything less doesn't", () => {
+    expect(ranAsFree({ startedAs: null, routineId: null, recorded: undefined, floor, today: ["m-lumbar", "m-leg-press"] })).toBe(true);
+    expect(ranAsFree({ startedAs: null, routineId: null, recorded: null, floor, today: ["m-lumbar", "m-leg-press"] })).toBe(true);
+    expect(ranAsFree({ startedAs: null, routineId: null, recorded: undefined, floor, today: ["m-lumbar"] })).toBe(false);
+    expect(ranAsFree({ startedAs: null, routineId: "ra", recorded: undefined, floor, today: floor })).toBe(false);
+    expect(ranAsFree({ startedAs: null, routineId: null, recorded: undefined, floor: [], today: [] })).toBe(false);
+  });
+  /*
+   * The open session round, Oct 9 2026 (AJ's "1b": "i think the open session
+   * should honestly feel most like a filemaker session ... but also i want to
+   * be able to take advantage of our routine builder"). The floor is a VIEW:
+   * an open session, and a client session with no routine, record only the
+   * machines a trainer added with +. Such a session is never Free, so after
+   * Assign the Wrap-up's Next time can start Routine A from it, even when
+   * every machine on the floor was added.
+   */
+  it("resumed, a session that records its own list (an open session, a client session with no routine): never Free, even over the whole floor", () => {
+    expect(ranAsFree({ startedAs: null, routineId: null, recorded: ["m-lumbar", "m-leg-press"], floor, today: ["m-lumbar", "m-leg-press"] })).toBe(false);
+    expect(ranAsFree({ startedAs: null, routineId: null, recorded: ["m-lumbar"], floor, today: ["m-lumbar"] })).toBe(false);
+    expect(ranAsFree({ startedAs: null, routineId: null, recorded: [], floor, today: [] })).toBe(false);
+  });
+  it("the whole floor as nobody's chosen list: only with no routine and no list of its own", () => {
+    expect(ranWholeFloorUnchosen({ routineId: null, recorded: undefined, floor, today: floor })).toBe(true);
+    expect(ranWholeFloorUnchosen({ routineId: null, recorded: [...floor], floor, today: floor })).toBe(false);
+    expect(ranWholeFloorUnchosen({ routineId: "ra", recorded: undefined, floor, today: floor })).toBe(false);
+    expect(ranWholeFloorUnchosen({ routineId: null, recorded: undefined, floor, today: ["m-lumbar"] })).toBe(false);
+    // A floor with an unnamed machine (no id) still counts as run whole.
+    expect(ranWholeFloorUnchosen({ routineId: null, recorded: undefined, floor: [...floor, null], today: floor })).toBe(true);
   });
 });
 

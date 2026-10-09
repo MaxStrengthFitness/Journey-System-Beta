@@ -292,6 +292,20 @@ describe("SessionNowBar on day one: the plan's next machine, Add a machine, the 
     expect(onAddPlanned).toHaveBeenCalledWith("m-leg-press");
   });
 
+  // The FileMaker floor (the open session round, Oct 9 2026; AJ's "1b": "you
+  // have every machine on the screen and you just fill in the ones you did").
+  it("with the floor showing, an empty bar says where to tap, one line, and still offers Add a machine", () => {
+    const onAddMachine = vi.fn();
+    draw({ row: undefined, nothingToday: true, floorOpen: true, onAddMachine });
+    expect(host!.querySelector(".jg-nb__idle")!.textContent).toBe("Tap + on a machine you're doing.");
+    expect(host!.textContent).not.toContain("Nothing in today's order yet.");
+    act(() => byWords("Add a machine")!.click());
+    expect(onAddMachine).toHaveBeenCalledTimes(1);
+    // A machine in hand: the floor changes nothing on the bar.
+    draw({ floorOpen: true, onAddMachine });
+    expect(host!.textContent).not.toContain("Tap + on a machine");
+  });
+
   it("the range sits in the readout slot beside the weight, never in it, and its (i) opens the sheet's notes", () => {
     const onStartingRange = vi.fn();
     const startingRange = startingRangeSlot({

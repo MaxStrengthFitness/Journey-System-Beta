@@ -78,6 +78,7 @@ import {
   plannedBFloorOf,
   nextTimeWrite,
   ranAsFree,
+  ranWholeFloorUnchosen,
   routineHolds,
   withRoutineNow,
   type NextTimeSnapshot,
@@ -180,6 +181,7 @@ import {
 
 import { useActiveStudio } from "../contexts/ActiveStudioContext";
 import { useStudioMachines } from "../hooks/useStudioMachines";
+import { isBounceAdd, type LastAdd } from "../features/journey-grid/add-bounce";
 import { resolveMachineOrder } from "../data/machine-display-order";
 import {
   JourneyGrid,
@@ -521,7 +523,9 @@ export function WorkoutTrackerView({
   // The 90-day assessment, opened mid-session. See the panel at the bottom
   // of this file for why it is a slide-over and not a screen.
   const [isShowingAssessment, setIsShowingAssessment] = useState(false);
-  const [showAllMachines, setShowAllMachines] = useState(false);
+  /* The corner's pick of today's list or every machine, for one session (the
+     FileMaker floor below decides the default: `showAllMachines`). */
+  const [showAllPick, setShowAllPick] = useState<{ sessionId: string | null; all: boolean } | null>(null);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
   const [isPreSessionMode, setIsPreSessionMode] = useState(false);
   const [targetRoutine, setTargetRoutine] = useState<Routine | null>(null);
@@ -1596,6 +1600,40 @@ export function WorkoutTrackerView({
     studioId: string;
   } | null>(null);
   /*
+   * THE FILEMAKER FLOOR (the open session round, Oct 9 2026; AJ's "1b": "i
+   * think the open session should honestly feel most like a filemaker
+   * session ... you have every machine on the screen and you just fill in
+   * the ones you did"). A session with no routine that records its own list
+   * (an open session, `[]` at Start; a client session with no routine,
+   * which has started empty since Oct 8 2026) opens with every machine on
+   * the floor showing, in the studio's walking order: the grid's "Not in
+   * today's routine" fold is open, so every row has the Today column's +,
+   * and + adds the machine and makes it the one in hand. The floor is a
+   * VIEW: the session records only what was added (`sessionMachineIds`, in
+   * the order done), never the floor, so it is never read as Free
+   * (`ranAsFree`): a client session's Wrap-up offers Next time from it, and
+   * so will an open session's once Who's this? gives it a client and a
+   * Finish (a later phase of this round; Assign still skips Finish today).
+   * For a client, only once the routines are known AND a Start that could
+   * not decide its routine has (`startFollowUpRef`, read here because the
+   * effect that settles it always sets the session after): until then the
+   * session has no routine yet and may take the client's in a moment, and
+   * the floor would open for a frame and fold again (the review, Oct 9
+   * 2026). The corner's Today's routine still folds it, for this session.
+   */
+  const startDeciding =
+    !!currentSession &&
+    startFollowUpRef.current?.sessionId === currentSession.id &&
+    !startFollowUpRef.current.routineDone;
+  const floorView =
+    !!currentSession &&
+    !currentSession.routineId &&
+    Array.isArray(currentSession.sessionMachineIds) &&
+    (!clientId || (routinesKnown && !startDeciding));
+  const showAllSessionId = currentSession?.id ?? null;
+  const showAllMachines = showAllPick && showAllPick.sessionId === showAllSessionId ? showAllPick.all : floorView;
+  const setShowAllMachines = (all: boolean) => setShowAllPick({ sessionId: showAllSessionId, all });
+  /*
    * How the session on screen was started (A, B or Free), for the Wrap-up's
    * Next time: a Free session has none (the first-session design round,
    * Oct 8 2026, §4.7). A session resumed after a reload has no record of
@@ -2569,8 +2607,12 @@ export function WorkoutTrackerView({
          listener holds it, and today's performed machines. A Free session
          has none; one resumed after a reload with no record of how it
          started is read as Free when it ran no routine over the whole
-         floor (`ranAsFree`). Routines not known yet: no card, never a
-         guess. A machine let go today (the client can't do it, or the
+         floor with no list of its own (`ranAsFree`): a client session with
+         no routine records what was added, so it has Next time (the open
+         session round, Oct 9 2026; an open session reaches here once Who's
+         this? gives it a client, a later phase: Assign skips Finish today).
+         Routines not known yet: no card, never a guess. A machine let go
+         today (the client can't do it, or the
          routine held it while the session ran and doesn't now) is never
          offered back. Not when another iPad finished the session: that
          iPad has its own Next time, and two would write the routine twice
@@ -2586,6 +2628,8 @@ export function WorkoutTrackerView({
         const ranFree = ranAsFree({
           startedAs,
           routineId: currentSession.routineId,
+          // A session with its own list is never Free: on the floor it is what was added (Oct 9 2026).
+          recorded: currentSession.sessionMachineIds,
           floor: floorMachines.map((m) => m.id),
           today: activeMachineIds,
         });
@@ -3359,6 +3403,8 @@ export function WorkoutTrackerView({
             // Each thread once, as the card counts them (machine-notes.ts).
             noteCount: machineNoteCount(noteInput),
             sides: isSidesMachine(machine),
+            // Out of service on the roster: said on the floor, with no + (Oct 9 2026).
+            outOfService: studioFloorById[row.machine.id]?.rosterStatus === "maintenance" || undefined,
           },
         };
       },
@@ -3380,20 +3426,31 @@ export function WorkoutTrackerView({
       .filter(Boolean) as typeof gridRows;
     const inRoutine = new Set(shownMachineIds);
     const others = gridRows.filter((r) => !inRoutine.has(r.machine.id));
+    /* The FileMaker floor (Oct 9 2026) has no routine to name: today's
+       machines are "Today", numbered in the order they were added, over the
+       rest of the floor in its walking order; no label over nothing yet. */
     return [
       // No label row while only the routine is listed: the grid's corner
       // says "Routine" (session top, option 1, Oct 3 2026).
-      { id: "routine", label: "Today's routine", rows: routineRows, numbered: true, bare: !showAllMachines },
+      {
+        id: "routine",
+        label: floorView ? "Today" : "Today's routine",
+        rows: routineRows,
+        numbered: true,
+        bare: !showAllMachines || (floorView && routineRows.length === 0),
+      },
       {
         id: "others",
-        label: "Not in today's routine",
+        label: floorView ? "Rest of the floor" : "Not in today's routine",
+        idleNote: floorView ? "not added today" : undefined,
         rows: others,
         collapsed: !showAllMachines,
         onToggle: () => setShowAllMachines(!showAllMachines),
         inactive: true,
       },
     ];
-  }, [gridRows, shownMachineIds, showAllMachines]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- setShowAllMachines is keyed on showAllSessionId
+  }, [gridRows, shownMachineIds, showAllMachines, floorView, showAllSessionId]);
 
   const toNum = (v: unknown): number | null => {
     if (v === undefined || v === null || v === "") return null;
@@ -3645,17 +3702,28 @@ export function WorkoutTrackerView({
   /* The live column, memoised with steady callbacks (R10): it used to be a
      new object on every render, which redrew every row of the grid. The
      callbacks call the newest handler through a ref, so they never go stale. */
+  /** The last + (or the phone floor's Add): a second tap landing on the row that slid under it is let go. */
+  const lastAddRef = useRef<LastAdd | null>(null);
   const gridLiveHandlers = useRef<{
     change: (machineId: string, patch: Partial<LiveSet>) => void;
     onAddMachine: (id: string) => void;
   } | null>(null);
   gridLiveHandlers.current = {
     change: handleGridLiveChange,
-    /* Straight into the session's own list, through the one recorder the
-       reorder sheet uses: the session document, never the routine. */
+    /* Into the session's own list, through the reorder sheet's recorder: the session document, never the routine. */
     onAddMachine: (id: string) => {
-      if (activeMachineIds.includes(id)) return;
-      applySessionMachineIds([...activeMachineIds, id]);
+      const now = Date.now();
+      if (isBounceAdd(lastAddRef.current, id, now)) return; // the same tap twice (add-bounce.ts)
+      lastAddRef.current = { id, at: now };
+      flushAllLogWrites();
+      if (!activeMachineIds.includes(id)) applySessionMachineIds([...activeMachineIds, id]);
+      /* The machine in hand in the same tap, as the plan's Add makes it,
+         at the end of today's numbered group, in the order done
+         (FileMaker's circle; the open session round, Oct 9 2026: "you have
+         every machine on the screen and you just fill in the ones you
+         did"). It used to take a second tap on its Today cell. What was
+         waiting on the last machine is sent first, as Next sends it. */
+      setFocusMachineOverride(id);
     },
   };
   const onGridLiveChange = React.useCallback(
@@ -3963,12 +4031,20 @@ export function WorkoutTrackerView({
   /* One calm line when today's order trips one of the Academy's sequencing
      rules: a sentence, never a block (routine-plan/order-effects.ts). */
   const hasLiveSession = !!currentSession;
-  /* A Free session (no routine) runs the whole floor in its walking order,
-     which nobody chose: it says nothing about order. */
-  const runsWholeFloor =
-    !currentSession?.routineId &&
-    floorMachines.length > 0 &&
-    floorMachines.every((m) => !m.id || activeMachineIds.includes(m.id));
+  /* An old Free session, or an open session from before Oct 9 2026 (no
+     routine, no list of its own), runs the whole floor in its walking
+     order, which nobody chose: it says nothing about order. A session that
+     records its own list chose it, the FileMaker floor's included (what was
+     added, in the order done; `ranWholeFloorUnchosen`), even when every
+     machine on the floor was added. One machine is never an order: the
+     Academy's rules are about two (`findViolations` reads pairs), so the
+     first + on the floor says nothing (the open session round, Oct 9 2026). */
+  const runsWholeFloor = ranWholeFloorUnchosen({
+    routineId: currentSession?.routineId,
+    recorded: currentSession?.sessionMachineIds,
+    floor: floorMachines.map((m) => m.id),
+    today: activeMachineIds,
+  });
   const todayEffects = useMemo(
     () => (hasLiveSession && !runsWholeFloor ? orderEffects(activeMachineIds, planNameOf, sessionPlan.floorList) : []),
     [hasLiveSession, runsWholeFloor, activeMachineIds, planNameOf, sessionPlan.floorList],
@@ -4652,6 +4728,11 @@ export function WorkoutTrackerView({
       {isPhone && gridLive ? (
         <PhoneSessionStage
           rows={gridSections[0]?.rows ?? []}
+          /* The FileMaker floor on a phone (Oct 9 2026): the rest of the
+             floor under today's cards, each name with its own Add, which
+             adds and makes it the card in hand, as the grid's + does. */
+          floor={showAllMachines ? (gridSections[1]?.rows ?? []) : null}
+          onAddMachine={onGridAddMachine}
           history={gridHistory}
           values={gridLiveValues}
           focusId={gridFocusMachineId ?? null}
@@ -4717,6 +4798,7 @@ export function WorkoutTrackerView({
                 plan={currentSession && sessionPlan.plan && sessionPlan.progress ? { have: sessionPlan.progress.have, of: sessionPlan.progress.of } : null}
                 onPlan={onOpenPlan}
                 onKey={() => setIsLegendOpen(true)}
+                floor={floorView}
               />
             }
             /* The machine's NAME is the target -- one big one, the width of
@@ -4729,7 +4811,10 @@ export function WorkoutTrackerView({
             layout="fill"
             /* Rows shrink to fit what is on screen (44 → 26px) instead of a
                fixed 44px that showed ~15 machines and hid the rest below
-               the fold. Routine-only stays at 44px; Show: All fits twenty. */
+               the fold. Routine-only stays at 44px. With the Today column's
+               + on screen (the FileMaker floor, All machines) a row keeps
+               40px, so the + is 40px to tap, and the grid scrolls (the open
+               session round, Oct 9 2026). */
             fit="auto"
             targetColumns={nowBarSide ? 8 : 10}
             title="Machine"
@@ -4766,6 +4851,8 @@ export function WorkoutTrackerView({
           planNext={planNext}
           onAddPlanned={onAddPlanned}
           nothingToday={todaySeeded && activeMachineIds.length === 0}
+          /* Every machine's + is on screen: the empty bar says where to tap. */
+          floorOpen={showAllMachines}
           startingRange={focusRange}
           onStartingRange={onStartingRange}
           noHistoryLine={focusNoHistory}

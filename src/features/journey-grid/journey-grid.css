@@ -1249,7 +1249,19 @@ div.jg-today { cursor: default; }
    above and the "Not in today's routine" band, so a tap meant for them
    added a machine to the live session. Up and down it reaches at most half
    of what the row has spare: 40px tall in a 44px row, the row's own height
-   in a shorter one (--jg-row-h is set on .jg). */
+   in a shorter one (--jg-row-h is set on .jg). And the fit never makes a
+   row shorter than 40px while a + is on screen (JourneyGrid's `rowFloor`,
+   the open session round, Oct 9 2026), so the + is always 40px to tap. */
+/* Out of service on the studio's roster, in place of the + (the FileMaker
+   floor, Oct 9 2026): two short lines in the muted ink, never the faint. */
+.jg-today__out {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--jg-ink-muted);
+  padding: 0 4px;
+}
 .jg-today__add::after {
   content: "";
   position: absolute;

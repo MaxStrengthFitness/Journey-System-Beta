@@ -1318,6 +1318,339 @@ describe("an open session on the Active Session (the open session round, Oct 9 2
   });
 });
 
+/* ------------------------------------------------------------------ *
+ * The FileMaker floor (the open session round, Oct 9 2026; AJ's "1b")
+ * ------------------------------------------------------------------ */
+
+/**
+ * AJ, Oct 9 2026: "i think the open session should honestly feel most like a
+ * filemaker session ... you have every machine on the screen and you just
+ * fill in the ones you did". An open session, and a client session with no
+ * routine, open with the whole floor showing in its walking order, a + on
+ * every row; + adds the machine and makes it the one in hand in one tap; it
+ * rises into today's numbered group in the order done; and the session
+ * records only what was added, never the floor. A session with a routine is
+ * as it was: the floor folded under "Not in today's routine".
+ */
+describe("the FileMaker floor (the open session round, Oct 9 2026)", () => {
+  function Open() {
+    return (
+      <WorkoutTrackerView
+        clientId={null}
+        clients={[]}
+        machines={appWideMachines}
+        trainers={[trainer]}
+        user={{ uid: "uid-coach", email: "coach@maxstrengthfitness.com" } as any}
+        setView={vi.fn()}
+        setSelectedClientId={vi.fn()}
+        onStartNewClientOnboarding={vi.fn()}
+        authTrainer={trainer}
+        isSyncing={false}
+        setIsSyncing={vi.fn()}
+        schedules={[]}
+      />
+    );
+  }
+  const OPEN_ID = "sess-open";
+  /** An open session as Open session starts one now: no client, an empty list. */
+  const openSession = (machineIds: string[] = []) => [
+    {
+      id: OPEN_ID,
+      data: () => ({
+        isUnassigned: true,
+        status: "In-Progress",
+        trainerId: "t-doc",
+        startedByTrainerId: "t-doc",
+        trainerInitials: "JC",
+        hostedAtStudioId: STUDIO_ID,
+        sessionMachineIds: machineIds,
+        startTime: new Date(),
+        lastHeartbeatAt: new Date(),
+      }),
+    },
+  ];
+  /** A third machine on the floor, first in the walking order: Lumbar, which the Academy says never to run straight into the Leg Press. */
+  const LUMBAR = {
+    id: "m-lumbar",
+    data: () => ({ source: "custom", status: "active", order: 5, definition: { name: "Lumbar", settingFields: [] } }),
+  };
+  const plus = (host: HTMLElement, name: string) =>
+    host.querySelector<HTMLButtonElement>(`button.jg-today__add[aria-label="Add ${name} to today's session"]`);
+  const pluses = (host: HTMLElement) => [...host.querySelectorAll<HTMLButtonElement>("button.jg-today__add")];
+  const names = (host: HTMLElement) => [...host.querySelectorAll(".jg-machine__label")].map((n) => n.textContent);
+  /** Each numbered row's machine and its circle, top to bottom. */
+  const numbered = (host: HTMLElement) =>
+    [...host.querySelectorAll(".jg-machine__name")]
+      .filter((n) => n.querySelector(".jg-machine__order"))
+      .map((n) => `${n.querySelector(".jg-machine__order")!.textContent} ${n.querySelector(".jg-machine__label")!.textContent}`);
+  const recordedLists = (sid: string) =>
+    writes.filter((w) => w.path === `sessions/${sid}` && Array.isArray(w.data?.sessionMachineIds)).map((w) => w.data.sessionMachineIds);
+  const groups = (host: HTMLElement) => [...host.querySelectorAll(".jg-group__label")].map((g) => g.textContent);
+  /*
+   * One tap, one machine (journey-grid/add-bounce.ts): a second add of
+   * another machine inside 400ms is the first tap landing on the row that
+   * slid under it, and is let go. A test that adds two machines moves the
+   * clock on between them, as a trainer's second tap is.
+   */
+  const realNow = Date.now;
+  let skew = 0;
+  beforeEach(() => {
+    skew = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => realNow() + skew);
+  });
+  afterEach(() => {
+    vi.mocked(Date.now).mockRestore();
+  });
+  const later = () => {
+    skew += 1_000;
+  };
+
+  it("an open session draws every machine on the floor in its walking order, each with the Today column's +", async () => {
+    netCtl.moreRoster = [LUMBAR];
+    sessionDocs = openSession();
+    const host = await mount(<Open />);
+    expect(names(host)).toEqual(["Lumbar", "Leg Press (Hoist)", "Rear Delt Hoist"]);
+    expect(pluses(host).map((b) => b.getAttribute("aria-label"))).toEqual([
+      "Add Lumbar to today's session",
+      "Add Leg Press (Hoist) to today's session",
+      "Add Rear Delt Hoist to today's session",
+    ]);
+    // No routine to name: the rest of the floor, open, and no label over nothing yet.
+    expect(groups(host)).toEqual(["▾ Rest of the floor3"]);
+    expect(host.querySelector('[data-testid="session-corner"]')!.textContent).toContain("All machines");
+    // The empty Now Bar says where to tap, one line, and keeps Add a machine.
+    expect(host.querySelector(".jg-nb__idle")!.textContent).toBe("Tap + on a machine you're doing.");
+    expect([...host.querySelectorAll(".jg-nb__addmore")].some((b) => b.textContent?.includes("Add a machine"))).toBe(true);
+    // Nothing recorded by opening it.
+    expect(recordedLists(OPEN_ID)).toEqual([]);
+  });
+
+  it("+ adds the machine and makes it the one in hand in one tap; it rises into today's numbered group in the order done", async () => {
+    netCtl.moreRoster = [LUMBAR];
+    sessionDocs = openSession();
+    const host = await mount(<Open />);
+    await act(async () => plus(host, "Rear Delt Hoist")!.click());
+    expect(host.querySelector(".jg-nb__name")?.textContent).toBe("Rear Delt Hoist");
+    expect(numbered(host)).toEqual(["1 Rear Delt Hoist"]);
+    expect(plus(host, "Rear Delt Hoist")).toBeNull();
+
+    later();
+    await act(async () => plus(host, "Leg Press (Hoist)")!.click());
+    expect(host.querySelector(".jg-nb__name")?.textContent).toBe("Leg Press (Hoist)");
+    // FileMaker's circle: the order done, not the walking order.
+    expect(numbered(host)).toEqual(["1 Rear Delt Hoist", "2 Leg Press (Hoist)"]);
+    expect(groups(host)).toEqual(["Today2", "▾ Rest of the floor1"]);
+    // The rest of the floor stays on screen, in its walking order.
+    expect(pluses(host).map((b) => b.getAttribute("aria-label"))).toEqual(["Add Lumbar to today's session"]);
+  });
+
+  it("records only what was added, in the order done, never the floor, and touches no routine", async () => {
+    netCtl.moreRoster = [LUMBAR];
+    sessionDocs = openSession();
+    const host = await mount(<Open />);
+    await act(async () => plus(host, "Rear Delt Hoist")!.click());
+    later();
+    await act(async () => plus(host, "Leg Press (Hoist)")!.click());
+    expect(recordedLists(OPEN_ID)).toEqual([["sm-solon-rear-delt"], ["sm-solon-rear-delt", "m-leg-press"]]);
+    expect(writes.filter((w) => w.path.startsWith("routines")), "adding is today only").toEqual([]);
+    expect(writes.filter((w) => w.path.startsWith("exerciseLogs")), "an add writes no set").toEqual([]);
+  });
+
+  it("a client session with no routine looks the same: the whole floor, a + on every row, and the same empty Now Bar", async () => {
+    sessionDocs = [{ id: SESSION_ID, data: () => ({ ...SESSION_DOCS[0].data(), routineId: null, sessionMachineIds: [] }) }];
+    netCtl.routines = [];
+    const host = await mount(<Tracker />);
+    expect(names(host)).toEqual(["Leg Press (Hoist)", "Rear Delt Hoist"]);
+    expect(pluses(host)).toHaveLength(2);
+    expect(groups(host)).toEqual(["▾ Rest of the floor2"]);
+    expect(host.querySelector(".jg-nb__idle")!.textContent).toBe("Tap + on a machine you're doing.");
+    await act(async () => plus(host, "Rear Delt Hoist")!.click());
+    expect(host.querySelector(".jg-nb__name")?.textContent).toBe("Rear Delt Hoist");
+    expect(recordedLists(SESSION_ID).at(-1)).toEqual(["sm-solon-rear-delt"]);
+  });
+
+  it("a session with a routine is as it was: the floor folded under 'Not in today's routine', its + one tap away, and + still adds and focuses", async () => {
+    sessionDocs = [{ id: SESSION_ID, data: () => ({ ...SESSION_DOCS[0].data(), routineId: "ra-1", sessionMachineIds: ["m-leg-press"] }) }];
+    netCtl.routines = [{ id: "ra-1", data: () => ({ clientId: CLIENT_ID, name: "Routine A", machineIds: ["m-leg-press"] }) }];
+    const host = await mount(<Tracker />);
+    expect(names(host)).toEqual(["Leg Press (Hoist)"]);
+    expect(pluses(host)).toHaveLength(0);
+    expect(groups(host)).toEqual(["▸ Not in today's routine1"]);
+    await act(async () => (host.querySelector('.jg-group[aria-label="Not in today\'s routine"]') as HTMLElement).click());
+    await act(async () => plus(host, "Rear Delt Hoist")!.click());
+    expect(host.querySelector(".jg-nb__name")?.textContent).toBe("Rear Delt Hoist");
+    expect(numbered(host)).toEqual(["1 Leg Press (Hoist)", "2 Rear Delt Hoist"]);
+    expect(writes.filter((w) => w.path.startsWith("routines"))).toEqual([]);
+  });
+
+  /*
+   * The order line before this round kept quiet for any session with no
+   * routine whose today ran the whole floor (`runsWholeFloor`), because an
+   * old Free session ran the floor in its walking order and nobody chose
+   * it. On the FileMaker floor the trainer chooses every machine and its
+   * place, so the line speaks even when every machine on the floor was
+   * added (`ranWholeFloorUnchosen`).
+   */
+  it("the order line speaks for what was added, even when every machine on the floor was added", async () => {
+    netCtl.moreRoster = [LUMBAR];
+    sessionDocs = openSession();
+    const host = await mount(<Open />);
+    const line = () => host.querySelector('ul[aria-label="Today\'s order"]');
+    await act(async () => plus(host, "Lumbar")!.click());
+    expect(line(), "one machine is never an order").toBeNull();
+    later();
+    await act(async () => plus(host, "Leg Press (Hoist)")!.click());
+    expect(line(), "Lumbar straight into the Leg Press is said").not.toBeNull();
+    expect(line()!.textContent).toContain("Lumbar directly into Leg Press");
+    later();
+    await act(async () => plus(host, "Rear Delt Hoist")!.click());
+    // The whole floor is in today's list now, in the order the trainer chose.
+    expect(pluses(host)).toHaveLength(0);
+    expect(recordedLists(OPEN_ID).at(-1)).toEqual(["m-lumbar", "m-leg-press", "sm-solon-rear-delt"]);
+    expect(line(), "the whole floor, chosen, still says its order").not.toBeNull();
+    expect(line()!.textContent).toContain("Lumbar directly into Leg Press");
+  });
+
+  it("one tap, one machine: a second tap landing at once on the row that slid under it adds nothing", async () => {
+    netCtl.moreRoster = [LUMBAR];
+    sessionDocs = openSession();
+    const host = await mount(<Open />);
+    await act(async () => plus(host, "Rear Delt Hoist")!.click());
+    later();
+    await act(async () => plus(host, "Leg Press (Hoist)")!.click());
+    // The same tap again, before the trainer could have meant it: Lumbar, the row above, slid into that slot.
+    await act(async () => plus(host, "Lumbar")!.click());
+    expect(recordedLists(OPEN_ID).at(-1)).toEqual(["sm-solon-rear-delt", "m-leg-press"]);
+    expect(host.querySelector(".jg-nb__name")?.textContent).toBe("Leg Press (Hoist)");
+    expect(plus(host, "Lumbar"), "Lumbar is still on the floor, one tap away").not.toBeNull();
+    // A moment later it is a new tap, and adds.
+    later();
+    await act(async () => plus(host, "Lumbar")!.click());
+    expect(recordedLists(OPEN_ID).at(-1)).toEqual(["sm-solon-rear-delt", "m-leg-press", "m-lumbar"]);
+  });
+
+  it("a machine out of service on the roster is on the floor, says so, and has no +", async () => {
+    netCtl.moreRoster = [{ id: LUMBAR.id, data: () => ({ ...LUMBAR.data(), status: "maintenance" }) }];
+    sessionDocs = openSession();
+    const host = await mount(<Open />);
+    expect(names(host)).toEqual(["Lumbar", "Leg Press (Hoist)", "Rear Delt Hoist"]);
+    expect(plus(host, "Lumbar")).toBeNull();
+    expect(pluses(host)).toHaveLength(2);
+    const cell = host.querySelector('[aria-label="Lumbar: out of service"]');
+    expect(cell?.textContent).toBe("Out of service");
+  });
+
+  it("the floor says Today, never routine: the corner, its menu and each idle cell", async () => {
+    sessionDocs = openSession();
+    const host = await mount(<Open />);
+    expect(host.querySelector('[aria-label="Rear Delt Hoist: not added today"]')).not.toBeNull();
+    expect(host.querySelector('[aria-label*="not in today\'s routine"]')).toBeNull();
+    await act(async () => host.querySelector<HTMLButtonElement>('[data-testid="session-corner"]')!.click());
+    const routineItem = host.querySelector('[data-testid="session-corner-routine"]')!;
+    expect(routineItem.textContent).toContain("Today");
+    expect(routineItem.textContent).not.toContain("routine");
+    expect(host.querySelector('[data-testid="session-corner-reorder"]')!.textContent).toBe("Reorder today");
+    // Folded from the corner, the corner says Today.
+    await act(async () => host.querySelector<HTMLElement>('[data-testid="session-corner-routine"]')!.click());
+    expect(host.querySelector(".jg-corner__title")!.textContent).toBe("Today");
+    expect(pluses(host)).toHaveLength(0);
+  });
+
+  it("for a client, the floor waits until the client's routines are known (a routine may still come)", async () => {
+    sessionDocs = [{ id: SESSION_ID, data: () => ({ ...SESSION_DOCS[0].data(), routineId: null, sessionMachineIds: [] }) }];
+    netCtl.routines = [];
+    netCtl.hold.add("routines");
+    const host = await mount(<Tracker />);
+    expect(pluses(host)).toHaveLength(0);
+    expect(groups(host)).toEqual(["▸ Not in today's routine2"]);
+    await act(async () => netCtl.release("routines"));
+    expect(groups(host)).toEqual(["▾ Rest of the floor2"]);
+    expect(pluses(host)).toHaveLength(2);
+  });
+
+  /*
+   * The review of this phase (Oct 9 2026): Start pressed before the client's
+   * routines answered starts with no routine and an empty list; the render
+   * where they arrived had the floor open for a frame, before the follow-up
+   * gave the session the client's Routine A and folded it again. The floor
+   * waits for the follow-up, and opens only when there is no routine.
+   */
+  it("started before the routines answer: the floor never opens for a frame over a client who has a Routine A", async () => {
+    sessionDocs = [];
+    netCtl.routines = [{ id: "r-a", data: () => ({ clientId: CLIENT_ID, name: "Routine A", machineIds: ["m-leg-press"] }) }];
+    netCtl.hold.add("routines");
+    const host = await mount(<Tracker />);
+    await act(async () => document.querySelector<HTMLButtonElement>(".br__cta")!.click());
+    expect(host.querySelector(".jg-sbar")).toBeTruthy();
+    let opened = false;
+    const look = (records: MutationRecord[]) => {
+      for (const r of records)
+        for (const n of r.addedNodes)
+          if (n instanceof Element && (n.matches(".jg-today__add") || n.querySelector(".jg-today__add"))) opened = true;
+    };
+    const watch = new MutationObserver(look);
+    watch.observe(host, { subtree: true, childList: true });
+    await act(async () => netCtl.release("routines"));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    look(watch.takeRecords());
+    watch.disconnect();
+    expect(opened, "no + drawn while the routine was being decided").toBe(false);
+    expect(numbered(host)).toEqual(["1 Leg Press (Hoist)"]);
+    expect(groups(host)).toEqual(["▸ Not in today's routine1"]);
+  });
+
+  it("started before the routines answer, for a client with none: the floor opens once they do", async () => {
+    sessionDocs = [];
+    netCtl.routines = [];
+    netCtl.hold.add("routines");
+    const host = await mount(<Tracker />);
+    await act(async () => document.querySelector<HTMLButtonElement>(".br__cta")!.click());
+    expect(host.querySelector(".jg-sbar")).toBeTruthy();
+    expect(pluses(host)).toHaveLength(0);
+    await act(async () => netCtl.release("routines"));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(pluses(host)).toHaveLength(2);
+    expect(host.querySelector(".jg-nb__idle")!.textContent).toBe("Tap + on a machine you're doing.");
+  });
+
+  it("on a phone: today's machines as cards, the rest of the floor as names with a 40px Add, which adds and makes it the card in hand", async () => {
+    const realMatchMedia = window.matchMedia;
+    const { PHONE_QUERY } = await import("../features/phone/device");
+    (window as any).matchMedia = (query: string) => ({
+      matches: query === PHONE_QUERY,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+    });
+    (globalThis as any).CSS ??= {};
+    (globalThis as any).CSS.escape ??= (s: string) => s;
+    Element.prototype.scrollIntoView ??= function () {};
+    try {
+      sessionDocs = openSession();
+      const host = await mount(<Open />);
+      expect(host.querySelector(".ph-stage")).toBeTruthy();
+      expect(host.querySelectorAll(".ph-card")).toHaveLength(0);
+      expect(host.querySelector(".ph-stage__empty")!.textContent).toBe("Tap Add on a machine you're doing.");
+      expect([...host.querySelectorAll(".ph-floor__name")].map((n) => n.textContent)).toEqual(["Leg Press (Hoist)", "Rear Delt Hoist"]);
+      const add = host.querySelector<HTMLButtonElement>('.ph-floor__add[aria-label="Add Rear Delt Hoist to today\'s session"]')!;
+      await act(async () => add.click());
+      const cards = [...host.querySelectorAll(".ph-card")];
+      expect(cards.map((c) => c.querySelector(".ph-card__name")!.textContent)).toEqual(["Rear Delt Hoist"]);
+      expect(cards[0].className).toContain("is-in-hand");
+      expect([...host.querySelectorAll(".ph-floor__name")].map((n) => n.textContent)).toEqual(["Leg Press (Hoist)"]);
+      expect(recordedLists(OPEN_ID)).toEqual([["sm-solon-rear-delt"]]);
+    } finally {
+      (window as any).matchMedia = realMatchMedia;
+    }
+  });
+});
+
 /*
  * SESSION WRITES NEVER WAIT ON THE NETWORK (speed round, Oct 5 2026; R9).
  * Every test here runs against a database that never answers a write - the
@@ -2530,8 +2863,19 @@ describe("the Wrap-up's Next time, from Finish to the routine (Oct 8 2026)", () 
     expect(document.body.textContent).toContain("Next time didn't save. Add the machines to Routine A on Programming.");
   });
 
-  it("no Next time for a session that ran no routine over the whole floor (a Free session), nor when the client has a Routine A it didn't run", async () => {
-    sessionDocs = running({ routineId: null, sessionMachineIds: ["m-leg-press", "sm-solon-rear-delt"] });
+  /*
+   * Changed on purpose in the open session round (Oct 9 2026). This test
+   * read a session with no routine whose RECORDED list was the whole floor
+   * as Free. Since AJ's "1b" ("i think the open session should honestly feel
+   * most like a filemaker session ... but also i want to be able to take
+   * advantage of our routine builder so we can use it if we wanted too"),
+   * the floor is a view and a session records only what was added: a
+   * recorded list is what the trainer chose, however much of the floor, and
+   * has Next time (the test after this one). A true old Free session is one
+   * with no list of its own that ran the whole floor, as here.
+   */
+  it("no Next time for an old Free session (no routine, no list of its own, the whole floor), nor when the client has a Routine A it didn't run", async () => {
+    sessionDocs = running({ routineId: null, sessionMachineIds: undefined });
     netCtl.routines = [];
     netCtl.logs = [performed("m-leg-press")];
     await finishToWrapUp();
@@ -2546,5 +2890,33 @@ describe("the Wrap-up's Next time, from Finish to the routine (Oct 8 2026)", () 
     netCtl.routines = [{ id: "ra-1", data: () => ({ clientId: CLIENT_ID, name: "Routine A", machineIds: ["sm-solon-rear-delt"] }) }];
     await finishToWrapUp();
     expect(card()).toBeNull();
+  });
+
+  /*
+   * The FileMaker floor's bridge to the routine builder (the open session
+   * round, Oct 9 2026; AJ's "1b"): a client session with no routine records
+   * only what was added with +, so the Wrap-up's Next time can start Routine
+   * A from it, even when every machine on the floor was added. This one is
+   * resumed (no record on this iPad of how it started), the case the old
+   * whole-floor guess read as Free. An open session reads the same once it
+   * has a client and a Finish; Assign still skips Finish today, and the
+   * round's Who's this? phase brings that test.
+   */
+  it("a client session with no routine, resumed, whose list is what was added: Next time starts Routine A from it, even over the whole floor", async () => {
+    // No routine; added with + in the order done: the floor's two, the second first.
+    sessionDocs = running({ isUnassigned: false, sessionMachineIds: ["sm-solon-rear-delt", "m-leg-press"] });
+    netCtl.routines = [];
+    netCtl.logs = [performed("sm-solon-rear-delt"), performed("m-leg-press")];
+    await finishToWrapUp();
+    expect(card(), "Next time is offered").not.toBeNull();
+    expect(card()!.textContent).toContain("Tick the ones that start Routine A.");
+    expect(tickFor("Rear Delt Hoist").getAttribute("aria-checked")).toBe("false");
+    expect(tickFor("Leg Press (Hoist)").getAttribute("aria-checked")).toBe("false");
+    writes.length = 0;
+    await act(async () => tickFor("Rear Delt Hoist").click());
+    await backToHub();
+    const out = routineWrites();
+    expect(out).toHaveLength(1);
+    expect(out[0].data).toMatchObject({ clientId: CLIENT_ID, name: "Routine A", machineIds: ["sm-solon-rear-delt"] });
   });
 });

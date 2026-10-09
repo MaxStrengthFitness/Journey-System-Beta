@@ -47,6 +47,16 @@ import "./phone.css";
 export interface PhoneSessionStageProps {
   /** Today's routine, in order. */
   rows: JourneyRow[];
+  /**
+   * The rest of the floor, in its walking order, when the FileMaker floor is
+   * showing (the open session round, Oct 9 2026; AJ's "1b": "you have every
+   * machine on the screen and you just fill in the ones you did"): drawn
+   * under today's cards as a plain list of names, each with its own Add.
+   * Null or absent: today's cards only, as before.
+   */
+  floor?: JourneyRow[] | null;
+  /** Adds a machine of the floor to today's list and makes it the card in hand (the grid's +). */
+  onAddMachine?: (machineId: string) => void;
   /** Her past sessions, oldest → newest. */
   history: JourneySession[];
   values: Record<string, LiveSet>;
@@ -96,6 +106,8 @@ export interface PhoneSessionStageProps {
 
 export function PhoneSessionStage({
   rows,
+  floor = null,
+  onAddMachine,
   history,
   values,
   focusId,
@@ -116,6 +128,7 @@ export function PhoneSessionStage({
 }: PhoneSessionStageProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const today = studioTodayKey();
+  const floorRows = floor && onAddMachine ? floor : null;
 
   // The card in hand comes into view when it changes (Next, or a tap on
   // another card), never while the trainer is typing into it.
@@ -132,7 +145,9 @@ export function PhoneSessionStage({
       </p>
       {rows.length === 0 ? (
         <>
-          <p className="ph-stage__empty">No machines in today's routine yet.</p>
+          <p className="ph-stage__empty">
+            {floorRows && floorRows.length > 0 ? "Tap Add on a machine you're doing." : "No machines in today's routine yet."}
+          </p>
           {planNext && onAddPlanned && (
             <button type="button" className="ph-card__next ph-card__next--plan ph-stage__plan" onClick={() => onAddPlanned(planNext.id)}>
               Next in the plan: <span>{planNext.name}</span> · Add
@@ -184,6 +199,38 @@ export function PhoneSessionStage({
             );
           })}
         </ol>
+      )}
+      {floorRows && floorRows.length > 0 && (
+        /* The rest of the floor: names only, in the walking order, each a
+           40px Add. A plain list, never a second set of cards: the card is
+           for the machine in hand. */
+        <section className="ph-floor" aria-label="Rest of the floor">
+          <h3 className="ph-floor__head">Rest of the floor</h3>
+          <ul className="ph-floor__list">
+            {floorRows.map((row) => (
+              <li key={row.machine.id} className="ph-floor__row">
+                <span className="ph-floor__name">{row.machine.name}</span>
+                {row.machine.outOfService ? (
+                  /* Out of service on the roster: said, with no Add (the grid's Today cell says the same). */
+                  <span className="ph-floor__out">Out of service</span>
+                ) : (
+                  <button
+                    type="button"
+                    className="ph-floor__add"
+                    aria-label={`Add ${row.machine.name} to today's session`}
+                    onClick={() => {
+                      onCommit();
+                      onAddMachine?.(row.machine.id);
+                    }}
+                  >
+                    <Plus size={16} strokeWidth={2.5} aria-hidden />
+                    Add
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
       <div className="ph-stage__doors">
         <button type="button" className="ph-stage__reorder" onClick={onReorder}>

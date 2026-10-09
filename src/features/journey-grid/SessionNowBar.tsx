@@ -70,6 +70,13 @@ export interface SessionNowBarProps {
   /** Today's order has nothing in it yet: the empty bar says so. */
   nothingToday?: boolean;
   /**
+   * The floor is showing, every machine with the Today column's + (the
+   * FileMaker floor, the open session round, Oct 9 2026): an empty bar says
+   * where to tap ("Tap + on a machine you're doing.") in place of "Nothing in
+   * today's order yet.", and still offers Add a machine.
+   */
+  floorOpen?: boolean;
+  /**
    * The Academy's starting range for this machine (AJ's "3a"), in the head's
    * readout slot, only on a first time here (routine-plan/session-plan.ts
    * `startingRangeSlot`): the range line with an (i), the quiet "Academy's
@@ -382,6 +389,7 @@ function SessionNowBarImpl({
   planNext = null,
   onAddPlanned,
   nothingToday = false,
+  floorOpen = false,
   startingRange = null,
   onStartingRange,
   noHistoryLine = null,
@@ -517,7 +525,11 @@ function SessionNowBarImpl({
     return (
       <div className={`jg-nb jg-nb--empty jg-nb--${layout}`}>
         <span className="jg-nb__idle">
-          {nothingToday ? "Nothing in today's order yet." : "Tap a machine in the Today column to start logging."}
+          {nothingToday
+            ? floorOpen
+              ? "Tap + on a machine you're doing."
+              : "Nothing in today's order yet."
+            : "Tap a machine in the Today column to start logging."}
         </span>
         {(planOffer || onAddMachine) && (
           <div className="jg-nb__offers">

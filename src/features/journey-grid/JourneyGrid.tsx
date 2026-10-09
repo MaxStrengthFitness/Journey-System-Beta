@@ -47,6 +47,12 @@ export interface GridSection {
   /** Rows in this section have NO live input even when a live column exists. */
   inactive?: boolean;
   /**
+   * What an inactive row's Today cell says after the machine's name, to a
+   * screen reader. Default "not in today's routine"; the FileMaker floor,
+   * which has no routine, says "not added today" (Oct 9 2026).
+   */
+  idleNote?: string;
+  /**
    * No divider row: the section's name is said elsewhere (the Journey tab
    * names its one section in the corner's filter, Oct 2 2026).
    */
@@ -202,6 +208,8 @@ interface RowProps {
   live?: LiveColumn;
   liveValue?: LiveSet;
   liveInactive: boolean;
+  /** The inactive Today cell's words after the name (GridSection.idleNote). */
+  idleNote?: string;
   settingsDisplay: "inline" | "menu";
   /** Every other row inside a section, for the zebra band. */
   band?: boolean;
@@ -249,6 +257,7 @@ function RowImpl({
   live,
   liveValue,
   liveInactive,
+  idleNote = "not in today's routine",
   band,
 }: RowProps) {
   const { machine } = row;
@@ -438,8 +447,19 @@ function RowImpl({
             onFocus={live.onFocusMachine}
           />
         ) : (
-          <div className="jg-today jg-today--idle" role="gridcell" aria-label={`${machine.name}: not in today's routine`}>
-            {live.onAddMachine ? (
+          <div
+            className="jg-today jg-today--idle"
+            role="gridcell"
+            aria-label={`${machine.name}: ${machine.outOfService ? "out of service" : idleNote}`}
+          >
+            {machine.outOfService ? (
+              /* Out of service on the studio's roster (catalog/out-of-service.ts):
+                 said, with no + (the FileMaker floor shows every machine, Oct
+                 9 2026). Still added from Add a machine, if the mark is stale. */
+              <span className="jg-today__out" aria-hidden="true">
+                Out of service
+              </span>
+            ) : live.onAddMachine ? (
               <button
                 type="button"
                 className="jg-today__add"
@@ -846,6 +866,15 @@ export function JourneyGrid({
   /* --- "auto" fit: size rows and columns to the space we actually have --- */
   const rowCount = sections.reduce((n, s) => n + (s.collapsed ? 0 : s.rows.length), 0);
   const dividerCount = sections.length;
+  /* A Today cell's + on screen (a live session's machines outside today's
+     list, unfolded: the FileMaker floor, or All machines): its row is never
+     fitted under 40px, so the + is 40px to tap (its ::after reaches the
+     row's own height at most). The rows keep 40px and the grid scrolls
+     (the open session round, Oct 9 2026: the floor opens by default, and on
+     a portrait iPad a floor of twenty fitted 26-31px rows). */
+  const addRowsShown =
+    !!live?.onAddMachine && sections.some((s) => s.inactive && !s.collapsed && s.rows.length > 0);
+  const rowFloor = addRowsShown ? 40 : 26;
   const [fitVars, setFitVars] = useState<{ rowH: number; colW: number; dense: boolean } | null>(null);
   useLayoutEffect(() => {
     if (fit !== "auto") {
@@ -907,9 +936,10 @@ export function JourneyGrid({
       const rowsH = availH - HEAD_H - dividerCount * dividerH - 2;
       // 26px is the floor: 12.5px numerals with 3px of air each side. Below
       // that the trainer is squinting, and scrolling two rows beats that.
-      const dense = rowCount > 0 && Math.floor(rowsH / rowCount) < 36;
+      // 40px with a Today cell's + on screen (`rowFloor`), never dense.
+      const dense = rowCount > 0 && rowFloor < 36 && Math.floor(rowsH / rowCount) < 36;
       const dividerAdj = dense ? dividerCount * (dividerH - 24) + (HEAD_H - 36) : 0; // dense chrome is shorter
-      const rowH = rowCount > 0 ? Math.max(26, Math.min(44, Math.floor((rowsH + dividerAdj) / rowCount))) : 44;
+      const rowH = rowCount > 0 ? Math.max(rowFloor, Math.min(44, Math.floor((rowsH + dividerAdj) / rowCount))) : 44;
       // Width: fit `targetColumns` sessions (never fewer than ten) into what
       // is left beside the sticky rails, between 56 and 84px each.
       const availW = el.clientWidth - MACHINE_W - (showStats ? STAT_W : 0) - (hasOlderColumn ? OLDER_W : 0);
@@ -926,7 +956,7 @@ export function JourneyGrid({
       window.removeEventListener("resize", measure);
       ro?.disconnect();
     };
-  }, [fit, layout, viewportReserve, rowCount, dividerCount, showStats, hasOlderColumn, cols, targetColumns, settingsDisplay]);
+  }, [fit, layout, viewportReserve, rowCount, dividerCount, showStats, hasOlderColumn, cols, targetColumns, settingsDisplay, rowFloor]);
 
   /*
    * The fit above re-measures AFTER the scroll effect has run in the same
@@ -1269,6 +1299,7 @@ const SectionBlock = memo(function SectionBlock({
             live={live}
             liveValue={liveValues?.[row.machine.id]}
             liveInactive={!!section.inactive}
+            idleNote={section.idleNote}
             settingsDisplay={settingsDisplay}
             band={i % 2 === 1}
           />

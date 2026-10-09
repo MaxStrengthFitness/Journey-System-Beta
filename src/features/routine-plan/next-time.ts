@@ -21,6 +21,9 @@
  *   again (`todayFor`);
  * - a Free session has no Next time, and neither has a session that ran no
  *   routine for a client who has a Routine A: nothing here makes a second;
+ *   a session that records its own list (a client session with no
+ *   routine; an open session, once it has a client) is never Free, whatever
+ *   it ran (`ranAsFree`, the open session round, Oct 9 2026);
  * - a machine let go today is never offered back: one the client can't do
  *   (a mark that still holds), and one the routine or its plan held while
  *   the session ran and holds no longer (a Swap in the plan, a Re-plan or a
@@ -173,23 +176,62 @@ export function routineHolds(routine: Pick<Routine, "machineIds" | "plan"> | nul
 }
 
 /**
+ * Whether a session ran the whole floor as nobody's chosen list: no routine,
+ * NO list of its own on the session document (`sessionMachineIds` absent),
+ * and today's machines are every machine on the floor. That is an old Free
+ * session or an open session from before Oct 9 2026, which took the floor
+ * as its list because it had nothing else.
+ *
+ * A session that records its own list is never this, however much of the
+ * floor it ran (the open session round, Oct 9 2026; AJ's "1b", "i think the
+ * open session should honestly feel most like a filemaker session ... but
+ * also i want to be able to take advantage of our routine builder"). Every
+ * session started since Oct 8 2026 records what it runs: a client Start its
+ * list (an empty one when nothing was chosen), an open session `[]`. The
+ * FileMaker floor is a VIEW, never the list: the session records only the
+ * machines a trainer added with +, in the order done, so a trainer who
+ * added every machine on the floor still chose each one.
+ */
+export function ranWholeFloorUnchosen(input: {
+  routineId: string | null | undefined;
+  /** The list on the session document (`sessionMachineIds`), absent on an old session. */
+  recorded: readonly string[] | null | undefined;
+  /** This studio's floor, by id. */
+  floor: readonly (string | null | undefined)[];
+  /** Today's machines. */
+  today: readonly string[];
+}): boolean {
+  if (input.routineId || Array.isArray(input.recorded)) return false;
+  return input.floor.length > 0 && input.floor.every((id) => !id || input.today.includes(id));
+}
+
+/**
  * Whether the session ran Free (no Next time): how it was started, when this
  * iPad started it; for a session resumed after a reload, with no record of
- * that, a session with no routine that runs the whole floor is read as Free.
- * One started here as Routine A, for a client with no routine, is never
- * Free, however much of the floor it ran.
+ * that, the whole floor run as nobody's chosen list (`ranWholeFloorUnchosen`:
+ * no routine and no list of its own). One started here as Routine A, for a
+ * client with no routine, is never Free, however much of the floor it ran;
+ * nor is a routine-less client session whose list is what was added, so its
+ * Next time can start Routine A from it (the open session round, Oct 9 2026:
+ * "The floor is a view: the session records only what was added"). An open
+ * session reads the same once it has a client and reaches Finish: that waits
+ * for the round's Who's this? phase, since Assign still skips Finish and the
+ * Wrap-up. Nothing has started a session as Free since Oct 8 2026 (the
+ * briefing offers A or B only).
  */
 export function ranAsFree(input: {
   /** How this iPad started the session, or null when it didn't (resumed). */
   startedAs: "A" | "B" | "Free" | null;
   routineId: string | null | undefined;
+  /** The list on the session document (`sessionMachineIds`), absent on an old session. */
+  recorded: readonly string[] | null | undefined;
   /** This studio's floor, by id. */
   floor: readonly (string | null | undefined)[];
   /** Today's machines. */
   today: readonly string[];
 }): boolean {
   if (input.startedAs !== null) return input.startedAs === "Free";
-  return !input.routineId && input.floor.length > 0 && input.floor.every((id) => !id || input.today.includes(id));
+  return ranWholeFloorUnchosen(input);
 }
 
 /**

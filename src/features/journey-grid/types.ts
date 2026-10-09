@@ -75,6 +75,12 @@ export interface JourneyMachine {
   noteCount?: number;
   /** Unilateral machine (Torso Rotation): today's input logs Left and Right separately. */
   sides?: boolean;
+  /**
+   * Out of service on the studio's roster (`rosterStatus: "maintenance"`,
+   * catalog/out-of-service.ts): a row outside today's list says so in its
+   * Today cell, with no + (the FileMaker floor, Oct 9 2026).
+   */
+  outOfService?: boolean;
 }
 
 export interface JourneyRow {

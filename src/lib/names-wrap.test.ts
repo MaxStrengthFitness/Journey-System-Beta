@@ -53,6 +53,8 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   { file: "features/journey-grid/journey-grid.css", cls: "jg-order__add", exact: ".jg-order__add span", what: "a machine in the routine-order sheet" },
   // The floor on day one (the first-session design round, Oct 8 2026, §4.6).
   { file: "features/phone/phone.css", cls: "ph-card__next", what: "\"Next: Leg Press\" and \"Next in the plan: Hip Abduction · Add\" on the phone's card in hand" },
+  // The FileMaker floor on a phone (the open session round, Oct 9 2026).
+  { file: "features/phone/phone.css", cls: "ph-floor__name", what: "a machine on the rest of the floor, under a phone's session cards" },
   { file: "features/routine-builder/routine-builder.css", cls: "rb-row__name", what: "a machine in the routine builder's list" },
   { file: "features/routine-builder/routine-builder.css", cls: "rb-pick__name", what: "a machine in the routine builder's picker" },
   { file: "features/routine-builder/routine-builder.css", cls: "rb-warn__pair", what: "the two machines a sequencing warning names" },

@@ -212,3 +212,76 @@ describe("PhoneSessionStage", () => {
     expect(p.onAddPlanned).toHaveBeenCalledWith("m-leg-press");
   });
 });
+
+/*
+ * THE FILEMAKER FLOOR ON A PHONE (the open session round, Oct 9 2026; AJ's
+ * "1b": "you have every machine on the screen and you just fill in the ones
+ * you did"). Today's machines stay cards; the rest of the floor is a plain
+ * list of names under them, each with a 40px Add that adds the machine and
+ * makes it the card in hand (the tracker's own add, the grid's +).
+ */
+describe("PhoneSessionStage with the floor showing", () => {
+  const FLOOR = [rowOf("row", "Compound Row", 60), rowOf("lumbar", "Lumbar Extension with a name long enough to wrap on a phone", 90)];
+
+  it("draws today's cards, then the rest of the floor as names, each with its own Add", () => {
+    mount({ floor: FLOOR, onAddMachine: vi.fn() });
+    expect(qa(".ph-card").map((c) => c.querySelector(".ph-card__name")!.textContent)).toEqual(["Chest Press", "Leg Press"]);
+    const list = q('section[aria-label="Rest of the floor"]');
+    expect(list.querySelector(".ph-floor__head")!.textContent).toBe("Rest of the floor");
+    // A plain list, never a second set of cards, in the order handed (the walking order).
+    expect(list.querySelectorAll(".ph-card")).toHaveLength(0);
+    expect(qa(".ph-floor__name").map((n) => n.textContent)).toEqual([
+      "Compound Row",
+      "Lumbar Extension with a name long enough to wrap on a phone",
+    ]);
+    const adds = qa(".ph-floor__add");
+    expect(adds.map((b) => b.getAttribute("aria-label"))).toEqual([
+      "Add Compound Row to today's session",
+      "Add Lumbar Extension with a name long enough to wrap on a phone to today's session",
+    ]);
+    expect(adds.every((b) => b.textContent === "Add")).toBe(true);
+  });
+
+  it("Add sends what waits on the card in hand, then adds the machine (the tracker makes it the card in hand)", () => {
+    const p = mount({ floor: FLOOR, onAddMachine: vi.fn() });
+    act(() => qa(".ph-floor__add")[1].click());
+    expect(p.onCommit).toHaveBeenCalledTimes(1);
+    expect(p.onAddMachine).toHaveBeenCalledTimes(1);
+    expect(p.onAddMachine).toHaveBeenCalledWith("lumbar");
+    expect(p.onFocus).not.toHaveBeenCalled();
+  });
+
+  it("a machine out of service on the roster is listed, says so, and has no Add", () => {
+    const out = rowOf("row", "Compound Row", 60);
+    out.machine = { ...out.machine, outOfService: true };
+    mount({ floor: [out, FLOOR[1]], onAddMachine: vi.fn() });
+    const rows = qa(".ph-floor__row");
+    expect(rows.map((r) => r.querySelector(".ph-floor__name")!.textContent)).toEqual([
+      "Compound Row",
+      "Lumbar Extension with a name long enough to wrap on a phone",
+    ]);
+    expect(rows[0].querySelector(".ph-floor__out")!.textContent).toBe("Out of service");
+    expect(rows[0].querySelector(".ph-floor__add")).toBeNull();
+    expect(rows[1].querySelector(".ph-floor__add")).not.toBeNull();
+  });
+
+  it("an empty day says where to tap, over the floor", () => {
+    mount({ rows: [], focusId: null, floor: [...ROWS, ...FLOOR], onAddMachine: vi.fn() });
+    expect(q(".ph-stage__empty").textContent).toBe("Tap Add on a machine you're doing.");
+    expect(qa(".ph-card")).toHaveLength(0);
+    expect(qa(".ph-floor__name")).toHaveLength(4);
+  });
+
+  it("without the floor, or without a way to add, today's cards only, as before", () => {
+    mount({ floor: null, onAddMachine: vi.fn() });
+    expect(qa(".ph-floor__row")).toHaveLength(0);
+    act(() => root?.unmount());
+    host?.remove();
+    mount({ floor: FLOOR });
+    expect(qa(".ph-floor__row")).toHaveLength(0);
+    act(() => root?.unmount());
+    host?.remove();
+    mount({ rows: [], focusId: null, floor: [], onAddMachine: vi.fn() });
+    expect(q(".ph-stage__empty").textContent).toBe("No machines in today's routine yet.");
+  });
+});

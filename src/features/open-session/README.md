@@ -25,3 +25,13 @@ The Hub peek's "Open session" is a different thing: it resumes a client's runnin
 - The open-session listener follows a studio switch (the studio is one of its dependencies), and reads the newest twenty (`orderBy("createdAt", "desc")`; the index that leads with `hostedAtStudioId` serves it): unordered, a session just started could fall outside twenty abandoned ones.
 - Until the studio's open sessions answer, the screen says "Opening the session…" (`nothingKind`'s `opening`), never "No session is open here".
 - Notes and Pulse are not drawn while there is no client: both need one, and they were buttons that opened nothing.
+
+## The FileMaker floor (AJ's "1b")
+
+- **Every machine shows, in the studio's walking order.** An open session (and a client session with no routine, so every routine-less session looks alike) opens the grid's fold: every row has the Today column's +. On a phone, today's cards and then the rest of the floor as names, each with an Add. For a client, the floor opens once the client's routines are known and a Start that could not decide its routine has (a routine may still come; it never opens for a frame and folds again). The groups and the corner say "Today" and "Rest of the floor", never "routine".
+- **+ adds and focuses in one tap**, and the machine rises into today's numbered group in the order done (FileMaker's circle). The empty Now Bar says "Tap + on a machine you're doing." and keeps Add a machine. The order line speaks from two machines, as for every session, and also when every machine on the floor was added: the trainer chose that order.
+- **The + is 40px to tap on a floor of any size**: while a + is on screen the grid never fits a row under 40px, and scrolls instead (`JourneyGrid`'s `rowFloor`).
+- **One tap, one machine.** A second add of another machine inside 400ms is the first tap landing on the row that slid under it, and is let go (`journey-grid/add-bounce.ts`).
+- **Out of service** on the studio's roster: the machine is on the floor, says "Out of service" in its Today cell (and on a phone's list), and has no +. Add a machine still reaches it if the mark is stale.
+- **The floor is a view.** The session records only what was added (`sessionMachineIds`), never the floor. A session with its own list is never read as Free (`routine-plan/next-time.ts`, `ranAsFree` and `ranWholeFloorUnchosen`): a client session with no routine gets Next time from what was added. An open session gets there once Who's this? gives it a client and a Finish (a later phase of this round: Assign still skips Finish and the Wrap-up). An old Free session (no routine, no list of its own, the whole floor) is as it was.
+- The rules are in `features/journey-grid/README.md` §2.6 and `features/phone/README.md`.
