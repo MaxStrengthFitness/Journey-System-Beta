@@ -143,6 +143,7 @@ import { isProvisionalNewClient, pastLearningCurve, startingKindOf } from "../ro
 import { openHealthWords, planIntakeText } from "../routine-plan/intake";
 import { planProgress, progressLine, todayFor } from "../routine-plan/plan";
 import { roadGroups } from "../routine-plan/lineup";
+import { bProgressOf, bRoadGroups, bStatus, bStatusLine, isBPlan, swapsOf } from "../routine-plan/b-routine";
 import {
   briefingPlanView,
   type BriefingDoor,
@@ -714,6 +715,28 @@ export function BriefingScreen({
           groups: roadGroups({ plan: routineA.plan, today: selectedRoutineIds, todayYmd: todayKey, firstName }),
           progress: planProgress(routineA.plan, routineA.machineIds ?? []),
         }
+      : null;
+  /* A session on Routine B with a plan of swaps (Round 2, B molded in):
+     the Road for B as the glance, today under its bracket, the swaps still
+     to come, "B · 2 of 5 swaps" under it. Nothing else here changes. */
+  const bRoad =
+    (planView === "routine" || planView === "in-progress") && routineLetter === "B" && routineB && isBPlan(routineB.plan)
+      ? (() => {
+          const status = bStatus(swapsOf(routineB.plan), routineB.machineIds ?? []);
+          return {
+            groups: bRoadGroups({
+              bPlan: routineB.plan,
+              today: selectedRoutineIds,
+              bRoutine: routineB.machineIds ?? [],
+              cantDo: routineA?.plan?.cantDo,
+              todayYmd: todayKey,
+              nameOf: planNameOf,
+              firstName,
+            }),
+            line: bStatusLine(status, planNameOf),
+            progress: bProgressOf(status),
+          };
+        })()
       : null;
   /* The plan card's safety line: today's machines against the client's
      limits, as the routine line says it for a routine (the routine line is
@@ -1314,6 +1337,17 @@ export function BriefingScreen({
                     label="Routine A's plan"
                     progressLine={progressLine(inProgress.progress, planNameOf, routineA.plan.dayOne)}
                     progress={inProgress.progress}
+                  />
+                </div>
+              )}
+              {bRoad && (
+                <div data-testid="briefing-b-road">
+                  <RoadStrip
+                    groups={bRoad.groups}
+                    nameOf={planNameOf}
+                    label="Routine B's plan"
+                    progressLine={bRoad.line}
+                    progress={bRoad.progress}
                   />
                 </div>
               )}

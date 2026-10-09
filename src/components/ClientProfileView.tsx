@@ -129,8 +129,10 @@ import {
 import { EditRoutineDrawer } from "./EditRoutineDrawer";
 import { isProvisionalNewClient, startingKindOf } from "../features/routine-plan/client-kind";
 import { openHealthWords, planIntakeText } from "../features/routine-plan/intake";
-import type { PlanHost } from "../features/routine-plan/ui/host";
+import { savedRoutineB, type PlanHost } from "../features/routine-plan/ui/host";
 import { usePlanActions } from "../features/routine-plan/ui/usePlanActions";
+import { ProfilePlanB } from "../features/routine-plan/ui/ProfilePlanB";
+import { useBSwitch } from "../features/routine-plan/ui/useBSwitch";
 import { useUnsavedChanges } from "../features/unsaved-changes";
 import {
   ProfileHeader,
@@ -925,11 +927,26 @@ export function ClientProfileView({
   }, [clientId, hasQuotaError]);
 
 
-  const handlePromptToggleB = (checked: boolean) => {
-    setPendingToggleBValue(checked);
-    setToggleBReason("");
-    setIsToggleReasonDialogOpen(true);
-  };
+  /* The B switch and Plan B (Round 2, B molded in; routine-plan/ui/useBSwitch).
+     Turning B on while Routine B has no machines opens Plan B: B starts as a
+     copy of A with one machine different, never as an EMPTY Routine B (the
+     critic's #22: an empty B with B on alternated the client into a session
+     of nothing). Before the routines have answered it says it can't tell.
+     The drawer asked about its own typing before it handed this over, so it
+     closes for Plan B. Plan B is the one sheet the A | B lineup, Routine B's
+     segment, the switch and the drawer open. */
+  const bSwitch = useBSwitch({
+    routines,
+    routinesKnown: routinesStatus === "ready",
+    onSwitch: (checked) => {
+      setPendingToggleBValue(checked);
+      setToggleBReason("");
+      setIsToggleReasonDialogOpen(true);
+    },
+    onCantTell: toastError,
+    beforePlanB: () => setEditRoutineTarget(null),
+  });
+  const handlePromptToggleB = bSwitch.request;
   // The reason typed in the B dialog and not yet saved (a screen holding typing registers).
   const toggleBUnsaved = useUnsavedChanges(
     isToggleReasonDialogOpen && toggleBReason.trim() !== "",
@@ -944,7 +961,14 @@ export function ClientProfileView({
    * able to change that and make the call as a trainer because you're
    * training them that day", and "it's nice to be able to communicate like,
    * hey, I'm changing this plan because of this reason". It required three
-   * characters until then. Round 2 reworks B; the write path is as it was.
+   * characters until then.
+   *
+   * Round 2 (B molded in): turning B on never makes an EMPTY Routine B any
+   * more. With no machines in B the switch opens Plan B instead
+   * (`handlePromptToggleB`), which writes Routine B, its plan and this flag
+   * in one batch; here B already has machines, so only the flag and the
+   * "turned on/off" record are written. Turning B off keeps its reason
+   * optional, as above.
    */
   const handleConfirmToggleB = async () => {
     if (pendingToggleBValue === null || !clientId) return;
@@ -956,32 +980,22 @@ export function ClientProfileView({
         isRoutineBActive: pendingToggleBValue,
       });
 
-      const routineName = "Routine B";
-      let routine = routines.find((r) => r.name === routineName);
-      let routineId = routine?.id || "temp-b";
-
-      if (routineId === "temp-b") {
-        const docRef = await addDoc(collection(db, "routines"), {
+      const routine = savedRoutineB(routines);
+      // The record names the routine it is about: with no Routine B saved
+      // (B switched off before one was ever made) there is none to name.
+      if (routine?.id) {
+        await addDoc(collection(db, "routineAdjustments"), {
           clientId,
-          name: routineName,
-          machineIds: [],
-          createdAt: serverTimestamp(),
+          routineId: routine.id,
+          previousMachineIds: routine.machineIds || [],
+          newMachineIds: routine.machineIds || [],
+          trainerId: authTrainer?.id || "unknown",
+          ...(toggleReason ? { notes: toggleReason } : {}),
           studioId: client?.homeStudioId || activeStudioId || "",
+          changeType: pendingToggleBValue ? "enabled" : "disabled",
+          createdAt: serverTimestamp(),
         });
-        routineId = docRef.id;
       }
-
-      await addDoc(collection(db, "routineAdjustments"), {
-        clientId,
-        routineId,
-        previousMachineIds: routine?.machineIds || [],
-        newMachineIds: routine?.machineIds || [],
-        trainerId: authTrainer?.id || "unknown",
-        ...(toggleReason ? { notes: toggleReason } : {}),
-        studioId: client?.homeStudioId || activeStudioId || "",
-        changeType: pendingToggleBValue ? "enabled" : "disabled",
-        createdAt: serverTimestamp(),
-      });
 
       if (client) {
         client.isRoutineBActive = pendingToggleBValue;
@@ -1468,6 +1482,7 @@ export function ClientProfileView({
   const planActions = usePlanActions({
     clientId,
     studioId: client?.homeStudioId || activeStudioId || "",
+    routines,
     setRoutines,
     onError: toastError,
     onRefused: () => setRoutinesReadNonce((n) => n + 1),
@@ -1533,8 +1548,16 @@ export function ClientProfileView({
       todayYmd: planToday,
       intakeText: planIntake,
       actions: planActions,
+      openPlanB: bSwitch.openPlanB,
+      // Every session read: no page left on the server. Until the first
+      // page answers this is false, and the count says nothing.
+      sessionsComplete: !hasMoreSessions,
+      coverage: clientCoverage,
     }),
     [
+      bSwitch.openPlanB,
+      clientCoverage,
+      hasMoreSessions,
       routinesStatus,
       startingKind,
       codexFloor,
@@ -2157,6 +2180,24 @@ export function ClientProfileView({
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* Plan B (Round 2, B molded in): Routine B starts as A with one
+              machine different. Mounted only while open, so a draft lives
+              as long as the sheet does. Start B is ONE batch, never awaited
+              (routine-plan/store.ts startRoutineB, through usePlanActions). */}
+          <ProfilePlanB
+            bSwitch={bSwitch}
+            routines={routines}
+            floor={codexFloor}
+            machines={machines}
+            sessions={sessions}
+            sessionsComplete={!hasMoreSessions}
+            coverage={clientCoverage}
+            who={planHost.who}
+            todayYmd={planToday}
+            actions={planActions}
+            onError={toastError}
+          />
 
           {/* Edit Routine drawer — widened, with in-drawer A/B switching,
               a horizontal filter row, and two-tier Preset Routines. Lives in

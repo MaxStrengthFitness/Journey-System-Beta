@@ -1134,6 +1134,56 @@ describe("how the client starts (the first-session design round, Oct 8 2026)", (
     expect(onStart.mock.calls[0][5]).toBeUndefined();
   });
 
+  /* B, molded in (Round 2 of the design round, item 6): a client on Routine
+     B sees the Road for B as the glance, "B · 1 of 2 swaps", and nothing
+     else on the briefing changes. */
+  it("a session on Routine B with its plan: the Road for B, the swaps still to come, and how far B is", async () => {
+    const a = { id: "rA", clientId: "c-new", name: "Routine A", machineIds: ["m-leg-press", "m-compound-row", "m-lumbar"] } as unknown as Routine;
+    const bPlan = {
+      purpose: "Variety: the same regions, different machines",
+      purposeKinds: ["variety"],
+      intended: ["m-ext", "m-pulldown", "m-lumbar"],
+      swaps: [
+        { replaces: "m-leg-press", with: "m-ext" },
+        { replaces: "m-compound-row", with: "m-pulldown" },
+      ],
+      building: false,
+      madeByUid: "uid-sam",
+    };
+    const b = { id: "rB", clientId: "c-new", name: "Routine B", machineIds: ["m-ext", "m-compound-row", "m-lumbar"], plan: bPlan } as unknown as Routine;
+    const onStart = vi.fn();
+    const host = await mount(
+      <BriefingScreen
+        authTrainer={trainer}
+        client={{ ...fresh, sessionCount: 12, isRoutineBActive: true } as Client}
+        coverage="complete"
+        studioId="s1"
+        studioName="Westlake"
+        targetRoutine={b}
+        lastSession={null}
+        sessions={[]}
+        routinesKnown
+        onStart={onStart}
+        onClose={() => {}}
+        machines={floor}
+        routines={[a, b]}
+        trainers={[trainer]}
+      />,
+    );
+    expect(host.querySelector('[data-testid="briefing-routine-line"]')!.textContent).toContain("Routine B · 3 machines");
+    const road = host.querySelector('[data-testid="briefing-b-road"]')!;
+    expect(road.textContent).toContain(`B · 1 of 2 swaps · next: ${nameOfId("m-pulldown")} for ${nameOfId("m-compound-row")}`);
+    expect(road.textContent).toContain("Swaps to come");
+    expect(road.textContent).toContain("Next stop");
+    expect(Array.from(road.querySelectorAll('.rpl-road__stop[data-kind="in"] .rpl-road__name')).map((n) => n.textContent)).toEqual(
+      ["m-ext", "m-compound-row", "m-lumbar"].map(nameOfId),
+    );
+    // A's Road is not drawn over a session on B.
+    expect(host.querySelector('[data-testid="briefing-plan-road"]')).toBeNull();
+    await click(buttonByText(host, "Start session"));
+    expect(onStart.mock.calls[0][0]).toBe("B");
+  });
+
   /* The builder's "thin" advice ("Most established clients run at least
      6") was gated on the intro-session flag, which nothing set, so every
      client was "established". It is the Academy's learning curve now ("after

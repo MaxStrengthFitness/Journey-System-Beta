@@ -34,6 +34,7 @@ import { useUnsavedChanges } from "../features/unsaved-changes";
 import { planChangeFromEdit } from "../features/routine-plan/drawer-sync";
 import { signedChange } from "../features/routine-plan/lineup";
 import { saveRoutineEdit } from "../features/routine-plan/store";
+import { bFollowOf, bToggleOpensPlanB } from "../features/routine-plan/b-routine";
 import { pastLearningCurve } from "../features/routine-plan/client-kind";
 import type { HistoryCoverage } from "../lib/prior-history";
 import { GLOBAL_ROUTINE_PRESETS } from "../data/routine-presets";
@@ -94,8 +95,10 @@ interface EditRoutineDrawerProps {
   onClose: () => void;
   /** Called with the freshly-refetched routines for this client after a save. */
   onSaved: (routines: Routine[]) => void;
-  /** Opens the existing reason-gated "enable Protocol B" flow (defined in
-   * ClientProfileView.tsx) when the trainer taps the inactive B tab. */
+  /** Turns Routine B on when the trainer taps the inactive B tab (ClientProfileView.tsx):
+   * the reason asked, never required, for a Routine B with machines; Plan B, with
+   * this drawer closed, for one with none (Round 2: B starts as a copy of A with
+   * one machine different, never an empty Routine B). */
   onRequestActivateRoutineB?: () => void;
 }
 
@@ -533,6 +536,9 @@ export function EditRoutineDrawer({
           createdAt: serverTimestamp(),
         };
         const kept = current.plan && uid ? planChangeFromEdit({ before: snapshot, after: machineIds, plan: current.plan }) : null;
+        // B FOLLOWS A (Round 2, Oct 8 2026): a save of Routine A takes
+        // Routine B with it when B has a plan of swaps, in the same batch.
+        const follow = activeSlot === "Routine A" ? bFollowOf(routines, finalId, machineIds) : null;
         if (kept && uid) {
           const who = { uid, ...(authTrainer?.fullName ? { name: authTrainer.fullName } : null) };
           await saveRoutineEdit(db, finalId, {
@@ -540,6 +546,13 @@ export function EditRoutineDrawer({
             plan: kept.plan,
             changes: kept.changes.map((c) => signedChange(c, who, why)),
             adjustment,
+            follow,
+          });
+        } else if (follow) {
+          await saveRoutineEdit(db, finalId, {
+            routine: { machineIds, ...provenance, updatedAt: serverTimestamp() },
+            adjustment,
+            follow,
           });
         } else {
           await updateDoc(doc(db, "routines", finalId), {
@@ -618,7 +631,13 @@ export function EditRoutineDrawer({
                       type="button"
                       onClick={() =>
                         inactive
-                          ? onRequestActivateRoutineB?.()
+                          ? // With nothing in Routine B, turning it on opens
+                            // Plan B (B starts as a copy of A with one
+                            // machine different), which closes this drawer,
+                            // so what is typed here is asked about first.
+                            bToggleOpensPlanB(true, routineFor("Routine B"))
+                            ? unsaved.guard(() => onRequestActivateRoutineB?.())
+                            : onRequestActivateRoutineB?.()
                           : handleRequestSlot(slot)
                       }
                       className={cn(

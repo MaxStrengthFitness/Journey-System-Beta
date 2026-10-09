@@ -386,6 +386,36 @@ describe("the plan from the session's corner (AJ's Q6)", () => {
     expect(store.calls).toHaveLength(2);
     expect(shown("today").split(","), "a can't-do is read by A and B").not.toContain("m-compound-row");
   });
+
+  // B, molded in (Round 2): the research's §5.3, "When A changes during B's
+  // build-out, the machines B hasn't swapped yet follow A (they are A's), and
+  // B's own swaps stay" — written in the same batch as A's change.
+  it("a change that moves Routine A's machines takes Routine B with it in the same write, B's own swap kept", async () => {
+    const a: Routine = { ...routineA(), machineIds: ["m-leg-press", "m-compound-row", "m-lumbar", "m-hip-abd"] };
+    const bPlan: RoutinePlan = {
+      purpose: "Variety: the same regions, different machines",
+      purposeKinds: ["variety"],
+      intended: ["m-leg-press", "m-simple-row", "m-lumbar", "m-hip-abd"],
+      swaps: [{ replaces: "m-compound-row", with: "m-simple-row" }],
+      building: false,
+      madeByUid: "uid-sam",
+    };
+    const b: Routine = { id: "rb-1", clientId: "c-dana", name: "Routine B", machineIds: ["m-leg-press", "m-simple-row", "m-lumbar", "m-hip-abd"], plan: bPlan };
+    await mount(<Harness routines={[a, b]} sessionRoutineId="rb-1" />);
+    await tap(/^The plan ·/);
+    await tap(`Change ${nameOf("m-leg-press")} in the plan`);
+    await tap(nameOf("m-leg-curl"));
+    await tap("Save change");
+    expect(store.calls).toHaveLength(1);
+    const { routineId, input } = store.calls[0];
+    expect(routineId).toBe("ra-1");
+    expect(input.machineIds).toEqual(["m-leg-curl", "m-compound-row", "m-lumbar", "m-hip-abd"]);
+    expect(input.follow).toEqual({
+      routineId: "rb-1",
+      machineIds: ["m-leg-curl", "m-simple-row", "m-lumbar", "m-hip-abd"],
+      intended: ["m-leg-curl", "m-simple-row", "m-lumbar", "m-hip-abd"],
+    });
+  });
 });
 
 describe("the Academy's column, picked once per client (AJ's \"3a\")", () => {

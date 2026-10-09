@@ -77,7 +77,7 @@ export function RotationPanel({
   // split. Mindbody's gender picked the female or male row until Oct 8 2026;
   // AJ's "3a": "Gender is used nowhere in choosing a start".
   const model = MODEL_AB_ROUTINE.neutral;
-  const modelIds = slot === "B" ? model.b : model.a;
+  const modelIds = model.a;
 
   return (
     <div className="rb-rot">
@@ -109,7 +109,8 @@ export function RotationPanel({
 
       {isEmpty ? (
         <p className="rb-note" style={{ marginTop: "0.4rem" }}>
-          Nothing here yet. {TWICE_WEEKLY_RULE.statement} Start from one of these and adjust:
+          Nothing here yet. {TWICE_WEEKLY_RULE.statement}
+          {slot === "B" ? "" : " Start from one of these and adjust:"}
         </p>
       ) : rotation.underDosed.length > 0 ? (
         <>
@@ -150,7 +151,18 @@ export function RotationPanel({
         </p>
       )}
 
-      {onSeed && canSeed && (
+      {/*
+        B is never seeded whole here (Round 2, Oct 8 2026; the critic's #23).
+        "Start from the model B routine" put the model B in at once, against
+        AJ's "the B routine starts out as the A routine with just one machine
+        different" (Oct 7 2026) and against this panel's own note below ("not
+        all at once"). The simpler honest answer is to take it out of B, not
+        to seed "A with one swap" here: a B seeded in this builder would be
+        saved with no plan of swaps, so nothing could say which swap comes
+        next or keep B's unswapped places following A. B starts from Plan B
+        on Programming (routine-plan/ui/PlanBSheet), which keeps the plan.
+      */}
+      {onSeed && canSeed && slot !== "B" && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.3rem", marginTop: "0.5rem" }}>
           <button type="button" className="rb-fix" onClick={() => seedFrom(modelIds)}>
             <Sparkles size={11} aria-hidden />
@@ -161,13 +173,18 @@ export function RotationPanel({
               key={t.id}
               type="button"
               className="rb-fix"
-              onClick={() => seedFrom(slot === "B" ? t.eventualB : t.eventualA)}
+              onClick={() => seedFrom(t.eventualA)}
             >
               <Sparkles size={11} aria-hidden />
               {t.label}
             </button>
           ))}
         </div>
+      )}
+      {slot === "B" && isEmpty && (
+        <p className="rb-note" style={{ marginTop: "0.4rem" }}>
+          B starts as a copy of A with one machine different: Plan B, on Programming → Routine B.
+        </p>
       )}
 
       {onToggleTemplate && (

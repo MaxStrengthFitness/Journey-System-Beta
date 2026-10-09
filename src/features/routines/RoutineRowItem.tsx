@@ -30,9 +30,11 @@ export interface RoutineRowItemProps {
   action?: ReactNode;
   /** The plan's word under the name. */
   note?: string | null;
+  /** Where the cell sits in the plan's A | B lineup (`rpl-aside`). */
+  className?: string;
 }
 
-export const RoutineRowItem = memo(function RoutineRowItem({ row, onSelect, variant = "list", lead, action, note }: RoutineRowItemProps) {
+export const RoutineRowItem = memo(function RoutineRowItem({ row, onSelect, variant = "list", lead, action, note, className }: RoutineRowItemProps) {
   const outcome =
     row.outcome === null ? null : row.isHold ? `${row.outcome}s hold` : `${row.outcome} ${row.outcome === 1 ? "rep" : "reps"}`;
   const showStart = row.startingWeight !== null && row.weight !== null && row.startingWeight !== row.weight;
@@ -115,7 +117,7 @@ export const RoutineRowItem = memo(function RoutineRowItem({ row, onSelect, vari
     return <li className={["rt-row", row.missing ? "rt-row--missing" : ""].filter(Boolean).join(" ")}>{hit}</li>;
   }
   return (
-    <li className={["rt-cellrow", row.missing ? "rt-row--missing" : ""].filter(Boolean).join(" ")}>
+    <li className={["rt-cellrow", row.missing ? "rt-row--missing" : "", className ?? ""].filter(Boolean).join(" ")}>
       {lead ? <span className="rt-cellrow__lead">{lead}</span> : null}
       {hit}
       {action}

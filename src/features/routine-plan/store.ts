@@ -35,6 +35,16 @@
  * the plan carries the first visit's machines as `plan.dayOne`. Nothing here
  * writes day one into Routine A by itself; the Wrap-up's ticks start it
  * (`routineAfterWrapUp`), or a trainer editing Routine A on purpose.
+ *
+ * B, molded in (Round 2, Oct 8 2026, item 6):
+ * - `startRoutineB`: Plan B kept, in ONE batch: Routine B (made, or the
+ *   empty one the client has, updated) as A with one machine different, its
+ *   plan and its `start` change, and the client's `isRoutineBActive` set
+ *   true (a single-field update, as the B switch has always written it).
+ * - B FOLLOWS A: every writer that moves Routine A's machines takes a
+ *   `follow` (`b-routine.ts`'s `bFollowOf`: B's unswapped places follow A,
+ *   B's own swaps stay) and writes Routine B in the SAME batch
+ *   (`withBFollowing`), so A and B can't disagree after a refusal.
  */
 import {
   collection,
@@ -46,8 +56,26 @@ import {
   type WriteBatch,
 } from "firebase/firestore";
 import { withoutUndefined } from "../studio-tasks/task-wizard";
+import type { BFollow } from "./b-routine";
 import type { NextTimeWrite } from "./next-time";
 import type { PlanChange, RoutinePlan } from "./types";
+
+/**
+ * Routine B's part of a write that moved Routine A's machines: B's machines
+ * and its plan's road, as `bFollowOf` worked them out, in the caller's
+ * batch, and its swaps when one followed its place in A (A replaced the
+ * machine a swap was for). The plan's road and swaps are written by their
+ * own field paths, so nothing else on B's plan is touched. Nothing is
+ * written without a `follow`.
+ */
+export function withBFollowing(batch: WriteBatch, db: Firestore, follow: BFollow | null | undefined): void {
+  if (!follow) return;
+  batch.update(doc(db, "routines", follow.routineId), {
+    machineIds: [...follow.machineIds],
+    "plan.intended": [...follow.intended],
+    ...(follow.swaps ? { "plan.swaps": follow.swaps.map((s) => ({ replaces: s.replaces, with: s.with })) } : null),
+  });
+}
 
 export const PLAN_CHANGES = "planChanges";
 
@@ -139,7 +167,14 @@ export function addStartPlanToBatch(db: Firestore, batch: WriteBatch, input: Sta
 export function savePlanChange(
   db: Firestore,
   routineId: string,
-  input: { plan: RoutinePlan; change: PlanChange; machineIds?: string[]; also?: readonly PlanChange[] },
+  input: {
+    plan: RoutinePlan;
+    change: PlanChange;
+    machineIds?: string[];
+    also?: readonly PlanChange[];
+    /** Routine B, when this moves Routine A's machines and B follows A (`bFollowOf`). */
+    follow?: BFollow | null;
+  },
 ): Promise<void> {
   const batch = writeBatch(db);
   const routineRef = doc(db, "routines", routineId);
@@ -154,7 +189,39 @@ export function savePlanChange(
     const changeRef = doc(collection(db, "routines", routineId, PLAN_CHANGES));
     batch.set(changeRef, withoutUndefined({ ...change, at: serverTimestamp() }));
   }
+  withBFollowing(batch, db, input.follow);
   return batch.commit();
+}
+
+export interface StartBInput {
+  /** The client's Routine B when there is one (empty, or the Routine B turned on before Round 2), or null to make it. */
+  routineId: string | null;
+  clientId: string;
+  /** The client's home studio, as every routine carries it. */
+  studioId: string;
+  /** Routine B today: A with the first swap made (`startBPlan`). */
+  machineIds: string[];
+  /** B's plan (`startBPlan`). */
+  plan: RoutinePlan;
+  /** The plan's first change, signed: "start". */
+  change: PlanChange;
+}
+
+/**
+ * Plan B kept ("Start B"), in ONE batch, never awaited by a tap: Routine B
+ * as A with one machine different, made here when the client has none
+ * (the id made on this iPad, so the screen draws it at once) or set on the
+ * Routine B they have, its plan and its `start` change, and the client's
+ * `isRoutineBActive` set true, the one field the B switch has always
+ * written. Turning B on no longer makes an EMPTY Routine B (the critic's
+ * #22): an empty B with B on alternated the client into a session of
+ * nothing.
+ */
+export function startRoutineB(db: Firestore, input: StartBInput): StartedPlan {
+  const batch = writeBatch(db);
+  const { routineId } = addStartPlanToBatch(db, batch, { ...input, name: "Routine B" });
+  batch.update(doc(db, "clients", input.clientId), { isRoutineBActive: true });
+  return { routineId, commit: batch.commit() };
 }
 
 /**
@@ -173,19 +240,30 @@ export function saveRoutineEdit(
   input: {
     /** The drawer's own fields on the routine. */
     routine: Record<string, unknown>;
-    plan: RoutinePlan;
-    changes: readonly PlanChange[];
+    /**
+     * The routine's plan with the drawer's changes in it, or absent for a
+     * routine with no plan (a Routine A with no plan whose Routine B
+     * follows it: the save still lands with B's, in one batch).
+     */
+    plan?: RoutinePlan;
+    changes?: readonly PlanChange[];
     /** The drawer's adjustment record, as it has always written one. */
     adjustment: Record<string, unknown>;
+    /** Routine B, when this is Routine A and B follows A (`bFollowOf`). */
+    follow?: BFollow | null;
   },
 ): Promise<void> {
   const batch = writeBatch(db);
-  batch.update(doc(db, "routines", routineId), withoutUndefined({ ...input.routine, plan: input.plan }));
+  batch.update(
+    doc(db, "routines", routineId),
+    withoutUndefined({ ...input.routine, ...(input.plan ? { plan: input.plan } : null) }),
+  );
   batch.set(doc(collection(db, "routineAdjustments")), withoutUndefined(input.adjustment));
-  for (const change of input.changes) {
+  for (const change of input.plan ? (input.changes ?? []) : []) {
     const changeRef = doc(collection(db, "routines", routineId, PLAN_CHANGES));
     batch.set(changeRef, withoutUndefined({ ...change, at: serverTimestamp() }));
   }
+  withBFollowing(batch, db, input.follow);
   return batch.commit();
 }
 
@@ -214,6 +292,8 @@ export function saveNextTime(
   db: Firestore,
   write: NextTimeWrite,
   owner: { clientId: string; studioId: string; trainerId: string },
+  /** Routine B, when the ticks went into Routine A and B follows A (`bFollowOf`); in the same batch. */
+  follow?: BFollow | null,
 ): Promise<void> {
   if (write.kind === "plan") {
     return savePlanChange(db, write.routineId, {
@@ -221,6 +301,7 @@ export function saveNextTime(
       change: write.change,
       machineIds: write.machineIds,
       ...(write.also ? { also: write.also } : null),
+      ...(follow ? { follow } : null),
     });
   }
   const batch = writeBatch(db);
@@ -238,6 +319,7 @@ export function saveNextTime(
   if (write.kind === "routine") {
     batch.update(doc(db, "routines", write.routineId), { machineIds: write.machineIds, updatedAt: serverTimestamp() });
     batch.set(doc(collection(db, "routineAdjustments")), adjustment(write.routineId, write.previousMachineIds, "machines"));
+    withBFollowing(batch, db, follow);
   } else {
     const routineRef = doc(collection(db, "routines"));
     batch.set(

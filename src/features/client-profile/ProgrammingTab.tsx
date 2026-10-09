@@ -58,6 +58,7 @@ import type {
   WorkoutSession,
 } from "../../types";
 import { EquipmentTab } from "../equipment";
+import { bStatus, isBPlan, swapsOf } from "../routine-plan/b-routine";
 import { planProgress, runsDayOne } from "../routine-plan/plan";
 import type { PlanHost } from "../routine-plan/ui/host";
 import { UnsavedChangesScope, useLeaveScope } from "../unsaved-changes";
@@ -249,6 +250,15 @@ export function ProgrammingTab({
         })()
     : null;
 
+  // Routine B with a plan of swaps says how far it is: "2 of 5 swaps" (Round 2, B molded in).
+  const bPlan = model.b.plan;
+  const bPlanMeta = isBPlan(bPlan)
+    ? (() => {
+        const st = bStatus(swapsOf(bPlan), model.b.machineIds);
+        return `${st.made} of ${st.of} swaps${model.todayName === "Routine B" ? " · today" : ""}`;
+      })()
+    : null;
+
   const items = useMemo<SubnavItem<ProgrammingView>[]>(
     () => [
       {
@@ -275,7 +285,9 @@ export function ProgrammingTab({
         label: "Routine B",
         meta: !isBActive
           ? "off"
-          : model.rowsB.length === 0
+          : bPlanMeta
+            ? bPlanMeta
+            : model.rowsB.length === 0
             ? "not set up"
             : `${model.rowsB.length} machines${model.todayName === "Routine B" ? " · today" : ""}`,
         flag: isBActive && model.rowsB.some((r) => r.weight === null),
@@ -302,7 +314,7 @@ export function ProgrammingTab({
         flag: setup.prescribedMissing > 0,
       },
     ],
-    [model, isBActive, coverage, setup, toReview, aPlanMeta, plan?.status],
+    [model, isBActive, coverage, setup, toReview, aPlanMeta, bPlanMeta, plan?.status],
   );
 
   const context = (
@@ -387,7 +399,7 @@ export function ProgrammingTab({
 
       <UnsavedChangesScope scope={segments}>
         {view === "routine-a" && <RoutinesTab {...routineProps} view="Routine A" plan={plan} />}
-        {view === "routine-b" && <RoutinesTab {...routineProps} view="Routine B" />}
+        {view === "routine-b" && <RoutinesTab {...routineProps} view="Routine B" plan={plan} />}
       </UnsavedChangesScope>
 
       {/* Mounted from the first time the roster is opened, hidden after that.

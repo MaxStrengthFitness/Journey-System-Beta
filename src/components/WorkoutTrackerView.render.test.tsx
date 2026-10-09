@@ -2012,6 +2012,46 @@ describe("the Wrap-up's Next time, from Finish to the routine (Oct 8 2026)", () 
     });
   });
 
+  // B, molded in (Round 2 of the design round): "When A changes during B's
+  // build-out, the machines B hasn't swapped yet follow A (they are A's),
+  // and B's own swaps stay" (the research, §5.3; the critic's #25: nothing
+  // wrote it). The Wrap-up's ticks into Routine A take Routine B along, in
+  // the same batch.
+  it("ticks into Routine A take Routine B with them in the same batch: B's swap kept, its unswapped places following A", async () => {
+    sessionDocs = running({ routineId: "ra-1", sessionMachineIds: ["m-leg-press", "sm-solon-rear-delt"] });
+    netCtl.routines = [
+      {
+        id: "ra-1",
+        data: () => ({
+          clientId: CLIENT_ID,
+          name: "Routine A",
+          machineIds: ["m-leg-press"],
+          plan: { purpose: "", intended: ["m-leg-press", "sm-solon-rear-delt"], building: true, madeByUid: "uid-coach" },
+        }),
+      },
+      {
+        id: "rb-1",
+        data: () => ({
+          clientId: CLIENT_ID,
+          name: "Routine B",
+          machineIds: ["m-ext"],
+          plan: { purpose: "Variety", purposeKinds: ["variety"], intended: ["m-ext"], swaps: [{ replaces: "m-leg-press", with: "m-ext" }], building: false, madeByUid: "uid-coach" },
+        }),
+      },
+    ];
+    netCtl.logs = [performed("m-leg-press"), performed("sm-solon-rear-delt")];
+    await finishToWrapUp();
+    // Being built, with machines in Routine A: today's new machine starts ticked.
+    expect(tickFor("Rear Delt Hoist").getAttribute("aria-checked")).toBe("true");
+    writes.length = 0;
+    await backToHub();
+    const out = routineWrites();
+    expect(out.map((w) => w.path.replace(/auto-\d+/, "*"))).toEqual(["routines/ra-1", "routines/ra-1/planChanges/*", "routines/rb-1"]);
+    expect(new Set(out.map((w) => w.batch)).size).toBe(1);
+    expect(out[0].data.machineIds).toEqual(["m-leg-press", "sm-solon-rear-delt"]);
+    expect(out[2].data).toEqual({ machineIds: ["m-ext", "sm-solon-rear-delt"], "plan.intended": ["m-ext", "sm-solon-rear-delt"] });
+  });
+
   it("a session another iPad already finished has no Next time: that iPad writes its own", async () => {
     // The review (Oct 9 2026): both iPads wrote, two "add" entries on the
     // plan or two Routine As; pain notes already skip this case.

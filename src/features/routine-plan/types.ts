@@ -175,6 +175,19 @@ export interface CantDo {
  *   is still on it); `value` what changed (one of `REPLAN_REASONS`, or the
  *   trainer's words).
  * - "column": `value` the Academy sheet column picked, or "none".
+ *
+ * On Routine B's plan (Round 2, Oct 8 2026; b-routine.ts) a few carry a
+ * `value` that says which of B's moves it was:
+ * - "start" with "B" (`B_START`): `machineIds` the first swap,
+ *   `[replaces, with]`, B starting as A with one machine different;
+ * - "swap" with "made" (`B_SWAP_MADE`): a planned swap went into B,
+ *   `[replaces, with]`, one change a swap when two or three go in at once;
+ * - "swap" with "planned" (`B_SWAP_PLANNED`): B's planned swap for an A
+ *   machine changed, `[replaces, with]`;
+ * - "swap" with "kept" (`B_SWAP_KEPT`): B keeps the A machine, its swap out
+ *   of the plan, `[replaces]`;
+ * - "purpose": `value` B's purpose in words ("Variety: …"), the kinds beside
+ *   it on the plan (`purposeKinds`).
  */
 export type PlanChangeKind =
   | "start"

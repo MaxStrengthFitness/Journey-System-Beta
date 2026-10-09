@@ -25,7 +25,10 @@
  *   (a mark that still holds), and one the routine or its plan held while
  *   the session ran and holds no longer (a Swap in the plan, a Re-plan or a
  *   Can't do made after its set was logged: "Today's set stays. The plan
- *   changes from next session.").
+ *   changes from next session.");
+ * - after a session on a Routine B with its plan of swaps (Round 2, B molded
+ *   in), a ticked machine that is one of B's swaps still to come makes that
+ *   swap in the A machine's place (`bAfterTicks`), never added beside it.
  *
  * Everything the card reads is frozen at Finish (`nextTimeAtFinish`), so a
  * routine snapshot arriving while the trainer ticks never reshuffles the
@@ -58,7 +61,8 @@ import {
 } from "./plan";
 import { usablePlan } from "./session-plan";
 import { floorCanonical, type FloorMachine } from "./starting-plan";
-import type { PlanChange, RoutinePlan } from "./types";
+import { B_SWAP_MADE, bProgressOf, bRoadGroups, bStatus, bStatusLine, isBPlan, swapsMade, swapsOf } from "./b-routine";
+import type { PlanChange, PlanSwap, RoutinePlan } from "./types";
 
 /** What the Wrap-up's Next time reads, frozen when the session finished. */
 export interface NextTimeSnapshot {
@@ -293,8 +297,58 @@ export interface NextTimeAfter {
   progress: PlanProgress | null;
 }
 
-/** Routine A for next time, live as the ticks change. */
+/**
+ * Routine B after a B session's ticks (Round 2, B molded in; the review of
+ * Round 2: read as Routine A's, a ticked swap machine was ADDED to B, B grew
+ * and kept the A machine, and its swap counted as made). B grows by its
+ * swaps, one at a time and sometimes two or three, the trainer's call (AJ,
+ * Oct 7 2026: "there are times where a trainer might do two machines
+ * different or three machines different in a single session"), so:
+ * - a ticked machine that is one of B's swaps still to come MAKES that swap:
+ *   it takes the place of the A machine it replaces, and the swap moves up
+ *   to the swaps made (next in line, so B's count stays true);
+ * - any other ticked machine joins B as one joins a Routine A
+ *   (`routineAfterWrapUp`: at its place on B's road, else at the end; one
+ *   off the road joins the road).
+ * `made` and `joined` are what the change records say.
+ */
+export function bAfterTicks(
+  plan: RoutinePlan,
+  routine: readonly string[],
+  ticked: readonly string[],
+): { routine: string[]; plan: RoutinePlan; made: PlanSwap[]; joined: string[] } {
+  const swaps = swapsOf(plan);
+  const madeSoFar = swapsMade(swaps, routine);
+  const waiting = swaps.slice(madeSoFar);
+  const now = waiting.filter((s) => ticked.includes(s.with));
+  const out = [...routine];
+  for (const s of now) {
+    const at = out.indexOf(s.replaces);
+    if (at >= 0) out[at] = s.with;
+    else if (!out.includes(s.with)) out.push(s.with);
+  }
+  const reordered: RoutinePlan =
+    now.length > 0 ? { ...plan, swaps: [...swaps.slice(0, madeSoFar), ...now, ...waiting.filter((s) => !now.includes(s))] } : plan;
+  const joined = ticked.filter((id, i) => ticked.indexOf(id) === i && !now.some((s) => s.with === id) && !out.includes(id));
+  return {
+    routine: routineAfterWrapUp({ plan: reordered, routine: out, ticked: joined }),
+    plan: planAfterWrapUp(reordered, joined),
+    made: now,
+    joined,
+  };
+}
+
+/** Routine A (or a Routine B with its plan of swaps, `bAfterTicks`) for next time, live as the ticks change. */
 export function nextTimeAfter(snap: NextTimeSnapshot, ticked: readonly string[]): NextTimeAfter {
+  if (isBPlan(snap.plan)) {
+    const b = bAfterTicks(snap.plan, snap.machineIds, ticked);
+    return {
+      routine: b.routine,
+      plan: b.plan,
+      runs: todayFor({ routine: b.routine, plan: b.plan }),
+      progress: bProgressOf(bStatus(swapsOf(b.plan), b.routine)),
+    };
+  }
   const routine = routineAfterWrapUp({ plan: snap.plan, routine: snap.machineIds, ticked });
   const plan = snap.plan ? planAfterWrapUp(snap.plan, ticked) : null;
   return {
@@ -314,16 +368,31 @@ export function nextTimeAfter(snap: NextTimeSnapshot, ticked: readonly string[])
 export function nextTimeRoad(
   after: NextTimeAfter,
   ticked: readonly string[],
-  input: { todayYmd: string; firstName?: string | null },
+  input: {
+    todayYmd: string;
+    firstName?: string | null;
+    /** Names, for a Routine B's swaps still to come ("for Leg Press"): with them, B's Road is the briefing's (`bRoadGroups`). */
+    nameOf?: (id: string) => string;
+  },
 ): RoadGroup[] {
   if (after.runs.length === 0 && (after.plan?.intended.length ?? 0) === 0) return [];
-  const groups = roadGroups({
-    plan: after.plan ?? { intended: after.runs },
-    today: after.runs,
-    todayYmd: input.todayYmd,
-    todayLabel: "Next time",
-    firstName: input.firstName,
-  });
+  const groups =
+    after.plan && isBPlan(after.plan) && input.nameOf
+      ? bRoadGroups({
+          bPlan: after.plan,
+          today: after.runs,
+          bRoutine: after.routine,
+          todayYmd: input.todayYmd,
+          nameOf: input.nameOf,
+          firstName: input.firstName,
+        }).map((g) => (g.key === "today" ? { ...g, label: `Next time · ${after.runs.length}` } : g))
+      : roadGroups({
+          plan: after.plan ?? { intended: after.runs },
+          today: after.runs,
+          todayYmd: input.todayYmd,
+          todayLabel: "Next time",
+          firstName: input.firstName,
+        });
   return groups.map((g) =>
     g.key === "today"
       ? { ...g, stations: g.stations.map((s) => (ticked.includes(s.id) ? { ...s, mark: "Joins" } : s)) }
@@ -331,9 +400,14 @@ export function nextTimeRoad(
   );
 }
 
-/** "3 of 6 · next: Hip Abduction", or "0 of 6 · day one: …" while nothing is ticked on an empty Routine A; null with no plan. */
+/**
+ * "3 of 6 · next: Hip Abduction", or "0 of 6 · day one: …" while nothing is
+ * ticked on an empty Routine A; for Routine B, "B · 2 of 5 swaps · next: …";
+ * null with no plan.
+ */
 export function nextTimeProgressLine(after: NextTimeAfter, nameOf: (id: string) => string): string | null {
   if (!after.plan || !after.progress) return null;
+  if (isBPlan(after.plan)) return bStatusLine(bStatus(swapsOf(after.plan), after.routine), nameOf);
   return progressLine(after.progress, nameOf, after.plan.dayOne);
 }
 
@@ -401,6 +475,7 @@ export function nextTimeWrite(
     };
   }
   if (!who?.uid) return null;
+  if (isBPlan(snap.plan)) return bNextTimeWrite(snap.routineId, snap.machineIds, snap.plan, rows, { added, removed }, who);
   // A machine the earlier write put on the road (it wasn't in the plan at
   // Finish) comes off the road with its tick; the plan's own stay on deck.
   const offRoad = removed.filter((id) => rows.find((r) => r.machineId === id)?.why === "added-today");
@@ -424,6 +499,58 @@ export function nextTimeWrite(
     ...(also.length > 0 ? { also } : null),
     machineIds,
   };
+}
+
+/**
+ * The ticks' write on a Routine B with its plan of swaps (`bAfterTicks`):
+ * one "swap" change a swap made ("Swapped Leg Extension in for Leg Press"),
+ * an "add" for any other machine kept, in one batch with B's machines and
+ * its plan (the swaps made moved up). Handed over again after a way out
+ * that left the screen standing, a swap the earlier write made and since
+ * unticked gives its place back to the A machine and waits again, next in
+ * line; anything else unticked leaves B as it leaves a Routine A.
+ */
+function bNextTimeWrite(
+  routineId: string,
+  machineIds: readonly string[],
+  plan: RoutinePlan,
+  rows: readonly NextTimeRow[],
+  ticks: { added: readonly string[]; removed: readonly string[] },
+  who: Who,
+): NextTimeWrite | null {
+  const swaps = swapsOf(plan);
+  const made = swapsMade(swaps, machineIds);
+  const undone = swaps.slice(0, made).filter((s) => ticks.removed.includes(s.with));
+  let routine = [...machineIds];
+  for (const s of undone) {
+    const at = routine.indexOf(s.with);
+    if (at < 0) continue;
+    if (routine.includes(s.replaces)) routine.splice(at, 1);
+    else routine[at] = s.replaces;
+  }
+  const back: RoutinePlan =
+    undone.length > 0
+      ? { ...plan, swaps: [...swaps.slice(0, made).filter((s) => !undone.includes(s)), ...undone, ...swaps.slice(made)] }
+      : plan;
+  const rest = ticks.removed.filter((id) => !undone.some((s) => s.with === id));
+  const offRoad = rest.filter((id) => rows.find((r) => r.machineId === id)?.why === "added-today");
+  const outOfB = rest.filter((id) => !offRoad.includes(id));
+  routine = routine.filter((id) => !rest.includes(id));
+  const road = offRoad.length > 0 ? applyPlanChange(back, { kind: "remove", machineIds: offRoad }) : back;
+  const after = bAfterTicks(road, routine, ticks.added);
+  const planned = after.joined.filter((id) => road.intended.includes(id));
+  const unplanned = after.joined.filter((id) => !road.intended.includes(id));
+  const changes: PlanChange[] = after.made.map((s) =>
+    signedChange({ kind: "swap", machineIds: [s.replaces, s.with], value: B_SWAP_MADE }, who),
+  );
+  if (planned.length > 0) changes.push(signedChange({ kind: "add", machineIds: planned, value: ROUTINE_ONLY }, who));
+  if (unplanned.length > 0) changes.push(signedChange({ kind: "add", machineIds: unplanned }, who));
+  const out = [...undone.map((s) => s.with), ...outOfB];
+  if (out.length > 0) changes.push(signedChange({ kind: "remove", machineIds: out, value: ROUTINE_ONLY }, who));
+  if (offRoad.length > 0) changes.push(signedChange({ kind: "remove", machineIds: offRoad }, who));
+  const [change, ...also] = changes;
+  if (!change) return null;
+  return { kind: "plan", routineId, plan: after.plan, change, ...(also.length > 0 ? { also } : null), machineIds: after.routine };
 }
 
 /**

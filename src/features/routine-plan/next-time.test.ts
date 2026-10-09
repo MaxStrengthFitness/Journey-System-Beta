@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import type { Routine } from "../../types";
 import {
   asRoutineIds,
+  bAfterTicks,
   nextTimeAfter,
   nextTimeAsk,
   nextTimeAskWords,
@@ -488,5 +489,89 @@ describe("the snapshot is plain data", () => {
     const snap = snapAt(routineA([]), ["m-leg-press"]) as NextTimeSnapshot;
     expect(JSON.stringify(snap)).not.toContain("undefined");
     expect(Object.values(snap).some((v) => v === undefined)).toBe(false);
+  });
+});
+
+/* ── A session on Routine B, molded in (Round 2) ───────────────────────── */
+
+describe("a B session's Next time: a ticked swap machine makes the swap, never grows B", () => {
+  // The review of Round 2: read as Routine A's, ticking B's next swap
+  // machine ADDED it to B (B grew, kept the A machine, and its swap counted
+  // as made). AJ, Oct 7 2026: "there are times where a trainer might do two
+  // machines different or three machines different in a single session".
+  const SWAPS = [
+    { replaces: "m-leg-press", with: "m-ext" },
+    { replaces: "m-compound-row", with: "m-curl" },
+    { replaces: "m-chest-press", with: "m-hip-abd" },
+  ];
+  const A = ["m-leg-press", "m-compound-row", "m-lumbar", "m-chest-press"];
+  const bPlan: RoutinePlan = {
+    purpose: "Variety: the same regions, different machines",
+    purposeKinds: ["variety"],
+    intended: ["m-ext", "m-curl", "m-lumbar", "m-hip-abd"],
+    swaps: SWAPS,
+    building: false,
+    madeByUid: "uid-sam",
+  };
+  const routineB = (machineIds: string[], p: RoutinePlan = bPlan): Routine =>
+    ({ id: "rb", clientId: "c1", name: "Routine B", machineIds, plan: p }) as Routine;
+  const b1 = ["m-ext", "m-compound-row", "m-lumbar", "m-chest-press"];
+
+  it("offers the swap machine performed today, unticked (an established B changes on purpose)", () => {
+    const snap = snapAt(routineB(b1), [...b1, "m-curl"], { others: [routineA(A, null)] })!;
+    expect(snap.routineName).toBe("Routine B");
+    expect(nextTimeOffer(snap)).toEqual([{ machineId: "m-curl", defaultOn: false, why: "planned" }]);
+    expect(nextTimeAskWords(nextTimeAsk(snap), snap.routineName)).toBe("Tick a machine to keep it in Routine B.");
+  });
+
+  it("ticked: the swap takes the A machine's place, B stays A's length, and its count goes up", () => {
+    const snap = snapAt(routineB(b1), [...b1, "m-curl"], { others: [routineA(A, null)] })!;
+    const after = nextTimeAfter(snap, ["m-curl"]);
+    expect(after.routine).toEqual(["m-ext", "m-curl", "m-lumbar", "m-chest-press"]);
+    expect(after.routine).toHaveLength(b1.length);
+    expect(after.progress).toMatchObject({ have: 2, of: 3 });
+    expect(nextTimeProgressLine(after, nameOf)).toBe("B · 2 of 3 swaps · next: Hip Abduction for Chest Press");
+    const write = nextTimeWrite(snap, ["m-curl"], WHO)!;
+    expect(write).toMatchObject({ kind: "plan", routineId: "rb", machineIds: ["m-ext", "m-curl", "m-lumbar", "m-chest-press"] });
+    if (write.kind !== "plan") throw new Error("a plan write");
+    expect(write.change).toMatchObject({ kind: "swap", machineIds: ["m-compound-row", "m-curl"], value: "made", byUid: "uid-sam" });
+    expect(write.also).toBeUndefined();
+    expect(write.plan.swaps).toEqual(SWAPS);
+  });
+
+  it("the Road for next time is B's: the swaps still to come in their order, each 'for' its A machine", () => {
+    const snap = snapAt(routineB(b1), [...b1, "m-curl"], { others: [routineA(A, null)] })!;
+    const after = nextTimeAfter(snap, ["m-curl"]);
+    const groups = nextTimeRoad(after, ["m-curl"], { todayYmd: TODAY, nameOf });
+    expect(groups[0]).toMatchObject({ key: "today", label: "Next time · 4" });
+    expect(groups[0]!.stations.find((s) => s.id === "m-curl")).toMatchObject({ mark: "Joins" });
+    expect(groups[1]!.stations).toEqual([{ id: "m-hip-abd", kind: "next", mark: "Next stop · for Chest Press" }]);
+  });
+
+  it("a later swap made first moves up to the swaps made, so B's count stays true", () => {
+    const after = bAfterTicks(bPlan, b1, ["m-hip-abd"]);
+    expect(after.routine).toEqual(["m-ext", "m-compound-row", "m-lumbar", "m-hip-abd"]);
+    expect(after.plan.swaps).toEqual([SWAPS[0], SWAPS[2], SWAPS[1]]);
+    expect(after.made).toEqual([SWAPS[2]]);
+  });
+
+  it("a machine B's plan doesn't name joins B at the end and its road, as on Routine A", () => {
+    const after = bAfterTicks(bPlan, b1, ["m-curl", "m-abs"]);
+    expect(after.routine).toEqual(["m-ext", "m-curl", "m-lumbar", "m-chest-press", "m-abs"]);
+    expect(after.plan.intended).toContain("m-abs");
+    expect(after.joined).toEqual(["m-abs"]);
+  });
+
+  it("handed over again with the swap unticked: the A machine takes its place back, the swap waits again, next", () => {
+    const snap = snapAt(routineB(b1), [...b1, "m-curl"], { others: [routineA(A, null)] })!;
+    const rows = nextTimeOffer(snap);
+    const first = nextTimeWrite(snap, ["m-curl"], WHO, { rows })!;
+    if (first.kind !== "plan") throw new Error("a plan write");
+    const now = withRoutineNow(snap, routineB(first.machineIds, first.plan));
+    const again = nextTimeWrite(now, [], WHO, { rows, earlier: ["m-curl"] })!;
+    if (again.kind !== "plan") throw new Error("a plan write");
+    expect(again.machineIds).toEqual(b1);
+    expect(again.plan.swaps).toEqual(SWAPS);
+    expect(again.change).toMatchObject({ kind: "remove", machineIds: ["m-curl"], value: "routine" });
   });
 });

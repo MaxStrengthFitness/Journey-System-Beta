@@ -10,6 +10,13 @@
  * batch is even sent. A refusal comes back as a toast, and the profile reads
  * its routines again (`onRefused`) so the screen shows what was saved.
  *
+ * B, molded in (Round 2, item 6): a change that moves Routine A's machines
+ * writes Routine B beside it in the same batch when B follows A
+ * (`bFollowOf`: B's unswapped places follow A, B's own swaps stay), and both
+ * are patched at once; Plan B kept is `startB`, one batch with the client's
+ * `isRoutineBActive` (the profile's client list is a live listener, so the
+ * switch shows on as soon as the iPad holds the write).
+ *
  * The Health note a surgery or an injury offers is written through the
  * notes' one writer (`createJournalEntry`, with `storedNoteOf`'s Health
  * filing and the composer's default loudness), signed with the Auth uid the
@@ -21,14 +28,21 @@ import { db } from "../../../firebase";
 import { createJournalEntry } from "../../../hooks/useClientJournal";
 import type { Routine } from "../../../types";
 import { DEFAULT_IMPORTANCE, storedNoteOf } from "../../client-notes/note-catalog";
-import { readPlanChanges, savePlanChange, startPlan } from "../store";
-import type { HealthNoteCall, PlanActions, StartPlanCall } from "./host";
+import { bFollowOf } from "../b-routine";
+import { readPlanChanges, savePlanChange, startPlan, startRoutineB } from "../store";
+import type { HealthNoteCall, PlanActions, StartBCall, StartPlanCall } from "./host";
 import type { PlanWrite } from "../lineup";
 
 export interface PlanActionsInput {
   clientId: string | null;
   /** The client's home studio, as every routine carries it. */
   studioId: string;
+  /**
+   * The routines as the profile holds them now: whether Routine B follows a
+   * change to Routine A is worked out from them. Without them, nothing
+   * follows.
+   */
+  routines?: readonly Routine[];
   setRoutines: Dispatch<SetStateAction<Routine[]>>;
   /** A refusal, said. */
   onError: (message: string) => void;
@@ -89,17 +103,63 @@ export function usePlanActions(input: PlanActionsInput): PlanActions {
 
   const save = useCallback(
     (routineId: string, write: PlanWrite) => {
+      // Routine B follows a change to Routine A's machines, in the same batch.
+      const follow = write.machineIds ? bFollowOf(ref.current.routines ?? [], routineId, write.machineIds) : null;
       let commit: Promise<void>;
       try {
-        commit = savePlanChange(db, routineId, write);
+        commit = savePlanChange(db, routineId, follow ? { ...write, follow } : write);
       } catch (err) {
         refused(err);
         return;
       }
       ref.current.setRoutines((prev) =>
-        prev.map((r) => (r.id === routineId ? { ...r, plan: write.plan, ...(write.machineIds ? { machineIds: [...write.machineIds] } : null) } : r)),
+        prev.map((r) => {
+          if (r.id === routineId) {
+            return { ...r, plan: write.plan, ...(write.machineIds ? { machineIds: [...write.machineIds] } : null) };
+          }
+          if (follow && r.id === follow.routineId) {
+            const plan = r.plan
+              ? { ...r.plan, intended: [...follow.intended], ...(follow.swaps ? { swaps: [...follow.swaps] } : null) }
+              : null;
+            return { ...r, machineIds: [...follow.machineIds], ...(plan ? { plan } : null) };
+          }
+          return r;
+        }),
       );
       commit.catch(refused);
+    },
+    [refused],
+  );
+
+  const startB = useCallback(
+    (call: StartBCall) => {
+      const { clientId, studioId, setRoutines } = ref.current;
+      if (!clientId) return;
+      let started: ReturnType<typeof startRoutineB>;
+      try {
+        started = startRoutineB(db, {
+          routineId: call.routineId,
+          clientId,
+          studioId,
+          machineIds: call.machineIds,
+          plan: call.plan,
+          change: call.change,
+        });
+      } catch (err) {
+        refused(err);
+        return;
+      }
+      const id = started.routineId;
+      setRoutines((prev) => {
+        if (prev.some((r) => r.id === id)) {
+          return prev.map((r) => (r.id === id ? { ...r, machineIds: [...call.machineIds], plan: call.plan } : r));
+        }
+        return [
+          ...prev.filter((r) => !(r.name === "Routine B" && (!r.id || r.id.startsWith("temp-")))),
+          { id, clientId, name: "Routine B", machineIds: [...call.machineIds], plan: call.plan, studioId, createdAt: Timestamp.now() },
+        ];
+      });
+      started.commit.catch(refused);
     },
     [refused],
   );
@@ -121,5 +181,5 @@ export function usePlanActions(input: PlanActionsInput): PlanActions {
 
   const readChanges = useCallback((routineId: string) => readPlanChanges(db, routineId), []);
 
-  return useMemo(() => ({ start, save, healthNote, readChanges }), [start, save, healthNote, readChanges]);
+  return useMemo(() => ({ start, save, startB, healthNote, readChanges }), [start, save, startB, healthNote, readChanges]);
 }

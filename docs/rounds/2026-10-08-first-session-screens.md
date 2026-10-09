@@ -459,6 +459,105 @@ What went, and what replaced each:
   still names `ConsultationWizard.tsx`: it is the Sep 10 release's record and
   is left as it was.
 
+## 4b. Round 2: B molded in (item 6)
+
+AJ, Oct 7 2026: "the B routine starts out as the A routine with just one
+machine different. But there are times where a trainer might do two
+machines different or three machines different in a single session." Built
+from the prototype's B screen (`harness/proto/d-lineup.tsx`), the Lineup's
+identity (AJ's "1d").
+
+- **The A | B lineup** (`routine-plan/ui/BColumn.tsx`). On Routine A's
+  Lineup, once Routine A has machines, each "In Routine A" row gains B's
+  cell beside it: "Follows A" (A's machine, quiet), or B's own machine
+  (solid, the swap glyph, "for Leg Press"), the next swap's place on the
+  blue dashes. B's head over the lineup: "B · 2 of 5 swaps · next: Leg
+  Extension for Leg Press" with its meter; "A and B alternate · next
+  session is B" (`next-routine.ts`); the Academy's line ("Routine A has run
+  7 times in Journey. The Academy starts B after 5 to 7 runs of A, then
+  swaps about one a week.") with its source and the 8 weeks / 16 sessions
+  behind an (i), never a gate; **Swap in the next one** (blue) and the
+  quieter **Two** and **Three**; **B is for** Variety · Recovery · Both. A
+  tap on a B cell opens that place's strip: the same family on this floor
+  and the Academy's one-machine substitutes, each with its source, or Keep
+  {A} in B. Every change asks why (never required) and is one write on
+  Routine B, never awaited. Side by side from 600px, so every iPad in
+  portrait, an iPad mini (744px) included; on a phone B's cell sits under
+  its A row (the review moved the line from 768px, where an iPad mini in
+  portrait stacked).
+- **Routine B's segment** (`BPlanView.tsx`) draws the same column with B's
+  head, and B's own Changes.
+- **Plan B** (`PlanBSheet.tsx`). Before B starts, B's column is one quiet
+  cell, "B starts as a copy of A with one machine different", and Plan B:
+  B's suggested swaps (`suggestBSwaps` on Routine A, this floor, Routine A's
+  starting routine, the client's can't-do respected), each editable, the
+  first marked "Starts with", what B is for, and **Start B** (blue): ONE
+  batch, Routine B as A with the first swap, its plan (B whole as
+  `intended`, the swaps in order), its `start` change, and the client's
+  `isRoutineBActive` (`store.ts` `startRoutineB`), never awaited.
+- **The old B paths fixed.** Turning B on with nothing in Routine B opens
+  Plan B instead of making an EMPTY Routine B (the critic's #22: an empty B
+  with B on alternated the client into a session of nothing); the Edit
+  routine drawer's inactive B tab does the same, asking about its own typing
+  first. RotationPanel's "Start from the model B routine" (the whole model
+  B at once, the critic's #23) is gone from B rather than turned into "A
+  with one swap": a B seeded in the builder would have no plan of swaps, so
+  nothing could say which swap is next or keep B following A. Turning B off
+  keeps its reason optional.
+- **B follows A** (the critic's #25). Every writer that moves Routine A's
+  machines (the Lineup, the drawer, the session's plan sheet, the Wrap-up's
+  Next time) also writes Routine B, in the SAME batch, when B has a plan of
+  swaps: B's unswapped places follow A, B's own swaps stay
+  (`b-routine.ts` `bFollowOf`, `store.ts` `withBFollowing`). A Routine B of
+  its own from before Round 2 (no plan of swaps) is left alone.
+- **The briefing** for a session on Routine B with a plan draws the Road for
+  B (today under the bracket, the swaps still to come) with "B · 2 of 5
+  swaps"; nothing else on the briefing changes.
+- **No rules change.** `planChanges` already took `start`, `swap` and
+  `purpose`; B's moves are told apart by `value` (`B_START`,
+  `B_SWAP_MADE`, `B_SWAP_PLANNED`, `B_SWAP_KEPT`), which the Changes list
+  reads. The client's `isRoutineBActive` is the field the B switch has
+  always written, alone.
+- **What the review of Round 2 changed** (two reviewers, every finding
+  checked in the code before it was fixed):
+  - A swap counts as made only when B holds its machine AND not the A
+    machine it replaces. Before, Routine A taking B's planned machine from
+    its own road read as the swap made ("2 of 3"), drew the machine twice,
+    and the next change to A dropped the A machine from B. B's offers
+    (`suggestBSwaps`, a cell's strip, Plan B) leave out A's machines still
+    to come, so this can't start.
+  - A swap is tied to its place in A: when A replaces the machine a swap
+    was for (a Lineup swap, the session's swap, a can't-do's stand-in, a
+    re-plan), the swap is for the new machine, written with B (`plan.swaps`
+    beside `plan.intended`). Before, B kept its own machine AND took A's new
+    one, four machines for A's three.
+  - The next swap waits, and B's head says why, when its A machine has left
+    A or A holds its machine now, as it already did for a can't-do: Swap in
+    never adds a machine to B or takes one out. A place a trainer took out
+    of B stays out when A moves and when a swap goes in.
+  - A swap changed or kept as A has it takes its old machine off B's road.
+  - The Wrap-up after a session on Routine B: a ticked machine that is one
+    of B's swaps makes that swap in the A machine's place (one "swap"
+    change each, the progress line B's), never added beside it.
+  - "Routine A has run N times in Journey" is history-claims.ts's
+    (`routineRunsLine`): for a client who trained before Journey a zero says
+    nothing and a count says sessions before Journey aren't counted.
+  - The B switch decides only off routines that have answered; before, an
+    unread list opened Plan B saying "Routine A has no machines yet". It is
+    one hook (`useBSwitch`), mounted in a test with the real Edit routine
+    drawer and Plan B (`BSwitch.render.test.tsx`).
+  - Plan B follows the suggestion as A, A's can't-do and the floor arrive
+    until the trainer changes a swap, and "Starts with" marks the swap
+    Start B starts with.
+  - Before B starts, B's one cell is placed after A's rows (beside them by
+    its own grid row), so a phone no longer draws it between A's first and
+    second machines.
+  - Not changed: the briefing's B pick with no Routine B ("Not set up yet ·
+    today only") runs today with no routine and makes no Routine B, and the
+    Wrap-up after it, with no routine, starts Routine A, never Routine B
+    (`nextTimeAtFinish` names the routine "Routine A"), so nothing there
+    goes against "B starts as A with one machine different".
+
 ## 5. Data and rules (AJ's OK, "1a")
 
 - `Routine.plan?: RoutinePlan` (`src/types.ts`).

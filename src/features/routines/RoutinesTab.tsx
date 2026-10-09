@@ -25,7 +25,10 @@ import { ChevronDown, Pencil, PlayCircle, Sparkles } from "lucide-react";
 import type { Client, ClientMachineSetting, ExerciseLog, Machine, Routine, RoutineAdjustment, Trainer, WorkoutSession } from "../../types";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { aRunsLine, aRunsSince, bSwitchStep } from "../routine-plan/b-routine";
 import { planFromRoutine, signedChange } from "../routine-plan/lineup";
+import { bModeOf, type BSide } from "../routine-plan/ui/BColumn";
+import { BPlanView } from "../routine-plan/ui/BPlanView";
 import { machineNamer, type PlanHost } from "../routine-plan/ui/host";
 import { PlanLineup } from "../routine-plan/ui/PlanLineup";
 import { StartPlanPanel } from "../routine-plan/ui/StartPlanPanel";
@@ -89,7 +92,8 @@ export interface RoutinesTabProps {
    * Routine A's plan (the first-session design round, Oct 8 2026): what the
    * profile hands Programming so Routine A can show Start a plan, the
    * Lineup, or "Add a plan". Omit it and Routine A draws as it always has.
-   * Only the single Routine A view draws the plan.
+   * Only the single Routine A view draws the plan; since Round 2 (B molded
+   * in) the single Routine B view draws B's plan beside A too.
    */
   plan?: PlanHost | null;
 }
@@ -347,6 +351,35 @@ export function RoutinesTab({
     onEdit: () => onEdit("Routine A"),
   };
   const who = host?.who ?? null;
+
+  /*
+   * B, molded in (Round 2, item 6; AJ's "1d"): Routine B beside Routine A.
+   * Routine A's Lineup draws B's column, and Routine B's own segment draws
+   * the same column with B's head (`BPlanView`), once there is a plan host.
+   * Turning B on while B has no machines opens Plan B (the profile's one
+   * sheet), never an EMPTY Routine B (the critic's #22). A Routine B of its
+   * own from before Round 2 (machines, no plan of swaps) draws as it always
+   * has.
+   */
+  const bSaved = !!b.id && !b.id.startsWith("temp-");
+  const aRuns = useMemo(() => aRunsSince(sessions, aSaved ? a.id : null), [sessions, aSaved, a.id]);
+  const bSide: BSide | null = host
+    ? {
+        routine: bSaved ? { ...b, id: b.id as string } : null,
+        isBActive,
+        aRunsLine: aRunsLine(aRuns, host.sessionsComplete !== true, host.coverage),
+        nextIsB: isBActive ? (todayName === "Routine B" ? true : todayName === "Routine A" ? false : null) : null,
+        onToggleB,
+      }
+    : null;
+  // Plan B only off routines that have answered: an unread list is never
+  // "no Routine B" (the profile's switch then says it can't tell).
+  const toggleB = (on: boolean) => {
+    if (host?.openPlanB && bSwitchStep(on, bSaved ? b : null, host.status === "ready") === "plan-b") host.openPlanB();
+    else onToggleB(on);
+  };
+  const bMode = bModeOf(a.machineIds, bSide);
+  const bPlanView = !!host && view === "Routine B" && bMode !== "none";
   const addPlan =
     host && planView && !aPlan && !aEmpty && aSaved && host.status === "ready" && who && !disabled ? (
       <div className="rt-addplan">
@@ -424,9 +457,36 @@ export function RoutinesTab({
             trainers={trainers}
             onSelectMachine={onSelectMachine}
             disabled={disabled}
+            b={bSide}
           />
         )}
-        {showB && (
+        {showB && bPlanView && host && bSide && (
+          <BPlanView
+            head={
+              <RoutineHead
+                name="Routine B"
+                routine={b}
+                latest={latestB}
+                active={isBActive}
+                isToday={todayName === "Routine B"}
+                usedLast={usedLastB}
+                disabled={disabled}
+                onEdit={() => onEdit("Routine B")}
+                onToggle={toggleB}
+              />
+            }
+            host={host}
+            aRoutine={a.machineIds}
+            aPlan={aPlan}
+            b={bSide}
+            nameOf={nameOf}
+            firstName={firstName}
+            adjustments={adjustments}
+            trainers={trainers}
+            disabled={disabled}
+          />
+        )}
+        {showB && !bPlanView && (
         <RoutinePanel
           name="Routine B"
           routine={b}
@@ -437,13 +497,13 @@ export function RoutinesTab({
           usedLast={usedLastB}
           disabled={disabled}
           onEdit={() => onEdit("Routine B")}
-          onToggle={onToggleB}
+          onToggle={toggleB}
           onSelectMachine={onSelectMachine}
         />
         )}
       </div>
 
-      {aMode === "lineup" ? null : (
+      {aMode === "lineup" || (view === "Routine B" && bPlanView) ? null : (
       <section className="rt-changes" aria-labelledby="rt-changes-title">
         <button type="button" className="rt-changes__head" onClick={() => setChangesOpen((o) => !o)} aria-expanded={changesOpen} aria-controls="rt-changes-list">
           <span id="rt-changes-title" className="rt-changes__title">

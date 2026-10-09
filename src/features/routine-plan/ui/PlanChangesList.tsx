@@ -33,6 +33,8 @@ export interface PlanChangesListProps {
   nonce?: number;
   /** The count, once known, for the "Changes · N" button. */
   onCount?: (n: number) => void;
+  /** Whose changes these are: "Routine A" (the default), or "Routine B" on Routine B's plan. */
+  routineName?: "Routine A" | "Routine B";
 }
 
 type ReadState = { key: string; status: "ready"; changes: StoredPlanChange[] } | { key: string; status: "failed" };
@@ -51,7 +53,7 @@ function whenWords(at: number | null, todayYmd: string): string {
   return day ? `${relativeTime(at)} · ${day}` : relativeTime(at);
 }
 
-export function PlanChangesList({ routineId, adjustments, trainers, nameOf, firstName, todayYmd, read, nonce = 0, onCount }: PlanChangesListProps) {
+export function PlanChangesList({ routineId, adjustments, trainers, nameOf, firstName, todayYmd, read, nonce = 0, onCount, routineName = "Routine A" }: PlanChangesListProps) {
   const key = `${routineId}|${nonce}`;
   const [state, setState] = useState<ReadState | null>(null);
   useEffect(() => {
@@ -78,11 +80,11 @@ export function PlanChangesList({ routineId, adjustments, trainers, nameOf, firs
       routineId,
       trainers,
       nameOf,
-      routineName: "Routine A",
+      routineName,
       firstName,
       todayYmd,
     });
-  }, [current, adjustments, routineId, trainers, nameOf, firstName, todayYmd]);
+  }, [current, adjustments, routineId, trainers, nameOf, firstName, todayYmd, routineName]);
 
   useEffect(() => {
     if (rows) onCount?.(rows.length);
@@ -90,7 +92,7 @@ export function PlanChangesList({ routineId, adjustments, trainers, nameOf, firs
 
   if (!current) return <p className="rpl-meta">Reading the changes…</p>;
   if (current.status === "failed") return <p className="rpl-meta">Couldn't read the plan's changes just now. Try again in a moment.</p>;
-  if (!rows || rows.length === 0) return <p className="rpl-meta">No changes logged for Routine A yet.</p>;
+  if (!rows || rows.length === 0) return <p className="rpl-meta">No changes logged for {routineName} yet.</p>;
   return (
     <ol className="rpl-changes" aria-label="Changes, newest first">
       {rows.map((r) =>

@@ -59,7 +59,7 @@ export function NextTimeCard({ snapshot, rows, ticked, onTicked, firstName, toda
   const nameOf = useMemo(() => (id: string) => snapshot.names[id] || id, [snapshot.names]);
   const picked = useMemo(() => tickedInOrder(rows, ticked), [rows, ticked]);
   const after = useMemo(() => nextTimeAfter(snapshot, picked), [snapshot, picked]);
-  const groups = useMemo(() => nextTimeRoad(after, picked, { todayYmd, firstName }), [after, picked, todayYmd, firstName]);
+  const groups = useMemo(() => nextTimeRoad(after, picked, { todayYmd, firstName, nameOf }), [after, picked, todayYmd, firstName, nameOf]);
   const line = useMemo(() => nextTimeProgressLine(after, nameOf), [after, nameOf]);
   const ask = nextTimeAsk(snapshot);
   const hasPlan = !!snapshot.plan;

@@ -7,6 +7,7 @@
  */
 import type { Machine, Routine } from "../../../types";
 import type { HealthFlavour } from "../../../types/journal";
+import type { HistoryCoverage } from "../../../lib/prior-history";
 import { ACADEMY_MOVEMENT_NAME } from "../../catalog/names";
 import type { StartingKindAnswer } from "../client-kind";
 import type { PlanWrite, Who } from "../lineup";
@@ -18,6 +19,15 @@ export interface StartPlanCall {
   /** The routine the plan goes on (an existing Routine A), or null to make one. */
   routineId: string | null;
   /** What Routine A holds: `[]` for a client starting out (the consult is not Routine A). */
+  machineIds: string[];
+  plan: RoutinePlan;
+  change: PlanChange;
+}
+
+/** Plan B kept: Routine B as A with one machine different, its plan, and its first change (`startBPlan`, signed). */
+export interface StartBCall {
+  /** The client's Routine B when there is one (empty), or null to make it. */
+  routineId: string | null;
   machineIds: string[];
   plan: RoutinePlan;
   change: PlanChange;
@@ -37,8 +47,18 @@ export interface HealthNoteCall {
 export interface PlanActions {
   /** A plan's first write (Keep this lineup, Save Routine A, Add a plan). Issued, never awaited. */
   start(call: StartPlanCall): void;
-  /** Every change after it. Issued, never awaited. */
+  /**
+   * Every change after it. Issued, never awaited. A change that moves
+   * Routine A's machines writes Routine B beside it when B follows A
+   * (`bFollowOf`), in the same batch.
+   */
   save(routineId: string, write: PlanWrite): void;
+  /**
+   * Plan B kept ("Start B"): ONE batch, Routine B and its plan and the
+   * client's `isRoutineBActive` (store.ts `startRoutineB`). Issued, never
+   * awaited. Absent where nothing may start B.
+   */
+  startB?(call: StartBCall): void;
   /** The one-tap Health note a surgery or an injury offers, through the notes' one writer. */
   healthNote(call: HealthNoteCall): void;
   /** A routine's plan changes, read once when the Changes are opened. */
@@ -63,6 +83,26 @@ export interface PlanHost {
   /** The intake's words a starting routine is matched on: medical history, goals, the clinical profile, open Health notes (`planIntakeText`). */
   intakeText: string | null;
   actions: PlanActions;
+  /**
+   * Opens Plan B (the profile holds the one sheet, so the B switch and the
+   * Edit routine drawer open the same one): the A | B lineup's and Routine
+   * B's "Plan B", and turning B on while B has no machines. Absent: nothing
+   * offers Plan B.
+   */
+  openPlanB?: () => void;
+  /**
+   * The profile's sessions are every session the client has in Journey (no
+   * more pages to read), so "Routine A has run 7 times in Journey" is the
+   * whole count; otherwise it says "at least", or nothing before a page has
+   * answered.
+   */
+  sessionsComplete?: boolean;
+  /**
+   * How much of the client's story Journey holds (`coverageOfClient`): the
+   * runs of A beside the Academy's line are judged by it (history-claims.ts
+   * `routineRunsLine`). Absent, "unknown": a zero says nothing.
+   */
+  coverage?: HistoryCoverage;
 }
 
 /** The floor as the plan's pure half reads it: a studio's own unit knows the catalog machine it is. */
@@ -90,4 +130,9 @@ export function machineNamer(floor: readonly Machine[], machines: readonly Machi
 /** Routine A, when the client has one in Firestore (never the profile's `temp-a` stand-in). */
 export function savedRoutineA(routines: readonly Routine[]): Routine | null {
   return routines.find((r) => r.name === "Routine A" && !!r.id && !r.id.startsWith("temp-")) ?? null;
+}
+
+/** Routine B, when the client has one in Firestore (never the profile's `temp-b` stand-in). */
+export function savedRoutineB(routines: readonly Routine[]): Routine | null {
+  return routines.find((r) => r.name === "Routine B" && !!r.id && !r.id.startsWith("temp-")) ?? null;
 }

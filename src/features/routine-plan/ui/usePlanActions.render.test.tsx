@@ -9,7 +9,11 @@
  *   - a refusal is said, and the profile reads its routines again;
  *   - the Health note a surgery or an injury asks for is filed as Health,
  *     with the flavour as its category and the composer's loudness, signed
- *     with the Auth uid.
+ *     with the Auth uid;
+ *   - B, molded in (Round 2): a change that moves Routine A's machines
+ *     takes Routine B with it in the same batch when B has a plan of swaps,
+ *     both drawn at once; Start B is ONE batch (`startRoutineB`), Routine B
+ *     drawn before it answers.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, useState } from "react";
@@ -19,6 +23,7 @@ import { createRoot, type Root } from "react-dom/client";
 
 const store = vi.hoisted(() => ({
   startPlan: vi.fn(),
+  startRoutineB: vi.fn(),
   savePlanChange: vi.fn(),
   readPlanChanges: vi.fn(),
 }));
@@ -67,6 +72,7 @@ function Host({ initial, author = { id: "uid-sam", initials: "SL", fullName: "Sa
   actions = usePlanActions({
     clientId: "c1",
     studioId: "westlake",
+    routines: list,
     setRoutines: setList,
     onError: (m) => said.push(m),
     onRefused: () => {
@@ -88,6 +94,7 @@ async function mount(initial: Routine[], author?: PlanActionsInput["author"]) {
 
 beforeEach(() => {
   store.startPlan.mockReset();
+  store.startRoutineB.mockReset();
   store.savePlanChange.mockReset();
   store.readPlanChanges.mockReset();
   journal.createJournalEntry.mockReset();
@@ -211,5 +218,78 @@ describe("the Health note a surgery or an injury asks for", () => {
       actions.healthNote({ machineId: "m-dip", flavour: "Injury", body: "x" });
     });
     expect(journal.createJournalEntry).not.toHaveBeenCalled();
+  });
+});
+
+describe("B, molded in: B follows A, and Start B", () => {
+  const SWAPS = [
+    { replaces: "m-leg-press", with: "m-ext" },
+    { replaces: "m-compound-row", with: "m-simple-row" },
+  ];
+  const B_PLAN: RoutinePlan = {
+    purpose: "Variety: the same regions, different machines",
+    purposeKinds: ["variety"],
+    intended: ["m-ext", "m-simple-row", "m-lumbar"],
+    swaps: SWAPS,
+    building: false,
+    madeByUid: "uid-sam",
+  };
+  const A_ROUTINE = { id: "r-a", name: "Routine A", clientId: "c1", machineIds: ["m-leg-press", "m-compound-row", "m-lumbar"], plan: PLAN } as Routine;
+  const B_ROUTINE = { id: "r-b", name: "Routine B", clientId: "c1", machineIds: ["m-ext", "m-compound-row", "m-lumbar"], plan: B_PLAN } as Routine;
+
+  it("a change that moves Routine A's machines writes Routine B in the same batch: A's change reaches B's unswapped places, never B's swaps", async () => {
+    store.savePlanChange.mockReturnValue(Promise.resolve());
+    await mount([A_ROUTINE, B_ROUTINE]);
+    await act(async () => {
+      actions.save("r-a", {
+        plan: { ...PLAN, intended: ["m-leg-press", "m-pulldown", "m-lumbar", "m-chest-press"] },
+        change: { kind: "swap", machineIds: ["m-compound-row", "m-pulldown"], byUid: "uid-sam" },
+        machineIds: ["m-leg-press", "m-pulldown", "m-lumbar"],
+      });
+    });
+    expect(store.savePlanChange).toHaveBeenCalledTimes(1);
+    const [, routineId, write] = store.savePlanChange.mock.calls[0];
+    expect(routineId).toBe("r-a");
+    // B's swap (Leg Extension for Leg Press) stays; its unswapped place follows A's Pulldown.
+    // Changed on purpose by the review of Round 2: this test pinned B's
+    // planned swap for Compound Row staying tied to Compound Row after A
+    // swapped it for Pulldown, so B's road grew to four machines for A's
+    // three. A swap is tied to its PLACE in A (AJ, Oct 7 2026: "the B routine
+    // starts out as the A routine with just one machine different"), so it
+    // is for Pulldown now, B's road keeps A's length, and B's swaps are
+    // written with the follow.
+    expect(write.follow).toEqual({
+      routineId: "r-b",
+      machineIds: ["m-ext", "m-pulldown", "m-lumbar"],
+      intended: ["m-ext", "m-simple-row", "m-lumbar"],
+      swaps: [SWAPS[0], { replaces: "m-pulldown", with: "m-simple-row" }],
+    });
+    expect(routines.find((r) => r.id === "r-b")).toMatchObject({ machineIds: ["m-ext", "m-pulldown", "m-lumbar"] });
+    expect(routines.find((r) => r.id === "r-b")?.plan?.swaps).toEqual([SWAPS[0], { replaces: "m-pulldown", with: "m-simple-row" }]);
+  });
+
+  it("a change to Routine B, or one that moves no machine, carries no follow", async () => {
+    store.savePlanChange.mockReturnValue(Promise.resolve());
+    await mount([A_ROUTINE, B_ROUTINE]);
+    await act(async () => {
+      actions.save("r-a", { plan: { ...PLAN, purpose: "x" }, change: { kind: "purpose", machineIds: [], value: "x", byUid: "uid-sam" } });
+      actions.save("r-b", { plan: B_PLAN, change: { kind: "swap", machineIds: ["m-compound-row", "m-simple-row"], value: "made", byUid: "uid-sam" }, machineIds: ["m-ext", "m-simple-row", "m-lumbar"] });
+    });
+    expect(store.savePlanChange.mock.calls.map((c) => "follow" in c[2])).toEqual([false, false]);
+  });
+
+  it("Start B issues ONE startRoutineB and draws Routine B before the batch answers", async () => {
+    const commit = deferred();
+    store.startRoutineB.mockReturnValue({ routineId: "r-new-b", commit: commit.promise });
+    await mount([A_ROUTINE, { id: "temp-b", name: "Routine B", clientId: "c1", machineIds: [] } as Routine]);
+    await act(async () => {
+      actions.startB!({ routineId: null, machineIds: ["m-ext", "m-compound-row", "m-lumbar"], plan: B_PLAN, change: { kind: "start", machineIds: ["m-leg-press", "m-ext"], value: "B", byUid: "uid-sam" } });
+    });
+    expect(store.startRoutineB).toHaveBeenCalledTimes(1);
+    expect(store.startRoutineB.mock.calls[0][1]).toMatchObject({ routineId: null, clientId: "c1", studioId: "westlake", plan: B_PLAN });
+    expect(routines.map((r) => r.id)).toEqual(["r-a", "r-new-b"]);
+    expect(routines[1]).toMatchObject({ name: "Routine B", machineIds: ["m-ext", "m-compound-row", "m-lumbar"], plan: B_PLAN });
+    await act(async () => commit.resolve());
+    expect(said).toEqual([]);
   });
 });

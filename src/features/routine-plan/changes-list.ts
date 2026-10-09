@@ -26,6 +26,7 @@
  * adjustments, and passes the floor's names (never truncated).
  */
 import type { RoutineAdjustment, Trainer } from "../../types";
+import { B_START, B_SWAP_KEPT, B_SWAP_MADE, B_SWAP_PLANNED } from "./b-routine";
 import { cantDoLine, listWords, parseCantDoValue } from "./cant-do";
 import { FOCUS_AREAS } from "./focus";
 import { ROUTINE_ONLY, isStartingColumnChoice } from "./plan";
@@ -149,6 +150,8 @@ export function planChangeWhat(
   const routine = input.routineName?.trim() || "the routine";
   switch (change.kind) {
     case "start":
+      // Routine B's plan starts as A with one machine different (b-routine.ts, `B_START`).
+      if (value === B_START) return names.length >= 2 ? `Started B: ${names[1]} for ${names[0]}` : "Started B";
       return value ? `Started the plan from ${value}` : "Started the plan";
     case "add":
       if (names.length === 0) return "Changed the plan";
@@ -157,6 +160,10 @@ export function planChangeWhat(
       if (names.length === 0) return "Changed the plan";
       return value === ROUTINE_ONLY ? `Took ${listWords(names)} out of ${routine}` : `Took ${listWords(names)} out of the plan`;
     case "swap":
+      // Routine B's swaps against A (b-routine.ts): one made, one planned, one kept as A has it.
+      if (value === B_SWAP_MADE && names.length >= 2) return `Swapped ${names[1]} in for ${names[0]}`;
+      if (value === B_SWAP_PLANNED && names.length >= 2) return `B's swap for ${names[0]}: ${names[1]}`;
+      if (value === B_SWAP_KEPT && names.length >= 1) return `B keeps ${names[0]}`;
       return names.length >= 2 ? `${listWords(names.slice(1))} instead of ${names[0]}` : "Changed the plan";
     case "reorder":
       return names.length > 0 ? `New order: ${names.join(", ")}` : "Changed the order";

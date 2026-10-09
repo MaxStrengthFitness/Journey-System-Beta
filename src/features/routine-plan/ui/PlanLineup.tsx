@@ -13,6 +13,14 @@
  * "Not for {First}"; and the order effects as quiet rows between the two
  * rows that trip them.
  *
+ * B beside A (Round 2, item 6; AJ's "1d", the Lineup's identity): with
+ * Routine B handed in (`b`) and Routine A holding machines, the lineup's
+ * "In Routine A" rows gain B's column, row-aligned, each row a place in A's
+ * order: B's cell "Follows A" or B's own machine, the next swap's place
+ * marked, B's head over the lineup ("B · 2 of 5 swaps · next: …", Swap in
+ * the next one, B is for), and before B starts one quiet cell and Plan B
+ * (`BColumn.tsx`). On deck and the bench stay A's, across both columns.
+ *
  * Every change: AJ, Oct 7 2026, "Any trainer who trains the client can
  * definitely change the plan ... You should be able to change that and make
  * the call as a trainer because you're training them that day", and "it's
@@ -57,6 +65,7 @@ import { startingSourceWords } from "../start-part";
 import { TEMPLATE_SOURCE, academyTemplateName } from "../starting-plan";
 import { academyTemplateOf } from "../starting-routines";
 import type { RoutinePlan } from "../types";
+import { useBColumn, type BSide } from "./BColumn";
 import { CantDoSheet, type CantDoSave } from "./CantDoSheet";
 import { floorMachinesOf, type PlanHost } from "./host";
 import { BenchEntry, GroupHead, LineupRow, NextPill, Num, OrderNote, PlanMeter, PlanSheet, SaidLine, SourceTag } from "./parts";
@@ -81,6 +90,8 @@ export interface PlanLineupProps {
   /** A machine's card (the machine menu). */
   onSelectMachine?: (machineId: string) => void;
   disabled?: boolean;
+  /** Routine B, to draw beside Routine A (Round 2); absent, the lineup is A's alone. */
+  b?: BSide | null;
 }
 
 type Sheet =
@@ -91,7 +102,7 @@ type Sheet =
   /** `purpose`: the typed purpose stays a draft, registered, until this sheet saves; closing it goes back to the words. */
   | { kind: "reason"; what: string; edit: PlanEdit; said?: string; purpose?: boolean };
 
-export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjustments, trainers, onSelectMachine, disabled = false }: PlanLineupProps) {
+export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjustments, trainers, onSelectMachine, disabled = false, b = null }: PlanLineupProps) {
   const plan = routine.plan;
   const routineIds = routine.machineIds ?? [];
   const today = host.todayYmd;
@@ -108,6 +119,10 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
   const effects = useMemo(() => effectsAbove(model.first, nameOf, floor), [model.first, nameOf, floor]);
   const rowOf = useMemo(() => new Map(rows.map((r) => [r.machineId, r])), [rows]);
   /** A machine standing in for one on the bench: "instead of Seated Dip". */
+  /* B's column beside Routine A's rows, once Routine A has machines to copy. */
+  const bParts = useBColumn({ b, aRoutine: routineIds, aPlan: plan, host, floor, nameOf, canWrite });
+  const ab = bParts.mode !== "none" && !model.dayOneRuns && model.first.length > 0;
+  const aside = ab ? "rpl-aside" : undefined;
   const insteadOf = useMemo(() => {
     const out = new Map<string, string>();
     for (const b of model.bench) if (b.active) for (const m of b.entry.replacedBy ?? []) out.set(m, b.entry.machineId);
@@ -318,7 +333,10 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
 
   /* ── The lineup ── */
   const items: ReactNode[] = [];
-  items.push(<GroupHead key="h-first" label={model.dayOneRuns ? "Day one" : "In Routine A"} count={model.first.length} />);
+  items.push(<GroupHead key="h-first" label={model.dayOneRuns ? "Day one" : "In Routine A"} count={model.first.length} className={aside} />);
+  if (ab) items.push(bParts.colHead);
+  // B not started: one cell down B's column beside every row (and order effect) of Routine A.
+  const aRowsTall = model.first.reduce((n, _id, i) => n + 1 + (effects.get(i)?.length ?? 0), 0);
   if (model.dayOneRuns) {
     items.push(
       <li key="n-dayone">
@@ -333,7 +351,8 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
     );
   }
   model.first.forEach((id, i) => {
-    for (const e of effects.get(i) ?? []) items.push(<OrderNote key={`e-${e.ruleId}-${i}`} effect={e} />);
+    for (const e of effects.get(i) ?? []) items.push(<OrderNote key={`e-${e.ruleId}-${i}`} effect={e} className={aside} />);
+    if (ab) items.push(...bParts.notesFor(id));
     const instead = insteadOf.get(id);
     const note = [instead ? `instead of ${nameOf(instead)}` : null, !model.dayOneRuns && !plan.intended.includes(id) ? "not in the plan" : null]
       .filter(Boolean)
@@ -349,6 +368,7 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
           note={note || null}
           onSelect={row.missing ? undefined : onSelectMachine}
           action={changeButton(id)}
+          className={aside}
         />,
       );
     } else {
@@ -361,10 +381,17 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
           onOpen={openCard(id)}
           openLabel={`Open ${nameOf(id)}`}
           action={changeButton(id)}
+          className={aside}
         />,
       );
     }
+    if (ab && bParts.mode === "plan") items.push(...bParts.cellFor(id));
   });
+  // B not started: one cell beside every row of A, from grid row 2 (under
+  // the group's head and B's column head); after A's rows, so a phone, one
+  // column, draws it under them.
+  if (ab && bParts.mode === "start") items.push(bParts.startCell(aRowsTall, 2));
+  if (ab && bParts.mode === "plan") items.push(...bParts.extras);
   items.push(<GroupHead key="h-deck" label="On deck" count={model.deck.length} />);
   if (model.deck.length === 0) {
     items.push(
@@ -449,12 +476,13 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
       <section className="rt-routine rpl-routine" aria-label="Routine A's plan">
         {head}
         {planHead}
+        {ab && bParts.head}
         {said && (
           <div className="rpl-saidwrap">
             <SaidLine onClear={() => setSaid(null)}>{said}</SaidLine>
           </div>
         )}
-        <ol className="rpl-list" aria-label="The lineup">
+        <ol className={ab ? "rpl-list rpl-list--ab" : "rpl-list"} aria-label="The lineup">
           {items}
         </ol>
       </section>
@@ -503,6 +531,7 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
           {changes}
         </PlanSheet>
       )}
+      {bParts.sheets}
       {sheet?.kind === "reason" && (
         <ReasonSheet
           open

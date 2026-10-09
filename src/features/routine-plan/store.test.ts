@@ -41,7 +41,7 @@ vi.mock("firebase/firestore", () => {
 });
 
 import { writeBatch } from "firebase/firestore";
-import { addStartPlanToBatch, saveNextTime, savePlanChange, saveRoutineEdit, startPlan } from "./store";
+import { addStartPlanToBatch, saveNextTime, savePlanChange, saveRoutineEdit, startPlan, startRoutineB } from "./store";
 import type { PlanChange, RoutinePlan } from "./types";
 
 const db = {} as never;
@@ -363,5 +363,126 @@ describe("saveNextTime: the Wrap-up's Next time, once, in one batch", () => {
     await expect(
       saveNextTime(db, { kind: "routine", routineId: "r-a", machineIds: [], previousMachineIds: ["m-lumbar"] }, owner),
     ).rejects.toThrow("permission-denied");
+  });
+});
+
+/* ── B, molded in (Round 2 of the design round, item 6) ─────────────────── */
+
+describe("startRoutineB: Plan B kept, in ONE batch", () => {
+  // AJ, Oct 7 2026: "the B routine starts out as the A routine with just one
+  // machine different". Turning B on used to make an EMPTY Routine B (the
+  // critic's #22); now Start B writes B, its plan, its first change and the
+  // client's switch together, or nothing at all.
+  const bPlan: RoutinePlan = {
+    purpose: "Variety: the same regions, different machines",
+    purposeKinds: ["variety"],
+    intended: ["m-ext", "m-simple-row", "m-lumbar"],
+    swaps: [
+      { replaces: "m-leg-press", with: "m-ext" },
+      { replaces: "m-compound-row", with: "m-simple-row" },
+    ],
+    building: false,
+    madeByUid: "uid-sam",
+    madeAt: "2026-10-09",
+  };
+  const start: PlanChange = { kind: "start", machineIds: ["m-leg-press", "m-ext"], value: "B", byUid: "uid-sam" };
+
+  it("makes Routine B as A with one machine different, its plan, its start, and turns B on, in one batch", async () => {
+    const started = startRoutineB(db, {
+      routineId: null,
+      clientId: "c1",
+      studioId: "westlake",
+      machineIds: ["m-ext", "m-compound-row", "m-lumbar"],
+      plan: bPlan,
+      change: start,
+    });
+    expect(fake.batches).toHaveLength(1);
+    const ops = fake.batches[0]!.ops;
+    expect(ops.map((o) => [o.op, o.path])).toEqual([
+      ["set", "routines/auto-1"],
+      ["set", "routines/auto-1/planChanges/auto-2"],
+      ["update", "clients/c1"],
+    ]);
+    expect(started.routineId).toBe("auto-1");
+    expect(ops[0]!.data).toEqual({
+      clientId: "c1",
+      name: "Routine B",
+      machineIds: ["m-ext", "m-compound-row", "m-lumbar"],
+      plan: bPlan,
+      createdAt: "SERVER_TIME",
+      studioId: "westlake",
+    });
+    expect(ops[1]!.data).toEqual({ ...start, at: "SERVER_TIME" });
+    // The one field the B switch has always written, alone: never a whole client write.
+    expect(ops[2]!.data).toEqual({ isRoutineBActive: true });
+    await started.commit;
+    expect(fake.batches[0]!.committed).toBe(true);
+  });
+
+  it("puts B's plan on the empty Routine B the client has, never a second one", () => {
+    startRoutineB(db, { routineId: "r-b", clientId: "c1", studioId: "westlake", machineIds: ["m-ext"], plan: bPlan, change: start });
+    const ops = fake.batches[0]!.ops;
+    expect(ops[0]).toEqual({ op: "update", path: "routines/r-b", data: { machineIds: ["m-ext"], plan: bPlan } });
+    expect(ops.filter((o) => o.op === "set" && /^routines\/[^/]+$/.test(o.path))).toEqual([]);
+  });
+});
+
+describe("B follows A: Routine B in the same batch as a change to Routine A", () => {
+  const follow = { routineId: "r-b", machineIds: ["m-ext", "m-lumbar"], intended: ["m-ext", "m-simple-row", "m-lumbar"] };
+
+  it("savePlanChange: A's plan, its change, A's machines and B, one batch", async () => {
+    await savePlanChange(db, "r-a", {
+      plan,
+      change: { kind: "remove", machineIds: ["m-compound-row"], byUid: "uid-sam" },
+      machineIds: ["m-leg-press", "m-lumbar"],
+      follow,
+    });
+    expect(fake.batches).toHaveLength(1);
+    const ops = fake.batches[0]!.ops;
+    expect(ops.map((o) => [o.op, o.path.replace(/auto-\d+/, "*")])).toEqual([
+      ["update", "routines/r-a"],
+      ["set", "routines/r-a/planChanges/*"],
+      ["update", "routines/r-b"],
+    ]);
+    // B's machines and its plan's road by its own field path: nothing else on B's plan is touched.
+    expect(ops[2]!.data).toEqual({ machineIds: ["m-ext", "m-lumbar"], "plan.intended": ["m-ext", "m-simple-row", "m-lumbar"] });
+  });
+
+  it("a swap that followed its place in A is written with B, by its own field path", async () => {
+    const swaps = [{ replaces: "m-leg-curl", with: "m-ext" }];
+    await savePlanChange(db, "r-a", {
+      plan,
+      change: { kind: "swap", machineIds: ["m-leg-press", "m-leg-curl"], byUid: "uid-sam" },
+      machineIds: ["m-leg-curl", "m-lumbar"],
+      follow: { ...follow, swaps },
+    });
+    expect(fake.batches[0]!.ops[2]!.data).toEqual({
+      machineIds: ["m-ext", "m-lumbar"],
+      "plan.intended": ["m-ext", "m-simple-row", "m-lumbar"],
+      "plan.swaps": swaps,
+    });
+  });
+
+  it("without a follow nothing of B is written", async () => {
+    await savePlanChange(db, "r-a", { plan, change: { kind: "purpose", machineIds: [], value: "x", byUid: "uid-sam" } });
+    expect(fake.batches[0]!.ops.some((o) => o.path === "routines/r-b")).toBe(false);
+  });
+
+  it("the Wrap-up's Next time into a Routine A with no plan, and the drawer's save of one, carry B too", async () => {
+    await saveNextTime(
+      db,
+      { kind: "routine", routineId: "r-a", machineIds: ["m-leg-press", "m-lumbar"], previousMachineIds: ["m-leg-press"] },
+      { clientId: "c1", studioId: "westlake", trainerId: "t-sam" },
+      follow,
+    );
+    expect(fake.batches).toHaveLength(1);
+    expect(fake.batches[0]!.ops.map((o) => o.path.replace(/auto-\d+/, "*"))).toEqual(["routines/r-a", "routineAdjustments/*", "routines/r-b"]);
+
+    await saveRoutineEdit(db, "r-a", { routine: { machineIds: ["m-lumbar"] }, adjustment: { clientId: "c1" }, follow });
+    expect(fake.batches).toHaveLength(2);
+    const drawer = fake.batches[1]!.ops;
+    expect(drawer.map((o) => o.path.replace(/auto-\d+/, "*"))).toEqual(["routines/r-a", "routineAdjustments/*", "routines/r-b"]);
+    // A routine with no plan: no plan written, no plan change.
+    expect(drawer[0]!.data).toEqual({ machineIds: ["m-lumbar"] });
   });
 });

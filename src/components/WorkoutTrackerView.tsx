@@ -69,6 +69,7 @@ import { NothingOnScreen } from "../features/session-record/NothingOnScreen";
 import { nothingKind } from "../features/session-record/nothing-on-screen";
 import { nextRoutine } from "../features/routines/next-routine";
 import { addStartPlanToBatch, saveNextTime } from "../features/routine-plan/store";
+import { bFollowOf } from "../features/routine-plan/b-routine";
 import {
   nextTimeAtFinish,
   nextTimeOffer,
@@ -2664,8 +2665,15 @@ export function WorkoutTrackerView({
       studioId: snap.client.homeStudioId || contextActiveStudioId || "",
       trainerId: authTrainer?.id || user?.uid || "",
     };
+    // Ticks into Routine A take Routine B with them when B follows A (Round
+    // 2: B's unswapped places follow A, its own swaps stay), in the same
+    // batch, from the routines as the live listener holds them now.
+    const follow =
+      write.kind !== "create" && routinesKnown && clientId === snap.client.id
+        ? bFollowOf(routines, write.routineId, write.machineIds)
+        : null;
     try {
-      saveNextTime(db, write, owner).catch(refused);
+      saveNextTime(db, write, owner, follow).catch(refused);
     } catch (error) {
       refused(error);
     }

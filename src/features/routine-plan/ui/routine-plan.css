@@ -1164,6 +1164,191 @@ button.rpl-cell--next {
   border-top: 1px solid var(--eq-divider);
 }
 
+/* ---------- B, molded in: the A | B lineup (Round 2, item 6) ------------- */
+
+/* AJ's "1d": A and B side by side, row-aligned, each row a place in A's
+   order. The lineup turns into two columns: A's rows on the left
+   (.rpl-aside), B's cells on the right (.rpl-bside), and everything else (a
+   group's head, On deck, the bench, a swap's strip) across both. A pair is
+   placed by the grid's own flow: an A item then its B item land on one row.
+   Side by side on every iPad, portrait included: from 600px, the line the
+   app draws a phone at, so an iPad mini in portrait (744px) is side by
+   side too (the review of Round 2: at 768px it stacked). On a phone B's
+   cell sits under its A row, indented. */
+.rpl-list--ab {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 8px 12px;
+  align-items: stretch;
+}
+.rpl-list--ab > li { grid-column: 1 / -1; min-width: 0; }
+.rpl-list--ab > .rpl-aside { grid-column: 1; }
+.rpl-list--ab > .rpl-bside { grid-column: 2; display: flex; min-width: 0; }
+@media (max-width: 599px) {
+  .rpl-list--ab { display: flex; flex-direction: column; }
+  .rpl-list--ab > .rpl-bside { margin-left: 40px; }
+}
+
+/* The column's head over B's cells: "Routine B · 2 of 5 swaps in". */
+.rpl-colhead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-height: 40px;
+  padding-top: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+.rpl-colhead__meta {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--eq-ink-muted);
+}
+
+/* B's cell: following A, quiet on the dashed firm edge; B's own machine
+   raised and solid with the swap glyph; the next swap's place on the blue
+   dashes; picked, the blue with its own words. Tappable, so 48px on the
+   firm 3:1 edge, and it presses in. */
+.rpl-bcell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1.5px dashed var(--eq-border-strong);
+  background: transparent;
+  color: var(--eq-ink);
+  font: inherit;
+  text-align: left;
+}
+button.rpl-bcell { cursor: pointer; }
+button.rpl-bcell:active { transform: translateY(1px); }
+button.rpl-bcell:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 1px; }
+.rpl-bcell[data-kind="own"] {
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-raised);
+  box-shadow: var(--eq-elev-1), inset 0 1px 0 var(--eq-highlight);
+}
+.rpl-bcell[data-kind="next"] { border-color: var(--eq-live); }
+.rpl-bcell[aria-pressed="true"] {
+  border: 1px solid var(--eq-live);
+  background: var(--eq-live);
+  color: var(--eq-live-on);
+  box-shadow: none;
+}
+.rpl-bcell__icon { flex: 0 0 auto; color: var(--eq-live-text); }
+.rpl-bcell[aria-pressed="true"] .rpl-bcell__icon { color: var(--eq-live-on); }
+.rpl-bcell__text {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 2px;
+}
+.rpl-bcell__name {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.rpl-bcell[data-kind="follows"] .rpl-bcell__name,
+.rpl-bcell[data-kind="missing"] .rpl-bcell__name { color: var(--eq-ink-2); }
+.rpl-bcell__sub {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--eq-ink-2);
+  overflow-wrap: anywhere;
+}
+.rpl-bcell[aria-pressed="true"] .rpl-bcell__name,
+.rpl-bcell[aria-pressed="true"] .rpl-bcell__sub { color: var(--eq-live-on); }
+
+/* B not started: one quiet cell down the column, and Plan B. */
+.rpl-bstart {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1.5px dashed var(--eq-border-strong);
+  background: var(--eq-surface-2);
+}
+.rpl-bstart__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+/* A B cell's strip: what this place can have in B, across both columns, in a well. */
+.rpl-bstrip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--eq-surface-2);
+  box-shadow: var(--eq-elev-0);
+}
+.rpl-bstrip__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rpl-bstrip__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+/* The Academy's line about B (5 to 7 runs of A, about a swap a week), in a well, its (i) beside it. */
+.rpl-bacademy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.rpl-bacademy > .rpl-bstrip__head { align-self: stretch; }
+.rpl-bacademy__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+/* B's head: how far B is, the alternation, the Academy's line, the swaps and what B is for. */
+.rpl-bhead {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid var(--eq-divider);
+}
+.rpl-bhead__label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--eq-ink);
+}
+
 /* ---------- A phone ------------------------------------------------------- */
 
 @media (max-width: 599px) {

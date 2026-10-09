@@ -32,9 +32,9 @@ export function PlanMeter({ progress }: { progress: PlanProgress }) {
 
 /* ── A group's head ─────────────────────────────────────────────────────── */
 
-export function GroupHead({ label, count, right }: { label: ReactNode; count?: number; right?: ReactNode }) {
+export function GroupHead({ label, count, right, className }: { label: ReactNode; count?: number; right?: ReactNode; className?: string }) {
   return (
-    <li className="rpl-group">
+    <li className={className ? `rpl-group ${className}` : "rpl-group"}>
       <span className="rpl-group__label">{label}</span>
       {count !== undefined && <span className="rpl-group__count">{count}</span>}
       <span className="rpl-group__rule" aria-hidden="true" />
@@ -74,6 +74,7 @@ export function LineupRow({
   onOpen,
   openLabel,
   action,
+  className,
 }: {
   n: number;
   tone?: CellTone;
@@ -83,6 +84,8 @@ export function LineupRow({
   onOpen?: () => void;
   openLabel?: string;
   action?: ReactNode;
+  /** Where the row sits in the A | B lineup (`rpl-aside`). */
+  className?: string;
 }) {
   const cls = tone === "deck" ? "rpl-cell rpl-cell--deck" : tone === "next" ? "rpl-cell rpl-cell--next" : "rpl-cell";
   const inner = (
@@ -95,7 +98,7 @@ export function LineupRow({
     </span>
   );
   return (
-    <li className="rpl-row">
+    <li className={className ? `rpl-row ${className}` : "rpl-row"}>
       <span className="rpl-row__lead">
         <Num n={n} tone={tone} />
       </span>
@@ -120,11 +123,11 @@ export function LineupRow({
  * between the two machines that trip it, the Academy's why and its source a
  * tap away. Never a block.
  */
-export function OrderNote({ effect }: { effect: OrderEffect }) {
+export function OrderNote({ effect, className }: { effect: OrderEffect; className?: string }) {
   const [open, setOpen] = useState(false);
   const source = startingSourceWords(effect.source);
   return (
-    <li>
+    <li className={className}>
       <button type="button" className="rpl-effect" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span className="rpl-effect__bar" aria-hidden="true" />
         <span className="rpl-effect__text">{effect.sentence}</span>

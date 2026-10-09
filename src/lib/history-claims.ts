@@ -199,6 +199,32 @@ export function sessionCountLabel(quotable: boolean): string {
   return quotable ? "Completed sessions" : "Sessions in Journey";
 }
 
+/**
+ * How often Routine A has run, said beside the Academy's "starts B after 5
+ * to 7 runs of A" (Routine B, molded in; routine-plan/b-routine.ts). Only
+ * Journey's sessions are counted, so:
+ * - a client whose whole story Journey holds hears the count, and a zero
+ *   ("hasn't run in Journey yet");
+ * - anyone else hears the count with "Sessions before Journey aren't
+ *   counted", and NOTHING for a zero: "hasn't run yet" beside "5 to 7 runs"
+ *   would read as too early for B to a client who may have run A for years
+ *   before Journey (docs/business/migration-and-prior-history.md);
+ * - with only part of Journey's sessions read (`atLeast`), "at least", and
+ *   nothing for a zero not known.
+ */
+export function routineRunsLine(
+  runs: number,
+  atLeast: boolean,
+  coverage: HistoryCoverage = "unknown",
+  routineName = "Routine A",
+): string | null {
+  const whole = coverage === "complete";
+  if (!(runs > 0)) return whole && !atLeast ? `${routineName} hasn't run in Journey yet.` : null;
+  const n = Math.trunc(runs);
+  const said = `${routineName} has run ${atLeast ? "at least " : ""}${n} ${n === 1 ? "time" : "times"} in Journey.`;
+  return whole ? said : `${said} Sessions before Journey aren't counted.`;
+}
+
 /* ------------------------------------------------------------------ *
  * The start of the record, and "all"
  * ------------------------------------------------------------------ */

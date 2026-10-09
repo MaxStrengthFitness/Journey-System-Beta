@@ -15,6 +15,7 @@ import {
   noMachineHistoryLine,
   ownedWindow,
   reportSessionWords,
+  routineRunsLine,
   sessionCountLabel,
   sessionNumberTag,
   setupPromptLine,
@@ -298,5 +299,19 @@ describe("dayAfter", () => {
   it("is null for anything that is not a day key", () => {
     expect(dayAfter("")).toBeNull();
     expect(dayAfter("2026-9-1")).toBeNull();
+  });
+});
+
+describe("routineRunsLine: how often Routine A has run, beside the Academy's line on B", () => {
+  it("claims a zero only for a client whose whole story Journey holds", () => {
+    expect(routineRunsLine(0, false, "complete")).toBe("Routine A hasn't run in Journey yet.");
+    for (const c of ["partial", "unknown"] as HistoryCoverage[]) expect(routineRunsLine(0, false, c)).toBeNull();
+    expect(routineRunsLine(0, false)).toBeNull();
+  });
+
+  it("says a count, and that sessions before Journey aren't in it unless Journey holds them all", () => {
+    expect(routineRunsLine(7, false, "complete")).toBe("Routine A has run 7 times in Journey.");
+    expect(routineRunsLine(7, false, "partial")).toBe("Routine A has run 7 times in Journey. Sessions before Journey aren't counted.");
+    expect(routineRunsLine(1, true, "complete")).toBe("Routine A has run at least 1 time in Journey.");
   });
 });

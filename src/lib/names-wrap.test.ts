@@ -150,6 +150,12 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-brief__lead", what: "\"{First} has a routine from before Journey\" on the briefing" },
   { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-tick__label", what: "a machine on Change today's ticks, and on the Wrap-up's Next time" },
   { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-next__ask", what: "\"Tick the ones that start Routine A.\" on the Wrap-up's Next time, the routine by name" },
+  // B, molded in (Round 2 of the design round, item 6): the A | B lineup and Plan B.
+  { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-bcell__name", what: "a machine in Routine B's column, and a swap on Plan B (\"Leg Extension for Leg Press\")" },
+  { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-bcell__sub", what: "\"B's own · for Leg Press\" and \"Follows A · next swap: Simple Row\" under a B cell" },
+  { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-bstrip__title", what: "\"In B, instead of {machine}\" over a B place's choices" },
+  { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-bacademy__text", what: "the Academy's line about B beside Routine A's runs" },
+  { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-bstart__title", what: "\"B starts as a copy of A with one machine different\" down B's column" },
   { file: "features/briefing/briefing.css", cls: "br-routine__touch", what: "\"Mind the limits on {machines}\" under the routine line and the plan card's Road" },
   { file: "features/routines/routines.css", cls: "rt-row__name", what: "a machine in Routine A or B on Programming" },
   { file: "features/routines/routines.css", cls: "rt-row__plan", what: "the plan's word under a Routine A machine in the Lineup (\"instead of Seated Dip\")" },
