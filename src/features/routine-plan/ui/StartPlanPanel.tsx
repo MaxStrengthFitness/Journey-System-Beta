@@ -19,7 +19,14 @@
  *   awaited: the consult is not Routine A (AJ, Oct 8 2026: "sometimes the
  *   consult machines will not be the same as their a routine"). Nothing is
  *   written before it, and a changed draft is registered with the leave
- *   warning.
+ *   warning. At a studio that starts new clients on A and B together (its
+ *   setting `newClientsStart`, read by the profile into `host.aAndBTogether`;
+ *   item 8, AJ, Oct 7 2026: "Some studios may start building an A and B
+ *   routine immediately for a client"), the lineup has B's part too
+ *   (`PlannedBPart`: B's swaps against the lineup's road, editable, or left
+ *   for later), and Keep writes it in the same batch: Routine B with its
+ *   plan and NO machines, B off, until the Wrap-up that starts Routine A
+ *   starts B.
  * - New to Journey: no suggestion ("if it is a long-standing, it's no
  *   suggestion"). The floor by the Academy's families on one side, "{First}'s
  *   Routine A" filling 1, 2, 3 on the other; Save Routine A writes the
@@ -63,6 +70,7 @@ import { CantDoSheet, type CantDoSave } from "./CantDoSheet";
 import { floorMachinesOf, type HealthNoteCall, type PlanHost } from "./host";
 import { BenchEntry, Chip, DoorButton, GroupHead, LineupRow, NextPill, OrderNote, SaidLine, SourceTag } from "./parts";
 import { FloorPicker } from "./pickers";
+import { PlannedBPart, plannedBReadOf, usePlannedB } from "./PlannedBPart";
 import { RowSheet } from "./RowSheet";
 import "./routine-plan.css";
 
@@ -72,11 +80,19 @@ export interface StartPlanPanelProps {
   nameOf: (id: string) => string;
   /** The client's saved Routine A when it exists (empty), so the plan goes on it rather than a second one. */
   routineAId: string | null;
+  /**
+   * Where B planned beside the lineup goes, at a studio that starts new
+   * clients on A and B together (`plannedBTarget`): the client's empty,
+   * plan-less Routine B, `{ routineId: null }` to make it, or null (absent)
+   * for no B at all, since a Routine B with machines or a plan is the
+   * client's already.
+   */
+  bTarget?: { routineId: string | null } | null;
 }
 
 type Door = "studio" | "journey";
 
-export function StartPlanPanel({ host, firstName, nameOf, routineAId }: StartPlanPanelProps) {
+export function StartPlanPanel({ host, firstName, nameOf, routineAId, bTarget = null }: StartPlanPanelProps) {
   const first = firstName.trim() || "the client";
   const scope = useLeaveScope();
   // A door picked stays picked, even when the kind becomes known meanwhile.
@@ -143,7 +159,7 @@ export function StartPlanPanel({ host, firstName, nameOf, routineAId }: StartPla
       {back}
       <UnsavedChangesScope scope={scope}>
         {chosen === "studio" ? (
-          <StartNew host={host} first={first} nameOf={nameOf} routineAId={routineAId} />
+          <StartNew host={host} first={first} nameOf={nameOf} routineAId={routineAId} bTarget={bTarget} />
         ) : (
           <EnterRoutine host={host} first={first} nameOf={nameOf} routineAId={routineAId} />
         )}
@@ -156,7 +172,19 @@ export function StartPlanPanel({ host, firstName, nameOf, routineAId }: StartPla
 
 type DraftSheet = { kind: "row"; id: string } | { kind: "cantdo"; id: string | null };
 
-function StartNew({ host, first, nameOf, routineAId }: { host: PlanHost; first: string; nameOf: (id: string) => string; routineAId: string | null }) {
+function StartNew({
+  host,
+  first,
+  nameOf,
+  routineAId,
+  bTarget,
+}: {
+  host: PlanHost;
+  first: string;
+  nameOf: (id: string) => string;
+  routineAId: string | null;
+  bTarget: { routineId: string | null } | null;
+}) {
   const today = host.todayYmd;
   const who = host.who;
   const floor = useMemo(() => floorMachinesOf(host.floor), [host.floor]);
@@ -186,17 +214,20 @@ function StartNew({ host, first, nameOf, routineAId }: { host: PlanHost; first: 
    */
   const reading = starting.status === "loading";
   const unread = starting.status === "failed";
+  /** The intake the suggestion was matched on when the trainer first changed B's part: held from then on. */
+  const [heldIntake, setHeldIntake] = useState<{ text: string | null } | null>(null);
+  const intakeText = heldIntake ? heldIntake.text : host.intakeText;
   const inputs = {
     routines: unread ? starting.routines.map((r) => (r.isDefault ? { ...r, isDefault: false } : r)) : starting.routines,
     choice: unread ? null : starting.choice,
-    intakeText: unread ? null : host.intakeText,
+    intakeText: unread ? null : intakeText,
     floor,
     studioName: host.studioName,
   };
   const suggested = useMemo(() => {
     const s = suggestFromStartingRoutines(inputs);
     return unread ? { ...s, why: `Couldn't read ${host.studioName ?? "this studio"}'s starting routines just now. Pick the one that fits.` } : s;
-  }, [starting.routines, starting.choice, unread, host.intakeText, floor, host.studioName]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [starting.routines, starting.choice, unread, intakeText, floor, host.studioName]); // eslint-disable-line react-hooks/exhaustive-deps
   const suggestion = useMemo(
     () => (pickedId ? suggestFromStartingRoutines({ ...inputs, pickedId }) : suggested),
     [pickedId, suggested], // eslint-disable-line react-hooks/exhaustive-deps
@@ -219,13 +250,34 @@ function StartNew({ host, first, nameOf, routineAId }: { host: PlanHost; first: 
   const waiting = mode === "start" && plan === null && reading;
   const picking = mode === "start" && plan === null && !reading;
 
-  const dirty = draft !== null || pickedId !== null || mode === "own";
+  /* B planned beside the lineup, at a studio that starts new clients on A
+     and B together (its setting `newClientsStart`, read by the profile;
+     item 8). Never where the client has a Routine B of their own already
+     (`bTarget` null). With A alone, nothing about B appears. */
+  const bPart = usePlannedB({
+    read: waiting ? "off" : plannedBReadOf(host.aAndBTogether, bTarget !== null),
+    aPlan: plan,
+    floor,
+    todayYmd: today,
+    who,
+    /* A change to B holds the suggestion the lineup came from (the review
+       of item 8): the intake it was matched on is kept, so the open Health
+       notes landing a moment later never swap the starting routine, and B's
+       swaps with it, under the trainer. */
+    onEdit: () => {
+      if (!heldIntake) setHeldIntake({ text: host.intakeText });
+    },
+  });
+
+  const dirty = draft !== null || pickedId !== null || mode === "own" || bPart.changed;
   const reset = () => {
     setDraft(null);
     setPickedId(null);
     setMode("start");
     setNotes([]);
     setSaid(null);
+    setHeldIntake(null);
+    bPart.reset();
   };
   const unsaved = useUnsavedChanges(dirty, `${first}'s starting lineup`, { onDiscard: reset });
 
@@ -290,6 +342,8 @@ function StartNew({ host, first, nameOf, routineAId }: { host: PlanHost; first: 
       machineIds: [],
       plan,
       change: signedChange({ kind: "start", machineIds: plan.intended, ...(value ? { value } : null) }, who),
+      // B planned with it ("A and B together"): Routine B with its plan and no machines, in the same batch.
+      ...(bPart.planned && bTarget ? { b: { routineId: bTarget.routineId, ...bPart.planned } } : null),
     });
     for (const n of notes) {
       if ((plan.cantDo ?? []).some((c) => c.machineId === n.machineId)) host.actions.healthNote(n);
@@ -424,7 +478,8 @@ function StartNew({ host, first, nameOf, routineAId }: { host: PlanHost; first: 
       ? [suggestion.label, startingSourceWords(suggestion.source) ?? (starting.fromCode ? "From the Academy" : null)].filter(Boolean).join(" · ")
       : null;
   // A starting lineup waits for the starting routines' read (`waiting` has no plan); one built by hand never does.
-  const keepable = !!plan && !!who && !waiting && (plan.dayOne ?? []).length > 0;
+  // And, at a studio whose setting hasn't answered, for that read: Keep never keeps a lineup without the B it may owe.
+  const keepable = !!plan && !!who && !waiting && !bPart.reading && (plan.dayOne ?? []).length > 0;
 
   const lineupPanel = (
     <section className="rpl-panel" aria-label={`${first}'s starting lineup`}>
@@ -451,6 +506,7 @@ function StartNew({ host, first, nameOf, routineAId }: { host: PlanHost; first: 
             Not on {host.studioName ?? "this studio"}'s floor: {missing.map((id) => routineMachineName(id)).join(", ")}
           </p>
         )}
+        <PlannedBPart state={bPart} nameOf={nameOf} floor={floor} todayYmd={today} />
         <div className="rpl-foot">
           <div className="rpl-actions">
             <Button className="hover:bg-primary" disabled={!keepable} onClick={keep}>

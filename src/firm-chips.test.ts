@@ -207,6 +207,10 @@ const CHIPS: Chip[] = [
   // and the words that suggest a routine, each a chip a tap takes out.
   ["features/routine-plan/ui/starting-routines.css", ".srt-pick", "var(--adm-border-strong)", null, '.srt-pick[aria-pressed="true"]'],
   ["features/routine-plan/ui/starting-routines.css", ".srt-word", "var(--adm-border-strong)", null, null],
+  // A "choice" studio setting's segments (the first-session round, item 8:
+  // how a new client starts, A alone or A and B together), on both
+  // editors: the picked one the blue on its tint.
+  ["features/studio-settings/choice-segments.css", ".sts-seg__opt", "var(--adm-border-strong)", null, '.sts-seg__opt[aria-pressed="true"]'],
 ];
 
 /** The colour a rule's edge is drawn in: the shorthand's var(), or border-color. */

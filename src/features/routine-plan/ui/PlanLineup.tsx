@@ -47,6 +47,7 @@ import { usePhone } from "../../phone/device";
 import { useUnsavedChanges } from "../../unsaved-changes";
 import { RoutineRowItem } from "../../routines/RoutineRowItem";
 import type { RoutineRow } from "../../routines/routine-rows";
+import { PLANNED_B_WHEN, plannedBWords, plannedSwapsOf } from "../b-routine";
 import { healthNoteOffer, standInLine } from "../cant-do";
 import {
   addedNow,
@@ -181,6 +182,7 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
     focus: focus.roles && focus.area ? { area: focus.area, roles: focus.roles } : null,
   });
   const ab = bParts.mode !== "none" && !model.dayOneRuns && model.first.length > 0;
+  const plannedB = plannedSwapsOf(b?.routine);
   const aside = ab ? "rpl-aside" : undefined;
   /** A machine standing in for one on the bench: "instead of Seated Dip". */
   const insteadOf = useMemo(() => {
@@ -530,6 +532,16 @@ export function PlanLineup({ routine, rows, head, host, firstName, nameOf, adjus
         {head}
         {planHead}
         {ab && bParts.head}
+        {/* A B planned with the starting lineup (the studio's "A and B together") while day one
+            runs: no column yet (B is a copy of A), one quiet line of what it starts with, and when. */}
+        {!ab && plannedB && (
+          <div className="rpl-bhead">
+            <p className="rpl-line">
+              {plannedBWords({ swaps: plannedB, aRoutine: routineIds, aPlan: plan, floor, todayYmd: host.todayYmd, nameOf })}{" "}
+              {PLANNED_B_WHEN}
+            </p>
+          </div>
+        )}
         {focus.control}
         {said && (
           <div className="rpl-saidwrap">

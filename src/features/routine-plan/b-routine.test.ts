@@ -13,6 +13,7 @@
 import { describe, expect, it } from "vitest";
 import type { Routine, WorkoutSession } from "../../types";
 import {
+  B_PLANNED,
   B_PURPOSE_WORDS,
   B_START,
   B_SWAP_KEPT,
@@ -40,8 +41,19 @@ import {
   bSwitchStep,
   bToggleOpensPlanB,
   isBPlan,
+  isPlannedB,
+  plannedBFirstSwap,
+  plannedBFollowOf,
+  plannedBLine,
+  plannedBOf,
+  plannedBStart,
+  plannedBStartSwaps,
+  plannedBTarget,
+  plannedBWords,
+  plannedSwapsOf,
   startBPlan,
   suggestBSwaps,
+  suggestPlannedBSwaps,
   swapsReady,
   usableSwaps,
 } from "./b-routine";
@@ -461,5 +473,217 @@ describe("the briefing's glance for a session on B", () => {
       { id: "m-simple-row", kind: "next", mark: "Next stop · for compound row" },
       { id: "m-hip-abd", kind: "planned", mark: "for hip add" },
     ]);
+  });
+});
+
+/*
+ * B planned ahead (the first-session round, item 8: the studio setting
+ * `newClientsStart`, "A and B together"). AJ, Oct 7 2026: "Some studios may
+ * start building an A and B routine immediately for a client. So we need to
+ * be able to have that customization." The consult is not Routine A (AJ,
+ * Oct 8 2026), and B "starts out as the A routine with just one machine
+ * different": B's swaps are planned against A's PLANNED road, B is kept with
+ * no machines, and the Wrap-up that starts Routine A starts B.
+ */
+describe("B planned with the starting lineup", () => {
+  const ROAD = ["m-leg-press", "m-compound-row", "m-lumbar", "m-chest-press", "m-pulldown", "m-hip-abd"];
+  const aPlan: RoutinePlan = {
+    purpose: "Learning the protocol",
+    intended: ROAD,
+    dayOne: ["m-leg-press", "m-compound-row", "m-lumbar"],
+    building: true,
+    madeByUid: "uid-sam",
+  };
+
+  it("plans B's swaps against A's planned road: never one of the road's machines, never what the client can't do, this floor only", () => {
+    const held: CantDo[] = [{ machineId: "m-ext", until: "always", byUid: "uid-sam", day: TODAY }];
+    const swaps = suggestPlannedBSwaps({ road: ROAD, aPlan: { ...aPlan, cantDo: held }, floor: ALL, todayYmd: TODAY });
+    expect(swaps.length).toBeGreaterThan(0);
+    for (const s of swaps) {
+      expect(ROAD).toContain(s.replaces);
+      expect(ROAD).not.toContain(s.with);
+      expect(s.with).not.toBe("m-ext");
+    }
+  });
+
+  it("keeps B's plan with the swaps it can keep, B whole as its road, building off, and a 'B planned' start naming the pairs", () => {
+    const swaps: PlanSwap[] = [
+      { replaces: "m-leg-press", with: "m-ext" },
+      { replaces: "m-compound-row", with: "m-simple-row" },
+      // One of the road's own machines is never B's swap: left out.
+      { replaces: "m-chest-press", with: "m-pulldown" },
+    ];
+    const planned = plannedBOf({ road: ROAD, aPlan, floor: ALL, purpose: "recovery", swaps, who, todayYmd: TODAY })!;
+    expect(planned.plan.swaps).toEqual(swaps.slice(0, 2));
+    expect(planned.plan.intended).toEqual(["m-ext", "m-simple-row", "m-lumbar", "m-chest-press", "m-pulldown", "m-hip-abd"]);
+    expect(planned.plan.building).toBe(false);
+    expect(planned.plan.purposeKinds).toEqual(["recovery"]);
+    expect(planned.change).toEqual({ kind: "start", machineIds: ["m-leg-press", "m-ext", "m-compound-row", "m-simple-row"], value: B_PLANNED });
+    expect(planChangeWhat({ ...planned.change }, { nameOf, routineName: "Routine B" })).toBe("Planned B: ext for leg press first, 2 swaps in all");
+    // Nothing it can keep: nothing is planned.
+    expect(plannedBOf({ road: ROAD, aPlan, floor: ALL, purpose: "variety", swaps: [{ replaces: "m-abs", with: "m-ext" }], who, todayYmd: TODAY })).toBeNull();
+    expect(plannedBOf({ road: [], aPlan, floor: ALL, purpose: "variety", swaps, who, todayYmd: TODAY })).toBeNull();
+  });
+
+  it("a Routine B planned and not started is told apart, said in words, and never follows A", () => {
+    const planned = { id: "r-b", name: "Routine B", machineIds: [] as string[], plan: bPlanOf() };
+    expect(isPlannedB(planned)).toBe(true);
+    expect(plannedSwapsOf(planned)).toEqual(SWAPS);
+    expect(isPlannedB({ ...planned, machineIds: ["m-ext"] })).toBe(false);
+    expect(isPlannedB({ ...planned, plan: undefined })).toBe(false);
+    expect(plannedBLine(SWAPS, nameOf)).toBe("B is planned: ext for leg press first, 3 swaps in all.");
+    // A Routine A gaining machines (the drawer, say) never turns a planned B into a copy of A with no swap.
+    const routines = [{ id: "r-a", name: "Routine A", machineIds: [] as string[] }, planned];
+    expect(bFollowOf(routines, "r-a", ["m-leg-press", "m-compound-row"])).toBeNull();
+  });
+
+  it("is written where the client has no Routine B, or an empty one with no plan, and never over one of their own", () => {
+    expect(plannedBTarget([])).toEqual({ routineId: null });
+    expect(plannedBTarget([{ id: "temp-b", name: "Routine B", machineIds: [] }])).toEqual({ routineId: null });
+    expect(plannedBTarget([{ id: "r-b", name: "Routine B", machineIds: [] }])).toEqual({ routineId: "r-b" });
+    expect(plannedBTarget([{ id: "r-b", name: "B", machineIds: [] }])).toEqual({ routineId: "r-b" });
+    expect(plannedBTarget([{ id: "r-b", name: "Routine B", machineIds: ["m-ext"] }])).toBeNull();
+    expect(plannedBTarget([{ id: "r-b", name: "Routine B", machineIds: [], plan: bPlanOf() }])).toBeNull();
+  });
+
+  it("the Wrap-up that starts Routine A starts B as A with its first swap A can take, signed", () => {
+    const planned = { id: "r-b", name: "Routine B", machineIds: [] as string[], plan: bPlanOf(SWAPS, ROAD) };
+    const routines = [{ id: "r-a", name: "Routine A", machineIds: [] as string[], plan: aPlan }, planned];
+    const aAfter = ["m-leg-press", "m-compound-row", "m-lumbar"];
+    const started = plannedBStart({ routines, aRoutineId: "r-a", aBefore: [], aAfter, aPlan, floor: ALL, who, todayYmd: TODAY })!;
+    expect(started.routineId).toBe("r-b");
+    // B starts as A with one machine different.
+    expect(started.machineIds).toEqual(["m-ext", "m-compound-row", "m-lumbar"]);
+    expect(started.change).toEqual({ kind: "start", machineIds: ["m-leg-press", "m-ext"], value: B_START, byUid: "uid-sam", byName: "Sam Lee" });
+    // The swaps it keeps are for A's machines now; Hip Adduction isn't on A's road at all.
+    expect(started.plan.swaps).toEqual(SWAPS.slice(0, 2));
+    expect(plannedBFirstSwap({ swaps: SWAPS, aRoutine: aAfter, aPlan, floor: ALL, todayYmd: TODAY })).toEqual(SWAPS[0]);
+  });
+
+  it("starts nothing unless the ticks START Routine A and B is planned and empty", () => {
+    const planned = { id: "r-b", name: "Routine B", machineIds: [] as string[], plan: bPlanOf(SWAPS, ROAD) };
+    const routines = [{ id: "r-a", name: "Routine A", machineIds: [] as string[], plan: aPlan }, planned];
+    const base = { routines, aRoutineId: "r-a", aBefore: [] as string[], aAfter: ["m-leg-press"], aPlan, floor: ALL, who, todayYmd: TODAY };
+    expect(plannedBStart({ ...base, aBefore: ["m-lumbar"] })).toBeNull();
+    expect(plannedBStart({ ...base, aAfter: [] })).toBeNull();
+    expect(plannedBStart({ ...base, aRoutineId: "r-b" })).toBeNull();
+    expect(plannedBStart({ ...base, who: null })).toBeNull();
+    expect(plannedBStart({ ...base, routines: [routines[0]!, { ...planned, machineIds: ["m-ext"] }] })).toBeNull();
+    // None of B's swaps is for a machine A has now: B stays planned.
+    expect(plannedBStart({ ...base, aAfter: ["m-lumbar"] })).toBeNull();
+  });
+
+  /*
+   * The review of item 8: the swaps planned at the consult for machines
+   * still on A's deck were dropped at the first Wrap-up, without a word.
+   * They are kept on B's plan, after the ones A can take now, and wait for
+   * A to take their machines, then come in as any swap does.
+   */
+  it("keeps the swaps planned for machines still on A's road, waiting after the ones A can take now", () => {
+    const swaps: PlanSwap[] = [
+      { replaces: "m-chest-press", with: "m-chest-fly" }, // on A's deck at the consult
+      { replaces: "m-leg-press", with: "m-ext" },
+      { replaces: "m-compound-row", with: "m-simple-row" },
+    ];
+    const bPlan = plannedBOf({ road: ROAD, aPlan, floor: ALL, purpose: "variety", swaps, who, todayYmd: TODAY })!.plan;
+    const planned = { id: "r-b", name: "Routine B", machineIds: [] as string[], plan: bPlan };
+    const routines = [{ id: "r-a", name: "Routine A", machineIds: [] as string[], plan: aPlan }, planned];
+    const aAfter = ["m-leg-press", "m-compound-row", "m-lumbar"];
+    const started = plannedBStart({ routines, aRoutineId: "r-a", aBefore: [], aAfter, aPlan, floor: ALL, who, todayYmd: TODAY })!;
+    // B starts as A with the first swap A can take now.
+    expect(started.machineIds).toEqual(["m-ext", "m-compound-row", "m-lumbar"]);
+    expect(started.change.machineIds).toEqual(["m-leg-press", "m-ext"]);
+    // The chest press's swap is kept, after the ones A can take now.
+    expect(started.plan.swaps).toEqual([swaps[1], swaps[2], swaps[0]]);
+    const b = started.machineIds;
+    const plan = started.plan;
+    // It waits for A, said as such, never as gone.
+    expect(bSwapWait(swaps[0]!, aAfter, [], ROAD)).toBe("a-later");
+    expect(bSwapWait(swaps[0]!, aAfter)).toBe("gone");
+    const column = bColumnOf(aAfter, plan, b, ROAD);
+    expect(column.waiting).toEqual([swaps[0]]);
+    expect(column.gone).toEqual([]);
+    expect(column.status).toMatchObject({ made: 1, of: 3 });
+    // Swap in stops before it while Routine A hasn't its machine...
+    expect(swapsReady(aAfter, plan.swaps!, b)).toBe(1);
+    // ...and once A takes the chest press, B follows A there and the swap comes in as any swap does.
+    const aNext = [...aAfter, "m-chest-press"];
+    const follow = bFollowOf(
+      [
+        { id: "r-a", name: "Routine A", machineIds: aAfter, plan: aPlan },
+        { ...planned, machineIds: b, plan },
+      ],
+      "r-a",
+      aNext,
+    )!;
+    expect(follow.machineIds).toEqual(["m-ext", "m-compound-row", "m-lumbar", "m-chest-press"]);
+    expect(bSwappedIn(aNext, plan, follow.machineIds!, 2)!.machineIds).toEqual(["m-ext", "m-simple-row", "m-lumbar", "m-chest-fly"]);
+  });
+
+  it("sorts a planned B's swaps for a start: ready now, waiting for A, or neither", () => {
+    const swaps: PlanSwap[] = [
+      { replaces: "m-chest-press", with: "m-chest-fly" },
+      { replaces: "m-leg-press", with: "m-ext" },
+      // Its A machine is on neither Routine A nor A's road.
+      { replaces: "m-abs", with: "m-torso-rotation" },
+      // Its machine is on A's road: A takes it, never B.
+      { replaces: "m-pulldown", with: "m-hip-abd" },
+    ];
+    const out = plannedBStartSwaps({ swaps, aRoutine: ["m-leg-press"], aPlan, floor: ALL, todayYmd: TODAY });
+    expect(out.ready).toEqual([swaps[1]]);
+    expect(out.waiting).toEqual([swaps[0]]);
+    // Off the floor (the one frozen at Finish): neither.
+    const offFloor = plannedBStartSwaps({ swaps, aRoutine: ["m-leg-press"], aPlan, floor: ALL.filter((m) => m.id !== "m-ext"), todayYmd: TODAY });
+    expect(offFloor.ready).toEqual([]);
+    expect(plannedBFirstSwap({ swaps, aRoutine: ["m-leg-press"], aPlan, floor: ALL.filter((m) => m.id !== "m-ext"), todayYmd: TODAY })).toBeNull();
+  });
+
+  it("says a planned B by the swaps it can still keep, the first the one it would start with", () => {
+    const swaps: PlanSwap[] = [
+      // Its A machine left A's road: never named, never counted.
+      { replaces: "m-abs", with: "m-torso-rotation" },
+      { replaces: "m-chest-press", with: "m-chest-fly" },
+      { replaces: "m-leg-press", with: "m-ext" },
+    ];
+    const words = (aRoutine: string[], plan: RoutinePlan = aPlan) =>
+      plannedBWords({ swaps, aRoutine, aPlan: plan, floor: ALL, todayYmd: TODAY, nameOf });
+    // Routine A empty: against A's road.
+    expect(words([])).toBe("B is planned: chest fly for chest press first, 2 swaps in all.");
+    // Routine A with machines: the one B would start with, first.
+    expect(words(["m-leg-press", "m-lumbar"])).toBe("B is planned: ext for leg press first, 2 swaps in all.");
+    expect(words(["m-lumbar"])).toBe("B is planned, 2 swaps: none is for a machine in Routine A yet.");
+    expect(words([], { ...aPlan, intended: ["m-lumbar"] })).toBe("B is planned, but none of its swaps fits Routine A's plan now.");
+  });
+
+  /*
+   * The review of item 8: a planned B never followed a change to A's road,
+   * so a swap kept naming a machine that had left it. Its plan follows the
+   * road now, in the same batch as A's change; Routine B's machines stay
+   * empty.
+   */
+  it("a planned B follows A's road with its plan alone: a swap follows its place, Routine B's machines never written", () => {
+    const swaps: PlanSwap[] = [
+      { replaces: "m-chest-press", with: "m-chest-fly" },
+      { replaces: "m-leg-press", with: "m-ext" },
+    ];
+    const bPlan = plannedBOf({ road: ROAD, aPlan, floor: ALL, purpose: "variety", swaps, who, todayYmd: TODAY })!.plan;
+    const planned = { id: "r-b", name: "Routine B", machineIds: [] as string[], plan: bPlan };
+    const a = { id: "r-a", name: "Routine A", machineIds: [] as string[], plan: aPlan };
+    // A Lineup swap on the road: the chest press becomes the overhead press, at its place.
+    const road = ROAD.map((id) => (id === "m-chest-press" ? "m-overhead-press" : id));
+    const follow = plannedBFollowOf([a, planned], "r-a", { intended: road })!;
+    expect(follow.routineId).toBe("r-b");
+    expect(follow.machineIds).toBeUndefined();
+    expect(follow.swaps).toEqual([
+      { replaces: "m-overhead-press", with: "m-chest-fly" },
+      { replaces: "m-leg-press", with: "m-ext" },
+    ]);
+    expect(follow.intended).toEqual(bIntendedOf(road, follow.swaps!));
+    // Nothing moved on the road: nothing to write.
+    expect(plannedBFollowOf([a, planned], "r-a", { intended: ROAD })).toBeNull();
+    // Only a change to Routine A's plan, and only a B planned and not started (a started B follows A's machines, `bFollowOf`).
+    expect(plannedBFollowOf([a, planned], "r-b", { intended: road })).toBeNull();
+    expect(plannedBFollowOf([a, { ...planned, machineIds: ["m-ext"] }], "r-a", { intended: road })).toBeNull();
+    expect(plannedBFollowOf([a], "r-a", { intended: road })).toBeNull();
   });
 });

@@ -46,6 +46,15 @@ export interface StartPlanAtStart {
   startingRoutineId: string | null;
   /** Its name, for the `start` change's value ("Low back issues"), so the Changes list needs no second read. */
   startingRoutineName?: string | null;
+  /**
+   * B planned beside it, at a studio that starts new clients on A and B
+   * together (`newClientsStart`, item 8; b-routine.ts `plannedBOf`): B's
+   * plan and its first change ("start" with "B planned"). The tracker
+   * writes it in the Start batch as Routine B with NO machines (store.ts
+   * `addPlannedBToBatch`), never over a Routine B of the client's own
+   * (`plannedBTarget`), re-signed by whoever presses Start.
+   */
+  b?: { plan: RoutinePlan; change: PlanChange } | null;
 }
 
 /**
@@ -56,6 +65,12 @@ export interface StartPlanAtStart {
 export function startChangeOf(sp: Pick<StartPlanAtStart, "plan" | "startingRoutineName">, who: Who): PlanChange {
   const name = sp.startingRoutineName?.trim();
   return signedChange({ kind: "start", machineIds: sp.plan.intended, ...(name ? { value: name } : null) }, who);
+}
+
+/** B planned with the starting plan, its change signed by whoever presses Start; null with no B to plan. */
+export function plannedBAtStart(sp: Pick<StartPlanAtStart, "b"> | null | undefined, who: Who): { plan: RoutinePlan; change: PlanChange } | null {
+  if (!sp?.b) return null;
+  return { plan: sp.b.plan, change: signedChange(sp.b.change, who) };
 }
 
 /* ── Which card ─────────────────────────────────────────────────────────── */

@@ -133,6 +133,7 @@ import { savedRoutineB, type PlanHost } from "../features/routine-plan/ui/host";
 import { usePlanActions } from "../features/routine-plan/ui/usePlanActions";
 import { ProfilePlanB } from "../features/routine-plan/ui/ProfilePlanB";
 import { useBSwitch } from "../features/routine-plan/ui/useBSwitch";
+import { useNewClientsStart } from "../features/routine-plan/ui/useNewClientsStart";
 import { useUnsavedChanges } from "../features/unsaved-changes";
 import {
   ProfileHeader,
@@ -1535,6 +1536,14 @@ export function ClientProfileView({
       }),
     [client?.medicalHistory, client?.goals, client?.clinicalProfile, planHealthWords],
   );
+  /* How this studio starts a new client (its setting `newClientsStart`; the
+     first-session round, item 8; AJ, Oct 7 2026: "Some studios may start
+     building an A and B routine immediately for a client"): with A and B
+     together, Start a plan plans Routine B beside the lineup. Until the
+     setting answers it is "loading" (Keep waits for it), and "failed" when
+     it couldn't be read (B offered), never A alone off a read that didn't
+     answer. */
+  const planAandB = useNewClientsStart(activeStudioId ?? null);
   const planHost = useMemo<PlanHost>(
     () => ({
       status: routinesStatus,
@@ -1547,6 +1556,7 @@ export function ClientProfileView({
         : null,
       todayYmd: planToday,
       intakeText: planIntake,
+      aAndBTogether: planAandB,
       actions: planActions,
       openPlanB: bSwitch.openPlanB,
       // Every session read: no page left on the server. Until the first
@@ -1567,6 +1577,7 @@ export function ClientProfileView({
       authTrainer?.fullName,
       planToday,
       planIntake,
+      planAandB,
       planActions,
     ],
   );

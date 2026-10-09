@@ -149,6 +149,10 @@ describe("Studio defaults", () => {
       "The machines' care (Relay's Floor Map)",
       // FileMaker parity, Oct 1 2026: when an InBody scan is due.
       "InBody scans (the briefing and the InBody card)",
+      // The first-session round, item 8. AJ, Oct 7 2026: "Some studios may
+      // start building an A and B routine immediately for a client. So we
+      // need to be able to have that customization."
+      "New clients",
     ]);
     expect(rowOf(el, "inbodyEverySessions")!.textContent).toContain("The app's default is 50.");
     expect(box(el, "quietFloorSessions")!.value).toBe("3");
@@ -207,6 +211,43 @@ describe("Studio defaults", () => {
     expect(el.querySelector('.adm-savebar [role="alert"]')?.textContent).toContain("Settling in must end after New");
     await click(button(el, "Try again"));
     expect(state.writes).toEqual([]);
+  });
+
+  /*
+   * How a new client starts (item 8; AJ, Oct 7 2026: "Some studios may start
+   * building an A and B routine immediately for a client"): a choice, drawn
+   * side by side, Not set picked until head office picks one, and saved as
+   * its number with a line in words in the Activity record.
+   */
+  it("draws how a new client starts as a choice, side by side, and saves the one picked", async () => {
+    const el = await mount();
+    const group = el.querySelector("#hq-default-newClientsStart");
+    expect(group?.getAttribute("role")).toBe("group");
+    const segs = [...(group?.querySelectorAll<HTMLButtonElement>("button") ?? [])];
+    expect(segs.map((b) => b.querySelector(".sts-seg__label")?.textContent)).toEqual(["Not set", "A alone", "A and B together"]);
+    expect(segs.map((b) => b.getAttribute("aria-pressed"))).toEqual(["true", "false", "false"]);
+    // A choice has no box: its words say Not set (the review of item 8).
+    expect(rowOf(el, "newClientsStart")!.textContent).toContain("The app's default is A alone. With Not set picked, studios use it.");
+    expect(rowOf(el, "newClientsStart")!.textContent).not.toContain("box");
+    await click(segs[2]);
+    expect(group!.querySelectorAll('button[aria-pressed="true"]')).toHaveLength(1);
+    expect(segs[2].getAttribute("aria-pressed")).toBe("true");
+    expect(rowOf(el, "newClientsStart")!.textContent).toContain("Studios use A and B together unless they set their own.");
+    await click(button(el, "Save changes"));
+    expect(state.writes[0].data).toEqual({ values: { newClientsStart: 2 }, updatedAt: "SERVER_TIME", updatedBy: "uid-imrahil" });
+    expect((state.writes[1].data as { what: string; before: unknown; after: unknown })).toMatchObject({
+      what: "Set Max Strength's default for “A new client starts with” to A and B together.",
+      before: { "A new client starts with": "not set (the app's A alone)" },
+      after: { "A new client starts with": "A and B together" },
+    });
+  });
+
+  it("a stored choice that isn't one of its own is said as unusable, in a choice's words", async () => {
+    state.defaults = { quietFloorSessions: 3, lapsedDays: 60, newClientsStart: 7 };
+    const el = await mount();
+    const row = rowOf(el, "newClientsStart")!.textContent ?? "";
+    expect(row).toContain("What is stored (7) isn't a usable value, so studios use the app's A alone. Pick one, or Not set.");
+    expect(row).not.toContain("save it empty");
   });
 
   it("says it couldn't read the defaults, and draws no boxes that would look unset", async () => {

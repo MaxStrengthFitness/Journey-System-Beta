@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import type { RoutineAdjustment, Trainer } from "../../../types";
 import { useMediaQuery, NOW_BAR_SIDE_QUERY } from "../../../hooks/useMediaQuery";
 import { usePhone } from "../../phone/device";
+import { PLANNED_B_WHEN, plannedBWords, plannedSwapsOf } from "../b-routine";
 import type { RoutinePlan } from "../types";
 import { BAcademyLine, useBColumn, type BSide } from "./BColumn";
 import { floorMachinesOf, type PlanHost } from "./host";
@@ -56,13 +57,21 @@ export function BPlanView({ head, host, aRoutine, aPlan, b, nameOf, firstName, a
   const [changesOpen, setChangesOpen] = useState(false);
 
   if (parts.mode === "start") {
+    // Planned with the starting lineup (the studio's "A and B together"): what it starts with, and when.
+    const planned = plannedSwapsOf(b.routine);
+    const waitsForA = !!planned && aRoutine.length === 0;
     return (
       <section className="rt-routine rpl-routine" aria-label="Routine B">
         {head}
         <div className="rpl-bhead">
-          <p className="rpl-progress__line">B starts as a copy of A with one machine different, then A and B alternate.</p>
+          <p className="rpl-progress__line">
+            {planned
+              ? plannedBWords({ swaps: planned, aRoutine, aPlan, floor, todayYmd: host.todayYmd, nameOf })
+              : "B starts as a copy of A with one machine different, then A and B alternate."}
+          </p>
+          {waitsForA && <p className="rpl-line">{PLANNED_B_WHEN}</p>}
           <BAcademyLine aRunsLine={b.aRunsLine} />
-          {canWrite && host.openPlanB && (
+          {canWrite && host.openPlanB && !waitsForA && (
             <div className="rpl-actions">
               <Button className="hover:bg-primary" onClick={host.openPlanB}>
                 Plan B

@@ -23,6 +23,14 @@
  * "the first visit's machines"), so a machine taken out at the consult
  * doesn't come back at the next visit.
  *
+ * At a studio that starts new clients on A and B together (its setting
+ * `newClientsStart`, read by the briefing into `aAndBTogether`; item 8), a
+ * starting plan plans Routine B beside it (`usePlannedB`: B's swaps against
+ * the plan's road, editable or left for later), and Start hands it up with
+ * the plan (`startPlan.b`): the tracker writes Routine B with its plan and
+ * no machines in the Start batch, and the Wrap-up that starts Routine A
+ * starts B.
+ *
  * Once the trainer changes today, the suggestion holds: the intake it was
  * matched on is kept, so the open Health notes landing a moment later (the
  * journal is still being read) never swap the starting routine, and the
@@ -40,7 +48,8 @@ import { academyTemplateOf, startingPlanFromRoutine, suggestFromStartingRoutines
 import { cantDoDayWords } from "../cant-do";
 import type { RoutinePlan } from "../types";
 import { useStartingRoutines } from "../useStartingRoutines";
-import { floorMachinesOf } from "./host";
+import { floorMachinesOf, type NewClientsStartRead } from "./host";
+import { plannedBReadOf, usePlannedB, type PlannedBState } from "./PlannedBPart";
 
 export interface BriefingPlanInput {
   view: BriefingPlanView;
@@ -56,6 +65,20 @@ export interface BriefingPlanInput {
   todayYmd: string;
   /** Routine A's plan, for "kept". */
   kept: RoutinePlan | null;
+  /**
+   * The studio starts new clients on A and B together (its setting
+   * `newClientsStart`, read by the briefing; item 8): a starting plan plans
+   * Routine B beside it, and Start keeps both. Absent or false, A alone.
+   * "loading": the card says it is reading the setting, and Start (never
+   * held) keeps no B; "failed": B is offered, left for later until the
+   * trainer plans it.
+   */
+  aAndBTogether?: NewClientsStartRead;
+  /**
+   * A planned B can be written (`plannedBTarget` over the client's
+   * routines): false when the client has a Routine B of their own already.
+   */
+  bPlannable?: boolean;
 }
 
 export interface BriefingPlanState {
@@ -84,6 +107,14 @@ export interface BriefingPlanState {
   fromCode: boolean;
   /** What Start hands up ("starting" with a plan and a signer only). */
   startPlan: StartPlanAtStart | null;
+  /**
+   * B planned beside a starting plan, at a studio that starts new clients
+   * on A and B together (`PlannedBPart`): on only then, and only for
+   * "starting".
+   */
+  b: PlannedBState;
+  /** The trainer changed B's part: the briefing counts it as unsaved, as it counts today changed. */
+  bChanged: boolean;
   /** Back to what the card opened with: today, the pick and the held suggestion (the leave gate's discard). */
   reset: () => void;
 }
@@ -170,6 +201,21 @@ export function useBriefingPlan(input: BriefingPlanInput): BriefingPlanState {
       : suggestion.alternatives;
   }, [suggestion, derived]);
 
+  /* B planned beside the starting plan, at a studio that starts new clients
+     on A and B together (item 8): against the plan's road, which Change
+     today never moves. Never where the client has a Routine B already. */
+  const b = usePlannedB({
+    read: startingView ? plannedBReadOf(input.aAndBTogether, input.bPlannable !== false) : "off",
+    aPlan: startingView ? (derived?.plan ?? null) : null,
+    floor,
+    todayYmd,
+    who,
+    // A change to B holds the suggestion, as a change to today does: the intake it was matched on is kept.
+    onEdit: () => {
+      if (startingView && !heldIntake) setHeldIntake({ text: input.intakeText });
+    },
+  });
+
   const startPlan: StartPlanAtStart | null =
     startingView && plan && who?.uid
       ? {
@@ -180,6 +226,7 @@ export function useBriefingPlan(input: BriefingPlanInput): BriefingPlanState {
           machineIds: [...today],
           startingRoutineId: plan.templateId ?? null,
           startingRoutineName: chosen?.name ?? null,
+          ...(b.planned ? { b: b.planned } : null),
         }
       : null;
 
@@ -204,10 +251,13 @@ export function useBriefingPlan(input: BriefingPlanInput): BriefingPlanState {
     },
     fromCode: starting.fromCode,
     startPlan,
+    b,
+    bChanged: b.changed,
     reset: () => {
       setOverride(null);
       setPickedId(null);
       setHeldIntake(null);
+      b.reset();
     },
   };
 }

@@ -166,6 +166,58 @@ describe("This studio's settings", () => {
     expect(input(el, "lapsedDays").closest("fieldset")?.disabled).toBe(true);
   });
 
+  /*
+   * How a new client starts (the first-session round, item 8; AJ, Oct 7
+   * 2026: "Some studios may start building an A and B routine immediately
+   * for a client. So we need to be able to have that customization"): a
+   * choice side by side inside the same form, so a pick is dirty-tracked and
+   * saved with the rest, and following the default again clears it.
+   */
+  it("draws how a new client starts as a choice, and saves a leader's pick with the form", async () => {
+    const el = await mount(true);
+    const group = el.querySelector("#ms-setting-newClientsStart")!;
+    expect(group.getAttribute("role")).toBe("group");
+    const segs = () => [...group.querySelectorAll<HTMLButtonElement>("button")];
+    expect(segs().map((b) => b.querySelector(".sts-seg__label")?.textContent)).toEqual([
+      "Follow the default (A alone)",
+      "A alone",
+      "A and B together",
+    ]);
+    expect(segs().map((b) => b.getAttribute("aria-pressed"))).toEqual(["true", "false", "false"]);
+    expect(el.textContent).toContain("Now A alone: the app's default.");
+    await click(segs()[2]);
+    expect(segs()[2].getAttribute("aria-pressed")).toBe("true");
+    await click(button(el, /Save changes/));
+    expect(fake.writes).toEqual([
+      {
+        path: "studios/westlake/config/settings",
+        data: { values: { newClientsStart: 2 }, updatedAt: "NOW", updatedBy: "uid-faramir" },
+        kind: "set",
+      },
+    ]);
+  });
+
+  it("shows a studio's own choice as its own, and following the default again clears it", async () => {
+    fake.docs["system/studioDefaults"] = { values: { newClientsStart: 2 } };
+    fake.docs["studios/westlake/config/settings"] = { values: { newClientsStart: 1 } };
+    const el = await mount(true);
+    const group = el.querySelector("#ms-setting-newClientsStart")!;
+    const segs = () => [...group.querySelectorAll<HTMLButtonElement>("button")];
+    expect(segs()[0].querySelector(".sts-seg__label")?.textContent).toBe("Follow the default (A and B together)");
+    expect(segs()[1].getAttribute("aria-pressed")).toBe("true");
+    expect(el.textContent).toContain("Now A alone: this studio's own.");
+    await click(segs()[0]);
+    await click(button(el, /Save changes/));
+    expect(fake.writes[0].data).toEqual({ values: { newClientsStart: "DELETE" }, updatedAt: "NOW", updatedBy: "uid-faramir" });
+  });
+
+  it("lets everyone else read the choice, locked", async () => {
+    const el = await mount(false);
+    const segs = [...el.querySelectorAll<HTMLButtonElement>("#ms-setting-newClientsStart button")];
+    expect(segs).toHaveLength(3);
+    expect(segs.every((b) => b.disabled)).toBe(true);
+  });
+
   it("offers no save while a layer couldn't be read", async () => {
     fake.failing.add("studios/westlake/config/settings");
     const el = await mount(true);

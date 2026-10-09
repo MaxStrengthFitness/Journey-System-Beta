@@ -35,6 +35,7 @@ import {
   type SettingDef,
   type SettingValues,
 } from "../../studio-settings";
+import { ChoiceSegments } from "../../studio-settings/ChoiceSegments";
 import { studioSettingsRef } from "../../studio-settings/store";
 import { logActivity } from "../activity/log-activity";
 import {
@@ -140,16 +141,33 @@ export function SettingDefaultsPage({ studios, authTrainer }: { studios: Studio[
     const err = fieldProblem(def.key, text);
     const id = `hq-default-${def.key}`;
     const app = formatSetting(def.key, def.appDefault);
-    const shown = err ? null : text === "" ? null : text === "none" ? "None" : def.kind === "weekday" ? formatSetting(def.key, Number(text)) : text;
+    const shown =
+      err ? null
+      : text === "" ? null
+      : text === "none" ? "None"
+      : def.kind === "weekday" || def.kind === "choice" ? formatSetting(def.key, Number(text))
+      : text;
     const who = ownLine(own.byKey[def.key]);
     return (
       <div key={def.key} className="hq-setting">
         <div className="hq-setting__head">
-          <label className="hq-setting__label" htmlFor={id}>
+          <label className="hq-setting__label" htmlFor={def.kind === "choice" ? undefined : id}>
             {def.label}
           </label>
           <div className="hq-setting__control">
-            {def.kind === "weekday" ? (
+            {def.kind === "choice" ? (
+              // A choice of a few, side by side (newClientsStart): blue when picked; "Not set" is the app's.
+              <ChoiceSegments
+                id={id}
+                label={def.label}
+                value={text}
+                options={[
+                  { value: "", label: "Not set", sub: `The app's: ${app}` },
+                  ...(def.choices ?? []).map((c) => ({ value: String(c.value), label: c.label, sub: c.sub })),
+                ]}
+                onChange={(v) => form.setField(def.key, v)}
+              />
+            ) : def.kind === "weekday" ? (
               <AdminSelect id={id} value={text} onChange={(e) => form.setField(def.key, e.target.value)}>
                 <option value="">Not set</option>
                 <option value="none">None</option>
@@ -175,14 +193,17 @@ export function SettingDefaultsPage({ studios, authTrainer }: { studios: Studio[
         </div>
         <p className="hq-setting__now">
           {shown === null
-            ? `The app's default is ${app}. With this box empty, studios use it.`
+            ? def.kind === "choice"
+              ? `The app's default is ${app}. With Not set picked, studios use it.`
+              : `The app's default is ${app}. With this box empty, studios use it.`
             : `The app's default is ${app}. Studios use ${shown} unless they set their own.`}
         </p>
         <p className="hq-setting__help">{def.help}</p>
         {err ? <p className="adm-hint adm-hint--error">{err}</p> : null}
         {stored[def.key] !== undefined ? (
           <p className="hq-setting__warn">
-            What is stored ({stored[def.key]}) isn&apos;t a usable value, so studios use the app&apos;s {app}. Enter one, or save it empty.
+            What is stored ({stored[def.key]}) isn&apos;t a usable value, so studios use the app&apos;s {app}.{" "}
+            {def.kind === "choice" ? "Pick one, or Not set." : "Enter one, or save it empty."}
           </p>
         ) : null}
         {who ? <p className="hq-setting__own">{who}</p> : null}

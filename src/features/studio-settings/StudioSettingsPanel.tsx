@@ -8,6 +8,7 @@ import { AdminField, AdminGrid, AdminInput, AdminNotice, AdminPanel, AdminSelect
 import { useDirtyForm } from "../admin/useDirtyForm";
 import { GROUP_LABEL, GROUP_ORDER, SETTINGS, WEEKDAY_NAMES, type SettingDef, type SettingKey } from "./registry";
 import { SOURCE_PHRASE, formatSetting, inactiveProblem, parseSetting, resolveAll, resolveSetting, usable, type SettingValue } from "./resolve";
+import { ChoiceSegments } from "./ChoiceSegments";
 import { saveStudioSettings, type SettingsPatch } from "./store";
 import { useStudioSettings } from "./useStudioSettings";
 import "../admin/admin.css";
@@ -134,11 +135,26 @@ export function StudioSettingsPanel({ studioId, studio, canEdit }: StudioSetting
               {defs.map((def) => {
                 const now = settings.all[def.key];
                 const fallback = fallbackFor(def.key, settings.companyValues);
+                // "Now 3 sessions …: Max Strength's default.", "Now A alone: the app's default."
                 const hint = `${def.help} Now ${formatSetting(def.key, now.value)}${def.unit ? ` ${def.unit}` : ""}: ${SOURCE_PHRASE[now.source]}.`;
                 const id = `ms-setting-${def.key}`;
                 return (
-                  <AdminField key={def.key} label={def.label} hint={hint} htmlFor={id}>
-                    {def.kind === "weekday" ? (
+                  <AdminField key={def.key} label={def.label} hint={hint} htmlFor={def.kind === "choice" ? undefined : id}>
+                    {def.kind === "choice" ? (
+                      // A choice of a few, side by side (newClientsStart): blue when picked, inside the
+                      // form, so a pick is dirty-tracked and saved with the rest.
+                      <ChoiceSegments
+                        id={id}
+                        label={def.label}
+                        value={form.value[def.key]}
+                        disabled={!canEdit || saveDisabled}
+                        options={[
+                          { value: "", label: `Follow the default (${formatSetting(def.key, fallback)})` },
+                          ...(def.choices ?? []).map((c) => ({ value: String(c.value), label: c.label, sub: c.sub })),
+                        ]}
+                        onChange={(v) => form.setField(def.key, v)}
+                      />
+                    ) : def.kind === "weekday" ? (
                       <AdminSelect id={id} value={form.value[def.key]} onChange={(e) => form.setField(def.key, e.target.value)}>
                         <option value="">Follow the default ({formatSetting(def.key, fallback)})</option>
                         <option value="none">None</option>

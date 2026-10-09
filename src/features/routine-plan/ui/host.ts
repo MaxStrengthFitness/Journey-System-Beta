@@ -12,8 +12,15 @@ import { ACADEMY_MOVEMENT_NAME } from "../../catalog/names";
 import type { StartingKindAnswer } from "../client-kind";
 import type { PlanWrite, Who } from "../lineup";
 import type { FloorMachine } from "../starting-plan";
-import type { StoredPlanChange } from "../store";
+import type { PlannedBWrite, StoredPlanChange } from "../store";
 import type { CantDo, PlanChange, RoutinePlan } from "../types";
+
+/**
+ * How the studio starts a new client, as a screen knows it: true for A and
+ * B together, false for A alone, "loading" until the setting answers,
+ * "failed" when it couldn't be read (`useNewClientsStart`).
+ */
+export type NewClientsStartRead = boolean | "loading" | "failed";
 
 export interface StartPlanCall {
   /** The routine the plan goes on (an existing Routine A), or null to make one. */
@@ -22,6 +29,12 @@ export interface StartPlanCall {
   machineIds: string[];
   plan: RoutinePlan;
   change: PlanChange;
+  /**
+   * B planned beside it, at a studio that starts new clients on A and B
+   * together (`newClientsStart`): Routine B with its plan and no machines,
+   * in the same batch (`store.ts` `addPlannedBToBatch`). Absent: no B.
+   */
+  b?: PlannedBWrite | null;
 }
 
 /** Plan B kept: Routine B as A with one machine different, its plan, and its first change (`startBPlan`, signed). */
@@ -82,6 +95,17 @@ export interface PlanHost {
   todayYmd: string;
   /** The intake's words a starting routine is matched on: medical history, goals, the clinical profile, open Health notes (`planIntakeText`). */
   intakeText: string | null;
+  /**
+   * The studio starts new clients on A and B together (its setting
+   * `newClientsStart`, studio-settings/registry.ts, read by the profile
+   * through `useNewClientsStart`): Start a plan plans Routine B beside the
+   * starting lineup. Absent or false, A alone (Max Strength's default):
+   * nothing about B appears until a trainer plans it. "loading" while the
+   * setting hasn't answered (Keep waits for it), "failed" when it couldn't
+   * be read (B is offered, left for later): never A alone off a read that
+   * didn't answer.
+   */
+  aAndBTogether?: NewClientsStartRead;
   actions: PlanActions;
   /**
    * Opens Plan B (the profile holds the one sheet, so the B switch and the

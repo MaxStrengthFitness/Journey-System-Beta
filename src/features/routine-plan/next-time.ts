@@ -50,6 +50,7 @@ import { roadGroups, signedChange, type RoadGroup, type Who } from "./lineup";
 import {
   ROUTINE_ONLY,
   applyPlanChange,
+  listWords,
   nextTimeRows,
   planAfterWrapUp,
   planProgress,
@@ -61,7 +62,18 @@ import {
 } from "./plan";
 import { usablePlan } from "./session-plan";
 import { floorCanonical, type FloorMachine } from "./starting-plan";
-import { B_SWAP_MADE, bProgressOf, bRoadGroups, bStatus, bStatusLine, isBPlan, swapsMade, swapsOf } from "./b-routine";
+import {
+  B_SWAP_MADE,
+  bProgressOf,
+  bRoadGroups,
+  bStatus,
+  bStatusLine,
+  isBPlan,
+  plannedBStartSwaps,
+  plannedSwapsOf,
+  swapsMade,
+  swapsOf,
+} from "./b-routine";
 import type { PlanChange, PlanSwap, RoutinePlan } from "./types";
 
 /** What the Wrap-up's Next time reads, frozen when the session finished. */
@@ -86,6 +98,20 @@ export interface NextTimeSnapshot {
   performed: string[];
   /** A name for every machine the card may draw, whole. */
   names: Record<string, string>;
+  /**
+   * The swaps of a Routine B planned with the starting lineup (the studio's
+   * "A and B together", item 8), when the session ran an EMPTY Routine A:
+   * the ticks that start Routine A start B too (`plannedBStart`), and the
+   * card says so (`nextTimeBLine`). Absent otherwise.
+   */
+  plannedB?: PlanSwap[];
+  /**
+   * The floor's machine ids when the session finished, beside `plannedB`:
+   * the card's line and the write that starts B check the same floor, so
+   * the card never says a start the write doesn't make (the review of item
+   * 8: the card checked no floor, the write the live one).
+   */
+  plannedBFloor?: string[];
 }
 
 const strings = (list: unknown): string[] =>
@@ -228,7 +254,14 @@ export function nextTimeAtFinish(input: {
     ...strings(plan?.dayOne),
     ...(plan?.cantDo ?? []).map((c) => c?.machineId),
   ];
-  for (const id of ids) if (typeof id === "string" && id && !(id in names)) names[id] = input.nameOf(id);
+  // A Routine B planned with the starting lineup, waiting on this empty Routine A (item 8).
+  const plannedB =
+    routine && matchesRoutineLetter(routine, "A") && machineIds.length === 0
+      ? plannedSwapsOf(input.routines.find((r) => matchesRoutineLetter(r, "B") && !!r.id && !r.id.startsWith("temp-")))
+      : null;
+  for (const id of [...ids, ...(plannedB ?? []).flatMap((s) => [s.replaces, s.with])]) {
+    if (typeof id === "string" && id && !(id in names)) names[id] = input.nameOf(id);
+  }
   return {
     routineId: routine?.id ?? null,
     routineName: routineWords(routine?.name),
@@ -236,7 +269,45 @@ export function nextTimeAtFinish(input: {
     plan,
     performed,
     names,
+    ...(plannedB && plannedB.length > 0 ? { plannedB, plannedBFloor: input.floor.map((m) => m.id) } : null),
   };
+}
+
+/** The floor frozen beside a planned B at Finish (`plannedBFloor`), as the write's floor: ids only. */
+export function plannedBFloorOf(snap: Pick<NextTimeSnapshot, "plannedBFloor">): { id: string }[] | null {
+  return Array.isArray(snap.plannedBFloor) ? snap.plannedBFloor.map((id) => ({ id })) : null;
+}
+
+/**
+ * What the card says of a Routine B planned with the starting lineup, live
+ * as the ticks change (item 8): "Routine B starts too: Leg Extension for Leg
+ * Press. A and B alternate from the next visit." while the ticks start
+ * Routine A and one of B's swaps is for a ticked machine, with the swaps
+ * kept for machines A takes later named ("B's swap for Chest Press waits
+ * until Routine A takes it."); that B stays planned when none is; nothing
+ * with no planned B, or nothing ticked. It asks what the write asks
+ * (`plannedBStartSwaps`, over the floor frozen at Finish), so a swap the
+ * client can't do, one A will take in, or one off the floor is never said.
+ */
+export function nextTimeBLine(snap: NextTimeSnapshot, after: NextTimeAfter, todayYmd: string): string | null {
+  if (!snap.plannedB || snap.plannedB.length === 0 || nextTimeAsk(snap) !== "start" || after.routine.length === 0) return null;
+  const nameOf = (id: string) => snap.names[id] || id;
+  const { ready, waiting } = plannedBStartSwaps({
+    swaps: snap.plannedB,
+    aRoutine: after.routine,
+    aPlan: after.plan,
+    floor: plannedBFloorOf(snap) ?? [],
+    todayYmd,
+  });
+  const first = ready[0];
+  if (!first) return "Routine B stays planned: none of its swaps is for these machines yet.";
+  const later =
+    waiting.length === 0
+      ? ""
+      : ` B's ${waiting.length === 1 ? "swap" : "swaps"} for ${listWords(waiting.map((s) => nameOf(s.replaces)))} ${
+          waiting.length === 1 ? "waits until Routine A takes it" : "wait until Routine A takes them"
+        }.`;
+  return `Routine B starts too: ${nameOf(first.with)} for ${nameOf(first.replaces)}. A and B alternate from the next visit.${later}`;
 }
 
 /** The rows the card offers (`nextTimeRows`, plan.ts), from the frozen snapshot. */

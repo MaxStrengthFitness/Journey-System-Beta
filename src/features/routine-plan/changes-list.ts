@@ -26,7 +26,7 @@
  * adjustments, and passes the floor's names (never truncated).
  */
 import type { RoutineAdjustment, Trainer } from "../../types";
-import { B_START, B_SWAP_KEPT, B_SWAP_MADE, B_SWAP_PLANNED } from "./b-routine";
+import { B_PLANNED, B_START, B_SWAP_KEPT, B_SWAP_MADE, B_SWAP_PLANNED } from "./b-routine";
 import { cantDoLine, listWords, parseCantDoValue } from "./cant-do";
 import { FOCUS_AREAS } from "./focus";
 import { ROUTINE_ONLY, isStartingColumnChoice } from "./plan";
@@ -152,6 +152,12 @@ export function planChangeWhat(
     case "start":
       // Routine B's plan starts as A with one machine different (b-routine.ts, `B_START`).
       if (value === B_START) return names.length >= 2 ? `Started B: ${names[1]} for ${names[0]}` : "Started B";
+      // B planned with the starting lineup (the studio's "A and B together"): its swaps' pairs.
+      if (value === B_PLANNED) {
+        const pairs = Math.floor(names.length / 2);
+        if (pairs === 0) return "Planned B";
+        return `Planned B: ${names[1]} for ${names[0]} first${pairs > 1 ? `, ${pairs} swaps in all` : ""}`;
+      }
       return value ? `Started the plan from ${value}` : "Started the plan";
     case "add":
       if (names.length === 0) return "Changed the plan";

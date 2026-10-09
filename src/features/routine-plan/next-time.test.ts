@@ -12,6 +12,7 @@ import {
   nextTimeAsk,
   nextTimeAskWords,
   nextTimeAtFinish,
+  nextTimeBLine,
   nextTimeOffer,
   nextTimeProgressLine,
   nextTimeRoad,
@@ -573,5 +574,82 @@ describe("a B session's Next time: a ticked swap machine makes the swap, never g
     expect(again.machineIds).toEqual(b1);
     expect(again.plan.swaps).toEqual(SWAPS);
     expect(again.change).toMatchObject({ kind: "remove", machineIds: ["m-curl"], value: "routine" });
+  });
+});
+
+/*
+ * B planned with the starting lineup (the first-session round, item 8: the
+ * studio's "A and B together"). AJ, Oct 7 2026: "Some studios may start
+ * building an A and B routine immediately for a client." The ticks that
+ * start Routine A start B too: the card says so, live as the ticks change.
+ */
+describe("a Routine B planned with the starting lineup, on the consult's Wrap-up", () => {
+  // Neither swap's machine is on A's road (A's own never come to B as a swap).
+  const SWAPS = [
+    { replaces: "m-leg-press", with: "m-curl" },
+    { replaces: "m-chest-press", with: "m-pulldown" },
+  ];
+  const plannedB = {
+    id: "rb",
+    clientId: "c1",
+    name: "Routine B",
+    machineIds: [],
+    plan: { purpose: "Variety", intended: ["m-curl", "m-compound-row", "m-lumbar", "m-pulldown"], swaps: SWAPS, building: false, madeByUid: "uid-sam" },
+  } as unknown as Routine;
+
+  it("freezes B's planned swaps, and their names, when the session ran an empty Routine A", () => {
+    const snap = snapAt(routineA([]), ["m-leg-press", "m-compound-row", "m-lumbar"], { others: [plannedB] })!;
+    expect(snap.plannedB).toEqual(SWAPS);
+    expect(snap.names["m-curl"]).toBe("Leg Curl");
+    // Routine A with machines, or a B with machines of its own: nothing planned to start.
+    expect(snapAt(routineA(["m-lumbar"]), ["m-leg-press"], { others: [plannedB] })!.plannedB).toBeUndefined();
+    expect(snapAt(routineA([]), ["m-leg-press"], { others: [{ ...plannedB, machineIds: ["m-ext"] } as Routine] })!.plannedB).toBeUndefined();
+  });
+
+  it("says B starts too, with the first swap for a ticked machine, and that B stays planned when none is", () => {
+    const snap = snapAt(routineA([]), ["m-leg-press", "m-compound-row", "m-lumbar"], { others: [plannedB] })!;
+    expect(nextTimeBLine(snap, nextTimeAfter(snap, []), TODAY)).toBeNull();
+    expect(nextTimeBLine(snap, nextTimeAfter(snap, ["m-leg-press", "m-lumbar"]), TODAY)).toBe(
+      "Routine B starts too: Leg Curl for Leg Press. A and B alternate from the next visit.",
+    );
+    expect(nextTimeBLine(snap, nextTimeAfter(snap, ["m-lumbar"]), TODAY)).toBe(
+      "Routine B stays planned: none of its swaps is for these machines yet.",
+    );
+    // No planned B: nothing said.
+    const plain = snapAt(routineA([]), ["m-leg-press"])!;
+    expect(nextTimeBLine(plain, nextTimeAfter(plain, ["m-leg-press"]), TODAY)).toBeNull();
+  });
+
+  /*
+   * The review of item 8: the card checked no floor while the write checked
+   * the live one, so it could announce a start the write didn't make. The
+   * floor is frozen at Finish beside B's swaps, and the line asks what the
+   * write asks.
+   */
+  it("freezes the floor beside B's swaps, and never says a swap whose machine isn't on it", () => {
+    const snap = snapAt(routineA([]), ["m-leg-press", "m-compound-row", "m-lumbar"], { others: [plannedB] })!;
+    expect(snap.plannedBFloor).toEqual(FLOOR.map((m) => m.id));
+    const noCurl = snapAt(routineA([]), ["m-leg-press", "m-compound-row", "m-lumbar"], {
+      others: [plannedB],
+      floor: FLOOR.filter((m) => m.id !== "m-curl"),
+    })!;
+    expect(nextTimeBLine(noCurl, nextTimeAfter(noCurl, ["m-leg-press", "m-lumbar"]), TODAY)).toBe(
+      "Routine B stays planned: none of its swaps is for these machines yet.",
+    );
+    // No planned B: no floor frozen either.
+    expect(snapAt(routineA([]), ["m-leg-press"])!.plannedBFloor).toBeUndefined();
+  });
+
+  /*
+   * The review of item 8: a swap planned for a machine still on A's deck was
+   * dropped when B started, and the card never said so. It is kept, waiting
+   * for A to take its machine, and the card names it.
+   */
+  it("names the swaps that wait for Routine A to take their machines", () => {
+    const floor = [...FLOOR, { id: "m-pulldown", name: "Pulldown" }];
+    const snap = snapAt(routineA([]), ["m-leg-press", "m-compound-row", "m-lumbar"], { others: [plannedB], floor })!;
+    expect(nextTimeBLine(snap, nextTimeAfter(snap, ["m-leg-press", "m-lumbar"]), TODAY)).toBe(
+      "Routine B starts too: Leg Curl for Leg Press. A and B alternate from the next visit. B's swap for Chest Press waits until Routine A takes it.",
+    );
   });
 });

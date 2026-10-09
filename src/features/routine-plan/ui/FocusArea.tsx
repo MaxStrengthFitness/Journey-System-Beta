@@ -164,7 +164,8 @@ export function useFocusArea(input: FocusAreaInput): FocusAreaParts {
   const bIds = useMemo(() => [...(bRoutine?.machineIds ?? [])], [bKey]);
   const bSide: FocusBSide = useMemo(
     () =>
-      bPlanStored && isBPlan(bPlanStored)
+      // A B planned with the starting lineup and not started (no machines yet) is "Not started".
+      bPlanStored && isBPlan(bPlanStored) && bIds.length > 0
         ? { kind: "plan", plan: bPlanStored, routine: bIds }
         : bIds.length > 0
           ? { kind: "own", routine: bIds }

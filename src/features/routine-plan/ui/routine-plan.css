@@ -1120,6 +1120,14 @@ button.rpl-cell--next {
   gap: 8px;
   min-width: 0;
 }
+/* B planned with the starting lineup (the studio's "A and B together"): one
+   line under the Road and Change B, the glance at B. */
+.rpl-brief__b {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
 .rpl-brief__label {
   margin: 0;
   font-size: 14px;

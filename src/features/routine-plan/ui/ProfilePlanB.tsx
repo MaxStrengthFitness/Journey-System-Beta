@@ -17,7 +17,7 @@
 import { useMemo } from "react";
 import type { Machine, Routine, WorkoutSession } from "../../../types";
 import type { HistoryCoverage } from "../../../lib/prior-history";
-import { aRunsLine, aRunsSince } from "../b-routine";
+import { aRunsLine, aRunsSince, isPlannedB } from "../b-routine";
 import type { Who } from "../lineup";
 import { floorMachinesOf, machineNamer, savedRoutineA, savedRoutineB, type PlanActions } from "./host";
 import { PlanBSheet } from "./PlanBSheet";
@@ -58,6 +58,9 @@ export function ProfilePlanB({
   const floorMachines = useMemo(() => floorMachinesOf(floor), [floor]);
   const nameOf = useMemo(() => machineNamer(floor, machines), [floor, machines]);
   const a = savedRoutineA(routines);
+  const bNow = savedRoutineB(routines);
+  // A Routine B planned with the starting lineup (the studio's "A and B together"): Plan B starts from its swaps.
+  const planned = bNow && isPlannedB(bNow) ? (bNow.plan ?? null) : null;
   const runs = useMemo(() => aRunsSince(sessions, a?.id ?? null), [sessions, a?.id]);
   if (!bSwitch.planBOpen) return null;
   return (
@@ -65,6 +68,7 @@ export function ProfilePlanB({
       open
       aRoutine={a?.machineIds ?? []}
       aPlan={a?.plan ?? null}
+      planned={planned}
       floor={floorMachines}
       nameOf={nameOf}
       who={who}

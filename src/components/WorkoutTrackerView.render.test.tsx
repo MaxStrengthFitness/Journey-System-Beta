@@ -1436,6 +1436,94 @@ describe("session writes never wait on the network (speed round, Oct 5 2026; R9)
     expect(json).not.toContain("__undefined__");
   });
 
+  /*
+   * A and B together (the studio setting `newClientsStart`, item 8). AJ, Oct
+   * 7 2026: "Some studios may start building an A and B routine immediately
+   * for a client. So we need to be able to have that customization." The
+   * briefing plans B beside the starting plan, and Start keeps both in its
+   * ONE batch: Routine B with its plan and NO machines (the consult is not
+   * Routine A, and B is a copy of A), B left off.
+   */
+  it("starting out at a studio that starts on A and B together: Start's ONE batch holds Routine A and a planned Routine B with no machines", async () => {
+    sessionDocs = [];
+    netCtl.routines = [];
+    singleDocs[`studios/${STUDIO_ID}/config/settings`] = { values: { newClientsStart: 2 } };
+    // A leg extension on the floor: the same family as the leg press, for B's swap.
+    netCtl.moreRoster = [
+      { id: "m-ext", data: () => ({ source: "custom", status: "active", order: 30, definition: { name: "Leg Extension", settingFields: [] } }) },
+    ];
+    offline();
+    const host = await mount(<Tracker who={startingOut} />);
+    await settle();
+    expect(host.querySelector('[data-testid="briefing-plan"]')?.textContent).toContain("B · planned with A");
+    writes.length = 0;
+    await act(async () => startButton()!.click());
+    const session = startedSession()!;
+    const docs = routineDocs();
+    expect(docs.map((d) => d.data.name)).toEqual(["Routine A", "Routine B"]);
+    const [a, b] = docs;
+    expect(a.data.machineIds).toEqual([]);
+    // Routine B's machines stay EMPTY until A has machines; its plan holds the swaps.
+    expect(b.data).toMatchObject({ name: "Routine B", machineIds: [], studioId: STUDIO_ID });
+    expect(b.data.plan.swaps.length).toBeGreaterThan(0);
+    expect(b.data.plan.building).toBe(false);
+    const bChange = planChangeDocs().find((w) => w.path.startsWith(b.path))!;
+    expect(bChange.data).toMatchObject({ kind: "start", value: "B planned", byUid: "uid-coach", byName: "Jane Coach" });
+    // All in the Start batch, and B is never switched on by Start.
+    for (const w of [a, b, bChange]) expect(w.batch).toBe(session.batch);
+    expect(writes.some((w) => w.path === `clients/${CLIENT_ID}` && w.data && "isRoutineBActive" in w.data)).toBe(false);
+  });
+
+  /*
+   * The review of item 8: the Start path that waits for the client's
+   * routines (R9) adds B too once they are known, and it had no test. The
+   * routines answer only from the cache at Start; when the server confirms
+   * the empty list, Routine A and the planned B go in ONE batch with the
+   * session's routine id, Routine B with no machines and B never turned on.
+   */
+  it("routines unknown at Start, A and B together: once the server confirms them, Routine A and a planned B go in ONE batch with the session's routine", async () => {
+    sessionDocs = [];
+    netCtl.routines = [];
+    netCtl.fromCache.add("routines");
+    singleDocs[`studios/${STUDIO_ID}/config/settings`] = { values: { newClientsStart: 2 } };
+    netCtl.moreRoster = [
+      { id: "m-ext", data: () => ({ source: "custom", status: "active", order: 30, definition: { name: "Leg Extension", settingFields: [] } }) },
+    ];
+    const host = await mount(<Tracker who={startingOut} />);
+    // Routines not known yet: Journey can't tell, both doors. The trainer picks "Starting out here".
+    const doorButton = Array.from(host.querySelectorAll("button")).find((b) => b.textContent?.includes("Starting out here"));
+    expect(doorButton).toBeTruthy();
+    await act(async () => doorButton!.click());
+    await settle();
+    expect(host.querySelector('[data-testid="briefing-plan"]')?.textContent).toContain("B · planned with A");
+    await act(async () => startButton()!.click());
+    const session = startedSession()!;
+    const sid = session.path.split("/")[1];
+    // Nothing made while the routines are unknown.
+    expect(routineDocs()).toHaveLength(0);
+
+    // The server confirms the empty list.
+    netCtl.fromCache.delete("routines");
+    await act(async () => {
+      for (const l of snapshotListeners.filter((x) => x.live && x.path === "routines")) l.emit();
+    });
+    await settle();
+    const docs = routineDocs();
+    expect(docs.map((d) => d.data.name)).toEqual(["Routine A", "Routine B"]);
+    const [a, b] = docs;
+    expect(a.data.machineIds).toEqual([]);
+    expect(b.data).toMatchObject({ name: "Routine B", machineIds: [], studioId: STUDIO_ID });
+    expect(b.data.plan.swaps.length).toBeGreaterThan(0);
+    const bChange = planChangeDocs().find((w) => w.path.startsWith(b.path))!;
+    expect(bChange.data).toMatchObject({ kind: "start", value: "B planned", byUid: "uid-coach" });
+    // ONE batch: the session names Routine A, beside both routines and their changes.
+    const routineId = a.path.split("/")[1];
+    const named = writes.find((w) => w.path === `sessions/${sid}` && w.data?.routineId === routineId)!;
+    expect(named).toBeTruthy();
+    for (const w of [a, b, bChange]) expect(w.batch).toBe(named.batch);
+    expect(writes.some((w) => w.path === `clients/${CLIENT_ID}` && w.data && "isRoutineBActive" in w.data)).toBe(false);
+  });
+
   /* The old first-time setup (ConsultationSetupWizard) stood in front of the
      briefing for a client flagged for a consultation. It is retired (the
      first-session design round, Oct 8 2026, §4.8): such a client, as Add
@@ -2050,6 +2138,78 @@ describe("the Wrap-up's Next time, from Finish to the routine (Oct 8 2026)", () 
     expect(new Set(out.map((w) => w.batch)).size).toBe(1);
     expect(out[0].data.machineIds).toEqual(["m-leg-press", "sm-solon-rear-delt"]);
     expect(out[2].data).toEqual({ machineIds: ["m-ext", "sm-solon-rear-delt"], "plan.intended": ["m-ext", "sm-solon-rear-delt"] });
+  });
+
+  /*
+   * A and B together (the studio setting `newClientsStart`, item 8). AJ, Oct
+   * 7 2026: "Some studios may start building an A and B routine immediately
+   * for a client", and B "starts out as the A routine with just one machine
+   * different". Routine B was planned with the starting lineup and kept with
+   * no machines; the consult's Wrap-up, whose ticks START Routine A, starts B
+   * as A with its first swap and turns B on, in the same batch.
+   */
+  it("the consult's ticks that start Routine A start a planned B too: A with one swap, and B on, in ONE batch", async () => {
+    sessionDocs = running({ routineId: "ra-1", sessionMachineIds: ["m-leg-press"] });
+    netCtl.routines = [
+      {
+        id: "ra-1",
+        data: () => ({
+          clientId: CLIENT_ID,
+          name: "Routine A",
+          machineIds: [],
+          plan: { purpose: "", intended: ["m-leg-press"], dayOne: ["m-leg-press"], building: true, madeByUid: "uid-coach" },
+        }),
+      },
+      {
+        id: "rb-1",
+        data: () => ({
+          clientId: CLIENT_ID,
+          name: "Routine B",
+          machineIds: [],
+          plan: {
+            purpose: "Variety: the same regions, different machines",
+            purposeKinds: ["variety"],
+            intended: ["sm-solon-rear-delt"],
+            swaps: [{ replaces: "m-leg-press", with: "sm-solon-rear-delt" }],
+            building: false,
+            madeByUid: "uid-coach",
+          },
+        }),
+      },
+    ];
+    netCtl.logs = [performed("m-leg-press")];
+    await finishToWrapUp();
+    expect(card()!.textContent).toContain("Tick the ones that start Routine A.");
+    expect(card()!.textContent).not.toContain("Routine B starts too");
+    await act(async () => tickFor("Leg Press (Hoist)").click());
+    // Said live as the ticks change.
+    expect(card()!.textContent).toContain("Routine B starts too: Rear Delt Hoist for Leg Press (Hoist). A and B alternate from the next visit.");
+    writes.length = 0;
+    await backToHub();
+    const out = routineWrites();
+    expect(out.map((w) => w.path.replace(/auto-\d+/, "*"))).toEqual([
+      "routines/ra-1",
+      "routines/ra-1/planChanges/*",
+      "routines/rb-1",
+      "routines/rb-1/planChanges/*",
+    ]);
+    const bOn = writes.filter((w) => w.path === `clients/${CLIENT_ID}` && w.data && "isRoutineBActive" in w.data);
+    expect(bOn).toHaveLength(1);
+    expect(bOn[0].data).toEqual({ isRoutineBActive: true });
+    // ONE batch: A's ticks, B started, and B on, together or not at all.
+    expect(new Set([...out, ...bOn].map((w) => w.batch)).size).toBe(1);
+    expect(out[0].data.machineIds).toEqual(["m-leg-press"]);
+    // B starts as A with one machine different.
+    expect(out[2].data.machineIds).toEqual(["sm-solon-rear-delt"]);
+    expect(out[2].data.plan.swaps).toEqual([{ replaces: "m-leg-press", with: "sm-solon-rear-delt" }]);
+    expect(out[3].data).toEqual({
+      kind: "start",
+      machineIds: ["m-leg-press", "sm-solon-rear-delt"],
+      value: "B",
+      byUid: "uid-coach",
+      byName: "Jane Coach",
+      at: { __server: true },
+    });
   });
 
   it("a session another iPad already finished has no Next time: that iPad writes its own", async () => {

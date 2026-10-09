@@ -32,6 +32,7 @@ import {
   nextTimeAfter,
   nextTimeAsk,
   nextTimeAskWords,
+  nextTimeBLine,
   nextTimeProgressLine,
   nextTimeRoad,
   nextTimeWhyWords,
@@ -61,6 +62,8 @@ export function NextTimeCard({ snapshot, rows, ticked, onTicked, firstName, toda
   const after = useMemo(() => nextTimeAfter(snapshot, picked), [snapshot, picked]);
   const groups = useMemo(() => nextTimeRoad(after, picked, { todayYmd, firstName, nameOf }), [after, picked, todayYmd, firstName, nameOf]);
   const line = useMemo(() => nextTimeProgressLine(after, nameOf), [after, nameOf]);
+  // A Routine B planned with the starting lineup starts with Routine A (the studio's "A and B together").
+  const bLine = useMemo(() => nextTimeBLine(snapshot, after, todayYmd), [snapshot, after, todayYmd]);
   const ask = nextTimeAsk(snapshot);
   const hasPlan = !!snapshot.plan;
   const allOn = rows.length > 0 && picked.length === rows.length;
@@ -102,6 +105,7 @@ export function NextTimeCard({ snapshot, rows, ticked, onTicked, firstName, toda
           inWords="next time"
         />
       )}
+      {bLine && <p className="rpl-meta">{bLine}</p>}
     </div>
   );
 }

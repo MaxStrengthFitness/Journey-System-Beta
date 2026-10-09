@@ -688,6 +688,92 @@ screen.
   `focus.test.ts`, `ui/FocusArea.render.test.tsx` or the briefing's render
   test.
 
+## 4d. Round 2: the studio's A, or A and B together (item 8)
+
+AJ, Oct 7 2026: "Some studios may start building an A and B routine
+immediately for a client. So we need to be able to have that
+customization." The research (§5.2) named the setting `startingRoutines`
+("A" | "AB"); that name went to the studio's choice of starting routines
+(`studios/{s}/config/startingRoutines`, §4.2), so it is `newClientsStart`.
+
+- **The setting.** A studio setting (`features/studio-settings/registry.ts`)
+  of a new kind, a "choice": its choices (`{ value, label, sub }`), its value
+  still a number, so the store, the rules and the resolver stay as they
+  were. 1 is **A alone** (Max Strength's default: "The Academy's way. B is
+  planned later, from Routine A."); 2 is **A and B together** ("B starts as
+  A with one machine different."). In the group **New clients**. A value
+  that isn't one of its choices is skipped, never bent. Both editors draw it
+  as segments side by side, 40px on the firm edge, the picked one blue,
+  inside their dirty-tracked forms: My Studio → Studio → This studio's
+  settings ("Follow the default (A alone)" first) and Admins → Standard →
+  Studio defaults ("Not set" first). The Activity line says it in words
+  ("Set Max Strength's default for “A new client starts with” to A and B
+  together.").
+- **Who reads it.** The profile (for Programming's Start a plan, into the
+  plan host, `aAndBTogether`) and the briefing (for its walk-in card, the
+  studio whose starting routines it offers, read only for a client
+  starting out), both through `useNewClientsStart`. With A alone nothing
+  about B appears until a trainer plans it. A read that hasn't answered is
+  never A alone: while it reads, Start a plan's B part says so and Keep
+  waits, and the briefing says so too (Start is never held, and keeps no
+  B); when it couldn't be read, B is offered, left for later until the
+  trainer plans it.
+- **Start a plan, A and B together.** Under the starting lineup, **Routine
+  B, planned with A**: B's suggested swaps against the lineup's PLANNED road
+  (`suggestBSwaps` on `plan.intended`: never one of the road's machines,
+  never what the client can't do, this floor only), each editable (the same
+  family on this floor and the Academy's substitutes, Start with this one,
+  Keep {A} in B; `BSwapsEditor`, the list Plan B draws), what B is for, and
+  **Leave B for later**. Keep this lineup keeps it in the same batch: Routine
+  B with its plan (B whole as `intended`, the swaps, building off) and **no
+  machines**, and its first change ("start", "B planned"). B stays off.
+  Routine B's machines stay empty until A has machines: the consult is not
+  Routine A (AJ, Oct 8 2026), and B is a copy of A.
+- **The briefing's walk-in card, A and B together.** One line under the
+  Road, "B · planned with A: Leg Extension for Leg Press first · 3 swaps",
+  and **Change B** (a sheet with the same part). Start hands it up with the
+  plan and the tracker writes it in the Start batch, as Keep does (or, when
+  the client's routines weren't known at Start, in the batch that names the
+  session's routine once they are). A change to B is unsaved work on the
+  briefing, beside today changed, and holds the suggestion as a change to
+  today does (on Programming too), so Health notes landing after it never
+  drop it.
+- **Never over a Routine B of the client's own.** A planned B is written
+  only where the client has no Routine B, or an empty one with no plan
+  (`plannedBTarget`); with one of their own, the part isn't drawn. Over an
+  empty Routine B of the client's own (turned on before Round 2), the same
+  batch turns B off, or the next visit would alternate into a B of nothing.
+- **The first visit's Wrap-up.** The ticks that START Routine A (it was
+  empty when the session finished) start B too, in the same batch: Routine B
+  as A with the first of its planned swaps A can take now (`startBPlan`'s
+  machines and plan), its "start" change, and the client's
+  `isRoutineBActive`. The card says it, live as the ticks change: "Routine B
+  starts too: Leg Extension for Leg Press. A and B alternate from the next
+  visit." When none of B's swaps is for a ticked machine, B stays planned
+  ("Routine B stays planned: none of its swaps is for these machines yet.")
+  and starts from Plan B. A swap planned for a machine still on A's road is
+  KEPT when B starts, after the ones A can take now, and waits for A to
+  take its machine ("Planned · waits for Chest Press in Routine A" under
+  B's column), then comes in as any swap does; the card names it ("B's swap
+  for Chest Press waits until Routine A takes it."). The floor is frozen
+  beside B's swaps at Finish, and the card and the write ask the same
+  question of it, so the card never says a start the write doesn't make.
+- **A planned B, waiting.** Its machines never follow A (`bFollowOf`: a
+  change to A would have made it a copy of A with no swap), but its plan
+  follows A's road (`plannedBFollowOf`: a swap follows its place, as a
+  started B's does; only the plan's road and swaps are written). It is
+  never alternated into (B is off), and Programming says it by the swaps it
+  can still keep (`plannedBWords`): on Routine A's Lineup while day one
+  runs, "B is planned: Leg Extension for Leg Press first, 3 swaps in all. It
+  starts with Routine A, at the Wrap-up that starts A."; on Routine B's
+  segment the same, with Plan B once Routine A has machines, which starts
+  from B's planned swaps and what it is for (the first named the one it
+  would start with, or "none is for a machine in Routine A yet"). The weak
+  area reads it as not started.
+- **No rules change, no new query.** The setting is one more number in the
+  studio's settings map; Routine B with `machineIds: []` and a plan, and a
+  "start" change, are what the rules already take.
+
 ## 5. Data and rules (AJ's OK, "1a")
 
 - `Routine.plan?: RoutinePlan` (`src/types.ts`).

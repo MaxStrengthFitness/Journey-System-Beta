@@ -57,6 +57,9 @@ import {
   bSwapWait,
   bSwappedIn,
   isBPlan,
+  isPlannedB,
+  plannedBWords,
+  plannedSwapsOf,
   swapsOf,
   swapsReady,
   type BColumn,
@@ -92,7 +95,10 @@ export interface BSide {
 /**
  * Which column B draws beside Routine A:
  * - "plan": B has a plan of swaps (Plan B, kept);
- * - "start": B has no machines: one quiet cell and Plan B;
+ * - "start": B has no machines: one quiet cell and Plan B; also a B planned
+ *   with the starting lineup (the studio's "A and B together",
+ *   `isPlannedB`), even while Routine A is empty, so B's own segment says
+ *   it is planned and when it starts;
  * - "none": no column: Routine A has nothing to copy yet, or Routine B is a
  *   list of its own from before Round 2 (no plan of swaps), drawn as it
  *   always was on its own segment.
@@ -100,8 +106,11 @@ export interface BSide {
 export type BMode = "none" | "start" | "plan";
 
 export function bModeOf(aRoutine: readonly string[], b: BSide | null | undefined): BMode {
-  if (!b || aRoutine.length === 0) return "none";
+  if (!b) return "none";
   const r = b.routine;
+  // Planned with the starting lineup, nothing in it yet: never a column of "missing" places.
+  if (r && isPlannedB(r)) return "start";
+  if (aRoutine.length === 0) return "none";
   if (r && isBPlan(r.plan)) return "plan";
   if (!r || (r.machineIds?.length ?? 0) === 0) return "start";
   return "none";
@@ -155,6 +164,8 @@ export function bWaitWords(wait: BSwapWait, next: PlanSwap, nameOf: (id: string)
       return `${nameOf(next.replaces)} is no longer in A, so the next swap waits. Tap it under B's column to leave it out.`;
     case "in-a":
       return `${nameOf(next.with)} is in Routine A now, so the next swap waits. Tap ${nameOf(next.replaces)} in B's column to plan another.`;
+    case "a-later":
+      return `${nameOf(next.replaces)} isn't in Routine A yet, so the next swap waits until A takes it.`;
   }
 }
 
@@ -182,14 +193,16 @@ export function useBColumn(input: BColumnInput): BColumnParts {
   const bRoutine = b?.routine ?? null;
   const bPlan = mode === "plan" && bRoutine && isBPlan(bRoutine.plan) ? bRoutine.plan : null;
   const bIds = bRoutine?.machineIds ?? [];
+  // Routine A's road: a swap planned for a machine still on it waits for A, never "gone" (item 8).
+  const aRoad = useMemo(() => (Array.isArray(aPlan?.intended) ? [...aPlan.intended] : []), [aPlan?.intended]);
   const aKey = aRoutine.join("|");
   const bKey = bIds.join("|");
 
   const column = useMemo(
-    () => (bPlan ? bColumnOf(aRoutine, bPlan, bIds) : null),
+    () => (bPlan ? bColumnOf(aRoutine, bPlan, bIds, aRoad) : null),
     // The lists by their contents, so a new array with the same machines is no change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [aKey, bKey, bPlan],
+    [aKey, bKey, bPlan, aRoad.join("|")],
   );
   const effects = useMemo(() => {
     const at = new Map<string, OrderEffect[]>();
@@ -231,9 +244,10 @@ export function useBColumn(input: BColumnInput): BColumnParts {
   if (mode === "plan" && b && bPlan && column) {
     const status = column.status;
     // The swaps that can go in now: up to the first that waits (the client
-    // can't do its machine, its A machine left A, or A holds its machine).
+    // can't do its machine, its A machine left A or isn't in A yet, or A
+    // holds its machine).
     const left = swapsReady(aRoutine, swapsOf(bPlan), bIds, held);
-    const wait = status.next ? bSwapWait(status.next, aRoutine, held) : null;
+    const wait = status.next ? bSwapWait(status.next, aRoutine, held, aRoad) : null;
     const purpose = bPurposeOf(bPlan);
     const alternate = b.isBActive ? alternateLine(b.nextIsB) : null;
     const swapIn = (n: number) => {
@@ -510,12 +524,17 @@ export function useBColumn(input: BColumnInput): BColumnParts {
     }
   }
   /* A swap still to come whose A machine has left A: no place shows it, so it
-     waits under the rows, and a tap offers to leave it out of B's plan. */
-  for (const s of column?.gone ?? []) {
+     waits under the rows, and a tap offers to leave it out of B's plan. A
+     swap planned with the starting lineup for a machine still on A's road
+     (item 8) waits there too, said as waiting for A, never as gone. */
+  const away = [
+    ...(column?.gone ?? []).map((s) => ({ s, sub: `Planned · ${nameOf(s.replaces)} is no longer in A` })),
+    ...(column?.waiting ?? []).map((s) => ({ s, sub: `Planned · waits for ${nameOf(s.replaces)} in Routine A` })),
+  ];
+  for (const { s, sub } of away) {
     const key = `gone:${s.replaces}`;
     const pressed = picked === key;
     const name = `${nameOf(s.with)} for ${nameOf(s.replaces)}`;
-    const sub = `Planned · ${nameOf(s.replaces)} is no longer in A`;
     extras.push(
       <li key={`bg-${s.replaces}`} className="rpl-bside">
         {canWrite ? (
@@ -571,11 +590,17 @@ export function useBColumn(input: BColumnInput): BColumnParts {
      row line (`firstRow`), never splitting A's rows (the review of Round 2:
      pushed after A's first row, it sat between A's first and second
      machines on a phone). */
+  // A B planned with the starting lineup (the studio's "A and B together") says what it starts with.
+  const plannedSwaps = plannedSwapsOf(bRoutine);
   const startCell = (span: number, firstRow: number): ReactNode =>
     mode === "start" ? (
       <li key="b-start" className="rpl-bside" style={{ gridRow: `${Math.max(1, firstRow)} / span ${Math.max(1, span)}` }}>
         <div className="rpl-bstart">
-          <p className="rpl-bstart__title">B starts as a copy of A with one machine different.</p>
+          <p className="rpl-bstart__title">
+            {plannedSwaps
+              ? plannedBWords({ swaps: plannedSwaps, aRoutine, aPlan, floor, todayYmd: host.todayYmd, nameOf })
+              : "B starts as a copy of A with one machine different."}
+          </p>
           {b?.aRunsLine && <p className="rpl-meta">{b.aRunsLine}</p>}
           {canWrite && host.openPlanB && (
             <Button variant="outline" onClick={host.openPlanB}>

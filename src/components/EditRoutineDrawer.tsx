@@ -34,7 +34,7 @@ import { useUnsavedChanges } from "../features/unsaved-changes";
 import { planChangeFromEdit } from "../features/routine-plan/drawer-sync";
 import { signedChange } from "../features/routine-plan/lineup";
 import { saveRoutineEdit } from "../features/routine-plan/store";
-import { bFollowOf, bToggleOpensPlanB } from "../features/routine-plan/b-routine";
+import { bFollowOf, bToggleOpensPlanB, plannedBFollowOf } from "../features/routine-plan/b-routine";
 import { pastLearningCurve } from "../features/routine-plan/client-kind";
 import type { HistoryCoverage } from "../lib/prior-history";
 import { GLOBAL_ROUTINE_PRESETS } from "../data/routine-presets";
@@ -538,7 +538,11 @@ export function EditRoutineDrawer({
         const kept = current.plan && uid ? planChangeFromEdit({ before: snapshot, after: machineIds, plan: current.plan }) : null;
         // B FOLLOWS A (Round 2, Oct 8 2026): a save of Routine A takes
         // Routine B with it when B has a plan of swaps, in the same batch.
-        const follow = activeSlot === "Routine A" ? bFollowOf(routines, finalId, machineIds) : null;
+        // A B planned with the starting lineup follows A's road with its plan alone (`plannedBFollowOf`).
+        const follow =
+          activeSlot === "Routine A"
+            ? (bFollowOf(routines, finalId, machineIds) ?? (kept ? plannedBFollowOf(routines, finalId, kept.plan) : null))
+            : null;
         if (kept && uid) {
           const who = { uid, ...(authTrainer?.fullName ? { name: authTrainer.fullName } : null) };
           await saveRoutineEdit(db, finalId, {

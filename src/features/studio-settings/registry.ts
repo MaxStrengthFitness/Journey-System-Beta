@@ -33,9 +33,10 @@ export type SettingKey =
   | "deepCleanDays"
   | "wipeAfterSessions"
   | "weeklyMaintenanceDay"
-  | "inbodyEverySessions";
+  | "inbodyEverySessions"
+  | "newClientsStart";
 
-export type SettingGroup = "relay" | "journey" | "care" | "inbody";
+export type SettingGroup = "relay" | "journey" | "care" | "inbody" | "newClients";
 
 export type SettingKind =
   /** A whole number between min and max. */
@@ -45,7 +46,20 @@ export type SettingKind =
   /** A number with one decimal place, between min and max. */
   | "multiple"
   /** A day of the week (0 = Sunday … 6 = Saturday), or none. */
-  | "weekday";
+  | "weekday"
+  /**
+   * One of a few named choices (`choices`), stored as the choice's number,
+   * so its value is a number like every other setting's: the rules, the
+   * store and the resolver stay as they were.
+   */
+  | "choice";
+
+/** One of a "choice" setting's choices: the number stored, its words, and one line under them. */
+export interface SettingChoice {
+  value: number;
+  label: string;
+  sub?: string;
+}
 
 export interface SettingDef {
   key: SettingKey;
@@ -57,6 +71,8 @@ export interface SettingDef {
   kind: SettingKind;
   min?: number;
   max?: number;
+  /** A "choice" setting's choices, in the order the editors draw them. */
+  choices?: readonly SettingChoice[];
   /** The app's own value, used until head office or the studio sets one. `null` means "none" (weekday only). */
   appDefault: number | null;
   /** One sentence: what changes when it changes. */
@@ -77,10 +93,11 @@ export const GROUP_LABEL: Record<SettingGroup, string> = {
   journey: "Where a client is (Operations → Clients → Journey)",
   care: "The machines' care (Relay's Floor Map)",
   inbody: "InBody scans (the briefing and the InBody card)",
+  newClients: "New clients",
 };
 
 /** The order the editors show the groups in. */
-export const GROUP_ORDER: readonly SettingGroup[] = ["relay", "journey", "care", "inbody"];
+export const GROUP_ORDER: readonly SettingGroup[] = ["relay", "journey", "care", "inbody", "newClients"];
 
 export const SETTINGS: readonly SettingDef[] = [
   {
@@ -217,7 +234,40 @@ export const SETTINGS: readonly SettingDef[] = [
     help: "The briefing's Before you start says a client is due an InBody once this many sessions have passed since the last scan. A client's own number is set on Body & Pulse → InBody.",
     readers: ["features/inbody/due.ts"],
   },
+  {
+    // The first-session design round, Round 2, item 8. AJ, Oct 7 2026: "Some
+    // studios may start building an A and B routine immediately for a
+    // client. So we need to be able to have that customization." The
+    // research named it startingRoutines ("A" | "AB"); that name went to the
+    // studio's choice of starting routines (studios/{s}/config/
+    // startingRoutines), so this one is newClientsStart. A number like every
+    // other setting: 1 is A alone, the Academy's way and Max Strength's
+    // default; 2 is A and B together.
+    key: "newClientsStart",
+    group: "newClients",
+    label: "A new client starts with",
+    kind: "choice",
+    choices: [
+      { value: 1, label: "A alone", sub: "The Academy's way. B is planned later, from Routine A." },
+      { value: 2, label: "A and B together", sub: "B starts as A with one machine different." },
+    ],
+    appDefault: 1,
+    help: "With A and B together, Start a plan and the briefing plan Routine B beside Routine A, and the first visit's Wrap-up starts B with Routine A.",
+    // Read by the profile and the briefing (through useNewClientsStart, which
+    // tells a value that answered from one still loading or not read), for the
+    // two screens that act on it.
+    readers: [
+      "features/routine-plan/ui/useNewClientsStart.ts",
+      "components/ClientProfileView.tsx",
+      "features/routine-plan/ui/StartPlanPanel.tsx",
+      "features/briefing/BriefingScreen.tsx",
+      "features/routine-plan/ui/useBriefingPlan.ts",
+    ],
+  },
 ];
+
+/** `newClientsStart`'s two choices by name, so a reader never writes the bare number. */
+export const NEW_CLIENTS_START = { aAlone: 1, aAndB: 2 } as const;
 
 export const SETTING_BY_KEY: Record<SettingKey, SettingDef> = Object.fromEntries(
   SETTINGS.map((d) => [d.key, d]),

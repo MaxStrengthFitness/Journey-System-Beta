@@ -640,3 +640,119 @@ describe("B follows A: a change to Routine A writes Routine B in the same batch"
     expect(button(new RegExp(`^Routine B: ${esc(nameOf("m-ext"))} · B's own`)).dataset.kind).toBe("own");
   });
 });
+
+/*
+ * B planned with the starting lineup (the studio setting `newClientsStart`,
+ * "A and B together", item 8). AJ, Oct 7 2026: "Some studios may start
+ * building an A and B routine immediately for a client." Routine B is kept
+ * with its plan and no machines until the Wrap-up that starts Routine A
+ * starts it; Programming says so, never draws it as a column of "missing"
+ * places, and Plan B starts from its swaps.
+ */
+describe("a Routine B planned with the starting lineup", () => {
+  const ROAD = ["m-leg-press", "m-compound-row", "m-lumbar", "m-chest-press", "m-hip-add"];
+  const CONSULT_A = {
+    id: "rA",
+    name: "Routine A",
+    clientId: "c1",
+    machineIds: [],
+    plan: { purpose: "Learning the protocol", intended: ROAD, dayOne: ["m-leg-press", "m-compound-row", "m-lumbar"], building: true, madeByUid: "uid-sam" },
+  } as unknown as Routine & { id: string; plan: RoutinePlan };
+  const PLANNED_B = {
+    id: "rB",
+    name: "Routine B",
+    clientId: "c1",
+    machineIds: [],
+    plan: { ...B_PLAN, intended: bIntendedOf(ROAD, SWAPS) },
+  } as unknown as Routine & { id: string };
+  const base = {
+    client: { id: "c1", firstName: "Tom", homeStudioId: "westlake" } as never,
+    clientId: "c1",
+    machines: FLOOR,
+    clientSettings: {},
+    allLogs: [],
+    sessions: [],
+    adjustments: [],
+    trainers: [],
+    selectedRoutineTodayId: null,
+    onEdit: vi.fn(),
+  };
+  const planned = `B is planned: ${nameOf("m-ext")} for ${nameOf("m-leg-press")} first, 3 swaps in all.`;
+
+  it("while day one runs, Routine A's Lineup says what B starts with and when, with no column of B", async () => {
+    await mount(lineup(bSideOf(PLANNED_B, { isBActive: false, nextIsB: null }), hostOf(), CONSULT_A));
+    expect(text()).toContain(planned);
+    expect(text()).toContain("It starts with Routine A, at the Wrap-up that starts A.");
+    expect(page().querySelector("[aria-label='Routine A and Routine B']")).toBeNull();
+  });
+
+  it("Routine B's own segment says it is planned and when it starts, with no Plan B while A is empty", async () => {
+    await mount(<RoutinesTab {...base} view="Routine B" routines={[CONSULT_A, PLANNED_B]} isBActive={false} onToggleB={(on) => calls.toggles.push(on)} plan={hostOf()} />);
+    expect(text()).toContain(planned);
+    expect(text()).toContain("It starts with Routine A, at the Wrap-up that starts A.");
+    expect(has("Plan B")).toBe(false);
+    expect(text()).not.toContain("Not in B");
+  });
+
+  it("once Routine A has machines, B's one cell offers Plan B, which starts from B's planned swaps and keeps them", async () => {
+    const aWith = { ...CONSULT_A, machineIds: ["m-leg-press", "m-compound-row", "m-lumbar"] } as Routine & { id: string; plan: RoutinePlan };
+    await mount(lineup(bSideOf(PLANNED_B, { isBActive: false, nextIsB: null }), hostOf(), aWith));
+    expect(text()).toContain(planned);
+    await tap("Plan B");
+    expect(calls.planB).toBe(1);
+
+    document.body.innerHTML = "";
+    act(() => root?.unmount());
+    await mount(
+      <PlanBSheet
+        open
+        aRoutine={aWith.machineIds}
+        aPlan={aWith.plan}
+        planned={PLANNED_B.plan as RoutinePlan}
+        floor={floorMachinesOf(FLOOR)}
+        nameOf={nameOf}
+        who={{ uid: "uid-sam", name: "Sam Lee" }}
+        todayYmd={TODAY}
+        aRunsLine={null}
+        onClose={() => {}}
+        onStart={(s) => calls.startB.push({ routineId: "rB", ...s })}
+      />,
+    );
+    expect(text()).toContain("B's swaps, as planned at the start");
+    // The swap for a machine still on A's deck is left out of this start, and said so.
+    expect(text()).toContain(`Left out: ${nameOf("m-hip-add")} isn't in Routine A yet`);
+    expect(status!.anyDirty()).toBe(false);
+    await tap("Start B");
+    expect(calls.startB).toHaveLength(1);
+    expect(calls.startB[0]!.machineIds).toEqual(["m-ext", "m-compound-row", "m-lumbar"]);
+    expect(calls.startB[0]!.plan.swaps).toEqual(SWAPS.slice(0, 2));
+  });
+
+  /*
+   * The review of item 8: B's planned swaps for machines still on A's deck
+   * were dropped when the first Wrap-up started B. They are kept, waiting
+   * for A, and B's column says so, never "no longer in A".
+   */
+  it("a swap kept for a machine still on A's road waits under B's column, said as waiting for A", async () => {
+    const aNow = ["m-leg-press", "m-compound-row", "m-lumbar"];
+    const aWith = { ...CONSULT_A, machineIds: aNow } as Routine & { id: string; plan: RoutinePlan };
+    // As the Wrap-up that started A started it: the first swap made, the hip adductor's kept for later.
+    const swaps = [SWAPS[0]!, SWAPS[1]!, SWAPS[2]!];
+    const started = {
+      ...PLANNED_B,
+      machineIds: bRoutineOf(aNow, swaps, 1),
+      plan: { ...B_PLAN, swaps, intended: bIntendedOf(aNow, swaps) },
+    } as Routine & { id: string };
+    await mount(lineup(bSideOf(started), hostOf(), aWith));
+    const waits = `Planned · waits for ${nameOf("m-hip-add")} in Routine A`;
+    expect(text()).toContain(waits);
+    expect(text()).not.toContain(`${nameOf("m-hip-add")} is no longer in A`);
+    // Two swaps made: the next is the waiting one, and Swap in waits for A, with why.
+    document.body.innerHTML = "";
+    act(() => root?.unmount());
+    const two = { ...started, machineIds: bRoutineOf(aNow, swaps, 2) } as Routine & { id: string };
+    await mount(lineup(bSideOf(two), hostOf(), aWith));
+    expect(text()).toContain(`${nameOf("m-hip-add")} isn't in Routine A yet, so the next swap waits until A takes it.`);
+    expect(has("Swap in the next one")).toBe(false);
+  });
+});

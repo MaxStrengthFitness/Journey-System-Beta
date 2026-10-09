@@ -131,6 +131,7 @@ import {
 import { completedSessionDays, inbodyDue, inbodyDueLine } from "../inbody/due";
 import { variationStudioIdOf } from "../inbody/variation";
 import { useStudioSettings } from "../studio-settings";
+import { useNewClientsStart } from "../routine-plan/ui/useNewClientsStart";
 import "./briefing.css";
 import { NoteCategoryChips } from "../client-notes/NoteCategoryChips";
 import { FILING_CATEGORIES, type FilingCategory } from "../client-notes/note-catalog";
@@ -144,7 +145,7 @@ import { openHealthWords, planIntakeText } from "../routine-plan/intake";
 import { focusLine } from "../routine-plan/focus";
 import { planProgress, progressLine, todayFor } from "../routine-plan/plan";
 import { roadGroups } from "../routine-plan/lineup";
-import { bProgressOf, bRoadGroups, bStatus, bStatusLine, isBPlan, swapsOf } from "../routine-plan/b-routine";
+import { bProgressOf, bRoadGroups, bStatus, bStatusLine, isBPlan, plannedBTarget, swapsOf } from "../routine-plan/b-routine";
 import {
   briefingPlanView,
   type BriefingDoor,
@@ -698,15 +699,24 @@ export function BriefingScreen({
     () => (planWhoUid ? { uid: planWhoUid, ...(planWhoName ? { name: planWhoName } : null) } : null),
     [planWhoUid, planWhoName],
   );
+  /* How the studio starts a new client (its setting `newClientsStart`; the
+     first-session round, item 8; AJ, Oct 7 2026: "Some studios may start
+     building an A and B routine immediately for a client"): the studio whose
+     starting routines the card offers, read only for a client starting
+     out. With A and B together, the card plans Routine B beside the plan. */
+  const planStudioId = studioId ?? client.homeStudioId ?? null;
+  const planNewClients = useNewClientsStart(planView === "starting" ? planStudioId : null);
   const briefingPlan = useBriefingPlan({
     view: planView,
-    studioId: studioId ?? client.homeStudioId ?? null,
+    studioId: planStudioId,
     studioName: studioName ?? null,
     floor: machines,
     intakeText: planIntake,
     who: planWho,
     todayYmd: todayKey,
     kept: planView === "kept" ? (routineA?.plan ?? null) : null,
+    aAndBTogether: planView === "starting" ? planNewClients : false,
+    bPlannable: plannedBTarget(routines) !== null,
   });
   /* A plan in progress: the routine line, and the Road under it as the
      glance ("3 of 6 · next: …"). */
@@ -758,7 +768,7 @@ export function BriefingScreen({
      navigation asks first; "Leave" puts it all back. Start is not a
      navigation and never asks. */
   const briefingDirty =
-    adjustmentNote.trim() !== "" || tappedDials > 0 || bodyStates.length > 0 || briefingPlan.changed;
+    adjustmentNote.trim() !== "" || tappedDials > 0 || bodyStates.length > 0 || briefingPlan.changed || briefingPlan.bChanged;
   const { reset: resetPlanCard } = briefingPlan;
   useUnsavedChanges(briefingDirty, "the briefing", {
     onDiscard: () => {

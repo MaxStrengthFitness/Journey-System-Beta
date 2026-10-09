@@ -68,11 +68,12 @@ import { SEND_SETS_NOW_EVENT } from "../features/session-record/sign-out-check";
 import { NothingOnScreen } from "../features/session-record/NothingOnScreen";
 import { nothingKind } from "../features/session-record/nothing-on-screen";
 import { nextRoutine } from "../features/routines/next-routine";
-import { addStartPlanToBatch, saveNextTime } from "../features/routine-plan/store";
-import { bFollowOf } from "../features/routine-plan/b-routine";
+import { addPlannedBAtStart, addStartPlanToBatch, saveNextTime } from "../features/routine-plan/store";
+import { bFollowOf, plannedBFollowOf, plannedBStart } from "../features/routine-plan/b-routine";
 import {
   nextTimeAtFinish,
   nextTimeOffer,
+  plannedBFloorOf,
   nextTimeWrite,
   ranAsFree,
   routineHolds,
@@ -80,7 +81,7 @@ import {
   type NextTimeSnapshot,
 } from "../features/routine-plan/next-time";
 import { findRoutineByLetter } from "../lib/routine-utils";
-import { startChangeOf, type StartPlanAtStart } from "../features/routine-plan/briefing-plan";
+import { plannedBAtStart, startChangeOf, type StartPlanAtStart } from "../features/routine-plan/briefing-plan";
 import { isStartingColumnChoice, todayFor } from "../features/routine-plan/plan";
 import { orderEffects } from "../features/routine-plan/order-effects";
 import {
@@ -1736,6 +1737,22 @@ export function WorkoutTrackerView({
               }),
             }).routineId
           : null;
+      /* B planned beside it, at a studio that starts new clients on A and B
+         together (its setting `newClientsStart`; item 8): Routine B with its
+         plan and NO machines, in this same batch, B off until the Wrap-up
+         that starts Routine A starts it. Never over a Routine B of the
+         client's own. */
+      if (routine.kind === "plan") {
+        addPlannedBAtStart(db, batch, {
+          routines,
+          clientId,
+          studioId: selectedClient?.homeStudioId || "",
+          b: plannedBAtStart(routine.startPlan, {
+            uid: user.uid,
+            ...(authTrainer?.fullName ? { name: authTrainer.fullName } : null),
+          }),
+        });
+      }
       const routineId = routine.kind === "existing" ? routine.routine.id : (madeRoutineId ?? undefined);
 
       /* What this session intends to run. Recorded on the document from the
@@ -2004,6 +2021,16 @@ export function WorkoutTrackerView({
             ...(authTrainer?.fullName ? { name: authTrainer.fullName } : null),
           }),
         }).routineId;
+        // B planned beside it ("A and B together"), in the same batch, as at Start.
+        addPlannedBAtStart(db, batch, {
+          routines,
+          clientId: f.clientId,
+          studioId: selectedClient?.homeStudioId || "",
+          b: plannedBAtStart(routine.startPlan, {
+            uid: user.uid,
+            ...(authTrainer?.fullName ? { name: authTrainer.fullName } : null),
+          }),
+        });
       }
       // No routine and the same list: nothing to say to the session.
       const sameList = machinesToWrite.join(",") === f.plannedMachineIds.join(",");
@@ -2665,15 +2692,40 @@ export function WorkoutTrackerView({
       studioId: snap.client.homeStudioId || contextActiveStudioId || "",
       trainerId: authTrainer?.id || user?.uid || "",
     };
-    // Ticks into Routine A take Routine B with them when B follows A (Round
-    // 2: B's unswapped places follow A, its own swaps stay), in the same
-    // batch, from the routines as the live listener holds them now.
+    // From the routines as the live listener holds them now.
+    const routinesHere = routinesKnown && clientId === snap.client.id;
+    /* Ticks that START Routine A start a Routine B planned with the
+       starting lineup too (the studio's "A and B together", item 8): B as
+       A with its first swap, the swaps for machines A takes later kept
+       waiting, and B turned on, in the same batch. From the routines as
+       the live listener holds them now, over the floor frozen at Finish
+       (the card's line asks the same). */
+    const started =
+      write.kind === "plan" && routinesHere
+        ? plannedBStart({
+            routines,
+            aRoutineId: write.routineId,
+            aBefore: now.machineIds,
+            aAfter: write.machineIds,
+            aPlan: write.plan,
+            floor: plannedBFloorOf(frozen) ?? floorMachinesOf(floorMachines),
+            who: user?.uid ? { uid: user.uid, ...(authTrainer?.fullName ? { name: authTrainer.fullName } : null) } : null,
+            todayYmd: studioTodayKey(),
+          })
+        : null;
+    const startB = started ? { ...started, clientId: snap.client.id } : null;
+    /* Ticks into Routine A take Routine B with them when B follows A (Round
+       2: B's unswapped places follow A, its own swaps stay), in the same
+       batch. A B planned and not started this time follows A's road with its plan
+       alone (`plannedBFollowOf`: the Wrap-up can put a machine new to the
+       plan on it); a started B, never. */
     const follow =
-      write.kind !== "create" && routinesKnown && clientId === snap.client.id
-        ? bFollowOf(routines, write.routineId, write.machineIds)
+      write.kind !== "create" && routinesHere
+        ? (bFollowOf(routines, write.routineId, write.machineIds) ??
+          (write.kind === "plan" && !started ? plannedBFollowOf(routines, write.routineId, write.plan) : null))
         : null;
     try {
-      saveNextTime(db, write, owner, follow).catch(refused);
+      saveNextTime(db, write, owner, follow, startB).catch(refused);
     } catch (error) {
       refused(error);
     }

@@ -37,6 +37,7 @@ import { roadGroups } from "../lineup";
 import { DoorButton, OrderNote, PlanSheet, SourceTag, TickRow } from "./parts";
 import { floorMachinesOf } from "./host";
 import { MachineChips } from "./pickers";
+import { PlannedBGlance } from "./PlannedBPart";
 import { RoadStrip } from "./RoadStrip";
 import type { BriefingPlanState } from "./useBriefingPlan";
 import "./routine-plan.css";
@@ -137,6 +138,8 @@ export function BriefingPlanCard({ state, view, firstName, nameOf, floor, todayY
               : // A kept plan's weak area, so the next trainer sees it at a glance (Round 2, item 7).
                 ["Day one · Routine A starts at the Wrap-up", focusLine(plan)].filter(Boolean).join(" · ")}
           </p>
+          {/* B planned beside it, at a studio that starts new clients on A and B together (item 8). */}
+          {view === "starting" && <PlannedBGlance state={state.b} nameOf={nameOf} floor={floorList} todayYmd={todayYmd} />}
         </>
       ) : picking ? (
         <p className="rpl-line">{state.suggestion?.why ?? "Pick which starting routine fits"}</p>

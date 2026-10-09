@@ -277,7 +277,12 @@ describe("mid-session changes stay in session state", () => {
   // awaited, a refusal said in a toast. The card and the Wrap-up write
   // nothing themselves: they hand the ticks up.
   it("the Wrap-up's Next time writes the routine once, on the way out, through routine-plan/store.ts alone, never awaited", () => {
-    expect(WTV).toMatch(/import \{ addStartPlanToBatch, saveNextTime \} from "\.\.\/features\/routine-plan\/store";/);
+    // Changed on purpose (the first-session round, item 8): Start's batch
+    // also adds B planned beside a starting plan, through the plan's own
+    // writer (`addPlannedBAtStart`). AJ, Oct 7 2026: "Some studios may start
+    // building an A and B routine immediately for a client. So we need to be
+    // able to have that customization." Still store.ts alone.
+    expect(WTV).toMatch(/import \{ addPlannedBAtStart, addStartPlanToBatch, saveNextTime \} from "\.\.\/features\/routine-plan\/store";/);
     const body = bodyOf(WTV, "savePostSessionNextTime");
     expect(body, "savePostSessionNextTime not found").not.toBe("");
     expect(body).toMatch(/saveNextTime\(db, write,/);

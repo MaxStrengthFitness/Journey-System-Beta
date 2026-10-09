@@ -38,6 +38,10 @@ export function usable(def: SettingDef, raw: unknown): SettingValue | undefined 
     if (raw === null) return null;
     return typeof raw === "number" && Number.isInteger(raw) && raw >= 0 && raw <= 6 ? raw : undefined;
   }
+  if (def.kind === "choice") {
+    // Only one of its own choices' numbers: anything else is skipped, never bent to the nearest.
+    return typeof raw === "number" && (def.choices ?? []).some((c) => c.value === raw) ? raw : undefined;
+  }
   if (typeof raw !== "number" || !Number.isFinite(raw)) return undefined;
   if (def.kind !== "multiple" && !Number.isInteger(raw)) return undefined;
   if (def.kind === "multiple" && Math.round(raw * 10) !== raw * 10) return undefined;
@@ -142,11 +146,14 @@ function omit(values: SettingValues | null, keys: SettingKey[]): SettingValues |
   return copy;
 }
 
-/** "3", "2.5", "Monday", "None": a value as an editor shows it. */
+/** "3", "2.5", "Monday", "None", "A alone": a value as an editor shows it. */
 export function formatSetting(key: SettingKey, value: SettingValue): string {
   const def = SETTING_BY_KEY[key];
   if (def.kind === "weekday") {
     return value === null ? "None" : WEEKDAY_NAMES[value] ?? "None";
+  }
+  if (def.kind === "choice") {
+    return def.choices?.find((c) => c.value === value)?.label ?? "—";
   }
   return value === null ? "—" : String(value);
 }
@@ -179,6 +186,12 @@ export function parseSetting(key: SettingKey, text: string): { value: SettingVal
     const n = Number(t);
     const v = usable(def, n);
     return v === undefined ? { error: "Choose a day, or None." } : { value: v };
+  }
+  if (def.kind === "choice") {
+    // The editors hold a choice as its number's text ("1", "2"); "" follows the default.
+    if (t === "") return { clear: true };
+    const v = usable(def, Number(t));
+    return v === undefined || v === null ? { error: `Choose ${(def.choices ?? []).map((c) => c.label).join(" or ")}.` } : { value: v };
   }
   if (t === "") return { clear: true };
   const n = Number(t);

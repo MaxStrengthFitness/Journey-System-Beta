@@ -28,7 +28,7 @@ import { db } from "../../../firebase";
 import { createJournalEntry } from "../../../hooks/useClientJournal";
 import type { Routine } from "../../../types";
 import { DEFAULT_IMPORTANCE, storedNoteOf } from "../../client-notes/note-catalog";
-import { bFollowOf } from "../b-routine";
+import { bFollowOf, plannedBFollowOf } from "../b-routine";
 import { readPlanChanges, savePlanChange, startPlan, startRoutineB } from "../store";
 import type { HealthNoteCall, PlanActions, StartBCall, StartPlanCall } from "./host";
 import type { PlanWrite } from "../lineup";
@@ -71,30 +71,41 @@ export function usePlanActions(input: PlanActionsInput): PlanActions {
       if (!clientId) return;
       let started: ReturnType<typeof startPlan>;
       try {
-        started = startPlan(db, {
-          routineId: call.routineId,
-          clientId,
-          studioId,
-          name: "Routine A",
-          machineIds: call.machineIds,
-          plan: call.plan,
-          change: call.change,
-        });
+        started = startPlan(
+          db,
+          {
+            routineId: call.routineId,
+            clientId,
+            studioId,
+            name: "Routine A",
+            machineIds: call.machineIds,
+            plan: call.plan,
+            change: call.change,
+          },
+          // B planned beside it ("A and B together"): Routine B with its plan and no machines, same batch.
+          call.b ?? null,
+        );
       } catch (err) {
         refused(err);
         return;
       }
       const id = started.routineId;
-      setRoutines((prev) => {
-        if (prev.some((r) => r.id === id)) {
-          return prev.map((r) => (r.id === id ? { ...r, machineIds: [...call.machineIds], plan: call.plan } : r));
+      const put = (prev: Routine[], name: "Routine A" | "Routine B", rid: string, machineIds: string[], plan: Routine["plan"]): Routine[] => {
+        if (prev.some((r) => r.id === rid)) {
+          return prev.map((r) => (r.id === rid ? { ...r, machineIds: [...machineIds], plan } : r));
         }
-        // Made here: stamped now, as the server's time will, so Routine A's
+        // Made here: stamped now, as the server's time will, so the routine's
         // head never says "not created yet" over a routine just kept.
         return [
-          ...prev.filter((r) => !(r.name === "Routine A" && (!r.id || r.id.startsWith("temp-")))),
-          { id, clientId, name: "Routine A", machineIds: [...call.machineIds], plan: call.plan, studioId, createdAt: Timestamp.now() },
+          ...prev.filter((r) => !(r.name === name && (!r.id || r.id.startsWith("temp-")))),
+          { id: rid, clientId, name, machineIds: [...machineIds], plan, studioId, createdAt: Timestamp.now() },
         ];
+      };
+      const bId = started.bRoutineId;
+      const b = call.b;
+      setRoutines((prev) => {
+        const withA = put(prev, "Routine A", id, call.machineIds, call.plan);
+        return bId && b ? put(withA, "Routine B", bId, [], b.plan) : withA;
       });
       started.commit.catch(refused);
     },
@@ -103,8 +114,12 @@ export function usePlanActions(input: PlanActionsInput): PlanActions {
 
   const save = useCallback(
     (routineId: string, write: PlanWrite) => {
-      // Routine B follows a change to Routine A's machines, in the same batch.
-      const follow = write.machineIds ? bFollowOf(ref.current.routines ?? [], routineId, write.machineIds) : null;
+      // Routine B follows a change to Routine A's machines, in the same batch;
+      // a B planned with the starting lineup follows A's road with its plan alone.
+      const routinesNow = ref.current.routines ?? [];
+      const follow =
+        (write.machineIds ? bFollowOf(routinesNow, routineId, write.machineIds) : null) ??
+        plannedBFollowOf(routinesNow, routineId, write.plan);
       let commit: Promise<void>;
       try {
         commit = savePlanChange(db, routineId, follow ? { ...write, follow } : write);
@@ -121,7 +136,7 @@ export function usePlanActions(input: PlanActionsInput): PlanActions {
             const plan = r.plan
               ? { ...r.plan, intended: [...follow.intended], ...(follow.swaps ? { swaps: [...follow.swaps] } : null) }
               : null;
-            return { ...r, machineIds: [...follow.machineIds], ...(plan ? { plan } : null) };
+            return { ...r, ...(follow.machineIds ? { machineIds: [...follow.machineIds] } : null), ...(plan ? { plan } : null) };
           }
           return r;
         }),

@@ -39,6 +39,16 @@
  * - The words: "B · 2 of 5 swaps · next: Leg Extension for Leg Press", how
  *   often A has run in Journey (`aRunsSince`, `aRunsLine`), the Academy's
  *   line with its source, and the briefing's glance (`bRoadGroups`).
+ * - B PLANNED AHEAD (item 8, the studio setting `newClientsStart`, "A and B
+ *   together"; AJ, Oct 7 2026: "Some studios may start building an A and B
+ *   routine immediately for a client"): Start a plan and the briefing plan B
+ *   beside the starting lineup (`plannedBOf`: swaps against A's planned
+ *   road), kept as Routine B with its plan and NO machines, since the
+ *   consult is not Routine A and B is a copy of A (`isPlannedB`); the
+ *   Wrap-up that starts Routine A starts B too (`plannedBStart`: A with the
+ *   first swap, the swaps for machines A takes later kept waiting, and B
+ *   turned on). A planned B's machines never follow A (`bFollowOf`): it has
+ *   none until it starts; its plan follows A's road (`plannedBFollowOf`).
  *
  * Nothing here suggests or moves a weight, and nothing reads a gender.
  */
@@ -337,8 +347,12 @@ export function bIntendedOf(
 export interface BFollow {
   /** Routine B's id. */
   routineId: string;
-  /** B's machines after A's change (`bFollowsA`). */
-  machineIds: string[];
+  /**
+   * B's machines after A's change (`bFollowsA`). Absent for a B planned with
+   * the starting lineup and not started (`plannedBFollowOf`): only its plan
+   * follows A's road, and Routine B's machines are never written.
+   */
+  machineIds?: string[];
   /** B's plan's road after A's change (`bIntendedOf`). */
   intended: string[];
   /** B's plan's swaps, only when a swap followed its place in A (`bSwapsAfterA`). */
@@ -352,7 +366,10 @@ type RoutineLike = Pick<Routine, "id" | "name" | "machineIds" | "plan">;
  * B, in the SAME batch, or null when there is nothing to write: the routine
  * written is not Routine A, there is no saved Routine B, B has no plan of
  * swaps (a Routine B made before Round 2 is the trainer's own list, left
- * alone), or B and its plan already stand where A's change puts them.
+ * alone), B is planned but not started (`isPlannedB`: no machines yet, so
+ * following A would make it a copy of A with no swap; the Wrap-up that
+ * starts Routine A starts it, `plannedBStart`), or B and its plan already
+ * stand where A's change puts them.
  * Every writer that moves A asks this: Programming's Lineup, the Edit
  * routine drawer, the session's plan sheet and the Wrap-up's Next time.
  */
@@ -365,7 +382,7 @@ export function bFollowOf(
   const a = routines.find((r) => r.id === aRoutineId);
   if (!a || !matchesRoutineLetter(a, "A")) return null;
   const b = routines.find((r) => matchesRoutineLetter(r, "B") && !!r.id && !r.id.startsWith("temp-"));
-  if (!b?.id || !isBPlan(b.plan)) return null;
+  if (!b?.id || !isBPlan(b.plan) || isPlannedB(b)) return null;
   const aOld = a.machineIds ?? [];
   const bNow = b.machineIds ?? [];
   const swaps = swapsOf(b.plan);
@@ -375,6 +392,39 @@ export function bFollowOf(
   const swapsMoved = !sameSwaps(next, swaps);
   if (sameList(machineIds, bNow) && sameList(intended, b.plan.intended) && !swapsMoved) return null;
   return { routineId: b.id, machineIds, intended, ...(swapsMoved ? { swaps: next } : null) };
+}
+
+/**
+ * What a change to Routine A's PLAN must also write to a Routine B planned
+ * with the starting lineup and not started (`isPlannedB`), in the SAME
+ * batch, or null when there is nothing to write. While Routine A is empty
+ * its road is all B was planned against, so a planned swap follows its
+ * PLACE on the road (`bSwapsAfterA` over A's old and new road: a Lineup
+ * swap, a can't-do's stand-in, a re-plan) and B's road moves with it
+ * (`bIntendedOf`). Only the plan's road and swaps are written, never
+ * Routine B's machines: B stays empty until the Wrap-up that starts
+ * Routine A starts it (`plannedBStart`). The review of item 8: without it a
+ * swap kept naming a machine that had left the road. Every writer of A's
+ * plan asks this beside `bFollowOf` (one or the other answers, never both).
+ */
+export function plannedBFollowOf(
+  routines: readonly RoutineLike[],
+  aRoutineId: string | null | undefined,
+  aPlanNew: Pick<RoutinePlan, "intended"> | null | undefined,
+): BFollow | null {
+  if (!aRoutineId || !aPlanNew || !Array.isArray(aPlanNew.intended)) return null;
+  const a = routines.find((r) => r.id === aRoutineId);
+  if (!a || !matchesRoutineLetter(a, "A")) return null;
+  const b = routines.find((r) => matchesRoutineLetter(r, "B") && !!r.id && !r.id.startsWith("temp-"));
+  if (!b?.id || !isPlannedB(b) || !isBPlan(b.plan)) return null;
+  const roadOld = Array.isArray(a.plan?.intended) ? a.plan.intended : [];
+  const roadNew = aPlanNew.intended;
+  const swaps = swapsOf(b.plan);
+  const next = bSwapsAfterA(roadOld, roadNew, swaps);
+  const intended = bIntendedOf(roadNew, next, b.plan.intended, roadOld);
+  const swapsMoved = !sameSwaps(next, swaps);
+  if (sameList(intended, b.plan.intended) && !swapsMoved) return null;
+  return { routineId: b.id, intended, ...(swapsMoved ? { swaps: next } : null) };
 }
 
 /* ── B's purpose ───────────────────────────────────────────────────────── */
@@ -420,6 +470,13 @@ export function bPurposeOf(plan: Pick<RoutinePlan, "purposeKinds"> | null | unde
  *   plan, `[replaces]`.
  */
 export const B_START = "B";
+/**
+ * "start" with "B planned" (item 8, `newClientsStart` "A and B together"):
+ * B planned with the starting lineup, before Routine A has machines;
+ * `machineIds` the planned swaps' pairs, `[replaces, with, replaces, with,
+ * …]`, so the Changes list says what B starts with.
+ */
+export const B_PLANNED = "B planned";
 export const B_SWAP_MADE = "made";
 export const B_SWAP_PLANNED = "planned";
 export const B_SWAP_KEPT = "kept";
@@ -439,7 +496,7 @@ export function usableSwaps(input: {
   aRoutine: readonly string[];
   /** Routine A's plan's road: a machine A will take in is never B's swap. */
   aIntended?: readonly string[] | null;
-  floor: readonly FloorMachine[];
+  floor: readonly Pick<FloorMachine, "id">[];
   cantDo?: readonly CantDo[] | null;
   todayYmd: string;
 }): PlanSwap[] {
@@ -478,7 +535,7 @@ export function startBPlan(input: {
   aRoutine: readonly string[];
   /** Routine A's plan: its can't-do marks are B's too, its road is A's own, and the starting routine it came from. */
   aPlan?: Pick<RoutinePlan, "cantDo" | "templateId"> & Partial<Pick<RoutinePlan, "intended">> | null;
-  floor: readonly FloorMachine[];
+  floor: readonly Pick<FloorMachine, "id">[];
   purpose: BPurpose;
   swaps: readonly PlanSwap[];
   who: { uid: string; name?: string };
@@ -512,6 +569,273 @@ export function startBPlan(input: {
     machineIds: bRoutineOf(aRoutine, swaps, 1),
     change: { kind: "start", machineIds: [first.replaces, first.with], value: B_START },
   };
+}
+
+/* ── B planned ahead (item 8: the studio's "A and B together") ─────────── */
+
+/**
+ * A Routine B planned with the starting lineup and not started yet: a plan
+ * of swaps and no machines. The consult is not Routine A (AJ, Oct 8 2026),
+ * and B is a copy of A, so B waits with nothing in it until the Wrap-up
+ * that starts Routine A starts B too (`plannedBStart`). Until then it is
+ * never alternated into (the B switch stays off), its machines never follow
+ * A (`bFollowOf`) while its plan follows A's road (`plannedBFollowOf`), and
+ * Plan B starts from its swaps.
+ */
+export function isPlannedB(routine: Pick<Routine, "machineIds" | "plan"> | null | undefined): boolean {
+  return !!routine && (routine.machineIds?.length ?? 0) === 0 && isBPlan(routine.plan);
+}
+
+/** The swaps planned on a Routine B planned ahead, or null when it isn't one. */
+export function plannedSwapsOf(routine: Pick<Routine, "machineIds" | "plan"> | null | undefined): PlanSwap[] | null {
+  return routine && isPlannedB(routine) ? swapsOf(routine.plan) : null;
+}
+
+/**
+ * Where a planned B is written when a starting plan is kept (Keep this
+ * lineup, Start on the briefing): the client's Routine B when it is an
+ * empty one with no plan (turned on before Round 2), `{ routineId: null }`
+ * to make it, or null to write no B at all: a Routine B with machines is
+ * the client's, and one with a plan already is planned.
+ */
+export function plannedBTarget(routines: readonly Pick<Routine, "id" | "name" | "machineIds" | "plan">[]): { routineId: string | null } | null {
+  const b = routines.find((r) => matchesRoutineLetter(r, "B"));
+  if (!b) return { routineId: null };
+  if ((b.machineIds?.length ?? 0) > 0 || b.plan) return null;
+  if (!b.id || b.id.startsWith("temp-")) return { routineId: null };
+  return { routineId: b.id };
+}
+
+export interface PlannedB {
+  /** B's plan: the swaps against A's planned road, B whole as `intended`, building off. */
+  plan: RoutinePlan;
+  /** Its first change, unsigned: "start" with `B_PLANNED`, the swaps' pairs. */
+  change: BChange;
+}
+
+/**
+ * B planned beside a starting lineup (the studio setting `newClientsStart`,
+ * "A and B together"; AJ, Oct 7 2026: "Some studios may start building an A
+ * and B routine immediately for a client"). The swaps are against A's
+ * PLANNED road (`road`, the starting plan's `intended`), since Routine A is
+ * empty until the first visit's Wrap-up: each replaces a machine on the
+ * road, brings in one the road doesn't have, never one the client can't do
+ * (A's plan's `cantDo`), and only one on this floor. B's plan holds B whole
+ * (`intended`: the road with every swap made), what B is for, and no
+ * "being built" switch (B grows by its swaps). Null when no swap can be
+ * kept: nothing is planned then.
+ */
+export function plannedBOf(input: {
+  /** A's planned road: the starting plan's `intended`. */
+  road: readonly string[];
+  /** A's plan: its can't-do marks are B's too, and the starting routine it came from. */
+  aPlan?: Pick<RoutinePlan, "cantDo" | "templateId"> | null;
+  floor: readonly Pick<FloorMachine, "id">[];
+  purpose: BPurpose;
+  swaps: readonly PlanSwap[];
+  who: { uid: string; name?: string };
+  todayYmd: string;
+}): PlannedB | null {
+  const road = once(input.road);
+  const swaps = usableSwaps({
+    swaps: input.swaps,
+    aRoutine: road,
+    aIntended: road,
+    floor: input.floor,
+    cantDo: input.aPlan?.cantDo,
+    todayYmd: input.todayYmd,
+  });
+  if (swaps.length === 0 || road.length === 0) return null;
+  const name = input.who.name?.trim();
+  const plan: RoutinePlan = {
+    purpose: B_PURPOSE_WORDS[input.purpose],
+    purposeKinds: bPurposeKinds(input.purpose),
+    intended: bIntendedOf(road, swaps),
+    swaps,
+    building: false,
+    madeByUid: input.who.uid,
+    ...(name ? { madeByName: name } : null),
+    madeAt: input.todayYmd,
+    ...(input.aPlan?.templateId ? { templateId: input.aPlan.templateId } : null),
+  };
+  // The rules hold a change to 30 machines: fifteen pairs, more than any road.
+  const pairs = swaps.slice(0, 15).flatMap((s) => [s.replaces, s.with]);
+  return { plan, change: { kind: "start", machineIds: pairs, value: B_PLANNED } };
+}
+
+/** B's swaps suggested against a starting plan's road (`suggestBSwaps` on the road, can't-do respected). */
+export function suggestPlannedBSwaps(input: {
+  road: readonly string[];
+  aPlan?: Pick<RoutinePlan, "cantDo" | "templateId"> | null;
+  floor: readonly FloorMachine[];
+  todayYmd: string;
+}): PlanSwap[] {
+  return suggestBSwaps({
+    aRoutine: input.road,
+    aIntended: input.road,
+    floor: input.floor,
+    templateId: input.aPlan?.templateId ?? null,
+    cantDo: input.aPlan?.cantDo,
+    todayYmd: input.todayYmd,
+  });
+}
+
+export interface PlannedBStart {
+  /** Routine B's id. */
+  routineId: string;
+  /** Routine B today: A with the first swap made (`startBPlan`). */
+  machineIds: string[];
+  /** B's plan, as `startBPlan` makes it from the swaps planned that A can take now. */
+  plan: RoutinePlan;
+  /** "start" with `B_START`, signed. */
+  change: PlanChange;
+}
+
+/**
+ * The Wrap-up that STARTS Routine A starts a planned B too (item 8: "A and
+ * B together"): Routine A was empty and the ticks give it machines, and the
+ * client's Routine B is planned and empty (`isPlannedB`). B starts as A with
+ * the first of its planned swaps that A can take now (`startBPlan`'s
+ * machines, over A's new machines), and the caller turns B on in the same
+ * batch. Every other swap planned for a machine still on A's road is KEPT
+ * on B's plan, after the ones A can take now (`plannedBStartSwaps`'
+ * `waiting`): it waits until Routine A takes its machine (`bSwapWait`
+ * "a-later"), then comes in as any swap does (the review of item 8: dropped
+ * here, the swaps planned at the consult were lost without a word). Null
+ * when nothing starts: A wasn't empty, nothing went into it, there is no
+ * planned B, or none of B's swaps is for a machine A has now (B stays
+ * planned, and starts from Plan B).
+ */
+export function plannedBStart(input: {
+  routines: readonly Pick<Routine, "id" | "name" | "machineIds" | "plan">[];
+  /** The routine the ticks went into: Routine A, or nothing starts. */
+  aRoutineId: string | null | undefined;
+  /** Routine A's machines before the write. */
+  aBefore: readonly string[];
+  /** Routine A's machines after it. */
+  aAfter: readonly string[];
+  /** Routine A's plan after it (its can't-do, its road, its starting routine). */
+  aPlan: RoutinePlan | null;
+  floor: readonly Pick<FloorMachine, "id">[];
+  who: { uid: string; name?: string } | null;
+  todayYmd: string;
+}): PlannedBStart | null {
+  if (!input.who?.uid || !input.aRoutineId || input.aBefore.length > 0 || input.aAfter.length === 0) return null;
+  const a = input.routines.find((r) => r.id === input.aRoutineId);
+  if (!a || !matchesRoutineLetter(a, "A")) return null;
+  const b = input.routines.find((r) => matchesRoutineLetter(r, "B") && !!r.id && !r.id.startsWith("temp-"));
+  if (!b?.id || !isPlannedB(b) || !isBPlan(b.plan)) return null;
+  const { ready, waiting } = plannedBStartSwaps({
+    swaps: swapsOf(b.plan),
+    aRoutine: input.aAfter,
+    aPlan: input.aPlan,
+    floor: input.floor,
+    todayYmd: input.todayYmd,
+  });
+  const started = startBPlan({
+    aRoutine: input.aAfter,
+    aPlan: input.aPlan,
+    floor: input.floor,
+    purpose: bPurposeOf(b.plan) ?? "variety",
+    swaps: ready,
+    who: input.who,
+    todayYmd: input.todayYmd,
+  });
+  if (!started) return null;
+  const swaps = [...swapsOf(started.plan), ...waiting];
+  const name = input.who.name?.trim();
+  return {
+    routineId: b.id,
+    machineIds: started.machineIds,
+    plan: { ...started.plan, swaps, intended: bIntendedOf(once(input.aAfter), swaps) },
+    change: {
+      kind: started.change.kind,
+      machineIds: [...started.change.machineIds],
+      ...(started.change.value ? { value: started.change.value } : null),
+      byUid: input.who.uid,
+      ...(name ? { byName: name.slice(0, 120) } : null),
+    },
+  };
+}
+
+/**
+ * A planned B's swaps, sorted for a start over Routine A's machines
+ * (`aRoutine`): `ready`, the ones A can take now (`usableSwaps`, in the
+ * planned order; the first is what B starts with), and `waiting`, the ones
+ * for a machine still on A's road and not in Routine A yet, kept for when
+ * A takes it. A swap that is neither (its A machine left A's road, A has its
+ * machine, the client can't do it, or it isn't on this floor) is left out.
+ * The Wrap-up's line and its write both ask this, so the card never says a
+ * start the write doesn't make.
+ */
+export function plannedBStartSwaps(input: {
+  swaps: readonly PlanSwap[];
+  aRoutine: readonly string[];
+  aPlan: Pick<RoutinePlan, "cantDo" | "intended"> | null;
+  floor: readonly Pick<FloorMachine, "id">[];
+  todayYmd: string;
+}): { ready: PlanSwap[]; waiting: PlanSwap[] } {
+  const aRoutine = once(input.aRoutine);
+  const intended = input.aPlan?.intended;
+  const road = Array.isArray(intended) ? intended : [];
+  const common = { floor: input.floor, cantDo: input.aPlan?.cantDo, todayYmd: input.todayYmd };
+  const ready = aRoutine.length > 0 ? usableSwaps({ swaps: input.swaps, aRoutine, aIntended: road, ...common }) : [];
+  const onRoad = once([...aRoutine, ...road]);
+  const waiting = usableSwaps({ swaps: input.swaps, aRoutine: onRoad, aIntended: onRoad, ...common }).filter(
+    (s) => !aRoutine.includes(s.replaces) && !ready.some((r) => r.with === s.with || r.replaces === s.replaces),
+  );
+  return { ready, waiting };
+}
+
+/** "B is planned: Leg Extension for Leg Press first, 4 swaps in all." A Routine B planned ahead, in words. */
+export function plannedBLine(swaps: readonly PlanSwap[], nameOf: (id: string) => string): string {
+  const first = swaps[0];
+  if (!first) return "B is planned.";
+  return `B is planned: ${nameOf(first.with)} for ${nameOf(first.replaces)} first${swaps.length > 1 ? `, ${swaps.length} swaps in all` : ""}.`;
+}
+
+/**
+ * A Routine B planned ahead, in words, counting only the swaps it can still
+ * keep (the review of item 8: the stored order named a swap Plan B would
+ * leave out, and counted swaps for machines gone from A's road). While
+ * Routine A is empty, the swaps against A's road; once A has machines, the
+ * first is the one B would start with now (`plannedBStartSwaps`' `ready`)
+ * and the count every swap still on A's road; with none for a machine A
+ * has yet, it says so; with none at all, that none fits A's plan now.
+ */
+export function plannedBWords(input: {
+  swaps: readonly PlanSwap[];
+  aRoutine: readonly string[];
+  aPlan: Pick<RoutinePlan, "cantDo" | "intended"> | null;
+  floor: readonly Pick<FloorMachine, "id">[];
+  todayYmd: string;
+  nameOf: (id: string) => string;
+}): string {
+  const { ready, waiting } = plannedBStartSwaps(input);
+  const all = [...ready, ...waiting];
+  if (all.length === 0) return "B is planned, but none of its swaps fits Routine A's plan now.";
+  if (input.aRoutine.length > 0 && ready.length === 0) {
+    return `B is planned, ${all.length === 1 ? "1 swap" : `${all.length} swaps`}: none is for a machine in Routine A yet.`;
+  }
+  return plannedBLine(all, input.nameOf);
+}
+
+/** Said under a planned B while Routine A is still empty: when it starts. */
+export const PLANNED_B_WHEN = "It starts with Routine A, at the Wrap-up that starts A.";
+
+/**
+ * The first swap a planned B would start with, if Routine A were `aRoutine`
+ * (the Wrap-up's Next time says it live as the ticks change), or null.
+ */
+export function plannedBFirstSwap(input: {
+  swaps: readonly PlanSwap[];
+  aRoutine: readonly string[];
+  aPlan: Pick<RoutinePlan, "cantDo" | "intended"> | null;
+  floor: readonly Pick<FloorMachine, "id">[];
+  todayYmd: string;
+}): PlanSwap | null {
+  if (input.aRoutine.length === 0) return null;
+  return plannedBStartSwaps(input).ready[0] ?? null;
 }
 
 /** Turning B on with nothing in B opens Plan B instead of making an empty Routine B (the critic's #22). */
@@ -569,12 +893,25 @@ export interface BColumn {
    * rows, to be left out (`bSlotKept`) or swapped in at the end.
    */
   gone: PlanSwap[];
+  /**
+   * Swaps still to come whose A machine is on Routine A's road and not in
+   * Routine A yet (`aRoad`): planned with the starting lineup and kept when
+   * B started (`plannedBStart`). Drawn under the rows as waiting for A, never
+   * as gone.
+   */
+  waiting: PlanSwap[];
   /** What B holds beyond A's places: a swap whose A machine has left A (`for` it), or a machine of B's own. */
   extras: Array<{ id: string; for: string | null }>;
   status: BStatus;
 }
 
-export function bColumnOf(aRoutine: readonly string[], bPlan: Pick<RoutinePlan, "swaps">, bRoutine: readonly string[]): BColumn {
+export function bColumnOf(
+  aRoutine: readonly string[],
+  bPlan: Pick<RoutinePlan, "swaps">,
+  bRoutine: readonly string[],
+  /** Routine A's plan's road: a swap for a machine still on it waits for A, never "gone". */
+  aRoad: readonly string[] = [],
+): BColumn {
   const swaps = swapsOf(bPlan);
   const status = bStatus(swaps, bRoutine);
   const rows: BColumnRow[] = once(aRoutine).map((aId) => {
@@ -592,8 +929,10 @@ export function bColumnOf(aRoutine: readonly string[], bPlan: Pick<RoutinePlan, 
   const extras = once(bRoutine)
     .filter((id) => !shown.has(id))
     .map((id) => ({ id, for: swaps.find((s) => s.with === id)?.replaces ?? null }));
-  const gone = swaps.slice(status.made).filter((s) => !aRoutine.includes(s.replaces) && !bRoutine.includes(s.with));
-  return { rows, extras, gone, status };
+  const away = swaps.slice(status.made).filter((s) => !aRoutine.includes(s.replaces) && !bRoutine.includes(s.with));
+  const gone = away.filter((s) => !aRoad.includes(s.replaces));
+  const waiting = away.filter((s) => aRoad.includes(s.replaces));
+  return { rows, extras, gone, waiting, status };
 }
 
 /**
@@ -644,15 +983,24 @@ function bWith(aRoutine: readonly string[], swaps: readonly PlanSwap[], made: nu
  * - "gone": the A machine it replaces has left A, so swapping it in would
  *   only add a machine to B (the review of Round 2);
  * - "in-a": Routine A holds its machine now, so swapping it in would only
- *   take a machine out of B.
+ *   take a machine out of B;
+ * - "a-later": the A machine it replaces is still on Routine A's road and not
+ *   in Routine A yet (`aRoad`, A's plan's `intended`): a swap planned with the
+ *   starting lineup and kept when B started (`plannedBStart`), waiting for A
+ *   to take its machine. Without `aRoad` it reads as "gone".
  * It waits, never swapped in, until its place's swap is changed (or, for a
- * can't-do, the mark ends).
+ * can't-do, the mark ends; for "a-later", until A takes the machine).
  */
-export type BSwapWait = "cantdo" | "gone" | "in-a";
+export type BSwapWait = "cantdo" | "gone" | "in-a" | "a-later";
 
-export function bSwapWait(s: PlanSwap, aRoutine: readonly string[], held: readonly string[] = []): BSwapWait | null {
+export function bSwapWait(
+  s: PlanSwap,
+  aRoutine: readonly string[],
+  held: readonly string[] = [],
+  aRoad: readonly string[] = [],
+): BSwapWait | null {
   if (held.includes(s.with)) return "cantdo";
-  if (!aRoutine.includes(s.replaces)) return "gone";
+  if (!aRoutine.includes(s.replaces)) return aRoad.includes(s.replaces) ? "a-later" : "gone";
   if (aRoutine.includes(s.with)) return "in-a";
   return null;
 }

@@ -327,6 +327,189 @@ describe("Keep this lineup", () => {
   });
 });
 
+/*
+ * A and B together (the studio setting `newClientsStart`, item 8). AJ, Oct 7
+ * 2026: "Some studios may start building an A and B routine immediately for
+ * a client. So we need to be able to have that customization." The lineup
+ * plans B beside it, against its planned road, and Keep keeps both in ONE
+ * start; Routine B is written with no machines (store.test.ts), because the
+ * consult is not Routine A and B is a copy of A.
+ */
+describe("Start a plan at a studio that starts new clients on A and B together", () => {
+  const idOf = (name: string) => IDS.find((id) => nameOf(id) === name)!;
+  const AB = () => hostOf(NEW_TO_STUDIO, { aAndBTogether: true });
+
+  it("with A alone (Max Strength's default), nothing about B appears and Keep keeps no B", async () => {
+    await mount(<StartPlanPanel host={hostOf(NEW_TO_STUDIO)} firstName="Dana" nameOf={nameOf} routineAId={null} bTarget={{ routineId: null }} />);
+    expect(text()).not.toContain("Routine B, planned with A");
+    await tap(/Keep this lineup/);
+    expect(calls.starts[0].b).toBeUndefined();
+  });
+
+  it("plans B beside the lineup, and Keep keeps both plans in ONE start, B against A's planned road", async () => {
+    await mount(<StartPlanPanel host={AB()} firstName="Dana" nameOf={nameOf} routineAId={null} bTarget={{ routineId: null }} />);
+    expect(text()).toContain("Routine B, planned with A");
+    expect(text()).toContain("B starts at the Wrap-up that starts Routine A, as A with one machine different.");
+    expect(page().querySelector("button[aria-label$=', starts with']")).not.toBeNull();
+    // Nothing is written before Keep, and an untouched B is no unsaved work.
+    expect(calls.starts).toEqual([]);
+    expect(status!.anyDirty()).toBe(false);
+    await tap(/Keep this lineup/);
+    expect(calls.starts).toHaveLength(1);
+    const [s] = calls.starts;
+    // Routine A starts empty: the consult is not Routine A.
+    expect(s.machineIds).toEqual([]);
+    expect(s.b).toBeTruthy();
+    const b = s.b!;
+    expect(b.routineId).toBeNull();
+    expect(b.plan.building).toBe(false);
+    expect(b.plan.swaps!.length).toBeGreaterThan(0);
+    for (const sw of b.plan.swaps!) {
+      expect(s.plan.intended).toContain(sw.replaces);
+      expect(s.plan.intended).not.toContain(sw.with);
+    }
+    expect(b.plan.purposeKinds).toEqual(["variety"]);
+    expect(b.change).toMatchObject({ kind: "start", value: "B planned", byUid: "uid-sam" });
+    expect(b.change.machineIds.slice(0, 2)).toEqual([b.plan.swaps![0]!.replaces, b.plan.swaps![0]!.with]);
+  });
+
+  it("the trainer can change B's first swap, or leave B for later: each is unsaved work until Keep", async () => {
+    await mount(<StartPlanPanel host={AB()} firstName="Dana" nameOf={nameOf} routineAId={null} bTarget={{ routineId: null }} />);
+    const first = page().querySelector<HTMLButtonElement>("button[aria-label$=', starts with']")!;
+    await act(async () => first.click());
+    const strip = page().querySelector(".rpl-bstrip")!;
+    const other = [...strip.querySelectorAll<HTMLButtonElement>(".rpl-chip")].find((c) => c.getAttribute("aria-pressed") === "false")!;
+    const picked = idOf(other.textContent!.trim());
+    await act(async () => other.click());
+    expect(status!.anyDirty()).toBe(true);
+    await tap(/Keep this lineup/);
+    expect(calls.starts[0].b!.plan.swaps![0]!.with).toBe(picked);
+  });
+
+  it("Leave B for later keeps the lineup with no B", async () => {
+    await mount(<StartPlanPanel host={AB()} firstName="Dana" nameOf={nameOf} routineAId={null} bTarget={{ routineId: null }} />);
+    await tap("Leave B for later");
+    expect(text()).toContain("B is left for later.");
+    expect(status!.anyDirty()).toBe(true);
+    await tap(/Keep this lineup/);
+    expect(calls.starts[0].b).toBeUndefined();
+  });
+
+  it("never over a Routine B of the client's own: no B part, and none kept", async () => {
+    await mount(<StartPlanPanel host={AB()} firstName="Dana" nameOf={nameOf} routineAId={null} bTarget={null} />);
+    expect(text()).not.toContain("Routine B, planned with A");
+    await tap(/Keep this lineup/);
+    expect(calls.starts[0].b).toBeUndefined();
+  });
+
+  it("on Programming, an empty Routine B the client has takes the plan, never a second one", async () => {
+    const emptyB = { id: "rB", name: "Routine B", clientId: "c1", machineIds: [] } as unknown as Routine;
+    await mount(
+      <RoutinesTab
+        client={{ id: "c1", firstName: "Dana", homeStudioId: "westlake" } as never}
+        clientId="c1"
+        machines={FLOOR}
+        clientSettings={{}}
+        allLogs={[]}
+        sessions={[]}
+        adjustments={[]}
+        trainers={[]}
+        selectedRoutineTodayId={null}
+        isBActive={false}
+        onEdit={vi.fn()}
+        onToggleB={vi.fn()}
+        view="Routine A"
+        routines={[emptyB]}
+        plan={AB()}
+      />,
+    );
+    await tap(/Keep this lineup/);
+    expect(calls.starts[0].b?.routineId).toBe("rB");
+  });
+
+  /*
+   * The review of item 8: while the setting loaded, or after its read
+   * failed, Start a plan quietly kept A alone at a studio that starts on A
+   * and B together. A read that hasn't answered is unknown, never "A alone".
+   */
+  it("while the studio's setting is being read, B's part says so and Keep waits for it", async () => {
+    await mount(
+      <StartPlanPanel host={hostOf(NEW_TO_STUDIO, { aAndBTogether: "loading" })} firstName="Dana" nameOf={nameOf} routineAId={null} bTarget={{ routineId: null }} />,
+    );
+    expect(text()).toContain("Reading how this studio starts new clients…");
+    expect(button(/Keep this lineup/).disabled).toBe(true);
+    expect(calls.starts).toEqual([]);
+  });
+
+  it("when the setting couldn't be read, B is offered, left for later until the trainer plans it", async () => {
+    await mount(
+      <StartPlanPanel host={hostOf(NEW_TO_STUDIO, { aAndBTogether: "failed" })} firstName="Dana" nameOf={nameOf} routineAId={null} bTarget={{ routineId: null }} />,
+    );
+    expect(text()).toContain("Couldn't read how this studio starts new clients, so B isn't planned with A.");
+    // Offered, not assumed: an untouched part is no unsaved work, and keeps no B.
+    expect(status!.anyDirty()).toBe(false);
+    await tap("Plan B with A");
+    expect(text()).toContain("B starts at the Wrap-up that starts Routine A");
+    expect(status!.anyDirty()).toBe(true);
+    await tap(/Keep this lineup/);
+    expect(calls.starts[0].b?.plan.swaps?.length).toBeGreaterThan(0);
+  });
+
+  it("left as offered when the setting couldn't be read, Keep keeps the lineup with no B", async () => {
+    await mount(
+      <StartPlanPanel host={hostOf(NEW_TO_STUDIO, { aAndBTogether: "failed" })} firstName="Dana" nameOf={nameOf} routineAId={null} bTarget={{ routineId: null }} />,
+    );
+    expect(button(/Keep this lineup/).disabled).toBe(false);
+    await tap(/Keep this lineup/);
+    expect(calls.starts[0].b).toBeUndefined();
+  });
+
+  /*
+   * The review of item 8: B's draft is kept for the starting routine it was
+   * changed on, so open Health notes landing after a change to B moved the
+   * suggestion and dropped the change without a word. A change to B holds
+   * the suggestion, as a change to the lineup does.
+   */
+  it("a change to B holds the suggestion: Health notes landing after it never drop B's swaps", async () => {
+    const panel = (host: PlanHost) => <StartPlanPanel host={host} firstName="Dana" nameOf={nameOf} routineAId={null} bTarget={{ routineId: null }} />;
+    const startFor = async (intakeText: string) => {
+      await mount(panel(hostOf(NEW_TO_STUDIO, { aAndBTogether: true, intakeText })));
+      await tap(/Keep this lineup/);
+      const id = calls.starts[0].plan.templateId;
+      act(() => root?.unmount());
+      document.body.innerHTML = "";
+      calls.starts = [];
+      return id;
+    };
+    // The start each intake suggests on its own: two different ones.
+    const kneeStart = await startFor("Knee pain");
+    const sciaticaStart = await startFor("Sciatica down the left leg");
+    expect(kneeStart).not.toBe(sciaticaStart);
+
+    const before = hostOf(NEW_TO_STUDIO, { aAndBTogether: true, intakeText: "Knee pain" });
+    await mount(panel(before));
+    const first = page().querySelector<HTMLButtonElement>("button[aria-label$=', starts with']")!;
+    await act(async () => first.click());
+    const strip = page().querySelector(".rpl-bstrip")!;
+    const other = [...strip.querySelectorAll<HTMLButtonElement>(".rpl-chip")].find((c) => c.getAttribute("aria-pressed") === "false")!;
+    const picked = idOf(other.textContent!.trim());
+    await act(async () => other.click());
+    // The open Health notes land: the intake now reads as sciatica.
+    await act(async () => {
+      root!.render(
+        <UnsavedChangesProvider>
+          <Probe />
+          {panel({ ...before, intakeText: "Sciatica down the left leg" })}
+        </UnsavedChangesProvider>,
+      );
+    });
+    await tap(/Keep this lineup/);
+    const kept = calls.starts[0];
+    expect(kept.b!.plan.swaps![0]!.with).toBe(picked);
+    expect(kept.plan.templateId).toBe(kneeStart);
+  });
+});
+
 /* ── The Lineup ─────────────────────────────────────────────────────────── */
 
 const PLAN: RoutinePlan = {

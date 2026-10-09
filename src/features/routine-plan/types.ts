@@ -186,6 +186,9 @@ export interface CantDo {
  * `value` that says which of B's moves it was:
  * - "start" with "B" (`B_START`): `machineIds` the first swap,
  *   `[replaces, with]`, B starting as A with one machine different;
+ * - "start" with "B planned" (`B_PLANNED`, the studio's "A and B
+ *   together"): B planned with the starting lineup and no machines yet,
+ *   `machineIds` the planned swaps' pairs, `[replaces, with, …]`;
  * - "swap" with "made" (`B_SWAP_MADE`): a planned swap went into B,
  *   `[replaces, with]`, one change a swap when two or three go in at once;
  * - "swap" with "planned" (`B_SWAP_PLANNED`): B's planned swap for an A

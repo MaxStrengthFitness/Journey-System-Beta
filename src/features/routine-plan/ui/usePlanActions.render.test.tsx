@@ -159,6 +159,47 @@ describe("Keep this lineup: one start, never awaited", () => {
     expect(said).toEqual(["Couldn't save that change to the plan. Check the connection and try again."]);
     expect(refused).toBe(1);
   });
+
+  /*
+   * A and B together (the studio's `newClientsStart`, item 8; AJ, Oct 7 2026:
+   * "Some studios may start building an A and B routine immediately for a
+   * client"): Keep hands the planned B to the same startPlan, ONE batch, and
+   * the profile draws both routines at once, Routine B with no machines (the
+   * consult is not Routine A, and B is a copy of A).
+   */
+  it("keeps B planned beside the lineup in the same startPlan, Routine B drawn empty with its plan", async () => {
+    const B_PLAN: RoutinePlan = {
+      purpose: "Variety: the same regions, different machines",
+      purposeKinds: ["variety"],
+      intended: ["m-ext", "m-compound-row", "m-lumbar", "m-chest-press"],
+      swaps: [{ replaces: "m-leg-press", with: "m-ext" }],
+      building: false,
+      madeByUid: "uid-sam",
+    };
+    store.startPlan.mockReturnValue({ routineId: "r-a", bRoutineId: "r-b", commit: Promise.resolve() });
+    await mount([
+      { id: "temp-a", name: "Routine A", clientId: "c1", machineIds: [] } as Routine,
+      { id: "temp-b", name: "Routine B", clientId: "c1", machineIds: [] } as Routine,
+    ]);
+    const bChange = { kind: "start" as const, machineIds: ["m-leg-press", "m-ext"], value: "B planned", byUid: "uid-sam" };
+    await act(async () => {
+      actions.start({
+        routineId: null,
+        machineIds: [],
+        plan: PLAN,
+        change: { kind: "start", machineIds: PLAN.intended, byUid: "uid-sam" },
+        b: { routineId: null, plan: B_PLAN, change: bChange },
+      });
+    });
+    expect(store.startPlan).toHaveBeenCalledTimes(1);
+    const [, , b] = store.startPlan.mock.calls[0];
+    expect(b).toEqual({ routineId: null, plan: B_PLAN, change: bChange });
+    expect(routines.map((r) => [r.id, r.name, r.machineIds])).toEqual([
+      ["r-a", "Routine A", []],
+      ["r-b", "Routine B", []],
+    ]);
+    expect(routines[1].plan).toEqual(B_PLAN);
+  });
 });
 
 describe("a change on the Lineup", () => {
@@ -276,6 +317,42 @@ describe("B, molded in: B follows A, and Start B", () => {
       actions.save("r-b", { plan: B_PLAN, change: { kind: "swap", machineIds: ["m-compound-row", "m-simple-row"], value: "made", byUid: "uid-sam" }, machineIds: ["m-ext", "m-simple-row", "m-lumbar"] });
     });
     expect(store.savePlanChange.mock.calls.map((c) => "follow" in c[2])).toEqual([false, false]);
+  });
+
+  /*
+   * The review of item 8: while Routine A is empty, a B planned with the
+   * starting lineup never followed a change to A's road, so its swaps named
+   * machines that had left it. A change to A's plan takes B's plan with it,
+   * in the same batch, and never Routine B's machines.
+   */
+  it("a change to the road while Routine A is empty takes a planned B's plan with it, never Routine B's machines", async () => {
+    store.savePlanChange.mockReturnValue(Promise.resolve());
+    const emptyA = { ...A_ROUTINE, machineIds: [] } as Routine;
+    const plannedB = {
+      ...B_ROUTINE,
+      machineIds: [],
+      plan: { ...B_PLAN, intended: ["m-ext", "m-simple-row", "m-lumbar", "m-chest-press"] },
+    } as Routine;
+    await mount([emptyA, plannedB]);
+    // A Lineup swap on the road: the compound row becomes the pulldown, at its place.
+    await act(async () => {
+      actions.save("r-a", {
+        plan: { ...PLAN, intended: ["m-leg-press", "m-pulldown", "m-lumbar", "m-chest-press"] },
+        change: { kind: "swap", machineIds: ["m-compound-row", "m-pulldown"], byUid: "uid-sam" },
+      });
+    });
+    expect(store.savePlanChange).toHaveBeenCalledTimes(1);
+    const [, routineId, write] = store.savePlanChange.mock.calls[0];
+    expect(routineId).toBe("r-a");
+    expect(write.follow).toEqual({
+      routineId: "r-b",
+      intended: ["m-ext", "m-simple-row", "m-lumbar", "m-chest-press"],
+      swaps: [SWAPS[0], { replaces: "m-pulldown", with: "m-simple-row" }],
+    });
+    // Drawn at once: B's plan follows the road, Routine B stays empty.
+    const b = routines.find((r) => r.id === "r-b")!;
+    expect(b.machineIds).toEqual([]);
+    expect(b.plan?.swaps).toEqual([SWAPS[0], { replaces: "m-pulldown", with: "m-simple-row" }]);
   });
 
   it("Start B issues ONE startRoutineB and draws Routine B before the batch answers", async () => {

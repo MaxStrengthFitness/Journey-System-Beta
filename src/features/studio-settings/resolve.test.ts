@@ -4,7 +4,7 @@
  * nobody chose (Sep 28 2026).
  */
 import { describe, expect, it } from "vitest";
-import { SETTINGS } from "./registry";
+import { GROUP_LABEL, GROUP_ORDER, NEW_CLIENTS_START, SETTINGS, SETTING_BY_KEY } from "./registry";
 import { formatSetting, inactiveProblem, parseSetting, resolveAll, resolveSetting, usable } from "./resolve";
 
 describe("resolveSetting", () => {
@@ -107,6 +107,56 @@ describe("parseSetting and formatSetting", () => {
     expect(formatSetting("weeklyMaintenanceDay", 1)).toBe("Monday");
     expect(formatSetting("weeklyMaintenanceDay", null)).toBe("None");
     expect(formatSetting("lapsedDays", 45)).toBe("45");
+  });
+});
+
+/*
+ * How a new client starts (the first-session round, item 8). AJ, Oct 7 2026:
+ * "Some studios may start building an A and B routine immediately for a
+ * client. So we need to be able to have that customization." A "choice":
+ * stored as its number (1 A alone, the Academy's way and Max Strength's
+ * default; 2 A and B together), so the store and the rules stay as they were.
+ */
+describe("newClientsStart: A alone, or A and B together", () => {
+  it("is a choice of two, A alone by default, in its own group, with its readers", () => {
+    const def = SETTING_BY_KEY.newClientsStart;
+    expect(def.kind).toBe("choice");
+    expect(def.group).toBe("newClients");
+    expect(GROUP_LABEL.newClients).toBe("New clients");
+    expect(GROUP_ORDER).toContain("newClients");
+    expect(def.choices?.map((c) => [c.value, c.label])).toEqual([
+      [NEW_CLIENTS_START.aAlone, "A alone"],
+      [NEW_CLIENTS_START.aAndB, "A and B together"],
+    ]);
+    expect(def.appDefault).toBe(NEW_CLIENTS_START.aAlone);
+    expect(def.readers).toEqual(expect.arrayContaining(["features/routine-plan/ui/StartPlanPanel.tsx", "features/routine-plan/ui/useBriefingPlan.ts"]));
+  });
+
+  it("resolves through the three layers: the studio's own, head office's, the app's", () => {
+    expect(resolveSetting("newClientsStart", { studio: null, company: null })).toEqual({ key: "newClientsStart", value: 1, source: "app" });
+    expect(resolveSetting("newClientsStart", { studio: {}, company: { newClientsStart: 2 } })).toMatchObject({ value: 2, source: "company" });
+    expect(resolveSetting("newClientsStart", { studio: { newClientsStart: 1 }, company: { newClientsStart: 2 } })).toMatchObject({
+      value: 1,
+      source: "studio",
+    });
+    expect(resolveAll({ studio: { newClientsStart: 2 }, company: null }).newClientsStart).toMatchObject({ value: 2, source: "studio" });
+  });
+
+  it("skips a value that isn't one of its choices, never bending it to the nearest", () => {
+    const def = SETTING_BY_KEY.newClientsStart;
+    for (const bad of [0, 3, 1.5, "2", null, true]) expect(usable(def, bad)).toBeUndefined();
+    expect(resolveSetting("newClientsStart", { studio: { newClientsStart: 3 }, company: { newClientsStart: "AB" } })).toMatchObject({
+      value: 1,
+      source: "app",
+    });
+  });
+
+  it("reads an editor's text and says each choice in words", () => {
+    expect(parseSetting("newClientsStart", "2")).toEqual({ value: 2 });
+    expect(parseSetting("newClientsStart", "")).toEqual({ clear: true });
+    expect(parseSetting("newClientsStart", "7")).toEqual({ error: "Choose A alone or A and B together." });
+    expect(formatSetting("newClientsStart", 1)).toBe("A alone");
+    expect(formatSetting("newClientsStart", 2)).toBe("A and B together");
   });
 });
 

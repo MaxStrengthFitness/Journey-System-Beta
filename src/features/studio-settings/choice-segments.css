@@ -1,0 +1,61 @@
+/*
+ * A "choice" setting's segments (ChoiceSegments.tsx): drawn in the admin kit
+ * on both editors, so in its palette. Each segment a 40px button on the firm
+ * 3:1 edge (the starting routines' picks, .srt-pick, are the recipe), the
+ * picked one the blue on its tint; the words wrap, never cut short.
+ */
+.sts-seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sts-seg__opt {
+  display: flex;
+  flex: 1 1 180px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--adm-border-strong);
+  border-radius: 12px;
+  background: var(--adm-raised);
+  color: var(--adm-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sts-seg__opt[aria-pressed="true"] {
+  border-color: var(--adm-live);
+  background-color: var(--adm-live-fill);
+  color: var(--adm-live-text);
+}
+
+.sts-seg__opt:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: 2px;
+}
+
+.sts-seg__opt:disabled {
+  cursor: not-allowed;
+}
+
+.sts-seg__label {
+  overflow-wrap: anywhere;
+}
+
+.sts-seg__sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--adm-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.sts-seg__opt[aria-pressed="true"] .sts-seg__sub {
+  color: var(--adm-live-text);
+}

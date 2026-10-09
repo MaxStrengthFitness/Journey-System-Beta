@@ -57,7 +57,7 @@ import type { BriefingPlanView } from "../briefing-plan";
 import { academyStartingRoutines, startingPlanFromRoutine } from "../starting-routines";
 import type { RoutinePlan } from "../types";
 import { BriefingDoors, BriefingJourneyLine, BriefingPlanCard } from "./BriefingPlanCard";
-import { floorMachinesOf, machineNamer } from "./host";
+import { floorMachinesOf, machineNamer, type NewClientsStartRead } from "./host";
 import { useBriefingPlan, type BriefingPlanState } from "./useBriefingPlan";
 
 const IDS = [
@@ -82,6 +82,8 @@ function Harness({
   who = WHO,
   firstName = "Dana",
   limits = null,
+  aAndBTogether = false,
+  bPlannable = true,
 }: {
   view: BriefingPlanView;
   intake?: string | null;
@@ -89,6 +91,8 @@ function Harness({
   who?: typeof WHO | null;
   firstName?: string;
   limits?: React.ReactNode;
+  aAndBTogether?: NewClientsStartRead;
+  bPlannable?: boolean;
 }) {
   const state = useBriefingPlan({
     view,
@@ -99,6 +103,8 @@ function Harness({
     who,
     todayYmd: TODAY,
     kept,
+    aAndBTogether,
+    bPlannable,
   });
   latest = state;
   if (view !== "starting" && view !== "kept") return null;
@@ -416,5 +422,105 @@ describe("the other doors", () => {
     await tap(/Starting out here/);
     await tap(/Trained here before/);
     expect(onPick.mock.calls).toEqual([["studio"], ["journey"]]);
+  });
+});
+
+/*
+ * A and B together (the studio setting `newClientsStart`, item 8). AJ, Oct 7
+ * 2026: "Some studios may start building an A and B routine immediately for
+ * a client. So we need to be able to have that customization." The walk-in
+ * card plans B beside the starting plan, against its road, and Start hands
+ * both up: the tracker writes Routine B with no machines in the Start batch.
+ */
+describe("a walk-in at a studio that starts new clients on A and B together", () => {
+  it("with A alone, the card says nothing about B and Start hands up no B", async () => {
+    await mount(<Harness view="starting" />);
+    expect(text()).not.toContain("B · planned with A");
+    expect(has("Change B")).toBe(false);
+    expect(latest!.startPlan?.b).toBeUndefined();
+  });
+
+  it("plans B against the plan's road, says its first swap at a glance, and Start hands it up with the plan", async () => {
+    await mount(<Harness view="starting" aAndBTogether />);
+    const b = latest!.startPlan!.b!;
+    expect(b).toBeTruthy();
+    const first = b.plan.swaps![0]!;
+    expect(text()).toContain(`B · planned with A: ${nameOf(first.with)} for ${nameOf(first.replaces)} first`);
+    for (const sw of b.plan.swaps!) {
+      expect(expected.plan.intended).toContain(sw.replaces);
+      expect(expected.plan.intended).not.toContain(sw.with);
+    }
+    expect(b.plan.building).toBe(false);
+    expect(b.change).toMatchObject({ kind: "start", value: "B planned", byUid: "uid-sam" });
+    expect(latest!.bChanged).toBe(false);
+  });
+
+  it("Change B opens B's part; Leave B for later hands up no B, and counts as a change", async () => {
+    await mount(<Harness view="starting" aAndBTogether />);
+    await tap("Change B");
+    expect(text()).toContain("Routine B, planned with A");
+    await tap("Leave B for later");
+    expect(latest!.startPlan!.b).toBeUndefined();
+    expect(latest!.bChanged).toBe(true);
+    await tap("Done");
+    expect(text()).toContain("B · left for later");
+    // The briefing's leave gate's discard puts B back as suggested.
+    await act(async () => latest!.reset());
+    expect(latest!.startPlan!.b).toBeTruthy();
+    expect(latest!.bChanged).toBe(false);
+  });
+
+  it("never plans B over a Routine B of the client's own", async () => {
+    await mount(<Harness view="starting" aAndBTogether bPlannable={false} />);
+    expect(has("Change B")).toBe(false);
+    expect(latest!.startPlan?.b).toBeUndefined();
+  });
+
+  /*
+   * The review of item 8: a Start pressed while the setting loaded, or after
+   * its read failed, quietly kept A alone. Start is never held: while the
+   * setting is read the card says so, and a read that failed offers B.
+   */
+  it("while the studio's setting is being read, the card says so, and Start (never held) hands up the plan with no B", async () => {
+    await mount(<Harness view="starting" aAndBTogether="loading" />);
+    expect(text()).toContain("B · reading how this studio starts new clients…");
+    expect(has("Change B")).toBe(false);
+    expect(latest!.startPlan).toBeTruthy();
+    expect(latest!.startPlan!.b).toBeUndefined();
+  });
+
+  it("when the setting couldn't be read, the card offers B, left for later until the trainer plans it", async () => {
+    await mount(<Harness view="starting" aAndBTogether="failed" />);
+    expect(text()).toContain("B · couldn't read how this studio starts new clients");
+    expect(latest!.startPlan!.b).toBeUndefined();
+    expect(latest!.bChanged).toBe(false);
+    await tap("Change B");
+    await tap("Plan B with A");
+    expect(latest!.startPlan!.b).toBeTruthy();
+    expect(latest!.bChanged).toBe(true);
+  });
+
+  /*
+   * The review of item 8: B's draft is kept for the starting routine it was
+   * changed on, and only a change to today held the suggestion, so Health
+   * notes landing after a change to B moved the start and dropped it.
+   */
+  it("a change to B holds the suggestion: Health notes landing after it never drop B's swaps", async () => {
+    await mount(<Harness view="starting" aAndBTogether intake="Knee pain" />);
+    const kneeStart = latest!.startPlan!.plan.templateId;
+    expect(kneeStart).not.toBe("academy-low-back");
+    await tap("Change B");
+    const first = page().querySelector<HTMLButtonElement>("button[aria-label$=', starts with']")!;
+    await tap(first);
+    const strip = page().querySelector(".rpl-bstrip")!;
+    const other = [...strip.querySelectorAll<HTMLButtonElement>(".rpl-chip")].find((c) => c.getAttribute("aria-pressed") === "false")!;
+    const picked = FLOOR.find((m) => nameOf(m.id) === other.textContent!.trim())!.id;
+    await tap(other);
+    await tap("Done");
+    // The open Health notes land: the intake now reads as sciatica.
+    await rerender(<Harness view="starting" aAndBTogether intake="Sciatica down the left leg" />);
+    expect(latest!.startPlan!.plan.templateId).toBe(kneeStart);
+    expect(latest!.startPlan!.b!.plan.swaps![0]!.with).toBe(picked);
+    expect(latest!.bChanged).toBe(true);
   });
 });

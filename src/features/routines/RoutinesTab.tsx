@@ -25,7 +25,7 @@ import { ChevronDown, Pencil, PlayCircle, Sparkles } from "lucide-react";
 import type { Client, ClientMachineSetting, ExerciseLog, Machine, Routine, RoutineAdjustment, Trainer, WorkoutSession } from "../../types";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { aRunsLine, aRunsSince, bSwitchStep } from "../routine-plan/b-routine";
+import { aRunsLine, aRunsSince, bSwitchStep, plannedBTarget } from "../routine-plan/b-routine";
 import { planFromRoutine, signedChange } from "../routine-plan/lineup";
 import { bModeOf, type BSide } from "../routine-plan/ui/BColumn";
 import { BPlanView } from "../routine-plan/ui/BPlanView";
@@ -443,7 +443,15 @@ export function RoutinesTab({
       <div className="rt-body">
         {showA && aMode === "panel" && <RoutinePanel {...headA} rows={rowsA} onSelectMachine={onSelectMachine} foot={addPlan} />}
         {showA && aMode === "start" && host && (
-          <StartPlanPanel host={host} firstName={firstName} nameOf={nameOf} routineAId={aSaved ? (a.id ?? null) : null} />
+          <StartPlanPanel
+            host={host}
+            firstName={firstName}
+            nameOf={nameOf}
+            routineAId={aSaved ? (a.id ?? null) : null}
+            // Where B planned with the lineup goes, at a studio starting new clients on A and B together:
+            // never over a Routine B of the client's own.
+            bTarget={plannedBTarget([b])}
+          />
         )}
         {showA && aMode === "lineup" && host && aPlan && (
           <PlanLineup
