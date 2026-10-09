@@ -72,7 +72,23 @@ import { nothingKind } from "../features/session-record/nothing-on-screen";
 import { nextRoutine } from "../features/routines/next-routine";
 import { addStartPlanToBatch } from "../features/routine-plan/store";
 import { startChangeOf, type StartPlanAtStart } from "../features/routine-plan/briefing-plan";
-import { todayFor } from "../features/routine-plan/plan";
+import { isStartingColumnChoice, todayFor } from "../features/routine-plan/plan";
+import { orderEffects } from "../features/routine-plan/order-effects";
+import {
+  hasWeightOnFile,
+  setLoggedToday,
+  startingRangeSlot,
+  type StartingRangeSlot,
+  type TodayChange,
+} from "../features/routine-plan/session-plan";
+import { floorCanonical } from "../features/routine-plan/starting-plan";
+import type { PlanWrite } from "../features/routine-plan/lineup";
+import { machineNamer } from "../features/routine-plan/ui/host";
+import { useSessionPlan } from "../features/routine-plan/ui/useSessionPlan";
+import { SessionPlanSheet } from "../features/routine-plan/ui/SessionPlanSheet";
+import { SessionOrderLine } from "../features/routine-plan/ui/SessionOrderLine";
+import { StartingRangeSheet } from "../features/routine-plan/ui/StartingRangeSheet";
+import { knownElsewhere } from "../features/machine-menu/header-words";
 import { WatchingSession } from "../features/session-record/WatchingSession";
 import {
   firstOpenMachine,
@@ -163,7 +179,7 @@ import {
 } from "../lib/log-validation";
 import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL, isBegunLog, takenOutForToday, TAKEN_OUT_OUTCOME } from "../lib/set-outcome";
 import { canQuoteSessionNumber, coverageOfClient, homeCutoverOf } from "../lib/client-coverage";
-import { ownedWindow, sessionNumberTag } from "../lib/history-claims";
+import { noMachineHistoryLine, ownedWindow, sessionNumberTag } from "../lib/history-claims";
 import { priorHistoryOf } from "../lib/prior-history";
 import { sessionTimingFields, toEpochMs } from "../lib/session-timing";
 import {
@@ -378,12 +394,18 @@ export function WorkoutTrackerView({
    * moment they are (features/session-record/start-plan.ts). Keyed by the
    * client, so a listener re-opened for the same client keeps it.
    */
-  const [knownFor, setKnownFor] = useState<{ routines: string | null; settings: string | null }>({
+  const [knownFor, setKnownFor] = useState<{ routines: string | null; settings: string | null; settingsRead: string | null }>({
     routines: null,
     settings: null,
+    settingsRead: null,
   });
   const routinesKnown = !!clientId && knownFor.routines === clientId;
   const settingsKnown = !!clientId && knownFor.settings === clientId;
+  /* The settings ARRIVED (a snapshot answered), as opposed to known: a failed
+     read makes them known as "none" for the prefill, which only fills a
+     blank, but "no weight on file" may never be said off a failed read (the
+     Academy's starting range, the first-session design round, Oct 8 2026). */
+  const settingsRead = !!clientId && knownFor.settingsRead === clientId;
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   /* The client's machine totals (the last set on each machine: Start's
      prefilled weights) have answered. They live in their own document since
@@ -1107,7 +1129,9 @@ export function WorkoutTrackerView({
             settingsMap[data.machineId] = data;
           });
           setClientMachineSettings(settingsMap);
-          setKnownFor((k) => (k.settings === clientId ? k : { ...k, settings: clientId }));
+          setKnownFor((k) =>
+            k.settings === clientId && k.settingsRead === clientId ? k : { ...k, settings: clientId, settingsRead: clientId },
+          );
         },
         (error) => {
           if (!settingsArrived) {
@@ -1441,6 +1465,12 @@ export function WorkoutTrackerView({
    * day one while it is empty), never an empty list in place of day one.
    */
   const seededMachinesForSession = useRef<string | null>(null);
+  /* The session whose list is on screen: until today's list is seeded, an
+     empty list is "not read yet", so the empty Now Bar offers nothing to add
+     (an add would be recorded as the session's whole list, and the routine's
+     machines, still loading, would be dropped). The first-session design
+     round, Oct 8 2026. */
+  const [seededSessionId, setSeededSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     const sessionId = currentSession?.id ?? null;
@@ -1453,6 +1483,7 @@ export function WorkoutTrackerView({
     const recorded = currentSession?.sessionMachineIds;
     if (recorded && recorded.length > 0) {
       seededMachinesForSession.current = sessionId;
+      setSeededSessionId(sessionId);
       setActiveMachineIds(recorded);
       return;
     }
@@ -1460,14 +1491,17 @@ export function WorkoutTrackerView({
     const routine = routines.find((r) => r.id === currentSession?.routineId);
     if (routine) {
       seededMachinesForSession.current = sessionId;
+      setSeededSessionId(sessionId);
       setActiveMachineIds(Array.isArray(recorded) ? [...recorded] : todayFor({ routine: routine.machineIds, plan: routine.plan }));
     } else if (!currentSession?.routineId && Array.isArray(recorded)) {
       // Started with nothing chosen: the session's own empty list.
       seededMachinesForSession.current = sessionId;
+      setSeededSessionId(sessionId);
       setActiveMachineIds([]);
     } else if (!currentSession?.routineId && floorMachines.length > 0) {
       // No list on record and no routine to read (unassigned tracking): the floor is the list.
       seededMachinesForSession.current = sessionId;
+      setSeededSessionId(sessionId);
       setActiveMachineIds(floorMachines.map((m) => m.id!));
     }
     // A routineId we have not loaded yet: leave the latch unset and try again
@@ -3488,6 +3522,180 @@ export function WorkoutTrackerView({
   );
   const closeMachineMenu = React.useCallback(() => setMenuMachineId(null), []);
 
+  /*
+   * ROUTINE A'S PLAN ON THE FLOOR (the first-session design round, Oct 8
+   * 2026, §4.6; features/routine-plan/session-plan.ts). The plan's next
+   * machine on the last machine and on an empty Now Bar, the Academy's
+   * starting range on a first time on a machine, "The plan · 3 of 6" in the
+   * grid's corner, and one calm order-effect line under the grid.
+   *
+   * AJ, Oct 7 2026 (Q6): "Any trainer who trains the client can definitely
+   * change the plan ... You should be able to change that and make the call
+   * as a trainer because you're training them that day." So the session may
+   * change Routine A's PLAN, through routine-plan/store.ts alone
+   * (`useSessionPlan`, never awaited); adding a machine is TODAY only
+   * (`applySessionMachineIds`), and the Wrap-up decides what the routine
+   * keeps.
+   */
+  const planTodayYmd = studioTodayKey();
+  const planWho = useMemo(
+    () => (user?.uid ? { uid: user.uid, ...(authTrainer?.fullName ? { name: authTrainer.fullName } : null) } : null),
+    [user?.uid, authTrainer?.fullName],
+  );
+  const planNote = useMemo(
+    () =>
+      clientId && user?.uid && authTrainer
+        ? {
+            clientId,
+            studioId: sessionNoteStudioId(selectedClient, contextActiveStudioId || authTrainer.primaryHomeStudioId),
+            author: { id: user.uid, initials: authTrainer.initials || "", fullName: authTrainer.fullName || "" },
+            link: sessionLinkOf(currentSession, planTodayYmd),
+          }
+        : null,
+    [clientId, user?.uid, authTrainer, selectedClient, contextActiveStudioId, currentSession, planTodayYmd],
+  );
+  const sessionPlan = useSessionPlan({
+    routines,
+    sessionId: currentSession?.id ?? null,
+    sessionRoutineId: currentSession?.routineId ?? null,
+    today: activeMachineIds,
+    floor: floorMachines,
+    todayYmd: planTodayYmd,
+    who: planWho,
+    onError: toastError,
+    note: planNote,
+  });
+  const planNameOf = useMemo(() => machineNamer(floorMachines, machines), [floorMachines, machines]);
+  /* Today's list is on screen: before it is seeded, the plan's "next" would
+     be its first machine, and an add would be recorded as the whole list. */
+  const todaySeeded = !!currentSession?.id && seededSessionId === currentSession.id;
+  const planNextId = currentSession && todaySeeded ? sessionPlan.next : null;
+  const planNextName = planNextId
+    ? (gridRows.find((r) => r.machine.id === planNextId)?.machine.name ?? planNameOf(planNextId))
+    : null;
+  /* Stable for the memo'd Now Bar: a new object only when the machine changes. */
+  const planNext = useMemo(
+    () => (planNextId && planNextName ? { id: planNextId, name: planNextName } : null),
+    [planNextId, planNextName],
+  );
+  /* "Next in the plan · Add": today's order only, through the one recorder,
+     and the machine becomes the one in hand. */
+  const planAddRef = useRef<(id: string) => void>(() => {});
+  planAddRef.current = (id: string) => {
+    flushAllLogWrites();
+    if (!activeMachineIds.includes(id)) applySessionMachineIds([...activeMachineIds, id]);
+    setFocusMachineOverride(id);
+  };
+  const onAddPlanned = React.useCallback((id: string) => planAddRef.current(id), []);
+
+  /* The Academy's starting range (AJ's "3a"), for the machine in hand: only
+     on a first time here (no weight on file, no set on record, no running
+     total that knows it, and the totals, the settings and the routines all
+     read: a read not answered, or failed, is unknown, never "no weight"),
+     only for a client Journey can call new to it (the whole story is
+     Journey's, or Routine A's plan started here or has a column picked; a
+     column can be picked on the plan's sheet from the corner too), and only
+     in the column the trainer picked; never a number in the weight. */
+  const [rangeSheet, setRangeSheet] = useState<"pick" | "about" | null>(null);
+  const onStartingRange = React.useCallback((mode: "pick" | "about") => setRangeSheet(mode), []);
+  const rangePlan = sessionPlan.plan;
+  const rangeFirstTimeKnown =
+    clientCoverage === "complete" ||
+    !!rangePlan?.dayOne?.length ||
+    !!rangePlan?.templateId ||
+    // A column a trainer picked for this client (on the plan, or in this
+    // session from the plan's sheet before its echo arrives).
+    (isStartingColumnChoice(sessionPlan.column) && sessionPlan.column !== "none");
+  const focusRange = useMemo<StartingRangeSlot>(() => {
+    if (!currentSession || !gridFocusRow || !rangeFirstTimeKnown || !settingsRead || !routinesKnown) return null;
+    const id = gridFocusRow.machine.id;
+    return startingRangeSlot({
+      canonicalMachineId: floorCanonical(sessionPlan.floorList)(id),
+      column: sessionPlan.column,
+      forToday: sessionPlan.columnForToday,
+      hasWeight: hasWeightOnFile({
+        prescribedWeight: gridFocusRow.prescribedWeight,
+        setsOnRecord: Object.keys(gridFocusRow.sets).length,
+        knownElsewhere: knownElsewhere(
+          {
+            metric: selectedClient?.currentMachineMetrics?.[id] ?? null,
+            stat: selectedClient?.machineStats?.[id] ?? null,
+          },
+          planTodayYmd,
+        ),
+        totalsKnown,
+      }),
+    });
+  }, [
+    currentSession,
+    gridFocusRow,
+    rangeFirstTimeKnown,
+    settingsRead,
+    routinesKnown,
+    sessionPlan.floorList,
+    sessionPlan.column,
+    sessionPlan.columnForToday,
+    selectedClient?.currentMachineMetrics,
+    selectedClient?.machineStats,
+    planTodayYmd,
+    totalsKnown,
+  ]);
+
+  /* "First time on this machine" in the Now Bar's readout (§4.6), the
+     history-claims words, on the machine menu's gate: every session's sets
+     read, the totals read, nothing on record here and no running total that
+     knows the machine. Only the confident sentence, for a client whose whole
+     story is Journey's; for anyone else the bar stays quiet (the Oct 3
+     round: "the text feels like clutter"), and the machine menu says
+     "Nothing recorded on this machine". */
+  const focusNoHistory = useMemo(() => {
+    if (!currentSession || !gridFocusRow || !totalsKnown || !sessionsAllRead || clientCoverage !== "complete") return null;
+    if (Object.keys(gridFocusRow.sets).length > 0) return null;
+    const id = gridFocusRow.machine.id;
+    const elsewhere = knownElsewhere(
+      { metric: selectedClient?.currentMachineMetrics?.[id] ?? null, stat: selectedClient?.machineStats?.[id] ?? null },
+      planTodayYmd,
+    );
+    return elsewhere ? null : noMachineHistoryLine(clientCoverage);
+  }, [
+    currentSession,
+    gridFocusRow,
+    totalsKnown,
+    sessionsAllRead,
+    clientCoverage,
+    selectedClient?.currentMachineMetrics,
+    selectedClient?.machineStats,
+    planTodayYmd,
+  ]);
+
+  /* The plan's sheet, from the grid's corner: a change there is the plan's
+     (issued, never awaited), and it reaches TODAY's order only for a
+     machine with no set logged today. */
+  const [planSheetOpen, setPlanSheetOpen] = useState(false);
+  const onOpenPlan = React.useCallback(() => setPlanSheetOpen(true), []);
+  const onPlanWrite = (write: PlanWrite, today: TodayChange | null) => {
+    sessionPlan.write(write);
+    if (!today) return;
+    applySessionMachineIds(today.next);
+    const moved = today.moved.find((m) => m.from === gridFocusMachineId);
+    if (moved?.to) setFocusMachineOverride(moved.to);
+  };
+  const planLoggedToday = (id: string) => setLoggedToday(gridLiveValues[id]);
+
+  /* One calm line when today's order trips one of the Academy's sequencing
+     rules: a sentence, never a block (routine-plan/order-effects.ts). */
+  const hasLiveSession = !!currentSession;
+  /* A Free session (no routine) runs the whole floor in its walking order,
+     which nobody chose: it says nothing about order. */
+  const runsWholeFloor =
+    !currentSession?.routineId &&
+    floorMachines.length > 0 &&
+    floorMachines.every((m) => !m.id || activeMachineIds.includes(m.id));
+  const todayEffects = useMemo(
+    () => (hasLiveSession && !runsWholeFloor ? orderEffects(activeMachineIds, planNameOf, sessionPlan.floorList) : []),
+    [hasLiveSession, runsWholeFloor, activeMachineIds, planNameOf, sessionPlan.floorList],
+  );
+
   /* Which of the three screens to draw - the order matters and is a tested
      rule (lib/tracker-screen.ts). After Finish the sessions stream reports
      "nothing running" and turns pre-session mode on; checking the briefing
@@ -4211,6 +4419,8 @@ export function WorkoutTrackerView({
           onCommit={flushAllLogWrites}
           onOpenMachine={(id) => setMenuMachineId(id)}
           onReorder={() => setIsOrderSheetOpen(true)}
+          planNext={planNext}
+          onAddPlanned={onAddPlanned}
           step={2}
           /* A card with no past times says what that means, the machine
              menu's way: never "first time" for a machine a running total
@@ -4260,6 +4470,8 @@ export function WorkoutTrackerView({
                 allCount={gridRows.length}
                 onShowAll={setShowAllMachines}
                 onReorder={currentSession ? () => setIsOrderSheetOpen(true) : undefined}
+                plan={currentSession && sessionPlan.plan && sessionPlan.progress ? { have: sessionPlan.progress.have, of: sessionPlan.progress.of } : null}
+                onPlan={onOpenPlan}
                 onKey={() => setIsLegendOpen(true)}
               />
             }
@@ -4281,6 +4493,7 @@ export function WorkoutTrackerView({
             olderRail={false}
           />
         )}
+        {gridLive && todayEffects.length > 0 && <SessionOrderLine effects={todayEffects} />}
       </div>
 
       {/* Zone 4 — "The Now". Everything between walking up to a machine and
@@ -4303,7 +4516,15 @@ export function WorkoutTrackerView({
             flushAllLogWrites();
             if (gridNextRow) setFocusMachineOverride(gridNextRow.machine.id);
           }}
-          onAddMachine={() => setIsOrderSheetOpen(true)}
+          /* Until today's list is on screen the empty bar offers nothing:
+             an add then would be recorded as the session's whole list. */
+          onAddMachine={todaySeeded ? () => setIsOrderSheetOpen(true) : undefined}
+          planNext={planNext}
+          onAddPlanned={onAddPlanned}
+          nothingToday={todaySeeded && activeMachineIds.length === 0}
+          startingRange={focusRange}
+          onStartingRange={onStartingRange}
+          noHistoryLine={focusNoHistory}
           flagLine={
             gridFocusRow
               ? flagLineOf(
@@ -4340,6 +4561,51 @@ export function WorkoutTrackerView({
           focusId={gridFocusMachineId}
           onChange={applySessionMachineIds}
           onFocus={setFocusMachineOverride}
+        />
+      )}
+
+      {/* Routine A's plan, from the grid's corner (§4.6): mounted while open. */}
+      {currentSession && planSheetOpen && sessionPlan.routineA && sessionPlan.plan && (
+        <SessionPlanSheet
+          open
+          onClose={() => setPlanSheetOpen(false)}
+          firstName={clientFirstName(selectedClient, "")}
+          plan={sessionPlan.plan}
+          routine={sessionPlan.routineA.machineIds ?? []}
+          today={activeMachineIds}
+          runsA={sessionPlan.runsA}
+          floor={sessionPlan.floorList}
+          nameOf={planNameOf}
+          todayYmd={planTodayYmd}
+          /* Re-plan's starting routines are the studio the session is at,
+             as the briefing's plan card and Programming read them. */
+          studioId={contextActiveStudioId || selectedClient?.homeStudioId || null}
+          who={planWho}
+          loggedToday={planLoggedToday}
+          onWrite={onPlanWrite}
+          onHealthNote={sessionPlan.healthNote}
+          startingColumn={sessionPlan.column}
+          onStartingColumn={() => {
+            setPlanSheetOpen(false);
+            setRangeSheet("pick");
+          }}
+        />
+      )}
+
+      {/* The Academy's starting range: the column, picked once per client. */}
+      {currentSession && rangeSheet && (
+        <StartingRangeSheet
+          open
+          mode={rangeSheet}
+          firstName={clientFirstName(selectedClient, "")}
+          column={sessionPlan.column}
+          keptOnPlan={!!sessionPlan.plan}
+          onPick={(column) => {
+            sessionPlan.pickColumn(column);
+            setRangeSheet(null);
+          }}
+          onChangeColumn={() => setRangeSheet("pick")}
+          onClose={() => setRangeSheet(null)}
         />
       )}
 

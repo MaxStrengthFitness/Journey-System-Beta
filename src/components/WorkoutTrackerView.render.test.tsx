@@ -196,6 +196,10 @@ const netCtl = {
   },
   routines: [] as { id: string; data: () => any }[],
   moreSettings: [] as { id: string; data: () => any }[],
+  /** Leave out the client's leg-press settings (a first time on it: no weight on file). */
+  noBaseSettings: false,
+  /** More machines on the studio's floor. */
+  moreRoster: [] as { id: string; data: () => any }[],
   deletes: [] as string[],
   autoId: 0,
   /** Collections whose listeners answer from the iPad's cache (`fromCache: true`). */
@@ -214,9 +218,9 @@ vi.mock("firebase/firestore", async (importOriginal) => {
 
   const docsFor = (p: string) => {
     if (p === "machines") return CATALOG_DOCS;
-    if (p === `studios/${STUDIO_ID}/roster`) return ROSTER_DOCS;
+    if (p === `studios/${STUDIO_ID}/roster`) return [...ROSTER_DOCS, ...netCtl.moreRoster];
     if (p === "sessions") return sessionDocs;
-    if (p === "clientMachineSettings") return [...SETTINGS_DOCS, ...netCtl.moreSettings];
+    if (p === "clientMachineSettings") return [...(netCtl.noBaseSettings ? [] : SETTINGS_DOCS), ...netCtl.moreSettings];
     if (p === "journalEntries") return journalDocs;
     if (p === "routines") return netCtl.routines;
     return [];
@@ -372,6 +376,51 @@ vi.mock("../features/journey-grid", async (importOriginal) => {
   };
 });
 
+/* The session corner's menu (the first-session design round, Oct 8 2026):
+   Base UI's menu does not open in jsdom (its positioning never settles), so
+   it is drawn as a plain menu that opens on a tap and closes on a pick. The
+   corner is the only dropdown in this screen's tree. */
+vi.mock("@/components/ui/dropdown-menu", async () => {
+  const React = await import("react");
+  const h = React.createElement;
+  const Ctx = React.createContext<{ open: boolean; set: (open: boolean) => void }>({ open: false, set: () => {} });
+  return {
+    DropdownMenu: ({ children }: { children: React.ReactNode }) => {
+      const [open, set] = React.useState(false);
+      return h(Ctx.Provider, { value: { open, set } }, children);
+    },
+    DropdownMenuTrigger: ({ children, className, ...rest }: Record<string, any>) => {
+      const c = React.useContext(Ctx);
+      return h(
+        "button",
+        { type: "button", className, "aria-label": rest["aria-label"], "data-testid": rest["data-testid"], onClick: () => c.set(!c.open) },
+        children,
+      );
+    },
+    DropdownMenuContent: ({ children }: { children: React.ReactNode }) => {
+      const c = React.useContext(Ctx);
+      return c.open ? h("div", { role: "menu" }, children) : null;
+    },
+    DropdownMenuItem: ({ children, onClick, disabled, ...rest }: Record<string, any>) => {
+      const c = React.useContext(Ctx);
+      return h(
+        "div",
+        {
+          role: "menuitem",
+          "data-testid": rest["data-testid"],
+          "aria-disabled": disabled,
+          onClick: () => {
+            if (disabled) return;
+            onClick?.();
+            c.set(false);
+          },
+        },
+        children,
+      );
+    },
+  };
+});
+
 vi.mock("../contexts/ActiveStudioContext", async (importOriginal) => {
   const realMod = await importOriginal<any>();
   return { ...realMod, useActiveStudio: () => ({ activeStudioId: STUDIO_ID, studios: studioCtx.studios }) };
@@ -413,6 +462,8 @@ beforeEach(() => {
   netCtl.held = {};
   netCtl.routines = [];
   netCtl.moreSettings = [];
+  netCtl.noBaseSettings = false;
+  netCtl.moreRoster = [];
   netCtl.deletes = [];
   netCtl.fromCache = new Set();
   netCtl.fail = new Set();
@@ -1623,5 +1674,205 @@ describe("the Active Session's own redraws (R10)", () => {
     // The tracker drew for the keystrokes, and the rows were not rebuilt.
     expect(renders.tracker).toBeGreaterThan(drawsBefore);
     expect(renders.rows).toBe(rowsBefore);
+  });
+});
+
+/**
+ * THE FLOOR ON DAY ONE (the first-session design round, Oct 8 2026, §4.6):
+ * the plan's next machine is the first one of Routine A's plan TODAY's
+ * session doesn't have (Routine A itself is empty on day one: the consult is
+ * not Routine A), offered on the last machine and on an empty Now Bar.
+ * Adding it is today only, through the one recorder: the session document,
+ * never the routine. The Wrap-up decides what Routine A keeps.
+ */
+describe("the floor on day one: the plan's next machine (Oct 8 2026)", () => {
+  const PLANNED = {
+    id: "ra-1",
+    data: () => ({
+      clientId: CLIENT_ID,
+      name: "Routine A",
+      machineIds: [],
+      plan: { purpose: "", intended: ["m-leg-press", "sm-solon-rear-delt"], dayOne: ["m-leg-press"], building: true, madeByUid: "uid-coach" },
+    }),
+  };
+  const runningDayOne = (machines: string[]) => [
+    { id: SESSION_ID, data: () => ({ ...SESSION_DOCS[0].data(), routineId: "ra-1", sessionMachineIds: machines }) },
+  ];
+
+  it("on the last machine, offers the plan's next one, and Add puts it in TODAY's order only", async () => {
+    sessionDocs = runningDayOne(["m-leg-press"]);
+    netCtl.routines = [PLANNED];
+    const host = await mount(<Tracker />);
+    const offer = host.querySelector<HTMLButtonElement>(".jg-nb__next--plan");
+    expect(offer, "the plan's next machine on the last machine").not.toBeNull();
+    expect(offer!.textContent).toContain("Next in the plan");
+    expect(offer!.textContent).toContain("Rear Delt Hoist");
+    expect(host.textContent ?? "").toContain("Add another machine");
+    writes.length = 0;
+    await act(async () => offer!.click());
+    const recorded = writes.filter((w) => w.path === `sessions/${SESSION_ID}` && w.data.sessionMachineIds);
+    expect(recorded.at(-1)?.data.sessionMachineIds).toEqual(["m-leg-press", "sm-solon-rear-delt"]);
+    expect(writes.filter((w) => w.path.startsWith("routines")), "adding is today only: the routine is untouched").toEqual([]);
+    // It is the machine in hand now, and the last: nothing further in the plan.
+    expect(host.querySelector(".jg-nb__name")?.textContent).toBe("Rear Delt Hoist");
+    expect(host.querySelector(".jg-nb__next--plan")).toBeNull();
+  });
+
+  it("an empty Now Bar says so and offers Add a machine and the plan's next one", async () => {
+    sessionDocs = runningDayOne([]);
+    netCtl.routines = [PLANNED];
+    const host = await mount(<Tracker />);
+    expect(host.textContent ?? "").toContain("Nothing in today's order yet.");
+    const add = [...host.querySelectorAll<HTMLButtonElement>(".jg-nb__addmore")].find((b) => b.textContent?.includes("Add a machine"));
+    expect(add).toBeTruthy();
+    const offer = host.querySelector<HTMLButtonElement>(".jg-nb__next--plan");
+    expect(offer!.textContent).toContain("Leg Press (Hoist)");
+    writes.length = 0;
+    await act(async () => offer!.click());
+    const recorded = writes.filter((w) => w.path === `sessions/${SESSION_ID}` && w.data.sessionMachineIds);
+    expect(recorded.at(-1)?.data.sessionMachineIds).toEqual(["m-leg-press"]);
+    expect(writes.filter((w) => w.path.startsWith("routines"))).toEqual([]);
+  });
+
+  it("without a plan on Routine A, the last machine's slot is as it was", async () => {
+    sessionDocs = runningDayOne(["m-leg-press"]);
+    netCtl.routines = [{ id: "ra-1", data: () => ({ clientId: CLIENT_ID, name: "Routine A", machineIds: ["m-leg-press"] }) }];
+    const host = await mount(<Tracker />);
+    expect(host.querySelector(".jg-nb__next--plan")).toBeNull();
+    expect(host.textContent ?? "").toContain("Last in today's order");
+  });
+});
+
+/**
+ * THE FLOOR ON DAY ONE, MOUNTED IN THE TRACKER (the reviews of Oct 9 2026):
+ * what the Now Bar's own test can't see, because it is the tracker's gate.
+ *   - The Academy's starting range shows only with no weight on file, and
+ *     only once the settings ARRIVED (a read not answered, or failed, is
+ *     unknown, never "no weight"); the weight cell stays blank.
+ *   - The corner's "The plan" opens the plan's sheet; a swap there issues
+ *     the plan's ONE batch without waiting for it, records today's order on
+ *     the session document, and the machine in hand follows the swap.
+ *   - Until today's list is seeded the empty bar offers nothing to add.
+ */
+describe("the floor on day one, the tracker's own gates (Oct 9 2026)", () => {
+  const planned = (extra: Record<string, unknown> = {}) => ({
+    id: "ra-1",
+    data: () => ({
+      clientId: CLIENT_ID,
+      name: "Routine A",
+      machineIds: [],
+      plan: { purpose: "", intended: ["m-leg-press", "sm-solon-rear-delt"], dayOne: ["m-leg-press"], building: true, madeByUid: "uid-coach", ...extra },
+    }),
+  });
+  const running = (machines: string[] | undefined) => [
+    { id: SESSION_ID, data: () => ({ ...SESSION_DOCS[0].data(), routineId: "ra-1", sessionMachineIds: machines }) },
+  ];
+  const weightCell = (host: HTMLElement) => host.querySelector<HTMLInputElement>('input[aria-label="Weight in pounds"]')!;
+  const range = (host: HTMLElement) => host.querySelector('[data-testid="nb-range"]');
+  const ask = (host: HTMLElement) => host.querySelector('[data-testid="nb-range-ask"]');
+
+  it("shows the plan's column as a range on a first time on a machine, beside a blank weight", async () => {
+    sessionDocs = running(["m-leg-press"]);
+    netCtl.routines = [planned({ startingColumn: "female-novice" })];
+    netCtl.noBaseSettings = true;
+    const host = await mount(<Tracker />);
+    expect(host.querySelector(".jg-nb__name")?.textContent).toBe("Leg Press (Hoist)");
+    expect(range(host)?.textContent).toBe("Academy's starting range: 60–100 lb (a reference, not a rule)");
+    expect(weightCell(host).value, "the app never suggests a weight").toBe("");
+  });
+
+  it("with no column picked, asks quietly; with a weight on file (the client's settings), says nothing and the weight is the one on file", async () => {
+    sessionDocs = running(["m-leg-press"]);
+    netCtl.routines = [planned()];
+    netCtl.noBaseSettings = true;
+    const first = await mount(<Tracker />);
+    expect(ask(first)).not.toBeNull();
+    expect(range(first)).toBeNull();
+    for (const m of mounted) {
+      await act(async () => m.root.unmount());
+      m.host.remove();
+    }
+    mounted = [];
+
+    netCtl.noBaseSettings = false;
+    const host = await mount(<Tracker />);
+    expect(range(host)).toBeNull();
+    expect(ask(host)).toBeNull();
+    expect(weightCell(host).value).toBe("120");
+  });
+
+  it("says nothing until the settings arrive, and nothing at all when their read failed", async () => {
+    sessionDocs = running(["m-leg-press"]);
+    netCtl.routines = [planned({ startingColumn: "female-novice" })];
+    netCtl.noBaseSettings = true;
+    netCtl.hold.add("clientMachineSettings");
+    const host = await mount(<Tracker />);
+    expect(range(host), "the settings haven't answered: unknown, never 'no weight'").toBeNull();
+    await act(async () => netCtl.release("clientMachineSettings"));
+    expect(range(host)).not.toBeNull();
+    for (const m of mounted) {
+      await act(async () => m.root.unmount());
+      m.host.remove();
+    }
+    mounted = [];
+
+    netCtl.fail.add("clientMachineSettings");
+    const failed = await mount(<Tracker />);
+    expect(range(failed), "a failed read is unknown").toBeNull();
+    expect(ask(failed)).toBeNull();
+  });
+
+  it("the corner's plan opens the plan's sheet; a swap writes the plan and today's order without waiting, and the machine in hand follows it", async () => {
+    sessionDocs = running(["m-leg-press"]);
+    netCtl.routines = [planned()];
+    netCtl.moreRoster = [
+      {
+        id: "m-leg-curl",
+        data: () => ({ source: "custom", status: "active", order: 15, definition: { name: "Leg Curl (Hoist)", settingFields: [] } }),
+      },
+    ];
+    netCtl.hang = true; // offline: nothing ever answers
+    const host = await mount(<Tracker />);
+    await act(async () => host.querySelector<HTMLButtonElement>('[data-testid="session-corner"]')!.click());
+    const item = host.querySelector<HTMLElement>('[data-testid="session-corner-plan"]');
+    expect(item?.textContent).toContain("The plan · 1 of 2");
+    await act(async () => item!.click());
+    const body = document.body;
+    expect(body.textContent).toContain("Routine A · the plan");
+    const tapWords = async (words: string) => {
+      const b = [...body.querySelectorAll<HTMLElement>("button")].find(
+        (x) => (x.getAttribute("aria-label") || x.textContent || "").trim() === words,
+      );
+      if (!b) throw new Error(`no button ${words}`);
+      await act(async () => b.click());
+      await act(async () => {});
+    };
+    await tapWords("Change Leg Press (Hoist) in the plan");
+    await tapWords("Leg Curl (Hoist)");
+    writes.length = 0;
+    await tapWords("Save change");
+
+    const plan = writes.filter((w) => w.path === "routines/ra-1");
+    expect(plan, "the plan's one batch").toHaveLength(1);
+    expect(plan[0].batch).toBeGreaterThan(0);
+    expect(plan[0].data.plan.intended[0]).toBe("m-leg-curl");
+    const recorded = writes.filter((w) => w.path === `sessions/${SESSION_ID}` && w.data.sessionMachineIds);
+    expect(recorded.at(-1)?.data.sessionMachineIds, "today's order, on the session").toEqual(["m-leg-curl"]);
+    expect(host.querySelector(".jg-nb__name")?.textContent, "the machine in hand follows the swap").toBe("Leg Curl (Hoist)");
+    expect(body.textContent).toContain("Leg Curl (Hoist) instead of Leg Press (Hoist)");
+  });
+
+  it("until today's list is read, the empty bar offers nothing to add (an add would be recorded as the whole list)", async () => {
+    // An older session with no list on record: today's list comes from the routine.
+    sessionDocs = running(undefined);
+    netCtl.routines = [planned()];
+    netCtl.hold.add("routines");
+    const host = await mount(<Tracker />);
+    expect(host.textContent ?? "").not.toContain("Nothing in today's order yet.");
+    expect(host.querySelector(".jg-nb__addmore")).toBeNull();
+    expect(host.querySelector(".jg-nb__next--plan")).toBeNull();
+    await act(async () => netCtl.release("routines"));
+    // The routine answered: today is the plan's day one.
+    expect(host.querySelector(".jg-nb__name")?.textContent).toBe("Leg Press (Hoist)");
   });
 });

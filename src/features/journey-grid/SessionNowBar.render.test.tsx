@@ -9,9 +9,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 import { SessionNowBar } from "./SessionNowBar";
 import type { JourneyRow, LiveSet } from "./types";
+import { hasWeightOnFile, startingRangeSlot } from "../routine-plan/session-plan";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -218,5 +221,165 @@ describe("SessionNowBar's start and gain (Oct 3 2026; the machine menu's one fig
     draw({ row: { ...grown, startingWeight: 130 } });
     expect(start()).toContain("Starting weight 130 lb");
     expect(gain()).toBeNull();
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * The floor on day one (the first-session design round, Oct 8 2026, §4.6)
+ * ------------------------------------------------------------------ */
+
+describe("SessionNowBar on day one: the plan's next machine, Add a machine, the Academy's starting range", () => {
+  const firstTime: JourneyRow = { machine: { id: "m-leg-press", name: "Leg Press", group: "Lower Body" }, sets: {} };
+  const planNext = { id: "m-hip-abd", name: "Hip Abduction" };
+
+  function draw(props: Partial<Parameters<typeof SessionNowBar>[0]>) {
+    if (!host) {
+      host = document.createElement("div");
+      document.body.appendChild(host);
+      root = createRoot(host);
+    }
+    act(() => root!.render(<SessionNowBar row={firstTime} history={[]} onChange={() => {}} {...props} />));
+    return host;
+  }
+  const buttons = () => [...host!.querySelectorAll<HTMLButtonElement>("button")];
+  const byWords = (words: string) => buttons().find((b) => (b.getAttribute("aria-label") || b.textContent || "").includes(words));
+
+  it("on the last machine, offers the plan's next one as a dashed blue Add, beside a quieter Add another machine: today only, never orange", () => {
+    const onAddPlanned = vi.fn();
+    const onAddMachine = vi.fn();
+    draw({ planNext, onAddPlanned, onAddMachine });
+    const offer = host!.querySelector<HTMLButtonElement>(".jg-nb__next--plan")!;
+    expect(offer).not.toBeNull();
+    expect(offer.textContent).toContain("Next in the plan");
+    expect(offer.textContent).toContain("Hip Abduction");
+    expect(offer.textContent).toContain("Add");
+    // The quiet dashed offer, never the orange of Go or the solid blue of Next.
+    expect(offer.className).toContain("jg-nb__next--add");
+    expect(host!.textContent).not.toContain("Last in today's order");
+    act(() => offer.click());
+    expect(onAddPlanned).toHaveBeenCalledTimes(1);
+    expect(onAddPlanned).toHaveBeenCalledWith("m-hip-abd");
+    expect(onAddMachine).not.toHaveBeenCalled();
+    const more = byWords("Add another machine")!;
+    expect(more.className).toBe("jg-nb__addmore");
+    act(() => more.click());
+    expect(onAddMachine).toHaveBeenCalledTimes(1);
+  });
+
+  it("with nothing next in the plan, the last machine's slot is as it was", () => {
+    draw({ onAddMachine: vi.fn() });
+    expect(host!.querySelector(".jg-nb__next--plan")).toBeNull();
+    expect(host!.textContent).toContain("Last in today's order");
+    expect(host!.textContent).toContain("Add another machine");
+  });
+
+  it("Next in today's order wins over the plan: the offer is only on the last machine", () => {
+    draw({ planNext, onAddPlanned: vi.fn(), nextName: "Compound Row", onNext: vi.fn() });
+    expect(host!.querySelector(".jg-nb__next--plan")).toBeNull();
+    expect(host!.querySelector(".jg-nb__nextname")!.textContent).toBe("Compound Row");
+  });
+
+  it("an empty bar says nothing is in today's order and offers Add a machine, and the plan's next one", () => {
+    const onAddMachine = vi.fn();
+    const onAddPlanned = vi.fn();
+    draw({ row: undefined, nothingToday: true, onAddMachine });
+    expect(host!.textContent).toContain("Nothing in today's order yet.");
+    expect(host!.querySelector(".jg-nb__next--plan")).toBeNull();
+    act(() => byWords("Add a machine")!.click());
+    expect(onAddMachine).toHaveBeenCalledTimes(1);
+    draw({ row: undefined, nothingToday: true, onAddMachine, planNext: { id: "m-leg-press", name: "Leg Press" }, onAddPlanned });
+    act(() => host!.querySelector<HTMLButtonElement>(".jg-nb__next--plan")!.click());
+    expect(onAddPlanned).toHaveBeenCalledWith("m-leg-press");
+  });
+
+  it("the range sits in the readout slot beside the weight, never in it, and its (i) opens the sheet's notes", () => {
+    const onStartingRange = vi.fn();
+    const startingRange = startingRangeSlot({
+      canonicalMachineId: "m-leg-press",
+      column: "female-novice",
+      forToday: false,
+      hasWeight: hasWeightOnFile({ prescribedWeight: firstTime.prescribedWeight, setsOnRecord: 0, knownElsewhere: false, totalsKnown: true }),
+    });
+    draw({ startingRange, onStartingRange });
+    const line = host!.querySelector<HTMLButtonElement>('[data-testid="nb-range"]')!;
+    expect(line.textContent).toBe("Academy's starting range: 60–100 lb (a reference, not a rule)");
+    expect(line.closest(".jg-nb__expect")).not.toBeNull();
+    // The weight stays blank: the app never suggests a weight.
+    const weight = host!.querySelector<HTMLInputElement>('input[aria-label="Weight in pounds"]')!;
+    expect(weight.value).toBe("");
+    expect(weight.placeholder).toBe("–");
+    act(() => line.click());
+    expect(onStartingRange).toHaveBeenCalledWith("about");
+  });
+
+  it("says 'for today' when the column is kept for this session only", () => {
+    draw({
+      startingRange: startingRangeSlot({ canonicalMachineId: "m-leg-press", column: "male-novice", forToday: true, hasWeight: false }),
+      onStartingRange: vi.fn(),
+    });
+    expect(host!.querySelector('[data-testid="nb-range"]')!.textContent).toBe("Academy's starting range: 160–190 lb (a reference, not a rule) · for today");
+  });
+
+  it("before a column is picked, asks quietly; the pick is the trainer's", () => {
+    const onStartingRange = vi.fn();
+    draw({ startingRange: startingRangeSlot({ canonicalMachineId: "m-leg-press", column: undefined, forToday: false, hasWeight: false }), onStartingRange });
+    const ask = host!.querySelector<HTMLButtonElement>('[data-testid="nb-range-ask"]')!;
+    expect(ask.textContent).toBe("Academy's starting range");
+    act(() => ask.click());
+    expect(onStartingRange).toHaveBeenCalledWith("pick");
+  });
+
+  it("shows no range for a machine with a weight on file: the prescribed weight fills the weight as it always has", () => {
+    const onFile: JourneyRow = { ...firstTime, prescribedWeight: 120 };
+    const startingRange = startingRangeSlot({
+      canonicalMachineId: "m-leg-press",
+      column: "female-novice",
+      forToday: false,
+      hasWeight: hasWeightOnFile({ prescribedWeight: onFile.prescribedWeight, setsOnRecord: 0, knownElsewhere: false, totalsKnown: true }),
+    });
+    expect(startingRange).toBeNull();
+    draw({ row: onFile, startingRange, onStartingRange: vi.fn() });
+    expect(host!.querySelector('[data-testid="nb-range"]')).toBeNull();
+    expect(host!.querySelector('[data-testid="nb-range-ask"]')).toBeNull();
+    expect(host!.querySelector<HTMLInputElement>('input[aria-label="Weight in pounds"]')!.value).toBe("120");
+  });
+});
+
+describe("SessionNowBar on day one: never orange, and First time on this machine", () => {
+  /* The plan's offer and Add another machine are blue and quiet: Start and
+     Finish are the floor's only orange (CLAUDE.md, the Navy Frame). Read off
+     the stylesheet the bar draws with, so a rule painting them orange fails. */
+  it("paints the plan's offer and Add another machine in the live blue, never an orange token", () => {
+    const css = readFileSync(resolve(__dirname, "journey-grid.css"), "utf8").replace(/\r\n/g, "\n");
+    const rules = (selector: string) => {
+      const out: string[] = [];
+      const re = /([^{}]+)\{([^{}]*)\}/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(css))) if (m[1].split(",").some((sel) => sel.includes(selector))) out.push(m[2]);
+      return out.join("\n");
+    };
+    const orange = /--jg-(?:go|hero)\b|--jg-go-|--jg-hero-|--eq-go|--eq-hero|orange/;
+    for (const sel of [".jg-nb__next--plan", ".jg-nb__next--add", ".jg-nb__addmore", ".jg-nb__nextadd"]) {
+      const body = rules(sel);
+      expect(body, sel).not.toBe("");
+      expect(body, sel).not.toMatch(orange);
+    }
+    expect(rules(".jg-nb__next.jg-nb__next--add")).toMatch(/color:\s*var\(--jg-live-text\)/);
+    expect(rules(".jg-nb__addmore")).toMatch(/color:\s*var\(--jg-live-text\)/);
+  });
+
+  it("says First time on this machine in the readout when the caller can claim it, and nothing when it can't", () => {
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    const firstTime: JourneyRow = { machine: { id: "m-leg-press", name: "Leg Press", group: "Lower Body" }, sets: {} };
+    act(() => root!.render(<SessionNowBar row={firstTime} history={[]} onChange={() => {}} noHistoryLine="First time on this machine" />));
+    const line = host.querySelector('[data-testid="nb-first"]');
+    expect(line?.textContent).toBe("First time on this machine");
+    expect(line?.closest(".jg-nb__expect")).not.toBeNull();
+    // The weight is blank and never prefilled.
+    expect(host.querySelector<HTMLInputElement>('input[aria-label="Weight in pounds"]')!.value).toBe("");
+    act(() => root!.render(<SessionNowBar row={firstTime} history={[]} onChange={() => {}} />));
+    expect(host.querySelector('[data-testid="nb-first"]')).toBeNull();
   });
 });

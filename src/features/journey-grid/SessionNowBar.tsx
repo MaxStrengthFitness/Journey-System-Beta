@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { ChevronRight, Minus, Pause, Play, Plus, RotateCcw, ShieldAlert, X } from "lucide-react";
+import { ChevronRight, Info, Minus, Pause, Play, Plus, RotateCcw, Ruler, ShieldAlert, X } from "lucide-react";
 import type { FlagLine } from "./session-flags";
 import {
   OUTCOME_GLOSS,
@@ -13,6 +13,7 @@ import { formatSeconds, orderedSets } from "./stats";
 import { QualityMark, QUALITY_MARK_LABEL } from "./QualityMark";
 import type { HistoryCoverage } from "../../lib/prior-history";
 import { gainWords, progressFromSets } from "../machine-menu/progress-figure";
+import type { StartingRangeSlot } from "../routine-plan/session-plan";
 import "./journey-grid.css";
 
 /* ------------------------------------------------------------------ *
@@ -54,6 +55,40 @@ export interface SessionNowBarProps {
    * is fine after all. Opens the add-from-the-floor list.
    */
   onAddMachine?: () => void;
+  /**
+   * The plan's next machine for today (the first-session design round, Oct
+   * 8 2026, §4.6): Routine A's plan's first machine today's session doesn't
+   * have (routine-plan/session-plan.ts). On the last machine the Next slot
+   * offers it ("Next in the plan · Hip Abduction · Add") beside a quieter
+   * "Add another machine"; an empty bar offers it beside "Add a machine".
+   * Adding is today only: the Wrap-up decides what the routine keeps. Give
+   * it a stable object (the bar is memo).
+   */
+  planNext?: { id: string; name: string } | null;
+  /** Adds the plan's next machine to today's order and makes it the machine in hand. */
+  onAddPlanned?: (machineId: string) => void;
+  /** Today's order has nothing in it yet: the empty bar says so. */
+  nothingToday?: boolean;
+  /**
+   * The Academy's starting range for this machine (AJ's "3a"), in the head's
+   * readout slot, only on a first time here (routine-plan/session-plan.ts
+   * `startingRangeSlot`): the range line with an (i), the quiet "Academy's
+   * starting range" button while no column is picked, or nothing. It is a
+   * reference beside the weight, never a number in it.
+   */
+  startingRange?: StartingRangeSlot;
+  /** Opens the column picker ("pick") or the sheet's notes and source ("about"). */
+  onStartingRange?: (mode: "pick" | "about") => void;
+  /**
+   * "First time on this machine" (the first-session design round, Oct 8
+   * 2026, §4.6), in the readout slot, the history-claims words
+   * (`noMachineHistoryLine`): the caller says it only when Journey holds the
+   * client's whole story, every session's sets are read, nothing is on
+   * record here and no running total knows the machine (the machine menu's
+   * own gate). Null or absent, nothing: the bar stays as quiet as the Oct 3
+   * round left it (AJ: "the text feels like clutter").
+   */
+  noHistoryLine?: string | null;
   /**
    * What is tied to THIS machine for THIS client — a critical note written on
    * it, a heads-up, a condition's instruction that names it. One line under
@@ -344,6 +379,12 @@ function SessionNowBarImpl({
   readMachineSeconds,
   machineClockRunning = false,
   onAddMachine,
+  planNext = null,
+  onAddPlanned,
+  nothingToday = false,
+  startingRange = null,
+  onStartingRange,
+  noHistoryLine = null,
   flagLine = null,
   onOpenFlag,
   coverage = "unknown",
@@ -451,10 +492,44 @@ function SessionNowBarImpl({
     onChange(machine.id, { outcome: null, bloodFlow: null, skipReason: null, skipNote: null });
   };
 
+  /* The plan's next machine, offered where the bar would otherwise end:
+     a dashed blue row, the whole row the Add (the first-session design
+     round, Oct 8 2026, §4.6). Never orange: Start and Finish are the floor's
+     only orange. */
+  const planOffer =
+    planNext && onAddPlanned ? (
+      <button
+        type="button"
+        className="jg-nb__next jg-nb__next--add jg-nb__next--plan"
+        onClick={() => onAddPlanned(planNext.id)}
+        aria-label={`Next in the plan: add ${planNext.name} to today`}
+      >
+        <span className="jg-nb__nextlbl">Next in the plan</span>
+        <span className="jg-nb__nextname">{planNext.name}</span>
+        <span className="jg-nb__nextadd">
+          <Plus size={16} strokeWidth={2.5} aria-hidden="true" />
+          Add
+        </span>
+      </button>
+    ) : null;
+
   if (!machine) {
     return (
       <div className={`jg-nb jg-nb--empty jg-nb--${layout}`}>
-        <span className="jg-nb__idle">Tap a machine in the Today column to start logging.</span>
+        <span className="jg-nb__idle">
+          {nothingToday ? "Nothing in today's order yet." : "Tap a machine in the Today column to start logging."}
+        </span>
+        {(planOffer || onAddMachine) && (
+          <div className="jg-nb__offers">
+            {planOffer}
+            {onAddMachine && (
+              <button type="button" className="jg-nb__addmore" onClick={onAddMachine}>
+                <Plus size={16} strokeWidth={2.5} aria-hidden="true" />
+                Add a machine
+              </button>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -557,6 +632,36 @@ function SessionNowBarImpl({
 
         {expect && (
           <span className="jg-nb__expect">
+            {noHistoryLine && (
+              <span className="jg-nb__expectline" data-testid="nb-first">
+                {noHistoryLine}
+              </span>
+            )}
+            {/* The Academy's starting range (AJ's "3a"), only on a first
+                time here, where the readout would otherwise be empty: a
+                reference beside the weight, never typed into it. */}
+            {startingRange?.kind === "line" && (
+              <button
+                type="button"
+                className="jg-nb__range"
+                data-testid="nb-range"
+                onClick={() => onStartingRange?.("about")}
+                disabled={!onStartingRange}
+                aria-label={`${startingRange.says}${startingRange.forToday ? ", for today" : ""}. About the Academy's starting weights.`}
+              >
+                <span className="jg-nb__rangetext">
+                  {startingRange.says}
+                  {startingRange.forToday ? " · for today" : ""}
+                </span>
+                <Info size={14} strokeWidth={2.5} aria-hidden="true" />
+              </button>
+            )}
+            {startingRange?.kind === "ask" && onStartingRange && (
+              <button type="button" className="jg-nb__rangeask" data-testid="nb-range-ask" onClick={() => onStartingRange("pick")}>
+                <Ruler size={14} strokeWidth={2.5} aria-hidden="true" />
+                Academy's starting range
+              </button>
+            )}
             {/* No "Last · Best" here (AJ, Oct 3 2026: "the last isn't really
                 needed, or even best"): the grid's row says both. */}
             {expect.progress && (
@@ -753,6 +858,16 @@ function SessionNowBarImpl({
           <span className="jg-nb__nextname">{nextName}</span>
           <ChevronRight size={17} strokeWidth={2.5} />
         </button>
+      ) : planOffer ? (
+        /* The last machine, with the plan's next one to offer: the plan's
+           row, and a quieter Add another machine beside it. */
+        <div className="jg-nb__offers">
+          {planOffer}
+          <button type="button" className="jg-nb__addmore" onClick={onAddMachine} disabled={!onAddMachine}>
+            <Plus size={16} strokeWidth={2.5} aria-hidden="true" />
+            Add another machine
+          </button>
+        </div>
       ) : (
         <button
           type="button"

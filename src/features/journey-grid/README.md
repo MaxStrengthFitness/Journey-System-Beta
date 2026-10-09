@@ -5,6 +5,64 @@ Design spec for `src/features/journey-grid/` — the sticky client-tracking grid
 
 Files: `src/features/journey-grid/`. Live prototype: the "Journey Grid" artifact (same code, compiled with Judy Daus's data).
 
+**The floor on day one (Oct 8 2026; `docs/rounds/2026-10-08-first-session-screens.md` §4.6).**
+Routine A's plan reaches the session (`routine-plan/session-plan.ts`, the
+hook `routine-plan/ui/useSessionPlan.ts`):
+- **First time on this machine.** The head's readout slot says it (the
+  history-claims words, `noMachineHistoryLine`, as the `noHistoryLine` prop)
+  on the machine menu's own gate: every session's sets read, the totals
+  read, nothing on record here and no running total that knows the machine.
+  Only the confident sentence, for a client whose whole story is Journey's;
+  for anyone else the bar stays as quiet as the Oct 3 round left it.
+- **The plan's next machine.** On the last machine the Now Bar's Next slot
+  becomes a dashed blue row, "Next in the plan · Hip Abduction · Add"
+  (`jg-nb__next--plan`, on `jg-nb__next--add`'s quiet look), with a quieter
+  "Add another machine" under it (`jg-nb__addmore`, words with no box). An
+  empty bar says "Nothing in today's order yet." and offers "Add a machine"
+  and the plan's next one. The next machine is the plan's first one TODAY's
+  session doesn't have, matched through the catalog machine each floor id
+  is, never one this floor lacks or the client can't do, and only while the
+  session runs Routine A. Adding is today only (`applySessionMachineIds`),
+  and the machine becomes the one in hand; the Wrap-up decides what the
+  routine keeps. Never orange. Until today's list is seeded (an older
+  session whose routine is still loading) the empty bar offers nothing to
+  add: an add then would be recorded as the session's whole list.
+- **The Academy's starting range** (AJ's "3a") sits in the head's readout
+  slot (`jg-nb__expect`), empty on a first time: "Academy's starting range:
+  60–100 lb (a reference, not a rule)" with an (i) that opens the sheet's
+  notes and its source (`jg-nb__range`), or, before anyone picked a column
+  for the client, a quiet dashed "Academy's starting range" (`jg-nb__rangeask`)
+  that opens the four columns by the sheet's own labels and Don't show
+  ranges (`routine-plan/ui/StartingRangeSheet.tsx`). A pick is a "column"
+  change on Routine A's plan, never awaited; with no plan it is kept for the
+  session and the line says "for today". Only for a machine with no weight on
+  file (no prescribed weight, no set on record, no running total that knows
+  it, and the totals, the settings and the routines all read: a read not
+  answered, or failed, is unknown, never "no weight"; the tracker keeps
+  `settingsRead` apart from the prefill's "known"), only for a client Journey
+  can call new to it (the whole story is Journey's, or Routine A's plan
+  started here or has a column picked), and never a number in the weight.
+  The plan's sheet from the corner shows the column and changes it: the way
+  back after Don't show ranges.
+- **The plan from the corner** (AJ's Q6: "you shouldn't really be blocked").
+  `SessionCorner`'s menu has "The plan · 3 of 6" while Routine A has a plan;
+  it opens `routine-plan/ui/SessionPlanSheet.tsx`: the Road strip with today
+  under its bracket, each planned machine's Swap in the plan and Can't do,
+  and Re-plan, each change through `routine-plan/store.ts`, never awaited. It
+  changes today's order only for a machine with no set logged today; the
+  sheet says "Today's set stays. The plan changes from next session."
+  otherwise. The sheet matches the plan's ids to today's through the catalog
+  machine each is (a studio's unit is the plan's machine), as the count does.
+  In a Routine B session the count and the Road are Routine A's own machines,
+  a swap leaves B's order alone, and a can't-do (read by A and B) still takes
+  the machine out of today. Re-plan reads the starting routines of the studio
+  the session is at.
+- **One calm order-effect line** under the grid when today's order trips one
+  of the Academy's sequencing rules (`routine-plan/ui/SessionOrderLine.tsx`):
+  a tap opens the why and its source in place; never a block, never a dialog.
+  Never on a Free session, whose whole floor in walking order is nobody's
+  chosen order.
+
 **Profile round (Sep 2026) — the Journey tab only.** Four changes, every one
 gated to the profile (`RecentJourneyView`, `.jg-view--journey`,
 `data-autoload="true"`); the Active Session looks and behaves as before, and

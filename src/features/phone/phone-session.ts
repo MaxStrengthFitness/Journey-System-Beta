@@ -179,3 +179,24 @@ export function parseWeight(text: string): number | null {
 export function toggledQuality(current: RepQuality | null | undefined, tapped: 1 | 3): RepQuality {
   return current === tapped ? 2 : tapped;
 }
+
+/**
+ * What the card in hand's Next button is (the first-session design round,
+ * Oct 8 2026, §4.6: "On a phone, the last card's Next becomes 'Next in the
+ * plan · Add'"):
+ *   - the next machine in today's order: Next, to it;
+ *   - on the last card, Routine A's plan's next machine when it has one:
+ *     "Next in the plan: Hip Abduction · Add", which adds it to TODAY only
+ *     (the Wrap-up decides what the routine keeps);
+ *   - else the last card's quiet word, the button lying flat.
+ */
+export type CardNext =
+  | { kind: "next"; name: string }
+  | { kind: "plan"; id: string; name: string }
+  | { kind: "last" };
+
+export function cardNextOf(nextName: string | null | undefined, planNext: { id: string; name: string } | null | undefined): CardNext {
+  if (nextName) return { kind: "next", name: nextName };
+  if (planNext && planNext.id) return { kind: "plan", id: planNext.id, name: planNext.name || planNext.id };
+  return { kind: "last" };
+}

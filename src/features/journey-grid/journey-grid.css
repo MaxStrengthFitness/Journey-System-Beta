@@ -1309,8 +1309,10 @@ div.jg-today { cursor: default; }
     align-items: end;
   }
 }
-.jg-nb--empty { grid-template-areas: "head"; grid-template-columns: 1fr; }
-.jg-nb__idle { font-size: 12.5px; color: var(--jg-ink-muted); padding: 12px 2px; }
+/* The empty bar: what it says, and under it what it offers (Add a machine,
+   and the plan's next one; the first-session design round, Oct 8 2026). */
+.jg-nb--empty { grid-template-areas: "head" "next"; grid-template-columns: 1fr; }
+.jg-nb__idle { grid-area: head; font-size: 12.5px; color: var(--jg-ink-muted); padding: 12px 2px; }
 .jg-nb__sp { flex: 1; min-width: 4px; }
 
 /* ---- line 1 · set up --------------------------------------------------- */
@@ -1416,6 +1418,55 @@ div.jg-today { cursor: default; }
 .jg-nb__expectline { display: inline-flex; align-items: center; gap: 3px; }
 .jg-nb__expect em { font-style: normal; font-weight: 800; color: var(--jg-ink); }
 .jg-nb__readout { display: block; color: var(--jg-ink-muted); font-weight: 600; font-size: 11px; }
+/* The Academy's starting range (the first-session design round, Oct 8 2026,
+   §4.6; AJ's "3a"), in the readout slot, which is empty on a first time
+   here. The line is the readout's own quiet words with an (i), the whole
+   line the tap (40px), wrapping rather than running past the bar; it is a
+   reference beside the weight, never in it. Before a column is picked, a
+   quiet dashed button asks for one, No set?'s quiet look. */
+.jg-nb__range {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  max-width: min(100%, 320px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--jg-ink-muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: inherit;
+  white-space: normal;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-nb__range:disabled { cursor: default; }
+.jg-nb__rangetext { min-width: 0; overflow-wrap: anywhere; }
+.jg-nb__rangeask {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px dashed var(--jg-control-edge);
+  border-radius: var(--jg-radius-sm);
+  background: transparent;
+  color: var(--jg-ink-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: normal;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-nb__rangeask:active { transform: translateY(1px); box-shadow: var(--jg-press); }
 .jg-nb__mark { display: inline-flex; vertical-align: -1px; margin-left: 1px; line-height: 0; }
 .jg-nb__mark--q3 { color: var(--jg-q-star); }
 .jg-nb__mark--q1 { color: var(--jg-q-poor-text); }
@@ -1802,6 +1853,54 @@ div.jg-today { cursor: default; }
   box-shadow: none;
 }
 .jg-nb__nextlbl { flex: none; opacity: 0.85; }
+/* The plan's next machine on the last machine, and on an empty bar (the
+   first-session design round, Oct 8 2026, §4.6): the dashed blue offer
+   above, the name wrapping whole, "+ Add" at its end; under it a quieter
+   "Add another machine", words with no box. Never orange. */
+.jg-nb__offers {
+  grid-area: next;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+}
+.jg-nb__next--plan {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 2px 8px;
+  padding: 4px 12px;
+  text-align: left;
+}
+.jg-nb__nextadd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 700;
+}
+.jg-nb__addmore {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--jg-radius-sm);
+  background: transparent;
+  color: var(--jg-live-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-nb__addmore:active { transform: translateY(1px); }
+.jg-nb__addmore:disabled { opacity: 0.45; cursor: default; }
 /* The next machine's name, upright and as written (it was capitals). */
 .jg-nb__nextname {
   font-family: var(--jg-font-display);
@@ -2835,6 +2934,8 @@ div.jg-today { cursor: default; }
 .jg-nb--side .jg-nb__quality { width: 100%; }
 .jg-nb--side .jg-nb__qbtn { flex: 1; }
 .jg-nb--side .jg-nb__next { width: 100%; min-height: 50px; background: var(--jg-live); color: var(--jg-live-on); border-color: var(--jg-live); box-shadow: var(--jg-glow-live), var(--jg-solid-light); }
+/* An empty column: its two rows, no gaps left for the four. */
+.jg-stage--side .jg-nb--side.jg-nb--empty { grid-template-areas: "head" "next"; grid-template-rows: auto auto; }
 /* Beside a 312px Now bar the rail has ~700px, not the viewport: keep the
    Key popover, never the inline legend. */
 .jg-stage--side .jg-rail__legend { display: none; }

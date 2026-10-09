@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { JourneyRow, JourneySession, JourneySet, LiveSet } from "../journey-grid/types";
 import {
   cardLogged,
+  cardNextOf,
   countsSeconds,
   lastPerformed,
   lastTimes,
@@ -187,5 +188,19 @@ describe("toggledQuality", () => {
     expect(toggledQuality(1, 1)).toBe(2);
     expect(toggledQuality(1, 3)).toBe(3);
     expect(toggledQuality(null, 3)).toBe(3);
+  });
+});
+
+describe("cardNextOf (the floor on day one, Oct 8 2026)", () => {
+  const plan = { id: "m-hip-abd", name: "Hip Abduction" };
+  it("is Next to the next machine in today's order, plan or no plan", () => {
+    expect(cardNextOf("Leg Press", plan)).toEqual({ kind: "next", name: "Leg Press" });
+  });
+  it("is the plan's next machine on the last card", () => {
+    expect(cardNextOf(null, plan)).toEqual({ kind: "plan", id: "m-hip-abd", name: "Hip Abduction" });
+  });
+  it("is the last card's quiet word with nothing next in the plan", () => {
+    expect(cardNextOf(null, null)).toEqual({ kind: "last" });
+    expect(cardNextOf(undefined, { id: "", name: "" })).toEqual({ kind: "last" });
   });
 });

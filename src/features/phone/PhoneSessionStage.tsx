@@ -30,6 +30,7 @@ import { knownElsewhere } from "../machine-menu/header-words";
 import { noteKey } from "../machine-menu/note-key";
 import {
   cardLogged,
+  cardNextOf,
   countsSeconds,
   lastPerformed,
   lastTimes,
@@ -58,6 +59,14 @@ export interface PhoneSessionStageProps {
   onOpenMachine: (machineId: string) => void;
   /** Reorder, add or take off a machine (the iPad's RoutineOrderSheet). */
   onReorder: () => void;
+  /**
+   * Routine A's plan's next machine for today (the first-session design
+   * round, Oct 8 2026, §4.6), offered on the last card's Next ("Next in the
+   * plan: Hip Abduction · Add") and under an empty list; null without one.
+   */
+  planNext?: { id: string; name: string } | null;
+  /** Adds the plan's next machine to today's order (today only) and makes it the card in hand. */
+  onAddPlanned?: (machineId: string) => void;
   step?: number;
   /**
    * What a card with no past times may say (machine menu, Oct 2026): every
@@ -86,6 +95,8 @@ export function PhoneSessionStage({
   onCommit,
   onOpenMachine,
   onReorder,
+  planNext = null,
+  onAddPlanned,
   step = 2,
   everythingRead = false,
   coverage = "unknown",
@@ -109,7 +120,14 @@ export function PhoneSessionStage({
         Sessions are meant to be run on the iPad. This is the phone's short version.
       </p>
       {rows.length === 0 ? (
-        <p className="ph-stage__empty">No machines in today's routine yet.</p>
+        <>
+          <p className="ph-stage__empty">No machines in today's routine yet.</p>
+          {planNext && onAddPlanned && (
+            <button type="button" className="ph-card__next ph-stage__plan" onClick={() => onAddPlanned(planNext.id)}>
+              Next in the plan: <span>{planNext.name}</span> · Add
+            </button>
+          )}
+        </>
       ) : (
         <ol className="ph-cards" aria-label="Today's routine">
           {rows.map((row, i) => {
@@ -125,6 +143,11 @@ export function PhoneSessionStage({
                 inHand={focusId === id}
                 step={step}
                 nextName={next?.machine.name ?? null}
+                planNext={planNext && onAddPlanned ? planNext : null}
+                onAddPlanned={(planned) => {
+                  onCommit();
+                  onAddPlanned?.(planned);
+                }}
                 onFocus={() => {
                   if (focusId !== id) {
                     onCommit();
@@ -167,6 +190,8 @@ function MachineCard({
   inHand,
   step,
   nextName,
+  planNext,
+  onAddPlanned,
   onFocus,
   onNext,
   onChange,
@@ -180,6 +205,9 @@ function MachineCard({
   inHand: boolean;
   step: number;
   nextName: string | null;
+  /** On the last card: the plan's next machine, offered as Next. */
+  planNext: { id: string; name: string } | null;
+  onAddPlanned: (machineId: string) => void;
   onFocus: () => void;
   onNext: () => void;
   onChange: (patch: Partial<LiveSet>) => void;
@@ -196,6 +224,7 @@ function MachineCard({
   const outcome = value?.outcome ?? null;
   const bloodFlow = outcome === "practice" && value?.bloodFlow === true;
   const settings = machine.settings ? Object.entries(machine.settings) : [];
+  const nextIs = cardNextOf(nextName, planNext);
   const ghost = seconds
     ? last?.isTSC && typeof last.seconds === "number"
       ? String(last.seconds)
@@ -356,17 +385,22 @@ function MachineCard({
         </button>
       </div>
 
-      {inHand && (
-        <button type="button" className="ph-card__next" onClick={onNext} disabled={!nextName}>
-          {nextName ? (
-            <>
-              Next: <span>{nextName}</span>
-            </>
-          ) : (
-            "Last machine · Finish is at the top"
-          )}
-        </button>
-      )}
+      {inHand &&
+        (nextIs.kind === "plan" ? (
+          <button type="button" className="ph-card__next" onClick={() => onAddPlanned(nextIs.id)}>
+            Next in the plan: <span>{nextIs.name}</span> · Add
+          </button>
+        ) : (
+          <button type="button" className="ph-card__next" onClick={onNext} disabled={nextIs.kind === "last"}>
+            {nextIs.kind === "next" ? (
+              <>
+                Next: <span>{nextIs.name}</span>
+              </>
+            ) : (
+              "Last machine · Finish is at the top"
+            )}
+          </button>
+        ))}
     </li>
   );
 }

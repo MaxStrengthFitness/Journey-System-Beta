@@ -14,6 +14,12 @@
  * client's routine. Permanent routine changes are made on the client profile
  * and nowhere else.
  *
+ * One exception, on purpose (the first-session design round, Oct 8 2026):
+ * Routine A's PLAN may be changed mid-session (AJ's Q6, quoted at its test
+ * below), through routine-plan/store.ts alone and never awaited. Today's
+ * order stays the session's own, and the Wrap-up decides what the routine
+ * keeps.
+ *
  * These tests read the source and assert that directly, in the same spirit as
  * journey-grid/contrast.test.ts parsing the token file. A unit test of the
  * components cannot catch this — the dangerous version still renders
@@ -209,6 +215,49 @@ describe("mid-session changes stay in session state", () => {
     expect(WTV).toMatch(/addStartPlanToBatch\(db, batch,/);
     const START_PLAN = code(read("src/features/session-record/start-plan.ts"));
     expect(START_PLAN, "the create-from-today's-list kind is gone").not.toMatch(/kind:\s*["']create["']/);
+  });
+
+  // Changed on purpose (the first-session design round, Oct 8 2026, §4.6).
+  // This file held that nothing on the session path writes a routine. AJ,
+  // Oct 7 2026 (Q6): "Any trainer who trains the client can definitely
+  // change the plan ... Again, you shouldn't really be blocked. Like if I
+  // start a session with a client and I already think that, oh, hey, I think
+  // they would be a lot better on this machine instead. You should be able
+  // to change that and make the call as a trainer because you're training
+  // them that day." And: "it's nice to be able to communicate like, hey, I'm
+  // changing this plan because of this reason" (the reason asked, never
+  // required). So the session may write Routine A's PLAN (a swap, a can't
+  // do, a re-plan, the Academy column), and Routine A's machines with it
+  // when the plan's change moves them, through routine-plan/store.ts's
+  // `savePlanChange` alone, in one batch, issued and never awaited. It still
+  // never writes a routine any other way: adding a machine is today only.
+  it("the session writes Routine A's PLAN through routine-plan/store.ts alone, never awaited, and nothing else of a routine", () => {
+    const HOOK = code(read("src/features/routine-plan/ui/useSessionPlan.ts"));
+    expect(WTV, "the session's plan reads and writes go through one hook").toMatch(/useSessionPlan\(\{/);
+    expect(WTV, "the tracker reaches the plan's writer only through the hook").not.toMatch(/savePlanChange|startPlan\(|saveRoutineEdit/);
+    expect(HOOK).toMatch(/import \{ savePlanChange \} from "\.\.\/store";/);
+    expect(MUTATORS.filter((m) => new RegExp(`\\b${m}\\s*\\(`).test(HOOK)), "the hook writes through store.ts only").toEqual([]);
+    expect(HOOK, "a tap never waits on the plan's write").not.toMatch(/await\s+(?:commit|savePlanChange)|savePlanChange\([^)]*\)\s*\.then/);
+    expect(HOOK).toMatch(/commit\.catch\(refused\)/);
+
+    // The plan's sheet and the column's sheet write nothing: they hand each change up.
+    for (const file of [
+      "src/features/routine-plan/ui/SessionPlanSheet.tsx",
+      "src/features/routine-plan/ui/StartingRangeSheet.tsx",
+      "src/features/routine-plan/ui/SessionOrderLine.tsx",
+      "src/features/routine-plan/session-plan.ts",
+    ]) {
+      const src = code(read(file));
+      expect(MUTATORS.filter((m) => new RegExp(`\\b${m}\\s*\\(`).test(src)), file).toEqual([]);
+      expect(src, file).not.toMatch(/from\s+["'][./]*(?:store|usePlanActions|starting-store)["']/);
+    }
+
+    // "Next in the plan · Add" is today's order only, through the one recorder.
+    const at = WTV.indexOf("planAddRef.current = ");
+    expect(at, "the plan's Add is gone").toBeGreaterThan(-1);
+    const add = WTV.slice(at, at + 300);
+    expect(add).toMatch(/applySessionMachineIds/);
+    expect(/["']routines["']/.test(add)).toBe(false);
   });
 
   it("the builder's \"Today only\" is true on the briefing and in a session", () => {

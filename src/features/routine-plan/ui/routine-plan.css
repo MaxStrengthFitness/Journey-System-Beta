@@ -430,6 +430,21 @@ button.rpl-cell--next {
   color: var(--eq-ink);
   overflow-wrap: anywhere;
 }
+/* The one order-effect line under the session's grid (the floor on day one,
+   §4.6): no lineup numbers to line up with, so it starts at the edge. */
+.rpl-list--session { padding: 4px 8px; }
+.rpl-list--session .rpl-effect { padding-left: 8px; }
+.rpl-list--session .rpl-effect__why { margin-left: 8px; }
+
+/* The Academy's notes on its starting weights, one well each. */
+.rpl-notes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
 /* The bench: what the client can't do, in a well. */
 .rpl-bench {

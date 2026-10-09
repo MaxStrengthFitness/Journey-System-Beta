@@ -240,6 +240,9 @@ const CONTROLS = [
   [".jg-nb__obtn", "dashed", "the Now Bar's No set? buttons"],
   [".jg-nb__reason", "solid", "a skip reason"],
   [".jg-nb__where", "solid", "where the pain is"],
+  // The first-session design round (Oct 8 2026, §4.6): the quiet "Academy's
+  // starting range" a first time on a machine offers, No set?'s dashes.
+  [".jg-nb__rangeask", "dashed", "the Now Bar's Academy's starting range"],
   [".jg-sbar__btn", "solid", "the session bar's Notes and Pulse"],
   [".jg-today__add", "dashed", "the Today column's add"],
   [".jg-order__find", "solid", "the routine sheet's Find"],

@@ -49,11 +49,17 @@ export interface CantDoSheetProps {
   nameOf: (id: string) => string;
   /** The studio's day: a date before it can't be picked. */
   todayYmd: string;
+  /**
+   * A line under the title, when the screen has something to say about the
+   * mark: in a session, "Today's set stays. The plan changes from next
+   * session." for a machine with a set logged today.
+   */
+  aside?: string | null;
   onClose: () => void;
   onSave: (save: CantDoSave) => void;
 }
 
-export function CantDoSheet({ open, firstName, machineId, floor, plan, bench, nameOf, todayYmd, onClose, onSave }: CantDoSheetProps) {
+export function CantDoSheet({ open, firstName, machineId, floor, plan, bench, nameOf, todayYmd, aside = null, onClose, onSave }: CantDoSheetProps) {
   const [pick, setPick] = useState<string | null>(machineId);
   const [reason, setReason] = useState<string | null>(null);
   const [until, setUntil] = useState<UntilChoice>("cleared");
@@ -93,6 +99,7 @@ export function CantDoSheet({ open, firstName, machineId, floor, plan, bench, na
         </Button>
       }
     >
+      {aside && <p className="rpl-meta">{aside}</p>}
       {machineId === null && (
         <section className="rpl-sheet__section">
           <p className="rpl-sheet__label">Which machine</p>

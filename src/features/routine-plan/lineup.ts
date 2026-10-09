@@ -159,9 +159,10 @@ export function effectsAbove(
   return at;
 }
 
-/** The progress meter's segments: in Routine A, next, still to come. */
+/** The progress meter's segments: in Routine A, next, still to come (no next when none can be added: a session's, with the rest benched or off this floor). */
 export function meterSegments(progress: PlanProgress): Array<"in" | "next" | "later"> {
-  return Array.from({ length: progress.of }, (_, i) => (i < progress.have ? "in" : i === progress.have && !progress.complete ? "next" : "later"));
+  const hasNext = !progress.complete && progress.next !== null;
+  return Array.from({ length: progress.of }, (_, i) => (i < progress.have ? "in" : i === progress.have && hasNext ? "next" : "later"));
 }
 
 /* ── The Road: the plan as one line ────────────────────────────────────── */
@@ -202,10 +203,27 @@ export function roadGroups(input: {
   thenLabel?: string;
   /** The client's first name, for "Not for Dana"; "Can't do" without one. */
   firstName?: string | null;
+  /**
+   * Which machine an id is, when today's ids and the plan's can differ (the
+   * session's sheet: a studio's own unit is the catalog machine it is,
+   * `session-plan.ts` `todayMatch`). Absent, an id is itself.
+   */
+  keyOf?: (id: string) => string;
+  /**
+   * The next stop as the caller worked it out (the session's: never a
+   * machine this floor lacks), or null for none. Absent, the first machine
+   * still to come.
+   */
+  next?: string | null;
 }): RoadGroup[] {
+  const k = input.keyOf ?? ((id: string) => id);
   const today = once(input.today);
+  const inToday = new Set(today.map(k));
   const held = activeCantDo(input.plan, input.todayYmd).map((c) => c.machineId);
-  const later = input.plan.intended.filter((id, i) => input.plan.intended.indexOf(id) === i && !today.includes(id) && !held.includes(id));
+  const isHeld = new Set(held.map(k));
+  const later = input.plan.intended.filter((id, i) => input.plan.intended.indexOf(id) === i && !inToday.has(k(id)) && !isHeld.has(k(id)));
+  const nextKey = input.next === undefined ? (later.length > 0 ? k(later[0]) : null) : input.next === null ? null : k(input.next);
+  let marked = false;
   const first = input.firstName?.trim();
   const groups: RoadGroup[] = [
     {
@@ -217,12 +235,18 @@ export function roadGroups(input: {
     {
       key: "then",
       label: input.thenLabel ?? "Then",
-      stations: later.map((id, i) => (i === 0 ? { id, kind: "next" as const, mark: "Next stop" } : { id, kind: "planned" as const })),
+      stations: later.map((id) => {
+        if (!marked && nextKey !== null && k(id) === nextKey) {
+          marked = true;
+          return { id, kind: "next" as const, mark: "Next stop" };
+        }
+        return { id, kind: "planned" as const };
+      }),
     },
     {
       key: "cantdo",
       label: first ? `Not for ${first}` : "Can't do",
-      stations: held.filter((id) => !today.includes(id)).map((id) => ({ id, kind: "cantdo" as const })),
+      stations: held.filter((id) => !inToday.has(k(id))).map((id) => ({ id, kind: "cantdo" as const })),
     },
   ];
   return groups.filter((g) => g.stations.length > 0);

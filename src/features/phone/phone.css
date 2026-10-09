@@ -371,6 +371,13 @@
   color: var(--eq-ink-muted);
   cursor: default;
 }
+/* An empty list with the plan's next machine to offer (the first-session
+   design round, Oct 8 2026, §4.6): the card's Next, full width. */
+.ph-stage__plan {
+  display: block;
+  width: 100%;
+  margin: 0 0 12px;
+}
 
 .ph-stage__reorder {
   margin: 12px auto 0;

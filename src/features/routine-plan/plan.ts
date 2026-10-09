@@ -90,7 +90,10 @@ export function progressLine(
     return `0 of ${progress.of} · day one: ${listWords(dayOne.map(nameOf))}`;
   }
   if (progress.complete) return `All ${progress.of} planned machines in`;
-  return `${progress.have} of ${progress.of} · next: ${nameOf(progress.next!)}`;
+  // Against a session (routine-plan/session-plan.ts): the rest are on the
+  // bench or not on this floor, so nothing is next, and they aren't "in".
+  if (progress.next === null) return `${progress.have} of ${progress.of} · no more to add today`;
+  return `${progress.have} of ${progress.of} · next: ${nameOf(progress.next)}`;
 }
 
 interface TodayInput {

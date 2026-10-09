@@ -165,4 +165,37 @@ describe("PhoneSessionStage", () => {
     expect(marks.map((m) => m.getAttribute("data-level"))).toEqual(["critical", "elevated"]);
     expect(marks.map((m) => m.getAttribute("aria-label"))).toEqual(["Critical note on this machine", "Heads up note on this machine"]);
   });
+
+  /* The floor on day one (the first-session design round, Oct 8 2026, §4.6):
+     "On a phone, the last card's Next becomes 'Next in the plan · Add'".
+     Adding is today only: the tracker's onAddPlanned. */
+  it("on the last card, offers the plan's next machine as Next: today only, what waits sent first", () => {
+    const p = mount({ focusId: "leg", planNext: { id: "m-hip-abd", name: "Hip Abduction" }, onAddPlanned: vi.fn() });
+    const next = q<HTMLButtonElement>(".ph-card.is-in-hand .ph-card__next");
+    expect(next.textContent).toBe("Next in the plan: Hip Abduction · Add");
+    expect(next.disabled).toBe(false);
+    act(() => next.click());
+    expect(p.onCommit).toHaveBeenCalled();
+    expect(p.onAddPlanned).toHaveBeenCalledTimes(1);
+    expect(p.onAddPlanned).toHaveBeenCalledWith("m-hip-abd");
+    expect(p.onFocus).not.toHaveBeenCalled();
+  });
+
+  it("keeps the last card's quiet word when the plan has nothing next, and Next on any other card", () => {
+    mount({ focusId: "leg" });
+    const last = q<HTMLButtonElement>(".ph-card.is-in-hand .ph-card__next");
+    expect(last.textContent).toBe("Last machine · Finish is at the top");
+    expect(last.disabled).toBe(true);
+    act(() => root?.unmount());
+    host?.remove();
+    mount({ focusId: "chest", planNext: { id: "m-hip-abd", name: "Hip Abduction" }, onAddPlanned: vi.fn() });
+    expect(q<HTMLButtonElement>(".ph-card.is-in-hand .ph-card__next").textContent).toBe("Next: Leg Press");
+  });
+
+  it("an empty list offers the plan's next machine too", () => {
+    const p = mount({ rows: [], focusId: null, planNext: { id: "m-leg-press", name: "Leg Press" }, onAddPlanned: vi.fn() });
+    expect(host!.textContent).toContain("No machines in today's routine yet.");
+    act(() => q<HTMLButtonElement>(".ph-stage__plan").click());
+    expect(p.onAddPlanned).toHaveBeenCalledWith("m-leg-press");
+  });
 });

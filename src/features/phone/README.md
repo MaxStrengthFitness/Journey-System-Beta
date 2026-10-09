@@ -56,7 +56,14 @@ Each card, in the order the floor needs it (the-floor.md, "Where the eye goes"):
    with sides takes L and R.
 5. **The marks**: the star and the kaizen (held until a count is in, a second
    tap returns the set to an ordinary one), Practice, Skip.
-6. **Next**, on the card in hand only.
+6. **Next**, on the card in hand only. On the last card, when Routine A's
+   plan has a machine today's session doesn't (the first-session design
+   round, Oct 8 2026, §4.6: "On a phone, the last card's Next becomes 'Next
+   in the plan · Add'"), it reads "Next in the plan: Hip Abduction · Add" and
+   adds it to TODAY only, through the tracker's `onAddPlanned` (the one
+   recorder, `applySessionMachineIds`); the Wrap-up decides what the routine
+   keeps. An empty list offers the same. `cardNextOf` (phone-session.ts) is
+   which Next a card draws.
 
 The card in hand IS the Now Bar's machine (`gridFocusMachineId`), so the
 machine clocks, the progress count and Finish read the same thing on a phone

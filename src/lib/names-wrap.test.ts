@@ -51,6 +51,8 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   { file: "features/journey-grid/journey-grid.css", cls: "jg-nb__name", what: "the current machine on the Now Bar" },
   { file: "features/journey-grid/journey-grid.css", cls: "jg-nb__nextname", what: "the next machine on the Now Bar" },
   { file: "features/journey-grid/journey-grid.css", cls: "jg-order__add", exact: ".jg-order__add span", what: "a machine in the routine-order sheet" },
+  // The floor on day one (the first-session design round, Oct 8 2026, §4.6).
+  { file: "features/phone/phone.css", cls: "ph-card__next", what: "\"Next: Leg Press\" and \"Next in the plan: Hip Abduction · Add\" on the phone's card in hand" },
   { file: "features/routine-builder/routine-builder.css", cls: "rb-row__name", what: "a machine in the routine builder's list" },
   { file: "features/routine-builder/routine-builder.css", cls: "rb-pick__name", what: "a machine in the routine builder's picker" },
   { file: "features/routine-builder/routine-builder.css", cls: "rb-warn__pair", what: "the two machines a sequencing warning names" },
