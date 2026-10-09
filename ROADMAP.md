@@ -51,8 +51,8 @@ still worth checking — see **Confirm before anything else**, below.
 | | |
 | --- | --- |
 | Typecheck (`npx tsc --noEmit`) | **2** errors — the baseline (`charts.tsx`, `EditTrainerModal.tsx`). Compare the count; never expect zero |
-| Tests (`TZ=America/New_York npx vitest run src`) | **12,385** passing in 771 files on `oct7/ahead`, Oct 7 2026; `CLAUDE.md` keeps the running count |
-| Branch | everything is on `master` except `claude/first-session-routine-plan-ui-2f8dc1` (the first-session screens, Rounds 1 and 2 with the whole-branch review's fixes, Oct 9 2026; it replayed and replaces `oct7/first-session`), built and waiting for one iPad walk (Round 65) before it merges |
+| Tests (`TZ=America/New_York npx vitest run src`) | **13,132** passing in 802 files on `claude/first-session-routine-plan-ui-2f8dc1`, Oct 9 2026 (12,385 in 771 on master, Oct 7); `CLAUDE.md` keeps the running count |
+| Branch | everything is on `master` except `claude/first-session-routine-plan-ui-2f8dc1` (the first session and a routine's plan, Rounds 1 and 2 with the review's and the screens preview's fixes, Oct 9 2026; it replayed and replaces `oct7/first-session`), measured and ready to ship with `scripts/ship/ship-first-session.ps1` (AJ, Oct 8 2026: "you can push it directly to master thats fine"). Render's Manual Deploy waits for the seed and one iPad walk, Round 65 (`docs/rounds/2026-10-08-first-session-screens.md` §7.6) |
 | Deploys | a push to `master` deploys nothing; AJ deploys by hand on Render (above). Rules, indexes and Cloud Functions are deployed separately |
 
 ---
@@ -75,7 +75,8 @@ expensive to be wrong about.
    *Check:* `npx tsx scripts/fetch-live-indexes.ts` against
    `firestore.indexes.json`.
 3. **Do the rules tests pass on the rules you are about to deploy?**
-   `npm run test:rules` needs JDK 21; it passed with 323 tests on Oct 7 2026.
+   `npm run test:rules` needs JDK 21; it passed with 323 tests on Oct 7 2026
+   (master) and 334 on Oct 9 2026 (the first-session branch).
    AJ's run is the one that counts, and nothing else verifies the rules.
 
 The deploy order, when they do need deploying, is in `CLAUDE.md`: indexes →
@@ -388,8 +389,25 @@ small file of its own (about 4 kB off the first download).
 
 **The Relay room (Sep 28 2026), as it stood then** (superseded in part: the second and third waves built the quiet-floor number as a studio setting, cover asks that keep their time, Since you were in, the Journal, claim times and announcements that ask "I've read it", and the Board was rebuilt on Oct 3 2026, which removed Opening and Close out; `docs/rounds/2026-10-03-relay-board.md`): a quiet-floor number per studio (q3; 2 for every studio meanwhile); a cover ask that keeps its time; Since you were in (a last-seen marker per trainer, a new-to-the-studio lookup); the Journal (note types, templates, shelves, hunches; Opening's things to carry and Close out's day log); announcements that ask "I've read it" (q7: the retired `readBy` stamp and the private `announcementReads`); a studio's own cleaning log; claim times. Questions: the open question's three weeks on the briefing, closing it on her Notes page, trainers naming one person, Opening's 90 minutes. Technical: a load status from `useLiveSchedule` for Right now and Opening; folding Capture's "The Board" into the Ask sheet.
 
-**Decisions still waiting on AJ** — whether the tracker should suggest starting
-weights at all; the three unwired Academy safety rules; who runs the payroll
+**The first session and routine plans (Oct 9 2026)** — to do by hand, in
+this order (`docs/rounds/2026-10-08-first-session-screens.md` §7.6): the ship
+script's prepare and golive (the index and the rules), the seed
+(`scripts/seed-starting-routines.ts`, a dry run, then `--commit`), the iPad walk
+of Round 65 against the PC BEFORE Render's Manual Deploy (AJ's rule: at most two
+rounds shipped before a walk, and several already went unwalked), then Render.
+Then, when AJ chooses: an administrator may mark head office's default starting
+routine (none is marked, AJ's "2a"); each studio picks its starting routines and
+"A new client starts with". Not built, each a round of its own: free-form and
+practice sessions (AJ's §2c answer is the rule for them), the injury layer
+(head office's answers to `docs/rounds/2026-10-07-injury-map-questions.md`),
+the middle delt and the body figure's side view. For AJ: the plan's door in the
+session's corner, or on the bar (§4.6); the neck's start, the catalog's 20 lb or
+the Academy sheet's row (§4.8); the two versions of the Academy's selection
+template that disagree on three rows (head office's call, in the template
+editor). The starting weights question is answered: the Academy's range beside
+the weight, a reference never typed in (AJ, Oct 7 2026).
+
+**Decisions still waiting on AJ** — the three unwired Academy safety rules; who runs the payroll
 export and how often; the bootstrap e-mail hard-coded in
 `useAuthInitialization`; whether to raise the app's tap-target floor from 40px
 to Apple's 44px; what to do with the unused server and Mindbody routes (the

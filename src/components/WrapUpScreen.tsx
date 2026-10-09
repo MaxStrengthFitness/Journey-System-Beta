@@ -135,6 +135,17 @@ import { NextTimeCard } from "../features/routine-plan/ui/NextTimeCard";
  * another app opened to book the next visit) never locks them: changed
  * after it, they are handed over again on the next way out. The card is
  * routine-plan/ui/NextTimeCard.tsx; what it reads is frozen at Finish.
+ * Next time is the ONLY way the Wrap-up writes a routine: nothing here puts
+ * today's machines into Routine A, or the consult's day one, by itself.
+ * Round 2 (Oct 9 2026, the round document's §4b and §4d): after a session on
+ * a Routine B with its plan of swaps, a ticked machine that is one of B's
+ * swaps makes that swap in the A machine's place; at a studio that starts
+ * new clients on A and B together, the ticks that START Routine A start the
+ * planned Routine B too, and the card says so as the ticks change ("Routine
+ * B starts too: ..."). The client's B switch is then its own write, after
+ * the ticks' batch lands, never inside it (the whole-branch review:
+ * `setRoutineBActive`, so a client the rules refuse an update to never takes
+ * the ticks down with it).
  *
  * The screen follows the app theme, all of it. Its surfaces are the
  * `bg-dark` / `ink-d` tokens, which go light in the light theme, and every

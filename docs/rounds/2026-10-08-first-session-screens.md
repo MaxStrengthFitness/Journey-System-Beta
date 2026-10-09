@@ -1,9 +1,10 @@
 # The first session and a routine's plan: the screens (design round, Oct 8 2026)
 
-**Status: Rounds 1 and 2 built on `claude/first-session-routine-plan-ui-2f8dc1`, with the whole-branch review's fixes (Oct 9 2026, §7); not shipped, waiting for one iPad walk of both (AJ's "1a", walk-through Round 65 in `docs/ops/TESTING-CHECKLIST.md`).**
+**Status: Rounds 1 and 2 built on `claude/first-session-routine-plan-ui-2f8dc1`, reviewed and measured (Oct 9 2026, §7); ready to ship with `scripts/ship/ship-first-session.ps1`, then the seed, then one iPad walk of both (AJ's "1a", Round 65 in `docs/ops/TESTING-CHECKLIST.md`) before Render's deploy (§7.6).**
 This branch is master's `e8c5cb22` with the seven `oct7/first-session` commits
 replayed on top (the research, the grid fix, the routine plan's pure half, its
-store and rules). It is not pushed. The research and the structure are
+store and rules). AJ, Oct 8 2026: "you can push it directly to master thats
+fine"; a push reaches no iPad until Render's Manual Deploy. The research and the structure are
 `docs/rounds/2026-10-07-first-session-and-routines.md`; read its §2, 2b, 2c, 4
 and 5 first. This document is the design round: what AJ picked, the screens,
 and how they are built.
@@ -135,7 +136,9 @@ His third answers (Oct 8 2026) were **"1a 2a 3a"**:
     something once B is built the new way.
 - **How they ship** (AJ's "1a", Oct 8 2026). Round 2 continues on this
   branch in its own commits, each typechecked on its own. Neither round ships
-  alone: both go to `master` together after one iPad walk of the two.
+  alone: both go live together after one iPad walk of the two. AJ, later the
+  same day: "you can push it directly to master thats fine". A push reaches
+  no iPad, so the walk comes before Render's deploy (§7.6).
 
 ## 4. The screens (Round 1)
 
@@ -881,28 +884,64 @@ customization." The research (§5.2) named the setting `startingRoutines`
 
 ## 7. Build log
 
-One commit per phase, each typechecked on its own (baseline 2):
+The research round (Oct 7 2026) and both design rounds (Oct 8 to 9 2026),
+on `claude/first-session-routine-plan-ui-2f8dc1`, built on master's
+`e8c5cb22` (Ahead, live, and the docs brought up to Oct 7; still master on
+GitHub on Oct 9 2026). One commit a phase, each typechecked on its own
+(baseline 2), so any one can be reverted alone.
 
-| Commit | Phase |
+### 7.1 The commits
+
+| Commit | Subject | What it is |
+| --- | --- | --- |
+| `b0b19d79` | Docs: the first session and a routine's plan, research, AJ's answers and the structure | The research document: AJ's interview answers in his words, what happens today, what the Academy says, the structure |
+| `8d6049c3` | Docs: AJ's answers to the research, the Academy files Drive had that the repo didn't, and the injury map questions | His answers to the research (§2b), the Academy's starting-weights sheet and the other Drive files brought into `docs/msf-academy/`, and the injury map's question sheet for head office |
+| `c109b06e` | Journey grid: a client with no past sessions gets a grid, not one long line | The bug found on the way: with no past sessions the grid drew one 1694px column; now one row a machine |
+| `035457c7` | Routine plan: the pure half, a new client's starting plan and a routine's road | `src/features/routine-plan/`: which kind of client, the Academy's starting plan, the plan's progress, B's swaps, a weak area, the starting ranges |
+| `ce22ea20` | Routine plan: the test file in LF line ends, as the repository keeps every file | One file's line ends, nothing else |
+| `77cbbacb` | Routine plan: the plan on the routine and its changes beside it, with the rules | `routines/{id}.plan` and `routines/{id}/planChanges` (append-only), `store.ts` the only writer, 5 rules tests |
+| `a92a7de0` | Docs: the first session and routines, what was built, AJ's last answers, and the rulebook | The research round's build log, his §2c answers, `CLAUDE.md`'s row and decision |
+| `73e15ff6` | Docs: the first-session design round, AJ's picks and how Round 1 is built | This document: "1d 2a 3a", "1a 2a 3a GO" and the screens |
+| `11d03d9f` | Routine plan: can't-do, re-plan, starting routines from presets, and who is new, without gender | The pure half of Round 1: the can't-do bench, Re-plan, starting routines read from presets, client kind with gender read nowhere |
+| `f0eb5fd3` | Routine plan: the plan on Routine and presets, the starting-routine choice, rules and the seed script | The types, the studio's choice (`config/startingRoutines`), the four new change kinds in the rules, 6 rules tests, `scripts/seed-starting-routines.ts` |
+| `88e056dd` | Starting routines: head office marks a routine for new clients, and a studio chooses its own | The template editor's For new clients part and My Studio → Studio → Starting routines |
+| `106cb86a` | Routine plan: the consult is not Routine A, so day one is kept on the plan and Routine A starts empty | AJ's third "3a": `plan.dayOne`, `todayFor`, an empty Routine A at the first write |
+| `c8d15ad7` | Programming: Start a plan, and Routine A's plan as a lineup with can't-do, re-plan and its changes | Programming's Start a plan, the Lineup, the bench, Re-plan and the Changes |
+| `e4ef50dd` | Briefing: a new client's plan on the briefing, and Start keeps it | The briefing's plan card; Start hands the plan up and the tracker keeps it in the Start batch |
+| `ad15bd7a` | Session: the plan's next machine, the Academy's starting range, and the plan from the corner | The floor on day one: First time on this machine, the range, Next in the plan, the plan's sheet from the grid's corner |
+| `0b2f2b86` | Wrap-up: Next time, today's machines joining the routine while it is being built | The Wrap-up's Next time card and its one write on the way out |
+| `71c7d68f` | Retire the old first-time setup: the consult wizards, the starting-weight seed and the intro session | Item 9 (§4.8): the two wizards, the starting-weight heuristic and the intro-session path deleted |
+| `ddac6e8e` | Routine B: starts as A with one machine different, molded in swap by swap, and follows A where it hasn't swapped | Round 2, item 6 (§4b) |
+| `39a9238d` | Routine plan: a weak area answered in the builder, a same-family swap before an addition | Round 2, item 7 (§4c) |
+| `af09f0a3` | Studio settings: a studio starts new clients on A alone, or A and B together | Round 2, item 8 (§4d): the setting `newClientsStart`, the settings' first "choice" |
+| `472d68ec` | Review: the first-session round's fixes across the floor, data, look, spec and leftovers | The whole-branch review (§7.3) |
+| `4d25b4de` | Screens: fixes found in the preview | The screens preview (§7.4) |
+| this commit | Docs and ship-first-session.ps1: the first-session round, measured | This section, `CLAUDE.md`, the READMEs, the traps, Round 65, the roadmap, the index, the changelog, and `scripts/ship/ship-first-session.ps1` |
+
+### 7.2 Measured
+
+On Oct 9 2026, on `4d25b4de` (this commit changes no code), in the
+worktree on AJ's PC with its files in LF:
+
+| Check | Result |
 | --- | --- |
-| `b0b19d79`, `8d6049c3`, `a92a7de0`, `73e15ff6` | The research, AJ's answers and this design round's document |
-| `c109b06e` | The Journey grid for a client with no past sessions |
-| `035457c7`, `ce22ea20`, `77cbbacb` | The routine plan's pure half, its store and rules (the Oct 7 branch, replayed) |
-| `11d03d9f`, `f0eb5fd3`, `88e056dd`, `106cb86a` | Can't-do, re-plan, starting routines from presets, the plan on Routine and presets, the studio's choice, the seed; the consult is not Routine A |
-| `c8d15ad7`, `e4ef50dd`, `ad15bd7a`, `0b2f2b86`, `71c7d68f` | Round 1's screens: Programming, the briefing, the floor, the Wrap-up's Next time, the retirements |
-| `ddac6e8e`, `39a9238d`, `af09f0a3` | Round 2: B molded in, the weak area, A or A and B together |
-| the review commit | The whole-branch review's fixes (below) |
-| the preview commit | Fixes found in the screens preview (below) |
+| The suite, `TZ=America/New_York npx vitest run --dir src --testTimeout=30000` | **13,132** passing in **802** files (Ahead, on master, measured 12,385 in 771) |
+| Typecheck, `npx tsc --noEmit` | **2**, the baseline (`clinical-review/charts.tsx`, `EditTrainerModal.tsx`) |
+| Rules tests, `npm run test:rules` | **334** passing (323 on master; 5 for the plan on Oct 7; 6 on Oct 8 for the four new kinds, the studio's choice, the starting routines and the kept lineup) |
+| The functions, typecheck and tests | Clean; **263** passing and 1 skipped in 14 files (none of theirs changed) |
+| Production build, `npx vite build`, then `npm run check:bundle` | Clean; the first screen **462.2 KB gzip** of the 480 budget (Ahead's was 462.9) |
+| The crons and the server, `npm run build:backend` and the server's esbuild | Clean |
+| The perf lab's markers in `dist/` | None |
+| Windows line ends, `git ls-files --eol \| grep -c w/crlf` | **0** |
+| Two names differing only by case | None |
 
-**Measured** at the review commit, in this worktree on AJ's PC
-(`TZ=America/New_York npx vitest run --dir src --testTimeout=30000`, files in
-LF): typecheck **2**; **13,127** tests passing in **802** files. The
-review changed no rule, so the rules tests stand as the round's commits left
-them (AJ's `npm run test:rules` is the run that counts). Production build and
-`check:bundle` are for the ship script.
+AJ's own `npm run test:rules` is the run that counts; the ship script runs
+it twice (prepare, and golive before the rules go out).
 
-**The whole-branch review** (Oct 9 2026; five reviewers, every finding checked
-in the code first). What it changed:
+### 7.3 The whole-branch review
+
+Oct 9 2026; five reviewers, every finding checked in the code first. What it
+changed:
 
 - **The floor.** A session started before the client's routines answered (the
   consult on slow Wi-Fi) offered no Add for the whole session: today's list is
@@ -946,12 +985,14 @@ in the code first). What it changed:
   briefing's write-free card (§1); the plan's door in the corner, a question
   for AJ (§4.6).
 
-**The screens preview** (Oct 9 2026). AJ asked for screenshots from a
-preview; the live app needs his sign-in and the local `.env` points at
-production, so the real components were mounted with example data over
-stubbed Firebase (a throwaway, git-ignored harness, `harness/screens/`) and
-photographed at iPad size, portrait and landscape, light and dark. Looking at
-them found five things, each fixed with a test:
+### 7.4 The screens preview
+
+Oct 9 2026. AJ asked for screenshots from a preview; the live app needs his
+sign-in and the local `.env` points at production, so the real components
+were mounted with example data over stubbed Firebase (a throwaway,
+git-ignored harness, `harness/screens/`) and photographed at iPad size,
+portrait and landscape, light and dark. Looking at them found five things,
+each fixed with a test:
 
 - **B's suggested swaps took out what the starting routine's own B keeps.**
   A low back client's planned B started "Cervical Extension for Lumbar
@@ -972,9 +1013,130 @@ them found five things, each fixed with a test:
 - **The briefing's "How does Priya start?" stood 200px of empty space under
   its title**: the head row's flex basis was a height in the card's column.
 
-Measured after it, as at the review: typecheck **2**; **13,132** tests passing
-in **802** files. No rule changed.
+The preview is jsdom and headless Chrome over stubbed data, not Safari on an
+iPad: it can't show Safari's paint, a real sign-in or real timing. The iPad
+walk (§7.6, step 5) is that check.
 
-Not changed, and said: the template editor's sticky Save row lets the scrolled
-form show in the dialog's bottom padding beneath it (`adm-dialog__actions`,
-older than this round).
+### 7.5 Not built, and why
+
+- **Free-form and practice sessions.** AJ's §2c answer stands as the rule
+  for when they are built: "on the person's record and the trainer's own
+  history only, never in the studio's numbers, machine fit or machine
+  trends, and the person is a temporary profile, these profiles can exist in
+  the studio but not count towards studio averages". They were not one of
+  this round's nine items (§1), and they touch every studio count, machine
+  fit and machine trends, so they are a round of their own. Until then a
+  trainer's own training runs as today's Free session, which has no Next
+  time (§4.7).
+- **The injury layer.** Parked on AJ's word (research §2b: "We can build the
+  injury logic later"), behind head office's answers to the question sheet,
+  `docs/rounds/2026-10-07-injury-map-questions.md`. What the floor has
+  instead is Can't do with its reason, and the Health note a surgery or an
+  injury offers (§4.4), so the leaders hear of it on Operations → Today.
+  Nothing flags a machine from a note by itself.
+- **The middle delt and the figure's side view.** The Academy names Lateral
+  Raise's target as the middle delt; the anatomy map has no `delts-side` id
+  because the body figure draws front and back only (research §2b: "we need
+  to somehow figure out a side view for our viewer"). The weak area's Delts
+  works through the front and rear delt ids until then (§4c).
+- **Which Academy template is the standard** (research §7, question 2) is
+  answered by AJ's "studios will chose their own, admins will create the
+  routines to pick from in the app during beta": the seed brings in the
+  Academy's eleven and marks no default (his "2a"). The two versions of the
+  selection template that disagree on three rows stay head office's call, in
+  the template editor.
+- **Left by the review and the preview, and said:** the Academy's helping
+  pairs are not said as order effects (§1); the briefing's card stays
+  write-free, so a can't-do learned at the door is marked from the corner
+  after Start (§1); the plan's door is in the grid's corner, not on the
+  session bar, which is a question for AJ (§4.6); the template editor's
+  sticky Save row lets the scrolled form show in the dialog's bottom padding
+  beneath it (`adm-dialog__actions`, older than this round).
+- **For AJ and the administrators:** the neck's start, the catalog's "20 lbs
+  (the lightest increment)" or the sheet's row (§4.8). The catalog line is
+  corrected in the catalog editor, not in code.
+
+### 7.6 How to ship
+
+AJ's "1a" (Oct 8 2026): both rounds ship together, after one iPad walk.
+And the same day: "you can push it directly to master thats fine". A push
+reaches no iPad (Render deploys by hand, `CLAUDE.md` → Environments), so
+the branch may be on master before the walk; Render's Manual Deploy waits
+for it. The ship script is `scripts/ship/ship-first-session.ps1`, run from
+this branch's folder, `.claude\worktrees\first-session-routine-plan-ui-2f8dc1`.
+
+1. **Prepare.** `powershell -ExecutionPolicy Bypass -File
+   .\scripts\ship\ship-first-session.ps1 -Stage prepare`. It changes nothing
+   in production or in git: the branch and a clean tree; master on GitHub
+   either `e8c5cb22` or already this branch's head (anything else stops
+   it); the rules and the index changed and holding this round's; no
+   function changed; the Firebase login; the restore tag free; no Windows
+   line ends; the case check; the typecheck count; the suite in Eastern
+   time; the functions; the three builds and the first screen's budget; no
+   perf lab marker; the rules tests. It ends PREPARE PASSED and records the
+   commit it tested; golive refuses any other.
+2. **Golive.** The same line with `-Stage golive`. It asks for GO, then, in
+   this order, stopping at the first failure and saying what is live:
+   1. the index, `npx firebase deploy --only firestore:indexes --project prod
+      --non-interactive` (one new composite, `routinePresets` on tier and
+      scope, the starting routines' read; it never deletes an index);
+   2. the rules tests again, then `npx firebase deploy --only firestore:rules
+      --project prod`, then a check that the ruleset live holds
+      `planChangeOk` and `startingChoiceValid`. The rules only add access:
+      the app on Render now is unaffected, and the new one finds them
+      waiting;
+   3. the restore tag `restore/2026-10-09-before-first-session` = `e8c5cb22`,
+      pushed if it isn't on GitHub;
+   4. `git push origin claude/first-session-routine-plan-ui-2f8dc1:master`,
+      fast-forward only, and only while master is still `e8c5cb22`; when
+      Claude has pushed it already, nothing is pushed.
+3. **The index.** Firebase console → Firestore → the named database →
+   Indexes: `routinePresets` (tier, scope) says Enabled, in minutes.
+4. **The seed**, a dry run first, from the same folder, with the key from
+   the project folder:
+
+   ```
+   npx tsx scripts/seed-starting-routines.ts --key "C:\Users\austi\Projects\Journey-System-Beta-master\service-account.json" --project gen-lang-client-0731527386 --database ai-studio-32cbbdcc-6e08-4770-9665-867c68878efa --confirm-project gen-lang-client-0731527386
+   ```
+
+   It writes nothing and lists the eleven it would write (each with its
+   day one, its road and its words, no "female" or "male" in a name). Then
+   the same line with `--commit`. Run the dry run once more: each says
+   "already there". It marks no head office default (AJ's "2a"). Until
+   Render's deploy, the older app on Render shows the eleven among head
+   office's templates in the Edit routine drawer (in place of its built-in
+   list, if head office has none of its own yet); the new version leaves
+   starting routines out of the drawer (`drawerTemplates`), and nothing
+   else in the older app reads them.
+5. **The iPad walk, FIRST, before Render.** AJ's rule (Sep 30 2026) is at
+   most two rounds shipped before an iPad walk, and several have gone live
+   unwalked, so this one is walked before it reaches a trainer: Round 65 of
+   `docs/ops/TESTING-CHECKLIST.md`, against this PC. In the branch's folder,
+   `npm run dev`; on the iPad, Safari (never the Home Screen icon, which is
+   the live app) at `http://<the PC's Wi-Fi address>:3000`
+   (`Get-NetIPConfiguration`; the address must be in Firebase console →
+   Authentication → Settings → Authorized domains, AJ's to add, or the
+   sign-in is refused). The dev server writes to production, as the main
+   checkout does: walk it on the test client Add Client makes, upright and
+   on its side, then once on a phone. Tell Claude what the walk finds.
+6. **Render.** Manual Deploy on `maxstrength-app-beta`, then
+   `curl.exe -s https://maxstrength-app-beta.onrender.com/version.json`
+   until it names the new build. Manual Build on **both** crons,
+   `journey-cron-renewals` (its Journey step resolves the studio settings,
+   which gained a kind of setting) and `journey-cron-leaderboards`, so all
+   three are on one commit. The iPads load it on the Hub by themselves.
+7. **In the app, when AJ chooses.** An administrator may mark head office's
+   default starting routine (Admins → Standard → Standard template → a
+   routine → For new clients); until one is marked, or a studio sets its
+   own, a trainer picks for a client whose intake names nothing. Each
+   studio's leaders choose on My Studio → Studio → Starting routines, and set
+   This studio's settings → A new client starts with (A alone is Max
+   Strength's default).
+
+**To undo:** `git push --force origin restore/2026-10-09-before-first-session:master`,
+then the same three Render buttons. The rules and the index can stay (they
+only add access and a way to read); the seeded routines stay as head
+office's templates, and an administrator can delete any. Plans already kept
+stay on their routines, unread by the older app, where a client kept with an
+empty Routine A opens an empty routine and the trainer adds machines as
+before.

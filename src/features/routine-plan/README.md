@@ -5,7 +5,8 @@ client, pick a starting routine and do the session." The research, his
 interview answers in his own words, and the structure are
 `docs/rounds/2026-10-07-first-session-and-routines.md`; read it first. The
 screens round is `docs/rounds/2026-10-08-first-session-screens.md` (AJ's
-picks, "1d 2a 3a" and "1a 2a 3a GO"). This folder is mostly the pure half:
+picks, "1d 2a 3a", "1a 2a 3a GO" and "1a 2a 3a"; its §7 is the build log and
+how to ship). This folder is mostly the pure half:
 no React and no Firestore except `store.ts`, `starting-store.ts`, the one
 hook, `useStartingRoutines.ts` (see "The Firestore half" below), and the
 screens in `ui/`.
@@ -118,7 +119,11 @@ screens in `ui/`.
   it as the trainer moved it; a reopened machine goes back where it stood.
 - **A plan never blocks a session** and nothing in it is required; any trainer
   changes it, mid-session included (AJ: "you shouldn't really be blocked").
-  The reason for a change is asked, never required, and kept.
+  The reason for a change is asked, never required, and kept, everywhere a
+  routine or a plan changes. That reverses the three characters the Edit
+  routine drawer and the B switch required until Oct 8 2026 (AJ: "it's nice
+  to be able to communicate like, hey, I'm changing this plan because of this
+  reason"; `routine-builder/session-scope.test.ts` holds the change).
 - **The routine's `machineIds` is what the client does now.** The plan is the
   rest of the road; Routine A's order is the road's order (`routineWith`, the
   Wrap-up's ticks included, from Routine A's first machine), so a reorder on
@@ -299,9 +304,23 @@ Checked on a local emulator (Oct 8 2026): a dry run, a commit of the eleven,
 a second run that skipped all eleven, a run after `academy-arms` was deleted
 that left it out and said so, and `--again academy-arms`, which brought it
 back. AJ runs it when he chooses. Until then, Start a plan offers the same
-eleven from code. The commands:
+eleven from code. The commands, from the project folder (where
+`service-account.json` is):
 
 ```
 npx tsx scripts/seed-starting-routines.ts --project gen-lang-client-0731527386 --confirm-project gen-lang-client-0731527386
 npx tsx scripts/seed-starting-routines.ts --project gen-lang-client-0731527386 --confirm-project gen-lang-client-0731527386 --commit
 ```
+
+From a worktree, which has no key of its own, add `--key` with the project
+folder's key and name the database (`--database
+ai-studio-32cbbdcc-6e08-4770-9665-867c68878efa`); the ship script's golive
+prints the whole line.
+
+**Shipping** (`docs/rounds/2026-10-08-first-session-screens.md` §7.6, Oct 9
+2026). `scripts/ship/ship-first-session.ps1`: prepare, then golive (the
+starting routines' index, the rules tests, the rules, the restore tag, and
+the push unless master is already the branch). Then the seed (a dry run,
+then `--commit`), then the iPad walk of Round 65 against the PC, BEFORE
+Render's Manual Deploy and both crons' Manual Build. Measured on Oct 9 2026:
+13,132 tests in 802 files, typecheck 2, rules tests 334.

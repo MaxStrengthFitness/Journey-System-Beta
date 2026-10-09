@@ -129,6 +129,31 @@ anything moves (`useLeaveGuard`): the tracker's close drops the briefing
 first and moves the screen second, so asked any later, "Keep editing" would
 keep nothing. Start is not a navigation and never asks.
 
+**Round 2 and the review, on the briefing (Oct 9 2026; the round
+document's §4b to §4d and §7.3).** Still write-free, and still never holding
+Start:
+
+- **A session on Routine B with a plan of swaps** draws B's Road (today under
+  the bracket, the swaps still to come) with "B · 2 of 5 swaps". Today's
+  machines are `runnableToday`, so neither the briefing nor the session runs
+  a machine the client can't do (AJ's "2a": can't-do lives on Routine A's
+  plan and is read by A and B); a B swap on the bench is drawn crossed under
+  "Not for {First}".
+- **A weak area** is said once on the glance line, "Focus: Delts": on the
+  Road's progress line for a plan in progress, on B's Road line, on the
+  routine line for a Routine B of the client's own, and on the kept plan
+  card's line.
+- **A studio that starts new clients on A and B together** (the setting
+  `newClientsStart`, read through `useNewClientsStart` for the studio whose
+  starting routines the card offers): one line under the walk-in card's
+  Road, "B · planned with A: Leg Extension for Leg Press first · 3 swaps",
+  and Change B (a sheet with Programming's same part). Start hands it up with
+  the plan, and the tracker keeps it in the Start batch. While the setting is
+  being read the card says so, and Start keeps no B; a change to B is unsaved
+  work, beside today changed.
+- **This floor only**: the walk-in card says what the start's road lacks on
+  this floor ("Not on {studio}'s floor: …"), never dropping it silently.
+
 ## The order of the page is the whole design
 
 AJ, Sep 13: "at the very top, everything the trainer needs to know about

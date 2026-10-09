@@ -10,6 +10,11 @@ branch (§8): the first-session grid fix, the routine plan's pure half
 design round.
 
 Branch `oct7/first-session` (this document only), on master's `cf4a2ff8`.
+**Since then (Oct 8 to 9 2026):** these commits were replayed onto
+`claude/first-session-routine-plan-ui-2f8dc1`, which built the screens
+(`2026-10-08-first-session-screens.md`) and ships the lot with
+`scripts/ship/ship-first-session.ps1` (its §7.6). `oct7/first-session` is not
+shipped on its own.
 
 ---
 
