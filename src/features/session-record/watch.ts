@@ -9,6 +9,8 @@
  * leader following along costs one read per saved set.
  */
 import type { LiveSet } from "../journey-grid";
+import { todayFor } from "../routine-plan/plan";
+import type { RoutinePlan } from "../routine-plan/types";
 
 export interface WatchWords {
   /** The sentence under the session bar. */
@@ -70,21 +72,32 @@ export function takeOverWords({
 }
 
 /**
- * The machines the watched session is running, in its order. The session's
- * own list first, which the trainer's iPad rewrites whenever a machine is
- * added or moved, so the watching iPad follows along; then its routine; a
- * Free session runs the floor. The same order the Active Session reads.
+ * The machines the watched session is running, in its order: the rule the
+ * Active Session seeds its own list by (WorkoutTrackerView), so both iPads
+ * draw the same machines.
+ * - The session's own list when it has machines, which the trainer's iPad
+ *   rewrites whenever a machine is added or moved, so the watching iPad
+ *   follows along.
+ * - With a routine: the list on record when there is one (an empty one
+ *   included), else what the routine runs today (`todayFor`: its machines,
+ *   else its plan's day one while it is empty), for an older session.
+ * - With no routine and a list on record, empty: a session started with
+ *   nothing chosen runs empty and the trainer adds machines as they go
+ *   (the first-session design round, Oct 8 2026), never the whole floor.
+ * - With no list on record and no routine (an older Free session), the
+ *   floor. A routine not loaded yet draws nothing.
  */
 export function sessionMachineList(
   session: { sessionMachineIds?: string[] | null; routineId?: string | null },
-  routines: readonly { id?: string; machineIds?: string[] }[],
+  routines: readonly { id?: string; machineIds?: string[]; plan?: Pick<RoutinePlan, "dayOne"> | null }[],
   floorIds: readonly string[],
 ): string[] {
   const recorded = session.sessionMachineIds;
   if (recorded && recorded.length > 0) return recorded;
   const routine = session.routineId ? routines.find((r) => r.id === session.routineId) : undefined;
-  if (routine) return routine.machineIds ?? [];
-  return session.routineId ? [] : [...floorIds];
+  if (routine) return Array.isArray(recorded) ? [...recorded] : todayFor({ routine: routine.machineIds, plan: routine.plan });
+  if (session.routineId) return [];
+  return Array.isArray(recorded) ? [] : [...floorIds];
 }
 
 /** Settled for the day: practice or skipped. */

@@ -136,7 +136,22 @@ import { NoteCategoryChips } from "../client-notes/NoteCategoryChips";
 import { FILING_CATEGORIES, type FilingCategory } from "../client-notes/note-catalog";
 import { usePhone } from "../phone/device";
 
-import { clientDisplayName } from "../../lib/client-name";
+import { clientDisplayName, clientFirstName } from "../../lib/client-name";
+import { useLeaveGuard, useUnsavedChanges } from "../unsaved-changes";
+import { openProfileAt } from "../client-profile/profile-nav";
+import { isProvisionalNewClient, startingKindOf } from "../routine-plan/client-kind";
+import { openHealthWords, planIntakeText } from "../routine-plan/intake";
+import { planProgress, progressLine, todayFor } from "../routine-plan/plan";
+import { roadGroups } from "../routine-plan/lineup";
+import {
+  briefingPlanView,
+  type BriefingDoor,
+  type StartPlanAtStart,
+} from "../routine-plan/briefing-plan";
+import { useBriefingPlan } from "../routine-plan/ui/useBriefingPlan";
+import { BriefingDoors, BriefingJourneyLine, BriefingPlanCard } from "../routine-plan/ui/BriefingPlanCard";
+import { RoadStrip } from "../routine-plan/ui/RoadStrip";
+import { machineNamer } from "../routine-plan/ui/host";
 
 /** Her limits on the figure: the briefing's caution tone, never the kaizen red. */
 const SAFETY_LIT: [string, string] = ["var(--br-warn)", "var(--br-warn)"];
@@ -158,10 +173,20 @@ export interface BriefingScreenProps {
    * engine needs before it may call a gap "a break" (briefing-moments.ts).
    */
   studios?: ReadonlyArray<{ id?: string; name?: string; journeyCutoverDate?: string | null }> | null;
+  /** The studio the session is at, for its starting routines (the briefing's plan card). */
+  studioId?: string | null;
   authTrainer: Trainer | null;
   client: Client;
   targetRoutine: Routine | null;
   lastSession: WorkoutSession | null;
+  /**
+   * The client's routines have answered, and the answer can be trusted (the
+   * tracker's `routinesKnown`: an empty answer from the iPad's cache is not
+   * "no routine"). Until then the briefing claims nothing about how the
+   * client starts: Journey can't tell, both doors (the first-session design
+   * round, Oct 8 2026, §4.1). Defaults to the cautious answer.
+   */
+  routinesKnown?: boolean;
   onStart: (
     routineType: "A" | "B" | "Free",
     customMachines?: string[],
@@ -169,6 +194,12 @@ export interface BriefingScreenProps {
     checkIn?: PreSessionCheckIn,
     /** The arrival note's category, when the trainer picked one (notes round, Oct 3 2026). */
     noteCategory?: FilingCategory | null,
+    /**
+     * A client starting out at the studio: the plan Start keeps (§4.5). The
+     * briefing never writes it; the tracker does, in the Start batch, with
+     * an EMPTY Routine A.
+     */
+    startPlan?: StartPlanAtStart | null,
   ) => void;
   onClose: () => void;
   machines: Machine[];
@@ -195,10 +226,12 @@ export interface BriefingScreenProps {
 
 export function BriefingScreen({
   studioName,
+  studioId = null,
   authTrainer,
   client,
   targetRoutine,
   lastSession,
+  routinesKnown = false,
   onStart,
   onClose,
   machines,
@@ -238,6 +271,13 @@ export function BriefingScreen({
 
   const routineA = findRoutineByLetter(routines, "A");
   const routineB = findRoutineByLetter(routines, "B");
+  /* What Routine A runs today (the first-session design round, §4.5):
+     its machines, else its plan's day one while it is still empty (the
+     consult is not Routine A), else none. Never the whole floor. */
+  const routineAToday = useMemo(
+    () => todayFor({ routine: routineA?.machineIds, plan: routineA?.plan }),
+    [routineA],
+  );
 
   /** Set once the trainer picks a routine by hand, so a background refetch of
    *  `routines` cannot silently reset their choice back to the suggestion. */
@@ -253,7 +293,7 @@ export function BriefingScreen({
     setIsAdjusting(false);
     if (type === "A") {
       setSelectedRoutineType(routineA ? "A" : "Create_A");
-      setAdjustedMachineIds(routineA?.machineIds || []);
+      setAdjustedMachineIds(routineAToday);
     } else {
       setSelectedRoutineType(routineB ? "B" : "Create_B");
       setAdjustedMachineIds(routineB?.machineIds || []);
@@ -292,11 +332,11 @@ export function BriefingScreen({
     if (type === "B") {
       setAdjustedMachineIds(routineB?.machineIds || []);
     } else if (type === "A") {
-      setAdjustedMachineIds(routineA?.machineIds || []);
+      setAdjustedMachineIds(routineAToday);
     } else {
       setAdjustedMachineIds([]);
     }
-  }, [targetRoutine, routineA, routineB, routinePickedByTrainer, isIntroSession, routines]);
+  }, [targetRoutine, routineA, routineAToday, routineB, routinePickedByTrainer, isIntroSession, routines]);
 
   /**
    * Any change to the sequence — reorder, add, remove, a one-tap rule fix —
@@ -313,28 +353,6 @@ export function BriefingScreen({
   };
 
   const isPhone = usePhone();
-  const handleStart = () => {
-    const checkIn: PreSessionCheckIn = {};
-    // Only the dials that were tapped; nothing when none were.
-    const tapped = compactReadiness(readiness);
-    if (tapped) checkIn.readiness = tapped;
-    if (bodyStates.length > 0) checkIn.bodyStates = bodyStates;
-
-    onStart(
-      selectedRoutineType === "Create_B"
-        ? "B"
-        : selectedRoutineType === "Create_A"
-          ? "A"
-          : (selectedRoutineType as any),
-      isAdjusting ||
-        ["Free", "Create_A", "Create_B"].includes(selectedRoutineType)
-        ? adjustedMachineIds
-        : undefined,
-      adjustmentNote,
-      checkIn,
-      adjustmentNote.trim() ? arrivalCategory : null,
-    );
-  };
 
   /**
    * Last weight and reps per machine.
@@ -406,9 +424,9 @@ export function BriefingScreen({
     if (selectedRoutineType === "A" || selectedRoutineType === "Create_A")
       return routineB?.machineIds ?? null;
     if (selectedRoutineType === "B" || selectedRoutineType === "Create_B")
-      return routineA?.machineIds ?? null;
+      return routineA ? routineAToday : null;
     return null;
-  }, [selectedRoutineType, routineA, routineB]);
+  }, [selectedRoutineType, routineA, routineAToday, routineB]);
 
   /** What this client reported, for goal- and condition-aware suggestions. */
   const purposeText = useMemo(
@@ -585,7 +603,7 @@ export function BriefingScreen({
     ["Free", "Create_A", "Create_B"].includes(selectedRoutineType)
       ? adjustedMachineIds
       : selectedRoutineType === "A"
-        ? routineA?.machineIds || []
+        ? routineAToday
         : routineB?.machineIds || [];
 
   /* ---------------------------------------------------------------- *
@@ -641,6 +659,154 @@ export function BriefingScreen({
   const codes = routineCodes(selectedRoutineIds, machines);
   const touching = machinesTouchingLimits(selectedRoutineIds, machines, flagIds);
 
+  /* ---------------------------------------------------------------- *
+   * HOW THE CLIENT STARTS (the first-session design round, Oct 8 2026,
+   * §4.1 and §4.5; routine-plan/briefing-plan.ts is the pure half).
+   * A client starting out at the studio gets the plan card (the Road with
+   * today under its bracket, Change today, the Source tag, Another start),
+   * and Start hands the plan up for the tracker to keep in the Start batch;
+   * a client who trained here before Journey gets one line and a door to
+   * Programming; when Journey can't tell, both doors. Nothing here writes,
+   * and nothing here holds Start: "new" is never decided off a read that
+   * hasn't answered (`routinesKnown`, and the session count on the client).
+   * ---------------------------------------------------------------- */
+  const sessionCount = typeof client.sessionCount === "number" ? client.sessionCount : null;
+  const startingKind = useMemo(() => {
+    // Add Client's walk-in is starting out whatever its count says (it may carry none).
+    const walkIn = isProvisionalNewClient(client);
+    return startingKindOf({
+      known: routinesKnown && (sessionCount !== null || walkIn),
+      // Either spelling, as `findRoutineByLetter` finds the routine drawn.
+      hasRoutine: routines.some(
+        (r) => (matchesRoutineLetter(r, "A") || matchesRoutineLetter(r, "B")) && (r.machineIds?.length ?? 0) > 0,
+      ),
+      hasPlan: !!routineA?.plan,
+      journeySessions: sessionCount,
+      coverage,
+      provisionalNewClient: walkIn,
+    });
+  }, [routinesKnown, sessionCount, routines, routineA, coverage, client]);
+  /** A door picked when Journey couldn't tell stays picked, even once it can. */
+  const [door, setDoor] = useState<BriefingDoor | null>(null);
+  const planView = briefingPlanView({ routines, kind: startingKind.kind, door });
+  const firstName = clientFirstName(client, "the client");
+  const sentenceName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+  const planNameOf = useMemo(() => machineNamer(machines, machines), [machines]);
+  /* The intake a starting routine is matched on, as Programming reads it:
+     medical history, goals, the clinical profile and the open Health notes
+     (from the journal this screen already streams). */
+  const planIntake = useMemo(
+    () =>
+      planIntakeText({
+        medicalHistory: client.medicalHistory,
+        goals: client.goals,
+        clinicalProfile: client.clinicalProfile,
+        healthNotes: openHealthWords(journal.entries ?? null),
+      }),
+    [client.medicalHistory, client.goals, client.clinicalProfile, journal.entries],
+  );
+  // The Auth uid, which the rules pin a plan's change to; no uid, no plan handed up.
+  const planWhoUid = auth.currentUser?.uid ?? null;
+  const planWhoName = authTrainer?.fullName?.trim() || null;
+  const planWho = useMemo(
+    () => (planWhoUid ? { uid: planWhoUid, ...(planWhoName ? { name: planWhoName } : null) } : null),
+    [planWhoUid, planWhoName],
+  );
+  const briefingPlan = useBriefingPlan({
+    view: planView,
+    studioId: studioId ?? client.homeStudioId ?? null,
+    studioName: studioName ?? null,
+    floor: machines,
+    intakeText: planIntake,
+    who: planWho,
+    todayYmd: todayKey,
+    kept: planView === "kept" ? (routineA?.plan ?? null) : null,
+  });
+  /* A plan in progress: the routine line, and the Road under it as the
+     glance ("3 of 6 · next: …"). */
+  const inProgress =
+    planView === "in-progress" && routineLetter === "A" && routineA?.plan
+      ? {
+          groups: roadGroups({ plan: routineA.plan, today: selectedRoutineIds, todayYmd: todayKey, firstName }),
+          progress: planProgress(routineA.plan, routineA.machineIds ?? []),
+        }
+      : null;
+  /* The plan card's safety line: today's machines against the client's
+     limits, as the routine line says it for a routine (the routine line is
+     not drawn for a plan card). */
+  const planTouching =
+    planView === "starting" || planView === "kept" ? machinesTouchingLimits(briefingPlan.today, machines, flagIds) : [];
+
+  /* What the briefing holds that a navigation would lose: the arrival note,
+     the Dials and body states tapped, and today changed on the plan card.
+     Registered with the leave gate (the always-on rule), so the app's own
+     navigation asks first; "Leave" puts it all back. Start is not a
+     navigation and never asks. */
+  const briefingDirty =
+    adjustmentNote.trim() !== "" || tappedDials > 0 || bodyStates.length > 0 || briefingPlan.changed;
+  const { reset: resetPlanCard } = briefingPlan;
+  useUnsavedChanges(briefingDirty, "the briefing", {
+    onDiscard: () => {
+      setAdjustmentNote("");
+      setArrivalCategory(null);
+      setReadiness({});
+      setBodyStates([]);
+      resetPlanCard();
+    },
+  });
+  /* The briefing's own ways out ask the gate BEFORE anything moves: the
+     tracker's close drops the briefing first and moves the screen second, so
+     asked any later, "Keep editing" would keep nothing. Programming →
+     Routine A, for a client who trained here before Journey, stores its
+     handoff only once the gate says go (nothing set before the answer). */
+  const leave = useLeaveGuard();
+  const closeBriefing = () => leave(onClose);
+  const enterRoutine = () =>
+    leave(() => {
+      openProfileAt(client.id, { tab: "programming", view: "routine-a" });
+      onClose();
+    });
+
+  const handleStart = () => {
+    const checkIn: PreSessionCheckIn = {};
+    // Only the dials that were tapped; nothing when none were.
+    const tapped = compactReadiness(readiness);
+    if (tapped) checkIn.readiness = tapped;
+    if (bodyStates.length > 0) checkIn.bodyStates = bodyStates;
+    const category = adjustmentNote.trim() ? arrivalCategory : null;
+
+    if (planView === "starting" || planView === "kept") {
+      /* Today as the card has it. A starting plan goes up with today's
+         machines on it; without one (still reading the starting routines,
+         a start to pick, nobody signed in) today's list goes up alone,
+         and Start makes no routine of it. */
+      const { plan, today, changed, startPlan } = briefingPlan;
+      const sendStartPlan = planView === "starting" ? startPlan : null;
+      const custom = sendStartPlan || planView === "kept" ? (changed ? today : undefined) : plan ? today : undefined;
+      onStart("A", custom, adjustmentNote, checkIn, category, sendStartPlan);
+      return;
+    }
+    if (planView === "journey" || planView === "doors") {
+      // Start and add machines as you go: an empty session, never the floor.
+      onStart("A", undefined, adjustmentNote, checkIn, category, null);
+      return;
+    }
+    onStart(
+      selectedRoutineType === "Create_B"
+        ? "B"
+        : selectedRoutineType === "Create_A"
+          ? "A"
+          : (selectedRoutineType as any),
+      isAdjusting ||
+        ["Free", "Create_A", "Create_B"].includes(selectedRoutineType)
+        ? adjustedMachineIds
+        : undefined,
+      adjustmentNote,
+      checkIn,
+      category,
+    );
+  };
+
   return (
     <div className="br">
         <AppHeader
@@ -670,7 +836,7 @@ export function BriefingScreen({
                 </div>
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={closeBriefing}
                   className="br__close"
                   aria-label="Close briefing"
                 >
@@ -1064,8 +1230,44 @@ export function BriefingScreen({
 
             {/* 6. TODAY'S ROUTINE — one line until it is opened (AJ: "One
                 line, tap to edit"). A or B stays a tap, each saying when THAT
-                routine last ran. */}
+                routine last ran. A client with no routine gets how they
+                start instead (the first-session design round, Oct 8 2026):
+                the plan card, the line and door for a routine from before
+                Journey, or both doors. */}
             <section className="br-card br-routine" aria-label="Today's routine">
+              {planView === "starting" || planView === "kept" ? (
+                <BriefingPlanCard
+                  state={briefingPlan}
+                  view={planView}
+                  firstName={firstName}
+                  nameOf={planNameOf}
+                  floor={machines}
+                  todayYmd={todayKey}
+                  onBack={door ? () => setDoor(null) : undefined}
+                  limits={
+                    planTouching.length > 0 ? (
+                      <p className="br-routine__touch" data-testid="briefing-plan-limits">
+                        <ShieldAlert className="w-3.5 h-3.5" aria-hidden />
+                        Mind the limits on {planTouching.join(", ")}
+                      </p>
+                    ) : null
+                  }
+                />
+              ) : planView === "journey" ? (
+                <BriefingJourneyLine
+                  line={
+                    // Before Journey when Journey says so, or the trainer picked "Trained here before".
+                    coverage === "partial" || door === "journey"
+                      ? `${sentenceName} has a routine from before Journey.`
+                      : `${sentenceName} has no routine in Journey yet.`
+                  }
+                  onEnter={enterRoutine}
+                  onBack={door ? () => setDoor(null) : undefined}
+                />
+              ) : planView === "doors" ? (
+                <BriefingDoors firstName={firstName} says={startingKind.says} onPick={setDoor} />
+              ) : (
+              <>
               <div role="group" aria-label="Select today&rsquo;s routine" className="br__routines">
                 {(["A", "B"] as const).map((type) => {
                   const routine = type === "A" ? routineA : routineB;
@@ -1086,7 +1288,7 @@ export function BriefingScreen({
                       <span className="br__routine-sub">
                         {routine
                           ? `${lastRunLabel(lastRun)} · ${routine.machineIds?.length || 0} machines`
-                          : "Not set up - tap to build"}
+                          : "Not set up yet · today only"}
                       </span>
                     </button>
                   );
@@ -1118,6 +1320,19 @@ export function BriefingScreen({
                   <ChevronDown className={cn("w-4 h-4", routineOpen && "rotate-180")} aria-hidden />
                 </span>
               </button>
+              {/* A plan in progress: the Road as the glance, today under
+                  its bracket, the next stop, and how far along. */}
+              {inProgress && routineA?.plan && (
+                <div data-testid="briefing-plan-road">
+                  <RoadStrip
+                    groups={inProgress.groups}
+                    nameOf={planNameOf}
+                    label="Routine A's plan"
+                    progressLine={progressLine(inProgress.progress, planNameOf, routineA.plan.dayOne)}
+                    progress={inProgress.progress}
+                  />
+                </div>
+              )}
               {routineOpen && (
                 <div className="br__builder">
                   <RoutineBuilder
@@ -1144,6 +1359,8 @@ export function BriefingScreen({
                     established={!isIntroSession}
                   />
                 </div>
+              )}
+              </>
               )}
             </section>
 

@@ -204,6 +204,23 @@ export function SaidLine({ children, onClear }: { children: ReactNode; onClear?:
 
 /* ── Controls ──────────────────────────────────────────────────────────── */
 
+/**
+ * One of the two doors when Journey can't tell how a client starts
+ * ("Starting out here · Start a plan", "Trained here before · Enter their
+ * routine"): Programming's Start a plan and the briefing both draw them.
+ */
+export function DoorButton({ icon, title, line, onClick }: { icon: ReactNode; title: string; line: string; onClick: () => void }) {
+  return (
+    <button type="button" className="rpl-door" onClick={onClick}>
+      <span className="rpl-door__icon">{icon}</span>
+      <span className="rpl-door__text">
+        <span className="rpl-door__title">{title}</span>
+        <span className="rpl-door__line">{line}</span>
+      </span>
+    </button>
+  );
+}
+
 /** A chip a trainer taps. `on` makes it a toggle (aria-pressed); without it, it is an action. */
 export function Chip({
   on,

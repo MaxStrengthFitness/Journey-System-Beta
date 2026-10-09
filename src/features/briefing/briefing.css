@@ -1148,7 +1148,11 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--br-warn);
+  /* Machine names, whole: a long one breaks rather than runs off (names-wrap.test.ts). */
+  overflow-wrap: anywhere;
 }
+/* On the plan card it is its own line under the Road, not a cell of the routine line. */
+p.br-routine__touch { margin: 0; }
 .br-routine__touch svg { flex: none; }
 .br-routine__edit {
   grid-column: 2;

@@ -167,7 +167,9 @@ const SETTINGS_DOCS = [
   },
 ];
 
-const writes: { path: string; data: any; merge?: boolean }[] = [];
+/** Every write, and which batch it went in (0 for a write outside a batch), so a test can say "in the Start batch". */
+const writes: { path: string; data: any; merge?: boolean; batch?: number }[] = [];
+let batchCount = 0;
 /**
  * Every listener the screen opened, so a test can send it a new snapshot
  * (another iPad's write). `live` turns false when the screen unsubscribes,
@@ -303,18 +305,21 @@ vi.mock("firebase/firestore", async (importOriginal) => {
       return netCtl.hang ? never() : Promise.resolve();
     },
     deleteDoc: async () => {},
-    writeBatch: () => ({
-      set: (ref: any, data: any, opts?: any) =>
-        writes.push({ path: ref.__path, data, merge: !!opts?.merge }),
-      update: (ref: any, data: any) => writes.push({ path: ref.__path, data }),
-      delete: (ref: any) => netCtl.deletes.push(ref.__path),
-      commit: () =>
-        netCtl.refuseLater
-          ? new Promise<void>((_, refuse) => netCtl.refusals.push(refuse))
-          : finishCtl.commit === "hang" || netCtl.hang
-            ? new Promise<void>(() => {})
-            : Promise.resolve(),
-    }),
+    writeBatch: () => {
+      const batch = ++batchCount;
+      return {
+        set: (ref: any, data: any, opts?: any) =>
+          writes.push({ path: ref.__path, data, merge: !!opts?.merge, batch }),
+        update: (ref: any, data: any) => writes.push({ path: ref.__path, data, batch }),
+        delete: (ref: any) => netCtl.deletes.push(ref.__path),
+        commit: () =>
+          netCtl.refuseLater
+            ? new Promise<void>((_, refuse) => netCtl.refusals.push(refuse))
+            : finishCtl.commit === "hang" || netCtl.hang
+              ? new Promise<void>(() => {})
+              : Promise.resolve(),
+      };
+    },
     getDocFromServer: async () => ({
       exists: () => finishCtl.serverStatus !== undefined,
       data: () => ({ status: finishCtl.serverStatus }),
@@ -327,6 +332,14 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     Timestamp: real.Timestamp,
   };
 });
+
+/* The briefing's plan card reads head office's starting routines and the
+   studio's choice (the first-session design round, Oct 8 2026): none in the
+   app, so the Academy's eleven, and no choice of the studio's own. */
+vi.mock("../features/routine-plan/starting-store", () => ({
+  readStartingRoutines: () => Promise.resolve({ routines: [], known: true }),
+  readStartingChoice: () => Promise.resolve({ use: null, defaultId: null }),
+}));
 
 /** The studio list the context hands out; a test may give the studios cutover days. */
 const studioCtx = vi.hoisted(() => ({ studios: undefined as undefined | { id: string; journeyCutoverDate?: string }[] }));
@@ -956,6 +969,18 @@ describe("a session another trainer is running opens read-only, and live (sessio
     expect(sessionWrites()).toEqual([]);
   });
 
+  /* The first-session design round (Oct 8 2026): a walk-in started with
+     nothing chosen records an EMPTY list and no routine, and AJ's iPad runs
+     it empty. The watching iPad draws the same (watch.ts follows the
+     tracker's seeding rule), never every floor machine as today's routine. */
+  it("watching a session started with nothing chosen draws no machine, never the whole floor", async () => {
+    sessionDocs = ajsSession({ routineId: null, sessionMachineIds: [] });
+    const host = await mount(<Tracker />);
+    expect(watching(host)).toBeTruthy();
+    expect(host.textContent).not.toContain("Leg Press (Hoist)");
+    expect(sessionWrites()).toEqual([]);
+  });
+
   it("Take over asks first, and Keep watching changes nothing", async () => {
     sessionDocs = ajsSession();
     const host = await mount(<Tracker />);
@@ -1248,21 +1273,129 @@ describe("session writes never wait on the network (speed round, Oct 5 2026; R9)
     expect(writes.some((w) => w.path.startsWith("routines/"))).toBe(false);
   });
 
-  it("a brand-new client's empty routines, confirmed by the server, get exactly one Routine A", async () => {
+  /* The first-session design round (Oct 8 2026, §4.5 and §4.8). A routine
+     document is a routine; its plan's changes sit under it. */
+  const routineDocs = () => writes.filter((w) => /^routines\/[^/]+$/.test(w.path));
+  const planChangeDocs = () => writes.filter((w) => /^routines\/[^/]+\/planChanges\/[^/]+$/.test(w.path));
+  /** Starting out at the studio: Journey holds the whole story and it is empty; the intake names a low back. */
+  const startingOut = {
+    ...client,
+    sessionCount: 0,
+    historyIsComplete: true,
+    medicalHistory: "Sciatica down the left leg",
+  } as Client;
+
+  // Changed on purpose (Oct 8 2026). This held that Start made a Routine A
+  // for a client with none, from whatever list the briefing had under its
+  // "Today only" label. The consult is not Routine A (AJ, Oct 8 2026: "this
+  // also counts with the consult visit, sometimes the consult machines will
+  // not be the same as their a routine"), so Start makes one only from a
+  // starting plan, EMPTY with the plan on it; without a plan, none.
+  it("a brand-new client's empty routines, confirmed by the server: with a starting plan, exactly one Routine A WITH its plan", async () => {
     sessionDocs = [];
     netCtl.routines = [];
     netCtl.fromCache.add("routines");
-    const host = await mount(<Tracker />);
+    const host = await mount(<Tracker who={startingOut} />);
+    // Routines not known yet: Journey can't tell, both doors. The trainer picks "Starting out here".
+    const doorButton = Array.from(host.querySelectorAll("button")).find((b) => b.textContent?.includes("Starting out here"));
+    expect(doorButton).toBeTruthy();
+    await act(async () => doorButton!.click());
+    await settle();
+    expect(host.querySelector('[data-testid="briefing-plan"]')).toBeTruthy();
     await act(async () => startButton()!.click());
     expect(host.querySelector(".jg-sbar")).toBeTruthy();
-    expect(writes.some((w) => w.path.startsWith("routines/"))).toBe(false);
+    const session = startedSession()!;
+    const sid = session.path.split("/")[1];
+    // Nothing made while the routines are unknown; the session runs today (the plan's day one).
+    expect(routineDocs()).toHaveLength(0);
+    expect(session.data.routineId).toBeNull();
+    expect(session.data.sessionMachineIds).toEqual(["m-leg-press"]);
+
     // The server confirms the empty list: a metadata-only answer.
     netCtl.fromCache.delete("routines");
     await act(async () => {
       for (const l of snapshotListeners.filter((x) => x.live && x.path === "routines")) l.emit();
     });
     await settle();
-    expect(writes.filter((w) => w.path.startsWith("routines/"))).toHaveLength(1);
+    expect(routineDocs()).toHaveLength(1);
+    const [made] = routineDocs();
+    expect(made.data).toMatchObject({ clientId: CLIENT_ID, name: "Routine A", machineIds: [] });
+    expect(made.data.plan.dayOne).toEqual(["m-leg-press"]);
+    expect(made.data.plan.templateId).toBe("academy-low-back");
+    const routineId = made.path.split("/")[1];
+    expect(planChangeDocs()).toHaveLength(1);
+    expect(planChangeDocs()[0].path.startsWith(`routines/${routineId}/planChanges/`)).toBe(true);
+    expect(planChangeDocs()[0].data).toMatchObject({ kind: "start", value: "Low back issues", byUid: "uid-coach" });
+    // The session names it, in the same batch as the routine and its plan.
+    const named = writes.find((w) => w.path === `sessions/${sid}` && w.data?.routineId === routineId)!;
+    expect(named).toBeTruthy();
+    expect(named.batch).toBe(made.batch);
+    expect(planChangeDocs()[0].batch).toBe(made.batch);
+  });
+
+  it("a brand-new client's empty routines, confirmed by the server: without a starting plan, no Routine A at all", async () => {
+    sessionDocs = [];
+    netCtl.routines = [];
+    netCtl.fromCache.add("routines");
+    const host = await mount(<Tracker />);
+    await act(async () => startButton()!.click());
+    expect(host.querySelector(".jg-sbar")).toBeTruthy();
+    const sid = startedSession()!.path.split("/")[1];
+    expect(startedSession()!.data.sessionMachineIds).toEqual([]);
+    netCtl.fromCache.delete("routines");
+    await act(async () => {
+      for (const l of snapshotListeners.filter((x) => x.live && x.path === "routines")) l.emit();
+    });
+    await settle();
+    // Start never saves today's list as a routine.
+    expect(writes.filter((w) => w.path.startsWith("routines/"))).toHaveLength(0);
+    expect(writes.some((w) => w.path === `sessions/${sid}` && "routineId" in (w.data ?? {}) && w.data !== startedSession()!.data)).toBe(false);
+  });
+
+  it("starting out, routines known: Start's ONE batch holds the session, an EMPTY Routine A with the plan, and its start change", async () => {
+    sessionDocs = [];
+    netCtl.routines = [];
+    offline();
+    const host = await mount(<Tracker who={startingOut} />);
+    await settle();
+    // Known to hold no routine, and a whole, empty story: the plan card, no doors.
+    expect(host.querySelector('[data-testid="briefing-plan"]')).toBeTruthy();
+    expect(host.querySelector('[data-testid="briefing-plan-doors"]')).toBeNull();
+    await act(async () => startButton()!.click());
+    // Never awaited: the session is on screen offline.
+    expect(host.querySelector(".jg-sbar")).toBeTruthy();
+    const session = startedSession()!;
+    expect(routineDocs()).toHaveLength(1);
+    const [made] = routineDocs();
+    const routineId = made.path.split("/")[1];
+    expect(made.data).toMatchObject({ name: "Routine A", machineIds: [], studioId: STUDIO_ID });
+    expect(made.data.plan).toMatchObject({ dayOne: ["m-leg-press"], building: true, templateId: "academy-low-back" });
+    expect(planChangeDocs()).toHaveLength(1);
+    expect(planChangeDocs()[0].data).toMatchObject({ kind: "start", byUid: "uid-coach", byName: "Jane Coach", value: "Low back issues" });
+    // The session runs today's machines and names the new routine, all in the Start batch.
+    expect(session.data).toMatchObject({ routineId, sessionMachineIds: ["m-leg-press"] });
+    expect(made.batch).toBe(session.batch);
+    expect(planChangeDocs()[0].batch).toBe(session.batch);
+    // Firestore refuses undefined: none anywhere in the batch.
+    const json = JSON.stringify([made.data, planChangeDocs()[0].data], (_k, v) => (v === undefined ? "__undefined__" : v));
+    expect(json).not.toContain("__undefined__");
+  });
+
+  it("no routine and nothing chosen: the session starts empty, never the whole floor, and makes no routine", async () => {
+    sessionDocs = [];
+    netCtl.routines = [];
+    const before = { ...client, sessionCount: 4, historyIsComplete: true } as Client;
+    const host = await mount(<Tracker who={before} />);
+    await settle();
+    // Sessions in Journey but no routine: the door to Programming, and Start as you go.
+    expect(host.querySelector('[data-testid="briefing-plan-journey"]')).toBeTruthy();
+    await act(async () => startButton()!.click());
+    await settle();
+    expect(host.querySelector(".jg-sbar")).toBeTruthy();
+    expect(startedSession()!.data).toMatchObject({ routineId: null, sessionMachineIds: [] });
+    expect(writes.some((w) => w.path.startsWith("routines/"))).toBe(false);
+    // Neither floor machine is today's: nothing was chosen.
+    expect(host.querySelector('input[aria-label="reps to failure"]')).toBeNull();
   });
 
   it("a settings read that fails still prefills from the last performed weights", async () => {

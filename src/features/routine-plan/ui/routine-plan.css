@@ -849,7 +849,7 @@ button.rpl-cell--next {
   flex-direction: column;
   min-width: 0;
 }
-.rpl-tick__label { font-size: 14px; font-weight: 600; color: var(--eq-ink); }
+.rpl-tick__label { font-size: 14px; font-weight: 600; color: var(--eq-ink); overflow-wrap: anywhere; }
 .rpl-tick__sub { font-size: 12px; font-weight: 500; color: var(--eq-ink-2); overflow-wrap: anywhere; }
 
 /* The Changes: who, when, what, and the reason when one was given. */
@@ -1052,6 +1052,63 @@ button.rpl-cell--next {
   font-weight: 600;
   color: var(--eq-ink);
   overflow-wrap: anywhere;
+}
+
+/* ---------- The briefing's plan card -------------------------------------- */
+
+/* Inside the briefing's own card (.br-card), so no panel of its own: a
+   17/700 title, the Source tag, the Road, and Change today. */
+.rpl-brief {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  color: var(--eq-ink);
+}
+.rpl-brief__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.rpl-brief__title {
+  flex: 1 1 200px;
+  min-width: 0;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+.rpl-brief__source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+}
+/* "Dana has a routine from before Journey": the one line of the door. */
+.rpl-brief__lead {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+.rpl-brief__starts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.rpl-brief__label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--eq-ink-2);
 }
 
 /* ---------- A phone ------------------------------------------------------- */

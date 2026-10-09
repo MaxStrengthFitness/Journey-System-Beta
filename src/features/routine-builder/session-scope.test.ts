@@ -106,6 +106,25 @@ describe("the pre-session briefing hands its sequence upward", () => {
     expect(found).toEqual([]);
   });
 
+  /* The briefing's "Today's routine" for a client with no routine lives in
+     routine-plan (the first-session design round, Oct 8 2026, §4.5), in a
+     folder whose neighbours DO write (store.ts, usePlanActions.ts). The
+     briefing stays write-free only if its card does too: it hands the plan
+     up, and the tracker writes it in the Start batch. */
+  for (const file of [
+    "src/features/routine-plan/ui/BriefingPlanCard.tsx",
+    "src/features/routine-plan/ui/useBriefingPlan.ts",
+    "src/features/routine-plan/briefing-plan.ts",
+  ]) {
+    it(`${file} (the briefing's plan card) contains no Firestore write`, () => {
+      const src = code(read(file));
+      const found = MUTATORS.filter((m) => new RegExp(`\\b${m}\\s*\\(`).test(src));
+      expect(found).toEqual([]);
+      // Nor does it reach the plan's writers.
+      expect(src).not.toMatch(/from\s+["'][./]*(?:store|usePlanActions|starting-store)["']/);
+    });
+  }
+
   it("starting a session has no way to persist a routine", () => {
     // startNewSession used to take a `permanentSave` flag that rewrote the
     // client's saved routine as a side effect of starting a session. No
@@ -158,9 +177,9 @@ describe("mid-session changes stay in session state", () => {
   });
 
   it("the session screen never updates or replaces a routine document", () => {
-    // Creating one is allowed: the briefing's Create_A / Create_B path is how
-    // a client's first routine comes into existence. Rewriting an existing
-    // one from here is not.
+    // Rewriting an existing routine from here is not allowed. (Making one
+    // was, through the briefing's Create_A / Create_B path, until the
+    // first-session design round, Oct 8 2026: see the next test.)
     const writes = [
       ...SESSION_PATH.matchAll(/\b(updateDoc|setDoc|deleteDoc)\s*\(\s*doc\([^)]*?["']routines["']/g),
     ];
@@ -168,6 +187,36 @@ describe("mid-session changes stay in session state", () => {
       writes.map((m) => m[0]),
       "the live session must not rewrite a saved routine",
     ).toEqual([]);
+  });
+
+  // Changed on purpose (the first-session design round, Oct 8 2026, §4.8).
+  // Start used to save the list the briefing built under a "Today only"
+  // label as the client's Routine A or B (the Create_A / Create_B path).
+  // The consult is not Routine A (AJ, Oct 8 2026: "this also counts with
+  // the consult visit, sometimes the consult machines will not be the same
+  // as their a routine"), so today's list is the session's alone. The one
+  // routine Start makes is Routine A from a starting plan, for a client
+  // starting out, EMPTY with the plan on it, written by the plan's own
+  // writer (routine-plan/store.ts) in the Start batch. AJ, Oct 7 2026: "Any
+  // trainer who trains the client can definitely change the plan ... You
+  // should be able to change that and make the call as a trainer because
+  // you're training them that day."
+  it("Start never saves today's list as a routine: the only routine it makes is Routine A from a starting plan", () => {
+    expect(
+      /doc\(\s*collection\(\s*db\s*,\s*["']routines["']\s*\)\s*\)/.test(SESSION_PATH),
+      "the session path names no new routine of its own; a starting plan's Routine A is made by routine-plan/store.ts",
+    ).toBe(false);
+    expect(WTV).toMatch(/addStartPlanToBatch\(db, batch,/);
+    const START_PLAN = code(read("src/features/session-record/start-plan.ts"));
+    expect(START_PLAN, "the create-from-today's-list kind is gone").not.toMatch(/kind:\s*["']create["']/);
+  });
+
+  it("the builder's \"Today only\" is true on the briefing and in a session", () => {
+    // The label used to sit over a list Start then saved as Routine A.
+    const TYPES = read("src/features/routine-builder/types.ts");
+    const scopes = [...TYPES.matchAll(/scope:\s*\{\s*label:\s*"Today only",\s*permanent:\s*false\s*\}/g)];
+    expect(scopes).toHaveLength(2);
+    expect(TYPES).not.toMatch(/the\s+briefing may create a routine/);
   });
 });
 

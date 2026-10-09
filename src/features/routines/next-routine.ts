@@ -30,7 +30,11 @@ export function completedNewestFirst(sessions: readonly WorkoutSession[]): Worko
 
 /**
  * The routine the next session runs: the Active Session's rule. Null means the
- * client has no routines yet, and the session starts a new Routine A.
+ * client has no routines yet: the briefing says how they start, and Start
+ * makes Routine A only from a starting plan, never from today's list (the
+ * first-session design round, Oct 8 2026). An EMPTY Routine A is returned as
+ * it is; a caller that draws or starts its machines reads `todayFor`
+ * (routine-plan/plan.ts), which runs its plan's day one.
  */
 export function nextRoutine(
   routines: readonly Routine[],

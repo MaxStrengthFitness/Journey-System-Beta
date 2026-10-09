@@ -15,10 +15,12 @@
  * plan and the routine can't disagree after a refusal.
  *
  * Three writers:
- * - `startPlan`: a plan's first write, Keep this lineup, Save Routine A, Add
- *   a plan, or Start's batch for a client starting out at the studio. It
- *   makes Routine A when the client has none, or puts the plan on the
- *   routine they have, with the plan's first change.
+ * - `startPlan`: a plan's first write, Keep this lineup, Save Routine A or
+ *   Add a plan. It makes Routine A when the client has none, or puts the
+ *   plan on the routine they have, with the plan's first change.
+ *   `addStartPlanToBatch` is the same writes added to Start's own batch, for
+ *   a client starting out at the studio whose plan is kept by pressing
+ *   Start on the briefing (the design round, §4.5).
  * - `savePlanChange`: every change after that.
  * - `saveRoutineEdit`: the Edit routine drawer's save on a routine with a
  *   plan, the routine, its adjustment and the plan's changes together.
@@ -38,6 +40,7 @@ import {
   serverTimestamp,
   writeBatch,
   type Firestore,
+  type WriteBatch,
 } from "firebase/firestore";
 import { withoutUndefined } from "../studio-tasks/task-wizard";
 import type { PlanChange, RoutinePlan } from "./types";
@@ -85,6 +88,20 @@ export interface StartedPlan {
  */
 export function startPlan(db: Firestore, input: StartPlanInput): StartedPlan {
   const batch = writeBatch(db);
+  const { routineId } = addStartPlanToBatch(db, batch, input);
+  return { routineId, commit: batch.commit() };
+}
+
+/**
+ * A plan's first write, added to a batch someone else commits: Start's own
+ * batch (the design round, §4.5: "the tracker writes the plan (with day
+ * one) on an EMPTY Routine A and the `start` change in the Start batch,
+ * never awaited"), so the session, the routine it names and the plan land
+ * together or not at all. The same writes as `startPlan`; the caller
+ * commits, and never awaits it on a tap. Returns the routine's id, made on
+ * this iPad.
+ */
+export function addStartPlanToBatch(db: Firestore, batch: WriteBatch, input: StartPlanInput): { routineId: string } {
   const routineRef = input.routineId ? doc(db, "routines", input.routineId) : doc(collection(db, "routines"));
   if (input.routineId) {
     batch.update(routineRef, withoutUndefined({ machineIds: input.machineIds, plan: input.plan }));
@@ -103,7 +120,7 @@ export function startPlan(db: Firestore, input: StartPlanInput): StartedPlan {
   }
   const changeRef = doc(collection(db, "routines", routineRef.id, PLAN_CHANGES));
   batch.set(changeRef, withoutUndefined({ ...input.change, at: serverTimestamp() }));
-  return { routineId: routineRef.id, commit: batch.commit() };
+  return { routineId: routineRef.id };
 }
 
 /**

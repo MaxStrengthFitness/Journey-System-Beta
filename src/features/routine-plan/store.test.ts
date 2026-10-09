@@ -40,7 +40,8 @@ vi.mock("firebase/firestore", () => {
   };
 });
 
-import { savePlanChange, saveRoutineEdit, startPlan } from "./store";
+import { writeBatch } from "firebase/firestore";
+import { addStartPlanToBatch, savePlanChange, saveRoutineEdit, startPlan } from "./store";
 import type { PlanChange, RoutinePlan } from "./types";
 
 const db = {} as never;
@@ -167,6 +168,44 @@ describe("startPlan: a plan's first write, in one batch", () => {
     });
     expect(started.routineId).toBe("auto-1");
     await expect(started.commit).rejects.toThrow("permission-denied");
+  });
+});
+
+describe("addStartPlanToBatch: the same first write, in Start's own batch (§4.5)", () => {
+  it("adds the EMPTY Routine A with its plan and the start change to the caller's batch, and commits nothing", () => {
+    // The tracker's Start batch: the session goes in beside these, and the
+    // tracker commits once, never awaited.
+    const batch = writeBatch(db);
+    const { routineId } = addStartPlanToBatch(db, batch, {
+      routineId: null,
+      clientId: "c1",
+      studioId: "westlake",
+      name: "Routine A",
+      machineIds: [],
+      plan,
+      change,
+    });
+    expect(routineId).toBe("auto-1");
+    expect(fake.batches).toHaveLength(1);
+    const [made, first] = fake.batches[0]!.ops;
+    expect(made).toMatchObject({ op: "set", path: "routines/auto-1", data: { name: "Routine A", machineIds: [], plan } });
+    expect(first).toEqual({ op: "set", path: "routines/auto-1/planChanges/auto-2", data: { ...change, at: "SERVER_TIME" } });
+    expect(fake.batches[0]!.committed).toBe(false);
+  });
+
+  it("puts the plan on the empty Routine A the client has, never a second one", () => {
+    const batch = writeBatch(db);
+    const { routineId } = addStartPlanToBatch(db, batch, {
+      routineId: "r-empty",
+      clientId: "c1",
+      studioId: "westlake",
+      name: "Routine A",
+      machineIds: [],
+      plan,
+      change,
+    });
+    expect(routineId).toBe("r-empty");
+    expect(fake.batches[0]!.ops[0]).toEqual({ op: "update", path: "routines/r-empty", data: { machineIds: [], plan } });
   });
 });
 

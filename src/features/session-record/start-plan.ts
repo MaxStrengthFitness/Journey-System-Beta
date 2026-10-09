@@ -26,11 +26,26 @@
  * session starts, and the routine and the weights follow the moment they are
  * known (`resolveStartRoutine` again, then `seedLogs`).
  *
+ * START NEVER SAVES TODAY'S LIST AS A ROUTINE (the first-session design
+ * round, Oct 8 2026, §4.8). Start used to save a list the briefing built
+ * under a "Today only" label as the client's Routine A or B. Now a client
+ * with no routine starts with no routine and today's machines exactly as
+ * chosen, none when none were (never the whole floor): the session's list is
+ * the session's. The one routine Start makes is Routine A from a starting
+ * plan, for a client starting out at the studio, written by the plan's own
+ * writer in the Start batch: EMPTY, with the plan carrying day one, because
+ * the consult is not Routine A (AJ, Oct 8 2026: "this also counts with the
+ * consult visit, sometimes the consult machines will not be the same as
+ * their a routine").
+ *
  * Everything here is pure. The tracker issues the writes.
  */
 import type { Client, ClientMachineSetting, ExerciseLog, Routine } from "../../types";
 import { logDocId } from "../../lib/exercise-log-id";
 import { isPerSideMachine } from "../../lib/floor-machines";
+import { findRoutineByLetter } from "../../lib/routine-utils";
+import { todayFor } from "../routine-plan/plan";
+import type { StartPlanAtStart } from "../routine-plan/briefing-plan";
 
 export type StartRoutineType = "A" | "B" | "Free";
 
@@ -40,40 +55,66 @@ export type StartRoutine =
   | { kind: "free" }
   /** The client's own routine of that letter. */
   | { kind: "existing"; routine: Routine }
-  /** The client has none (the routines are known): one is made, in the start batch. */
-  | { kind: "create"; name: string; machineIds: string[] }
+  /**
+   * The client has no Routine A (the routines are known) and the briefing
+   * handed up a starting plan: Routine A is made EMPTY in the start batch
+   * with the plan on it, or the plan goes on the empty, plan-less Routine A
+   * the client has (`routineId`), never a second one.
+   */
+  | { kind: "plan"; name: "Routine A"; routineId: string | null; startPlan: StartPlanAtStart }
+  /** The client has no routine of that letter (the routines are known): none is made, and the session runs today's list as chosen. */
+  | { kind: "none"; name: string }
   /** The routines aren't known yet: decided the moment they are, never guessed. */
-  | { kind: "unknown"; name: string };
+  | { kind: "unknown"; name: string; startPlan?: StartPlanAtStart };
 
 export function resolveStartRoutine(a: {
   routineType: StartRoutineType;
   customMachines?: string[] | null;
   routines: Routine[];
   routinesKnown: boolean;
+  /** A client starting out: the plan the briefing hands up, kept by Start (Routine A only). */
+  startPlan?: StartPlanAtStart | null;
 }): StartRoutine {
   if (a.routineType === "Free") return { kind: "free" };
   const name = `Routine ${a.routineType}`;
+  const startPlan = a.routineType === "A" && a.startPlan ? a.startPlan : null;
   // An unknown list may still hold the last client's routines: never read it.
-  if (!a.routinesKnown) return { kind: "unknown", name };
-  const found = a.routines.find((r) => r.name === name);
+  if (!a.routinesKnown) return startPlan ? { kind: "unknown", name, startPlan } : { kind: "unknown", name };
+  // Either spelling ("Routine A", or an older seeder's "A"), as the briefing
+  // finds the routine it shows: a routine on screen is the one Start runs.
+  const found = findRoutineByLetter(a.routines, a.routineType);
+  if (startPlan) {
+    // An empty Routine A with no plan (made before plans existed) takes the
+    // plan, as Keep this lineup puts it there; one with machines or a plan
+    // already is the client's, and the session runs it.
+    if (!found) return { kind: "plan", name: "Routine A", routineId: null, startPlan };
+    if (found.id && !found.plan && (found.machineIds?.length ?? 0) === 0) {
+      return { kind: "plan", name: "Routine A", routineId: found.id, startPlan };
+    }
+  }
   if (found) return { kind: "existing", routine: found };
-  return { kind: "create", name, machineIds: a.customMachines ? [...a.customMachines] : [] };
+  return { kind: "none", name };
 }
 
 /**
  * The machines the session intends to run, in order. A list the briefing
- * adjusted wins; otherwise the routine's. Nothing yet while the routine is
- * unknown, unless the trainer adjusted it.
+ * adjusted wins, exactly as it was handed up, an empty one included (the
+ * briefing said "0 machines" and Start runs that); otherwise what the routine
+ * runs today (`todayFor`: its machines, else its plan's day one while it is
+ * empty). With no routine, the list as chosen, none when none was: never the
+ * whole floor.
  */
 export function plannedMachinesOf(routine: StartRoutine, customMachines?: string[] | null): string[] {
-  const custom = customMachines && customMachines.length > 0 ? [...customMachines] : null;
+  const custom = customMachines ? [...customMachines] : null;
   switch (routine.kind) {
     case "existing":
-      return custom ?? [...(routine.routine.machineIds ?? [])];
-    case "create":
-      return [...routine.machineIds];
-    case "free":
+      return custom ?? todayFor({ routine: routine.routine.machineIds ?? [], plan: routine.routine.plan });
+    case "plan":
+      return [...routine.startPlan.machineIds];
     case "unknown":
+      return custom ?? (routine.startPlan ? [...routine.startPlan.machineIds] : []);
+    case "free":
+    case "none":
       return custom ?? [];
   }
 }
@@ -81,14 +122,21 @@ export function plannedMachinesOf(routine: StartRoutine, customMachines?: string
 /**
  * The client fields Start changes, as flags (the tracker writes the values).
  * Written apart from the session: see the header.
+ *
+ * Routine B is marked on only when the session runs the client's own
+ * Routine B (`runsSavedRoutine`): a B session with no Routine B is today's
+ * list and makes no routine (§4.8), so it never switches on an alternation
+ * into a B that isn't there.
  */
 export function startClientPatch(a: {
   routineType: StartRoutineType;
   client: Pick<Client, "isRoutineBActive" | "firstSessionDate"> | null | undefined;
   sessionNumber: number;
+  /** The session runs a routine the client has (`resolveStartRoutine` said "existing"). */
+  runsSavedRoutine: boolean;
 }): { isRoutineBActive?: true; firstSessionDate?: true } {
   const out: { isRoutineBActive?: true; firstSessionDate?: true } = {};
-  if (a.routineType === "B" && !a.client?.isRoutineBActive) out.isRoutineBActive = true;
+  if (a.routineType === "B" && a.runsSavedRoutine && !a.client?.isRoutineBActive) out.isRoutineBActive = true;
   if (a.sessionNumber === 1 && !a.client?.firstSessionDate) out.firstSessionDate = true;
   return out;
 }

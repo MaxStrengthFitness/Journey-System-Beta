@@ -78,9 +78,27 @@ describe("sessionMachineList", () => {
     expect(sessionMachineList({ routineId: "rA" }, routines, ["f1"])).toEqual(["m1", "m2"]);
   });
 
-  it("runs the floor for a Free session, and nothing for a routine not loaded yet", () => {
+  it("runs the floor for an older Free session with no list on record, and nothing for a routine not loaded yet", () => {
     expect(sessionMachineList({}, routines, ["f1", "f2"])).toEqual(["f1", "f2"]);
     expect(sessionMachineList({ routineId: "rZ" }, routines, ["f1"])).toEqual([]);
+  });
+
+  /* The first-session design round (Oct 8 2026): a session started with
+     nothing chosen records an EMPTY list and no routine, and the trainer's
+     iPad runs it empty. The watching iPad draws the same, never the whole
+     floor as if it were today's routine. */
+  it("draws an empty list on record with no routine as empty, never the floor", () => {
+    expect(sessionMachineList({ sessionMachineIds: [], routineId: null }, routines, ["f1", "f2"])).toEqual([]);
+    expect(sessionMachineList({ sessionMachineIds: [] }, routines, ["f1", "f2"])).toEqual([]);
+  });
+
+  it("with a routine, keeps the list on record, an empty one included", () => {
+    expect(sessionMachineList({ sessionMachineIds: [], routineId: "rA" }, routines, ["f1"])).toEqual([]);
+  });
+
+  it("an older session on an empty Routine A with a plan runs the plan's day one, as the Active Session does", () => {
+    const withPlan = [{ id: "rA", machineIds: [] as string[], plan: { dayOne: ["m-leg-press", "m-lumbar"] } }];
+    expect(sessionMachineList({ routineId: "rA" }, withPlan, ["f1"])).toEqual(["m-leg-press", "m-lumbar"]);
   });
 });
 

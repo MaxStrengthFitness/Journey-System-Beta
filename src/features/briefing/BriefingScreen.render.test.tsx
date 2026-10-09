@@ -62,6 +62,45 @@ vi.mock("firebase/firestore", async (importOriginal) => {
 // The theme comes from the app shell; the briefing only reads it.
 vi.mock("../../components/ThemeProvider", () => ({ useTheme: () => ({ theme: "light" }) }));
 
+/* The starting routines' two reads (the plan card's, the first-session
+   design round, Oct 8 2026): none in the app, so the Academy's eleven,
+   unless a test holds them. Counted, so a client with a routine is seen to
+   read nothing. */
+const startingReads = vi.hoisted(() => {
+  const answered = {
+    routines: () => Promise.resolve({ routines: [] as unknown[], known: true }),
+    choice: () => Promise.resolve({ use: null as string[] | null, defaultId: null as string | null }),
+  };
+  return { answered, now: { ...answered }, count: 0 };
+});
+vi.mock("../routine-plan/starting-store", () => ({
+  readStartingRoutines: () => {
+    startingReads.count += 1;
+    return startingReads.now.routines();
+  },
+  readStartingChoice: () => startingReads.now.choice(),
+}));
+
+// Programming's door: where the briefing sends a client who trained here before Journey.
+const opened = vi.hoisted(() => ({ calls: [] as unknown[][] }));
+vi.mock("../client-profile/profile-nav", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../client-profile/profile-nav")>();
+  return { ...real, openProfileAt: (...args: unknown[]) => opened.calls.push(args) };
+});
+
+/* The plan card's sheets are base-ui dialogs, which want both. */
+{
+  const g = globalThis as unknown as Record<string, unknown>;
+  if (!("PointerEvent" in g)) g.PointerEvent = MouseEvent;
+  if (!("ResizeObserver" in g)) {
+    g.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  }
+}
+
 // The Routine Builder is its own feature with its own render tests; here it
 // is a stub so the briefing's own work is what is under test.
 vi.mock("../routine-builder", () => ({
@@ -92,10 +131,12 @@ vi.mock("../../hooks/useClientJournal", async (importOriginal) => {
 });
 
 import { BriefingScreen } from "./BriefingScreen";
+import { UnsavedChangesProvider } from "../unsaved-changes";
 import { studioTodayKey } from "../../lib/studio-time";
 import type { Client, Machine, Routine, Trainer, WorkoutSession } from "../../types";
 import type { JournalEntry } from "../../types/journal";
 import { assembleThreads } from "../client-notes/threads";
+import { ACADEMY_MOVEMENT_NAME } from "../catalog/names";
 
 let mounted: { root: Root; host: HTMLElement }[] = [];
 
@@ -142,6 +183,9 @@ beforeEach(() => {
   journalMock.headsUpEntries = [];
   journalMock.threads = undefined;
   sets.length = 0;
+  startingReads.now = { ...startingReads.answered };
+  startingReads.count = 0;
+  opened.calls.length = 0;
 });
 
 afterEach(async () => {
@@ -745,5 +789,346 @@ describe("the Stack (AJ's walk, Oct 3 2026)", () => {
     }
     await click(buttonByText(host, "Start session"));
     expect(onStart.mock.calls[0][3]?.bodyStates).toBeUndefined();
+  });
+});
+
+/* ---------------------------------------------------------------- */
+
+describe("how the client starts (the first-session design round, Oct 8 2026)", () => {
+  /* A floor of catalog machines, named as the Academy names them. */
+  const FLOOR_IDS = ["m-leg-press", "m-compound-row", "m-lumbar", "m-chest-press", "m-pulldown", "m-hip-abd", "m-dip", "m-ext"];
+  const floor: Machine[] = FLOOR_IDS.map((id) => ({ id, name: ACADEMY_MOVEMENT_NAME[id] ?? id }) as Machine);
+  const nameOfId = (id: string) => ACADEMY_MOVEMENT_NAME[id] ?? id;
+  /* Starting out at the studio: Journey holds the whole story, and it is empty. */
+  const fresh = {
+    id: "c-new",
+    homeStudioId: "s1",
+    firstName: "Dana",
+    lastName: "Reyes",
+    sessionCount: 0,
+    historyIsComplete: true,
+    medicalHistory: "Sciatica down the left leg",
+  } as Client;
+
+  function Fresh({
+    who = fresh,
+    known = true,
+    rs = [] as Routine[],
+    coverage = "complete" as "complete" | "partial" | "unknown",
+    onStart = (() => {}) as (...a: any[]) => void,
+    onClose = () => {},
+  }: {
+    who?: Client;
+    known?: boolean;
+    rs?: Routine[];
+    coverage?: "complete" | "partial" | "unknown";
+    onStart?: (...a: any[]) => void;
+    onClose?: () => void;
+  }) {
+    return (
+      <BriefingScreen
+        authTrainer={trainer}
+        client={who}
+        coverage={coverage}
+        studioId="s1"
+        studioName="Westlake"
+        targetRoutine={null}
+        lastSession={null}
+        sessions={[]}
+        routinesKnown={known}
+        onStart={onStart}
+        onClose={onClose}
+        machines={floor}
+        routines={rs}
+        trainers={[trainer]}
+      />
+    );
+  }
+  const section = (host: HTMLElement) => host.querySelector('[aria-label="Today\'s routine"]')!;
+  const todayNames = (host: HTMLElement) =>
+    Array.from(section(host).querySelectorAll('.rpl-road__stop[data-kind="in"] .rpl-road__name')).map((n) => n.textContent);
+
+  it("starting out: the plan card replaces the A and B buttons, today being the starting routine's day one", async () => {
+    const host = await mount(<Fresh />);
+    const card = section(host).querySelector('[data-testid="briefing-plan"]')!;
+    expect(card).toBeTruthy();
+    expect(section(host).querySelector(".br__routines")).toBeNull();
+    expect(card.textContent).toContain("Dana's starting lineup");
+    expect(card.textContent).toContain("Low back issues");
+    expect(card.textContent).toContain("Next stop");
+    expect(todayNames(host).length).toBeGreaterThan(0);
+    // Read for this card (StrictMode mounts the effect twice in development).
+    expect(startingReads.count).toBeGreaterThan(0);
+  });
+
+  it("Start hands the plan up with today's machines, and the briefing writes nothing", async () => {
+    const onStart = vi.fn();
+    const host = await mount(<Fresh onStart={onStart} />);
+    const today = todayNames(host);
+    await click(buttonByText(host, "Start session"));
+    expect(onStart).toHaveBeenCalledTimes(1);
+    const [type, custom, , , , startPlan] = onStart.mock.calls[0];
+    expect(type).toBe("A");
+    // Today unchanged: no list "adjusted for today", the plan carries it.
+    expect(custom).toBeUndefined();
+    expect(startPlan.name).toBe("Routine A");
+    expect(startPlan.machineIds.map(nameOfId)).toEqual(today);
+    // Day one is on the plan; Routine A is the tracker's to make, EMPTY.
+    expect(startPlan.plan.dayOne).toEqual(startPlan.machineIds);
+    expect(startPlan.plan.madeByUid).toBe("uid-aj");
+    expect(startPlan.startingRoutineName).toBe("Low back issues");
+    // The briefing hands its sequence upward and writes nothing (session-scope.test.ts).
+    expect(writes).toEqual([]);
+    expect(sets).toEqual([]);
+  });
+
+  it("Change today goes up as today's list, and the plan Start keeps takes it as day one", async () => {
+    const onStart = vi.fn();
+    const host = await mount(<Fresh onStart={onStart} />);
+    const before = todayNames(host);
+    await click(buttonByText(host, "Change today"));
+    const firstTick = Array.from(document.body.querySelectorAll<HTMLButtonElement>('[role="checkbox"][aria-checked="true"]'))[0];
+    await click(firstTick);
+    await click(buttonByText(document.body, "Done"));
+    expect(todayNames(host)).toEqual(before.slice(1));
+    await click(buttonByText(host, "Start session"));
+    const [, custom, , , , startPlan] = onStart.mock.calls[0];
+    expect(custom.map(nameOfId)).toEqual(before.slice(1));
+    expect(startPlan.machineIds).toEqual(custom);
+    /* AJ's "3a" (Oct 8 2026): the plan keeps "the first visit's machines" as
+       its day one, so a machine taken out at the consult doesn't come back
+       when the next visit runs day one again. */
+    expect(startPlan.plan.dayOne.map(nameOfId)).toEqual(before.slice(1));
+  });
+
+  it("keeps the briefing's safety line on the plan card: today's machines against the client's limits", async () => {
+    const host = await mount(<Fresh who={{ ...fresh, clinicalFlags: ["gen-low-back"] } as Client} />);
+    const card = section(host).querySelector('[data-testid="briefing-plan"]')!;
+    const line = card.querySelector('[data-testid="briefing-plan-limits"]');
+    expect(line?.textContent).toContain("Mind the limits on");
+    expect(line?.textContent).toContain(nameOfId("m-lumbar"));
+    // Only today's machines: one later on the road is not named.
+    expect(line?.textContent).not.toContain(nameOfId("m-pulldown"));
+  });
+
+  it("says nothing about limits when today touches none", async () => {
+    const host = await mount(<Fresh />);
+    expect(section(host).querySelector('[data-testid="briefing-plan-limits"]')).toBeNull();
+  });
+
+  it("reads either spelling of a routine's name: an older seeder's 'A' is the client's routine, never 'no routine'", async () => {
+    const a = { id: "rA", clientId: "c-new", name: "A", machineIds: ["m-leg-press", "m-lumbar"] } as unknown as Routine;
+    const host = await mount(<Fresh rs={[a]} coverage="partial" />);
+    expect(section(host).querySelector('[data-testid="briefing-plan-journey"]')).toBeNull();
+    expect(host.querySelector('[data-testid="briefing-routine-line"]')!.textContent).toContain("Routine A · 2 machines");
+  });
+
+  it("never holds Start: while the starting routines are read, Start opens an empty session with no plan", async () => {
+    startingReads.now.routines = () => new Promise(() => {});
+    const onStart = vi.fn();
+    const host = await mount(<Fresh onStart={onStart} />);
+    expect(section(host).textContent).toContain("Reading the starting routines…");
+    const start = buttonByText(host, "Start session") as HTMLButtonElement;
+    expect(start.disabled).toBe(false);
+    await click(start);
+    expect(onStart).toHaveBeenCalledTimes(1);
+    expect(onStart.mock.calls[0][1]).toBeUndefined();
+    expect(onStart.mock.calls[0][5]).toBeNull();
+  });
+
+  it("never decides 'new' off a read that hasn't answered: routines not known, or no session count, is both doors", async () => {
+    const host = await mount(<Fresh known={false} />);
+    expect(section(host).querySelector('[data-testid="briefing-plan-doors"]')).toBeTruthy();
+    expect(section(host).textContent).toContain("How does Dana start?");
+    expect(section(host).querySelector('[data-testid="briefing-plan"]')).toBeNull();
+    // Nothing is read for a card that isn't drawn.
+    expect(startingReads.count).toBe(0);
+    await act(async () => {
+      for (const m of mounted) m.root.unmount();
+    });
+    mounted = [];
+    const { sessionCount: _count, ...uncounted } = fresh;
+    const host2 = await mount(<Fresh who={uncounted as Client} />);
+    expect(section(host2).querySelector('[data-testid="briefing-plan-doors"]')).toBeTruthy();
+  });
+
+  it("Add Client's walk-in (a temporary profile, no count of its own) is starting out: the plan card", async () => {
+    const walkIn = {
+      id: "c-walk",
+      homeStudioId: "s1",
+      firstName: "Lee",
+      lastName: "Park",
+      provisional: true,
+      provisionalReason: "New client, not in Mindbody yet",
+    } as unknown as Client;
+    const host = await mount(<Fresh who={walkIn} coverage="unknown" />);
+    expect(section(host).querySelector('[data-testid="briefing-plan"]')?.textContent).toContain("Lee's starting lineup");
+  });
+
+  it("can't tell: Start with no door picked opens an empty session; Starting out here draws the card and Start keeps its plan", async () => {
+    const onStart = vi.fn();
+    const host = await mount(<Fresh known={false} onStart={onStart} />);
+    await click(buttonByText(host, "Start session"));
+    expect(onStart.mock.calls[0][1]).toBeUndefined();
+    expect(onStart.mock.calls[0][5]).toBeNull();
+
+    await click(buttonByText(section(host), "Starting out here"));
+    expect(section(host).querySelector('[data-testid="briefing-plan"]')).toBeTruthy();
+    expect(buttonByText(section(host), "Both ways to start")).toBeTruthy();
+    await click(buttonByText(host, "Start session"));
+    expect(onStart.mock.calls[1][5]?.plan.templateId).toBe("academy-low-back");
+
+    await click(buttonByText(section(host), "Both ways to start"));
+    expect(section(host).querySelector('[data-testid="briefing-plan-doors"]')).toBeTruthy();
+  });
+
+  it("trained here before Journey: one line, a door to Programming, and Start opens an empty session", async () => {
+    const onStart = vi.fn();
+    const onClose = vi.fn();
+    const before = { ...fresh, historyIsComplete: false, sessionCount: 0 } as Client;
+    const host = await mount(<Fresh who={before} coverage="partial" onStart={onStart} onClose={onClose} />);
+    const door = section(host).querySelector('[data-testid="briefing-plan-journey"]')!;
+    expect(door.textContent).toContain("Dana has a routine from before Journey.");
+    expect(door.textContent).toContain("Or start and add machines as you go.");
+    expect(startingReads.count).toBe(0);
+
+    await click(buttonByText(host, "Start session"));
+    expect(onStart.mock.calls[0][0]).toBe("A");
+    expect(onStart.mock.calls[0][1]).toBeUndefined();
+    expect(onStart.mock.calls[0][5]).toBeNull();
+
+    await click(buttonByText(door, "Enter the routine on Programming"));
+    expect(opened.calls).toEqual([["c-new", { tab: "programming", view: "routine-a" }]]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  /* The always-on rule: a screen holding typing registers with the leave
+     gate, and its own ways out ask BEFORE anything moves. */
+  describe("the leave gate", () => {
+    const before = { ...fresh, historyIsComplete: false, sessionCount: 0 } as Client;
+    const dialog = () => document.body.querySelector('[role="alertdialog"]');
+    const typeNote = async (host: HTMLElement) => {
+      await click(buttonByText(host, "Note"));
+      await typeInto(host.querySelector(".br__textarea"), "Late from work, left knee stiff");
+    };
+
+    it("Enter the routine on Programming asks first when a note is typed, and sets nothing before the answer", async () => {
+      const onClose = vi.fn();
+      const host = await mount(
+        <UnsavedChangesProvider>
+          <Fresh who={before} coverage="partial" onClose={onClose} />
+        </UnsavedChangesProvider>,
+      );
+      await typeNote(host);
+      await click(buttonByText(section(host), "Enter the routine on Programming"));
+      expect(dialog()?.textContent).toContain("the briefing");
+      expect(opened.calls).toEqual([]);
+      expect(onClose).not.toHaveBeenCalled();
+      await click(buttonByText(dialog()!, "Keep editing"));
+      expect((host.querySelector(".br__textarea") as HTMLTextAreaElement).value).toBe("Late from work, left knee stiff");
+      expect(onClose).not.toHaveBeenCalled();
+
+      await click(buttonByText(section(host), "Enter the routine on Programming"));
+      await click(buttonByText(dialog()!, "Leave"));
+      expect(opened.calls).toEqual([["c-new", { tab: "programming", view: "routine-a" }]]);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("the close button asks before the briefing moves when a note is typed", async () => {
+      const onClose = vi.fn();
+      const host = await mount(
+        <UnsavedChangesProvider>
+          <Fresh onClose={onClose} />
+        </UnsavedChangesProvider>,
+      );
+      await typeNote(host);
+      await click(host.querySelector('[aria-label="Close briefing"]'));
+      expect(dialog()?.textContent).toContain("the briefing");
+      expect(onClose).not.toHaveBeenCalled();
+      await click(buttonByText(dialog()!, "Leave"));
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("Change today on the plan card counts as unsaved too", async () => {
+      const onClose = vi.fn();
+      const host = await mount(
+        <UnsavedChangesProvider>
+          <Fresh onClose={onClose} />
+        </UnsavedChangesProvider>,
+      );
+      await click(buttonByText(host, "Change today"));
+      const firstTick = Array.from(document.body.querySelectorAll<HTMLButtonElement>('[role="checkbox"][aria-checked="true"]'))[0];
+      await click(firstTick);
+      await click(buttonByText(document.body, "Done"));
+      await click(host.querySelector('[aria-label="Close briefing"]'));
+      expect(dialog()?.textContent).toContain("the briefing");
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("with nothing typed or changed, the doors go at once", async () => {
+      const onClose = vi.fn();
+      const host = await mount(
+        <UnsavedChangesProvider>
+          <Fresh who={before} coverage="partial" onClose={onClose} />
+        </UnsavedChangesProvider>,
+      );
+      await click(buttonByText(section(host), "Enter the routine on Programming"));
+      expect(dialog()).toBeNull();
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("Start never asks: it is not a navigation", async () => {
+      const onStart = vi.fn();
+      const host = await mount(
+        <UnsavedChangesProvider>
+          <Fresh onStart={onStart} />
+        </UnsavedChangesProvider>,
+      );
+      await typeNote(host);
+      await click(buttonByText(host, "Start session"));
+      expect(dialog()).toBeNull();
+      expect(onStart).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("a plan kept with Routine A still empty: the card runs day one, and Start hands up no second plan", async () => {
+    const plan = {
+      purpose: "Learning the protocol: the starting routine",
+      intended: ["m-leg-press", "m-compound-row", "m-lumbar", "m-chest-press"],
+      dayOne: ["m-leg-press", "m-compound-row", "m-lumbar"],
+      building: true,
+      templateId: "academy-low-back",
+      madeByUid: "uid-sam",
+    };
+    const kept = { id: "rA", clientId: "c-new", name: "Routine A", machineIds: [], plan } as unknown as Routine;
+    const onStart = vi.fn();
+    const host = await mount(<Fresh rs={[kept]} onStart={onStart} />);
+    expect(section(host).textContent).toContain("Routine A's plan");
+    expect(todayNames(host)).toEqual(["m-leg-press", "m-compound-row", "m-lumbar"].map(nameOfId));
+    expect(startingReads.count).toBe(0);
+    await click(buttonByText(host, "Start session"));
+    expect(onStart.mock.calls[0][0]).toBe("A");
+    // The routine's own today (todayFor) is the session's: nothing adjusted, no plan to keep.
+    expect(onStart.mock.calls[0][1]).toBeUndefined();
+    expect(onStart.mock.calls[0][5]).toBeNull();
+  });
+
+  it("a plan in progress: the routine line as before, with the Road and how far along under it", async () => {
+    const plan = {
+      purpose: "The core",
+      intended: ["m-leg-press", "m-compound-row", "m-lumbar"],
+      building: true,
+      madeByUid: "uid-sam",
+    };
+    const a = { id: "rA", clientId: "c-new", name: "Routine A", machineIds: ["m-leg-press"], plan } as unknown as Routine;
+    const onStart = vi.fn();
+    const host = await mount(<Fresh rs={[a]} onStart={onStart} />);
+    expect(host.querySelector('[data-testid="briefing-routine-line"]')!.textContent).toContain("Routine A · 1 machine");
+    const road = host.querySelector('[data-testid="briefing-plan-road"]')!;
+    expect(road.textContent).toContain(`1 of 3 · next: ${nameOfId("m-compound-row")}`);
+    expect(road.textContent).toContain("Next stop");
+    expect(startingReads.count).toBe(0);
+    await click(buttonByText(host, "Start session"));
+    expect(onStart.mock.calls[0][5]).toBeUndefined();
   });
 });

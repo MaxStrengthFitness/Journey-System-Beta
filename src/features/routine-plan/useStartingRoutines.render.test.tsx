@@ -46,8 +46,9 @@ import { useStartingRoutines, type StartingRoutinesState } from "./useStartingRo
 import { academyStartingRoutines, type StartingRoutine } from "./starting-routines";
 
 let result: StartingRoutinesState | null = null;
+let enabled = true;
 function Probe({ studioId }: { studioId: string | null }) {
-  result = useStartingRoutines(studioId);
+  result = useStartingRoutines(studioId, { enabled });
   return null;
 }
 
@@ -85,6 +86,7 @@ beforeEach(() => {
   fake.routineReads.length = 0;
   fake.choiceReads.length = 0;
   result = null;
+  enabled = true;
 });
 
 afterEach(async () => {
@@ -183,6 +185,21 @@ describe("useStartingRoutines", () => {
     fake.routineReads[0]!.d.resolve({ routines: [knee], known: true });
     await settle();
     expect(result).toMatchObject({ status: "ready", choice: { use: null, defaultId: null } });
+  });
+
+  it("reads nothing while it isn't enabled (the briefing, for a client with a routine), and reads once it is", async () => {
+    enabled = false;
+    await render("westlake");
+    expect(fake.routineReads).toHaveLength(0);
+    expect(fake.choiceReads).toHaveLength(0);
+    expect(result).toMatchObject({ status: "loading", fromCode: true, choice: null });
+    enabled = true;
+    await render("westlake");
+    expect(fake.routineReads.map((r) => r.studioId)).toEqual(["westlake"]);
+    fake.routineReads[0]!.d.resolve({ routines: [knee], known: true });
+    fake.choiceReads[0]!.d.resolve({ use: null, defaultId: null });
+    await settle();
+    expect(result).toMatchObject({ status: "ready", fromCode: false });
   });
 
   it("mounts under StrictMode", async () => {

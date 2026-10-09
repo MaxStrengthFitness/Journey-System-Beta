@@ -17,10 +17,16 @@
  * The component is CONTROLLED. It owns no persistence — `machineIds` in,
  * `onChange` out — because the five callers genuinely do persist differently:
  * the client profile writes a routine document plus an audit entry, the
- * briefing may create a routine or may scope the change to today's session,
- * the in-session editor writes nothing at all, and the admin form writes a
- * preset. Pushing that into the builder is what produced four editors the
- * first time.
+ * briefing scopes every change to today's session, the in-session editor
+ * writes nothing at all, and the admin form writes a preset. Pushing that
+ * into the builder is what produced four editors the first time.
+ *
+ * "Today only" on the briefing and in a session is now exactly that (the
+ * first-session design round, Oct 8 2026, §4.8): Start used to save a list
+ * built under that label as the client's Routine A or B, and no longer
+ * does. A client with no routine starts with today's list as chosen; the
+ * one routine Start makes is Routine A from a starting plan
+ * (routine-plan/briefing-plan.ts), never from this builder's list.
  */
 
 import type { Client, Machine, RoutinePreset } from "../../types";

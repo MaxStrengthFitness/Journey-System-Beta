@@ -19,6 +19,12 @@
  * offer and never blocks a session; `status` and `fromCode` let the screen
  * say which. The choice stays null (unknown) until it answers, never "hasn't
  * chosen" off a read that failed.
+ *
+ * `{ enabled: false }` reads nothing (and says "loading"): the briefing
+ * holds this hook for every client, and reads only when its plan card is
+ * drawn (the design round, §5: "one of the studio's choice when Start a
+ * plan or the briefing's plan card opens"), never for a client with a
+ * routine.
  */
 import { useCallback, useEffect, useState } from "react";
 import { db } from "../../firebase";
@@ -64,12 +70,17 @@ function academyFallback(): StartingRoutine[] {
   return beforeAnswer;
 }
 
-export function useStartingRoutines(studioId: string | null | undefined): StartingRoutinesState {
+export function useStartingRoutines(
+  studioId: string | null | undefined,
+  options: { enabled?: boolean } = {},
+): StartingRoutinesState {
+  const enabled = options.enabled ?? true;
   const [nonce, setNonce] = useState(0);
   const [read, setRead] = useState<Read | null>(null);
   const key = keyOf(studioId, nonce);
 
   useEffect(() => {
+    if (!enabled) return;
     let live = true;
     const key = keyOf(studioId, nonce);
     const routinesRead: Promise<StartingRoutinesAnswer> = readStartingRoutines(db, studioId);
@@ -94,12 +105,12 @@ export function useStartingRoutines(studioId: string | null | undefined): Starti
     return () => {
       live = false;
     };
-  }, [studioId, nonce]);
+  }, [studioId, nonce, enabled]);
 
   const reload = useCallback(() => setNonce((n) => n + 1), []);
 
   // A read for another studio (or before a reload) is never shown as this one's.
-  if (!read || read.key !== key) {
+  if (!enabled || !read || read.key !== key) {
     return { routines: academyFallback(), fromCode: true, choice: null, status: "loading", reload };
   }
   return { routines: read.routines, fromCode: read.fromCode, choice: read.choice, status: read.status, reload };

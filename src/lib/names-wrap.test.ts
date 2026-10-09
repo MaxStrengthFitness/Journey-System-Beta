@@ -143,6 +143,11 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-sheet__label", what: "a sheet's label naming the client, \"Not for {First} for now · optional\"" },
   { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-well", what: "why a start was suggested, naming the studio or the intake's word" },
   { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-effect__why", exact: ".rpl-effect__why p", what: "an order effect's why, naming its two machines" },
+  // The briefing's plan card (the first-session design round, Oct 8 2026, §4.5).
+  { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-brief__title", what: "\"{First}'s starting lineup\" and \"How does {First} start?\" on the briefing" },
+  { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-brief__lead", what: "\"{First} has a routine from before Journey\" on the briefing" },
+  { file: "features/routine-plan/ui/routine-plan.css", cls: "rpl-tick__label", what: "a machine on Change today's ticks" },
+  { file: "features/briefing/briefing.css", cls: "br-routine__touch", what: "\"Mind the limits on {machines}\" under the routine line and the plan card's Road" },
   { file: "features/routines/routines.css", cls: "rt-row__name", what: "a machine in Routine A or B on Programming" },
   { file: "features/routines/routines.css", cls: "rt-row__plan", what: "the plan's word under a Routine A machine in the Lineup (\"instead of Seated Dip\")" },
 ];

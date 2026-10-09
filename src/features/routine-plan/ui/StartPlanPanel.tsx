@@ -61,7 +61,7 @@ import type { RoutinePlan } from "../types";
 import { useStartingRoutines } from "../useStartingRoutines";
 import { CantDoSheet, type CantDoSave } from "./CantDoSheet";
 import { floorMachinesOf, type HealthNoteCall, type PlanHost } from "./host";
-import { BenchEntry, Chip, GroupHead, LineupRow, NextPill, OrderNote, SaidLine, SourceTag } from "./parts";
+import { BenchEntry, Chip, DoorButton, GroupHead, LineupRow, NextPill, OrderNote, SaidLine, SourceTag } from "./parts";
 import { FloorPicker } from "./pickers";
 import { RowSheet } from "./RowSheet";
 import "./routine-plan.css";
@@ -149,18 +149,6 @@ export function StartPlanPanel({ host, firstName, nameOf, routineAId }: StartPla
         )}
       </UnsavedChangesScope>
     </div>
-  );
-}
-
-function DoorButton({ icon, title, line, onClick }: { icon: ReactNode; title: string; line: string; onClick: () => void }) {
-  return (
-    <button type="button" className="rpl-door" onClick={onClick}>
-      <span className="rpl-door__icon">{icon}</span>
-      <span className="rpl-door__text">
-        <span className="rpl-door__title">{title}</span>
-        <span className="rpl-door__line">{line}</span>
-      </span>
-    </button>
   );
 }
 

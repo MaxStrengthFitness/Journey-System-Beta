@@ -70,6 +70,9 @@ import { SEND_SETS_NOW_EVENT } from "../features/session-record/sign-out-check";
 import { NothingOnScreen } from "../features/session-record/NothingOnScreen";
 import { nothingKind } from "../features/session-record/nothing-on-screen";
 import { nextRoutine } from "../features/routines/next-routine";
+import { addStartPlanToBatch } from "../features/routine-plan/store";
+import { startChangeOf, type StartPlanAtStart } from "../features/routine-plan/briefing-plan";
+import { todayFor } from "../features/routine-plan/plan";
 import { WatchingSession } from "../features/session-record/WatchingSession";
 import {
   firstOpenMachine,
@@ -1391,7 +1394,10 @@ export function WorkoutTrackerView({
 
         /* Strict alternation, in one place since Sep 26 2026 so the profile's
            routine card says the same (features/routines/next-routine.ts). A
-           client with no routines yet starts a new Routine A. */
+           client with no routines yet is pointed at Routine A; the briefing
+           says how they start (a starting plan, their routine from before
+           Journey, or both doors), and Start makes no routine of today's
+           list (routine-plan/briefing-plan.ts). */
         const target: Routine =
           nextRoutine(routines, lastSess?.routineId, isRoutineBActive) ??
           ({ name: "Routine A", machineIds: [], clientId } as Routine);
@@ -1425,6 +1431,14 @@ export function WorkoutTrackerView({
    * session document and seeded exactly once per session id. Older sessions
    * have no sessionMachineIds and fall back to the routine, which is also
    * where a session started before this change gets its list from.
+   *
+   * An EMPTY recorded list with no routine is a session started with nothing
+   * chosen (a walk-in built on the fly, the first-session design round, Oct
+   * 8 2026): it runs empty and the trainer adds machines as they go, never
+   * the whole floor. Only a session with no list on record at all and no
+   * routine (an unassigned tracking session) takes the floor. A routine read
+   * here runs what it runs today (`todayFor`: its machines, else its plan's
+   * day one while it is empty), never an empty list in place of day one.
    */
   const seededMachinesForSession = useRef<string | null>(null);
 
@@ -1446,9 +1460,13 @@ export function WorkoutTrackerView({
     const routine = routines.find((r) => r.id === currentSession?.routineId);
     if (routine) {
       seededMachinesForSession.current = sessionId;
-      setActiveMachineIds(routine.machineIds);
+      setActiveMachineIds(Array.isArray(recorded) ? [...recorded] : todayFor({ routine: routine.machineIds, plan: routine.plan }));
+    } else if (!currentSession?.routineId && Array.isArray(recorded)) {
+      // Started with nothing chosen: the session's own empty list.
+      seededMachinesForSession.current = sessionId;
+      setActiveMachineIds([]);
     } else if (!currentSession?.routineId && floorMachines.length > 0) {
-      // A Free session: no routine to read, so the floor is the list.
+      // No list on record and no routine to read (unassigned tracking): the floor is the list.
       seededMachinesForSession.current = sessionId;
       setActiveMachineIds(floorMachines.map((m) => m.id!));
     }
@@ -1488,6 +1506,8 @@ export function WorkoutTrackerView({
     clientId: string;
     routineType: StartRoutineType;
     customMachines: string[] | null;
+    /** The starting plan the briefing handed up, kept once the routines are known to hold no Routine A. */
+    startPlan: StartPlanAtStart | null;
     routineDone: boolean;
     seeded: boolean;
     plannedMachineIds: string[];
@@ -1574,6 +1594,13 @@ export function WorkoutTrackerView({
     preSessionCheckIn?: PreSessionCheckIn,
     /** The arrival note's category, when one was picked on the briefing (Oct 3 2026). */
     arrivalCategory?: FilingCategory | null,
+    /**
+     * A client starting out at the studio: the plan the briefing handed up
+     * (the first-session design round, Oct 8 2026, §4.5). Written here, in
+     * the Start batch, with an EMPTY Routine A; today's machines are the
+     * session's.
+     */
+    startPlan?: StartPlanAtStart | null,
   ) => {
     if (!clientId) return;
     const nextNum = (selectedClient?.sessionCount || 0) + 1;
@@ -1586,9 +1613,11 @@ export function WorkoutTrackerView({
     const date = studioTodayKey();
 
     try {
-      /* Which routine: the client's, a new one (only once the routines are
-         known to hold none), or not decided yet (start-plan.ts). */
-      const routine = resolveStartRoutine({ routineType, customMachines, routines, routinesKnown });
+      /* Which routine: the client's, Routine A made from a starting plan
+         (only once the routines are known to hold none), none (today's list
+         as chosen; Start never saves it as a routine), or not decided yet
+         (start-plan.ts). */
+      const routine = resolveStartRoutine({ routineType, customMachines, routines, routinesKnown, startPlan });
 
       // STATISTICAL ROUTING & CROSS-TRAIN DETECTION
       // The session should log where it physically happened (the currently active studio)
@@ -1608,14 +1637,45 @@ export function WorkoutTrackerView({
 
       // Ids made on this iPad: nothing waits for the database to name them.
       const sessionRef = doc(collection(db, "sessions"));
-      const routineRef = routine.kind === "create" ? doc(collection(db, "routines")) : null;
-      const routineId =
-        routine.kind === "existing" ? routine.routine.id : routineRef ? routineRef.id : undefined;
+      const batch = writeBatch(db);
+      /* A starting plan kept by Start: Routine A (EMPTY, the plan carrying
+         day one) and the plan's first change, in this batch, written by the
+         plan's own writer (routine-plan/store.ts). Nothing else on the
+         session path makes a routine. */
+      const madeRoutineId =
+        routine.kind === "plan"
+          ? addStartPlanToBatch(db, batch, {
+              routineId: routine.routineId,
+              clientId,
+              studioId: selectedClient?.homeStudioId || "",
+              name: "Routine A",
+              machineIds: [],
+              plan: routine.startPlan.plan,
+              change: startChangeOf(routine.startPlan, {
+                uid: user.uid,
+                ...(authTrainer?.fullName ? { name: authTrainer.fullName } : null),
+              }),
+            }).routineId
+          : null;
+      const routineId = routine.kind === "existing" ? routine.routine.id : (madeRoutineId ?? undefined);
 
       /* What this session intends to run. Recorded on the document from the
          first moment so that the session, not the routine, is the thing the
          screen reads back — see WorkoutSession.sessionMachineIds. */
       const plannedMachineIds = plannedMachinesOf(routine, customMachines);
+      /* A Free session keeps its own behaviour: no routine, so the floor is
+         its list, recorded as such (nothing is prefilled for it); with the
+         floor not read yet, no list is recorded, and the session takes the
+         floor the moment it is (the seeding below). Every other session
+         records exactly what it runs, an empty list included: a session
+         started with nothing chosen runs empty, never the floor. */
+      const freeFloorIds = floorMachines.map((m) => m.id!).filter(Boolean);
+      const sessionListIds: string[] | undefined =
+        routine.kind === "free" && plannedMachineIds.length === 0
+          ? freeFloorIds.length > 0
+            ? freeFloorIds
+            : undefined
+          : plannedMachineIds;
 
       const sessionData: any = cleanPayload({
         clientId,
@@ -1640,7 +1700,7 @@ export function WorkoutTrackerView({
         startedByTrainerId: trainerId || "",
         lastHeartbeatAt: serverTimestamp(),
         status: "In-Progress",
-        sessionMachineIds: plannedMachineIds,
+        sessionMachineIds: sessionListIds,
         // Timer bookkeeping lives on the document so elapsed time survives a
         // refresh, a navigation, or moving to another device.
         pausedAt: null,
@@ -1665,16 +1725,6 @@ export function WorkoutTrackerView({
       const seedNow = routine.kind !== "unknown" && settingsKnown && totalsKnown;
       const seeds = seedNow ? seedsFor(sessionRef.id, plannedMachineIds, homeId, sessionStudioId) : [];
 
-      const batch = writeBatch(db);
-      if (routineRef && routine.kind === "create") {
-        batch.set(routineRef, {
-          clientId,
-          name: routine.name,
-          machineIds: routine.machineIds,
-          createdAt: serverTimestamp(),
-          studioId: selectedClient?.homeStudioId || "",
-        });
-      }
       batch.set(sessionRef, sessionData);
       for (const seed of seeds) {
         batch.set(doc(db, "exerciseLogs", seed.id), seed.payload, { merge: true });
@@ -1710,6 +1760,7 @@ export function WorkoutTrackerView({
               clientId,
               routineType,
               customMachines: customMachines ? [...customMachines] : null,
+              startPlan: routine.kind === "unknown" ? (routine.startPlan ?? null) : null,
               routineDone: routine.kind !== "unknown",
               seeded: seedNow,
               plannedMachineIds,
@@ -1721,7 +1772,12 @@ export function WorkoutTrackerView({
       /* The client's own fields, apart from the session: the clients rules
          limit what a visiting or cross-train trainer may change, and one
          refused field must never take the session down with it. */
-      const patch = startClientPatch({ routineType, client: selectedClient, sessionNumber: nextNum });
+      const patch = startClientPatch({
+        routineType,
+        client: selectedClient,
+        sessionNumber: nextNum,
+        runsSavedRoutine: routine.kind === "existing",
+      });
       const clientUpdateData: Record<string, unknown> = {};
       if (patch.isRoutineBActive) clientUpdateData.isRoutineBActive = true;
       if (patch.firstSessionDate) clientUpdateData.firstSessionDate = serverTimestamp();
@@ -1792,7 +1848,7 @@ export function WorkoutTrackerView({
         trainerName,
         trainerId,
         status: "In-Progress",
-        sessionMachineIds: plannedMachineIds,
+        sessionMachineIds: sessionListIds,
         startTime: new Date(),
       };
 
@@ -1813,8 +1869,12 @@ export function WorkoutTrackerView({
 
   /*
    * WHAT START COULD NOT DECIDE YET, decided the moment it can (R9). The
-   * routine, once the client's routines are known: the client's own, or a
-   * new one made with the session's routine id written onto the session. The
+   * routine, once the client's routines are known: the client's own, or,
+   * when the briefing handed up a starting plan and the client still has no
+   * Routine A, Routine A made EMPTY with the plan on it (routine-plan's
+   * writer, in the same batch as the session's routine id). With no plan
+   * handed up and no routine, nothing is made: the session keeps the list it
+   * started with (Start never saves today's list as a routine). The
    * prefilled sets, once the routine is decided and the settings are known:
    * merged, and never over a set this iPad holds, so a weight typed while
    * they waited stays. Nothing here holds Start or Finish.
@@ -1831,6 +1891,7 @@ export function WorkoutTrackerView({
         customMachines: f.customMachines,
         routines,
         routinesKnown: true,
+        startPlan: f.startPlan,
       });
       const planned = plannedMachinesOf(routine, f.customMachines);
       // A list the trainer already changed in the meantime stays theirs.
@@ -1841,26 +1902,42 @@ export function WorkoutTrackerView({
       let routineId: string | null = null;
       if (routine.kind === "existing") {
         routineId = routine.routine.id ?? null;
-      } else if (routine.kind === "create") {
-        const ref = doc(collection(db, "routines"));
-        routineId = ref.id;
-        batch.set(ref, {
+        /* A B session that turned out to run the client's own Routine B
+           switches the alternation on, as Start does when it knows at once
+           (startClientPatch): its own write, apart from the session, never
+           waited on. */
+        if (f.routineType === "B" && !selectedClient?.isRoutineBActive) {
+          updateDoc(doc(db, "clients", f.clientId), { isRoutineBActive: true }).catch((error) =>
+            console.error("[start] the client's routine mark was not saved", error),
+          );
+        }
+      } else if (routine.kind === "plan") {
+        routineId = addStartPlanToBatch(db, batch, {
+          routineId: routine.routineId,
           clientId: f.clientId,
-          name: routine.name,
-          machineIds: routine.machineIds,
-          createdAt: serverTimestamp(),
           studioId: selectedClient?.homeStudioId || "",
-        });
+          name: "Routine A",
+          machineIds: [],
+          plan: routine.startPlan.plan,
+          change: startChangeOf(routine.startPlan, {
+            uid: user.uid,
+            ...(authTrainer?.fullName ? { name: authTrainer.fullName } : null),
+          }),
+        }).routineId;
       }
-      batch.update(doc(db, "sessions", f.sessionId), {
-        routineId,
-        sessionMachineIds: machinesToWrite,
-        lastHeartbeatAt: serverTimestamp(),
-      });
-      batch.commit().catch((error) =>
-        handleFirestoreError(error, OperationType.UPDATE, "sessions"),
-      );
-      markSent();
+      // No routine and the same list: nothing to say to the session.
+      const sameList = machinesToWrite.join(",") === f.plannedMachineIds.join(",");
+      if (routineId !== null || !sameList) {
+        batch.update(doc(db, "sessions", f.sessionId), {
+          routineId,
+          sessionMachineIds: machinesToWrite,
+          lastHeartbeatAt: serverTimestamp(),
+        });
+        batch.commit().catch((error) =>
+          handleFirestoreError(error, OperationType.UPDATE, "sessions"),
+        );
+        markSent();
+      }
       f.routineDone = true;
       f.plannedMachineIds = machinesToWrite;
       setCurrentSession((cur) =>
@@ -3635,6 +3712,7 @@ export function WorkoutTrackerView({
       <>
         <BriefingScreen
           studioName={activeStudio?.name}
+          studioId={contextActiveStudioId ?? null}
           authTrainer={authTrainer}
           client={selectedClient}
           coverage={clientCoverage}
@@ -3647,7 +3725,11 @@ export function WorkoutTrackerView({
           /* The client's sessions stream has no limit: every one she has
              in Journey, so the InBody count is exact (features/inbody/due.ts). */
           sessionsAreAll
-          onStart={(routineType, customMachines, note, checkIn, noteCategory) =>
+          /* Whether the routines' answer can be trusted (a failed or empty
+             cache answer is not "no routine"): the briefing claims nothing
+             about a client starting out until it is. */
+          routinesKnown={routinesKnown}
+          onStart={(routineType, customMachines, note, checkIn, noteCategory, startPlan) =>
             startNewSession(
               routineType,
               undefined,
@@ -3655,6 +3737,7 @@ export function WorkoutTrackerView({
               note,
               checkIn,
               noteCategory,
+              startPlan,
             )
           }
           onClose={() => {

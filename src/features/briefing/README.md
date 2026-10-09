@@ -54,7 +54,9 @@ Top to bottom (`stack.ts` is the pure half, `stack.test.ts` beside it):
 6. **Today's routine** — A or B, then ONE line ("Routine A · 6 machines ·
    suggested", the short names, and "Mind her limits on …" when one of her
    flags names a machine in it); Edit opens the Routine Builder (AJ: "One
-   line, tap to edit").
+   line, tap to edit"). A client with no routine sees how they start instead
+   (the first-session design round, Oct 8 2026: see "How the client starts"
+   below).
 7. **Also today** — the InBody line and the renewal line, quiet, never in the
    safety band; hidden when empty.
 8. **Start session** — a solid bar pinned to the bottom of the page; nothing
@@ -62,6 +64,70 @@ Top to bottom (`stack.ts` is the pure half, `stack.test.ts` beside it):
 
 She may see the screen (AJ: "Everything — it's about her"), so nothing on it
 is hidden for privacy. The sections below are the history that led here.
+
+## How the client starts (Oct 8 2026)
+
+The first-session design round (`docs/rounds/2026-10-08-first-session-screens.md`,
+§4.1 and §4.5; AJ's "1d": "the Road's one-line route wherever a glance is
+all there is"). Which card "Today's routine" draws is
+`routine-plan/briefing-plan.ts` `briefingPlanView`; the card is
+`routine-plan/ui/BriefingPlanCard.tsx`, worked out by `useBriefingPlan`.
+
+- **A routine** draws as above. **A plan in progress** (Routine A has
+  machines and a plan) adds the Road under the routine line: today under
+  its bracket, the next stop, "3 of 6 · next: …".
+- **Starting out at the studio** (Journey holds the whole story and it is
+  empty, or Add Client's walk-in): the plan card replaces the A and B
+  buttons. The starting routine that fits (the same rule as Programming's
+  Start a plan), its Road with today (its day one) under the Today bracket
+  and the rest hollow, the Source tag and its why, **Change today** (a sheet:
+  take a machine out of today, add the plan's next one or any floor machine),
+  **Another start** by machines, one order-effect line when today trips one,
+  and "Mind the limits on …" under the Road when one of the client's flags
+  names a machine in today (the routine line's safety line, which a plan
+  card doesn't draw). Start hands the plan UP (`onStart`'s sixth argument,
+  `StartPlanAtStart`); the tracker writes it in the Start batch with an
+  EMPTY Routine A, because the consult is not Routine A. The plan is a draft
+  until Start, so the plan Start keeps takes today as its day one (AJ's
+  "3a": "the first visit's machines"; the road's machines only, in its
+  order), and a machine taken out at the consult doesn't come back at the
+  next visit. Once today is changed the suggestion holds, so the open Health
+  notes landing a moment later never swap the start under the trainer.
+  While the starting routines are read, or a start is still to pick (AJ's
+  "2a" leaves no head office default), the card says "Start without a pick
+  keeps no plan", and Start opens an empty session with no plan.
+- **A plan kept with Routine A still empty** (kept on Programming, or by
+  Start at the consult): the same card, today being the plan's day one
+  (`todayFor`), its (i) saying who kept it and when ("Kept by Sam Lee, Oct
+  8."), and no plan handed up (it is kept already). Change today here is
+  today only.
+- **Trained here before Journey**: one line ("Dana has a routine from before
+  Journey."), a quiet **Enter the routine on Programming** (the profile's
+  handoff, stored only once the leave gate says go), and "Or start and add
+  machines as you go". Start opens an empty session, never the whole floor.
+- **Journey can't tell** (coverage unknown, or the routines or the session
+  count not read: the tracker's `routinesKnown`, and `client.sessionCount`):
+  both doors, claiming neither. A door picked stays picked; Start never
+  waits on a pick.
+
+The briefing still writes nothing (`routine-builder/session-scope.test.ts`,
+which scans the plan card's three files too), and it reads the starting
+routines only while the plan card for a client starting out is drawn
+(`useStartingRoutines`'s `enabled`). Every reader of Routine A here reads
+`todayFor`, so an empty Routine A with a day one runs day one, and a
+routine is found by either spelling of its name (`matchesRoutineLetter`:
+an older seeder wrote "A"). "Not set up yet · today only" on a routine
+button means what it says: Start no longer saves a list built here as a
+routine.
+
+**The leave gate.** The briefing registers what it holds with
+`useUnsavedChanges` ("the briefing": the arrival note, the Dials and body
+states tapped, today changed on the plan card), so the app's own navigation
+asks before it drops them, and "Leave" puts them back. Its own ways out, the
+close button and Enter the routine on Programming, ask the gate BEFORE
+anything moves (`useLeaveGuard`): the tracker's close drops the briefing
+first and moves the screen second, so asked any later, "Keep editing" would
+keep nothing. Start is not a navigation and never asks.
 
 ## The order of the page is the whole design
 
