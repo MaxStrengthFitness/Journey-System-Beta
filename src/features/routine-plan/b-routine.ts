@@ -141,6 +141,16 @@ export function bStatus(swaps: readonly PlanSwap[], bRoutine: readonly string[])
  * different machines, which is what the Academy says B is. A suggestion the
  * trainer edits; an A machine with nothing to pair stays in B as it is.
  *
+ * An A machine the template's eventual B keeps stays in B as it is, never
+ * swapped out (the screens preview, Oct 9 2026): the low back row's B holds
+ * the Lumbar AND the neck, the knee row's the Leg Curl, the shoulder row's
+ * the Overhead Press, and a swap for each of those put the client's own
+ * reason for the start out of half their workouts while the suggestion said
+ * it came from that very template ("Cervical Extension for Lumbar
+ * Extension" on a low back). B's swaps are then the template's own: the
+ * low back road's are Adduction for Abduction and Simple Row for Compound
+ * Row. With no template nothing is kept, as before.
+ *
  * Never a machine the client can't do (AJ, Oct 8 2026, "2a": "Can't-do
  * lives on the client's plan, read by A and B"): pass Routine A's plan's
  * `cantDo` and the studio's day, and a mark that still holds keeps its
@@ -180,13 +190,15 @@ export function suggestBSwaps(input: {
   const model = MODEL_AB_ROUTINE.neutral;
   const pairPartners = (id: string) =>
     COMPLEMENTARY_PAIRS.flatMap((p) => (p.machineIds.includes(id) ? p.machineIds.filter((x) => x !== id) : []));
+  // What the starting routine's own B keeps as A has it (catalog ids, as the template names them).
+  const templateKeeps = new Set(template?.eventualB ?? []);
 
   const used = new Set<string>();
   const swaps: PlanSwap[] = [];
   for (const aId of input.aRoutine) {
     const a = canonicalOf(aId);
     const category = MACHINE_CATEGORY[a];
-    if (!category) continue;
+    if (!category || templateKeeps.has(a)) continue;
     const pool = [...(template?.eventualB ?? []), ...model.b, ...pairPartners(a)];
     const pick = pool.find(
       (c) => MACHINE_CATEGORY[c] === category && !aCanonical.has(c) && !used.has(c) && !held.has(c) && index.has(c),

@@ -287,6 +287,32 @@ describe("starting B: a copy of A with one machine different", () => {
     expect(usableSwaps({ swaps: SWAPS, aRoutine: A, floor: ALL, cantDo: ended, todayYmd: TODAY })).toHaveLength(3);
   });
 
+  /*
+   * The screens preview (Oct 9 2026): a low back client's planned B started
+   * "Cervical Extension for Lumbar Extension", citing the Exercise Selection
+   * Template, whose low back B keeps the Lumbar (and the neck beside it). A
+   * machine the template's eventual B keeps stays in B as A has it.
+   */
+  it("keeps in B what the starting routine's own B keeps, so a condition's machine is never swapped out", () => {
+    const lowBack = ["m-lumbar", "m-hip-abd", "m-compound-row", "m-dip", "m-pulldown", "m-leg-press"];
+    expect(suggestBSwaps({ aRoutine: lowBack, aIntended: lowBack, floor: ALL, templateId: "academy-low-back" })).toEqual([
+      { replaces: "m-hip-abd", with: "m-hip-add" },
+      { replaces: "m-compound-row", with: "m-simple-row" },
+    ]);
+    // The same through B planned with a starting lineup.
+    expect(suggestPlannedBSwaps({ road: lowBack, aPlan: { templateId: "academy-low-back" }, floor: ALL, todayYmd: TODAY }).map((s) => s.replaces)).toEqual([
+      "m-hip-abd",
+      "m-compound-row",
+    ]);
+    // The knee row's B keeps its Leg Curl; the shoulder row's its Overhead Press.
+    const knee = ["m-hip-add", "m-compound-row", "m-leg-curl", "m-dip", "m-pulldown", "m-leg-press"];
+    expect(suggestBSwaps({ aRoutine: knee, floor: ALL, templateId: "knee" }).map((s) => s.replaces)).not.toContain("m-leg-curl");
+    const shoulder = ["m-compound-row", "m-torso-rotation", "m-simple-row", "m-overhead-press", "m-pulldown", "m-leg-press"];
+    expect(suggestBSwaps({ aRoutine: shoulder, floor: ALL, templateId: "shoulder" }).map((s) => s.replaces)).not.toContain("m-overhead-press");
+    // With no starting routine nothing is kept: the Leg Press, which the low back row's B keeps, is swapped as before.
+    expect(suggestBSwaps({ aRoutine: lowBack, floor: ALL }).map((s) => s.replaces)).toContain("m-leg-press");
+  });
+
   it("turning B on with nothing in B opens Plan B, never an empty Routine B (the critic's #22)", () => {
     expect(bToggleOpensPlanB(true, null)).toBe(true);
     expect(bToggleOpensPlanB(true, { machineIds: [] })).toBe(true);

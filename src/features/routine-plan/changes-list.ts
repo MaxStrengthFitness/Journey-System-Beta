@@ -310,3 +310,28 @@ export function planChangesAndAdjustments(input: ChangesListInput): ChangeRow[] 
     .sort((a, b) => (b.r.at ?? Number.MAX_SAFE_INTEGER) - (a.r.at ?? Number.MAX_SAFE_INTEGER) || a.i - b.i)
     .map((e) => e.r);
 }
+
+const YMD_KEY = /^(\d{4})-(\d{2})-(\d{2})$/;
+const dayNumber = (key: string): number | null => {
+  const m = YMD_KEY.exec(key);
+  return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) / 86_400_000 : null;
+};
+
+/**
+ * How long ago a change was, in the studio's days ("today", "yesterday",
+ * "3 days ago"), so the words agree with the day said beside them ("3 days
+ * ago · Oct 6"). The screens preview (Oct 9 2026): counted in 24-hour spans,
+ * a change made at 3 PM on Oct 7 read "yesterday · Oct 7" on the morning of
+ * Oct 9. Both keys are the studio's `YYYY-MM-DD`; null when either isn't one.
+ */
+export function daysAgoWords(dayYmd: string, todayYmd: string): string | null {
+  const day = dayNumber(dayYmd);
+  const today = dayNumber(todayYmd);
+  if (day === null || today === null) return null;
+  const n = Math.round(today - day);
+  if (n <= 0) return "today";
+  if (n === 1) return "yesterday";
+  if (n < 30) return `${n} days ago`;
+  const months = Math.round(n / 30);
+  return months === 1 ? "a month ago" : `${months} months ago`;
+}

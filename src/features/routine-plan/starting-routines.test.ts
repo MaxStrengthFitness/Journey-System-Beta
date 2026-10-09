@@ -471,6 +471,10 @@ describe("a plan's starting template, in either spelling", () => {
       expect(suggestBSwaps({ aRoutine, floor: ALL, templateId: plan.templateId }), t.id).toEqual(
         suggestBSwaps({ aRoutine, floor: ALL, templateId: t.id }),
       );
+      // Never a swap for a machine the template's own B keeps (the screens preview, Oct 9 2026).
+      for (const s of suggestBSwaps({ aRoutine, floor: ALL, templateId: plan.templateId })) {
+        expect(t.eventualB, `${t.id}: ${s.replaces}`).not.toContain(s.replaces);
+      }
     }
     // And the template is really read: the arms row's eventual B differs
     // from the model B alone.

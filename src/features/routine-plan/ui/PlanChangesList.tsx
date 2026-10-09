@@ -16,7 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import type { RoutineAdjustment, Trainer } from "../../../types";
 import { studioDayKeyOf } from "../../../lib/studio-time";
-import { planChangesAndAdjustments, type ChangeRow } from "../changes-list";
+import { daysAgoWords, planChangesAndAdjustments, type ChangeRow } from "../changes-list";
 import { cantDoDayWords } from "../cant-do";
 import type { StoredPlanChange } from "../store";
 import { relativeTime } from "../../routines/routine-rows";
@@ -46,11 +46,13 @@ function dayWords(at: number | null, todayYmd: string): string {
   return day ? cantDoDayWords(day, todayYmd) : "";
 }
 
-/** "Just now", "today · Oct 8", "3 days ago · Oct 5". */
+/** "Just now", "today · Oct 8", "3 days ago · Oct 5": the words counted in the studio's days, as the day beside them is. */
 function whenWords(at: number | null, todayYmd: string): string {
   if (at === null) return "Just now";
+  const key = studioDayKeyOf(new Date(at));
   const day = dayWords(at, todayYmd);
-  return day ? `${relativeTime(at)} · ${day}` : relativeTime(at);
+  const ago = (key ? daysAgoWords(key, todayYmd) : null) ?? relativeTime(at);
+  return day ? `${ago} · ${day}` : ago;
 }
 
 export function PlanChangesList({ routineId, adjustments, trainers, nameOf, firstName, todayYmd, read, nonce = 0, onCount, routineName = "Routine A" }: PlanChangesListProps) {

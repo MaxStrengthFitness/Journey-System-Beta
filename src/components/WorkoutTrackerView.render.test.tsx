@@ -1436,6 +1436,12 @@ describe("session writes never wait on the network (speed round, Oct 5 2026; R9)
     expect(json).not.toContain("__undefined__");
   });
 
+  /** Two pulls on the floor: the low back row's Compound Row and the Simple Row its own B takes in its place. */
+  const AB_ROSTER = [
+    { id: "m-compound-row", data: () => ({ source: "custom", status: "active", order: 30, definition: { name: "Compound Row", settingFields: [] } }) },
+    { id: "m-simple-row", data: () => ({ source: "custom", status: "active", order: 40, definition: { name: "Simple Row", settingFields: [] } }) },
+  ];
+
   /*
    * A and B together (the studio setting `newClientsStart`, item 8). AJ, Oct
    * 7 2026: "Some studios may start building an A and B routine immediately
@@ -1448,10 +1454,10 @@ describe("session writes never wait on the network (speed round, Oct 5 2026; R9)
     sessionDocs = [];
     netCtl.routines = [];
     singleDocs[`studios/${STUDIO_ID}/config/settings`] = { values: { newClientsStart: 2 } };
-    // A leg extension on the floor: the same family as the leg press, for B's swap.
-    netCtl.moreRoster = [
-      { id: "m-ext", data: () => ({ source: "custom", status: "active", order: 30, definition: { name: "Leg Extension", settingFields: [] } }) },
-    ];
+    // A compound row and a simple row on the floor, for B's swap: the low back
+    // row's own B keeps the Leg Press, and swaps the Compound Row for the
+    // Simple Row (b-routine.ts suggestBSwaps; the screens preview, Oct 9 2026).
+    netCtl.moreRoster = AB_ROSTER;
     offline();
     const host = await mount(<Tracker who={startingOut} />);
     await settle();
@@ -1486,9 +1492,7 @@ describe("session writes never wait on the network (speed round, Oct 5 2026; R9)
     netCtl.routines = [];
     netCtl.fromCache.add("routines");
     singleDocs[`studios/${STUDIO_ID}/config/settings`] = { values: { newClientsStart: 2 } };
-    netCtl.moreRoster = [
-      { id: "m-ext", data: () => ({ source: "custom", status: "active", order: 30, definition: { name: "Leg Extension", settingFields: [] } }) },
-    ];
+    netCtl.moreRoster = AB_ROSTER;
     const host = await mount(<Tracker who={startingOut} />);
     // Routines not known yet: Journey can't tell, both doors. The trainer picks "Starting out here".
     const doorButton = Array.from(host.querySelectorAll("button")).find((b) => b.textContent?.includes("Starting out here"));

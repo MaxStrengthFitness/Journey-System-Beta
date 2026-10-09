@@ -121,8 +121,16 @@ function RoutineHead({ name, routine, latest, active, isToday, usedLast, disable
   const drift = templateDrift(routine);
   const count = routine.machineIds.length;
   const subParts: string[] = [`${count} ${count === 1 ? "machine" : "machines"}`];
-  if (latest) subParts.push(`changed ${relativeTime(latest.when)} by ${latest.trainerInitials}`);
-  else subParts.push(routine.updatedAt || routine.createdAt ? "no changes logged" : "not created yet");
+  /* A routine with a plan keeps its story in the plan's Changes, beside this
+     head (a landscape column, or the Changes button), the old adjustments
+     included. The head reads only the adjustments, so it said "no changes
+     logged" beside a Changes list of four, or an old adjustment's date over a
+     newer plan change (the screens preview, Oct 9 2026): it says nothing
+     about changes then, and the Changes say them once. */
+  if (!routine.plan) {
+    if (latest) subParts.push(`changed ${relativeTime(latest.when)} by ${latest.trainerInitials}`);
+    else subParts.push(routine.updatedAt || routine.createdAt ? "no changes logged" : "not created yet");
+  }
   return (
     <header className="rt-routine__head">
       <span className="rt-badge" aria-hidden="true">

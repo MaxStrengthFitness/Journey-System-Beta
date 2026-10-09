@@ -21,6 +21,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -439,6 +441,21 @@ describe("the other doors", () => {
     await tap(/Starting out here/);
     await tap(/Trained here before/);
     expect(onPick.mock.calls).toEqual([["studio"], ["journey"]]);
+  });
+
+  /*
+   * The screens preview (Oct 9 2026): the doors' title sits in the card's
+   * column, where the head row's 200px flex basis became a 200px HEIGHT and
+   * left a gap under "How does Priya start?". The basis is the head row's only.
+   */
+  it("the title's flex basis is the head row's alone, never a height in the card's column", async () => {
+    await mount(<BriefingDoors firstName="Dana" says="Journey can't tell." onPick={vi.fn()} />);
+    const title = page().querySelector(".rpl-brief__title")!;
+    expect(title.parentElement!.classList).toContain("rpl-brief");
+    const css = readFileSync(resolve(__dirname, "routine-plan.css"), "utf8").replace(/\r\n/g, "\n");
+    const own = /\n\.rpl-brief__title \{([^}]*)\}/.exec(css)![1]!;
+    expect(own).not.toMatch(/(^|\n)\s*flex:/);
+    expect(css).toContain(".rpl-brief__head > .rpl-brief__title { flex: 1 1 200px; }");
   });
 });
 

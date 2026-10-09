@@ -376,17 +376,22 @@ describe("Start a plan at a studio that starts new clients on A and B together",
     expect(b.change.machineIds.slice(0, 2)).toEqual([b.plan.swaps![0]!.replaces, b.plan.swaps![0]!.with]);
   });
 
-  it("the trainer can change B's first swap, or leave B for later: each is unsaved work until Keep", async () => {
+  it("the trainer can change one of B's swaps, or leave B for later: each is unsaved work until Keep", async () => {
     await mount(<StartPlanPanel host={AB()} firstName="Dana" nameOf={nameOf} routineAId={null} bTarget={{ routineId: null }} />);
-    const first = page().querySelector<HTMLButtonElement>("button[aria-label$=', starts with']")!;
-    await act(async () => first.click());
+    // The low back row's B keeps the Lumbar (the screens preview, Oct 9 2026), so
+    // its swaps are Adduction for Abduction (no other hip machine to pick) and
+    // Simple Row for Compound Row, which has the pulls of this floor beside it.
+    const label = (b: HTMLButtonElement) => b.getAttribute("aria-label") ?? "";
+    const swaps = [...page().querySelectorAll<HTMLButtonElement>("button[aria-label*=' for ']")].filter((b) => !label(b).startsWith("Routine"));
+    expect(swaps.map(label)).toEqual([`${nameOf("m-hip-add")} for ${nameOf("m-hip-abd")}, starts with`, `${nameOf("m-simple-row")} for ${nameOf("m-compound-row")}`]);
+    await act(async () => swaps[1]!.click());
     const strip = page().querySelector(".rpl-bstrip")!;
     const other = [...strip.querySelectorAll<HTMLButtonElement>(".rpl-chip")].find((c) => c.getAttribute("aria-pressed") === "false")!;
     const picked = idOf(other.textContent!.trim());
     await act(async () => other.click());
     expect(status!.anyDirty()).toBe(true);
     await tap(/Keep this lineup/);
-    expect(calls.starts[0].b!.plan.swaps![0]!.with).toBe(picked);
+    expect(calls.starts[0].b!.plan.swaps!.find((s) => s.replaces === "m-compound-row")!.with).toBe(picked);
   });
 
   it("Leave B for later keeps the lineup with no B", async () => {
@@ -877,6 +882,11 @@ describe("the Changes", () => {
     expect(rows[1]).toContain("Kim Park");
     expect(rows[2]).toContain("Re-planned");
     expect(rows[2]).toContain("Surgery coming up");
+    // The words count the studio's days from the screen's day, as the day beside
+    // them does, never 24-hour spans from the clock (the screens preview, Oct 9
+    // 2026: "yesterday · Oct 7" on Oct 9).
+    expect(rows[0]).toContain("yesterday · Oct 7");
+    expect(rows[1]).toContain("4 days ago · Oct 4");
   });
 
   it("a read that failed says so, never 'no changes'", async () => {
@@ -955,6 +965,26 @@ describe("Routine A on Programming", () => {
     await mount(<RoutinesTab {...base} routines={[ROUTINE(["m-leg-press"])]} plan={hostOf({ ...NEW_TO_STUDIO, hasPlan: true })} />);
     expect(page().querySelector("[aria-label='The lineup']")).not.toBeNull();
     expect(page().querySelector(".rt-changes")).toBeNull();
+  });
+
+  /*
+   * The screens preview (Oct 9 2026): the Lineup's head said "4 machines · no
+   * changes logged" beside a Changes column of four, because it reads only
+   * the old adjustments. A routine with a plan says its changes once, in the
+   * Changes; one without keeps its head as it was.
+   */
+  it("the head of a routine with a plan says no change words over its Changes; one without a plan keeps them", async () => {
+    const kept = { ...ROUTINE(["m-leg-press"]), createdAt: Date.UTC(2026, 9, 1) } as Routine;
+    await mount(<RoutinesTab {...base} routines={[kept]} plan={hostOf({ ...NEW_TO_STUDIO, hasPlan: true })} />);
+    const sub = page().querySelector(".rt-routine__sub")!.textContent ?? "";
+    expect(sub).toContain("1 machine");
+    expect(sub).not.toContain("no changes logged");
+    expect(sub).not.toContain("not created yet");
+    act(() => root?.unmount());
+    el?.remove();
+    const plain = { id: "rA", name: "Routine A", clientId: "c1", machineIds: ["m-leg-press"], createdAt: Date.UTC(2026, 9, 1) } as Routine;
+    await mount(<RoutinesTab {...base} routines={[plain]} plan={hostOf({ ...NEW_TO_STUDIO, hasRoutine: true })} />);
+    expect(page().querySelector(".rt-routine__sub")!.textContent).toContain("no changes logged");
   });
 
   it("a Routine B with machines is a routine, even while Journey can't tell the client's kind: never Start a plan over it", async () => {

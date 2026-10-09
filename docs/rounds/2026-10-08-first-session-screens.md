@@ -892,6 +892,7 @@ One commit per phase, each typechecked on its own (baseline 2):
 | `c8d15ad7`, `e4ef50dd`, `ad15bd7a`, `0b2f2b86`, `71c7d68f` | Round 1's screens: Programming, the briefing, the floor, the Wrap-up's Next time, the retirements |
 | `ddac6e8e`, `39a9238d`, `af09f0a3` | Round 2: B molded in, the weak area, A or A and B together |
 | the review commit | The whole-branch review's fixes (below) |
+| the preview commit | Fixes found in the screens preview (below) |
 
 **Measured** at the review commit, in this worktree on AJ's PC
 (`TZ=America/New_York npx vitest run --dir src --testTimeout=30000`, files in
@@ -944,3 +945,36 @@ in the code first). What it changed:
 - **Left as they are, and said:** the order effects' helping pairs (§1); the
   briefing's write-free card (§1); the plan's door in the corner, a question
   for AJ (§4.6).
+
+**The screens preview** (Oct 9 2026). AJ asked for screenshots from a
+preview; the live app needs his sign-in and the local `.env` points at
+production, so the real components were mounted with example data over
+stubbed Firebase (a throwaway, git-ignored harness, `harness/screens/`) and
+photographed at iPad size, portrait and landscape, light and dark. Looking at
+them found five things, each fixed with a test:
+
+- **B's suggested swaps took out what the starting routine's own B keeps.**
+  A low back client's planned B started "Cervical Extension for Lumbar
+  Extension", citing the Exercise Selection Template, whose low back B keeps
+  the Lumbar beside the neck; eight of the eleven rows lost a machine their
+  own B keeps (the knee row's Leg Curl, the shoulder row's Overhead Press).
+  `suggestBSwaps` now leaves such a machine in B as A has it, so the low back
+  road's B is the template's: Adduction for Abduction, Simple Row for
+  Compound Row. With no starting routine nothing changes.
+- **The Changes said "yesterday · Oct 7" on Oct 9.** The words counted
+  24-hour spans from the clock, the day beside them the studio's day; both
+  are the studio's days now (`changes-list.ts` `daysAgoWords`).
+- **The Lineup's head said "4 machines · no changes logged" beside a Changes
+  list of four.** It reads only the old adjustments; a routine with a plan
+  now says its changes once, in the Changes.
+- **B's "A and B alternate" line drew its icon on a line of its own** (the
+  base layer makes an svg a block): `rpl-line--icon`.
+- **The briefing's "How does Priya start?" stood 200px of empty space under
+  its title**: the head row's flex basis was a height in the card's column.
+
+Measured after it, as at the review: typecheck **2**; **13,132** tests passing
+in **802** files. No rule changed.
+
+Not changed, and said: the template editor's sticky Save row lets the scrolled
+form show in the dialog's bottom padding beneath it (`adm-dialog__actions`,
+older than this round).

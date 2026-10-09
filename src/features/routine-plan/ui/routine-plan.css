@@ -102,6 +102,15 @@
   color: var(--eq-ink-2);
   overflow-wrap: anywhere;
 }
+/* A line led by its icon ("A and B alternate"): the icon on the words' line.
+   The base layer draws every svg as a block, which put the icon on a line of
+   its own above the words (the screens preview, Oct 9 2026). */
+.rpl-line--icon {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rpl-line--icon > svg { flex: none; }
 .rpl-meta {
   margin: 0;
   font-size: 12px;
@@ -1092,8 +1101,12 @@ button.rpl-cell--next {
   align-items: center;
   gap: 8px 12px;
 }
+/* The title grows beside Change today in the head's row. Only there: in the
+   card's own column (the doors' "How does Priya start?") a 200px basis is a
+   HEIGHT, and stood 200px of empty space under the title (the screens
+   preview, Oct 9 2026). */
+.rpl-brief__head > .rpl-brief__title { flex: 1 1 200px; }
 .rpl-brief__title {
-  flex: 1 1 200px;
   min-width: 0;
   margin: 0;
   font-size: 17px;

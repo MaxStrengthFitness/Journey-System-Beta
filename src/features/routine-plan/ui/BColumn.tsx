@@ -268,7 +268,7 @@ export function useBColumn(input: BColumnInput): BColumnParts {
         </div>
         {b.isBActive ? (
           alternate && (
-            <p className="rpl-line">
+            <p className="rpl-line rpl-line--icon">
               <Repeat size={16} aria-hidden="true" /> {alternate}
             </p>
           )

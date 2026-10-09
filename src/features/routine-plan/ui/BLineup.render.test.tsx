@@ -18,6 +18,8 @@
  *     unswapped places follow A, B's own swaps stay (the critic's #25).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { act, useMemo, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
@@ -249,6 +251,11 @@ describe("the A | B lineup on Routine A", () => {
     // B's head, and the Academy's line said with its source, never a gate.
     expect(text()).toContain(`B · 1 of 3 swaps · next: ${nameOf("m-simple-row")} for ${nameOf("m-compound-row")}`);
     expect(text()).toContain("A and B alternate · next session is B");
+    // Its icon sits on the words' line (the screens preview, Oct 9 2026: drawn as a block, it stood alone above them).
+    const alternate = Array.from(page().querySelectorAll("p")).find((p) => p.textContent?.includes("A and B alternate"))!;
+    expect(alternate.classList).toContain("rpl-line--icon");
+    const css = readFileSync(resolve(__dirname, "routine-plan.css"), "utf8").replace(/\r\n/g, "\n");
+    expect(css).toMatch(/\.rpl-line--icon \{\n  display: flex;\n  align-items: center;/);
     expect(text()).toContain("Routine A has run 7 times in Journey. The Academy starts B after 5 to 7 runs of A, then swaps about one a week.");
     expect(text()).toContain("From the Academy's");
     // Every B cell's name is drawn whole, in a class names-wrap.test.ts holds.

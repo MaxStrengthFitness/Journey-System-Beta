@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import type { RoutineAdjustment } from "../../types";
-import { adjustmentWhat, planChangeWhat, planChangesAndAdjustments } from "./changes-list";
+import { adjustmentWhat, daysAgoWords, planChangeWhat, planChangesAndAdjustments } from "./changes-list";
 import type { StoredPlanChange } from "./store";
 
 const NAMES: Record<string, string> = {
@@ -205,5 +205,30 @@ describe("one save, said once", () => {
       ],
     });
     expect(rows.map((r) => r.id).sort()).toEqual(["adjustment:later", "adjustment:other", "adjustment:switch", "plan:p"]);
+  });
+});
+
+/*
+ * The screens preview (Oct 9 2026): the Changes said "yesterday · Oct 7" on
+ * Oct 9, the words counted in 24-hour spans and the day in the studio's
+ * days. Both are the studio's days now.
+ */
+describe("how long ago a change was, in the studio's days", () => {
+  it("agrees with the day said beside it, whatever the hour", () => {
+    expect(daysAgoWords("2026-10-09", "2026-10-09")).toBe("today");
+    expect(daysAgoWords("2026-10-08", "2026-10-09")).toBe("yesterday");
+    expect(daysAgoWords("2026-10-07", "2026-10-09")).toBe("2 days ago");
+    expect(daysAgoWords("2026-10-01", "2026-10-09")).toBe("8 days ago");
+    expect(daysAgoWords("2026-09-30", "2026-10-09")).toBe("9 days ago");
+    // Across a month's end and a year's.
+    expect(daysAgoWords("2026-12-31", "2027-01-01")).toBe("yesterday");
+    expect(daysAgoWords("2026-08-01", "2026-10-09")).toBe("2 months ago");
+    expect(daysAgoWords("2026-09-05", "2026-10-09")).toBe("a month ago");
+  });
+
+  it("says nothing it can't stand behind", () => {
+    expect(daysAgoWords("2026-10-10", "2026-10-09")).toBe("today");
+    expect(daysAgoWords("Oct 7", "2026-10-09")).toBeNull();
+    expect(daysAgoWords("2026-10-07", "")).toBeNull();
   });
 });
