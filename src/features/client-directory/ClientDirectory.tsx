@@ -78,6 +78,16 @@ export interface ClientDirectoryProps {
   onSelectClient: (clientId: string) => void;
   /** Header action: start a session now and assign the client at the end. */
   onStartOpenSession?: () => void;
+  /**
+   * The open session just started (the open session round, Oct 9 2026): the
+   * button says so, and a second tap makes no second session.
+   */
+  openSessionStarting?: boolean;
+  /**
+   * This trainer's own open session is running: the button goes back to it
+   * and starts nothing (the open session round, Oct 9 2026).
+   */
+  openSessionRunning?: boolean;
   /** In today's Start: the Hub's own path (select the client, open the session). */
   onStartSession?: (clientId: string) => void;
   onStartNewClientOnboarding?: (name: string) => void;
@@ -221,6 +231,8 @@ export function ClientDirectory({
   clients,
   onSelectClient,
   onStartOpenSession,
+  openSessionStarting = false,
+  openSessionRunning = false,
   onStartSession,
   onStartNewClientOnboarding,
   authTrainer,
@@ -463,10 +475,16 @@ export function ClientDirectory({
               <Button
                 variant="outline"
                 onClick={() => onStartOpenSession()}
+                disabled={openSessionStarting}
+                aria-busy={openSessionStarting || undefined}
                 className="text-[14px] font-bold rounded-xl h-12 px-5 cursor-pointer"
-                title="Start a session now and assign the client at the end"
+                title={
+                  openSessionRunning
+                    ? "Go back to the open session you started"
+                    : "Start a session now and assign the client at the end"
+                }
               >
-                Open session
+                {openSessionStarting ? "Starting…" : openSessionRunning ? "Back to the open session" : "Open session"}
               </Button>
             )}
             {onStartNewClientOnboarding && (

@@ -175,7 +175,7 @@ let batchCount = 0;
  * (another iPad's write). `live` turns false when the screen unsubscribes,
  * so a test can count the listeners still open (machine menu, Oct 2026).
  */
-const snapshotListeners: { path: string; emit: () => void; live: boolean }[] = [];
+const snapshotListeners: { path: string; emit: () => void; live: boolean; where?: { field: string; value: unknown }[] }[] = [];
 /** Finish's database, per test (session record, Sep 26 2026): does the commit answer, and what does the server say the session is? */
 const finishCtl = { commit: "ok" as "ok" | "hang", serverStatus: undefined as string | undefined };
 /**
@@ -241,8 +241,9 @@ vi.mock("firebase/firestore", async (importOriginal) => {
       const p = path(...parts);
       return { __path: p, id: p.split("/").pop() };
     },
-    query: (coll: any) => coll,
-    where: () => ({}),
+    // The query keeps its where clauses, so a test can ask which studio a listener reads (Oct 9 2026).
+    query: (coll: any, ...clauses: any[]) => ({ ...coll, __where: clauses.filter((c) => c && "field" in c) }),
+    where: (field: string, _op: string, value: unknown) => ({ field, value }),
     orderBy: () => ({}),
     limit: () => ({}),
     documentId: () => ({}),
@@ -277,7 +278,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
       };
       if (netCtl.hold.has(at)) (netCtl.held[at] ??= []).push(emit);
       else emit();
-      const listener = { path: at, emit, live: true };
+      const listener = { path: at, emit, live: true, where: q?.__where };
       snapshotListeners.push(listener);
       return () => {
         listener.live = false;
@@ -349,7 +350,11 @@ vi.mock("../features/routine-plan/starting-store", () => ({
 }));
 
 /** The studio list the context hands out; a test may give the studios cutover days. */
-const studioCtx = vi.hoisted(() => ({ studios: undefined as undefined | { id: string; journeyCutoverDate?: string }[] }));
+const studioCtx = vi.hoisted(() => ({
+  studios: undefined as undefined | { id: string; journeyCutoverDate?: string }[],
+  /** The iPad's studio; a test may switch it (the open session round, Oct 9 2026). */
+  activeStudioId: undefined as undefined | string,
+}));
 
 /*
  * Render counters (speed round, Oct 5 2026; R10). The tracker calls
@@ -426,7 +431,7 @@ vi.mock("@/components/ui/dropdown-menu", async () => {
 
 vi.mock("../contexts/ActiveStudioContext", async (importOriginal) => {
   const realMod = await importOriginal<any>();
-  return { ...realMod, useActiveStudio: () => ({ activeStudioId: STUDIO_ID, studios: studioCtx.studios }) };
+  return { ...realMod, useActiveStudio: () => ({ activeStudioId: studioCtx.activeStudioId ?? STUDIO_ID, studios: studioCtx.studios }) };
 });
 
 import { WorkoutTrackerView } from "./WorkoutTrackerView";
@@ -480,6 +485,7 @@ beforeEach(() => {
   singleDocs = {};
   localStorage.clear();
   studioCtx.studios = undefined;
+  studioCtx.activeStudioId = undefined;
 });
 
 afterEach(async () => {
@@ -1197,6 +1203,118 @@ describe("a session another trainer is running opens read-only, and live (sessio
     const mine = await mount(<Open />);
     expect(watching(mine)).toBeNull();
     expect(mine.querySelector(".jg-sbar__finish")).toBeTruthy();
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * The open session (the open session round, Oct 9 2026; findings 2 and 6)
+ * ------------------------------------------------------------------ */
+
+describe("an open session on the Active Session (the open session round, Oct 9 2026)", () => {
+  function Open() {
+    return (
+      <WorkoutTrackerView
+        clientId={null}
+        clients={[]}
+        machines={appWideMachines}
+        trainers={[trainer]}
+        user={{ uid: "uid-coach", email: "coach@maxstrengthfitness.com" } as any}
+        setView={vi.fn()}
+        setSelectedClientId={vi.fn()}
+        onStartNewClientOnboarding={vi.fn()}
+        authTrainer={trainer}
+        isSyncing={false}
+        setIsSyncing={vi.fn()}
+        schedules={[]}
+      />
+    );
+  }
+  /** An open session of Jane's (JC), started the way Open session starts one now. */
+  const openDoc = (id: string, machineIds: string[], minsAgo = 0) => ({
+    id,
+    data: () => ({
+      isUnassigned: true,
+      status: "In-Progress",
+      trainerId: "t-doc",
+      startedByTrainerId: "t-doc",
+      trainerInitials: "JC",
+      hostedAtStudioId: STUDIO_ID,
+      sessionMachineIds: machineIds,
+      startTime: new Date(Date.now() - minsAgo * 60_000),
+      lastHeartbeatAt: new Date(Date.now() - minsAgo * 60_000),
+    }),
+  });
+  const openSessionListeners = () =>
+    snapshotListeners.filter(
+      (l) => l.path === "sessions" && (l.where ?? []).some((w) => w.field === "isUnassigned" && w.value === true),
+    );
+  const studioOf = (l: { where?: { field: string; value: unknown }[] }) =>
+    (l.where ?? []).find((w) => w.field === "hostedAtStudioId")?.value;
+
+  it("draws no Notes and no Pulse: both need a client, and were buttons that opened nothing", async () => {
+    sessionDocs = [openDoc("sess-open", ["m-leg-press"])];
+    const host = await mount(<Open />);
+    expect(host.querySelector(".jg-sbar__finish")).toBeTruthy();
+    expect(host.querySelector('button[aria-label="Session notes"]')).toBeNull();
+    expect(host.querySelector('button[aria-label="Open the Pulse"]')).toBeNull();
+  });
+
+  it("a client's session still has both", async () => {
+    const host = await mount(<Tracker />);
+    expect(host.querySelector('button[aria-label="Session notes"]')).toBeTruthy();
+    expect(host.querySelector('button[aria-label="Open the Pulse"]')).toBeTruthy();
+  });
+
+  it("follows a studio switch: the old studio's query closes and the new studio's opens", async () => {
+    sessionDocs = [openDoc("sess-open", ["m-leg-press"])];
+    await mount(<Open />);
+    const before = openSessionListeners().filter((l) => l.live);
+    expect(before.length).toBeGreaterThan(0);
+    expect(before.every((l) => studioOf(l) === STUDIO_ID)).toBe(true);
+
+    studioCtx.activeStudioId = "westlake";
+    const { root } = mounted[mounted.length - 1];
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <ToastProvider>
+            <Open />
+          </ToastProvider>
+        </StrictMode>,
+      );
+    });
+    const live = openSessionListeners().filter((l) => l.live);
+    expect(live.length).toBeGreaterThan(0);
+    expect(live.every((l) => studioOf(l) === "westlake")).toBe(true);
+    expect(before.every((l) => !l.live)).toBe(true);
+  });
+
+  it("records the open session the device remembers, not an older one of the same trainer's listed first", async () => {
+    // An older open session (one machine) and the one just started (two).
+    sessionDocs = [openDoc("sess-old", ["m-leg-press"], 20), openDoc("sess-new", ["m-leg-press", "sm-solon-rear-delt"])];
+    localStorage.setItem("max_strength_active_session_id", "sess-new");
+    const host = await mount(<Open />);
+    expect(host.querySelector('[aria-label="0 of 2 machines logged"]')).toBeTruthy();
+  });
+
+  it("never takes up an abandoned open session of this trainer's without asking, even remembered (Sep 24 2026)", async () => {
+    // Its heartbeat is two hours old: sets typed now would go under its day.
+    sessionDocs = [openDoc("sess-abandoned", ["m-leg-press"], 120)];
+    localStorage.setItem("max_strength_active_session_id", "sess-abandoned");
+    const host = await mount(<Open />);
+    expect(host.querySelector('[data-testid="nothing-on-screen"]')?.getAttribute("data-kind")).toBe("no-session");
+    expect(host.querySelector(".jg-sbar__finish")).toBeNull();
+  });
+
+  it("says it is opening the session until the studio's open sessions answer, never 'No session is open here'", async () => {
+    sessionDocs = [openDoc("sess-open", ["m-leg-press"])];
+    netCtl.hold.add("sessions");
+    const host = await mount(<Open />);
+    expect(host.querySelector('[data-testid="nothing-on-screen"]')?.getAttribute("data-kind")).toBe("opening");
+    expect(host.textContent).toContain("Opening the session");
+    await act(async () => netCtl.release("sessions"));
+    expect(host.querySelector('[data-testid="nothing-on-screen"]')).toBeNull();
+    expect(host.querySelector(".jg-sbar__finish")).toBeTruthy();
   });
 });
 

@@ -27,6 +27,7 @@ import {
   getDoc,
   getDocFromServer,
   limit,
+  orderBy,
   Timestamp,
   deleteField,
 } from "firebase/firestore";
@@ -209,6 +210,7 @@ import {
   isAnotherTrainersSession,
   myTrainerIds,
   peekLiveSessionId,
+  pickOpenSession,
   rememberLiveSession,
   sessionDayWords,
   splitInProgress,
@@ -1038,6 +1040,12 @@ export function WorkoutTrackerView({
     return () => clearTimeout(handler);
   }, [searchTerm]);
 
+  /* Which studio's open sessions have answered, so the screen with no client
+     says "Opening the session…" until they have, never "No session is open
+     here" in the moment after Open session (the open session round, Oct 9
+     2026). Keyed by studio, so a studio switch asks again. */
+  const [openSessionsAnsweredFor, setOpenSessionsAnsweredFor] = useState<string | null>(null);
+
   // Special listener for unassigned sessions when no client is selected
   useEffect(() => {
     if (!clientId && user) {
@@ -1051,34 +1059,50 @@ export function WorkoutTrackerView({
          record, Sep 26 2026): this iPad records its own, and watches
          another's only when it has none. It read `limit(1)`, so it adopted
          whichever open session came first, someone else's included. A
-         studio has a handful at most; the limit is a guard rail. */
+         studio has a handful at most; the limit is a guard rail. Newest
+         first (the open session round, Oct 9 2026): unordered, the limit
+         kept the first twenty by document id, so with abandoned open
+         sessions piled up a session just started could fall out of it. */
+      const studioKey = contextActiveStudioId ?? "__none__";
       const unassignedQuery = query(
         collection(db, "sessions"),
-        where("hostedAtStudioId", "==", contextActiveStudioId ?? "__none__"),
+        where("hostedAtStudioId", "==", studioKey),
         where("isUnassigned", "==", true),
         where("status", "==", "In-Progress"),
+        orderBy("createdAt", "desc"),
         limit(20),
       );
 
       const unsubscribe = onSnapshot(
         unassignedQuery,
         (snapshot) => {
+          setOpenSessionsAnsweredFor(studioKey);
           const open = snapshot.docs.map(
             (d) => ({ id: d.id, ...d.data() }) as WorkoutSession,
           );
           const takingOver = takingOverRef.current;
           const settlingId =
             takingOver && Date.now() - takingOver.at < JUST_STARTED_GRACE_MS ? takingOver.id : null;
-          const mine = open.find(
-            (s) => s.id === settlingId || !isAnotherTrainersSession(s, myIdsRef.current),
-          );
+          /* Which one is this iPad's (the open session round, Oct 9 2026):
+             the one on screen, else the one the device remembers (Open
+             session and the Session tab set it) while it is live, else the
+             newest live one of this trainer's; an abandoned one is never
+             taken up without asking, nor watched. It took the first of this
+             trainer's it came to, so a second open session could bring back
+             the old one. */
+          const { mine, watch } = pickOpenSession(open, {
+            myIds: myIdsRef.current,
+            settlingId,
+            onScreenId: currentSessionIdRef.current,
+            rememberedId: peekLiveSessionId(),
+          });
           const onScreen = open.find((s) => s.id === currentSessionIdRef.current);
           if (mine) {
             setWatchedSession(null);
             setTakenFromHere(false);
             setCurrentSession(mine);
             setSessions([mine]);
-          } else if (open.length > 0) {
+          } else if (watch) {
             if (finishingRef.current) return;
             /* The open session on screen was taken over on another iPad:
                what was typed here is sent first, as for a client's session. */
@@ -1088,10 +1112,9 @@ export function WorkoutTrackerView({
               currentSessionIdRef.current = null;
               setTakenFromHere(true);
             }
-            const watched = onScreen ?? open[0];
             setCurrentSession(null);
-            setWatchedSession(watched);
-            setSessions([watched]);
+            setWatchedSession(watch);
+            setSessions([watch]);
           } else {
             setCurrentSession(null);
             setWatchedSession(null);
@@ -1099,13 +1122,18 @@ export function WorkoutTrackerView({
           }
         },
         (error) => {
+          setOpenSessionsAnsweredFor(studioKey);
           handleFirestoreError(error, OperationType.GET, "sessions");
         },
       );
 
       return () => unsubscribe();
     }
-  }, [clientId, user?.uid]);
+    /* The studio is a dependency (the open session round, Oct 9 2026): with
+       only the client and the person, a studio switch kept the old studio's
+       query, so this iPad went on recording and watching another studio's
+       open sessions. */
+  }, [clientId, user?.uid, contextActiveStudioId]);
 
   useEffect(() => {
     if (clientId && clients) {
@@ -1478,7 +1506,8 @@ export function WorkoutTrackerView({
    * chosen (a walk-in built on the fly, the first-session design round, Oct
    * 8 2026): it runs empty and the trainer adds machines as they go, never
    * the whole floor. Only a session with no list on record at all and no
-   * routine (an unassigned tracking session) takes the floor. A routine read
+   * routine (an open session started before Oct 9 2026; an open session
+   * started since records its empty list) takes the floor. A routine read
    * here runs what it runs today (`todayFor`: its machines, else its plan's
    * day one while it is empty), never an empty list in place of day one.
    */
@@ -1517,7 +1546,7 @@ export function WorkoutTrackerView({
       setSeededSessionId(sessionId);
       setActiveMachineIds([]);
     } else if (!currentSession?.routineId && floorMachines.length > 0) {
-      // No list on record and no routine to read (unassigned tracking): the floor is the list.
+      // No list on record and no routine to read (an open session from before Oct 9 2026): the floor is the list.
       seededMachinesForSession.current = sessionId;
       setSeededSessionId(sessionId);
       setActiveMachineIds(floorMachines.map((m) => m.id!));
@@ -4088,7 +4117,11 @@ export function WorkoutTrackerView({
        and the trainer saw nothing but the bottom bar. */
     return (
       <NothingOnScreen
-        kind={nothingKind(clientId, clientLookup)}
+        kind={nothingKind(
+          clientId,
+          clientLookup,
+          !user || openSessionsAnsweredFor === (contextActiveStudioId ?? "__none__"),
+        )}
         studioName={activeStudio?.name}
         trainerInitials={authTrainer?.initials}
         onRetry={onRetryClient}
@@ -4260,29 +4293,37 @@ export function WorkoutTrackerView({
           )}
           <span className="jg-sbar__sp" />
 
-          <button
-            type="button"
-            className="jg-sbar__btn"
-            onClick={() => setIsShowingSessionNotes(true)}
-            aria-label="Session notes"
-          >
-            <MessageSquare size={15} strokeWidth={2.5} className="fill-current" />
-            <span>Notes</span>
-          </button>
+          {/* Notes and Pulse are about a client, so an open session, which
+              has none yet, does not draw them: they were two buttons that
+              opened nothing (the open session round, Oct 9 2026). They come
+              with the client. */}
+          {clientId && (
+            <button
+              type="button"
+              className="jg-sbar__btn"
+              onClick={() => setIsShowingSessionNotes(true)}
+              aria-label="Session notes"
+            >
+              <MessageSquare size={15} strokeWidth={2.5} className="fill-current" />
+              <span>Notes</span>
+            </button>
+          )}
           {/* The assessment (one name for it, everywhere), reachable without
               ending the session. A trainer has about ninety seconds while a
               client works the lumbar machine, and what they want to do with
               it is record the one thing the client just said. */}
-          <button
-            type="button"
-            className="jg-sbar__btn"
-            onClick={() => setIsShowingAssessment(true)}
-            aria-label="Open the Pulse"
-            title="Update the Pulse without leaving the session"
-          >
-            <HeartPulse size={15} strokeWidth={2.5} />
-            <span>Pulse</span>
-          </button>
+          {clientId && (
+            <button
+              type="button"
+              className="jg-sbar__btn"
+              onClick={() => setIsShowingAssessment(true)}
+              aria-label="Open the Pulse"
+              title="Update the Pulse without leaving the session"
+            >
+              <HeartPulse size={15} strokeWidth={2.5} />
+              <span>Pulse</span>
+            </button>
+          )}
           {/* Past the divider: the two buttons that END the session. Discard
               is a trash icon because it is pressed once a month; Finish is
               the one loud button because it is pressed every session. */}

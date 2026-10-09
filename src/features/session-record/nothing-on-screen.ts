@@ -10,7 +10,7 @@
  * case says one honest sentence and offers the way on.
  */
 
-export type NothingKind = "loading" | "failed" | "missing" | "no-session";
+export type NothingKind = "loading" | "opening" | "failed" | "missing" | "no-session";
 
 export interface NothingWords {
   title: string;
@@ -23,6 +23,8 @@ export function nothingWords(kind: NothingKind): NothingWords {
   switch (kind) {
     case "loading":
       return { title: "Opening the client's record…", body: "This takes a moment on a slow connection.", primary: null };
+    case "opening":
+      return { title: "Opening the session…", body: "This takes a moment on a slow connection.", primary: null };
     case "failed":
       return {
         title: "Couldn't read this client's record.",
@@ -46,10 +48,18 @@ export function nothingWords(kind: NothingKind): NothingWords {
 
 /**
  * Which case it is. A client chosen but not on screen is still loading, or
- * its read failed, or it has no record; no client chosen means no session.
+ * its read failed, or it has no record; no client chosen means no session,
+ * once the studio's open sessions have answered. Before they have, it is an
+ * open session on its way (the open session round, Oct 9 2026: Open session
+ * moves the screen in the same tap, before its listener has answered, and
+ * "No session is open here" flashed in that moment).
  */
-export function nothingKind(clientId: string | null, lookup: "ready" | "loading" | "failed" | "missing" | undefined): NothingKind {
-  if (!clientId) return "no-session";
+export function nothingKind(
+  clientId: string | null,
+  lookup: "ready" | "loading" | "failed" | "missing" | undefined,
+  openSessionsAnswered: boolean = true,
+): NothingKind {
+  if (!clientId) return openSessionsAnswered ? "no-session" : "opening";
   if (lookup === "failed" || lookup === "missing") return lookup;
   return "loading";
 }

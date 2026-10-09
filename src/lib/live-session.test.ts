@@ -1,9 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  LIVE_SESSION_KEY,
   findMyLiveSession,
   isAnotherTrainersSession,
+  isOpenSession,
   lastSignOfLife,
   myTrainerIds,
+  openSessionElsewhereWords,
+  ownSessionName,
+  pickOpenSession,
+  rememberedTarget,
+  resumeSession,
+  resumeTarget,
   takeOverPatch,
   liveSessionTabLabel,
   sessionDayWords,
@@ -244,5 +252,216 @@ describe("liveSessionTabLabel", () => {
     // Ordinary capitalisation since the bar stopped drawing capitals (type
     // and depth, Oct 4 2026), as every Start session button says it.
     expect(liveSessionTabLabel(undefined)).toBe("Start session");
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * The open session's way back (the open session round, Oct 9 2026)
+ * ------------------------------------------------------------------ */
+
+describe("an open session is found and brought back (Oct 9 2026)", () => {
+  const openMine = { id: "o1", status: "In-Progress", trainerId: "t1", isUnassigned: true, ...fresh };
+
+  it("isOpenSession: no client yet, and only while unassigned", () => {
+    expect(isOpenSession(openMine)).toBe(true);
+    expect(isOpenSession({ ...openMine, clientId: "c1" })).toBe(false);
+    expect(isOpenSession({ id: "x", status: "In-Progress", trainerId: "t1" })).toBe(false);
+    expect(isOpenSession(null)).toBe(false);
+  });
+
+  it("findMyLiveSession finds this trainer's own open session, so the Session tab appears", () => {
+    expect(findMyLiveSession([openMine], "t1")?.id).toBe("o1");
+    // Another trainer's open session is not mine, and an abandoned one is not live.
+    expect(findMyLiveSession([{ ...openMine, trainerId: "t2" }], "t1")).toBeUndefined();
+    expect(findMyLiveSession([{ ...openMine, ...stale }], "t1")).toBeUndefined();
+    // A session with neither a client nor the open mark is still left out.
+    expect(findMyLiveSession([{ id: "z", status: "In-Progress", trainerId: "t1", ...fresh }], "t1")).toBeUndefined();
+  });
+
+  it("the tab says Open session for it", () => {
+    expect(liveSessionTabLabel(openMine)).toBe("Open session");
+  });
+
+  it("resumeTarget: the tab takes the trainer back into the open session, with no client", () => {
+    expect(resumeTarget({ selectedHasSession: false, selectedClientId: null, mine: openMine })).toEqual({
+      kind: "open",
+      sessionId: "o1",
+    });
+    // Even from a client's profile with no session of hers running.
+    expect(resumeTarget({ selectedHasSession: false, selectedClientId: "c9", mine: openMine })).toEqual({
+      kind: "open",
+      sessionId: "o1",
+    });
+  });
+
+  it("resumeTarget keeps the client sessions' answers", () => {
+    const clientMine = { id: "s1", status: "In-Progress", trainerId: "t1", clientId: "c1", ...fresh };
+    expect(resumeTarget({ selectedHasSession: true, selectedClientId: "c1", mine: openMine })).toEqual({ kind: "here" });
+    expect(resumeTarget({ selectedHasSession: false, selectedClientId: "c9", mine: undefined })).toEqual({ kind: "here" });
+    expect(resumeTarget({ selectedHasSession: false, selectedClientId: null, mine: clientMine })).toEqual({
+      kind: "client",
+      clientId: "c1",
+    });
+    expect(resumeTarget({ selectedHasSession: false, selectedClientId: null, mine: undefined })).toEqual({ kind: "device" });
+  });
+
+  it("rememberedTarget follows a live open session the device remembered, and nothing stale", () => {
+    expect(rememberedTarget("o1", openMine)).toEqual({ kind: "open", sessionId: "o1" });
+    expect(rememberedTarget("s1", { status: "In-Progress", clientId: "c1", ...fresh })).toEqual({
+      kind: "client",
+      clientId: "c1",
+    });
+    expect(rememberedTarget("o1", { ...openMine, ...stale })).toBeNull();
+    expect(rememberedTarget("o1", { ...openMine, status: "Completed" })).toBeNull();
+    expect(rememberedTarget("o1", null)).toBeNull();
+    expect(rememberedTarget("z", { status: "In-Progress", ...fresh })).toBeNull();
+  });
+
+  it("rememberedTarget: an open session at another studio is elsewhere, said and not followed", () => {
+    const atSolon = { ...openMine, hostedAtStudioId: "solon" };
+    expect(rememberedTarget("o1", atSolon, { activeStudioId: "solon" })).toEqual({ kind: "open", sessionId: "o1" });
+    expect(rememberedTarget("o1", atSolon, { activeStudioId: "westlake" })).toEqual({
+      kind: "elsewhere",
+      studioId: "solon",
+    });
+    // A client's session is read by its client, from any studio.
+    expect(
+      rememberedTarget("s1", { status: "In-Progress", clientId: "c1", hostedAtStudioId: "solon", ...fresh }, { activeStudioId: "westlake" }),
+    ).toEqual({ kind: "client", clientId: "c1" });
+    expect(openSessionElsewhereWords("Solon")).toBe("Your open session is at Solon. Switch to Solon to go back to it.");
+    expect(openSessionElsewhereWords(null)).toContain("another studio");
+  });
+
+  it("ownSessionName: what sign-out and the new-version line are given", () => {
+    expect(ownSessionName(undefined)).toBeNull();
+    // An open session has no client: "" is "your open session" in both sentences.
+    expect(ownSessionName(openMine)).toBe("");
+    expect(ownSessionName({ ...openMine, isUnassigned: false, clientId: "c1", clientName: " Jane Doe " })).toBe("Jane Doe");
+    expect(ownSessionName({ ...openMine, isUnassigned: false, clientId: "c1" })).toBe("a client");
+  });
+});
+
+describe("resumeSession: the Session tab, wired (Oct 9 2026)", () => {
+  const store = new Map<string, string>();
+  beforeEach(() => {
+    store.clear();
+    vi.stubGlobal("localStorage", {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  const openMine = { id: "o1", status: "In-Progress", trainerId: "t1", isUnassigned: true, ...fresh };
+  const base = { selectedHasSession: false, selectedClientId: null, mine: undefined, activeStudioId: "solon", rememberedId: null, now };
+  function moves(read: Record<string, unknown> | null = null) {
+    const calls: string[] = [];
+    return {
+      calls,
+      io: {
+        readSession: vi.fn(async () => read as never),
+        selectClient: (id: string | null) => void calls.push(`select:${id}`),
+        show: (view: string) => void calls.push(`show:${view}`),
+        elsewhere: (studioId: string) => void calls.push(`elsewhere:${studioId}`),
+      },
+    };
+  }
+
+  it("the stream's open session: the device is pointed at it, no client is selected, then the session shows", async () => {
+    store.set(LIVE_SESSION_KEY, "o-old");
+    const m = moves();
+    await resumeSession({ ...base, mine: openMine }, m.io);
+    expect(store.get(LIVE_SESSION_KEY)).toBe("o1");
+    expect(m.calls).toEqual(["select:null", "show:workouts"]);
+    expect(m.io.readSession).not.toHaveBeenCalled();
+  });
+
+  it("the stream's client session selects the client", async () => {
+    const m = moves();
+    await resumeSession({ ...base, mine: { id: "s1", status: "In-Progress", trainerId: "t1", clientId: "c1", ...fresh } }, m.io);
+    expect(m.calls).toEqual(["select:c1", "show:workouts"]);
+  });
+
+  it("nothing in the stream: the remembered open session, read by its id, is followed while live and here", async () => {
+    store.set(LIVE_SESSION_KEY, "o1");
+    const m = moves({ ...openMine, hostedAtStudioId: "solon" });
+    await resumeSession({ ...base, rememberedId: "o1" }, m.io);
+    expect(m.io.readSession).toHaveBeenCalledWith("o1");
+    expect(m.calls).toEqual(["select:null", "show:workouts"]);
+    expect(store.get(LIVE_SESSION_KEY)).toBe("o1");
+  });
+
+  it("an abandoned remembered session is forgotten, never followed", async () => {
+    store.set(LIVE_SESSION_KEY, "o1");
+    const m = moves({ ...openMine, ...stale, hostedAtStudioId: "solon" });
+    await resumeSession({ ...base, rememberedId: "o1" }, m.io);
+    expect(m.calls).toEqual(["show:client-directory"]);
+    expect(store.has(LIVE_SESSION_KEY)).toBe(false);
+  });
+
+  it("a remembered open session at another studio is said and kept, and the Directory opens", async () => {
+    store.set(LIVE_SESSION_KEY, "o1");
+    const m = moves({ ...openMine, hostedAtStudioId: "westlake" });
+    await resumeSession({ ...base, rememberedId: "o1" }, m.io);
+    expect(m.calls).toEqual(["elsewhere:westlake", "show:client-directory"]);
+    expect(store.get(LIVE_SESSION_KEY)).toBe("o1");
+  });
+
+  it("a read that fails changes nothing on the device; the client on screen stays", async () => {
+    store.set(LIVE_SESSION_KEY, "o1");
+    const m = moves();
+    m.io.readSession.mockRejectedValueOnce(new Error("offline"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await resumeSession({ ...base, rememberedId: "o1", selectedClientId: "c9" }, m.io);
+    expect(m.calls).toEqual(["show:workouts"]);
+    expect(store.get(LIVE_SESSION_KEY)).toBe("o1");
+  });
+});
+
+describe("pickOpenSession: which open session this iPad records (Oct 9 2026)", () => {
+  const at = (minsAgo: number) => ({ lastHeartbeatAt: new Date(now - minsAgo * 60_000) });
+  const old = { id: "old", status: "In-Progress", trainerId: "t1", isUnassigned: true, ...at(20) };
+  const just = { id: "new", status: "In-Progress", trainerId: "t1", isUnassigned: true, ...at(0) };
+  const theirs = { id: "theirs", status: "In-Progress", trainerId: "t2", isUnassigned: true, ...at(1) };
+
+  it("the one the device remembers wins over an older one the stream lists first (a second Open session)", () => {
+    expect(pickOpenSession([old, just], { myIds: ["t1"], rememberedId: "new", now }).mine?.id).toBe("new");
+  });
+
+  it("the one on screen stays on screen", () => {
+    expect(pickOpenSession([old, just], { myIds: ["t1"], onScreenId: "old", rememberedId: "new", now }).mine?.id).toBe("old");
+  });
+
+  it("with nothing remembered, the newest live one of mine", () => {
+    expect(pickOpenSession([old, just], { myIds: ["t1"], now }).mine?.id).toBe("new");
+  });
+
+  it("an abandoned one of mine is never taken up without asking (Sep 24 2026), even remembered", () => {
+    // It used to be mine when it was all there was, so a refused Start, or an
+    // Assign with an old one left over, put typed sets into yesterday's session.
+    const abandoned = { ...old, ...stale };
+    expect(pickOpenSession([abandoned], { myIds: ["t1"], now })).toEqual({ mine: null, watch: null });
+    expect(pickOpenSession([abandoned], { myIds: ["t1"], rememberedId: "old", now })).toEqual({ mine: null, watch: null });
+    // Beside another trainer's, it is not the one watched either.
+    expect(pickOpenSession([abandoned, theirs], { myIds: ["t1"], now })).toEqual({ mine: null, watch: theirs });
+    // The one on screen stays, however long its pause.
+    expect(pickOpenSession([abandoned], { myIds: ["t1"], onScreenId: "old", now }).mine?.id).toBe("old");
+  });
+
+  it("another trainer's is watched, never recorded; one being taken over here is mine", () => {
+    expect(pickOpenSession([theirs], { myIds: ["t1"], now })).toEqual({ mine: null, watch: theirs });
+    expect(pickOpenSession([theirs], { myIds: ["t1"], settlingId: "theirs", now }).mine?.id).toBe("theirs");
+    // A remembered id never makes another trainer's session mine.
+    expect(pickOpenSession([theirs], { myIds: ["t1"], rememberedId: "theirs", now }).mine).toBeNull();
+  });
+
+  it("watching: the one on screen first (it was taken over elsewhere), else the first", () => {
+    const other = { ...theirs, id: "theirs-2" };
+    expect(pickOpenSession([theirs, other], { myIds: ["t1"], onScreenId: "theirs-2", now }).watch?.id).toBe("theirs-2");
+    expect(pickOpenSession([], { myIds: ["t1"], now })).toEqual({ mine: null, watch: null });
   });
 });

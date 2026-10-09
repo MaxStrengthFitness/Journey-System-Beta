@@ -23,8 +23,13 @@ describe("signOutQuestion", () => {
     expect(q.indexOf("Judy Daus")).toBeLessThan(q.indexOf("saves"));
   });
 
-  it("never prints an empty name", () => {
-    expect(signOutQuestion({ openSessionClientName: "  ", unsent: false })).toContain("Your session with a client");
+  it("never prints an empty name: no name is an open session, which has no client yet (Oct 9 2026)", () => {
+    // It said "Your session with a client", which no client was; a client's
+    // session with no name on record is given "a client" (ownSessionName).
+    expect(signOutQuestion({ openSessionClientName: "  ", unsent: false })).toBe(
+      "Your open session is still running. It stays open until someone finishes it. Sign out anyway?",
+    );
+    expect(signOutQuestion({ openSessionClientName: "a client", unsent: false })).toContain("Your session with a client");
   });
 });
 

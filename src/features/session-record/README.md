@@ -37,6 +37,7 @@ The speed round (Oct 5 2026, R9 in its blueprint). A write is on the iPad the mo
 - **Back to Hub** from the Wrap-up issues its note writes side by side and goes; each says its own refusal.
 - **Finish** starts the "already finished on another iPad?" read when the End Session dialog opens, and at the tap also reads the client's live sessions stream (`finishedElsewhereAtTap`), so starting early never widens the window in which a session could be counted twice.
 - **The machine menu's Save** closes at once: "saved" online, "saved on this iPad" offline or once the answer is still out after `FINISH_WAIT_MS`; a later refusal takes the Undo back as before.
+- **Open session** (the Client Directory's, a session before the client is chosen; the open session round, Oct 9 2026) is one `setDoc`, issued and never awaited, with no sets seeded; the device remembers it and the Session tab brings it back (`findMyLiveSession` counts it, `resumeSession` follows it), and Open session goes back to a running one rather than starting a second. `src/features/open-session/README.md`.
 
 ## Sign-out asks first
 

@@ -54,8 +54,19 @@ export interface LiveSessionLike {
   startedByTrainerId?: string;
   clientId?: string;
   clientName?: string;
+  /** An open session: started before the client was chosen (the Client Directory's Open session). */
+  isUnassigned?: boolean;
   lastHeartbeatAt?: unknown;
   createdAt?: unknown;
+}
+
+/**
+ * An open session: started from the Client Directory before a client was
+ * chosen, so it has no client on it yet (the open session round, Oct 9
+ * 2026). Once a client is assigned it is an ordinary client session.
+ */
+export function isOpenSession(session: LiveSessionLike | null | undefined): boolean {
+  return session?.isUnassigned === true && !session.clientId;
 }
 
 /**
@@ -102,6 +113,12 @@ export function splitInProgress<T extends LiveSessionLike>(
  * The caller's own In-Progress session, if the stream holds one that is
  * still alive. Newest heartbeat wins when (wrongly) more than one exists.
  * Takes one id, or every id the caller's sessions may carry (`myTrainerIds`).
+ *
+ * An open session counts too (the open session round, Oct 9 2026). It has no
+ * client yet, and this asked for one, so once a trainer left an open session
+ * there was no Session tab to bring them back, and tapping Open session again
+ * made a second one while the first stayed In-Progress for ever (Open session
+ * now goes back to it: `features/open-session/start.ts` `runningOpenSessionId`).
  */
 export function findMyLiveSession<T extends LiveSessionLike>(
   sessions: readonly T[],
@@ -110,8 +127,203 @@ export function findMyLiveSession<T extends LiveSessionLike>(
 ): T | undefined {
   const ids = typeof trainerId === "string" ? [trainerId] : (trainerId ?? []);
   if (ids.length === 0) return undefined;
-  const mine = sessions.filter((s) => !!s.trainerId && ids.includes(s.trainerId) && !!s.clientId);
+  const mine = sessions.filter(
+    (s) => !!s.trainerId && ids.includes(s.trainerId) && (!!s.clientId || isOpenSession(s)),
+  );
   return splitInProgress(mine, now).live ?? undefined;
+}
+
+/* ------------------------------------------------------------------ *
+ * THE WAY BACK (the open session round, Oct 9 2026).
+ *
+ * Where the Session tab takes a trainer (`resumeSession`, which AppContent
+ * calls): `resumeTarget` with what the studio's sessions stream holds, then
+ * `rememberedTarget` with the session the device remembered, read by its id,
+ * when the stream has nothing (before it arrives after a reload, or a
+ * session it does not hold).
+ * ------------------------------------------------------------------ */
+
+export type ResumeTarget =
+  /** The client on screen: their own session, or none of this trainer's running. */
+  | { kind: "here" }
+  /** This trainer's running session with a client. */
+  | { kind: "client"; clientId: string }
+  /** This trainer's running open session: no client yet. */
+  | { kind: "open"; sessionId: string | null }
+  /** Nothing in the stream: ask the device's remembered session. */
+  | { kind: "device" };
+
+export function resumeTarget(facts: {
+  /** The client on screen has an In-Progress session. */
+  selectedHasSession: boolean;
+  selectedClientId: string | null;
+  /** `findMyLiveSession`'s answer. */
+  mine: LiveSessionLike | undefined;
+}): ResumeTarget {
+  const { selectedHasSession, selectedClientId, mine } = facts;
+  if (selectedHasSession || (selectedClientId && !mine)) return { kind: "here" };
+  if (mine?.clientId) return { kind: "client", clientId: mine.clientId };
+  if (mine && isOpenSession(mine)) return { kind: "open", sessionId: mine.id ?? null };
+  return { kind: "device" };
+}
+
+/** A session read by its id: what the way back looks at. */
+export type RememberedSessionData = LiveSessionLike & { status?: string; hostedAtStudioId?: string | null };
+
+export type RememberedTarget =
+  | Exclude<ResumeTarget, { kind: "here" } | { kind: "device" }>
+  /** This trainer's live open session, at another studio than this iPad's. */
+  | { kind: "elsewhere"; studioId: string };
+
+/**
+ * The device's remembered session, read by its id: followed only while it is
+ * live (Sep 24 2026), to its client, or, for an open session, to the open
+ * session itself. An open session is found only in the studio on screen (the
+ * Active Session reads that studio's open sessions; a client's session is
+ * read by its client, from any studio), so one at another studio is
+ * "elsewhere": said, and remembered still. Null: forget it.
+ */
+export function rememberedTarget(
+  id: string,
+  data: RememberedSessionData | null | undefined,
+  opts: { activeStudioId?: string | null; now?: number } = {},
+): RememberedTarget | null {
+  const now = opts.now ?? Date.now();
+  if (!data || data.status !== "In-Progress" || !isSessionValid(data, now)) return null;
+  if (data.clientId) return { kind: "client", clientId: data.clientId };
+  if (!isOpenSession(data)) return null;
+  const at = (data.hostedAtStudioId || "").trim();
+  if (at && at !== (opts.activeStudioId ?? "")) return { kind: "elsewhere", studioId: at };
+  return { kind: "open", sessionId: id };
+}
+
+/** What the Session tab says when the trainer's open session runs at another studio. */
+export function openSessionElsewhereWords(studioName: string | null | undefined): string {
+  const name = (studioName || "").trim();
+  return name
+    ? `Your open session is at ${name}. Switch to ${name} to go back to it.`
+    : "Your open session is at another studio. Switch studios to go back to it.";
+}
+
+export interface ResumeFacts {
+  /** The client on screen has an In-Progress session. */
+  selectedHasSession: boolean;
+  selectedClientId: string | null;
+  /** `findMyLiveSession`'s answer from the studio's sessions stream. */
+  mine: LiveSessionLike | undefined;
+  /** The studio on this iPad. */
+  activeStudioId: string | null;
+  /** The device's remembered session (`peekLiveSessionId`). */
+  rememberedId: string | null;
+  now?: number;
+}
+
+export interface ResumeMoves {
+  /** One read of a session by its id; null when there is none. */
+  readSession: (id: string) => Promise<RememberedSessionData | null>;
+  selectClient: (clientId: string | null) => void;
+  show: (view: "workouts" | "client-directory") => void;
+  /** The trainer's open session runs at another studio. */
+  elsewhere?: (studioId: string) => void;
+}
+
+/**
+ * Into the session the Session tab finds. An open session is reached with no
+ * client selected and the device pointed at it, so the Active Session, which
+ * finds it among the studio's open sessions, brings back that one.
+ */
+function follow(target: Exclude<ResumeTarget, { kind: "device" }>, io: ResumeMoves): void {
+  if (target.kind === "client") io.selectClient(target.clientId);
+  if (target.kind === "open") {
+    if (target.sessionId) rememberLiveSession(target.sessionId);
+    io.selectClient(null);
+  }
+  io.show("workouts");
+}
+
+/**
+ * THE SESSION TAB (resume failsafe, Sep 2026; open sessions, Oct 9 2026).
+ * The stream first; else the device's remembered session, read by its id
+ * and followed only while it is live (Sep 24 2026: it used to be followed
+ * however old the heartbeat was, so the tab took the trainer back into
+ * yesterday's abandoned session; an abandoned one is still reached from its
+ * client, where the Active Session asks first, and the device just stops
+ * pointing at it). With neither, the client on screen, else the Directory.
+ */
+export async function resumeSession(f: ResumeFacts, io: ResumeMoves): Promise<void> {
+  const fromStream = resumeTarget(f);
+  if (fromStream.kind !== "device") {
+    follow(fromStream, io);
+    return;
+  }
+  if (f.rememberedId) {
+    try {
+      const data = await io.readSession(f.rememberedId);
+      const remembered = rememberedTarget(f.rememberedId, data, { activeStudioId: f.activeStudioId, now: f.now });
+      if (remembered?.kind === "elsewhere") {
+        io.elsewhere?.(remembered.studioId);
+      } else if (remembered) {
+        follow(remembered, io);
+        return;
+      } else {
+        forgetLiveSession(f.rememberedId);
+      }
+    } catch (error) {
+      console.error("Could not read the remembered session:", error);
+    }
+  }
+  io.show(f.selectedClientId ? "workouts" : "client-directory");
+}
+
+/**
+ * What the sentences about the trainer's own running session are given
+ * (sign-out's question, the new-version line): null when none runs, "" for
+ * an open session, which has no client yet ("your open session"), else the
+ * client's name, or "a client" when the record has none.
+ */
+export function ownSessionName(session: LiveSessionLike | null | undefined): string | null {
+  if (!session) return null;
+  if (isOpenSession(session)) return "";
+  return (session.clientName || "").trim() || "a client";
+}
+
+/**
+ * Which of the studio's running open sessions this iPad records, and which
+ * it watches (the open session round, Oct 9 2026). The open-session stream
+ * holds every trainer's; it used to record the first of this trainer's it
+ * came to, so after a second Open session it could bring back the old one
+ * in place of the one just started. In order: a take-over still settling,
+ * the session already on screen (a long pause never takes it away), the one
+ * the device remembers (Start and the Session tab both set it) while it is
+ * live, then the newest live one of this trainer's. An abandoned one is
+ * never taken up without asking (Sep 24 2026): it is not recorded here and
+ * not watched. None of this trainer's: another trainer's is watched, the one
+ * on screen first (it was taken over on another iPad).
+ */
+export function pickOpenSession<T extends LiveSessionLike>(
+  open: readonly T[],
+  opts: {
+    myIds: readonly string[];
+    settlingId?: string | null;
+    onScreenId?: string | null;
+    rememberedId?: string | null;
+    now?: number;
+  },
+): { mine: T | null; watch: T | null } {
+  const now = opts.now ?? Date.now();
+  const mine = open.filter((s) => (!!opts.settlingId && s.id === opts.settlingId) || !isAnotherTrainersSession(s, opts.myIds));
+  const byId = (id: string | null | undefined) => (id ? (mine.find((s) => s.id === id) ?? null) : null);
+  const remembered = byId(opts.rememberedId);
+  const chosen =
+    byId(opts.settlingId) ??
+    byId(opts.onScreenId) ??
+    (remembered && isSessionValid(remembered, now) ? remembered : null) ??
+    splitInProgress(mine, now).live ??
+    null;
+  if (chosen) return { mine: chosen, watch: null };
+  const others = open.filter((s) => !mine.includes(s));
+  const watch = (opts.onScreenId ? others.find((s) => s.id === opts.onScreenId) : undefined) ?? others[0] ?? null;
+  return { mine: null, watch };
 }
 
 /* ------------------------------------------------------------------ *
@@ -285,6 +497,8 @@ export function staleSessionStartedLine(session: StaleSessionFacts, todayKey: st
  */
 export function liveSessionTabLabel(session: LiveSessionLike | undefined): string {
   if (!session) return "Start session";
+  // No client chosen yet: it is called what the Client Directory's button calls it.
+  if (isOpenSession(session)) return "Open session";
   const first = (session.clientName || "").trim().split(/\s+/)[0];
   return first ? `Session · ${first}` : "Active Session";
 }

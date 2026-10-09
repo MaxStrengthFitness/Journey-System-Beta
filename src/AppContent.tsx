@@ -60,9 +60,13 @@ import { coverageOfClient, homeCutoverOf } from "./lib/client-coverage";
 import { LoadingArea } from "./components/LoadingMark";
 import {
   findMyLiveSession,
-  forgetLiveSession,
+  isOpenSession,
   myTrainerIds,
+  openSessionElsewhereWords,
+  ownSessionName,
   peekLiveSessionId,
+  resumeSession,
+  type RememberedSessionData,
 } from "./lib/live-session";
 import { afterOverlayClose } from "./lib/scroll-lock";
 import { installShakeUndoGuard } from "./lib/shake-undo";
@@ -338,7 +342,7 @@ export default function AppContent({
   /** Look the signed-in person up again ("Can't check" → Try again). */
   retryLookup?: () => void;
 }) {
-  const { success: toastSuccess, info: toastInfo } = useToast();
+  const { success: toastSuccess, info: toastInfo, error: toastError } = useToast();
   const { theme } = useTheme();
   const {
     activeStudioId,
@@ -729,17 +733,6 @@ export default function AppContent({
   const [hubSearchTerm, setHubSearchTerm] = useState("");
   const hubSearchInputRef = useRef<HTMLInputElement | null>(null);
 
-  const {
-    startUnassignedSession,
-    updateClient,
-  } = useClientMutations(
-    authTrainer,
-    activeStudioId,
-    machines,
-    setSelectedClientId,
-    setCurrentView,
-  );
-
   /** The header's button: the week ahead. Its click event is not a range. */
   const handleRefreshSchedule = () => {
     void pullScheduleFromMindbody();
@@ -796,46 +789,55 @@ export default function AppContent({
     [sessions, authTrainer, user?.uid],
   );
   const liveSession = currentSession ?? myLiveSession;
+  /* What sign-out and the new-version line call this trainer's running
+     session: "" is an open session, which has no client yet (Oct 9 2026). */
+  const mySessionName = ownSessionName(myLiveSession);
 
-  const resumeLiveSession = useCallback(async () => {
-    if (currentSession || (selectedClientId && !myLiveSession)) {
-      setCurrentView("workouts");
-      return;
-    }
-    if (myLiveSession?.clientId) {
-      setSelectedClientId(myLiveSession.clientId);
-      setCurrentView("workouts");
-      return;
-    }
-    // Second net: the id the device remembered, read directly — this works
-    // before the studio's sessions stream has arrived after a reload, and for
-    // a session that stream does not hold.
-    // Sep 24 2026: it is followed only while its session is LIVE. It used to
-    // be followed however old the heartbeat was, so the tab — which reads
-    // "Start Session" once nothing is live — took the trainer back into
-    // yesterday's abandoned session. An abandoned one is still reached from
-    // its client, where the Active Session asks before carrying on with it;
-    // the device just stops pointing at it (the session is not touched).
-    const rememberedId = peekLiveSessionId();
-    if (rememberedId) {
-      try {
-        const snap = await getDoc(doc(db, "sessions", rememberedId));
-        const data = snap.exists()
-          ? (snap.data() as { status?: string; clientId?: string; lastHeartbeatAt?: unknown; createdAt?: unknown })
-          : null;
-        if (data?.status === "In-Progress" && data.clientId && isSessionValid(data)) {
-          setSelectedClientId(data.clientId);
-          setCurrentView("workouts");
-          return;
-        }
-        forgetLiveSession(rememberedId);
-      } catch (error) {
-        console.error("Could not read the remembered session:", error);
-      }
-    }
-    if (selectedClientId) setCurrentView("workouts");
-    else setCurrentView("client-directory");
-  }, [currentSession, myLiveSession, selectedClientId]);
+  /* Open session goes back to this trainer's own running open session rather
+     than starting a second one (the open session round, Oct 9 2026), so the
+     stream it is found in is handed to the hook. */
+  const {
+    startUnassignedSession,
+    startingOpenSession,
+    updateClient,
+  } = useClientMutations({
+    authTrainer,
+    uid: user?.uid ?? null,
+    activeStudioId,
+    sessions,
+    setSelectedClientId,
+    setCurrentView,
+    onRefused: toastError,
+  });
+
+  /* The Session tab (lib/live-session.ts `resumeSession`): the stream's live
+     session, a client's or this trainer's open session, else the session the
+     device remembered, read by its id and followed only while it is live
+     (Sep 24 2026). An open session at another studio is said, not followed
+     (Oct 9 2026). */
+  const resumeLiveSession = useCallback(
+    () =>
+      resumeSession(
+        {
+          selectedHasSession: !!currentSession,
+          selectedClientId,
+          mine: myLiveSession,
+          activeStudioId,
+          rememberedId: peekLiveSessionId(),
+        },
+        {
+          readSession: async (id) => {
+            const snap = await getDoc(doc(db, "sessions", id));
+            return snap.exists() ? (snap.data() as RememberedSessionData) : null;
+          },
+          selectClient: setSelectedClientId,
+          show: (view) => setCurrentView(view),
+          elsewhere: (studioId) =>
+            toastInfo(openSessionElsewhereWords(studios.find((s) => s.id === studioId)?.name)),
+        },
+      ),
+    [currentSession, myLiveSession, selectedClientId, activeStudioId, studios, toastInfo],
+  );
 
   /*
    * A NEW VERSION (new-version round, Sep 26 2026). Every push to master
@@ -855,7 +857,7 @@ export default function AppContent({
     shellReady,
     uid: user?.uid ?? null,
     clientId: selectedClientId,
-    ownSessionClientName: myLiveSession ? (myLiveSession.clientName ?? "") : null,
+    ownSessionClientName: mySessionName,
     waitForPendingWrites: () => waitForPendingWrites(db),
     isKnownView: isReturnableView,
     restorePlace: (place) => {
@@ -867,9 +869,9 @@ export default function AppContent({
     () => ({
       recover: newVersion.recoverScreen,
       tap: newVersion.tapScreen,
-      ownSessionClientName: myLiveSession ? (myLiveSession.clientName ?? "") : null,
+      ownSessionClientName: mySessionName,
     }),
-    [newVersion.recoverScreen, newVersion.tapScreen, myLiveSession],
+    [newVersion.recoverScreen, newVersion.tapScreen, mySessionName],
   );
   // The Active Session and Pulse, fetched once the shell is up and quiet, so
   // a deploy later in the day cannot stop a session from opening
@@ -968,7 +970,7 @@ export default function AppContent({
     void (async () => {
       const unsent = await unsentWritesWaiting(() => waitForPendingWrites(db));
       const question = signOutQuestion({
-        openSessionClientName: myLiveSession ? (myLiveSession.clientName ?? "") : null,
+        openSessionClientName: mySessionName,
         unsent,
       });
       if (question) setSignOutAsk(question);
@@ -1705,6 +1707,8 @@ export default function AppContent({
                       setCurrentView("profile");
                     }}
                     onStartOpenSession={startUnassignedSession}
+                    openSessionStarting={startingOpenSession}
+                    openSessionRunning={isOpenSession(myLiveSession)}
                     // In today's Start: the Hub search card's own path.
                     onStartSession={(id) => {
                       setSelectedClientId(id);

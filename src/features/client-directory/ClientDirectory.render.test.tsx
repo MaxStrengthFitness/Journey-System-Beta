@@ -283,3 +283,40 @@ describe("ClientDirectory", () => {
     expect(m.host.querySelector<HTMLInputElement>(".cd-search-input")?.value).toBe("female over 60");
   });
 });
+
+describe("ClientDirectory: Open session (the open session round, Oct 9 2026)", () => {
+  const openButton = (host: HTMLElement) =>
+    [...host.querySelectorAll<HTMLButtonElement>(".cd-actions button")].find((b) =>
+      /Open session|open session|Starting/.test(b.textContent ?? ""),
+    );
+
+  it("starts with one tap", async () => {
+    const onStartOpenSession = vi.fn();
+    const m = await mount({ onStartOpenSession });
+    expect(openButton(m.host)?.textContent).toBe("Open session");
+    await click(openButton(m.host));
+    expect(onStartOpenSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows it is starting, and a second tap starts nothing", async () => {
+    const onStartOpenSession = vi.fn();
+    const m = await mount({ onStartOpenSession, openSessionStarting: true });
+    const button = openButton(m.host)!;
+    expect(button.textContent).toBe("Starting\u2026");
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    await click(button);
+    expect(onStartOpenSession).not.toHaveBeenCalled();
+  });
+
+  it("with the trainer's own open session running, says it goes back to it", async () => {
+    const onStartOpenSession = vi.fn();
+    const m = await mount({ onStartOpenSession, openSessionRunning: true });
+    const button = openButton(m.host)!;
+    expect(button.textContent).toBe("Back to the open session");
+    expect(button.disabled).toBe(false);
+    await click(button);
+    // The hook goes back to it and writes nothing (useClientMutations.render.test.tsx).
+    expect(onStartOpenSession).toHaveBeenCalledTimes(1);
+  });
+});

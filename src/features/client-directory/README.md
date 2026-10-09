@@ -29,6 +29,7 @@ AJ called the old screen "a sad list". What he wants from it, in his words: "whe
 - **Client since** only from a date that proves it (`resolveClientSince` with her coverage); "In Journey since" sorts with Not on file.
 - **Age** only with a birth year (`ageAndBirthday`); a decade birthday within the week says "Turns 80 Thursday".
 - Names are never truncated (`First "Nickname" Last`, wrapping); rows are 64px or more; nothing tappable under 40px; no red anywhere on the screen; tokens only.
+- **Open session** in the header starts a session before the client is chosen, in one tap that never waits on the network; while it starts, the button says "Starting…", and while the trainer's own open session runs it says "Back to the open session" and goes back to it, so a second tap makes no second session (`openSessionStarting`, `openSessionRunning`; the open session round, Oct 9 2026, `src/features/open-session/README.md`).
 
 ## Search
 

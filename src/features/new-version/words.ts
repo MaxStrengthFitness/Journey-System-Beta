@@ -15,8 +15,14 @@
 
 import type { WaitReason } from "./verdict";
 
-function who(name: string): string {
-  return name.trim() || "a client";
+/**
+ * The trainer's own running session, by its client's name. An empty name is
+ * an open session, which has no client yet (the open session round, Oct 9
+ * 2026; `ownSessionName` in lib/live-session.ts): "your open session".
+ */
+function yourSession(name: string): string {
+  const who = name.trim();
+  return who ? `your session with ${who}` : "your open session";
 }
 
 const READY = "A new version of Journey is ready.";
@@ -35,7 +41,7 @@ export interface LineFacts {
    * moment and just offers it.
    */
   onHub: boolean;
-  /** This trainer's own open session's client, or null when none is open. */
+  /** This trainer's own running session's client, "" for an open session (no client yet), or null when none runs. */
   ownSessionClientName: string | null;
   /** The last try found saves still sending. */
   sending: boolean;
@@ -51,7 +57,7 @@ export interface LineWords {
 export function newVersionLine(facts: LineFacts): LineWords | null {
   if (facts.onSessionScreen) return null;
   if (facts.ownSessionClientName !== null) {
-    return { text: `${READY} It will load after your session with ${who(facts.ownSessionClientName)}.`, offerLoad: false };
+    return { text: `${READY} It will load after ${yourSession(facts.ownSessionClientName)}.`, offerLoad: false };
   }
   if (facts.sending) {
     return { text: `${READY} It will load ${SAVES}.`, offerLoad: false };
@@ -99,8 +105,8 @@ export function brokenScreenWords(state: BrokenScreenState, ownSessionClientName
         : { text: `${opening}. The iPad may be offline.`, action: "retry" };
     case "own-session":
       return newer
-        ? { text: `${opening}, which will load after your session with ${who(ownSessionClientName ?? "")}.`, action: null }
-        : { text: `${opening}. It will load after your session with ${who(ownSessionClientName ?? "")}.`, action: null };
+        ? { text: `${opening}, which will load after ${yourSession(ownSessionClientName ?? "")}.`, action: null }
+        : { text: `${opening}. It will load after ${yourSession(ownSessionClientName ?? "")}.`, action: null };
     case "sending":
       return newer
         ? { text: `${opening}, which will load ${SAVES}.`, action: null }

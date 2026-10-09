@@ -31,7 +31,11 @@ export function sendSetsNow(): void {
 export const UNSENT_CHECK_MS = 500;
 
 export interface SignOutFacts {
-  /** The trainer's own open session's client, if one is open. */
+  /**
+   * The trainer's own running session's client, "" for an open session (no
+   * client chosen yet; `ownSessionName` in lib/live-session.ts), or null when
+   * none runs.
+   */
   openSessionClientName: string | null;
   /** Saves on this iPad the database has not confirmed. */
   unsent: boolean;
@@ -40,8 +44,12 @@ export interface SignOutFacts {
 export function signOutQuestion({ openSessionClientName, unsent }: SignOutFacts): string | null {
   const parts: string[] = [];
   if (openSessionClientName !== null) {
-    const who = openSessionClientName.trim() || "a client";
-    parts.push(`Your session with ${who} is still open. It stays open until someone finishes it.`);
+    const who = openSessionClientName.trim();
+    parts.push(
+      who
+        ? `Your session with ${who} is still open. It stays open until someone finishes it.`
+        : "Your open session is still running. It stays open until someone finishes it.",
+    );
   }
   if (unsent) {
     parts.push(

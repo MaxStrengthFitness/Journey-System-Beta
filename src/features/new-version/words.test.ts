@@ -28,7 +28,13 @@ describe("newVersionLine", () => {
       text: "A new version of Journey is ready. It will load after your session with Sam Rivera.",
       offerLoad: false,
     });
-    expect(newVersionLine({ ...CLEAR, ownSessionClientName: " " })?.text).toContain("your session with a client.");
+    // No name is an open session, which has no client yet (the open session
+    // round, Oct 9 2026): it said "your session with a client", which no
+    // client was. A client's session with no name on record is given "a client".
+    expect(newVersionLine({ ...CLEAR, ownSessionClientName: " " })?.text).toBe(
+      "A new version of Journey is ready. It will load after your open session.",
+    );
+    expect(newVersionLine({ ...CLEAR, ownSessionClientName: "a client" })?.text).toContain("your session with a client.");
   });
 
   it("waits for saves still sending, with nothing to press", () => {
@@ -101,7 +107,8 @@ describe("brokenScreenWords", () => {
 
     it("waits for the trainer's session, with nothing to press", () => {
       expect(brokenScreenWords({ phase: "wait", cause: "not-loaded", reason: "own-session" }, "")).toEqual({
-        text: "This screen couldn't be loaded. It will load after your session with a client.",
+        // "" is an open session (Oct 9 2026).
+        text: "This screen couldn't be loaded. It will load after your open session.",
         action: null,
       });
     });
