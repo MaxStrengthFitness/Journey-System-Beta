@@ -1676,6 +1676,150 @@ describe("the FileMaker floor (the open session round, Oct 9 2026)", () => {
       (window as any).matchMedia = realMatchMedia;
     }
   });
+
+  /*
+   * START FROM A ROUTINE… (AJ's "1b": "i want to be able to take advantage
+   * of our routine builder so we can use it if we wanted too"). The corner's
+   * sheet lays a routine on today's list in one tap. The starting routines'
+   * read is stubbed with none in the app and no templates, so the sheet
+   * offers the Academy's eleven and the built-in templates, as the Edit
+   * routine drawer would.
+   */
+  const startFrom = async (host: HTMLElement) => {
+    await act(async () => host.querySelector<HTMLButtonElement>('[data-testid="session-corner"]')!.click());
+    await act(async () => host.querySelector<HTMLElement>('[data-testid="session-corner-start-from"]')!.click());
+    await act(async () => {});
+  };
+  const startRow = (key: string) => document.body.querySelector<HTMLButtonElement>(`[data-testid="start-from-${key}"]`);
+
+  it("Start from a routine… lays a routine in one tap: what was done stays first, its machines in its order, the rest of the floor below, and no routine is written", async () => {
+    netCtl.moreRoster = [LUMBAR];
+    sessionDocs = openSession();
+    const host = await mount(<Open />);
+    // The Rear Delt first, by +, with a set on it.
+    await act(async () => plus(host, "Rear Delt Hoist")!.click());
+    const reps = host.querySelector<HTMLInputElement>('input[aria-label="reps to failure"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(reps, "10");
+      reps.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await startFrom(host);
+    const text = document.body.textContent ?? "";
+    expect(text).toContain("Start from a routine");
+    expect(text).toContain("Starting routines");
+    expect(text).toContain("Head office's templates");
+    // Full Body Foundations: only the Leg Press is on this floor; the rest is named, never dropped.
+    const full = startRow("company:global-full-body-foundations")!;
+    expect(full.textContent).toContain("Full Body Foundations");
+    expect(full.textContent).toContain("Leg Press (Hoist)");
+    expect(full.textContent).toContain("Not on this floor: Chest Press, Compound Row");
+    writes.length = 0;
+    later();
+    await act(async () => full.click());
+    expect(document.body.textContent, "the sheet closes").not.toContain("Head office's templates");
+    expect(recordedLists(OPEN_ID)).toEqual([["sm-solon-rear-delt", "m-leg-press"]]);
+    expect(numbered(host)).toEqual(["1 Rear Delt Hoist", "2 Leg Press (Hoist)"]);
+    expect(host.querySelector(".jg-nb__name")?.textContent, "the first machine still to do is in hand").toBe("Leg Press (Hoist)");
+    // The rest of the floor stays below, each with its +.
+    expect(pluses(host).map((b) => b.getAttribute("aria-label"))).toEqual(["Add Lumbar to today's session"]);
+    expect(writes.filter((w) => w.path.startsWith("routines")), "today's list only, never a routine").toEqual([]);
+  });
+
+  it("Start from a routine… offers the client's own Routine A once the client is known, and lays it as the session's list only", async () => {
+    sessionDocs = [{ id: SESSION_ID, data: () => ({ ...SESSION_DOCS[0].data(), routineId: null, sessionMachineIds: [] }) }];
+    netCtl.routines = [{ id: "ra-1", data: () => ({ clientId: CLIENT_ID, name: "Routine A", machineIds: ["sm-solon-rear-delt", "m-leg-press"] }) }];
+    const host = await mount(<Tracker />);
+    await startFrom(host);
+    const a = startRow("client:A")!;
+    expect(a.textContent).toContain("Rear Delt Hoist · Leg Press (Hoist)");
+    writes.length = 0;
+    await act(async () => a.click());
+    expect(recordedLists(SESSION_ID).at(-1)).toEqual(["sm-solon-rear-delt", "m-leg-press"]);
+    expect(writes.filter((w) => w.path.startsWith("routines"))).toEqual([]);
+  });
+
+  /*
+   * The phase's review (Oct 9 2026): a lay while Start was still deciding
+   * the client's routine was merged by the follow-up, the client's routine
+   * ahead of it and the floor folded. Offered once that is decided.
+   */
+  it("Start from a routine… waits while Start decides the client's routine, and is offered once it has", async () => {
+    sessionDocs = [];
+    netCtl.routines = [];
+    netCtl.hold.add("routines");
+    const host = await mount(<Tracker />);
+    await act(async () => document.querySelector<HTMLButtonElement>(".br__cta")!.click());
+    const corner = () => host.querySelector<HTMLButtonElement>('[data-testid="session-corner"]')!;
+    const item = () => host.querySelector<HTMLElement>('[data-testid="session-corner-start-from"]')!;
+    await act(async () => corner().click());
+    expect(item().getAttribute("aria-disabled"), "not while the routine is being decided").toBe("true");
+    await act(async () => item().click());
+    expect(document.body.textContent).not.toContain("For today only. What's done today stays.");
+    await act(async () => corner().click());
+    await act(async () => netCtl.release("routines"));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    await act(async () => corner().click());
+    expect(item().getAttribute("aria-disabled")).not.toBe("true");
+    await act(async () => item().click());
+    await act(async () => {});
+    expect(document.body.textContent).toContain("For today only. What's done today stays.");
+  });
+
+  it("a lay drops a machine added by + with no set, keeps the one with a set first, and moves the hand to the first still to do", async () => {
+    netCtl.moreRoster = [LUMBAR];
+    sessionDocs = openSession();
+    const host = await mount(<Open />);
+    // The Rear Delt by +, with a set on it; then the Lumbar by +, no set, in hand.
+    await act(async () => plus(host, "Rear Delt Hoist")!.click());
+    const reps = host.querySelector<HTMLInputElement>('input[aria-label="reps to failure"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(reps, "10");
+      reps.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    later();
+    await act(async () => plus(host, "Lumbar")!.click());
+    expect(host.querySelector(".jg-nb__name")?.textContent).toBe("Lumbar");
+    await startFrom(host);
+    writes.length = 0;
+    later();
+    await act(async () => startRow("company:global-full-body-foundations")!.click());
+    expect(recordedLists(OPEN_ID)).toEqual([["sm-solon-rear-delt", "m-leg-press"]]);
+    expect(numbered(host)).toEqual(["1 Rear Delt Hoist", "2 Leg Press (Hoist)"]);
+    expect(host.querySelector(".jg-nb__name")?.textContent, "the hand leaves the Lumbar for the first still to do").toBe("Leg Press (Hoist)");
+    // The Lumbar is back on the floor below, its + one tap away.
+    expect(pluses(host).map((b) => b.getAttribute("aria-label"))).toEqual(["Add Lumbar to today's session"]);
+  });
+
+  it("on a phone, the same sheet opens from the foot", async () => {
+    const realMatchMedia = window.matchMedia;
+    const { PHONE_QUERY } = await import("../features/phone/device");
+    (window as any).matchMedia = (query: string) => ({
+      matches: query === PHONE_QUERY,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+    });
+    (globalThis as any).CSS ??= {};
+    (globalThis as any).CSS.escape ??= (s: string) => s;
+    Element.prototype.scrollIntoView ??= function () {};
+    try {
+      sessionDocs = openSession();
+      const host = await mount(<Open />);
+      const door = host.querySelector<HTMLButtonElement>('[data-testid="phone-start-from"]')!;
+      expect(door.textContent).toBe("Start from a routine…");
+      await act(async () => door.click());
+      await act(async () => {});
+      await act(async () => startRow("company:global-full-body-foundations")!.click());
+      expect(recordedLists(OPEN_ID)).toEqual([["m-leg-press"]]);
+      expect([...host.querySelectorAll(".ph-card__name")].map((n) => n.textContent)).toEqual(["Leg Press (Hoist)"]);
+    } finally {
+      (window as any).matchMedia = realMatchMedia;
+    }
+  });
 });
 
 /*

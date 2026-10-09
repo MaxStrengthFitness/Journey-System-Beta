@@ -96,10 +96,11 @@ describe("readStartingRoutines", () => {
   });
 
   it("answers 'none' from the server, but keeps an empty answer from the cache unknown", async () => {
-    expect(await readStartingRoutines(db, "westlake")).toEqual({ routines: [], known: true, seeded: false });
+    // `templates` since the open session round (Oct 9 2026): the same reads' routine templates.
+    expect(await readStartingRoutines(db, "westlake")).toEqual({ routines: [], known: true, seeded: false, templates: [] });
     fake.answers.set("company", snap([], true));
     fake.answers.set("studio", snap([], true));
-    expect(await readStartingRoutines(db, "westlake")).toEqual({ routines: [], known: false, seeded: false });
+    expect(await readStartingRoutines(db, "westlake")).toEqual({ routines: [], known: false, seeded: false, templates: [] });
     // A cache that holds them is an answer.
     fake.answers.set("company", snap([knee], true));
     expect((await readStartingRoutines(db, "westlake")).known).toBe(true);
@@ -136,7 +137,70 @@ describe("the seed's traces", () => {
   it("says the seed ran when head office's read holds a starting routine, even one switched off", async () => {
     const parked = { id: "academy-knee", name: "Knee issues", tier: "company", scope: "global", machineIds: ["m-leg-curl"], startParked: { dayOne: ["m-leg-curl"] } };
     fake.answers.set("company", snap([parked]));
-    expect(await readStartingRoutines(db, "westlake")).toEqual({ routines: [], known: true, seeded: true });
+    const answer = await readStartingRoutines(db, "westlake");
+    expect(answer).toMatchObject({ routines: [], known: true, seeded: true });
+    // Switched off, it is an ordinary template, as the Edit routine drawer offers it.
+    expect(answer.templates?.map((t) => t.id)).toEqual(["academy-knee"]);
+  });
+});
+
+describe("the routine templates the same reads return (the open session round, Oct 9 2026)", () => {
+  it("head office's and the studio's own templates, starting routines and other studios' left out, with no read of their own", async () => {
+    const fullBody = { id: "t-full", name: "Full body", tier: "company", scope: "global", machineIds: ["m-chest-press", "m-leg-press", 7] };
+    const legs = { id: "t-legs", name: "Legs", tier: "studio", scope: "westlake", studioId: "westlake", machineIds: ["m-leg-press"] };
+    const elsewhere = { id: "t-solon", name: "Solon's", tier: "studio", scope: "solon", studioId: "solon", machineIds: ["m-leg-press"] };
+    const noList = { id: "t-broken", name: "Broken", tier: "company", scope: "global" };
+    fake.answers.set("company", snap([knee, fullBody, noList]));
+    fake.answers.set("studio", snap([ours, legs, elsewhere]));
+    const answer = await readStartingRoutines(db, "westlake");
+    expect(fake.queries).toHaveLength(2);
+    expect(answer.routines.map((r) => r.id)).toEqual(["academy-knee", "w-walkin"]);
+    expect(answer.templates?.map((t) => [t.id, t.tier, t.machineIds])).toEqual([
+      ["t-full", "company", ["m-chest-press", "m-leg-press"]],
+      ["t-legs", "studio", ["m-leg-press"]],
+    ]);
+  });
+});
+
+/*
+ * The phase's review (Oct 9 2026): the Edit routine drawer's studio group
+ * lists the presets the studio's trainers saved too (tier "trainer"), and
+ * Start from a routine… offers them as the drawer does. Asked for by that
+ * sheet alone, on the same (tier, scope) index, and a failure there is the
+ * templates' alone.
+ */
+describe("the studio's trainer-saved templates (Start from a routine… alone)", () => {
+  const mine = { id: "t-mine", name: "Sam's circuit", tier: "trainer", scope: "westlake", studioId: "westlake", machineIds: ["m-lumbar"] };
+  const legs = { id: "t-legs", name: "Legs", tier: "studio", scope: "westlake", studioId: "westlake", machineIds: ["m-leg-press"] };
+
+  it("is a third read on tier and scope, only when asked, its templates after the studio's own", async () => {
+    fake.answers.set("company", snap([knee]));
+    fake.answers.set("studio", snap([legs]));
+    fake.answers.set("trainer", snap([mine, { ...mine, id: "t-solon", scope: "solon", studioId: "solon" }]));
+    expect((await readStartingRoutines(db, "westlake")).templates?.map((t) => t.id)).toEqual(["t-legs"]);
+    expect(fake.queries).toHaveLength(2);
+    fake.queries.length = 0;
+    const answer = await readStartingRoutines(db, "westlake", { trainerTemplates: true });
+    expect(fake.queries[2]).toEqual({
+      path: "routinePresets",
+      wheres: [
+        { field: "tier", op: "==", value: "trainer" },
+        { field: "scope", op: "==", value: "westlake" },
+      ],
+    });
+    expect(answer.templates?.map((t) => [t.id, t.tier])).toEqual([
+      ["t-legs", "studio"],
+      ["t-mine", "trainer"],
+    ]);
+  });
+
+  it("a failed trainers' read leaves the templates unknown (null), never the starting routines", async () => {
+    fake.answers.set("company", snap([knee]));
+    fake.answers.set("trainer", new Error("unavailable"));
+    const answer = await readStartingRoutines(db, "westlake", { trainerTemplates: true });
+    expect(answer.templates).toBeNull();
+    expect(answer.known).toBe(true);
+    expect(answer.routines.map((r) => r.id)).toEqual(["academy-knee"]);
   });
 });
 

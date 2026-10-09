@@ -100,7 +100,10 @@ grid's +): the machine joins today's list and is the card in hand. An empty
 day says "Tap Add on a machine you're doing." A machine out of service on
 the roster is listed with "Out of service" in place of its Add. The tracker
 lets a second add inside 400ms go (`journey-grid/add-bounce.ts`). The
-session records only what was added, never the floor.
+session records only what was added, never the floor. **Start from a
+routine…** is at the foot beside Reorder (`onStartFrom`, the iPad corner's
+sheet, `routine-plan/ui/StartFromRoutineSheet`): one tap lays a routine's
+machines on today's list, what is done kept first.
 
 ## Tests
 

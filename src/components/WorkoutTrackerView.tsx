@@ -102,6 +102,8 @@ import type { PlanWrite } from "../features/routine-plan/lineup";
 import { floorMachinesOf, machineNamer } from "../features/routine-plan/ui/host";
 import { useSessionPlan } from "../features/routine-plan/ui/useSessionPlan";
 import { SessionPlanSheet } from "../features/routine-plan/ui/SessionPlanSheet";
+import { StartFromRoutineSheet } from "../features/routine-plan/ui/StartFromRoutineSheet";
+import { inHandAfterLay, laidToday } from "../features/routine-plan/start-from";
 import { SessionOrderLine } from "../features/routine-plan/ui/SessionOrderLine";
 import { StartingRangeSheet } from "../features/routine-plan/ui/StartingRangeSheet";
 import { knownElsewhere } from "../features/machine-menu/header-words";
@@ -395,10 +397,12 @@ export function WorkoutTrackerView({
   // tracker with no machines is far worse than a tracker showing the catalog.
   // The bridge makes the resolved list fall back to the catalog, so those two
   // studios degrade to exactly today's behaviour instead of to nothing.
-  const { machines: studioFloor, byId: studioFloorById } = useStudioMachines(
-    contextActiveStudioId,
-    { bridgeWhenRosterEmpty: true },
-  );
+  const {
+    machines: studioFloor,
+    byId: studioFloorById,
+    loading: studioFloorLoading,
+    failed: studioFloorFailed,
+  } = useStudioMachines(contextActiveStudioId, { bridgeWhenRosterEmpty: true });
 
   /**
    * THE FLOOR — what this studio actually has, in the shape this screen
@@ -4290,6 +4294,37 @@ export function WorkoutTrackerView({
   };
   const planLoggedToday = (id: string) => setLoggedToday(gridLiveValues[id]);
 
+  /* START FROM A ROUTINE… (the open session round, Oct 9 2026; AJ's "1b":
+     "i want to be able to take advantage of our routine builder so we can
+     use it if we wanted too"). The corner's sheet (the phone's foot too)
+     hands up a routine's machines on this floor; they go on today's list
+     through the one recorder, what is already done today kept first, in
+     the order done (routine-plan/start-from.ts, `laidToday`), and the first
+     machine still to do is the one in hand. Today's list only: no routine
+     is written, and Routine A still comes only through the Wrap-up's Next
+     time. Offered once today's list is on screen (an add before it would be
+     recorded as the session's whole list) and a Start that couldn't decide
+     its routine has (`startDeciding`): until then the client's routine may
+     still come and be laid ahead of it, and fold the floor (the review,
+     Oct 9 2026). */
+  const startFromOffered = !!currentSession && todaySeeded && !startDeciding;
+  const [startFromOpen, setStartFromOpen] = useState(false);
+  const onOpenStartFrom = React.useCallback(() => setStartFromOpen(true), []);
+  const startFromLayRef = useRef<(ids: string[]) => void>(() => {});
+  startFromLayRef.current = (laid: string[]) => {
+    flushAllLogWrites();
+    const done = (id: string) => setLoggedToday(gridLiveValues[id]);
+    const next = laidToday({ today: activeMachineIds, laid, done });
+    applySessionMachineIds(next);
+    const hand = inHandAfterLay({ next, inHand: gridFocusMachineId, done });
+    if (hand) setFocusMachineOverride(hand);
+  };
+  const onLayRoutine = React.useCallback((ids: string[]) => startFromLayRef.current(ids), []);
+  /* Out of service on the roster: left out of a routine laid, and said. */
+  const startFromOut = useMemo(() => gridRows.filter((r) => r.machine.outOfService).map((r) => r.machine.id), [gridRows]);
+  /* Nothing is offered, or said missing, off a floor not read yet or whose read failed. */
+  const startFromFloorState: "known" | "reading" | "failed" = studioFloorLoading ? "reading" : studioFloorFailed ? "failed" : "known";
+
   /* One calm line when today's order trips one of the Academy's sequencing
      rules: a sentence, never a block (routine-plan/order-effects.ts). */
   const hasLiveSession = !!currentSession;
@@ -5054,6 +5089,8 @@ export function WorkoutTrackerView({
           /* The plan's sheet from the phone too (the iPad's corner's door). */
           plan={currentSession && sessionPlan.plan && sessionPlan.progress ? { have: sessionPlan.progress.have, of: sessionPlan.progress.of } : null}
           onOpenPlan={onOpenPlan}
+          /* Start from a routine…, the corner's sheet, from the phone's foot. */
+          onStartFrom={startFromOffered ? onOpenStartFrom : undefined}
           step={2}
           /* A card with no past times says what that means, the machine
              menu's way: never "first time" for a machine a running total
@@ -5107,6 +5144,8 @@ export function WorkoutTrackerView({
                 onPlan={onOpenPlan}
                 onKey={() => setIsLegendOpen(true)}
                 floor={floorView}
+                /* Start from a routine… (AJ's "1b"): once today's list is on screen. */
+                onStartFrom={startFromOffered ? onOpenStartFrom : undefined}
               />
             }
             /* The machine's NAME is the target -- one big one, the width of
@@ -5228,6 +5267,26 @@ export function WorkoutTrackerView({
             setPlanSheetOpen(false);
             setRangeSheet("pick");
           }}
+        />
+      )}
+
+      {/* Start from a routine… (the open session round, Oct 9 2026): mounted
+          while open, so its one read happens only then. Today's list only. */}
+      {currentSession && startFromOpen && (
+        <StartFromRoutineSheet
+          onClose={() => setStartFromOpen(false)}
+          studioId={contextActiveStudioId || currentSession.hostedAtStudioId || null}
+          studioName={activeStudio?.name ?? null}
+          floor={sessionPlan.floorList}
+          floorState={startFromFloorState}
+          nameOf={planNameOf}
+          todayYmd={planTodayYmd}
+          /* The client's routines once they are known, "reading" until then (their place held);
+             an open session has none until Who's this?. */
+          clientRoutines={clientId ? (routinesKnown ? routines : "reading") : null}
+          firstName={clientId ? clientFirstName(selectedClient, "") || null : null}
+          outOfService={startFromOut}
+          onLay={onLayRoutine}
         />
       )}
 

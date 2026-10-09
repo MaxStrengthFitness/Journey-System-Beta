@@ -329,6 +329,24 @@ describe("mid-session changes stay in session state", () => {
     expect(body).toMatch(/earlier \}/);
   });
 
+  // The open session round, Oct 9 2026 (AJ's "1b": "i want to be able to
+  // take advantage of our routine builder so we can use it if we wanted
+  // too"). The corner's Start from a routine… lays a routine's machines on
+  // TODAY's list, through the one recorder; it is not a fourth writer of a
+  // routine, and Routine A still comes only through the Wrap-up's Next time.
+  it("Start from a routine… lays today's list through the one recorder, and writes no routine", () => {
+    const at = WTV.indexOf("startFromLayRef.current = ");
+    expect(at, "the lay handler is gone").toBeGreaterThan(-1);
+    const lay = WTV.slice(at, at + 500);
+    expect(lay).toMatch(/applySessionMachineIds\(next\)/);
+    expect(/["']routines["']|saveNextTime|savePlanChange|startPlan/.test(lay)).toBe(false);
+    for (const file of ["src/features/routine-plan/ui/StartFromRoutineSheet.tsx", "src/features/routine-plan/start-from.ts"]) {
+      const src = code(read(file));
+      expect(MUTATORS.filter((m) => new RegExp(`\\b${m}\\s*\\(`).test(src)), file).toEqual([]);
+      expect(src, file).not.toMatch(/from\s+["'][./]*(?:store|usePlanActions|starting-store)["']/);
+    }
+  });
+
   it("the builder's \"Today only\" is true on the briefing and in a session", () => {
     // The label used to sit over a list Start then saved as Routine A.
     const TYPES = read("src/features/routine-builder/types.ts");

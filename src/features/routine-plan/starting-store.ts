@@ -28,7 +28,15 @@
  * One read of each when Start a plan, the briefing's plan card or the
  * studio's choice opens (the design round, §5: "No new Mindbody call. One
  * read of head office's starting routines and one of the studio's choice");
- * no listener.
+ * no listener. The same two reads hand back the routine templates beside
+ * them (`templates`), which the session corner's Start from a routine…
+ * offers (the open session round, Oct 9 2026). The Edit routine drawer's
+ * studio group also lists the presets the studio's trainers saved (tier
+ * `trainer`), so that sheet alone asks for a third read, `tier ==
+ * "trainer"` and `scope == studioId`, on the same (tier, scope) index
+ * (`trainerTemplates`); its failure leaves the templates unknown, never the
+ * starting routines. A trainer preset saved before Sep 2026 has no `tier`,
+ * so the query can't find it: the drawer still lists it.
  */
 import {
   collection,
@@ -49,6 +57,7 @@ import {
   startingChoiceFromDoc,
   startingChoiceToWrite,
   startingRoutinesFromPresets,
+  templatesFromPresets,
   type StartingRoutinesAnswer,
   type StoredPresetDoc,
 } from "./starting-read";
@@ -65,18 +74,35 @@ function docsOf(snap: QuerySnapshot | null): StoredPresetDoc[] {
  * false`, because a cache that never held them says nothing about whether
  * there are any.
  */
-export async function readStartingRoutines(db: Firestore, studioId?: string | null): Promise<StartingRoutinesAnswer> {
-  const [company, studio] = await Promise.all([
+export async function readStartingRoutines(
+  db: Firestore,
+  studioId?: string | null,
+  opts: { trainerTemplates?: boolean } = {},
+): Promise<StartingRoutinesAnswer> {
+  const [company, studio, trainer] = await Promise.all([
     getDocs(query(collection(db, "routinePresets"), where("tier", "==", "company"), where("scope", "==", "global"))),
     studioId
       ? getDocs(query(collection(db, "routinePresets"), where("tier", "==", "studio"), where("scope", "==", studioId)))
       : Promise.resolve(null),
+    // The studio's trainer-saved templates (Start from a routine… alone): a failure here is the templates' alone.
+    studioId && opts.trainerTemplates
+      ? getDocs(query(collection(db, "routinePresets"), where("tier", "==", "trainer"), where("scope", "==", studioId))).catch(
+          () => "failed" as const,
+        )
+      : Promise.resolve(null),
   ]);
   const companyDocs = docsOf(company);
-  const routines = startingRoutinesFromPresets(companyDocs, docsOf(studio), studioId);
+  const studioDocs = docsOf(studio);
+  const routines = startingRoutinesFromPresets(companyDocs, studioDocs, studioId);
   const fromCacheOnly = company.metadata.fromCache && (studio === null || studio.metadata.fromCache);
   const empty = company.empty && (studio === null || studio.empty);
-  return { routines, known: !(fromCacheOnly && empty), seeded: seededFrom(companyDocs) };
+  return {
+    routines,
+    known: !(fromCacheOnly && empty),
+    seeded: seededFrom(companyDocs),
+    // The same documents' templates, for the session corner's Start from a routine…; unknown (null) when the trainers' read failed.
+    templates: trainer === "failed" ? null : templatesFromPresets(companyDocs, studioDocs, studioId, docsOf(trainer)),
+  };
 }
 
 const choiceRef = (db: Firestore, studioId: string) => doc(db, "studios", studioId, "config", STARTING_CHOICE_DOC);

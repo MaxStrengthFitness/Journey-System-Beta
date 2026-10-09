@@ -599,6 +599,18 @@ button.rpl-cell--next {
   overflow-wrap: anywhere;
 }
 .rpl-start[aria-pressed="true"] .rpl-start__meta { color: var(--eq-live-text); }
+/* Start from a routine… (the session corner's sheet, the open session
+   round, Oct 9 2026): a routine by its name over its machines; one with
+   nothing to lay on this floor lies flat. */
+.rpl-start__name {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+.rpl-start:disabled { box-shadow: none; cursor: default; }
+.rpl-start:disabled:active { transform: none; box-shadow: none; }
 
 /* The two doors when Journey can't tell. */
 .rpl-doors {

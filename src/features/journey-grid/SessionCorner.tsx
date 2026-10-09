@@ -16,8 +16,15 @@
  * no routine has no routine to name, so with `floor` the corner says
  * "Today" where it said Routine and Today's routine, and "Reorder today",
  * as the grid's groups say "Today" and "Rest of the floor".
+ *
+ * Start from a routine… (the same round, AJ's "1b": "i want to be able to
+ * take advantage of our routine builder so we can use it if we wanted too"):
+ * a sheet of routines to lay on today's list in one tap, the client's own,
+ * the starting routines and the templates. Offered on every session, and
+ * made for the one whose list is empty or built by +. It writes today's list
+ * only, never a routine.
  */
-import { Check, ChevronDown, Info, ListChecks, ListFilter, Settings2 } from "lucide-react";
+import { Check, ChevronDown, Info, ListChecks, ListFilter, ListPlus, Settings2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import "./journey-grid.css";
 
@@ -31,6 +38,7 @@ export function SessionCorner({
   onPlan,
   onKey,
   floor = false,
+  onStartFrom,
 }: {
   showAll: boolean;
   routineCount: number;
@@ -45,6 +53,8 @@ export function SessionCorner({
   onKey: () => void;
   /** A session with no routine on the FileMaker floor: "Today", never "routine". */
   floor?: boolean;
+  /** Opens Start from a routine…; absent until today's list is on screen. */
+  onStartFrom?: () => void;
 }) {
   const today = floor ? "Today" : "Today's routine";
   const item = "min-h-11 rounded-lg px-3 flex items-center gap-2 cursor-pointer text-[13px] font-semibold";
@@ -52,7 +62,7 @@ export function SessionCorner({
     <DropdownMenu>
       <DropdownMenuTrigger
         className="jg-corner__filter"
-        aria-label={`Showing ${showAll ? "every machine" : floor ? "today's machines" : "today's routine"}, ${routineCount} of ${allCount}. Tap for the list, Reorder${plan ? ", the plan" : ""} and the Key.`}
+        aria-label={`Showing ${showAll ? "every machine" : floor ? "today's machines" : "today's routine"}, ${routineCount} of ${allCount}. Tap for the list, Reorder, Start from a routine${plan ? ", the plan" : ""} and the Key.`}
         data-testid="session-corner"
       >
         <ListFilter className="jg-corner__filter-icon" aria-hidden="true" />
@@ -77,6 +87,10 @@ export function SessionCorner({
         <DropdownMenuItem onClick={onReorder} disabled={!onReorder} className={item} data-testid="session-corner-reorder">
           <Settings2 className="w-4 h-4 shrink-0" aria-hidden="true" />
           <span className="flex-1">{floor ? "Reorder today" : "Reorder today's routine"}</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onStartFrom} disabled={!onStartFrom} className={item} data-testid="session-corner-start-from">
+          <ListPlus className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span className="flex-1">Start from a routine…</span>
         </DropdownMenuItem>
         {plan && onPlan && (
           <DropdownMenuItem onClick={onPlan} className={item} data-testid="session-corner-plan">

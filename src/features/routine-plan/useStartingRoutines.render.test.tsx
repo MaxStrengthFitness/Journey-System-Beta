@@ -24,15 +24,15 @@ function deferred<T>(): Deferred<T> {
 }
 
 const fake = vi.hoisted(() => ({
-  routineReads: [] as Array<{ studioId: string | null | undefined; d: Deferred<unknown> }>,
+  routineReads: [] as Array<{ studioId: string | null | undefined; opts?: unknown; d: Deferred<unknown> }>,
   choiceReads: [] as Array<{ studioId: string; d: Deferred<unknown> }>,
 }));
 
 vi.mock("../../firebase", () => ({ db: { __fake: true } }));
 vi.mock("./starting-store", () => ({
-  readStartingRoutines: (_db: unknown, studioId: string | null | undefined) => {
+  readStartingRoutines: (_db: unknown, studioId: string | null | undefined, opts?: unknown) => {
     const d = deferred<unknown>();
-    fake.routineReads.push({ studioId, d });
+    fake.routineReads.push({ studioId, opts, d });
     return d.promise;
   },
   readStartingChoice: (_db: unknown, studioId: string) => {
@@ -123,6 +123,41 @@ describe("useStartingRoutines", () => {
     await settle();
     expect(result).toMatchObject({ status: "ready", fromCode: true, choice: { use: null, defaultId: null } });
     expect(result!.routines.map((r) => r.id)).toEqual(academyIds);
+  });
+
+  it("hands on the same read's routine templates, unknown (null) while it reads and when it failed or only an empty cache answered", async () => {
+    const full = { id: "t-full", name: "Full body", machineIds: ["m-leg-press"], scope: "global", tier: "company" };
+    await render("westlake");
+    expect(result!.templates).toBeNull();
+    fake.routineReads[0]!.d.resolve({ routines: [knee], known: true, templates: [full] });
+    fake.choiceReads[0]!.d.resolve({ use: null, defaultId: null });
+    await settle();
+    expect(result!.templates).toEqual([full]);
+    // An answer from before the field: none, said as none.
+    await act(async () => result!.reload());
+    expect(result!.templates).toBeNull();
+    fake.routineReads[1]!.d.resolve({ routines: [knee], known: true });
+    fake.choiceReads[1]!.d.resolve({ use: null, defaultId: null });
+    await settle();
+    expect(result!.templates).toEqual([]);
+    await act(async () => result!.reload());
+    fake.routineReads[2]!.d.resolve({ routines: [], known: false, templates: [] });
+    fake.choiceReads[2]!.d.resolve({ use: null, defaultId: null });
+    await settle();
+    expect(result!.templates).toBeNull();
+    await act(async () => result!.reload());
+    fake.routineReads[3]!.d.reject(new Error("unavailable"));
+    fake.choiceReads[3]!.d.resolve({ use: null, defaultId: null });
+    await settle();
+    expect(result!.templates).toBeNull();
+    // The trainers' read failed (the review, Oct 9 2026): the templates unknown, the starting routines as read.
+    await act(async () => result!.reload());
+    fake.routineReads[4]!.d.resolve({ routines: [knee], known: true, templates: null });
+    fake.choiceReads[4]!.d.resolve({ use: null, defaultId: null });
+    await settle();
+    expect(result!.templates).toBeNull();
+    expect(result!.status).toBe("ready");
+    expect(fake.routineReads.every((r) => r.opts === undefined), "the trainers' templates only when asked").toBe(true);
   });
 
   it("keeps a failed choice unknown, never 'hasn't chosen', and says it failed", async () => {

@@ -20,6 +20,8 @@ import {
   type StartingRoutine,
   type StartingRoutineChoice,
 } from "./starting-routines";
+import type { RoutinePreset } from "../../types";
+import { isStartingRoutinePreset, normalizeRoutinePreset } from "../../lib/routine-templates";
 import { cleanIds } from "./start-part";
 
 /** The studio's choice: `studios/{studioId}/config/startingRoutines`. */
@@ -56,6 +58,39 @@ export function startingRoutinesFromPresets(
   const own = studioId ? read(studio).filter((r) => r.tier === "studio" && r.studioId === studioId) : [];
   const out: StartingRoutine[] = [];
   for (const r of [...inListOrder(heads), ...inListOrder(own)]) if (!out.some((x) => x.id === r.id)) out.push(r);
+  return out;
+}
+
+/**
+ * The routine templates the same reads returned: head office's and the
+ * studio's own presets (its leaders' templates and, when that read was made,
+ * its trainers' saved ones, as the Edit routine drawer's studio group lists
+ * them) that are NOT starting routines, each read through
+ * `normalizeRoutinePreset` as the drawer reads them (the open session round,
+ * Oct 9 2026: the session corner's Start from a routine… offers them). A
+ * document under the wrong read is left out, as `startingRoutinesFromPresets`
+ * leaves it; one with no id or no machine list is no template.
+ */
+export function templatesFromPresets(
+  company: readonly StoredPresetDoc[],
+  studio: readonly StoredPresetDoc[],
+  studioId?: string | null,
+  trainer: readonly StoredPresetDoc[] = [],
+): RoutinePreset[] {
+  const read = (docs: readonly StoredPresetDoc[]) =>
+    docs
+      .filter((d) => typeof d?.id === "string" && d.id !== "" && Array.isArray(d.machineIds))
+      .map((d) => normalizeRoutinePreset({ ...(d as Partial<RoutinePreset>), machineIds: cleanIds(d.machineIds) }))
+      .filter((p) => !isStartingRoutinePreset(p));
+  const heads = read(company).filter((p) => p.tier === "company");
+  const own = studioId
+    ? [
+        ...read(studio).filter((p) => p.tier === "studio" && p.studioId === studioId),
+        ...read(trainer).filter((p) => p.tier === "trainer" && p.studioId === studioId),
+      ]
+    : [];
+  const out: RoutinePreset[] = [];
+  for (const p of [...heads, ...own]) if (!out.some((x) => x.id === p.id)) out.push(p);
   return out;
 }
 
@@ -106,6 +141,14 @@ export interface StartingRoutinesAnswer {
    * absent, false.
    */
   seeded?: boolean;
+  /**
+   * The routine templates the same reads returned, head office's and the
+   * studio's own (its trainers' saved ones when asked), starting routines
+   * left out (`templatesFromPresets`): what the session corner's Start from
+   * a routine… offers beside the starting routines (the open session round,
+   * Oct 9 2026). Absent: none. Null: the trainers' read failed (unknown).
+   */
+  templates?: RoutinePreset[] | null;
 }
 
 /**

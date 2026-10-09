@@ -20,6 +20,14 @@
  * say which. The choice stays null (unknown) until it answers, never "hasn't
  * chosen" off a read that failed.
  *
+ * The same read's routine templates (`templates`: head office's and the
+ * studio's own presets that aren't starting routines) come with it, for the
+ * session corner's Start from a routine… (the open session round, Oct 9
+ * 2026): null until the routines' read answers, and when it failed or only
+ * an empty cache answered, never "none". `{ trainerTemplates: true }` (that
+ * sheet alone) also reads the studio's trainer-saved templates, as the Edit
+ * routine drawer lists them.
+ *
  * `{ enabled: false }` reads nothing (and says "loading"): the briefing
  * holds this hook for every client, and reads only when its plan card is
  * drawn (the design round, §5: "one of the studio's choice when Start a
@@ -28,6 +36,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { db } from "../../firebase";
+import type { RoutinePreset } from "../../types";
 import { NO_CHOICE, routinesToOffer, type StartingRoutinesAnswer } from "./starting-read";
 import type { StartingRoutine, StartingRoutineChoice } from "./starting-routines";
 import { readStartingChoice, readStartingRoutines } from "./starting-store";
@@ -42,6 +51,12 @@ export interface StartingRoutinesState {
   choice: StartingRoutineChoice | null;
   /** "failed" when either read failed, or the routines' only answer was an empty one from the cache. */
   status: StartingRoutinesStatus;
+  /**
+   * The routine templates the same read returned (head office's and the
+   * studio's own, starting routines left out); null while it reads, and when
+   * it failed or only an empty cache answered (unknown, never none).
+   */
+  templates: RoutinePreset[] | null;
   /** Read both again. */
   reload: () => void;
 }
@@ -52,6 +67,7 @@ interface Read {
   fromCode: boolean;
   choice: StartingRoutineChoice | null;
   status: Exclude<StartingRoutinesStatus, "loading">;
+  templates: RoutinePreset[] | null;
 }
 
 /** Which read a result belongs to: the studio, and how many times it was read again. */
@@ -72,9 +88,10 @@ function academyFallback(): StartingRoutine[] {
 
 export function useStartingRoutines(
   studioId: string | null | undefined,
-  options: { enabled?: boolean } = {},
+  options: { enabled?: boolean; trainerTemplates?: boolean } = {},
 ): StartingRoutinesState {
   const enabled = options.enabled ?? true;
+  const trainerTemplates = options.trainerTemplates === true;
   const [nonce, setNonce] = useState(0);
   const [read, setRead] = useState<Read | null>(null);
   const key = keyOf(studioId, nonce);
@@ -83,7 +100,9 @@ export function useStartingRoutines(
     if (!enabled) return;
     let live = true;
     const key = keyOf(studioId, nonce);
-    const routinesRead: Promise<StartingRoutinesAnswer> = readStartingRoutines(db, studioId);
+    const routinesRead: Promise<StartingRoutinesAnswer> = trainerTemplates
+      ? readStartingRoutines(db, studioId, { trainerTemplates: true })
+      : readStartingRoutines(db, studioId);
     const choiceRead: Promise<StartingRoutineChoice> = studioId
       ? readStartingChoice(db, studioId)
       : Promise.resolve({ ...NO_CHOICE });
@@ -102,18 +121,19 @@ export function useStartingRoutines(
         fromCode: offered.fromCode,
         choice,
         status: ok ? "ready" : "failed",
+        templates: answer !== null && answer.known && answer.templates !== null ? (answer.templates ?? []) : null,
       });
     });
     return () => {
       live = false;
     };
-  }, [studioId, nonce, enabled]);
+  }, [studioId, nonce, enabled, trainerTemplates]);
 
   const reload = useCallback(() => setNonce((n) => n + 1), []);
 
   // A read for another studio (or before a reload) is never shown as this one's.
   if (!enabled || !read || read.key !== key) {
-    return { routines: academyFallback(), fromCode: true, choice: null, status: "loading", reload };
+    return { routines: academyFallback(), fromCode: true, choice: null, status: "loading", templates: null, reload };
   }
-  return { routines: read.routines, fromCode: read.fromCode, choice: read.choice, status: read.status, reload };
+  return { routines: read.routines, fromCode: read.fromCode, choice: read.choice, status: read.status, templates: read.templates, reload };
 }

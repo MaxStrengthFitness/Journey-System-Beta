@@ -519,6 +519,27 @@ export function suggestFromStartingRoutines(input: StartingRoutinesInput): Start
 }
 
 /**
+ * A starting routine's road on this floor and its day one, as the plan
+ * builder makes them (below): the one place a start's catalog ids become
+ * this floor's units. The session corner's Start from a routine… lays day
+ * one from here (`start-from.ts`), so the two never drift.
+ */
+export function startingRoad(
+  routine: Pick<StartingRoutine, "machineIds" | "dayOne">,
+  floor: readonly FloorMachine[],
+): { intended: string[]; startWith: string[] } {
+  const index = floorIndex(floor);
+  const intended = onFloor(roadOf(routine), index);
+  const dayOne = onFloor(routine.dayOne, index);
+  const dayOneHere = intended.filter((id) => dayOne.includes(id));
+  const startWith = repairOrder(
+    dayOneHere.length > 0 ? dayOneHere : intended.slice(0, Math.max(1, routine.dayOne.length)),
+    floorCanonical(floor),
+  );
+  return { intended, startWith };
+}
+
+/**
  * The plan a starting routine makes on this floor, before any trainer has
  * changed it: the road on this floor's ids, in its order, being built, with
  * day one (on this floor, in the plan's order, repaired against the
@@ -548,14 +569,7 @@ export function startingPlanFromRoutine(
   floor: readonly FloorMachine[],
   todayYmd: string,
 ): StartingPlan {
-  const index = floorIndex(floor);
-  const intended = onFloor(roadOf(routine), index);
-  const dayOne = onFloor(routine.dayOne, index);
-  const dayOneHere = intended.filter((id) => dayOne.includes(id));
-  const startWith = repairOrder(
-    dayOneHere.length > 0 ? dayOneHere : intended.slice(0, Math.max(1, routine.dayOne.length)),
-    floorCanonical(floor),
-  );
+  const { intended, startWith } = startingRoad(routine, floor);
   return {
     plan: {
       purpose: "Learning the protocol: the starting routine",

@@ -194,6 +194,20 @@ describe("PhoneSessionStage", () => {
     expect(onOpenPlan).toHaveBeenCalledTimes(1);
   });
 
+  // AJ's "1b" (the open session round, Oct 9 2026): "i want to be able to take advantage of our routine builder".
+  it("opens Start from a routine…, the iPad corner's sheet, from the foot; nothing until the tracker offers it", () => {
+    const onStartFrom = vi.fn();
+    mount({ onStartFrom });
+    const door = q<HTMLButtonElement>('[data-testid="phone-start-from"]');
+    expect(door.textContent).toBe("Start from a routine…");
+    act(() => door.click());
+    expect(onStartFrom).toHaveBeenCalledTimes(1);
+    act(() => root!.unmount());
+    host!.remove();
+    mount();
+    expect(host!.querySelector('[data-testid="phone-start-from"]')).toBeNull();
+  });
+
   it("keeps the last card's quiet word when the plan has nothing next, and Next on any other card", () => {
     mount({ focusId: "leg" });
     const last = q<HTMLButtonElement>(".ph-card.is-in-hand .ph-card__next");

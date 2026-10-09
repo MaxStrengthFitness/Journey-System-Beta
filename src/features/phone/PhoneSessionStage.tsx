@@ -20,7 +20,7 @@
  * machine menu (settings, notes) opens from a machine's name, as on the iPad.
  */
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, ListOrdered, Minus, Plus, Route } from "lucide-react";
+import { ChevronRight, ListOrdered, ListPlus, Minus, Plus, Route } from "lucide-react";
 import type { JourneyRow, JourneySession, LiveSet, RepQuality } from "../journey-grid/types";
 import type { Client } from "../../types";
 import type { HistoryCoverage } from "../../lib/prior-history";
@@ -86,6 +86,12 @@ export interface PhoneSessionStageProps {
    */
   plan?: { have: number; of: number } | null;
   onOpenPlan?: () => void;
+  /**
+   * Start from a routine… (the open session round, Oct 9 2026; AJ's "1b"):
+   * the iPad corner's sheet, from the phone's foot. Absent until today's
+   * list is on screen.
+   */
+  onStartFrom?: () => void;
   step?: number;
   /**
    * What a card with no past times may say (machine menu, Oct 2026): every
@@ -120,6 +126,7 @@ export function PhoneSessionStage({
   onAddPlanned,
   plan = null,
   onOpenPlan,
+  onStartFrom,
   step = 2,
   everythingRead = false,
   coverage = "unknown",
@@ -237,6 +244,12 @@ export function PhoneSessionStage({
           <ListOrdered size={16} aria-hidden />
           Reorder or add a machine
         </button>
+        {onStartFrom && (
+          <button type="button" className="ph-stage__reorder" data-testid="phone-start-from" onClick={onStartFrom}>
+            <ListPlus size={16} aria-hidden />
+            Start from a routine…
+          </button>
+        )}
         {plan && onOpenPlan && (
           <button type="button" className="ph-stage__reorder" data-testid="phone-plan" onClick={onOpenPlan}>
             <Route size={16} aria-hidden />
