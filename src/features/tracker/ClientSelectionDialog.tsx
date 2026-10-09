@@ -15,6 +15,11 @@
  *   apart and nobody should read off a screen on the floor.
  * - **New client** adds the person and gives them this session
  *   (`onCreateNew`); it used to leave the session behind.
+ * - A list that hasn't answered is never "No clients found" (the whole-branch
+ *   review, Oct 9 2026): it says it is reading them, or that it couldn't,
+ *   and New client stays offered either way.
+ * - A name is written as the Client Directory writes it, from one place
+ *   (`clientDirectoryName`).
  */
 import { useMemo, useState } from "react";
 import { Search, Users, ChevronRight, UserPlus } from "lucide-react";
@@ -22,19 +27,11 @@ import { Client } from "../../types";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { buildNameIndex, compareTier, searchNames } from "../client-directory/search";
-import { goesByNickname } from "../../lib/client-name";
-
-const clean = (v: string | null | undefined) => (v ?? "").replace(/\s+/g, " ").trim();
-
-/** `Judith "Judy" Alvarez`: the legal first name, the nickname she goes by, the last name, as the Directory writes it. */
-export function pickerName(client: Pick<Client, "firstName" | "lastName" | "nickname">): string {
-  const first = clean(client.firstName);
-  const nickname = goesByNickname(client) ? clean(client.nickname) : null;
-  return [first, nickname ? `“${nickname}”` : null, clean(client.lastName)].filter(Boolean).join(" ") || "Unnamed client";
-}
+import { clientDirectoryName, goesByNickname } from "../../lib/client-name";
 
 export function ClientSelectionDialog({
   clients,
+  clientsStatus = "ready",
   onSelect,
   onClose,
   onCreateNew,
@@ -43,6 +40,8 @@ export function ClientSelectionDialog({
   description = "Choose the client. The session carries on as theirs.",
 }: {
   clients: Client[];
+  /** Whether the studio's client list has answered (the roster): "loading" and "error" are never "none". */
+  clientsStatus?: "loading" | "ready" | "error";
   onSelect: (id: string) => void;
   onClose: () => void;
   /** Add a new client and give them this session. */
@@ -57,7 +56,7 @@ export function ClientSelectionDialog({
     () =>
       clients
         .filter((c): c is Client & { id: string } => !!c?.id)
-        .map((c) => ({ client: c, name: pickerName(c) }))
+        .map((c) => ({ client: c, name: clientDirectoryName(c) }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [clients],
   );
@@ -129,9 +128,15 @@ export function ClientSelectionDialog({
               );
             })
           ) : (
-            <div className="py-12 text-center text-muted-foreground">
+            <div className="py-12 text-center text-muted-foreground" data-testid="client-picker-empty">
               <Users className="w-12 h-12 mx-auto mb-2" aria-hidden />
-              <p className="text-[14px] font-semibold">No clients found</p>
+              <p className="text-[14px] font-semibold">
+                {clientsStatus === "loading"
+                  ? "Reading the studio's clients…"
+                  : clientsStatus === "error"
+                    ? "Couldn't read the studio's clients just now."
+                    : "No clients found"}
+              </p>
             </div>
           )}
         </div>

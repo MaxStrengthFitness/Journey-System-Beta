@@ -76,7 +76,7 @@ export { BOOKINGS_FRESH_MS } from "./use-directory-context";
 export interface ClientDirectoryProps {
   clients: Client[];
   onSelectClient: (clientId: string) => void;
-  /** Header action: start a session now and assign the client at the end. */
+  /** Header action: start a session now and choose the client any time (Who's this?). */
   onStartOpenSession?: () => void;
   /**
    * The open session just started (the open session round, Oct 9 2026): the
@@ -481,7 +481,7 @@ export function ClientDirectory({
                 title={
                   openSessionRunning
                     ? "Go back to the open session you started"
-                    : "Start a session now and assign the client at the end"
+                    : "Start a session now and choose the client any time (Who's this?)"
                 }
               >
                 {openSessionStarting ? "Starting…" : openSessionRunning ? "Back to the open session" : "Open session"}

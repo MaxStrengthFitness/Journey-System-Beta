@@ -649,7 +649,8 @@ export function DialTiles({
     if (!author || readOnly || saving || changes.length === 0) return;
     const wasFirst = firstSetup;
     // Kept on an open session, no reason is asked: nothing would carry it to the client.
-    const why = !hold && asksWhy(wasFirst) ? reasonOf(reason, otherText) : "";
+    // Nor is one carried for a blank dial filled: it is no change from anything (the strip asked none).
+    const why = !hold && asksWhy(changes) ? reasonOf(reason, otherText) : "";
     const before: Values = { ...base };
     const sent: Values = { ...draft };
     const saveChanges = changes;

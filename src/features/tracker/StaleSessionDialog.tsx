@@ -12,6 +12,12 @@
  * session", which is what the trainer pressed Start for. Neither answer
  * touches the unfinished session — it is left exactly as it is, and the
  * client's profile still shows it with Discard beside it.
+ *
+ * An OPEN session (no client yet, `clientFirstName` null; the whole-branch
+ * review, Oct 9 2026) is asked about the same way: left an hour with nothing
+ * typed, it could not be reached from anywhere. Resume carries on with it,
+ * Who's this? still there; Start a new session leaves it as it is and starts
+ * a new open session.
  */
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -34,7 +40,8 @@ export function StaleSessionDialog({
   finishAsItWasReady = true,
 }: {
   open: boolean;
-  clientFirstName: string;
+  /** The client's name; null for an open session, which has no client yet. */
+  clientFirstName: string | null;
   session: StaleSessionFacts;
   /** Machines with anything logged in it. Null says nothing: "none" and
    *  "not loaded yet" look the same, so none is never claimed. */
@@ -72,7 +79,7 @@ export function StaleSessionDialog({
       <DialogContent className="sm:max-w-120 rounded-[32px] p-0 overflow-hidden border-none">
         <div className="bg-card p-8 text-foreground space-y-3">
           <DialogTitle>
-            {clientFirstName} has an unfinished session
+            {clientFirstName ? `${clientFirstName} has an unfinished session` : "Your open session was never finished"}
           </DialogTitle>
           <DialogDescription className="text-foreground font-medium text-base leading-relaxed">
             {started ? `${started} ` : ""}It was never finished.{logged}
@@ -80,9 +87,9 @@ export function StaleSessionDialog({
           <p className="text-muted-foreground font-medium text-sm leading-relaxed">
             Resume it to carry on in that session: anything you log goes in
             under {day}.{takesOver ? " Resuming it makes it yours to finish." : ""}
+            {clientFirstName ? "" : " Who's this? is still there to choose the client."}
             {onFinishAsItWas ? ` Finish it as it was: it is saved under ${day} with what was logged, and its sets count.` : ""} Or start a new session: the unfinished one is left
-            exactly as it is, and can be discarded from {clientFirstName}'s
-            profile.
+            exactly as it is{clientFirstName ? `, and can be discarded from ${clientFirstName}'s profile.` : "."}
           </p>
         </div>
         <div

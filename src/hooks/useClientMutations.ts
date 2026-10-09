@@ -3,6 +3,7 @@ import {
   collection,
   updateDoc,
   doc,
+  getDocFromCache,
   setDoc,
   serverTimestamp,
 } from "firebase/firestore";
@@ -15,13 +16,17 @@ import {
   peekLiveSessionId,
   rememberLiveSession,
   type LiveSessionLike,
+  type RememberedSessionData,
 } from "../lib/live-session";
 import {
   OPEN_SESSION_GUARD_MS,
   OPEN_SESSION_REFUSED,
+  announceOpenSessionRefused,
+  declinedStaleOpenSessions,
   isSecondTap,
   openSessionPayload,
   runningOpenSessionId,
+  type LastOpenStart,
 } from "../features/open-session/start";
 
 export interface ClientMutationsOptions {
@@ -54,10 +59,14 @@ export function useClientMutations({
    * screen moves in the same tap. While this trainer's own open session is
    * still running, a tap goes back to it and writes nothing
    * (`runningOpenSessionId`); the ref is also the double-tap guard, for an
-   * iPad that cannot remember a session. `startingOpenSession` is what the
+   * iPad that cannot remember a session, and keeps the studio it was started
+   * at (the stream is one studio's). `startingOpenSession` is what the
    * Directory's button shows.
    */
-  const lastStartRef = useRef<{ id: string; at: number } | null>(null);
+  const lastStartRef = useRef<(LastOpenStart & { at: number }) | null>(null);
+  /* A tap waiting on the iPad's own copy of the remembered session (after a
+     reload): a second tap meanwhile starts nothing. */
+  const checkingRef = useRef(false);
   const [startingOpenSession, setStartingOpenSession] = useState(false);
   const startingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
@@ -72,25 +81,57 @@ export function useClientMutations({
     setCurrentView("workouts");
   }, [setSelectedClientId, setCurrentView]);
 
-  const startUnassignedSession = () => {
+  const startOpenSession = () => {
     if (!authTrainer || !uid) return;
+    if (checkingRef.current) return;
     const now = Date.now();
     const last = lastStartRef.current;
-    const running =
-      last && isSecondTap(last, now)
-        ? last.id
-        : runningOpenSessionId({
-            stream: sessions,
-            myIds: myTrainerIds(authTrainer, uid),
-            lastStartedId: last?.id ?? null,
-            rememberedId: peekLiveSessionId(),
-            now,
-          });
-    if (running) {
-      rememberLiveSession(running);
+    const studioHere = activeStudioId ?? null;
+    const remembered = peekLiveSessionId();
+    const facts = {
+      stream: sessions,
+      myIds: myTrainerIds(authTrainer, uid),
+      lastStarted: last,
+      rememberedId: remembered,
+      studioId: studioHere,
+      declined: declinedStaleOpenSessions(),
+      now,
+    };
+    const goBack = (id: string) => {
+      rememberLiveSession(id);
       goToSession();
+    };
+    const running =
+      last && isSecondTap(last, now) && (last.studioId ?? null) === studioHere ? last.id : runningOpenSessionId(facts);
+    if (running) {
+      goBack(running);
       return;
     }
+    /* After a reload, offline: the session the device remembers is in no
+       stream (the stream ranges over the server's createdAt, which a write
+       still on the iPad doesn't have yet), so the iPad's own copy of it is
+       read, at once and with no network, before a second open session is
+       started beside it. */
+    if (!last && remembered && !sessions.some((s) => s.id === remembered)) {
+      checkingRef.current = true;
+      getDocFromCache(doc(db, "sessions", remembered))
+        .then(
+          (snap) => (snap.exists() ? ({ id: snap.id, ...snap.data() } as RememberedSessionData) : null),
+          () => null,
+        )
+        .then((onDevice) => {
+          checkingRef.current = false;
+          const back = runningOpenSessionId({ ...facts, rememberedOnDevice: onDevice, now: Date.now() });
+          if (back) goBack(back);
+          else startNew(now);
+        });
+      return;
+    }
+    startNew(now);
+  };
+
+  const startNew = (now: number) => {
+    if (!authTrainer || !uid) return;
     /* This iPad's studio only. The Active Session finds an open session in
        the studio on screen, so one written anywhere else (the trainer's home
        studio, as it was) could be neither seen nor found again. */
@@ -114,7 +155,9 @@ export function useClientMutations({
       console.error("[open session] the start was refused", error);
       if (lastStartRef.current?.id === sessionRef.id) lastStartRef.current = null;
       forgetLiveSession(sessionRef.id);
-      onRefused?.(OPEN_SESSION_REFUSED);
+      /* The Active Session holding it says so itself (the sets typed in it
+         are kept); otherwise this does. */
+      if (!announceOpenSessionRefused(sessionRef.id)) onRefused?.(OPEN_SESSION_REFUSED);
     };
     // Issued now and never awaited: the iPad's copy holds it this instant.
     let write: Promise<void>;
@@ -126,7 +169,7 @@ export function useClientMutations({
     }
     write.catch(refused);
 
-    lastStartRef.current = { id: sessionRef.id, at: now };
+    lastStartRef.current = { id: sessionRef.id, studioId, at: now };
     setStartingOpenSession(true);
     if (startingTimer.current) clearTimeout(startingTimer.current);
     startingTimer.current = setTimeout(() => setStartingOpenSession(false), OPEN_SESSION_GUARD_MS);
@@ -151,7 +194,7 @@ export function useClientMutations({
   // offered one had no door. A client who leaves goes inactive in Mindbody.
   return {
     isMutating,
-    startUnassignedSession,
+    startOpenSession,
     startingOpenSession,
     updateClient,
   };

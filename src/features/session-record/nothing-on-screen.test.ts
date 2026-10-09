@@ -15,6 +15,13 @@ describe("nothingKind", () => {
     expect(nothingKind("c1", "failed", false)).toBe("failed");
   });
 
+  it("is a failed read, never 'no session', when the studio's open sessions couldn't be read (the review, Oct 9 2026)", () => {
+    expect(nothingKind(null, undefined, "failed")).toBe("open-failed");
+    expect(nothingWords("open-failed").primary).toBe("retry");
+    // A client chosen: the client's own case decides.
+    expect(nothingKind("c1", "loading", "failed")).toBe("loading");
+  });
+
   it("names a failed read and a missing record as what they are", () => {
     expect(nothingKind("c1", "failed")).toBe("failed");
     expect(nothingKind("c1", "missing")).toBe("missing");
@@ -28,7 +35,7 @@ describe("nothingKind", () => {
 });
 
 describe("nothingWords", () => {
-  const kinds: NothingKind[] = ["loading", "opening", "failed", "missing", "no-session"];
+  const kinds: NothingKind[] = ["loading", "opening", "failed", "missing", "no-session", "open-failed"];
 
   it("says a sentence for every case, never nothing", () => {
     for (const k of kinds) {

@@ -799,7 +799,7 @@ export default function AppContent({
      than starting a second one (the open session round, Oct 9 2026), so the
      stream it is found in is handed to the hook. */
   const {
-    startUnassignedSession,
+    startOpenSession,
     startingOpenSession,
     updateClient,
   } = useClientMutations({
@@ -846,8 +846,9 @@ export default function AppContent({
    * deploys, and a deploy deletes the screen files an open app has not
    * fetched yet. This notices a new version when Journey comes back on
    * screen, loads it by itself only on the Hub, and never over the Active
-   * Session, this trainer's open session, saves still sending, typing or a
-   * session note draft. Everywhere else the line under the header says so.
+   * Session, this trainer's own running session (a client's, or an open
+   * session with no client yet), saves still sending, typing or a session
+   * note draft. Everywhere else the line under the header says so.
    * See features/new-version/README.md.
    */
   const shellReady =
@@ -972,7 +973,7 @@ export default function AppContent({
     void (async () => {
       const unsent = await unsentWritesWaiting(() => waitForPendingWrites(db));
       const question = signOutQuestion({
-        openSessionClientName: mySessionName,
+        ownSessionClientName: mySessionName,
         unsent,
       });
       if (question) setSignOutAsk(question);
@@ -1708,7 +1709,7 @@ export default function AppContent({
                       setSelectedClientId(id);
                       setCurrentView("profile");
                     }}
-                    onStartOpenSession={startUnassignedSession}
+                    onStartOpenSession={startOpenSession}
                     openSessionStarting={startingOpenSession}
                     openSessionRunning={isOpenSession(myLiveSession)}
                     // In today's Start: the Hub search card's own path.
@@ -1865,6 +1866,8 @@ export default function AppContent({
                             : "missing"
                     }
                     onRetryClient={() => setClientReadAttempt((n) => n + 1)}
+                    clientsStatus={rosterStatus}
+                    onStartOpenSession={startOpenSession}
                   />
                 )}
                 {currentView === "profile" && (

@@ -59,6 +59,8 @@ export function queueHeldMoves(
     moves: readonly HeldMove[];
     nameOf: (machineId: string) => string;
     author: MutationAuthor;
+    /** Who kept a machine's set-up (`heldAuthorsOf`), when not `author`: its move is signed by them. */
+    authorOf?: (machineId: string) => MutationAuthor | null;
     journal: JournalContext;
     homeStudioId: string | null;
   },
@@ -74,7 +76,7 @@ export function queueHeldMoves(
         fields: move.fields as SettingFieldSpec[],
         saved: move.saved,
         draft: move.draft,
-        author: f.author,
+        author: f.authorOf?.(move.machineId) ?? f.author,
         isInitialSetup: move.firstSetup,
         machineName: f.nameOf(move.machineId),
         journal: f.journal,

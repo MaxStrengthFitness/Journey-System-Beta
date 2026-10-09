@@ -501,6 +501,16 @@ export function WrapUpScreen({
   const offersNextTime = !!onNextTime;
   const nextRows = useMemo(() => (nextTime && offersNextTime ? nextTimeOffer(nextTime) : []), [nextTime, offersNextTime]);
   const [nextTicked, setNextTicked] = useState<string[]>(() => nextRows.filter((r) => r.defaultOn).map((r) => r.machineId));
+  /* Rows that arrive after the screen opened (the card worked out once the
+     client's routines answered, a Finish straight after Who's this?; the
+     whole-branch review, Oct 9 2026) start ticked as the rows say, once:
+     after that the ticks are the trainer's. */
+  const nextSeededRef = useRef(nextRows.length > 0);
+  useEffect(() => {
+    if (nextSeededRef.current || nextRows.length === 0) return;
+    nextSeededRef.current = true;
+    setNextTicked(nextRows.filter((r) => r.defaultOn).map((r) => r.machineId));
+  }, [nextRows]);
   const nextTimeRef = useRef({ rows: nextRows, ticked: nextTicked });
   nextTimeRef.current = { rows: nextRows, ticked: nextTicked };
   const onNextTimeRef = useRef(onNextTime);

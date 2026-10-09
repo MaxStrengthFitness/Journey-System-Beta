@@ -71,14 +71,23 @@ const num = (v: unknown): number | null => {
  * One line per planned machine, in the order the routine was performed.
  * Torso Rotation's two sides collapse into one line (the left side's
  * numbers, which is what the grid shows too).
+ *
+ * `priorKnown: false` when the client's earlier sets have not been read (a
+ * session given its client a moment before Finish, the open session's Who's
+ * this?; the whole-branch review, Oct 9 2026): nothing is compared and no
+ * machine is called a first, since "no earlier set" would only mean "not
+ * read yet".
  */
 export function todayLines(params: {
   order: readonly string[];
   logs: readonly TodayLog[];
   nameOf: (machineId: string) => string;
   priorOf: (machineId: string) => PriorSet | undefined;
+  priorKnown?: boolean;
 }): TodayLine[] {
-  const { order, logs, nameOf, priorOf } = params;
+  const { order, logs, nameOf } = params;
+  const known = params.priorKnown !== false;
+  const priorOf = (id: string) => (known ? params.priorOf(id) : undefined);
   const byMachine = new Map<string, TodayLog>();
   for (const l of logs) {
     if (l.side === "Right" && byMachine.has(l.machineId)) continue;
@@ -109,7 +118,7 @@ export function todayLines(params: {
         comparable && count !== null
           ? count - ((isTSC ? prior.seconds : prior.reps) ?? 0)
           : null,
-      first: performed && !prior,
+      first: known && performed && !prior,
       skipReason: log?.skipReason ?? null,
     };
   });

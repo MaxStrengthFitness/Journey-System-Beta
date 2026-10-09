@@ -877,13 +877,55 @@ service cloud.firestore {
        client its own session is given in the same write, and only while that
        session is still open (unassigned before the write). A set that has a
        client keeps it; a set cannot take a client its session doesn't get;
-       and once the session has a client, a set on its own cannot follow. */
+       and once the session has a client, a set on its own cannot follow.
+       The write that gives it must also CLOSE the session (isUnassigned
+       false after it; the whole-branch review, Oct 9 2026): a session left
+       open with a client on it would let any set of it take that client on
+       its own, outside an assign. Finish closes it too
+       (src/lib/sync-utils.ts), so a Finish that lands after a refused
+       Who's this? is that write. */
     function logTakesItsSessionsClient(before, after) {
       return before.get('clientId', null) == null
           && after.get('clientId', null) is string
           && after.clientId.size() > 0
           && get(/databases/$(database)/documents/sessions/$(after.sessionId)).data.get('isUnassigned', false) == true
-          && getAfter(/databases/$(database)/documents/sessions/$(after.sessionId)).data.get('clientId', null) == after.clientId;
+          && getAfter(/databases/$(database)/documents/sessions/$(after.sessionId)).data.get('clientId', null) == after.clientId
+          && getAfter(/databases/$(database)/documents/sessions/$(after.sessionId)).data.get('isUnassigned', true) == false;
+    }
+
+    /* ...and back (the whole-branch review, Oct 9 2026). Once Who's this? is
+       chosen, the sets typed next carry the client before the assign's batch
+       has been answered; a set that didn't exist yet is a create, so it lands
+       even when that batch is refused. A refused assign leaves the session
+       open, and those sets may then let go of the client (the tracker sends
+       them again without it), so a different client can be chosen next:
+       otherwise Finish, which names the session's client on every set, was
+       refused for them every time. Only while the session is still open with
+       no client on it. */
+    function logLeavesItsOpenSessionsClient(before, after) {
+      let session = get(/databases/$(database)/documents/sessions/$(after.sessionId)).data;
+      return before.get('clientId', null) is string
+          && after.get('clientId', null) == null
+          && session.get('isUnassigned', false) == true
+          && !(session.get('clientId', null) is string && session.clientId.size() > 0);
+    }
+
+    /* THE OPEN SESSION'S OWN FIELDS (the whole-branch review, Oct 9 2026).
+       `heldSetup` (settings kept on an open session until its client is
+       chosen, src/features/open-session/held-setup.ts) changes only while the
+       session is open: the assign's batch deletes it in the write that
+       closes it, and on a client's session nothing would ever read or move
+       it. And an open session is given only a client on record once the
+       write lands: New client issues the client's own write first, and when
+       that is refused the assign must be refused with it, or the session and
+       its sets would name a client that doesn't exist. */
+    function openSessionWriteOk(before, after) {
+      return (before.get('isUnassigned', false) == true
+              || !after.diff(before).affectedKeys().hasAny(['heldSetup']))
+          && (before.get('isUnassigned', false) != true
+              || !(after.get('clientId', null) is string)
+              || after.clientId.size() == 0
+              || existsAfter(/databases/$(database)/documents/clients/$(after.clientId)));
     }
 
     function isValidSchedule(data) {
@@ -2388,6 +2430,7 @@ service cloud.firestore {
                                      request.resource.data.get('clientId', '')))));
 
       allow update: if isValidSession(request.resource.data)
+                    && openSessionWriteOk(resource.data, request.resource.data)
                     && (isSuperAdmin()
                         || (isAnyAuthenticatedTrainer()
                             && (resource.data.get('trainerId', '') == request.auth.uid
@@ -2428,6 +2471,7 @@ service cloud.firestore {
         resource.data.get('sessionId', null) == request.resource.data.get('sessionId', null) && (
           resource.data.get('clientId', null) == request.resource.data.get('clientId', null)
           || logTakesItsSessionsClient(resource.data, request.resource.data)
+          || logLeavesItsOpenSessionsClient(resource.data, request.resource.data)
         )
       );
       /* HISTORY EDITING (Sep 17 2026). Taking a machine off a session that

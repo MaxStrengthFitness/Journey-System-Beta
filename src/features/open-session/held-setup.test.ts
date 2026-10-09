@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  heldAuthorsOf,
   HELD_SETUP_LINE,
   cleanHeldSources,
   cleanHeldValues,
@@ -191,5 +192,18 @@ describe("an Undo that outlives Assign", () => {
     expect(heldClosedFor(heldClosedError(""))).toBe("");
     expect(heldClosedFor(new Error("permission-denied"))).toBeNull();
     expect(heldClosedFor(null)).toBeNull();
+  });
+});
+
+describe("heldAuthorsOf: who kept each machine's set-up (the whole-branch review, Oct 9 2026)", () => {
+  it("names each machine's keeper by their sign-in uid, and nothing for an entry without one", () => {
+    const session = {
+      heldSetup: {
+        "m-leg-press": { values: { seat: "12" }, at: null, byUid: "uid-first" },
+        "m-chest": { values: { seat: "3" }, at: null, byUid: " " },
+      },
+    } as never;
+    expect(heldAuthorsOf(session)).toEqual({ "m-leg-press": "uid-first" });
+    expect(heldAuthorsOf(null)).toEqual({});
   });
 });

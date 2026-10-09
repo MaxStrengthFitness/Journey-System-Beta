@@ -120,6 +120,21 @@ describe("queueHeldMoves: Assign", () => {
     expect(chest).toMatchObject({ saved: {}, draft: { seat: "3" }, isInitialSetup: true, changedSources: { seat: "suggested" } });
   });
 
+  it("signs a move by whoever kept it, when that isn't the trainer choosing the client (a take-over)", () => {
+    const keeper = { id: "uid-first", fullName: "First Trainer", initials: "FT" };
+    queueHeldMoves(batch, {
+      clientId: "c-judy",
+      moves,
+      nameOf: () => "",
+      author,
+      authorOf: (machineId) => (machineId === "m-chest" ? keeper : null),
+      journal,
+      homeStudioId: "solon",
+    });
+    expect(w.queued.find((s) => s.machineId === "m-chest")!.author).toEqual(keeper);
+    expect(w.queued.find((s) => s.machineId === "m-leg-press")!.author).toEqual(author);
+  });
+
   it("issues nothing outside the batch until afterCommit, then each move's journal copy and fit row", () => {
     const out = queueHeldMoves(batch, { clientId: "c-judy", moves, nameOf: () => "", author, journal, homeStudioId: "solon" });
     expect(w.copies, "before the commit").toEqual([]);

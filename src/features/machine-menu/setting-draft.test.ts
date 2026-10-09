@@ -108,7 +108,7 @@ describe("Seat 4 → 5", () => {
     expect(changes).toEqual([{ label: "Seat", from: "4", to: "5" }]);
     expect(changeWords(changes)).toBe("Seat 4 → 5");
     expect(saveLabel(changes, false)).toBe("Save Seat 5");
-    expect(asksWhy(false)).toBe(true);
+    expect(asksWhy(changes)).toBe(true);
     expect(WHY_PROMPT).toBe("Why? (optional)");
   });
 
@@ -172,7 +172,16 @@ describe("a first set-up", () => {
     expect(saveLabel(changes, true)).toBe("Save set-up");
     expect(saveOutcomeWords(changes, true, "saved")).toBe("Set-up saved · Undo");
     expect(saveOutcomeWords(changes, true, "failed")).toBe("Couldn't save set-up · Try again");
-    expect(asksWhy(true)).toBe(false);
+    expect(asksWhy(changes)).toBe(false);
+  });
+
+  it("asks no 'Why?' for a blank dial filled beside saved ones: only a saved value changing is a change (the whole-branch review, Oct 9 2026)", () => {
+    const saved = { seat: "4" };
+    const filled = draftChanges(ROW, saved, { ...seedDraft(ROW, saved), seat: "4", gap: "3" });
+    expect(filled.every((c) => c.from === "")).toBe(true);
+    expect(asksWhy(filled)).toBe(false);
+    // ...and a saved one changing beside it asks, once.
+    expect(asksWhy(draftChanges(ROW, saved, { ...seedDraft(ROW, saved), seat: "5", gap: "3" }))).toBe(true);
   });
 
   it("shows an empty dial as Not set with its standard, and the fixed one as Same for every client", () => {

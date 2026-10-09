@@ -214,9 +214,9 @@ export function ranWholeFloorUnchosen(input: {
  * nor is a routine-less client session whose list is what was added, so its
  * Next time can start Routine A from it (the open session round, Oct 9 2026:
  * "The floor is a view: the session records only what was added"). An open
- * session reads the same once it has a client and reaches Finish: that waits
- * for the round's Who's this? phase, since Assign still skips Finish and the
- * Wrap-up. Nothing has started a session as Free since Oct 8 2026 (the
+ * session reads the same once Who's this? has given it a client
+ * (`assignSessionToClient`): its Finish is then the ordinary one, Next time
+ * included. Nothing has started a session as Free since Oct 8 2026 (the
  * briefing offers A or B only).
  */
 export function ranAsFree(input: {

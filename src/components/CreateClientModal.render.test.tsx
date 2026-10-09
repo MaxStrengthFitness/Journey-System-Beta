@@ -121,6 +121,8 @@ describe("CreateClientModal", () => {
     expect(onClientCreated).toHaveBeenCalledWith(
       "new-client",
       expect.objectContaining({ id: "new-client", firstName: "Grace", lastName: "Ahn", homeStudioId: "westlake", sessionCount: 0 }),
+      // Someone this form just added (the whole-branch review, Oct 9 2026): nothing is on file for them anywhere.
+      true,
     );
   });
 
@@ -176,7 +178,7 @@ describe("CreateClientModal", () => {
     );
     // No act(async): nothing is awaited between the tap and the hand-on.
     act(() => saveButton(el).click());
-    expect(onClientCreated).toHaveBeenCalledWith("new-client", expect.objectContaining({ id: "new-client", firstName: "Ana" }));
+    expect(onClientCreated).toHaveBeenCalledWith("new-client", expect.objectContaining({ id: "new-client", firstName: "Ana" }), true);
     expect(onClose).toHaveBeenCalled();
   });
 
@@ -231,5 +233,28 @@ describe("CreateClientModal", () => {
       />,
     );
     expect(studioOptions(el)).toEqual(["solon", "westlake"]);
+  });
+
+  it("a duplicate's Cancel and view existing hands on the one already on file, not as someone new; the warning is in the caution plum (the whole-branch review, Oct 9 2026)", async () => {
+    const onClientCreated = vi.fn();
+    const existing = { id: "c-grace", firstName: "Grace", lastName: "Ahn", homeStudioId: "westlake" };
+    const el = mount(
+      <CreateClientModal
+        clients={[existing] as never}
+        studios={studios}
+        activeStudioId="westlake"
+        initialName="Grace Ahn"
+        onClose={() => {}}
+        onClientCreated={onClientCreated}
+      />,
+    );
+    await act(async () => saveButton(el).click());
+    expect(el.textContent).toContain("Duplicate found");
+    expect(el.innerHTML).not.toMatch(/amber-d/);
+    expect(el.innerHTML).toContain("border-(--eq-warn)");
+    const view = [...el.querySelectorAll("button")].find((b) => b.textContent?.includes("Cancel and view existing"))!;
+    await act(async () => view.click());
+    expect(setDoc).not.toHaveBeenCalled();
+    expect(onClientCreated).toHaveBeenCalledWith("c-grace", existing, false);
   });
 });

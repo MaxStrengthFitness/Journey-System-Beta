@@ -500,8 +500,8 @@ describe("SessionNowBar's settings button: Set up · 2 not set, then the setting
   it("is handed one stable function by the tracker, a callback with no deps, in an open session too (its settings are held on the session)", () => {
     const src = readFileSync(resolve(__dirname, "../../components/WorkoutTrackerView.tsx"), "utf8");
     expect(src).toMatch(/const onSetUpMachine = React\.useCallback\(\(id: string\) => \{[^}]*\}, \[\]\);/);
-    expect(src).toMatch(/const onSetUpDoor = onSetUpMachine;/);
-    expect(src.match(/onSetUp=\{onSetUpDoor\}/g)).toHaveLength(2);
+    // Handed straight to both doors (the alias that once withheld it from an open session is gone).
+    expect(src.match(/onSetUp=\{onSetUpMachine\}/g)).toHaveLength(2);
   });
 
   it("is drawn as a raised control at 40px that wraps, never cut (journey-grid.css)", () => {

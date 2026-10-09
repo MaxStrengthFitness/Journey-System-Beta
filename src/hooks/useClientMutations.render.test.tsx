@@ -19,6 +19,8 @@ const fs = vi.hoisted(() => ({
   answer: "never" as "never" | "refuse",
   refuse: null as null | ((e: unknown) => void),
   autoId: 0,
+  /** The iPad's own copy of a session, by id (getDocFromCache). */
+  cached: {} as Record<string, Record<string, unknown>>,
 }));
 
 vi.mock("../firebase", () => ({ db: {}, auth: { currentUser: { uid: "uid-coach" } } }));
@@ -42,6 +44,12 @@ vi.mock("firebase/firestore", () => ({
     return new Promise(() => {});
   },
   updateDoc: () => new Promise(() => {}),
+  getDocFromCache: (ref: { __path: string; id: string }) => {
+    const data = fs.cached[ref.id];
+    return data
+      ? Promise.resolve({ id: ref.id, exists: () => true, data: () => data })
+      : Promise.reject(Object.assign(new Error("not in the cache"), { code: "unavailable" }));
+  },
   writeBatch: () => {
     throw new Error("Start is one setDoc");
   },
@@ -50,7 +58,12 @@ vi.mock("firebase/firestore", () => ({
 
 import { useClientMutations } from "./useClientMutations";
 import { LIVE_SESSION_KEY, type LiveSessionLike } from "../lib/live-session";
-import { OPEN_SESSION_GUARD_MS } from "../features/open-session/start";
+import {
+  OPEN_SESSION_GUARD_MS,
+  declineStaleOpenSession,
+  onOpenSessionRefused,
+} from "../features/open-session/start";
+import { forgetPersonalMemory } from "../features/sign-out/memory";
 import type { Trainer } from "../types";
 
 const trainer = {
@@ -87,6 +100,8 @@ beforeEach(() => {
   fs.answer = "never";
   fs.refuse = null;
   fs.autoId = 0;
+  fs.cached = {};
+  forgetPersonalMemory();
   setSelectedClientId.mockClear();
   setCurrentView.mockClear();
   onRefused.mockClear();
@@ -102,7 +117,7 @@ afterEach(() => {
 
 describe("Open session's Start (the open session round, Oct 9 2026)", () => {
   it("issues ONE write and moves the screen in the same tap, though the database never answers", () => {
-    act(() => api.startUnassignedSession());
+    act(() => api.startOpenSession());
     expect(fs.writes).toHaveLength(1);
     expect(fs.writes[0].path).toBe("sessions/auto-1");
     // The screen moved, with no client: nothing waited on the write.
@@ -111,13 +126,13 @@ describe("Open session's Start (the open session round, Oct 9 2026)", () => {
   });
 
   it("seeds no sets and no ghost weight: nothing is written to exerciseLogs", () => {
-    act(() => api.startUnassignedSession());
+    act(() => api.startOpenSession());
     expect(fs.writes.some((w) => w.path.startsWith("exerciseLogs"))).toBe(false);
     expect(fs.writes[0].data).toMatchObject({ sessionMachineIds: [] });
   });
 
   it("writes the session a client Start would, with no client, at this iPad's studio", () => {
-    act(() => api.startUnassignedSession());
+    act(() => api.startOpenSession());
     expect(fs.writes[0].data).toMatchObject({
       isUnassigned: true,
       status: "In-Progress",
@@ -132,13 +147,13 @@ describe("Open session's Start (the open session round, Oct 9 2026)", () => {
   });
 
   it("is remembered by the device, so the Session tab can bring the trainer back", () => {
-    act(() => api.startUnassignedSession());
+    act(() => api.startOpenSession());
     expect(localStorage.getItem(LIVE_SESSION_KEY)).toBe("auto-1");
   });
 
   it("a second tap makes no second session: it opens the one just started", () => {
-    act(() => api.startUnassignedSession());
-    act(() => api.startUnassignedSession());
+    act(() => api.startOpenSession());
+    act(() => api.startOpenSession());
     expect(fs.writes).toHaveLength(1);
     expect(setCurrentView).toHaveBeenCalledTimes(2);
     expect(localStorage.getItem(LIVE_SESSION_KEY)).toBe("auto-1");
@@ -146,13 +161,13 @@ describe("Open session's Start (the open session round, Oct 9 2026)", () => {
 
   it("says it is starting, for the Directory's button", () => {
     expect(api.startingOpenSession).toBe(false);
-    act(() => api.startUnassignedSession());
+    act(() => api.startOpenSession());
     expect(api.startingOpenSession).toBe(true);
   });
 
   it("a refusal is said in a toast, and the device forgets the session", async () => {
     fs.answer = "refuse";
-    act(() => api.startUnassignedSession());
+    act(() => api.startOpenSession());
     expect(setCurrentView).toHaveBeenCalledWith("workouts");
     await act(async () => {
       fs.refuse?.(Object.assign(new Error("refused"), { code: "permission-denied" }));
@@ -163,9 +178,26 @@ describe("Open session's Start (the open session round, Oct 9 2026)", () => {
     expect(localStorage.getItem(LIVE_SESSION_KEY)).toBeNull();
   });
 
+  it("a refusal the Active Session holding the session says (its typed sets are kept) is not said twice", async () => {
+    fs.answer = "refuse";
+    const heard: string[] = [];
+    const off = onOpenSessionRefused((id) => {
+      heard.push(id);
+      return true;
+    });
+    act(() => api.startOpenSession());
+    await act(async () => {
+      fs.refuse?.(new Error("refused"));
+      await Promise.resolve();
+    });
+    off();
+    expect(heard).toEqual(["auto-1"]);
+    expect(onRefused).not.toHaveBeenCalled();
+  });
+
   it("with no studio on the iPad, writes nothing and says so (an open session elsewhere could not be found again)", () => {
     act(() => root.render(<Probe studio={null} />));
-    act(() => api.startUnassignedSession());
+    act(() => api.startOpenSession());
     expect(fs.writes).toHaveLength(0);
     expect(setCurrentView).not.toHaveBeenCalled();
     expect(onRefused.mock.calls[0][0]).toContain("Choose a studio first");
@@ -191,7 +223,7 @@ describe("Open session while the trainer's own open session is running (Oct 9 20
     };
     act(() => root.render(<Probe sessions={[running]} />));
     clock = later;
-    act(() => api.startUnassignedSession());
+    act(() => api.startOpenSession());
     expect(fs.writes).toHaveLength(0);
     expect(localStorage.getItem(LIVE_SESSION_KEY)).toBe("o-running");
     expect(setSelectedClientId).toHaveBeenCalledWith(null);
@@ -199,21 +231,81 @@ describe("Open session while the trainer's own open session is running (Oct 9 20
   });
 
   it("the one just started, still only on the iPad (offline), is gone back to after the window too", () => {
-    act(() => api.startUnassignedSession());
+    act(() => api.startOpenSession());
     clock = later;
-    act(() => api.startUnassignedSession());
+    act(() => api.startOpenSession());
     expect(fs.writes).toHaveLength(1);
     expect(setCurrentView).toHaveBeenCalledTimes(2);
   });
 
   it("once it has ended (assigned and completed), the next tap starts a new one", () => {
-    act(() => api.startUnassignedSession());
+    act(() => api.startOpenSession());
     const ended = { id: "auto-1", status: "Completed", trainerId: "t-doc", clientId: "c1", isUnassigned: false };
     act(() => root.render(<Probe sessions={[ended]} />));
     clock = later;
-    act(() => api.startUnassignedSession());
+    act(() => api.startOpenSession());
     expect(fs.writes).toHaveLength(2);
     expect(localStorage.getItem(LIVE_SESSION_KEY)).toBe("auto-2");
+  });
+
+  it("after a studio switch, the one just started at the other studio is not followed: a new one starts here (the review, Oct 9 2026)", () => {
+    act(() => api.startOpenSession());
+    act(() => root.render(<Probe studio="solon" />));
+    clock = later;
+    act(() => api.startOpenSession());
+    expect(fs.writes).toHaveLength(2);
+    expect(fs.writes[1].data).toMatchObject({ hostedAtStudioId: "solon" });
+  });
+
+  it("after a reload, offline, goes back to the open session the device remembers, read from the iPad's own copy", async () => {
+    localStorage.setItem(LIVE_SESSION_KEY, "o-before");
+    fs.cached["o-before"] = { status: "In-Progress", trainerId: "t-doc", isUnassigned: true, hostedAtStudioId: "westlake", lastHeartbeatAt: null };
+    await act(async () => {
+      api.startOpenSession();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(fs.writes).toHaveLength(0);
+    expect(localStorage.getItem(LIVE_SESSION_KEY)).toBe("o-before");
+    expect(setCurrentView).toHaveBeenCalledWith("workouts");
+  });
+
+  it("after a reload, a remembered session the iPad doesn't hold, or one that isn't an open session here, is no reason not to start", async () => {
+    localStorage.setItem(LIVE_SESSION_KEY, "o-gone");
+    await act(async () => {
+      api.startOpenSession();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(fs.writes).toHaveLength(1);
+    localStorage.setItem(LIVE_SESSION_KEY, "c-sess");
+    fs.cached["c-sess"] = { status: "In-Progress", trainerId: "t-doc", clientId: "c1", hostedAtStudioId: "westlake" };
+    act(() => root.unmount());
+    root = createRoot(document.createElement("div"));
+    act(() => root.render(<Probe />));
+    await act(async () => {
+      api.startOpenSession();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(fs.writes).toHaveLength(2);
+  });
+
+  it("an abandoned open session of the trainer's is gone back to, so the screen can ask; once left, a new one starts", () => {
+    const abandoned = {
+      id: "o-old",
+      status: "In-Progress",
+      trainerId: "t-doc",
+      isUnassigned: true,
+      lastHeartbeatAt: new Date(T0 - 2 * 60 * 60_000),
+    };
+    act(() => root.render(<Probe sessions={[abandoned]} />));
+    act(() => api.startOpenSession());
+    expect(fs.writes).toHaveLength(0);
+    expect(localStorage.getItem(LIVE_SESSION_KEY)).toBe("o-old");
+    declineStaleOpenSession("o-old");
+    act(() => api.startOpenSession());
+    expect(fs.writes).toHaveLength(1);
   });
 
   it("another trainer's open session is no reason not to start one", () => {
@@ -225,7 +317,7 @@ describe("Open session while the trainer's own open session is running (Oct 9 20
       lastHeartbeatAt: new Date(T0 - 60_000),
     };
     act(() => root.render(<Probe sessions={[theirs]} />));
-    act(() => api.startUnassignedSession());
+    act(() => api.startOpenSession());
     expect(fs.writes).toHaveLength(1);
   });
 });

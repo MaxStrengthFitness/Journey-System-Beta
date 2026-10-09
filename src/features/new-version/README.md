@@ -45,7 +45,7 @@ There is no service worker, on purpose: a caching service worker is the usual wa
 | --- | --- |
 | A fresh answer from the server | A Home Screen app reloaded offline opens to a blank screen, with no browser around it to recover. |
 | The Active Session | This covers the briefing, the post-session screen and watching another trainer's session. Never, whatever else is true. |
-| Your own open session | Even while you've stepped out to a profile. It uses the same answer sign-out and the bottom tab give (`findMyLiveSession`). |
+| Your own running session | A client's session, or an open session with no client yet. Even while you've stepped out to a profile. It uses the same answer sign-out and the bottom tab give (`findMyLiveSession`). |
 | Saves still sending | The check sign-out makes (`unsentWritesWaiting`). Automatic moments wait up to four seconds for them to land, so Back to Hub after a session usually loads straight away. |
 | Typing | It asks the unsaved-changes registry (`useUnsavedStatus`), never guesses. Load now asks the app's own "Leave without saving?" instead. |
 | A session note draft | Only one for the session this iPad has open (the device's remembered session). |

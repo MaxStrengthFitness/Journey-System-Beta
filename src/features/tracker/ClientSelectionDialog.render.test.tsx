@@ -9,7 +9,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { Client } from "../../types";
-import { ClientSelectionDialog, pickerName } from "./ClientSelectionDialog";
+import { ClientSelectionDialog } from "./ClientSelectionDialog";
+import { clientDirectoryName } from "../../lib/client-name";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -117,10 +118,27 @@ describe("Who's this? (the client picker)", () => {
   });
 });
 
-describe("pickerName", () => {
+describe("a list that hasn't answered (the whole-branch review, Oct 9 2026)", () => {
+  const empty = () => document.querySelector('[data-testid="client-picker-empty"]')?.textContent?.trim();
+  it("says it is reading the clients, or that it couldn't, never 'No clients found', and New client stays offered", async () => {
+    await mount({ clients: [], clientsStatus: "loading", onCreateNew: vi.fn() });
+    expect(empty()).toBe("Reading the studio's clients…");
+    expect(Array.from(document.querySelectorAll("button")).some((b) => b.textContent?.trim() === "New client")).toBe(true);
+    await act(async () => root!.unmount());
+    host!.remove();
+    await mount({ clients: [], clientsStatus: "error" });
+    expect(empty()).toBe("Couldn't read the studio's clients just now.");
+    await act(async () => root!.unmount());
+    host!.remove();
+    await mount({ clients: [], clientsStatus: "ready" });
+    expect(empty()).toBe("No clients found");
+  });
+});
+
+describe("clientDirectoryName (the picker's names, the Directory's own)", () => {
   it("writes the nickname beside the legal first name, as the Directory does, and only when it differs", () => {
-    expect(pickerName({ firstName: "Judith", lastName: "Alvarez", nickname: "Judy" } as Client)).toBe("Judith “Judy” Alvarez");
-    expect(pickerName({ firstName: "Judith", lastName: "Alvarez", nickname: "judith" } as Client)).toBe("Judith Alvarez");
-    expect(pickerName({ firstName: "", lastName: "" } as Client)).toBe("Unnamed client");
+    expect(clientDirectoryName({ firstName: "Judith", lastName: "Alvarez", nickname: "Judy" } as Client)).toBe("Judith “Judy” Alvarez");
+    expect(clientDirectoryName({ firstName: "Judith", lastName: "Alvarez", nickname: "judith" } as Client)).toBe("Judith Alvarez");
+    expect(clientDirectoryName({ firstName: "", lastName: "" } as Client)).toBe("Unnamed client");
   });
 });

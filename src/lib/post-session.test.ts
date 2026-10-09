@@ -50,6 +50,24 @@ describe("todayLines", () => {
     expect(todayLines({ order: ["hip"], logs: [{ machineId: "hip", weight: "40", reps: "8" }], nameOf, priorOf: () => undefined })[0].first).toBe(true);
   });
 
+  it("with the earlier sets not read yet, compares nothing and calls nothing a first (the whole-branch review, Oct 9 2026)", () => {
+    const lines = todayLines({
+      order: ["hip", "leg"],
+      logs: [
+        { machineId: "hip", weight: "66", reps: "9" },
+        { machineId: "leg", weight: "120", reps: "6" },
+      ],
+      nameOf,
+      // What a partial read happens to hold: never compared against.
+      priorOf: (id) => ({ hip: { weight: 50, reps: 8 } })[id],
+      priorKnown: false,
+    });
+    expect(lines.map((l) => l.first)).toEqual([false, false]);
+    expect(lines.map((l) => l.loadDelta)).toEqual([null, null]);
+    expect(lines.map((l) => l.countDelta)).toEqual([null, null]);
+    expect(lines.map((l) => l.outcome)).toEqual(["performed", "performed"]);
+  });
+
   it("collapses a two-sided machine into one line", () => {
     const lines = todayLines({
       order: ["torso"],

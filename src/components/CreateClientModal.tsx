@@ -46,9 +46,11 @@ interface CreateClientModalProps {
    * The new client (or the one already on file, from the duplicate warning),
    * with what was written: an open session gives itself to them at once,
    * before the studio's client list has them (the open session round, Oct 9
-   * 2026).
+   * 2026). `isNew` is true for the person this form just added: nothing is
+   * on file for them anywhere, so an open session given to them knows their
+   * routines, settings and history are empty before the server says so.
    */
-  onClientCreated: (clientId: string, client?: Client) => void;
+  onClientCreated: (clientId: string, client?: Client, isNew?: boolean) => void;
   studios: Studio[];
   /**
    * The studio this iPad is working in. The home studio starts on it and can
@@ -158,7 +160,7 @@ export function CreateClientModal({
     });
 
     unsaved.release();
-    onClientCreated(ref.id, { id: ref.id, ...clientData } as Client);
+    onClientCreated(ref.id, { id: ref.id, ...clientData } as Client, true);
     onClose();
   };
 
@@ -175,11 +177,15 @@ export function CreateClientModal({
       <Card className="w-full max-w-2xl bg-card border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-full rounded-[32px] overflow-hidden relative text-foreground">
         {duplicateWarning && (
           <div className="absolute inset-0 z-50 bg-(--scrim) flex items-center justify-center p-6">
-            <div className="bg-card border border-amber-500 rounded-[24px] p-8 max-w-md w-full shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-2 bg-amber-500"></div>
+            {/* Caution is the plum (the Navy Frame), never a Tailwind amber
+                (the whole-branch review, Oct 9 2026: this form is drawn over
+                a running session now). The band is a straight strip the
+                rounded box clips, never a border. */}
+            <div className="bg-card border border-(--eq-warn) rounded-[24px] p-8 max-w-md w-full shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-2 bg-(--eq-warn)"></div>
               <div className="flex flex-col items-center text-center gap-6">
-                <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center">
-                  <AlertTriangle className="w-8 h-8 text-amber-500" />
+                <div className="w-16 h-16 rounded-full bg-(--eq-warn-fill) flex items-center justify-center">
+                  <AlertTriangle className="w-8 h-8 text-(--eq-warn)" />
                 </div>
                 <div>
                   <h3 className="text-[22px] font-extrabold tracking-[-0.015em] text-foreground mb-2">
@@ -201,7 +207,7 @@ export function CreateClientModal({
                     onClick={() => {
                       unsaved.release();
                       if (duplicateWarning.id) {
-                        onClientCreated(duplicateWarning.id, duplicateWarning);
+                        onClientCreated(duplicateWarning.id, duplicateWarning, false);
                       }
                       onClose();
                     }}
@@ -209,7 +215,8 @@ export function CreateClientModal({
                     Cancel and view existing
                   </Button>
                   <Button
-                    className="flex-1 bg-amber-500 hover:bg-amber-500 text-cta-foreground shadow-(--elev-1)"
+                    variant="outline"
+                    className="flex-1"
                     onClick={() => executeSave(true)}
                   >
                     Force create

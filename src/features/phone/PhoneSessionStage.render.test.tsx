@@ -286,6 +286,22 @@ describe("PhoneSessionStage with the floor showing", () => {
     expect(qa(".ph-floor__name")).toHaveLength(4);
   });
 
+  it("an empty day puts Start from a routine… above the floor, not a long scroll under it (the whole-branch review, Oct 9 2026)", () => {
+    mount({ rows: [], focusId: null, floor: [...ROWS, ...FLOOR], onAddMachine: vi.fn(), onStartFrom: vi.fn() });
+    const stage = q(".ph-stage");
+    const doors = q('[data-testid="phone-doors"]');
+    const floor = q('section[aria-label="Rest of the floor"]');
+    const kids = Array.from(stage.children);
+    expect(kids.indexOf(doors)).toBeLessThan(kids.indexOf(floor));
+    expect(doors.querySelector('[data-testid="phone-start-from"]')).not.toBeNull();
+    act(() => root?.unmount());
+    host?.remove();
+    // Once today's list has machines, the doors are at the foot again.
+    mount({ floor: FLOOR, onAddMachine: vi.fn(), onStartFrom: vi.fn() });
+    const after = Array.from(q(".ph-stage").children);
+    expect(after.indexOf(q('[data-testid="phone-doors"]'))).toBeGreaterThan(after.indexOf(q('section[aria-label="Rest of the floor"]')));
+  });
+
   it("without the floor, or without a way to add, today's cards only, as before", () => {
     mount({ floor: null, onAddMachine: vi.fn() });
     expect(qa(".ph-floor__row")).toHaveLength(0);

@@ -126,6 +126,10 @@ describe("what the sheet offers", () => {
     ]);
     // Without a name, never a pronoun.
     expect(startFromGroups(input({ clientRoutines: [routine("ra", "Routine A", ["m-lumbar"])] }))[0].label).toBe("This client's routines");
+    // Each carries its routine, so the session it is laid on ran it (Next time; the whole-branch review, Oct 9 2026).
+    expect(groups[0].choices.map((c) => c.routineId)).toEqual(["ra", "rb"]);
+    // A starting routine or a template is nobody's routine.
+    expect(groups.slice(1).flatMap((g) => g.choices).every((c) => c.routineId === undefined)).toBe(true);
   });
 
   it("a Routine A still empty runs its plan's day one, said as such; an empty Routine B isn't offered", () => {
@@ -262,7 +266,7 @@ describe("what the sheet offers", () => {
     const a = groups[0].choices[0];
     expect(a.machineIds).toEqual([]);
     expect(a.missing).toEqual(["m-hip-abd"]);
-    expect(startFromLines(a, nameOf).machines).toBe("Nothing of it to lay on this floor");
+    expect(startFromLines(a, nameOf).machines).toBe("None of its machines can go on today's list");
   });
 });
 

@@ -444,24 +444,33 @@ describe("pickOpenSession: which open session this iPad records (Oct 9 2026)", (
     // It used to be mine when it was all there was, so a refused Start, or an
     // Assign with an old one left over, put typed sets into yesterday's session.
     const abandoned = { ...old, ...stale };
-    expect(pickOpenSession([abandoned], { myIds: ["t1"], now })).toEqual({ mine: null, watch: null });
-    expect(pickOpenSession([abandoned], { myIds: ["t1"], rememberedId: "old", now })).toEqual({ mine: null, watch: null });
+    // It comes back as `stale`, so the Active Session can ask (the whole-branch review, Oct 9 2026).
+    expect(pickOpenSession([abandoned], { myIds: ["t1"], now })).toEqual({ mine: null, watch: null, stale: abandoned });
+    expect(pickOpenSession([abandoned], { myIds: ["t1"], rememberedId: "old", now })).toEqual({ mine: null, watch: null, stale: abandoned });
     // Beside another trainer's, it is not the one watched either.
-    expect(pickOpenSession([abandoned, theirs], { myIds: ["t1"], now })).toEqual({ mine: null, watch: theirs });
+    expect(pickOpenSession([abandoned, theirs], { myIds: ["t1"], now })).toEqual({ mine: null, watch: theirs, stale: abandoned });
     // The one on screen stays, however long its pause.
     expect(pickOpenSession([abandoned], { myIds: ["t1"], onScreenId: "old", now }).mine?.id).toBe("old");
   });
 
   it("another trainer's is watched, never recorded; one being taken over here is mine", () => {
-    expect(pickOpenSession([theirs], { myIds: ["t1"], now })).toEqual({ mine: null, watch: theirs });
+    expect(pickOpenSession([theirs], { myIds: ["t1"], now })).toEqual({ mine: null, watch: theirs, stale: null });
     expect(pickOpenSession([theirs], { myIds: ["t1"], settlingId: "theirs", now }).mine?.id).toBe("theirs");
     // A remembered id never makes another trainer's session mine.
     expect(pickOpenSession([theirs], { myIds: ["t1"], rememberedId: "theirs", now }).mine).toBeNull();
   });
 
+  it("a stale one is raised only when nothing of mine is live, and never another trainer's", () => {
+    const abandoned = { ...old, ...stale };
+    // A live one of mine is recorded; the stale one is not raised beside it.
+    expect(pickOpenSession([abandoned, just], { myIds: ["t1"], now })).toEqual({ mine: just, watch: null, stale: null });
+    // Another trainer's abandoned open session is not mine to be asked about.
+    expect(pickOpenSession([{ ...theirs, ...stale }], { myIds: ["t1"], now }).stale).toBeNull();
+  });
+
   it("watching: the one on screen first (it was taken over elsewhere), else the first", () => {
     const other = { ...theirs, id: "theirs-2" };
     expect(pickOpenSession([theirs, other], { myIds: ["t1"], onScreenId: "theirs-2", now }).watch?.id).toBe("theirs-2");
-    expect(pickOpenSession([], { myIds: ["t1"], now })).toEqual({ mine: null, watch: null });
+    expect(pickOpenSession([], { myIds: ["t1"], now })).toEqual({ mine: null, watch: null, stale: null });
   });
 });

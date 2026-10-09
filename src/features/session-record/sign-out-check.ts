@@ -36,15 +36,15 @@ export interface SignOutFacts {
    * client chosen yet; `ownSessionName` in lib/live-session.ts), or null when
    * none runs.
    */
-  openSessionClientName: string | null;
+  ownSessionClientName: string | null;
   /** Saves on this iPad the database has not confirmed. */
   unsent: boolean;
 }
 
-export function signOutQuestion({ openSessionClientName, unsent }: SignOutFacts): string | null {
+export function signOutQuestion({ ownSessionClientName, unsent }: SignOutFacts): string | null {
   const parts: string[] = [];
-  if (openSessionClientName !== null) {
-    const who = openSessionClientName.trim();
+  if (ownSessionClientName !== null) {
+    const who = ownSessionClientName.trim();
     parts.push(
       who
         ? `Your session with ${who} is still open. It stays open until someone finishes it.`

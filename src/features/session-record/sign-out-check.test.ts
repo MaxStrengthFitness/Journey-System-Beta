@@ -3,33 +3,33 @@ import { UNSENT_CHECK_MS, signOutQuestion, unsentWritesWaiting } from "./sign-ou
 
 describe("signOutQuestion", () => {
   it("asks nothing when no session is open and everything has been sent", () => {
-    expect(signOutQuestion({ openSessionClientName: null, unsent: false })).toBeNull();
+    expect(signOutQuestion({ ownSessionClientName: null, unsent: false })).toBeNull();
   });
 
   it("names the client whose session is still open, in full", () => {
-    const q = signOutQuestion({ openSessionClientName: "Judy Daus", unsent: false });
+    const q = signOutQuestion({ ownSessionClientName: "Judy Daus", unsent: false });
     expect(q).toBe("Your session with Judy Daus is still open. It stays open until someone finishes it. Sign out anyway?");
   });
 
   it("says unsent saves wait on this iPad until the same person signs in here again", () => {
-    const q = signOutQuestion({ openSessionClientName: null, unsent: true })!;
+    const q = signOutQuestion({ ownSessionClientName: null, unsent: true })!;
     expect(q).toContain("haven't reached the studio's records yet");
     expect(q).toContain("wait on this iPad until you sign in here again");
     expect(q.endsWith("Sign out anyway?")).toBe(true);
   });
 
   it("says both when both are true, the session first", () => {
-    const q = signOutQuestion({ openSessionClientName: "Judy Daus", unsent: true })!;
+    const q = signOutQuestion({ ownSessionClientName: "Judy Daus", unsent: true })!;
     expect(q.indexOf("Judy Daus")).toBeLessThan(q.indexOf("saves"));
   });
 
   it("never prints an empty name: no name is an open session, which has no client yet (Oct 9 2026)", () => {
     // It said "Your session with a client", which no client was; a client's
     // session with no name on record is given "a client" (ownSessionName).
-    expect(signOutQuestion({ openSessionClientName: "  ", unsent: false })).toBe(
+    expect(signOutQuestion({ ownSessionClientName: "  ", unsent: false })).toBe(
       "Your open session is still running. It stays open until someone finishes it. Sign out anyway?",
     );
-    expect(signOutQuestion({ openSessionClientName: "a client", unsent: false })).toContain("Your session with a client");
+    expect(signOutQuestion({ ownSessionClientName: "a client", unsent: false })).toContain("Your session with a client");
   });
 });
 

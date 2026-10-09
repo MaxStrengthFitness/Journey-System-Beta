@@ -154,6 +154,33 @@ export function PhoneSessionStage({
     el?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
   }, [focusId]);
 
+  /* The doors: Reorder or add, Start from a routine…, the plan. With
+     nothing on today's list yet and the floor below, they come FIRST (the
+     whole-branch review, Oct 9 2026): under twenty-odd floor rows, Start
+     from a routine… was a long scroll away on the phone, one tap away in the
+     iPad's corner. */
+  const doorsFirst = rows.length === 0 && !!floorRows && floorRows.length > 0;
+  const doors = (
+    <div className="ph-stage__doors" data-testid="phone-doors">
+      <button type="button" className="ph-stage__reorder" onClick={onReorder}>
+        <ListOrdered size={16} aria-hidden />
+        Reorder or add a machine
+      </button>
+      {onStartFrom && (
+        <button type="button" className="ph-stage__reorder" data-testid="phone-start-from" onClick={onStartFrom}>
+          <ListPlus size={16} aria-hidden />
+          Start from a routine…
+        </button>
+      )}
+      {plan && onOpenPlan && (
+        <button type="button" className="ph-stage__reorder" data-testid="phone-plan" onClick={onOpenPlan}>
+          <Route size={16} aria-hidden />
+          The plan · {plan.have} of {plan.of}
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <div className="ph-stage" ref={listRef}>
       <p className="ph-stage__note" role="note">
@@ -217,6 +244,7 @@ export function PhoneSessionStage({
           })}
         </ol>
       )}
+      {doorsFirst && doors}
       {floorRows && floorRows.length > 0 && (
         /* The rest of the floor: names only, in the walking order, each a
            40px Add. A plain list, never a second set of cards: the card is
@@ -249,24 +277,7 @@ export function PhoneSessionStage({
           </ul>
         </section>
       )}
-      <div className="ph-stage__doors">
-        <button type="button" className="ph-stage__reorder" onClick={onReorder}>
-          <ListOrdered size={16} aria-hidden />
-          Reorder or add a machine
-        </button>
-        {onStartFrom && (
-          <button type="button" className="ph-stage__reorder" data-testid="phone-start-from" onClick={onStartFrom}>
-            <ListPlus size={16} aria-hidden />
-            Start from a routine…
-          </button>
-        )}
-        {plan && onOpenPlan && (
-          <button type="button" className="ph-stage__reorder" data-testid="phone-plan" onClick={onOpenPlan}>
-            <Route size={16} aria-hidden />
-            The plan · {plan.have} of {plan.of}
-          </button>
-        )}
-      </div>
+      {!doorsFirst && doors}
     </div>
   );
 }

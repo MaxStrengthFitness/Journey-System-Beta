@@ -1389,9 +1389,12 @@ export interface HeldSetupEntry {
    * trainer tapped Use (one dial's, or Use studio standard for all) and left
    * it alone. Moved onto the client's settings with the values at Assign, so
    * machine fit never counts its own suggestion as evidence
-   * (machine-fit/fit-index.ts). Absent means every value is typed.
+   * (machine-fit/fit-index.ts). Absent means every value is typed, and
+   * "typed" itself is never stored (`cleanHeldSources`): this is the one
+   * declaration of what a held source may be
+   * (open-session/held-setup.ts `HeldSource`).
    */
-  sources?: Record<string, "typed" | "suggested" | "legacy">;
+  sources?: Record<string, "suggested" | "legacy">;
   /** The server's time of the save (pending as `serverTimestamp()` on this iPad until it lands). */
   at?: any;
   /** Who saved them: the Auth uid. */

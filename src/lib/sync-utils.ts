@@ -203,16 +203,24 @@ export async function completeWorkoutSession(
   options?: {
     asOfDay?: string | null;
     /**
-     * Whether a machine missing from `clientMachineSettings` is KNOWN to have
-     * nothing on file: the server has answered the client's settings (the
-     * open session round's review, Oct 9 2026). False when they have not
-     * (an open session given its client at Finish, a moment ago, or a read
-     * the iPad's cache answered empty): a machine with no entry then writes
-     * only today's weight, never `settings: {}` (a merge would still replace
-     * the client's saved seat and positions with nothing) and never a
-     * starting weight over the one on file. Leaving it out means known.
+     * Whether `clientMachineSettings` is the SERVER's answer for the client
+     * (the open session round's review, Oct 9 2026), so a machine missing
+     * from it has nothing on file. False when it is not (an open session
+     * given its client at Finish, a moment ago, or a read the iPad's cache
+     * answered): then no starting weight is written at all, since the iPad's
+     * copy may be a partial document a merge left (an assign's held set-up,
+     * the card's dials-only save) and the server may hold one; and a machine
+     * with no entry writes only today's weight, never `settings: {}` (a
+     * merge would still replace the client's saved seat and positions with
+     * nothing). Leaving it out means known.
      */
     settingsOnFileKnown?: boolean;
+    /**
+     * A client added on this iPad for this session (the open session's New
+     * client): nothing is on file for them anywhere, so every machine is a
+     * first time, whatever has answered yet.
+     */
+    newClient?: boolean;
   },
 ): Promise<{ totalsSaved: boolean | null }> {
   if (!currentSession?.id) return { totalsSaved: null };
@@ -232,6 +240,12 @@ export async function completeWorkoutSession(
     clientHomeStudioId: homeStudioId,
     hostedAtStudioId: currentSession.hostedAtStudioId || homeStudioId
   };
+  /* A session that was ever an open one (the open session round, Oct 9
+     2026) is no longer open once it is finished with a client: its sets may
+     take that client only in a write that closes it (the rules,
+     `logTakesItsSessionsClient`), and a Finish that lands after a refused
+     Who's this? is that write. */
+  if (selectedClient?.id && currentSession.isUnassigned !== undefined) updateData.isUnassigned = false;
 
   // Data Stamping for Analytics
   if (selectedClient) {
@@ -403,10 +417,24 @@ export async function completeWorkoutSession(
           const settingId = `${selectedClient.id}_${log.machineId}`;
           const settingRef = doc(db, 'clientMachineSettings', settingId);
           const currentSettingsObj = clientMachineSettings[log.machineId];
-          /* Unknown is never "nothing on file": with no entry and the
-             client's settings not answered by the server, the stored seat,
-             positions and starting weight are left exactly as they are. */
-          const onFileKnown = options?.settingsOnFileKnown !== false || !!currentSettingsObj;
+          /* Unknown is never "nothing on file" (the open session round's
+             review, Oct 9 2026). Only the server's answer says what the
+             client has: an entry on this iPad may be a partial document a
+             merge left (an assign's held set-up, the card's dials-only save),
+             with no starting weight while the server holds one. */
+          const onFileKnown = options?.newClient === true || options?.settingsOnFileKnown !== false;
+          /* And the starting weight is today's only on the client's FIRST
+             performed set on the machine: their totals answered and hold no
+             earlier one. A Finish whose settings weren't known wrote no
+             starting weight, and the next Finish used to backfill the second
+             session's weight as the start; with none on file the figure
+             falls back to the first counted set (machine-menu/
+             progress-figure.ts), which is right. A missing number, never a
+             wrong one. */
+          const metricBefore = selectedClient.currentMachineMetrics?.[log.machineId];
+          const firstTimeHere =
+            options?.newClient === true ||
+            (totalsKnown && (!metricBefore || metricBefore.lastSessionId === currentSession.id));
 
           const updateObj: any = {
             clientId: selectedClient.id,
@@ -420,9 +448,14 @@ export async function completeWorkoutSession(
             nextWeight: deleteField(),
             updatedAt: serverTimestamp()
           };
-          if (onFileKnown) updateObj.settings = currentSettingsObj?.settings || {};
+          if (onFileKnown) {
+            updateObj.settings = currentSettingsObj?.settings || {};
+          } else if (currentSettingsObj?.settings && Object.keys(currentSettingsObj.settings).length > 0) {
+            // Merged dial by dial: what this iPad holds goes back as it is, and the others stay as stored.
+            updateObj.settings = currentSettingsObj.settings;
+          }
 
-          if (onFileKnown && !currentSettingsObj?.startingWeight) {
+          if (onFileKnown && firstTimeHere && !currentSettingsObj?.startingWeight) {
             updateObj.startingWeight = Number(log.weight);
             updateObj.startingWeightDate = new Date().toISOString();
           }

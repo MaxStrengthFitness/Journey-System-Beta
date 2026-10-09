@@ -10,7 +10,7 @@
  * case says one honest sentence and offers the way on.
  */
 
-export type NothingKind = "loading" | "opening" | "failed" | "missing" | "no-session";
+export type NothingKind = "loading" | "opening" | "failed" | "missing" | "no-session" | "open-failed";
 
 export interface NothingWords {
   title: string;
@@ -43,6 +43,12 @@ export function nothingWords(kind: NothingKind): NothingWords {
         body: "Choose a client to start one.",
         primary: "find-client",
       };
+    case "open-failed":
+      return {
+        title: "Couldn't read this studio's open sessions.",
+        body: "Check the connection, then try again. Anything already saved on this iPad stays saved.",
+        primary: "retry",
+      };
   }
 }
 
@@ -52,14 +58,16 @@ export function nothingWords(kind: NothingKind): NothingWords {
  * once the studio's open sessions have answered. Before they have, it is an
  * open session on its way (the open session round, Oct 9 2026: Open session
  * moves the screen in the same tap, before its listener has answered, and
- * "No session is open here" flashed in that moment).
+ * "No session is open here" flashed in that moment). A read of them that
+ * FAILED is said as that, with Try again: a failed read is unknown, never
+ * "none" (the whole-branch review, Oct 9 2026).
  */
 export function nothingKind(
   clientId: string | null,
   lookup: "ready" | "loading" | "failed" | "missing" | undefined,
-  openSessionsAnswered: boolean = true,
+  openSessions: boolean | "failed" = true,
 ): NothingKind {
-  if (!clientId) return openSessionsAnswered ? "no-session" : "opening";
+  if (!clientId) return openSessions === "failed" ? "open-failed" : openSessions ? "no-session" : "opening";
   if (lookup === "failed" || lookup === "missing") return lookup;
   return "loading";
 }

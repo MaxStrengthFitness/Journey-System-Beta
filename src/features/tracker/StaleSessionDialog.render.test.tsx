@@ -43,6 +43,21 @@ async function mount(props: Partial<Parameters<typeof StaleSessionDialog>[0]>) {
 const button = (text: string) => Array.from(document.body.querySelectorAll("button")).find((b) => b.textContent?.trim() === text);
 
 describe("StaleSessionDialog", () => {
+  it("asks about an abandoned OPEN session too: no client named, Who's this? still there (the whole-branch review, Oct 9 2026)", async () => {
+    const onResume = vi.fn();
+    const onStartNew = vi.fn();
+    await mount({ clientFirstName: null, begunMachines: null, onResume, onStartNew });
+    const text = document.body.textContent ?? "";
+    expect(text).toContain("Your open session was never finished");
+    expect(text).toContain("Who's this? is still there");
+    expect(text).not.toMatch(/profile|null|undefined/);
+    expect(button("Finish it as it was")).toBeUndefined();
+    await act(async () => button("Resume it")!.click());
+    expect(onResume).toHaveBeenCalledTimes(1);
+    await act(async () => button("Start a new session")!.click());
+    expect(onStartNew).toHaveBeenCalled();
+  });
+
   it("offers Finish it as it was as a third answer, and says what it does", async () => {
     const onFinishAsItWas = vi.fn();
     const onStartNew = vi.fn();

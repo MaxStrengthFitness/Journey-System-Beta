@@ -76,6 +76,13 @@ export interface StartFromChoice {
   outOfService: string[];
   /** Short words beside the name: "day one", "default". */
   notes: string[];
+  /**
+   * The client's own Routine A or B, by its id: laid on a session with no
+   * routine, the session ran that routine, so the Wrap-up's Next time
+   * offers today's machines to it (the whole-branch review, Oct 9 2026).
+   * Absent for a starting routine or a template: nothing is the client's.
+   */
+  routineId?: string;
 }
 
 export interface StartFromGroup {
@@ -211,12 +218,14 @@ export function startFromGroups(input: StartFromInput): StartFromGroup[] {
       const ids = todayFor({ routine: aRoutine.machineIds, plan: aPlan });
       const dayOne = (aRoutine.machineIds?.length ?? 0) === 0 && ids.length > 0;
       if (ids.length > 0) {
-        choices.push(choiceOf("client:A", "client", "Routine A", onThisFloor(ids, input.floor, input.nameOf), ctx, dayOne ? ["day one"] : []));
+        const a = choiceOf("client:A", "client", "Routine A", onThisFloor(ids, input.floor, input.nameOf), ctx, dayOne ? ["day one"] : []);
+        choices.push(aRoutine.id ? { ...a, routineId: aRoutine.id } : a);
       }
     }
     const bRoutine = savedRoutineB(known);
     if (bRoutine && (bRoutine.machineIds?.length ?? 0) > 0) {
-      choices.push(choiceOf("client:B", "client", "Routine B", onThisFloor(bRoutine.machineIds, input.floor, input.nameOf), ctx));
+      const b = choiceOf("client:B", "client", "Routine B", onThisFloor(bRoutine.machineIds, input.floor, input.nameOf), ctx);
+      choices.push(bRoutine.id ? { ...b, routineId: bRoutine.id } : b);
     }
     // Known and none: said, in the place "Reading…" held (their read answered).
     groups.push({ key: "client", label: clientLabel, choices, ...(choices.length === 0 ? { status: "None yet." } : null) });
@@ -343,7 +352,7 @@ export function startFromLines(
   if (choice.missing.length > 0) leftOut.push(`Not on ${studio ? `${studio}'s` : "this"} floor: ${names(choice.missing)}`);
   if (choice.cantDo.length > 0) leftOut.push(`${first ? `${first} can't do` : "Can't do"} for now: ${names(choice.cantDo)}`);
   if (choice.outOfService.length > 0) leftOut.push(`Out of service: ${names(choice.outOfService)}`);
-  return { machines: shown ? `${shown}${more}` : "Nothing of it to lay on this floor", leftOut };
+  return { machines: shown ? `${shown}${more}` : "None of its machines can go on today's list", leftOut };
 }
 
 /* ── The tap ─────────────────────────────────────────────────────────── */

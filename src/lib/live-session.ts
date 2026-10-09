@@ -297,8 +297,11 @@ export function ownSessionName(session: LiveSessionLike | null | undefined): str
  * the device remembers (Start and the Session tab both set it) while it is
  * live, then the newest live one of this trainer's. An abandoned one is
  * never taken up without asking (Sep 24 2026): it is not recorded here and
- * not watched. None of this trainer's: another trainer's is watched, the one
- * on screen first (it was taken over on another iPad).
+ * not watched; it comes back as `stale`, this trainer's newest, so the Active
+ * Session can ask (the whole-branch review, Oct 9 2026: an open session left
+ * an hour with nothing typed could not be reached from anywhere, and Who's
+ * this? with it). None of this trainer's: another trainer's is watched, the
+ * one on screen first (it was taken over on another iPad).
  */
 export function pickOpenSession<T extends LiveSessionLike>(
   open: readonly T[],
@@ -309,7 +312,7 @@ export function pickOpenSession<T extends LiveSessionLike>(
     rememberedId?: string | null;
     now?: number;
   },
-): { mine: T | null; watch: T | null } {
+): { mine: T | null; watch: T | null; stale: T | null } {
   const now = opts.now ?? Date.now();
   const mine = open.filter((s) => (!!opts.settlingId && s.id === opts.settlingId) || !isAnotherTrainersSession(s, opts.myIds));
   const byId = (id: string | null | undefined) => (id ? (mine.find((s) => s.id === id) ?? null) : null);
@@ -320,10 +323,11 @@ export function pickOpenSession<T extends LiveSessionLike>(
     (remembered && isSessionValid(remembered, now) ? remembered : null) ??
     splitInProgress(mine, now).live ??
     null;
-  if (chosen) return { mine: chosen, watch: null };
+  if (chosen) return { mine: chosen, watch: null, stale: null };
   const others = open.filter((s) => !mine.includes(s));
   const watch = (opts.onScreenId ? others.find((s) => s.id === opts.onScreenId) : undefined) ?? others[0] ?? null;
-  return { mine: null, watch };
+  const stale = splitInProgress(mine.filter(isOpenSession), now).stale[0] ?? null;
+  return { mine: null, watch, stale };
 }
 
 /* ------------------------------------------------------------------ *

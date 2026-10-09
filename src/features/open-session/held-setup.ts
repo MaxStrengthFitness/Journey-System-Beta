@@ -30,8 +30,8 @@
  */
 import type { ClientMachineSetting, HeldSetupEntry, WorkoutSession } from "../../types";
 
-/** Where a held value came from when it isn't typed (`HeldSetupEntry.sources`). */
-export type HeldSource = "suggested" | "legacy";
+/** Where a held value came from when it isn't typed: `HeldSetupEntry.sources`'s own values, declared once there. */
+export type HeldSource = NonNullable<HeldSetupEntry["sources"]>[string];
 
 /** The line the card says while it keeps the settings on the session. */
 export const HELD_SETUP_LINE = "Kept on this session · saved to the client when you choose them";
@@ -112,6 +112,26 @@ export function heldSourcesOf(
     const e = entry as Partial<HeldSetupEntry>;
     const src = cleanHeldSources(e.sources, cleanHeldValues(e.values));
     if (Object.keys(src).length > 0) out[machineId] = src;
+  }
+  return out;
+}
+
+/**
+ * Who kept each machine's set-up, machine id → their sign-in uid (`byUid`):
+ * at Assign the client's settings, history row and journal copy are signed
+ * by the person who typed it, not by whoever chose the client (the
+ * whole-branch review, Oct 9 2026: a take-over credited the wrong trainer).
+ */
+export function heldAuthorsOf(
+  session: Pick<WorkoutSession, "heldSetup"> | null | undefined,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  const held = session?.heldSetup;
+  if (!held || typeof held !== "object" || Array.isArray(held)) return out;
+  for (const [machineId, entry] of Object.entries(held)) {
+    if (!machineId || !entry || typeof entry !== "object") continue;
+    const by = (entry as Partial<HeldSetupEntry>).byUid;
+    if (typeof by === "string" && by.trim()) out[machineId] = by.trim();
   }
   return out;
 }

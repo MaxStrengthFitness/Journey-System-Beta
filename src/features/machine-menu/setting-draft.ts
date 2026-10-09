@@ -264,9 +264,15 @@ export function saveLabel(changes: readonly SettingPair[], firstSetup: boolean):
   return `Save ${changeName(changes, firstSetup)}`;
 }
 
-/** A first set-up asks no "Why?": it isn't a change from anything. */
-export function asksWhy(firstSetup: boolean): boolean {
-  return !firstSetup;
+/**
+ * "Why?" is asked only when a SAVED value changes (the whole-branch review,
+ * Oct 9 2026): a first set-up, or a blank dial filled (the Now Bar's "1 not
+ * set" sends the trainer there), isn't a change from anything. Programming →
+ * Setup asks on the same test (machine-fit/setup-plan.ts), so the two doors
+ * agree. Asked, never required.
+ */
+export function asksWhy(changes: readonly SettingPair[]): boolean {
+  return changes.some((c) => c.from !== "");
 }
 
 /** Line 1's quiet ask, after the change. */
@@ -392,8 +398,8 @@ export function undoPayload(fields: readonly DraftField[], before: Values, after
  *
  * So: start from `current`, and take back only the dials this save changed
  * that still hold what it saved. A dial changed since is left as it is now.
- * Null when none is left to take back (nothing to write). `changes` keeps
- * only the dials taken back, for the words.
+ * Null when none is left to take back (nothing to write). `keys` are the
+ * dials taken back; the caller keeps only their changes for the words.
  */
 export function undoOnto(
   fields: readonly DraftField[],

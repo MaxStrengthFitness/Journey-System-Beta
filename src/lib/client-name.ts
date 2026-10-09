@@ -42,6 +42,19 @@ export function goesByNickname(client: NameLike): boolean {
   return !!nick && nick.toLowerCase() !== clean(client?.firstName).toLowerCase();
 }
 
+/**
+ * `Judith “Judy” Alvarez`: the legal first name, the nickname they go by
+ * (when it differs), the last name, else "Unnamed client". What a Client
+ * Directory row says and Who's this?'s picker lists, from one place so the
+ * two never drift (the whole-branch review, Oct 9 2026).
+ */
+export function clientDirectoryName(client: NameLike): string {
+  const text = (v: unknown) => (typeof v === "string" ? clean(v) : "");
+  const first = text(client?.firstName);
+  const nickname = goesByNickname(client) ? text(client?.nickname) : "";
+  return [first, nickname ? `“${nickname}”` : "", text(client?.lastName)].filter(Boolean).join(" ") || "Unnamed client";
+}
+
 /** "JD" — from the name the client goes by. */
 export function clientInitials(client: NameLike): string {
   return `${clientFirstName(client).charAt(0)}${clean(client?.lastName).charAt(0)}`.toUpperCase();

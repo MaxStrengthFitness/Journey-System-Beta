@@ -13,13 +13,17 @@
  *
  * Only this iPad's knowledge: another iPad's change made while no card was
  * open isn't here, and then the Undo is what it always was, the save's own.
- * Kept to the last 50 client-machine pairs, and forgotten at sign-out like
+ * Kept to the last 50 owner-machine pairs, and forgotten at sign-out like
  * every module memory on a shared iPad.
+ *
+ * The OWNER of a set-up is a client's id, or `held:{sessionId}` for an open
+ * session's set-up kept on the session until its client is chosen (the
+ * machine card's `hold`; features/open-session): the two never share a key.
  */
 import { forgetOnSignOut } from "../sign-out/memory";
 import { getBounded, setBounded } from "../../lib/bounded-map";
 
-/** How many client-machine pairs are kept: far more than ten seconds of Undo needs. */
+/** How many owner-machine pairs are kept: far more than ten seconds of Undo needs. */
 export const KNOWN_SETTINGS_KEYS = 50;
 
 const known = new Map<string, Record<string, string>>();
@@ -28,18 +32,18 @@ forgetOnSignOut(() => {
   known.clear();
 });
 
-/** The settings document's own id shape (`clientMachineSettings/{clientId}_{machineId}`). */
-const keyOf = (clientId: string, machineId: string) => `${clientId}_${machineId}`;
+/** A client's settings document's own id shape (`clientMachineSettings/{clientId}_{machineId}`), or `held:{sessionId}_{machineId}`. */
+const keyOf = (ownerKey: string, machineId: string) => `${ownerKey}_${machineId}`;
 
-/** Note the settings map as it is now for this client on this machine. */
-export function noteKnownSettings(clientId: string, machineId: string, settings: Readonly<Record<string, string>>): void {
-  if (!clientId || !machineId) return;
-  setBounded(known, keyOf(clientId, machineId), { ...settings }, KNOWN_SETTINGS_KEYS);
+/** Note the settings map as it is now for this owner (a client's id, or `held:{sessionId}`) on this machine. */
+export function noteKnownSettings(ownerKey: string, machineId: string, settings: Readonly<Record<string, string>>): void {
+  if (!ownerKey || !machineId) return;
+  setBounded(known, keyOf(ownerKey, machineId), { ...settings }, KNOWN_SETTINGS_KEYS);
 }
 
-/** The settings map this iPad last knew for this client on this machine, or null. */
-export function knownSettings(clientId: string, machineId: string): Record<string, string> | null {
-  if (!clientId || !machineId) return null;
-  const v = getBounded(known, keyOf(clientId, machineId));
+/** The settings map this iPad last knew for this owner on this machine, or null. */
+export function knownSettings(ownerKey: string, machineId: string): Record<string, string> | null {
+  if (!ownerKey || !machineId) return null;
+  const v = getBounded(known, keyOf(ownerKey, machineId));
   return v ? { ...v } : null;
 }

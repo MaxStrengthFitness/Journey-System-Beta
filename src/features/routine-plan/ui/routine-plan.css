@@ -609,8 +609,18 @@ button.rpl-cell--next {
   color: var(--eq-ink);
   overflow-wrap: anywhere;
 }
-.rpl-start:disabled { box-shadow: none; cursor: default; }
+/* A choice with nothing to lay lies flat and quiet: no raised face, no
+   lift, the soft edge and the muted ink, so it never looks like the others
+   and does nothing (the whole-branch review, Oct 9 2026). */
+.rpl-start:disabled {
+  background: transparent;
+  border-color: var(--eq-border);
+  box-shadow: none;
+  cursor: default;
+}
 .rpl-start:disabled:active { transform: none; box-shadow: none; }
+.rpl-start:disabled .rpl-start__name,
+.rpl-start:disabled .rpl-start__machines { color: var(--eq-ink-muted); }
 
 /* The two doors when Journey can't tell. */
 .rpl-doors {

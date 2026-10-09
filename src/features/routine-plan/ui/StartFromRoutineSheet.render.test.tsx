@@ -329,7 +329,7 @@ describe("Start from a routine… from the session's corner (AJ's 1b)", () => {
     await answer();
     const a = row("client:A")!;
     expect(a.disabled).toBe(true);
-    expect(a.textContent).toContain("Nothing of it to lay on this floor");
+    expect(a.textContent).toContain("None of its machines can go on today's list");
     expect(a.textContent).toContain("Not on Westlake's floor: Leg Curl");
     await act(async () => a.click());
     expect(laid).toEqual([]);

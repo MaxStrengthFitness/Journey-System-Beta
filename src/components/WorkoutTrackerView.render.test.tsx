@@ -465,6 +465,7 @@ vi.mock("../contexts/ActiveStudioContext", async (importOriginal) => {
 });
 
 import { WorkoutTrackerView } from "./WorkoutTrackerView";
+import { announceOpenSessionRefused, declinedStaleOpenSessions } from "../features/open-session/start";
 import { ToastProvider } from "../contexts/ToastContext";
 import type { Client, Machine, Trainer } from "../types";
 
@@ -3214,9 +3215,9 @@ describe("the Wrap-up's Next time, from Finish to the routine (Oct 8 2026)", () 
    * only what was added with +, so the Wrap-up's Next time can start Routine
    * A from it, even when every machine on the floor was added. This one is
    * resumed (no record on this iPad of how it started), the case the old
-   * whole-floor guess read as Free. An open session reads the same once it
-   * has a client and a Finish; Assign still skips Finish today, and the
-   * round's Who's this? phase brings that test.
+   * whole-floor guess read as Free. An open session reads the same once
+   * Who's this? has given it a client: its Finish is the ordinary one (the
+   * Who's this? describe below, "at Finish: Choose the client ... Next time").
    */
   it("a client session with no routine, resumed, whose list is what was added: Next time starts Routine A from it, even over the whole floor", async () => {
     // No routine; added with + in the order done: the floor's two, the second first.
@@ -3250,6 +3251,9 @@ describe("the Wrap-up's Next time, from Finish to the routine (Oct 8 2026)", () 
  * Completed and open the profile, so Finish never ran, and New client left
  * the session behind.
  */
+/** A write's field set to deleteField(): the set lets go of what it held. */
+const lettingGo = (v: unknown) => !!v && typeof v === "object" && (v as { _methodName?: string })._methodName === "deleteField";
+
 describe("Who's this? gives an open session its client (the open session round, Oct 9 2026)", () => {
   const OPEN_ID = "sess-open";
   const settle = async () => {
@@ -3300,10 +3304,11 @@ describe("Who's this? gives an open session its client (the open session round, 
   const chosen: (string | null)[] = [];
   /** Which of AppContent's setters each change came through: the one that asks first, or the raw one. */
   const via: ("asks" | "now")[] = [];
-  function Floor({ people = [client] }: { people?: Client[] }) {
+  function Floor({ people = [client], onStart }: { people?: Client[]; onStart?: () => void }) {
     const [cid, setCid] = useState<string | null>(null);
     return (
       <WorkoutTrackerView
+        onStartOpenSession={onStart}
         clientId={cid}
         clients={people}
         machines={appWideMachines}
@@ -3537,11 +3542,11 @@ describe("Who's this? gives an open session its client (the open session round, 
     expect(sets).toHaveLength(2);
   });
 
-  it("at Finish: Assign to client, then the End session question comes back as the client's, and its Finish runs the Wrap-up with Next time", async () => {
+  it("at Finish: Choose the client, then the End session question comes back as the client's, and its Finish runs the Wrap-up with Next time", async () => {
     const host = await mount(<Floor />);
     await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
     expect(document.body.textContent).toContain("Who is this session for?");
-    await act(async () => button("Assign to client")!.click());
+    await act(async () => button("Choose the client")!.click());
     expect(document.body.textContent).toContain("Choose the client, then finish their session.");
     await pick("Judy Client");
 
@@ -3590,7 +3595,7 @@ describe("Who's this? gives an open session its client (the open session round, 
   it("New client from Finish adds the person and gives them this session, which is never left behind", async () => {
     const host = await mount(<Floor />);
     await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
-    await act(async () => button("Create new client")!.click());
+    await act(async () => button("New client")!.click());
     await addClient("Ana", "Walkin");
 
     // The new client was written (its id made on the iPad), and the session given to them.
@@ -3662,7 +3667,7 @@ describe("Who's this? gives an open session its client (the open session round, 
     const open = gate();
     const host = await mount(<Floor />);
     await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
-    await act(async () => button("Assign to client")!.click());
+    await act(async () => button("Choose the client")!.click());
     await tapName("Judy Client");
     await act(async () => button("Finish session")!.click());
     await settle();
@@ -3675,14 +3680,16 @@ describe("Who's this? gives an open session its client (the open session round, 
     // The sets the screen held were named in it.
     expect(writes.filter((w) => w.path.startsWith("exerciseLogs/") && w.batch === assign.batch && w.data?.clientId === CLIENT_ID)).toHaveLength(2);
     await open(); // the reads answer late: nothing is issued twice
-    expect(writes.filter((w) => w.path === `sessions/${OPEN_ID}` && w.data?.isUnassigned === false)).toHaveLength(1);
+    expect(writes.filter((w) => w.path === `sessions/${OPEN_ID}` && w.data?.clientId === CLIENT_ID && w.data?.status !== "Completed")).toHaveLength(1);
+    // Finish closes the session too, so it is the assign if the assign was refused (the whole-branch review, Oct 9 2026).
+    expect(finished.data.isUnassigned).toBe(false);
   });
 
   it("Finish straight after Who's this?, before the client's settings answer: her saved settings and starting weight are left alone", async () => {
     netCtl.hold.add("clientMachineSettings");
     const host = await mount(<Floor />);
     await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
-    await act(async () => button("Assign to client")!.click());
+    await act(async () => button("Choose the client")!.click());
     await pick("Judy Client");
     await act(async () => button("Finish session")!.click());
     await settle();
@@ -3699,7 +3706,7 @@ describe("Who's this? gives an open session its client (the open session round, 
     netCtl.noBaseSettings = true; // this iPad never read them
     const host = await mount(<Floor />);
     await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
-    await act(async () => button("Assign to client")!.click());
+    await act(async () => button("Choose the client")!.click());
     await pick("Judy Client");
     await act(async () => button("Finish session")!.click());
     await settle();
@@ -3709,7 +3716,7 @@ describe("Who's this? gives an open session its client (the open session round, 
     expect(setting.data).not.toHaveProperty("startingWeight");
   });
 
-  it("a refused batch sends the session's sets again without the client, and takes the client back without asking", async () => {
+  it("a refused batch sends the session's sets again letting go of the client, and takes the client back without asking", async () => {
     netCtl.refuseLater = true;
     const host = await mount(<Floor />);
     await act(async () => whoButton(host)!.click());
@@ -3725,7 +3732,8 @@ describe("Who's this? gives an open session its client (the open session round, 
     expect(resent.map((w) => w.path).sort()).toEqual([`exerciseLogs/${OPEN_ID}_m-leg-press`, `exerciseLogs/${OPEN_ID}_sm-solon-rear-delt`]);
     for (const w of resent) {
       expect(w.merge).toBe(true);
-      expect(w.data, w.path).not.toHaveProperty("clientId");
+      // Let go of, not just left out (the whole-branch review, Oct 9 2026): a set typed after the tap landed with it.
+      expect(lettingGo(w.data.clientId), w.path).toBe(true);
       expect(w.data.weight).toBe("100");
       expect(w.data.reps).toBe("10");
     }
@@ -3759,10 +3767,10 @@ describe("Who's this? gives an open session its client (the open session round, 
     expect(document.body.textContent).toContain("so it is still open");
     // The client chosen stays chosen: nothing reaches for the screen the trainer is on now.
     expect(chosen).toEqual([CLIENT_ID]);
-    // The sets are still sent again without the client.
+    // The sets are still sent again, letting go of the client.
     const resent = writes.slice(before).filter((w) => w.path.startsWith("exerciseLogs/"));
     expect(resent.length).toBeGreaterThan(0);
-    for (const w of resent) expect(w.data, w.path).not.toHaveProperty("clientId");
+    for (const w of resent) expect(lettingGo(w.data.clientId), w.path).toBe(true);
   });
 
   it("a refusal that lands after Finish ran says nothing about Who's this?: Finish's own batch names the client", async () => {
@@ -3770,7 +3778,7 @@ describe("Who's this? gives an open session its client (the open session round, 
     netCtl.refuseLater = true;
     const host = await mount(<Floor />);
     await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
-    await act(async () => button("Assign to client")!.click());
+    await act(async () => button("Choose the client")!.click());
     await pick("Judy Client");
     await act(async () => button("Finish session")!.click());
     await settle();
@@ -3905,7 +3913,7 @@ describe("Who's this? gives an open session its client (the open session round, 
     await openCard(host, "Rear Delt Hoist");
     await keepDial("Seat", "12");
     await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
-    await act(async () => button("Assign to client")!.click());
+    await act(async () => button("Choose the client")!.click());
     await tapName("Judy Client");
     await act(async () => button("Finish session")!.click());
     await settle();
@@ -3973,5 +3981,174 @@ describe("Who's this? gives an open session its client (the open session round, 
     expect(document.querySelector(".mm-dialog")?.textContent).toContain("Choose who this is first (Who's this?) · your words stay here");
     expect(journalDocs).toEqual([]);
     expect(writes.some((w) => /^clientMachineSettings\/_/.test(w.path))).toBe(false);
+  });
+
+  /* THE WHOLE-BRANCH REVIEW (Oct 9 2026). */
+  it("Discard while Who's this?'s reads are out: nothing is given to anyone afterwards", async () => {
+    const open = gate();
+    const host = await mount(<Floor />);
+    await act(async () => whoButton(host)!.click());
+    await tapName("Judy Client");
+    const discard = document.querySelector<HTMLButtonElement>('button[aria-label="Discard this session"]');
+    expect(discard, "Discard").toBeTruthy();
+    await act(async () => discard!.click());
+    await act(async () => button("Scrap session")!.click());
+    expect(netCtl.deletes).toContain(`sessions/${OPEN_ID}`);
+    await open(); // the reads answer after the Discard
+    expect(sessionAssignWrite(), "no assign after the Discard").toBeUndefined();
+    expect(writes.some((w) => w.path === `clients/${CLIENT_ID}`)).toBe(false);
+    // Discard goes back to the Hub with no client; the client was never put on screen.
+    expect(chosen, "the client on screen was never switched to Judy").not.toContain(CLIENT_ID);
+    expect(localStorage.getItem("max_strength_active_session_id")).not.toBe(OPEN_ID);
+  });
+
+  it("a refused assign marks no first Journey day: the mark goes only once the batch has landed", async () => {
+    netCtl.refuseLater = true;
+    const host = await mount(<Floor />);
+    await act(async () => whoButton(host)!.click());
+    await act(async () => button("New client")!.click());
+    await addClient("Ana", "Walkin");
+    const newId = madeClient("Ana")!.path.split("/")[1];
+    expect(writes.some((w) => w.path === `clients/${newId}` && w.data?.firstSessionDate), "not before the answer").toBe(false);
+    await act(async () => {
+      for (const refuse of netCtl.refusals.splice(0)) refuse(new Error("permission-denied"));
+    });
+    await settle();
+    expect(writes.some((w) => w.path === `clients/${newId}` && w.data?.firstSessionDate), "not after a refusal").toBe(false);
+  });
+
+  it("Finish before the client's routines answer still gets Next time: worked out on the Wrap-up once they do", async () => {
+    netCtl.hold.add("routines");
+    const host = await mount(<Floor />);
+    await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
+    await act(async () => button("Choose the client")!.click());
+    await pick("Judy Client");
+    await act(async () => button("Finish session")!.click());
+    await settle();
+    await settle();
+    expect(document.body.textContent).toContain("Wrap-up · session saved");
+    expect(document.querySelector('[data-testid="next-time"]'), "never a guess before the routines answer").toBeNull();
+    await act(async () => netCtl.release("routines"));
+    await settle();
+    const card = document.querySelector('[data-testid="next-time"]');
+    expect(card, "Next time, once they answered").not.toBeNull();
+    expect(card!.textContent).toContain("Tick the ones that start Routine A.");
+  });
+
+  it("a client added here for the session: their empty routines from the iPad's copy are the answer, so Next time comes offline", async () => {
+    netCtl.fromCache.add("routines");
+    const host = await mount(<Floor />);
+    await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
+    await act(async () => button("New client")!.click());
+    await addClient("Ana", "Walkin");
+    await act(async () => button("Finish session")!.click());
+    await settle();
+    await settle();
+    const card = document.querySelector('[data-testid="next-time"]');
+    expect(card, "Next time for a walk-in").not.toBeNull();
+    expect(card!.textContent).toContain("Tick the ones that start Routine A.");
+    // And their first time on each machine is their starting weight: nothing is on file for them anywhere.
+    const newId = madeClient("Ana")!.path.split("/")[1];
+    const setting = writes.find((w) => w.path === `clientMachineSettings/${newId}_m-leg-press`)!;
+    expect(setting.data.startingWeight).toBe(100);
+  });
+
+  it("the last client's settings never go to the next: one chosen a moment before Finish gets none of them", async () => {
+    const ana = { id: "c-ana", homeStudioId: STUDIO_ID, firstName: "Ana", lastName: "Other", sessionCount: 3 } as Client;
+    function JudyThenOpen() {
+      const [cid, setCid] = useState<string | null>(CLIENT_ID);
+      return (
+        <>
+          <button type="button" data-testid="to-open" onClick={() => setCid(null)}>
+            Open
+          </button>
+          <WorkoutTrackerView
+            clientId={cid}
+            clients={[client, ana]}
+            machines={appWideMachines}
+            trainers={[trainer]}
+            user={{ uid: "uid-coach", email: "coach@maxstrengthfitness.com" } as any}
+            setView={setViewSpy}
+            setSelectedClientId={(id) => setCid(id)}
+            setSelectedClientIdNow={(id) => setCid(id)}
+            authTrainer={trainer}
+            isSyncing={false}
+            setIsSyncing={vi.fn()}
+            schedules={[]}
+          />
+        </>
+      );
+    }
+    // Judy's briefing first: her settings (Seat Angle P2, Seat Distance 7) are read.
+    const host = await mount(<JudyThenOpen />);
+    await act(async () => (host.querySelector('[data-testid="to-open"]') as HTMLButtonElement).click());
+    await settle();
+    // The open session is nobody's: the bar never says the last client's name, and draws no Notes or Pulse for them.
+    expect(barName(host)).toBe("Open session");
+    expect(whoButton(host)).toBeTruthy();
+    expect(host.querySelector('button[aria-label="Session notes"]')).toBeNull();
+    // Ana's settings never answer before Finish.
+    netCtl.hold.add("clientMachineSettings");
+    await act(async () => whoButton(host)!.click());
+    await pick("Ana Other");
+    await act(async () => (host.querySelector(".jg-sbar__finish") as HTMLButtonElement).click());
+    await act(async () => button("Finish session")!.click());
+    await settle();
+    await settle();
+    const setting = writes.find((w) => w.path === "clientMachineSettings/c-ana_m-leg-press")!;
+    expect(setting, "today's weight for Ana").toBeTruthy();
+    expect(setting.data).not.toHaveProperty("settings");
+    expect(setting.data).not.toHaveProperty("startingWeight");
+  });
+
+  it("a read of the studio's open sessions that failed says so, with Try again, never 'No session is open here'", async () => {
+    netCtl.fail.add("sessions");
+    const host = await mount(<Floor />);
+    const nothing = host.querySelector('[data-testid="nothing-on-screen"]');
+    expect(nothing?.getAttribute("data-kind")).toBe("open-failed");
+    expect(host.textContent).toContain("Couldn't read this studio's open sessions.");
+    expect(host.textContent).not.toContain("No session is open here");
+    netCtl.fail.delete("sessions");
+    await act(async () => button("Try again")!.click());
+    await settle();
+    expect(barName(host)).toBe("Open session");
+  });
+
+  it("an abandoned open session of the trainer's is asked about: carry on with it, Who's this? still there", async () => {
+    const hourAndAHalf = new Date(Date.now() - 90 * 60_000);
+    sessionDocs = [{ id: OPEN_ID, data: () => ({ ...openSessionAsWritten(), lastHeartbeatAt: hourAndAHalf, createdAt: hourAndAHalf, startTime: hourAndAHalf }) }];
+    const host = await mount(<Floor />);
+    expect(document.body.textContent).toContain("Your open session was never finished");
+    expect(barName(host)).toBeUndefined();
+    await act(async () => button("Resume it")!.click());
+    await settle();
+    expect(barName(host)).toBe("Open session");
+    expect(whoButton(host)).toBeTruthy();
+    expect(writes.some((w) => w.path === `sessions/${OPEN_ID}` && w.data?.lastHeartbeatAt)).toBe(true);
+    expect(localStorage.getItem("max_strength_active_session_id")).toBe(OPEN_ID);
+  });
+
+  it("...or left as it is, and a new open session started", async () => {
+    const hourAndAHalf = new Date(Date.now() - 90 * 60_000);
+    sessionDocs = [{ id: OPEN_ID, data: () => ({ ...openSessionAsWritten(), lastHeartbeatAt: hourAndAHalf, createdAt: hourAndAHalf, startTime: hourAndAHalf }) }];
+    const start = vi.fn();
+    await mount(<Floor onStart={start} />);
+    await act(async () => button("Start a new session")!.click());
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(declinedStaleOpenSessions().has(OPEN_ID)).toBe(true);
+    expect(document.body.textContent).not.toContain("Your open session was never finished");
+    expect(writes.some((w) => w.path === `sessions/${OPEN_ID}`), "the old one is left exactly as it is").toBe(false);
+  });
+
+  it("a Start the database refused is said here when this screen holds it: the sets typed are kept", async () => {
+    const host = await mount(<Floor />);
+    expect(barName(host)).toBe("Open session");
+    let said = false;
+    await act(async () => {
+      said = announceOpenSessionRefused(OPEN_ID);
+    });
+    expect(said).toBe(true);
+    expect(document.body.textContent).toContain("The open session didn't start, so it isn't on the record. The sets typed are kept: tell a leader.");
+    expect(barName(host)).toBeUndefined();
   });
 });

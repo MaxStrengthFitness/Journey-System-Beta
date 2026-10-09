@@ -38,7 +38,7 @@
  * 300 rows cost one pass, not 300 scans.
  */
 import type { Client, KaizenRosterEntry, ScheduleEntry, WorkoutSession } from "../../types";
-import { clientFirstName, clientInitials, goesByNickname } from "../../lib/client-name";
+import { clientDirectoryName, clientFirstName, clientInitials, goesByNickname } from "../../lib/client-name";
 import { canQuoteSessionNumber, coverageOfClient, homeCutoverOf } from "../../lib/client-coverage";
 import {
   PRIOR_SOURCE_LABEL,
@@ -379,7 +379,7 @@ function nameOf(client: Client): DirectoryRow["name"] {
   const first = clean(client.firstName);
   const last = clean(client.lastName);
   const nickname = goesByNickname(client) ? clean(client.nickname) : null;
-  const display = [first, nickname ? `\u201c${nickname}\u201d` : null, last].filter(Boolean).join(" ") || "Unnamed client";
+  const display = clientDirectoryName(client);
   return {
     first,
     nickname,
