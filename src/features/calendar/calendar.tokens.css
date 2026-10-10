@@ -45,6 +45,10 @@
   --cal-live-text:     #064f89;
   --cal-live-fill:     #dbeefe;
   --cal-live-on:       #ffffff;
+  /* Yours and caution, the Hub's (the rooms round, Oct 10 2026): the blue
+     cast under your bookings on the Week, and the plum of a day not read. */
+  --cal-mine:          #d3e2f1;
+  --cal-warn:          #a2457e;
 
   /* Heatmap ramp. Single hue, ascending lightness -> saturation, so it reads
      as one scale rather than a rainbow. Step 0 is the empty surface. Step 4
@@ -122,6 +126,8 @@
   --cal-live-text:     #98caf9;
   --cal-live-fill:     #23405c;
   --cal-live-on:       #071727;
+  --cal-mine:          #0e243a;
+  --cal-warn:          #d98cbd;
 
   /* Dark is not a flip: the ramp climbs INTO the surface rather than out of
      white, or the low steps glow brighter than the page they sit on. Step 0
@@ -177,7 +183,7 @@
     --cal-ink: #dfe7ef; --cal-ink-2: #b8c6d3; --cal-ink-muted: #9dadbe; --cal-ink-faint: #697b8d;
     --cal-hero: #f36d21; --cal-hero-text: #ff9455; --cal-hero-fill: #4b2915;
     --cal-live: #65abe9; --cal-live-text: #98caf9; --cal-live-fill: #23405c;
-    --cal-live-on: #071727;
+    --cal-live-on: #071727; --cal-mine: #0e243a; --cal-warn: #d98cbd;
     --cal-heat-0: #0d2235; --cal-heat-1: #1a3a57; --cal-heat-2: #295074;
     --cal-heat-3: #386792; --cal-heat-4: #5089bf; --cal-heat-5: #65abe9;
     --cal-heat-ink-lo: #dfe7ef; --cal-heat-ink-hi: #071727;

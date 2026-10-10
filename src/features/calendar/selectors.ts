@@ -11,7 +11,8 @@
  * looking at the calendar from another timezone.
  */
 
-import { studioDateKey, zonedHM } from "../../lib/studio-time";
+import { formatDateWords, studioDateKey, zonedHM } from "../../lib/studio-time";
+import { clockWords } from "../hub-schedule/grid-model";
 import type { Trainer } from "../../types";
 import { initialsOf, shortNameOf, toneFor } from "./trainer-tone";
 import type {
@@ -23,8 +24,14 @@ import type {
   TimeBand,
   TrainerCount,
   TrainerRef,
+  WeekAgendaDay,
   WeekSummary,
 } from "./types";
+
+/** Constant option objects, so each formatter is built once (the iPad round's Intl trap). */
+const WEEKDAY_SHORT: Intl.DateTimeFormatOptions = { weekday: "short" };
+const WEEKDAY_LONG: Intl.DateTimeFormatOptions = { weekday: "long" };
+const MONTH_DAY: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
 
 /* ------------------------------------------------------------------ *
  * Trainers
@@ -259,7 +266,7 @@ export function buildWeekSummary(
     return {
       date,
       key,
-      label: date.toLocaleDateString(undefined, { weekday: "short" }),
+      label: formatDateWords(date, WEEKDAY_SHORT),
       dayOfMonth: date.getDate(),
       isToday: key === todayKey,
       count: (byDay.get(key) || []).length,
@@ -320,6 +327,59 @@ export function buildWeekSummary(
     peak,
     busiestDay,
   };
+}
+
+/* ------------------------------------------------------------------ *
+ * Week: the bookings, day by day (the rooms round, Oct 10 2026)
+ * ------------------------------------------------------------------ */
+
+/**
+ * The week's bookings as an agenda (AJ's answer 3b on "Journey Rooms": the
+ * Week shows who is booked when, the charts folded under it). Seven days,
+ * each its bookings grouped by their start in studio time, a Mindbody
+ * "Unavailable" never a booking. In a slot, the bookings run in the order
+ * `rankOf` gives (yours first, then the studio's order, Unassigned last),
+ * then by name.
+ */
+export function buildWeekAgenda(
+  anchor: Date,
+  sessions: CalendarSession[],
+  rankOf: (trainerId: string | null) => number,
+  today: Date = new Date(),
+): WeekAgendaDay[] {
+  const todayKey = dayKey(today);
+  const byDay = bucketByDay(sessions.filter((s) => !s.isUnavailability));
+  return weekDays(anchor).map((date) => {
+    const key = dayKey(date);
+    const own = byDay.get(key) || [];
+    const bySlot = new Map<number, CalendarSession[]>();
+    for (const s of own) {
+      const min = studioMinutes(s.start);
+      const list = bySlot.get(min);
+      if (list) list.push(s);
+      else bySlot.set(min, [s]);
+    }
+    const slots = [...bySlot.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([min, items]) => ({
+        min,
+        label: clockWords(min),
+        items: [...items].sort(
+          (a, b) => rankOf(a.trainerId) - rankOf(b.trainerId) || a.clientName.localeCompare(b.clientName),
+        ),
+      }));
+    return {
+      date,
+      key,
+      weekday: formatDateWords(date, WEEKDAY_LONG),
+      short: formatDateWords(date, WEEKDAY_SHORT),
+      monthDay: formatDateWords(date, MONTH_DAY),
+      dayOfMonth: date.getDate(),
+      isToday: key === todayKey,
+      count: own.length,
+      slots,
+    };
+  });
 }
 
 /* ------------------------------------------------------------------ *

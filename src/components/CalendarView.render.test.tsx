@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it, vi, type Mock } from "vitest";
 import { act, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { CalendarView, type ScheduleWindowControls } from "./CalendarView";
-import { visibleRange } from "../features/calendar";
+import { visibleRange, weekDays } from "../features/calendar";
 import { studioDateKey } from "../lib/studio-time";
 
 // The Relay layer reads studio tasks from Firestore; not what is tested here.
@@ -383,5 +383,106 @@ describe("CalendarView — Day is the Hub's grid", () => {
     mount(controls({ dayState: () => "ready" }), { trainers: TEAM, authTrainer: TEAM[1] });
     act(() => viewButton("Day").click());
     expect(host!.querySelector(".hs-empty")?.textContent).toBe("Nobody is booked on this day.");
+  });
+});
+
+/* ---------------------------------------------------------------------------
+   The Week shows the bookings, day by day, the charts folded (AJ's 3b).
+   --------------------------------------------------------------------------- */
+
+describe("CalendarView — Week is the week's bookings", () => {
+  const schedules = [
+    bookingAt(9, 0, { id: "w1", clientId: "c1", clientName: "Ruth Avery-Montgomery", trainerId: "t-chris", trainerName: "Christine Avalos" }),
+    bookingAt(9, 0, { id: "w2", clientId: "c2", clientName: "Sam Okafor", trainerId: "t-me", trainerName: "Lena Lindqvist" }),
+    bookingAt(10, 30, { id: "w3", clientId: "c3", clientName: "Priya Nair", trainerName: "Samuel Lee" }),
+    bookingAt(11, 0, { id: "w4", clientName: "Unavailable", trainerId: "t-chris", trainerName: "Christine Avalos" }),
+  ] as any[];
+  const clients = [{ id: "c1" }, { id: "c2" }, { id: "c3" }] as any[];
+
+  function openWeek(extra: Partial<ComponentProps<typeof CalendarView>> = {}) {
+    mount(controls(), { schedules, trainers: TEAM, authTrainer: TEAM[1], clients, ...extra });
+    act(() => viewButton("Week").click());
+  }
+  const today = () => host!.querySelector<HTMLElement>('.cal-wday[data-today="true"]')!;
+
+  it("lists today's bookings by their time, whole names and who each is with, yours first and blue", () => {
+    openWeek();
+    expect(host!.querySelectorAll(".cal-wday")).toHaveLength(7);
+    const slots = [...today().querySelectorAll(".cal-wslot")];
+    expect(slots.map((s) => s.querySelector(".cal-wslot__time")?.textContent)).toEqual(["9 AM", "10:30 AM"]);
+    const nine = [...slots[0].querySelectorAll<HTMLButtonElement>(".cal-wbk")];
+    expect(nine.map((b) => [b.querySelector(".cal-wbk__name")?.textContent, b.querySelector(".cal-wbk__with")?.textContent, b.getAttribute("data-mine")])).toEqual([
+      ["Sam Okafor", "with you", "true"],
+      ["Ruth Avery-Montgomery", "with Christine", null],
+    ]);
+    // A booking no trainer claims says Mindbody's staff name; "Unavailable" is never a booking.
+    expect(slots[1].textContent).toContain("with Samuel Lee");
+    expect(today().textContent).not.toContain("Unavailable");
+    expect(today().querySelector(".cal-wday__count")?.textContent).toBe("3 sessions");
+  });
+
+  it("opens on today: in the week holding today, a day already over is folded to its head, one tap away", () => {
+    const days = weekDays(new Date());
+    const past = days.find((d) => d.toDateString() !== new Date().toDateString() && d < new Date());
+    if (!past) return; // a Sunday: nothing in this week is over yet
+    const earlier = { ...bookingAt(9, 0, { id: "w9", clientId: "c1", clientName: "Iris Okonkwo", trainerId: "t-chris", trainerName: "Christine Avalos" }) };
+    const start = new Date(past);
+    start.setHours(9, 0, 0, 0);
+    earlier.startTime = start.toISOString();
+    earlier.endTime = new Date(start.getTime() + 30 * 60000).toISOString();
+    openWeek({ schedules: [...schedules, earlier] });
+    const section = [...host!.querySelectorAll<HTMLElement>(".cal-wday")].find((s) => s.querySelector(".cal-wday__count")?.textContent === "1 session")!;
+    expect(section.getAttribute("data-folded")).toBe("true");
+    expect(section.textContent).not.toContain("Iris Okonkwo");
+    const fold = section.querySelector<HTMLButtonElement>(".cal-wday__fold")!;
+    expect(fold.getAttribute("aria-expanded")).toBe("false");
+    act(() => fold.click());
+    expect(section.textContent).toContain("Iris Okonkwo");
+    // Today is open.
+    expect(today().getAttribute("data-folded")).toBeNull();
+    expect(today().querySelector(".cal-wbk")).not.toBeNull();
+  });
+
+  it("folds the charts under the strip, closed until asked for", () => {
+    openWeek();
+    const fold = host!.querySelector<HTMLButtonElement>(".cal-fold__btn")!;
+    expect(fold.getAttribute("aria-expanded")).toBe("false");
+    expect(host!.querySelector(".cal-board, .cal-heat, .cal-bars")).toBeNull();
+    act(() => fold.click());
+    expect(host!.querySelector(".cal-board")).not.toBeNull();
+    expect(host!.querySelector(".cal-heat")).not.toBeNull();
+    // No orange "up": the delta is said in the ink.
+    expect(host!.querySelector(".cal-total__delta")).not.toBeNull();
+  });
+
+  it("a tap on a booking opens the client; a tap on a day's head or the strip opens that Day", () => {
+    const onSelectClient = vi.fn();
+    const setView = vi.fn();
+    openWeek({ onSelectClient, setView });
+    const ruth = [...host!.querySelectorAll<HTMLButtonElement>(".cal-wbk")].find((b) => b.textContent?.includes("Ruth"))!;
+    act(() => ruth.click());
+    expect(onSelectClient).toHaveBeenCalledWith("c1");
+    expect(setView).toHaveBeenCalledWith("profile");
+    act(() => today().querySelector<HTMLButtonElement>(".cal-wday__open")!.click());
+    expect(viewButton("Day").getAttribute("aria-pressed")).toBe("true");
+    expect(host!.querySelector(".hs-scroll")).not.toBeNull();
+    act(() => viewButton("Week").click());
+    act(() => host!.querySelector<HTMLButtonElement>('.cal-wstrip__day[data-today="true"]')!.click());
+    expect(viewButton("Day").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("a day not read says so, never Nobody booked; a read empty day says Nobody booked", () => {
+    // A day of this week that isn't today.
+    const days = weekDays(new Date());
+    const other = days[0].toDateString() === new Date().toDateString() ? days[1] : days[0];
+    const failedKey = studioDateKey(new Date(other.getFullYear(), other.getMonth(), other.getDate(), 12))!;
+    mount(controls({ dayState: (key) => (key === failedKey ? "failed" : "ready") }), { trainers: TEAM, authTrainer: TEAM[1] });
+    act(() => viewButton("Week").click());
+    const quiet = [...host!.querySelectorAll<HTMLElement>(".cal-wday__quiet")];
+    expect(quiet.filter((q) => q.textContent === "Nobody booked.")).toHaveLength(6);
+    const unread = quiet.filter((q) => q.getAttribute("data-unread") === "true");
+    expect(unread).toHaveLength(1);
+    expect(unread[0].textContent).toBe("Couldn’t read this day’s bookings.");
+    expect(host!.querySelector(".hs-notice")?.textContent).toMatch(/Couldn.t read one of these days/);
   });
 });

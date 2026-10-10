@@ -209,7 +209,9 @@ const COPIES: Copy[] = [
     file: "features/calendar/calendar.tokens.css",
     dark: DARK,
     fallback: FALLBACK,
-    mirrors: same("cal", [...NEUTRALS, "hero", "hero-text", "hero-fill", "live", "live-text", "live-fill", "live-on", "shadow", ...DEPTH]),
+    // mine and warn since the rooms round (Oct 10 2026): the Week's blue cast
+    // under your bookings, and the plum of a day whose read failed.
+    mirrors: same("cal", [...NEUTRALS, "hero", "hero-text", "hero-fill", "live", "live-text", "live-fill", "live-on", "mine", "warn", "shadow", ...DEPTH]),
     darkMirrors: [
       ["--cal-heat-0", "--eq-surface-2"],
       ["--cal-heat-5", "--eq-live"],
@@ -396,6 +398,15 @@ const PAIRS: [string, string, string, number][] = [
   ["features/calendar/calendar.tokens.css", "--cal-heat-ink-lo", "--cal-heat-3", 4.5],
   ["features/calendar/calendar.tokens.css", "--cal-heat-ink-hi", "--cal-heat-4", 4.5],
   ["features/calendar/calendar.tokens.css", "--cal-heat-ink-hi", "--cal-heat-5", 4.5],
+  // The rooms round (Oct 10 2026): your booking on the Week (a name in the
+  // ink and "with you" in blue on the blue cast, its band 3:1), the plum of
+  // a day not read, and a trainer's initials on every tone.
+  ["features/calendar/calendar.tokens.css", "--cal-ink", "--cal-mine", 4.5],
+  ["features/calendar/calendar.tokens.css", "--cal-live-text", "--cal-mine", 4.5],
+  ["features/calendar/calendar.tokens.css", "--cal-live", "--cal-mine", 3],
+  ["features/calendar/calendar.tokens.css", "--cal-warn", "--cal-surface", 4.5],
+  ["features/calendar/calendar.tokens.css", "--cal-warn", "--cal-surface-2", 4.5],
+  ...[0, 1, 2, 3, 4, 5, 6, 7].map((n) => ["features/calendar/calendar.tokens.css", "--cal-tone-ink", `--t${n}-solid`, 4.5] as [string, string, string, number]),
   ["features/calendar/calendar.tokens.css", "--cal-live-on", "--cal-live", 4.5],
   ["features/calendar/calendar.tokens.css", "--cal-hero-text", "--cal-surface", 4.5],
   ["features/calendar/calendar.tokens.css", "--cal-live-text", "--cal-live-fill", 4.5],

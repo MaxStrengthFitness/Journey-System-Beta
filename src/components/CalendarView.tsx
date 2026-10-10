@@ -301,6 +301,9 @@ export function CalendarView({
     return map;
   }, [visibleTrainers]);
 
+  /* The studio's order (the trainers arrive sorted): who comes first in a Week slot after you. */
+  const trainerOrder = useMemo(() => trainers.map((t) => String(t.id ?? "")).filter(Boolean), [trainers]);
+
   const pickerTrainers = useMemo(
     () => visibleTrainers.filter((t) => t.id).map((t) => ({ id: String(t.id), name: (t.fullName || "").trim() || "Trainer" })),
     [visibleTrainers],
@@ -599,7 +602,12 @@ export function CalendarView({
             anchor={selectedDate}
             sessions={sessions}
             trainerRefs={trainerRefs}
+            trainerOrder={trainerOrder}
+            selfId={authTrainer?.id ?? null}
+            selectedDate={selectedDate}
             onSelectDate={openDay}
+            onSelectClient={openClient}
+            stateOf={stateOf}
           />
         )}
       </div>

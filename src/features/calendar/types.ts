@@ -100,6 +100,33 @@ export interface TimeBand {
   endHour: number;
 }
 
+/** One half hour (or whatever minute bookings start on) of a day in the Week's agenda. */
+export interface WeekAgendaSlot {
+  /** Minutes since the studio's midnight. */
+  min: number;
+  /** "9 AM", "9:30 AM". */
+  label: string;
+  items: CalendarSession[];
+}
+
+/** One day of the Week's agenda (the rooms round, Oct 10 2026). */
+export interface WeekAgendaDay {
+  date: Date;
+  /** yyyy-mm-dd in studio time. */
+  key: string;
+  /** "Saturday". */
+  weekday: string;
+  /** "Sat". */
+  short: string;
+  /** "Oct 10". */
+  monthDay: string;
+  dayOfMonth: number;
+  isToday: boolean;
+  /** Bookings, never Mindbody's "Unavailable". */
+  count: number;
+  slots: WeekAgendaSlot[];
+}
+
 export interface WeekSummary {
   days: DayBar[];
   total: number;

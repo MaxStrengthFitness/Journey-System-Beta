@@ -69,6 +69,8 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   { file: "features/calendar/calendar.css", cls: "cal-pick__name", what: "whose bookings the Calendar shows, on the team picker" },
   { file: "features/calendar/calendar.css", cls: "cal-pick__optname", what: "a trainer in the team picker's list" },
   { file: "features/calendar/calendar.css", cls: "cal-life__item", what: "a client's life event over the Calendar's Day" },
+  { file: "features/calendar/calendar.css", cls: "cal-wbk__name", what: "a client booked on the Calendar's Week" },
+  { file: "features/calendar/calendar.css", cls: "cal-wbk__with", what: "who a booking on the Week is with" },
   { file: "features/client-history/client-history.css", cls: "hist-who__name", what: "the trainer on a history row" },
   { file: "features/client-history/client-history.css", cls: "hsd-set__name", what: "a machine in the session pop-up" },
   { file: "features/trainer-profile/trainer-profile.css", cls: "tp-row__name", what: "a person or client on a My Profile row" },
