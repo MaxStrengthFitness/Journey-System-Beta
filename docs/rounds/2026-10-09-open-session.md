@@ -1,7 +1,8 @@
 # The open session: the FileMaker floor, and settings that go in fast (Oct 9 2026)
 
 **Status: built, reviewed and measured on `oct9/open-session`** (§4), on
-master's `546bb0aa` (the first-session rounds), with its ship script,
+master's `546bb0aa` (the first-session rounds), with master's `dfe28009`
+(the roadmap's Planned list) merged in on Oct 10 (`f9d80c88`), and its ship script,
 `scripts/ship/ship-open-session.ps1` (§4.8). It is not pushed and nothing of
 it is deployed. It ships after AJ's iPad walk of the first-session round
 (Round 65), as agreed: an index and a rules deploy first, then the push, then
@@ -92,6 +93,24 @@ in the code:
 - **Who's this?** in the session bar assigns the client at any time, or still at
   Finish. After that it is an ordinary client session: the client's settings,
   history, the Wrap-up and Next time.
+
+### 3b. AJ's answers to the parked questions (Oct 10 2026)
+
+> "1 if you feel like it needs to then sure but im indifferent. 2 i guess if
+> we have too 3 yes"
+
+1. **A laid starting routine carries no plan.** AJ is indifferent, so it
+   stays simple: Start from a routine… is today's list only, and Next time
+   makes Routine A with no plan. "Start a plan" on Programming is still one
+   tap away for a client new to the studio.
+2. **The floor keeps every + at 40px and scrolls in portrait** rather than
+   squeezing all twenty machines onto the screen.
+3. **The Hub peek's resume button says "Back to the session"**, so "Open
+   session" names only the Client Directory's session before the client is
+   chosen.
+
+Then "go": master's `dfe28009` (the roadmap's Planned list, from another
+session) was merged into the branch and the ship script pointed at it.
 
 ## 4. Build log
 
@@ -405,11 +424,11 @@ was walked is not recorded here: ask AJ.
    .\scripts\ship\ship-open-session.ps1 -Stage prepare`. It changes nothing
    in production or in git (it writes only `logs\`, `dist\` and `build\`): the
    branch and a clean tree; master on GitHub, read with `git ls-remote`,
-   `546bb0aa` or already this branch's head (anything else stops it); the
+   `dfe28009` or already this branch's head (anything else stops it); the
    branch fast-forwards it; the rules and the index changed and holding this
    round's; no function changed; the Firebase login; the restore tag free;
    with the service-account key, the live rules read and found to be
-   `546bb0aa`'s or this branch's (anything else stops it: rules from
+   `dfe28009`'s (the same as `546bb0aa`'s) or this branch's (anything else stops it: rules from
    somewhere else were deployed); no Windows line ends; the case check; the
    typecheck count; the suite in Eastern time; the functions; the three
    builds and the first screen's budget; no perf lab marker; the rules tests.
@@ -448,9 +467,9 @@ was walked is not recorded here: ask AJ.
       Without the key, or if the script can't run, AJ makes the console check
       and types LIVE;
    4. **the restore tag** `restore/2026-10-09-before-open-session` =
-      `546bb0aa`, pushed if it isn't on GitHub;
+      `dfe28009`, pushed if it isn't on GitHub;
    5. **the push**, `git push origin oct9/open-session:master`, fast-forward
-      only, and only while master is still `546bb0aa` (asked of GitHub again
+      only, and only while master is still `dfe28009` (asked of GitHub again
       just before); when master is already the branch, nothing is pushed.
 4. **The index built**, in minutes: the same check with `--index
    "sessions(hostedAtStudioId, isUnassigned, status, createdAt desc)"` says
@@ -556,11 +575,9 @@ mounted test (`MachineMenu.render.test.tsx`):
   `oct9/claude-md`; §6 holds this round's lines in the trim's short form, to
   go in after it.
 - **The parking list (§5)** was left as found, by AJ's protocol: each item
-  is outside this round's area or needs his call. Two are his to answer:
-  whether Next time builds Routine A with a laid starting routine's plan,
-  and whether a never-read client's floor opens offline.
-- **The Hub peek's "Open session"** keeps its name: renaming it is the Hub's
-  next round (§5).
+  is outside this round's area or needs his call. His answers of Oct 10 (§3b)
+  closed two of them (a laid starting routine's plan, the Hub peek's name);
+  whether a never-read client's floor opens offline is still his to answer.
 - **No new Cloud Function, Mindbody call, timer or cadence.** Practice
   profiles and free-form sessions stay a round of their own (the
   first-session round's §7.5).
@@ -576,10 +593,9 @@ why it matters.
   trainer may delete any set: "a set's client never changes" holds only for
   update; create should match its session's client, and delete should be the
   session's trainer's or studio's (pre-existing).
-- **The Hub peek's "Open session" is a different thing.**
-  `hub-schedule/peek-model.ts` (kind `open-session`) resumes a client's
-  running session under the words that now name the session with no client;
-  rename it ("Go to session") when the Hub is next touched.
+- ~~**The Hub peek's "Open session" is a different thing.**~~ Done Oct 10
+  2026 (AJ: "yes"): it says **Back to the session** (`hub-schedule/peek-model.ts`,
+  kind `open-session` unchanged).
 - **Operations → Today's "Left open" row has no action for an open session.**
   `admin/overview/TodayBrief.tsx` draws "Open the session" only with a
   client: a leader can't take up or clear an abandoned open session from
@@ -598,9 +614,9 @@ why it matters.
   `routine-plan/start-from.ts`, `next-time.ts`: laying the Academy's start for
   a client new to the studio puts only its day one on today's list, and Next
   time makes Routine A with no plan (no "3 of 6", no road), where the
-  briefing's Start a plan gives one. AJ's call: should Next time build
-  Routine A with that start's plan (`startingPlanFromRoutine`)? The round says
-  "Today's list only".
+  briefing's Start a plan gives one. AJ, Oct 10 2026: "if you feel like it
+  needs to then sure but im indifferent" — so it stays "Today's list only"
+  (§3b).
 - **Offline, a never-read client gets no floor.** `WorkoutTrackerView`
   `floorView` and `startFromOffered`: an empty cached routines answer is not
   trusted, so a routine-less client session never opens the floor or offers

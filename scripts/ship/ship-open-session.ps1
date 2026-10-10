@@ -1,12 +1,13 @@
 <#
- SCRIPT-VERSION: v1  (Oct 9 2026, the open session)
+ SCRIPT-VERSION: v2  (Oct 10 2026, the open session; master moved to dfe28009)
 
  Ships branch oct9/open-session: the open session round of Oct 9 2026
  (docs\rounds\2026-10-09-open-session.md is the round, its section 4.8 how to
  ship). AJ, Oct 9 2026: the open session "should honestly feel most like a
  filemaker session", and his picks "1b 2a 3a". Built on master as it is on
- GitHub (546bb0aa: the first-session rounds, live on Render since Oct 9 2026;
- checked with git ls-remote). The branch, in order:
+ GitHub (dfe28009: the first-session rounds, live on Render since Oct 9 2026,
+ plus the roadmap's Planned list another session pushed that night, merged
+ into the branch on Oct 10 (f9d80c88); checked with git ls-remote). The branch, in order:
 
    - the round's document: what was found and AJ's picks;
    - Start in one write, never awaited, and the way back to the session;
@@ -32,10 +33,10 @@
       writes what the new ones refuse. Then the LIVE check: gcloud is not on
       AJ's PC, so it runs scripts\check-live-rules.ts with the
       service-account key (read only), and prints the console check too;
-   3. the restore tag restore/2026-10-09-before-open-session = 546bb0aa
+   3. the restore tag restore/2026-10-09-before-open-session = dfe28009
       (master before this round), pushed if it is not there yet;
    4. git push origin oct9/open-session:master, fast-forward only, ONLY when
-      master on GitHub is still 546bb0aa (asked again just before).
+      master on GitHub is still dfe28009 (asked again just before).
  THEN, BY HAND (golive prints it): the index built, the iPad walk of
  Round 66 BEFORE Render (AJ's rule is at most two rounds shipped unwalked),
  then Render: a push deploys NOTHING there. The web service needs Manual
@@ -56,11 +57,11 @@
  prepare  changes nothing in production and nothing in git (it reads GitHub
           with git ls-remote and the live rules with the key, and writes
           only logs\, dist\ and build\): the branch, a clean tree, that
-          master on GitHub is 546bb0aa or already the branch's head
+          master on GitHub is dfe28009 or already the branch's head
           (anything else: stop and ask Claude), that the branch
-          fast-forwards 546bb0aa, what goes live (rules and the index; no
+          fast-forwards dfe28009, what goes live (rules and the index; no
           functions), the Firebase login, the restore tag free or already
-          546bb0aa, the live rules (546bb0aa's or this branch's; anything
+          dfe28009, the live rules (dfe28009's or this branch's; anything
           else stops it), no Windows line ends, the case check, that
           firestore.indexes.json parses with no field overrides and holds
           the sessions index, that firestore.rules holds the round's rules,
@@ -71,7 +72,7 @@
           tested in logs\ship-open-session.prepared. Ends PREPARE PASSED.
 
  golive   refuses unless the branch is exactly what prepare tested and
-          master is 546bb0aa or the branch's head, asks for GO, then does
+          master is dfe28009 or the branch's head, asks for GO, then does
           1-4 above and stops at the first failure (each stop says what is
           already live). Then it prints the steps left for AJ by hand.
 
@@ -100,7 +101,7 @@ $RestoreTag = 'restore/2026-10-09-before-open-session'
 # master on GitHub when this round was finished (git ls-remote, Oct 9 2026):
 # the first-session rounds, live on Render since Oct 9 2026. The round was
 # built and measured on exactly this commit.
-$MasterBase = '546bb0aa'
+$MasterBase = 'dfe28009'
 # 2 since the Hub fixes (Oct 1): clinical-review/charts.tsx and
 # EditTrainerModal.tsx. This round keeps the same two. More is new.
 $TscBaseline = 2
@@ -307,7 +308,7 @@ if ($Stage -eq 'prepare') {
   if (-not (@($fl.Output) -match '@')) { Stop-Here 'no Firebase login on this PC. Run: npx firebase login, then prepare again.' }
 
   # The restore point golive will make: free, or already master BEFORE the
-  # round (546bb0aa), never master as it is now (which may be the branch).
+  # round (dfe28009), never master as it is now (which may be the branch).
   $tagOnGitHub = & git --no-optional-locks ls-remote --tags origin "refs/tags/$RestoreTag"
   if ($LASTEXITCODE -ne 0) { Stop-Here 'could not ask GitHub for its tags.' }
   if ($tagOnGitHub) {
@@ -517,7 +518,7 @@ if ($live -eq 0) {
   Log "AJ confirmed: the live rules hold '$($LiveRulesMarks -join "' and '")'." 'Green'
 }
 
-# 3. The restore point: master BEFORE this round (546bb0aa), whatever master
+# 3. The restore point: master BEFORE this round (dfe28009), whatever master
 #    is now.
 $tagOnGitHub = & git --no-optional-locks ls-remote --tags origin "refs/tags/$RestoreTag"
 if ($LASTEXITCODE -ne 0) { Stop-Here 'could not ask GitHub for its tags. The index and rules are deployed (harmless); nothing was pushed.' }
