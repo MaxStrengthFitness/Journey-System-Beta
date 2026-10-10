@@ -627,11 +627,14 @@ export function BriefingScreen({
   const sinceCount =
     lastTime.length + notes.headsUp.length + markers.length + activeJournalFocuses.length;
 
-  /* On the way in: Dials open by default (one tap is the usual capture);
-     Sore spot and Note a tap away; Hand over the iPad opens Pulse's client
-     mode. Untouched = not asked, exactly as before. */
+  /* On the way in: every drawer folded until a trainer opens it, the Dials
+     too (AJ, Oct 9 2026, the floor round's 2a: they're optional, and Start
+     is the job; they were open by default until then and were about 60 of
+     the briefing's words). The Dials chip counts what was tapped while
+     folded. Hand over the iPad opens Pulse's client mode. Untouched = not
+     asked, exactly as before. */
   const [drawer, setDrawer] = useState<{ dials: boolean; sore: boolean; note: boolean }>({
-    dials: true,
+    dials: false,
     sore: false,
     note: false,
   });

@@ -10,7 +10,8 @@
  *   2. Since last time: how the last session went, notes since, time away.
  *   3. The one thing to ask about.
  *   4. On the way in: Dials · Sore spot · Note · Hand her the iPad, all
- *      optional, all one tap away.
+ *      optional, all one tap away and folded until tapped (the Dials too,
+ *      since the floor round, Oct 9 2026).
  *   5. The routine as ONE line, tap to edit.
  *   6. Admin (InBody, renewal) as a quiet footer.
  *

@@ -298,6 +298,7 @@ function Screen({ onStart = () => {}, last = lastSession as WorkoutSession | nul
 describe("the pre-session briefing mounts", () => {
   it("draws four Dials in order — sleep, energy, recovery, stress — and no pill words", async () => {
     const host = await mount(<Screen />);
+    await click(buttonByText(host, "Dials")); // folded until tapped (the floor round, 2a)
     const dials = Array.from(host.querySelectorAll('[data-testid="briefing-dials"] [data-scale]'));
     expect(dials.map((d) => d.getAttribute("data-scale"))).toEqual(["sleep", "energy", "recovery", "stress"]);
     // Each is the five-segment bar, untouched.
@@ -326,7 +327,8 @@ describe("the pre-session briefing mounts", () => {
     expect("readiness" in untouched).toBe(false);
     expect("sleepQuality" in untouched).toBe(false);
 
-    // Tap "A bit short" on Sleep (position -1), then START.
+    // Open the Dials, tap "A bit short" on Sleep (position -1), then START.
+    await click(buttonByText(host, "Dials"));
     const sleep = host.querySelector('[data-testid="briefing-dials"] [data-scale="sleep"]')!;
     await click(sleep.querySelector('[data-pos="-1"]'));
     expect(sleep.querySelector('[role="radio"][aria-checked="true"]')!.getAttribute("data-pos")).toBe("-1");
@@ -766,16 +768,26 @@ describe("the Stack (AJ's walk, Oct 3 2026)", () => {
     expect(host.querySelector('[data-testid="routine-builder"]')?.getAttribute("data-count")).toBe("2");
   });
 
-  it("offers every capture a tap away, with Dials open and the rest folded", async () => {
+  // AJ, Oct 9 2026, the floor round's 2a: the Dials are optional and Start is the job, so every
+  // drawer is folded until a trainer taps it, and the Dials chip counts what was tapped.
+  it("offers every capture a tap away, every drawer folded until tapped", async () => {
     const host = await mount(<Screen />);
     const chips = host.querySelector('[aria-label="What to fill in"]')!;
     const words = Array.from(chips.querySelectorAll("button")).map((b) => b.textContent);
     expect(words.slice(0, 4)).toEqual(["Dials", "Sore spot", "Note", "Update Pulse"]);
     // In her own pronoun (this client has none on file).
     expect(words[4]).toBe("Hand over the iPad");
-    expect(host.querySelector('[data-testid="briefing-dials"]')).toBeTruthy();
+    expect(host.querySelector('[data-testid="briefing-dials"]')).toBeNull();
     expect(host.querySelector(".br__textarea")).toBeNull();
     expect(host.querySelector('[data-testid="briefing-sore"]')).toBeNull();
+    expect(buttonByText(host, "Dials")!.getAttribute("aria-pressed")).toBe("false");
+
+    await click(buttonByText(host, "Dials"));
+    const sleep = host.querySelector('[data-testid="briefing-dials"] [data-scale="sleep"]')!;
+    await click(sleep.querySelector('[data-pos="-1"]'));
+    await click(buttonByText(host, "Dials"));
+    expect(host.querySelector('[data-testid="briefing-dials"]')).toBeNull();
+    expect(buttonByText(host, "Dials")!.textContent).toBe("Dials · 1");
   });
 
   it("a tap on the body opens the rating for that region and writes nothing until it is rated", async () => {
