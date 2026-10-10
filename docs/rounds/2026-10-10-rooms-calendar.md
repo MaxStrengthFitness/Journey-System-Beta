@@ -69,3 +69,56 @@ The mark ink is white in light and the frame's navy `#002341` in dark (the sessi
 | 6 | The documents (the calendar README, the rooms README, KNOWN-TRAPS' Navy Frame part, the changelog and the rounds index) and the counts. |
 
 Each phase is typechecked (2, the baseline) and the whole suite run before it is committed.
+
+## 4. What was built, commit by commit
+
+| Phase | Commit | What |
+| --- | --- | --- |
+| 0 | `96f1d6b0` | This document. |
+| 1 | `30621cb2` | The room hues (`--room-<id>`, `--room-mark-ink`, `--room-session-ink` in `index.css`), measured and held by `room-hues.test.ts`; `src/features/rooms/` (`RoomBar`, `RoomSwitch`, `rooms.css`, `rooms.ts`, README, render test). |
+| 2 | `72c590ce` | The Calendar's header becomes the room bar (the switch, `TeamPicker`, the stepper as a raised group, Today, Refresh); full-bleed; Month as one panel with quiet cells (the number chip, the count, a life-event dot), today orange and picked blue (`.hd-day`'s rule); the schedule window's `dayState` and `retry` handed in (AppContent), with one plum notice and Try again; the tones, the avatar ink and the delta out of the job colours. |
+| 3 | `9bb66374` | The Day is the Hub's grid (`DayView` over `HubGrid` and `HubCard`, `PhoneDayList` on a phone), the columns by `columns.ts` (the Calendar's name matching retired everywhere), the hatching from the agreed standing week, the day's life events folded (`DayLife`); the bar folds into one line on a wide screen; the swimlanes' code and CSS removed. `HubCard` takes `opensPeek` (the Hub's cards unchanged). |
+| 4 | `226b1bac` | The Week is the week's bookings (`buildWeekAgenda`): the strip, the charts folded, each day a panel of bookings by time, yours blue, the days already over folded in the week holding today. `--cal-mine` and `--cal-warn` join the palette copy. |
+| 5 | `2235b6f6` | `calendar-look.test.ts` (the scale, the upright display face, no cut names, no raw hex, 40px taps, the error screen); the error screen in tokens, with Back to the Hub instead of a reload. |
+| 5 | `15ccb24e` | The photos' fix: on a phone the bar's second row keeps one line (Refresh its icon, the stepper narrower). |
+| 6 | (this) | The documents and the counts. |
+
+## 5. What the Day and the Week look like now
+
+Photos on the perf lab (local emulators, project `demo-perf-lab`, the seeded studio Lakeside with its clock held at 09:40 on Oct 10 2026), the same names as the before set:
+
+- **Before**: `scratchpad\rooms\shots\calendar-{month,week,day}-{portrait,landscape}-{light,dark}.png` and `client-archive-*.png` (the Journey Rooms photos).
+- **After**: `scratchpad\rooms\after\` (the same twelve Calendar names and four `client-archive-*`), plus `calendar-day-phone-light.png` (390 x 844). The scratchpad is `C:\Users\austi\AppData\Local\Temp\claude\C--Users-austi-Projects-Journey-System-Beta-master\2723221c-d4b5-45b2-9568-81d01750d27e\scratchpad\`.
+
+- **Day**: the Hub's grid under the room bar. Lena's column first under the blue You head ("22 sessions · 16 to go"), then Dana, Jo, Marcus, Riley and Sam, every client's name whole, the 9:40 orange now line across the columns and the rail blue up to it, the morning's finished bookings receded; "2 life events" folded above. Upright the six columns scroll sideways with yours pinned (the Hub's own behaviour); on its side they all fit. On a phone, the Hub's list, "with Dana" under each card.
+- **Week**: the strip (Sat 10 blue with today's orange underline), "The week in charts" folded, Sunday "Nobody booked.", Monday to Friday folded to their heads ("83 sessions" and a chevron), then Saturday open: "7 AM · Anika Hollister with you (blue) · Patricia Petrakis with Dana · …", one row of whole-name cards per start time.
+- **Month**: one panel filling the iPad under the bar, the counts in Saira, a dot on each day with a life event, today's 10 a blue chip with an orange underline.
+- **The client's Activity Archive calendar**: unchanged to the eye (its header and switch are its own); it shares the token fixes.
+
+## 6. What AJ should hear
+
+1. **The hatching is in.** It costs one listener on the studio's standing weeks, only while the Day is on screen on an iPad, only for someone who works at the studio (`mayReadWeeks`), and it is the Hub's own read (the Hub isn't mounted while the Calendar is). Not cheap enough to leave out, cheap enough to keep.
+2. **Two hues moved from the proposal page.** The Calendar's indigo sat 28° from the picked blue; it is now `#5048A6` / `#A79FF0` (35° and 41°). My Studio's ochre sat 30° from the orange of now; it is now `#85690A` / `#DDB955` (44°). The rest are the page's. **Learning's green sits on the same hue as the "renew" and "done" green** (5° light), and Clients' teal near dark's "done" teal (13°): not one of the four jobs the brief named, but worth a look when those rooms are built.
+3. **The trainer tones changed**, in the Week's folded trainer load and in every client's History (their avatars and rows): the orange, the logo blue and the plum among them moved to olive, slate and taupe, and the dark amber to an ochre. Each trainer keeps the same slot (the hash didn't change), only the colour.
+4. **Decided along the way** (each easy to turn back): the Day's life events are folded until tapped (a client's home life stays off a screen a client can see, the Hub's Get to know rule); in the week holding today the days already over start folded, so the Week opens on today; the Month's Sessions · Events switch went (the room has one switch); the Week's days are an agenda on an iPad on its side too (the brief allowed side by side; whole names read better as the agenda); a Day card on the Calendar shows no session number and no "Not logged" (the Calendar reads no sessions, so it claims nothing); a tap on a column head does nothing on the Calendar (on the Hub it opens that trainer's list).
+5. **The error screen** no longer reloads the page (a reload from a screen is a known trap: offline it opens blank, and it never asks about a session): it says "The Calendar couldn't open" and offers Back to the Hub.
+
+## 7. Parked
+
+- The client profile's Activity Archive keeps its own header and the old flat solid-blue switch (`.cal-seg`) until the profile's room round.
+- The phone's Day list starts at the day's first booking, not at now (the Hub's `PhoneDayList`, unchanged).
+- The Relay strip sits over the Day's grid, capped at a third of the room; its own look is Relay's round.
+- Learning, My Studio, Operations, Admins, the Hub, the client profile and the session take their room bars in their own rounds; their hues are measured and waiting.
+
+## 8. Measured
+
+Typecheck **2** (the baseline: `clinical-review/charts.tsx`, `EditTrainerModal.tsx`). Suite **13,647** passing in **821** files (`TZ=America/New_York npx vitest run --dir src --testTimeout=30000` in `.claude\worktrees\agent-aedbdb53ef5270ef8` on AJ's PC, its files in LF; master `609c2977` measured 13,514 in 818 the same way). Production build clean (`npx vite build`, `NODE_ENV` unset); the first screen **464.5 KB gzip** of the 480 budget (8 files, 1,606.8 KB raw); the Calendar stays a lazy screen (its chunk 19.2 KB, 7.0 KB gzip). No rules, index, Functions, Mindbody or Firestore structure change: a push and Render's buttons would be the whole ship, and nothing has been pushed.
+
+## 9. For CLAUDE.md after the trim
+
+`CLAUDE.md` is being trimmed on another branch, so this round leaves it alone. What it should say once the trim lands:
+
+- **Where things are**, a row: *Rooms (the room bar and the room hues)* — `src/features/rooms/`: `RoomBar` (the mark, the name, one switch, the tools, a second row in the same shelf; it folds into one line on a wide screen) and `RoomSwitch`; the hues are `--room-<id>` in `src/index.css`, painted on the mark and the bar's 3px line only. Read its README first; `docs/rounds/2026-10-10-rooms-calendar.md` is the round. The Calendar is the first room.
+- **Where things are**, a row: *The Calendar* — `src/features/calendar/` and `components/CalendarView.tsx`: a room (the bar: Month · Week · Day, the team picker, the stepper, Refresh); Month one panel of quiet cells; Week the bookings day by day (`buildWeekAgenda`), the charts folded; Day the Hub's `HubGrid` and `HubCard` (columns by `columns.ts`, never a name); unknown is never empty (the schedule window's `dayState` and `retry`). Read its README first.
+- **Decisions**, under the Navy Frame: *A room's hue says where you are* (AJ's 1b, Oct 10 2026: "each place should feel a bit different but the same so it feels like one app"): a fifth colour job, on a room bar's mark tile and the 3px line along its foot only, never a button, a chip, words or data; measured in both modes (3:1 for the mark's icon and the line) and kept 30° of hue from the blue, the orange, the crimson and the plum unless a grey; the Hub keeps the logo blue and the session the orange. Held by `features/rooms/room-hues.test.ts`.
+- **Commands**, the Tests row: **13,647** passing in 821 files on `oct10/rooms-calendar` (Oct 10 2026; typecheck 2; first screen 464.5 KB gzip), the previous row moved to `docs/KNOWN-TRAPS.md#baselines`.

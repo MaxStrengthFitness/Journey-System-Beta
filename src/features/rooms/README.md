@@ -56,7 +56,9 @@ The measurements are in the round document (§2.2).
 
 - The bar is a **shelf** (`--shelf`, z 10): put it first in a flex column whose body scrolls under it, so it stays put. It is full-bleed: the room's own padding goes on the body below it, never round the bar.
 - A tool on the bar is `.rm-tool` (raised on the `--input` 3:1 edge, 40px, 14/700, a press on `:active`), or the room's own control drawn the same way.
-- On a phone (the bar's own container under 520px) the switch takes a line of its own, the width of the phone.
+- The bar is a container (`container: rm-bar / inline-size`) and its rows sit in one inner box (`.rm-bar__in`), because a container query styles a container's descendants, never the container itself. A room's own stylesheet may ask `@container rm-bar (...)` about its controls on the bar (the Calendar's Refresh is its icon on a phone).
+- **On a wide screen** (the bar 1100px or more: an iPad on its side) the two rows fold into one line: the rows become `display: contents`, so the name, the switch and the second row's controls share one line and the tools go last, on the right. Anything that doesn't fit wraps, as upright. A room that wants something pushed right in its second row gives it `margin-left: auto` (the Calendar's Refresh).
+- On a phone (the bar under 520px) the switch takes a line of its own, the width of the phone, and the rows' gaps tighten to 8px.
 
 ## Who has it
 

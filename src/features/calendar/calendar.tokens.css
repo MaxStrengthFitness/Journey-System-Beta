@@ -18,10 +18,17 @@
 
    THE NAVY FRAME (Oct 4 2026): the surfaces, ink, hero and live are
    equipment.tokens.css's values (palette-copies.test.ts holds them there),
-   and their dark fills are opaque at the accent's own hue. The trainer
-   tones are identity colours and did not move. The heat ramp's dark steps
-   climb from the navy card rather than the old near-black, and its words
-   change ink at step 4, where each step passes 4.5:1 in both modes.
+   and their dark fills are opaque at the accent's own hue. The heat ramp's
+   dark steps climb from the navy card rather than the old near-black, and
+   its words change ink at step 4, where each step passes 4.5:1 in both
+   modes.
+
+   THE ROOMS ROUND (Oct 10 2026): no trainer tone wears a colour that has a
+   job. t0 was the orange of now (now olive), t1 the logo blue, read as
+   yours (now slate), t5 the plum of caution (now taupe), and t4's dark an
+   orange amber (now an ochre). The initials on a tone are --cal-tone-ink,
+   measured on every solid. --cal-mine (your bookings' blue cast) and
+   --cal-warn (the plum of a day not read) are the Hub's.
    ========================================================================== */
 
 :root {
