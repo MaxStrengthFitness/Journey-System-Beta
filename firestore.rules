@@ -3877,11 +3877,37 @@ service cloud.firestore {
     }
 
     // ACCESS REQUESTS
+    //
+    // Privacy (Oct 10 2026). A request holds a stranger's name, email and
+    // phone, and anyone with a Google account can sign in, so "any signed-in
+    // user" was everyone. Now:
+    //   - reading: the person who sent it (Type 1 sits at their uid; Type 2
+    //     names them in trainerId), and the people who let people in:
+    //     anyone who runs a studio (a studio-leader role or the grant),
+    //     owners and administrators. Not "leaders of the REQUESTED studio":
+    //     My Studio -> Team and Operations -> Staff & Roles list every
+    //     Pending request with one query on status alone, and a rule is not
+    //     a filter, so a per-studio rule would refuse that query. Narrowing
+    //     it means a query that names the studios, and a new index.
+    //     features/admin/staff/request-readers.ts is the app's mirror, so a
+    //     trainer's iPad never opens a listener this refuses.
+    //   - creating a Type 1 request: signed in, at the doc id of their own
+    //     uid, with userId their own uid (approval writes trainers/{userId}).
+    //     The front door writes exactly that (front-door/my-request.ts).
     match /access_requests/{requestId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+                    requestId == request.auth.uid ||
+                    resource.data.trainerId == request.auth.uid ||
+                    resource.data.get('userId', '') == request.auth.uid ||
+                    isSuperAdmin() || isFranchiseOwner() ||
+                    leadsAnyStudio(getRole(), callerTrainer())
+                  );
       allow create: if (
                       // Type 1: Initial System Access
                       (
+                        isAuthenticated() &&
+                        requestId == request.auth.uid &&
+                        request.resource.data.get('userId', '') == request.auth.uid &&
                         hasRequiredFields(['email', 'fullName']) &&
                         request.resource.data.email is string && request.resource.data.email.size() < 100 &&
                         request.resource.data.fullName is string && request.resource.data.fullName.size() < 100 &&
@@ -3899,9 +3925,13 @@ service cloud.firestore {
                     );
       // A studio's leaders let people in from My Studio -> Team (My Studio
       // round, Sep 2026): marking the request Approved is theirs too.
+      // The requester's own clause also asks that the request was already
+      // theirs (Oct 10 2026): it used to check only the new data, so anyone
+      // could rewrite another person's studio request by naming themselves.
       allow update, delete: if isSuperAdmin() || isFranchiseOwner() ||
                             (isAuthenticated() && leadsAnyStudio(getRole(), callerTrainer())) ||
-                            (isAuthenticated() && request.resource.data.type == 'studio_access' && request.resource.data.trainerId == request.auth.uid);
+                            (isAuthenticated() && resource.data.get('trainerId', '') == request.auth.uid &&
+                              request.resource.data.type == 'studio_access' && request.resource.data.trainerId == request.auth.uid);
     }
 
     // BUG REPORTS

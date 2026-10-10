@@ -78,7 +78,7 @@ export function TeamSection({ authTrainer, clients, trainers, onOpenClient, onOp
    * waiting to be let in (voice-review round, Sep 27 2026). A new hire used
    * to depend on a leader scrolling past every other panel to the staff list.
    */
-  const roster = useStaffRoster({ trainers: trainers ?? NONE, studio: activeStudio ?? null, studioId: activeStudioId ?? null });
+  const roster = useStaffRoster({ reader: authTrainer, trainers: trainers ?? NONE, studio: activeStudio ?? null, studioId: activeStudioId ?? null });
   const waiting = roster.rows.filter((r) => r.state === "awaiting-approval").length;
   return (
     <div className="ms__team">

@@ -458,6 +458,7 @@ function OperationsShell({
             return (
               <AdminStaffTab
                 key={tabKey}
+                reader={authTrainer}
                 trainers={trainers}
                 studios={studios}
                 activeStudioId={activeStudioId}
