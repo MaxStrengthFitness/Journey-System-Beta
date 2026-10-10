@@ -153,6 +153,11 @@ describe("the one loud orange", () => {
     expect(readers).toEqual([]);
   });
 
+  it("the session bar's Notes and Pulse draw their icons in the ink, so Finish is the bar's one orange", () => {
+    // The floor round, Oct 9 2026, F4: the icons were --jg-hero until then.
+    expect(declared(SESSION, ".jg-sbar__btn svg").color).toBe("var(--jg-ink)");
+  });
+
   it("a rule that paints the hero orange as a fill carries no words", () => {
     // --jg-hero is the orange of marks: bars, edges, the meter. Words on an
     // orange are --jg-go's.

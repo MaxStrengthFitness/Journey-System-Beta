@@ -366,10 +366,12 @@ export interface WrapUpScreenProps {
    colours, so neither is used: chart-2 is the hero orange, kept for the one
    loud action of a screen, and chart-1 is the brand blue of action and
    selection in the light theme. Nor the meaning colours: green is "done" and
-   plum a caution, and a muscle group is neither. So sky (chart-4), amber
+   plum a caution, and a muscle group is neither. So sky (chart-4), indigo
    (chart-5) and the strong neutral ink, with the chart palette's own grey
-   (chart-3) for "Other". The region's name and share are written beside
-   every bar, so the colour is never the only way to tell. */
+   (chart-3) for "Other". chart-5 was amber until the floor round (Oct 9
+   2026, F4): beside the Navy Frame it read as the orange of now and go. The
+   region's name and share are written beside every bar, so the colour is
+   never the only way to tell. */
 const GROUP_TONE: Record<string, string> = {
   "Lower Body": "bg-chart-4",
   "Upper Body": "bg-chart-5",
@@ -381,7 +383,8 @@ const OTHER_TONE = GROUP_TONE.Other;
 /** A card's head: the label voice, 14/700 in ink-2, in its own
  *  capitalisation (type and depth review, Oct 5 2026; it was 12px capitals,
  *  the pattern the round took out everywhere else). The page's one eyebrow,
- *  over the h1, keeps the capitals. */
+ *  over the h1, keeps the capitals: the app's one capitals style, the same
+ *  over every page title (type-voice.test.ts, EYEBROW_STYLE). */
 function Kicker({ children }: { children: React.ReactNode }) {
   return <div className="text-[14px] font-bold text-ink-d2 break-words">{children}</div>;
 }
@@ -436,7 +439,7 @@ function TodayRow({ line, coverage }: { line: TodayLine; coverage: HistoryCovera
       <span className="flex-1 min-w-0 text-[14px] font-semibold text-ink-d1 break-words">{line.name}</span>
       {performed ? (
         <>
-          <span className="font-mono tabular-nums text-[14px] font-bold text-ink-d1 whitespace-nowrap">
+          <span className="tabular-nums text-[14px] font-bold text-ink-d1 whitespace-nowrap">
             {line.weight !== null ? fmtLb(line.weight) : "–"}
             <span className="text-[11px] font-semibold text-ink-d3 ml-0.5">lb</span>
             <span className="text-ink-d3 mx-1">×</span>
@@ -870,7 +873,7 @@ export function WrapUpScreen({
               <div className="pt-2 border-t border-div-d">
                 <div className="flex items-baseline justify-between mb-2">
                   <span className="text-[12px] font-semibold text-ink-d3">Where the work went</span>
-                  <span className="font-mono text-[12px] text-ink-d2">{Math.round(tonnage).toLocaleString()} lb moved</span>
+                  <span className="tabular-nums text-[12px] text-ink-d2">{Math.round(tonnage).toLocaleString()} lb moved</span>
                 </div>
                 <div className="flex flex-col gap-1.5">
                   {byRegion.map(([g, v]) => (
@@ -880,7 +883,7 @@ export function WrapUpScreen({
                       <span className="flex-1 h-1.5 rounded-full bg-bg-dark-3 overflow-hidden">
                         <span className={`block h-full ${GROUP_TONE[g] ?? OTHER_TONE}`} style={{ width: `${Math.round((100 * v) / tonnage)}%` }} />
                       </span>
-                      <span className="w-10 text-right font-mono text-[11px] text-ink-d3">{Math.round((100 * v) / tonnage)}%</span>
+                      <span className="w-10 text-right tabular-nums text-[11px] text-ink-d3">{Math.round((100 * v) / tonnage)}%</span>
                     </div>
                   ))}
                 </div>
@@ -1236,7 +1239,7 @@ export function WrapUpScreen({
             ].map((t) => (
               <div key={t.label} className="rounded-xl border border-(--edge) bg-clip-padding bg-bg-dark-2 shadow-(--panel-lift) px-3 py-2">
                 <div className="text-[12px] font-semibold text-ink-d3">{t.label}</div>
-                <div className="font-mono text-[14px] font-bold text-ink-d2">{t.value}</div>
+                <div className="tabular-nums text-[14px] font-bold text-ink-d2">{t.value}</div>
               </div>
             ))}
           </div>

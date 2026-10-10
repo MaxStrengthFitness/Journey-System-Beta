@@ -394,7 +394,10 @@ describe("the session sheets", () => {
     // The open tab is a selection, so it is the blue (AJ, Oct 4 2026).
     expect(sidebar).toContain('? "bg-primary hover:bg-primary text-primary-foreground"');
     expect(sidebar).not.toMatch(/bg-\(--eq-go\)/);
-    expect(tracker).toContain("focus-visible:ring-(--eq-hero) focus-visible:border-(--eq-hero)");
+    // The note for the next trainer takes the field's own blue focus: a focus is a selection, never
+    // the orange of marks (the floor round, Oct 9 2026, F4; it was drawn in --eq-hero until then).
+    expect(tracker).not.toContain("focus-visible:ring-(--eq-hero)");
+    expect(tracker).not.toContain("focus-visible:border-(--eq-hero)");
     // The introductory-session banner (words and icons in the go pair) was
     // held here until the intro-session path, which no caller ever set, was
     // removed (the first-session design round, Oct 8 2026, §4.8).

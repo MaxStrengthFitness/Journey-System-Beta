@@ -350,7 +350,7 @@
     --chart-2: #F36D21;
     --chart-3: #68717A;
     --chart-4: #0EA5E9;
-    --chart-5: #F59E0B;
+    --chart-5: #5B52C9;             /* indigo, a data colour (the Wrap-up's Upper Body): amber read as the orange of now and go. 5.5:1 on a card (the floor round, Oct 9 2026, F4) */
     --radius: 0.625rem;
     --sidebar: #FFFFFF;
     --sidebar-foreground: #0F172A;
@@ -678,7 +678,7 @@
     --chart-2: #F36D21;
     --chart-3: #68717A;
     --chart-4: #0EA5E9;
-    --chart-5: #F59E0B;
+    --chart-5: #9C93F2;             /* indigo, 5.6:1 on a card */
     --sidebar: #0F172A;
     --sidebar-foreground: #F8FAFC;
     --sidebar-primary: #38BDF8;

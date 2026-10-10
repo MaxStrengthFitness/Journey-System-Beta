@@ -1107,6 +1107,21 @@ describe("the Wrap-up follows the theme, and keeps its confetti", () => {
       expect([...sizes].filter((n) => ![11, 12, 14, 17, 22, 30].includes(n)), f).toEqual([]);
       expect(src, f).not.toMatch(/ring-cyan|border-cyan/);
       expect(src.split(/["'`]/).filter((s) => PALETTE.test(s)), f).toEqual([]);
+      // Geist for every number, even-width where they line up (the floor round, Oct 9 2026, F5):
+      // the code typeface drew "lb moved", the shares, today's lines and the lifetime tiles until then.
+      expect(src, f).not.toMatch(/\bfont-mono\b/);
+    }
+  });
+
+  // The floor round, Oct 9 2026, F4: Upper Body's bar was amber (chart-5), which beside the Navy
+  // Frame read as the orange of now and go. chart-5 is a cool data colour in both themes.
+  it("draws no region's bar in an orange", () => {
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../index.css"), "utf8");
+    const values = [...css.matchAll(/--chart-5:\s*(#[0-9A-Fa-f]{6})/g)].map((m) => m[1]);
+    expect(values).toHaveLength(2);
+    for (const hex of values) {
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+      expect(b > r && b > g, `${hex} is a cool colour, never amber or orange`).toBe(true);
     }
   });
 

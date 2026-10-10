@@ -5473,7 +5473,7 @@ export function WorkoutTrackerView({
                     onChange={(e) => setCurrentSessionNotes(e.target.value)}
                     placeholder="What should the next trainer know before the next session?"
                     aria-describedby="next-trainer-note-hint"
-                    className="min-h-25 resize-none focus-visible:ring-(--eq-hero) focus-visible:border-(--eq-hero)"
+                    className="min-h-25 resize-none"
                   />
                   <p id="next-trainer-note-hint" className="text-xs text-muted-foreground">
                     On the next four briefings.

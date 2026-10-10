@@ -2652,7 +2652,9 @@ div.jg-today { cursor: default; }
   box-shadow: var(--jg-elev-1), inset 0 1px 0 var(--jg-highlight);
   color: var(--jg-ink);
 }
-.jg-sbar__btn svg { color: var(--jg-hero); }
+/* Notes and Pulse draw in the ink, like their words: orange on the bar is Finish
+   alone (the floor round, Oct 9 2026, F4; the icons were --jg-hero until then). */
+.jg-sbar__btn svg { color: var(--jg-ink); }
 @media (hover: hover) {
   .jg-sbar__btn:hover { background: var(--jg-surface-3); }
 }
