@@ -1013,7 +1013,9 @@ export default function AppContent({
    *     nothing.
    *
    * A destructive operation of this size belongs in scripts/ behind the
-   * service account with a dry run - scripts/purge-database.ts is the place.
+   * service account with a dry run. (scripts/purge-database.ts was that
+   * place until Oct 10 2026, when it was removed; clearing test data is
+   * scripts/reset-test-data.ts.)
    */
 
   /*

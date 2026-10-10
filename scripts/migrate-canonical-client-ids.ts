@@ -21,7 +21,7 @@
  *     be re-run and will skip what it already did.
  *
  * AUTH: uses the Firebase CLI's own OAuth token (run `npx firebase login`
- * first), exactly like scripts/purge-database.ts. This talks to the Firestore
+ * first). This talks to the Firestore
  * REST API as your Google account and therefore bypasses security rules.
  *
  * USAGE (PowerShell, from the project folder)
