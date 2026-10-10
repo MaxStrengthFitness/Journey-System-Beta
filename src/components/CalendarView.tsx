@@ -522,7 +522,7 @@ export function CalendarView({
               ) : (
                 <RefreshCw size={16} strokeWidth={2.4} aria-hidden />
               )}
-              Refresh
+              <span className="cal-refresh__word">Refresh</span>
             </button>
             <span className="cal-refresh__note" role="status" aria-live="polite">
               {scheduleWindow.isFetching ? "Updating…" : freshness}

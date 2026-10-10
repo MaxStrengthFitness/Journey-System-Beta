@@ -1238,3 +1238,12 @@
   color: var(--cal-ink-muted);
   white-space: nowrap;
 }
+
+/* On a phone the bar's second row keeps to one line: Refresh is its icon
+   (the button's whole name is its label, and the Updated line stays beside
+   it) and the stepper's track narrows. Asked of the room bar's own width. */
+@container rm-bar (max-width: 520px) {
+  .cal-refresh__word { display: none; }
+  .cal-refresh { gap: 4px 8px; }
+  .cal-nav__label { min-width: 100px; }
+}

@@ -258,6 +258,10 @@
    The switch takes a line of its own, the width of the phone, its
    sections sharing it; the tools stay beside the name. */
 @container rm-bar (max-width: 520px) {
+  .rm-bar__row {
+    column-gap: 8px;
+  }
+
   .rm-bar__switch {
     order: 3;
     flex: 1 0 100%;
