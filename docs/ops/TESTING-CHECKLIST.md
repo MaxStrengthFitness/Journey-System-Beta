@@ -3288,3 +3288,28 @@ Round document: `docs/rounds/2026-10-09-open-session.md` (§4.8 is how to ship; 
 
 **Everywhere**
 - [ ] **Names wrap, nothing is cut short,** every tap is at least a fingertip, Save and every selection blue, orange only on Start session and Finish; light and dark; nothing on screen says "her" or "his" about a client, or guesses one.
+
+## Round 67 — The floor, finished · *Oct 9 2026, branch `oct9/floor`*
+
+Round document: `docs/rounds/2026-10-09-floor.md` (AJ's "1a 2a 3a": the six fixes the rules decide, the briefing's dials folded, the Wrap-up in the order the trainer acts). **One walk for the whole floor:** Round 65 and Round 66 as written, then the checks below, in one sitting. Set up as Round 66 says, in this branch's folder (`.claude\worktrees\floor`); Demo Mode is a real studio with made-up clients, so walk there wherever you can.
+
+**The peek**
+- [ ] **A client card on the Hub → the peek:** "Last in · Tue, 4 days ago" (or "Yesterday", or a date "…, 35 days ago"): "Last in" said once.
+
+**The briefing**
+- [ ] **On the way in:** the four dials are folded; Dials · Sore spot · Note · Update Pulse · Hand over the iPad are all there. Tap **Dials**: the four dials. Tap one answer, tap **Dials** again: folded, and the chip says "Dials · 1".
+
+**The session bar**
+- [ ] **Notes and Pulse:** their icons are the ink colour, like their words; the only orange on the bar is **Finish**.
+
+**Finish**
+- [ ] **Finish:** the question reads "Finish {first name}'s session?" on one line, with nothing under it. **The keyboard does NOT come up by itself.** Tap the note box: now it does, and the box's edge is blue, never orange. The hint says "On the next four briefings." The link at the bottom says **Scrap session**.
+- [ ] **An open session (Round 66) before Who's this?:** the question reads "Finish this session?".
+
+**The Wrap-up**
+- [ ] **The order:** Today (today's machines only) · **How it went** (the sentence to read out, then Where the work went) · Next session's weights · Next time (when it shows) · **Effort · profile note · Pulse** · **Next** (the booking, with Times with room).
+- [ ] **Where the work went:** Upper Body's bar is indigo, never orange; "lb moved" and the percentages are in the app's own typeface, like the words around them.
+- [ ] **Offline at Finish** (turn the iPad's Wi-Fi off just before Finish, on a client with earlier sessions): How it went says "Couldn't read the earlier sessions here. The trend is on the profile." Nothing says "Not enough history", and no line under Today says "First time". Turn the Wi-Fi back on: the session sends by itself.
+
+**Everywhere**
+- [ ] **Light and dark, upright and on its side,** an iPad mini if there is one: names wrap, nothing is cut short, and orange is only on Start session and Finish.

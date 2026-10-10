@@ -44,7 +44,9 @@ Top to bottom (`stack.ts` is the pure half, `stack.test.ts` beside it):
    the median of her last five performed sets, said only with at least
    three), the markers (a break, a milestone), heads ups, coaching focuses.
 4. **Something to ask about** — the FORD cue, unchanged.
-5. **On the way in** — Dials (open by default) · Sore spot · Note · Update
+5. **On the way in** — Dials (folded until tapped since the floor round, Oct
+   9 2026, AJ's "2a": they're optional and Start is the job; they were open
+   by default until then, and the chip counts what was tapped while folded) · Sore spot · Note · Update
    Pulse · Hand her the iPad. AJ: "sometimes is everything, sometimes its one
    thing, sometimes its nothing". Sore spot is the same figure, tappable: a
    tap opens BodyStateTracker's rating step for that region (its `request`

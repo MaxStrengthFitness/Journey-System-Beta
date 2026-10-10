@@ -170,6 +170,18 @@ The screen after Finish walks the client out: a plain congratulation picked
 for the session, today against last time, the next session's weights, the
 effort Dial, the Profile note, Pulse and, when it's time, the renewal line.
 
+**The order, Oct 9 2026** (the floor round, AJ's "3a"; `docs/rounds/2026-10-09-floor.md`).
+The cards run in the order the trainer acts: **Today**; **How it went**, the
+journey's one sentence (read out while the client is still there) and where
+the work went; the **next session's weights** and **Next time**; **Effort ·
+profile note · Pulse**; and **Next**, the booking, last. The journey says
+"Couldn't read the earlier sessions here. The trend is on the profile." when
+the iPad never heard the server's answer for them, never "not enough
+history", and Today never calls a machine a first time off that partial copy:
+a failed read is "can't tell". The Finish question before it asks "Finish
+{first name}'s session?" in one line, opens on that line rather than the note
+box (whose focus raises the keyboard), and its link says Scrap session.
+
 **The Atlas answers, Oct 2 2026.** The title is one of a few generic
 congratulations (AJ: "a few generic 'congratulations' messages that it
 randomly picks"), never a judgement of the session. **The next session's
