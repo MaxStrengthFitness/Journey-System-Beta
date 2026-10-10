@@ -80,7 +80,9 @@ anywhere (no studio or head-office numbers are set).
 
 - **The reset**: `docs/ops/RESET-BEFORE-LAUNCH.md`. Every iPad online, synced,
   no session open; dry run, then commit, then the three follow-up jobs; sign
-  every iPad out after. From here on, practise only in Demo Mode.
+  every iPad out after. From here on, practise only in Demo Mode. Today's dry
+  run: 276 test sessions and 1,820 sets with their notes and counters; Demo
+  Mode's 132 left alone. It backs up everything first and can put it all back.
 
 ### The day before
 
@@ -123,6 +125,8 @@ anywhere (no studio or head-office numbers are set).
 1. **On launch day, does FileMaker stop, or run alongside for a while?** From
    the cutover date every booking not logged in Journey reads "not logged", so
    the cutover is the day Journey becomes the record.
-2. **The reset: keep or wipe the routines and machine settings typed on real
-   clients while testing?** The reset script asks at run time and counts them
-   in its dry run, so this can wait for the numbers.
+2. **The reset: keep or wipe what was typed on real clients while testing?**
+   Today: 44 routines (and 20 adjustments), the weights on 79 machine set-ups
+   (the set-ups themselves can stay), 23 Pulse reports. Each is its own
+   choice at run time (`--also routines,settings,pulse`); by default all of
+   it stays and only the sessions and what was counted from them go.

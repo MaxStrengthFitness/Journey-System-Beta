@@ -118,7 +118,56 @@ On `oct10/prelaunch`, one commit per piece:
 
 ## 5. The reset script
 
-*(Filled in when its branch is merged.)*
+`scripts/reset-test-data.ts` over `src/lib/test-reset.ts` (what it takes, pure)
+and `src/lib/test-reset-codec.ts` (the backup and the way back), 35 tests;
+the runbook is `docs/ops/RESET-BEFORE-LAUNCH.md`. Built on `oct10/reset-script`
+(`c51dbe0b`, `0e37f7e5`), merged here.
+
+- **Dry run by default**, ids and counts only. Production is refused, even for
+  a dry run, unless `--confirm-project` repeats the project id. `--commit` is
+  refused while a session showed life in the last 12 hours.
+- **Backup first**: every document it deletes and every field it changes goes
+  to `backups/reset-<time>/` (NDJSON and a manifest), read back before the
+  first write, and the point-in-time-recovery moment is printed.
+- **Each write is against the exact version it backed up**; a document that
+  changed in between is skipped, and running it again takes only what is left.
+  Fields are only deleted, except `fordSummary`, worked out again.
+- **Trainer counts**: the old map is cleared first; `stats/rollups` only after
+  the session-delete Cloud Function goes quiet (`--settle-seconds`, 60).
+- **`--restore <dir>`** puts back exactly what it took (same ids and paths,
+  Timestamps and the rest as their own types), and never overwrites a document
+  or field that exists or changed since.
+- **Demo Mode is left out** unless `--include-demo` (then press Reset in Demo
+  Mode).
+- It ends by printing the follow-up jobs: machine fit, machine trends, then the
+  renewals job with no Mindbody pulls.
+
+**Proved on the perf lab's emulator** (a 40-client seed plus a fixture for
+every rule): 8,220 documents before; the default run left 1,732; a second run
+found nothing; a commit with a session open 30 minutes earlier was refused; the
+restore brought the whole database back to the same fingerprint
+(`df90d9fe5a34da31`) after both the default and the every-group run, and a
+second restore overwrote nothing.
+
+**Production, read only (Oct 10 2026)**, under the default groups: 276
+sessions (5 never finished, none open in 12 hours), 1,820 sets, 7 old
+`sessionNotes`, 6 journal notes, 30 machine totals, the counters of the 30
+clients those sessions touched, 28 renewal snapshots, 10 trainer counts and
+40 month tallies: 2,189 documents and 243 fields on 38 documents. Left out as
+Demo Mode: 132 sessions and 926 sets. Optional: `settings` (219 weights on 79
+set-ups), `routines` (44 routines, 20 adjustments), `pulse` (23 reports, 5
+focuses), `setting-history` (67 records), `operations` (1 Seen mark).
+
+Where today's first wipe map was wrong, found while building it: `sessionNotes`
+(still read by the journal); notes left by Discard and History's delete; FORD
+details from the briefing carry no session (their own group, off by default);
+`fordSummary` must be recomputed, not deleted; `lastSessionDate` is also the
+webhook's, so only Journey's plain date goes; only the clients the sessions
+touched lose counters or `renewal` (849 of 870 carry intake zeros, and a
+renewal's last visit is carried night to night); a profile's Confirm of the
+Mindbody count is test-era, a typed prior history is not; and the leaders'
+Seen marks, note dismissals, session-linked incidents and the open session's
+old ghost set-ups.
 
 ## 6. How to ship
 
