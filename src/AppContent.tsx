@@ -289,6 +289,7 @@ import { parseLearningRef, type LearningRef } from "./features/learning/ref";
 import { rememberMyStudioSection } from "./features/my-studio/section-memory";
 import { AppBottomBar } from "./components/AppBottomBar";
 import { StatusBarStrip } from "./features/home-screen/StatusBarStrip";
+import { EnvironmentMark } from "./features/environment-mark/EnvironmentMark";
 
 export default function AppContent({
   user,
@@ -1658,6 +1659,11 @@ export default function AppContent({
                   : "header"
             }
           />
+          {/* A development build (npm run dev on the PC) talks to live data:
+              one plum line says so, on every screen including the Active
+              Session. Nothing at all in a production build
+              (features/environment-mark). */}
+          <EnvironmentMark />
           {/* Above the header, and outside the `workouts` condition below, so
               it is on the Active Session too — see DemoBanner.tsx. */}
           {isDemoStudioId(activeStudioId) && (
