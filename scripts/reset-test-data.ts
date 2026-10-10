@@ -74,6 +74,7 @@ import {
   OPTIONAL_GROUPS,
   PARTS,
   blockingOpenSessions,
+  withoutLiveSessions,
   parseAlso,
   partLine,
   partOf,
@@ -743,8 +744,8 @@ async function reset(target: Target) {
   }
   if (plan.cutoverStudios.length > 0) {
     console.log(
-      `STUDIOS PAST A JOURNEY CUTOVER: ${plan.cutoverStudios.map((s) => `${s.id} (${s.day})`).join(", ")}. ` +
-        "Real sessions may be on the floor there, and this reset would take them too. A commit needs --after-cutover.",
+      `STUDIOS WITH A JOURNEY CUTOVER DATE SET: ${plan.cutoverStudios.map((s) => `${s.id} (${s.day})`).join(", ")}. ` +
+        "Real sessions may be on the floor there (or soon), and this reset would take them too. A commit needs --after-cutover.",
     );
   }
   printOpenSessions(plan, includeDemo);
@@ -776,7 +777,7 @@ async function reset(target: Target) {
     );
   }
   if (plan.cutoverStudios.length > 0 && !hasFlag("after-cutover")) {
-    throw new Error("Refusing: a studio is past its Journey cutover (listed above), so real sessions may be in Journey. Add --after-cutover only if you are sure. Nothing was written.");
+    throw new Error("Refusing: a studio has a Journey cutover date set (listed above), so real sessions may be in Journey. Add --after-cutover only if you are sure. Nothing was written.");
   }
   const blocking = blockingOpenSessions(plan, includeDemo);
   if (blocking.length > 0 && !hasFlag("ignore-open-sessions")) {
@@ -865,10 +866,21 @@ async function reset(target: Target) {
     current = withFresh(current, fresh);
     const again = planReset(current, { ...options, eraStartMs: plan.sessionEraStartMs });
     const wanted = new Set(paths);
-    const del = again.deletes.filter((d) => d.phase === "main" && wanted.has(d.path));
+    // A session that changed since the read is most likely an iPad's
+    // heartbeat: one that shows life now is never deleted on a retry.
+    const { deletes: del, live } = withoutLiveSessions(
+      again,
+      again.deletes.filter((d) => d.phase === "main" && wanted.has(d.path)),
+    );
+    const livePaths = new Set(live.map((s) => s.path));
+    for (const s of live) {
+      const why = `shows life now (${s.lastSignMs === null ? "no time" : new Date(s.lastSignMs).toISOString()}): an iPad may be in it, so it was left`;
+      console.log(`    ${s.path} ${why}`);
+      failed.push({ path: s.path, kind: "doc", parts: changedSince.find((f) => f.path === s.path)?.parts ?? ["sessions"], code: null, why });
+    }
     const steps = again.fieldSteps.filter((s) => s.phase === "main" && wanted.has(s.path));
     const stepPaths = new Set(steps.map((s) => s.path));
-    const delPaths = new Set(del.map((d) => d.path));
+    const delPaths = new Set([...del.map((d) => d.path), ...livePaths]);
     // A kept document whose changes are all as wanted now still gets a line,
     // empty, so a restore never brings back the stale one (the codec: the
     // last line for a document wins, whole).

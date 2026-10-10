@@ -72,7 +72,7 @@ npx tsx scripts/reset-test-data.ts --project gen-lang-client-0731527386 --databa
 
 If it says `EMULATOR`, this window still has an emulator setting: close it and open a new one. The script refuses a command that names production while an emulator is set, refuses anything but this project and this database, and stops on any flag it doesn't know (a typo never slips through).
 
-Then it prints, group by group, what it would delete or change, what it would leave in Demo Mode, when the test sessions began, the ids of the clients whose first-session date it would clear, a short "Left alone" list for you to look at, any studio past its cutover, and any session still open. It prints ids and counts, never a client's name or a note's words.
+Then it prints, group by group, what it would delete or change, what it would leave in Demo Mode, when the test sessions began, the ids of the clients whose first-session date it would clear, a short "Left alone" list for you to look at, any studio with a cutover date set (past or coming), and any session still open. It prints ids and counts, never a client's name or a note's words.
 
 It ends with the number that matters:
 
@@ -110,7 +110,7 @@ It prints, in this order:
 
 1. **Backup:** the folder it saved the copy in. Write it down.
 2. **POINT-IN-TIME RECOVERY:** the exact moment before its first write, in **UTC** (not Ohio time), and that moment rounded **down** to the minute. Write the minute down (see below).
-3. The writes. A client Mindbody updated in the minute between the read and the write is read again, planned again, backed up again and written again, up to three times, so the webhook's change is never lost and the reset still lands. Then a wait of about a minute for the trainers' session counts to settle (a Cloud Function takes one off for each counted session that goes, and the script waits for it before deleting the counts). If a trainer's old counts can't be cleared first, it stops before deleting anything.
+3. The writes. A client Mindbody updated in the minute between the read and the write is read again, planned again, backed up again and written again, up to three times, so the webhook's change is never lost and the reset still lands. A session read again that now shows life (an iPad's heartbeat in the last 12 hours) is never deleted that way: it is listed and left. Then a wait of about a minute for the trainers' session counts to settle (a Cloud Function takes one off for each counted session that goes, and the script waits for it before deleting the counts). If a trainer's old counts can't be cleared first, it stops before deleting anything.
 4. **DONE:** what it did, part by part, and any document that still didn't take it.
 5. **NEXT:** the check and the three commands below.
 
@@ -191,4 +191,4 @@ Clients and everything Mindbody owns on them, bookings and late-cancel marks, pa
 
 ## How it was proved
 
-On the perf lab's emulator (never production): a 40-client studio with a year of sessions plus a fixture of every case above. The dry run, the refusals (a typo in a flag, the emulator with the production project, production without the database or without the project twice, no `--expect`, the wrong `--expect`, a studio past its cutover, a session open 30 minutes before), the reset, a second dry run that finds nothing, and a restore after which a fingerprint of the whole database (every path and every value, types included) equals the one before, for the always part and for every group with Demo Mode. A client and a session changed between the read and the write (`RESET_PROOF_TOUCH`, which the script reads only on an emulator): both were read and written again, and the restore put back the client's counters while keeping the newer values the change had written. Then the three Step 5 jobs.
+On the perf lab's emulator (never production): a 40-client studio with a year of sessions plus a fixture of every case above. The dry run, the refusals (a typo in a flag, the emulator with the production project, production without the database or without the project twice, no `--expect`, the wrong `--expect`, a studio with a cutover date set, a session open 30 minutes before), the reset, a second dry run that finds nothing, and a restore after which a fingerprint of the whole database (every path and every value, types included) equals the one before, for the always part and for every group with Demo Mode. A client and a session changed between the read and the write (`RESET_PROOF_TOUCH`, which the script reads only on an emulator): both were read and written again, and the restore put back the client's counters while keeping the newer values the change had written. Then the three Step 5 jobs.

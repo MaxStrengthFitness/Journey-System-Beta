@@ -10,6 +10,7 @@ import {
   isJourneyLastSessionDate,
   looksTyped,
   sameFordCounts,
+  withoutLiveSessions,
   millisOf,
   parseAlso,
   partLine,
@@ -126,6 +127,23 @@ describe("sessions and sets", () => {
     for (const p of deleted(plan)) {
       expect(p).not.toMatch(/^(clients|trainers|studios|schedules|machines|routinePresets|networks)\/[^/]+$/);
     }
+  });
+
+  it("never deletes on a retry a session that shows life now, whatever the first read said", () => {
+    // Read the first time: open, quiet for two days. Read again after its delete was refused: an iPad's heartbeat just now.
+    const first = input({ sessions: [doc("sessions/open", { status: "In-Progress", createdAt: NOW - 2 * DAY }), doc("sessions/done", { status: "Completed" })] });
+    const firstPlan = planReset(first, opts());
+    expect(deleted(firstPlan)).toEqual(["sessions/done", "sessions/open"]);
+    const again = planReset(
+      input({ sessions: [doc("sessions/open", { status: "In-Progress", createdAt: NOW - 2 * DAY, lastHeartbeatAt: NOW - 60_000 }), doc("sessions/done", { status: "Completed" })] }),
+      opts([], { includeDemo: true }),
+    );
+    const { deletes, live } = withoutLiveSessions(again, again.deletes);
+    expect(deletes.map((d) => d.path)).toEqual(["sessions/done"]);
+    expect(live.map((s) => s.path)).toEqual(["sessions/open"]);
+    // A live Demo Mode session is held back too.
+    const demo = planReset(input({ sessions: [doc("sessions/d", { status: "In-Progress", hostedAtStudioId: "demo-studio", lastHeartbeatAt: NOW - 1000 })] }), opts([], { includeDemo: true }));
+    expect(withoutLiveSessions(demo, demo.deletes).deletes).toEqual([]);
   });
 
   it("says which open sessions block a commit: a sign of life in the last 12 hours, outside Demo Mode", () => {
@@ -427,6 +445,28 @@ describe("client fields", () => {
     expect(changedFields(all, "clients/typedMindbody")).toEqual(["priorHistory"]);
     // The Confirm made before any session isn't a typed record: prior-history leaves it too.
     expect(changedFields(all, "clients/beforeAny")).not.toContain("priorHistory");
+  });
+
+  it("puts the count back to 0 when a cleared Confirm leaves a client the sessions no longer touch", () => {
+    // Her test session was discarded long ago; the reconciler had folded the Confirm's 312 into her count.
+    const plan = planReset(
+      input({
+        sessions,
+        clients: [
+          client("discarded", {
+            sessionCount: 312,
+            priorHistory: { source: "mindbody", sessions: 312, note: CONFIRM_NOTE, through: "2026-07-01", recordedAt: Date.parse("2026-07-03T15:00:00Z") },
+          }),
+        ],
+      }),
+      opts(),
+    );
+    const step = plan.fieldSteps.find((s) => s.path === "clients/discarded")!;
+    expect(step.changes.map((c) => [c.field.join("."), c.before, c.after])).toEqual([
+      ["priorHistory", expect.objectContaining({ sessions: 312 }), ABSENT],
+      ["sessionCount", 312, 0],
+    ]);
+    expect(step.changes.every((c) => c.part === "client-prior-confirmed")).toBe(true);
   });
 
   it("turns the B switch off only for clients whose routines go, and only with the routines group", () => {
