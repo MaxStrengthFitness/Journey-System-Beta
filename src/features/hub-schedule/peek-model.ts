@@ -85,6 +85,19 @@ export interface PeekOptions {
   extras?: ReadonlyArray<string>;
 }
 
+/**
+ * The peek's "Last in" row says "Last in" once (the floor round, Oct 9 2026,
+ * F2): the engine's sentence ("Last in Tue (4 days)") is written for the
+ * Opportunities list, where nothing labels it. Here it reads "Tue, 4 days ago",
+ * "Yesterday" or "Aug 23, 35 days ago"; every other sentence stands as it is.
+ */
+export function lastInText(sentence: string): string {
+  const m = sentence.match(/^Last in (.+) \((\d+) days?\)$/);
+  if (!m) return sentence;
+  const [, day, n] = m;
+  return day === "Yesterday" || day === "Today" ? day : `${day}, ${n} ${n === "1" ? "day" : "days"} ago`;
+}
+
 export function peekContent(entry: RunSheetEntry, sessionNumber: number | null = entry.sessionNumber, opts: PeekOptions = {}): PeekContent {
   const critical = entry.moments.find((m) => m.family === "read-first");
   const subtitle = [entry.timeText, entry.withText, numberWords(sessionNumber, entry.sessionBasis ?? "confirmed", entry.journeyNumber ?? null), ...(opts.extras ?? [])].filter(Boolean).join(" · ");
@@ -93,7 +106,7 @@ export function peekContent(entry: RunSheetEntry, sessionNumber: number | null =
     .map((m) => ({ kind: m.kind, family: m.family, text: m.sentence, ...(m.loudness === "standard" ? { note: true } : {}) }));
   const f = entry.facts;
   const facts: PeekFact[] = [
-    { label: "Last in", text: f.lastSeen.sentence, muted: f.lastSeen.unknown },
+    { label: "Last in", text: lastInText(f.lastSeen.sentence), muted: f.lastSeen.unknown },
     { label: "Package", text: f.left.sentence, muted: f.left.unknown },
   ];
   const notes: string[] = [];

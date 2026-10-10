@@ -566,6 +566,10 @@ export function WorkoutTrackerView({
   const [activeMachineIds, setActiveMachineIds] = useState<string[]>([]);
   /* Read by Start's follow-up (R9), which must not redraw on every change. */
   const activeMachineIdsRef = useRef<string[]>([]);
+  /* The Finish question opens on its title, never on the note box: on an
+     iPad a focused box raises the keyboard over Finish session (the floor
+     round, Oct 9 2026, F6). */
+  const finishTitleRef = useRef<HTMLHeadingElement>(null);
   activeMachineIdsRef.current = activeMachineIds;
   /* The client's machine settings, kept with WHOSE they are (the whole-branch
      review, Oct 9 2026): the map is read only for the client on screen. A
@@ -5337,35 +5341,19 @@ export function WorkoutTrackerView({
           their 3:1 edge and their lift, and the shared dialog's lift in
           both modes. */}
       <Dialog open={showEndConfirmation} onOpenChange={setShowEndConfirmation}>
-        <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none">
+        <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none" initialFocus={finishTitleRef}>
           <div className="bg-primary p-8 text-primary-foreground space-y-3">
             <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-2">
               <AlertCircle className="w-6 h-6 text-primary-foreground" />
             </div>
-            <h3 className="text-[22px] font-extrabold tracking-[-0.015em]">
-              End session?
+            {/* One line, the client's name in it (the floor round, Oct 9
+                2026, F3): it replaced a title and a sentence that asked the
+                same thing twice in the words of the code. */}
+            <h3 ref={finishTitleRef} tabIndex={-1} className="text-[22px] font-extrabold tracking-[-0.015em] outline-none break-words">
+              {!currentSession?.isUnassigned && selectedClient
+                ? `Finish ${clientFirstName(selectedClient, "this client")}'s session?`
+                : "Finish this session?"}
             </h3>
-            <p className="text-primary-foreground/90 font-medium text-sm leading-relaxed">
-              Are you sure you want to conclude this{" "}
-              {/*
-                The optional chain guarded `currentSession` and NOT
-                `sessionType`, so a session document without the field threw
-                here and took the whole screen down with it — the End Session
-                dialog is in the tree whether or not it is open, so the crash
-                is at render, not at the tap.
-
-                Every writer in the app sets it today, so this is a latent
-                landmine rather than a live bug: any session written before
-                the field existed, or by anything outside this codebase, ends
-                a trainer's session with a white screen. HistoryList.tsx
-                already guards the same field.
-
-                Found by the render test in this round — it failed on its
-                first run, before asserting anything.
-              */}
-              {currentSession?.sessionType?.toLowerCase() ?? "standard"} workout
-              session?
-            </p>
           </div>
 
           <div className="p-6 space-y-4">
@@ -5488,7 +5476,7 @@ export function WorkoutTrackerView({
                     className="min-h-25 resize-none focus-visible:ring-(--eq-hero) focus-visible:border-(--eq-hero)"
                   />
                   <p id="next-trainer-note-hint" className="text-xs text-muted-foreground">
-                    Read out on the briefing at the next four sessions. A note just for the profile goes on the Wrap-up, next.
+                    On the next four briefings.
                   </p>
                   {currentSessionNotes.trim() ? (
                     <div className="flex flex-col gap-1.5" data-testid="next-trainer-file-as">
@@ -5530,7 +5518,7 @@ export function WorkoutTrackerView({
                     }}
                     className="text-sm font-bold text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors py-3 px-6 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20"
                   >
-                    Abort session (no record)
+                    Scrap session
                   </button>
                 </div>
               </div>

@@ -618,9 +618,12 @@ describe("the session's dialogs and sheets speak the same voice", () => {
 
   it("the closing dialogs say their words as written, and the orange Finish takes Go's depth", () => {
     const tracker = read("components/WorkoutTrackerView.tsx");
-    for (const words of ["End session?", "Keep training", "Finish session", "Resume session", "Scrap session", "Abort session (no record)"]) {
+    // The floor round, Oct 9 2026, F3: "Finish {name}'s session?" replaced "End session?" and its
+    // sentence, and the link beneath says Scrap session, the bin's own word.
+    for (const words of ["Finish this session?", "'s session?`", "Keep training", "Finish session", "Resume session", "Scrap session"]) {
       expect(tracker, words).toContain(words);
     }
+    for (const gone of ["End session?", "Abort session (no record)", "conclude this"]) expect(tracker, gone).not.toContain(gone);
     expect(tracker).toContain('className="h-14 rounded-2xl shadow-(--go-lift) bg-cta text-cta-foreground hover:bg-cta"');
     expect(tracker).not.toContain("NEW CLIENT INTRODUCTORY SESSION");
   });

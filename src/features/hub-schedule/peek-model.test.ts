@@ -10,7 +10,22 @@ import { buildDirectoryRows } from "../client-directory/row";
 import { NOW, STUDIOS, TODAY, eastern, makeBooking, makeClient, makeContext } from "../client-directory/fixtures";
 import { momentsToday, type MomentsTodayInput } from "../hub-opportunities/moments-today";
 import type { FordEntry } from "../ford/types";
-import { peekContent, peekState } from "./peek-model";
+import { lastInText, peekContent, peekState } from "./peek-model";
+
+// The floor round, Oct 9 2026, F2: the row is labelled "Last in", so its words never say it again.
+describe("lastInText", () => {
+  it("says the day once, beside the row's own label", () => {
+    expect(lastInText("Last in Tue (4 days)")).toBe("Tue, 4 days ago");
+    expect(lastInText("Last in Aug 23 (35 days)")).toBe("Aug 23, 35 days ago");
+    expect(lastInText("Last in Yesterday (1 day)")).toBe("Yesterday");
+  });
+
+  it("leaves every other sentence as the engine wrote it", () => {
+    for (const s of ["In today already", "Back after 3 weeks — missed about 5", "First visit", "Can’t tell yet"]) {
+      expect(lastInText(s)).toBe(s);
+    }
+  });
+});
 
 function entryFor(client: Client, schedules: ScheduleEntry[], over: Partial<MomentsTodayInput> = {}) {
   const rows = buildDirectoryRows([client], makeContext({ schedules }));

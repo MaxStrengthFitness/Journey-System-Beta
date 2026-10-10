@@ -822,7 +822,7 @@ describe("Finish never hangs and never counts a session twice (session record, S
     return host;
   }
 
-  it("asks for a note for the next trainer, and says where a note just for the profile goes (voice-review round)", async () => {
+  it("asks for a note for the next trainer, and says it reaches the next four briefings (voice-review round; the floor round's F3)", async () => {
     await openEndSession();
     const label = Array.from(document.querySelectorAll("label")).find((l) =>
       l.textContent?.includes("Note for the next trainer"),
@@ -830,11 +830,23 @@ describe("Finish never hangs and never counts a session twice (session record, S
     expect(label).toBeDefined();
     const box = document.getElementById(label!.getAttribute("for")!);
     expect(box?.tagName).toBe("TEXTAREA");
-    expect(document.getElementById(box!.getAttribute("aria-describedby")!)?.textContent).toBe(
-      "Read out on the briefing at the next four sessions. A note just for the profile goes on the Wrap-up, next.",
-    );
+    expect(document.getElementById(box!.getAttribute("aria-describedby")!)?.textContent).toBe("On the next four briefings.");
     // "Wrap-up" is the post-session screen's name now, not this box's.
     expect(document.body.textContent).not.toContain("Wrap-up note");
+  });
+
+  // The floor round, Oct 9 2026: F3, one line with the client's name in it; F6, the question opens on
+  // that line, never on the note box, whose focus raises the iPad's keyboard over Finish session.
+  it("asks Finish {name}'s session? and opens on that line, not on the note box", async () => {
+    await openEndSession();
+    const title = Array.from(document.querySelectorAll("h3")).find((h) => /^Finish .+'s session\?$/.test(h.textContent ?? ""));
+    expect(title).toBeDefined();
+    await act(async () => {});
+    expect(document.activeElement).toBe(title);
+    expect(document.activeElement?.id).not.toBe("next-trainer-note");
+    expect(document.body.textContent).not.toContain("conclude this");
+    expect(document.body.textContent).not.toContain("Abort session");
+    expect(Array.from(document.querySelectorAll("button")).some((b) => b.textContent?.trim() === "Scrap session")).toBe(true);
   });
 
   it("brings the Note for the next trainer back on the Wrap-up to be filed, labelled, and never discarded (AJ, Sep 27 2026)", async () => {
