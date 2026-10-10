@@ -2038,28 +2038,31 @@ export default function AppContent({
                 {currentView === "calendar" && (
                   <ErrorBoundary
                     fallback={
-                      <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-slate-50 dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
-                        <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
-                          <AlertTriangle className="w-8 h-8 text-red-500" />
+                      /* In the app's tokens (the rooms round, Oct 10 2026):
+                         it was raw Tailwind red and slate. Plum is caution;
+                         crimson stays for critical. No reload of its own
+                         (KNOWN-TRAPS: never window.location.reload() from a
+                         screen): back to the Hub, which leaves this boundary,
+                         so the Calendar opens fresh next time. */
+                      <div className="m-3 sm:m-6 flex flex-col items-center justify-center gap-3 p-8 text-center bg-card text-card-foreground rounded-[14px] border border-(--edge) shadow-(--panel-lift)">
+                        <div className="w-16 h-16 rounded-full flex items-center justify-center bg-(--eq-warn-fill)">
+                          <AlertTriangle className="w-8 h-8 text-(--eq-warn)" aria-hidden />
                         </div>
-                        <h3 className="text-xl font-bold mb-2">
-                          Schedule Unavailable
+                        <h3 className="font-display text-[22px] font-extrabold leading-tight">
+                          The Calendar couldn{"’"}t open
                         </h3>
-                        <p className="text-muted-foreground max-w-sm mb-6">
-                          The schedule grid encountered an error. You can still
-                          access client metrics and profiles.
+                        <p className="text-muted-foreground max-w-sm">
+                          Something went wrong drawing the schedule. The Hub
+                          and every client{"’"}s profile still work.
                         </p>
-                        <Button
-                          variant="outline"
-                          onClick={() => window.location.reload()}
-                        >
-                          Reload Dashboard
+                        <Button variant="outline" onClick={() => setView("clients")}>
+                          Back to the Hub
                         </Button>
                       </div>
                     }
                   >
                     {/* Inside the calendar's own boundary, so a missing file
-                        is recovered rather than called "Schedule Unavailable". */}
+                        is recovered rather than called "The Calendar couldn’t open". */}
                     <LoadBoundary kind="screen">
                     <CalendarView
                       schedules={schedules}
