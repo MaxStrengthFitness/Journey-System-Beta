@@ -72,8 +72,6 @@ export interface MachineMenuBodyProps {
   layout?: MenuLayout;
   /** Quick set-up (the Now Bar's Set up): the first empty dial's editor open at once. */
   focusDial?: boolean;
-  /** Save closes the card through `onClose`, with Undo in the toast. */
-  closeOnSave?: boolean;
 }
 
 /** The viewport's size, kept up to date through a turn of the iPad. */
@@ -113,7 +111,6 @@ export function MachineMenuBody({
   inline = false,
   layout: forcedLayout,
   focusDial = false,
-  closeOnSave = false,
 }: MachineMenuBodyProps) {
   // A new number reads the studio's notes on the unit again (a floor note was added here).
   const [floorRound, setFloorRound] = useState(0);
@@ -268,7 +265,9 @@ export function MachineMenuBody({
             onAddHealthNote={onAddHealthNote}
             onDirtyChange={setSettingsDirty}
             focusDial={focusDial}
-            onSaveClose={closeOnSave ? onClose : undefined}
+            // Save closes the card from every door that has one (AJ's "1a",
+            // Oct 10 2026), with Undo in the toast; inline there is none.
+            onSaveClose={onClose}
             hold={hold}
             settingsUnsure={!!host.settingsUnsure}
           />

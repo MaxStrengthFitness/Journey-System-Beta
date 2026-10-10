@@ -13,14 +13,25 @@
  *     the standard shows ONLY on an empty dial, so it never reads as a
  *     correction to a value already fitted, and an empty dial has no ±.
  *     How a dial is offered is dial-control.ts (rules 1–5, nothing invented).
- *   - Tapping the number opens a row of positions (PositionRow) or a field;
- *     tapping an empty tile opens its editor, with the height-band line
- *     ("Around 5'7" here, the most common setting is 6 …") and its own Use,
- *     word for word as the Settings card said it, when the client's height
- *     is on file — the one place `machineTrends/{id}` is read, as before.
+ *   - Tapping the number, "Not set" or Change turns THAT tile into its
+ *     editor (the settings card, Oct 10 2026; AJ: "i need to be able to just
+ *     click on the setting and input the new settings and save and exit"):
+ *     a number dial is always typed, on the number pad, with the value
+ *     selected (his "2a"; ± stay for one step); a word dial's own options
+ *     are its buttons. An empty dial's editor keeps its Use and adds the
+ *     height-band line ("Around 5'7" here, the most common setting is 6 …")
+ *     with its own Use, word for word as the Settings card said it, when the
+ *     client's height is on file — the one place `machineTrends/{id}` is
+ *     read, as before. No Done and no Next: tap another tile, or Enter (on
+ *     to the next empty dial, or the keyboard away on the last), or Save.
  *   - A changed tile is blue with "was 4" under it, and the change strip
- *     opens (ChangeStrip): "Seat 4 → 5", a reason asked and never required,
- *     Cancel and Save Seat 5. Seat 4 → 5 is two taps once the card is open.
+ *     opens (ChangeStrip): "Seat 4 → 5", "Why? (optional)" folded until it
+ *     is tapped (AJ's "3a"), Cancel and Save Seat 5. Seat 4 → 5 is two taps
+ *     once the card is open.
+ *   - Save closes the card, from every door that has one (AJ's "1a": the
+ *     session's and the profile's alike), and the app's toast says it with
+ *     Undo for ten seconds (`onSaveClose`). Programming → All Machines draws
+ *     the body inline, with no card to close: the strip says it there.
  *   - Saving goes through `saveSettings` (one batch, every write issued at
  *     once) and waits only through `settleOrQueue`: "Seat 5 saved · Undo",
  *     "… saved on this iPad · it sends when the Wi-Fi is back · Undo", or
@@ -40,24 +51,23 @@
  * QUICK SET-UP (the open session round, Oct 9 2026; AJ's "2a": "a client has
  * no settings so you need to be able to adjust the settings quickly while
  * running the routine"). The Now Bar's Set up opens the card with
- * `focusDial`: the first empty dial's editor is open at once, on the number
- * pad for a number dial; Next (or Enter) opens the next empty dial; "Use
- * studio standard for all" fills every empty dial that has one (two or more,
- * still unsaved until Save); and with `onSaveClose` Save closes the card and
- * the app's toast says it, with Undo for ten seconds (the strip's own Undo,
- * the same payload). Seat 12 and Back pad 3 on a first time: Set up, "12",
- * Next, "3", Save set-up — three taps and the digits.
+ * `focusDial`: the first empty dial's tile is its field at once, on the
+ * number pad for a number dial; Enter, or a tap on the next tile, goes on;
+ * "Use studio standard for all" fills every empty dial that has one (two or
+ * more, still unsaved until Save); and Save closes the card. Seat 12 and
+ * Back pad 3 on a first time: Set up, "12", Back pad's tile, "3", Save
+ * set-up — three taps and the digits.
  *
  * THE EDITOR HOLDS STILL WHILE YOU TYPE (finding 5). Which editor a dial
- * opens (a row of positions or a field) and its keypad are judged once, as
- * it opens, and held while it is open (`judgeEditor`): it was judged from
+ * opens (a field, or a word dial's options) and its keypad are judged once,
+ * as it opens, and held while it is open (`judgeEditor`): it was judged from
  * the draft on every render, so the first digit typed into an empty dial
  * made it a one-position stepper and the field turned into a row holding
  * "1" (a Seat of 12 cost eleven + taps), and machine fit answering
- * mid-typing swapped it too. An empty dial is always a field; a row with
- * fewer than two positions is a field.
+ * mid-typing swapped it too. The field sits in the tile's one place, so the
+ * tile turning from "Not set" to a value under the first digit never
+ * remounts it.
  *
- * Next is Set up's walk only (`focusDial`); every other door keeps Done.
  * The toast's Undo, once the card has closed, is laid onto what this iPad
  * knows the settings are at the tap (`known-settings.ts`, `undoOnto`), so a
  * later save is never taken back with it.
@@ -93,7 +103,7 @@ import type { FitFactors, SettingSource } from "../machine-fit/types";
 import { readStoredSpec } from "../machine-fit/ui/stored-spec";
 import { FINISH_WAIT_MS, settleOrQueue } from "../session-record/finish-wait";
 import { ChangeResult, ChangeStrip } from "./ChangeStrip";
-import { canStep, dialControl, editorKeypad, recordValuesFor, stepDial, studioValuesFor, wordChips, type DialControl } from "./dial-control";
+import { canStep, dialControl, editorKeypad, recordValuesFor, stepDial, studioValuesFor, type DialControl } from "./dial-control";
 import { FitLine } from "./FitLine";
 import { fitAckOf, fitLineSentence, menuAudit, rareStudioFlags } from "./fit-line";
 import { PositionRow, ValueEditor } from "./PositionRow";
@@ -210,9 +220,10 @@ export interface DialTilesProps {
    */
   focusDial?: boolean;
   /**
-   * Save closes the card (the Now Bar's Set up): called once a save is on
-   * this iPad, after the app's toast has said it with Undo for ten seconds.
-   * Absent, the strip says it in place, as before.
+   * Save closes the card (every door with a card; AJ's "1a", Oct 10 2026):
+   * called once a save is on this iPad, after the app's toast has said it
+   * with Undo for ten seconds. Absent (the inline pane), the strip says it
+   * in place.
    */
   onSaveClose?: () => void;
   /**
@@ -273,7 +284,7 @@ interface UndoState {
   heldSources: { before: Record<string, SettingSource> | null; after: Record<string, SettingSource> } | null;
 }
 
-/** The open editor's row or field and its keypad, judged as it opened and held while it is open. */
+/** The open editor's field (or a word dial's options) and its keypad, judged as it opened and held while it is open. */
 interface EditorLock {
   key: string;
   control: DialControl;
@@ -388,6 +399,16 @@ interface Result {
 const browserOnline = () => (typeof navigator === "undefined" ? true : navigator.onLine !== false);
 const clean = (v: unknown) => (v === undefined || v === null ? "" : String(v).trim());
 const NUMERIC = /^\d+(?:\.\d+)?$/;
+
+/**
+ * A word dial's own options as buttons (rule 1: the field's options, or a
+ * longer list's positions), or null: every other dial is typed (AJ's "2a").
+ */
+function wordButtons(control: DialControl): string[] | null {
+  if (control.kind === "options") return control.options;
+  if (control.kind === "stepper" && control.scale.unit === "list" && control.positions && control.positions.length > 1) return control.positions;
+  return null;
+}
 
 export function DialTiles({
   machineId,
@@ -558,26 +579,24 @@ export function DialTiles({
   /** The tile's ±: judged with the value on the tile, so a dial Use filled steps. */
   const controlOf = (f: TileField): DialControl => dialControl(f, { ...contextOf(f), current: draft[f.key] });
   /**
-   * The editor's row or field, and its keypad, judged ONCE as it opens and
-   * held while it is open (finding 5, and the review that followed it). It
-   * was judged again on every render from the half-typed draft, so the
-   * first digit typed into an empty dial turned the field into a row
-   * holding "1"; and judged again when machine fit or the record answered,
-   * it still swapped under the finger mid-typing. So it is judged from what
-   * is on the tile as it opens (a value stepped past the record with ± is
-   * in the row), and held.
+   * The editor and its keypad, judged ONCE as it opens and held while it is
+   * open (finding 5, and the review that followed it). It was judged again
+   * on every render from the half-typed draft, so the first digit typed into
+   * an empty dial turned the field into a row holding "1"; and judged again
+   * when machine fit or the record answered, it still swapped under the
+   * finger mid-typing. So it is judged from what is on the tile as it opens,
+   * and held.
    *
-   * An EMPTY dial is typed, on the number pad for a number: the spans seen
-   * on this floor and on the record (rules 3 and 4) may not hold a new
-   * client's value (Seat 12 where the studio's clients sit at 3 to 9), and
-   * the number pad is what Set up opens on. A field's own options and range
-   * (rules 1 and 2) are still a row.
+   * Every number (and letter) dial is typed (AJ's "2a", Oct 10 2026: "Number
+   * dials always open a typed box on the number pad"): the spans seen on
+   * this floor and on the record (rules 3 and 4) may not hold the value
+   * wanted (Seat 12 where the studio's clients sit at 3 to 9), and a row of
+   * positions was a second way to do the same thing. Only a word dial's own
+   * options (rule 1) are buttons (`wordButtons`).
    */
   const judgeEditor = (f: TileField, onTile: string): EditorLock => {
     const ctx = contextOf(f);
-    let control = dialControl(f, { ...ctx, current: onTile });
-    const empty = clean(onTile) === "" && clean(base[f.key]) === "";
-    if (empty && control.kind === "stepper" && (control.rule === 3 || control.rule === 4)) control = { ...control, positions: null };
+    const control = dialControl(f, { ...ctx, current: onTile });
     return { key: f.key, control, keypad: editorKeypad(f, control, ctx) };
   };
   const lockField = editing ? (fields.find((f) => f.key === editing) ?? null) : null;
@@ -861,10 +880,42 @@ export function DialTiles({
     const was = wasWords(state);
     const value = clean(draft[f.key]);
     const changed = state.was !== null;
-    const open = () => setEditing((e) => (e === f.key ? null : f.key));
+    const open = () => setEditing(f.key);
+    const isEditing = !readOnly && editing === f.key;
+
+    // An empty dial's "Use 3 · Studio standard 3", on the tile at rest and under its field.
+    const useStandard = state.kind === "empty" && state.standard && !readOnly ? (
+      <div className="mm-tile__use">
+        <button
+          type="button"
+          className="mm-btn"
+          aria-label={`Use ${state.standard} for ${f.label}`}
+          disabled={saving}
+          onClick={() => {
+            setValue(f.key, state.standard!);
+            setUsed((u) => ({ ...u, [f.key]: state.standard! }));
+            setEditing((e) => (e === f.key ? null : e));
+          }}
+        >
+          Use {state.standard}
+        </button>
+        <span className="mm-tile__std">Studio standard {state.standard}</span>
+      </div>
+    ) : null;
 
     let body: ReactNode;
-    if (readOnly) {
+    if (isEditing) {
+      // The tile IS the editor: its field (or a word dial's options) in the
+      // one place the value was, so the first digit, which turns "Not set"
+      // into a value, never remounts it. Use and the height-band line under it.
+      body = (
+        <>
+          {editorFor(f)}
+          {useStandard}
+          {suggestLineFor(f)}
+        </>
+      );
+    } else if (readOnly) {
       body =
         state.kind === "empty" ? (
           <span className="mm-tile__notset">Not set</span>
@@ -874,26 +925,10 @@ export function DialTiles({
     } else if (state.kind === "empty") {
       body = (
         <>
-          <button type="button" className="mm-tile__empty" aria-expanded={editing === f.key} aria-label={`${f.label}: not set. Set it`} onClick={open}>
+          <button type="button" className="mm-tile__empty" aria-label={`${f.label}: not set. Set it`} onClick={open}>
             Not set
           </button>
-          {state.standard ? (
-            <div className="mm-tile__use">
-              <button
-                type="button"
-                className="mm-btn"
-                aria-label={`Use ${state.standard} for ${f.label}`}
-                disabled={saving}
-                onClick={() => {
-                  setValue(f.key, state.standard!);
-                  setUsed((u) => ({ ...u, [f.key]: state.standard! }));
-                }}
-              >
-                Use {state.standard}
-              </button>
-              <span className="mm-tile__std">Studio standard {state.standard}</span>
-            </div>
-          ) : null}
+          {useStandard}
         </>
       );
     } else if (control.kind === "stepper") {
@@ -913,8 +948,7 @@ export function DialTiles({
           <button
             type="button"
             className="mm-tile__val"
-            aria-label={`${f.label} ${value}. ${control.positions ? "Pick a position" : "Type a value"}`}
-            aria-expanded={editing === f.key}
+            aria-label={`${f.label} ${value}. ${wordButtons(control) ? "Pick one" : "Type a value"}`}
             onClick={open}
           >
             {value}
@@ -934,7 +968,7 @@ export function DialTiles({
       body = (
         <div className="mm-tile__wordrow">
           <span className="mm-tile__word">{value}</span>
-          <button type="button" className="mm-btn" aria-expanded={editing === f.key} aria-label={`Change ${f.label}`} onClick={open}>
+          <button type="button" className="mm-btn" aria-label={`Change ${f.label}`} onClick={open}>
             Change
           </button>
         </div>
@@ -942,7 +976,13 @@ export function DialTiles({
     }
 
     return (
-      <div className="mm-tile" key={f.key} data-dial={f.key} data-changed={changed ? "true" : undefined}>
+      <div
+        className="mm-tile"
+        key={f.key}
+        data-dial={f.key}
+        data-changed={changed ? "true" : undefined}
+        data-editing={isEditing ? "true" : undefined}
+      >
         <div className="mm-tile__label">
           {f.letter ? (
             <span className="mm-letter" aria-hidden="true">
@@ -958,21 +998,9 @@ export function DialTiles({
     );
   };
 
-  const editor = () => {
-    if (readOnly || !editingField) return null;
-    const f = editingField;
-    // Held from the moment it opened (judgeEditor); the first render's own judgement until then.
-    const lock = editorLockNow?.key === f.key ? editorLockNow : judgeEditor(f, draft[f.key] ?? "");
-    const control = lock.control;
-    const standard = clean(f.ghost) || null;
-    const done = closeEditor;
-    const pick = (v: string) => setValue(f.key, v);
-    // Next: the next dial still empty, on Set up's walk through them only
-    // (focusDial); none left, Done. Every other door keeps Done.
-    const nextKey = focusDial ? nextEmptyDial(fields, draft, f.key) : null;
-    const onNext = nextKey ? () => openEditor(nextKey) : null;
-    const nextLabel = nextKey ? (fields.find((x) => x.key === nextKey)?.label ?? null) : null;
-    const suggestLine = suggestion ? (
+  /** The height-band line on an empty dial's editor, with its own Use. */
+  const suggestLineFor = (f: TileField) =>
+    suggestion && editingField?.key === f.key ? (
       <p className="mm-suggest">
         <span>
           Around {suggestion.heightLabel} here, the most common setting is <b>{suggestion.value}</b> ({suggestion.clients} of{" "}
@@ -984,70 +1012,59 @@ export function DialTiles({
           aria-label={`Use ${suggestion.value} for ${f.label}`}
           disabled={saving}
           onClick={() => {
-            pick(suggestion.value);
+            setValue(f.key, suggestion.value);
             setUsed((u) => ({ ...u, [f.key]: suggestion.value }));
+            setEditing(null);
           }}
         >
           Use {suggestion.value}
         </button>
       </p>
     ) : null;
-    // Keyed by the dial, so Next to another dial is a fresh editor (its field focused).
-    if (control.kind === "options") {
+
+  /** The tile's editor: a word dial's options, else its field. Keyed by the dial, so another tile's is a fresh one (its field focused). */
+  const editorFor = (f: TileField) => {
+    // Held from the moment it opened (judgeEditor); the first render's own judgement until then.
+    const lock = editorLockNow?.key === f.key ? editorLockNow : judgeEditor(f, draft[f.key] ?? "");
+    const control = lock.control;
+    const buttons = wordButtons(control);
+    if (buttons) {
       return (
-        <>
-          <PositionRow
-            key={f.key}
-            label={f.label}
-            positions={control.options}
-            current={draft[f.key]}
-            saved={base[f.key]}
-            standard={standard}
-            kind="options"
-            onPick={pick}
-            onDone={done}
-            onNext={onNext}
-            nextLabel={nextLabel}
-          />
-          {suggestLine}
-        </>
-      );
-    }
-    // A row of one position is no jump at all: a field instead.
-    if (control.kind === "stepper" && control.positions && control.positions.length > 1) {
-      return (
-        <>
-          <PositionRow
-            key={f.key}
-            label={f.label}
-            positions={control.positions}
-            current={draft[f.key]}
-            saved={base[f.key]}
-            standard={standard}
-            onPick={pick}
-            onDone={done}
-            onNext={onNext}
-            nextLabel={nextLabel}
-          />
-          {suggestLine}
-        </>
-      );
-    }
-    return (
-      <>
-        <ValueEditor
+        <PositionRow
           key={f.key}
           label={f.label}
-          value={draft[f.key] ?? ""}
-          keypad={lock.keypad}
-          chips={control.kind === "text" ? control.chips : wordChips(f, [])}
-          onChange={pick}
-          onDone={done}
-          onNext={onNext}
-          nextLabel={nextLabel}
+          positions={buttons}
+          current={draft[f.key]}
+          saved={base[f.key]}
+          standard={clean(f.ghost) || null}
+          kind="options"
+          onPick={(v) => {
+            // A pick is the whole answer: the tile shows it.
+            setValue(f.key, v);
+            setEditing(null);
+          }}
         />
-        {suggestLine}
-      </>
+      );
+    }
+    // Enter: on to the next empty dial, or the keyboard away on the last.
+    const nextKey = nextEmptyDial(fields, draft, f.key);
+    // A word dial's chips (the record's values and the standard); the
+    // standard's own chip waits while the tile's Use offers it. A number dial
+    // (on the number pad) has none: its standard shows only on an empty
+    // dial, as Use, never as a chip that turns up once a digit is typed.
+    const empty = tileState(f, draft, base).kind === "empty";
+    const chips = control.kind === "text" && lock.keypad === "text" ? control.chips.filter((c) => !(empty && c.standard)) : [];
+    return (
+      <ValueEditor
+        key={f.key}
+        label={f.label}
+        value={draft[f.key] ?? ""}
+        keypad={lock.keypad}
+        chips={chips}
+        onChange={(v) => setValue(f.key, v)}
+        onEnter={() => (nextKey ? openEditor(nextKey) : closeEditor())}
+        hasNext={nextKey !== null}
+      />
     );
   };
 
@@ -1103,7 +1120,6 @@ export function DialTiles({
           <div className="mm-tiles">
             {fields.map(tile)}
           </div>
-          {editor()}
           {/* No client yet (an open session): no review of a setting to offer. */}
           {audit && !hold && clientId
             ? flags.map((flag) => (

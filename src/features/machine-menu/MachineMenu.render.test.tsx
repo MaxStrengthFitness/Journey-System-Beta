@@ -599,7 +599,8 @@ describe("Set up: the card on the first empty dial, and Save closes it with Undo
   const fly = { id: "chest-fly", name: "Chest Fly", order: 3, settingOptions: ["Gap", "Back Pad", "Seat"], standardSettings: { Gap: "1" } } as unknown as Machine;
   const quickHost = () => host({ door: "session", machines: [...machines, fly], session: { id: "s3", number: 3, day: "2026-10-04" } });
   const field = () => document.querySelector<HTMLInputElement>('.mm-dialog [data-editor="field"] input');
-  const title = () => document.querySelector(".mm-dialog [data-editor] .mm-pos__title")?.textContent ?? null;
+  /** The label of the tile that is its editor now (the settings card, Oct 10 2026). */
+  const title = () => document.querySelector(".mm-dialog [data-editing] .mm-tile__label")?.textContent ?? null;
 
   async function typeKeys(text: string) {
     const input = field();
@@ -619,7 +620,7 @@ describe("Set up: the card on the first empty dial, and Save closes it with Undo
   });
 
   it("opens on Back Pad (the gap is the machine's 1), focused, on the number pad, in the card's own order", async () => {
-    await mount({ open: true, machineId: "chest-fly", onClose: () => {}, host: quickHost(), focusDial: true, closeOnSave: true });
+    await mount({ open: true, machineId: "chest-fly", onClose: () => {}, host: quickHost(), focusDial: true });
     await settle();
     expect(title()).toBe("Back Pad");
     expect(document.activeElement).toBe(field());
@@ -635,7 +636,7 @@ describe("Set up: the card on the first empty dial, and Save closes it with Undo
     await act(async () => one.root.unmount());
     mounted = mounted.filter((m) => m.root !== one.root);
     document.body.innerHTML = "";
-    await mount({ open: true, machineId: "chest-fly", onClose: () => {}, host: host({ door: "profile", machines: [...machines, fly] }), focusDial: true, closeOnSave: true });
+    await mount({ open: true, machineId: "chest-fly", onClose: () => {}, host: host({ door: "profile", machines: [...machines, fly] }), focusDial: true });
     await settle();
     expect(title()).toBe("Back Pad");
     const profile = blocks();
@@ -643,26 +644,47 @@ describe("Set up: the card on the first empty dial, and Save closes it with Undo
     expect(withoutNotes(profile)).toEqual(withoutNotes(plain));
   });
 
-  it("is the ordinary card from any other door: no editor open, and Save stays", async () => {
+  it("is the ordinary card from any other door: no editor open", async () => {
     await mount({ open: true, machineId: "chest-fly", onClose: () => {}, host: quickHost() });
     await settle();
     expect(document.querySelector(".mm-dialog [data-editor]")).toBeNull();
   });
 
-  it("Back Pad 3, Next, Seat 12, Save set-up: the card closes and the toast keeps Undo for ten seconds", async () => {
+  it("Back Pad 3, Enter, Seat 12, Save set-up: the card closes and the toast keeps Undo for ten seconds", async () => {
     const show = vi.fn();
     (window as unknown as { __showToast?: typeof show }).__showToast = show;
     let closed = 0;
-    await mount({ open: true, machineId: "chest-fly", onClose: () => (closed += 1), host: quickHost(), focusDial: true, closeOnSave: true });
+    await mount({ open: true, machineId: "chest-fly", onClose: () => (closed += 1), host: quickHost(), focusDial: true });
     await settle();
     await typeKeys("3");
-    await click(document.querySelector('.mm-dialog [data-step="next"]'));
+    await key(field(), "Enter");
     expect(title()).toBe("Seat");
     await typeKeys("12");
     await click(buttonNamed("Save set-up"));
     expect(closed).toBe(1);
     expect(question()).toBeNull();
     expect(show).toHaveBeenCalledTimes(1);
+    expect(show.mock.calls[0].slice(0, 3)).toEqual(["Chest Fly for Judy: set-up saved", "success", 10_000]);
+    expect(show.mock.calls[0][3].label).toBe("Undo");
+  });
+
+  /* AJ, Oct 10 2026: "i need to be able to just click on the setting and
+     input the new settings and save and exit" — his "1a": Save closes the
+     card from every door, not only Set up's. */
+  it.each(["session", "profile"] as const)("closes on Save from the machine's name too (the %s door): tap the setting, type, Save", async (door) => {
+    const show = vi.fn();
+    (window as unknown as { __showToast?: typeof show }).__showToast = show;
+    let closed = 0;
+    const h = door === "session" ? quickHost() : host({ door: "profile", machines: [...machines, fly] });
+    await mount({ open: true, machineId: "chest-fly", onClose: () => (closed += 1), host: h });
+    await settle();
+    await click(buttonNamed("Seat: not set. Set it")); // tap 1
+    expect(title()).toBe("Seat");
+    expect(document.activeElement).toBe(field());
+    await typeKeys("12");
+    await click(buttonNamed("Save set-up")); // tap 2
+    expect(closed).toBe(1);
+    expect(question()).toBeNull();
     expect(show.mock.calls[0].slice(0, 3)).toEqual(["Chest Fly for Judy: set-up saved", "success", 10_000]);
     expect(show.mock.calls[0][3].label).toBe("Undo");
   });

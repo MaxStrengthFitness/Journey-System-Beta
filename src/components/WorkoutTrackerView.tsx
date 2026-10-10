@@ -5284,15 +5284,15 @@ export function WorkoutTrackerView({
           It replaces the machine sheet, which replaced two modals that used
           to sit here (settings, and notes behind a separate small icon).
           The Now Bar's Set up (and the phone card's) opens it on the first
-          empty dial, and its Save closes it with Undo in the toast (the
-          open session round, Oct 9 2026; AJ's "2a"). */}
+          empty dial (the open session round, Oct 9 2026; AJ's "2a"), and
+          its Save closes it with Undo in the toast, from every door (Oct 10
+          2026; AJ's "1a"). */}
       <MachineMenu
         open={!!menuMachineId}
         machineId={menuMachineId}
         onClose={closeMachineMenu}
         host={machineMenuHost}
         focusDial={!!menuMachineId && menuQuickFor === menuMachineId}
-        closeOnSave={!!menuMachineId && menuQuickFor === menuMachineId}
       />
 
       {/* Who's this? The client picker for an open session, from the

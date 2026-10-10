@@ -143,6 +143,7 @@ const CONTROLS = [
   "mm-pos__btn",
   "mm-opt",
   "mm-field__input",
+  "mm-tile__input",
   "mm-choice",
   "mm-seg__opt",
   "mm-note__row",
@@ -155,7 +156,7 @@ const CONTROLS = [
 
 describe("the machine menu's voices (the merge with type and depth, Oct 5 2026)", () => {
   it("speaks the label voice (14/700 in ink-2) over a value or a field, and the segment voice (14/600) on a chip or a switch's side", () => {
-    for (const sel of [".mm-field", ".mm-pos__title", ".mm-tile__label", ".mm-cmp__lbl", ".mm-grp-h", ".mm-drawer"]) {
+    for (const sel of [".mm-field", ".mm-tile__label", ".mm-cmp__lbl", ".mm-grp-h", ".mm-drawer"]) {
       const own = ownOf(sel);
       expect([own["font-size"], own["font-weight"], own.color], sel).toEqual(["14px", "700", "var(--eq-ink-2)"]);
     }

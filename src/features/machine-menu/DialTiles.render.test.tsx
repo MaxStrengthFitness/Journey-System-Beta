@@ -18,8 +18,10 @@
  *     change and says so;
  *   - a watched session shows values and no buttons;
  *   - "Last changed …" selects that change; a failed read says so;
- *   - the position row, and the height-band line on an empty dial's editor,
- *     word for word.
+ *   - a dial is changed IN its own tile, typed (the settings card, Oct 10
+ *     2026; AJ's "1a 2a 3a"), with no Done and no Next, and the height-band
+ *     line on an empty dial's editor, word for word;
+ *   - "Why? (optional)" folds the six reasons until it is tapped.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, type ReactNode } from "react";
@@ -179,9 +181,31 @@ describe("Seat 4 → 5", () => {
     expect(onSaved).toHaveBeenCalledTimes(1);
   });
 
+  it("folds the six reasons behind 'Why? (optional)' until it is tapped, and a picked one names itself (AJ's 3a)", async () => {
+    const host = await mount(<Tiles />);
+    await click(button(host, "Seat up one"));
+    const why = host.querySelector<HTMLButtonElement>("[data-why]")!;
+    expect(why.textContent).toBe("Why? (optional)");
+    expect(why.getAttribute("aria-expanded")).toBe("false");
+    expect(byText(host, "Range of motion")).toBeNull();
+    // Save sits right under the change: nothing between them but the line.
+    expect(byText(host, "Save Seat 5")).not.toBeNull();
+    await click(why);
+    expect(why.getAttribute("aria-expanded")).toBe("true");
+    expect(byText(host, "Range of motion")).not.toBeNull();
+    await click(byText(host, "Comfort or fit"));
+    expect(why.textContent).toBe("Why: Comfort or fit");
+    // Folded again, the reason stays picked.
+    await click(why);
+    expect(byText(host, "Comfort or fit")).toBeNull();
+    await click(byText(host, "Save Seat 5"));
+    expect(saves.calls[0].reason).toBe("Comfort or fit");
+  });
+
   it("passes a reason chip's words through, and a second tap takes it back", async () => {
     const host = await mount(<Tiles />);
     await click(button(host, "Seat up one"));
+    await click(byText(host, "Why? (optional)"));
     await click(byText(host, "Range of motion"));
     expect(byText(host, "Range of motion")!.getAttribute("aria-pressed")).toBe("true");
     await click(byText(host, "Alignment"));
@@ -227,6 +251,7 @@ describe("Seat 4 → 5", () => {
     const onAddHealthNote = vi.fn();
     const host = await mount(<Tiles onAddHealthNote={onAddHealthNote} />);
     await click(button(host, "Seat up one"));
+    await click(byText(host, "Why? (optional)"));
     await click(byText(host, "Pain or discomfort"));
     await click(byText(host, "Save Seat 5"));
     await click(byText(host, "Add a Health note"));
@@ -313,31 +338,67 @@ describe("an empty dial", () => {
   });
 });
 
-describe("a big jump", () => {
-  it("opens a row of positions from the record, the saved one ringed with 'now'", async () => {
+describe("a dial changed in its own tile (the settings card, Oct 10 2026)", () => {
+  it("turns the tapped tile into its field, typed on the number pad with the value selected, even where the record knows the positions", async () => {
     const host = await mount(<Tiles snapshots={[{ seat: "3" }, { seat: "7" }]} />);
-    await click(button(host, "Seat 4. Pick a position"));
-    const row = host.querySelector('[data-editor="positions"]')!;
-    const labels = [...row.querySelectorAll("button")].map((b) => b.textContent?.trim());
-    expect(labels).toEqual(["Done", "3", "4", "5", "6", "7"]);
-    expect(row.querySelector('[data-now="true"]')?.textContent).toBe("4");
-    expect(row.textContent).toContain("now");
-    expect(row.textContent).toContain("Studio standard: 6");
-    await click([...row.querySelectorAll("button")].find((b) => b.textContent === "6")!);
-    expect(host.querySelector('[data-strip="edit"]')!.textContent).toContain("Seat 4 → 6");
-    await click(byText(host, "Done"));
+    await click(button(host, "Seat 4. Type a value"));
+    const seat = tile(host, "seat");
+    expect(seat.getAttribute("data-editing")).toBe("true");
+    const input = seat.querySelector<HTMLInputElement>('[data-editor="field"] input')!;
+    expect(input.value).toBe("4");
+    expect(input.getAttribute("inputmode")).toBe("decimal");
+    expect(document.activeElement).toBe(input);
+    // The value is typed over, never a row of positions; and the editor is
+    // the tile itself: nothing under the tiles, no Done and no Next.
     expect(host.querySelector('[data-editor="positions"]')).toBeNull();
+    expect(host.querySelectorAll("[data-editor]")).toHaveLength(1);
+    expect(byText(host, "Done")).toBeNull();
+    expect(byText(host, "Next")).toBeNull();
+    // The value shows once: the field, not the tile's number beside it.
+    expect(seat.querySelector(".mm-tile__val")).toBeNull();
+    await typeOver(host, "6");
+    expect(host.querySelector('[data-strip="edit"]')!.textContent).toContain("Seat 4 → 6");
+    await click(byText(host, "Save Seat 6"));
+    expect(saves.calls[0]).toMatchObject({ draft: { ...SAVED, seat: "6" } });
+    // Save puts the field away: the tile reads its value again.
+    expect(host.querySelector("[data-editor]")).toBeNull();
+    expect(tile(host, "seat").querySelector(".mm-tile__val")?.textContent).toBe("6");
   });
 
-  it("shows a word value with Change, and its chips fill only when tapped", async () => {
+  it("shows a word value with Change, and its chips (under its field) fill only when tapped", async () => {
     const host = await mount(<Tiles snapshots={[{ footPlate: "Low" }]} />);
     expect(button(host, "Foot plate up one")).toBeNull();
     await click(button(host, "Change Foot plate"));
-    const editor = host.querySelector('[data-editor="field"]')!;
+    const editor = tile(host, "footPlate").querySelector('[data-editor="field"]')!;
     expect(editor.querySelector("input")!.value).toBe("High");
+    expect(editor.querySelector("input")!.getAttribute("inputmode")).toBe("text");
     expect(host.querySelector('[data-strip="edit"]')).toBeNull();
     await click([...editor.querySelectorAll("button")].find((b) => b.textContent === "Low")!);
     expect(host.querySelector('[data-strip="edit"]')!.textContent).toContain("Foot plate High → Low");
+  });
+
+  it("moves the field to the next tile tapped: the first keeps what was typed", async () => {
+    const host = await mount(<Tiles saved={{}} />);
+    await click(button(host, "Seat: not set. Set it"));
+    await typeKeys(host, "12");
+    await click(button(host, "Back pad: not set. Set it"));
+    expect(editorTitle(host)).toBe("Back pad");
+    expect(document.activeElement).toBe(field(host));
+    expect(tile(host, "seat").querySelector("input")).toBeNull();
+    expect(tile(host, "seat").textContent).toContain("12");
+    await typeKeys(host, "3");
+    expect(host.querySelector('[data-strip="edit"]')!.textContent).toContain("Seat — → 12 · Back pad — → 3");
+  });
+
+  it("gives a word dial's own options as buttons in its tile, and a pick is the whole answer", async () => {
+    const grip: TileField = { key: "grip", label: "Grip", type: "enum", options: ["Narrow", "Wide"], ghost: null, absolute: false };
+    const host = await mount(<Tiles fields={[grip]} saved={{ grip: "Narrow" }} />);
+    await click(button(host, "Change Grip"));
+    const row = tile(host, "grip").querySelector('[data-editor="positions"]')!;
+    expect([...row.querySelectorAll("button")].map((b) => b.textContent)).toEqual(["Narrow", "Wide"]);
+    await click(button(host, "Grip Wide"));
+    expect(host.querySelector("[data-editor]")).toBeNull();
+    expect(host.querySelector('[data-strip="edit"]')!.textContent).toContain("Grip Narrow → Wide");
   });
 });
 
@@ -503,8 +564,26 @@ describe("a save the database never answers (speed round R9: the card never wait
  * ------------------------------------------------------------------ */
 
 const field = (host: HTMLElement) => host.querySelector<HTMLInputElement>('[data-editor="field"] input');
-const editorTitle = (host: HTMLElement) => host.querySelector("[data-editor] .mm-pos__title")?.textContent ?? null;
-const stepBtn = (host: HTMLElement, step: "next" | "done") => host.querySelector<HTMLButtonElement>(`[data-editor] [data-step="${step}"]`);
+/** The label of the tile that is its editor now. */
+const editorTitle = (host: HTMLElement) => host.querySelector("[data-editing] .mm-tile__label")?.textContent ?? null;
+/** Enter in the open field, from the keyboard. */
+async function enter(host: HTMLElement) {
+  await act(async () => {
+    field(host)!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+  });
+}
+
+/** Types over the selected value in the open field, as a finger does on a field opened with its value selected. */
+async function typeOver(host: HTMLElement, text: string) {
+  const input = field(host);
+  expect(input).not.toBeNull();
+  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+  await act(async () => {
+    setValue.call(input, text);
+    input!.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(field(host)).toBe(input);
+}
 
 /** Draws the last card mounted again with new props, as its host does. */
 async function rerender(node: ReactNode) {
@@ -550,7 +629,11 @@ describe("typing into an empty dial (finding 5)", () => {
     expect(field(host)!.getAttribute("inputmode")).toBe("decimal");
     await typeKeys(host, "12");
     expect(field(host)!.value).toBe("12");
-    expect(tile(host, "seat").textContent).toContain("12");
+    // The field is the tile: it turns blue with "was not set", and no
+    // standard turns up under a number once a digit is typed.
+    expect(tile(host, "seat").getAttribute("data-changed")).toBe("true");
+    expect(tile(host, "seat").textContent).toContain("was not set");
+    expect(tile(host, "seat").textContent).not.toContain("studio standard");
     expect(host.querySelector('[data-strip="edit"]')!.textContent).toContain("Seat — → 12");
   });
 
@@ -577,15 +660,15 @@ describe("typing into an empty dial (finding 5)", () => {
     expect(field(host)!.getAttribute("inputmode")).toBe("decimal");
   });
 
-  it("opens a row holding a value stepped past the record with +, ringed as the pick", async () => {
+  it("types over a value stepped past the record with +: the field holds it, on the number pad", async () => {
     const host = await mount(<Tiles snapshots={[{ seat: "3" }, { seat: "7" }]} />);
     for (let i = 0; i < 4; i++) await click(button(host, "Seat up one"));
     expect(tile(host, "seat").textContent).toContain("8");
-    await click(button(host, "Seat 8. Pick a position"));
-    const row = host.querySelector('[data-editor="positions"]')!;
-    const labels = [...row.querySelectorAll(".mm-pos__btn")].map((b) => b.textContent?.trim());
-    expect(labels).toEqual(["3", "4", "5", "6", "7", "8"]);
-    expect(row.querySelector('[aria-pressed="true"]')?.textContent).toBe("8");
+    await click(button(host, "Seat 8. Type a value"));
+    expect(field(host)!.value).toBe("8");
+    expect(field(host)!.getAttribute("inputmode")).toBe("decimal");
+    await typeOver(host, "12");
+    expect(host.querySelector('[data-strip="edit"]')!.textContent).toContain("Seat 4 → 12");
   });
 
   it("keeps the letters for a word dial", async () => {
@@ -630,22 +713,20 @@ describe("Set up from the Now Bar (focusDial, onSaveClose)", () => {
     expect(full.querySelector("[data-editor]")).toBeNull();
   });
 
-  it("Next walks the empty dials in order; Enter does the same; the last one says Done", async () => {
+  it("Enter walks the empty dials in order, and on the last puts the keyboard away", async () => {
     const host = await mount(<Tiles saved={{}} focusDial />);
     expect(editorTitle(host)).toBe("Seat");
     await typeKeys(host, "12");
-    expect(stepBtn(host, "next")!.getAttribute("aria-label")).toBe("Next: Back pad");
-    await click(stepBtn(host, "next"));
+    // The iPad's key says Next while another dial is empty.
+    expect(field(host)!.getAttribute("enterkeyhint")).toBe("next");
+    await enter(host);
     expect(editorTitle(host)).toBe("Back pad");
     expect(document.activeElement).toBe(field(host));
     await typeKeys(host, "3");
-    // Enter, from the keyboard: on to Foot plate, the last empty dial.
-    await act(async () => {
-      field(host)!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
-    });
+    await enter(host);
     expect(editorTitle(host)).toBe("Foot plate");
-    expect(stepBtn(host, "next")).toBeNull();
-    await click(stepBtn(host, "done"));
+    expect(field(host)!.getAttribute("enterkeyhint")).toBe("done");
+    await enter(host);
     expect(host.querySelector("[data-editor]")).toBeNull();
     expect(host.querySelector('[data-strip="edit"]')!.textContent).toContain("Seat — → 12 · Back pad — → 3");
   });
@@ -678,12 +759,13 @@ describe("Set up from the Now Bar (focusDial, onSaveClose)", () => {
     expect(editorTitle(host)).toBe("Seat");
   });
 
-  it("offers Next only on Set up's walk: from any other door the editor keeps Done", async () => {
+  it("walks on Enter from any door, not only Set up's: no Done and no Next to tap", async () => {
     const host = await mount(<Tiles saved={{}} />);
     await click(button(host, "Seat: not set. Set it"));
-    expect(stepBtn(host, "next")).toBeNull();
-    await click(stepBtn(host, "done"));
-    expect(host.querySelector("[data-editor]")).toBeNull();
+    expect(byText(host, "Done")).toBeNull();
+    expect(byText(host, "Next")).toBeNull();
+    await enter(host);
+    expect(editorTitle(host)).toBe("Back pad");
   });
 
   it("offers Use studio standard for all only from two empty dials with a standard", async () => {
@@ -699,7 +781,7 @@ describe("Set up from the Now Bar (focusDial, onSaveClose)", () => {
     // Tap 1 is the Now Bar's Set up: the card opens like this.
     const host = await mount(<Tiles fields={twoDials} saved={{}} focusDial onSaveClose={onSaveClose} />);
     await typeKeys(host, "12");
-    await click(stepBtn(host, "next")); // tap 2
+    await click(button(host, "Back pad: not set. Set it")); // tap 2 (or Enter)
     await typeKeys(host, "3");
     await click(byText(host, "Save set-up")); // tap 3
     expect(saves.calls).toHaveLength(1);
@@ -799,6 +881,7 @@ describe("Set up from the Now Bar (focusDial, onSaveClose)", () => {
     const onSaveClose = vi.fn();
     const host = await mount(<Tiles onSaveClose={onSaveClose} onAddHealthNote={() => {}} />);
     await click(button(host, "Seat up one"));
+    await click(byText(host, "Why? (optional)"));
     await click(byText(host, "Pain or discomfort"));
     await click(byText(host, "Save Seat 5"));
     expect(onSaveClose).not.toHaveBeenCalled();

@@ -244,8 +244,15 @@ const WELLS: Well[] = [
   // The machine menu (Oct 2026), brought into the round's look: its setting
   // tiles, a big jump's positions, a note, Every session's table and a
   // note's confirmation sit inside the card.
-  { file: "features/machine-menu/machine-menu.css", sel: ".mm-tile", p: "eq", transparentEdge: true, words: [[".mm-tile__label"], [".mm-tile__std"]] },
-  { file: "features/machine-menu/machine-menu.css", sel: ".mm-pos", p: "eq", words: [[".mm-pos__title"], [".mm-pos__now"], [".mm-pos__std"]] },
+  // A dial being changed is its own tile (Oct 10 2026): a word dial's
+  // options, their "now" and the standard are read on the tile's well.
+  {
+    file: "features/machine-menu/machine-menu.css",
+    sel: ".mm-tile",
+    p: "eq",
+    transparentEdge: true,
+    words: [[".mm-tile__label"], [".mm-tile__std"], [".mm-pos__now"], [".mm-pos__std"]],
+  },
   { file: "features/machine-menu/machine-menu.css", sel: ".mm-note", p: "eq", words: [[".mm-note__meta"], [".mm-thread__file"]] },
   { file: "features/machine-menu/machine-menu.css", sel: ".mm-sess-scroll", p: "eq", words: [[".mm-sess__h"]] },
   { file: "features/machine-menu/machine-menu.css", sel: ".mm-status", p: "eq", words: [[".mm-status"]] },

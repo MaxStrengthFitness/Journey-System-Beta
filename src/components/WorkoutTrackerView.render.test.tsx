@@ -1511,7 +1511,7 @@ describe("the FileMaker floor (the open session round, Oct 9 2026)", () => {
     await settle();
     const input = document.querySelector<HTMLInputElement>('.mm-dialog [data-block="settings"] [data-editor="field"] input');
     expect(input).not.toBeNull();
-    expect(document.querySelector(".mm-dialog [data-editor] .mm-pos__title")?.textContent).toBe("Seat");
+    expect(document.querySelector(".mm-dialog [data-editing] .mm-tile__label")?.textContent).toBe("Seat");
     expect(input!.getAttribute("inputmode")).toBe("decimal");
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "12");
@@ -3813,7 +3813,7 @@ describe("Who's this? gives an open session its client (the open session round, 
     await act(async () => door!.click());
     await settle();
   };
-  /** Sets one empty dial in the open card and saves: the card stays open (not Set up's door). */
+  /** Sets one empty dial in the open card and saves: Save closes the card, from every door (AJ's "1a", Oct 10 2026). */
   const keepDial = async (label: string, value: string) => {
     const empty = document.querySelector<HTMLButtonElement>(`.mm-dialog button[aria-label="${label}: not set. Set it"]`);
     expect(empty, `${label} is not set`).toBeTruthy();
@@ -3910,6 +3910,9 @@ describe("Who's this? gives an open session its client (the open session round, 
       for (const l of snapshotListeners.filter((x) => x.live && x.path === "sessions")) l.emit();
     });
     await settle();
+    // Save closed the card: opened again, it shows what the session still holds.
+    expect(document.querySelector(".mm-dialog .mm-card")).toBeNull();
+    await openCard(host, "Leg Press (Hoist)");
     const dial = document.querySelector('.mm-dialog [data-dial="Seat Distance"]');
     expect(dial?.textContent).toContain("9");
   });

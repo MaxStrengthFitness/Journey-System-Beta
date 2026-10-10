@@ -5,14 +5,18 @@
  * §C, "Settings: changing Seat 4 → 5"), on the live fill, directly under the
  * tiles:
  *
- *   Seat 4 → 5   Why? (optional)
- *   [Comfort or fit] [Range of motion] [Alignment] [Pain or discomfort]
- *   [Matches the guide] [Other…]
+ *   Seat 4 → 5   [Why? (optional)]
  *   [Cancel]                                         [Save Seat 5]
  *
  * The reason is ASKED, never required: no chip still saves, and
  * `saveSettings` writes its own default (docs/ARCHITECTURE.md §1.11, "never
  * block a save"). A first set-up reads "Seat — → 4" and asks no "Why?".
+ *
+ * The six reasons fold behind "Why? (optional)" until it is tapped (AJ's
+ * "3a", Oct 10 2026: they sat between the change and Save every time a
+ * saved value moved). Opened, they are the six chips; a picked one names
+ * itself on the button ("Why: Comfort or fit") and a second tap on it takes
+ * it back.
  * Save is the one loud action, the logo orange with navy words (`--eq-go` /
  * `--eq-go-on`); Cancel is quiet, on the left, so the two are never under
  * the same thumb.
@@ -23,7 +27,7 @@
  * save for pain or discomfort, one more button: Add a Health note.
  */
 import { AlertCircle } from "lucide-react";
-import { useId } from "react";
+import { useId, useState } from "react";
 import { REASON_CHIPS, OTHER_REASON, WHY_PROMPT, asksWhy, changeWords, saveLabel, type ReasonChip } from "./setting-draft";
 import type { SettingPair } from "./setting-history";
 import { HEALTH_NOTE_BUTTON } from "./note-target";
@@ -65,15 +69,29 @@ export function ChangeStrip({
   asksWhy: asks,
 }: ChangeStripProps) {
   const otherId = useId();
+  const chipsId = useId();
   const why = asks ?? asksWhy(changes);
+  // Folded until "Why?" is tapped (AJ's "3a"); it stays open while the strip does.
+  const [open, setOpen] = useState(false);
   return (
     <div className="mm-strip" data-strip="edit">
-      <p className="mm-strip__line">
+      <div className="mm-strip__line">
         <b className="mm-strip__what">{changeWords(changes)}</b>
-        {why ? <span className="mm-strip__why">{WHY_PROMPT}</span> : null}
-      </p>
-      {why ? (
-        <div className="mm-choices" role="group" aria-label="Reason, optional">
+        {why ? (
+          <button
+            type="button"
+            className="mm-btn mm-strip__why"
+            aria-expanded={open}
+            aria-controls={chipsId}
+            data-why=""
+            onClick={() => setOpen((o) => !o)}
+          >
+            {reason ? `Why: ${reason === OTHER_REASON ? "Other" : reason}` : WHY_PROMPT}
+          </button>
+        ) : null}
+      </div>
+      {why && open ? (
+        <div className="mm-choices" id={chipsId} role="group" aria-label="Reason, optional">
           {REASON_CHIPS.map((chip) => (
             <button
               key={chip}
@@ -88,7 +106,7 @@ export function ChangeStrip({
           ))}
         </div>
       ) : null}
-      {why && reason === OTHER_REASON ? (
+      {why && open && reason === OTHER_REASON ? (
         <label className="mm-field" htmlFor={otherId}>
           <span>Other reason</span>
           <input

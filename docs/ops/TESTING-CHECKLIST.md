@@ -3251,7 +3251,7 @@ Round document: `docs/rounds/2026-10-09-open-session.md` (§4.8 is how to ship; 
 
 **Set up on a first-time machine (count the taps)**
 - [ ] **On a machine with two empty dials, the Now Bar's button says "Set up · 2 not set"** (one 40px button where the setting tiles were).
-- [ ] **Set up for Seat 12 and Back pad 3:** tap **Set up** (1): the machine card opens on the first empty dial, its field on the NUMBER pad. Type 12. Tap **Next** (2): the next empty dial, number pad. Type 3. Tap **Save set-up** (3): the card closes. **Three taps and the digits** (it was six taps and three keys). Write your count down if it isn't three.
+- [ ] **Set up for Seat 12 and Back pad 3:** tap **Set up** (1): the machine card opens with the first empty dial's TILE as its field, on the NUMBER pad. Type 12. Tap the **Back pad tile** (2) (or the keyboard's Next): that tile is its field now, number pad. Type 3. Tap **Save set-up** (3): the card closes. **Three taps and the digits** (it was six taps and three keys). Write your count down if it isn't three. (Since Oct 10 2026 there is no Next or Done button: Round 67's "The settings card".)
 - [ ] **The first digit never changes the editor:** typing "1" then "2" into an empty dial stays a typed field, never a row of positions.
 - [ ] **Before Who's this?, the set-up is kept on the session:** the toast says "{Machine}: set-up kept on this session · saved to the client when you choose them", with **Undo** for ten seconds. Reopen the card: it shows Seat 12 and Back pad 3, and says "Kept on this session · saved to the client when you choose them" where "Last changed" would be. No reason is asked.
 - [ ] **Undo** on the toast within ten seconds: the dials are empty again. Set them once more.
@@ -3301,6 +3301,14 @@ Round document: `docs/rounds/2026-10-09-floor.md` (AJ's "1a 2a 3a": the six fixe
 
 **The session bar**
 - [ ] **Notes and Pulse:** their icons are the ink colour, like their words; the only orange on the bar is **Finish**.
+
+**The settings card: tap the setting, type, Save** (Oct 10 2026; AJ's "1a 2a 3a", `src/features/machine-menu/README.md` → "The settings card")
+- [ ] **From the machine's name, not Set up:** tap a machine's name, then tap a setting's number (or Not set). THAT tile becomes the box, on the number pad, the old value selected; nothing opens under the tiles, and there is no Done or Next button. Type the new number, tap **Save**: the card closes and the toast says it, with **Undo** for ten seconds. Count: the name, the setting, the digits, Save.
+- [ ] **A setting that already has a value** (Seat 5): tapping the 5 gives the typed box, never a row of numbers to pick from; − and + on the tile still move it one step.
+- [ ] **Two settings:** type one, tap the other tile (the first keeps what you typed), type, Save. Or the keyboard's Next to the next empty one; on the last, the keyboard's Done puts it away and Save is there.
+- [ ] **Change a value the client already has** (Seat 5 → 6 on a client's own session): the strip says "Seat 5 → 6" with **Why? (optional)** folded and Save right under it. Tap Why?: the six reasons; pick one, and the button says "Why: Comfort or fit". Save without a reason also saves.
+- [ ] **Pain or discomfort** as the reason: Save keeps the card open, with **Add a Health note**.
+- [ ] **On the profile** (a client's Journey grid → a machine's name): the same, and Save closes it there too.
 
 **Finish**
 - [ ] **Finish:** the question reads "Finish {first name}'s session?" on one line, with nothing under it. **The keyboard does NOT come up by itself.** Tap the note box: now it does, and the box's edge is blue, never orange. The hint says "On the next four briefings." The link at the bottom says **Scrap session**.
