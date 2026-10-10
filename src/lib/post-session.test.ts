@@ -141,6 +141,20 @@ describe("strengthJourney", () => {
       "Judy's working loads are up 21% since Jul 1, 2026 across 4 machines. Strongest trend: lower body, up 33%.",
     );
   });
+
+  // The floor round, Oct 9 2026, F1: an iPad that never heard the server's answer for the
+  // earlier sessions holds only its own copy. That is "can't tell", never "not enough history".
+  it("says it couldn't read, never that the history is thin, when the earlier sessions were not read", () => {
+    const unread = strengthJourney(rows, false);
+    expect(unread).toMatchObject({ enough: false, pct: null, standout: null, byGroup: [], historyRead: false });
+    expect(journeySentence(unread, "Judy")).toBe("Couldn't read the earlier sessions here. The trend is on the profile.");
+    expect(journeySentence(unread, "Judy")).not.toMatch(/Not enough history/);
+  });
+
+  it("treats a snapshot made before the field as read", () => {
+    const { historyRead: _gone, ...older } = strengthJourney(rows.slice(0, 2));
+    expect(journeySentence(older, "Judy")).toMatch(/Not enough history yet/);
+  });
 });
 
 describe("nextBookingFor", () => {

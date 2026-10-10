@@ -3223,9 +3223,17 @@ export function WorkoutTrackerView({
          whole-branch review, Oct 9 2026): until then the grid holds only
          this session, or the iPad's partial copy, and "First time" would be
          said of machines the client has done for years. A client added here
-         has no earlier sessions: what is read is all there is. */
+         has no earlier sessions: what is read is all there is.
+         Every other session too, only once the server answered for the
+         sessions and their sets (the floor round, Oct 9 2026, F1): an iPad
+         offline or on slow Wi-Fi at Finish holds only its own copy, and
+         "Not enough history yet" or "First time" would be said of a client
+         with years behind them. A failed read is "can't tell". */
+      const historyRead =
+        createdHere || (sessionsServerFor === selectedClient.id && logsWindow?.state === "ready");
       const priorKnown =
-        createdHere || assignedHereId !== sessionId || (sessionsServerFor === selectedClient.id && sessionsAllRead);
+        historyRead &&
+        (createdHere || assignedHereId !== sessionId || (sessionsServerFor === selectedClient.id && sessionsAllRead));
       const priorOf = (machineId: string): PriorSet | undefined => {
         const row = gridRows.find((r) => r.machine.id === machineId);
         if (!row) return undefined;
@@ -3254,6 +3262,7 @@ export function WorkoutTrackerView({
             startDate: row.startingWeightDate ?? first?.session.date ?? null,
           };
         }),
+        priorKnown,
       );
 
       /* The Wrap-up's Next time (the first-session design round, Oct 8

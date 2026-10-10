@@ -39,6 +39,16 @@ describe("the logs window", () => {
     expect(source).toMatch(/const sessionsAllRead = logsWindow\?\.state === "ready" && !hasOlderToRead\(sessions, menuReadIds\);/);
   });
 
+  // The floor round, Oct 9 2026, F1: the Wrap-up's Today lines and its journey count the
+  // earlier sessions as known only once the server answered for them and their sets.
+  it("lets the Wrap-up claim nothing about the past from a window the server never answered", () => {
+    expect(source).toMatch(
+      /const historyRead =\s*createdHere \|\| \(sessionsServerFor === selectedClient\.id && logsWindow\?\.state === "ready"\);/,
+    );
+    expect(source).toMatch(/const priorKnown =\s*historyRead &&/);
+    expect(source).toMatch(/priorKnown,\s*\);/); // strengthJourney(rows, priorKnown)
+  });
+
   it("closes the machine menu when its screen goes", () => {
     expect(source).toMatch(/if \(screen !== "tracker" && screen !== "watch"\) setMenuMachineId\(null\);/);
   });
