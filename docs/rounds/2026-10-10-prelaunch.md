@@ -149,14 +149,30 @@ restore brought the whole database back to the same fingerprint
 (`df90d9fe5a34da31`) after both the default and the every-group run, and a
 second restore overwrote nothing.
 
-**Production, read only (Oct 10 2026)**, under the default groups: 276
-sessions (5 never finished, none open in 12 hours), 1,820 sets, 7 old
-`sessionNotes`, 6 journal notes, 30 machine totals, the counters of the 30
-clients those sessions touched, 28 renewal snapshots, 10 trainer counts and
-40 month tallies: 2,189 documents and 243 fields on 38 documents. Left out as
-Demo Mode: 132 sessions and 926 sets. Optional: `settings` (219 weights on 79
-set-ups), `routines` (44 routines, 20 adjustments), `pulse` (23 reports, 5
-focuses), `setting-history` (67 records), `operations` (1 Seen mark).
+**An independent review, then its fixes** (commits `969f02e5`, `d63ee2ed`).
+The review found six rules that would have cleared data to keep (a re-run
+after real sessions exist; a trainer's Mindbody Confirm on a client the tests
+never touched; a real first-visit date under a stale backfill marker; clients
+counted as "touched" merely because a profile was opened; profile notes in the
+old `sessionNotes`; a first-session date typed on the retired form), and five
+consistency gaps (counters deleted rather than set; a write the webhook beat
+not retried; an early trainer failure not stopping the run; the whole renewal
+snapshot deleted; a restore after 3 AM). All fixed. **New guards:** `--commit`
+needs `--expect <n>`, the dry run's planned count; it refuses once any real
+studio has a cutover date unless `--after-cutover`; production must be named
+in full (`--project` and `--database`); an emulator setting together with the
+production project is refused; an unknown flag stops it. Each guard was tried
+on the emulator and refused without writing.
+
+**Production, read only (Oct 10 2026, after the fixes)**, under the default
+groups: 276 sessions (5 never finished, none open in 12 hours), 1,820 sets, 6
+old `sessionNotes` (one with no session kept), 6 journal notes, 30 machine
+totals, counters on 17 clients, two renewal fields on 14, `lastSessionDate` on
+15 and `firstSessionDate` on 17 (ids printed), 10 trainer counts, 16 month
+tallies: **2,190 documents** (`--expect 2190`). Left out as Demo Mode: 132
+sessions and 926 sets. Optional: `settings` (219 weights on 79 set-ups),
+`routines` (44 routines, 20 adjustments), `pulse` (23 reports),
+`setting-history` (67 records), `operations` (1 Seen mark).
 
 Where today's first wipe map was wrong, found while building it: `sessionNotes`
 (still read by the journal); notes left by Discard and History's delete; FORD

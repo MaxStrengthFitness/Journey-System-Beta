@@ -81,8 +81,10 @@ anywhere (no studio or head-office numbers are set).
 - **The reset**: `docs/ops/RESET-BEFORE-LAUNCH.md`. Every iPad online, synced,
   no session open; dry run, then commit, then the three follow-up jobs; sign
   every iPad out after. From here on, practise only in Demo Mode. Today's dry
-  run: 276 test sessions and 1,820 sets with their notes and counters; Demo
-  Mode's 132 left alone. It backs up everything first and can put it all back.
+  run: 276 test sessions and 1,820 sets with their notes and counters, 2,190
+  documents in all; Demo Mode's 132 left alone. It backs up everything first,
+  can put it all back, commits only with `--expect` set to its dry run's
+  count, and refuses once a cutover date is set.
 
 ### The day before
 
