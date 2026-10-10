@@ -63,9 +63,12 @@ const NAME_RULES: { file: string; cls: string; exact?: string; what: string }[] 
   { file: "features/routine-builder/routine-builder.css", cls: "rb-pick__name", what: "a machine in the routine builder's picker" },
   { file: "features/routine-builder/routine-builder.css", cls: "rb-warn__pair", what: "the two machines a sequencing warning names" },
   { file: "features/routine-builder/routine-builder.css", cls: "rb-head__title", what: "the routine's name in the builder's head" },
-  { file: "features/calendar/calendar.css", cls: "cal-block__name", what: "the client on a calendar block" },
+  // The Calendar as a room (Oct 10 2026): its Day is the Hub's grid and card
+  // (held above), so the block and the lane label went; these are new.
   { file: "features/calendar/calendar.css", cls: "cal-board__name", what: "a trainer on the calendar's board" },
-  { file: "features/calendar/calendar.css", cls: "cal-lane__name", what: "a trainer's lane label on the day view" },
+  { file: "features/calendar/calendar.css", cls: "cal-pick__name", what: "whose bookings the Calendar shows, on the team picker" },
+  { file: "features/calendar/calendar.css", cls: "cal-pick__optname", what: "a trainer in the team picker's list" },
+  { file: "features/calendar/calendar.css", cls: "cal-life__item", what: "a client's life event over the Calendar's Day" },
   { file: "features/client-history/client-history.css", cls: "hist-who__name", what: "the trainer on a history row" },
   { file: "features/client-history/client-history.css", cls: "hsd-set__name", what: "a machine in the session pop-up" },
   { file: "features/trainer-profile/trainer-profile.css", cls: "tp-row__name", what: "a person or client on a My Profile row" },

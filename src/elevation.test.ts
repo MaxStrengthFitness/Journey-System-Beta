@@ -656,7 +656,8 @@ const KEPT_RAILS: Record<string, string> = {
   'features/hub-schedule/day-header.css .hd-swatch[data-state="live"]': "the Key's picture of a booking draws the card's rail as it is",
   'features/hub-schedule/day-header.css .hd-swatch[data-state="in-session"]': "the Key's picture of a booking in session, with its rail",
   'features/hub-schedule/day-header.css .hd-swatch[data-state="left-open"]': "the Key's picture of a booking left open, with its rail",
-  "features/calendar/calendar.css .cal-block": "a booking on the calendar keeps the Hub booking's device, a type rail on a small card",
+  // The calendar's .cal-block left with the swimlanes (the rooms round, Oct
+  // 10 2026): the Calendar's Day draws the Hub's own card, held above.
 };
 
 function crescents(): string[] {
@@ -790,7 +791,8 @@ const UNDER_40_ON_PURPOSE: Record<string, string> = {
 
 /** A pointer target drawn under 40px, whatever its name: each with why. */
 const SMALL_TAP_ON_PURPOSE: Record<string, string> = {
-  "features/calendar/calendar.css .cal-block": "a booking on the Calendar's day is as tall as its time (a 15-minute one is 30px); its lane opens it too",
+  // The Calendar's .cal-block went with the swimlanes (the rooms round, Oct
+  // 10 2026): its Day is the Hub's grid, whose cards are as tall as their time.
   "features/equipment/equipment.css .eq-summary__clear": "drawn 24px inside the search field; its ::after reaches 40 (the sweep)",
   "features/journey-grid/journey-grid.css .jg-machine__note": "AJ's call (the review): the note mark in a machine's cell, 20px",
   "features/journey-grid/journey-grid.css .jg-today__add": "its ::after takes the tap 6px to each side and to its own row's height (the review)",

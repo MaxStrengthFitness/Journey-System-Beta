@@ -17,6 +17,14 @@ import { studioDateKey } from "../lib/studio-time";
 vi.mock("../features/relay/board/RelayStrip", () => ({ RelayStrip: () => null }));
 // The FORD read behind Events (ford-events.test.ts covers what it becomes).
 vi.mock("../features/calendar/useCalendarFord", () => ({ useCalendarFord: () => ({ status: "ready", details: [] }) }));
+// The Day's hatching reads the agreed standing weeks (off-hours.test.ts covers them).
+const standingWeeksAsked = vi.fn();
+vi.mock("../features/standing-week/useStandingWeeks", () => ({
+  useStandingWeeks: (studioId: string | null) => {
+    standingWeeksAsked(studioId);
+    return { docs: [], loading: false, error: null };
+  },
+}));
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -260,5 +268,120 @@ describe("CalendarView — Month's quiet cells", () => {
     expect(today.querySelector(".cal-day__count")!.textContent).toBe("1");
     expect(host!.querySelector(".cal-avatar")).toBeNull();
     expect(host!.querySelectorAll('.cal-day[data-today="true"]')).toHaveLength(1);
+  });
+});
+
+/* ---------------------------------------------------------------------------
+   The Day is the Hub's grid (AJ's 2a).
+   --------------------------------------------------------------------------- */
+
+/** A booking today at a studio time, half an hour long. */
+function bookingAt(hour: number, minute: number, over: Record<string, unknown>) {
+  const start = new Date();
+  start.setHours(hour, minute, 0, 0);
+  return {
+    status: "Scheduled",
+    studioId: "solon",
+    startTime: start.toISOString(),
+    endTime: new Date(start.getTime() + 30 * 60000).toISOString(),
+    ...over,
+  };
+}
+
+const TEAM = [
+  { id: "t-chris", fullName: "Christine Avalos", primaryHomeStudioId: "solon" },
+  { id: "t-me", fullName: "Lena Lindqvist", primaryHomeStudioId: "solon" },
+] as any[];
+
+describe("CalendarView — Day is the Hub's grid", () => {
+  const schedules = [
+    bookingAt(9, 0, { id: "b1", clientId: "c1", clientName: "Ruth Avery-Montgomery", trainerId: "t-chris", trainerName: "Christine Avalos" }),
+    bookingAt(9, 30, { id: "b2", clientId: "c2", clientName: "Sam Okafor", trainerId: "t-me", trainerName: "Lena Lindqvist" }),
+    // Mindbody's first name only, no id: the old matching gave it to Christine.
+    bookingAt(10, 0, { id: "b3", clientId: "c3", clientName: "Priya Nair", trainerName: "Chris" }),
+  ] as any[];
+  const clients = [
+    { id: "c1", firstName: "Ruth", lastName: "Avery-Montgomery", homeStudioId: "solon" },
+    { id: "c2", firstName: "Sam", lastName: "Okafor", homeStudioId: "solon" },
+    { id: "c3", firstName: "Priya", lastName: "Nair", homeStudioId: "solon" },
+  ] as any[];
+
+  function openDayView(extra: Partial<ComponentProps<typeof CalendarView>> = {}) {
+    mount(controls(), { schedules, trainers: TEAM, authTrainer: TEAM[1], clients, ...extra });
+    act(() => viewButton("Day").click());
+  }
+
+  const heads = () => [...host!.querySelectorAll(".hs-colhead")].map((h) => h.querySelector("strong")?.textContent);
+
+  it("draws the Hub's grid: your column first under You, then by id, and a name alone goes to Unassigned", () => {
+    openDayView();
+    expect(host!.querySelector(".hs-scroll")).not.toBeNull();
+    expect(host!.querySelector(".cal-lanes__scroller, .cal-lane")).toBeNull();
+    expect(heads()).toEqual(["LenaYou", "Unassigned", "Christine"]);
+    const unassigned = [...host!.querySelectorAll(".hs-col")][1];
+    expect(unassigned.textContent).toContain("Priya Nair");
+    expect(unassigned.textContent).toContain("Booked with Chris");
+    // Whole names, never cut.
+    expect(host!.textContent).toContain("Ruth Avery-Montgomery");
+  });
+
+  it("a tap on a booking opens the client, as the Calendar always has, and says nothing about a dialog", () => {
+    const onSelectClient = vi.fn();
+    const setView = vi.fn();
+    openDayView({ onSelectClient, setView });
+    const card = [...host!.querySelectorAll<HTMLElement>('.hs-card[data-kind="client"]')].find((c) => c.textContent?.includes("Sam Okafor"))!;
+    expect(card.getAttribute("aria-haspopup")).toBeNull();
+    act(() => card.click());
+    expect(onSelectClient).toHaveBeenCalledWith("c2");
+    expect(setView).toHaveBeenCalledWith("profile");
+  });
+
+  it("the team filter narrows the Day to that trainer's column", () => {
+    openDayView();
+    act(() => host!.querySelector<HTMLButtonElement>(".cal-pick__btn")!.click());
+    const chris = [...host!.querySelectorAll<HTMLButtonElement>('[role="option"]')].find((o) => o.textContent === "Christine Avalos")!;
+    act(() => chris.click());
+    expect(heads()).toEqual(["Christine"]);
+    expect(host!.textContent).not.toContain("Priya Nair");
+  });
+
+  it("reads the agreed standing weeks only for someone who works here, only on the Day", () => {
+    standingWeeksAsked.mockClear();
+    mount(controls(), { schedules, trainers: TEAM, authTrainer: TEAM[1], clients });
+    expect(standingWeeksAsked).not.toHaveBeenCalledWith("solon");
+    act(() => viewButton("Day").click());
+    expect(standingWeeksAsked).toHaveBeenLastCalledWith("solon");
+    act(() => viewButton("Week").click());
+    expect(standingWeeksAsked).toHaveBeenLastCalledWith(null);
+  });
+
+  it("says the day's life events folded, and their words on a tap; Month only marks the day", () => {
+    const today = new Date();
+    const birthday = `1960-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const withBirthday = [...clients, { id: "c9", firstName: "Ruth", lastName: "Avery", homeStudioId: "solon", dateOfBirth: birthday }];
+    mount(controls(), { schedules, trainers: TEAM, authTrainer: TEAM[1], clients: withBirthday });
+    // Month: a mark, no words in the cell.
+    const cell = host!.querySelector<HTMLElement>('.cal-day[data-today="true"]')!;
+    expect(cell.querySelector(".cal-day__life")).not.toBeNull();
+    expect(cell.textContent).not.toContain("Ruth Avery");
+    expect(cell.getAttribute("aria-label")).toMatch(/Ruth Avery/);
+    act(() => viewButton("Day").click());
+    const toggle = host!.querySelector<HTMLButtonElement>(".cal-life__toggle")!;
+    expect(toggle.textContent).toBe("A life event");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(host!.querySelector(".cal-life__item")).toBeNull();
+    act(() => toggle.click());
+    expect(host!.querySelector(".cal-life__item")?.textContent).toMatch(/Ruth Avery/);
+  });
+
+  it("an empty day says nobody is booked only when it was read; while it is read it says so", () => {
+    mount(controls({ dayState: () => "loading" }), { trainers: TEAM, authTrainer: TEAM[1] });
+    act(() => viewButton("Day").click());
+    expect(host!.querySelector(".hs-empty")?.textContent).toMatch(/Reading the day/);
+    act(() => root!.unmount());
+    host!.remove();
+    mount(controls({ dayState: () => "ready" }), { trainers: TEAM, authTrainer: TEAM[1] });
+    act(() => viewButton("Day").click());
+    expect(host!.querySelector(".hs-empty")?.textContent).toBe("Nobody is booked on this day.");
   });
 });

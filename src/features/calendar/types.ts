@@ -112,20 +112,3 @@ export interface WeekSummary {
   peak: number;
   busiestDay: DayBar | null;
 }
-
-/** One trainer's row in the day view. */
-export interface DayLane {
-  trainer: TrainerRef;
-  sessions: CalendarSession[];
-  count: number;
-}
-
-export interface DayPlan {
-  lanes: DayLane[];
-  /** Whole hours the axis spans, inclusive of start, exclusive of end. */
-  startHour: number;
-  endHour: number;
-  total: number;
-  /** Sessions whose trainer could not be resolved. Surfaced, never dropped. */
-  unassigned: CalendarSession[];
-}

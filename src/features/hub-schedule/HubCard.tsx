@@ -123,6 +123,12 @@ export interface HubCardProps {
   /** Its peek is open. */
   open?: boolean;
   /**
+   * A tap opens a peek (the Hub), so the card says it opens a dialog. False
+   * where a tap goes straight to the profile instead (the Calendar's Day,
+   * the rooms round, Oct 10 2026). The card looks the same either way.
+   */
+  opensPeek?: boolean;
+  /**
    * The grid block it is drawn in, handed back to `onOpen`, so the grid can
    * pass every card ONE handler and a card with nothing new skips drawing
    * (speed round, Oct 5 2026, R7).
@@ -148,6 +154,7 @@ function HubCardView({
   dimmed = false,
   wordy = false,
   open = false,
+  opensPeek = true,
   blockKey,
   onOpen,
 }: HubCardProps) {
@@ -209,7 +216,7 @@ function HubCardView({
       data-open={open ? "true" : undefined}
       role={interactive ? "button" : undefined}
       tabIndex={interactive ? 0 : -1}
-      aria-haspopup={interactive ? "dialog" : undefined}
+      aria-haspopup={interactive && opensPeek ? "dialog" : undefined}
       title={
         isUnknown
           ? `${booking?.clientName || "Reservation"} — couldn't check this client's profile just now.`

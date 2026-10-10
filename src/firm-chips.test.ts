@@ -300,7 +300,8 @@ const HAIRLINE_ON_PURPOSE: Record<string, string> = {
   "features/front-door/front-door.css .fd-row": "the front door: always dark, its own palette and voice, a brand moment",
   "features/front-door/front-door.css .fd-tile": "the front door: always dark, its own palette and voice, a brand moment",
   "features/briefing/briefing.css .br-routine__line": "a row that opens the routine (AJ: \"One line, tap to edit\"), not a chip",
-  "features/calendar/calendar.css .cal-lane__item": "a booking on the Calendar's day, a card like the Hub's, not a chip",
+  // The Calendar's .cal-lane__item went with the swimlanes (the rooms round,
+  // Oct 10 2026): its Day is the Hub's grid and card.
   "features/machine-fit/ui/machine-fit.css .fit-row__revert": "a quiet text button with no fill: ghosts never lift (the sweep)",
 };
 

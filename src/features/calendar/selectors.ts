@@ -19,8 +19,6 @@ import type {
   CalendarSession,
   DayBar,
   DayCell,
-  DayLane,
-  DayPlan,
   HeatCell,
   TimeBand,
   TrainerCount,
@@ -328,70 +326,12 @@ export function buildWeekSummary(
  * Day
  * ------------------------------------------------------------------ */
 
-/** Minutes from midnight, in STUDIO time. */
+/**
+ * Minutes from midnight, in STUDIO time: where a booking sits on the Day's
+ * grid (the Hub's grid since the rooms round, Oct 10 2026; the swimlanes'
+ * buildDayPlan went with them).
+ */
 export function studioMinutes(date: Date): number {
   const hm = zonedHM(date);
   return hm ? hm.hour * 60 + hm.minute : date.getHours() * 60 + date.getMinutes();
-}
-
-/**
- * One row per trainer, sessions laid along a shared time axis.
- *
- * The axis is derived from the day's real bookings rather than a fixed
- * 6 AM – 8 PM, so a quiet Saturday that runs 8–11 draws three hours wide
- * instead of fourteen mostly-empty ones. Padded to whole hours and floored at
- * a two-hour span so a single booking still gets a readable axis.
- */
-export function buildDayPlan(
-  date: Date,
-  sessions: CalendarSession[],
-  refs: Map<string, TrainerRef>,
-): DayPlan {
-  const key = dayKey(date);
-  const today = sessions.filter((s) => dayKey(s.start) === key);
-
-  const laneMap = new Map<string, DayLane>();
-  const unassigned: CalendarSession[] = [];
-
-  for (const s of today) {
-    const id = s.trainerId;
-    if (!id) {
-      unassigned.push(s);
-      continue;
-    }
-    const trainer = refs.get(id) || unknownTrainerRef(s.trainerName);
-    const lane = laneMap.get(id);
-    if (lane) lane.sessions.push(s);
-    else laneMap.set(id, { trainer, sessions: [s], count: 0 });
-  }
-
-  const lanes = Array.from(laneMap.values());
-  for (const lane of lanes) {
-    lane.sessions.sort((a, b) => a.start.getTime() - b.start.getTime());
-    lane.count = lane.sessions.filter((s) => !s.isUnavailability).length;
-  }
-  lanes.sort((a, b) => b.count - a.count || a.trainer.name.localeCompare(b.trainer.name));
-
-  let min = Infinity;
-  let max = -Infinity;
-  for (const s of today) {
-    min = Math.min(min, studioMinutes(s.start));
-    max = Math.max(max, studioMinutes(s.start) + Math.max(s.durationMin, 30));
-  }
-  if (!Number.isFinite(min) || !Number.isFinite(max)) {
-    min = 6 * 60;
-    max = 20 * 60;
-  }
-
-  let startHour = Math.max(0, Math.floor(min / 60));
-  let endHour = Math.min(24, Math.ceil(max / 60));
-  if (endHour - startHour < 2) endHour = Math.min(24, startHour + 2);
-
-  return {
-    lanes,
-    startHour,
-    endHour,
-    total: today.filter((s) => !s.isUnavailability).length,
-    unassigned,
-  };
 }

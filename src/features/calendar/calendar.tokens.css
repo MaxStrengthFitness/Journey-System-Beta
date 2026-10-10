@@ -61,9 +61,6 @@
 
   --cal-radius:        14px;
   --cal-shadow:        rgba(25, 45, 65, 0.10);
-  /* Day view: width of one 30-minute slot. */
-  --cal-slot-w:        38px;
-  --cal-lane-label:    148px;
 
   /* The initials on a tone's solid: white in light (4.9:1 or more on every
      solid), the navy in dark (the rooms round, Oct 10 2026; it was a raw

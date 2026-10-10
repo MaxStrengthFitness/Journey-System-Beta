@@ -21,14 +21,20 @@
   position: relative;
   z-index: 10;
   flex: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
   /* The foot keeps room for the 3px line, so nothing sits on it. */
   padding: 8px 12px 11px;
   background: var(--card);
   color: var(--foreground);
   box-shadow: var(--shelf);
+}
+
+/* The two rows, one over the other (folded into one on a wide screen,
+   below). */
+.rm-bar__in {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
 }
 
 /* Which room: the hue and, for the session's orange, navy ink. */
@@ -222,6 +228,29 @@
 @media (hover: hover) {
   .rm-tool:not(:disabled):hover {
     background: var(--muted);
+  }
+}
+
+/* ---- on a wide screen (an iPad on its side) ----
+   The two rows fold into one line, so the bar stays one band and the room
+   keeps its height: the name and the switch, then the second row's own
+   controls, then the room's tools last, on the right. Anything that doesn't
+   fit wraps onto a second line, as upright. */
+@container rm-bar (min-width: 1100px) {
+  .rm-bar__in {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+  }
+
+  .rm-bar__row {
+    display: contents;
+  }
+
+  .rm-bar__tools {
+    order: 5;
+    flex: 0 1 auto;
   }
 }
 

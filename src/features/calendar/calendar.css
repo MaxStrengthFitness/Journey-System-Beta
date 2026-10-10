@@ -136,7 +136,6 @@
 }
 .cal-card__body { padding: 14px; }
 .cal-card__head + .cal-card__body { padding-top: 12px; }
-.cal-card__head + .cal-lanes__scroller { margin-top: 12px; }
 
 .cal-avatar {
   display: inline-flex;
@@ -200,8 +199,15 @@
    are split by the panel's own soft rule.                                   */
 
 .cal-month {
+  /* The month fills the room under the bar: the day names, then six weeks
+     sharing what is left, each at least a cell's height (it stopped halfway
+     down an iPad held upright). */
+  --cal-day-min: 88px;
+  flex: 1 0 auto;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: auto;
+  grid-auto-rows: minmax(var(--cal-day-min), 1fr);
   background: var(--cal-surface);
   background-clip: padding-box;
   border: 1px solid var(--cal-edge);
@@ -226,7 +232,7 @@
   align-items: stretch;
   justify-content: space-between;
   gap: 6px;
-  min-height: 88px;
+  min-height: var(--cal-day-min);
   padding: 8px;
   border: 0;
   border-top: 1px solid var(--cal-divider);
@@ -326,13 +332,19 @@
   color: var(--eq-warn);
 }
 
+/* An iPad on its side: six weeks fit under the bar without a scroll. */
+@media (max-height: 900px) and (min-width: 768px) {
+  .cal-month { --cal-day-min: 76px; }
+}
 @media (max-width: 767px) {
-  .cal-day { min-height: 72px; padding: 6px; }
+  .cal-month { --cal-day-min: 72px; }
+  .cal-day { padding: 6px; }
 }
 /* A phone (Journey Lite): a day is about 50px wide. The count sits under
    the number at 17, and the chip tightens to 26. */
 @media (max-width: 599px) {
-  .cal-day { min-height: 64px; padding: 4px; gap: 4px; }
+  .cal-month { --cal-day-min: 64px; }
+  .cal-day { padding: 4px; gap: 4px; }
   .cal-day__num { min-width: 26px; height: 26px; font-size: 12px; padding: 0 2px; }
   .cal-day__count { font-size: 17px; min-height: 17px; justify-content: flex-start; }
   .cal-day__life { width: 6px; height: 6px; }
@@ -556,222 +568,109 @@
 .cal-legend__swatch { width: 14px; height: 14px; border-radius: 4px; }
 
 /* ---------- DAY ------------------------------------------------------- *
-   One row per trainer against a shared horizontal time axis. The Hub already
-   owns the vertical "what is happening now" read; this one exists to show the
-   whole day's shape — who is loaded, where the gaps are — in one screen.     */
+   The Hub's grid (the rooms round, Oct 10 2026; AJ's answer 2a): DayView
+   draws HubGrid and HubCard, with their own stylesheets (hub-grid.css,
+   hub-card.css) and the Hub's palette, so the Day looks and reads as the
+   Hub does. The swimlanes, their 38px half-hour slots and the names cut a
+   few letters to a line went with it. What is the Calendar's own: the room
+   under the bar, and the day's life events over the grid.                 */
 
-.cal-dayview { display: flex; flex-direction: column; gap: 12px; }
-
-.cal-lanes__scroller {
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
-}
-.cal-lanes {
-  min-width: min-content;
+/* The grid is its own scroller for both axes (its names row sticks to the
+   top, its rail to the left), so the Day takes the room under the bar. */
+.cal-daybody {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-.cal-lane__axis,
-.cal-lane {
-  display: grid;
-  /* One track per 30-minute slot, plus the sticky label column. */
-  grid-template-columns: var(--cal-lane-label) repeat(var(--cal-slots), var(--cal-slot-w));
-  align-items: stretch;
-}
-
-.cal-lane__axis {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  background: var(--cal-surface-2);
-  border-bottom: 1px solid var(--cal-border-strong);
-}
-.cal-axis__corner {
-  position: sticky;
-  left: 0;
-  z-index: 4;
-  background: var(--cal-surface-2);
-  border-right: 1px solid var(--cal-border-strong);
+/* What sits over the grid: the Relay layer and the day's life events, a
+   quiet band that never takes more than a third of the room. */
+.cal-daytop {
+  flex: none;
+  max-height: 33%;
+  overflow-y: auto;
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--cal-bg);
+}
+.cal-daytop:empty { display: none; }
+
+/* A client's life event on the day (a birthday, a dated FORD detail), its
+   words whole: Month marks the day with a dot and the words are here. */
+.cal-life {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  padding: 0 10px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--cal-ink-muted);
+  gap: 6px 10px;
 }
-.cal-axis__tick {
-  /* Each hour label spans its two half-hour slots. */
-  grid-column: span 2;
-  padding: 6px 0 5px 6px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0;
-  color: var(--cal-ink-muted);
-  border-left: 1px solid var(--cal-border);
-  white-space: nowrap;
-}
-
-.cal-lane { background: var(--cal-surface); }
-.cal-lane-group { border-bottom: 1px solid var(--cal-border); }
-.cal-lane-group:last-child { border-bottom: 0; }
-.cal-lane__label {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  display: flex;
+/* "2 life events", folded: a quiet button, its words the muted ink. */
+.cal-life__toggle {
+  min-height: 40px;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px 6px 10px;
-  background: var(--cal-surface);
-  border-right: 1px solid var(--cal-border-strong);
-  border-left: 3px solid var(--t-edge);
-  cursor: pointer;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-}
-.cal-lane__label:hover { background: var(--cal-surface-2); }
-.cal-lane__label:focus-visible { outline: 2px solid var(--cal-live); outline-offset: -2px; }
-.cal-lane__name {
-  flex: 1;
-  min-width: 0;
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--cal-ink);
-  white-space: normal;
-  overflow-wrap: anywhere;
-  line-height: 1.2;
-}
-.cal-lane__count {
-  font-size: 13px;
-  font-weight: 800;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
   color: var(--cal-ink-2);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Blocks are placed straight into the lane's own columns — no nested grid, no
-   subgrid (Safari support is too recent to lean on), no absolute positioning
-   and no pixel math. A session starting at slot 4 is `grid-column: 6`, because
-   column 1 is the label.
-   The hour rules are one background element behind the blocks rather than a
-   border on each, so they line up whether or not a slot is occupied. */
-.cal-lane__grid {
-  grid-column: 2 / -1;
-  grid-row: 1;
-  min-height: 46px;
-  background-image: repeating-linear-gradient(
-    to right,
-    var(--cal-border) 0 1px,
-    transparent 1px calc(var(--cal-slot-w) * 2)
-  );
-}
-
-.cal-block {
-  grid-row: 1;
-  z-index: 1;
-  margin: 4px 2px;
-  min-height: 30px;
-  border-radius: 7px;
-  background: var(--t-fill);
-  border: 1px solid var(--t-edge);
-  border-left: 3px solid var(--t-solid);
-  padding: 3px 5px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  overflow: hidden;
-  cursor: pointer;
-  text-align: left;
   font: inherit;
-  color: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
 }
-.cal-block:hover { filter: brightness(1.06); }
-.cal-block:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 1px; }
-.cal-block__name {
-  font-size: 11px;
-  font-weight: 800;
+@media (hover: hover) {
+  .cal-life__toggle:hover { background: var(--cal-surface-3); }
+}
+.cal-life__toggle:focus-visible { outline: 3px solid var(--cal-live); outline-offset: -3px; }
+.cal-life__chev { color: var(--cal-ink-muted); }
+.cal-life__toggle[aria-expanded="true"] .cal-life__chev { transform: rotate(180deg); }
+/* The month cell's own mark. */
+.cal-life__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--cal-ink-muted);
+}
+.cal-life__list {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* A chip a trainer taps: the firm 3:1 edge, raised, 40px; a client's name
+   whole, wrapping. One with no client to open lies flat on the soft edge. */
+.cal-life__item {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid var(--cal-border-strong);
+  border-radius: 12px;
+  background: var(--cal-raised);
+  box-shadow: var(--cal-elev-1), inset 0 1px 0 var(--cal-highlight);
   color: var(--cal-ink);
-  line-height: 1.1;
-  white-space: normal;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: left;
   overflow-wrap: anywhere;
+  cursor: pointer;
 }
-.cal-block__time {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--cal-ink-muted);
-  line-height: 1.1;
-  white-space: nowrap;
-}
-.cal-block--unavail {
-  background: repeating-linear-gradient(
-    45deg,
-    var(--cal-surface-3) 0 5px,
-    var(--cal-surface-2) 5px 10px
-  );
-  border-color: var(--cal-border-strong);
-  border-left-color: var(--cal-border-strong);
+.cal-life__item:not([data-still]):active { transform: translateY(1px); box-shadow: var(--cal-press); }
+.cal-life__item:focus-visible { outline: 3px solid var(--cal-live); outline-offset: 2px; }
+.cal-life__item[data-still] {
+  border-color: var(--cal-border);
+  box-shadow: none;
   cursor: default;
 }
-
-/* Expanded lane: the names the blocks are too narrow to show. */
-.cal-lane__detail {
-  border-top: 1px dashed var(--cal-border);
-  background: var(--cal-bg);
-  padding: 8px 10px 10px calc(var(--cal-lane-label) + 4px);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  position: sticky;
-  left: 0;
-}
-.cal-lane__item {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 4px 8px;
-  border-radius: 8px;
-  background: var(--cal-surface);
-  border: 1px solid var(--cal-border);
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-}
-.cal-lane__item:hover { border-color: var(--t-edge); }
-.cal-lane__item:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 1px; }
-.cal-lane__item b { font-size: 11px; font-weight: 800; color: var(--cal-ink); }
-.cal-lane__item span { font-size: 11px; font-weight: 700; color: var(--cal-ink-muted); }
-
-.cal-daystat {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding: 10px 14px;
-}
-.cal-daystat__big {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 5px;
-}
-.cal-daystat__big b {
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--cal-ink);
-  line-height: 1;
-}
-.cal-daystat__big span {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--cal-ink-muted);
-}
-.cal-daystat__sep { width: 1px; height: 24px; background: var(--cal-border); }
 
 /* ---------- The room (the rooms round, Oct 10 2026) -------------------- *
    The Calendar is a room: the room bar (features/rooms) over a body that

@@ -50,7 +50,7 @@ describe("RoomBar", () => {
         <span id="more" />
       </RoomBar>,
     );
-    const rows = host!.querySelectorAll(".rm-bar > .rm-bar__row");
+    const rows = host!.querySelectorAll(".rm-bar > .rm-bar__in > .rm-bar__row");
     expect(rows).toHaveLength(2);
     expect(rows[0].querySelector(".rm-bar__switch #sw")).not.toBeNull();
     expect(rows[0].querySelector(".rm-bar__tools button")?.textContent).toBe("Entire team");

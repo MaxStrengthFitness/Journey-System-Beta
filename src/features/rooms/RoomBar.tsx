@@ -33,17 +33,21 @@ export interface RoomBarProps {
 export function RoomBar({ room, name, icon: Icon, switcher, tools, children }: RoomBarProps) {
   return (
     <header className="rm-bar" data-room={room}>
-      <div className="rm-bar__row">
-        <div className="rm-bar__id">
-          <span className="rm-mark" aria-hidden="true">
-            <Icon size={22} strokeWidth={2.2} aria-hidden />
-          </span>
-          <h1 className="rm-name">{name}</h1>
+      {/* The rows sit in one inner box so the bar (the container its own
+          queries measure) can fold its two rows into one on a wide screen. */}
+      <div className="rm-bar__in">
+        <div className="rm-bar__row">
+          <div className="rm-bar__id">
+            <span className="rm-mark" aria-hidden="true">
+              <Icon size={22} strokeWidth={2.2} aria-hidden />
+            </span>
+            <h1 className="rm-name">{name}</h1>
+          </div>
+          {switcher ? <div className="rm-bar__switch">{switcher}</div> : null}
+          {tools ? <div className="rm-bar__tools">{tools}</div> : null}
         </div>
-        {switcher ? <div className="rm-bar__switch">{switcher}</div> : null}
-        {tools ? <div className="rm-bar__tools">{tools}</div> : null}
+        {children ? <div className="rm-bar__row rm-bar__row--more">{children}</div> : null}
       </div>
-      {children ? <div className="rm-bar__row rm-bar__row--more">{children}</div> : null}
     </header>
   );
 }

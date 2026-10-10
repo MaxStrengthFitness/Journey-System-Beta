@@ -2063,7 +2063,10 @@ export default function AppContent({
                     <LoadBoundary kind="screen">
                     <CalendarView
                       schedules={schedules}
-                      trainers={trainers}
+                      // In the studio's order, as the Hub's columns are.
+                      trainers={sortedTrainers}
+                      mindbodySiteId={studios.find((s) => s.id === activeStudioId)?.mindbodySiteId ?? null}
+                      rosterStatus={rosterStatus}
                       authTrainer={authTrainer}
                       isAdmin={
                         tokenRole === "Admin" ||

@@ -1,261 +1,237 @@
-import { memo, useMemo, useState } from "react";
-import { buildDayPlan, studioMinutes } from "./selectors";
-import { toneClass } from "./trainer-tone";
-import { TrainerAvatar } from "./TrainerAvatar";
-import type { CalendarSession, DayLane, TrainerRef } from "./types";
+import { useCallback, useMemo } from "react";
+import type { Client, Trainer } from "../../types";
+import { isStaffBlock } from "../../lib/booking-state";
+import { safeToDate } from "../../lib/utils";
+import { studioDateKey } from "../../lib/studio-time";
+import type { DayReadState } from "../../lib/schedule-window";
+import { HubGrid, NOBODY_BOOKED, type GridBlock, type GridColumn } from "../hub-schedule/HubGrid";
+import { HubCard } from "../hub-schedule/HubCard";
+import { UNASSIGNED_ID, orderColumnsBySessions, planColumns, staffLabel } from "../hub-schedule/columns";
+import { usualServiceOf } from "../hub-schedule/card-marks";
+import { yourDay } from "../hub-schedule/your-day";
+import type { Span } from "../hub-schedule/grid-model";
+import type { TrainerDayFrame } from "../hub-schedule/off-hours";
+import { PhoneDayList } from "../phone/PhoneDayList";
+import { studioMinutes } from "./selectors";
 import "./calendar.css";
 
 /**
- * DAY — horizontal trainer swimlanes.
+ * DAY — the Hub's grid (the rooms round, Oct 10 2026; AJ's answer 2a on
+ * "Journey Rooms").
  *
- * The old Day view was vertical trainer columns against a time axis running
- * down the page. That is exactly what the Hub already is, so opening it told
- * you nothing new and cost a long scroll to see a whole day.
+ * The Day view was horizontal swimlanes, a 30-minute booking one slot wide,
+ * so every client's name was chopped a few letters to a line ("Ma rk Na ka
+ * mu ra"), it scrolled sideways upright, and it had no now line, no today,
+ * no "you". It is now the Hub's own grid (`HubGrid`) and card (`HubCard`):
  *
- * Turned on its side it becomes a different instrument. One row per trainer,
- * sessions laid along a shared left-to-right time axis: the day's whole shape
- * fits on one screen, and the thing a manager is actually looking for — who is
- * loaded, who has a two-hour hole at 11 — is visible without reading a single
- * client name.
+ *   - the time rail down the left, the empty middle of the day folded;
+ *   - blocks at their real length, the client's whole name, wrapping;
+ *   - the orange now line on today;
+ *   - your column first, under the blue "You" head, saying your day;
+ *   - the hours a trainer isn't on hatched from the agreed standing week
+ *     (`frameOf`; nothing hatched without an agreed week or an answer).
  *
- * Names are still one tap away. A 30-minute booking is one slot wide and no
- * name fits there at any sane axis width, so rather than truncating everything
- * to "Ma…", tapping a lane expands a row of that trainer's sessions in full
- * underneath. Progressive disclosure instead of illegible text.
+ * The columns are the Hub's rule (`columns.ts`): a booking goes to a trainer
+ * by the trainer id, or by the Mindbody staff id at this studio's site, and
+ * otherwise to Unassigned, which says Mindbody's staff name whole. Never a
+ * name: the Calendar's first-name and prefix matching is retired, as the
+ * Hub's was on Oct 1 2026.
+ *
+ * A tap on a booking opens the client, as the Calendar always has (the Hub
+ * opens a peek; here the card says nothing about a dialog). The card knows
+ * no sessions, so a booking that is over recedes without "Not logged": the
+ * Calendar can't say what happened to it, and never claims to.
+ *
+ * On a phone the day is the Hub's phone list (`PhoneDayList`), the same
+ * cards one under the next.
  */
 
-const SLOT_MIN = 30;
-
-function formatHour(hour: number): string {
-  const h = hour % 12 === 0 ? 12 : hour % 12;
-  return `${h}${hour >= 12 ? "p" : "a"}`;
-}
-
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-}
-
-const SessionBlock = memo(function SessionBlock({
-  session,
-  startHour,
-  onSelectClient,
-}: {
-  session: CalendarSession;
-  startHour: number;
-  onSelectClient?: (clientId: string) => void;
-}) {
-  const startMin = studioMinutes(session.start);
-  const offsetSlots = Math.max(0, Math.round((startMin - startHour * 60) / SLOT_MIN));
-  // Every booking occupies at least one slot: a zero- or ten-minute row in the
-  // data must still be visible, not collapse to a hairline.
-  const spanSlots = Math.max(1, Math.round(session.durationMin / SLOT_MIN));
-
-  const clickable = Boolean(session.clientId && onSelectClient && !session.isUnavailability);
-
-  return (
-    <button
-      type="button"
-      className={`cal-block ${session.isUnavailability ? "cal-block--unavail" : ""}`}
-      style={{ gridColumn: `${offsetSlots + 1} / span ${spanSlots}` }}
-      onClick={() => {
-        if (clickable && session.clientId) onSelectClient!(session.clientId);
-      }}
-      disabled={!clickable}
-      title={`${session.clientName} · ${formatTime(session.start)} · ${session.trainerName}`}
-      aria-label={`${session.clientName} at ${formatTime(session.start)} with ${session.trainerName}`}
-    >
-      <span className="cal-block__name">{session.clientName}</span>
-      {spanSlots > 1 && <span className="cal-block__time">{formatTime(session.start)}</span>}
-    </button>
-  );
-});
-
-const Lane = memo(function Lane({
-  lane,
-  startHour,
-  slots,
-  expanded,
-  onToggle,
-  onSelectClient,
-}: {
-  lane: DayLane;
-  startHour: number;
-  slots: number;
-  expanded: boolean;
-  onToggle: (trainerId: string) => void;
-  onSelectClient?: (clientId: string) => void;
-}) {
-  return (
-    <div className={`cal-lane-group ${toneClass(lane.trainer.tone)}`}>
-      <div className="cal-lane" style={{ ["--cal-slots" as string]: slots }}>
-        <button
-          type="button"
-          className="cal-lane__label"
-          onClick={() => onToggle(lane.trainer.id)}
-          aria-expanded={expanded}
-          aria-label={`${lane.trainer.name}, ${lane.count} sessions. Toggle details.`}
-        >
-          <TrainerAvatar trainer={lane.trainer} size="sm" />
-          <span className="cal-lane__name">{lane.trainer.shortName}</span>
-          <span className="cal-lane__count">{lane.count}</span>
-        </button>
-
-        <div className="cal-lane__grid" />
-
-        {lane.sessions.map((s) => (
-          <SessionBlock
-            key={s.id}
-            session={s}
-            startHour={startHour}
-            onSelectClient={onSelectClient}
-          />
-        ))}
-      </div>
-
-      {expanded && (
-        <div className="cal-lane__detail">
-          {lane.sessions.map((s) => (
-            <button
-              key={`d-${s.id}`}
-              type="button"
-              className="cal-lane__item"
-              onClick={() => {
-                if (s.clientId && onSelectClient) onSelectClient(s.clientId);
-              }}
-              disabled={!s.clientId || !onSelectClient}
-            >
-              <span>{formatTime(s.start)}</span>
-              <b>{s.clientName}</b>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-});
-
 export interface DayViewProps {
-  date: Date;
-  sessions: CalendarSession[];
-  trainerRefs: Map<string, TrainerRef>;
-  onSelectClient?: (clientId: string) => void;
+  /** The studio day on screen, "yyyy-mm-dd". */
+  dayKey: string;
+  /** The day's bookings at this studio, cancellations already out. */
+  bookings: ReadonlyArray<any>;
+  /** The trainers the app knows, in the studio's order. */
+  trainers: ReadonlyArray<Trainer>;
+  studioId: string | null;
+  /** Each trainer's Mindbody staff id at this studio's site (`staffIdsAt`). */
+  staffIds: Readonly<Record<string, string>>;
+  /** The signed-in trainer: their column first, under the blue head. */
+  selfId: string | null;
+  /** The team filter: one trainer's id, or null for the entire team. */
+  onlyTrainerId: string | null;
+  clientsById: ReadonlyMap<string, Client>;
+  rosterLoading?: boolean;
+  rosterFailed?: boolean;
+  now: Date;
+  /** What is known about the day's bookings: an empty day says so only when it was read. */
+  readState: DayReadState;
+  /** When each trainer is on, from the agreed standing week. Absent: nothing hatched. */
+  frameOf?: (columnId: string, range: Span) => TrainerDayFrame;
+  /** A phone draws the day as one list. */
+  phone: boolean;
+  onOpenClient: (clientId: string) => void;
 }
 
-export function DayView({ date, sessions, trainerRefs, onSelectClient }: DayViewProps) {
+const READING = "Reading the day’s bookings…";
+
+/** The name a trainer goes by on a column's head: the nickname, else the first name. */
+function shortName(t: Trainer): string {
+  return ((t as { nickname?: string }).nickname || "").trim() || (t.fullName || "").trim().split(" ")[0] || "Trainer";
+}
+
+export function DayView({
+  dayKey,
+  bookings,
+  trainers,
+  studioId,
+  staffIds,
+  selfId,
+  onlyTrainerId,
+  clientsById,
+  rosterLoading = false,
+  rosterFailed = false,
+  now,
+  readState,
+  frameOf,
+  phone,
+  onOpenClient,
+}: DayViewProps) {
   const plan = useMemo(
-    () => buildDayPlan(date, sessions, trainerRefs),
-    [date, sessions, trainerRefs],
+    () => planColumns({ trainers, bookings, studioId, staffIds, selfId }),
+    [trainers, bookings, studioId, staffIds, selfId],
   );
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const slots = ((plan.endHour - plan.startHour) * 60) / SLOT_MIN;
-  const hours = Array.from({ length: plan.endHour - plan.startHour }, (_, i) => plan.startHour + i);
+  /* Each booking in ONE column, at its own start and end in studio minutes. */
+  const allBlocks = useMemo(() => {
+    const out: GridBlock[] = [];
+    bookings.forEach((s, i) => {
+      const columnId = plan.columnOf[i];
+      if (columnId === null) return;
+      const start = safeToDate(s.startTime || s.StartDateTime || s.date);
+      if (!start) return;
+      const end = safeToDate(s.endTime || s.EndDateTime);
+      const from = studioMinutes(start);
+      let to = end ? studioMinutes(end) : from + 30;
+      if (to <= from) to = from + 30;
+      out.push({ key: String(s.id || s.mindbodyAppointmentId || `${columnId}-${from}-${i}`), columnId, span: { from, to }, booking: s });
+    });
+    return out;
+  }, [bookings, plan]);
 
-  const busiest = plan.lanes[0];
+  /* The team filter: one trainer's column alone (their bookings, or an empty column for a quiet day). */
+  const blocks = useMemo(
+    () => (onlyTrainerId ? allBlocks.filter((b) => b.columnId === onlyTrainerId) : allBlocks),
+    [allBlocks, onlyTrainerId],
+  );
+  const columnTrainers = useMemo(() => {
+    if (!onlyTrainerId) return plan.trainers;
+    const own = plan.trainers.find((t) => String(t.id) === onlyTrainerId) ?? trainers.find((t) => String(t.id) === onlyTrainerId);
+    return own ? [own] : [];
+  }, [plan.trainers, trainers, onlyTrainerId]);
 
-  if (plan.lanes.length === 0 && plan.unassigned.length === 0) {
+  const nowMin = dayKey === studioDateKey(now) ? studioMinutes(now) : null;
+  const myColumnId = selfId && columnTrainers.some((t) => String(t.id) === String(selfId)) ? String(selfId) : null;
+
+  const columns = useMemo(() => {
+    const names = columnTrainers.map(shortName);
+    const planned: GridColumn[] = columnTrainers.map((t, i) => {
+      const id = String(t.id);
+      const own = blocks.filter((b) => b.columnId === id && !isStaffBlock(b.booking as any));
+      // Two columns that would read alike say the full names (two Chrises).
+      const alike = names.filter((n) => n.toLowerCase() === names[i].toLowerCase()).length > 1;
+      return {
+        id,
+        name: alike ? (t.fullName || "").trim() || names[i] : names[i],
+        initials: ((t as { initials?: string }).initials || t.fullName || "??").substring(0, 2).toUpperCase(),
+        isMe: id === myColumnId,
+        count: own.length,
+        detail: id === myColumnId ? yourDay({ spans: own.map((b) => b.span), nowMin }) : null,
+      };
+    });
+    if (!onlyTrainerId && plan.unassigned > 0) {
+      planned.push({
+        id: UNASSIGNED_ID,
+        name: "Unassigned",
+        initials: "?",
+        isMe: false,
+        count: blocks.filter((b) => b.columnId === UNASSIGNED_ID && !isStaffBlock(b.booking as any)).length,
+        detail: null,
+      });
+    }
+    return orderColumnsBySessions(planned);
+  }, [columnTrainers, blocks, myColumnId, onlyTrainerId, plan.unassigned, myColumnId !== null ? nowMin : null]);
+
+  const usualService = useMemo(() => usualServiceOf(bookings), [bookings]);
+
+  /* One handler for every card, so a card with nothing new skips drawing (HubCard is memoised). */
+  const openCard = useCallback((clientId: string) => onOpenClient(clientId), [onOpenClient]);
+
+  const renderCard = useCallback(
+    (block: GridBlock) => {
+      const booking: any = block.booking;
+      const id = booking?.clientId ? String(booking.clientId).trim() : "";
+      const client = isStaffBlock(booking) || !id ? null : clientsById.get(id) ?? null;
+      return (
+        <HubCard
+          booking={booking}
+          blockKey={block.key}
+          client={client}
+          entry={null}
+          sessionNumber={null}
+          usualService={usualService}
+          rosterLoading={rosterLoading}
+          rosterFailed={rosterFailed}
+          staffName={block.columnId === UNASSIGNED_ID ? staffLabel(booking.trainerName) : null}
+          now={now}
+          opensPeek={false}
+          onOpen={openCard}
+        />
+      );
+    },
+    [clientsById, usualService, rosterLoading, rosterFailed, now, openCard],
+  );
+
+  const chosen = onlyTrainerId ? columns.find((c) => c.id === onlyTrainerId) : null;
+  const emptyWords =
+    readState === "ready"
+      ? chosen
+        ? `Nobody is booked with ${chosen.isMe ? "you" : chosen.name} on this day.`
+        : NOBODY_BOOKED
+      : readState === "loading"
+        ? READING
+        : null;
+
+  if (phone) {
     return (
-      <div className="cal-card">
-        <div className="cal-empty">
-          <span className="cal-empty__title">Nothing booked</span>
-          <span className="cal-empty__hint">
-            No sessions on this day for the current filter. Try “All trainers”, or step to
-            another date.
-          </span>
-        </div>
-      </div>
+      <PhoneDayList
+        blocks={blocks.map((b) => ({ ...b, staff: isStaffBlock(b.booking as any) }))}
+        columnOrder={columns.map((c) => c.id)}
+        mineOnly={null}
+        nowMin={nowMin}
+        renderCard={(b) => renderCard(b)}
+        withWords={(b) => {
+          // One trainer on screen, or Unassigned, whose card already says
+          // "Booked with" Mindbody's staff name: nothing to add.
+          if (onlyTrainerId || b.columnId === UNASSIGNED_ID) return null;
+          const column = columns.find((c) => c.id === b.columnId);
+          return column ? (column.isMe ? "with you" : `with ${column.name}`) : null;
+        }}
+        emptyWords={emptyWords}
+      />
     );
   }
 
   return (
-    <div className="cal-dayview">
-      <section className="cal-card">
-        <div className="cal-daystat">
-          <span className="cal-daystat__big">
-            <b>{plan.total}</b>
-            <span>{plan.total === 1 ? "session" : "sessions"}</span>
-          </span>
-          <span className="cal-daystat__sep" />
-          <span className="cal-daystat__big">
-            <b>{plan.lanes.length}</b>
-            <span>{plan.lanes.length === 1 ? "trainer" : "trainers"}</span>
-          </span>
-          {busiest && (
-            <>
-              <span className="cal-daystat__sep" />
-              <span className="cal-card__note">
-                Busiest: {busiest.trainer.shortName} ({busiest.count})
-              </span>
-            </>
-          )}
-        </div>
-      </section>
-
-      <section className="cal-card">
-        <header className="cal-card__head">
-          <h3 className="cal-card__title">Trainer timeline</h3>
-          <span className="cal-card__note">Tap a trainer for names</span>
-        </header>
-
-        <div className="cal-lanes__scroller">
-          <div className="cal-lanes">
-            <div className="cal-lane__axis" style={{ ["--cal-slots" as string]: slots }}>
-              <div className="cal-axis__corner">Trainer</div>
-              {hours.map((h) => (
-                <div key={h} className="cal-axis__tick">
-                  {formatHour(h)}
-                </div>
-              ))}
-            </div>
-
-            {plan.lanes.map((lane) => (
-              <Lane
-                key={lane.trainer.id}
-                lane={lane}
-                startHour={plan.startHour}
-                slots={slots}
-                expanded={expandedId === lane.trainer.id}
-                onToggle={(id) => setExpandedId((cur) => (cur === id ? null : id))}
-                onSelectClient={onSelectClient}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {plan.unassigned.length > 0 && (
-        /* Surfaced rather than dropped: a booking whose trainer name Mindbody
-           spelled differently is a data problem someone should see, not a
-           session that quietly vanishes from the day. */
-        <section className="cal-card">
-          <header className="cal-card__head">
-            <h3 className="cal-card__title">Unassigned</h3>
-            <span className="cal-card__note">
-              {plan.unassigned.length} booking{plan.unassigned.length === 1 ? "" : "s"} with no
-              matching trainer
-            </span>
-          </header>
-          <div className="cal-card__body">
-            <div className="cal-lane__detail" style={{ padding: 0, border: 0, background: "none" }}>
-              {plan.unassigned.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  className="cal-lane__item"
-                  onClick={() => {
-                    if (s.clientId && onSelectClient) onSelectClient(s.clientId);
-                  }}
-                  disabled={!s.clientId || !onSelectClient}
-                >
-                  <span>{formatTime(s.start)}</span>
-                  <b>{s.clientName}</b>
-                  <span>{s.trainerName || "—"}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-    </div>
+    <HubGrid
+      dayKey={dayKey}
+      columns={columns}
+      blocks={blocks}
+      nowMin={nowMin}
+      renderCard={renderCard}
+      frameOf={frameOf}
+      focusId={myColumnId}
+      emptyWords={emptyWords}
+    />
   );
 }
