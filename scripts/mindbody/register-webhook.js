@@ -6,8 +6,12 @@ import { fileURLToPath } from 'url';
 import { confirmProduction } from './production-guard.js';
 
 // --list only reads, so it does not need the production confirmation; every
-// other run changes a live subscription and does.
-if (!process.argv.includes('--list')) {
+// other run changes a live subscription and does. --update-events without the
+// confirmation is its own dry run: it says what it would add and stops.
+const LOOK_ONLY =
+  process.argv.includes('--list') ||
+  (process.argv.includes('--update-events') && !process.argv.includes('--yes-affect-production'));
+if (!LOOK_ONLY) {
   confirmProduction({
     script: 'register-webhook.js',
     target: 'Mindbody webhook subscription -> production cloud function',
@@ -129,8 +133,25 @@ const LIST_ONLY = args.includes('--list');
  *                                  NEW_SUBSCRIPTION_ID=<id> is printed.
  *   --activate <id>                PATCH it Active (after Firebase has the secret).
  *   --delete-except <id>           DELETE every other subscription for this URL.
+ *
+ * Adding events to the LIVE subscription (Oct 10 2026). The active one was
+ * made by ship-sep24's webhooks-on on Sep 24, before appointmentBooking.updated
+ * (Sep 25) and clientSale.created (Sep 26, the cost plan) joined the list, and
+ * the lean-sync ship only made a new subscription when none was active. So a
+ * changed appointment waited for the next schedule pull and a sale never
+ * marked a client for the nightly package pull. A PATCH keeps the
+ * subscription, and with it its signing secret: nothing changes in Firebase.
+ *
+ *   --update-events <id>           say which events the subscription lacks and
+ *                                  stop (no confirmation needed: it only reads).
+ *   --update-events <id> --yes-affect-production
+ *                                  PATCH it to what it has PLUS what it lacks
+ *                                  (never fewer), Active, then read it back.
+ *                                  An id Mindbody refuses is dropped and the
+ *                                  rest tried again, sale first, as --fresh does.
  */
 const FRESH = args.includes('--fresh');
+const UPDATE_EVENTS_ID = argValue('update-events');
 const SECRET_FILE = argValue('secret-file');
 const ACTIVATE_ID = argValue('activate');
 const DELETE_EXCEPT = argValue('delete-except');
@@ -227,6 +248,46 @@ async function main() {
     }
     if (!others.length) console.log('No other subscriptions for this URL.');
     return;
+  }
+
+  if (UPDATE_EVENTS_ID) {
+    const eventsOf = (s) => s.EventIds || s.eventIds || [];
+    const statusOf = (s) => s.Status || s.status;
+    const sub = (await listAll()).find((s) => idOf(s) === UPDATE_EVENTS_ID);
+    if (!sub) { console.error(`No subscription ${UPDATE_EVENTS_ID} for this API key.`); process.exit(1); }
+    const has = eventsOf(sub);
+    const lacks = [...EVENT_IDS, ...SALE_EVENT_IDS].filter((e) => !has.includes(e));
+    console.log(`Subscription ${UPDATE_EVENTS_ID}: ${statusOf(sub)}, ${has.length} events`);
+    console.log(`  has:   ${has.join(', ')}`);
+    console.log(`  lacks: ${lacks.length ? lacks.join(', ') : '(nothing)'}`);
+    if (!lacks.length) return;
+    if (!args.includes('--yes-affect-production')) {
+      console.log('Look-only: add --yes-affect-production to add them. The subscription, its secret and its other events stay as they are.');
+      return;
+    }
+    // Sale first, then appointmentBooking.updated: each refused id is dropped
+    // on its own, and an event it already has is never dropped.
+    const attempts = [lacks, lacks.filter((e) => !SALE_EVENT_IDS.includes(e)), lacks.filter((e) => e !== 'appointmentBooking.updated' && !SALE_EVENT_IDS.includes(e))]
+      .filter((a, i, all) => a.length && all.findIndex((b) => b.join() === a.join()) === i);
+    for (const adding of attempts) {
+      const r = await fetch(`${API}/${encodeURIComponent(UPDATE_EVENTS_ID)}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ status: 'Active', eventIds: [...has, ...adding] }),
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        console.error(`Mindbody refused adding ${adding.join(', ')} (HTTP ${r.status}): ${JSON.stringify(body).slice(0, 300)}`);
+        continue;
+      }
+      const after = (await listAll()).find((s) => idOf(s) === UPDATE_EVENTS_ID);
+      console.log(`Added: ${adding.join(', ')}`);
+      console.log(`Now ${after ? statusOf(after) : '(not found)'}, events: ${after ? eventsOf(after).join(', ') : '?'}`);
+      if (!after || statusOf(after) !== 'Active') process.exitCode = 1;
+      return;
+    }
+    console.error('Mindbody refused every attempt; the subscription is as it was.');
+    process.exit(1);
   }
 
   console.log(`Starting Webhook Sync for Site ID: ${siteId}...`);
@@ -332,9 +393,12 @@ async function main() {
       // PATCH only set `status: Active`, so adding an event type to the list
       // above had no effect on a subscription that already existed -- the
       // script reported success and changed nothing.
+      // Oct 10 2026: what it already has PLUS the list above. Sending the list
+      // alone would have dropped events added on other rungs (the contract
+      // ids the live subscription carries), silently.
       body: JSON.stringify({
         status: 'Active',
-        eventIds: EVENT_IDS
+        eventIds: [...new Set([...(subscription?.EventIds || subscription?.eventIds || []), ...EVENT_IDS])]
       })
     });
 
