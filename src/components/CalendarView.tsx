@@ -260,6 +260,10 @@ export function CalendarView({
    * the Hub's rule since Oct 1): a failed read is unknown, never a quiet
    * day. The views draw a day as empty only when it was read, and one plum
    * line above them says when a read failed, with Try again.
+   *
+   * Each day's state is asked once a render, into one map the views read
+   * (the review, Oct 10 2026: the Month and the Week asked the hook about
+   * eighty times a render).
    */
   const dayStateFn = scheduleWindow?.dayState;
   const stateOf = React.useCallback(
@@ -267,7 +271,13 @@ export function CalendarView({
     [dayStateFn],
   );
   const rangeKeys = useMemo(() => dayKeysOfRange(range.from, range.to), [range]);
-  const failedKeys = useMemo(() => rangeKeys.filter((key) => stateOf(key) === "failed"), [rangeKeys, stateOf]);
+  const dayStates = useMemo(() => {
+    const out = new Map<string, DayReadState>();
+    for (const key of rangeKeys) out.set(key, stateOf(key));
+    return out;
+  }, [rangeKeys, stateOf]);
+  const stateOfDay = React.useCallback((key: string): DayReadState => dayStates.get(key) ?? stateOf(key), [dayStates, stateOf]);
+  const failedKeys = useMemo(() => rangeKeys.filter((key) => dayStates.get(key) === "failed"), [rangeKeys, dayStates]);
   const failedDays = failedKeys.length;
   /*
    * Which failed days are whose. The live days (yesterday to tomorrow) are the
@@ -465,19 +475,45 @@ export function CalendarView({
    * resolve simply does not navigate — it never writes a link as a side effect
    * of a tap, which is what the previous version did.
    */
-  const openClient = (clientId: string) => {
-    if (!onSelectClient || !setView) return;
-    const target = String(clientId).trim();
-    const match = (clients || []).find((c) => c?.id && String(c.id).trim() === target);
+  const clientsById = useMemo(() => {
+    const map = new Map<string, Client>();
+    for (const c of clients ?? []) if (c?.id) map.set(String(c.id).trim(), c as Client);
+    return map;
+  }, [clients]);
+  /*
+   * Has a booking's client a profile to open? A Week booking with none says
+   * so (the Hub card's "Not synced yet"), never a tap that does nothing; while
+   * the client list loads or after it failed, it is unknown and says nothing.
+   */
+  const profileOf = React.useCallback(
+    (clientId: string | null | undefined): "linked" | "unlinked" | "unknown" => {
+      const id = clientId ? String(clientId).trim() : "";
+      if (!id) return "unlinked";
+      if (clientsById.has(id)) return "linked";
+      return rosterStatus === "loading" || rosterStatus === "error" ? "unknown" : "unlinked";
+    },
+    [clientsById, rosterStatus],
+  );
+  /*
+   * ONE handler for every booking, kept across renders (the review, Oct 10
+   * 2026): a new one each render redrew every memoised card and booking on a
+   * 30-second tick. It reads the latest clients and doors through a ref.
+   */
+  const latestDoors = useRef({ clientsById, onSelectClient, setView });
+  latestDoors.current = { clientsById, onSelectClient, setView };
+  const openClient = React.useCallback((clientId: string) => {
+    const { clientsById: byId, onSelectClient: select, setView: go } = latestDoors.current;
+    if (!select || !go) return;
+    const match = byId.get(String(clientId).trim());
     if (!match?.id) return;
-    onSelectClient(match.id);
-    setView("profile");
-  };
+    select(match.id);
+    go("profile");
+  }, []);
 
-  const openDay = (date: Date) => {
+  const openDay = React.useCallback((date: Date) => {
     setSelectedDate(date);
     setViewMode("day");
-  };
+  }, []);
 
   const todayKey = studioDateKey(new Date());
   const pickedToday = studioDateKey(selectedDate) === todayKey;
@@ -501,11 +537,6 @@ export function CalendarView({
         return x - y;
       });
   }, [viewMode, schedules, dayKey]);
-  const clientsById = useMemo(() => {
-    const map = new Map<string, Client>();
-    for (const c of clients ?? []) if (c?.id) map.set(String(c.id).trim(), c as Client);
-    return map;
-  }, [clients]);
   const nowDate = useMemo(() => new Date(now), [now]);
 
   /*
@@ -521,6 +552,14 @@ export function CalendarView({
     sessionsKnown,
   });
   const readsStudio = mayReadWeeks(authTrainer, activeStudioId ?? null);
+
+  /* The team filter's trainer, by name ("you" when it's yours): an empty day says whose it is. */
+  const filterName =
+    selectedTrainerId === ENTIRE_TEAM
+      ? null
+      : authTrainer?.id && selectedTrainerId === String(authTrainer.id)
+        ? "you"
+        : pickerTrainers.find((t) => t.id === selectedTrainerId)?.name ?? null;
 
   /*
    * Who's on (the Hub's hatching): the AGREED standing weeks, one listener on
@@ -624,7 +663,7 @@ export function CalendarView({
             rosterLoading={rosterStatus === "loading"}
             rosterFailed={rosterStatus === "error"}
             now={nowDate}
-            readState={stateOf(dayKey)}
+            readState={stateOfDay(dayKey)}
             sessions={workoutSessions}
             sessionsKnown={sessionsKnown}
             readable={dayReadable}
@@ -653,15 +692,22 @@ export function CalendarView({
           </p>
         )}
 
+        {/* Narrowed to one trainer, the page says whose bookings these are (the review, Oct 10 2026). */}
+        {filterName && (
+          <p className="cal-note" role="status">
+            {`Showing ${filterName === "you" ? "your" : `${filterName}’s`} bookings only.`}
+          </p>
+        )}
+
         {viewMode === "month" && (
           <MonthView
             anchor={selectedDate}
             sessions={sessions}
             events={events}
-            trainerRefs={trainerRefs}
             selectedDate={selectedDate}
             onSelectDate={openDay}
-            stateOf={stateOf}
+            stateOf={stateOfDay}
+            filterName={filterName}
           />
         )}
 
@@ -675,7 +721,10 @@ export function CalendarView({
             selectedDate={selectedDate}
             onSelectDate={openDay}
             onSelectClient={openClient}
-            stateOf={stateOf}
+            stateOf={stateOfDay}
+            priorStateOf={stateOf}
+            filterName={filterName}
+            profileOf={profileOf}
           />
         )}
       </div>

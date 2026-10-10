@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vite
 import { act, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { CalendarView, stepDate, type ScheduleWindowControls } from "./CalendarView";
-import { visibleRange } from "../features/calendar";
+import { visibleRange, weekDays } from "../features/calendar";
 import { studioDateKey } from "../lib/studio-time";
 import { FETCH_RETRY_MS } from "../lib/schedule-window";
 
@@ -631,9 +631,11 @@ describe("CalendarView — Week is the week's bookings", () => {
     expect(fold.getAttribute("aria-expanded")).toBe("false");
     act(() => fold.click());
     expect(monday.textContent).toContain("Iris Okonkwo");
-    // Today is open.
+    // Today is open, and the strip says one session, not "1 sessions".
     expect(today().getAttribute("data-folded")).toBeNull();
     expect(today().querySelector(".cal-wbk")).not.toBeNull();
+    const mondayStrip = [...host!.querySelectorAll<HTMLButtonElement>(".cal-wstrip__day")].find((b) => b.getAttribute("aria-label")?.startsWith("Monday"))!;
+    expect(mondayStrip.getAttribute("aria-label")).toMatch(/: 1 session\. Open the day\.$/);
   });
 
   it("folds the charts under the strip, closed until asked for", () => {
@@ -645,6 +647,24 @@ describe("CalendarView — Week is the week's bookings", () => {
     expect(host!.querySelector(".cal-board")).not.toBeNull();
     expect(host!.querySelector(".cal-heat")).not.toBeNull();
     expect(host!.querySelector(".cal-total__delta")).not.toBeNull();
+  });
+
+  it("compares with last week only when all seven of its days were read", () => {
+    const lastWeek = bookingAt(9, 0, { id: "p1", clientId: "c1", clientName: "Ruth Avery-Montgomery", trainerId: "t-chris" }, -7);
+    const lastWeekKeys = weekDays(new Date(NOW.getTime() - 7 * 86400000)).map((d) => keyOn(d.getFullYear(), d.getMonth() + 1, d.getDate()));
+    // Six of last week's days read, one not: no comparison.
+    const partly = controls({ dayState: (key) => (key === lastWeekKeys[3] ? "loading" : "ready") });
+    mount(partly, { schedules: [...schedules, lastWeek], trainers: TEAM, authTrainer: TEAM[1], clients });
+    act(() => viewButton("Week").click());
+    act(() => host!.querySelector<HTMLButtonElement>(".cal-fold__btn")!.click());
+    expect(host!.querySelector(".cal-total__delta")?.textContent).toBe("No prior week loaded");
+    act(() => root!.unmount());
+    host!.remove();
+    // All seven read: it compares.
+    mount(controls({ dayState: () => "ready" }), { schedules: [...schedules, lastWeek], trainers: TEAM, authTrainer: TEAM[1], clients });
+    act(() => viewButton("Week").click());
+    act(() => host!.querySelector<HTMLButtonElement>(".cal-fold__btn")!.click());
+    expect(host!.querySelector(".cal-total__delta")?.textContent).toMatch(/vs last week/);
   });
 
   it("a tap on a booking opens the client; a tap on a day's head or the strip opens that Day", () => {
@@ -663,6 +683,21 @@ describe("CalendarView — Week is the week's bookings", () => {
     expect(viewButton("Day").getAttribute("aria-pressed")).toBe("true");
   });
 
+  it("a booking whose client has no profile says so and is no button; one the list hasn't answered for says nothing", () => {
+    openWeek({ clients: [{ id: "c1" }, { id: "c2" }] as any[] });
+    const priya = [...today().querySelectorAll<HTMLElement>(".cal-wbk")].find((b) => b.textContent?.includes("Priya"))!;
+    expect(priya.tagName).toBe("DIV");
+    expect(priya.getAttribute("data-unlinked")).toBe("true");
+    expect(priya.querySelector(".cal-wbk__with")?.textContent).toBe("Not synced yet · with Samuel Lee");
+    act(() => root!.unmount());
+    host!.remove();
+    openWeek({ clients: [{ id: "c1" }, { id: "c2" }] as any[], rosterStatus: "loading" });
+    const pending = [...today().querySelectorAll<HTMLElement>(".cal-wbk")].find((b) => b.textContent?.includes("Priya"))!;
+    expect(pending.tagName).toBe("DIV");
+    expect(pending.getAttribute("data-unlinked")).toBeNull();
+    expect(pending.textContent).not.toContain("Not synced");
+  });
+
   it("a day not read says so, never Nobody booked; a read empty day says Nobody booked", () => {
     const failedKey = keyOn(2026, 10, 11); // the Sunday of the held week
     mount(controls({ dayState: (key) => (key === failedKey ? "failed" : "ready") }), { trainers: TEAM, authTrainer: TEAM[1] });
@@ -673,5 +708,21 @@ describe("CalendarView — Week is the week's bookings", () => {
     expect(unread).toHaveLength(1);
     expect(unread[0].textContent).toBe("Couldn’t read this day’s bookings.");
     expect(host!.querySelector(".hs-notice")?.textContent).toMatch(/Couldn.t read one of these days/);
+  });
+
+  it("under the team filter an empty day names the trainer, in the Week and the Month", () => {
+    mount(controls(), { schedules, trainers: TEAM, authTrainer: TEAM[1], clients });
+    pickTrainer("Christine Avalos");
+    // Month: the page names whose bookings, and an empty read day says 0 with the trainer in its label.
+    expect(host!.querySelector(".cal-note")?.textContent).toBe("Showing Christine Avalos’s bookings only.");
+    const tue = [...host!.querySelectorAll<HTMLElement>(".cal-day:not([data-outside])")].find((c) => c.querySelector(".cal-day__num")?.textContent === "13")!;
+    expect(tue.querySelector(".cal-day__count")?.textContent).toBe("0");
+    expect(tue.getAttribute("aria-label")).toMatch(/nobody is booked with Christine Avalos/);
+    act(() => viewButton("Week").click());
+    const quiet = [...host!.querySelectorAll<HTMLElement>(".cal-wday__quiet")].map((q) => q.textContent);
+    expect(quiet).toContain("Nobody is booked with Christine Avalos.");
+    expect(quiet).not.toContain("Nobody booked.");
+    pickTrainer("Lena Lindqvist");
+    expect([...host!.querySelectorAll<HTMLElement>(".cal-wday__quiet")].map((q) => q.textContent)).toContain("Nobody is booked with you.");
   });
 });

@@ -10,11 +10,10 @@
    keyed by a hash of the trainer id (trainer-tone.ts) and defined once, here,
    so one trainer is one colour in every view.
 
-   Each tone carries four values because they do four different jobs:
-     --t-solid  avatar fill, bar fill, session chip      (non-text, >= 3:1)
-     --t-text   small text in that trainer's colour      (>= 4.5:1)
-     --t-fill   soft background behind a chip            (surface tint)
-     --t-edge   1px border / left edge bar               (>= 3:1)
+   Each tone is ONE value, --t-solid: an avatar's fill (its initials in
+   --cal-tone-ink, 4.5:1 or more), a trainer-load bar, History's row edge
+   (3:1 or more on the card). Its text, fill and edge values had no reader
+   and went in the review of Oct 10 2026.
 
    THE NAVY FRAME (Oct 4 2026): the surfaces, ink, hero and live are
    equipment.tokens.css's values (palette-copies.test.ts holds them there),
@@ -24,11 +23,15 @@
    modes.
 
    THE ROOMS ROUND (Oct 10 2026): no trainer tone wears a colour that has a
-   job. t0 was the orange of now (now olive), t1 the logo blue, read as
-   yours (now slate), t5 the plum of caution (now taupe), and t4's dark an
-   orange amber (now an ochre). The initials on a tone are --cal-tone-ink,
-   measured on every solid. --cal-mine (your bookings' blue cast) and
-   --cal-warn (the plum of a day not read) are the Hub's.
+   job, and each can be told from the others. The eight are gold, olive,
+   green, teal, cyan, slate, umber and spruce: every one 30 degrees of OKLCH
+   hue or more from the blue, the orange, the crimson, the plum and the
+   Calendar's room hue (slate and umber are greys), and every two at least
+   0.08 apart in OKLab, by hue or by lightness, in both modes
+   (trainer-tones.test.ts). They were the orange of now, the logo blue (read
+   as yours), the plum of caution, a violet beside the room's own hue, and an
+   ochre and a taupe 7 degrees apart. --cal-mine (your bookings' blue cast)
+   and --cal-warn (the plum of a day not read) are the Hub's.
    ========================================================================== */
 
 :root {
@@ -78,14 +81,14 @@
      #fff and #06101a in calendar.css). */
   --cal-tone-ink: #ffffff;
 
-  --t0-solid: #5e6c10; --t0-text: #5e6c10; --t0-fill: #eef1dc; --t0-edge: #5e6c10;
-  --t1-solid: #4d5b6e; --t1-text: #4d5b6e; --t1-fill: #e7ebf0; --t1-edge: #4d5b6e;
-  --t2-solid: #0f766e; --t2-text: #0b5f59; --t2-fill: #e0f0ee; --t2-edge: #0f766e;
-  --t3-solid: #7c3aed; --t3-text: #6d28d9; --t3-fill: #eee7fd; --t3-edge: #7c3aed;
-  --t4-solid: #a16207; --t4-text: #895306; --t4-fill: #f6ecd9; --t4-edge: #a16207;
-  --t5-solid: #7a5a2e; --t5-text: #7a5a2e; --t5-fill: #f1ebe2; --t5-edge: #7a5a2e;
-  --t6-solid: #15803d; --t6-text: #136c34; --t6-fill: #e2f1e7; --t6-edge: #15803d;
-  --t7-solid: #0e7490; --t7-text: #0b6079; --t7-fill: #e0f0f4; --t7-edge: #0e7490;
+  --t0-solid: #896600;  /* gold */
+  --t1-solid: #4e5916;  /* olive */
+  --t2-solid: #2f8543;  /* green */
+  --t3-solid: #006061;  /* teal */
+  --t4-solid: #0d7f95;  /* cyan */
+  --t5-solid: #586475;  /* slate */
+  --t6-solid: #574336;  /* umber */
+  --t7-solid: #1c3e24;  /* spruce */
 
   /* Depth (type and depth, phase 3, Oct 4 2026), value for value as
      equipment.tokens.css. */
@@ -152,14 +155,14 @@
   --cal-shadow:        rgba(2, 10, 20, 0.45);
 
   --cal-tone-ink: #071727;
-  --t0-solid: #bccb5c; --t0-text: #ccd97a; --t0-fill: rgba(188,203,92,.15);  --t0-edge: #bccb5c;
-  --t1-solid: #a6b6c8; --t1-text: #bccad8; --t1-fill: rgba(166,182,200,.15); --t1-edge: #a6b6c8;
-  --t2-solid: #2dd4bf; --t2-text: #5eead4; --t2-fill: rgba(45,212,191,.15);  --t2-edge: #2dd4bf;
-  --t3-solid: #a78bfa; --t3-text: #c4b5fd; --t3-fill: rgba(167,139,250,.16); --t3-edge: #a78bfa;
-  --t4-solid: #e3b341; --t4-text: #ecc767; --t4-fill: rgba(227,179,65,.15);  --t4-edge: #e3b341;
-  --t5-solid: #cfae7a; --t5-text: #dcc096; --t5-fill: rgba(207,174,122,.15); --t5-edge: #cfae7a;
-  --t6-solid: #4ade80; --t6-text: #86efac; --t6-fill: rgba(74,222,128,.14);  --t6-edge: #4ade80;
-  --t7-solid: #22d3ee; --t7-text: #67e8f9; --t7-fill: rgba(34,211,238,.14);  --t7-edge: #22d3ee;
+  --t0-solid: #e7bf57;  /* gold */
+  --t1-solid: #9eaf52;  /* olive */
+  --t2-solid: #82ec9c;  /* green */
+  --t3-solid: #47b5af;  /* teal */
+  --t4-solid: #68def4;  /* cyan */
+  --t5-solid: #a4b3c4;  /* slate */
+  --t6-solid: #ab9380;  /* umber */
+  --t7-solid: #69945f;  /* spruce */
 
   --cal-raised:          #203549;
   --cal-tray:            #081725;
@@ -196,14 +199,14 @@
     --cal-heat-ink-lo: #dfe7ef; --cal-heat-ink-hi: #071727;
     --cal-shadow: rgba(2, 10, 20, 0.45);
     --cal-tone-ink: #071727;
-    --t0-solid: #bccb5c; --t0-text: #ccd97a; --t0-fill: rgba(188,203,92,.15);  --t0-edge: #bccb5c;
-    --t1-solid: #a6b6c8; --t1-text: #bccad8; --t1-fill: rgba(166,182,200,.15); --t1-edge: #a6b6c8;
-    --t2-solid: #2dd4bf; --t2-text: #5eead4; --t2-fill: rgba(45,212,191,.15);  --t2-edge: #2dd4bf;
-    --t3-solid: #a78bfa; --t3-text: #c4b5fd; --t3-fill: rgba(167,139,250,.16); --t3-edge: #a78bfa;
-    --t4-solid: #e3b341; --t4-text: #ecc767; --t4-fill: rgba(227,179,65,.15);  --t4-edge: #e3b341;
-    --t5-solid: #cfae7a; --t5-text: #dcc096; --t5-fill: rgba(207,174,122,.15); --t5-edge: #cfae7a;
-    --t6-solid: #4ade80; --t6-text: #86efac; --t6-fill: rgba(74,222,128,.14);  --t6-edge: #4ade80;
-    --t7-solid: #22d3ee; --t7-text: #67e8f9; --t7-fill: rgba(34,211,238,.14);  --t7-edge: #22d3ee;
+    --t0-solid: #e7bf57;  /* gold */
+    --t1-solid: #9eaf52;  /* olive */
+    --t2-solid: #82ec9c;  /* green */
+    --t3-solid: #47b5af;  /* teal */
+    --t4-solid: #68def4;  /* cyan */
+    --t5-solid: #a4b3c4;  /* slate */
+    --t6-solid: #ab9380;  /* umber */
+    --t7-solid: #69945f;  /* spruce */
     --cal-raised:          #203549;
     --cal-tray:            #081725;
     --cal-edge:            rgba(150, 180, 210, 0.11);
@@ -227,13 +230,13 @@
   }
 }
 
-/* Each tone class republishes its four values under generic names, so every
+/* Each tone class republishes its solid under a generic name, so every
    component writes `var(--t-solid)` and never knows which tone it is in. */
-.cal-tone-0 { --t-solid: var(--t0-solid); --t-text: var(--t0-text); --t-fill: var(--t0-fill); --t-edge: var(--t0-edge); }
-.cal-tone-1 { --t-solid: var(--t1-solid); --t-text: var(--t1-text); --t-fill: var(--t1-fill); --t-edge: var(--t1-edge); }
-.cal-tone-2 { --t-solid: var(--t2-solid); --t-text: var(--t2-text); --t-fill: var(--t2-fill); --t-edge: var(--t2-edge); }
-.cal-tone-3 { --t-solid: var(--t3-solid); --t-text: var(--t3-text); --t-fill: var(--t3-fill); --t-edge: var(--t3-edge); }
-.cal-tone-4 { --t-solid: var(--t4-solid); --t-text: var(--t4-text); --t-fill: var(--t4-fill); --t-edge: var(--t4-edge); }
-.cal-tone-5 { --t-solid: var(--t5-solid); --t-text: var(--t5-text); --t-fill: var(--t5-fill); --t-edge: var(--t5-edge); }
-.cal-tone-6 { --t-solid: var(--t6-solid); --t-text: var(--t6-text); --t-fill: var(--t6-fill); --t-edge: var(--t6-edge); }
-.cal-tone-7 { --t-solid: var(--t7-solid); --t-text: var(--t7-text); --t-fill: var(--t7-fill); --t-edge: var(--t7-edge); }
+.cal-tone-0 { --t-solid: var(--t0-solid); }
+.cal-tone-1 { --t-solid: var(--t1-solid); }
+.cal-tone-2 { --t-solid: var(--t2-solid); }
+.cal-tone-3 { --t-solid: var(--t3-solid); }
+.cal-tone-4 { --t-solid: var(--t4-solid); }
+.cal-tone-5 { --t-solid: var(--t5-solid); }
+.cal-tone-6 { --t-solid: var(--t6-solid); }
+.cal-tone-7 { --t-solid: var(--t7-solid); }

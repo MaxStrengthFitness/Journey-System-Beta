@@ -609,6 +609,12 @@
 }
 .cal-wbk:not(:disabled):active { transform: translateY(1px); box-shadow: var(--cal-press); }
 .cal-wbk:disabled { cursor: default; box-shadow: none; }
+/* A booking with nothing to open (no profile yet, or the client list not
+   read): no button and no lift; one with no profile has the Hub's dashed
+   edge and says "Not synced yet". */
+div.cal-wbk { cursor: default; box-shadow: none; }
+div.cal-wbk:not(:disabled):active { transform: none; box-shadow: none; }
+.cal-wbk[data-unlinked="true"] { border-style: dashed; border-color: var(--cal-border-strong); }
 .cal-wbk:focus-visible { outline: 3px solid var(--cal-live); outline-offset: 2px; }
 @media (hover: hover) {
   .cal-wbk:not(:disabled):not([data-mine]):hover { background: var(--cal-surface-2); }

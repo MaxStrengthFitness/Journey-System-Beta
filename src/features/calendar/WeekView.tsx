@@ -29,6 +29,9 @@ import "./calendar.css";
  * A day whose bookings weren't read says so in place, never "Nobody booked".
  */
 
+/** "1 session", "2 sessions": every count the Week says. */
+const sessionsWord = (n: number) => `${n} ${n === 1 ? "session" : "sessions"}`;
+
 /* ---------------- the charts (folded) ---------------- */
 
 function DeltaBadge({ total, previous }: { total: number; previous: number | null }) {
@@ -72,7 +75,7 @@ const DayBarCell = memo(function DayBarCell({
       type="button"
       className={`cal-bar ${bar.isToday ? "cal-bar--today" : ""}`}
       onClick={() => onSelect(bar.date)}
-      aria-label={`${bar.date.toDateString()}, ${bar.count} sessions. Open day view.`}
+      aria-label={`${bar.date.toDateString()}, ${sessionsWord(bar.count)}. Open day view.`}
     >
       <span className={`cal-bar__count ${bar.count === 0 ? "cal-bar__count--zero" : ""}`}>
         {bar.count || "—"}
@@ -245,29 +248,48 @@ function WeekCharts({ summary, onSelectDate }: { summary: WeekSummary; onSelectD
 
 /* ---------------- the bookings ---------------- */
 
+/** Whether a booking's client has a profile to open; "unknown" while the client list loads or after it failed. */
+export type ProfileOf = (clientId: string | null | undefined) => "linked" | "unlinked" | "unknown";
+
+
 const Booking = memo(function Booking({
   session,
   withWords,
   mine,
+  profile,
   onSelectClient,
 }: {
   session: CalendarSession;
   withWords: string;
   mine: boolean;
+  profile: "linked" | "unlinked" | "unknown";
   onSelectClient?: (clientId: string) => void;
 }) {
-  const opens = Boolean(session.clientId && onSelectClient);
+  /*
+   * A booking with no Max Strength profile yet says so (the Hub card's "Not
+   * synced yet") and is no button, rather than a tap that does nothing (the
+   * review, Oct 10 2026). While the client list is unknown it says nothing
+   * and waits.
+   */
+  if (profile !== "linked" || !session.clientId || !onSelectClient) {
+    return (
+      <li>
+        <div
+          className="cal-wbk"
+          data-mine={mine ? "true" : undefined}
+          data-unlinked={profile === "unlinked" ? "true" : undefined}
+          title={profile === "unlinked" ? `${session.clientName}: no Max Strength profile yet. It links itself once the next Mindbody sync creates one.` : undefined}
+        >
+          <span className="cal-wbk__name">{session.clientName}</span>
+          <span className="cal-wbk__with">{profile === "unlinked" ? `Not synced yet · ${withWords}` : withWords}</span>
+        </div>
+      </li>
+    );
+  }
+  const clientId = session.clientId;
   return (
     <li>
-      <button
-        type="button"
-        className="cal-wbk"
-        data-mine={mine ? "true" : undefined}
-        disabled={!opens}
-        onClick={() => {
-          if (session.clientId && onSelectClient) onSelectClient(session.clientId);
-        }}
-      >
+      <button type="button" className="cal-wbk" data-mine={mine ? "true" : undefined} onClick={() => onSelectClient(clientId)}>
         <span className="cal-wbk__name">{session.clientName}</span>
         <span className="cal-wbk__with">{withWords}</span>
       </button>
@@ -281,6 +303,8 @@ const WeekDay = memo(function WeekDay({
   startFolded,
   withOf,
   selfId,
+  filterName,
+  profileOf,
   onOpenDay,
   onSelectClient,
 }: {
@@ -290,6 +314,9 @@ const WeekDay = memo(function WeekDay({
   startFolded: boolean;
   withOf: (s: CalendarSession) => string;
   selfId: string | null;
+  /** The team filter's trainer ("you" for your own), or null for the entire team. */
+  filterName: string | null;
+  profileOf: ProfileOf;
   onOpenDay: (date: Date) => void;
   onSelectClient?: (clientId: string) => void;
 }) {
@@ -301,7 +328,7 @@ const WeekDay = memo(function WeekDay({
         ? { words: "Couldn’t read this day’s bookings.", unread: true }
         : state === "loading"
           ? { words: "Reading the day’s bookings…", unread: false }
-          : { words: "Nobody booked.", unread: false };
+          : { words: filterName ? `Nobody is booked with ${filterName}.` : "Nobody booked.", unread: false };
   const listId = `cal-wday-${day.key}`;
   return (
     <section
@@ -317,7 +344,7 @@ const WeekDay = memo(function WeekDay({
           {day.isToday && <span className="cal-wday__today">Today</span>}
         </button>
         <span className="cal-wday__count">
-          {day.count > 0 ? `${day.count} ${day.count === 1 ? "session" : "sessions"}` : ""}
+          {day.count > 0 ? sessionsWord(day.count) : ""}
           {state === "failed" && day.count > 0 && <span className="cal-wday__unread"> · may be missing some</span>}
         </span>
         {!quiet && (
@@ -344,7 +371,14 @@ const WeekDay = memo(function WeekDay({
               <span className="cal-wslot__time">{slot.label}</span>
               <ul className="cal-wslot__list">
                 {slot.items.map((s) => (
-                  <Booking key={s.id} session={s} withWords={withOf(s)} mine={!!selfId && s.trainerId === selfId} onSelectClient={onSelectClient} />
+                  <Booking
+                    key={s.id}
+                    session={s}
+                    withWords={withOf(s)}
+                    mine={!!selfId && s.trainerId === selfId}
+                    profile={profileOf(s.clientId)}
+                    onSelectClient={onSelectClient}
+                  />
                 ))}
               </ul>
             </li>
@@ -354,6 +388,9 @@ const WeekDay = memo(function WeekDay({
     </section>
   );
 });
+
+/** Every booking has a profile (a caller that doesn't know the client list). */
+const ALL_LINKED: ProfileOf = () => "linked";
 
 export interface WeekViewProps {
   anchor: Date;
@@ -371,9 +408,28 @@ export interface WeekViewProps {
   onSelectClient?: (clientId: string) => void;
   /** What is known about a studio day's bookings; absent: read. */
   stateOf?: (dayKey: string) => DayReadState;
+  /** The same for the week before (the charts' comparison needs all seven read); absent: compared as before. */
+  priorStateOf?: (dayKey: string) => DayReadState;
+  /** The team filter's trainer ("you" for your own), or null for the entire team. */
+  filterName?: string | null;
+  /** Whether a booking's client has a profile (absent: every one has). */
+  profileOf?: ProfileOf;
 }
 
-export function WeekView({ anchor, sessions, trainerRefs, trainerOrder, selfId, selectedDate, onSelectDate, onSelectClient, stateOf }: WeekViewProps) {
+export function WeekView({
+  anchor,
+  sessions,
+  trainerRefs,
+  trainerOrder,
+  selfId,
+  selectedDate,
+  onSelectDate,
+  onSelectClient,
+  stateOf,
+  priorStateOf,
+  filterName = null,
+  profileOf = ALL_LINKED,
+}: WeekViewProps) {
   const [chartsOpen, setChartsOpen] = useState(false);
 
   /* Yours first, then the studio's order, then Unassigned (the Hub's column order). */
@@ -383,7 +439,10 @@ export function WeekView({ anchor, sessions, trainerRefs, trainerOrder, selfId, 
   }, [trainerOrder, selfId]);
 
   const days = useMemo(() => buildWeekAgenda(anchor, sessions, rankOf), [anchor, sessions, rankOf]);
-  const summary = useMemo(() => (chartsOpen ? buildWeekSummary(anchor, sessions, trainerRefs) : null), [chartsOpen, anchor, sessions, trainerRefs]);
+  const summary = useMemo(
+    () => (chartsOpen ? buildWeekSummary(anchor, sessions, trainerRefs, new Date(), priorStateOf ? (key) => priorStateOf(key) === "ready" : undefined) : null),
+    [chartsOpen, anchor, sessions, trainerRefs, priorStateOf],
+  );
 
   /* Who a booking is with, in words: you, the name the trainer goes by (whole
      names when two read alike), or Mindbody's staff name for Unassigned. */
@@ -414,6 +473,16 @@ export function WeekView({ anchor, sessions, trainerRefs, trainerOrder, selfId, 
       <div className="cal-wstrip" role="group" aria-label="The week">
         {days.map((d) => {
           const state = stateOf ? stateOf(d.key) : "ready";
+          const said =
+            d.count > 0
+              ? sessionsWord(d.count)
+              : state === "ready"
+                ? filterName
+                  ? `nobody is booked with ${filterName}`
+                  : "nobody booked"
+                : state === "failed"
+                  ? "couldn't read"
+                  : "not read yet";
           return (
             <button
               key={d.key}
@@ -422,13 +491,13 @@ export function WeekView({ anchor, sessions, trainerRefs, trainerOrder, selfId, 
               data-today={d.isToday ? "true" : undefined}
               data-picked={d.key === pickedKey ? "true" : undefined}
               aria-current={d.isToday ? "date" : undefined}
-              aria-label={`${d.weekday} ${d.monthDay}: ${d.count > 0 ? `${d.count} sessions` : state === "ready" ? "nobody booked" : state === "failed" ? "couldn't read" : "not read yet"}. Open the day.`}
+              aria-label={`${d.weekday} ${d.monthDay}: ${said}. Open the day.`}
               onClick={() => onSelectDate(d.date)}
             >
               <span className="cal-wstrip__name">
                 {d.short} <strong>{d.dayOfMonth}</strong>
               </span>
-              <span className="cal-wstrip__count">{d.count > 0 ? d.count : state === "ready" ? "—" : state === "failed" ? "?" : ""}</span>
+              <span className="cal-wstrip__count">{d.count > 0 ? d.count : state === "ready" ? (filterName ? "0" : "—") : state === "failed" ? "?" : ""}</span>
             </button>
           );
         })}
@@ -452,6 +521,8 @@ export function WeekView({ anchor, sessions, trainerRefs, trainerOrder, selfId, 
           startFolded={thisWeek && d.key < todayKey}
           withOf={withOf}
           selfId={selfId}
+          filterName={filterName}
+          profileOf={profileOf}
           onOpenDay={onSelectDate}
           onSelectClient={onSelectClient}
         />

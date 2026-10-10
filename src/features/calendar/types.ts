@@ -70,8 +70,7 @@ export interface DayCell {
   inCurrentMonth: boolean;
   isToday: boolean;
   total: number;
-  /** Descending by count. The month view shows the top few. */
-  byTrainer: TrainerCount[];
+  /** Clients' life events that day (the cell marks them; their words are on the Day). */
   events: CalendarEvent[];
 }
 

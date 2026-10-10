@@ -2,7 +2,7 @@ import { memo, useMemo } from "react";
 import type { DayReadState } from "../../lib/schedule-window";
 import { formatDateWords } from "../../lib/studio-time";
 import { buildMonthCells } from "./selectors";
-import type { CalendarEvent, CalendarSession, DayCell, TrainerRef } from "./types";
+import type { CalendarEvent, CalendarSession, DayCell } from "./types";
 import "./calendar.css";
 
 /**
@@ -30,15 +30,21 @@ const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 /** One options object, so its formatter is built once (the iPad round's Intl trap). */
 const LABEL_DAY: Intl.DateTimeFormatOptions = { weekday: "long", month: "long", day: "numeric" };
 
-/** The words a screen reader hears for a day, the events' words included. */
-export function dayLabel(cell: DayCell, state: DayReadState): string {
+/**
+ * The words a screen reader hears for a day, the events' words included.
+ * Under the team filter an empty day names whose bookings these are
+ * (`filterName`, "you" for your own; the review, Oct 10 2026).
+ */
+export function dayLabel(cell: DayCell, state: DayReadState, filterName: string | null = null): string {
   const date = formatDateWords(cell.date, LABEL_DAY);
   const booked =
     state === "failed" && cell.total === 0
       ? "bookings couldn't be read"
       : state === "loading" && cell.total === 0
         ? "bookings not read yet"
-        : `${cell.total} ${cell.total === 1 ? "session" : "sessions"}${state === "failed" ? ", may be missing some" : ""}`;
+        : cell.total === 0 && filterName
+          ? `nobody is booked with ${filterName}`
+          : `${cell.total} ${cell.total === 1 ? "session" : "sessions"}${filterName ? ` with ${filterName}` : ""}${state === "failed" ? ", may be missing some" : ""}`;
   const life =
     cell.events.length === 0
       ? ""
@@ -50,21 +56,23 @@ const DayBox = memo(function DayBox({
   cell,
   picked,
   state,
+  filterName,
   onSelect,
 }: {
   cell: DayCell;
   picked: boolean;
   state: DayReadState;
+  filterName: string | null;
   onSelect: (date: Date) => void;
 }) {
-  const count =
-    cell.total > 0 ? String(cell.total) : state === "ready" ? "—" : "";
+  /* A read empty day: "—", or "0" under the team filter, where the page names the trainer and "—" would read as nobody at all. */
+  const count = cell.total > 0 ? String(cell.total) : state === "ready" ? (filterName ? "0" : "—") : "";
   return (
     <button
       type="button"
       onClick={() => onSelect(cell.date)}
       aria-current={cell.isToday ? "date" : undefined}
-      aria-label={dayLabel(cell, state)}
+      aria-label={dayLabel(cell, state, filterName)}
       className="cal-day"
       data-outside={cell.inCurrentMonth ? undefined : "true"}
       data-today={cell.isToday ? "true" : undefined}
@@ -88,18 +96,16 @@ export interface MonthViewProps {
   anchor: Date;
   sessions: CalendarSession[];
   events: CalendarEvent[];
-  trainerRefs: Map<string, TrainerRef>;
   selectedDate: Date | null;
   onSelectDate: (date: Date) => void;
   /** What is known about a studio day's bookings; absent: read. */
   stateOf?: (dayKey: string) => DayReadState;
+  /** The team filter's trainer ("you" for your own), or null for the entire team. */
+  filterName?: string | null;
 }
 
-export function MonthView({ anchor, sessions, events, trainerRefs, selectedDate, onSelectDate, stateOf }: MonthViewProps) {
-  const cells = useMemo(
-    () => buildMonthCells(anchor, sessions, events, trainerRefs),
-    [anchor, sessions, events, trainerRefs],
-  );
+export function MonthView({ anchor, sessions, events, selectedDate, onSelectDate, stateOf, filterName = null }: MonthViewProps) {
+  const cells = useMemo(() => buildMonthCells(anchor, sessions, events), [anchor, sessions, events]);
 
   const selectedTime = selectedDate ? selectedDate.toDateString() : null;
 
@@ -116,6 +122,7 @@ export function MonthView({ anchor, sessions, events, trainerRefs, selectedDate,
           cell={cell}
           picked={selectedTime === cell.date.toDateString()}
           state={stateOf ? stateOf(cell.key) : "ready"}
+          filterName={filterName}
           onSelect={onSelectDate}
         />
       ))}

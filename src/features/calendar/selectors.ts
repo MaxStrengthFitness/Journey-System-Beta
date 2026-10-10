@@ -116,7 +116,6 @@ export function buildMonthCells(
   monthAnchor: Date,
   sessions: CalendarSession[],
   events: CalendarEvent[],
-  refs: Map<string, TrainerRef>,
   today: Date = new Date(),
 ): DayCell[] {
   const year = monthAnchor.getFullYear();
@@ -160,7 +159,6 @@ export function buildMonthCells(
       inCurrentMonth: date.getMonth() === month,
       isToday: key === todayKey,
       total: daySessions.filter((s) => !s.isUnavailability).length,
-      byTrainer: countByTrainer(daySessions, refs),
       events: eventsByDay.get(key) || [],
     });
   }
@@ -256,6 +254,8 @@ export function buildWeekSummary(
   sessions: CalendarSession[],
   refs: Map<string, TrainerRef>,
   today: Date = new Date(),
+  /** Was this studio day's bookings read? The comparison with last week needs all seven. */
+  priorRead?: (dayKey: string) => boolean,
 ): WeekSummary {
   const days = weekDays(anchor);
   const byDay = bucketByDay(sessions.filter((s) => !s.isUnavailability));
@@ -277,7 +277,11 @@ export function buildWeekSummary(
   for (const d of days) inWeek.push(...(byDay.get(dayKey(d)) || []));
 
   // Previous week, from the same already-loaded set. Null rather than 0 when
-  // nothing is loaded back there, so the delta never claims a fake -100%.
+  // it isn't all known, so the delta never claims a fake -100%. With
+  // `priorRead` (the schedule window's word for each studio day; the review,
+  // Oct 10 2026) the comparison needs all seven prior days read: a week only
+  // partly cached made a fall out of days nobody had read. Without it, the
+  // old rule: something loaded back there.
   const prevDays = weekDays(new Date(days[0].getTime() - 7 * 86400000));
   let previousTotal: number | null = 0;
   let sawAny = false;
@@ -286,7 +290,7 @@ export function buildWeekSummary(
     if (n > 0) sawAny = true;
     previousTotal = (previousTotal || 0) + n;
   }
-  if (!sawAny) previousTotal = null;
+  if (priorRead ? !prevDays.every((d) => priorRead(dayKey(d))) : !sawAny) previousTotal = null;
 
   const heat: HeatCell[] = [];
   const counts = new Map<string, number>();

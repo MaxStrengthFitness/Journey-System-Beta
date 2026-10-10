@@ -42,13 +42,16 @@ The room is full-bleed like the Hub and the Directory: AppContent's main gives t
 - **The month fills the room** under the bar: six weeks share the height, each at least `--cal-day-min` (88px, 76 on an iPad on its side, 72 under 768px, 64 on a phone).
 - **No avatar rows.** Who carries the week is the Week's folded charts.
 - A neighbouring month's day sits back in the well tone; its words stay the muted ink.
+- **Under the team filter** a read day with nobody booked with that trainer says 0, and its label names them ("nobody is booked with Dana"); a line above the view says "Showing Dana's bookings only." ("your" for your own).
 
 ### 1.3 Week
 
 - **The strip**: the seven days with each day's count, today an orange ring, the picked day blue; a tap opens that Day.
-- **The charts** ("The week in charts": sessions per day, trainer load, when the studio is busy) folded under the strip, closed until asked for (`WeekCharts`). The delta against last week is said in the ink: an orange "up" read as now.
+- **The charts** ("The week in charts": sessions per day, trainer load, when the studio is busy) folded under the strip, closed until asked for (`WeekCharts`). The delta against last week is said in the ink: an orange "up" read as now. It is said **only when all seven of last week's days read as ready** (`buildWeekSummary`'s `priorRead`); with any of them not read it says "No prior week loaded", never a comparison with a part-week.
 - **The days** (`buildWeekAgenda`, pure, `selectors.test.ts`): each day a panel of its bookings by start time, every booking the client's whole name and who it is with ("with Dana"; whole names when two trainers' first names read alike; Mindbody's staff name for a booking no trainer claims). **Yours** come first in a slot, on the blue cast with a blue band and "with you" in blue. Mindbody's "Unavailable" is never a booking. A tap on a booking opens the client; a tap on a day's head opens its Day; the head sticks while its bookings scroll.
-- **In the week holding today the days already over start folded** to their heads (their counts still said), so the week opens on today. A week in the past or ahead opens whole.
+- **In the week holding today the days already over start folded** to their heads (their counts still said, "1 session", never "1 sessions"), so the week opens on today. A week in the past or ahead opens whole.
+- **A booking whose client has no Max Strength profile yet** says so ("Not synced yet · with Dana", a dashed edge, the Hub card's words) and is no button: it used to be a tap that did nothing. While the client list is loading or failed it says nothing and waits (`profileOf`: linked, unlinked, unknown).
+- **Under the team filter** an empty read day says "Nobody is booked with Dana." ("with you" for your own), not "Nobody booked."
 
 ### 1.4 Day — the Hub's grid
 
@@ -61,7 +64,14 @@ The room is full-bleed like the Hub and the Directory: AppContent's main gives t
 - the day's **life events** folded over the grid ("2 life events", `DayLife`), their words whole on a tap, a tap opening the client: a client's home life stays off a screen a client can see until a trainer asks (the Hub's Get to know rule).
 - On a phone the Day is the Hub's `PhoneDayList`.
 
-A tap on a booking opens the client, as the Calendar always has (`HubCard` with `opensPeek={false}`, so it says nothing about a dialog). The card knows no sessions, so a booking that is over recedes without "Not logged": the Calendar can't say what happened to it, and never claims to.
+A tap on a booking opens the client, as the Calendar always has (`HubCard` with `opensPeek={false}`, so it says nothing about a dialog).
+
+**What a card says happened** (the review, Oct 10 2026; AJ's Sep 24 rule in `lib/hub-card-state.ts`: "a grey card with no word would read as done when it is not"). The Day reads what the Hub reads and no more:
+
+- **The days the sessions cover** (`cardDayReadable`): the studio's today once the session stream's server has answered (AppContent's `sessions` and `sessionsKnown`, the stream ClientsView reads, the last 24 hours), and the days ahead to the end of the Hub's window (`hubWindow`, a week on). On those, a card says what the Hub's says: done, **Not logged**, **In session**, Left open, and **Didn't come** from a leader's mark (`useBookingMarks`, the Hub's own listener, for the day on screen, only for someone `mayReadWeeks` lets read the studio). The Hub isn't mounted while the Calendar is, so it is the same cost.
+- **Every other day** (before today, past the window, or today while the stream hasn't answered): the card is **unread** (`hubCardState`'s `readable: false`). It neither fades nor says a word, so a finished booking never reads as done; its marks stay.
+- **The red Critical triangle** from the Hub's one live read of the day's booked clients' Critical notes (`useHubCriticalNotes`), on any day, through the engine's own first moment (`readFirstMomentOf`, `hub-opportunities/moments-today.ts`). With some clients' notes unread the page says so once, as the Hub does.
+- **Under the team filter** the rest of the row beside the one column says "Showing Dana's bookings only" (`HubGrid`'s `restWords`), never the Hub's "Nobody else is booked on this day", which would be untrue.
 
 ---
 
@@ -80,7 +90,8 @@ The schedule window hands the Calendar the Hub's own `dayState` and `retry` (`us
 - **Month**: a day not read yet shows no count; a day whose read failed shows a plum mark beside whatever is held; only a read day with nothing booked says "—".
 - **Week**: a day not read says "Couldn't read this day's bookings.", never "Nobody booked."
 - **Day**: "Nobody is booked on this day." only when the day was read; "Reading the day's bookings…" while it is.
-- One plum notice above the view (the Hub's `HubNotice`) when any day on screen failed, with **Try again**, which re-opens the live listener (`retry`) and forces a read of the range on screen. While a failed day is on screen the range is asked for again after `FETCH_RETRY_MS`: the hook's own retry re-reads only the week ahead.
+- One plum notice above the view (the Hub's `HubNotice`) when any day on screen failed, with **Try again**: it re-opens the live listener (`retry`) only when a live day (yesterday to tomorrow) failed, and forces a read of **the failed span only** (the first failed fetched day to the last), never the whole range on screen.
+- **While a fetched day on screen stays failed**, that span is read again, forced, every `FETCH_RETRY_MS` while the page is visible, and the asking stops once none remain (the review: it was asked once). Forced, because a day read earlier keeps that read's stamp and an unforced ask would find it fresh. The live days are the listener's, which reopens itself.
 
 ---
 
@@ -90,7 +101,7 @@ The Navy Frame's jobs hold: **orange is today and now only** (the ring, the now 
 
 The calendar's palette (`calendar.tokens.css`) is a copy of the Hub's (`palette-copies.test.ts`), with `--cal-mine` (the blue cast under your Week bookings) and `--cal-warn` (the plum of a day not read) since the rooms round, and `--cal-tone-ink` (a trainer's initials: white in light, navy in dark; it was a raw `#fff` and `#06101a`).
 
-**The trainer tones** are identity colours: an FNV-1a hash of the trainer id picks one of eight (`trainer-tone.ts`), so one trainer is one colour everywhere. They label a trainer where one is labelled (the Week's trainer load, a client's History), sparingly. Since the rooms round no tone wears a colour that has a job: t0 was the orange of now (now olive), t1 the logo blue (now slate), t5 the plum of caution (now taupe), and t4's dark an orange amber (now an ochre). Each tone carries four values (`--t-solid` 3:1, `--t-text` 4.5:1, `--t-fill`, `--t-edge`), republished by `.cal-tone-N`.
+**The trainer tones** are identity colours: an FNV-1a hash of the trainer id picks one of eight (`trainer-tone.ts`), so one trainer is one colour everywhere. They label a trainer where one is labelled (the Week's trainer load, a client's History: an avatar's fill, a bar, a row's edge), sparingly. Since the rooms round's review they are **gold, olive, green, teal, cyan, slate, umber and spruce**, one solid each (`--tN-solid`, republished as `--t-solid` by `.cal-tone-N`; the text, fill and edge values had no reader). **`trainer-tones.test.ts` holds them**, in light and dark: every tone 30° of OKLCH hue from the blue, the orange, the crimson, the plum and the Calendar's room hue (or a grey, chroma under 0.06); every two tones 0.08 apart in OKLab; each solid 3:1 on the card and a trainer's initials on it (`--cal-tone-ink`) 4.5:1. The review found two tones 7° apart and a violet 6 to 10° from the room's own hue.
 
 ---
 
@@ -113,9 +124,10 @@ src/features/calendar/
   ford-events.ts        the life events: birthdays and dated FORD details (pure)
   useCalendarFord.ts    the one FORD read per month on screen (Month and Day)
   calendar-look.test.ts the type scale, the upright display face, no cut names, no raw hex, 40px taps, the error screen
+  trainer-tones.test.ts the eight tones apart from each other, from the job colours and the room hue, and readable
 ```
 
-`CalendarView.render.test.tsx` mounts the room: the bar, Refresh, unknown-versus-empty, the Month cells, the Day's grid and its columns, the Week's bookings and folds.
+`CalendarView.render.test.tsx` mounts the room on a held clock (Wednesday Oct 14 2026, 9:40 AM): the bar, Refresh, a month stepped from the 31st, unknown-versus-empty and its retries, the Month cells, the Day's grid, its columns and its cards' states, the team filter's words, the Week's bookings and folds. `CalendarView.tick.render.test.tsx` holds a quiet 30-second tick and a heartbeat in the session stream at no card drawn, and the Week's doors at the same identity.
 
 ---
 
@@ -127,3 +139,5 @@ src/features/calendar/
 - **`key` on a plain function component does not typecheck here** (React 19, no `@types/react`): list items are `memo` components or intrinsic elements.
 - **The client's Activity Archive calendar shares this stylesheet and palette** (`.cal-shell`, `.cal-header`, `.cal-seg`, `.cal-empty`, `.cal-avatar`, `--cal-*`). The profile is another room and takes its bar in its own round, so those classes are History's now and the Calendar draws none of them; a change to them moves History.
 - **The error screen** (AppContent, around `currentView === "calendar"`) is in the app's tokens and offers Back to the Hub, never a reload of its own.
+- **The doors are stable** (the review): `openClient` reads the latest clients and AppContent's handlers through a ref, and `openDay` is a `useCallback`, so the 30-second tick and a new render of AppContent draw no Day card, Week day or Week booking again. Each day's read state is asked once a render into one map (`stateOfDay`), not about eighty times.
+- **A month steps from its 1st** (`stepDate`): Next on Oct 31 is November, Previous on Mar 31 is February (a `setMonth` on the 31st overflowed into the month after).
