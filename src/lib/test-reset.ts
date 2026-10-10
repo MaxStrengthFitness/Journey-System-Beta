@@ -1002,7 +1002,18 @@ export function planReset(input: ResetInput, options: ResetOptions): ResetPlan {
       const throughMs = through === null ? null : millisOf(through);
       confirmTainted = beforeItsDay && (touched || (throughMs !== null && inEra(throughMs + DAY_MS)));
     }
-    if (confirmTainted) b.clearFields("client-prior-confirmed", c, ["priorHistory"], isDemo);
+    // The reconciler folded the Confirm's number into sessionCount. A touched
+    // client's count is set below; on one the sessions no longer touch (her
+    // test session already discarded) it would go on holding the old number,
+    // and the Hub would show about double until her profile opened.
+    if (confirmTainted) {
+      b.changeFields(
+        "client-prior-confirmed",
+        c,
+        touched || !holdsSomething(c.data.sessionCount) ? [[["priorHistory"], ABSENT]] : [[["priorHistory"], ABSENT], [["sessionCount"], 0]],
+        isDemo,
+      );
+    }
     b.clearFields("client-prior-history", c, typedPrior ? ["priorHistory", "firstStudioDay"] : ["firstStudioDay"], isDemo);
     // The prior record after this run, for the count it leaves behind.
     const priorStays =
@@ -1279,6 +1290,22 @@ function linksDeletedNote(data: Record<string, unknown>, gone: ReadonlySet<strin
 /** Recent open sessions block a commit: an iPad mid-session would write them back from its queue. */
 export function blockingOpenSessions(plan: ResetPlan, includeDemo: boolean): OpenSession[] {
   return plan.openSessions.filter((s) => s.recent && (includeDemo || !s.demo));
+}
+
+/**
+ * A retry's deletes, without a session that shows life now. A session that
+ * changed between the read and the delete is most likely an iPad's
+ * heartbeat: whatever the first read said (and --ignore-open-sessions), a
+ * retry never deletes a session with a sign of life in the last 12 hours.
+ * Planned again from what is there NOW, so `plan.openSessions` is today's.
+ */
+export function withoutLiveSessions(plan: ResetPlan, deletes: readonly DeleteStep[]): { deletes: DeleteStep[]; live: OpenSession[] } {
+  const live = plan.openSessions.filter((s) => s.recent);
+  const livePaths = new Set(live.map((s) => s.path));
+  return {
+    deletes: deletes.filter((d) => !livePaths.has(d.path)),
+    live: live.filter((s) => deletes.some((d) => d.path === s.path)),
+  };
 }
 
 /* ------------------------------------------------------------------ *
