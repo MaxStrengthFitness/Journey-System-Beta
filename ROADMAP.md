@@ -2,7 +2,8 @@
 
 **How to read this page.** It is the short working list and nothing else: what
 is being done now, what has to happen before a trainer uses Journey for real,
-and what is deliberately parked. It is re-cut at every gate.
+what is planned but not started, and what is deliberately parked. It is re-cut
+at every gate.
 
 - **History lives in `docs/rounds/CHANGELOG.md`** and each round's own notes in
   `docs/rounds/`. Nothing that is finished stays on this page.
@@ -19,7 +20,8 @@ opportunities round on Sep 28, and after the calm Hub the same night. The
 status block below and the items that had been finished were checked against
 `origin/master` on Oct 7 2026, and the status block again on Oct 9 2026
 after the open session round; the follow-up pile is still as the Sep 28–29
-rounds left it, so check a round's own document before trusting a line there.*
+rounds left it, so check a round's own document before trusting a line there.
+**Planned** was added on Oct 9 2026 from AJ's list.*
 
 ---
 
@@ -236,8 +238,8 @@ closed by My Studio; the cross-studio task writes are the one still open.
 - **Demo Mode and the tutorials.** The `demo-mode-foundation` branch is
   retired to the tag `archive/demo-mode-foundation`. Demo Mode was rebuilt
   from scratch on Sep 20 2026 as a real practice studio
-  (`src/features/demo-mode/`, `docs/rounds/2026-09-20-demo-mode.md`); the
-  tutorials are still to do.
+  (`src/features/demo-mode/`, `docs/rounds/2026-09-20-demo-mode.md`). The
+  tutorial is item 1 of **Planned**, below.
 - **The FileMaker migration — on hold.** Field mapping to the data dictionary
   (§3.2), the importer in the `scripts/migrate-machine-id.ts` shape, blanks
   imported as *Skipped: unknown (FileMaker)*. AJ decided on Oct 2 2026 to make
@@ -266,17 +268,130 @@ closed by My Studio; the cross-studio task writes are the one still open.
   to Render's logs, and the perf lab in `harness/perf-lab/` is the tool.)
 - Architected for, not built: automated retention beyond flags (in-app only),
   the InBody Web API per studio, badges and awards, CSV export of a client's
-  history, a second time zone, `strict` TypeScript, Cloud Functions tests in CI.
+  history (now part of **Planned** item 4), a second time zone, `strict`
+  TypeScript, Cloud Functions tests in CI.
+
+---
+
+## Planned — wanted, not started
+
+AJ's list of what is coming to the app but is not being worked on yet (Oct 9
+2026: "those are all planned and stuff that is not going to be added yet. But
+I just want to let you know that they do have a, a thought of them"). Nothing
+here is built or scheduled. When an item's turn comes it gets a round of its
+own, and the round starts with a plan AJ confirms, not with code. They are in
+AJ's order.
+
+### 1. Tutorial mode — first of these
+AJ: "above all else". A tutorial that plays like the opening of a 4X strategy
+game: the screen dims, the one thing to tap next lights up with a short line
+saying what it is and why, the trainer makes the real tap, and the next step
+lights up. It walks a first session both ways trainers work, because "we need
+to be able to do both":
+
+- **Plan first, then run.** Build the client's routine (Programming), put in
+  the machine settings (Programming → Setup), then run the session.
+- **Build it as you go.** Start the session, and during it build the routine
+  and put in the settings (the open session's +, Start from a routine and Set
+  up, on `oct9/open-session`, not shipped yet).
+
+It runs in Demo Mode's practice studio (`src/features/demo-mode/`), so the
+client, the routine and the sets it makes are practice records and no real
+client is ever written. It waits until the screens it teaches stop moving:
+the first-session round's iPad walk (Round 65) and the open-session round
+come first, or the tutorial teaches taps that change. Open: whether it starts
+by itself on a trainer's first sign-in or only from a button, and what it
+covers after the session (the briefing, Notes, the Wrap-up, the Hub).
+
+### 2. A machine editor that isn't intimidating
+AJ, Oct 9 2026: the editor is "so lengthy", "it's so intimidating to fill
+out". What he wants from it:
+
+- **The settings first.** The one change a trainer actually needs to make is
+  saying which settings a machine has, and today a trainer can't. FileMaker
+  made it easy, one box of letters (S seat, B back, C chest, G gap) each with
+  a number or a letter, but "really unorganized and not very good". Journey
+  should be as quick to fill and stay organised. (Journey already reads that
+  shorthand once a machine has its dials, `parseShorthand` in
+  `src/features/machine-fit/shorthand.ts`. What is slow is giving a machine
+  its dials: they sit in the "At the machine" part of the long form, which only
+  a leader or an administrator can change.)
+- **Short sections, not one long list.** Machines stay catalogable, with
+  information to fill in, but "very sectioned out" and "as least as
+  intimidating as possible".
+- **Start from what the machine is.** "There's only so many body parts.
+  There's only so many push pulls. Muscles can only be worked in so many
+  ways." A new machine starts by choosing what it is and inherits what
+  follows from that, so it "feels like a catalog machine" and builds on the
+  puzzle instead of being "an out of place puzzle piece". The main categories
+  of machine are still to be decided. The pieces exist: the ten movement
+  patterns (`MOVEMENT_PATTERN_ORDER`, `src/types/machines.ts`), the Academy's
+  five families, the anatomy model, and the "based on" comparison a studio's
+  machine already gets (`src/features/admin/catalog/review.ts`).
+- **The maker's machines, with their sizes.** Most Max Strength studios will
+  use Imagine Strength machines (https://imaginestrength.com/). Their
+  brochure, which AJ sent on Oct 9 2026
+  (https://img1.wsimg.com/blobby/go/2185823b-5035-4ff9-b522-c827c3affe90/downloads/b146fe41-bf23-48d0-baf3-c0556a47b415/Revised%20flyer%20brochure.pdf),
+  lists about 23 machines, each with a model number (IS2010G Rowing Back,
+  IS2019 Leg Press...), its weight stack and its footprint (length × width ×
+  height). That is the model record Journey already has
+  (`machineModels/{id}`: brand, model, the MSF machine it is and its dials,
+  written by administrators; `src/features/machine-codex/models.ts`), which
+  holds no size yet. A studio adding one would pick the model and get its
+  dials and footprint filled in, and the footprint is what the studio map
+  (item 3) needs to draw a machine to scale.
+
+His Sep 21 asks are still not built either, in
+`src/features/admin/machines/README.md` → "The editor round that has not
+happened yet": duplicating a machine, drafts to finish later, and a
+step-by-step path through the form ("the information is not the problem, the
+path through it is"). Open: what the main categories are; whether a trainer
+may give a machine its dials, or only propose them; whether the size lives on
+the model, or on each studio's unit as well. A size on the model record is a
+Firestore change (the rules hold that document to its exact shape) and needs
+AJ's OK.
+
+### 3. The studio map
+A studio draws its own floor: put in the room's size, get a grid of squares,
+and place each machine where it really stands, drawn to its real size from
+the model's footprint (item 2).
+
+- **Relay's machines on the floor itself**, not a list: a trainer taps a
+  machine where it stands. (Relay's Floor Map today is tiles grouped by
+  movement, `src/features/relay/board/FloorMap.tsx`, not the room.)
+- **Planning the floor**: a studio sees how its machines are laid out and can
+  try a move before making it, for a rearrangement, a bigger room or new
+  machines.
+
+It builds on the studio's own floor (the roster, and its walking order, which
+the Catalog already uses), edited in one place as the floor is now (My Studio →
+Machines, also opened from Operations → Floor). Open: who may draw and move
+machines (leaders, as with the floor?); whether a planned layout is kept apart
+from the real one; whether the walking order could come from the map. A new
+document for the map is a Firestore structure change and needs AJ's OK.
+
+### 4. A client's progress as a document, then a client sign-in
+Eventually clients sign in and see their own performance. The first step is
+an export: a client's performance, or the progress report
+(`src/features/progress-report/`, which today is printed from the browser),
+as a document a trainer can save and hand over. Open: what goes in it, in
+what format, and who may make one. The rules that already hold apply to it:
+history before Journey is said as such, never left out as if it never
+happened (`docs/business/migration-and-prior-history.md`), and Journey sends
+nothing itself; a person hands the document over. The client sign-in comes
+later and would change a line of **Not building** ("No client app or
+portal"), with its own decisions about sign-in and what a client may read.
 
 ---
 
 ## Not building
 
-No client app or portal. No outreach of any kind — no email, SMS or push, to
-clients or to trainers. No booking, billing or payment features. No nutrition
-tracking beyond the check-in's self-reported fields. No wearables. No AI
-coaching. Nothing for a company other than Max Strength Fitness.
-(`docs/ARCHITECTURE.md` §1.7.)
+No client app or portal (a client sign-in is planned for later, item 4 of
+**Planned**, and would change this line). No outreach of any kind — no email,
+SMS or push, to clients or to trainers. No booking, billing or payment
+features. No nutrition tracking beyond the check-in's self-reported fields. No
+wearables. No AI coaching. Nothing for a company other than Max Strength
+Fitness. (`docs/ARCHITECTURE.md` §1.7.)
 
 ---
 
