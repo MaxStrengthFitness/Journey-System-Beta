@@ -172,10 +172,13 @@ function rules(css: string): Array<[string, Array<[string, string]>]> {
 }
 
 describe("a room's hue goes on its mark and its bar's line, and nowhere else", () => {
+  // A test names the tokens it checks; it paints nothing.
+  const isTest = (rel: string) => /\.test\.tsx?$/.test(rel);
+
   it("nothing outside src/features/rooms/rooms.css reads a --room- token (index.css only declares them)", () => {
     const readers = filesUnder(SRC)
       .map((path) => relative(SRC, path).replace(/\\/g, "/"))
-      .filter((rel) => rel !== "index.css" && rel !== "features/rooms/rooms.css" && !/^features\/rooms\/[^/]+\.test\.tsx?$/.test(rel))
+      .filter((rel) => rel !== "index.css" && rel !== "features/rooms/rooms.css" && !isTest(rel))
       .filter((rel) => read(join(SRC, rel)).includes("--room-"));
     expect(readers).toEqual([]);
   });
@@ -190,7 +193,7 @@ describe("a room's hue goes on its mark and its bar's line, and nowhere else", (
   it("nothing outside rooms.css reads the bar's own --rm-hue or --rm-mark-ink", () => {
     const readers = filesUnder(SRC)
       .map((path) => relative(SRC, path).replace(/\\/g, "/"))
-      .filter((rel) => rel !== "features/rooms/rooms.css" && !/^features\/rooms\/[^/]+\.test\.tsx?$/.test(rel))
+      .filter((rel) => rel !== "features/rooms/rooms.css" && !isTest(rel))
       .filter((rel) => /--rm-(hue|mark-ink)/.test(read(join(SRC, rel))));
     expect(readers).toEqual([]);
   });

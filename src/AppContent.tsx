@@ -1697,7 +1697,7 @@ export default function AppContent({
               the page people see, and the cards sat on a ground one rung
               lighter than the theme's. */}
           <main
-            className={`w-full max-w-full mx-auto relative ${currentView === "workouts" ? "flex-1 min-h-0 p-0 sm:p-2 overflow-y-auto overscroll-contain bg-background flex flex-col" : currentView === "clients" || currentView === "client-directory" || isLearningView || currentView === "studio-tasks" ? "flex-1 min-h-0 overflow-hidden bg-background p-0 flex flex-col" : "flex-1 min-h-0 p-3 sm:p-6 overflow-y-auto overscroll-contain bg-background"}`}
+            className={`w-full max-w-full mx-auto relative ${currentView === "workouts" ? "flex-1 min-h-0 p-0 sm:p-2 overflow-y-auto overscroll-contain bg-background flex flex-col" : currentView === "clients" || currentView === "client-directory" || currentView === "calendar" || isLearningView || currentView === "studio-tasks" ? "flex-1 min-h-0 overflow-hidden bg-background p-0 flex flex-col" : "flex-1 min-h-0 p-3 sm:p-6 overflow-y-auto overscroll-contain bg-background"}`}
           >
             {/* A screen whose file a deploy removed replaces only itself, and
                 recovers when it is safe to; any other error goes on up to the
@@ -2083,6 +2083,11 @@ export default function AppContent({
                         lastFetchedAt: schedulesFetchedAt,
                         // A pull from either button is the schedule updating.
                         isFetching: isFetchingSchedules || isRefreshingSchedule,
+                        // What is known about each day: a day whose read
+                        // failed is said, never drawn empty (the rooms
+                        // round, Oct 10 2026; the Hub's own since Oct 1).
+                        dayState: scheduleDayState,
+                        retry: retrySchedules,
                       }}
                     />
                     </LoadBoundary>

@@ -907,10 +907,10 @@ const CAPITALS_ON_PURPOSE: Record<string, string> = {
 };
 
 /** Text under 11px in a stylesheet, on purpose. */
+// The calendar's three left this list in the rooms round (Oct 10 2026): a
+// trainer's initials are 11px in both dots now, and the count badge on a
+// trainer's dot went with the month cells' avatars.
 const SMALL_ON_PURPOSE: Record<string, string> = {
-  "features/calendar/calendar.css .cal-avatar": "a trainer's initials in a 26px dot",
-  "features/calendar/calendar.css .cal-avatar--sm": "a trainer's initials in a 22px dot",
-  "features/calendar/calendar.css .cal-who__badge": "a count in the 16px badge on a trainer's dot",
   "features/progress-report/progress-report.css .pr-step__n": REPORT,
   "features/progress-report/progress-report.css .pr-guide__label": REPORT,
 };

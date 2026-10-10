@@ -18,14 +18,19 @@
    fixed basis at each end; the label is the only flexible child and it
    centres its text inside a min-width. Month names cannot move anything.   */
 
+/* On the room bar (the rooms round, Oct 10 2026) the stepper is one group of
+   controls RAISED on the firm 3:1 edge (Refined Lift, 2A), the room bar's
+   tools' own look: it was a pill on the decorative hairline. Its three parts
+   are borderless inside it, each 40px. */
 .cal-nav {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  padding: 3px;
-  border-radius: 999px;
-  border: 1px solid var(--cal-border);
-  background: var(--cal-surface);
+  padding: 1px;
+  border-radius: 12px;
+  border: 1px solid var(--cal-border-strong);
+  background: var(--cal-raised);
+  box-shadow: var(--cal-elev-1), inset 0 1px 0 var(--cal-highlight);
 }
 .cal-nav__btn {
   flex: 0 0 auto;
@@ -35,18 +40,22 @@
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 999px;
+  border-radius: 10px;
   background: transparent;
   color: var(--cal-ink-2);
   cursor: pointer;
 }
-.cal-nav__btn:hover { background: var(--cal-surface-3); color: var(--cal-ink); }
-.cal-nav__btn:focus-visible { outline: 2px solid var(--cal-live); outline-offset: -2px; }
+@media (hover: hover) {
+  .cal-nav__btn:hover { background: var(--cal-surface-3); color: var(--cal-ink); }
+}
+.cal-nav__btn:active { transform: translateY(1px); }
+.cal-nav__btn:focus-visible { outline: 3px solid var(--cal-live); outline-offset: -3px; }
 
 .cal-nav__label {
   flex: 1 1 auto;
   /* The whole point: a fixed track, so the arrows never move. */
   min-width: 190px;
+  min-height: 40px;
   padding: 0 4px;
   display: flex;
   flex-direction: column;
@@ -54,16 +63,19 @@
   justify-content: center;
   gap: 1px;
   border: 0;
+  border-radius: 10px;
   background: transparent;
   color: inherit;
   cursor: pointer;
   font: inherit;
 }
-.cal-nav__label:hover .cal-nav__primary { color: var(--cal-live-text); }
-.cal-nav__label:focus-visible { outline: 2px solid var(--cal-live); outline-offset: -2px; border-radius: 999px; }
+.cal-nav__label:focus-visible { outline: 3px solid var(--cal-live); outline-offset: -3px; }
+/* The period is a name: the display face, upright, 17 at 800. */
 .cal-nav__primary {
-  font-size: 14px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 800;
+  font-style: normal;
   letter-spacing: 0;
   text-transform: none;
   color: var(--cal-ink);
@@ -72,7 +84,7 @@
 }
 .cal-nav__secondary {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
   color: var(--cal-ink-muted);
@@ -134,20 +146,20 @@
   height: 26px;
   border-radius: 999px;
   background: var(--t-solid);
-  color: #fff;
-  font-size: 10px;
+  /* The initials' ink is a token (the rooms round, Oct 10 2026): it was a
+     raw white, on an orange tone among others, and a raw near-black in dark. */
+  color: var(--cal-tone-ink);
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.02em;
   flex: 0 0 auto;
   position: relative;
   overflow: hidden;
 }
-.dark .cal-avatar, [data-theme="dark"] .cal-avatar { color: #06101a; }
 
 /* Mindbody staff photo, layered OVER the initials rather than replacing them.
    A 404, a rotated CDN url or a slow network leaves the normal coloured
-   avatar showing instead of a broken image or an empty circle. The count
-   badge is positioned against .cal-who, so this overflow never clips it. */
+   avatar showing instead of a broken image or an empty circle. */
 .cal-avatar__img {
   position: absolute;
   inset: 0;
@@ -156,32 +168,10 @@
   object-fit: cover;
   border-radius: inherit;
 }
-.cal-avatar--sm { width: 22px; height: 22px; font-size: 9px; }
+.cal-avatar--sm { width: 22px; height: 22px; font-size: 11px; letter-spacing: 0; }
 
-/* Count badge rides the avatar rather than sitting beside it, so a row of
-   trainers costs one chip of width each instead of two. */
-.cal-who {
-  position: relative;
-  display: inline-flex;
-  flex: 0 0 auto;
-}
-.cal-who__badge {
-  position: absolute;
-  right: -4px;
-  bottom: -4px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 3px;
-  border-radius: 999px;
-  background: var(--cal-surface);
-  border: 1px solid var(--cal-border-strong);
-  color: var(--cal-ink);
-  font-size: 9px;
-  font-weight: 800;
-  line-height: 14px;
-  text-align: center;
-}
-
+/* Words, so the muted ink, never the faint (it was the faint, inherited by
+   the hint). History's empty state shares it. */
 .cal-empty {
   display: flex;
   flex-direction: column;
@@ -190,7 +180,7 @@
   gap: 6px;
   padding: 28px 20px;
   text-align: center;
-  color: var(--cal-ink-faint);
+  color: var(--cal-ink-muted);
 }
 .cal-empty__title {
   font-size: 14px;
@@ -202,25 +192,28 @@
 .cal-empty__hint { font-size: 12px; max-width: 320px; line-height: 1.5; }
 
 /* ---------- MONTH ----------------------------------------------------- *
-   The old cells spelled out full trainer names, which wrapped mid-week and
-   made every row a different height. A day now reads as one big number plus
-   a row of avatars — no text that can wrap, so the grid stays square.        */
+   ONE PANEL with quiet cells (the rooms round, Oct 10 2026). A day says its
+   number, how many are booked, and a small mark for a client's life event;
+   the events' words are on the Day view. The cells were full of FORD
+   sentences and rows of trainers' initials (AJ's photos). The panel is an
+   edge seen from outside and the short navy lift (Refined Lift); the cells
+   are split by the panel's own soft rule.                                   */
 
 .cal-month {
-  border: 1px solid var(--cal-border);
-  border-radius: var(--cal-radius);
-  overflow: hidden;
-  background: var(--cal-border);
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 1px;
+  background: var(--cal-surface);
+  background-clip: padding-box;
+  border: 1px solid var(--cal-edge);
+  border-radius: var(--cal-radius);
+  box-shadow: var(--cal-elev-2), var(--cal-panel-highlight);
+  overflow: hidden;
 }
 .cal-month__dow {
-  background: var(--cal-surface-2);
-  padding: 7px 4px;
+  padding: 10px 4px 8px;
   text-align: center;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
   color: var(--cal-ink-muted);
@@ -230,112 +223,119 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  min-height: 96px;
-  padding: 7px 7px 8px;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 88px;
+  padding: 8px;
   border: 0;
+  border-top: 1px solid var(--cal-divider);
+  border-left: 1px solid var(--cal-divider);
   text-align: left;
-  background: var(--cal-surface);
+  background: transparent;
   color: inherit;
   font: inherit;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
-.cal-day:hover { background: var(--cal-surface-2); }
-.cal-day:focus-visible { outline: 2px solid var(--cal-live); outline-offset: -2px; }
-.cal-day--outside { background: var(--cal-bg); }
-.cal-day--outside .cal-day__num { color: var(--cal-ink-faint); }
-.cal-day--today { box-shadow: inset 0 0 0 2px var(--cal-live); }
-.cal-day--selected { background: var(--cal-live-fill); }
+/* The first of each week's seven has no rule on its left (the day names are
+   the grid's first seven children, so a week starts at 7n + 1). */
+.cal-month > :nth-child(7n + 1) { border-left: 0; }
+@media (hover: hover) {
+  .cal-day:hover { background: var(--cal-surface-2); }
+}
+.cal-day:focus-visible { outline: 3px solid var(--cal-live); outline-offset: -3px; }
+/* A neighbouring month's day sits back in the well tone; its words stay
+   words (the muted ink, never the faint). */
+.cal-day[data-outside="true"] { background: var(--cal-surface-2); }
 
-.cal-day__top {
+.cal-day__head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
 }
+
+/* The day's number is a chip, so today and the picked day read as the
+   Hub's week does (.hd-day): today an orange ring and the deep orange
+   numeral, the picked day a solid blue, and both the blue with an orange
+   underline OUTSIDE the chip (inside, it would be hue alone). */
 .cal-day__num {
-  font-size: 13px;
-  font-weight: 800;
+  flex: none;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: var(--cal-ink-2);
   line-height: 1;
 }
-.cal-day--today .cal-day__num { color: var(--cal-live-text); }
-.cal-day__total {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: baseline;
-  gap: 3px;
-  line-height: 1;
+.cal-day[data-outside="true"] .cal-day__num { color: var(--cal-ink-muted); font-weight: 600; }
+.cal-day[data-today="true"] .cal-day__num {
+  border-color: var(--cal-hero);
+  color: var(--cal-hero-text);
 }
-.cal-day__total b {
-  font-size: 19px;
+.cal-day[data-picked="true"] .cal-day__num {
+  border-color: var(--cal-live);
+  background: var(--cal-live);
+  color: var(--cal-live-on);
+  box-shadow: var(--cal-glow-live), var(--cal-solid-light);
+}
+.cal-day[data-today="true"][data-picked="true"] .cal-day__num {
+  box-shadow: 0 3px 0 var(--cal-hero);
+}
+
+/* A client's life event that day (a birthday, a dated FORD detail): a small
+   mark, its words in the cell's label and on the Day view. */
+.cal-day__life {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--cal-ink-muted);
+}
+
+/* The day's count: a headline figure, the display face upright at 22. */
+.cal-day__count {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
+  min-height: 22px;
+  font-family: var(--font-display);
+  font-size: 22px;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  font-style: normal;
+  line-height: 1;
   color: var(--cal-ink);
 }
-.cal-day__total span {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--cal-ink-muted);
-}
-.cal-day--quiet .cal-day__total b { color: var(--cal-ink-faint); font-size: 15px; }
-
-.cal-day__who {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 9px;
-  margin-top: auto;
-}
-.cal-day__more {
-  align-self: center;
-  font-size: 11px;
+.cal-day[data-empty="true"] .cal-day__count { color: var(--cal-ink-muted); }
+.cal-day[data-outside="true"] .cal-day__count { color: var(--cal-ink-muted); }
+/* A day whose bookings couldn't be read: plum, the app's caution, beside
+   whatever is held. Never drawn as "—". */
+.cal-day__unread {
+  font-family: var(--font-sans);
+  font-size: 14px;
   font-weight: 800;
-  color: var(--cal-ink-muted);
+  color: var(--eq-warn);
 }
-.cal-day__events {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.cal-day__event {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--cal-ink-muted);
-  /* A client's name is never cut (FORD dates, Oct 2 2026): the title wraps. */
-  white-space: normal;
-  overflow-wrap: anywhere;
-  align-items: flex-start;
-}
-.cal-day__event i { margin-top: 4px; }
-.cal-day__event--more { font-weight: 600; }
-.cal-day__event i {
-  flex: 0 0 auto;
-  width: 5px;
-  height: 5px;
-  border-radius: 999px;
-  background: var(--cal-ink-faint);
-}
-.cal-day__event--high i { background: var(--cal-hero); }
-.cal-day__event--high { color: var(--cal-hero-text); }
 
 @media (max-width: 767px) {
-  .cal-day { min-height: 74px; padding: 5px; }
-  .cal-day__total b { font-size: 16px; }
+  .cal-day { min-height: 72px; padding: 6px; }
 }
-/* A phone (Journey Lite, Oct 2026): a day is about 44px wide, and the date
-   and the day's count, side by side, ran into each other ("1 6 s"). The
-   count goes under the date, without its "ses" (the day's label says
-   sessions), and the trainers' chips sit closer. */
+/* A phone (Journey Lite): a day is about 50px wide. The count sits under
+   the number at 17, and the chip tightens to 26. */
 @media (max-width: 599px) {
-  .cal-day { padding: 4px; gap: 3px; }
-  .cal-day__top { flex-direction: column; align-items: flex-start; gap: 3px; }
-  .cal-day__total { margin-left: 0; }
-  .cal-day__total span { display: none; }
-  .cal-day__who { gap: 4px; }
+  .cal-day { min-height: 64px; padding: 4px; gap: 4px; }
+  .cal-day__num { min-width: 26px; height: 26px; font-size: 12px; padding: 0 2px; }
+  .cal-day__count { font-size: 17px; min-height: 17px; justify-content: flex-start; }
+  .cal-day__life { width: 6px; height: 6px; }
 }
 
 /* ---------- WEEK ------------------------------------------------------ *
@@ -383,8 +383,10 @@
   color: var(--cal-ink-muted);
 }
 .cal-total__delta b { font-weight: 800; }
-.cal-total__delta--up b { color: var(--cal-hero-text); }
-.cal-total__delta--down b { color: var(--cal-live-text); }
+/* Up or down is said in words and its arrow, in the ink (the rooms round,
+   Oct 10 2026): an orange "up" read as now, and a blue "down" as picked. */
+.cal-total__delta--up b,
+.cal-total__delta--down b { color: var(--cal-ink); }
 
 /* Day bars: a 7-column strip. Bars grow from the baseline so the week's
    shape is one glance, and the number sits above the bar so a short bar is
@@ -771,10 +773,145 @@
 }
 .cal-daystat__sep { width: 1px; height: 24px; background: var(--cal-border); }
 
-/* ---------- Toolbar ---------------------------------------------------- *
-   One segmented-control style for all three toolbars (filter, view, and the
-   trainer picker's trigger), so the header stops mixing #0284c7 with the brand
-   blue and a Tailwind slate with the token slate.                            */
+/* ---------- The room (the rooms round, Oct 10 2026) -------------------- *
+   The Calendar is a room: the room bar (features/rooms) over a body that
+   scrolls under it. Full-bleed like the Hub and the Directory: the app's
+   padded main and the old .cal-shell's padding doubled up (up to 44px a
+   side on an iPad); the body's own padding is the only one now.            */
+
+.cal-room {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--cal-bg);
+}
+
+.cal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 12px 28px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+@media (min-width: 768px) { .cal-body { padding: 16px 16px 32px; gap: 16px; } }
+
+/* The bar's second row: when (the stepper, Today) on the left, Refresh and
+   how fresh on the right. */
+.cal-when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* A quiet line in the body (the FORD read that failed). Words: the muted ink. */
+.cal-note {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cal-ink-muted);
+}
+
+/* ---------- Whose bookings: the team picker ------------------------------ *
+   A raised tool on the room bar (.rm-tool, the firm 3:1 edge) that says whose
+   bookings are showing, whole, and opens a list of whole names. It was a
+   native select cut at 170px on the decorative hairline.                    */
+
+.cal-pick {
+  position: relative;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.cal-pick__btn {
+  max-width: 320px;
+}
+.cal-pick__btn svg { color: var(--cal-ink-2); }
+.cal-pick__name {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* The list: a popover (the deepest lift but a dialog's), its rows 44px. */
+.cal-pick__list {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  min-width: 240px;
+  max-width: min(360px, calc(100vw - 32px));
+  max-height: min(60vh, 480px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--popover);
+  background-clip: padding-box;
+  color: var(--popover-foreground);
+  border: 1px solid var(--edge);
+  border-radius: 14px;
+  box-shadow: var(--elev-4);
+}
+.cal-pick__opt {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) {
+  .cal-pick__opt:hover { background: var(--muted); }
+}
+.cal-pick__opt:focus-visible { outline: 3px solid var(--ring); outline-offset: -3px; }
+/* The one chosen: blue words, what you chose, and a check. */
+.cal-pick__opt[aria-selected="true"] {
+  color: var(--primary);
+  font-weight: 700;
+}
+.cal-pick__optname {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* "You", the Hub's tag: blue words, yours. */
+.cal-pick__you {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ---------- History's header (the client's Activity Archive) ------------ *
+   The client profile is a room of its own and takes its bar in its own
+   round, so History keeps this header and its switch: .cal-shell, .cal-header
+   and .cal-seg are History's now (HistoryView), and the Calendar draws none
+   of them.                                                                 */
 
 /* No box round the boxes (type and depth, phase 10, Oct 4 2026): the shell
    drops its border and its fill, so the cards sit on the page with their
@@ -815,9 +952,9 @@
   color: var(--cal-live-text);
   flex: 0 0 auto;
 }
-/* The calendar's (and History's) own title in its bar: the display face
-   upright at 22, in its own capitalisation (type and depth, phase 12; AJ's
-   1A). It was a Geist 900 slanted by the browser, in capitals. */
+/* History's own title in its bar: the display face upright at 22, in its
+   own capitalisation (type and depth, phase 12; AJ's 1A). It was a Geist
+   900 slanted by the browser, in capitals. */
 .cal-header__name {
   font-family: var(--font-display);
   font-size: 22px;
@@ -875,82 +1012,32 @@
 }
 .cal-seg__btn[aria-pressed="true"] { font-weight: 700; }
 
-.cal-picker {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 40px;
-  padding: 0 11px;
-  border-radius: 12px;
-  border: 1px solid var(--cal-border);
-  background: var(--cal-surface);
-  color: var(--cal-ink);
-  flex: 0 0 auto;
-}
-.cal-picker svg { color: var(--cal-live-text); flex: 0 0 auto; }
-.cal-picker select {
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
-  max-width: 170px;
-  cursor: pointer;
-}
-.cal-picker select:focus-visible { outline: 2px solid var(--cal-live); outline-offset: 2px; border-radius: 6px; }
-
-/* Refresh — cost clean-up round, Sep 2026.
+/* Refresh — cost clean-up round, Sep 2026; on the room bar since Oct 10.
    Bookings outside today/tomorrow are fetched, not live, so the calendar says
-   how old what it is showing is and offers a re-read. The whole control is
-   the tap target (40px, like the picker); the caption sits beside the button
-   because a caption that only appeared on hover would be invisible on an
-   iPad. Same surface, border and radius as the picker so the toolbar reads as
-   one row of controls.                                                       */
+   how old what it is showing is and offers a re-read. The button is a room
+   bar tool (.rm-tool: raised on the 3:1 edge, 40px, 14/700); the caption
+   sits beside it because a caption that only appeared on hover would be
+   invisible on an iPad.                                                     */
 .cal-refresh {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 4px 0 0;
-  border-radius: 12px;
-  border: 1px solid var(--cal-border);
-  background: var(--cal-surface);
-  flex: 0 0 auto;
+  gap: 4px 10px;
+  margin-left: auto;
 }
-/* 40px, the app's floor (it was 38; type and depth, phase 8). */
+/* 40px, the app's floor. */
 .cal-refresh__btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 40px;
+  min-height: 40px;
   min-width: 40px;
-  padding: 0 11px;
-  border: 0;
-  border-radius: 11px;
-  background: transparent;
-  color: var(--cal-live-text);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: none;
-  cursor: pointer;
   white-space: nowrap;
 }
-@media (hover: hover) {
-  .cal-refresh__btn:hover { background: var(--cal-surface-3); }
-}
-.cal-refresh__btn:focus-visible { outline: 2px solid var(--cal-live); outline-offset: -2px; }
-.cal-refresh__btn:disabled { cursor: default; color: var(--cal-ink-muted); }
-.cal-refresh__btn svg { flex: 0 0 auto; }
+.cal-refresh__btn svg { flex: 0 0 auto; color: var(--cal-ink-2); }
 /* While a read is in flight the arrow gives way to the app's one loading
    mark (small, no label) — never a hand-rolled spinner. */
 .cal-refresh__btn .lm { height: 16px; justify-content: center; }
 .cal-refresh__btn .lm .lm__row { gap: 3px; }
 .cal-refresh__btn .lm .lm__sq { --lm-size: 6px; font-size: 0; border-radius: 1px; }
 .cal-refresh__note {
-  padding-right: 8px;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0;

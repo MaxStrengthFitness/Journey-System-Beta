@@ -1,92 +1,85 @@
 import { memo, useMemo } from "react";
+import type { DayReadState } from "../../lib/schedule-window";
+import { formatDateWords } from "../../lib/studio-time";
 import { buildMonthCells } from "./selectors";
-import { TrainerCountChip } from "./TrainerAvatar";
 import type { CalendarEvent, CalendarSession, DayCell, TrainerRef } from "./types";
 import "./calendar.css";
 
 /**
- * MONTH — volume at a glance.
+ * MONTH — one panel, quiet cells (the rooms round, Oct 10 2026).
  *
- * The old cell spelled out full trainer names on separate lines. On a
- * mid-week day with five trainers that wrapped into six lines of text, blew
- * the cell's height out, and dragged the whole row with it — which is why the
- * grid looked ragged and why counting anything took real effort.
+ * A day says three things and no more: its number, how many are booked, and
+ * a small mark when a client has a life event that day (a birthday, a dated
+ * FORD detail). The words of the events are on the Day view and in the
+ * cell's label, never sentences in the cell: the month read as a wall of
+ * text (AJ's photos, "Journey Rooms"). The trainers' avatar rows left too;
+ * who carries the week is the Week's folded charts.
  *
- * A day is now one big number plus a row of initial-avatars carrying their own
- * count badge. Nothing in the cell can wrap, so every cell is the same height
- * and the month reads as a shape: heavy days are heavy numbers.
+ * Today is an orange ring on the day's number, the picked day blue, and on
+ * a day that is both, the blue with an orange underline outside it (the
+ * Hub's `.hd-day` rule): orange is now, blue is what you chose.
  *
- * Avatars cap at four with a "+n" — past four, the exact roster is a question
- * for the Day view, and the month should still be scannable.
+ * A day whose bookings weren't read is never drawn as an empty day: it shows
+ * no count while it is read, and a plum mark when the read failed
+ * (`stateOf`, the schedule window's dayState). Only a day that was read and
+ * has nothing booked says "—".
  */
 
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MAX_AVATARS = 4;
+
+/** One options object, so its formatter is built once (the iPad round's Intl trap). */
+const LABEL_DAY: Intl.DateTimeFormatOptions = { weekday: "long", month: "long", day: "numeric" };
+
+/** The words a screen reader hears for a day, the events' words included. */
+export function dayLabel(cell: DayCell, state: DayReadState): string {
+  const date = formatDateWords(cell.date, LABEL_DAY);
+  const booked =
+    state === "failed" && cell.total === 0
+      ? "bookings couldn't be read"
+      : state === "loading" && cell.total === 0
+        ? "bookings not read yet"
+        : `${cell.total} ${cell.total === 1 ? "session" : "sessions"}${state === "failed" ? ", may be missing some" : ""}`;
+  const life =
+    cell.events.length === 0
+      ? ""
+      : `. ${cell.events.length === 1 ? "A life event" : `${cell.events.length} life events`}: ${cell.events.map((e) => e.title).join("; ")}`;
+  return `${date}, ${booked}${life}`;
+}
 
 const DayBox = memo(function DayBox({
   cell,
-  selected,
+  picked,
+  state,
   onSelect,
 }: {
   cell: DayCell;
-  selected: boolean;
+  picked: boolean;
+  state: DayReadState;
   onSelect: (date: Date) => void;
 }) {
-  const shown = cell.byTrainer.slice(0, MAX_AVATARS);
-  const overflow = cell.byTrainer.length - shown.length;
-
+  const count =
+    cell.total > 0 ? String(cell.total) : state === "ready" ? "—" : "";
   return (
     <button
       type="button"
       onClick={() => onSelect(cell.date)}
       aria-current={cell.isToday ? "date" : undefined}
-      aria-label={`${cell.date.toDateString()}, ${cell.total} sessions`}
-      className={[
-        "cal-day",
-        cell.inCurrentMonth ? "" : "cal-day--outside",
-        cell.isToday ? "cal-day--today" : "",
-        selected ? "cal-day--selected" : "",
-        cell.total === 0 ? "cal-day--quiet" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      aria-label={dayLabel(cell, state)}
+      className="cal-day"
+      data-outside={cell.inCurrentMonth ? undefined : "true"}
+      data-today={cell.isToday ? "true" : undefined}
+      data-picked={picked ? "true" : undefined}
+      data-state={state}
+      data-empty={cell.total === 0 ? "true" : undefined}
     >
-      <span className="cal-day__top">
+      <span className="cal-day__head">
         <span className="cal-day__num">{cell.dayOfMonth}</span>
-        <span className="cal-day__total">
-          <b>{cell.total || "—"}</b>
-          {cell.total > 0 && <span>ses</span>}
-        </span>
+        {cell.events.length > 0 && <span className="cal-day__life" aria-hidden="true" />}
       </span>
-
-      {cell.events.length > 0 && (
-        <span className="cal-day__events">
-          {cell.events.slice(0, 2).map((e: CalendarEvent) => (
-            <span
-              key={e.id}
-              className={`cal-day__event ${e.priority === "High" ? "cal-day__event--high" : ""}`}
-            >
-              <i aria-hidden />
-              {e.title}
-            </span>
-          ))}
-          {cell.events.length > 2 && <span className="cal-day__event cal-day__event--more">{`+${cell.events.length - 2} more`}</span>}
-        </span>
-      )}
-
-      {shown.length > 0 && (
-        <span className="cal-day__who">
-          {shown.map((tc) => (
-            <TrainerCountChip
-              key={tc.trainer.id}
-              trainer={tc.trainer}
-              count={tc.count}
-              size="sm"
-            />
-          ))}
-          {overflow > 0 && <span className="cal-day__more">+{overflow}</span>}
-        </span>
-      )}
+      <span className="cal-day__count" aria-hidden="true">
+        {state === "failed" && <span className="cal-day__unread">?</span>}
+        {count}
+      </span>
     </button>
   );
 });
@@ -98,16 +91,11 @@ export interface MonthViewProps {
   trainerRefs: Map<string, TrainerRef>;
   selectedDate: Date | null;
   onSelectDate: (date: Date) => void;
+  /** What is known about a studio day's bookings; absent: read. */
+  stateOf?: (dayKey: string) => DayReadState;
 }
 
-export function MonthView({
-  anchor,
-  sessions,
-  events,
-  trainerRefs,
-  selectedDate,
-  onSelectDate,
-}: MonthViewProps) {
+export function MonthView({ anchor, sessions, events, trainerRefs, selectedDate, onSelectDate, stateOf }: MonthViewProps) {
   const cells = useMemo(
     () => buildMonthCells(anchor, sessions, events, trainerRefs),
     [anchor, sessions, events, trainerRefs],
@@ -126,7 +114,8 @@ export function MonthView({
         <DayBox
           key={`${cell.key}-${cell.dayOfMonth}`}
           cell={cell}
-          selected={selectedTime === cell.date.toDateString()}
+          picked={selectedTime === cell.date.toDateString()}
+          state={stateOf ? stateOf(cell.key) : "ready"}
           onSelect={onSelectDate}
         />
       ))}

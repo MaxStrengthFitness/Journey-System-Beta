@@ -65,12 +65,17 @@
   --cal-slot-w:        38px;
   --cal-lane-label:    148px;
 
-  --t0-solid: #ef5302; --t0-text: #bc2c00; --t0-fill: #fdeade; --t0-edge: #ef5302;
-  --t1-solid: #0a548b; --t1-text: #034a84; --t1-fill: #e4edf4; --t1-edge: #0a548b;
+  /* The initials on a tone's solid: white in light (4.9:1 or more on every
+     solid), the navy in dark (the rooms round, Oct 10 2026; it was a raw
+     #fff and #06101a in calendar.css). */
+  --cal-tone-ink: #ffffff;
+
+  --t0-solid: #5e6c10; --t0-text: #5e6c10; --t0-fill: #eef1dc; --t0-edge: #5e6c10;
+  --t1-solid: #4d5b6e; --t1-text: #4d5b6e; --t1-fill: #e7ebf0; --t1-edge: #4d5b6e;
   --t2-solid: #0f766e; --t2-text: #0b5f59; --t2-fill: #e0f0ee; --t2-edge: #0f766e;
   --t3-solid: #7c3aed; --t3-text: #6d28d9; --t3-fill: #eee7fd; --t3-edge: #7c3aed;
   --t4-solid: #a16207; --t4-text: #895306; --t4-fill: #f6ecd9; --t4-edge: #a16207;
-  --t5-solid: #a2457e; --t5-text: #8e336c; --t5-fill: #f6e9f1; --t5-edge: #a2457e;
+  --t5-solid: #7a5a2e; --t5-text: #7a5a2e; --t5-fill: #f1ebe2; --t5-edge: #7a5a2e;
   --t6-solid: #15803d; --t6-text: #136c34; --t6-fill: #e2f1e7; --t6-edge: #15803d;
   --t7-solid: #0e7490; --t7-text: #0b6079; --t7-fill: #e0f0f4; --t7-edge: #0e7490;
 
@@ -136,12 +141,13 @@
 
   --cal-shadow:        rgba(2, 10, 20, 0.45);
 
-  --t0-solid: #f36d21; --t0-text: #ff9455; --t0-fill: rgba(243,109,33,.16);  --t0-edge: #f36d21;
-  --t1-solid: #4a9fd8; --t1-text: #7cc0ee; --t1-fill: rgba(74,159,216,.16);  --t1-edge: #4a9fd8;
+  --cal-tone-ink: #071727;
+  --t0-solid: #bccb5c; --t0-text: #ccd97a; --t0-fill: rgba(188,203,92,.15);  --t0-edge: #bccb5c;
+  --t1-solid: #a6b6c8; --t1-text: #bccad8; --t1-fill: rgba(166,182,200,.15); --t1-edge: #a6b6c8;
   --t2-solid: #2dd4bf; --t2-text: #5eead4; --t2-fill: rgba(45,212,191,.15);  --t2-edge: #2dd4bf;
   --t3-solid: #a78bfa; --t3-text: #c4b5fd; --t3-fill: rgba(167,139,250,.16); --t3-edge: #a78bfa;
-  --t4-solid: #f59e0b; --t4-text: #fbbf24; --t4-fill: rgba(245,158,11,.15);  --t4-edge: #f59e0b;
-  --t5-solid: #d98cbd; --t5-text: #edb8d8; --t5-fill: rgba(217,140,189,.16); --t5-edge: #d98cbd;
+  --t4-solid: #e3b341; --t4-text: #ecc767; --t4-fill: rgba(227,179,65,.15);  --t4-edge: #e3b341;
+  --t5-solid: #cfae7a; --t5-text: #dcc096; --t5-fill: rgba(207,174,122,.15); --t5-edge: #cfae7a;
   --t6-solid: #4ade80; --t6-text: #86efac; --t6-fill: rgba(74,222,128,.14);  --t6-edge: #4ade80;
   --t7-solid: #22d3ee; --t7-text: #67e8f9; --t7-fill: rgba(34,211,238,.14);  --t7-edge: #22d3ee;
 
@@ -179,12 +185,13 @@
     --cal-heat-3: #386792; --cal-heat-4: #5089bf; --cal-heat-5: #65abe9;
     --cal-heat-ink-lo: #dfe7ef; --cal-heat-ink-hi: #071727;
     --cal-shadow: rgba(2, 10, 20, 0.45);
-    --t0-solid: #f36d21; --t0-text: #ff9455; --t0-fill: rgba(243,109,33,.16);  --t0-edge: #f36d21;
-    --t1-solid: #4a9fd8; --t1-text: #7cc0ee; --t1-fill: rgba(74,159,216,.16);  --t1-edge: #4a9fd8;
+    --cal-tone-ink: #071727;
+    --t0-solid: #bccb5c; --t0-text: #ccd97a; --t0-fill: rgba(188,203,92,.15);  --t0-edge: #bccb5c;
+    --t1-solid: #a6b6c8; --t1-text: #bccad8; --t1-fill: rgba(166,182,200,.15); --t1-edge: #a6b6c8;
     --t2-solid: #2dd4bf; --t2-text: #5eead4; --t2-fill: rgba(45,212,191,.15);  --t2-edge: #2dd4bf;
     --t3-solid: #a78bfa; --t3-text: #c4b5fd; --t3-fill: rgba(167,139,250,.16); --t3-edge: #a78bfa;
-    --t4-solid: #f59e0b; --t4-text: #fbbf24; --t4-fill: rgba(245,158,11,.15);  --t4-edge: #f59e0b;
-    --t5-solid: #d98cbd; --t5-text: #edb8d8; --t5-fill: rgba(217,140,189,.16); --t5-edge: #d98cbd;
+    --t4-solid: #e3b341; --t4-text: #ecc767; --t4-fill: rgba(227,179,65,.15);  --t4-edge: #e3b341;
+    --t5-solid: #cfae7a; --t5-text: #dcc096; --t5-fill: rgba(207,174,122,.15); --t5-edge: #cfae7a;
     --t6-solid: #4ade80; --t6-text: #86efac; --t6-fill: rgba(74,222,128,.14);  --t6-edge: #4ade80;
     --t7-solid: #22d3ee; --t7-text: #67e8f9; --t7-fill: rgba(34,211,238,.14);  --t7-edge: #22d3ee;
     --cal-raised:          #203549;

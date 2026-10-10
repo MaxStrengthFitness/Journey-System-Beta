@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Calendar as CalendarIcon, RefreshCw, Users } from "lucide-react";
+import { CalendarDays, RefreshCw } from "lucide-react";
 import { ScheduleEntry, Trainer } from "../types";
 import { studioDateKey } from "../lib/studio-time";
-import { freshnessLabel } from "../lib/schedule-window";
+import { FETCH_RETRY_MS, freshnessLabel, type DayReadState } from "../lib/schedule-window";
 import { LoadingMark } from "./LoadingMark";
 import { RelayStrip } from "../features/relay/board/RelayStrip";
+import { RoomBar, RoomSwitch, type RoomSwitchOption } from "../features/rooms";
+import { HubNotice } from "../features/hub-schedule/HubGrid";
 import {
   DateNavigator,
   DayView,
@@ -17,6 +19,7 @@ import {
   type CalendarSession,
   type TrainerRef,
 } from "../features/calendar";
+import { ENTIRE_TEAM, TeamPicker } from "../features/calendar/TeamPicker";
 import { fordCalendarEvents, type CalendarClient } from "../features/calendar/ford-events";
 import { useCalendarFord } from "../features/calendar/useCalendarFord";
 import "../features/calendar/calendar.css";
@@ -27,26 +30,29 @@ function localDayKey(d: Date): string {
 }
 
 /**
- * CALENDAR — shell.
+ * CALENDAR — the first room (the rooms round, Oct 10 2026).
  *
- * Round: Calendar redesign, Sep 2026.
+ * AJ: "i feel like im in the learning area or the active session area or
+ * the client area so i can instantly know what im looking at when i pull up
+ * the app ... i think ill calendar would be the easiest to improve". His
+ * picks on "Journey Rooms": 1b (the room bar and a room hue), 2a (Day is the
+ * Hub's grid), 3b (Week is the bookings, the charts folded).
  *
- * This file used to be 1,630 lines: three inline renderers, a hard-coded
- * colour array, and the Mindbody trainer-matching heuristics all in one scope.
- * The rendering now lives in src/features/calendar/ and this keeps only the
- * two jobs that genuinely belong to a container:
- *
- *   1. RESOLVE. Turn ScheduleEntry — whose trainer may be identified by id, by
- *      `trainerName`, or by a Mindbody spelling of a first name — into the
- *      view model the views consume. That fuzzy matching is a real liability
- *      and it stays in exactly one place.
- *   2. FILTER. Trainer selection and the sessions/events toggle.
- *
- * The views are pure: give them sessions and they draw.
+ * The container keeps two jobs: it RESOLVES the schedule into what the views
+ * draw, and it holds the room's state (which view, which day, whose
+ * bookings). The room bar (features/rooms) carries the mark, the name, the
+ * one switch Month · Week · Day, the team filter, and under them the date
+ * stepper, Today and Refresh. The views are pure: give them bookings and
+ * they draw.
  */
 
 type ViewMode = "month" | "week" | "day";
-type FilterMode = "all" | "sessions" | "events";
+
+const VIEWS: ReadonlyArray<RoomSwitchOption<ViewMode>> = [
+  { id: "month", label: "Month" },
+  { id: "week", label: "Week" },
+  { id: "day", label: "Day" },
+];
 
 /**
  * The schedule window (cost clean-up round, Sep 2026). Only today and its
@@ -67,6 +73,15 @@ export interface ScheduleWindowControls {
   pullFromMindbody?(from: Date, to: Date): Promise<void>;
   lastFetchedAt: number | null;
   isFetching: boolean;
+  /**
+   * What is known about a studio day's bookings (useLiveSchedule's dayState,
+   * the Hub's own): a day is drawn as quiet only when it was read; a read
+   * that failed is said in place, never an empty day (the rooms round, Oct
+   * 10 2026). Absent: read.
+   */
+  dayState?(dayKey: string): DayReadState;
+  /** "Try again" on a failed read (useLiveSchedule's retry). */
+  retry?(): void;
 }
 
 const MS_PER_MIN = 60000;
@@ -86,17 +101,26 @@ function safeToDate(value: any): Date | null {
   return null;
 }
 
-/**
- * "2026-09-08" must not become Sep 7 for anyone west of the studio.
- * Parsed at local noon, which no timezone offset can push across a day line.
- */
-function parseDayString(value: any): Date | null {
-  if (!value) return null;
-  if (typeof value === "string") {
-    const m = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0);
+/** The studio day keys of a range the calendar built at local noon, inclusive. */
+export function dayKeysOfRange(from: Date, to: Date): string[] {
+  const out: string[] = [];
+  const cursor = new Date(from);
+  let guard = 0;
+  while (cursor.getTime() <= to.getTime() && guard < 60) {
+    const key = studioDateKey(cursor);
+    if (key) out.push(key);
+    cursor.setDate(cursor.getDate() + 1);
+    guard += 1;
   }
-  return safeToDate(value);
+  return out;
+}
+
+/** The words of the one notice above a view whose days weren't all read. */
+export function unreadWords(viewMode: ViewMode, failed: number): string {
+  if (viewMode === "day") return "Couldn’t read this day’s bookings, so it may look emptier than it is. Trying again.";
+  return failed === 1
+    ? "Couldn’t read one of these days’ bookings, so it may look emptier than it is. Trying again."
+    : `Couldn’t read ${failed} of these days’ bookings, so they may look emptier than they are. Trying again.`;
 }
 
 export function CalendarView({
@@ -122,13 +146,14 @@ export function CalendarView({
   scheduleWindow?: ScheduleWindowControls;
 }) {
   const [viewMode, setViewMode] = useState<ViewMode>("month");
-  const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   // Everyone sees the whole team (the Atlas answers, Oct 2 2026): the
   // calendar opens on the entire team and anyone may pick any trainer.
-  const [selectedTrainerId, setSelectedTrainerId] = useState<string>("all");
+  const [selectedTrainerId, setSelectedTrainerId] = useState<string>(ENTIRE_TEAM);
 
   /* ---------------- the schedule window ---------------- */
+
+  const range = useMemo(() => visibleRange(viewMode, selectedDate), [viewMode, selectedDate]);
 
   /**
    * Ask the hook for whatever is on screen. The prop object is rebuilt on
@@ -139,9 +164,8 @@ export function CalendarView({
   const ensureRange = scheduleWindow?.ensureRange;
   useEffect(() => {
     if (!ensureRange) return;
-    const { from, to } = visibleRange(viewMode, selectedDate);
-    ensureRange(from, to);
-  }, [ensureRange, viewMode, selectedDate]);
+    ensureRange(range.from, range.to);
+  }, [ensureRange, range]);
 
   /**
    * Refresh asks Mindbody for the days on screen - the month in Month, the
@@ -156,7 +180,7 @@ export function CalendarView({
   latestWindow.current = scheduleWindow;
   const refreshSchedules = async () => {
     if (!scheduleWindow) return;
-    const { from, to } = visibleRange(viewMode, selectedDate);
+    const { from, to } = range;
     // The pull reports its own trouble; the re-read below runs either way,
     // since a failed pull still leaves Journey's copy worth showing.
     if (scheduleWindow.pullFromMindbody) {
@@ -183,6 +207,35 @@ export function CalendarView({
     () => freshnessLabel(lastFetchedAt, Math.max(now, lastFetchedAt ?? 0)),
     [lastFetchedAt, now],
   );
+
+  /*
+   * WHAT IS KNOWN ABOUT THE DAYS ON SCREEN (the rooms round, Oct 10 2026;
+   * the Hub's rule since Oct 1): a failed read is unknown, never a quiet
+   * day. The views draw a day as empty only when it was read, and one plum
+   * line above them says when a read failed, with Try again.
+   */
+  const dayStateFn = scheduleWindow?.dayState;
+  const stateOf = React.useCallback(
+    (key: string): DayReadState => (dayStateFn ? dayStateFn(key) : "ready"),
+    [dayStateFn],
+  );
+  const rangeKeys = useMemo(() => dayKeysOfRange(range.from, range.to), [range]);
+  const failedDays = rangeKeys.filter((k) => stateOf(k) === "failed").length;
+
+  /* A failed range is asked for again while it is on screen: the hook's own
+     retry re-reads only the week ahead (useLiveSchedule). */
+  useEffect(() => {
+    if (!ensureRange || failedDays === 0) return;
+    const t = setTimeout(() => ensureRange(range.from, range.to), FETCH_RETRY_MS);
+    return () => clearTimeout(t);
+  }, [ensureRange, failedDays, range]);
+
+  const retryUnread = () => {
+    const current = latestWindow.current;
+    if (!current) return;
+    current.retry?.();
+    current.ensureRange(range.from, range.to, true);
+  };
 
   /* ---------------- trainers ---------------- */
 
@@ -257,6 +310,11 @@ export function CalendarView({
     return map;
   }, [visibleTrainers]);
 
+  const pickerTrainers = useMemo(
+    () => visibleTrainers.filter((t) => t.id).map((t) => ({ id: String(t.id), name: (t.fullName || "").trim() || "Trainer" })),
+    [visibleTrainers],
+  );
+
   /* ---------------- sessions ---------------- */
 
   const sessions = useMemo<CalendarSession[]>(() => {
@@ -265,7 +323,7 @@ export function CalendarView({
       if (s.status === "Cancelled") return;
 
       const trainerId = resolveTrainerId(s);
-      if (selectedTrainerId !== "all" && trainerId !== selectedTrainerId) return;
+      if (selectedTrainerId !== ENTIRE_TEAM && trainerId !== selectedTrainerId) return;
 
       const start = safeToDate(s.startTime || s.StartDateTime || s.date || s.start);
       if (!start) return;
@@ -297,17 +355,17 @@ export function CalendarView({
   }, [schedules, resolveTrainerId, selectedTrainerId]);
 
   /**
-   * Events are clients' FORD dates (the Atlas answers, Oct 2 2026): every
-   * client's birthday, every year, and each dated FORD detail on the days on
-   * screen (features/calendar/ford-events.ts). The frozen `client.events`
-   * list is no longer read. One read of the studio's FORD per month on
-   * screen, only while Month shows events.
+   * Life events are clients' FORD dates (the Atlas answers, Oct 2 2026):
+   * every client's birthday, every year, and each dated FORD detail on the
+   * days on screen (features/calendar/ford-events.ts). One read of the
+   * studio's FORD per month on screen, while Month or Day shows them. Month
+   * marks the day; Day says them.
    */
   const monthRange = useMemo(() => {
     const r = visibleRange("month", selectedDate);
     return { from: localDayKey(r.from), to: localDayKey(r.to) };
   }, [selectedDate]);
-  const ford = useCalendarFord(activeStudioId ?? null, monthRange.from, monthRange.to, viewMode === "month" && filterMode !== "sessions");
+  const ford = useCalendarFord(activeStudioId ?? null, monthRange.from, monthRange.to, viewMode !== "week");
   const events = useMemo<CalendarEvent[]>(
     () =>
       fordCalendarEvents({
@@ -319,9 +377,6 @@ export function CalendarView({
       }),
     [ford.details, clients, activeStudioId, monthRange.from, monthRange.to],
   );
-
-  const shownSessions = filterMode === "events" ? [] : sessions;
-  const shownEvents = filterMode === "sessions" ? [] : events;
 
   /* ---------------- navigation ---------------- */
 
@@ -381,93 +436,46 @@ export function CalendarView({
   };
 
   const todayKey = studioDateKey(new Date());
-  const viewingToday = studioDateKey(selectedDate) === todayKey;
+  const pickedToday = studioDateKey(selectedDate) === todayKey;
 
   return (
-    <div className="cal cal-shell">
-      <header className="cal-header">
-        <div className="cal-header__title">
-          <span className="cal-header__icon">
-            <CalendarIcon size={20} strokeWidth={2.2} aria-hidden />
-          </span>
-          <div>
-            <h2 className="cal-header__name">
-              {viewMode === "month" ? "Month" : viewMode === "week" ? "Week" : "Day"}
-            </h2>
-            <div className="cal-header__sub">
-              {viewingToday ? "Today" : "Schedule overview"}
-            </div>
-          </div>
-        </div>
-
-        <DateNavigator
-          primary={navLabels.primary}
-          secondary={navLabels.secondary}
-          onPrev={() => step(-1)}
-          onNext={() => step(1)}
-          onToday={() => setSelectedDate(new Date())}
-          prevLabel={`Previous ${viewMode}`}
-          nextLabel={`Next ${viewMode}`}
-        />
-
-        <div className="cal-seg" role="group" aria-label="View">
-          {(["month", "week", "day"] as ViewMode[]).map((m) => (
-            <button
-              key={m}
-              type="button"
-              className="cal-seg__btn"
-              aria-pressed={viewMode === m}
-              onClick={() => setViewMode(m)}
-            >
-              {m === "month" ? "Month" : m === "week" ? "Week" : "Day"}
-            </button>
-          ))}
-        </div>
-
-        {viewMode === "month" && (
-          <div className="cal-seg" role="group" aria-label="Show">
-            {(
-              [
-                ["all", "All"],
-                ["sessions", "Sessions"],
-                ["events", "Events"],
-              ] as [FilterMode, string][]
-            ).map(([mode, label]) => (
-              <button
-                key={mode}
-                type="button"
-                className="cal-seg__btn"
-                aria-pressed={filterMode === mode}
-                onClick={() => setFilterMode(mode)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <label className="cal-picker">
-          <Users size={15} strokeWidth={2.4} aria-hidden />
-          <span className="sr-only">Filter by trainer</span>
-          <select
+    <div className="cal cal-room">
+      <RoomBar
+        room="calendar"
+        name="Calendar"
+        icon={CalendarDays}
+        switcher={<RoomSwitch<ViewMode> label="View" options={VIEWS} value={viewMode} onChange={(next) => setViewMode(next)} />}
+        tools={
+          <TeamPicker
+            trainers={pickerTrainers}
             value={selectedTrainerId}
-            onChange={(e) => setSelectedTrainerId(e.target.value)}
-          >
-            <option value="all">Entire team</option>
-            {visibleTrainers
-              .map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.fullName}
-                </option>
-              ))}
-          </select>
-        </label>
+            onChange={setSelectedTrainerId}
+            selfId={authTrainer?.id ?? null}
+          />
+        }
+      >
+        <div className="cal-when">
+          <DateNavigator
+            primary={navLabels.primary}
+            secondary={navLabels.secondary}
+            onPrev={() => step(-1)}
+            onNext={() => step(1)}
+            onToday={() => setSelectedDate(new Date())}
+            prevLabel={`Previous ${viewMode}`}
+            nextLabel={`Next ${viewMode}`}
+          />
+          {!pickedToday && (
+            <button type="button" className="rm-tool" onClick={() => setSelectedDate(new Date())}>
+              Today
+            </button>
+          )}
+        </div>
 
         {scheduleWindow && (
           <div className="cal-refresh">
             <button
               type="button"
-              className="cal-refresh__btn"
+              className="rm-tool cal-refresh__btn"
               onClick={() => void refreshSchedules()}
               disabled={scheduleWindow.isFetching}
               aria-label="Refresh the schedule"
@@ -475,7 +483,7 @@ export function CalendarView({
               {scheduleWindow.isFetching ? (
                 <LoadingMark label="" size="sm" />
               ) : (
-                <RefreshCw size={15} strokeWidth={2.4} aria-hidden />
+                <RefreshCw size={16} strokeWidth={2.4} aria-hidden />
               )}
               Refresh
             </button>
@@ -484,53 +492,58 @@ export function CalendarView({
             </span>
           </div>
         )}
-      </header>
+      </RoomBar>
 
-      {/* The Relay layer: reminders, timed studio tasks, jobs, initiatives
-          and hand-offs on the days on screen (Relay, Sep 2026; was the
-          reminders strip of the Planner rework). */}
-      <RelayStrip
-        studioId={activeStudioId ?? null}
-        trainerId={authTrainer?.id ?? null}
-        from={visibleRange(viewMode, selectedDate).from}
-        to={visibleRange(viewMode, selectedDate).to}
-        onOpenPlanner={setView ? () => setView("studio-tasks") : undefined}
-      />
+      {failedDays > 0 && <HubNotice words={unreadWords(viewMode, failedDays)} onRetry={retryUnread} />}
 
-      {viewMode === "month" && filterMode !== "sessions" && ford.status === "failed" && (
-        <p className="cal-refresh__note" role="status">
-          {"Couldn\u2019t read the studio\u2019s FORD dates just now, so only birthdays show."}
-        </p>
-      )}
-
-      {viewMode === "month" && (
-        <MonthView
-          anchor={selectedDate}
-          sessions={shownSessions}
-          events={shownEvents}
-          trainerRefs={trainerRefs}
-          selectedDate={selectedDate}
-          onSelectDate={openDay}
+      <div className="cal-body" data-view={viewMode}>
+        {/* The Relay layer: reminders, timed studio tasks, jobs, initiatives
+            and hand-offs on the days on screen (Relay, Sep 2026; was the
+            reminders strip of the Planner rework). */}
+        <RelayStrip
+          studioId={activeStudioId ?? null}
+          trainerId={authTrainer?.id ?? null}
+          from={range.from}
+          to={range.to}
+          onOpenPlanner={setView ? () => setView("studio-tasks") : undefined}
         />
-      )}
 
-      {viewMode === "week" && (
-        <WeekView
-          anchor={selectedDate}
-          sessions={sessions}
-          trainerRefs={trainerRefs}
-          onSelectDate={openDay}
-        />
-      )}
+        {viewMode === "month" && ford.status === "failed" && (
+          <p className="cal-note" role="status">
+            {"Couldn’t read the studio’s FORD dates just now, so only birthdays are marked."}
+          </p>
+        )}
 
-      {viewMode === "day" && (
-        <DayView
-          date={selectedDate}
-          sessions={sessions}
-          trainerRefs={trainerRefs}
-          onSelectClient={openClient}
-        />
-      )}
+        {viewMode === "month" && (
+          <MonthView
+            anchor={selectedDate}
+            sessions={sessions}
+            events={events}
+            trainerRefs={trainerRefs}
+            selectedDate={selectedDate}
+            onSelectDate={openDay}
+            stateOf={stateOf}
+          />
+        )}
+
+        {viewMode === "week" && (
+          <WeekView
+            anchor={selectedDate}
+            sessions={sessions}
+            trainerRefs={trainerRefs}
+            onSelectDate={openDay}
+          />
+        )}
+
+        {viewMode === "day" && (
+          <DayView
+            date={selectedDate}
+            sessions={sessions}
+            trainerRefs={trainerRefs}
+            onSelectClient={openClient}
+          />
+        )}
+      </div>
     </div>
   );
 }
