@@ -140,6 +140,31 @@ describe("the way back", () => {
     expect(plan.fieldDocsGone).toEqual(["clients/gone"]);
   });
 
+  it("restores a document from its last line, whole: a retried write's backup replaces the first one", () => {
+    const retried: BackupLine[] = [
+      { kind: "doc", path: "sessions/s1", group: "core", part: "sessions", data: { v: 1 } },
+      { kind: "doc", path: "sessions/s1", group: "core", part: "sessions", data: { v: 2 } },
+      {
+        kind: "fields",
+        path: "clients/c1",
+        changes: [
+          { field: ["sessionCount"], group: "core", part: "client-counters", before: 3, after: 0 },
+          { field: ["lastSessionDate"], group: "core", part: "client-last-session", before: "2026-10-01", after: ENCODED_ABSENT },
+        ],
+      },
+      // The retry: Mindbody had moved the count, and its own lastVisited is no longer the reset's to clear.
+      { kind: "fields", path: "clients/c1", changes: [{ field: ["sessionCount"], group: "core", part: "client-counters", before: 4, after: 0 }] },
+      { kind: "fields", path: "clients/c2", changes: [{ field: ["sessionCount"], group: "core", part: "client-counters", before: 9, after: 0 }] },
+      // c2's retry found nothing left to do: an empty line.
+      { kind: "fields", path: "clients/c2", changes: [] },
+    ];
+    const now: Record<string, Record<string, unknown>> = { "clients/c1": { sessionCount: 0 }, "clients/c2": { sessionCount: 0 } };
+    const plan = planRestore(retried, new Set(), (p) => now[p] ?? null);
+    expect(plan.create.map((l) => l.data)).toEqual([{ v: 2 }]);
+    expect(plan.fields).toEqual([{ path: "clients/c1", restores: [{ field: ["sessionCount"], value: 4 }] }]);
+    expect(plan.fieldsChangedSince).toEqual([]);
+  });
+
   it("reads a field path through a map the codec wrapped", () => {
     expect(encodedValueAt({ m: { __t: "map", v: { __t: 1, k: 2 } } }, ["m", "k"])).toBe(2);
     expect(encodedValueAt({ m: 1 }, ["m", "k"])).toEqual(ENCODED_ABSENT);

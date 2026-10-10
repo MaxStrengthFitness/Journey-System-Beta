@@ -6,7 +6,10 @@ import {
   OPTIONAL_GROUPS,
   PARTS,
   blockingOpenSessions,
+  cutoverStudiosOf,
   isJourneyLastSessionDate,
+  looksTyped,
+  sameFordCounts,
   millisOf,
   parseAlso,
   partLine,
@@ -155,7 +158,12 @@ describe("notes", () => {
       doc("journalEntries/demoNote", { clientId: "dc", sessionId: "d1", origin: "in_session" }),
       doc("journalEntries/demoUpdate", { clientId: "dc", origin: "manual", threadId: "demoNote" }),
     ],
-    sessionNotes: [doc("sessionNotes/n1", { sessionId: "s1" }), doc("sessionNotes/nd", { sessionId: "d1" })],
+    sessionNotes: [
+      doc("sessionNotes/n1", { sessionId: "s1" }),
+      doc("sessionNotes/nd", { sessionId: "d1" }),
+      // No session on it: the client's notes show it as a manual profile note.
+      doc("sessionNotes/manual", { clientId: "c1", content: "x" }),
+    ],
   });
 
   it("takes notes of a session going or already gone, session-time notes, and every update below them", () => {
@@ -177,6 +185,7 @@ describe("notes", () => {
     expect(countOf(plan, "journal-thread-updates").demoDocs).toBe(1);
     expect(deleted(plan)).toContain("sessionNotes/n1");
     expect(deleted(plan)).not.toContain("sessionNotes/nd");
+    expect(deleted(plan)).not.toContain("sessionNotes/manual");
   });
 
   it("takes the Seen marks and the reminders of what goes, and leaves the rest to the operations group", () => {
@@ -233,7 +242,7 @@ describe("client fields", () => {
   const sessions = [doc("sessions/s1", { clientId: "c1", createdAt: Date.parse("2026-06-01T15:00:00Z") })];
   const client = (id: string, data: Record<string, unknown>) => doc(`clients/${id}`, { homeStudioId: "westlake", ...data });
 
-  it("clears the counters a Finish moves, and only those", () => {
+  it("puts the counters a Finish moves back to a new client's, and touches nothing else", () => {
     const plan = planReset(
       input({
         sessions,
@@ -244,7 +253,7 @@ describe("client fields", () => {
             lifetimeReps: 300,
             trainerTally: { t1: 4 },
             topTrainerId: "t1",
-            renewal: { situation: "x" },
+            renewal: { situation: "x", cycleKey: "k", lastVisitDate: "2026-10-01", primaryTrainerId: "t1" },
             currentMachineMetrics: { m: {} },
             firstName: "kept",
             mindbodyContracts: { a: 1 },
@@ -254,8 +263,38 @@ describe("client fields", () => {
       opts(),
     );
     expect(changedFields(plan, "clients/c1").sort()).toEqual(
-      ["completedSessions", "currentMachineMetrics", "lifetimeReps", "renewal", "sessionCount", "topTrainerId", "trainerTally"].sort(),
+      [
+        "completedSessions",
+        "currentMachineMetrics",
+        "lifetimeReps",
+        "renewal.lastVisitDate",
+        "renewal.primaryTrainerId",
+        "sessionCount",
+        "topTrainerId",
+        "trainerTally",
+      ].sort(),
     );
+    const after = Object.fromEntries(plan.fieldSteps[0].changes.map((c) => [c.field.join("."), c.after]));
+    // What Add Client and every Mindbody door write; the rest a new client doesn't have.
+    expect(after.completedSessions).toBe(0);
+    expect(after.sessionCount).toBe(0);
+    expect(after.lifetimeReps).toBe(ABSENT);
+    expect(after.trainerTally).toBe(ABSENT);
+  });
+
+  it("leaves the count a prior record that stays gives, and 0 when the record goes with the run", () => {
+    const base = input({
+      sessions: [...sessions, doc("sessions/s2", { clientId: "c2" })],
+      clients: [
+        client("c1", { completedSessions: 4, sessionCount: 304, priorHistory: { source: "filemaker", sessions: 300, through: "2026-05-31" } }),
+        client("c2", { completedSessions: 2, sessionCount: 302, priorHistory: { source: "paper", sessions: 300, importedCount: 0, through: "2026-05-31" } }),
+      ],
+    });
+    const keep = planReset(base, opts());
+    const countOf1 = (p: ResetPlan, path: string) => p.fieldSteps.find((s) => s.path === path)!.changes.find((c) => c.field[0] === "sessionCount")!.after;
+    expect(countOf1(keep, "clients/c1")).toBe(300);
+    const drop = planReset(base, opts(["prior-history"]));
+    expect(countOf1(drop, "clients/c2")).toBe(0);
   });
 
   it("leaves a client the sessions never touched: the intake's 0s, a count that is all prior history, the snapshot", () => {
@@ -265,15 +304,18 @@ describe("client fields", () => {
         clients: [
           client("intake", { completedSessions: 0, sessionCount: 0, trainerTally: {}, topTrainerId: null, renewal: { lastVisitDate: "2026-03-01" } }),
           client("priorOnly", { sessionCount: 300, renewal: { lastVisitDate: "2026-03-01" } }),
-          client("c1", { completedSessions: 0, sessionCount: 1, renewal: {} }),
+          client("c1", { completedSessions: 0, sessionCount: 1, renewal: { lastVisitDate: "2026-10-01" } }),
         ],
+        // Opening Programming writes an empty totals document for anyone: it doesn't make a client touched.
+        machineTotals: [doc("clients/intake/machineTotals/current", { machineStats: {}, machineStatsBackfilledAt: 1 })],
       }),
       opts(),
     );
     expect(changedFields(plan, "clients/intake")).toEqual([]);
+    expect(deleted(plan)).toContain("clients/intake/machineTotals/current");
     expect(changedFields(plan, "clients/priorOnly")).toEqual([]);
-    // c1 had a session going: every counter goes, the 0s with it, and the snapshot.
-    expect(changedFields(plan, "clients/c1").sort()).toEqual(["completedSessions", "renewal", "sessionCount"]);
+    // c1 had a session going: the count back to 0 (the 0 already there stays as it is), and the snapshot's last visit.
+    expect(changedFields(plan, "clients/c1").sort()).toEqual(["renewal.lastVisitDate", "sessionCount"]);
   });
 
   it("clears Journey's last session day and keeps Mindbody's (it carries a time)", () => {
@@ -288,35 +330,58 @@ describe("client fields", () => {
     expect(plan.leftAlone.some((l) => /Mindbody/.test(l.label) && l.count === 1)).toBe(true);
   });
 
-  it("clears a first-session date from Journey's sessions and keeps one typed from before them", () => {
+  it("clears a first-session date Start wrote, and keeps one from before the sessions or typed on the old form", () => {
+    // Start's serverTimestamp carries the server's fraction of a second; the old form wrote an Eastern midnight.
+    const ts = (iso: string, nanoseconds: number) => ({ seconds: Date.parse(iso) / 1000, nanoseconds });
     const plan = planReset(
       input({
         sessions,
-        clients: [client("new", { firstSessionDate: Date.parse("2026-07-01T15:00:00Z") }), client("old", { firstSessionDate: Date.parse("2014-03-02T15:00:00Z") })],
+        clients: [
+          client("new", { firstSessionDate: ts("2026-07-01T15:00:07Z", 482_000_000) }),
+          client("old", { firstSessionDate: ts("2014-03-02T05:00:00Z", 0) }),
+          // Typed after Journey began, on the retired form: midnight in Ohio (EDT, UTC-4), no fraction.
+          client("typed", { firstSessionDate: ts("2026-07-14T04:00:00Z", 0) }),
+        ],
       }),
       opts(),
     );
+    expect(looksTyped(ts("2026-07-14T04:00:00Z", 0))).toBe(true);
+    expect(looksTyped(ts("2026-07-14T04:00:00Z", 1000))).toBe(false);
+    expect(looksTyped(ts("2026-07-14T05:00:00Z", 0))).toBe(false);
     expect(changedFields(plan, "clients/new")).toEqual(["firstSessionDate"]);
+    expect(plan.firstSessionClearIds).toEqual(["new"]);
     expect(changedFields(plan, "clients/old")).toEqual([]);
-    expect(plan.leftAlone.find((l) => /First session/.test(l.label))?.count).toBe(1);
+    expect(changedFields(plan, "clients/typed")).toEqual([]);
+    expect(plan.leftAlone.find((l) => /First session/.test(l.label))?.count).toBe(2);
   });
 
-  it("clears a first visit only where it was backfilled from Journey's sessions", () => {
+  it("clears a first visit only where it was backfilled from Journey's sessions and still has their date", () => {
+    const inEra = Date.parse("2026-07-01T15:00:00Z");
     const plan = planReset(
       input({
+        sessions,
         clients: [
-          client("a", { firstAppointmentDate: 1, firstAppointmentDateSource: "backfill:firstSessionDate" }),
-          client("b", { firstAppointmentDate: 1, firstAppointmentDateSource: "backfill:earliest-session" }),
-          client("c", { firstAppointmentDate: 1, firstAppointmentDateSource: "backfill:earliest-contract" }),
-          client("d", { firstAppointmentDate: 1 }),
+          client("a", { firstAppointmentDate: inEra, firstAppointmentDateSource: "backfill:firstSessionDate" }),
+          client("b", { firstAppointmentDate: inEra, firstAppointmentDateSource: "backfill:earliest-session" }),
+          // The webhook wrote Mindbody's real date over the backfill and left the source.
+          client("webhook", { firstAppointmentDate: Date.parse("2014-03-01T12:00:00Z"), firstAppointmentDateSource: "backfill:earliest-session" }),
+          client("c", { firstAppointmentDate: inEra, firstAppointmentDateSource: "backfill:earliest-contract" }),
+          client("d", { firstAppointmentDate: inEra }),
         ],
       }),
       opts(),
     );
     expect(changedFields(plan, "clients/a").sort()).toEqual(["firstAppointmentDate", "firstAppointmentDateSource"]);
     expect(changedFields(plan, "clients/b").sort()).toEqual(["firstAppointmentDate", "firstAppointmentDateSource"]);
+    expect(changedFields(plan, "clients/webhook")).toEqual([]);
     expect(changedFields(plan, "clients/c")).toEqual([]);
     expect(changedFields(plan, "clients/d")).toEqual([]);
+  });
+
+  it("reads when the sessions began from an earlier run when none is left", () => {
+    const base = input({ clients: [client("a", { firstSessionDate: Date.parse("2026-07-01T15:00:07Z") })] });
+    expect(changedFields(planReset(base, opts()), "clients/a")).toEqual([]);
+    expect(changedFields(planReset(base, opts([], { eraStartMs: Date.parse("2026-06-01T15:00:00Z") })), "clients/a")).toEqual(["firstSessionDate"]);
   });
 
   it("undoes a prospect's consultation and leaves everyone else's mark", () => {
@@ -333,22 +398,35 @@ describe("client fields", () => {
     expect(changedFields(plan, "clients/existing")).toEqual([]);
   });
 
-  it("takes a Confirm from Mindbody's count in core and a typed record only with prior-history", () => {
+  it("takes a Confirm the test sessions are in, keeps one made before any, and a typed record only with prior-history", () => {
+    const confirm = (through: string, recordedIso: string) => ({ source: "mindbody", sessions: 300, note: CONFIRM_NOTE, through, recordedAt: Date.parse(recordedIso) });
     const base = input({
+      sessions: [...sessions, doc("sessions/s3", { clientId: "touched" })],
       clients: [
-        client("confirmed", { priorHistory: { source: "mindbody", sessions: 300, note: CONFIRM_NOTE } }),
+        // Confirmed the day after her first (test) session: Mindbody's count less it.
+        client("afterTest", { priorHistory: confirm("2026-07-01", "2026-07-03T15:00:00Z") }),
+        // A client the sessions touched, confirmed after one.
+        client("touched", { completedSessions: 1, priorHistory: confirm("2026-05-01", "2026-07-03T15:00:00Z") }),
+        // Confirmed before any Journey session: "through" is the day it was recorded, nothing was taken off.
+        client("beforeAny", { completedSessions: 1, priorHistory: confirm("2026-07-03", "2026-07-03T15:00:00Z") }),
+        // Confirmed long before the test sessions began.
+        client("old", { priorHistory: confirm("2026-03-01", "2026-03-05T15:00:00Z") }),
         client("typedMindbody", { priorHistory: { source: "mindbody", sessions: 312 } }),
         client("typed", { priorHistory: { source: "filemaker", sessions: 300 }, firstStudioDay: "2014-01-01" }),
       ],
     });
     const core = planReset(base, opts());
-    expect(changedFields(core, "clients/confirmed")).toEqual(["priorHistory"]);
+    expect(changedFields(core, "clients/afterTest")).toEqual(["priorHistory"]);
+    expect(changedFields(core, "clients/touched")).toContain("priorHistory");
+    expect(changedFields(core, "clients/beforeAny")).not.toContain("priorHistory");
+    expect(changedFields(core, "clients/old")).toEqual([]);
     expect(changedFields(core, "clients/typedMindbody")).toEqual([]);
     expect(changedFields(core, "clients/typed")).toEqual([]);
-    expect(countOf(core, "client-prior-history").docs).toBe(2);
     const all = planReset(base, opts(["prior-history"]));
     expect(changedFields(all, "clients/typed").sort()).toEqual(["firstStudioDay", "priorHistory"]);
     expect(changedFields(all, "clients/typedMindbody")).toEqual(["priorHistory"]);
+    // The Confirm made before any session isn't a typed record: prior-history leaves it too.
+    expect(changedFields(all, "clients/beforeAny")).not.toContain("priorHistory");
   });
 
   it("turns the B switch off only for clients whose routines go, and only with the routines group", () => {
@@ -480,6 +558,38 @@ describe("the optional groups", () => {
       "trainerFocuses/t",
     ]);
     expect(countOf(plan, "progress-reports").demoDocs).toBe(1);
+  });
+});
+
+describe("what a commit has to name", () => {
+  it("counts the documents it writes, and names the studios past a cutover", () => {
+    const plan = planReset(
+      input({
+        sessions: [doc("sessions/s1", { clientId: "c1" })],
+        clients: [doc("clients/c1", { homeStudioId: "w", completedSessions: 1, sessionCount: 1 })],
+        studios: [
+          doc("studios/westlake", { journeyCutoverDate: "2026-11-02" }),
+          doc("studios/solon", {}),
+          doc("studios/demo-studio", { journeyCutoverDate: "2026-01-01", isDemo: true }),
+        ],
+      }),
+      opts(),
+    );
+    // One session deleted, one client changed.
+    expect(plan.plannedDocuments).toBe(2);
+    expect(plan.cutoverStudios).toEqual([{ id: "westlake", day: "2026-11-02" }]);
+    expect(cutoverStudiosOf([doc("studios/solon", { journeyCutoverDate: null })])).toEqual([]);
+  });
+
+  it("works a stale FORD summary out again even when no detail goes this run", () => {
+    const left = [doc("clients/c1/ford/a", { studioId: "w", origin: "profile", pillar: "dreams", body: "z", isArchived: false })];
+    const stale = { counts: { family: 1, occupation: 0, recreation: 0, dreams: 1 }, untagged: 0, pinned: {}, openOpportunities: 0, nextDate: null, updatedAt: "x" };
+    const fresh = { ...stale, counts: { family: 0, occupation: 0, recreation: 0, dreams: 1 }, updatedAt: "y" };
+    const plan = planReset(input({ clients: [doc("clients/c1", { homeStudioId: "w", fordSummary: stale })], ford: left }), opts());
+    expect(changedFields(plan, "clients/c1")).toEqual(["fordSummary"]);
+    const same = planReset(input({ clients: [doc("clients/c1", { homeStudioId: "w", fordSummary: fresh })], ford: left }), opts());
+    expect(changedFields(same, "clients/c1")).toEqual([]);
+    expect(sameFordCounts(fresh, { ...fresh, updatedAt: "z", nextDate: null } as never)).toBe(true);
   });
 });
 

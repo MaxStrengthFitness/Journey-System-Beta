@@ -10,8 +10,8 @@
  * which documents go and which fields change, so the decision is tested
  * without a database. The runbook is docs/ops/RESET-BEFORE-LAUNCH.md.
  *
- * `scripts/purge-database.ts` is NOT this: it deletes clients, studios and
- * trainers.
+ * It is not the old purge script (which deleted clients, studios and
+ * trainers): it never deletes a client, a trainer or a studio.
  *
  * THE GROUPS. `core` always runs. The optional groups are AJ's call at run
  * time (`--also settings,routines`), and the dry run counts every one of them
@@ -25,30 +25,39 @@
  *   - a thread update hangs off its root by `threadId`, and an update can
  *     hang off an update, so the updates of a deleted root are followed down
  *     to the last one (never up: a deleted update keeps its root).
- *   - the client counters every Finish moves (lib/sync-utils.ts), the machine
- *     totals (features/machine-totals), the first-session date Start writes,
- *     a first visit backfilled from sessions (scripts/backfill-client-since),
- *     a prospect's consultation that Finish marked done, a "sessions before
- *     Journey" confirmed on the profile (Mindbody's count LESS Journey's), the
- *     FORD summary (recomputed from what is left), and the leaders' Seen
- *     marks and trainers' "no need to remind me" on the notes that go.
+ *   - on a client the sessions TOUCHED (a session or set of hers goes, a
+ *     machine map holds something, or a counter only a session moves does):
+ *     the counters every Finish moves (lib/sync-utils.ts), back to what a
+ *     new client is made with (COUNTERS_AS_CREATED); the snapshot's last
+ *     visit and coach (RENEWAL_SESSION_FIELDS); a "sessions before Journey"
+ *     the profile's Confirm made after a test session.
+ *   - on any client, with a date in the test sessions' time (from the day
+ *     before the first was written; a re-run reads that day from the earlier
+ *     run's backup): the first-session date Start wrote (not one typed on
+ *     the old form), a first visit backfilled from sessions; and Journey's
+ *     own last-session day, a prospect's consultation a Finish marked done,
+ *     the machine maps still on the client, the FORD summary (worked out
+ *     again from what is left whenever it no longer matches), the leaders'
+ *     Seen marks and trainers' "no need to remind me" on the notes that go.
  *
  * WHAT IS KEPT unless AJ asks: sessions imported from paper charts or
  * FileMaker (they are history, not tests: `imported-history`), FORD details
- * caught in the briefing (no session id: `ford-briefing`), and Demo Mode
+ * caught in the briefing (no session id: `ford-briefing`), old-style
+ * session notes with no session (they read as profile notes), and Demo Mode
  * (its own Reset button; `--include-demo`). A record tied to a kept session
  * is kept with it.
  *
  * NEVER a whole client written back: a client keeps every field the reset
- * doesn't name, and a change is a field delete (or, for the FORD summary, the
- * one field set again).
+ * doesn't name, and a change is a field write (a delete, a counter back to
+ * its first value, the FORD summary set again).
  */
 
 import { DEMO_STUDIO_ID } from "../features/demo-mode/constants";
 import { isDemoRecord } from "../features/demo-mode/is-demo";
 import { fordStudioIdOf, summariseFord } from "../features/ford/ford-rollup";
-import type { FordEntry } from "../features/ford/types";
+import type { ClientFordSummary, FordEntry } from "../features/ford/types";
 import type { Client } from "../types";
+import { priorUncounted, type PriorHistory } from "./prior-history";
 
 /* ------------------------------------------------------------------ *
  * Groups and parts
@@ -142,7 +151,7 @@ export const PARTS: readonly PartSpec[] = [
   { id: "ford-session", group: "core", label: "FORD details caught in a session", kind: "docs", phase: "main" },
   { id: "ford-summary", group: "core", label: "FORD summary on clients, worked out again from what is left", kind: "fields", phase: "main" },
   { id: "machine-totals", group: "core", label: "Client machine totals (clients/{id}/machineTotals)", kind: "docs", phase: "main" },
-  { id: "client-counters", group: "core", label: "Counters on clients the sessions touched (sessions, tally, top trainer, lifetime reps and weight)", kind: "fields", phase: "main" },
+  { id: "client-counters", group: "core", label: "Counters on clients the sessions touched, back to a new client's (sessions, tally, top trainer, lifetime reps and weight)", kind: "fields", phase: "main" },
   { id: "client-last-session", group: "core", label: "Last session day written by Journey", kind: "fields", phase: "main" },
   { id: "client-legacy-totals", group: "core", label: "Machine maps still on the client document (pre-split)", kind: "fields", phase: "main" },
   { id: "client-first-session", group: "core", label: "First session date set by Journey's own first session", kind: "fields", phase: "main" },
@@ -155,7 +164,7 @@ export const PARTS: readonly PartSpec[] = [
   { id: "trainer-legacy-rollups", group: "core", label: "Trainers' old session-count map (trainers/{id}.rollups)", kind: "fields", phase: "early" },
   { id: "trainer-stats", group: "core", label: "Trainers' session counts (trainers/{id}/stats/rollups)", kind: "docs", phase: "late" },
   { id: "leaderboards", group: "core", label: "Old leaderboards (nothing reads them)", kind: "docs", phase: "main" },
-  { id: "job-renewal", group: "core", label: "Renewal snapshots on those clients (the nightly job writes them again)", kind: "fields", phase: "main" },
+  { id: "job-renewal", group: "core", label: "The last visit and coach on those clients' renewal snapshots (the nightly job works the rest out again)", kind: "fields", phase: "main" },
   { id: "job-client-states", group: "core", label: "Client states (the nightly job writes them again)", kind: "docs", phase: "main" },
   { id: "job-watch", group: "core", label: "The nightly job's Journey summary, All stars and month tallies", kind: "docs", phase: "main" },
   { id: "imported-sessions", group: "imported-history", label: "Sessions imported from charts or FileMaker", kind: "docs", phase: "main" },
@@ -208,11 +217,43 @@ export const CLIENT_COUNTER_FIELDS = [
   "trainerTallyUpdatedAt",
 ] as const;
 
+/**
+ * What a touched client's counters go back to: what every door that makes a
+ * client writes (the Add Client intake, lib/new-client-intake.ts, and each
+ * Mindbody path: the webhook's clientResolver, the pull sync, onboarding and
+ * Limbo's release all write `completedSessions: 0, sessionCount: 0` and
+ * nothing else). `sessionCount` is the prior record's uncounted sessions when
+ * one stays (the profile's reconciler writes the same: Journey's count plus
+ * the prior). Everything else in CLIENT_COUNTER_FIELDS no creating door
+ * writes, so it goes: an absent lifetime total or tally is what a new client
+ * has (the Wrap-up and the Top Trainer backfill read absent as none).
+ */
+export const COUNTERS_AS_CREATED = ["completedSessions", "sessionCount"] as const;
+
 /** The counters nothing but a session (or a chart import) moves off 0: a client holding one was touched by sessions. */
 export const SESSION_ONLY_COUNTERS = ["completedSessions", "lifetimeReps", "lifetimeWeight", "trainerTally", "topTrainerId"] as const;
 
 /** The machine maps that moved to clients/{id}/machineTotals/current (features/machine-totals). */
 export const CLIENT_LEGACY_TOTALS_FIELDS = ["currentMachineMetrics", "machineStats", "machineStatsBackfilledAt"] as const;
+
+/**
+ * The two maps a session fills. `machineStatsBackfilledAt` is not one: opening
+ * a client's Programming writes it with an EMPTY `machineStats`
+ * (equipment/useMachineStats.ts) whether or not she ever trained.
+ */
+export const MACHINE_MAPS = ["currentMachineMetrics", "machineStats"] as const;
+
+/**
+ * The two fields of the renewal snapshot that test sessions leave behind.
+ * `lastVisitDate` is carried night to night (engine.ts `lastVisitHint`: the
+ * stored day is fed back in, so a test session's day never leaves).
+ * `primaryTrainerId` is read off the STORED snapshot when a package's outcome
+ * is recorded (renewals-job.ts), before tonight's is written. Everything else
+ * in the snapshot is worked out again from scratch every night, and the rest
+ * of it (the package, the cycle) is what tonight's outcomes compare against
+ * (outcomes.ts rule 2), so it stays.
+ */
+export const RENEWAL_SESSION_FIELDS = ["lastVisitDate", "primaryTrainerId"] as const;
 
 /** firstAppointmentDate's sources that are Journey's own sessions (client-story/first-visit.ts). */
 export const SESSION_BACKFILL_SOURCES = ["backfill:firstSessionDate", "backfill:earliest-session"] as const;
@@ -326,9 +367,12 @@ export interface ResetInput {
   renewalTouches: DocIn[];
   /** studios/{id}/renewals/* (counted only: never changed) */
   renewalCycles: DocIn[];
+  /** studios/*, projected to journeyCutoverDate, isDemo and name (read only: a cutover refuses a commit). */
+  studios: DocIn[];
 }
 
 export const EMPTY_INPUT: ResetInput = {
+  studios: [],
   sessions: [],
   sessionChildren: [],
   exerciseLogs: [],
@@ -370,6 +414,12 @@ export interface ResetOptions {
   beforeMs: number;
   /** Now (ms), for the open-session check. */
   nowMs: number;
+  /**
+   * When the test sessions began, as an EARLIER run of the reset worked it out
+   * (its backup's manifest). A run after the sessions are gone has none of its
+   * own to read it from, and every date rule needs it.
+   */
+  eraStartMs?: number | null;
 }
 
 /* ------------------------------------------------------------------ *
@@ -444,6 +494,12 @@ export interface ResetPlan {
   openSessions: OpenSession[];
   /** Whether any session going was in a trainer's count (its delete trigger will run). */
   countedSessionsDeleted: number;
+  /** Documents this run writes: deleted, plus kept ones with a field changed. `--expect` must name it. */
+  plannedDocuments: number;
+  /** Studios outside Demo Mode with a Journey cutover date: real sessions may be on the floor. */
+  cutoverStudios: { id: string; day: string }[];
+  /** Clients whose first-session date this run clears (ids only), printed so a person can look. */
+  firstSessionClearIds: string[];
   /** The moment the earliest session began (ms): a first-session date before it was typed, not Journey's. */
   sessionEraStartMs: number | null;
   leftAlone: LeftAlone[];
@@ -500,6 +556,50 @@ function lastSignOf(data: Record<string, unknown>): number | null {
     .map(millisOf)
     .filter((t): t is number => t !== null);
   return times.length ? Math.max(...times) : null;
+}
+
+const EASTERN = "America/New_York";
+const EASTERN_CLOCK = new Intl.DateTimeFormat("en-US", {
+  timeZone: EASTERN,
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+});
+const EASTERN_DAY = new Intl.DateTimeFormat("en-CA", { timeZone: EASTERN, year: "numeric", month: "2-digit", day: "2-digit" });
+
+/** The studio's (Eastern) day of an instant, yyyy-mm-dd. */
+export function easternDay(ms: number): string {
+  return EASTERN_DAY.format(new Date(ms));
+}
+
+/**
+ * A first-session date TYPED on the retired client form (fbfc9d30): it
+ * stored `Timestamp.fromDate` of the typed day at local midnight, so the
+ * value is an Eastern midnight to the second with no fraction. Start writes
+ * `serverTimestamp()`, which carries the server's sub-second time.
+ */
+export function looksTyped(value: unknown): boolean {
+  if (value === null || typeof value !== "object") return false;
+  const v = value as { nanoseconds?: unknown };
+  if (typeof v.nanoseconds !== "number" || v.nanoseconds !== 0) return false;
+  const ms = millisOf(value);
+  if (ms === null || ms % 1000 !== 0) return false;
+  return EASTERN_CLOCK.format(new Date(ms)) === "00:00:00";
+}
+
+/** Two stored values the same (plain data, as the plan compares them). */
+export function sameValue(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || b === null || typeof a !== "object" || typeof b !== "object") return false;
+  const ma = millisOf(a);
+  const mb = millisOf(b);
+  if (ma !== null || mb !== null) return ma === mb && (a as { nanoseconds?: unknown }).nanoseconds === (b as { nanoseconds?: unknown }).nanoseconds;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) return a.length === (b as unknown[]).length && a.every((x, i) => sameValue(x, (b as unknown[])[i]));
+  const ka = Object.keys(a as object);
+  const kb = Object.keys(b as object);
+  return ka.length === kb.length && ka.every((k) => sameValue((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]));
 }
 
 /** A value a session put there: not the 0, "", null, {} or [] an intake or a sync writes. */
@@ -651,7 +751,8 @@ class Builder {
   changeFields(partId: string, doc: DocIn, changes: ReadonlyArray<[string[], MaybeValue]>, demo: boolean): boolean {
     const real = changes
       .map(([field, after]) => ({ field, after, before: valueAt(doc.data, field) }))
-      .filter((c) => !(c.before === ABSENT && c.after === ABSENT));
+      .filter((c) => !(c.before === ABSENT && c.after === ABSENT))
+      .filter((c) => c.before === ABSENT || c.after === ABSENT || !sameValue(c.before, c.after));
     if (real.length === 0) return false;
     const count = this.counts.get(partId)!;
     if (demo && !this.options.includeDemo) {
@@ -730,6 +831,14 @@ export function planReset(input: ResetInput, options: ResetOptions): ResetPlan {
       });
     }
   }
+  // A run after the sessions went (a second one, the next morning) reads the
+  // start from the earlier run's backup.
+  if (typeof options.eraStartMs === "number" && Number.isFinite(options.eraStartMs) && (eraStart === null || options.eraStartMs < eraStart)) {
+    eraStart = options.eraStartMs;
+  }
+  /** On or after the day before the test sessions began (a day's slack for the time zone). */
+  const inEra = (ms: number | null): boolean => ms !== null && eraStart !== null && ms >= eraStart - DAY_MS;
+
   /**
    * What a record carrying this session id goes with: "going" (the session
    * goes, or is already gone: Discard and History's delete leave a session's
@@ -761,8 +870,10 @@ export function planReset(input: ResetInput, options: ResetOptions): ResetPlan {
 
   /* ---- old-style session notes ---- */
   for (const note of input.sessionNotes) {
+    // One with no session shows on the client's notes as a manual profile
+    // note (useClientJournal's adapter, origin "manual"), and stays.
     const tie = tieOf(str(note.data.sessionId));
-    if (tie === "kept") continue;
+    if (tie === "kept" || tie === "none") continue;
     b.deleteDoc("session-notes", note, tie === "demo" || demo.isDemo(note));
   }
 
@@ -843,7 +954,10 @@ export function planReset(input: ResetInput, options: ResetOptions): ResetPlan {
   /* ---- machine totals ---- */
   for (const t of input.machineTotals) {
     const clientId = parentIdOf(t.path);
-    if (b.deleteDoc("machine-totals", t, demo.isDemo(t, { clientId })) && clientId) sessionClients.add(clientId);
+    const taken = b.deleteDoc("machine-totals", t, demo.isDemo(t, { clientId }));
+    // Only a map with something in it was a session's: opening Programming
+    // writes an empty one for anyone.
+    if (taken && clientId && MACHINE_MAPS.some((f) => holdsSomething(t.data[f]))) sessionClients.add(clientId);
   }
 
   /* ---- client fields ---- */
@@ -853,8 +967,10 @@ export function planReset(input: ResetInput, options: ResetOptions): ResetPlan {
     if (clientId) routineClients.add(clientId);
   }
   let firstSessionDatesKept = 0;
+  let firstVisitsKept = 0;
   let lastSessionDatesKept = 0;
   let provisional = 0;
+  const firstSessionClearIds: string[] = [];
   for (const c of input.clients) {
     const id = idOf(c.path);
     const isDemo = demo.clients.has(id);
@@ -866,14 +982,50 @@ export function planReset(input: ResetInput, options: ResetOptions): ResetPlan {
     const touched =
       sessionClients.has(id) ||
       SESSION_ONLY_COUNTERS.some((f) => holdsSomething(c.data[f])) ||
-      CLIENT_LEGACY_TOTALS_FIELDS.some((f) => holdsSomething(c.data[f]));
+      MACHINE_MAPS.some((f) => holdsSomething(c.data[f]));
+
+    // "Sessions before Journey". Confirm on Account writes Mindbody's visits
+    // LESS Journey's count, "through" the day before her first Journey
+    // session: with a test session behind it, both numbers are the tests'. A
+    // Confirm made before she had any Journey session ("through" is the day it
+    // was recorded) took nothing off, and stays. A record a trainer typed is
+    // the prior-history group's.
+    const prior = c.data.priorHistory as { source?: unknown; note?: unknown; through?: unknown; recordedAt?: unknown } | undefined;
+    const isConfirm = Boolean(prior && typeof prior === "object" && prior.source === "mindbody" && prior.note === CONFIRM_NOTE);
+    const typedPrior = Boolean(prior && typeof prior === "object" && !isConfirm);
+    let confirmTainted = false;
+    if (isConfirm) {
+      const through = typeof prior!.through === "string" ? prior!.through : null;
+      const recorded = millisOf(prior!.recordedAt);
+      const beforeItsDay = through === null || recorded === null || through < easternDay(recorded);
+      // "through" is the day BEFORE the first session: a day's more slack.
+      const throughMs = through === null ? null : millisOf(through);
+      confirmTainted = beforeItsDay && (touched || (throughMs !== null && inEra(throughMs + DAY_MS)));
+    }
+    if (confirmTainted) b.clearFields("client-prior-confirmed", c, ["priorHistory"], isDemo);
+    b.clearFields("client-prior-history", c, typedPrior ? ["priorHistory", "firstStudioDay"] : ["firstStudioDay"], isDemo);
+    // The prior record after this run, for the count it leaves behind.
+    const priorStays =
+      prior && typeof prior === "object" && !(confirmTainted && b.takes("core", isDemo)) && !(typedPrior && b.takes("prior-history", isDemo));
+
     if (touched) {
-      b.clearFields("client-counters", c, CLIENT_COUNTER_FIELDS, isDemo);
-      // The snapshot's last visit is carried night to night (engine.ts
-      // lastVisitHint), so a test session's day would never leave it. Only a
-      // client the sessions touched loses hers: anyone else's may hold a real
-      // visit older than the job's 90-day read.
-      b.clearFields("job-renewal", c, ["renewal"], isDemo);
+      // Back to what a door that makes a client writes (COUNTERS_AS_CREATED);
+      // the rest a new client doesn't have.
+      b.changeFields(
+        "client-counters",
+        c,
+        CLIENT_COUNTER_FIELDS.map((f): [string[], MaybeValue] => {
+          if (f === "completedSessions") return [[f], 0];
+          if (f === "sessionCount") return [[f], priorStays ? priorUncounted(prior as unknown as PriorHistory) : 0];
+          return [[f], ABSENT];
+        }),
+        isDemo,
+      );
+      // Only a client the sessions touched loses these: anyone else's snapshot
+      // may hold a real visit older than the job's 90-day read.
+      if (c.data.renewal && typeof c.data.renewal === "object") {
+        b.changeFields("job-renewal", c, RENEWAL_SESSION_FIELDS.map((f): [string[], MaybeValue] => [["renewal", f], ABSENT]), isDemo);
+      }
     }
     b.clearFields("client-legacy-totals", c, CLIENT_LEGACY_TOTALS_FIELDS, isDemo);
 
@@ -882,19 +1034,25 @@ export function planReset(input: ResetInput, options: ResetOptions): ResetPlan {
       else if (!isDemo) lastSessionDatesKept += 1;
     }
 
-    // Start writes firstSessionDate at a client's first Journey session. A
-    // date from before Journey ran any session was typed on the retired
-    // client form, and is kept.
+    // Start writes firstSessionDate at a client's first Journey session (the
+    // server's time). A date from before the test sessions began, or one
+    // typed on the retired client form (an Eastern midnight to the second),
+    // stays.
     if (c.data.firstSessionDate !== undefined && c.data.firstSessionDate !== null) {
       const at = millisOf(c.data.firstSessionDate);
-      const fromJourney = at !== null && eraStart !== null && at >= eraStart - DAY_MS;
-      if (fromJourney) b.clearFields("client-first-session", c, ["firstSessionDate"], isDemo);
-      else if (!isDemo) firstSessionDatesKept += 1;
+      if (inEra(at) && !looksTyped(c.data.firstSessionDate)) {
+        if (b.clearFields("client-first-session", c, ["firstSessionDate"], isDemo)) firstSessionClearIds.push(id);
+      } else if (!isDemo) firstSessionDatesKept += 1;
     }
 
+    // A first visit backfilled from Journey's sessions; the webhook writes a
+    // real one over the date without touching the source, so only a date in
+    // the test sessions' time is theirs.
     const source = str(c.data.firstAppointmentDateSource);
     if (source && (SESSION_BACKFILL_SOURCES as readonly string[]).includes(source)) {
-      b.clearFields("client-first-appointment", c, ["firstAppointmentDate", "firstAppointmentDateSource"], isDemo);
+      if (inEra(millisOf(c.data.firstAppointmentDate))) {
+        b.clearFields("client-first-appointment", c, ["firstAppointmentDate", "firstAppointmentDateSource"], isDemo);
+      } else if (!isDemo) firstVisitsKept += 1;
     }
 
     // Finish marks the consultation done; for a prospect that is the only
@@ -904,27 +1062,25 @@ export function planReset(input: ResetInput, options: ResetOptions): ResetPlan {
       b.clearFields("client-consultation", c, ["consultationCompleted"], isDemo);
     }
 
-    // Confirm on Account writes Mindbody's visits LESS Journey's count, and
-    // "through" the day before her first Journey session: both from the test
-    // sessions. A record a trainer typed is the prior-history group's.
-    const prior = c.data.priorHistory as { source?: unknown; note?: unknown } | undefined;
-    const confirmed = Boolean(prior && typeof prior === "object" && prior.source === "mindbody" && prior.note === CONFIRM_NOTE);
-    if (confirmed) b.clearFields("client-prior-confirmed", c, ["priorHistory"], isDemo);
-    b.clearFields("client-prior-history", c, confirmed ? ["firstStudioDay"] : ["priorHistory", "firstStudioDay"], isDemo);
-
     if (routineClients.has(id)) b.clearFields("client-routine-b", c, ["isRoutineBActive"], isDemo);
     b.clearFields("client-pulse", c, ["subjectiveSnapshot"], isDemo);
 
     // The FORD summary, worked out again from the details that stay, the way
-    // the app reads them (the client's FORD studio, at most 500).
-    if (fordTouched.has(id)) {
+    // the app reads them (the client's FORD studio, at most 500): for a client
+    // who loses one, and for any whose stored summary no longer matches what
+    // is left (an earlier run whose write didn't land).
+    const stored = c.data.fordSummary;
+    if (fordTouched.has(id) || (stored && typeof stored === "object")) {
       const studio = fordStudioIdOf(c.data as unknown as Client);
       const left = (fordByClient.get(id) ?? [])
         .filter((e) => !b.willDelete(e.path))
         .map((e) => ({ id: idOf(e.path), ...e.data }) as unknown as FordEntry)
         .filter((e) => (e as unknown as { studioId?: unknown }).studioId === studio)
         .slice(0, FORD_SUMMARY_READ_LIMIT);
-      b.changeFields("ford-summary", c, [[["fordSummary"], summariseFord(left)]], isDemo);
+      const summary = summariseFord(left);
+      if (fordTouched.has(id) || !sameFordCounts(stored, summary)) {
+        b.changeFields("ford-summary", c, [[["fordSummary"], summary]], isDemo);
+      }
     }
   }
 
@@ -1058,7 +1214,10 @@ export function planReset(input: ResetInput, options: ResetOptions): ResetPlan {
 
   /* ---- what is left alone, for AJ ---- */
   const leftAlone: LeftAlone[] = [];
-  if (firstSessionDatesKept > 0) leftAlone.push({ label: "First session dates older than any Journey session (typed on the old client form)", count: firstSessionDatesKept });
+  if (firstSessionDatesKept > 0) {
+    leftAlone.push({ label: "First session dates from before the test sessions, or typed on the old client form", count: firstSessionDatesKept });
+  }
+  if (firstVisitsKept > 0) leftAlone.push({ label: "First visits backfilled from sessions but dated before the test sessions (Mindbody's since)", count: firstVisitsKept });
   if (lastSessionDatesKept > 0) leftAlone.push({ label: "Last visit dates with a time on them (from Mindbody's webhook)", count: lastSessionDatesKept });
   if (undated.history > 0) leftAlone.push({ label: "Setting change records with no time on them", count: undated.history });
   if (undated.floor > 0) leftAlone.push({ label: "Floor notes with no time on them", count: undated.floor });
@@ -1070,15 +1229,43 @@ export function planReset(input: ResetInput, options: ResetOptions): ResetPlan {
     leftAlone.push({ label: "Pulse reports whose pain points link a deleted note (shown as linked to N notes)", count: linkedReports });
   }
 
+  const fieldSteps = b.steps();
   return {
     deletes: b.deletes,
-    fieldSteps: b.steps(),
+    fieldSteps,
     counts: b.result(),
     openSessions,
     countedSessionsDeleted,
+    plannedDocuments: b.deletes.length + new Set(fieldSteps.map((s) => s.path)).size,
+    cutoverStudios: cutoverStudiosOf(input.studios),
+    firstSessionClearIds,
     sessionEraStartMs: eraStart,
     leftAlone,
   };
+}
+
+/**
+ * Studios outside Demo Mode with a Journey cutover date. Before launch there
+ * are none; once there is one, real sessions may be on the floor and a reset
+ * would take them too, so a commit needs `--after-cutover`.
+ */
+export function cutoverStudiosOf(studios: readonly DocIn[]): { id: string; day: string }[] {
+  return studios
+    .filter((s) => !isDemoRecord({ ...s.data, studioId: idOf(s.path) } as never) && s.data.isDemo !== true)
+    .map((s) => ({ id: idOf(s.path), day: str(s.data.journeyCutoverDate) ?? "" }))
+    .filter((s) => s.day !== "");
+}
+
+/** A stored FORD summary still says what the details say (the dated line and the stamp aside: they move with the clock). */
+export function sameFordCounts(stored: unknown, next: ClientFordSummary): boolean {
+  if (!stored || typeof stored !== "object") return false;
+  const s = stored as Partial<ClientFordSummary>;
+  return (
+    sameValue(s.counts ?? null, next.counts) &&
+    (s.untagged ?? 0) === next.untagged &&
+    (s.openOpportunities ?? 0) === next.openOpportunities &&
+    sameValue(s.pinned ?? {}, next.pinned)
+  );
 }
 
 /** A progress report's pain points that link a journal entry the run deletes. */

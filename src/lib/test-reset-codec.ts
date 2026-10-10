@@ -202,6 +202,13 @@ export interface BackupManifest {
   documents: number;
   fieldDocuments: number;
   fields: number;
+  /**
+   * When the test sessions began (ms), as this run worked it out. A later run,
+   * with the sessions gone, reads it from here: every date rule needs it.
+   */
+  eraStartMs?: number | null;
+  /** Documents that had changed since the read and were read, planned and backed up again. */
+  retries?: number;
   /** Set when the last write has been sent; absent if the run stopped part way. */
   finishedAt?: string;
 }
@@ -271,8 +278,12 @@ export interface RestorePlan {
  * `currentOf(path)` is a kept document's data today, ENCODED with the same
  * kit (null when it is gone). Restore never overwrites: a document that
  * exists now, or a field whose value is no longer the one the reset left, is
- * left alone and reported. A path or field listed twice is restored from its
- * first line.
+ * left alone and reported.
+ *
+ * A path listed twice is restored from its LAST line, whole: the run backs a
+ * document up again, as it is then, before it retries a write that found the
+ * document changed (a Mindbody update between the read and the write), so the
+ * last line holds what was there just before the write that landed.
  */
 export function planRestore(
   lines: readonly BackupLine[],
@@ -280,37 +291,46 @@ export function planRestore(
   currentOf: (path: string) => Record<string, unknown> | null,
 ): RestorePlan {
   const plan: RestorePlan = { create: [], docsExistingNow: [], fields: [], fieldsChangedSince: [], fieldDocsGone: [] };
-  const seenDocs = new Set<string>();
-  const byPath = new Map<string, { restores: FieldRestore[]; seen: Set<string> }>();
+  const lastDoc = new Map<string, DeletedDocLine>();
+  const lastChange = new Map<string, Map<string, FieldChangeRecord>>();
   for (const line of lines) {
     if (line.kind === "doc") {
-      if (seenDocs.has(line.path)) continue;
-      seenDocs.add(line.path);
-      if (existsNow.has(line.path)) plan.docsExistingNow.push(line);
-      else plan.create.push(line);
+      lastDoc.delete(line.path);
+      lastDoc.set(line.path, line);
       continue;
     }
-    const current = currentOf(line.path);
-    if (current === null) {
-      if (!plan.fieldDocsGone.includes(line.path)) plan.fieldDocsGone.push(line.path);
-      continue;
-    }
-    const entry = byPath.get(line.path) ?? { restores: [], seen: new Set<string>() };
+    // A later line for the document replaces the earlier one WHOLE: a retry
+    // backs up every change it then makes, and one it no longer makes (the
+    // field already as wanted) must not come back from the stale line.
+    lastChange.delete(line.path);
+    const changes = new Map<string, FieldChangeRecord>();
     for (const change of line.changes) {
       const key = change.field.join("\u0000");
-      if (entry.seen.has(key)) continue;
-      entry.seen.add(key);
+      changes.delete(key);
+      changes.set(key, change);
+    }
+    lastChange.set(line.path, changes);
+  }
+  for (const line of lastDoc.values()) {
+    if (existsNow.has(line.path)) plan.docsExistingNow.push(line);
+    else plan.create.push(line);
+  }
+  for (const [path, changes] of lastChange) {
+    const current = currentOf(path);
+    if (current === null) {
+      plan.fieldDocsGone.push(path);
+      continue;
+    }
+    const restores: FieldRestore[] = [];
+    for (const change of changes.values()) {
       const now = encodedValueAt(current, change.field);
       if (stableJson(now) !== stableJson(change.after)) {
-        plan.fieldsChangedSince.push({ path: line.path, field: change.field });
+        plan.fieldsChangedSince.push({ path, field: change.field });
         continue;
       }
-      entry.restores.push({ field: change.field, value: change.before });
+      restores.push({ field: change.field, value: change.before });
     }
-    byPath.set(line.path, entry);
-  }
-  for (const [path, entry] of byPath) {
-    if (entry.restores.length > 0) plan.fields.push({ path, restores: entry.restores });
+    if (restores.length > 0) plan.fields.push({ path, restores });
   }
   return plan;
 }
