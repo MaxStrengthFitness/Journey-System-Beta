@@ -105,6 +105,7 @@ import {
   noteOrigin,
   noteRefusedLaterWords,
   NOTE_NEEDS_CLIENT,
+  NOTES_NEED_CLIENT,
   noteSaveLine,
   reachesLeaders,
   resolvedLabel,
@@ -676,6 +677,11 @@ export function MenuNotes({
   };
 
   const list = () => {
+    /* No client yet (an open session before Who's this?): there are no
+       notes of theirs to read, so the list never loads. Said, never
+       "Loading notes…" for as long as the session has no client (the open
+       session's screens preview, Oct 9 2026). */
+    if (!clientId.trim()) return <p className="mm-none">{NOTES_NEED_CLIENT}</p>;
     if (!zones) {
       return <p className="mm-none">{journalFailed ? NOTES_UNREAD_LINE : THREAD_WORDS.loading}</p>;
     }

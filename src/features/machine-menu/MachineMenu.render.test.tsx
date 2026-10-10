@@ -667,3 +667,44 @@ describe("Set up: the card on the first empty dial, and Save closes it with Undo
     expect(show.mock.calls[0][3].label).toBe("Undo");
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * An open session's card, before Who's this? (the open session's screens
+ * preview, Oct 9 2026): no client, so no notes to read and no name to say
+ * ------------------------------------------------------------------ */
+
+describe("an open session's card, before the client is chosen", () => {
+  const openHost = () =>
+    host({
+      door: "session",
+      clientId: "",
+      client: null,
+      clientSettings: {},
+      sessions: [],
+      logs: [],
+      // The tracker has no client journal to listen to: it never answers.
+      journal: null,
+      journalState: "loading",
+      session: { id: "open-1", number: null, day: "2026-10-09" },
+      holdSetup: { sessionId: "open-1", keep: vi.fn(async () => undefined) },
+    } as Partial<MachineMenuHost>);
+
+  it("says where the notes come from instead of loading them for ever, and the chart says 'the client' mid-sentence", async () => {
+    await mount({ open: true, machineId: "chest-press", onClose: () => {}, host: openHost() });
+    await settle();
+    const text = card()?.textContent ?? "";
+    expect(text).toContain("Kept on this session · saved to the client when you choose them");
+    expect(text).toContain("The client's notes show here once you choose who this is (Who's this?)");
+    expect(text).not.toContain("Loading notes");
+    expect(text).toContain("How the client has done here");
+    expect(text).not.toContain("This client");
+  });
+
+  it("a client's card still loads their notes while the journal is on its way", async () => {
+    await mount({ open: true, machineId: "leg-press", onClose: () => {}, host: host({ door: "session", journal: null, journalState: "loading" }) });
+    await settle();
+    const text = card()?.textContent ?? "";
+    expect(text).toContain("Loading notes");
+    expect(text).not.toContain("once you choose who this is");
+  });
+});

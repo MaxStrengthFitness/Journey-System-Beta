@@ -370,8 +370,11 @@ export function useMachineMenuData(
   const clientName = client ? clientDisplayName(client, "") : "";
   const clientFirst = client ? clientFirstName(client, "the client") : "the client";
   // The chart's sentences say the name the client goes by ("How Avery has
-  // done here"); the header says the display name.
-  const ctxName = (client ? clientFirstName(client, "") : "") || "This client";
+  // done here"); the header says the display name. With no name (an open
+  // session before Who's this?), "the client": the name sits mid-sentence
+  // in every one of them, and "This client" read "How This client has done
+  // here" (the open session's screens preview, Oct 9 2026).
+  const ctxName = (client ? clientFirstName(client, "") : "") || "the client";
   const ctx = useMemo<WordsContext>(
     () => ({
       name: ctxName,

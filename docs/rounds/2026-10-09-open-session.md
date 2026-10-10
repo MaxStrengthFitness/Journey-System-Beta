@@ -396,9 +396,27 @@ stored field is `sessions/{id}.heldSetup` (AJ's "3a" OK).
 | 4.3 Who's this? (`bc6be8b6`) | 2 | 13,262 in 808 files | 342 |
 | 4.6 settings held (`eb748fb4`) | 2 | 13,419 in 814 files | 345 |
 | 4.7 the whole-branch review's fixes | 2 | 13,454 in 814 files | 351 |
+| 4.10 the screens preview's fixes | 2 | 13,456 in 814 files | — (no rule changed) |
 
 Run as `TZ=America/New_York npx vitest run --dir src --testTimeout=30000` in
 this worktree on AJ's PC; the rules tests with `npm run test:rules` (JDK 21).
+
+### 4.10 The screens preview (Oct 9 2026)
+
+The round's screens were shot from the real components over example data
+(the git-ignored `harness/screens/`, its Firestore stub now applying writes
+in memory so +, Set up, Save, Who's this? and Finish run through the app's
+own code; nothing reaches Firebase). Two things the shots showed on the
+machine card in an open session, before Who's this?, both fixed with a
+mounted test (`MachineMenu.render.test.tsx`):
+
+- The list of notes said "Loading notes…" for as long as the session had
+  no client: there is no client journal to wait for. It says "The client's
+  notes show here once you choose who this is (Who's this?)"
+  (`note-target.ts` `NOTES_NEED_CLIENT`, `MenuNotes`).
+- The chart's heading read "How This client has done here": the fallback
+  name sits mid-sentence in every sentence that uses it, so it is "the
+  client" (`useMachineMenuData` `ctxName`).
 
 ## 5. Parking list
 

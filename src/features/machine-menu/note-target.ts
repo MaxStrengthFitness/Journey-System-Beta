@@ -325,6 +325,14 @@ export const NOTE_SAVE_WORDS = {
 export const NOTE_NEEDS_CLIENT = "Choose who this is first (Who's this?) · your words stay here";
 
 /**
+ * The card's list of notes in an open session, before Who's this? (the
+ * open session's screens preview, Oct 9 2026): there is no client whose
+ * notes could be read, so nothing is loading. It said "Loading notes…" for
+ * as long as the session had no client.
+ */
+export const NOTES_NEED_CLIENT = "The client's notes show here once you choose who this is (Who's this?)";
+
+/**
  * The line under a note as the box draws it, its "Try again" a button of
  * its own (the words stay in the box, so tapping it sends them again).
  */
