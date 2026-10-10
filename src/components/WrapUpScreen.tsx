@@ -78,6 +78,13 @@ import { NextTimeCard } from "../features/routine-plan/ui/NextTimeCard";
  * `origin: "post_session"`, and the tracker still calls this face
  * "post-session" in code.
  *
+ * Since the floor round (AJ, Oct 9 2026, 3a) the cards run in the order the
+ * trainer acts: TODAY; HOW IT WENT (the journey's sentence, read out while
+ * the client is still there, then where the work went); the next session's
+ * weights and Next time; EFFORT · PROFILE NOTE · PULSE, its own card; and
+ * NEXT, the booking, last. The list below is each piece's story as it was
+ * written, in the order the screen had then.
+ *
  * Thirty seconds, walking the client out. AJ's order of business:
  *   1. TODAY — "here's how they did": one line per machine, today against
  *      last time, the max-strength stars, and where the work went.
@@ -152,7 +159,7 @@ import { NextTimeCard } from "../features/routine-plan/ui/NextTimeCard";
  * colour on it is a token that reads in both: brand blue (`--eq-live*`) for
  * a gain, a save and the focus ring, green (`--eq-ok`) for booked and saved,
  * plum (`--eq-warn`) for a caution (nothing booked, a note left unsaved), the
- * journey grid's gold star for a max-strength set, and sky, amber and neutral
+ * journey grid's gold star for a max-strength set, and sky, indigo and neutral
  * for where the work went (GROUP_TONE says why not the brand's two). Until
  * Sep 27 2026 the Dial, Loudness and the two trays were pinned dark (a
  * `.dark` + `data-theme="dark"` wrapper left over from when the whole screen
@@ -869,8 +876,44 @@ export function WrapUpScreen({
                 <TodayRow key={l.machineId} line={l} coverage={coverage} />
               ))}
             </ol>
+          </Card>
+
+          {/* The rest of the screen a frame later (the iPad round, Oct 6 2026):
+                 the first frame is the title and Today, so the Wrap-up is on
+                 screen at once, and the cards below arrive with the next
+                 render, already rising in as they always did.
+
+                 In the order the trainer acts (AJ, Oct 9 2026, the floor
+                 round's 3a): How it went, read out while the client is still
+                 there; then what the trainer does — the next session's
+                 weights, Next time, Effort, the profile note and Pulse — and
+                 last the next booking. */}
+          {restDrawn && (
+          <>
+          {/* 2 · how it went: the journey, the sentence the trainer reads out,
+                 and where today's work went, one card (3a; they were the
+                 journey card and a block under Today). */}
+          <Card delay={0.08}>
+            <Kicker>How it went</Kicker>
+            <p className={`text-[14px] leading-snug ${journey.enough ? "text-ink-d1 font-semibold" : "text-ink-d3"}`}>
+              {journeySentence(journey, clientFirstName(client))}
+            </p>
+            {journey.standout && (
+              <p className="text-[12px] text-ink-d2">
+                Biggest gain: <b className="text-ink-d1">{journey.standout.name}</b>, {fmtLb(journey.standout.startWeight)} → {fmtLb(journey.standout.nowWeight)} lb (+{journey.standout.pct}%).
+              </p>
+            )}
+            {journey.byGroup.length > 1 && (
+              <div className="flex flex-wrap gap-1.5">
+                {journey.byGroup.map((g) => (
+                  <span key={g.group} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-bg-dark-3 border border-div-d text-ink-d2">
+                    {g.group} <span className={g.pct > 0 ? "text-(--eq-live-text)" : "text-ink-d3"}>{g.pct > 0 ? "+" : ""}{g.pct}%</span>
+                  </span>
+                ))}
+              </div>
+            )}
             {byRegion.length > 0 && (
-              <div className="pt-2 border-t border-div-d">
+              <div className="pt-2 border-t border-div-d" data-testid="where-the-work-went">
                 <div className="flex items-baseline justify-between mb-2">
                   <span className="text-[12px] font-semibold text-ink-d3">Where the work went</span>
                   <span className="tabular-nums text-[12px] text-ink-d2">{Math.round(tonnage).toLocaleString()} lb moved</span>
@@ -891,17 +934,11 @@ export function WrapUpScreen({
             )}
           </Card>
 
-          {/* The rest of the screen a frame later (the iPad round, Oct 6 2026):
-                 the first frame is the title and Today, so the Wrap-up is on
-                 screen at once, and the cards below arrive with the next
-                 render, already rising in as they always did. */}
-          {restDrawn && (
-          <>
           {/* 1b · the next session's weights (the Atlas answers, Oct 2 2026):
                  the trainer sets what the next session loads, up or down; the
                  app never suggests one. Silent when nothing was performed. */}
           {onNextWeight && lines.some((l) => l.outcome === "performed" && l.weight !== null) && (
-            <Card delay={0.08}>
+            <Card delay={0.1}>
               <Kicker>Next session's weights</Kicker>
               <NextWeightCard lines={lines} onSave={onNextWeight} />
             </Card>
@@ -913,7 +950,7 @@ export function WrapUpScreen({
                  them. Written once on the way out, never per tick. No card
                  for a Free session, or when there is nothing to offer. */}
           {nextTime && nextRows.length > 0 && (
-            <Card delay={0.1}>
+            <Card delay={0.12}>
               <Kicker>Next time</Kicker>
               <NextTimeCard
                 snapshot={nextTime}
@@ -926,94 +963,11 @@ export function WrapUpScreen({
             </Card>
           )}
 
-          {/* 2 · the journey */}
-          <Card delay={0.12}>
-            <Kicker>The journey</Kicker>
-            <p className={`text-[14px] leading-snug ${journey.enough ? "text-ink-d1 font-semibold" : "text-ink-d3"}`}>
-              {journeySentence(journey, clientFirstName(client))}
-            </p>
-            {journey.standout && (
-              <p className="text-[12px] text-ink-d2">
-                Biggest gain: <b className="text-ink-d1">{journey.standout.name}</b>, {fmtLb(journey.standout.startWeight)} → {fmtLb(journey.standout.nowWeight)} lb (+{journey.standout.pct}%).
-              </p>
-            )}
-            {journey.byGroup.length > 1 && (
-              <div className="flex flex-wrap gap-1.5">
-                {journey.byGroup.map((g) => (
-                  <span key={g.group} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-bg-dark-3 border border-div-d text-ink-d2">
-                    {g.group} <span className={g.pct > 0 ? "text-(--eq-live-text)" : "text-ink-d3"}>{g.pct > 0 ? "+" : ""}{g.pct}%</span>
-                  </span>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          {/* 3 · next */}
-          <Card delay={0.18}>
-            <Kicker>Next</Kicker>
-            {/* Booked is done (green); nothing booked is a caution (plum);
-                checking and can't-check are neither. The line keeps room for
-                two lines of the sentence, or the 44px door, in every state,
-                so neither the answer nor the door arriving moves anything
-                while the client reads it or the trainer reaches for the
-                controls below.
-
-                The door to Times with room sits INSIDE the line, after the
-                sentence: prominent only when the server confirmed nothing is
-                booked, quiet on every other Wrap-up with something to offer,
-                absent before there is anything. Both are the same height, so
-                one turning into the other moves nothing either. */}
-            <div
-              className={`flex items-center gap-3 min-h-14 py-1.5 px-3 rounded-xl border ${
-                next.state === "booked"
-                  ? "border-(--eq-ok)/40 bg-(--eq-ok-fill)"
-                  : next.state === "none"
-                    ? "border-(--eq-warn)/40 bg-(--eq-warn-fill)"
-                    : "border-div-d bg-bg-dark-3"
-              }`}
-              data-testid="next-booking"
-              data-state={next.state}
-            >
-              {next.state === "booked" ? (
-                <CalendarCheck2 size={18} className="text-(--eq-ok) shrink-0" aria-hidden="true" />
-              ) : next.state === "none" ? (
-                <CalendarX2 size={18} className="text-(--eq-warn) shrink-0" aria-hidden="true" />
-              ) : (
-                <CalendarSearch size={18} className="text-ink-d3 shrink-0" aria-hidden="true" />
-              )}
-              <span
-                className={`min-w-0 flex-1 text-[14px] font-semibold break-words ${next.state === "checking" || next.state === "cant-check" ? "text-ink-d2" : "text-ink-d1"}`}
-                data-testid="next-booking-sentence"
-                role="status"
-                aria-live="polite"
-              >
-                {nextBookingSentence(next, openings.now)}
-              </span>
-              {door === "prominent" && (
-                <button
-                  type="button"
-                  onClick={() => setTimesOpen(true)}
-                  data-testid="times-door"
-                  data-door="prominent"
-                  className="shrink-0 min-h-11 rounded-xl border border-input bg-(--raised) shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) px-4 text-[14px] font-bold text-ink-d1 whitespace-nowrap hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
-                >
-                  <CalendarClock size={16} className="text-(--eq-warn) shrink-0" aria-hidden="true" />
-                  {TIMES_WITH_ROOM}
-                </button>
-              )}
-              {door === "quiet" && (
-                <button
-                  type="button"
-                  onClick={() => setTimesOpen(true)}
-                  data-testid="times-door"
-                  data-door="quiet"
-                  className="shrink-0 min-h-11 px-2 rounded-md text-[14px] font-bold text-(--eq-live-text) whitespace-nowrap underline underline-offset-4 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
-                >
-                  {TIMES_WITH_ROOM}
-                </button>
-              )}
-            </div>
-
+          {/* 3 · effort, the profile note and Pulse: what the trainer does
+                 before the client leaves (3a; they were the lower half of the
+                 Next card, under a small label). */}
+          <Card delay={0.15}>
+            <Kicker>Effort · profile note · Pulse</Kicker>
             {/* A note started during the session and never saved. Said
                 plainly, above everything else on this card, because the
                 trainer is about to walk the client out and this is the last
@@ -1068,8 +1022,6 @@ export function WrapUpScreen({
                 </span>
               </div>
             )}
-
-            <div className="text-[11px] text-ink-d3 font-semibold mt-1">Effort · profile note · Pulse</div>
 
             {/* The effort Dial (Oct 2 2026; it replaced the dose Dial) — one
                 rating for the whole workout, the trainer's own judgement,
@@ -1177,6 +1129,73 @@ export function WrapUpScreen({
                     : renewalDue
                       ? promptText(renewal)
                       : "Renewal conversation"}
+                </button>
+              )}
+            </div>
+          </Card>
+
+          {/* 4 · next: the next booking, last (3a), and its door to Times with room. */}
+          <Card delay={0.18}>
+            <Kicker>Next</Kicker>
+            {/* Booked is done (green); nothing booked is a caution (plum);
+                checking and can't-check are neither. The line keeps room for
+                two lines of the sentence, or the 44px door, in every state,
+                so neither the answer nor the door arriving moves anything
+                while the client reads it or the trainer reaches for the
+                controls below.
+
+                The door to Times with room sits INSIDE the line, after the
+                sentence: prominent only when the server confirmed nothing is
+                booked, quiet on every other Wrap-up with something to offer,
+                absent before there is anything. Both are the same height, so
+                one turning into the other moves nothing either. */}
+            <div
+              className={`flex items-center gap-3 min-h-14 py-1.5 px-3 rounded-xl border ${
+                next.state === "booked"
+                  ? "border-(--eq-ok)/40 bg-(--eq-ok-fill)"
+                  : next.state === "none"
+                    ? "border-(--eq-warn)/40 bg-(--eq-warn-fill)"
+                    : "border-div-d bg-bg-dark-3"
+              }`}
+              data-testid="next-booking"
+              data-state={next.state}
+            >
+              {next.state === "booked" ? (
+                <CalendarCheck2 size={18} className="text-(--eq-ok) shrink-0" aria-hidden="true" />
+              ) : next.state === "none" ? (
+                <CalendarX2 size={18} className="text-(--eq-warn) shrink-0" aria-hidden="true" />
+              ) : (
+                <CalendarSearch size={18} className="text-ink-d3 shrink-0" aria-hidden="true" />
+              )}
+              <span
+                className={`min-w-0 flex-1 text-[14px] font-semibold break-words ${next.state === "checking" || next.state === "cant-check" ? "text-ink-d2" : "text-ink-d1"}`}
+                data-testid="next-booking-sentence"
+                role="status"
+                aria-live="polite"
+              >
+                {nextBookingSentence(next, openings.now)}
+              </span>
+              {door === "prominent" && (
+                <button
+                  type="button"
+                  onClick={() => setTimesOpen(true)}
+                  data-testid="times-door"
+                  data-door="prominent"
+                  className="shrink-0 min-h-11 rounded-xl border border-input bg-(--raised) shadow-(--raised-lift) active:translate-y-px active:shadow-(--press) px-4 text-[14px] font-bold text-ink-d1 whitespace-nowrap hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+                >
+                  <CalendarClock size={16} className="text-(--eq-warn) shrink-0" aria-hidden="true" />
+                  {TIMES_WITH_ROOM}
+                </button>
+              )}
+              {door === "quiet" && (
+                <button
+                  type="button"
+                  onClick={() => setTimesOpen(true)}
+                  data-testid="times-door"
+                  data-door="quiet"
+                  className="shrink-0 min-h-11 px-2 rounded-md text-[14px] font-bold text-(--eq-live-text) whitespace-nowrap underline underline-offset-4 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+                >
+                  {TIMES_WITH_ROOM}
                 </button>
               )}
             </div>
