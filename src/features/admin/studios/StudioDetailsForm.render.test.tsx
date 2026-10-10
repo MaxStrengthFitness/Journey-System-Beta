@@ -38,12 +38,12 @@ const westlake = {
 let host: HTMLDivElement | null = null;
 let root: Root | null = null;
 
-async function mount(canEdit: boolean) {
+async function mount(canEdit: boolean, studio: Studio = westlake) {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
   await act(async () => {
-    root!.render(<StudioDetailsForm studio={westlake} studios={[westlake]} onSave={async () => {}} canEdit={canEdit} />);
+    root!.render(<StudioDetailsForm studio={studio} studios={[studio]} onSave={async () => {}} canEdit={canEdit} />);
   });
   // Past the lookup's 600ms debounce, and the reply after it.
   await act(async () => {
@@ -76,5 +76,26 @@ describe("StudioDetailsForm", () => {
   it("asks Mindbody for a leader, who may change the Site ID (the lookup still works where it is needed)", async () => {
     await mount(true);
     expect(calls).toEqual(["/api/mindbody/locations"]);
+  });
+
+  /*
+   * The cutover hint says what the date turns on (Oct 10 2026). It used to say
+   * every client read as unknown until it was set, which stopped being true on
+   * Sep 26 2026, when coverage came from Mindbody's visit count.
+   */
+  it("says what the cutover date turns on: every session logged in Journey, packages refreshed each night", async () => {
+    const unset = await mount(false);
+    expect(unset.textContent).toContain(
+      "The day this studio moves onto Journey. From then on every session must be logged in Journey, and each night Journey refreshes the studio's packages from Mindbody.",
+    );
+    expect(unset.textContent).not.toContain("reads as unknown");
+    await act(async () => root!.unmount());
+    host?.remove();
+    root = null;
+
+    const set = await mount(false, { ...westlake, journeyCutoverDate: "2026-10-20" } as Studio);
+    expect(set.textContent).toContain(
+      "From this day every session here must be logged in Journey, and each night Journey refreshes this studio's packages from Mindbody. A booking nobody logged no longer counts as a visit.",
+    );
   });
 });

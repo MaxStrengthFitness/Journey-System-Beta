@@ -74,9 +74,9 @@ describe("HqRow", () => {
   });
 
   it("puts a group's rule beside its name", () => {
-    const el = render(<HqGroupHead title="No cutover date yet" note="Every client here reads as unknown." />);
+    const el = render(<HqGroupHead title="No cutover date yet" note="Journey doesn't refresh its packages from Mindbody each night." />);
     expect(el.querySelector("h3")?.textContent).toBe("No cutover date yet");
-    expect(el.textContent).toContain("Every client here reads as unknown.");
+    expect(el.textContent).toContain("Journey doesn't refresh its packages from Mindbody each night.");
   });
 });
 
