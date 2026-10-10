@@ -154,6 +154,9 @@ describe("Last changed", () => {
   it("says the year when it isn't this one, and says so when there is nothing, or the read failed", () => {
     expect(lastChangedLine(rows, { today: "2027-02-01" })).toBe("Last changed Aug 18 2026 · Back pad 3 → 2");
     expect(lastChangedLine([], { today: "2026-10-04" })).toBe("No settings saved yet");
+    // Settings on file, nothing recorded: never "No settings saved yet" over tiles that show some.
+    expect(lastChangedLine([], { today: "2026-10-04", hasSettings: true })).toBe("No changes recorded");
+    expect(lastChangedLine(rows, { today: "2026-10-04", hasSettings: true })).toBe("Last changed Aug 18 · Back pad 3 → 2");
     expect(lastChangedLine(null, { today: "2026-10-04" })).toBe("Changes couldn't be loaded");
     expect(lastChangedLine(rows, { today: "2026-10-04", failed: true })).toBe("Changes couldn't be loaded");
   });

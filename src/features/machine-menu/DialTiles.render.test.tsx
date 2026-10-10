@@ -423,6 +423,9 @@ describe("the heading and a watched session", () => {
     expect(loading.querySelector("[data-last-changed]")).toBeNull();
     const none = await mount(<Tiles saved={{}} history={[]} historyState="ready" />);
     expect(none.querySelector("[data-last-changed]")!.textContent).toBe("No settings saved yet");
+    // Settings on file and no change recorded (Demo Mode's Frodo, Oct 10 2026): never "No settings saved yet" over them.
+    const unrecorded = await mount(<Tiles history={[]} historyState="ready" />);
+    expect(unrecorded.querySelector("[data-last-changed]")!.textContent).toBe("No changes recorded");
   });
 
   it("shows a watched session's values with no buttons at all", async () => {

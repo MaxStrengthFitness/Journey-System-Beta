@@ -163,8 +163,6 @@ export interface MenuNotesProps {
   /** In a session: the tracker's one note draft, and where every change to it goes. */
   draft?: SessionNoteDraft | null;
   onDraftChange?: (draft: SessionNoteDraft) => void;
-  /** A settings change is unsaved: one loud action at a time, so Add steps down to blue. */
-  stepDown?: boolean;
   /** "Add a Health note" after a save for pain or discomfort; a new `nonce` opens the box again. */
   healthNote?: { changeWords: string; nonce: number } | null;
   /** On the profile: open the session a note was written in. */
@@ -209,7 +207,6 @@ export function MenuNotes({
   quotableNumbers = false,
   draft = null,
   onDraftChange,
-  stepDown = false,
   healthNote = null,
   onOpenSession,
   focusNote = null,
@@ -857,7 +854,6 @@ export function MenuNotes({
                   <button
                     type="button"
                     className="mm-add"
-                    data-quiet={stepDown ? "true" : undefined}
                     disabled={busy || !hasText || !author || (target === "floor" && !floorStudio.id)}
                     onClick={() => void add()}
                   >

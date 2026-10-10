@@ -284,14 +284,19 @@ export function pairsWords(pairs: readonly SettingPair[]): string {
  * "No settings saved yet", or, when the read failed, "Changes couldn't be
  * loaded" — never silence that reads as "never changed". The year shows only
  * when it isn't this one.
+ *
+ * With settings on file and no change recorded (`hasSettings`: a demo seed,
+ * a record from before the history was kept), "No changes recorded": it said
+ * "No settings saved yet" over tiles showing Gap 8 and Back Pad 7 (Oct 10
+ * 2026, the settings card).
  */
 export function lastChangedLine(
   rows: readonly SettingRow[] | null,
-  opts: { today: string; failed?: boolean },
+  opts: { today: string; failed?: boolean; hasSettings?: boolean },
 ): string {
   if (opts.failed || !rows) return "Changes couldn't be loaded";
   const row = lastChange(rows);
-  if (!row) return "No settings saved yet";
+  if (!row) return opts.hasSettings ? "No changes recorded" : "No settings saved yet";
   const when = row.day
     ? `${formatShortDate(row.day)}${row.day.slice(0, 4) !== opts.today.slice(0, 4) ? ` ${row.day.slice(0, 4)}` : ""} · `
     : "";

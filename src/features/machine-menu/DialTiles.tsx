@@ -39,8 +39,9 @@
  *     seconds, writes the old values back through the same path with the
  *     reason "Undone" and no second journal copy (setting-draft.ts).
  *   - The heading's right side: "Last changed Aug 18 · Back pad 3 → 2 ›",
- *     which selects that change on the chart; "No settings saved yet"; or
- *     "Changes couldn't be loaded" — never silence that reads as "never".
+ *     which selects that change on the chart; "No settings saved yet" (or,
+ *     with settings on file and no change recorded, "No changes recorded");
+ *     or "Changes couldn't be loaded" — never silence that reads as "never".
  *   - Machine fit's rare line (FitLine) under the tiles, checked against
  *     what is SAVED.
  *
@@ -212,8 +213,6 @@ export interface DialTilesProps {
   onLastChanged?: (row: SettingRow) => void;
   /** "Add a Health note" after a save for pain or discomfort: open the note box with the change typed. */
   onAddHealthNote?: (changeWords: string) => void;
-  /** A change is unsaved (the note box's Add steps down while it is). */
-  onDirtyChange?: (dirty: boolean) => void;
   /**
    * Quick set-up (the Now Bar's Set up): open on the first empty dial's
    * editor at once. Read when the card opens.
@@ -434,7 +433,6 @@ export function DialTiles({
   onSaved,
   onLastChanged,
   onAddHealthNote,
-  onDirtyChange,
   focusDial = false,
   onSaveClose,
   hold = null,
@@ -539,11 +537,6 @@ export function DialTiles({
     if (!readOnly) noteKnownSettings(knownId, machineId, base);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseKey, knownId, machineId, readOnly]);
-
-  useEffect(() => {
-    onDirtyChange?.(dirty);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dirty]);
 
   // Undo lasts ten seconds; the words stay.
   useEffect(() => {
@@ -870,7 +863,9 @@ export function DialTiles({
   const lastRow = history && historyState !== "failed" ? lastChange(history) : null;
   // A read only this iPad's cache answered can't say "never".
   const lastFailed = historyState === "failed" || (historyState === "cache-only" && !lastRow);
-  const lastWords = historyState === "loading" ? null : lastChangedLine(history, { today, failed: lastFailed });
+  // Settings on file with no change recorded (a demo seed, a record from before the history): never "No settings saved yet".
+  const hasSettings = fields.some((f) => clean(base[f.key]) !== "");
+  const lastWords = historyState === "loading" ? null : lastChangedLine(history, { today, failed: lastFailed, hasSettings });
 
   /* ---------------- drawing ---------------- */
 

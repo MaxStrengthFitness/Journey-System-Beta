@@ -17,9 +17,11 @@
  * saved value moved). Opened, they are the six chips; a picked one names
  * itself on the button ("Why: Comfort or fit") and a second tap on it takes
  * it back.
- * Save is the one loud action, the logo orange with navy words (`--eq-go` /
- * `--eq-go-on`); Cancel is quiet, on the left, so the two are never under
- * the same thumb.
+ *
+ * Save is the solid blue with its own words (`--eq-live` / `--eq-live-on`;
+ * the logo orange until Oct 10 2026: every Save is blue, orange is now and
+ * go); Cancel is quiet, on the left, so the two are never under the same
+ * thumb.
  *
  * After Save the strip turns into what became of it (`ChangeResult`): "Seat 5
  * saved · Undo" (Undo for ten seconds), "… saved on this iPad · it sends when

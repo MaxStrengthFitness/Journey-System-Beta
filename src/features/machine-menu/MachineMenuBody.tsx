@@ -14,8 +14,6 @@
  *   - "Last changed …" selects that change's session on the chart;
  *   - the chart's Open note opens the note's thread in Notes;
  *   - "Add a Health note" after a pain save opens the note box;
- *   - while a settings change is unsaved, Add note steps down to blue (one
- *     loud action at a time);
  *   - a note about the machine itself, once added, reads the studio's notes
  *     on the unit again, so the safety strip shows it;
  *   - the header's pill shows while the safety strip is scrolled away, and
@@ -121,7 +119,6 @@ export function MachineMenuBody({
   const layout: MenuLayout = forcedLayout ?? (inline ? (isPhone ? "phone" : "portrait") : menuLayoutFor(viewport.width, viewport.height, isPhone));
 
   const [selected, setSelected] = useState<string | null>(null);
-  const [settingsDirty, setSettingsDirty] = useState(false);
   const [healthNote, setHealthNote] = useState<{ changeWords: string; nonce: number } | null>(null);
   const [focusNote, setFocusNote] = useState<{ id: string; nonce: number } | null>(null);
 
@@ -263,7 +260,6 @@ export function MachineMenuBody({
             onSaved={data.history.reload}
             onLastChanged={onLastChanged}
             onAddHealthNote={onAddHealthNote}
-            onDirtyChange={setSettingsDirty}
             focusDial={focusDial}
             // Save closes the card from every door that has one (AJ's "1a",
             // Oct 10 2026), with Undo in the toast; inline there is none.
@@ -296,7 +292,6 @@ export function MachineMenuBody({
             quotableNumbers={!!data.ctx.quotableNumbers}
             draft={host.door === "session" ? (host.noteDraft ?? null) : undefined}
             onDraftChange={host.door === "session" ? host.onNoteDraftChange : undefined}
-            stepDown={settingsDirty}
             healthNote={healthNote}
             onOpenSession={host.door === "profile" ? host.onOpenSession : undefined}
             focusNote={focusNote}

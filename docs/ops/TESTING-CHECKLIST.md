@@ -3309,6 +3309,8 @@ Round document: `docs/rounds/2026-10-09-floor.md` (AJ's "1a 2a 3a": the six fixe
 - [ ] **Change a value the client already has** (Seat 5 → 6 on a client's own session): the strip says "Seat 5 → 6" with **Why? (optional)** folded and Save right under it. Tap Why?: the six reasons; pick one, and the button says "Why: Comfort or fit". Save without a reason also saves.
 - [ ] **Pain or discomfort** as the reason: Save keeps the card open, with **Add a Health note**.
 - [ ] **On the profile** (a client's Journey grid → a machine's name): the same, and Save closes it there too.
+- [ ] **Save and Add note on the card are blue**, light and dark; the only orange on the floor is Start session and Finish.
+- [ ] **A client with settings and no recorded change** (Demo Mode's Frodo Baggins, Leg Extension): the Settings heading says "No changes recorded", never "No settings saved yet" over the values.
 
 **Finish**
 - [ ] **Finish:** the question reads "Finish {first name}'s session?" on one line, with nothing under it. **The keyboard does NOT come up by itself.** Tap the note box: now it does, and the box's edge is blue, never orange. The hint says "On the next four briefings." The link at the bottom says **Scrap session**.

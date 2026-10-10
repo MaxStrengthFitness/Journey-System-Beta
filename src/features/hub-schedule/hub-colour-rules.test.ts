@@ -187,8 +187,7 @@ const GO: Array<[string, string, string | null, string]> = [
   ["features/client-directory/client-directory.css", ".cd-start", ".cd-start:hover", "eq"],
   ["features/admin/admin.css", ".adm-btn--hero", ".adm-btn--hero:not(:disabled):hover", "adm"],
   ["features/machine-fit/ui/machine-fit.css", ".fit-btn--hero", ".fit-btn--hero:hover", "eq"],
-  ["features/machine-menu/machine-menu.css", ".mm-save", ".mm-save:hover", "eq"],
-  ["features/machine-menu/machine-menu.css", ".mm-add", ".mm-add:hover", "eq"],
+  // The machine card's Save and Add note are the solid blue since Oct 10 2026 (buttons-depth.test.ts, SOLID).
   ["features/routines/routines.css", ".rt-btn--hero", ".rt-btn--hero:hover", "eq"],
   ["features/routines/routines.css", ".rt-routine--today .rt-badge", null, "eq"],
   ["features/routines/routines.css", ".rt-today", null, "eq"],

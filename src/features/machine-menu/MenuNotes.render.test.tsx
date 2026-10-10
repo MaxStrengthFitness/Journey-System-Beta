@@ -270,12 +270,6 @@ describe("in a session, the box is the tracker's one draft", () => {
     expect(byText(host, "Try again")).toBeNull();
     expect(box(host).value).toBe("Knee tracks in at the top");
   });
-
-  it("steps Add down to blue while a settings change is unsaved", async () => {
-    const host = await mount(<Session onChange={vi.fn()} stepDown />);
-    await type(box(host), "Knee tracks in at the top");
-    expect(byText(host, "Add note")!.getAttribute("data-quiet")).toBe("true");
-  });
 });
 
 describe("filing and loudness", () => {

@@ -395,7 +395,9 @@ const SOLID: [string, string, string][] = [
   ["features/routine-builder/routine-builder.css", ".rb-bar__btn--primary", "rb"],
   ["features/hub-schedule/day-header.css", '.hd-btn[data-primary="true"]', "eq"],
   ["features/machine-menu/machine-menu.css", ".mm-btn--live", "eq"],
-  ["features/machine-menu/machine-menu.css", '.mm-add[data-quiet="true"]', "eq"],
+  // The machine card's Save and Add note, blue since Oct 10 2026 (every Save is blue; orange is now and go).
+  ["features/machine-menu/machine-menu.css", ".mm-save", "eq"],
+  ["features/machine-menu/machine-menu.css", ".mm-add", "eq"],
 ];
 
 describe("a solid blue button drops a blue-tinted shadow and keeps a top light", () => {
@@ -428,9 +430,7 @@ const GO: [string, string, string, string?][] = [
 /** Every other orange button: Go's depth in the button voice. */
 const GO_DEPTH: [string, string, string, string][] = [
   ["features/admin/admin.css", ".adm-btn--hero", ".adm-btn", "adm"],
-  // The machine menu's Save and Add note (the sheet's .eq-btn--hero went with it).
-  ["features/machine-menu/machine-menu.css", ".mm-save", ".mm-save", "eq"],
-  ["features/machine-menu/machine-menu.css", ".mm-add", ".mm-add", "eq"],
+  // The machine menu's Save and Add note left this list for the solid blue on Oct 10 2026.
   ["features/machine-fit/ui/machine-fit.css", ".fit-btn--hero", ".fit-btn", "eq"],
   ["features/routines/routines.css", ".rt-btn--hero", ".rt-btn", "eq"],
   // AJ's 2A (Oct 5 2026): upright, 14/700, with Go's glow, top light and press.
@@ -571,8 +571,8 @@ describe("a hover that changes a fill is a pointer's only", () => {
 
   it.each([
     ["features/client-notes/notes-page.css", ".nt-btn--solid", "var(--eq-live)"],
-    ["features/machine-menu/machine-menu.css", ".mm-save", "var(--eq-go)"],
-    ["features/machine-menu/machine-menu.css", ".mm-add", "var(--eq-go)"],
+    ["features/machine-menu/machine-menu.css", ".mm-save", "var(--eq-live)"],
+    ["features/machine-menu/machine-menu.css", ".mm-add", "var(--eq-live)"],
     ["features/routines/routines.css", ".rt-btn--hero", "var(--eq-go)"],
     ["features/studio-tasks/studio-tasks.css", ".st__btn--primary", "var(--st-live)"],
     ["features/studio-tasks/studio-tasks.css", ".st__btn--done", "var(--st-done)"],

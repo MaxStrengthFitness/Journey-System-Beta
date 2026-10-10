@@ -23,9 +23,9 @@
        last-time figure a headline figure in it; the block heads speak the
        panel-title voice, 17/700; nothing is in capitals;
      - every button is RAISED on its 3:1 edge (a fill a hair lighter than
-       the card, a contact lift and a top light) and presses in; Save and
-       Add note take Go's depth in the 14/700 button voice; a solid blue
-       its own glow; a text button never lifts;
+       the card, a contact lift and a top light) and presses in; a solid
+       blue (Save and Add note since Oct 10 2026) drops its own glow, in
+       the 14/700 button voice; a text button never lifts;
      - a box inside the card is a WELL (the well tone, an inner shadow, no
        edge): the setting tiles, a big jump's positions, a note, Every
        session's table, a status line; a field keeps its 3:1 edge and sinks;
@@ -962,53 +962,49 @@
   color: var(--eq-ink-2);
 }
 
-/* The one loud action: Save on the change strip, the logo orange with navy
-   words, in Go's depth (a short orange glow and a white top light), never
-   Go's words: the slanted capitals are Start session's alone. The button
-   voice, 14/700 (it was 17/700), at its 56px. */
+/* Save on the change strip and Add note: the solid blue with its own words
+   and its depth (a blue-tinted lift and a top light), in the button voice,
+   14/700, at 56px. They were the logo orange, "the one loud action" (the
+   Navy Frame's open question 2); AJ's rule is that every Save is blue and
+   orange is only now and go (Start, Finish), so on the floor the one orange
+   is Finish (Oct 10 2026, the settings card: "take your pick"). Add note
+   stepped down to blue while a settings change was unsaved, one loud action
+   at a time; both blue, there is nothing to step down from. */
 .mm-save {
   min-height: 56px;
   padding: 0 24px;
   border-radius: 12px;
   border: 0;
-  background: var(--eq-go);
-  color: var(--eq-go-on);
-  box-shadow: var(--eq-glow-go), var(--eq-go-light);
+  background: var(--eq-live);
+  color: var(--eq-live-on);
+  box-shadow: var(--eq-glow-live), var(--eq-solid-light);
   font-size: 14px;
   font-weight: 700;
   overflow-wrap: anywhere;
 }
 
+/* A filled button restates its fill: an iPad keeps :hover after a tap. */
 .mm-save:hover {
-  background: var(--eq-go);
-  color: var(--eq-go-on);
+  background: var(--eq-live);
+  color: var(--eq-live-on);
 }
 
-/* Add note: loud too, and blue while a settings change is unsaved (one loud
-   action at a time), each in its own colour's depth. */
 .mm-add {
   min-height: 56px;
   padding: 0 24px;
   border-radius: 12px;
   border: 0;
-  background: var(--eq-go);
-  color: var(--eq-go-on);
-  box-shadow: var(--eq-glow-go), var(--eq-go-light);
+  background: var(--eq-live);
+  color: var(--eq-live-on);
+  box-shadow: var(--eq-glow-live), var(--eq-solid-light);
   font-size: 14px;
   font-weight: 700;
   overflow-wrap: anywhere;
 }
 
 .mm-add:hover {
-  background: var(--eq-go);
-  color: var(--eq-go-on);
-}
-
-.mm-add[data-quiet="true"],
-.mm-add[data-quiet="true"]:hover {
   background: var(--eq-live);
   color: var(--eq-live-on);
-  box-shadow: var(--eq-glow-live), var(--eq-solid-light);
 }
 
 /* Each presses in: a transform, never an animated shadow. */
