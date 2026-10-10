@@ -1,10 +1,12 @@
 # The open session: the FileMaker floor, and settings that go in fast (Oct 9 2026)
 
-**Status: built on `oct9/open-session`, with the whole-branch review's
-fixes (§4.7)**, on master's `546bb0aa` (the first-session rounds). It is not
-pushed. It ships after AJ's iPad walk of the first-session round (Round 65),
-as agreed, with a rules and an index deploy first (§4.8). The parking list is
-§5.
+**Status: built, reviewed and measured on `oct9/open-session`** (§4), on
+master's `546bb0aa` (the first-session rounds), with its ship script,
+`scripts/ship/ship-open-session.ps1` (§4.8). It is not pushed and nothing of
+it is deployed. It ships after AJ's iPad walk of the first-session round
+(Round 65), as agreed: an index and a rules deploy first, then the push, then
+this round's own walk (Round 66) before Render's Manual Deploy. The parking
+list is §5; what goes into `CLAUDE.md` once its trim is in is §6.
 
 ## 1. What AJ asked
 
@@ -93,8 +95,23 @@ in the code:
 
 ## 4. Build log
 
-One commit per phase, each typechecked on its own (baseline 2). Measurements at
-the end (§4.9).
+On `oct9/open-session`, built on master's `546bb0aa` (the first-session
+rounds; still master on GitHub on Oct 9 2026, `git ls-remote`). One commit a
+phase, each typechecked on its own (baseline 2), so any one can be reverted
+alone. The measurements are §4.9; what was not done is §4.11.
+
+| Commit | Subject | What it is |
+| --- | --- | --- |
+| `8b86ff41` | Docs: the open session, what was found and AJ's picks | This document's §1 to §3: AJ's words, the six findings, his "1b 2a 3a" |
+| `aae89ec8` | Open session: Start issues one write and moves on, and the session can be found again | §4.1: one `setDoc`, nothing seeded, the Session tab and the way back (findings 2 and 6) |
+| `ce7d9a55` | Open session: the FileMaker floor, every machine showing and today's list built by + | §4.2: AJ's "1b", the floor as a view |
+| `bc6be8b6` | Open session: Who's this? at any time, and Assign that writes the session and its sets in one batch | §4.3: finding 3, and the exerciseLogs rule that lets a set take its session's client (8 rules tests) |
+| `f98f5976` | Session: Start from a routine in the grid's corner, laying a routine's machines in order | §4.4: the builder on demand, today's list only |
+| `88d8afd8` | Session: Set up opens the card on the first empty dial, and the dial takes a typed number | §4.5: AJ's "2a", finding 5 |
+| `eb748fb4` | Open session: settings kept on the session until the client is chosen, then saved to them | §4.6: AJ's "3a", finding 4, `heldSetup` (3 rules tests) |
+| `95ffb20c` | Review: the open session round's fixes | §4.7: the whole-branch review, the sessions update rule (6 rules tests) |
+| `3f5c97e1` | Screens: fixes found in the open-session preview | §4.10: two words on the machine card before Who's this? |
+| this commit | Docs and ship-open-session.ps1: the open session round, measured | §4.8, §4.9, §4.11, §6; the READMEs, the traps, Round 66, the roadmap, the index, the changelog; `scripts/ship/ship-open-session.ps1` and `scripts/check-live-rules.ts` |
 
 ### 4.1 Start and the way back (findings 2 and 6; `aae89ec8`)
 
@@ -363,29 +380,111 @@ area:
   KNOWN-TRAPS, the features index, `setup-plan.ts`, `undoOnto` and the
   unsaved-changes README corrected.
 
-### 4.8 How it ships
+### 4.8 How to ship
 
-There is no ship script for this round yet: `scripts/ship/ship-open-session.ps1`
-is written when the round is closed, after AJ's walk of the first-session
-round (Round 65) and this round's own iPad walk. It must carry, in the deploy
-order:
+A push reaches no iPad (Render deploys by hand, `CLAUDE.md` → Environments),
+and nothing of this round is on master yet. The ship script is
+`scripts/ship/ship-open-session.ps1`, run from this branch's folder,
+`.claude\worktrees\first-session-routine-plan-ui-2f8dc1` (on
+`oct9/open-session`; do not switch branches by hand).
 
-1. **The index** (`npx firebase deploy --only firestore:indexes`): one new
-   composite on `sessions`, `hostedAtStudioId`, `isUnassigned`, `status`,
-   `createdAt` descending, the open-session listener's newest twenty. Without
-   it Enterprise sorts outside an index on every snapshot.
-2. **The rules tests, then the rules** (`npm run test:rules`, then `firebase
-   deploy --only firestore:rules`): the exerciseLogs update rule
-   (`logTakesItsSessionsClient`, `logLeavesItsOpenSessionsClient`) and the
-   sessions update rule (`openSessionWriteOk`). Rules FIRST: the app's Who's
-   this? batch is refused under the old rule, and the old app never writes
-   what the new rules refuse (it never writes `heldSetup`, and it never
-   assigns a session in a batch).
-3. The push, then on Render: Manual Deploy on the web service and Manual Build
-   on both cron jobs (a push deploys nothing there).
+**Where production stood when this was written** (Oct 9 2026, about 8:50 PM
+Eastern, read only): the web service serves `546bb0a` (`/version.json`
+says `2026-10-09T16:31:34Z-546bb0a`), so the first-session rounds are live;
+the rules live on the named database are master `546bb0aa`'s
+`firestore.rules`, the same text (released 12:15 PM Eastern; read with
+`scripts/check-live-rules.ts`), so the first-session golive ran; the
+starting routines' index (`routinePresets`, tier and scope) is READY; this
+round's `sessions` index is not there yet. Whether the seed ran and Round 65
+was walked is not recorded here: ask AJ.
 
-No Cloud Function; no Mindbody call, timer or cadence change. The one new
-stored field is `sessions/{id}.heldSetup` (AJ's "3a" OK).
+1. **Round 65 first.** AJ agreed this round ships after his iPad walk of the
+   first-session round (`docs/ops/TESTING-CHECKLIST.md`, Round 65). Since
+   Render serves those rounds now, it can be walked on the live app.
+2. **Prepare.** `powershell -ExecutionPolicy Bypass -File
+   .\scripts\ship\ship-open-session.ps1 -Stage prepare`. It changes nothing
+   in production or in git (it writes only `logs\`, `dist\` and `build\`): the
+   branch and a clean tree; master on GitHub, read with `git ls-remote`,
+   `546bb0aa` or already this branch's head (anything else stops it); the
+   branch fast-forwards it; the rules and the index changed and holding this
+   round's; no function changed; the Firebase login; the restore tag free;
+   with the service-account key, the live rules read and found to be
+   `546bb0aa`'s or this branch's (anything else stops it: rules from
+   somewhere else were deployed); no Windows line ends; the case check; the
+   typecheck count; the suite in Eastern time; the functions; the three
+   builds and the first screen's budget; no perf lab marker; the rules tests.
+   It ends PREPARE PASSED and records the commit it tested; golive refuses
+   any other.
+3. **Golive.** The same line with `-Stage golive`. It asks for GO, then, in
+   this order, stopping at the first failure and saying what is live:
+   1. **the index**, `npx firebase deploy --only firestore:indexes --project
+      prod --non-interactive`: one new composite on `sessions`
+      (`hostedAtStudioId`, `isUnassigned`, `status`, `createdAt` descending),
+      the open-session listener's newest twenty. Without it Enterprise sorts
+      outside an index on every snapshot. It never deletes an index (never
+      `--force`: the two TTL policies are not in the file);
+   2. **the rules tests again, then the rules**, `npx firebase deploy --only
+      firestore:rules --project prod`: the exerciseLogs update rule, which is
+      Assign's (`logTakesItsSessionsClient`: a set with no client takes its
+      session's client only in the write that gives the session that client
+      and closes it; `logLeavesItsOpenSessionsClient`: a set of a still-open
+      session may let go of a client after a refused assign), and the
+      sessions update rule (`openSessionWriteOk`: `heldSetup` only while the
+      session is open, and an open session given only a client on record).
+      Rules FIRST: under the rules live now every Who's this? batch is
+      refused and the session stays open with a toast. They are safe for the
+      app on Render now: it never writes `heldSetup`, never assigns in a
+      batch, and assigns only a client that exists (its sets were refused
+      before and still are);
+   3. **the live check.** The ship scripts read the live ruleset with
+      gcloud's sign-in, and gcloud is not on AJ's PC. So golive runs
+      `scripts/check-live-rules.ts` with the service-account key from the
+      project folder (read only: every request a GET, no file written; the
+      check Claude ran by hand for the first-session golive on Oct 9 2026),
+      which must say the live ruleset is this branch's `firestore.rules`.
+      It also prints the console check: Firebase console → Firestore → the
+      named database (`ai-studio-32cbbdcc-…`) → Rules → the newest release
+      (today), Ctrl F `logTakesItsSessionsClient` and `openSessionWriteOk`.
+      Without the key, or if the script can't run, AJ makes the console check
+      and types LIVE;
+   4. **the restore tag** `restore/2026-10-09-before-open-session` =
+      `546bb0aa`, pushed if it isn't on GitHub;
+   5. **the push**, `git push origin oct9/open-session:master`, fast-forward
+      only, and only while master is still `546bb0aa` (asked of GitHub again
+      just before); when master is already the branch, nothing is pushed.
+4. **The index built**, in minutes: the same check with `--index
+   "sessions(hostedAtStudioId, isUnassigned, status, createdAt desc)"` says
+   READY (golive prints the line), or Firebase console → Firestore → the
+   named database → Indexes says Enabled. Until then the listener scans, as
+   any query without its index does: nothing breaks.
+5. **This round's iPad walk, FIRST, before Render**: Round 66 of
+   `docs/ops/TESTING-CHECKLIST.md`, against this PC (`npm run dev` in this
+   folder; Safari at `http://<the PC's Wi-Fi address>:3000`, never the Home
+   Screen icon, which is the live app). The dev server writes to production,
+   whose rules are now this round's, so Who's this? works there. AJ's rule
+   is at most two rounds shipped before an iPad walk.
+6. **Render**: Manual Deploy on the web service (then `curl.exe -s
+   https://maxstrength-app-beta.onrender.com/version.json` names the new
+   build), and Manual Build on BOTH cron jobs, `journey-cron-renewals` and
+   `journey-cron-leaderboards`. Of what this round changed, the server's and
+   the crons' bundles take in only the Directory's row and the name it
+   moved into `lib/client-name.ts` (`clientDirectoryName`, the same words),
+   so nothing they do changes; build them anyway, because a cron left out
+   keeps running its old commit, and all three stay on one. A push deploys
+   nothing there.
+7. The iPads pick the new version up by themselves on the Hub, never over a
+   session or while typing. Front-desk computers: reload the page.
+
+**To undo**: `git push --force origin
+restore/2026-10-09-before-open-session:master`, then the same three Render
+buttons. The rules and the index can stay: the app before this round never
+writes what they refuse. A session the new app left holding `heldSetup` is
+harmless to the old app (it never reads the field); its values stay on the
+session, unsaved to any client.
+
+No Cloud Function; no Mindbody call, timer or cadence change; nothing
+contacts anyone. The one new stored field is `sessions/{id}.heldSetup`
+(AJ's "3a" OK).
 
 ### 4.9 Measurements
 
@@ -395,11 +494,29 @@ stored field is `sessions/{id}.heldSetup` (AJ's "3a" OK).
 | 4.2 the FileMaker floor (`ce7d9a55`) | 2 | 13,216 in 806 files | — |
 | 4.3 Who's this? (`bc6be8b6`) | 2 | 13,262 in 808 files | 342 |
 | 4.6 settings held (`eb748fb4`) | 2 | 13,419 in 814 files | 345 |
-| 4.7 the whole-branch review's fixes | 2 | 13,454 in 814 files | 351 |
-| 4.10 the screens preview's fixes | 2 | 13,456 in 814 files | — (no rule changed) |
+| 4.7 the whole-branch review's fixes (`95ffb20c`) | 2 | 13,454 in 814 files | 351 |
+| 4.10 the screens preview's fixes (`3f5c97e1`) | 2 | 13,456 in 814 files | — (no rule changed) |
 
-Run as `TZ=America/New_York npx vitest run --dir src --testTimeout=30000` in
-this worktree on AJ's PC; the rules tests with `npm run test:rules` (JDK 21).
+**Measured for the ship** on Oct 9 2026, 8:40 to 8:55 PM Eastern, on
+`3f5c97e1` (this commit adds a script under `scripts/` and changes no app
+code), in this worktree on AJ's PC with its files in LF:
+
+| Check | Result |
+| --- | --- |
+| The suite, `TZ=America/New_York npx vitest run --dir src --testTimeout=30000` | **13,456** passing in **814** files (master `546bb0aa`: 13,132 in 802) |
+| Typecheck, `npx tsc --noEmit` | **2**, the baseline (`clinical-review/charts.tsx`, `EditTrainerModal.tsx`) |
+| Rules tests, `npm run test:rules` | **351** passing (334 on master: 8 for Who's this?, 3 for the held set-up, 6 from the review) |
+| The functions, typecheck and tests | Clean; **263** passing and 1 skipped in 14 files (none of theirs changed) |
+| Production build, `npx vite build`, then `npm run check:bundle` | Clean; the first screen **464.1 KB gzip** of the 480 budget (8 files, 1,605.8 KB raw; 462.2 on master) |
+| The crons and the server, `npm run build:backend` and the server's esbuild | Clean |
+| The perf lab's markers in `dist/` | None |
+| Windows line ends, `git ls-files --eol \| grep -c w/crlf` | **0** |
+| Two names differing only by case | None |
+
+AJ's own `npm run test:rules` is the run that counts; the ship script runs
+it twice (prepare, and golive before the rules go out). On this PC every
+rules run leaves its emulator on port 8080 (seen again on Oct 9 2026): stop
+it before the next run, as the script offers to.
 
 ### 4.10 The screens preview (Oct 9 2026)
 
@@ -417,6 +534,36 @@ mounted test (`MachineMenu.render.test.tsx`):
 - The chart's heading read "How This client has done here": the fallback
   name sits mid-sentence in every sentence that uses it, so it is "the
   client" (`useMachineMenuData` `ctxName`).
+
+### 4.11 Not done, and why
+
+- **Nothing is pushed or deployed.** The push, the index and the rules are
+  golive's, which AJ runs; Render's three buttons are his. The round ships
+  after his Round 65 walk, as agreed, and its own walk (Round 66) comes before
+  Render (§4.8).
+- **The old ghost settings records stay where they are.** Open sessions
+  before this round saved their settings to
+  `clientMachineSettings/_{machineId}` with `clientId: ""`, and their
+  setting-history rows with `clientId: ""` (finding 4). Nothing writes them
+  any more (`saveSettings`, `acknowledgeFlag` and `addMachineNote` refuse an
+  empty client), and nothing reads them: every reader asks for a client's id,
+  and no client's id is empty. They are harmless and are left in place;
+  nothing deletes data, and their values belonged to no one, so there is
+  nothing to move.
+- **No production data was read for this round's work** beyond the live
+  rules' text, the indexes' states and `/version.json` (§4.8), all read only.
+- **`CLAUDE.md` is not edited.** Its trim is waiting for AJ's review on
+  `oct9/claude-md`; §6 holds this round's lines in the trim's short form, to
+  go in after it.
+- **The parking list (§5)** was left as found, by AJ's protocol: each item
+  is outside this round's area or needs his call. Two are his to answer:
+  whether Next time builds Routine A with a laid starting routine's plan,
+  and whether a never-read client's floor opens offline.
+- **The Hub peek's "Open session"** keeps its name: renaming it is the Hub's
+  next round (§5).
+- **No new Cloud Function, Mindbody call, timer or cadence.** Practice
+  profiles and free-form sessions stay a round of their own (the
+  first-session round's §7.5).
 
 ## 5. Parking list
 
@@ -466,5 +613,52 @@ why it matters.
 - **Add a client offers home studios the trainer can't add a client at.**
   `components/CreateClientModal.tsx` (`studiosInRealm`): the rules refuse the
   write; the assign now fails with it, but the form shouldn't offer them.
-- **CLAUDE.md has no row for `src/features/open-session/`.** Add it when the
-  round is closed (the features index has it).
+- **CLAUDE.md has no row for `src/features/open-session/`.** The row, the
+  decision and the Tests figure are written in §6, in the trim's short form,
+  for after AJ's review of the trim (the features index has the row now).
+
+## 6. For CLAUDE.md after the trim
+
+`CLAUDE.md` is not edited in this round: its trim is waiting for AJ's review
+on `oct9/claude-md` (the full decisions move to `docs/DECISIONS.md`;
+`CLAUDE.md` keeps one map line per area of at most 320 characters, and each
+decision at most 650 characters with ONE short AJ quote and a "More" link).
+Once the trim is in, these go in, in that form. Each line below was measured
+against those limits.
+
+**The map ("Where things are").** One new row, and the clause this round
+adds to two rows the trim keeps (if the trimmed row reads differently, keep
+its words and add the clause in its place):
+
+```
+| The open session | `src/features/open-session/` (Oct 9 2026, AJ's "1b 2a 3a"): Start (`start.ts`); Who's this? (`tracker/ClientSelectionDialog`) and Assign's one batch (`assign.ts`); `heldSetup` until then (`held-setup.ts`); the floor a view (`journey-grid`). README first; `docs/rounds/2026-10-09-open-session.md` |
+```
+
+```
+| The machine menu (one card per client and machine) | `src/features/machine-menu/` (Oct 4 2026): safety, the settings, Notes, the Staircase, in a session and on the profile. The Now Bar's **Set up** opens it on the first empty dial, on the number pad (`journey-grid/setup-button.ts`, Oct 9 2026). README first |
+```
+
+```
+| A new client's first session and a routine's plan | `src/features/routine-plan/` (Oct 7 to 9 2026): the plan, starting routines, Can't do, B, Next time. **Start from a routine…** in the session's corner lays one on today's list and writes no routine (`start-from.ts`, Oct 9 2026). README first |
+```
+
+**The decision** ("Decisions already made", Product):
+
+```
+- **An open session is a FileMaker session, with the routine builder on demand** (AJ, Oct 9 2026: "feel most like a filemaker session"; "1b 2a 3a"). Every machine on the floor shows and + builds today's list; the session records only what was added, never the floor. Start from a routine… lays one on today's list and writes no routine. Set up opens the machine card on the first empty dial. Settings typed before the client is chosen stay on the session (`heldSetup`) and reach the client with the sets in Who's this?'s one batch. [More](docs/DECISIONS.md#the-open-session)
+```
+
+**Its full text, for `docs/DECISIONS.md`:**
+
+```
+### The open session
+
+**An open session is a FileMaker session, with the routine builder on demand** (AJ, Oct 9 2026: "i think the open session should honestly feel most like a filemaker session, its the barebones but also i want to be able to take advantage of our routine builder so we can use it if we wanted too. the only thing is with the new routine is a client has no settings so you need to be able to adjust the settings quickly while running the routine"; his picks "1b 2a 3a"; `docs/rounds/2026-10-09-open-session.md`). The open session is the Client Directory's Open session: a session started before the client is chosen (`isUnassigned`), in `src/features/open-session/`. **1b, the FileMaker floor:** every machine on the studio's floor shows, in its walking order, and + adds one to today's numbered list in the order done; out of service stays on the floor with no +; a client session with no routine gets the same floor, so every routine-less session looks alike. The floor is a VIEW: the session records only what was added (`sessionMachineIds`), never the floor, so after Who's this? the Wrap-up's Next time can start Routine A from it. **Start from a routine…** in the grid's corner lays a routine's machines on today's list in one tap (the client's Routine A or B once known, the studio's starting routines, its templates, head office's), naming what the floor lacks, what the client can't do and what is out of service; it writes no routine, and Routine A still comes only through Next time. **2a, quick settings through the one machine card:** the Now Bar's **Set up** ("Set up · 2 not set" on a first time, the settings once set) opens the card on the first empty dial, on the number pad; Next walks the empty dials; "Use studio standard for all" from two empty dials with a standard; Save set-up closes the card with a ten-second Undo (two dials: three taps and the digits, from six). An empty dial is always typed, and the editor is judged once as it opens. **3a, settings held on the session:** before the client is chosen, the card keeps its values at `sessions/{id}.heldSetup.{machineId}` (AJ's pick is the OK for that one new field), never on a ghost record; Who's this? (any time from the session bar, or at Finish) gives the session, every set and the held settings to the client in ONE batch, never awaited, deleting `heldSetup` in it, and the session carries on as theirs: their settings, history, the ordinary Finish, the Wrap-up and Next time. The rules hold it: a set's client changes only in the write that gives its open session that client and closes it; `heldSetup` only while the session is open; an open session is given only a client on record. Start is one write, never awaited, one open session a trainer, and an abandoned one is asked about, never taken up silently. No write names an empty client. A reason for changing saved settings is asked, never required, on Programming → Setup too.
+```
+
+**The Tests figure** (the Commands table's Tests row; the row it replaces
+moves to `docs/KNOWN-TRAPS.md#baselines` word for word, as each round does):
+
+```
+**13,456** passing in 814 files on `oct9/open-session` (Oct 9 2026: the open session on master's `546bb0aa`; typecheck 2; rules tests **351**; functions 263 passing and 1 skipped; first screen 464.1 KB gzip; `TZ=America/New_York npx vitest run --dir src --testTimeout=30000` in a worktree on AJ's PC, its files in LF; ships with `scripts/ship/ship-open-session.ps1`)
+```

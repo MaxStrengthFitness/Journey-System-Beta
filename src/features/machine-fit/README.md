@@ -119,6 +119,18 @@ says when a start was first recorded, and a correction changes the number, not
 that day. Never journalled, like every weight. It lives outside the keypad's
 run of cells, so Quick entry keeps the chart's order.
 
+**A reason for changing saved settings is asked, never required** (the open
+session round, Oct 9 2026, finding 5; AJ, Oct 8 2026: "You should be able to
+change that and make the call as a trainer because you're training them that
+day"). Set up's Save shows "Why the change? (optional)" when values that were
+already saved change (`setup-plan.ts` `needsReason`), and saves without one:
+`reasonFor` writes "Settings update", as the machine card's save does. It was
+"(required)" here, the last place a settings reason was. A first set-up asks
+none. And no review of a setting is written without a client:
+`acknowledgeFlag` (`setup-save.ts`) throws before writing when it has none,
+as `saveSettings` does (an open session's settings are kept on the session
+until Who's this?, `features/open-session/README.md`).
+
 **Sentences, not scores.** `MIN_CLIENTS` (5) is the named minimum, from machine
 trends. Below it a suggestion says how many similar clients there are instead of
 quoting them; a report average is `null` and the screen says "not enough data

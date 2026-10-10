@@ -17,12 +17,13 @@ pile brought up to Sep 27 2026 after the voice review follow-up, and the
 follow-up pile again after Openings the same night, after the directory and
 opportunities round on Sep 28, and after the calm Hub the same night. The
 status block below and the items that had been finished were checked against
-`origin/master` on Oct 7 2026; the follow-up pile is still as the Sep 28–29
+`origin/master` on Oct 7 2026, and the status block again on Oct 9 2026
+after the open session round; the follow-up pile is still as the Sep 28–29
 rounds left it, so check a round's own document before trusting a line there.*
 
 ---
 
-## Where the project stands (checked Oct 7 2026)
+## Where the project stands (checked Oct 9 2026)
 
 **Beta is Nov 1 2026** for the corporate locations, and **Jan 1 2027** for the
 first franchises, rolled out in small batches (AJ, Sep 22). There are about
@@ -36,9 +37,11 @@ and a slow Wednesday is 4; and clients arrive carrying **10 to 200+ sessions
 each** of FileMaker history.
 
 Journey is **pre-alpha**. AJ is the only user; no trainer has run a real
-session on it. `origin/master` is `cf4a2ff8` (Oct 7 2026) and the Render web
-service serves that build, deployed Oct 7 2026. **A push to `master` does not
-deploy it** (checked Oct 6 2026: Render has no access to the repo). Every
+session on it. `origin/master` is `546bb0aa` (Oct 9 2026, the first-session
+rounds) and the Render web service serves that build (`/version.json`,
+`2026-10-09T16:31:34Z-546bb0a`, checked Oct 9 2026); the rules live on the
+named database are that commit's `firestore.rules`, the same text (read with
+`scripts/check-live-rules.ts`). **A push to `master` does not deploy it** (checked Oct 6 2026: Render has no access to the repo). Every
 deploy is AJ pressing Manual Deploy on the web service and Manual Build on
 both cron jobs (`journey-cron-renewals`, `journey-cron-leaderboards`);
 `docs/ops/RENDER-DEPLOYMENT.md` has the current state.
@@ -51,8 +54,8 @@ still worth checking — see **Confirm before anything else**, below.
 | | |
 | --- | --- |
 | Typecheck (`npx tsc --noEmit`) | **2** errors — the baseline (`charts.tsx`, `EditTrainerModal.tsx`). Compare the count; never expect zero |
-| Tests (`TZ=America/New_York npx vitest run src`) | **13,132** passing in 802 files on `claude/first-session-routine-plan-ui-2f8dc1`, Oct 9 2026 (12,385 in 771 on master, Oct 7); `CLAUDE.md` keeps the running count |
-| Branch | everything is on `master` except `claude/first-session-routine-plan-ui-2f8dc1` (the first session and a routine's plan, Rounds 1 and 2 with the review's and the screens preview's fixes, Oct 9 2026; it replayed and replaces `oct7/first-session`), measured and ready to ship with `scripts/ship/ship-first-session.ps1` (AJ, Oct 8 2026: "you can push it directly to master thats fine"). Render's Manual Deploy waits for the seed and one iPad walk, Round 65 (`docs/rounds/2026-10-08-first-session-screens.md` §7.6) |
+| Tests (`TZ=America/New_York npx vitest run src`) | **13,456** passing in 814 files on `oct9/open-session`, Oct 9 2026 (13,132 in 802 on master `546bb0aa`); `CLAUDE.md` keeps the running count (its row waits for the trim, `docs/rounds/2026-10-09-open-session.md` §6) |
+| Branch | everything is on `master` except `oct9/open-session` (the open session, AJ's "1b 2a 3a", Oct 9 2026), measured and ready to ship with `scripts/ship/ship-open-session.ps1` after AJ's Round 65 walk of the first-session rounds: the `sessions` index and the rules first, then the push, then its own walk (Round 66) before Render (`docs/rounds/2026-10-09-open-session.md` §4.8). The first-session rounds are on master and live (Oct 9 2026); whether their seed ran and Round 65 was walked is AJ's to say. `oct9/claude-md` holds `CLAUDE.md`'s trim, waiting for his review |
 | Deploys | a push to `master` deploys nothing; AJ deploys by hand on Render (above). Rules, indexes and Cloud Functions are deployed separately |
 
 ---
@@ -67,8 +70,11 @@ expensive to be wrong about.
    changed `firestore.rules`, and each round document says the rules were not
    deployed from that branch. If the live rules are older than the repo's, the
    app is asking for things it is not allowed to read and screens fail quietly.
-   *Check:* `npx tsx scripts/fetch-live-rules.ts`, then diff against
-   `firestore.rules`.
+   *Check:* `npx tsx scripts/check-live-rules.ts --key <service-account.json>
+   --project gen-lang-client-0731527386 --database ai-studio-32cbbdcc-…`
+   (read only; it compares the live text with `firestore.rules` and says
+   where they part; Oct 9 2026: the same as master `546bb0aa`'s), or
+   `scripts/fetch-live-rules.ts` with the Firebase CLI's login.
 2. **Are the composite indexes deployed?** Same rounds, same story. On the
    Enterprise edition a missing index does not fail: the query still answers by
    scanning the whole collection, billed by the byte.
@@ -76,7 +82,8 @@ expensive to be wrong about.
    `firestore.indexes.json`.
 3. **Do the rules tests pass on the rules you are about to deploy?**
    `npm run test:rules` needs JDK 21; it passed with 323 tests on Oct 7 2026
-   (master) and 334 on Oct 9 2026 (the first-session branch).
+   (master), 334 on Oct 9 2026 (the first-session branch, now master) and
+   351 the same night (`oct9/open-session`).
    AJ's run is the one that counts, and nothing else verifies the rules.
 
 The deploy order, when they do need deploying, is in `CLAUDE.md`: indexes →
