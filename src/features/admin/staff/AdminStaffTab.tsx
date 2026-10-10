@@ -54,6 +54,8 @@ import { useStaffRoster } from "./useStaffRoster";
 import { useOperationsScope } from "../scope-context";
 
 export interface AdminStaffTabProps {
+  /** The signed-in person: the pending requests are read only for someone the rules let read them. */
+  reader?: Trainer | null;
   trainers: Trainer[];
   studios: Studio[];
   activeStudioId: string | null;
@@ -69,6 +71,7 @@ export interface AdminStaffTabProps {
 }
 
 export function AdminStaffTab({
+  reader = null,
   trainers,
   studios,
   activeStudioId,
@@ -91,6 +94,7 @@ export function AdminStaffTab({
   // The merge of trainers, Mindbody's staff list and the pending requests —
   // the same hook My Studio → Team uses (My Studio round, Sep 2026).
   const { rows, summary, staffStatus, mindbodyChecked } = useStaffRoster({
+    reader,
     trainers,
     studio: activeStudio,
     studioId: scope === "studio" ? scopedStudioId : null,

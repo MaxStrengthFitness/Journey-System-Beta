@@ -25,6 +25,7 @@ import { authedFetch } from "../../../lib/authed-fetch";
 import { OperationType, handleFirestoreError } from "../../../lib/firestore-errors";
 import type { Studio, Trainer } from "../../../types";
 import { buildStaffRoster, summariseRoster, type AccessRequest, type MindbodyStaff, type StaffRow } from "./roster";
+import { mayReadAccessRequests, type RequestReader } from "./request-readers";
 
 /** What the page says about Mindbody under "All my studios". */
 const MINDBODY_PER_STUDIO =
@@ -42,11 +43,19 @@ export interface StaffRosterState {
 }
 
 export function useStaffRoster({
+  reader,
   trainers,
   studio,
   studioId,
   studioIds = null,
 }: {
+  /**
+   * The signed-in person. The pending access requests are read only for
+   * someone the rules let read them (request-readers.ts, Oct 10 2026): a
+   * request carries a stranger's email and phone. Everyone else's roster
+   * simply has no requests in it.
+   */
+  reader: RequestReader | null | undefined;
   trainers: Trainer[];
   /** The studio whose Mindbody site the staff list comes from. */
   studio: Studio | null;
@@ -65,15 +74,20 @@ export function useStaffRoster({
   const hasStudio = Boolean(studio);
   const spanning = !hasStudio && studioIds !== null;
 
-  /* ---- access requests: a live stream ------------------------------ */
+  /* ---- access requests: a live stream, for those who may read it ---- */
+  const readsRequests = mayReadAccessRequests(reader);
   useEffect(() => {
+    if (!readsRequests) {
+      setRequests([]);
+      return;
+    }
     const unsub = onSnapshot(
       query(collection(db, "access_requests"), where("status", "==", "Pending")),
       (snap) => setRequests(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<AccessRequest, "id">) }))),
       (err) => handleFirestoreError(err, OperationType.GET, "access_requests"),
     );
     return () => unsub();
-  }, []);
+  }, [readsRequests]);
 
   /* ---- Mindbody staff for this studio's site ------------------------ */
   const siteId = studio?.mindbodySiteId;

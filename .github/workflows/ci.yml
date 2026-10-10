@@ -70,25 +70,23 @@ jobs:
         run: node scripts/setup-firebase-config.cjs
 
       # ---------------------------------------------------------------
-      # WHY YOUR MACHINE SAYS 19 AND THIS SAYS 18
+      # YOUR MACHINE AND THIS JOB COUNT THE SAME
       #
-      # `harness/` is listed in .git/info/exclude, so it is untracked and is
-      # NOT in a fresh clone. It contains one permanent error (TS2307, it
-      # imports ../src/features/demo-mode, which only exists on the unmerged
-      # demo-mode-foundation branch). Locally tsc sees it and reports 19; here
-      # the directory does not exist and the count is 18. If you ever commit
-      # the harness, raise the baseline by one in the same commit.
+      # tsconfig.json excludes `harness`, `Claude outputs` and `backups`, so a
+      # scratch folder on one PC can no longer add a phantom error. The count
+      # on AJ's PC and here agree: 2 on Oct 10 2026 (clinical-review/charts.tsx
+      # and EditTrainerModal.tsx).
       # ---------------------------------------------------------------
       # THE BASELINE PROBLEM, AND HOW THIS HANDLES IT
       #
-      # `tsc --noEmit` currently reports 18 errors on master. They are real but
+      # `tsc --noEmit` still reports a few errors on master. They are real but
       # they are old, and they live in screens scheduled for rework. Failing CI
       # on a non-zero exit would mean CI is red on every commit, which is the
       # same as having no CI at all — people stop looking.
       #
       # So the gate is a COUNT, not a clean run: the build fails if the number
       # goes UP. That catches a new type error the day it lands while leaving
-      # the existing 18 to be paid down deliberately. Lower the number in
+      # the existing ones to be paid down deliberately. Lower the number in
       # .github/typecheck-baseline.txt every time you fix one; the step tells
       # you to when it notices the count has dropped.
       # ---------------------------------------------------------------

@@ -102,6 +102,7 @@ Hub's History button.
    sense on test data; the database now holds the Mindbody roster.
    `scripts/purge-database.ts` (dry-run by default) is the deliberate route.
    Recommendation: delete. **Left in place, waiting for his yes.**
+   *Correction, Oct 10 2026: the purge script was never dry-run by default; it deleted production behind one `--yes-destroy-production-data` flag, and it was removed on Oct 10 2026.*
 2. **A13, server and Mindbody leftovers** (needs an explicit OK by the project
    rules): (a) `/api/parse-ical`, `/api/sync-calendar`,
    `/api/trigger-master-sync` sit OUTSIDE the sign-in gate, have no caller,

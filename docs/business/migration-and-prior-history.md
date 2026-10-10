@@ -175,9 +175,15 @@ expected to be pushed while beta runs — an example date AJ gave is
 **migration client**; everything before that day is in FileMaker and Journey
 knows it does not have it.
 
-Absent a cutover date, every client is "unknown" and gets the cautious wording.
-That is the right default: during migration, unknown and migration look
-identical and only one of the two wordings is safe.
+A client nothing can place is "unknown" and gets the cautious wording. That is
+the right default: during migration, unknown and migration look identical and
+only one of the two wordings is safe. Since Sep 26 2026 that no longer hangs on
+the cutover date: Mindbody's visit count places a synced client with or
+without one (below). What the date turns on (Oct 10 2026): from it every
+session at the studio must be logged in Journey, because a booking nobody
+logged stops counting as a visit (`renewals/attendance.ts`), and the nightly
+job starts refreshing the studio's packages from Mindbody and writing its
+client states (`studioIsLive`, `renewals/job-plan.ts`).
 
 **"Started on Journey" is known from Mindbody's visit count, never from the
 date alone** (the cost plan, Sep 26 2026). A first Journey session on or after
@@ -214,4 +220,5 @@ somebody has to remember to run.
   Until it arrives, `importedCount` stays 0 everywhere and every prior history
   is a bare number.
 - Each studio's `journeyCutoverDate` has to be set when that studio goes live.
-  Until it is set, that studio's clients all read as "unknown".
+  Until it is set, the nightly job doesn't refresh that studio's packages from
+  Mindbody, and a booking nobody logged still counts as a visit.

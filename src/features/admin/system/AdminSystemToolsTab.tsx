@@ -9,7 +9,9 @@
  *
  * Ordered least to most destructive. Every tool on this screen is now
  * recoverable: the one that was not — "Wipe and re-initialize" — left on
- * Sep 20 2026 for scripts/purge-database.ts, where a dry run is possible.
+ * Sep 20 2026 for scripts/purge-database.ts. That script went too, on Oct 10
+ * 2026: it deleted clients, studios, networks and more on production behind
+ * one flag. Clearing test data is scripts/reset-test-data.ts.
  *
  * "Restore standard machines" left on Sep 28 2026 (wave 2 of the Machine
  * Catalog room). AJ: "we dont need to restore standard machine button, a
@@ -161,9 +163,9 @@ export function AdminSystemToolsTab({
         (Claude Experiment, phase A). It deleted every client, trainer,
         session, schedule, note and log from the browser, against production,
         behind one typed phrase. The reasoning is in AppContent.tsx where the
-        handler was; the replacement is scripts/purge-database.ts, behind the
-        service account, where a dry run is possible and a half-finished
-        delete can be resumed.
+        handler was. Its first replacement, scripts/purge-database.ts, was
+        removed on Oct 10 2026 (one flag stood between it and deleting
+        production); clearing test data is scripts/reset-test-data.ts.
 
         The tools above are all recoverable, which is why the divider and the
         hazard styling left with the panel.

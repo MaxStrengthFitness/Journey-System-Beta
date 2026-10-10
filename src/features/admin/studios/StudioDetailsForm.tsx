@@ -13,9 +13,14 @@
  * Two things this round added to it:
  *
  *   the Journey cutover date   the day THIS studio moved onto Journey. Its
- *                              first editor anywhere; until it is set every
- *                              client at the studio reads as "unknown" and
- *                              gets the cautious wording (lib/prior-history).
+ *                              first editor anywhere. From it every session
+ *                              must be logged in Journey (an unlogged booking
+ *                              is no longer a visit, renewals/attendance.ts)
+ *                              and the nightly job refreshes the studio's
+ *                              packages from Mindbody (studioIsLive,
+ *                              renewals/job-plan.ts). A client's coverage
+ *                              comes from Mindbody's visit count with or
+ *                              without it (lib/prior-history.ts, Sep 26 2026).
  *
  *   the Mindbody guard         a changed Site ID is saved only after Mindbody
  *                              has answered for it. A wrong id parks every
@@ -214,8 +219,8 @@ export function StudioDetailsForm({
             label="Journey cutover date"
             hint={
               form.value.journeyCutoverDate
-                ? "Clients whose first session here is before this day trained before Journey; their earlier history is in FileMaker, so screens say “nothing recorded” rather than “never attempted”. From this day on, a booking nobody logged in Journey no longer counts as a visit on the attendance watch."
-                : "The day this studio moved onto Journey. Until it is set, every client here reads as unknown and gets the cautious wording, and the attendance watch counts every past booking that was not cancelled as a visit."
+                ? "From this day every session here must be logged in Journey, and each night Journey refreshes this studio's packages from Mindbody. A booking nobody logged no longer counts as a visit."
+                : "The day this studio moves onto Journey. From then on every session must be logged in Journey, and each night Journey refreshes the studio's packages from Mindbody."
             }
             htmlFor="studio-cutover"
           >

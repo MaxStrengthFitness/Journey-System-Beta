@@ -149,26 +149,112 @@ describe("Firestore Security Rules", () => {
     await assertFails(p);
   });
 
-  // (f) unauthenticated access_requests create SUCCEEDS with {fullName,email,status:'Pending'} and FAILS when email is missing
-  it("allows unauthenticated access_requests create with valid fields", async () => {
-    const unauthContext = testEnv.unauthenticatedContext();
-    const db = unauthContext.firestore();
-    const p = addDoc(collection(db, "access_requests"), {
-      fullName: "Test User",
-      email: "test@example.com",
+  // (f) access_requests (privacy, Oct 10 2026). A request holds a stranger's
+  // name, email and phone, and anyone with a Google account can sign in. It
+  // used to be created by anyone, signed in or not, under any id, and read by
+  // every signed-in user. Now a Type 1 request is created signed in, at the
+  // sender's own uid (front-door/my-request.ts), and read by its sender and
+  // by the people who let people in (features/admin/staff/request-readers.ts).
+  describe("access_requests", () => {
+    const request = (uid: string, extra: Record<string, unknown> = {}) => ({
+      fullName: "Nia New",
+      email: "nia@example.com",
+      phone: "555-0100",
+      roleRequested: "Trainer",
+      requestedStudioId: "studioA",
+      reason: "",
       status: "Pending",
+      userId: uid,
+      ...extra,
     });
-    await assertSucceeds(p);
-  });
+    const seed = async () =>
+      testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore();
+        await setDoc(doc(db, "access_requests", "nia"), request("nia"));
+        await setDoc(doc(db, "access_requests", "picker1"), {
+          type: "studio_access",
+          trainerId: "trainerA",
+          fullName: "Trainer A",
+          studioId: "studioB",
+          status: "Pending",
+        });
+        await setDoc(doc(db, "trainers", "adminX"), { fullName: "Ada Admin", initials: "AA", role: "Admin", primaryHomeStudioId: "studioB" });
+        await setDoc(doc(db, "trainers", "franchiseX"), { fullName: "Fran Owner", initials: "FO", role: "FranchiseOwner", primaryHomeStudioId: "studioB" });
+        await setDoc(doc(db, "trainers", "grantX"), {
+          fullName: "Gus Grant",
+          initials: "GG",
+          role: "LifeTransformer",
+          primaryHomeStudioId: "studioB",
+          managedStudioIds: ["studioB"],
+        });
+      });
+    const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid}@test.com` }).firestore();
+    const pending = (db: ReturnType<typeof as>) => getDocs(query(collection(db, "access_requests"), where("status", "==", "Pending")));
 
-  it("denies unauthenticated access_requests create when email is missing", async () => {
-    const unauthContext = testEnv.unauthenticatedContext();
-    const db = unauthContext.firestore();
-    const p = addDoc(collection(db, "access_requests"), {
-      fullName: "Test User",
-      status: "Pending",
+    it("refuses a request from someone who isn't signed in", async () => {
+      const anon = testEnv.unauthenticatedContext().firestore();
+      await assertFails(setDoc(doc(anon, "access_requests", "nobody"), request("nobody")));
+      await assertFails(addDoc(collection(anon, "access_requests"), { fullName: "Test User", email: "test@example.com", status: "Pending" }));
     });
-    await assertFails(p);
+
+    it("lets a signed-in person send their own request, at their own uid only", async () => {
+      const nia = as("nia");
+      await assertSucceeds(setDoc(doc(nia, "access_requests", "nia"), request("nia")));
+      // Under someone else's id, or a random one, or naming another account to approve.
+      await assertFails(setDoc(doc(nia, "access_requests", "someoneElse"), request("nia")));
+      await assertFails(addDoc(collection(nia, "access_requests"), request("nia")));
+      await assertFails(setDoc(doc(as("raj"), "access_requests", "raj"), request("trainerB")));
+      // Still the old field checks: no email, no request.
+      const { email: _email, ...noEmail } = request("raj");
+      await assertFails(setDoc(doc(as("raj"), "access_requests", "raj"), noEmail));
+    });
+
+    it("lets the sender read their own request, and find none before sending", async () => {
+      await seed();
+      await assertSucceeds(getDoc(doc(as("nia"), "access_requests", "nia")));
+      await assertSucceeds(getDoc(doc(as("raj"), "access_requests", "raj")));
+    });
+
+    it("keeps everyone else out: another signed-in stranger, a trainer, and their list of every request", async () => {
+      await seed();
+      await assertFails(getDoc(doc(as("raj"), "access_requests", "nia")));
+      await assertFails(getDoc(doc(as("trainerB"), "access_requests", "nia")));
+      await assertFails(getDoc(doc(as("trainerB"), "access_requests", "picker1")));
+      await assertFails(pending(as("trainerB")));
+      await assertFails(pending(as("raj")));
+    });
+
+    it("lets the people who let people in read every pending request: a studio's leader, the grant, an owner, an administrator", async () => {
+      await seed();
+      for (const uid of ["ownerA", "grantX", "franchiseX", "adminX"]) {
+        await assertSucceeds(getDoc(doc(as(uid), "access_requests", "nia")));
+        await assertSucceeds(pending(as(uid)));
+      }
+    });
+
+    it("keeps the studio picker's own query working, for the person it names only", async () => {
+      await seed();
+      const mine = (db: ReturnType<typeof as>, uid: string) =>
+        getDocs(
+          query(
+            collection(db, "access_requests"),
+            where("trainerId", "==", uid),
+            where("type", "==", "studio_access"),
+            where("status", "==", "Pending"),
+          ),
+        );
+      await assertSucceeds(mine(as("trainerA"), "trainerA"));
+      await assertFails(mine(as("trainerB"), "trainerA"));
+      await assertSucceeds(
+        addDoc(collection(as("trainerA"), "access_requests"), { type: "studio_access", trainerId: "trainerA", studioId: "studioB", status: "Pending" }),
+      );
+    });
+
+    it("keeps approval working, and stops anyone rewriting another person's studio request by naming themselves", async () => {
+      await seed();
+      await assertSucceeds(updateDoc(doc(as("ownerA"), "access_requests", "nia"), { status: "Approved", approvedTrainerId: "nia" }));
+      await assertFails(updateDoc(doc(as("trainerB"), "access_requests", "picker1"), { trainerId: "trainerB" }));
+    });
   });
 
   it("allows a StudioOwner of studioA to read trainers/trainerA/secrets/account", async () => {

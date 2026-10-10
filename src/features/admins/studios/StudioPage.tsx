@@ -172,7 +172,7 @@ export function StudioPage({
                 <p className="hq-standing">
                   {standing.cutover}.{" "}
                   {standing.stage === "no-cutover"
-                    ? "Until a cutover date is set, every client here reads as unknown and gets the cautious wording."
+                    ? "Until a cutover date is set, Journey doesn't refresh this studio's packages from Mindbody each night."
                     : standing.stage === "needs-mindbody"
                       ? "Fill in the Mindbody details below, or mark the studio offline if that is on purpose."
                       : null}

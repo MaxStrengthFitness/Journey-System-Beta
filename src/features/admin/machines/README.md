@@ -98,7 +98,7 @@ it: **read the machine, correct it, then publish** (the catalog gate round,
 
 | | |
 | --- | --- |
-| `AdminMachinesTab.tsx` | Admins → Catalog. Holds which machine is open; the editor REPLACES the screen. |
+| `AdminMachinesTab.tsx` | Admins → Standard → Machines (Admins → Catalog until the Admins room, Sep 28 2026). Holds which machine is open; the editor REPLACES the screen. |
 | `CatalogList.tsx` | The rows: display order, what each machine is still missing, standard-set, retire. |
 | `CatalogMachineEditor.tsx` | Writing the standard itself. No `standard` prop — this IS it. Above the sections of a machine that exists: its standing (`../catalog/StandardMachineSwitch.tsx`, wave 2, Sep 28 2026) — **Standard machine**, administrators only, written at once and apart from the save bar. An edit's save writes the definition's diff and never the catalog's own fields (`status`, `defaultOrder`, `inStandardSet`), which go in once, on create. |
 | `../catalog/StandardMachineSwitch.tsx` | The switch that marks a machine as a standard machine: the Standard template's own write and words (`standard-set.ts`: `standardSetPatch`, `standardSetSaid`, `takeOutQuestion`), so the two doors can't drift. |
@@ -113,7 +113,7 @@ it: **read the machine, correct it, then publish** (the catalog gate round,
 | `completeness.ts` | "What is this machine still missing", named in plain English. Every check has a typed `GapId` so code can block on a specific one without matching prose. |
 | `editor/codex-sections.tsx` | The Codex format, v2 (Sep 28 2026): four OPTIONAL sections after the eight — at the machine, the set and after, study, sources. No gaps, so completeness and the catalog gate are untouched. The format itself: `features/machine-codex/README.md`. |
 | `editor/codex-controls.tsx` | Their controls: `RecordList` (a list of small records from a field description), `LeafLine`, `withLine` (a cleared line is deleted, not stored as ""). |
-| `models/ModelsPage.tsx`, `models/ModelEditor.tsx` | The model record (Codex R2): Admins → Catalog → Models, and a catalog machine's Models button. Administrators only; the id is minted once. |
+| `models/ModelsPage.tsx`, `models/ModelEditor.tsx` | The model record (Codex R2): Admins → Standard → Machines → Models, and a catalog machine's Models button. Administrators only; the id is minted once. |
 | `models/ModelPicker.tsx` | "Which model this unit is" (a studio's machine) / "The reference model" (the standard), at the top of *Codex: at the machine*. A studio's pick is written on the roster entry's own `modelId`, never into its overrides. |
 | `../catalog/review.ts` | What a studio's offer would cost the catalog — the method it wrote, what is still missing, what differs from the machine it is based on. |
 | `../catalog/SubmissionReview.tsx` | That offer opened in this editor, at `scope="catalog"`. Saving records a correction on the offer; it does not publish. |

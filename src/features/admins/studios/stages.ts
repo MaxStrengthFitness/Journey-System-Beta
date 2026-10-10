@@ -47,7 +47,7 @@ export const STAGE_TEXT: Record<StudioStage, { title: string; note: string }> = 
   },
   "no-cutover": {
     title: "No cutover date yet",
-    note: "Linked to Mindbody, and not moved onto Journey yet. Until a cutover date is set, every client here reads as unknown and gets the cautious wording.",
+    note: "Linked to Mindbody, and not moved onto Journey yet. Until a cutover date is set, Journey doesn't refresh its packages from Mindbody each night.",
   },
   "cutover-coming": {
     title: "Moving onto Journey",

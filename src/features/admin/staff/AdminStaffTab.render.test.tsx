@@ -17,6 +17,7 @@ vi.mock("../../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "u-lea
 const fake = vi.hoisted(() => ({
   requests: [] as { id: string; data: Record<string, unknown> }[],
   fetches: 0,
+  listens: 0,
   scope: null as null | { studioId: string | null; studios: { id?: string; name: string }[] },
 }));
 
@@ -28,6 +29,7 @@ vi.mock("firebase/firestore", () => {
     query: (q: unknown) => q,
     where: () => ({}),
     onSnapshot: (_target: unknown, next: (s: unknown) => void) => {
+      fake.listens += 1;
       const docs = fake.requests.map((r) => ({ id: r.id, data: () => r.data }));
       const t = setTimeout(() => next({ docs }), 0);
       return () => clearTimeout(t);
@@ -79,14 +81,17 @@ const trainers = [person("t-sam", "Sam Solon", "solon"), person("t-wes", "Wes We
 let root: Root | null = null;
 let host: HTMLDivElement | null = null;
 
-async function mount(props: { activeStudioId: string | null; canEdit: boolean; isAdmin?: boolean; onOpenTeam?: () => void }) {
+/** Whoever opens Operations outside Demo Mode leads somewhere: a head trainer by default. */
+const leader = { ...person("u-lead", "Lee Lead", "solon"), role: "HeadTrainer" } as Trainer;
+
+async function mount(props: { activeStudioId: string | null; canEdit: boolean; isAdmin?: boolean; onOpenTeam?: () => void; reader?: Trainer }) {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
   await act(async () => {
     root!.render(
       <StrictMode>
-        <AdminStaffTab trainers={trainers} studios={studios} isAdmin={props.isAdmin ?? false} {...props} />
+        <AdminStaffTab reader={leader} trainers={trainers} studios={studios} isAdmin={props.isAdmin ?? false} {...props} />
       </StrictMode>,
     );
   });
@@ -105,6 +110,7 @@ afterEach(() => {
   host = null;
   fake.requests = [];
   fake.fetches = 0;
+  fake.listens = 0;
   fake.scope = null;
 });
 
@@ -125,6 +131,22 @@ describe("Staff & Roles for the studio tier", () => {
     expect(door).toBeDefined();
     await act(async () => door!.click());
     expect(onOpenTeam).toHaveBeenCalledTimes(1);
+  });
+
+  /*
+   * A request carries a stranger's email and phone, and the rules let only
+   * the people who let people in read them (Oct 10 2026). Anyone may open
+   * Operations inside Demo Mode, so a trainer can reach this page there: the
+   * page opens no listener the rules would refuse, and simply lists no one
+   * waiting.
+   */
+  it("reads no access requests for a reader the rules keep out (a trainer in Demo Mode)", async () => {
+    fake.requests = [{ id: "r1", data: { status: "Pending", fullName: "Nia New", email: "nia@x.com", userId: "u-nia", requestedStudioId: "solon" } }];
+    const el = await mount({ activeStudioId: "solon", canEdit: false, reader: person("u-tr", "Tess Trainer", "solon") });
+    expect(fake.listens).toBe(0);
+    expect(el.textContent).toContain("Sam Solon");
+    expect(el.textContent).not.toContain("Nia New");
+    expect(el.textContent).not.toContain("nia@x.com");
   });
 });
 

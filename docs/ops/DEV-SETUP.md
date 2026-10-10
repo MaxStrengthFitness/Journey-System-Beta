@@ -72,8 +72,6 @@ This file is gitignored, so your values stay local.
 
 The first sign-in auto-creates a "System Admin" profile only for one hardcoded Gmail address (AJ's), in the "Bootstrap the owner" block of `src/hooks/useAuthInitialization.ts` (around line 473). The contractor's address that used to be hardcoded here, in that file and in `src/components/StudioSelectionView.tsx`, is gone (checked Oct 7 2026). To sign in with a different Gmail against a test project, replace the address in that one block, or create a `trainers/{uid}` document for yourself by hand in the Firebase console.
 
-`scripts/purge-database.ts` keeps its own preserved address (`PRESERVED_EMAIL`, around line 63) — see the warning below before touching that script.
-
 ## 7. First run with real sign-in
 
 ```powershell
@@ -105,7 +103,7 @@ Refresh the browser — you should be able to pick a studio and start creating t
 
 ## ⚠️ Warnings
 
-- **The Mindbody utility scripts in `scripts/mindbody/` act on PRODUCTION.** `scripts/mindbody/reset-health.js`, `scripts/mindbody/register-webhook.js`, `scripts/mindbody/deactivate-webhook.js`, `scripts/mindbody/send-test-webhook.js` and `scripts/purge-database.ts` all target the live project. As of Sep 2, 2026 each one prints what it is about to touch and then refuses unless you pass an explicit confirmation flag (`--yes-affect-production`, or `--yes-destroy-production-data` for the purge). Read the printed target before you type the flag — the flag is the whole safety mechanism.
-- `scripts/purge-database.ts` permanently deletes clients, sessions, studios and exerciseLogs. There is no undo and no backup.
+- **The Mindbody utility scripts in `scripts/mindbody/` act on PRODUCTION.** `scripts/mindbody/reset-health.js`, `scripts/mindbody/register-webhook.js`, `scripts/mindbody/deactivate-webhook.js`, `scripts/mindbody/send-test-webhook.js` all target the live project. As of Sep 2, 2026 each one prints what it is about to touch and then refuses unless you pass an explicit confirmation flag (`--yes-affect-production`). Read the printed target before you type the flag — the flag is the whole safety mechanism.
+- `scripts/purge-database.ts` is gone (removed Oct 10 2026): it deleted clients, studios, networks, sessions and more on production behind one flag, with no undo and no backup. Clearing test data is `scripts/reset-test-data.ts`.
 - `npm run clean` uses `rm -rf`, which fails on Windows — just delete the `dist` folder manually if you ever need to.
 - If you switch `.env` back to a test project, re-run `node scripts/setup-firebase-config.cjs` — the generated config is what the app actually reads, and a stale one silently keeps talking to the old project.

@@ -1928,8 +1928,11 @@ export interface Studio {
    * while beta runs. A client whose first session predates it was training
    * before Journey existed: their machine history is in FileMaker and is not
    * coming across, so the app says "nothing recorded" rather than "never
-   * attempted". Unset means every client here reads as unknown, which gets the
-   * same cautious wording. docs/business/migration-and-prior-history.md.
+   * attempted". From this day every session must be logged in Journey (an
+   * unlogged booking is no longer a visit) and the nightly job refreshes the
+   * studio's packages from Mindbody (`studioIsLive`). Unset, a client's
+   * coverage still comes from Mindbody's visit count (since Sep 26 2026).
+   * docs/business/migration-and-prior-history.md.
    */
   journeyCutoverDate?: string | null;
   /**

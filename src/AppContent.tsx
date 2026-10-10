@@ -289,6 +289,7 @@ import { parseLearningRef, type LearningRef } from "./features/learning/ref";
 import { rememberMyStudioSection } from "./features/my-studio/section-memory";
 import { AppBottomBar } from "./components/AppBottomBar";
 import { StatusBarStrip } from "./features/home-screen/StatusBarStrip";
+import { EnvironmentMark } from "./features/environment-mark/EnvironmentMark";
 
 export default function AppContent({
   user,
@@ -1013,7 +1014,9 @@ export default function AppContent({
    *     nothing.
    *
    * A destructive operation of this size belongs in scripts/ behind the
-   * service account with a dry run - scripts/purge-database.ts is the place.
+   * service account with a dry run. (scripts/purge-database.ts was that
+   * place until Oct 10 2026, when it was removed; clearing test data is
+   * scripts/reset-test-data.ts.)
    */
 
   /*
@@ -1656,6 +1659,11 @@ export default function AppContent({
                   : "header"
             }
           />
+          {/* A development build (npm run dev on the PC) talks to live data:
+              one plum line says so, on every screen including the Active
+              Session. Nothing at all in a production build
+              (features/environment-mark). */}
+          <EnvironmentMark />
           {/* Above the header, and outside the `workouts` condition below, so
               it is on the Active Session too — see DemoBanner.tsx. */}
           {isDemoStudioId(activeStudioId) && (
