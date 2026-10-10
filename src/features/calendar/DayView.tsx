@@ -1,9 +1,16 @@
 import { useCallback, useMemo } from "react";
-import type { Client, Trainer } from "../../types";
-import { isStaffBlock } from "../../lib/booking-state";
+import type { Client, Trainer, WorkoutSession } from "../../types";
+import { bookingDay, isStaffBlock, loggedSessions } from "../../lib/booking-state";
+import { sessionsByClientDay } from "../../lib/hub-card-state";
+import { useCompletedSessions } from "../../lib/completed-sessions";
+import { getClientAlertState } from "../../lib/client-alerts";
+import { criticalNotesOn } from "../../lib/hub-critical-notes";
+import { useHubCriticalNotes } from "../../hooks/useHubCriticalNotes";
 import { safeToDate } from "../../lib/utils";
 import { studioDateKey } from "../../lib/studio-time";
 import type { DayReadState } from "../../lib/schedule-window";
+import { useBookingMarks } from "../admin/attention/booking-marks";
+import { readFirstMomentOf, type RunSheetEntry } from "../hub-opportunities/moments-today";
 import { HubGrid, NOBODY_BOOKED, type GridBlock, type GridColumn } from "../hub-schedule/HubGrid";
 import { HubCard } from "../hub-schedule/HubCard";
 import { UNASSIGNED_ID, orderColumnsBySessions, planColumns, staffLabel } from "../hub-schedule/columns";
@@ -37,13 +44,22 @@ import "./calendar.css";
  * name: the Calendar's first-name and prefix matching is retired, as the
  * Hub's was on Oct 1 2026.
  *
- * A tap on a booking opens the client, as the Calendar always has (the Hub
- * opens a peek; here the card says nothing about a dialog). The card knows
- * no sessions, so a booking that is over recedes without "Not logged": the
- * Calendar can't say what happened to it, and never claims to.
+ * WHAT A CARD SAYS HAPPENED (the review of Oct 10 2026; AJ's Sep 24 rule: "a
+ * grey card with no word would read as done when it is not"). On a day the
+ * sessions Journey holds cover (`cardDayReadable`, lib/hub-card-state: the
+ * studio's today once the session stream's server has answered, and the
+ * days ahead in the Hub's window) a card says what the Hub's says, from the
+ * same reads: the app's session stream (done, Not logged, In session, Left
+ * open), the day's "didn't come" marks (`useBookingMarks`, for the day on
+ * screen) and the red Critical triangle (`useHubCriticalNotes`, the day's
+ * booked clients). On any other day the card is "unread": it neither fades
+ * nor says a word, so it never reads as done. The Hub is not mounted while
+ * the Calendar is, so these are its own reads, not more.
  *
- * On a phone the day is the Hub's phone list (`PhoneDayList`), the same
- * cards one under the next.
+ * A tap on a booking opens the client, as the Calendar always has (the Hub
+ * opens a peek; here the card says nothing about a dialog). On a phone the
+ * day is the Hub's phone list (`PhoneDayList`), the same cards one under the
+ * next.
  */
 
 export interface DayViewProps {
@@ -66,6 +82,13 @@ export interface DayViewProps {
   now: Date;
   /** What is known about the day's bookings: an empty day says so only when it was read. */
   readState: DayReadState;
+  /** The app's session stream (the studio's last 24 hours) and whether its server has answered. */
+  sessions: ReadonlyArray<WorkoutSession>;
+  sessionsKnown: boolean;
+  /** Whether the sessions held cover this day (`cardDayReadable`): else every card is "unread". */
+  readable: boolean;
+  /** Someone who works at the studio (`mayReadWeeks`): only they read its "didn't come" marks, as on the Hub. */
+  readsStudio: boolean;
   /** When each trainer is on, from the agreed standing week. Absent: nothing hatched. */
   frameOf?: (columnId: string, range: Span) => TrainerDayFrame;
   /** A phone draws the day as one list. */
@@ -93,6 +116,10 @@ export function DayView({
   rosterFailed = false,
   now,
   readState,
+  sessions,
+  sessionsKnown,
+  readable,
+  readsStudio,
   frameOf,
   phone,
   onOpenClient,
@@ -164,6 +191,38 @@ export function DayView({
 
   const usualService = useMemo(() => usualServiceOf(bookings), [bookings]);
 
+  /*
+   * WHAT HAPPENED, from the Hub's own reads (see the header). The finished
+   * sessions keep their list until one finishes (useCompletedSessions), so a
+   * running session's heartbeat works nothing out again; the newest session
+   * per client and day says In session or Left open.
+   */
+  const completedSessions = useCompletedSessions(sessions);
+  const logged = useMemo(
+    () => (readable ? loggedSessions(completedSessions, undefined, { complete: sessionsKnown }) : null),
+    [readable, completedSessions, sessionsKnown],
+  );
+  const sessionOn = useMemo(() => sessionsByClientDay(sessions), [sessions]);
+  const marksRead = useBookingMarks(readable && readsStudio ? studioId : null, dayKey, dayKey);
+  const critical = useHubCriticalNotes(
+    useMemo(() => bookings.filter((s) => !isStaffBlock(s)).map((s) => (s.clientId ? String(s.clientId).trim() : null)), [bookings]),
+  );
+  /* The Read first moment per client on this day: the engine's own (`readFirstMomentOf`), the triangle's only source. */
+  const entryOf = useMemo(() => {
+    const out = new Map<string, RunSheetEntry>();
+    for (const b of bookings) {
+      const id = b?.clientId ? String(b.clientId).trim() : "";
+      const client = id ? clientsById.get(id) : undefined;
+      if (!client || out.has(id)) continue;
+      const notes = critical.notesFor(id);
+      if (!notes) continue; // unknown: the card claims nothing either way
+      const moment = readFirstMomentOf(getClientAlertState(client, criticalNotesOn(notes, dayKey)));
+      // The card reads only an entry's moments; the rest of the engine isn't run here.
+      if (moment) out.set(id, { moments: [moment] } as unknown as RunSheetEntry);
+    }
+    return out;
+  }, [bookings, clientsById, critical, dayKey]);
+
   /* One handler for every card, so a card with nothing new skips drawing (HubCard is memoised). */
   const openCard = useCallback((clientId: string) => onOpenClient(clientId), [onOpenClient]);
 
@@ -172,27 +231,32 @@ export function DayView({
       const booking: any = block.booking;
       const id = booking?.clientId ? String(booking.clientId).trim() : "";
       const client = isStaffBlock(booking) || !id ? null : clientsById.get(id) ?? null;
+      const day = bookingDay({ startTime: booking?.startTime || booking?.StartDateTime || booking?.date, status: booking?.status });
       return (
         <HubCard
           booking={booking}
           blockKey={block.key}
           client={client}
-          entry={null}
+          entry={client?.id ? entryOf.get(client.id) ?? null : null}
           sessionNumber={null}
           usualService={usualService}
           rosterLoading={rosterLoading}
           rosterFailed={rosterFailed}
           staffName={block.columnId === UNASSIGNED_ID ? staffLabel(booking.trainerName) : null}
+          workoutSession={readable && client ? sessionOn(client.id, day) : null}
+          logged={logged}
+          noShows={readable ? marksRead.marks : null}
           now={now}
+          readable={readable}
           opensPeek={false}
           onOpen={openCard}
         />
       );
     },
-    [clientsById, usualService, rosterLoading, rosterFailed, now, openCard],
+    [clientsById, entryOf, usualService, rosterLoading, rosterFailed, readable, sessionOn, logged, marksRead.marks, now, openCard],
   );
 
-  const chosen = onlyTrainerId ? columns.find((c) => c.id === onlyTrainerId) : null;
+  const chosen = onlyTrainerId ? columns.find((c) => c.id === onlyTrainerId) ?? null : null;
   const emptyWords =
     readState === "ready"
       ? chosen
@@ -201,9 +265,21 @@ export function DayView({
       : readState === "loading"
         ? READING
         : null;
+  /* Narrowed to one trainer, the rest of the row says so; the Hub's "Nobody else is booked" would be untrue. */
+  const restWords = chosen ? `Showing ${chosen.isMe ? "your" : `${chosen.name}’s`} bookings only` : undefined;
+
+  /* With some clients' Critical notes unread, a card without the triangle proves nothing: said once (the Hub's line). */
+  const criticalNote =
+    critical.status === "incomplete" ? (
+      <p className="cal-note cal-note--day" role="status">
+        {"Couldn’t check every client’s critical notes, so a card without the red triangle may still have one."}
+      </p>
+    ) : null;
 
   if (phone) {
     return (
+      <>
+      {criticalNote}
       <PhoneDayList
         blocks={blocks.map((b) => ({ ...b, staff: isStaffBlock(b.booking as any) }))}
         columnOrder={columns.map((c) => c.id)}
@@ -219,19 +295,24 @@ export function DayView({
         }}
         emptyWords={emptyWords}
       />
+      </>
     );
   }
 
   return (
-    <HubGrid
-      dayKey={dayKey}
-      columns={columns}
-      blocks={blocks}
-      nowMin={nowMin}
-      renderCard={renderCard}
-      frameOf={frameOf}
-      focusId={myColumnId}
-      emptyWords={emptyWords}
-    />
+    <>
+      {criticalNote}
+      <HubGrid
+        dayKey={dayKey}
+        columns={columns}
+        blocks={blocks}
+        nowMin={nowMin}
+        renderCard={renderCard}
+        frameOf={frameOf}
+        focusId={myColumnId}
+        emptyWords={emptyWords}
+        restWords={restWords}
+      />
+    </>
   );
 }

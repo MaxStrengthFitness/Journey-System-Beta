@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { WorkoutSession } from "../types";
 import { bookingMarks, loggedSessions, type BookingLike } from "./booking-state";
-import { hubCardRecedes, hubCardState, sessionsByClientDay } from "./hub-card-state";
+import { cardDayReadable, hubCardRecedes, hubCardState, sessionsByClientDay } from "./hub-card-state";
 
 const TZ = "America/New_York";
 const at = (day: string, hm: string) => new Date(`${day}T${hm}:00-04:00`);
@@ -117,6 +117,39 @@ describe("hubCardRecedes", () => {
     expect(hubCardRecedes("done")).toBe(true);
     expect(hubCardRecedes("not-logged")).toBe(true);
     expect(hubCardRecedes("past")).toBe(true);
+  });
+
+  it("never fades an unread card: a grey card with no word would read as done (AJ, Sep 24)", () => {
+    expect(hubCardRecedes("unread")).toBe(false);
+  });
+});
+
+describe("a day the sessions held do not cover (the Calendar's Day; rooms round review, Oct 10 2026)", () => {
+  const span = { today: "2026-10-14", lastDay: "2026-10-21" };
+
+  it("today is readable once the stream has answered, and only then", () => {
+    expect(cardDayReadable("2026-10-14", { ...span, sessionsKnown: true })).toBe(true);
+    expect(cardDayReadable("2026-10-14", { ...span, sessionsKnown: false })).toBe(false);
+  });
+
+  it("a day before today is never readable: the stream holds only the last 24 hours", () => {
+    expect(cardDayReadable("2026-10-13", { ...span, sessionsKnown: true })).toBe(false);
+    expect(cardDayReadable("2026-09-30", { ...span, sessionsKnown: true })).toBe(false);
+  });
+
+  it("a day ahead is readable to the end of the Hub's window, and not past it", () => {
+    expect(cardDayReadable("2026-10-15", { ...span, sessionsKnown: false })).toBe(true);
+    expect(cardDayReadable("2026-10-21", { ...span, sessionsKnown: true })).toBe(true);
+    expect(cardDayReadable("2026-10-22", { ...span, sessionsKnown: true })).toBe(false);
+  });
+
+  it("an unread card says nothing happened or did not: not done, not 'not logged', whatever is logged", () => {
+    const opts = { tz: TZ, readable: false };
+    expect(hubCardState(booking("11:00"), nothing, NOW, opts)).toBe("unread");
+    expect(hubCardState(booking("11:00"), logged(session({})), NOW, opts)).toBe("unread");
+    expect(hubCardState(booking("11:00"), null, NOW, opts)).toBe("unread");
+    // Readable by default: the Hub is untouched.
+    expect(hubCardState(booking("11:00"), nothing, NOW, { tz: TZ })).toBe("not-logged");
   });
 });
 

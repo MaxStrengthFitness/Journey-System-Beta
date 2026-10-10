@@ -207,4 +207,15 @@ describe("the focus column (hub cherry round)", () => {
     // Two trainers: no cap, no line.
     expect(mount().querySelector(".hs-rest-head")).toBeNull();
   });
+
+  it("a screen that narrows the day to one trainer says so beside the column, or nothing, never 'Nobody else' (Oct 10 2026)", () => {
+    const one = { columns: [COLUMNS[0]], blocks: BLOCKS.filter((b) => b.columnId === "t-ioreth") };
+    let el = mount({ ...one, restWords: "Showing Ioreth’s bookings only" });
+    expect(el.querySelector(".hs-rest-head")?.textContent).toBe("Showing Ioreth’s bookings only");
+    act(() => root?.unmount());
+    host?.remove();
+    el = mount({ ...one, restWords: null });
+    expect(el.querySelector(".hs-rest-head")?.textContent).toBe("");
+    expect(el.textContent).not.toContain("Nobody else");
+  });
 });

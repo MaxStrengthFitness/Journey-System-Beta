@@ -892,6 +892,14 @@
 }
 .cal-daytop:empty { display: none; }
 
+/* The Day's one line about Critical notes it couldn't check, over the grid. */
+.cal-note--day {
+  flex: none;
+  padding: 6px 12px;
+  background: var(--cal-surface);
+  border-bottom: 1px solid var(--cal-divider);
+}
+
 /* A client's life event on the day (a birthday, a dated FORD detail), its
    words whole: Month marks the day with a dot and the words are here. */
 .cal-life {

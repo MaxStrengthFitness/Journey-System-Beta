@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, RefreshCw } from "lucide-react";
-import { Client, ScheduleEntry, Trainer } from "../types";
+import { Client, ScheduleEntry, Trainer, WorkoutSession } from "../types";
 import { studioDateKey, studioDayBoundsForKey } from "../lib/studio-time";
-import { FETCH_RETRY_MS, freshnessLabel, type DayReadState } from "../lib/schedule-window";
+import { FETCH_RETRY_MS, dayKeysBetween, freshnessLabel, liveWindow, type DayReadState } from "../lib/schedule-window";
+import { cardDayReadable } from "../lib/hub-card-state";
+import { hubWindow } from "../features/hub-schedule/hub-window";
 import { LoadingMark } from "./LoadingMark";
 import { RelayStrip } from "../features/relay/board/RelayStrip";
 import { RoomBar, RoomSwitch, type RoomSwitchOption } from "../features/rooms";
@@ -29,7 +31,7 @@ import {
 } from "../features/calendar";
 import { ENTIRE_TEAM, TeamPicker } from "../features/calendar/TeamPicker";
 import { DayLife, eventsOnDay } from "../features/calendar/DayLife";
-import { fordCalendarEvents, type CalendarClient } from "../features/calendar/ford-events";
+import { dayToDate, fordCalendarEvents, type CalendarClient } from "../features/calendar/ford-events";
 import { useCalendarFord } from "../features/calendar/useCalendarFord";
 import "../features/calendar/calendar.css";
 
@@ -97,6 +99,7 @@ const MS_PER_MIN = 60000;
 
 /** One empty list, so the Day's bookings don't look new on every render while another view is up. */
 const NO_BOOKINGS: any[] = [];
+const NO_SESSIONS: ReadonlyArray<WorkoutSession> = [];
 
 /** How often the "Updated N min ago" caption re-reads the clock. */
 const FRESHNESS_TICK_MS = 30_000;
@@ -127,6 +130,21 @@ export function dayKeysOfRange(from: Date, to: Date): string[] {
   return out;
 }
 
+/**
+ * The next or previous month, week or day. A month steps from its 1st (the
+ * review, Oct 10 2026): Oct 31 plus a month is "Nov 31", which a Date rolls
+ * on to Dec 1, so Next skipped November; Mar 31 back a month landed on Mar 3.
+ */
+export function stepDate(cur: Date, viewMode: ViewMode, direction: 1 | -1): Date {
+  const next = new Date(cur);
+  if (viewMode === "month") {
+    next.setDate(1);
+    next.setMonth(cur.getMonth() + direction);
+  } else if (viewMode === "week") next.setDate(cur.getDate() + 7 * direction);
+  else next.setDate(cur.getDate() + direction);
+  return next;
+}
+
 /** The words of the one notice above a view whose days weren't all read. */
 export function unreadWords(viewMode: ViewMode, failed: number): string {
   if (viewMode === "day") return "Couldn’t read this day’s bookings, so it may look emptier than it is. Trying again.";
@@ -146,6 +164,8 @@ export function CalendarView({
   scheduleWindow,
   mindbodySiteId = null,
   rosterStatus,
+  sessions: workoutSessions = NO_SESSIONS,
+  sessionsKnown = false,
 }: {
   schedules: ScheduleEntry[];
   /** The trainers, in the studio's order (AppContent's sortedTrainers). */
@@ -163,6 +183,13 @@ export function CalendarView({
   mindbodySiteId?: string | number | null;
   /** The studio's client list ("loading", "ready", "error"): a card says nothing about sync off a list nobody read. */
   rosterStatus?: string;
+  /**
+   * The app's session stream (useSessions: the studio's last 24 hours) and
+   * whether its server has answered: the Day's cards say what happened from
+   * it, as the Hub's do, on the days it covers (`cardDayReadable`).
+   */
+  sessions?: ReadonlyArray<WorkoutSession>;
+  sessionsKnown?: boolean;
 }) {
   const isPhone = usePhone();
   const [viewMode, setViewMode] = useState<ViewMode>("month");
@@ -240,21 +267,50 @@ export function CalendarView({
     [dayStateFn],
   );
   const rangeKeys = useMemo(() => dayKeysOfRange(range.from, range.to), [range]);
-  const failedDays = rangeKeys.filter((k) => stateOf(k) === "failed").length;
-
-  /* A failed range is asked for again while it is on screen: the hook's own
-     retry re-reads only the week ahead (useLiveSchedule). */
-  useEffect(() => {
-    if (!ensureRange || failedDays === 0) return;
-    const t = setTimeout(() => ensureRange(range.from, range.to), FETCH_RETRY_MS);
-    return () => clearTimeout(t);
-  }, [ensureRange, failedDays, range]);
-
-  const retryUnread = () => {
+  const failedKeys = useMemo(() => rangeKeys.filter((key) => stateOf(key) === "failed"), [rangeKeys, stateOf]);
+  const failedDays = failedKeys.length;
+  /*
+   * Which failed days are whose. The live days (yesterday to tomorrow) are the
+   * listener's, which reopens itself after a failure; the others were fetched,
+   * and a retry reads only their span, from the first to the last, never the
+   * whole range on screen.
+   */
+  const { liveFailed, fetchedSpan } = useMemo(() => {
+    const live = liveWindow(new Date());
+    const liveKeys = new Set(dayKeysBetween(live.from, live.to));
+    const fetched = failedKeys.filter((key) => !liveKeys.has(key));
+    return {
+      liveFailed: failedKeys.some((key) => liveKeys.has(key)),
+      fetchedSpan: fetched.length > 0 ? `${fetched[0]}|${fetched[fetched.length - 1]}` : "",
+    };
+  }, [failedKeys]);
+  const readFetchedSpan = React.useCallback(() => {
     const current = latestWindow.current;
-    if (!current) return;
-    current.retry?.();
-    current.ensureRange(range.from, range.to, true);
+    if (!current || !fetchedSpan) return;
+    const [first, last] = fetchedSpan.split("|");
+    // Forced: a day whose earlier read landed keeps that read's stamp, and an
+    // unforced ask would find it fresh and skip it.
+    current.ensureRange(dayToDate(first), dayToDate(last), true);
+  }, [fetchedSpan]);
+
+  /*
+   * A failed day is asked for again while it is on screen and the page is
+   * visible, every FETCH_RETRY_MS, until none remain (the review, Oct 10 2026:
+   * it was asked once, keyed on how many days had failed).
+   */
+  useEffect(() => {
+    if (!fetchedSpan) return;
+    const t = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      readFetchedSpan();
+    }, FETCH_RETRY_MS);
+    return () => clearInterval(t);
+  }, [fetchedSpan, readFetchedSpan]);
+
+  /* Try again: the listener reopened when a live day failed, and the fetched failed days read again. */
+  const retryUnread = () => {
+    if (liveFailed) latestWindow.current?.retry?.();
+    readFetchedSpan();
   };
 
   /* ---------------- trainers ---------------- */
@@ -375,13 +431,7 @@ export function CalendarView({
   /* ---------------- navigation ---------------- */
 
   const step = (direction: 1 | -1) => {
-    setSelectedDate((cur) => {
-      const next = new Date(cur);
-      if (viewMode === "month") next.setMonth(cur.getMonth() + direction);
-      else if (viewMode === "week") next.setDate(cur.getDate() + 7 * direction);
-      else next.setDate(cur.getDate() + direction);
-      return next;
-    });
+    setSelectedDate((cur) => stepDate(cur, viewMode, direction));
   };
 
   const navLabels = useMemo(() => {
@@ -459,13 +509,27 @@ export function CalendarView({
   const nowDate = useMemo(() => new Date(now), [now]);
 
   /*
+   * May the Day's cards say what happened? Only on the days the session
+   * stream covers (lib/hub-card-state `cardDayReadable`: the studio's today
+   * once its server has answered, and the days ahead in the Hub's window);
+   * elsewhere a card is "unread", no fade and no word (AJ's Sep 24 rule).
+   */
+  const studioToday = todayKey ?? dayKey;
+  const dayReadable = cardDayReadable(dayKey, {
+    today: studioToday,
+    lastDay: hubWindow(studioToday, studioToday).to,
+    sessionsKnown,
+  });
+  const readsStudio = mayReadWeeks(authTrainer, activeStudioId ?? null);
+
+  /*
    * Who's on (the Hub's hatching): the AGREED standing weeks, one listener on
    * the studio's, only while the Day is on an iPad and only for someone who
    * may read them (mayReadWeeks, the rule the Hub asks), so no refused
    * listener is opened. It is the Hub's own read, and the Hub is not mounted
    * while the Calendar is. No agreed week, or no answer, hatches nothing.
    */
-  const readsWeeks = viewMode === "day" && !isPhone && mayReadWeeks(authTrainer, activeStudioId ?? null);
+  const readsWeeks = viewMode === "day" && !isPhone && readsStudio;
   const standingWeeks = useStandingWeeks(readsWeeks ? activeStudioId : null);
   const weeks = useMemo(() => weeksByTrainer(standingWeeks.docs), [standingWeeks.docs]);
   const weekday = weekdayOf(dayKey);
@@ -561,6 +625,10 @@ export function CalendarView({
             rosterFailed={rosterStatus === "error"}
             now={nowDate}
             readState={stateOf(dayKey)}
+            sessions={workoutSessions}
+            sessionsKnown={sessionsKnown}
+            readable={dayReadable}
+            readsStudio={readsStudio}
             frameOf={readsWeeks ? frameOf : undefined}
             phone={isPhone}
             onOpenClient={openClient}

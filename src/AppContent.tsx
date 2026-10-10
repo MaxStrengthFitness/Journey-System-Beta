@@ -2070,6 +2070,10 @@ export default function AppContent({
                       trainers={sortedTrainers}
                       mindbodySiteId={studios.find((s) => s.id === activeStudioId)?.mindbodySiteId ?? null}
                       rosterStatus={rosterStatus}
+                      // The Hub's own session stream: the Day's cards say what
+                      // happened, as the Hub's do, on the days it covers.
+                      sessions={sessions}
+                      sessionsKnown={sessionsKnown}
                       authTrainer={authTrainer}
                       isAdmin={
                         tokenRole === "Admin" ||

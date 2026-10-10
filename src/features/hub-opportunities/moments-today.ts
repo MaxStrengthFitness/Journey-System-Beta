@@ -89,6 +89,18 @@ export type MomentKind =
   | "renew"
   | "ask-about";
 
+/**
+ * READ FIRST: the Critical triangle's moment, from a client's alert state
+ * (`getClientAlertState` over `criticalNotesOn` her Critical notes for the
+ * booking's day). The one way it is made: the engine below, and the
+ * Calendar's Day (the rooms round, Oct 10 2026), which draws the Hub's card
+ * without the rest of the engine.
+ */
+export function readFirstMomentOf(alert: { hasPriorityNote: boolean; priorityLabel?: string | null }): Moment | null {
+  if (!alert.hasPriorityNote) return null;
+  return { family: "read-first", kind: "critical", chip: "Read first", sentence: `Read first: ${alert.priorityLabel ?? "a priority note"}`, words: alert.priorityLabel ?? "Priority note" };
+}
+
 export interface Moment {
   family: MomentFamily;
   kind: MomentKind;
@@ -516,9 +528,8 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
     criticalUnknown = notes === null;
     const alert = getClientAlertState(client, criticalNotesOn(notes ?? [], input.day, input.tz));
     clinicalOnFile = alert.hasClinicalHistory;
-    if (alert.hasPriorityNote) {
-      moments.push({ family: "read-first", kind: "critical", chip: "Read first", sentence: `Read first: ${alert.priorityLabel ?? "a priority note"}`, words: alert.priorityLabel ?? "Priority note" });
-    }
+    const readFirst = readFirstMomentOf(alert);
+    if (readFirst) moments.push(readFirst);
     // Watch, in the Key's order: the waiver (second only to Read first), then Pulse.
     if (waiverFlagState(client, input.waiversKeptInMindbody ?? true).state === "not-signed") {
       moments.push({ family: "watch", kind: "waiver", chip: "No waiver signed", sentence: "No liability waiver signed in Mindbody.", words: "No waiver signed" });

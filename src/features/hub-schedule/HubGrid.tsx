@@ -82,9 +82,20 @@ export interface HubGridProps {
   emptyWords?: string | null;
   /** A tap on a column's head: that trainer's bookings as a list (Opportunities, narrowed). Absent: the heads are not buttons. */
   onOpenColumn?: (columnId: string) => void;
+  /**
+   * What the rest of the row says beside a single column. The Hub's own
+   * sentence by default, true there because a single column means one
+   * trainer booked; a screen that narrows the day to one trainer (the
+   * Calendar's team filter, the rooms round, Oct 10 2026) says so instead,
+   * or passes null for no words.
+   */
+  restWords?: string | null;
 }
 
 export const NOBODY_BOOKED = "Nobody is booked on this day.";
+
+/** The rest of the row beside the day's one column, on the Hub. */
+export const NOBODY_ELSE_BOOKED = "Nobody else is booked on this day";
 
 /** A time label this close to the top of the day would be half under the trainer row: it sits below its line. */
 export const FIRST_TICK_PX = 10;
@@ -107,7 +118,7 @@ export function HubNotice({ words, onRetry }: { words: string; onRetry?: () => v
   );
 }
 
-function HubGridView({ dayKey, columns, blocks, nowMin, renderCard, frameOf, hidden = false, focusId = null, emptyWords = NOBODY_BOOKED, onOpenColumn }: HubGridProps) {
+function HubGridView({ dayKey, columns, blocks, nowMin, renderCard, frameOf, hidden = false, focusId = null, emptyWords = NOBODY_BOOKED, onOpenColumn, restWords = NOBODY_ELSE_BOOKED }: HubGridProps) {
   const [opened, setOpened] = useState<{ day: string; from: ReadonlySet<number> }>({ day: dayKey, from: new Set() });
   const openedFrom = opened.day === dayKey ? opened.from : EMPTY_SET;
 
@@ -217,7 +228,7 @@ function HubGridView({ dayKey, columns, blocks, nowMin, renderCard, frameOf, hid
               </Head>
             );
           })}
-          {columns.length === 1 && <div className="hs-rest-head">Nobody else is booked on this day</div>}
+          {columns.length === 1 && <div className="hs-rest-head">{restWords}</div>}
         </div>
 
         <div className="hs-body" style={{ height: layout.height }}>

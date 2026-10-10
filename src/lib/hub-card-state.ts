@@ -28,6 +28,12 @@
  *   past        over, and nothing to claim: the sessions could not be read (a
  *               failed read is unknown, never "not logged"), a cancellation.
  *               Recedes and says nothing.
+ *   unread      the card's DAY is one the sessions Journey holds don't cover
+ *               (`cardDayReadable`: the Calendar's Day on a day before today,
+ *               or too far ahead, or while the stream hasn't answered; the
+ *               rooms round, Oct 10 2026). It neither recedes nor says a
+ *               word, so it never reads as done (AJ's Sep 24 rule, above):
+ *               the plain card, its marks kept.
  *
  * One floor-only exception to the per-client-per-day rule (AJ, Sep 24): a card
  * never recedes as done BEFORE ITS OWN START. A client booked twice in a day
@@ -46,7 +52,29 @@ import { bookingState, type BookingLike, type BookingMarks, type LoggedSessions,
 import { toDate } from "./studio-time";
 import { isSessionValid } from "./utils";
 
-export type HubCardState = "live" | "in-session" | "left-open" | "done" | "not-logged" | "didnt-come" | "past";
+export type HubCardState = "live" | "in-session" | "left-open" | "done" | "not-logged" | "didnt-come" | "past" | "unread";
+
+/**
+ * THE DAYS A CARD MAY SAY WHAT HAPPENED (the rooms round, Oct 10 2026).
+ *
+ * The floor's session stream is the studio's last 24 hours
+ * (hooks/useSessions), so of the days a card can be drawn on, the sessions
+ * Journey holds cover the studio's TODAY whole (once the stream's server has
+ * answered: before that a gap proves nothing), and the days ahead up to
+ * `lastDay` (nothing there has finished, so the clock says all there is).
+ * A day before today is only partly covered (yesterday's morning is past the
+ * 24 hours), and a day further ahead is outside the window the screen keeps
+ * fresh. A screen that draws any day (the Calendar's Day) asks this, and on a
+ * day it says no to, its cards are "unread": no fade, no word, never done.
+ * The Hub draws its own window and does not ask.
+ */
+export function cardDayReadable(
+  day: string,
+  { today, lastDay, sessionsKnown }: { today: string; lastDay: string; sessionsKnown: boolean },
+): boolean {
+  if (day === today) return sessionsKnown;
+  return day > today && day <= lastDay;
+}
 
 /**
  * LEFT OPEN (hub fixes, Oct 1 2026; AJ: "this seems like it could lead to
@@ -73,6 +101,7 @@ export function hubCardState(
     session = null,
     tz,
     marks = null,
+    readable = true,
   }: {
     /** A session is open and running (kept for callers that know no more). */
     sessionOpen?: boolean;
@@ -80,8 +109,11 @@ export function hubCardState(
     session?: OpenSessionLike | null;
     tz?: string;
     marks?: BookingMarks | null;
+    /** False on a day the sessions held don't cover (`cardDayReadable`): the card is "unread". */
+    readable?: boolean;
   } = {},
 ): HubCardState {
+  if (!readable) return "unread";
   if (session?.status === "In-Progress") return isSessionValid(session, now.getTime()) ? "in-session" : "left-open";
   if (sessionOpen) return "in-session";
   switch (bookingState(booking, logged, now, tz, marks)) {
