@@ -50,7 +50,7 @@ export interface PeekProps {
   anchor: HTMLElement | null;
   onClose: () => void;
   onOpenProfile: (clientId: string) => void;
-  /** Start session, and Open session / Resume (the Active Session decides by its own rules). */
+  /** Start session, and Back to the session / Resume (the Active Session decides by its own rules). */
   onStartSession: (clientId: string) => void;
   /**
    * What happened to the booking and the main button that follows it (hub

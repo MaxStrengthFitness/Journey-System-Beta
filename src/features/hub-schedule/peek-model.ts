@@ -125,7 +125,7 @@ export function peekContent(entry: RunSheetEntry, sessionNumber: number | null =
  * something that already exists; nothing here is a second editor:
  *
  *   coming up, or nothing to claim   Start session (as before)
- *   In session                       Open session — the Active Session decides
+ *   In session                       Back to the session — the Active Session decides
  *                                    by its own rules (resume your own, watch
  *                                    another trainer's read-only)
  *   Left open                        Resume or start new — the Active Session's
@@ -170,7 +170,7 @@ export function peekState(
 ): PeekState {
   switch (state) {
     case "in-session":
-      return { words: "In session", primary: { kind: "open-session", label: "Open session" }, note: null, lateCancel: null };
+      return { words: "In session", primary: { kind: "open-session", label: "Back to the session" }, note: null, lateCancel: null };
     case "left-open":
       return {
         words: "Left open",

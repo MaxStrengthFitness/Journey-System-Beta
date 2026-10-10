@@ -546,10 +546,10 @@ describe("the Hub: the peek follows what happened", () => {
     const { el } = mount();
     act(() => cardOf(el, "Hamfast Gamgee")!.click());
     expect(document.querySelector(".hp-state")?.textContent).toBe("In session");
-    expect(peekButtons()).toEqual(["Open profile", "Open session"]);
+    expect(peekButtons()).toEqual(["Open profile", "Back to the session"]);
     // Go's slanted capitals belong to Start session alone (AJ's 1A): the
     // other primaries keep Go's depth in the button voice (peek.css).
-    const open = [...document.querySelectorAll<HTMLButtonElement>(".hp-btn")].find((b) => b.textContent === "Open session")!;
+    const open = [...document.querySelectorAll<HTMLButtonElement>(".hp-btn")].find((b) => b.textContent === "Back to the session")!;
     expect(open.dataset.primary).toBe("true");
     expect(open.dataset.go).toBeUndefined();
     act(() => {

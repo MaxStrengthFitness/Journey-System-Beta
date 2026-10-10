@@ -126,7 +126,9 @@ describe("peekState: what happened, and the button that follows it (hub fixes, O
     expect(peekState("done", { loggedSessionHeld: false }).primary).toBeNull();
   });
   it("in session opens it; left open resumes or starts new, and says where to close it", () => {
-    expect(peekState("in-session").primary).toEqual({ kind: "open-session", label: "Open session" });
+    /* "Back to the session", never "Open session": that is the Client Directory's
+       new session before the client is chosen (AJ, Oct 10 2026: "yes"). */
+    expect(peekState("in-session").primary).toEqual({ kind: "open-session", label: "Back to the session" });
     const left = peekState("left-open");
     expect(left.words).toBe("Left open");
     expect(left.primary).toEqual({ kind: "open-session", label: "Resume or start new" });

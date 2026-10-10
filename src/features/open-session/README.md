@@ -2,7 +2,7 @@
 
 A session started before the client is chosen: the Client Directory's **Open session** button. It is stored as an ordinary session with `isUnassigned: true` and no `clientId`. The round is `docs/rounds/2026-10-09-open-session.md` (AJ's picks "1b 2a 3a"); read it first.
 
-The Hub peek's "Open session" is a different thing: it resumes a client's running session.
+The Hub peek's resume button is a different thing, and since Oct 10 2026 it says **Back to the session** (AJ: "yes" to taking "Open session" off it), so the two no longer share a name.
 
 ## Start (`start.ts`, used by `src/hooks/useClientMutations.ts`)
 

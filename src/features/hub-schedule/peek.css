@@ -269,7 +269,7 @@
 }
 /* Go's words (AJ's 1A) only when the primary says Start session: the display
    face's slanted capitals at 800 and 17, 0.04em, one voice with the profile
-   header's Start session. Open session, Resume or start new, Log past session
+   header's Start session. Back to the session, Resume or start new, Log past session
    and Edit session keep the 14/700 button voice under Go's depth (Peek.tsx
    sets data-go only for a booking still to come). */
 .hp-btn[data-go="true"] {
