@@ -396,6 +396,11 @@ neither one covers the other.
 
 ## Rolling back
 
+**For the live app, read `docs/ops/DEPLOYS-AND-ROLLBACK.md`** (Oct 10 2026):
+the routine for a deploy once trainers are on Journey, and the way back for
+the app, the rules, a Cloud Function and the data. What follows is the Sep 20
+plan's note about its own branch.
+
 Each phase of this work is its own commit on `render-infrastructure`, so any
 one can be reverted without the others:
 
