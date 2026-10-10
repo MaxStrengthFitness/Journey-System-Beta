@@ -893,6 +893,7 @@ const SEGMENTS_IN_A_WELL: Record<string, string> = {
   'features/hub-schedule/day-header.css .hd-bar .hl-btn[aria-pressed="true"]': "the Hub's command bar: the well inside its 3:1 edge holds the layers (hub-depth.test.ts)",
   'features/admin/admin.css .adm-seg[aria-selected="true"]': "Operations' segmented control: the well inside its 3:1 edge (.adm-segmented) holds the segments, the picked one raised with the soft ring",
   'features/wiki/wiki.css .wk__seg-btn[aria-pressed="true"]': "Learning's Overview / Catalog / Academy switch and the Catalog figure's Front / Back: the well inside its 3:1 edge (.wk__seg) holds the segments, the picked one raised with the soft ring (the follow-up, Oct 5 2026)",
+  'features/rooms/rooms.css .rm-switch__btn[aria-pressed="true"]': "a room's one switch on its room bar: the well inside its 3:1 edge (.rm-switch, --input) holds the sections, the one you're on raised with the soft ring (the rooms round, Oct 10 2026)",
 };
 
 type Edge = { where: string; edge: string; shadow: string };

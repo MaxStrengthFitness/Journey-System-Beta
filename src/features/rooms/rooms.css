@@ -1,0 +1,246 @@
+/* ==========================================================================
+   The room bar (the rooms round, Oct 10 2026; AJ's answer 1b). Prefix rm-.
+   The same bar in every room, right under the navy frame: the mark and the
+   name, one switch, the room's tools; a shelf over the room (Refined Lift).
+   Drawn in the app's own tokens (src/index.css), so it is the same bar in
+   every room whatever that room's palette.
+
+   THE ROOM HUE is a colour job of its own, WHERE YOU ARE, and it goes on
+   TWO things only: the mark tile and the 3px line along the bar's foot.
+   Never a button, a chip, words, data, a fill, an edge or a focus ring.
+   This file is the only reader of the --room-* tokens, and inside it only
+   .rm-mark and .rm-bar::after read the hue (room-hues.test.ts).
+   ========================================================================== */
+
+.rm-bar {
+  --rm-hue: transparent;
+  --rm-mark-ink: var(--room-mark-ink);
+  container: rm-bar / inline-size;
+  /* A shelf: under the frame (20), over the room that scrolls under it
+     (the Hub's grid's names row is 8). Never animated. */
+  position: relative;
+  z-index: 10;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* The foot keeps room for the 3px line, so nothing sits on it. */
+  padding: 8px 12px 11px;
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: var(--shelf);
+}
+
+/* Which room: the hue and, for the session's orange, navy ink. */
+.rm-bar[data-room="hub"] { --rm-hue: var(--room-hub); }
+.rm-bar[data-room="session"] { --rm-hue: var(--room-session); --rm-mark-ink: var(--room-session-ink); }
+.rm-bar[data-room="clients"] { --rm-hue: var(--room-clients); }
+.rm-bar[data-room="calendar"] { --rm-hue: var(--room-calendar); }
+.rm-bar[data-room="learning"] { --rm-hue: var(--room-learning); }
+.rm-bar[data-room="studio"] { --rm-hue: var(--room-studio); }
+.rm-bar[data-room="operations"] { --rm-hue: var(--room-operations); }
+.rm-bar[data-room="admins"] { --rm-hue: var(--room-admins); }
+
+/* The line along the bar's foot: 3px of the room's hue, at least 3:1 on the
+   bar in both modes. A background band, never a border (a crescent on a
+   rounded corner). */
+.rm-bar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--rm-hue);
+  pointer-events: none;
+}
+
+.rm-bar__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.rm-bar__id {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* The mark: the room's icon on its hue, the icon at least 3:1 on it. */
+.rm-mark {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--rm-hue);
+  color: var(--rm-mark-ink);
+}
+
+/* The room's name: the display face upright at 22, in its own
+   capitalisation, as a room's title in its bar speaks (Refined Lift, 1A). */
+.rm-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.04;
+  color: var(--foreground);
+  overflow-wrap: anywhere;
+}
+
+.rm-bar__switch {
+  flex: none;
+  min-width: 0;
+}
+
+.rm-bar__tools {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* ---- the one switch ----
+   A WELL inside its 3:1 edge (the Hub's command bar): the group's boundary
+   is the well, so the segments need no edge of their own. The section
+   you're on is RAISED out of it, a fill a hair lighter than the card, the
+   contact lift, a soft ring and the top light, in blue words at 700 (the
+   others 600, a segment's voice); it presses in. */
+.rm-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--input);
+  border-radius: 12px;
+  background: var(--well);
+  box-shadow: var(--elev-0);
+}
+
+.rm-switch__btn {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rm-switch__btn[aria-pressed="true"] {
+  background: var(--raised);
+  color: var(--primary);
+  font-weight: 700;
+  box-shadow: var(--elev-1), inset 0 0 0 1px var(--edge-control), inset 0 1px 0 var(--highlight);
+}
+
+.rm-switch__btn:active {
+  transform: translateY(1px);
+}
+
+.rm-switch__btn:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: -3px;
+}
+
+/* A pointer's only: an iPad keeps :hover after a tap. */
+@media (hover: hover) {
+  .rm-switch__btn:not([aria-pressed="true"]):hover {
+    background: var(--tray);
+    color: var(--foreground);
+  }
+}
+
+/* ---- a tool on the bar ----
+   RAISED on the 3:1 edge (Refined Lift, 2A): the raised fill, the contact
+   lift and the top light, radius 12, 14/700; a press on :active; flat when
+   it can't be pressed. */
+.rm-tool {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid var(--input);
+  border-radius: 12px;
+  background: var(--raised);
+  box-shadow: var(--elev-1), inset 0 1px 0 var(--highlight);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rm-tool svg {
+  flex: none;
+}
+
+.rm-tool:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: var(--press);
+}
+
+.rm-tool:disabled {
+  cursor: default;
+  box-shadow: none;
+  color: var(--muted-foreground);
+}
+
+.rm-tool:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .rm-tool:not(:disabled):hover {
+    background: var(--muted);
+  }
+}
+
+/* ---- on a phone (Journey Lite) ----
+   The switch takes a line of its own, the width of the phone, its
+   sections sharing it; the tools stay beside the name. */
+@container rm-bar (max-width: 520px) {
+  .rm-bar__switch {
+    order: 3;
+    flex: 1 0 100%;
+  }
+
+  .rm-switch {
+    display: flex;
+    width: 100%;
+  }
+
+  .rm-switch__btn {
+    flex: 1 1 0;
+    padding: 0 8px;
+  }
+}

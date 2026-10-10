@@ -601,6 +601,29 @@
     --chrome-go:      #F36D21;                    /* a running session's tab, Operations and Admins, 5.3:1 */
     --chrome-go-fill: #3D2112;                    /* the running tab's box when it is not the one you're on: OPAQUE, at the orange's hue (an rgba orange over the navy greys out); the go icon on it 4.9:1 */
 
+    /* ---------------------------------------------------------------
+       THE ROOM HUES (the rooms round, Oct 10 2026; AJ's answer 1b on
+       "Journey Rooms": "each place should feel a bit different but the
+       same so it feels like one app"). A colour job of its own: WHERE YOU
+       ARE. Each room's bar (src/features/rooms) paints its hue on TWO
+       things only, its mark tile and the 3px line along the bottom of the
+       bar, and never on a button, a chip, words or data. Nothing outside
+       src/features/rooms/rooms.css reads these (room-hues.test.ts holds
+       it, and measures each pair below in both modes). Ratios: the mark's
+       icon on the hue, then the line on the bar's surface (--card).
+       Not Tailwind utilities on purpose: no bg-room-* class exists.
+       --------------------------------------------------------------- */
+    --room-hub:        #1F5E9C;   /* the logo blue: it's your day      6.69 / 6.17 */
+    --room-session:    #D45A06;   /* the orange of now (--eq-hero)     4.53 navy / 3.68 */
+    --room-clients:    #0E7C7B;   /* teal                              5.01 / 4.62 */
+    --room-calendar:   #5048A6;   /* indigo-violet, 35deg off the blue 7.45 / 6.87 */
+    --room-learning:   #2E7D4F;   /* green                             5.05 / 4.65 */
+    --room-studio:     #85690A;   /* ochre, 44deg off the orange       5.22 / 4.81 */
+    --room-operations: #4A5A6C;   /* slate, a grey                     7.07 / 6.52 */
+    --room-admins:     #5E5470;   /* dusk, a grey-violet               7.05 / 6.50 */
+    --room-mark-ink:   #FFFFFF;   /* the mark's icon on its hue */
+    --room-session-ink: #071727;  /* navy on the orange: nothing puts white on an orange */
+
     /* --- MINDBODY INTEGRATION TOKENS — append to existing :root { } --- */
     --mb-state-scheduled:    #94A3B8;
     --mb-state-arrived:      var(--cyan);
@@ -793,6 +816,20 @@
     --n-800: #23374C;
     --n-900: #14293D;
     --n-950: #0A1C2C;
+
+    /* THE ROOM HUES in dark (the rooms round, Oct 10 2026): each lifted to
+       read on the navy, the mark's icon the frame's navy. Ratios as in
+       :root (the icon on the hue, the line on the dark card). */
+    --room-hub:        #65ABE9;   /* 6.50 / 6.05 */
+    --room-session:    #F36D21;   /* 6.05 / 4.96 */
+    --room-clients:    #4CC2BF;   /* 7.42 / 6.91 */
+    --room-calendar:   #A79FF0;   /* 6.73 / 6.26 */
+    --room-learning:   #6BC793;   /* 7.76 / 7.22 */
+    --room-studio:     #DDB955;   /* 8.46 / 7.88 */
+    --room-operations: #A3B3C4;   /* 7.44 / 6.93 */
+    --room-admins:     #B9AED2;   /* 7.63 / 7.10 */
+    --room-mark-ink:   #002341;   /* the frame's navy */
+    --room-session-ink: #071727;
 
     /* --- MINDBODY INTEGRATION TOKENS — append to existing .dark { } --- */
     --mb-state-early-cancel: var(--ink-d3);

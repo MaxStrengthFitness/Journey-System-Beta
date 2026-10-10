@@ -113,6 +113,9 @@ const FILES = [
   // --sr-anchor-band, --cr-rhythm-band, and equipment.css's --eq-watch-band).
   "features/clinical-flags/clinical-flags.css",
   "features/client-notes/notes.css",
+  // The rooms round (Oct 10 2026): the room bar, which reads the app's own
+  // tokens and the --room-* hues.
+  "features/rooms/rooms.css",
 ];
 
 function filesUnder(dir: string, ext: RegExp, out: string[] = []): string[] {
